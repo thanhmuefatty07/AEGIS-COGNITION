@@ -77,7 +77,11 @@ def evaluate_production_packaging_smoke_gate(root: str | Path = ROOT) -> dict[st
     checks = (
         _check("root_pyproject_present", bool(root_pyproject)),
         _check("root_project_name", root_pyproject.get("project", {}).get("name") == "aegis-cognition"),
-        _check("root_requires_python_313", root_pyproject.get("project", {}).get("requires-python") == ">=3.13"),
+        _check(
+            "python_support_policy_aligned",
+            root_pyproject.get("project", {}).get("requires-python") == ">=3.14,<3.16"
+            and core_pyproject.get("project", {}).get("requires-python") == ">=3.14,<3.16",
+        ),
         _check("core_python_pyproject_present", bool(core_pyproject)),
         _check("core_python_project_name", core_pyproject.get("project", {}).get("name") == "aegis-cognition-core-python"),
         _check("workspace_contains_core_rust", "core/rust" in workspace_cargo.get("workspace", {}).get("members", [])),

@@ -14,8 +14,8 @@ REQUIRED_DIRECT_DEPS: dict[str, str] = {
     "arrow": "54",
     "arrow-buffer": "54",
     "blake3": "1.5.0",
-    "pyo3": "0.22",
-    "wasmtime": "22.0.0",
+    "pyo3": "0.29.2",
+    "wasmtime": "47.0.3",
 }
 CRATES_IO_SOURCE = "registry+https://github.com/rust-lang/crates.io-index"
 

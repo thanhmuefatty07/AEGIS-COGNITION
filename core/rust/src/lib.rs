@@ -26,6 +26,8 @@ pub mod orchestrator;
 pub mod physical;
 pub mod policy;
 pub mod replay;
+pub mod resource;
+pub mod runtime;
 pub mod sac;
 pub mod sandbox;
 pub mod schema;

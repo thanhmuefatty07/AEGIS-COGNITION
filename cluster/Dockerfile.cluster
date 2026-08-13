@@ -2,7 +2,7 @@
 # Listens on TCP/9000 (overridable via AEGIS_WORKER_PORT) and answers
 # json-line req/resp matching the AEGIS capture contract.
 
-FROM python:3.12-alpine
+FROM python:3.14-alpine
 
 # iproute2 is needed to support `tc qdisc` network-chaos injection
 # from the host (NET_ADMIN capability required at run time).

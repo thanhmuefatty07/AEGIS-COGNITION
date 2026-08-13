@@ -1,0 +1,61 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://aegis-cognition.ai/schemas/resource-contract-v1.json",
+  "title": "AEGIS Resource Contract v1",
+  "description": "Versioned boundary for Rust-authoritative capability and resource proposals.",
+  "type": "object",
+  "required": ["schema", "task_id", "work_kind", "cpu", "host_memory", "io", "deadline", "priority", "side_effect_class"],
+  "properties": {
+    "schema": { "const": "aegis-resource-contract-v1" },
+    "task_id": { "type": "integer", "minimum": 1 },
+    "work_kind": { "enum": ["NativeTask", "PythonCognition", "Tool", "Agent", "Accelerator"] },
+    "cpu": {
+      "type": "object",
+      "required": ["min_threads", "max_threads"],
+      "properties": {
+        "min_threads": { "type": "integer", "minimum": 1 },
+        "max_threads": { "type": "integer", "minimum": 1 }
+      },
+      "additionalProperties": false
+    },
+    "host_memory": {
+      "type": "object",
+      "required": ["bytes"],
+      "properties": { "bytes": { "type": "integer", "minimum": 1 } },
+      "additionalProperties": false
+    },
+    "accelerator_memory": {
+      "type": ["object", "null"],
+      "properties": { "bytes": { "type": "integer", "minimum": 1 } },
+      "additionalProperties": false
+    },
+    "io": {
+      "type": "object",
+      "required": ["max_in_flight"],
+      "properties": { "max_in_flight": { "type": "integer", "minimum": 1 } },
+      "additionalProperties": false
+    },
+    "process_limit": { "type": ["integer", "null"], "minimum": 1 },
+    "thread_limit": { "type": ["integer", "null"], "minimum": 1 },
+    "fd_limit": { "type": ["integer", "null"], "minimum": 1 },
+    "api_budget": {
+      "type": ["object", "null"],
+      "properties": { "requests": { "type": "integer", "minimum": 1 } },
+      "additionalProperties": false
+    },
+    "token_budget": {
+      "type": ["object", "null"],
+      "properties": { "tokens": { "type": "integer", "minimum": 1 } },
+      "additionalProperties": false
+    },
+    "deadline": {
+      "type": "object",
+      "required": ["deadline_ms"],
+      "properties": { "deadline_ms": { "type": ["integer", "null"], "minimum": 1 } },
+      "additionalProperties": false
+    },
+    "priority": { "enum": ["Background", "Normal", "Foreground", "Critical"] },
+    "side_effect_class": { "enum": ["ReadOnly", "Reversible", "ExternalSideEffect", "Irreversible"] }
+  },
+  "additionalProperties": false
+}

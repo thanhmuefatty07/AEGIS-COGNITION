@@ -37,7 +37,7 @@ ok "Architecture: $(uname -m)"
 
 INSTALL_DIR="$HOME/.aegis"
 REPO_URL="https://github.com/aegis-cognition/aegis-cognition.git"
-PY_VERSION="${AEGIS_PY_VERSION:-3.11}"
+PY_VERSION="${AEGIS_PY_VERSION:-3.14}"
 
 # --- 1. Update + core packages ----------------------------------------
 step "1/4" "Updating system packages"
