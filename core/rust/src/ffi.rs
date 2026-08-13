@@ -1,16 +1,18 @@
 #![allow(clippy::useless_conversion)]
 
+use crate::learning::LearningLedger;
+use crate::memory::session_search::SessionSearchIndex;
 use blake3::Hasher;
+use parking_lot::Mutex;
 use pyo3::prelude::*;
 use pyo3::types::PyModule;
 use std::panic::{catch_unwind, AssertUnwindSafe};
-use parking_lot::Mutex;
 use std::sync::OnceLock;
-use crate::memory::session_search::SessionSearchIndex;
-use crate::learning::LearningLedger;
 
 static SESSION_INDEX: OnceLock<Mutex<SessionSearchIndex>> = OnceLock::new();
 static SESSION_LEDGER: OnceLock<Mutex<LearningLedger>> = OnceLock::new();
+static AUTHORITATIVE_RUNTIME: OnceLock<Mutex<crate::runtime::AuthoritativeRuntime>> =
+    OnceLock::new();
 
 fn get_session_index() -> &'static Mutex<SessionSearchIndex> {
     SESSION_INDEX.get_or_init(|| {
@@ -20,8 +22,13 @@ fn get_session_index() -> &'static Mutex<SessionSearchIndex> {
 }
 
 fn get_session_ledger() -> &'static Mutex<LearningLedger> {
-    SESSION_LEDGER.get_or_init(|| {
-        Mutex::new(LearningLedger::new())
+    SESSION_LEDGER.get_or_init(|| Mutex::new(LearningLedger::new()))
+}
+
+fn get_authoritative_runtime() -> &'static Mutex<crate::runtime::AuthoritativeRuntime> {
+    AUTHORITATIVE_RUNTIME.get_or_init(|| {
+        let profile = crate::resource::HardwareProfile::probe();
+        Mutex::new(crate::runtime::AuthoritativeRuntime::new(60_000, &profile))
     })
 }
 
@@ -171,6 +178,146 @@ pub fn aegis_cli_schema() -> PyResult<&'static str> {
 #[pyfunction]
 pub fn aegis_release_ready() -> PyResult<bool> {
     py_safe(|| true)
+}
+
+/// Return the normalized hardware contract used by the authoritative runtime.
+/// The payload is deliberately coarse-grained so Python proposes work while
+/// Rust remains the source of truth for capacity and capability decisions.
+#[pyfunction]
+pub fn aegis_hardware_profile() -> PyResult<String> {
+    py_safe(|| {
+        serde_json::to_string(&crate::resource::HardwareProfile::probe()).map_err(|error| {
+            pyo3::exceptions::PyRuntimeError::new_err(format!(
+                "hardware profile serialization failed: {error}"
+            ))
+        })
+    })?
+}
+
+#[pyfunction]
+pub fn aegis_resource_contract_version() -> PyResult<&'static str> {
+    py_safe(|| crate::resource::RESOURCE_CONTRACT_SCHEMA_V1)
+}
+
+/// Validate and preview admission for one typed resource request.
+///
+/// This intentionally creates a fresh controller: the function is a contract
+/// smoke boundary, not a second scheduler. Stateful admission remains inside
+/// the Rust runtime and must be wired to TaskLedger by the host process.
+#[pyfunction]
+#[pyo3(signature = (request_json, now_ms=None))]
+pub fn aegis_resource_admission_preview(
+    request_json: String,
+    now_ms: Option<u64>,
+) -> PyResult<String> {
+    py_safe(move || {
+        let request: crate::resource::ResourceRequest = serde_json::from_str(&request_json)
+            .map_err(|error| {
+                pyo3::exceptions::PyValueError::new_err(format!(
+                    "invalid resource request JSON: {error}"
+                ))
+            })?;
+        let profile = crate::resource::HardwareProfile::probe();
+        let mut controller = crate::resource::AdmissionController::from_hardware(&profile);
+        let decision = controller.admit(request, now_ms.unwrap_or(profile.profile_epoch));
+        serde_json::to_string(&decision).map_err(|error| {
+            pyo3::exceptions::PyRuntimeError::new_err(format!(
+                "admission decision serialization failed: {error}"
+            ))
+        })
+    })?
+}
+
+#[pyfunction]
+pub fn aegis_execution_lanes() -> PyResult<String> {
+    py_safe(|| {
+        let profile = crate::resource::HardwareProfile::probe();
+        serde_json::to_string(&crate::resource::ExecutionLaneRegistry::for_profile(
+            &profile,
+        ))
+        .map_err(|error| {
+            pyo3::exceptions::PyRuntimeError::new_err(format!(
+                "execution lane serialization failed: {error}"
+            ))
+        })
+    })?
+}
+
+/// Submit one task/resource proposal to the process-local authoritative runtime.
+/// The boundary is intentionally coarse: Python supplies a task card and a
+/// complete resource request; Rust owns status transitions and lease issuance.
+#[pyfunction]
+pub fn aegis_runtime_submit(
+    task_id: u128,
+    dependency_ids_json: String,
+    request_json: String,
+    now_ms: u64,
+) -> PyResult<String> {
+    py_safe(move || {
+        let dependency_ids: Vec<crate::task_ledger::TaskId> =
+            serde_json::from_str(&dependency_ids_json).map_err(|error| {
+                pyo3::exceptions::PyValueError::new_err(format!(
+                    "invalid dependency IDs JSON: {error}"
+                ))
+            })?;
+        let request: crate::resource::ResourceRequest = serde_json::from_str(&request_json)
+            .map_err(|error| {
+                pyo3::exceptions::PyValueError::new_err(format!(
+                    "invalid resource request JSON: {error}"
+                ))
+            })?;
+        let task = crate::task_ledger::TaskCard::new(task_id, dependency_ids, 0, None, None);
+        let mut runtime = get_authoritative_runtime().lock();
+        let admission = runtime.submit(task, request, now_ms).map_err(|error| {
+            pyo3::exceptions::PyRuntimeError::new_err(format!("runtime submit failed: {error:?}"))
+        })?;
+        let response = match admission {
+            crate::runtime::RuntimeAdmission::Admitted(lease) => serde_json::json!({
+                "schema": "aegis-runtime-admission-v1",
+                "status": "admitted",
+                "lease": lease,
+            }),
+            crate::runtime::RuntimeAdmission::Queued { position, reason } => serde_json::json!({
+                "schema": "aegis-runtime-admission-v1",
+                "status": "queued",
+                "position": position,
+                "reason": reason,
+            }),
+            crate::runtime::RuntimeAdmission::Rejected { reason } => serde_json::json!({
+                "schema": "aegis-runtime-admission-v1",
+                "status": "rejected",
+                "reason": reason,
+            }),
+        };
+        serde_json::to_string(&response).map_err(|error| {
+            pyo3::exceptions::PyRuntimeError::new_err(format!(
+                "runtime response serialization failed: {error}"
+            ))
+        })
+    })?
+}
+
+#[pyfunction]
+pub fn aegis_runtime_finish(lease_json: String, outcome: String) -> PyResult<bool> {
+    py_safe(move || {
+        let lease: crate::resource::ResourceLease =
+            serde_json::from_str(&lease_json).map_err(|error| {
+                pyo3::exceptions::PyValueError::new_err(format!(
+                    "invalid resource lease JSON: {error}"
+                ))
+            })?;
+        let mut runtime = get_authoritative_runtime().lock();
+        match outcome.trim().to_ascii_lowercase().as_str() {
+            "done" => runtime.complete(lease),
+            "failed" => runtime.fail(lease),
+            "cancelled" | "canceled" => runtime.cancel(lease),
+            _ => Err(crate::runtime::RuntimeError::InvalidOutcome(outcome)),
+        }
+        .map(|_| true)
+        .map_err(|error| {
+            pyo3::exceptions::PyRuntimeError::new_err(format!("runtime finish failed: {error:?}"))
+        })
+    })?
 }
 
 #[pyfunction]
@@ -541,10 +688,9 @@ pub fn aegis_get_learning_stats(
 ) -> PyResult<String> {
     py_safe(move || {
         // Parse the ledger to count events by type
-        let ledger: serde_json::Value = serde_json::from_str(&ledger_json)
-            .map_err(|e| {
-                pyo3::exceptions::PyValueError::new_err(format!("Invalid ledger JSON: {}", e))
-            })?;
+        let ledger: serde_json::Value = serde_json::from_str(&ledger_json).map_err(|e| {
+            pyo3::exceptions::PyValueError::new_err(format!("Invalid ledger JSON: {}", e))
+        })?;
 
         let total_events = ledger
             .get("events")
@@ -558,11 +704,7 @@ pub fn aegis_get_learning_stats(
             .and_then(|v| v.as_array())
             .map(|arr| {
                 arr.iter()
-                    .filter(|ev| {
-                        ev.get("type")
-                            .and_then(|t| t.as_str())
-                            == Some("SkillImproved")
-                    })
+                    .filter(|ev| ev.get("type").and_then(|t| t.as_str()) == Some("SkillImproved"))
                     .count()
             })
             .unwrap_or(0);
@@ -573,16 +715,13 @@ pub fn aegis_get_learning_stats(
             .and_then(|v| v.as_array())
             .map(|arr| {
                 arr.iter()
-                    .filter(|ev| {
-                        ev.get("type")
-                            .and_then(|t| t.as_str())
-                            == Some("MemoryPersisted")
-                    })
+                    .filter(|ev| ev.get("type").and_then(|t| t.as_str()) == Some("MemoryPersisted"))
                     .count()
             })
             .unwrap_or(0);
 
-        let final_search_index_count = search_index_count.max(get_session_index().lock().len() as u64);
+        let final_search_index_count =
+            search_index_count.max(get_session_index().lock().len() as u64);
 
         let stats = serde_json::json!({
             "schema": "aegis-learning-stats-v1",
@@ -651,17 +790,15 @@ pub fn aegis_trigger_memory_nudge(
 
 /// Index a session transcript for cross-session recall and return its content hash.
 #[pyfunction]
-pub fn aegis_index_session(
-    session_id: u128,
-    content: String,
-    timestamp: u64,
-) -> PyResult<String> {
+pub fn aegis_index_session(session_id: u128, content: String, timestamp: u64) -> PyResult<String> {
     py_safe(move || {
         let mut index = get_session_index().lock();
         let mut ledger = get_session_ledger().lock();
         let content_hash = index
             .index_session(session_id, &content, timestamp, &mut ledger, None)
-            .map_err(|err| pyo3::exceptions::PyRuntimeError::new_err(format!("Index failed: {:?}", err)))?;
+            .map_err(|err| {
+                pyo3::exceptions::PyRuntimeError::new_err(format!("Index failed: {:?}", err))
+            })?;
         Ok(hex32(&content_hash))
     })?
 }
@@ -682,10 +819,7 @@ pub fn aegis_index_session(
 /// and cannot be used as PhysicalWitness or PolicyApproval.
 #[pyfunction]
 #[pyo3(signature = (query, top_k=5usize))]
-pub fn aegis_search_past_sessions(
-    query: String,
-    top_k: usize,
-) -> PyResult<String> {
+pub fn aegis_search_past_sessions(query: String, top_k: usize) -> PyResult<String> {
     py_safe(move || {
         if query.trim().is_empty() {
             return Err(pyo3::exceptions::PyValueError::new_err(
@@ -756,6 +890,12 @@ pub fn aegis_nerve(_py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(aegis_cli_status, m)?)?;
     m.add_function(wrap_pyfunction!(aegis_cli_schema, m)?)?;
     m.add_function(wrap_pyfunction!(aegis_release_ready, m)?)?;
+    m.add_function(wrap_pyfunction!(aegis_hardware_profile, m)?)?;
+    m.add_function(wrap_pyfunction!(aegis_resource_contract_version, m)?)?;
+    m.add_function(wrap_pyfunction!(aegis_resource_admission_preview, m)?)?;
+    m.add_function(wrap_pyfunction!(aegis_execution_lanes, m)?)?;
+    m.add_function(wrap_pyfunction!(aegis_runtime_submit, m)?)?;
+    m.add_function(wrap_pyfunction!(aegis_runtime_finish, m)?)?;
     m.add_function(wrap_pyfunction!(aegis_llm_request, m)?)?;
     m.add_function(wrap_pyfunction!(aegis_llm_route, m)?)?;
     m.add_function(wrap_pyfunction!(aegis_llm_bridge_key, m)?)?;

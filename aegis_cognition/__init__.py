@@ -15,11 +15,25 @@ For quick setup:
 from __future__ import annotations
 
 __version__ = "0.1.0"
-__all__ = ["Agent", "run", "version"]
+__all__ = [
+    "Agent",
+    "finish_runtime_lease",
+    "hardware_profile",
+    "resource_contract_version",
+    "run",
+    "submit_runtime_task",
+    "version",
+]
 
 # Re-export the Friendly Gateway Agent with simple name
 from .agent import Agent
 from .agent import run as run
+from .runtime import (
+    finish_runtime_lease,
+    hardware_profile,
+    resource_contract_version,
+    submit_runtime_task,
+)
 
 
 def version() -> str:

@@ -340,10 +340,10 @@ mod tests {
             governance_dependency_record("arrow", "54", DependencyRiskClass::ColumnarIpc, 1),
             governance_dependency_record("arrow-buffer", "54", DependencyRiskClass::ColumnarIpc, 2),
             governance_dependency_record("blake3", "1.5.0", DependencyRiskClass::CryptoHash, 3),
-            governance_dependency_record("pyo3", "0.22", DependencyRiskClass::PythonFfi, 4),
+            governance_dependency_record("pyo3", "0.29.2", DependencyRiskClass::PythonFfi, 4),
             governance_dependency_record(
                 "wasmtime",
-                "22.0.0",
+                "47.0.3",
                 DependencyRiskClass::SandboxRuntime,
                 5,
             ),

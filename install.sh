@@ -6,7 +6,7 @@
 # Usage:
 #   curl -fsSL https://aegis-cognition.ai/install.sh | bash
 #   # or locally:
-#   ./install.sh [--skip-rust] [--skip-browser] [--python 3.11]
+#   ./install.sh [--skip-rust] [--skip-browser] [--python 3.14]
 #
 # Honest scope: WRITTEN, NOT YET EXECUTED end-to-end on a Linux/macOS host
 # in this session. See INSTALL_SCRIPTS_REPORT.md for the gate.
@@ -14,13 +14,13 @@
 # Flags:
 #   --skip-rust        skip rustup install + cargo build
 #   --skip-browser     skip `playwright install chromium`
-#   --python VERSION   python version for the venv (default 3.11)
+#   --python VERSION   python version for the venv (default 3.14)
 #   --repo URL         git URL to clone (override for forks)
 #   --install-dir DIR  install root (default $HOME/.aegis)
 
 set -euo pipefail
 
-PY_VERSION="${AEGIS_PY_VERSION:-3.11}"
+PY_VERSION="${AEGIS_PY_VERSION:-3.14}"
 SKIP_RUST=0
 SKIP_BROWSER=0
 REPO_URL="https://github.com/aegis-cognition/aegis-cognition.git"

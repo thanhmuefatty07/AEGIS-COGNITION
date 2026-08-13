@@ -2,10 +2,10 @@
 
 > Cryptographically-verified AI agent harness — drop-in developer experience.
 
-[![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
-[![Rust](https://img.shields.io/badge/rust-1.80+-orange.svg)](https://www.rust-lang.org/)
+[![Python 3.14–3.15](https://img.shields.io/badge/python-3.14--3.15-blue.svg)](https://www.python.org/downloads/)
+[![Rust](https://img.shields.io/badge/rust-1.97.1-orange.svg)](https://www.rust-lang.org/)
 [![License](https://img.shields.io/badge/license-BUSL--1.1-green.svg)](core/rust/AEGIS-COGNITION/COMMERCIAL_CLOSURE_REPORT.md)
-[![Status](https://img.shields.io/badge/status-production_deployable-brightgreen.svg)](core/rust/AEGIS-COGNITION/COMMERCIAL_CLOSURE_REPORT.md)
+[![Status](https://img.shields.io/badge/status-evidence--in--progress-yellow.svg)](docs/architecture/BASELINE.md)
 
 ## Quick Start (2 minutes)
 
@@ -115,7 +115,7 @@ All benchmarks verified with deterministic BLAKE3 evidence hashes.
 
 ## Requirements
 
-- Python 3.10+
+- Python 3.14.x (production default) or 3.15.x (forward-compatibility lane)
 - Rust toolchain (auto-downloaded for pre-built binaries)
 - LLM API key (OpenAI, Anthropic, OpenRouter, or Nvidia NIM)
 - Optional: Playwright (for browser automation)
@@ -128,11 +128,10 @@ See business model in `core/rust/AEGIS-COGNITION/COMMERCIAL_CLOSURE_REPORT.md`.
 
 ## Status
 
-- Production blockers: **5/5 cleared** (production_deployable=true)
-- Constitution checks: **177/177 pass**
-- Benchmark gates: **86/86 pass**
-- Extreme testing: **0 critical, 0 high** vulnerabilities
-- Sandbox escape: **Impossible** (fuel+epoch+memory+WASI deny)
+- Production readiness: **NOT CLAIMED** — see `docs/architecture/BASELINE.md`
+- Resource authority: Rust-owned `HardwareProfile` + bounded admission contracts
+- Benchmark status: **NOT VERIFIED** on the current hardware/resource architecture
+- Sandbox status: scoped evidence required; no absolute escape guarantee is made
 
 ---
 

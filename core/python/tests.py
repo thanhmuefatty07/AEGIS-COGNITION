@@ -736,8 +736,8 @@ def test_dependency_audit_gate_binds_required_rust_hotpath_dependencies():
 arrow = "54"
 arrow-buffer = "54"
 blake3 = "1.5.0"
-pyo3 = { version = "0.22", features = ["extension-module"] }
-wasmtime = "22.0.0"
+pyo3 = { version = "0.29.2", features = ["extension-module"] }
+wasmtime = "47.0.3"
 """,
             encoding="utf-8",
         )
@@ -754,8 +754,8 @@ checksum = "{idx:064x}"
                     ("arrow", "54.3.1"),
                     ("arrow-buffer", "54.3.1"),
                     ("blake3", "1.5.0"),
-                    ("pyo3", "0.22.6"),
-                    ("wasmtime", "22.0.1"),
+                    ("pyo3", "0.29.2"),
+                    ("wasmtime", "47.0.3"),
                 ),
                 start=1,
             )
