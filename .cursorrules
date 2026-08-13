@@ -1,5 +1,15 @@
 # AEGIS-COGNITION Cursor Entry Point
 
+For every request in this repository, apply `$software-engineering-constitution` with
+proportional rigor. Use the full engineering workflow for implementation, review,
+testing, architecture, security, reliability, performance, release, and production
+readiness; for simple requests, still state material assumptions, avoid unsupported
+claims, verify when needed, and distinguish VERIFIED from NOT VERIFIED.
+
+The canonical repository copy is `docs/ENGINEERING_CONSTITUTION.md`; keep it aligned
+with the canonical local source file named `Ultimate Software Engineering Constitution
+— Maximum-Rigor Prompt.md`.
+
 Always apply `SYSTEM_PROMPT.md` when creating or modifying AEGIS plugins, tools, skills, or actions.
 
 For plugin work, the default stance is zero trust:
