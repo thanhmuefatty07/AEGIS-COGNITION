@@ -1,0 +1,19 @@
+name: aegis-plugins
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Format
+        run: cargo fmt --all -- --check
+      - name: Test plugins
+        run: cargo test --workspace
+      - name: Clippy plugins
+        run: cargo clippy --workspace --all-targets -- -D warnings

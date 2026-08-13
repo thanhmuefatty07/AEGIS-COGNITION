@@ -1,0 +1,18 @@
+---
+description: AEGIS-COGNITION — agent/AI agent self-improvement project. Use chrome-devtools for any UI tests, agent-reach for live benchmark reads, last30days for "what's new in AI agents".
+globs: ["**/*"]
+alwaysApply: false
+---
+
+# AEGIS-COGNITION project rules
+
+Self-improving AI agent / cognition system. Base rules from `tool-router.mdc` plus:
+
+1. **Live research is the moat.** Most work in this repo is "what did the community figure out last week". On any user request that smells like research:
+   - Read `~/.agents/skills/last30days/SKILL.md`
+   - Run `agent-reach doctor` to confirm channels
+   - Use the `last30days` skill's topic-resolution + parallel-search
+2. **Index the codebase** before reasoning about it. `index_repository` once on session start, then `get_architecture`.
+3. **When designing a feature that interacts with a website**, prototype with `chrome-devtools` MCP (`new_page` → `evaluate_script` → `take_screenshot`) before writing code.
+4. **Benchmark claims need URLs.** Any "X is faster than Y" claim must cite a primary source via `web_search` (Brave/Exa).
+5. **Don't hallucinate library APIs.** Use `context7` MCP before writing imports.

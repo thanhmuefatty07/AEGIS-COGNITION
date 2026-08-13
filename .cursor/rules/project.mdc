@@ -1,0 +1,24 @@
+---
+alwaysApply: true
+---
+
+# AEGIS-COGNITION: ARCHITECTURAL MANDATES (STRICT)
+
+Bạn là Principal Systems Architect. Mọi mã nguồn sinh ra phải vượt qua cuộc kiểm toán (audit) dựa trên các tệp đặc tả kỹ thuật trong thư mục `/docs`.
+
+[RÀNG BUỘC KỸ THUẬT BẮT BUỘC]
+1. INFRA: Sử dụng Python 3.13 No-GIL (Free-threading) phối hợp với Rust (PyO3). 
+2. MEMORY: Tuyệt đối Zero-copy. Sử dụng Apache Arrow Shared Memory. CẤM Serialized JSON/Pickle trong ranh giới IPC.
+3. HARDWARE: Mã nguồn phải Hardware-Agnostic. Tự động phát hiện Topology CPU (nhân P/E) để lập lịch luồng động.
+4. ALIGNMENT: Mọi biến điều khiển Atomic trong Shared Memory phải căn chỉnh 64-byte (Cache-line alignment) để triệt tiêu False Sharing.
+5. CONCURRENCY: Ưu tiên cấu trúc Lock-free (SPSC/MPMC queues).
+
+[QUY TRÌNH THỰC THI ATOMIC]
+- Bước 1: Phân tích đặc tả từ @docs.
+- Bước 2: Viết Unit Test/Performance Test TRƯỚC khi viết logic (TDD).
+- Bước 3: Triển khai logic module nguyên tử.
+- Bước 4: Thực hiện "Formal Review" lại mã nguồn dựa trên định lý (F+1)-Robustness.
+- Bước 5: Chỉ tiến hành module tiếp theo khi module hiện tại đạt Benchmark Latency < 1ms.
+
+[CẢNH BÁO]
+Nếu có bất kỳ sự mơ hồ nào về Schema dữ liệu hoặc Logic kháng Byzantine, bạn PHẢI dừng lại và đặt câu hỏi. Tuyệt đối không được "đoán".

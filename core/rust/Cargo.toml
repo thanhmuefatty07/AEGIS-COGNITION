@@ -1,0 +1,59 @@
+[package]
+name = "aegis-nerve"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+name = "aegis_nerve"
+crate-type = ["cdylib", "rlib"]
+
+[[bin]]
+name = "aegis-nerve-cli"
+path = "src/main.rs"
+
+[[bench]]
+name = "nerve_bench"
+harness = false
+
+[[bench]]
+name = "shadow_sealer_throughput"
+harness = false
+
+[[bench]]
+name = "skill_improvement"
+harness = false
+
+[features]
+default = []
+network-h3 = []
+fast-json = []
+
+[dependencies]
+thiserror = "2"
+memmap2 = "0.9"
+parking_lot = "0.12"
+ed25519-dalek = { version = "2", features = ["rand_core"] }
+pyo3 = { version = "0.22", features = ["extension-module"] }
+arrow = "54"
+arrow-buffer = "54"
+flatbuffers = "24.12.23"
+syn = { version = "2.0", features = ["full", "parsing", "printing", "clone-impls", "visit-mut"] }
+proc-macro2 = "1.0"
+quote = "1.0"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+regex = "1.10"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+wasmtime = "22.0.0"
+wat = "1.251.0"
+blake3 = "1.5.0"
+xxhash-rust = { version = "0.8.10", features = ["xxh3"] }
+aho-corasick = "1.1.2"
+tokio = { version = "1", features = ["rt", "sync", "fs", "io-util"] }
+
+
+
+[dev-dependencies]
+criterion = "0.5"
+proptest = "1.4.0"

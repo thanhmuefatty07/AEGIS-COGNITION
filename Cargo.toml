@@ -1,0 +1,14 @@
+[workspace]
+members = [
+    "core/rust",
+    "aegis-plugins/aegis-search-sdk",
+    "aegis-plugins/aegis-browser",
+    "aegis-plugins/aegis-sandbox",
+    "aegis-plugins/aegis-skills",
+    "aegis-plugins/aegis-evidence",
+    "aegis-plugins/aegis-bench",
+    "pocs/semantic_cache_poc",
+    "pocs/tool_batching_poc",
+    "pocs/code_orchestration_poc",
+]
+resolver = "2"

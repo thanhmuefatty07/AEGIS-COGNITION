@@ -1,0 +1,58 @@
+name: CI
+
+"on":
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  rust-tests:
+    name: Rust tests (Ubuntu)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+      - name: Cache Cargo
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+      - name: Tests
+        run: cargo test --lib
+      - name: Clippy (unused_imports, dead_code)
+        # These lint passes target the cleanup categories tracked in CHANGELOG.md.
+        # Disallow regressions; informational style warnings remain warnings.
+        run: |
+          cargo clippy --all-targets --all-features -- -W unused_imports -W dead_code 2>&1 \
+            | tee clippy_clean.txt
+          if grep -q "^warning: unused import" clippy_clean.txt; then
+            echo "::error::Unused imports detected — see CHANGELOG.md [Unreleased] cleanup section."
+            exit 1
+          fi
+          if grep -qE "^warning:.*function .* is never used|^warning:.*never read" clippy_clean.txt; then
+            echo "::error::Dead code detected."
+            exit 1
+          fi
+      - name: Format check
+        run: cargo fmt --all -- --check
+
+  python-tests:
+    name: Python tests (3.11)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install
+        run: pip install -r requirements.txt
+      - name: Tests
+        run: pytest core/python/tests.py -v

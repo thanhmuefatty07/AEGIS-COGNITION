@@ -1,0 +1,39 @@
+# NVIDIA NIM secrets & Local Envs
+.env
+.env.local
+.env.*.local
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+*.egg-info/
+.venv/
+venv/
+
+# Rust & Build output
+target/
+**/target/
+**/target_*/
+**/*target*/
+
+
+# IDE & Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS specific
+.DS_Store
+Thumbs.db
+
+# Runtime & temporary artifacts
+brain/
+artifacts/

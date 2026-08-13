@@ -1,0 +1,66 @@
+---
+description: Enforce AEGIS zero-trust plugin creation for NERVE-HARNESS.
+globs:
+  - "plugins/**"
+  - "core/rust/src/**"
+  - ".cursor/agents/**"
+  - ".cursor/skills/**"
+alwaysApply: false
+---
+
+# AEGIS Zero-Trust Plugin Creator
+
+Apply this rule whenever a request creates or modifies a plugin, tool, skill, action, sandbox executor, host capability, policy gate, or evidence contract.
+
+## Non-Negotiable Invariants
+
+1. Boundary types are explicit Rust structs with `serde`, or checked JSON Schema for QuickJS-only edges.
+2. Capabilities are least-privilege and manifest-declared.
+3. Every plugin declares `RiskClass` R0-R4 and matching `CapabilityClass` / `SideEffectClass`.
+4. R3/R4 execution fails closed without approval, staging, or HITL evidence required by policy.
+5. Success is proven by physical evidence: BLAKE3 artifact hash, AST fingerprint, DOM/screenshot/data hash, or equivalent durable witness.
+6. Time, entropy, IDs, fuel, and external state are injected by Rust Core host functions.
+
+## Required Integration Points
+
+Read the existing Rust core before inventing new contracts:
+
+- `core/rust/src/policy.rs`
+- `core/rust/src/physical.rs`
+- `core/rust/src/sac.rs`
+- `core/rust/src/tool_gateway.rs`
+- `core/rust/src/sandbox.rs`
+
+Generated code must align with the active `TypedToolIR`, `EvidenceContract`, `PolicyProofTrace`, `PhysicalArtifact`, and `WitnessProof` shapes.
+
+## Required Plugin Files
+
+Each plugin capsule must include:
+
+- `manifest.toml`
+- `interface.rs`
+- `policy.rs`
+- `executor.rs`
+- `evidence.rs`
+- `tests.rs`
+- `benchmarks.rs`
+
+Keep implementation scoped to the plugin capsule unless the Rust core integration requires a narrow adapter.
+
+## Rejection Patterns
+
+Reject production plugin code that contains process spawning, ambient filesystem or network access, hardcoded secrets, broad host capabilities, direct wall-clock or random calls, untyped JSON boundaries, `unwrap`, `expect`, `panic`, silent failures, or string-only success outputs.
+
+## Completion Gate
+
+A plugin creation task is not complete until it includes:
+
+- risk and capability report
+- typed interface
+- sandbox-safe executor
+- policy tests
+- replay tests
+- physical evidence contract
+- sample witness proof
+- benchmark targets
+- verification report

@@ -1,0 +1,14 @@
+# AEGIS-COGNITION Cursor Entry Point
+
+Always apply `SYSTEM_PROMPT.md` when creating or modifying AEGIS plugins, tools, skills, or actions.
+
+For plugin work, the default stance is zero trust:
+
+- typed Rust or schema-checked boundaries only
+- least-privilege host capabilities
+- explicit R0-R4 policy classification
+- approval or staging gates for R3/R4
+- BLAKE3-bound physical evidence
+- deterministic execution with host-injected time, entropy, IDs, and external state
+
+Prefer the native Cursor rule at `.cursor/rules/aegis-zero-trust-plugin-creator.mdc` and the agent `.cursor/agents/aegis-zero-trust-plugin-architect.md` for detailed workflow.
