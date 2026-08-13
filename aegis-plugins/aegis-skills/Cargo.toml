@@ -1,0 +1,15 @@
+[package]
+name = "aegis-skills"
+version = "0.1.0"
+edition = "2021"
+description = "AEGIS markdown skill registry"
+
+[lib]
+name = "aegis_skills"
+crate-type = ["rlib"]
+
+[dependencies]
+blake3 = "1.5.0"
+pulldown-cmark = "0.11"
+serde = { version = "1.0", features = ["derive"] }
+thiserror = "2"

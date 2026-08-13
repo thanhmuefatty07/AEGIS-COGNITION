@@ -1,0 +1,20 @@
+# Cluster worker image dedicated to the real multi-machine soak test.
+# Listens on TCP/9000 (overridable via AEGIS_WORKER_PORT) and answers
+# json-line req/resp matching the AEGIS capture contract.
+
+FROM python:3.12-alpine
+
+# iproute2 is needed to support `tc qdisc` network-chaos injection
+# from the host (NET_ADMIN capability required at run time).
+RUN apk add --no-cache iproute2
+
+WORKDIR /app
+COPY cluster/worker_service.py /app/worker_service.py
+
+ENV AEGIS_CLUSTER_ROLE=worker \
+    AEGIS_WORKER_PORT=9000
+
+EXPOSE 9000
+
+# Single-process worker; one TCP listener per container.
+CMD ["python", "/app/worker_service.py"]

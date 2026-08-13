@@ -1,0 +1,13 @@
+.git
+.agents
+.codex
+.cursor
+.pytest_cache
+target
+artifacts/research
+artifacts/**/*.arrow
+artifacts/**/*.tmp
+artifacts/run_checks_latest_stdout.json
+.env
+__pycache__
+*.pyc

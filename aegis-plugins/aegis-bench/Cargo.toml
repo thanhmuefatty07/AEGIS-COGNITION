@@ -1,0 +1,13 @@
+[package]
+name = "aegis-bench"
+version = "0.1.0"
+edition = "2021"
+description = "AEGIS plugin benchmark gates"
+
+[lib]
+name = "aegis_bench"
+crate-type = ["rlib"]
+
+[dependencies]
+serde = { version = "1.0", features = ["derive"] }
+thiserror = "2"
