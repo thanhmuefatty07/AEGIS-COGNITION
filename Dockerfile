@@ -1,4 +1,4 @@
-FROM rust:1.95-bookworm AS rust-builder
+FROM rust:1.97.1-bookworm AS rust-builder
 
 WORKDIR /src
 COPY Cargo.toml Cargo.lock ./
@@ -6,7 +6,7 @@ COPY core/rust/Cargo.toml core/rust/Cargo.toml
 COPY core/rust core/rust
 RUN cargo build --locked --release --manifest-path core/rust/Cargo.toml --bin aegis-nerve-cli
 
-FROM python:3.13-slim AS runtime
+FROM python:3.14-slim AS runtime
 
 ENV AEGIS_TRUST_LEVEL=PROD \
     AEGIS_OPERATOR_ROOT=/var/lib/aegis \

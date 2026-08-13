@@ -14,7 +14,7 @@
 param(
     [switch]$SkipRust,        # skip Rust toolchain + cargo build
     [switch]$SkipBrowser,     # skip playwright install (saves ~150MB)
-    [string]$PythonVersion = "3.11",
+    [string]$PythonVersion = "3.14",
     [string]$RepoUrl = "https://github.com/aegis-cognition/aegis-cognition.git",
     [string]$InstallRoot = "$env:LOCALAPPDATA\aegis"
 )

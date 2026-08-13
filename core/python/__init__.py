@@ -7,3 +7,4 @@ from .integration import validate_bridge_batch, validate_bridge_smoke  # noqa: F
 from .preflight import check_build_preflight  # noqa: F401
 from .service import build_service_manifest  # noqa: F401
 from .operator_api import build_operator_evidence_snapshot  # noqa: F401
+from .aegis_adapter import Agent  # noqa: F401
