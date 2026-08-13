@@ -1,0 +1,12 @@
+# Core Python bridge: rule-the-narrowest runtime contract for
+# `core/python/aegis_cognition`. Matches `core/python/pyproject.toml`.
+#
+# This file exists so that bridge-only Docker images can `pip install -r
+# core/python/requirements.txt` without dragging the full top-level extras.
+
+# Direct mirror of core/python/pyproject.toml dependencies =
+pyyaml>=6.0
+python-dotenv>=1.0.0
+
+# Lower-bound Python declared by core/python/pyproject.toml: 3.13.
+# (manifest enforced by setuptools; pin here is informational.)

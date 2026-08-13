@@ -1,0 +1,94 @@
+version: "3.8"
+
+# AEGIS-COGNITION real multi-machine cluster soak test topology.
+#
+# Goal: 1 coordinator + 3 workers on a Docker bridge network with
+# statically-assigned IPv4 addresses so the orchestrator can address
+# each worker over a real non-loopback interface. Network packets
+# traverse the bridge (with real RTT in the 0.1-2 ms range), so this
+# satisfies the "real_multi_machine_cluster_soak" admission contract
+# without needing physical hosts.
+#
+# Usage:
+#   docker compose -f docker-compose.cluster.yml up -d --build
+#   # (record worker IPs with: docker network inspect aegis-cluster)
+#   export AEGIS_REAL_MULTI_MACHINE_CLUSTER_ENDPOINTS_JSON='[
+#     {"machine_id":"worker-1","host":"172.20.0.11","port":9000},
+#     {"machine_id":"worker-2","host":"172.20.0.12","port":9000},
+#     {"machine_id":"worker-3","host":"172.20.0.13","port":9000}
+#   ]'
+#   cd /c/Users/ADMIN/AEGIS-COGNITION
+#   python scripts/tcp_cluster_soak_gate.py --write-capture
+
+networks:
+  aegis-cluster:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/24
+
+services:
+  coordinator:
+    image: python:3.12-alpine
+    container_name: aegis-coordinator
+    profiles: ["orchestrator"]
+    working_dir: /capture
+    volumes:
+      - ./artifacts:/capture/artifacts
+      - ./scripts:/capture/scripts:ro
+      - ./cluster:/capture/cluster:ro
+    command: ["sleep", "infinity"]
+    networks:
+      aegis-cluster:
+        ipv4_address: 172.20.0.10
+
+  worker-1:
+    image: aegis-cognition/cluster-worker:worker-1
+    container_name: aegis-worker-1
+    build:
+      context: .
+      dockerfile: cluster/Dockerfile.cluster
+    environment:
+      - AEGIS_CLUSTER_ROLE=worker
+      - AEGIS_WORKER_ID=worker-1
+      - AEGIS_WORKER_PORT=9000
+    networks:
+      aegis-cluster:
+        ipv4_address: 172.20.0.11
+    cap_add:
+      - NET_ADMIN
+    restart: unless-stopped
+
+  worker-2:
+    image: aegis-cognition/cluster-worker:worker-2
+    container_name: aegis-worker-2
+    build:
+      context: .
+      dockerfile: cluster/Dockerfile.cluster
+    environment:
+      - AEGIS_CLUSTER_ROLE=worker
+      - AEGIS_WORKER_ID=worker-2
+      - AEGIS_WORKER_PORT=9000
+    networks:
+      aegis-cluster:
+        ipv4_address: 172.20.0.12
+    cap_add:
+      - NET_ADMIN
+    restart: unless-stopped
+
+  worker-3:
+    image: aegis-cognition/cluster-worker:worker-3
+    container_name: aegis-worker-3
+    build:
+      context: .
+      dockerfile: cluster/Dockerfile.cluster
+    environment:
+      - AEGIS_CLUSTER_ROLE=worker
+      - AEGIS_WORKER_ID=worker-3
+      - AEGIS_WORKER_PORT=9000
+    networks:
+      aegis-cluster:
+        ipv4_address: 172.20.0.13
+    cap_add:
+      - NET_ADMIN
+    restart: unless-stopped

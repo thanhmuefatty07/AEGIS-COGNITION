@@ -1,0 +1,69 @@
+services:
+  aegis-core:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    image: aegis-cognition:local
+    environment:
+      AEGIS_TRUST_LEVEL: PROD
+      AEGIS_OPERATOR_ROOT: /var/lib/aegis
+      AEGIS_ARTIFACTS_DIR: /var/lib/aegis/artifacts
+    command: ["aegis-nerve-cli"]
+    volumes:
+      - replay-ledger:/var/lib/aegis/replay
+      - shadow-seals:/var/lib/aegis/shadow-seals
+      - evidence-artifacts:/var/lib/aegis/artifacts
+    read_only: true
+    tmpfs:
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    restart: on-failure
+
+  operator-api:
+    image: aegis-cognition:local
+    depends_on:
+      - aegis-core
+    environment:
+      AEGIS_TRUST_LEVEL: PROD
+      AEGIS_OPERATOR_ROOT: /var/lib/aegis
+      AEGIS_ARTIFACTS_DIR: /var/lib/aegis/artifacts
+    command: ["python", "-m", "core.python.operator_api_server", "--root", "/var/lib/aegis", "--host", "0.0.0.0", "--port", "8765"]
+    ports:
+      - "127.0.0.1:8765:8765"
+    volumes:
+      - evidence-artifacts:/var/lib/aegis/artifacts:ro
+    read_only: true
+    tmpfs:
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    restart: on-failure
+
+  remote-worker:
+    image: aegis-cognition:local
+    depends_on:
+      - aegis-core
+    deploy:
+      replicas: 3
+    environment:
+      AEGIS_TRUST_LEVEL: PROD
+      AEGIS_WORKER_MODE: candidate-only
+    command: ["aegis-nerve-cli"]
+    read_only: true
+    tmpfs:
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    restart: on-failure
+
+volumes:
+  replay-ledger: {}
+  shadow-seals: {}
+  evidence-artifacts: {}

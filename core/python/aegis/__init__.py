@@ -1,0 +1,33 @@
+from aegis_adapter import (
+    Agent,
+    AegisAdapter,
+    AegisBrowserActionResult,
+    AegisBrowserHotFirstActionResult,
+    AegisRunResult,
+    HotCommitRecord,
+    ProviderBudgetEvidence,
+    ProviderBudgetRecord,
+    ProviderRateLimitError,
+    ProviderRouteRecord,
+    TrustPolicySnapshot,
+    commit_hot_evidence,
+    commit_hot_evidence_batch,
+    trust_policy_snapshot,
+)
+
+__all__ = [
+    "Agent",
+    "AegisAdapter",
+    "AegisBrowserActionResult",
+    "AegisBrowserHotFirstActionResult",
+    "AegisRunResult",
+    "HotCommitRecord",
+    "ProviderBudgetEvidence",
+    "ProviderBudgetRecord",
+    "ProviderRateLimitError",
+    "ProviderRouteRecord",
+    "TrustPolicySnapshot",
+    "commit_hot_evidence",
+    "commit_hot_evidence_batch",
+    "trust_policy_snapshot",
+]

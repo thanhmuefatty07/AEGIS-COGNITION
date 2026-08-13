@@ -1,0 +1,22 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "aegis-cognition-core-python"
+version = "0.1.0"
+description = "Python bridge contracts for AEGIS-COGNITION"
+requires-python = ">=3.13"
+dependencies = [
+    "pyyaml>=6.0",
+    "python-dotenv>=1.0.0"
+]
+
+[project.scripts]
+aegis = "aegis_cli:main"
+
+[tool.setuptools]
+package-dir = {"" = "."}
+
+[tool.setuptools.packages.find]
+include = ["*"]

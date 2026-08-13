@@ -1,0 +1,196 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: aegis-cognition
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: aegis-replay-ledger
+  namespace: aegis-cognition
+spec:
+  accessModes: ["ReadWriteOnce"]
+  resources:
+    requests:
+      storage: 10Gi
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: aegis-shadow-seals
+  namespace: aegis-cognition
+spec:
+  accessModes: ["ReadWriteOnce"]
+  resources:
+    requests:
+      storage: 10Gi
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: aegis-evidence-artifacts
+  namespace: aegis-cognition
+spec:
+  accessModes: ["ReadWriteOnce"]
+  resources:
+    requests:
+      storage: 10Gi
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: aegis-core
+  namespace: aegis-cognition
+spec:
+  serviceName: aegis-core
+  replicas: 1
+  selector:
+    matchLabels:
+      app: aegis-core
+  template:
+    metadata:
+      labels:
+        app: aegis-core
+        aegis.role: single-writer-core
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: aegis-core
+          image: aegis-cognition:local
+          imagePullPolicy: IfNotPresent
+          command: ["aegis-nerve-cli"]
+          env:
+            - name: AEGIS_TRUST_LEVEL
+              value: PROD
+            - name: AEGIS_OPERATOR_ROOT
+              value: /var/lib/aegis
+            - name: AEGIS_ARTIFACTS_DIR
+              value: /var/lib/aegis/artifacts
+          volumeMounts:
+            - name: replay-ledger
+              mountPath: /var/lib/aegis/replay
+            - name: shadow-seals
+              mountPath: /var/lib/aegis/shadow-seals
+            - name: evidence-artifacts
+              mountPath: /var/lib/aegis/artifacts
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+      volumes:
+        - name: replay-ledger
+          persistentVolumeClaim:
+            claimName: aegis-replay-ledger
+        - name: shadow-seals
+          persistentVolumeClaim:
+            claimName: aegis-shadow-seals
+        - name: evidence-artifacts
+          persistentVolumeClaim:
+            claimName: aegis-evidence-artifacts
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: aegis-operator-api
+  namespace: aegis-cognition
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: aegis-operator-api
+  template:
+    metadata:
+      labels:
+        app: aegis-operator-api
+        aegis.role: read-only-operator-surface
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: operator-api
+          image: aegis-cognition:local
+          imagePullPolicy: IfNotPresent
+          command: ["python", "-m", "core.python.operator_api_server", "--root", "/var/lib/aegis", "--host", "0.0.0.0", "--port", "8765"]
+          ports:
+            - containerPort: 8765
+              name: http
+          env:
+            - name: AEGIS_TRUST_LEVEL
+              value: PROD
+            - name: AEGIS_OPERATOR_ROOT
+              value: /var/lib/aegis
+            - name: AEGIS_ARTIFACTS_DIR
+              value: /var/lib/aegis/artifacts
+          volumeMounts:
+            - name: evidence-artifacts
+              mountPath: /var/lib/aegis/artifacts
+              readOnly: true
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+      volumes:
+        - name: evidence-artifacts
+          persistentVolumeClaim:
+            claimName: aegis-evidence-artifacts
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: aegis-remote-worker
+  namespace: aegis-cognition
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: aegis-remote-worker
+  template:
+    metadata:
+      labels:
+        app: aegis-remote-worker
+        aegis.role: candidate-only-worker
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: remote-worker
+          image: aegis-cognition:local
+          imagePullPolicy: IfNotPresent
+          command: ["aegis-nerve-cli"]
+          env:
+            - name: AEGIS_TRUST_LEVEL
+              value: PROD
+            - name: AEGIS_WORKER_MODE
+              value: candidate-only
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: aegis-operator-api
+  namespace: aegis-cognition
+spec:
+  type: ClusterIP
+  selector:
+    app: aegis-operator-api
+  ports:
+    - name: http
+      port: 8765
+      targetPort: http
