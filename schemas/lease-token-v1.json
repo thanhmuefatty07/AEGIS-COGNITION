@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://aegis-cognition.ai/schemas/lease-token-v1.json",
+  "title": "AEGIS Opaque Resource Lease Token v1",
+  "description": "A non-authoritative completion handle. Grant details remain in Rust.",
+  "type": "object",
+  "required": ["schema", "lease_id", "generation", "attempt_id"],
+  "properties": {
+    "schema": { "const": "aegis-resource-lease-token-v1" },
+    "lease_id": { "type": "integer", "minimum": 1 },
+    "generation": { "type": "integer", "minimum": 1 },
+    "attempt_id": { "type": "integer", "minimum": 1 }
+  },
+  "additionalProperties": false
+}

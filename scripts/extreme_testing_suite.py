@@ -206,58 +206,6 @@ class FuzzingRunner:
             ("format_string", 128, lambda b: b'%s%s%s%n%x' * 20),
         ]
 
-            "test": "memory_soak",
-            "duration_s": round(elapsed, 1),
-            "total_ops": count,
-            "throughput_ops_per_sec": round(count / elapsed, 1),
-            "rss_start_mb": rss_samples[0]["rss_mb"] if rss_samples else 0,
-            "rss_end_mb": rss_samples[-1]["rss_mb"] if rss_samples else 0,
-            "rss_growth_mb_per_hour": round(rss_growth, 2),
-            "memory_leak_suspected": rss_growth > 10,  # >10MB/hour = leak
-            "rss_samples": rss_samples[::max(1, len(rss_samples)//10)],  # Decimated
-        }
-
-        metrics.sample("memory_soak_end", {
-            "rss_growth": rss_growth,
-            "leak": rss_growth > 10,
-        })
-        self.results["memory_soak"] = result
-        return result
-
-
-# ═══════════════════════════════════════════════════════════════════
-# PHASE 3: ADVERSARIAL FUZZING
-# ═══════════════════════════════════════════════════════════════════
-
-class FuzzingRunner:
-    """Tests FFI boundaries, WASM sandbox, malformed payloads."""
-
-    def __init__(self, tmpdir: Path):
-        self.tmpdir = tmpdir
-        self.results = {}
-        self.crashes = []
-
-    def fuzz_mmap_boundary(self, num_cases: int = 1000) -> dict:
-        """Test mmap boundary with malformed/oversized/zero-length data."""
-        crashes = []
-        passed = 0
-
-        test_cases = [
-            # (name, payload_size, modification)
-            ("zero_length", 0, None),
-            ("exact_4096", 4096, None),
-            ("one_byte", 1, None),
-            ("max_64kb", 65536, None),
-            ("max_1mb", 1_048_576, None),
-            ("oversized_100mb", 100_000_000, None),
-            ("all_zeros", 4096, lambda b: b'\x00' * 4096),
-            ("all_0xff", 4096, lambda b: b'\xff' * 4096),
-            ("magic_corrupt", 128, lambda b: b'\x00' * 128),
-            ("unicode_bomb", 256, lambda b: '\ufeFF'.encode() * 85),
-            ("null_bytes_only", 512, lambda b: b'\x00' * 512),
-            ("format_string", 128, lambda b: b'%s%s%s%n%x' * 20),
-        ]
-
         for name, size, modifier in test_cases:
             try:
                 test_file = self.tmpdir / f"fuzz_mmap_{name}.bin"
@@ -406,57 +354,6 @@ def _build_malformed_frame(fake_len: int) -> bytes:
     header[4:8] = (1).to_bytes(4, 'little')
     header[8:12] = (112).to_bytes(4, 'little')
     header[64:72] = (112).to_bytes(8, 'little')
-    if fake_len < 0:
-        fake_len = 2**63 + fake_len
-    header[72:80] = fake_len.to_bytes(8, 'little', signed=True)
-    return bytes(header)
-
-
-# ═══════════════════════════════════════════════════════════════════
-# PHASE 4: CHAOS ENGINEERING
-# ═══════════════════════════════════════════════════════════════════
-
-class ChaosRunner:
-    """Tests system resilience: SIGKILL, disk full, I/O throttling."""
-
-    def __init__(self, tmpdir: Path):
-        self.tmpdir = tmpdir
-        self.results = {}
-
-    def test_sigkill_during_write(self) -> dict:
-        """Spawn a child process writing BLAKE3-chained data, kill it, verify chain."""
-        import psutil
-
-        chain_file = self.tmpdir / "chain.bin"
-        child_script = self.tmpdir / "chaos_child.py"
-        child_script.write_text(f"""
-import hashlib, os, time, sys
-chain = []
-for i in range(1000):
-    data = os.urandom(4096)
-    h = hashlib.blake2b(data, digest_size=32).hexdigest()
-    chain.append({{"i": i, "hash": h}})
-    with open("{chain_file.as_posix()}", "a") as f:
-        f.write(h + "\\n")
-    if i == 500:
-        sys.stdout.write("READY\\n")
-        sys.stdout.flush()
-        time.sleep(0.5)  # Wait for SIGKILL
-""")
-
-        # Start child
-        proc = subprocess.Popen(
-            [sys.executable, str(child_script)],
-            stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True
-        )
-
-        # Wait for ready signal
-        try:
-            ready = proc.stdout.readline()
-            assert "READY" in ready
-        except Exception:
-            proc.kill()
-
     if fake_len < 0:
         fake_len = 2**63 + fake_len
     header[72:80] = fake_len.to_bytes(8, 'little', signed=True)
@@ -657,57 +554,6 @@ class SecurityRunner:
             ("dev_accepted_as_prod", "DEV", {"claim_prod": True}),
             ("empty_trust_level", "", {"evidence_present": True}),
         ]
-
-        findings = []
-        for name, level, attempt in scenarios:
-            bypassed = False
-            if level == "PROD" and not attempt.get("evidence_present"):
-                bypassed = True  # PROD should fail-closed without evidence
-            findings.append({
-                "scenario": name,
-                "trust_level": level,
-                "bypass_possible": bypassed,
-            })
-
-        result = {
-            "test": "trust_level_bypass",
-            "scenarios": findings,
-            "severity": "PASS",
-        }
-        self.results["trust_bypass"] = result
-        return result
-
-
-# ═══════════════════════════════════════════════════════════════════
-# REPORT GENERATOR
-# ═══════════════════════════════════════════════════════════════════
-
-def generate_report(all_results: dict, total_duration: float) -> str:
-    """Generate the final Extreme Testing & Chaos Report."""
-    load = all_results.get("load", {})
-    fuzz = all_results.get("fuzz", {})
-    chaos = all_results.get("chaos", {})
-    security = all_results.get("security", {})
-
-    # Count vulnerabilities
-    vulns = security.get("vulnerabilities", [])
-    vulns.extend(fuzz.get("crashes", []))
-
-    critical = sum(1 for v in vulns if v.get("severity") == "CRITICAL")
-    high = sum(1 for v in vulns if v.get("severity") == "HIGH")
-
-    report = f"""# AEGIS-COGNITION: Extreme Testing & Chaos Report
-**Generated**: {datetime.utcnow().isoformat()}Z
-**Duration**: {total_duration:.1f}s
-**Test Directory**: {ARTIFACTS_DIR}
-
----
-
-## 1. Executive Summary
-
-- **Production Deployable**: {"YES (all gates pass)" if critical == 0 else "NO — CRITICAL issues found"}
-- **Vulnerabilities Found**: Critical: {critical}, High: {high}
-
 
         findings = []
         for name, level, attempt in scenarios:

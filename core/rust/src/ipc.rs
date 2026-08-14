@@ -1,5 +1,5 @@
 use crate::message::{MessageFrame, MessageHeader};
-use crate::schema::{BinarySchemaId, SchemaRegistry, NERVE_SCHEMA};
+use crate::schema::{BinarySchemaId, NERVE_SCHEMA, SchemaRegistry};
 
 pub struct ZeroCopyFrame {
     pub schema_id: BinarySchemaId,

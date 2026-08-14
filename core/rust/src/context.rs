@@ -1,8 +1,8 @@
 use crate::evidence_index::{
-    agentic_evidence_execution_record_hash, candidate_list_hash, AgenticEvidenceExecutionRecord,
-    BrowserPageSearchCandidateRecord, CandidateEvidenceRef, CandidateOnlyGate,
-    CandidateOnlyGateError, CandidateStateCapsule, ColdVectorExpansionReplayRecord,
-    EvidenceCandidateTier,
+    AgenticEvidenceExecutionRecord, BrowserPageSearchCandidateRecord, CandidateEvidenceRef,
+    CandidateOnlyGate, CandidateOnlyGateError, CandidateStateCapsule,
+    ColdVectorExpansionReplayRecord, EvidenceCandidateTier, agentic_evidence_execution_record_hash,
+    candidate_list_hash,
 };
 use blake3::Hasher;
 use std::cmp::Ordering;

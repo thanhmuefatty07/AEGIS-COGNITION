@@ -1,5 +1,5 @@
 use super::draft::{DraftTokenBatch, TargetTokenBatch};
-use super::verifier::{verify_target_prefix, VerificationResult};
+use super::verifier::{VerificationResult, verify_target_prefix};
 
 pub fn speculative_decode(prompt: &str) -> (DraftTokenBatch, VerificationResult) {
     let seed = prompt.len() as u128 + 1;

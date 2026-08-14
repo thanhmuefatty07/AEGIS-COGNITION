@@ -15,7 +15,12 @@ RUST_PROVENANCE_FILES: tuple[str, ...] = (
     "Cargo.toml",
     "core/rust/Cargo.toml",
     "core/rust/src/sandbox.rs",
+    "core/rust/src/resource.rs",
+    "core/rust/src/resource_platform.rs",
+    "core/rust/src/runtime.rs",
+    "core/rust/src/execution.rs",
     "core/rust/src/tool_gateway.rs",
+    "schemas/lease-token-v1.json",
 )
 PYTHON_PROVENANCE_FILES: tuple[str, ...] = (
     "pyproject.toml",
@@ -71,7 +76,7 @@ def evaluate_supply_chain_gate(root: str | Path = ROOT) -> dict[str, Any]:
         for package in (_cargo_package(entry) for entry in cargo_lock.get("package", []))
         if package is not None
     )
-    rust_direct = _dependency_names(rust_manifest.get("dependencies", {}))
+    rust_direct = _dependency_names(_all_dependencies(rust_manifest))
     python_direct = tuple(str(dep) for dep in python_manifest.get("project", {}).get("dependencies", []))
     package_records = tuple(package.record() for package in packages)
     sbom_index = {
@@ -151,6 +156,15 @@ def _dependency_names(dependencies: Any) -> tuple[str, ...]:
     if not isinstance(dependencies, dict):
         return ()
     return tuple(sorted(str(name) for name in dependencies.keys()))
+
+
+def _all_dependencies(manifest: dict[str, Any]) -> dict[str, Any]:
+    dependencies = dict(manifest.get("dependencies", {}))
+    for target in manifest.get("target", {}).values():
+        if isinstance(target, dict):
+            for name, value in target.get("dependencies", {}).items():
+                dependencies.setdefault(name, value)
+    return dependencies
 
 
 def _provenance(root_path: Path) -> dict[str, Any]:

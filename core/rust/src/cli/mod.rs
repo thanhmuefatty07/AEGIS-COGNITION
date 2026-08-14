@@ -11,21 +11,21 @@ use crate::evidence_index::{
     HotBitmapFilter, HotEvidenceIndex, HotLexicalIndex, SortedEvidenceSet,
 };
 use crate::llm::{
-    route_request_after_provider_feedback, LLMRequest, ProviderBudgetLedger, ProviderConfig,
-    ProviderRouteAdmissionProof, ProviderRuntimeBudget, ProviderRuntimeFeedback,
-    ProviderRuntimeFeedbackKind,
+    LLMRequest, ProviderBudgetLedger, ProviderConfig, ProviderRouteAdmissionProof,
+    ProviderRuntimeBudget, ProviderRuntimeFeedback, ProviderRuntimeFeedbackKind,
+    route_request_after_provider_feedback,
 };
 use crate::message::MessageFrame;
 use crate::orchestrator::NerveRuntime;
 use crate::policy::{HarnessBenchScorecard, SideEffectClass};
 use crate::replay::{
-    agentic_evidence_sdk_run_replay_binding_hash,
-    browser_ops_bench_verification_replay_binding_hash, AgenticEvidenceSdkRunHandoffProof,
-    NextActionKind, ReplayChaosBench, ReplayEnduranceBench, RunEventLedger, RunEventSegmentArchive,
-    ToolExecutionEvidence, ToolExecutionStatus, ToolExecutorKind,
+    AgenticEvidenceSdkRunHandoffProof, NextActionKind, ReplayChaosBench, ReplayEnduranceBench,
+    RunEventLedger, RunEventSegmentArchive, ToolExecutionEvidence, ToolExecutionStatus,
+    ToolExecutorKind, agentic_evidence_sdk_run_replay_binding_hash,
+    browser_ops_bench_verification_replay_binding_hash,
 };
 use crate::sandbox::{
-    QuickJsWasmInterpreterManager, WasmtimeSandbox, QUICKJS_INVOCATION_ABI_HEADER_BYTES,
+    QUICKJS_INVOCATION_ABI_HEADER_BYTES, QuickJsWasmInterpreterManager, WasmtimeSandbox,
 };
 use serde::Serialize;
 use std::collections::BTreeMap;
@@ -2369,8 +2369,8 @@ impl AgenticSdkContextReportWriteEvidence {
     }
 }
 
-fn sample_agentic_sdk_context_run(
-) -> Result<(AgenticEvidenceProgram, AgenticEvidenceSdkRun), &'static str> {
+fn sample_agentic_sdk_context_run()
+-> Result<(AgenticEvidenceProgram, AgenticEvidenceSdkRun), &'static str> {
     let epoch_hash = cli_hash("agentic-sdk-context-epoch");
     let mut lexical =
         HotLexicalIndex::new(epoch_hash).map_err(|_| "failed to build lexical index")?;
