@@ -1,5 +1,5 @@
 use aegis_search_sdk::{Pipeline, SearchOperation, SearchQuery};
-use criterion::{black_box, criterion_group, criterion_main, Criterion};
+use criterion::{Criterion, black_box, criterion_group, criterion_main};
 
 fn single_lexical_operation(c: &mut Criterion) {
     let runtime = tokio::runtime::Runtime::new().unwrap();

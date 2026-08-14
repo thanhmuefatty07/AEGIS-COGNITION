@@ -4,7 +4,7 @@ use blake3::Hasher;
 
 use crate::learning::LearningLedger;
 use crate::licensing::{Feature as LicenseFeature, LicenseError, LicenseManager};
-use crate::physical::{canonicalize_payload, BacktrackSignal, PhysicalWatchdog};
+use crate::physical::{BacktrackSignal, PhysicalWatchdog, canonicalize_payload};
 use crate::policy::{PolicyProofTrace, TypedToolIR};
 use crate::replay::{
     NextActionKind, RunEventLedger, RunEventSegmentManifest, SkillAdmissionHandoffProof,

@@ -178,8 +178,10 @@ mod tests {
         assert_eq!(registry.skills.len(), 5);
         let selected = registry.select_for_task("browser research evidence", 3);
         assert!(!selected.is_empty());
-        assert!(selected
-            .iter()
-            .all(|skill| estimate_tokens(&skill.content) < 2_000));
+        assert!(
+            selected
+                .iter()
+                .all(|skill| estimate_tokens(&skill.content) < 2_000)
+        );
     }
 }

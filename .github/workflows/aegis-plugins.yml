@@ -8,6 +8,8 @@ on:
 jobs:
   test:
     runs-on: windows-latest
+    env:
+      RUSTFLAGS: -C debuginfo=0
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
@@ -15,7 +17,15 @@ jobs:
           toolchain: 1.97.1
       - name: Format
         run: cargo fmt --all -- --check
+      - name: Windows target compile
+        env:
+          PYO3_PYTHON: python
+        run: cargo check --target x86_64-pc-windows-msvc --lib --no-default-features
       - name: Test plugins
-        run: cargo test --workspace
+        env:
+          PYO3_PYTHON: python
+        run: cargo test --workspace --no-default-features
       - name: Clippy plugins
-        run: cargo clippy --workspace --all-targets -- -D warnings
+        env:
+          PYO3_PYTHON: python
+        run: cargo clippy --workspace --all-targets --no-default-features -- -D warnings

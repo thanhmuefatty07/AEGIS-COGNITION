@@ -29,10 +29,13 @@ impl ToolBatcher {
         calls: Vec<ToolCall>,
         policy: TransactionPolicy,
         // Mock handler that takes a tool call and simulates execution
-        mock_executor: impl Fn(ToolCall) -> std::pin::Pin<Box<dyn std::future::Future<Output = ToolResult> + Send>>
-            + Send
-            + Sync
-            + 'static,
+        mock_executor: impl Fn(
+            ToolCall,
+        ) -> std::pin::Pin<
+            Box<dyn std::future::Future<Output = ToolResult> + Send>,
+        > + Send
+        + Sync
+        + 'static,
     ) -> Vec<ToolResult> {
         let mut results = Vec::new();
         let mock_executor = std::sync::Arc::new(mock_executor);

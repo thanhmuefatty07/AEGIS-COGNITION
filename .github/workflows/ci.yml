@@ -10,6 +10,8 @@ jobs:
   rust-tests:
     name: Rust tests (Ubuntu)
     runs-on: ubuntu-latest
+    env:
+      RUSTFLAGS: -C debuginfo=0
     steps:
       - uses: actions/checkout@v4
       - name: Architecture fitness
@@ -29,12 +31,16 @@ jobs:
             target/
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
       - name: Tests
-        run: cargo test --lib
+        env:
+          PYO3_PYTHON: python3
+        run: cargo test --lib --no-default-features
       - name: Clippy (unused_imports, dead_code)
         # These lint passes target the cleanup categories tracked in CHANGELOG.md.
         # Disallow regressions; informational style warnings remain warnings.
+        env:
+          PYO3_PYTHON: python3
         run: |
-          cargo clippy --all-targets --all-features -- -W unused_imports -W dead_code 2>&1 \
+          cargo clippy --all-targets --no-default-features -- -W unused_imports -W dead_code 2>&1 \
             | tee clippy_clean.txt
           if grep -q "^warning: unused import" clippy_clean.txt; then
             echo "::error::Unused imports detected — see CHANGELOG.md [Unreleased] cleanup section."
@@ -45,9 +51,9 @@ jobs:
             exit 1
           fi
       - name: Format check
-        # The legacy crate has pre-existing format drift outside this change.
-        # Keep the gate strict for the touched Rust boundary and new contracts.
-        run: rustfmt --edition 2021 --check core/rust/src/resource.rs core/rust/src/runtime.rs core/rust/src/ffi.rs
+        run: cargo fmt --all -- --check
+      - name: Wasmtime migration gate
+        run: python scripts/wasmtime_migration_gate.py
 
   python-tests:
     name: Python tests (${{ matrix.python-version }})
@@ -55,15 +61,32 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version: ['3.14', '3.15']
+        python-version: ['3.14.7', '3.15.0-rc.1']
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
+          allow-prereleases: true
       - name: Architecture fitness
         run: python scripts/architecture_fitness.py
       - name: Install
         run: python -m pip install --upgrade pip uv && uv sync --locked --extra all --extra dev
       - name: Tests
-        run: python -m pytest tests core/python/tests.py -v
+        run: uv run --locked --extra all --extra dev python -m pytest tests core/python/tests.py -v
+      - name: Build maturin wheel
+        run: uv build --wheel --out-dir artifacts/maturin
+      - name: Inspect wheel contents
+        shell: bash
+        run: |
+          python - <<'PY'
+          import glob
+          import zipfile
+          wheels = glob.glob("artifacts/maturin/*.whl")
+          assert wheels, "maturin produced no wheel"
+          with zipfile.ZipFile(wheels[0]) as wheel:
+              names = wheel.namelist()
+          assert any(name.startswith("aegis_cognition/") for name in names)
+          assert any("aegis_nerve" in name for name in names)
+          print(wheels[0])
+          PY
