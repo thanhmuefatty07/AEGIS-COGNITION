@@ -1,7 +1,7 @@
 use crate::learning::{LearningEventType, LearningLedger};
 use crate::licensing::{Feature as LicenseFeature, LicenseError, LicenseManager};
-use crate::memory::fold::MemoryCrystallization;
 use crate::memory::CogniFoldStore;
+use crate::memory::fold::MemoryCrystallization;
 use crate::physical::{BacktrackSignal, PhysicalArtifact, PhysicalWatchdog};
 use blake3::Hasher;
 
@@ -349,9 +349,7 @@ mod tests {
             valid_candidate("c", 0.95),
         ];
 
-        let nudge = system
-            .periodic_nudge(1, 1, raw, &mut ledger, None)
-            .unwrap();
+        let nudge = system.periodic_nudge(1, 1, raw, &mut ledger, None).unwrap();
         assert_eq!(nudge.candidates.len(), 2);
         assert!(nudge.is_valid());
         assert_eq!(ledger.len(), 1);

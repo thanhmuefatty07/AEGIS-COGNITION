@@ -1,9 +1,9 @@
+use blake3::Hasher;
 /// AEGIS-COGNITION Commercial Licensing System
 /// Ed25519-based license key validation + feature gating
-use ed25519_dalek::{Signature, VerifyingKey, Signer, SigningKey};
+use ed25519_dalek::{Signature, Signer, SigningKey, VerifyingKey};
 use serde::{Deserialize, Serialize};
 use std::time::{SystemTime, UNIX_EPOCH};
-use blake3::Hasher;
 
 // ─── License Data Model ───
 
@@ -45,7 +45,7 @@ pub enum Feature {
     BYOKRouting,
     LocalEvidenceArena,
 
-// ─── Pro ───
+    // ─── Pro ───
     CloudSync,
     PremiumSkills,
     PrioritySupport,
@@ -69,10 +69,24 @@ pub enum Feature {
 impl Feature {
     pub fn minimum_edition(&self) -> Edition {
         match self {
-Feature::LocalReplayLedger | Feature::BasicSkills | Feature::BYOKRouting | Feature::LocalEvidenceArena => Edition::Community,
-            Feature::CloudSync | Feature::PremiumSkills | Feature::PrioritySupport | Feature::SelfImprovingSkills | Feature::CrossSessionMemory => Edition::Pro,
-            Feature::TeamDashboard | Feature::SharedSkillRegistry | Feature::RoleBasedAccessControl => Edition::Team,
-            Feature::ComplianceReports | Feature::SSOIntegration | Feature::DedicatedSupport | Feature::ServiceLevelAgreement | Feature::ManagedHosting | Feature::AdvancedUserModeling => Edition::Enterprise,
+            Feature::LocalReplayLedger
+            | Feature::BasicSkills
+            | Feature::BYOKRouting
+            | Feature::LocalEvidenceArena => Edition::Community,
+            Feature::CloudSync
+            | Feature::PremiumSkills
+            | Feature::PrioritySupport
+            | Feature::SelfImprovingSkills
+            | Feature::CrossSessionMemory => Edition::Pro,
+            Feature::TeamDashboard
+            | Feature::SharedSkillRegistry
+            | Feature::RoleBasedAccessControl => Edition::Team,
+            Feature::ComplianceReports
+            | Feature::SSOIntegration
+            | Feature::DedicatedSupport
+            | Feature::ServiceLevelAgreement
+            | Feature::ManagedHosting
+            | Feature::AdvancedUserModeling => Edition::Enterprise,
         }
     }
 }
@@ -130,14 +144,20 @@ pub enum LicenseStatus {
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum LicenseError {
     InvalidSignature,
-    Expired { expired_at: u64 },
+    Expired {
+        expired_at: u64,
+    },
     Revoked,
     FeatureNotLicensed(Feature),
     LicenseNotValidated,
     LicenseInvalid,
     ValidatorNotConfigured,
     InvalidSignatureFormat,
-    UpgradeRequired { feature: Feature, current: Edition, required: Edition },
+    UpgradeRequired {
+        feature: Feature,
+        current: Edition,
+        required: Edition,
+    },
 }
 
 impl std::fmt::Display for LicenseError {
@@ -146,12 +166,18 @@ impl std::fmt::Display for LicenseError {
             LicenseError::InvalidSignature => write!(f, "License signature is invalid"),
             LicenseError::Expired { expired_at } => write!(f, "License expired at {}", expired_at),
             LicenseError::Revoked => write!(f, "License has been revoked"),
-            LicenseError::FeatureNotLicensed(feat) => write!(f, "Feature {:?} not included in license", feat),
+            LicenseError::FeatureNotLicensed(feat) => {
+                write!(f, "Feature {:?} not included in license", feat)
+            }
             LicenseError::LicenseNotValidated => write!(f, "License has not been validated yet"),
             LicenseError::LicenseInvalid => write!(f, "License is in invalid state"),
             LicenseError::ValidatorNotConfigured => write!(f, "License validator not configured"),
             LicenseError::InvalidSignatureFormat => write!(f, "Signature bytes are malformed"),
-            LicenseError::UpgradeRequired { feature, current, required } => {
+            LicenseError::UpgradeRequired {
+                feature,
+                current,
+                required,
+            } => {
                 write!(
                     f,
                     "Feature {:?} requires {:?} edition but current license is {:?} — upgrade required",
@@ -228,7 +254,10 @@ impl LicenseValidator {
 
     /// Validate and also check for revocation (online, best-effort via env-provided URL)
     /// NOTE: reqwest is optional — set phone_home_url to None for pure offline mode
-    pub async fn validate_with_phone_home(&self, key: &LicenseKey) -> Result<LicenseStatus, LicenseError> {
+    pub async fn validate_with_phone_home(
+        &self,
+        key: &LicenseKey,
+    ) -> Result<LicenseStatus, LicenseError> {
         let status = self.validate(key)?;
 
         // Phone-home check (non-blocking, best-effort)
@@ -267,7 +296,10 @@ impl LicenseManager {
     }
 
     pub async fn activate(&mut self, key: &LicenseKey) -> Result<(), LicenseError> {
-        let validator = self.validator.as_ref().ok_or(LicenseError::ValidatorNotConfigured)?;
+        let validator = self
+            .validator
+            .as_ref()
+            .ok_or(LicenseError::ValidatorNotConfigured)?;
         let status = validator.validate_with_phone_home(key).await?;
         self.current_license = Some(status);
         Ok(())
@@ -316,7 +348,7 @@ impl LicenseManager {
         Ok(())
     }
 
-pub fn status(&self) -> &Option<LicenseStatus> {
+    pub fn status(&self) -> &Option<LicenseStatus> {
         &self.current_license
     }
 
@@ -338,7 +370,10 @@ pub fn status(&self) -> &Option<LicenseStatus> {
                     })
                 }
             }
-            Some(LicenseStatus::Expired { tier, expired_at: _ }) => Err(LicenseError::UpgradeRequired {
+            Some(LicenseStatus::Expired {
+                tier,
+                expired_at: _,
+            }) => Err(LicenseError::UpgradeRequired {
                 feature,
                 current: *tier,
                 required: feature.minimum_edition(),
@@ -439,16 +474,21 @@ mod tests {
             max_nodes: 100,
             max_evidence_per_day: 10_000_000,
             issued_at: 1749600000,  // 2025-06-11
-            expires_at: 1925000000,  // 2030-12-31
+            expires_at: 1925000000, // 2030-12-31
             signature: vec![],
         };
 
-sign_license(&mut key, &signing_key);
+        sign_license(&mut key, &signing_key);
         // Debug: verify signature payload is identical
         let payload = key.signing_payload();
         let sig = ed25519_dalek::Signature::from_slice(&key.signature).unwrap();
         let verify_ok = verifying_key.verify_strict(&payload, &sig).is_ok();
-        eprintln!("sig len={} payload={} verify_ok={}", key.signature.len(), payload.len(), verify_ok);
+        eprintln!(
+            "sig len={} payload={} verify_ok={}",
+            key.signature.len(),
+            payload.len(),
+            verify_ok
+        );
         let status = validator.validate(&key).unwrap();
 
         match status {

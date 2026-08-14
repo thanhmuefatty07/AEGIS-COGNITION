@@ -18,7 +18,10 @@ def _native_module() -> Any | None:
     try:
         import aegis_nerve  # type: ignore[import-not-found]
     except ImportError:
-        return None
+        try:
+            from aegis_cognition import aegis_nerve  # type: ignore[import-not-found]
+        except ImportError:
+            return None
     return aegis_nerve
 
 
@@ -134,12 +137,28 @@ def submit_runtime_task(
     )
 
 
-def finish_runtime_lease(lease: dict[str, Any], outcome: str) -> bool:
-    """Finish a Rust lease with an explicit done/failed/cancelled outcome."""
+def finish_runtime_lease(token: dict[str, Any], outcome: str) -> bool:
+    """Finish an opaque Rust lease token with an explicit outcome."""
 
     native = _native_module()
     if native is None:
         return False
     import json
 
-    return bool(native.aegis_runtime_finish(json.dumps(lease), outcome))
+    return bool(native.aegis_runtime_finish(json.dumps(token), outcome))
+
+
+def retry_runtime_task(task_id: int, request: dict[str, Any], now_ms: int = 0) -> dict[str, Any]:
+    """Start a newer fenced attempt through the Rust-owned runtime."""
+
+    native = _native_module()
+    if native is None:
+        return {
+            "schema": "aegis-runtime-admission-v1",
+            "status": "native_unavailable",
+            "authoritative": False,
+            "verification": "NOT VERIFIED — native Rust runtime is not importable",
+        }
+    import json
+
+    return json.loads(native.aegis_runtime_retry(task_id, json.dumps(request), now_ms))

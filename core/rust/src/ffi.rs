@@ -6,7 +6,7 @@ use blake3::Hasher;
 use parking_lot::Mutex;
 use pyo3::prelude::*;
 use pyo3::types::PyModule;
-use std::panic::{catch_unwind, AssertUnwindSafe};
+use std::panic::{AssertUnwindSafe, catch_unwind};
 use std::sync::OnceLock;
 
 static SESSION_INDEX: OnceLock<Mutex<SessionSearchIndex>> = OnceLock::new();
@@ -272,10 +272,10 @@ pub fn aegis_runtime_submit(
             pyo3::exceptions::PyRuntimeError::new_err(format!("runtime submit failed: {error:?}"))
         })?;
         let response = match admission {
-            crate::runtime::RuntimeAdmission::Admitted(lease) => serde_json::json!({
+            crate::runtime::RuntimeAdmission::Admitted(token) => serde_json::json!({
                 "schema": "aegis-runtime-admission-v1",
                 "status": "admitted",
-                "lease": lease,
+                "lease_token": token,
             }),
             crate::runtime::RuntimeAdmission::Queued { position, reason } => serde_json::json!({
                 "schema": "aegis-runtime-admission-v1",
@@ -297,26 +297,75 @@ pub fn aegis_runtime_submit(
     })?
 }
 
+/// Start a strictly newer attempt for a task that is in RetryWait.
 #[pyfunction]
-pub fn aegis_runtime_finish(lease_json: String, outcome: String) -> PyResult<bool> {
+pub fn aegis_runtime_retry(task_id: u128, request_json: String, now_ms: u64) -> PyResult<String> {
     py_safe(move || {
-        let lease: crate::resource::ResourceLease =
-            serde_json::from_str(&lease_json).map_err(|error| {
+        let request: crate::resource::ResourceRequest = serde_json::from_str(&request_json)
+            .map_err(|error| {
                 pyo3::exceptions::PyValueError::new_err(format!(
-                    "invalid resource lease JSON: {error}"
+                    "invalid resource request JSON: {error}"
                 ))
             })?;
         let mut runtime = get_authoritative_runtime().lock();
-        match outcome.trim().to_ascii_lowercase().as_str() {
-            "done" => runtime.complete(lease),
-            "failed" => runtime.fail(lease),
-            "cancelled" | "canceled" => runtime.cancel(lease),
+        let admission = runtime.retry(task_id, request, now_ms).map_err(|error| {
+            pyo3::exceptions::PyRuntimeError::new_err(format!("runtime retry failed: {error:?}"))
+        })?;
+        let response = match admission {
+            crate::runtime::RuntimeAdmission::Admitted(token) => serde_json::json!({
+                "schema": "aegis-runtime-admission-v1",
+                "status": "admitted",
+                "lease_token": token,
+            }),
+            crate::runtime::RuntimeAdmission::Queued { position, reason } => serde_json::json!({
+                "schema": "aegis-runtime-admission-v1",
+                "status": "queued",
+                "position": position,
+                "reason": reason,
+            }),
+            crate::runtime::RuntimeAdmission::Rejected { reason } => serde_json::json!({
+                "schema": "aegis-runtime-admission-v1",
+                "status": "rejected",
+                "reason": reason,
+            }),
+        };
+        serde_json::to_string(&response).map_err(|error| {
+            pyo3::exceptions::PyRuntimeError::new_err(format!(
+                "runtime retry response serialization failed: {error}"
+            ))
+        })
+    })?
+}
+
+#[pyfunction]
+pub fn aegis_runtime_finish(lease_token_json: String, outcome: String) -> PyResult<bool> {
+    py_safe(move || {
+        let token: crate::resource::ResourceLeaseToken = serde_json::from_str(&lease_token_json)
+            .map_err(|error| {
+                pyo3::exceptions::PyValueError::new_err(format!(
+                    "invalid resource lease token JSON: {error}"
+                ))
+            })?;
+        let mut runtime = get_authoritative_runtime().lock();
+        let runtime_outcome = match outcome.trim().to_ascii_lowercase().as_str() {
+            "done" => Ok(crate::runtime::RuntimeOutcome::Done),
+            "failed" => Ok(crate::runtime::RuntimeOutcome::Failed),
+            "retry_wait" | "retry-wait" => Ok(crate::runtime::RuntimeOutcome::RetryWait),
+            "timed_out" | "timed-out" | "timeout" => Ok(crate::runtime::RuntimeOutcome::TimedOut),
+            "cancelled" | "canceled" => Ok(crate::runtime::RuntimeOutcome::Cancelled),
             _ => Err(crate::runtime::RuntimeError::InvalidOutcome(outcome)),
         }
-        .map(|_| true)
         .map_err(|error| {
-            pyo3::exceptions::PyRuntimeError::new_err(format!("runtime finish failed: {error:?}"))
-        })
+            pyo3::exceptions::PyValueError::new_err(format!("invalid runtime outcome: {error:?}"))
+        })?;
+        runtime
+            .finish(token, runtime_outcome)
+            .map(|_| true)
+            .map_err(|error| {
+                pyo3::exceptions::PyRuntimeError::new_err(format!(
+                    "runtime finish failed: {error:?}"
+                ))
+            })
     })?
 }
 
@@ -895,6 +944,7 @@ pub fn aegis_nerve(_py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(aegis_resource_admission_preview, m)?)?;
     m.add_function(wrap_pyfunction!(aegis_execution_lanes, m)?)?;
     m.add_function(wrap_pyfunction!(aegis_runtime_submit, m)?)?;
+    m.add_function(wrap_pyfunction!(aegis_runtime_retry, m)?)?;
     m.add_function(wrap_pyfunction!(aegis_runtime_finish, m)?)?;
     m.add_function(wrap_pyfunction!(aegis_llm_request, m)?)?;
     m.add_function(wrap_pyfunction!(aegis_llm_route, m)?)?;

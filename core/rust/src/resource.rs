@@ -7,12 +7,14 @@
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, VecDeque};
 use std::sync::{
-    atomic::{AtomicBool, Ordering},
     Arc,
+    atomic::{AtomicBool, Ordering},
 };
 use std::time::{SystemTime, UNIX_EPOCH};
 
 pub const RESOURCE_CONTRACT_SCHEMA_V1: &str = "aegis-resource-contract-v1";
+pub const LEASE_TOKEN_SCHEMA_V1: &str = "aegis-resource-lease-token-v1";
+pub const UNKNOWN_HOST_MEMORY_CAPACITY_BYTES: u64 = 256 * 1024 * 1024;
 
 pub type TaskId = u128;
 pub type LeaseId = u128;
@@ -199,7 +201,7 @@ impl ResourceControlCapabilities {
                 thread_count: EnforcementLevel::MeasurementOnly,
                 io: EnforcementLevel::MeasurementOnly,
                 termination: EnforcementLevel::MeasurementOnly,
-                backend: "linux-cgroup-v2-adapter-not-implemented".to_string(),
+                backend: "linux-cgroup-v2-controller-available".to_string(),
             };
         }
         #[cfg(target_os = "windows")]
@@ -211,7 +213,7 @@ impl ResourceControlCapabilities {
                 thread_count: EnforcementLevel::MeasurementOnly,
                 io: EnforcementLevel::MeasurementOnly,
                 termination: EnforcementLevel::MeasurementOnly,
-                backend: "windows-job-object-adapter-not-implemented".to_string(),
+                backend: "windows-job-object-controller-available".to_string(),
             };
         }
         #[cfg(target_os = "macos")]
@@ -255,7 +257,46 @@ pub struct HardwareProfile {
     pub accelerators: Vec<AcceleratorProfile>,
     pub storage: Vec<StorageProfile>,
     pub os: ResourceControlCapabilities,
+    pub policy: ResourcePolicy,
     pub profile_epoch: u64,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+pub struct ResourcePolicy {
+    pub source: String,
+    pub constrained_cpu_threshold: usize,
+    pub constrained_memory_threshold_bytes: u64,
+    pub balanced_cpu_threshold: usize,
+    pub host_memory_headroom_percent: u8,
+    pub unknown_host_memory_cap_bytes: u64,
+    pub constrained_io_lane_limit: u32,
+    pub default_io_lane_limit: u32,
+    pub constrained_python_lane_limit: u32,
+    pub default_python_lane_limit: u32,
+    pub constrained_untrusted_lane_limit: u32,
+    pub default_untrusted_lane_limit: u32,
+    pub queue_multiplier: u32,
+}
+
+impl Default for ResourcePolicy {
+    fn default() -> Self {
+        Self {
+            source: "assumed-defaults:v1; replace with measured policy after H0-H2 benchmarks"
+                .to_string(),
+            constrained_cpu_threshold: 4,
+            constrained_memory_threshold_bytes: 8 * 1024 * 1024 * 1024,
+            balanced_cpu_threshold: 16,
+            host_memory_headroom_percent: 25,
+            unknown_host_memory_cap_bytes: UNKNOWN_HOST_MEMORY_CAPACITY_BYTES,
+            constrained_io_lane_limit: 2,
+            default_io_lane_limit: 8,
+            constrained_python_lane_limit: 1,
+            default_python_lane_limit: 4,
+            constrained_untrusted_lane_limit: 1,
+            default_untrusted_lane_limit: 4,
+            queue_multiplier: 4,
+        }
+    }
 }
 
 impl HardwareProfile {
@@ -264,7 +305,8 @@ impl HardwareProfile {
             .map(|value| value.get())
             .unwrap_or(1)
             .max(1);
-        let capacity_bytes = detect_host_memory_bytes();
+        let (capacity_bytes, available_bytes) = detect_host_memory();
+        let policy = ResourcePolicy::default();
         Self {
             schema: RESOURCE_CONTRACT_SCHEMA_V1.to_string(),
             cpu: CpuProfile {
@@ -284,12 +326,13 @@ impl HardwareProfile {
                 id: "host".to_string(),
                 kind: MemoryDomainKind::Host,
                 capacity_bytes,
-                available_bytes: None,
+                available_bytes,
                 reserved_bytes: 0,
             }],
             accelerators: Vec::new(),
             storage: Vec::new(),
             os: ResourceControlCapabilities::for_current_platform(),
+            policy,
             profile_epoch: unix_time_millis(),
         }
     }
@@ -304,11 +347,11 @@ impl HardwareProfile {
         let low_memory = self
             .host_memory()
             .and_then(|domain| domain.capacity_bytes)
-            .map(|bytes| bytes < 8 * 1024 * 1024 * 1024)
-            .unwrap_or(false);
-        if self.cpu.usable_parallelism <= 4 || low_memory {
+            .map(|bytes| bytes < self.policy.constrained_memory_threshold_bytes)
+            .unwrap_or(true);
+        if self.cpu.usable_parallelism <= self.policy.constrained_cpu_threshold || low_memory {
             OperatingProfile::Constrained
-        } else if self.cpu.usable_parallelism <= 16 {
+        } else if self.cpu.usable_parallelism <= self.policy.balanced_cpu_threshold {
             OperatingProfile::BalancedLaptop
         } else {
             OperatingProfile::Performance
@@ -398,6 +441,8 @@ pub enum Priority {
 pub struct ResourceRequest {
     pub schema: String,
     pub task_id: TaskId,
+    #[serde(default = "default_attempt_id")]
+    pub attempt_id: u64,
     pub work_kind: WorkKind,
     pub cpu: CpuRequest,
     pub host_memory: MemoryRequest,
@@ -418,6 +463,7 @@ impl ResourceRequest {
         Self {
             schema: RESOURCE_CONTRACT_SCHEMA_V1.to_string(),
             task_id,
+            attempt_id: 1,
             work_kind,
             cpu: CpuRequest::default(),
             host_memory: MemoryRequest { bytes: 1 },
@@ -440,9 +486,9 @@ impl ResourceRequest {
                 "unsupported resource schema".to_string(),
             ));
         }
-        if self.task_id == 0 {
+        if self.task_id == 0 || self.attempt_id == 0 {
             return Err(ResourceError::InvalidRequest(
-                "task_id must be non-zero".to_string(),
+                "task_id and attempt_id must be non-zero".to_string(),
             ));
         }
         if self.cpu.min_threads == 0 || self.cpu.max_threads < self.cpu.min_threads {
@@ -523,6 +569,9 @@ pub enum ResourceError {
     DeadlineExceeded,
     ResourceExhausted,
     UnknownLease(LeaseId),
+    InvalidLeaseToken(String),
+    LeaseFenced(LeaseId),
+    UnsupportedControl(String),
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
@@ -537,6 +586,7 @@ pub struct ResourceLease {
     pub schema: String,
     pub lease_id: LeaseId,
     pub task_id: TaskId,
+    pub attempt_id: u64,
     pub work_kind: WorkKind,
     pub granted: GrantedResources,
     pub generation: u64,
@@ -546,11 +596,31 @@ pub struct ResourceLease {
     cancelled: Arc<AtomicBool>,
 }
 
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+pub struct ResourceLeaseToken {
+    pub schema: String,
+    pub lease_id: LeaseId,
+    pub generation: u64,
+    pub attempt_id: u64,
+}
+
+impl ResourceLeaseToken {
+    pub fn from_lease(lease: &ResourceLease) -> Self {
+        Self {
+            schema: LEASE_TOKEN_SCHEMA_V1.to_string(),
+            lease_id: lease.lease_id,
+            generation: lease.generation,
+            attempt_id: lease.attempt_id,
+        }
+    }
+}
+
 impl PartialEq for ResourceLease {
     fn eq(&self, other: &Self) -> bool {
         self.schema == other.schema
             && self.lease_id == other.lease_id
             && self.task_id == other.task_id
+            && self.attempt_id == other.attempt_id
             && self.work_kind == other.work_kind
             && self.granted == other.granted
             && self.generation == other.generation
@@ -613,7 +683,12 @@ impl AdmissionController {
         let host_memory = profile
             .host_memory()
             .and_then(|domain| domain.capacity_bytes)
-            .unwrap_or(u64::MAX / 4);
+            .unwrap_or(profile.policy.unknown_host_memory_cap_bytes);
+        let headroom = u64::from(profile.policy.host_memory_headroom_percent.min(99));
+        let host_memory = host_memory
+            .saturating_mul(100_u64.saturating_sub(headroom))
+            .saturating_div(100)
+            .max(1);
         let concurrency = match profile.operating_profile() {
             OperatingProfile::Constrained => 2,
             OperatingProfile::BalancedLaptop => cpu.max(2),
@@ -622,14 +697,16 @@ impl AdmissionController {
         Self::new(
             GrantedResources {
                 cpu_threads: cpu.max(1),
-                host_memory_bytes: host_memory.saturating_mul(3) / 4,
+                host_memory_bytes: host_memory,
                 accelerator_memory_bytes: 0,
                 io_in_flight: concurrency,
                 process_limit: concurrency,
                 thread_limit: cpu.max(1),
                 fd_limit: 4096,
             },
-            concurrency as usize * 4,
+            concurrency
+                .saturating_mul(profile.policy.queue_multiplier)
+                .max(1) as usize,
         )
     }
 
@@ -673,6 +750,7 @@ impl AdmissionController {
                 schema: RESOURCE_CONTRACT_SCHEMA_V1.to_string(),
                 lease_id,
                 task_id: request.task_id,
+                attempt_id: request.attempt_id,
                 work_kind: request.work_kind,
                 granted,
                 generation: self.generation,
@@ -704,6 +782,33 @@ impl AdmissionController {
             .ok_or(ResourceError::UnknownLease(lease_id))?;
         self.used = subtract_resources(self.used, lease.granted);
         Ok(lease)
+    }
+
+    pub fn inspect_token(
+        &self,
+        token: &ResourceLeaseToken,
+    ) -> Result<&ResourceLease, ResourceError> {
+        if token.schema != LEASE_TOKEN_SCHEMA_V1 || token.lease_id == 0 || token.generation == 0 {
+            return Err(ResourceError::InvalidLeaseToken(
+                "invalid lease token schema or identifiers".to_string(),
+            ));
+        }
+        let lease = self
+            .active
+            .get(&token.lease_id)
+            .ok_or(ResourceError::UnknownLease(token.lease_id))?;
+        if lease.generation != token.generation || lease.attempt_id != token.attempt_id {
+            return Err(ResourceError::LeaseFenced(token.lease_id));
+        }
+        Ok(lease)
+    }
+
+    pub fn release_fenced(
+        &mut self,
+        token: &ResourceLeaseToken,
+    ) -> Result<ResourceLease, ResourceError> {
+        self.inspect_token(token)?;
+        self.release(token.lease_id)
     }
 
     /// Remove the oldest bounded queue item for a caller that is ready to
@@ -742,7 +847,11 @@ impl ExecutionLaneRegistry {
         lanes.insert(
             ExecutionLane::Io,
             LaneLimit {
-                max_in_flight: if constrained { 2 } else { 8 },
+                max_in_flight: if constrained {
+                    profile.policy.constrained_io_lane_limit
+                } else {
+                    profile.policy.default_io_lane_limit
+                },
                 active: 0,
             },
         );
@@ -756,7 +865,11 @@ impl ExecutionLaneRegistry {
         lanes.insert(
             ExecutionLane::PythonCognition,
             LaneLimit {
-                max_in_flight: if constrained { 1 } else { 4 },
+                max_in_flight: if constrained {
+                    profile.policy.constrained_python_lane_limit
+                } else {
+                    profile.policy.default_python_lane_limit
+                },
                 active: 0,
             },
         );
@@ -770,7 +883,11 @@ impl ExecutionLaneRegistry {
         lanes.insert(
             ExecutionLane::Untrusted,
             LaneLimit {
-                max_in_flight: if constrained { 1 } else { 4 },
+                max_in_flight: if constrained {
+                    profile.policy.constrained_untrusted_lane_limit
+                } else {
+                    profile.policy.default_untrusted_lane_limit
+                },
                 active: 0,
             },
         );
@@ -797,6 +914,10 @@ impl ExecutionLaneRegistry {
         }
         limit.active -= 1;
         true
+    }
+
+    pub fn can_release(&self, lane: ExecutionLane) -> bool {
+        self.lanes.get(&lane).is_some_and(|limit| limit.active > 0)
     }
 }
 
@@ -829,7 +950,7 @@ impl ResourceController for PortableResourceController {
             schema: RESOURCE_CONTRACT_SCHEMA_V1.to_string(),
             sampled_at_ms: unix_time_millis(),
             cpu_threads_active: 0,
-            host_memory_bytes: detect_host_memory_bytes(),
+            host_memory_bytes: detect_host_memory().0,
             queue_depth: 0,
             memory_pressure: false,
         }
@@ -888,20 +1009,61 @@ fn unix_time_millis() -> u64 {
         .unwrap_or(0)
 }
 
-fn detect_host_memory_bytes() -> Option<u64> {
+fn default_attempt_id() -> u64 {
+    1
+}
+
+fn detect_host_memory() -> (Option<u64>, Option<u64>) {
     #[cfg(target_os = "linux")]
     {
-        let contents = std::fs::read_to_string("/proc/meminfo").ok()?;
-        let kilobytes = contents.lines().find_map(|line| {
-            let mut parts = line.split_whitespace();
-            (parts.next() == Some("MemTotal:")).then(|| parts.next()?.parse::<u64>().ok())
-        })??;
-        return kilobytes.checked_mul(1024);
+        let contents = match std::fs::read_to_string("/proc/meminfo") {
+            Ok(contents) => contents,
+            Err(_) => return (None, None),
+        };
+        let value_kib = |label: &str| {
+            contents.lines().find_map(|line| {
+                let mut parts = line.split_whitespace();
+                (parts.next() == Some(label)).then(|| parts.next()?.parse::<u64>().ok())
+            })?
+        };
+        let total = value_kib("MemTotal:").and_then(|value| value.checked_mul(1024));
+        let available = value_kib("MemAvailable:").and_then(|value| value.checked_mul(1024));
+        let cgroup_max = std::fs::read_to_string("/sys/fs/cgroup/memory.max")
+            .ok()
+            .and_then(|value| parse_cgroup_limit(&value));
+        let cgroup_current = std::fs::read_to_string("/sys/fs/cgroup/memory.current")
+            .ok()
+            .and_then(|value| value.trim().parse::<u64>().ok());
+        let capacity = match (total, cgroup_max) {
+            (Some(total), Some(limit)) => Some(total.min(limit)),
+            (Some(total), None) => Some(total),
+            (None, Some(limit)) => Some(limit),
+            (None, None) => None,
+        };
+        let available = match (available, cgroup_max, cgroup_current) {
+            (Some(available), Some(limit), Some(current)) => {
+                Some(available.min(limit.saturating_sub(current)))
+            }
+            (Some(available), _, _) => Some(available),
+            (None, Some(limit), Some(current)) => Some(limit.saturating_sub(current)),
+            _ => None,
+        };
+        return (capacity, available);
     }
     // Windows and macOS adapters will provide exact capacity without making
     // the portable contract depend on shell commands or unsafe FFI here.
     #[allow(unreachable_code)]
-    None
+    (None, None)
+}
+
+#[cfg(target_os = "linux")]
+fn parse_cgroup_limit(value: &str) -> Option<u64> {
+    let value = value.trim();
+    if value == "max" {
+        None
+    } else {
+        value.parse::<u64>().ok()
+    }
 }
 
 #[cfg(test)]
@@ -926,6 +1088,23 @@ mod tests {
         assert_eq!(profile.schema, RESOURCE_CONTRACT_SCHEMA_V1);
         assert!(profile.cpu.usable_parallelism >= 1);
         assert_eq!(profile.memory_domains.len(), 1);
+        assert!(profile.policy.source.contains("assumed-defaults:v1"));
+    }
+
+    #[test]
+    fn unknown_host_memory_uses_a_finite_conservative_cap() {
+        let mut profile = HardwareProfile::probe();
+        profile.memory_domains[0].capacity_bytes = None;
+        let controller = AdmissionController::from_hardware(&profile);
+        assert_eq!(
+            controller.capacity().host_memory_bytes,
+            profile
+                .policy
+                .unknown_host_memory_cap_bytes
+                .saturating_mul(75)
+                .saturating_div(100)
+        );
+        assert!(controller.capacity().host_memory_bytes < u64::MAX / 4);
     }
 
     #[test]

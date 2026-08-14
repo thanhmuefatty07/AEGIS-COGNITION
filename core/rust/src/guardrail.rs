@@ -38,7 +38,7 @@ pub trait ZeroTrustGateway {
 
 pub trait ExecutiveAuthority {
     fn evaluate_action(&self, llm_proposal: &UntrustedText)
-        -> Result<PhysicalArtifact, TrapReason>;
+    -> Result<PhysicalArtifact, TrapReason>;
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]

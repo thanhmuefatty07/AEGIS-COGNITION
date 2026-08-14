@@ -1,7 +1,7 @@
 use crate::evidence_index::{
-    browser_page_search_candidate_record_hash, browser_page_search_evidence_ref_hash,
-    browser_page_search_pattern_hash, BrowserPageSearchCandidateError,
-    BrowserPageSearchCandidateRecord, CandidateEvidenceRef, EvidenceCandidateTier,
+    BrowserPageSearchCandidateError, BrowserPageSearchCandidateRecord, CandidateEvidenceRef,
+    EvidenceCandidateTier, browser_page_search_candidate_record_hash,
+    browser_page_search_evidence_ref_hash, browser_page_search_pattern_hash,
 };
 use crate::policy::{PolicyFacts, SideEffectClass, StagingEvidenceKind};
 use blake3::Hasher;
@@ -1124,11 +1124,7 @@ impl BrowserOpsBenchVerificationProof {
         let mut bytes = [0u8; 16];
         bytes.copy_from_slice(&self.proof_hash[..16]);
         let value = u128::from_le_bytes(bytes);
-        if value == 0 {
-            1
-        } else {
-            value
-        }
+        if value == 0 { 1 } else { value }
     }
 
     pub fn to_report(

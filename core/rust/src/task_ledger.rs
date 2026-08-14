@@ -13,15 +13,21 @@ pub const PRIORITY_WEIGHT_EVIDENCE_UNBLOCK: u64 = 1_000;
 pub enum TaskStatus {
     Pending,
     Ready,
+    Admitted,
     Running,
+    RetryWait,
+    Cancelling,
     Done,
     Failed,
     Cancelled,
+    TimedOut,
+    NeedsReconciliation,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct TaskCard {
     pub task_id: TaskId,
+    pub attempt_id: u64,
     pub status: TaskStatus,
     pub dependency_ids: Vec<TaskId>,
     pub deterministic_priority_score: u64,
@@ -54,6 +60,12 @@ pub enum TaskLedgerError {
     MissingTask(TaskId),
     MissingDependency(TaskId),
     InvalidTask(TaskId),
+    InvalidAttempt(TaskId),
+    InvalidStatusTransition {
+        task_id: TaskId,
+        from: TaskStatus,
+        to: TaskStatus,
+    },
     CycleDetected,
 }
 
@@ -98,6 +110,43 @@ struct ReadyQueueCache {
 }
 
 impl TaskStatus {
+    pub fn can_transition_to(self, next: Self) -> bool {
+        matches!(
+            (self, next),
+            (
+                Self::Pending,
+                Self::Ready | Self::Cancelled | Self::TimedOut
+            ) | (
+                Self::Ready,
+                Self::Admitted | Self::Cancelled | Self::TimedOut
+            ) | (
+                Self::Admitted,
+                Self::Running | Self::Cancelling | Self::TimedOut | Self::NeedsReconciliation
+            ) | (
+                Self::Running,
+                Self::Done
+                    | Self::Failed
+                    | Self::RetryWait
+                    | Self::Cancelling
+                    | Self::TimedOut
+                    | Self::NeedsReconciliation
+            ) | (
+                Self::RetryWait,
+                Self::Ready | Self::Cancelled | Self::TimedOut
+            ) | (
+                Self::Cancelling,
+                Self::Cancelled | Self::Failed | Self::NeedsReconciliation
+            )
+        )
+    }
+
+    pub fn is_terminal(self) -> bool {
+        matches!(
+            self,
+            Self::Done | Self::Failed | Self::Cancelled | Self::TimedOut
+        )
+    }
+
     fn can_enter_ready_queue(self) -> bool {
         matches!(self, TaskStatus::Pending | TaskStatus::Ready)
     }
@@ -117,6 +166,7 @@ impl TaskCard {
     ) -> Self {
         Self {
             task_id,
+            attempt_id: 1,
             status: TaskStatus::Pending,
             dependency_ids,
             deterministic_priority_score: 0,
@@ -131,6 +181,11 @@ impl TaskCard {
 
     pub fn with_status(mut self, status: TaskStatus) -> Self {
         self.status = status;
+        self
+    }
+
+    pub fn with_attempt_id(mut self, attempt_id: u64) -> Self {
+        self.attempt_id = attempt_id.max(1);
         self
     }
 }
@@ -193,6 +248,54 @@ impl TaskLedger {
             }
             task.status = status;
         }
+        self.bump_state_epoch();
+        Ok(())
+    }
+
+    pub fn validate_status_transition(
+        &self,
+        task_id: TaskId,
+        status: TaskStatus,
+    ) -> Result<(), TaskLedgerError> {
+        let task = self
+            .tasks
+            .get(&task_id)
+            .ok_or(TaskLedgerError::MissingTask(task_id))?;
+        if task.status == status || task.status.can_transition_to(status) {
+            return Ok(());
+        }
+        Err(TaskLedgerError::InvalidStatusTransition {
+            task_id,
+            from: task.status,
+            to: status,
+        })
+    }
+
+    pub fn transition_status(
+        &mut self,
+        task_id: TaskId,
+        status: TaskStatus,
+    ) -> Result<(), TaskLedgerError> {
+        self.validate_status_transition(task_id, status)?;
+        self.mark_status(task_id, status)
+    }
+
+    pub fn set_attempt_id(
+        &mut self,
+        task_id: TaskId,
+        attempt_id: u64,
+    ) -> Result<(), TaskLedgerError> {
+        if attempt_id == 0 {
+            return Err(TaskLedgerError::InvalidAttempt(task_id));
+        }
+        let task = self
+            .tasks
+            .get_mut(&task_id)
+            .ok_or(TaskLedgerError::MissingTask(task_id))?;
+        if attempt_id <= task.attempt_id || task.status != TaskStatus::RetryWait {
+            return Err(TaskLedgerError::InvalidAttempt(task_id));
+        }
+        task.attempt_id = attempt_id;
         self.bump_state_epoch();
         Ok(())
     }
@@ -716,6 +819,7 @@ fn task_card_state_hash(task: &TaskCard) -> [u8; 32] {
     let mut hasher = Hasher::new();
     hasher.update(b"aegis-task-card-state-v1");
     update_u128(&mut hasher, task.task_id);
+    update_u64(&mut hasher, task.attempt_id);
     update_task_status(&mut hasher, task.status);
     hasher.update(&task_dependency_hash(&task.dependency_ids));
     update_u64(&mut hasher, task.deterministic_priority_score);
@@ -804,10 +908,15 @@ fn update_task_status(hasher: &mut Hasher, status: TaskStatus) {
     let value = match status {
         TaskStatus::Pending => 1u8,
         TaskStatus::Ready => 2,
-        TaskStatus::Running => 3,
-        TaskStatus::Done => 4,
-        TaskStatus::Failed => 5,
-        TaskStatus::Cancelled => 6,
+        TaskStatus::Admitted => 3,
+        TaskStatus::Running => 4,
+        TaskStatus::RetryWait => 5,
+        TaskStatus::Cancelling => 6,
+        TaskStatus::Done => 7,
+        TaskStatus::Failed => 8,
+        TaskStatus::Cancelled => 9,
+        TaskStatus::TimedOut => 10,
+        TaskStatus::NeedsReconciliation => 11,
     };
     hasher.update(&[value]);
 }

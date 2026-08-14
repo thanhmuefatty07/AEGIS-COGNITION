@@ -14,46 +14,46 @@ use aegis_nerve::distributed::{
     WorkLeaseTable, WorkerRole,
 };
 use aegis_nerve::evidence_index::{
-    browser_page_search_pattern_hash, AgenticEvidenceProgram, AgenticEvidenceProgramScratch,
-    AgenticEvidenceProgramStep, AgenticEvidenceSdk, CandidateEvidenceRef, CandidateStateCapsule,
+    AgenticEvidenceProgram, AgenticEvidenceProgramScratch, AgenticEvidenceProgramStep,
+    AgenticEvidenceSdk, CandidateEvidenceRef, CandidateStateCapsule,
     ColdVectorExpansionReplayRecord, ColdVectorIndex, EvidenceCandidateTier, HotBitmapFilter,
     HotEvidenceIndex, HotEvidenceQueryScratch, HotLexicalIndex, HotLexicalQueryScratch,
-    HotTermDictionary, IndexEpochReplayRecord, SortedEvidenceSet,
+    HotTermDictionary, IndexEpochReplayRecord, SortedEvidenceSet, browser_page_search_pattern_hash,
 };
 use aegis_nerve::goal_intake::GoalIntakeProof;
-use aegis_nerve::hot_engine::{simd_blake3_hash, InMemoryEvidenceArena, TrustLevel};
+use aegis_nerve::hot_engine::{InMemoryEvidenceArena, TrustLevel, simd_blake3_hash};
 use aegis_nerve::ipc::{message_to_zero_copy, validate_zero_copy, zero_copy_to_message};
 use aegis_nerve::layout::{expected_header_bytes, expected_payload_alignment, validate_layout};
+use aegis_nerve::learning::{LearningEventType, LearningLedger};
 use aegis_nerve::llm::{
-    normalize_response, AdapterRegistry, ContinuousBatchCandidate, ContinuousBatchPlanner,
-    ContinuousBatchPolicy, InferenceBackendContract, InferenceRouteProof, LLMRequest,
-    PrefixCacheBroker, ProviderAdapter, ProviderBudgetLedger, ProviderConfig,
-    ProviderRuntimeBudget, SpeculativeDecodeVerifier, SpeculativeTokenBatch,
-    StructuredOutputFieldSpec, StructuredOutputKind, StructuredOutputProof, StructuredOutputSchema,
+    AdapterRegistry, ContinuousBatchCandidate, ContinuousBatchPlanner, ContinuousBatchPolicy,
+    InferenceBackendContract, InferenceRouteProof, LLMRequest, PrefixCacheBroker, ProviderAdapter,
+    ProviderBudgetLedger, ProviderConfig, ProviderRuntimeBudget, SpeculativeDecodeVerifier,
+    SpeculativeTokenBatch, StructuredOutputFieldSpec, StructuredOutputKind, StructuredOutputProof,
+    StructuredOutputSchema, normalize_response,
 };
 use aegis_nerve::memory::fold::{GenerationalSlab, RuntimeLayoutBudget};
 use aegis_nerve::message::MessageFrame;
 use aegis_nerve::orchestrator::NerveRuntime;
 use aegis_nerve::physical::{
-    compute_ast_structural_fingerprint, compute_ast_tree_edit_distance, PAVWatchdog,
-    PhysicalWatchdog,
+    PAVWatchdog, PhysicalWatchdog, compute_ast_structural_fingerprint,
+    compute_ast_tree_edit_distance,
 };
 use aegis_nerve::policy::{
     CapabilityClass, DeterministicPolicyKernel, EvidenceContract, PolicyDecision, PolicyFacts,
     RiskClass, SideEffectClass, TypedToolIR,
 };
-use aegis_nerve::learning::{LearningEventType, LearningLedger};
 // LicenseManager removed in Phase 1A cleanup — unused in benches (verified by clippy 2026-06-15).
 use aegis_nerve::memory::nudge::{MemoryCandidate, MemoryNudgeSystem};
 use aegis_nerve::replay::{
-    agentic_evidence_sdk_run_replay_binding_hash, skill_admission_handoff_proof_hash,
-    skill_admission_replay_binding_hash, AgenticEvidenceSdkRunHandoffProof, BinaryRunEventSegment,
-    NextActionKind, NextActionPacket, ReplayDeterminismProof, ReplayEnduranceBench, RunCheckpoint,
-    RunEventLedger, RunEventSegmentArchive, SegmentedArrowAuditStream, ToolExecutionEvidence,
-    ToolExecutionStatus, ToolExecutorKind,
+    AgenticEvidenceSdkRunHandoffProof, BinaryRunEventSegment, NextActionKind, NextActionPacket,
+    ReplayDeterminismProof, ReplayEnduranceBench, RunCheckpoint, RunEventLedger,
+    RunEventSegmentArchive, SegmentedArrowAuditStream, ToolExecutionEvidence, ToolExecutionStatus,
+    ToolExecutorKind, agentic_evidence_sdk_run_replay_binding_hash,
+    skill_admission_handoff_proof_hash, skill_admission_replay_binding_hash,
 };
 use aegis_nerve::sandbox::{
-    QuickJsWasmInterpreterManager, WasmtimeSandbox, QUICKJS_INVOCATION_ABI_HEADER_BYTES,
+    QUICKJS_INVOCATION_ABI_HEADER_BYTES, QuickJsWasmInterpreterManager, WasmtimeSandbox,
 };
 use aegis_nerve::skill_registry::{
     ActivatedSkillRecord, SkillAdmissionRecord, SkillExecutionHandoffProof, SkillExecutionProof,
@@ -61,8 +61,8 @@ use aegis_nerve::skill_registry::{
     SkillUsageStats,
 };
 use aegis_nerve::task_ledger::{TaskCard, TaskLedger, TaskStatus};
-use aegis_nerve::tool_gateway::{evidence_contract_hash, ToolExecutionGateway};
-use criterion::{black_box, criterion_group, criterion_main, BatchSize, Criterion};
+use aegis_nerve::tool_gateway::{ToolExecutionGateway, evidence_contract_hash};
+use criterion::{BatchSize, Criterion, black_box, criterion_group, criterion_main};
 use std::path::PathBuf;
 
 struct BenchAdapter;
@@ -4083,7 +4083,9 @@ fn bench_memory_periodic_nudge(c: &mut Criterion) {
             LearningLedger::new,
             |mut ledger| {
                 black_box(ledger.append(
-                    LearningEventType::MemoryPersisted { memory_hash: persisted_hash },
+                    LearningEventType::MemoryPersisted {
+                        memory_hash: persisted_hash,
+                    },
                     None,
                     1_700_000_001_000,
                     9_999,
@@ -4128,7 +4130,7 @@ fn bench_skill_self_improvement(c: &mut Criterion) {
                     registry
                         .commit_admitted_skill(&manifest, &admission, &report)
                         .expect("bench: seed registry admission");
-                    let mut ledger = LearningLedger::new();
+                    let ledger = LearningLedger::new();
                     let seed_id = manifest.skill_id;
                     (registry, ledger, seed_id)
                 },
@@ -4161,7 +4163,7 @@ fn bench_skill_self_improvement(c: &mut Criterion) {
                 registry
                     .commit_admitted_skill(&manifest, &admission, &report)
                     .expect("bench: seed registry");
-                let mut ledger = LearningLedger::new();
+                let ledger = LearningLedger::new();
                 let skill_id = manifest.skill_id;
                 (registry, ledger, skill_id)
             },

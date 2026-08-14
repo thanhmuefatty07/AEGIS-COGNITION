@@ -27,8 +27,8 @@ That's it. First agent runs in under 3 minutes.
 | **Replay audit trail** | Yes (Arrow IPC) | FTS5 SQLite | Checkpoints | Trajectories |
 | **Sandbox isolation** | Wasmtime (fuel+epoch) | No | No | No |
 | **Provider fallback** | Automatic 429 → reserve | Config-only | Config-only | Config-only |
-| **FTS5 search speed** | **69x faster** | Baseline | N/A | N/A |
-| **JSON-RPC speed** | **29,443x faster** | Baseline | N/A | N/A |
+| **FTS5 search speed** | Evidence in progress | Baseline | N/A | N/A |
+| **JSON-RPC speed** | Evidence in progress | Baseline | N/A | N/A |
 
 ## Python API
 
@@ -94,14 +94,11 @@ from aegis_cognition import Agent
 
 ## Benchmarks
 
-| Benchmark | AEGIS | Hermes | Speedup |
-|-----------|-------|--------|---------|
-| FTS5 session search | 124 µs | 8,590 µs | **69x** |
-| JSON-RPC context hydration | 1.5 µs | 44,140 µs | **29,443x** |
-| Session recovery | 1.97 ms | 236.61 ms | **119x** |
-| Persistence write | 29.5 ms | 2,252 ms | **76x** |
-
-All benchmarks verified with deterministic BLAKE3 evidence hashes.
+Historical benchmark numbers are not release evidence for the current runtime
+architecture and are intentionally omitted here. Run the resource-policy
+protocol in [`docs/architecture/RESOURCE_POLICY_BENCHMARKS.md`](docs/architecture/RESOURCE_POLICY_BENCHMARKS.md)
+and retain raw output before making performance claims. Current status is
+`NOT VERIFIED` for cross-host H0/H1/H2 comparison.
 
 ## Documentation
 
@@ -112,6 +109,7 @@ All benchmarks verified with deterministic BLAKE3 evidence hashes.
 - [Examples](examples/)
 - [Error Guide](docs/troubleshooting/common-errors.md)
 - [Security Architecture](docs/architecture.md)
+- [Architecture traceability](docs/architecture/TRACEABILITY.md)
 
 ## Requirements
 

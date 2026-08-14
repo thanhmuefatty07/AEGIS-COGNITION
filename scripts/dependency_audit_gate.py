@@ -15,7 +15,9 @@ REQUIRED_DIRECT_DEPS: dict[str, str] = {
     "arrow-buffer": "54",
     "blake3": "1.5.0",
     "pyo3": "0.29.2",
+    "rayon": "1.12",
     "wasmtime": "47.0.3",
+    "windows-sys": "0.61.2",
 }
 CRATES_IO_SOURCE = "registry+https://github.com/rust-lang/crates.io-index"
 
@@ -42,7 +44,7 @@ def evaluate_dependency_audit_gate(root: str | Path = ROOT) -> dict[str, Any]:
     root_path = Path(root)
     manifest = _read_toml(root_path / "core" / "rust" / "Cargo.toml")
     lockfile = _read_toml(root_path / "Cargo.lock")
-    dependencies = manifest.get("dependencies", {}) if isinstance(manifest, dict) else {}
+    dependencies = _all_dependencies(manifest)
     package_entries = lockfile.get("package", []) if isinstance(lockfile, dict) else []
     lock_packages = {
         package.name: package
@@ -136,6 +138,17 @@ def _manifest_version(value: Any) -> str:
     if isinstance(value, dict) and isinstance(value.get("version"), str):
         return value["version"]
     return ""
+
+
+def _all_dependencies(manifest: dict[str, Any]) -> dict[str, Any]:
+    """Flatten normal and target-specific direct dependencies for auditing."""
+
+    dependencies = dict(manifest.get("dependencies", {}))
+    for target in manifest.get("target", {}).values():
+        if isinstance(target, dict):
+            for name, value in target.get("dependencies", {}).items():
+                dependencies.setdefault(name, value)
+    return dependencies
 
 
 def _lock_version_compatible(manifest_version: str, lock_version: str) -> bool:

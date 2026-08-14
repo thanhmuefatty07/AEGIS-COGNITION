@@ -23,11 +23,16 @@ def check(name: str, condition: bool, detail: str) -> dict[str, object]:
 
 def main() -> int:
     root_project = toml("pyproject.toml")["project"]
+    root_build = toml("pyproject.toml")["build-system"]
+    maturin = toml("pyproject.toml").get("tool", {}).get("maturin", {})
     core_project = toml("core/python/pyproject.toml")["project"]
     rust_manifest = toml("core/rust/Cargo.toml")
     dependencies = rust_manifest["dependencies"]
     toolchain = toml("rust-toolchain.toml")["toolchain"]
     schema = json.loads(read("schemas/resource-contract-v1.json"))
+    token_schema = json.loads(read("schemas/lease-token-v1.json"))
+    workspace = toml("Cargo.toml")["workspace"]
+    cargo_manifests = [ROOT / member / "Cargo.toml" for member in workspace["members"]]
 
     checks = [
         check(
@@ -52,10 +57,25 @@ def main() -> int:
                 for path in (
                     "core/rust/src/resource.rs",
                     "core/rust/src/runtime.rs",
+                    "core/rust/src/execution.rs",
+                    "core/rust/src/resource_platform.rs",
                     "aegis_cognition/runtime.py",
                 )
             ),
             "resource and runtime contract modules must exist",
+        ),
+        check(
+            "maturin_native_packaging",
+            root_build.get("build-backend") == "maturin" and maturin.get("module-name") == "aegis_cognition.aegis_nerve",
+            "the root wheel must use maturin for the PyO3 extension",
+        ),
+        check(
+            "rust_2024_workspace",
+            all(
+                'edition = "2024"' in path.read_text(encoding="utf-8")
+                for path in cargo_manifests
+            ),
+            "every workspace Cargo package must use edition 2024",
         ),
         check(
             "resource_schema_versioned",
@@ -64,13 +84,41 @@ def main() -> int:
             "resource schema must retain its versioned identity",
         ),
         check(
+            "lease_token_schema_versioned",
+            token_schema.get("$id", "").endswith("lease-token-v1.json")
+            and token_schema.get("properties", {}).get("schema", {}).get("const")
+            == "aegis-resource-lease-token-v1",
+            "lease completion must use a versioned opaque token schema",
+        ),
+        check(
             "no_native_cpu_targeting",
             all(
-                "target-cpu=native" not in path.read_text(encoding="utf-8").lower() for path in ROOT.rglob("Cargo.toml")
+                "target-cpu=native" not in path.read_text(encoding="utf-8").lower() for path in cargo_manifests
             ),
             "portable builds must not silently require host-specific CPU features",
         ),
         check("uv_lock_present", (ROOT / "uv.lock").is_file(), "uv.lock must be committed"),
+        check(
+            "traceability_matrix",
+            all(
+                marker in read("docs/architecture/TRACEABILITY.md")
+                for marker in ("AUTH-001", "FFI-001", "OS-001", "WASM-001", "PERF-001")
+            ),
+            "architecture requirements must map to implementation and evidence",
+        ),
+        check(
+            "adr_evidence_fields",
+            all(
+                all(field in read(path) for field in ("## Migration, security, performance, operations, rollback", "## Evidence"))
+                for path in (ROOT / "docs" / "adr").glob("ADR-*.md")
+            ),
+            "every ADR must contain migration/security/performance/operations/rollback and evidence",
+        ),
+        check(
+            "benchmark_claims_are_labeled",
+            "69x faster" not in read("README.md") and "All benchmarks verified" not in read("README.md"),
+            "README must not present stale benchmark numbers as current proof",
+        ),
     ]
 
     report = {"overall_ok": all(item["ok"] for item in checks), "checks": checks}

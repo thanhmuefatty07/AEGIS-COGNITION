@@ -1,5 +1,5 @@
-use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicUsize, Ordering};
 
 pub trait MemoryPool: std::fmt::Debug + Send + Sync {
     fn reserve(&self, size: usize) -> Box<dyn MemoryReservation>;
@@ -104,7 +104,7 @@ unsafe impl Sync for PreAllocatedBuffer {}
 
 #[cfg(target_os = "windows")]
 mod win32 {
-    extern "system" {
+    unsafe extern "system" {
         pub fn VirtualAlloc(
             lpAddress: *const std::ffi::c_void,
             dwSize: usize,
@@ -113,7 +113,7 @@ mod win32 {
         ) -> *mut std::ffi::c_void;
 
         pub fn VirtualFree(lpAddress: *mut std::ffi::c_void, dwSize: usize, dwFreeType: u32)
-            -> i32;
+        -> i32;
     }
     pub const MEM_COMMIT: u32 = 0x00001000;
     pub const MEM_RESERVE: u32 = 0x00002000;

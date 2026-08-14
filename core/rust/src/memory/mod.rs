@@ -8,7 +8,7 @@ pub mod user_model;
 
 pub use fold::{
     CogniFoldEngine, CogniFoldStore, CognitiveFolding, FoldingConfig, MemoryCrystallization,
-    RuntimeLayoutBudget, SemanticPointerResolver, RUNTIME_LAYOUT_PAYLOAD_ALIGNMENT,
+    RUNTIME_LAYOUT_PAYLOAD_ALIGNMENT, RuntimeLayoutBudget, SemanticPointerResolver,
 };
 pub use frame::{
     ContextPrefix, MemoryEdge, MemoryFrame, MemoryGraph, SemanticNode, SemanticPointer,

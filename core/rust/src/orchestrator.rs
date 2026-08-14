@@ -3,15 +3,15 @@ use crate::circuit_breaker::{
 };
 use crate::ipc::{message_to_zero_copy, validate_zero_copy};
 use crate::llm::{
-    checkpoint_from_response, route_request, route_request_with_budget, route_with_fallback,
-    session_bridge_key, AdapterRegistry, LLMCheckpoint, LLMRequest, LLMResponse,
-    ProviderBudgetLedger, ProviderConfig, ProviderRouteAdmissionProof,
+    AdapterRegistry, LLMCheckpoint, LLMRequest, LLMResponse, ProviderBudgetLedger, ProviderConfig,
+    ProviderRouteAdmissionProof, checkpoint_from_response, route_request,
+    route_request_with_budget, route_with_fallback, session_bridge_key,
 };
 use crate::memory::fold::CogniFoldStore;
 use crate::message::MessageFrame;
 use crate::physical::{BacktrackSignal, PhysicalArtifact, PhysicalWatchdog};
 use crate::replay::{RunEvent, RunEventLedger};
-use crate::sac::{verify_physical_witness, PhysicalWitnessVote, SacAnchor};
+use crate::sac::{PhysicalWitnessVote, SacAnchor, verify_physical_witness};
 use crate::schema::NERVE_SCHEMA;
 use arrow::array::{ArrayRef, BinaryArray, BooleanArray, UInt64Array};
 use arrow::datatypes::{DataType, Field, Schema, SchemaRef};
@@ -181,15 +181,15 @@ impl ArrowIpcAuditStream {
                 Arc::new(UInt64Array::from_iter_values([session_id_lo])) as ArrayRef,
                 Arc::new(UInt64Array::from_iter_values([trace.content_len as u64])) as ArrayRef,
                 Arc::new(BinaryArray::from_vec(vec![trace.content_blake3.as_slice()])) as ArrayRef,
-                Arc::new(BinaryArray::from_vec(vec![trace
-                    .raw_text_ref_hash
-                    .as_slice()])) as ArrayRef,
+                Arc::new(BinaryArray::from_vec(vec![
+                    trace.raw_text_ref_hash.as_slice(),
+                ])) as ArrayRef,
                 Arc::new(UInt64Array::from_iter_values([trace.token_usage as u64])) as ArrayRef,
                 Arc::new(UInt64Array::from_iter_values([trace.latency_ms])) as ArrayRef,
                 Arc::new(BooleanArray::from(vec![trace.rejected])) as ArrayRef,
-                Arc::new(BinaryArray::from_vec(vec![trace
-                    .audit_record_hash
-                    .as_slice()])) as ArrayRef,
+                Arc::new(BinaryArray::from_vec(vec![
+                    trace.audit_record_hash.as_slice(),
+                ])) as ArrayRef,
             ],
         )
         .map_err(|_| "failed to encode arrow ipc audit batch")?;

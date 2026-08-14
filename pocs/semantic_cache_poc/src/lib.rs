@@ -13,7 +13,7 @@ pub struct CacheRecord {
     pub timestamp_ms: u64,
 }
 
-#[pyclass]
+#[pyclass(skip_from_py_object)]
 #[derive(Serialize, Deserialize, Default, Clone, Debug)]
 pub struct SemanticCache {
     records: Vec<CacheRecord>,

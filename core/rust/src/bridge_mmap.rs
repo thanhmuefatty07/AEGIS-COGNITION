@@ -78,19 +78,24 @@ impl MmapBridgeHeader {
         // builds (where MMAP_BRIDGE_HEADER_BYTES mismatch would otherwise cause UB).
         // At runtime each conversion is infallible; this preserves API contract
         // (Result-returning) without the historical unwrap panics.
-        let read_u32 = |range: std::ops::Range<usize>, label: &'static str| -> Result<u32, &'static str> {
-            let arr: [u8; 4] = bytes[range].try_into().map_err(|_| label)?;
-            Ok(u32::from_le_bytes(arr))
-        };
-        let read_u64 = |range: std::ops::Range<usize>, label: &'static str| -> Result<u64, &'static str> {
-            let arr: [u8; 8] = bytes[range].try_into().map_err(|_| label)?;
-            Ok(u64::from_le_bytes(arr))
-        };
-        let read_u128 = |range: std::ops::Range<usize>, label: &'static str| -> Result<u128, &'static str> {
-            let arr: [u8; 16] = bytes[range].try_into().map_err(|_| label)?;
-            Ok(u128::from_le_bytes(arr))
-        };
-        let payload_blake3: [u8; 32] = bytes[80..112].try_into().map_err(|_| "invalid payload blake3 field")?;
+        let read_u32 =
+            |range: std::ops::Range<usize>, label: &'static str| -> Result<u32, &'static str> {
+                let arr: [u8; 4] = bytes[range].try_into().map_err(|_| label)?;
+                Ok(u32::from_le_bytes(arr))
+            };
+        let read_u64 =
+            |range: std::ops::Range<usize>, label: &'static str| -> Result<u64, &'static str> {
+                let arr: [u8; 8] = bytes[range].try_into().map_err(|_| label)?;
+                Ok(u64::from_le_bytes(arr))
+            };
+        let read_u128 =
+            |range: std::ops::Range<usize>, label: &'static str| -> Result<u128, &'static str> {
+                let arr: [u8; 16] = bytes[range].try_into().map_err(|_| label)?;
+                Ok(u128::from_le_bytes(arr))
+            };
+        let payload_blake3: [u8; 32] = bytes[80..112]
+            .try_into()
+            .map_err(|_| "invalid payload blake3 field")?;
 
         Ok(Self {
             version: read_u32(8..12, "invalid version field")?,

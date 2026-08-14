@@ -3,8 +3,9 @@
 #[cfg(test)]
 mod tests {
     use crate::bridge_mmap::{
-        open_mmap_bridge_view, pattern_byte, validate_mmap_bridge_frame, write_mmap_bridge_frame,
-        write_pattern_mmap_bridge_frame, MMAP_BRIDGE_HEADER_BYTES, MMAP_BRIDGE_PAYLOAD_ALIGNMENT,
+        MMAP_BRIDGE_HEADER_BYTES, MMAP_BRIDGE_PAYLOAD_ALIGNMENT, open_mmap_bridge_view,
+        pattern_byte, validate_mmap_bridge_frame, write_mmap_bridge_frame,
+        write_pattern_mmap_bridge_frame,
     };
     use crate::cli::{
         run_llm_once, run_llm_with_budget_admission, run_llm_with_budget_admission_replay,
@@ -24,37 +25,37 @@ mod tests {
         aegis_write_mmap_bridge_pattern, aegis_zero_copy_ready,
     };
     use crate::governance::{
-        governance_fixture_hash, BenchmarkGateProfile, BenchmarkGateProfileKind,
-        DependencyAuditManifest, DependencyAuditRecord, DependencyRiskClass, E2EScenarioProof,
-        E2EStageEvidence, E2EStageKind, GovernanceError, GovernanceLane, GovernanceLaneMap,
-        ProviderRateLimitBudget, ProviderRateLimitMitigationProof, WaveLaneAssignment,
-        REQUIRED_E2E_STAGE_MASK, REQUIRED_WAVE_MASK_18,
+        BenchmarkGateProfile, BenchmarkGateProfileKind, DependencyAuditManifest,
+        DependencyAuditRecord, DependencyRiskClass, E2EScenarioProof, E2EStageEvidence,
+        E2EStageKind, GovernanceError, GovernanceLane, GovernanceLaneMap, ProviderRateLimitBudget,
+        ProviderRateLimitMitigationProof, REQUIRED_E2E_STAGE_MASK, REQUIRED_WAVE_MASK_18,
+        WaveLaneAssignment, governance_fixture_hash,
     };
     use crate::guardrail::{
-        strip_chain_of_thought, ConstitutionalGuardrail, FirstOrderGuardrail, HostCall,
-        InvariantViolation, ZeroTrustGateway,
+        ConstitutionalGuardrail, FirstOrderGuardrail, HostCall, InvariantViolation,
+        ZeroTrustGateway, strip_chain_of_thought,
     };
     use crate::integrations::{frame_from_memory, run_integration_probe};
     use crate::ipc::{
-        message_to_zero_copy, payload_span, validate_default_zero_copy, validate_frame,
-        validate_zero_copy, zero_copy_is_default_schema, zero_copy_to_message, ZeroCopyFrame,
+        ZeroCopyFrame, message_to_zero_copy, payload_span, validate_default_zero_copy,
+        validate_frame, validate_zero_copy, zero_copy_is_default_schema, zero_copy_to_message,
     };
     use crate::layout::{
         expected_header_bytes, expected_message_metadata_size, expected_payload_alignment,
         is_expected_alignment, is_expected_header_size, validate_layout,
     };
     use crate::llm::{
-        build_llm_request, normalize_response, rejected_response, route_request,
+        AdapterRegistry, ContinuousBatchCandidate, ContinuousBatchError, ContinuousBatchPlanner,
+        ContinuousBatchPolicy, DynamicProviderFallbackProof, InferenceBackendContract,
+        InferenceResponseProof, InferenceRouteProof, LLMRequest, PrefixCacheBroker,
+        PrefixCacheError, ProviderAdapter, ProviderBudgetError, ProviderBudgetLedger,
+        ProviderConfig, ProviderRuntimeBudget, ProviderRuntimeFeedback,
+        ProviderRuntimeFeedbackKind, SpeculativeDecodeError, SpeculativeDecodeVerifier,
+        SpeculativeTokenBatch, StructuredOutputError, StructuredOutputFieldSpec,
+        StructuredOutputKind, StructuredOutputProof, StructuredOutputSchema, build_llm_request,
+        normalize_response, rejected_response, route_request,
         route_request_after_provider_feedback, route_request_with_budget, route_with_fallback,
-        session_bridge_key, validate_provider_chain, AdapterRegistry, ContinuousBatchCandidate,
-        ContinuousBatchError, ContinuousBatchPlanner, ContinuousBatchPolicy,
-        DynamicProviderFallbackProof, InferenceBackendContract, InferenceResponseProof,
-        InferenceRouteProof, LLMRequest, PrefixCacheBroker, PrefixCacheError, ProviderAdapter,
-        ProviderBudgetError, ProviderBudgetLedger, ProviderConfig, ProviderRuntimeBudget,
-        ProviderRuntimeFeedback, ProviderRuntimeFeedbackKind, SpeculativeDecodeError,
-        SpeculativeDecodeVerifier, SpeculativeTokenBatch, StructuredOutputError,
-        StructuredOutputFieldSpec, StructuredOutputKind, StructuredOutputProof,
-        StructuredOutputSchema,
+        session_bridge_key, validate_provider_chain,
     };
     use crate::memory::fidelity::{compute_fidelity, decay, reinforce};
     use crate::memory::fold::{
@@ -65,31 +66,31 @@ mod tests {
     use crate::memory::pool::{MemoryPool, PreAllocatedBuffer, SlabMemoryPool};
     use crate::message::MessageFrame;
     use crate::orchestrator::{
-        episodic_audit_raw_text_ref_hash, episodic_audit_record_hash, EpisodicAuditLog,
-        NerveRuntime, EPISODIC_AUDIT_SCHEMA_VERSION,
+        EPISODIC_AUDIT_SCHEMA_VERSION, EpisodicAuditLog, NerveRuntime,
+        episodic_audit_raw_text_ref_hash, episodic_audit_record_hash,
     };
     use crate::physical::{
-        physical_metrics_prometheus, physical_metrics_snapshot, reset_physical_metrics_for_tests,
         BacktrackSignal, DAGNode, DeterministicOrchestrator, PAVWatchdog, PhysicalArtifact,
         PhysicalDagOrchestrator, PhysicalWatchdog, PhysicalWitnessThreshold,
-        PhysicalWitnessVerification, TrapReason,
+        PhysicalWitnessVerification, TrapReason, physical_metrics_prometheus,
+        physical_metrics_snapshot, reset_physical_metrics_for_tests,
     };
     use crate::sac::{
-        accept_vote, anchor_fingerprint, anchored_witness, filter_vote, update_anchor,
-        verify_physical_witness, witness_from_vote, witness_verification_round,
-        PhysicalWitnessVote, SacPhysicalWitness, SacVote,
+        PhysicalWitnessVote, SacPhysicalWitness, SacVote, accept_vote, anchor_fingerprint,
+        anchored_witness, filter_vote, update_anchor, verify_physical_witness, witness_from_vote,
+        witness_verification_round,
     };
     use crate::sandbox::{
-        decode_quickjs_invocation_header, DeterministicSandbox, QuickJsWasmInterpreterManager,
-        SandboxBackendConfig, SandboxBackendKind, VerificationGauntlet, WasmtimeSandbox,
-        QUICKJS_INVOCATION_ABI_HEADER_BYTES, QUICKJS_INVOCATION_ABI_MAGIC,
+        DeterministicSandbox, QUICKJS_INVOCATION_ABI_HEADER_BYTES, QUICKJS_INVOCATION_ABI_MAGIC,
         QUICKJS_INVOCATION_ABI_VERSION, QUICKJS_LINEAR_MEMORY_PAGE_BYTES,
+        QuickJsWasmInterpreterManager, SandboxBackendConfig, SandboxBackendKind,
+        VerificationGauntlet, WasmtimeSandbox, decode_quickjs_invocation_header,
     };
-    use crate::schema::{BinarySchemaId, FieldDescriptor, SchemaRegistry, NERVE_SCHEMA};
-    use crate::shm::{create_region, region_is_64_aligned, validate_region, SharedMemoryRegion};
+    use crate::schema::{BinarySchemaId, FieldDescriptor, NERVE_SCHEMA, SchemaRegistry};
+    use crate::shm::{SharedMemoryRegion, create_region, region_is_64_aligned, validate_region};
     use crate::speculative::draft::{DraftTokenBatch, TargetTokenBatch};
     use crate::speculative::orchestrator::{accept_prefix, fallback_decode, speculative_decode};
-    use crate::speculative::verifier::{verify_target_prefix, VerificationResult};
+    use crate::speculative::verifier::{VerificationResult, verify_target_prefix};
 
     static FIELDS: &[FieldDescriptor] = &[
         FieldDescriptor {
@@ -1077,16 +1078,18 @@ mod tests {
             .unwrap();
 
         assert_eq!(broker.len(), 2);
-        assert!(broker
-            .lookup(
-                &first,
-                &contract,
-                &first_route,
-                [91; 32],
-                "prefix one\n".len() as u32,
-                2
-            )
-            .is_ok());
+        assert!(
+            broker
+                .lookup(
+                    &first,
+                    &contract,
+                    &first_route,
+                    [91; 32],
+                    "prefix one\n".len() as u32,
+                    2
+                )
+                .is_ok()
+        );
         assert_eq!(
             broker.lookup(
                 &second,
@@ -1884,24 +1887,31 @@ mod tests {
         // verifyable size, and Standard layout is guaranteed for `Vec<u8>` writes.
         let mmap = unsafe { MmapOptions::new().map(&file).unwrap() };
         assert!(mmap.len() > 8);
-        assert!(mmap
-            .windows(b"schema_version".len())
-            .any(|window| { window == b"schema_version" }));
-        assert!(mmap
-            .windows(EPISODIC_AUDIT_SCHEMA_VERSION.to_le_bytes().len())
-            .any(|window| { window == EPISODIC_AUDIT_SCHEMA_VERSION.to_le_bytes() }));
-        assert!(mmap
-            .windows(b"content_blake3".len())
-            .any(|window| { window == b"content_blake3" }));
-        assert!(mmap
-            .windows(b"raw_text_ref_hash".len())
-            .any(|window| { window == b"raw_text_ref_hash" }));
-        assert!(mmap
-            .windows(b"audit_record_hash".len())
-            .any(|window| { window == b"audit_record_hash" }));
-        assert!(!mmap
-            .windows(b"arrow trace".len())
-            .any(|window| { window == b"arrow trace" }));
+        assert!(
+            mmap.windows(b"schema_version".len())
+                .any(|window| { window == b"schema_version" })
+        );
+        assert!(
+            mmap.windows(EPISODIC_AUDIT_SCHEMA_VERSION.to_le_bytes().len())
+                .any(|window| { window == EPISODIC_AUDIT_SCHEMA_VERSION.to_le_bytes() })
+        );
+        assert!(
+            mmap.windows(b"content_blake3".len())
+                .any(|window| { window == b"content_blake3" })
+        );
+        assert!(
+            mmap.windows(b"raw_text_ref_hash".len())
+                .any(|window| { window == b"raw_text_ref_hash" })
+        );
+        assert!(
+            mmap.windows(b"audit_record_hash".len())
+                .any(|window| { window == b"audit_record_hash" })
+        );
+        assert!(
+            !mmap
+                .windows(b"arrow trace".len())
+                .any(|window| { window == b"arrow trace" })
+        );
 
         let reader = StreamReader::try_new(Cursor::new(&mmap[..]), None).unwrap();
         let schema = reader.schema();
@@ -2077,7 +2087,7 @@ mod tests {
     #[test]
     fn llm_runtime_budget_admission_replay_records_proof_bound_response() {
         use crate::replay::{
-            llm_budget_admission_replay_binding_hash, RunEventKind, RunEventLedger,
+            RunEventKind, RunEventLedger, llm_budget_admission_replay_binding_hash,
         };
 
         let request = LLMRequest {
@@ -2218,9 +2228,11 @@ mod tests {
         assert_eq!(aegis_llm_bridge_key(1, 2).unwrap(), (1, 2));
         assert!(aegis_llm_normalize(1, 2, "content".to_string()).unwrap());
         assert!(aegis_llm_reject(1, 2, "err".to_string()).unwrap());
-        assert!(aegis_physical_metrics_prometheus()
-            .unwrap()
-            .contains("aegis_physical_accepted_artifacts_total"));
+        assert!(
+            aegis_physical_metrics_prometheus()
+                .unwrap()
+                .contains("aegis_physical_accepted_artifacts_total")
+        );
     }
 
     #[test]
@@ -2956,9 +2968,11 @@ mod tests {
         let strict = PhysicalWatchdog {
             epsilon: 1_000_000.0,
         };
-        assert!(strict
-            .accepts_transition(artifact.ast_fingerprint, &artifact)
-            .is_err());
+        assert!(
+            strict
+                .accepts_transition(artifact.ast_fingerprint, &artifact)
+                .is_err()
+        );
 
         let consensus = PhysicalWitnessThreshold { total_witnesses: 2 };
         let artifacts = [
@@ -3111,9 +3125,11 @@ mod tests {
     #[test]
     fn guardrail_accepts_bounded_rust_artifact() {
         let guardrail = FirstOrderGuardrail;
-        assert!(guardrail
-            .verify_invariants("fn main() { let x = 1 + 1; }")
-            .is_ok());
+        assert!(
+            guardrail
+                .verify_invariants("fn main() { let x = 1 + 1; }")
+                .is_ok()
+        );
     }
 
     #[test]
@@ -3277,8 +3293,8 @@ mod tests {
     #[test]
     fn test_hybrid_polling_state_transitions() {
         use crate::shm::hybrid_poll_until;
-        use std::sync::atomic::{AtomicUsize, Ordering};
         use std::sync::Arc;
+        use std::sync::atomic::{AtomicUsize, Ordering};
         use std::time::Duration;
 
         assert!(hybrid_poll_until(|| true, Duration::from_millis(10)));
@@ -3648,8 +3664,8 @@ mod tests {
     #[test]
     fn test_ast_structural_edit_distance() {
         use crate::physical::{
-            compute_ast_structural_fingerprint, compute_ast_tree_edit_distance, PAVWatchdog,
-            PhysicalWatchdog,
+            PAVWatchdog, PhysicalWatchdog, compute_ast_structural_fingerprint,
+            compute_ast_tree_edit_distance,
         };
         let code1 = "fn main() { let x = 1; }";
         let code2 = "fn main() { let x = 1; let y = 2; }";
@@ -3692,8 +3708,8 @@ mod tests {
     #[test]
     fn test_pav_ast_distance_cache_is_symmetric_and_bounded() {
         use crate::physical::{
-            ast_distance_cache_contains_for_tests, ast_distance_cache_slot_count_for_tests,
-            compute_ast_structural_fingerprint, PAVWatchdog, PhysicalWatchdog,
+            PAVWatchdog, PhysicalWatchdog, ast_distance_cache_contains_for_tests,
+            ast_distance_cache_slot_count_for_tests, compute_ast_structural_fingerprint,
         };
 
         let old = compute_ast_structural_fingerprint("fn main() { let x = 1; }");
@@ -3714,8 +3730,8 @@ mod tests {
     #[test]
     fn test_ast_tree_edit_distance_ignores_comment_and_whitespace() {
         use crate::physical::{
-            compute_ast_structural_fingerprint, compute_ast_tree_edit_distance, BacktrackSignal,
-            PhysicalArtifact, PhysicalWatchdog, TrapReason,
+            BacktrackSignal, PhysicalArtifact, PhysicalWatchdog, TrapReason,
+            compute_ast_structural_fingerprint, compute_ast_tree_edit_distance,
         };
         let old_code = "fn main() { let x = 1; }";
         let new_code = "fn main(){\n    // ignored by canonical syntax\n    let x = 1;\n}";
@@ -3738,8 +3754,8 @@ mod tests {
     #[test]
     fn test_literal_only_ast_change_has_low_pav_under_high_fuel() {
         use crate::physical::{
-            compute_ast_structural_fingerprint, BacktrackSignal, PhysicalArtifact,
-            PhysicalWatchdog, TrapReason,
+            BacktrackSignal, PhysicalArtifact, PhysicalWatchdog, TrapReason,
+            compute_ast_structural_fingerprint,
         };
         let old = compute_ast_structural_fingerprint("fn main() { let x = 1; }");
         let new = compute_ast_structural_fingerprint("fn main() { let x = 2; }");
@@ -3930,7 +3946,7 @@ mod tests {
 
     #[test]
     fn runtime_layout_budget_rejects_invalid_alignment_or_zero_capacity() {
-        use crate::memory::fold::{RuntimeLayoutBudget, RUNTIME_LAYOUT_PAYLOAD_ALIGNMENT};
+        use crate::memory::fold::{RUNTIME_LAYOUT_PAYLOAD_ALIGNMENT, RuntimeLayoutBudget};
 
         assert!(RuntimeLayoutBudget::new(0, 128, RUNTIME_LAYOUT_PAYLOAD_ALIGNMENT).is_err());
         assert!(RuntimeLayoutBudget::new(8, 0, RUNTIME_LAYOUT_PAYLOAD_ALIGNMENT).is_err());
@@ -4149,14 +4165,16 @@ mod tests {
         };
 
         let (manifest, sandbox_result, _report, _cases) = skill_admission_fixture();
-        let failed_cases = vec![SkillRegressionCase::new(
-            1,
-            test_hash("skill-fail-input"),
-            test_hash("skill-fail-expected"),
-            test_hash("skill-fail-actual"),
-            false,
-        )
-        .unwrap()];
+        let failed_cases = vec![
+            SkillRegressionCase::new(
+                1,
+                test_hash("skill-fail-input"),
+                test_hash("skill-fail-expected"),
+                test_hash("skill-fail-actual"),
+                false,
+            )
+            .unwrap(),
+        ];
         let failed_report = SkillRegressionReport::new(&failed_cases).unwrap();
         let err = SkillAdmissionRecord::from_wasmtime_and_regressions(
             &manifest,
@@ -4186,9 +4204,11 @@ mod tests {
         assert!(!admission.is_valid_for(&manifest, &report));
 
         let mut registry = SkillRegistry::new();
-        assert!(registry
-            .commit_admitted_skill(&manifest, &admission, &report)
-            .is_err());
+        assert!(
+            registry
+                .commit_admitted_skill(&manifest, &admission, &report)
+                .is_err()
+        );
     }
 
     #[test]
@@ -4196,8 +4216,8 @@ mod tests {
         use crate::goal_intake::GoalIntakeProof;
         use crate::physical::PhysicalWatchdog;
         use crate::replay::{
-            skill_admission_replay_binding_hash, BinaryRunEventSegment, ReplayLedgerError,
-            RunEventKind, RunEventLedger, RunEventSegmentArchive, SegmentedArrowAuditStream,
+            BinaryRunEventSegment, ReplayLedgerError, RunEventKind, RunEventLedger,
+            RunEventSegmentArchive, SegmentedArrowAuditStream, skill_admission_replay_binding_hash,
         };
         use crate::skill_registry::{SkillAdmissionRecord, SkillRegistry};
         use std::time::{SystemTime, UNIX_EPOCH};
@@ -4463,40 +4483,44 @@ mod tests {
 
         let mut stale_admitted = admitted.clone();
         stale_admitted.registry_commit_hash = test_hash("stale-skill-registry-commit");
-        assert!(RunEventSegmentArchive::seal_skill_admission_handoff(
-            &dir,
-            &manifest_archive,
-            &admission,
-            &stale_admitted,
-            900,
-            901,
-            NextActionKind::ContinueExecution,
-            902,
-            test_hash("skill-handoff-typed-tool-ir"),
-            test_hash("skill-handoff-evidence-contract"),
-            test_hash("skill-handoff-policy-proof"),
-        )
-        .is_err());
+        assert!(
+            RunEventSegmentArchive::seal_skill_admission_handoff(
+                &dir,
+                &manifest_archive,
+                &admission,
+                &stale_admitted,
+                900,
+                901,
+                NextActionKind::ContinueExecution,
+                902,
+                test_hash("skill-handoff-typed-tool-ir"),
+                test_hash("skill-handoff-evidence-contract"),
+                test_hash("skill-handoff-policy-proof"),
+            )
+            .is_err()
+        );
 
         let mut no_skill_ledger = RunEventLedger::new(733);
         no_skill_ledger.append_goal_intake_recorded(&proof).unwrap();
         let no_skill_dir = dir.join("missing-skill-event");
         let no_skill_manifest =
             RunEventSegmentArchive::write_ledger(&no_skill_dir, 1, &no_skill_ledger).unwrap();
-        assert!(RunEventSegmentArchive::seal_skill_admission_handoff(
-            &no_skill_dir,
-            &no_skill_manifest,
-            &admission,
-            &admitted,
-            900,
-            901,
-            NextActionKind::ContinueExecution,
-            902,
-            test_hash("skill-handoff-typed-tool-ir"),
-            test_hash("skill-handoff-evidence-contract"),
-            test_hash("skill-handoff-policy-proof"),
-        )
-        .is_err());
+        assert!(
+            RunEventSegmentArchive::seal_skill_admission_handoff(
+                &no_skill_dir,
+                &no_skill_manifest,
+                &admission,
+                &admitted,
+                900,
+                901,
+                NextActionKind::ContinueExecution,
+                902,
+                test_hash("skill-handoff-typed-tool-ir"),
+                test_hash("skill-handoff-evidence-contract"),
+                test_hash("skill-handoff-policy-proof"),
+            )
+            .is_err()
+        );
 
         let mut tampered_handoff = SkillAdmissionHandoffProof { ..handoff };
         tampered_handoff.registry_epoch = tampered_handoff.registry_epoch.saturating_add(1);
@@ -4521,7 +4545,7 @@ mod tests {
         use crate::replay::{NextActionKind, RunEventLedger, RunEventSegmentArchive};
         use crate::sandbox::WasmtimeSandbox;
         use crate::skill_registry::{SkillAdmissionError, SkillAdmissionRecord, SkillRegistry};
-        use crate::tool_gateway::{evidence_contract_hash, ToolExecutionGateway};
+        use crate::tool_gateway::{ToolExecutionGateway, evidence_contract_hash};
         use std::time::{SystemTime, UNIX_EPOCH};
 
         let wasm = wat::parse_str(r#"(module (func (export "_start")))"#).unwrap();
@@ -4750,7 +4774,7 @@ mod tests {
         use crate::learning::LearningLedger;
         use crate::physical::PhysicalWatchdog;
         use crate::skill_registry::{
-            SkillAdmissionError, SkillAdmissionRecord, SkillRegressionReport, SkillRegistry,
+            SkillAdmissionError, SkillAdmissionRecord, SkillRegistry, SkillRegressionReport,
             SkillUsageStats,
         };
 
@@ -4822,8 +4846,8 @@ mod tests {
     #[test]
     fn test_memory_nudge_pav_rejection() {
         use crate::learning::LearningLedger;
-        use crate::memory::nudge::{MemoryCandidate, MemoryNudgeSystem};
         use crate::memory::CogniFoldStore;
+        use crate::memory::nudge::{MemoryCandidate, MemoryNudgeSystem};
         use crate::physical::PhysicalWatchdog;
 
         let mut ledger = LearningLedger::new();
@@ -4873,10 +4897,22 @@ mod tests {
 
         // Index two sessions
         let h1 = index
-            .index_session(1, "rust blake3 cryptographic hash", 1_700_000_000_000, &mut ledger, None)
+            .index_session(
+                1,
+                "rust blake3 cryptographic hash",
+                1_700_000_000_000,
+                &mut ledger,
+                None,
+            )
             .unwrap();
         let h2 = index
-            .index_session(2, "python numpy pandas dataframe", 1_700_000_000_001, &mut ledger, None)
+            .index_session(
+                2,
+                "python numpy pandas dataframe",
+                1_700_000_000_001,
+                &mut ledger,
+                None,
+            )
             .unwrap();
 
         assert_ne!(h1, h2);
@@ -4972,14 +5008,16 @@ mod tests {
 
     fn report_failure_cases() -> Vec<crate::skill_registry::SkillRegressionCase> {
         use crate::skill_registry::SkillRegressionCase;
-        vec![SkillRegressionCase::new(
-            3,
-            test_hash("skill-regression-input-fail"),
-            test_hash("skill-regression-expected-fail"),
-            test_hash("skill-regression-actual-fail"),
-            false,
-        )
-        .unwrap()]
+        vec![
+            SkillRegressionCase::new(
+                3,
+                test_hash("skill-regression-input-fail"),
+                test_hash("skill-regression-expected-fail"),
+                test_hash("skill-regression-actual-fail"),
+                false,
+            )
+            .unwrap(),
+        ]
     }
 
     fn synced_temp_file_count(directory: &std::path::Path, artifact_name: &str) -> usize {
@@ -5031,9 +5069,10 @@ mod tests {
     fn nonzero_json_hash(value: &serde_json::Value) -> [u8; 32] {
         let hash = value.as_array().unwrap();
         assert_eq!(hash.len(), 32);
-        assert!(hash
-            .iter()
-            .all(|byte| byte.as_u64().is_some_and(|byte| byte <= 255)));
+        assert!(
+            hash.iter()
+                .all(|byte| byte.as_u64().is_some_and(|byte| byte <= 255))
+        );
         assert!(hash.iter().any(|byte| byte.as_u64().unwrap() != 0));
         let mut out = [0u8; 32];
         for (index, byte) in hash.iter().enumerate() {
@@ -5178,7 +5217,7 @@ mod tests {
 
     #[test]
     fn goal_intake_rejects_mismatched_normalized_hash_and_keeps_unnegated_write() {
-        use crate::goal_intake::{normalized_goal_hash, GoalIntakePacket};
+        use crate::goal_intake::{GoalIntakePacket, normalized_goal_hash};
         use crate::policy::{RiskClass, SideEffectClass};
 
         let read_only_hash = normalized_goal_hash(
@@ -5379,8 +5418,8 @@ mod tests {
     #[test]
     fn cluster_candidate_replay_requires_goal_intake_and_valid_binding() {
         use crate::distributed::{
-            cluster_candidate_replay_binding_hash, CandidateArtifactRef, ClusterPartitionState,
-            SingleWriterRunLog, WorkLeaseTable,
+            CandidateArtifactRef, ClusterPartitionState, SingleWriterRunLog, WorkLeaseTable,
+            cluster_candidate_replay_binding_hash,
         };
         use crate::policy::SideEffectClass;
         use crate::replay::{ReplayLedgerError, RunEventLedger};
@@ -5410,16 +5449,18 @@ mod tests {
         let mut ledger = RunEventLedger::new(envelope.run_id);
         seed_goal_intake_replay(&mut ledger, "cluster-replay-binding");
         let mut writer = SingleWriterRunLog::new(envelope.run_id);
-        assert!(writer
-            .commit_candidate(
-                &mut ledger,
-                &envelope,
-                &lease,
-                &candidate,
-                ClusterPartitionState::WriterReachable,
-                500,
-            )
-            .is_ok());
+        assert!(
+            writer
+                .commit_candidate(
+                    &mut ledger,
+                    &envelope,
+                    &lease,
+                    &candidate,
+                    ClusterPartitionState::WriterReachable,
+                    500,
+                )
+                .is_ok()
+        );
         assert!(RunEventLedger::from_events(envelope.run_id, ledger.events().to_vec()).is_ok());
     }
 
@@ -5654,8 +5695,8 @@ mod tests {
     #[test]
     fn hot_evidence_index_returns_artifact_bound_candidate_refs() {
         use crate::evidence_index::{
-            hot_evidence_document_binding_hash, CandidateEvidenceUse, CandidateOnlyGate,
-            EvidenceCandidateTier, HotEvidenceIndex, HotEvidenceIndexError, SortedEvidenceSet,
+            CandidateEvidenceUse, CandidateOnlyGate, EvidenceCandidateTier, HotEvidenceIndex,
+            HotEvidenceIndexError, SortedEvidenceSet, hot_evidence_document_binding_hash,
         };
 
         let epoch_hash = test_hash("hot-evidence-index-epoch");
@@ -6004,9 +6045,10 @@ mod tests {
             run.capsule.candidates()[0].origin_tier,
             EvidenceCandidateTier::AgenticProgramOutput
         );
-        assert!(run
-            .capsule
-            .is_valid_for_replay_records(None, Some(&run.execution_record)));
+        assert!(
+            run.capsule
+                .is_valid_for_replay_records(None, Some(&run.execution_record))
+        );
     }
 
     #[test]
@@ -6079,12 +6121,14 @@ mod tests {
         .unwrap();
         assert!(run.manifest.is_valid_for_program(&program));
         assert!(run.execution_record.is_valid());
-        assert!(run
-            .execution_record
-            .matches_candidates(&program, run.capsule.candidates()));
-        assert!(run
-            .capsule
-            .is_valid_for_replay_records(None, Some(&run.execution_record)));
+        assert!(
+            run.execution_record
+                .matches_candidates(&program, run.capsule.candidates())
+        );
+        assert!(
+            run.capsule
+                .is_valid_for_replay_records(None, Some(&run.execution_record))
+        );
         assert!(
             CandidateOnlyGate::validate_replay_bound_context_pack_candidates(
                 run.capsule.candidates(),
@@ -6200,9 +6244,11 @@ mod tests {
         .unwrap();
         assert!(!lexical_run.manifest.requires_exact_index);
         assert_eq!(lexical_run.manifest.exact_index_hash, [0; 32]);
-        assert!(lexical_run
-            .capsule
-            .is_valid_for_replay_records(None, Some(&lexical_run.execution_record)));
+        assert!(
+            lexical_run
+                .capsule
+                .is_valid_for_replay_records(None, Some(&lexical_run.execution_record))
+        );
     }
 
     #[test]
@@ -6334,7 +6380,7 @@ mod tests {
 
     #[test]
     fn sorted_evidence_set_deduplicates_and_intersects_deterministically() {
-        use crate::evidence_index::{sorted_evidence_set_hash, SortedEvidenceSet};
+        use crate::evidence_index::{SortedEvidenceSet, sorted_evidence_set_hash};
 
         let left = SortedEvidenceSet::from_unsorted(vec![9, 1, 5, 3, 5, 7]);
         let right = SortedEvidenceSet::from_unsorted(vec![8, 7, 3, 3, 2, 1]);
@@ -6414,7 +6460,7 @@ mod tests {
     #[test]
     fn hot_term_dictionary_expands_prefix_deterministically() {
         use crate::evidence_index::{
-            expanded_term_ref_hash, lexical_token_hash, HotTermDictionary, TermDictionaryError,
+            HotTermDictionary, TermDictionaryError, expanded_term_ref_hash, lexical_token_hash,
         };
 
         let epoch_hash = test_hash("term-dictionary-epoch");
@@ -6462,8 +6508,8 @@ mod tests {
     #[test]
     fn cold_vector_index_returns_candidate_only_replay_bound_refs() {
         use crate::evidence_index::{
-            cold_vector_query_hash, CandidateEvidenceUse, CandidateOnlyGate,
-            ColdVectorExpansionReplayRecord, ColdVectorIndex, EvidenceCandidateTier,
+            CandidateEvidenceUse, CandidateOnlyGate, ColdVectorExpansionReplayRecord,
+            ColdVectorIndex, EvidenceCandidateTier, cold_vector_query_hash,
         };
 
         let epoch_hash = test_hash("cold-vector-runtime-epoch");
@@ -6532,8 +6578,8 @@ mod tests {
     #[test]
     fn cold_vector_index_rejects_bad_vectors_and_tampered_replay() {
         use crate::evidence_index::{
-            cold_vector_query_hash, CandidateOnlyGate, CandidateOnlyGateError,
-            ColdVectorExpansionReplayRecord, ColdVectorIndex, ColdVectorIndexError,
+            CandidateOnlyGate, CandidateOnlyGateError, ColdVectorExpansionReplayRecord,
+            ColdVectorIndex, ColdVectorIndexError, cold_vector_query_hash,
         };
 
         let epoch_hash = test_hash("cold-vector-runtime-reject-epoch");
@@ -6653,7 +6699,7 @@ mod tests {
 
     #[test]
     fn task_ledger_deadline_pressure_uses_explicit_timestamp() {
-        use crate::task_ledger::{deadline_pressure_score, TaskCard, TaskLedger};
+        use crate::task_ledger::{TaskCard, TaskLedger, deadline_pressure_score};
 
         assert_eq!(deadline_pressure_score(Some(900), 1_000, 10_000), 10_000);
         assert_eq!(deadline_pressure_score(Some(11_000), 1_000, 10_000), 0);
@@ -7349,9 +7395,9 @@ mod tests {
     #[test]
     fn policy_kernel_hard_blocks_r4_without_staging_or_hitl() {
         use crate::policy::{
-            CapabilityClass, DeterministicPolicyKernel, EvidenceContract, PolicyDecision,
-            PolicyFacts, RiskClass, SideEffectClass, TypedToolIR,
-            POLICY_RULE_R4_REQUIRES_STAGING_OR_HITL,
+            CapabilityClass, DeterministicPolicyKernel, EvidenceContract,
+            POLICY_RULE_R4_REQUIRES_STAGING_OR_HITL, PolicyDecision, PolicyFacts, RiskClass,
+            SideEffectClass, TypedToolIR,
         };
 
         let ir = TypedToolIR::new(
@@ -7382,8 +7428,9 @@ mod tests {
     #[test]
     fn policy_kernel_requires_approval_for_r3() {
         use crate::policy::{
-            CapabilityClass, DeterministicPolicyKernel, EvidenceContract, PolicyDecision,
-            PolicyFacts, RiskClass, SideEffectClass, TypedToolIR, POLICY_RULE_APPROVAL_REQUIRED,
+            CapabilityClass, DeterministicPolicyKernel, EvidenceContract,
+            POLICY_RULE_APPROVAL_REQUIRED, PolicyDecision, PolicyFacts, RiskClass, SideEffectClass,
+            TypedToolIR,
         };
 
         let ir = TypedToolIR::new(
@@ -7414,8 +7461,8 @@ mod tests {
     #[test]
     fn policy_kernel_allows_approved_r3() {
         use crate::policy::{
-            CapabilityClass, DeterministicPolicyKernel, EvidenceContract, PolicyDecision,
-            PolicyFacts, RiskClass, SideEffectClass, TypedToolIR, POLICY_RULE_ALLOW,
+            CapabilityClass, DeterministicPolicyKernel, EvidenceContract, POLICY_RULE_ALLOW,
+            PolicyDecision, PolicyFacts, RiskClass, SideEffectClass, TypedToolIR,
         };
 
         let ir = TypedToolIR::new(
@@ -7446,8 +7493,9 @@ mod tests {
     #[test]
     fn policy_kernel_requires_staging_when_contract_requires_it() {
         use crate::policy::{
-            CapabilityClass, DeterministicPolicyKernel, EvidenceContract, PolicyDecision,
-            PolicyFacts, RiskClass, SideEffectClass, TypedToolIR, POLICY_RULE_STAGING_REQUIRED,
+            CapabilityClass, DeterministicPolicyKernel, EvidenceContract,
+            POLICY_RULE_STAGING_REQUIRED, PolicyDecision, PolicyFacts, RiskClass, SideEffectClass,
+            TypedToolIR,
         };
 
         let ir = TypedToolIR::new(
@@ -7478,9 +7526,9 @@ mod tests {
     #[test]
     fn policy_kernel_allows_r4_with_physical_staging_and_approval() {
         use crate::policy::{
-            CapabilityClass, DeterministicPolicyKernel, EvidenceContract, PolicyDecision,
-            PolicyFacts, RiskClass, SideEffectClass, StagingEvidenceKind, TypedToolIR,
-            POLICY_RULE_ALLOW,
+            CapabilityClass, DeterministicPolicyKernel, EvidenceContract, POLICY_RULE_ALLOW,
+            PolicyDecision, PolicyFacts, RiskClass, SideEffectClass, StagingEvidenceKind,
+            TypedToolIR,
         };
 
         let ir = TypedToolIR::new(
@@ -7512,9 +7560,9 @@ mod tests {
     #[test]
     fn policy_kernel_rejects_text_or_mock_staging_facts_for_r4() {
         use crate::policy::{
-            CapabilityClass, DeterministicPolicyKernel, EvidenceContract, PolicyDecision,
-            PolicyFacts, RiskClass, SideEffectClass, StagingEvidenceKind, TypedToolIR,
-            POLICY_RULE_INVALID_FACTS,
+            CapabilityClass, DeterministicPolicyKernel, EvidenceContract,
+            POLICY_RULE_INVALID_FACTS, PolicyDecision, PolicyFacts, RiskClass, SideEffectClass,
+            StagingEvidenceKind, TypedToolIR,
         };
 
         let ir = TypedToolIR::new(
@@ -7555,9 +7603,9 @@ mod tests {
     #[test]
     fn policy_datalog_closure_proves_r4_hard_block_and_binds_trace() {
         use crate::policy::{
-            CapabilityClass, DeterministicPolicyKernel, EvidenceContract, PolicyDecision,
-            PolicyFacts, RiskClass, SideEffectClass, TypedToolIR,
-            POLICY_RULE_R4_REQUIRES_STAGING_OR_HITL,
+            CapabilityClass, DeterministicPolicyKernel, EvidenceContract,
+            POLICY_RULE_R4_REQUIRES_STAGING_OR_HITL, PolicyDecision, PolicyFacts, RiskClass,
+            SideEffectClass, TypedToolIR,
         };
 
         let ir = TypedToolIR::new(
@@ -8248,9 +8296,9 @@ mod tests {
     fn browser_witness_can_satisfy_r4_isolated_browser_staging() {
         use crate::browser_witness::{BrowserActionKind, BrowserActionTrace, BrowserWitnessProof};
         use crate::policy::{
-            CapabilityClass, DeterministicPolicyKernel, EvidenceContract, PolicyDecision,
-            PolicyFacts, ReviewPacket, RiskClass, SideEffectClass, StagingEvidenceKind,
-            TypedToolIR, POLICY_RULE_ALLOW,
+            CapabilityClass, DeterministicPolicyKernel, EvidenceContract, POLICY_RULE_ALLOW,
+            PolicyDecision, PolicyFacts, ReviewPacket, RiskClass, SideEffectClass,
+            StagingEvidenceKind, TypedToolIR,
         };
 
         let policy_window_hash = test_hash("browser-r4-policy-window");
@@ -8440,8 +8488,8 @@ mod tests {
             ContextNodeKind,
         };
         use crate::evidence_index::{
-            browser_page_search_pattern_hash, BrowserPageSearchCandidateError,
-            CandidateOnlyGateError, EvidenceCandidateTier,
+            BrowserPageSearchCandidateError, CandidateOnlyGateError, EvidenceCandidateTier,
+            browser_page_search_pattern_hash,
         };
         use crate::policy::SideEffectClass;
 
@@ -8787,12 +8835,14 @@ mod tests {
             None,
             test_hash("other-policy-window"),
         );
-        assert!(BrowserObservationPacket::from_collector_envelope(
-            &envelope,
-            action_policy_drift,
-            SideEffectClass::ExternalWrite,
-        )
-        .is_none());
+        assert!(
+            BrowserObservationPacket::from_collector_envelope(
+                &envelope,
+                action_policy_drift,
+                SideEffectClass::ExternalWrite,
+            )
+            .is_none()
+        );
 
         let mut missing_artifacts = envelope.artifacts.clone();
         missing_artifacts.pop();
@@ -8845,7 +8895,7 @@ mod tests {
             BrowserActionKind, BrowserActionTrace, BrowserArtifactKind, BrowserArtifactRef,
             BrowserCollectorEvidenceEnvelope, BrowserCollectorKind, BrowserObservationPacket,
         };
-        use crate::hot_engine::{simd_blake3_hash, InMemoryEvidenceArena, TrustLevel};
+        use crate::hot_engine::{InMemoryEvidenceArena, TrustLevel, simd_blake3_hash};
         use crate::policy::SideEffectClass;
 
         fn commit_artifact(
@@ -9074,9 +9124,11 @@ mod tests {
             url_before_ref.content_hash,
             *blake3::hash(b"https://example.test/before").as_bytes()
         );
-        assert!(url_before_ref
-            .verify_file(dir.join("url-before.txt"))
-            .is_ok());
+        assert!(
+            url_before_ref
+                .verify_file(dir.join("url-before.txt"))
+                .is_ok()
+        );
 
         let packet = BrowserObservationPacket::from_collector_envelope(
             &envelope,
@@ -9313,13 +9365,15 @@ mod tests {
         assert!(collector_run.is_valid_for_plan(&plan));
         assert!(collector_run.manifest.binds_plan(&plan));
         assert_eq!(collector_run.manifest.artifact_path_refs.len(), 8);
-        assert!(collector_run
-            .manifest
-            .artifact_path_refs
-            .iter()
-            .all(|path_ref| path_ref
-                .canonical_path
-                .starts_with(&collector_run.run_directory)));
+        assert!(
+            collector_run
+                .manifest
+                .artifact_path_refs
+                .iter()
+                .all(|path_ref| path_ref
+                    .canonical_path
+                    .starts_with(&collector_run.run_directory))
+        );
         let envelope = collector_run.manifest.to_envelope().unwrap();
         assert_eq!(
             envelope.content_hash_for(BrowserArtifactKind::UrlBefore),
@@ -9576,9 +9630,8 @@ mod tests {
     fn browser_ops_bench_verification_is_replay_visible_before_shift_inheritance() {
         use crate::browser_witness::{BrowserCollectorKind, BrowserOpsBenchVerificationProof};
         use crate::replay::{
-            browser_ops_bench_verification_replay_binding_hash, BinaryRunEventSegment,
-            NextActionKind, ReplayLedgerError, RunEventKind, RunEventLedger,
-            RunEventSegmentArchive,
+            BinaryRunEventSegment, NextActionKind, ReplayLedgerError, RunEventKind, RunEventLedger,
+            RunEventSegmentArchive, browser_ops_bench_verification_replay_binding_hash,
         };
         use serde_json::json;
         use std::time::{SystemTime, UNIX_EPOCH};
@@ -9956,26 +10009,34 @@ mod tests {
         assert_eq!(payload["report"]["verified_task_count"], json!(1));
         assert_eq!(payload["report"]["replay_recorded"], json!(true));
         assert_eq!(payload["report"]["run_id"], json!(8888));
-        assert!(payload["report"]["proof_hash"]
-            .as_array()
-            .unwrap()
-            .iter()
-            .any(|v| v != 0));
-        assert!(payload["report"]["verification_event_hash"]
-            .as_array()
-            .unwrap()
-            .iter()
-            .any(|v| v != 0));
-        assert!(payload["report"]["replay_binding_hash"]
-            .as_array()
-            .unwrap()
-            .iter()
-            .any(|v| v != 0));
-        assert!(payload["write_evidence"]["evidence_hash"]
-            .as_array()
-            .unwrap()
-            .iter()
-            .any(|v| v != 0));
+        assert!(
+            payload["report"]["proof_hash"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .any(|v| v != 0)
+        );
+        assert!(
+            payload["report"]["verification_event_hash"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .any(|v| v != 0)
+        );
+        assert!(
+            payload["report"]["replay_binding_hash"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .any(|v| v != 0)
+        );
+        assert!(
+            payload["write_evidence"]["evidence_hash"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .any(|v| v != 0)
+        );
     }
 
     #[test]
@@ -10035,11 +10096,13 @@ mod tests {
             );
         }
         assert!(payload["report"]["context_event_count"].as_u64().unwrap() >= 4);
-        assert!(payload["write_evidence"]["evidence_hash"]
-            .as_array()
-            .unwrap()
-            .iter()
-            .any(|v| v != 0));
+        assert!(
+            payload["write_evidence"]["evidence_hash"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .any(|v| v != 0)
+        );
     }
 
     #[test]
@@ -10049,8 +10112,8 @@ mod tests {
             BrowserWitnessProof,
         };
         use crate::policy::{
-            CapabilityClass, DeterministicPolicyKernel, EvidenceContract, PolicyDecision,
-            RiskClass, SideEffectClass, TypedToolIR, POLICY_RULE_ALLOW,
+            CapabilityClass, DeterministicPolicyKernel, EvidenceContract, POLICY_RULE_ALLOW,
+            PolicyDecision, RiskClass, SideEffectClass, TypedToolIR,
         };
 
         let policy_window_hash = test_hash("browser-packet-r4-policy-window");
@@ -10121,25 +10184,29 @@ mod tests {
         assert_eq!(trace.decision, PolicyDecision::Allow);
         assert_eq!(trace.matched_rule_ids, vec![POLICY_RULE_ALLOW]);
 
-        assert!(packet
-            .isolated_browser_policy_facts(
-                [0; 32],
-                true,
-                policy_window_hash,
-                browser_session_hash,
-                redaction_policy_hash,
-            )
-            .is_none());
+        assert!(
+            packet
+                .isolated_browser_policy_facts(
+                    [0; 32],
+                    true,
+                    policy_window_hash,
+                    browser_session_hash,
+                    redaction_policy_hash,
+                )
+                .is_none()
+        );
 
-        assert!(packet
-            .isolated_browser_policy_facts(
-                test_hash("policy-v2"),
-                true,
-                policy_window_hash,
-                test_hash("wrong-session"),
-                redaction_policy_hash,
-            )
-            .is_none());
+        assert!(
+            packet
+                .isolated_browser_policy_facts(
+                    test_hash("policy-v2"),
+                    true,
+                    policy_window_hash,
+                    test_hash("wrong-session"),
+                    redaction_policy_hash,
+                )
+                .is_none()
+        );
     }
 
     #[test]
@@ -10258,8 +10325,8 @@ mod tests {
     #[test]
     fn run_event_records_budget_admitted_llm_response_replay_binding() {
         use crate::replay::{
-            llm_budget_admission_replay_binding_hash, ReplayLedgerError, RunEventKind,
-            RunEventLedger,
+            ReplayLedgerError, RunEventKind, RunEventLedger,
+            llm_budget_admission_replay_binding_hash,
         };
 
         let request = build_llm_request(41, 42, "budget route replay", Some("fast-model"));
@@ -10332,8 +10399,8 @@ mod tests {
     #[test]
     fn tool_execution_evidence_binds_output_physical_witness_and_policy() {
         use crate::replay::{
-            tool_call_completion_binding_hash, tool_execution_evidence_hash, ToolExecutionEvidence,
-            ToolExecutionStatus, ToolExecutorKind,
+            ToolExecutionEvidence, ToolExecutionStatus, ToolExecutorKind,
+            tool_call_completion_binding_hash, tool_execution_evidence_hash,
         };
 
         let evidence = ToolExecutionEvidence::new(
@@ -10432,8 +10499,8 @@ mod tests {
     #[test]
     fn run_event_records_tool_completion_evidence_after_matching_policy() {
         use crate::replay::{
-            tool_call_completion_binding_hash, ReplayLedgerError, RunEventKind, RunEventLedger,
-            ToolExecutionEvidence, ToolExecutionStatus, ToolExecutorKind,
+            ReplayLedgerError, RunEventKind, RunEventLedger, ToolExecutionEvidence,
+            ToolExecutionStatus, ToolExecutorKind, tool_call_completion_binding_hash,
         };
 
         let evidence = ToolExecutionEvidence::new(
@@ -10507,10 +10574,10 @@ mod tests {
     fn run_event_records_memory_commit_only_after_tool_completion() {
         use crate::memory::frame::SemanticNode;
         use crate::replay::{
-            memory_commit_binding_hash, ReplayLedgerError, RunEventKind, RunEventLedger,
-            ToolExecutionEvidence, ToolExecutionStatus, ToolExecutorKind,
+            ReplayLedgerError, RunEventKind, RunEventLedger, ToolExecutionEvidence,
+            ToolExecutionStatus, ToolExecutorKind, memory_commit_binding_hash,
         };
-        use crate::tool_gateway::{tool_memory_commit_proof_hash, ToolMemoryCommitProof};
+        use crate::tool_gateway::{ToolMemoryCommitProof, tool_memory_commit_proof_hash};
 
         let evidence = ToolExecutionEvidence::new(
             test_hash("typed-tool-ir"),
@@ -10600,7 +10667,7 @@ mod tests {
             RunEventKind, RunEventLedger, RunEventSegmentArchive, ToolExecutionEvidence,
             ToolExecutionStatus, ToolExecutorKind,
         };
-        use crate::tool_gateway::{tool_memory_commit_proof_hash, ToolMemoryCommitProof};
+        use crate::tool_gateway::{ToolMemoryCommitProof, tool_memory_commit_proof_hash};
         use std::time::{SystemTime, UNIX_EPOCH};
 
         let unique = SystemTime::now()
@@ -10738,20 +10805,22 @@ mod tests {
             &checkpoint,
             &stale_packet
         ));
-        assert!(RunEventSegmentArchive::seal_memory_commit_handoff(
-            &dir,
-            &manifest,
-            &memory_proof,
-            test_hash("wrong-tool-evidence"),
-            88,
-            89,
-            NextActionKind::ContinueExecution,
-            78,
-            typed_tool_ir_hash,
-            test_hash("evidence-contract"),
-            policy_proof_hash,
-        )
-        .is_err());
+        assert!(
+            RunEventSegmentArchive::seal_memory_commit_handoff(
+                &dir,
+                &manifest,
+                &memory_proof,
+                test_hash("wrong-tool-evidence"),
+                88,
+                89,
+                NextActionKind::ContinueExecution,
+                78,
+                typed_tool_ir_hash,
+                test_hash("evidence-contract"),
+                policy_proof_hash,
+            )
+            .is_err()
+        );
     }
 
     #[test]
@@ -10878,7 +10947,7 @@ mod tests {
             ToolExecutionStatus, ToolExecutorKind,
         };
         use crate::tool_gateway::{
-            browser_tool_physical_evidence_hash, evidence_contract_hash, ToolExecutionGateway,
+            ToolExecutionGateway, browser_tool_physical_evidence_hash, evidence_contract_hash,
         };
         use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -11103,8 +11172,8 @@ mod tests {
         };
         use crate::replay::{RunEventKind, RunEventLedger};
         use crate::tool_gateway::{
-            browser_gateway_execution_proof_hash, browser_tool_physical_evidence_hash,
-            ToolExecutionGateway,
+            ToolExecutionGateway, browser_gateway_execution_proof_hash,
+            browser_tool_physical_evidence_hash,
         };
         use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -11339,7 +11408,7 @@ mod tests {
             TypedToolIR,
         };
         use crate::replay::{RunEventKind, RunEventLedger};
-        use crate::tool_gateway::{browser_gateway_execution_proof_hash, ToolExecutionGateway};
+        use crate::tool_gateway::{ToolExecutionGateway, browser_gateway_execution_proof_hash};
         use std::fs;
 
         fn write_artifact(
@@ -11596,7 +11665,7 @@ mod tests {
             TypedToolIR,
         };
         use crate::replay::{RunEventKind, RunEventLedger};
-        use crate::tool_gateway::{browser_gateway_execution_proof_hash, ToolExecutionGateway};
+        use crate::tool_gateway::{ToolExecutionGateway, browser_gateway_execution_proof_hash};
         use std::fs;
 
         fn write_artifact(
@@ -11946,7 +12015,7 @@ mod tests {
         };
         use crate::replay::{NextActionKind, RunEventLedger, RunEventSegmentArchive};
         use crate::sandbox::WasmtimeSandbox;
-        use crate::tool_gateway::{evidence_contract_hash, ToolExecutionGateway};
+        use crate::tool_gateway::{ToolExecutionGateway, evidence_contract_hash};
         use std::time::{SystemTime, UNIX_EPOCH};
 
         let unique = SystemTime::now()
@@ -12039,7 +12108,7 @@ mod tests {
         use crate::replay::{NextActionKind, RunEventLedger, RunEventSegmentArchive};
         use crate::sandbox::WasmtimeSandbox;
         use crate::task_ledger::{TaskCard, TaskLedger};
-        use crate::tool_gateway::{evidence_contract_hash, ToolExecutionGateway};
+        use crate::tool_gateway::{ToolExecutionGateway, evidence_contract_hash};
         use std::time::{SystemTime, UNIX_EPOCH};
 
         let mut tasks = TaskLedger::new(10_000);
@@ -12260,7 +12329,7 @@ mod tests {
         };
         use crate::replay::{NextActionKind, RunEventKind, RunEventLedger, RunEventSegmentArchive};
         use crate::sandbox::WasmtimeSandbox;
-        use crate::tool_gateway::{evidence_contract_hash, ToolExecutionGateway};
+        use crate::tool_gateway::{ToolExecutionGateway, evidence_contract_hash};
         use std::time::{SystemTime, UNIX_EPOCH};
 
         let unique = SystemTime::now()
@@ -12419,7 +12488,7 @@ mod tests {
         };
         use crate::replay::{NextActionKind, RunEventLedger, RunEventSegmentArchive};
         use crate::sandbox::WasmtimeSandbox;
-        use crate::tool_gateway::{evidence_contract_hash, ToolExecutionGateway};
+        use crate::tool_gateway::{ToolExecutionGateway, evidence_contract_hash};
         use std::time::{SystemTime, UNIX_EPOCH};
 
         let unique = SystemTime::now()
@@ -12577,8 +12646,8 @@ mod tests {
             RiskClass, SideEffectClass, TypedToolIR,
         };
         use crate::replay::{
-            browser_observation_packet_replay_binding_hash, BinaryRunEventSegment,
-            ReplayLedgerError, RunEventKind, RunEventLedger, RunEventSegmentArchive,
+            BinaryRunEventSegment, ReplayLedgerError, RunEventKind, RunEventLedger,
+            RunEventSegmentArchive, browser_observation_packet_replay_binding_hash,
         };
         use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -12880,8 +12949,8 @@ mod tests {
             HotBitmapFilter, HotEvidenceIndex, HotLexicalIndex, SortedEvidenceSet,
         };
         use crate::replay::{
-            agentic_evidence_sdk_run_replay_binding_hash, NextActionKind, ReplayLedgerError,
-            RunEventKind, RunEventLedger, RunEventSegmentArchive,
+            NextActionKind, ReplayLedgerError, RunEventKind, RunEventLedger,
+            RunEventSegmentArchive, agentic_evidence_sdk_run_replay_binding_hash,
         };
         use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -13165,15 +13234,19 @@ mod tests {
 
         let mut tampered_handoff = handoff.clone();
         tampered_handoff.capsule_hash = test_hash("context-sdk-run-wrong-capsule");
-        assert!(governor
-            .build_sdk_run_handoff_bound_context_pack(1, &sdk_run.capsule, &tampered_handoff)
-            .is_err());
+        assert!(
+            governor
+                .build_sdk_run_handoff_bound_context_pack(1, &sdk_run.capsule, &tampered_handoff)
+                .is_err()
+        );
 
         let mut tampered_capsule = sdk_run.capsule.clone();
         tampered_capsule.candidate_list_hash = test_hash("context-sdk-run-wrong-candidates");
-        assert!(governor
-            .build_sdk_run_handoff_bound_context_pack(1, &tampered_capsule, &handoff)
-            .is_err());
+        assert!(
+            governor
+                .build_sdk_run_handoff_bound_context_pack(1, &tampered_capsule, &handoff)
+                .is_err()
+        );
     }
 
     #[test]
@@ -13439,8 +13512,8 @@ mod tests {
     #[test]
     fn run_event_records_goal_intake_before_context_and_replay_scans() {
         use crate::replay::{
-            goal_intake_replay_binding_hash, BinaryRunEventSegment, ReplayLedgerError,
-            RunEventKind, RunEventLedger, RunEventSegmentArchive,
+            BinaryRunEventSegment, ReplayLedgerError, RunEventKind, RunEventLedger,
+            RunEventSegmentArchive, goal_intake_replay_binding_hash,
         };
         use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -13673,7 +13746,7 @@ mod tests {
     #[test]
     fn run_event_ledger_requires_policy_decision_before_approval_token() {
         use crate::replay::{
-            approval_token_binding_hash, ReplayLedgerError, RunEventKind, RunEventLedger,
+            ReplayLedgerError, RunEventKind, RunEventLedger, approval_token_binding_hash,
         };
 
         let mut ledger = RunEventLedger::new(102);
@@ -15153,17 +15226,15 @@ mod tests {
         );
         assert!(first_commit_path.exists());
         std::fs::remove_file(&first_commit_path).unwrap();
-        assert!(RunEventSegmentArchive::prove_segmented_arrow_audit(
-            &missing_dir,
-            &missing_manifest
-        )
-        .is_err());
+        assert!(
+            RunEventSegmentArchive::prove_segmented_arrow_audit(&missing_dir, &missing_manifest)
+                .is_err()
+        );
         assert!(RunEventSegmentArchive::read_ledger_mmap(&missing_dir, &missing_manifest).is_err());
-        assert!(RunEventSegmentArchive::recover_manifest_from_segments(
-            &missing_dir,
-            ledger.run_id
-        )
-        .is_err());
+        assert!(
+            RunEventSegmentArchive::recover_manifest_from_segments(&missing_dir, ledger.run_id)
+                .is_err()
+        );
 
         let tampered_dir = std::env::current_dir()
             .unwrap()
@@ -15185,11 +15256,10 @@ mod tests {
         sidecar.write_all(&[0xA9]).unwrap();
         sidecar.flush().unwrap();
 
-        assert!(RunEventSegmentArchive::prove_segmented_arrow_audit(
-            &tampered_dir,
-            &tampered_manifest
-        )
-        .is_err());
+        assert!(
+            RunEventSegmentArchive::prove_segmented_arrow_audit(&tampered_dir, &tampered_manifest)
+                .is_err()
+        );
         let recovered_manifest =
             RunEventSegmentArchive::recover_manifest_from_segments(&tampered_dir, ledger.run_id)
                 .unwrap();
@@ -15378,10 +15448,12 @@ mod tests {
                 + report.column_scan_missing_tail_rejection_count,
             report.crash_points_exercised
         );
-        assert!(report
-            .crash_points
-            .iter()
-            .any(|point| point.recovered_event_count < ledger.len()));
+        assert!(
+            report
+                .crash_points
+                .iter()
+                .any(|point| point.recovered_event_count < ledger.len())
+        );
 
         let scorecard = HarnessBenchScorecard {
             bench_id: 9,
@@ -15653,8 +15725,8 @@ mod tests {
     #[test]
     fn hot_engine_arena_hashes_browser_artifact_without_file_roundtrip() {
         use crate::hot_engine::{
-            arena_storage_ref_hash, simd_blake3_hash, ArenaAdmission, InMemoryEvidenceArena,
-            TrustLevel,
+            ArenaAdmission, InMemoryEvidenceArena, TrustLevel, arena_storage_ref_hash,
+            simd_blake3_hash,
         };
 
         let payload = b"<html><body><button id='go'>run</button></body></html>";
@@ -15771,8 +15843,8 @@ mod tests {
     #[test]
     fn async_shadow_sealer_persists_arena_payload_off_hot_path() {
         use crate::hot_engine::{
-            shadow_seal_batch_hash, simd_blake3_hash, AsyncShadowSealer, InMemoryEvidenceArena,
-            TrustLevel,
+            AsyncShadowSealer, InMemoryEvidenceArena, TrustLevel, shadow_seal_batch_hash,
+            simd_blake3_hash,
         };
         use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -15807,8 +15879,8 @@ mod tests {
     #[test]
     fn async_shadow_sealer_backpressure_is_nonblocking_and_hash_bound() {
         use crate::hot_engine::{
-            shadow_seal_backpressure_hash, AsyncShadowSealer, InMemoryEvidenceArena,
-            ShadowSealAdmission, TrustLevel,
+            AsyncShadowSealer, InMemoryEvidenceArena, ShadowSealAdmission, TrustLevel,
+            shadow_seal_backpressure_hash,
         };
         use std::time::{Duration, Instant};
 
@@ -15859,8 +15931,8 @@ mod tests {
     fn shadow_seal_batch_is_replay_visible_in_segmented_arrow_cold_ledger() {
         use crate::hot_engine::{AsyncShadowSealer, InMemoryEvidenceArena, TrustLevel};
         use crate::replay::{
-            shadow_seal_replay_binding_hash, ReplayLedgerError, RunEventKind, RunEventLedger,
-            RunEventSegmentArchive,
+            ReplayLedgerError, RunEventKind, RunEventLedger, RunEventSegmentArchive,
+            shadow_seal_replay_binding_hash,
         };
         use std::time::{SystemTime, UNIX_EPOCH};
 

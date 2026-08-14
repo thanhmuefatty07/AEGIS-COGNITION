@@ -516,11 +516,7 @@ fn hash_to_nonzero_u128(hash: [u8; 32]) -> u128 {
     let mut bytes = [0_u8; 16];
     bytes.copy_from_slice(&hash[..16]);
     let value = u128::from_le_bytes(bytes);
-    if value == 0 {
-        1
-    } else {
-        value
-    }
+    if value == 0 { 1 } else { value }
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -590,6 +586,7 @@ fn goal_root_task_hash(task: &TaskCard) -> [u8; 32] {
     let mut hasher = Hasher::new();
     hasher.update(b"aegis-goal-root-task-v1");
     update_u128(&mut hasher, task.task_id);
+    update_u64(&mut hasher, task.attempt_id);
     update_u8(&mut hasher, task_status_code(task.status));
     update_u64(&mut hasher, task.dependency_ids.len() as u64);
     for dependency_id in &task.dependency_ids {
@@ -607,10 +604,15 @@ fn task_status_code(status: TaskStatus) -> u8 {
     match status {
         TaskStatus::Pending => 1,
         TaskStatus::Ready => 2,
-        TaskStatus::Running => 3,
-        TaskStatus::Done => 4,
-        TaskStatus::Failed => 5,
-        TaskStatus::Cancelled => 6,
+        TaskStatus::Admitted => 3,
+        TaskStatus::Running => 4,
+        TaskStatus::RetryWait => 5,
+        TaskStatus::Cancelling => 6,
+        TaskStatus::Done => 7,
+        TaskStatus::Failed => 8,
+        TaskStatus::Cancelled => 9,
+        TaskStatus::TimedOut => 10,
+        TaskStatus::NeedsReconciliation => 11,
     }
 }
 

@@ -59,6 +59,7 @@ dependencies = [
  "proptest",
  "pyo3",
  "quote",
+ "rayon",
  "regex",
  "serde",
  "serde_json",
@@ -69,6 +70,7 @@ dependencies = [
  "tracing-subscriber",
  "wasmtime",
  "wat",
+ "windows-sys 0.61.2",
  "xxhash-rust",
 ]
 

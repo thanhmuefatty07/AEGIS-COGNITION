@@ -12,3 +12,9 @@ members = [
     "pocs/code_orchestration_poc",
 ]
 resolver = "2"
+
+[profile.test]
+debug = 0
+
+[profile.dev]
+debug = 0

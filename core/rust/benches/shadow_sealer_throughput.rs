@@ -19,7 +19,7 @@
 use aegis_nerve::hot_engine::{
     AsyncShadowSealer, EvidenceHandle, InMemoryEvidenceArena, TrustLevel,
 };
-use criterion::{black_box, criterion_group, criterion_main, Criterion, Throughput};
+use criterion::{Criterion, Throughput, black_box, criterion_group, criterion_main};
 use std::path::PathBuf;
 
 const ARENA_LIVE_BYTES: usize = 64 * 1024 * 1024;
@@ -68,9 +68,7 @@ fn bench_shadow_sealer_try_submit_payload_sweep(c: &mut Criterion) {
                     for _ in 0..64 {
                         let handle = handles[idx % handles.len()];
                         idx = idx.wrapping_add(1);
-                        let _ = black_box(
-                            sealer.try_submit(black_box(&arena), black_box(handle)),
-                        );
+                        let _ = black_box(sealer.try_submit(black_box(&arena), black_box(handle)));
                     }
                     total += start.elapsed();
                     drop(sealer);
@@ -101,9 +99,7 @@ fn bench_shadow_sealer_queue_depth_sweep(c: &mut Criterion) {
                     for _ in 0..64 {
                         let handle = handles[idx % handles.len()];
                         idx = idx.wrapping_add(1);
-                        let _ = black_box(
-                            sealer.try_submit(black_box(&arena), black_box(handle)),
-                        );
+                        let _ = black_box(sealer.try_submit(black_box(&arena), black_box(handle)));
                     }
                     total += start.elapsed();
                     drop(sealer);

@@ -48,7 +48,8 @@ impl InteractionPattern {
         {
             return None;
         }
-        let pattern_hash = interaction_pattern_domain_hash(&task_type, success_rate, avg_duration_ms);
+        let pattern_hash =
+            interaction_pattern_domain_hash(&task_type, success_rate, avg_duration_ms);
         Some(Self {
             task_type,
             success_rate,
@@ -93,8 +94,13 @@ impl UserModel {
         }
         let empty_patterns: Vec<InteractionPattern> = Vec::new();
         let empty_prefs: BTreeMap<String, String> = BTreeMap::new();
-        let model_hash =
-            user_model_domain_hash(user_id, &empty_prefs, &empty_patterns, timestamp, trust_level);
+        let model_hash = user_model_domain_hash(
+            user_id,
+            &empty_prefs,
+            &empty_patterns,
+            timestamp,
+            trust_level,
+        );
         Some(Self {
             user_id,
             preferences: empty_prefs,
@@ -107,7 +113,10 @@ impl UserModel {
 
     pub fn is_valid(&self) -> bool {
         self.user_id > 0
-            && self.interaction_patterns.iter().all(InteractionPattern::is_valid)
+            && self
+                .interaction_patterns
+                .iter()
+                .all(InteractionPattern::is_valid)
             && self.last_updated > 0
             && nonzero_hash(&self.model_hash)
             && self.model_hash
@@ -204,8 +213,7 @@ impl UserModelStore {
 
         // Get or create user model
         let model = self.models.entry(user_id).or_insert_with(|| {
-            UserModel::new(user_id, trust_level, timestamp)
-                .expect("valid user model")
+            UserModel::new(user_id, trust_level, timestamp).expect("valid user model")
         });
 
         // Update

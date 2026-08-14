@@ -1,7 +1,43 @@
 # ADR-008: Admission before spawn
 
-Status: Accepted
+Status: Accepted (2026-08-14)
 
-Every executable work item declares a `ResourceRequest`. The Rust admission controller
-either issues a `ResourceLease`, places work into a bounded queue, or rejects it with a
-typed reason. This prevents unbounded spawning and keeps overload behavior explicit.
+## Context and problem
+
+Unbounded work creation can exhaust CPU, memory, descriptors, processes, or
+provider budgets before a scheduler observes the load.
+
+## Constraints and options
+
+Admission must be deterministic, bounded, and reclaimable. Options were spawn
+then monitor, a best-effort semaphore, or a multidimensional Rust admission
+controller before execution.
+
+## Decision and rationale
+
+Validate a `ResourceRequest`, check checked arithmetic against capacity, issue a
+Rust-held lease, and only then allow execution. Queues have finite limits and
+unknown capacity is conservative.
+
+## Trade-offs and consequences
+
+Some work queues instead of starting immediately, and throughput can be lower
+than optimistic overcommit. In exchange, accounting is auditable and release
+can be fenced.
+
+## Rejected alternatives
+
+Optimistic overcommit and queue-until-memory-fails were rejected as unsafe
+failure modes.
+
+## Migration, security, performance, operations, rollback
+
+Every new work kind maps to an explicit lane and request shape. Fuzz bounds and
+test duplicate release. Record queue/rejection reasons, not secrets. Measure
+admission latency and queue tail behavior. Rollback requires draining active
+leases before changing capacity semantics.
+
+## Evidence
+
+`AdmissionController`, checked resource arithmetic, bounded queue tests, and
+runtime integration tests.

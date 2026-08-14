@@ -18,11 +18,11 @@
 
 use aegis_nerve::learning::LearningLedger;
 use aegis_nerve::licensing::LicenseManager;
+use aegis_nerve::skill_registry::SkillAdmissionError;
 use aegis_nerve::skill_registry::{
     SkillRegistry, SkillRegressionCase, SkillRegressionReport, SkillUsageStats,
 };
-use aegis_nerve::skill_registry::SkillAdmissionError;
-use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion, Throughput};
+use criterion::{BenchmarkId, Criterion, Throughput, black_box, criterion_group, criterion_main};
 
 const SAMPLE_SIZE: usize = 60;
 

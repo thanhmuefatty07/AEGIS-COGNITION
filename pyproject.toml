@@ -1,6 +1,6 @@
 [build-system]
-requires = ["setuptools>=75", "wheel"]
-build-backend = "setuptools.build_meta"
+requires = ["maturin>=1.9,<2"]
+build-backend = "maturin"
 
 [project]
 name = "aegis-cognition"
@@ -48,9 +48,12 @@ Documentation = "https://docs.aegis-cognition.ai"
 Repository = "https://github.com/aegis-cognition/aegis-cognition"
 Issues = "https://github.com/aegis-cognition/aegis-cognition/issues"
 
-[tool.setuptools.packages.find]
-include = ["aegis_cognition*"]
-exclude = ["tests*", "examples*"]
+[tool.maturin]
+manifest-path = "core/rust/Cargo.toml"
+module-name = "aegis_cognition.aegis_nerve"
+bindings = "pyo3"
+python-source = "."
+features = ["python-extension"]
 
 [tool.ruff]
 line-length = 120

@@ -45,9 +45,7 @@ impl SessionDocument {
     }
 
     pub fn is_valid(&self) -> bool {
-        self.session_id > 0
-            && nonzero_hash(&self.content_hash)
-            && self.timestamp > 0
+        self.session_id > 0 && nonzero_hash(&self.content_hash) && self.timestamp > 0
     }
 }
 
@@ -152,11 +150,7 @@ impl SessionSearchIndex {
     /// `CandidateOnlyGate` when injected into context packs.
     ///
     /// Returns at most `top_k` results, ordered by relevance.
-    pub fn search_sessions(
-        &self,
-        query: &str,
-        top_k: usize,
-    ) -> Vec<CandidateEvidenceRef> {
+    pub fn search_sessions(&self, query: &str, top_k: usize) -> Vec<CandidateEvidenceRef> {
         // Hash the query text for audit
         let _query_hash = {
             let mut h = domain_hasher(b"aegis-session-query-v1");

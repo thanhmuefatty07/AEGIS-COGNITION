@@ -11,7 +11,17 @@ Snapshot captured during implementation on 2026-08-14 (UTC+7).
 - Root Python metadata and `core/python/pyproject.toml` previously declared different
   Python floors; this change aligns both to the supported policy documented in the
   repository ADRs.
-- The new resource contracts compile with the existing Rust dependency set.
+- The Rust 2024 workspace library targets compile with the separated PyO3
+  extension feature disabled for test/linker correctness.
+- Runtime admission returns an opaque lease token; Rust retains the authoritative
+  grant and fences completion by lease generation and attempt.
+- Resource policy thresholds carry explicit `ASSUMED DEFAULTS` provenance and
+  unknown host memory maps to a finite conservative cap.
+- Linux cgroup v2 and Windows Job Object adapters exist as opt-in controllers;
+  a compiled adapter is not evidence that the current process has permission to
+  enforce it.
+- The root wheel is configured through maturin and the native extension uses
+  the `python-extension` Cargo feature only for packaging.
 
 ## Deliberately not claimed
 
@@ -24,8 +34,8 @@ Snapshot captured during implementation on 2026-08-14 (UTC+7).
 
 ## Required follow-up evidence
 
-1. Build/import the PyO3 extension on Tier-1 platforms.
-2. Add TaskLedger state-transition integration tests around resource leases.
-3. Add Linux cgroup v2 and Windows Job Object adapters with platform-specific tests.
-4. Establish AEGIS workload benchmarks before enabling Rayon, NUMA, affinity, or accelerator specialization.
-5. Run dependency, secret, fuzz, and packaging gates in CI/release environments.
+1. Build/import the maturin PyO3 extension on Tier-1 platforms.
+2. Run live cgroup v2 and Windows Job Object process tests with the required privileges.
+3. Establish retained H0/H1/H2 workload benchmarks before freezing policy values.
+4. Complete Wasmtime fuzz/adversarial/replay-parity evidence.
+5. Run dependency, secret, full workspace, and release packaging gates in CI/release environments.

@@ -4,10 +4,11 @@
   "title": "AEGIS Resource Contract v1",
   "description": "Versioned boundary for Rust-authoritative capability and resource proposals.",
   "type": "object",
-  "required": ["schema", "task_id", "work_kind", "cpu", "host_memory", "io", "deadline", "priority", "side_effect_class"],
+  "required": ["schema", "task_id", "attempt_id", "work_kind", "cpu", "host_memory", "io", "deadline", "priority", "side_effect_class"],
   "properties": {
     "schema": { "const": "aegis-resource-contract-v1" },
     "task_id": { "type": "integer", "minimum": 1 },
+    "attempt_id": { "type": "integer", "minimum": 1, "default": 1 },
     "work_kind": { "enum": ["NativeTask", "PythonCognition", "Tool", "Agent", "Accelerator"] },
     "cpu": {
       "type": "object",

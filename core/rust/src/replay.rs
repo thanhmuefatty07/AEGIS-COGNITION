@@ -15,11 +15,11 @@ use crate::policy::HarnessBenchScorecard;
 use crate::skill_registry::{AdmittedSkillRecord, SkillAdmissionRecord};
 use crate::task_ledger::TaskSelectionProof;
 use crate::tool_gateway::ToolMemoryCommitProof;
-use arrow::array::{Array, ArrayRef, BinaryArray, UInt64Array, UInt8Array};
+use arrow::array::{Array, ArrayRef, BinaryArray, UInt8Array, UInt64Array};
 use arrow::datatypes::{DataType, Field, Schema, SchemaRef};
 use arrow::ipc::reader::{StreamDecoder, StreamReader};
 use arrow::ipc::writer::StreamWriter;
-use arrow::ipc::{root_as_message, MessageHeader};
+use arrow::ipc::{MessageHeader, root_as_message};
 use arrow::record_batch::RecordBatch;
 use arrow_buffer::Buffer;
 use blake3::Hasher;
@@ -2620,8 +2620,8 @@ impl ArrowRunEventStream {
         scan_state: &mut RunEventColumnScanState,
         logical_hasher: &mut Hasher,
     ) -> Result<ArrowRunEventMmapColumnScan, &'static str> {
-        let file = File::open(path.as_ref())
-            .map_err(|_| "failed to open mmap run event column scan")?;
+        let file =
+            File::open(path.as_ref()).map_err(|_| "failed to open mmap run event column scan")?;
         // SAFETY: identical invariants to the arrow-stream `mmap` at line 2580+.
         // `file` is opened read-only; `MmapOptions::new().map(&file)` produces a
         // default-sized read-only mapping that exactly matches the file size.
@@ -7075,8 +7075,8 @@ impl RunEventSegmentCacheKey {
     }
 }
 
-fn run_event_segment_cache(
-) -> &'static RwLock<HashMap<RunEventSegmentCacheKey, RunEventSegmentCacheEntry>> {
+fn run_event_segment_cache()
+-> &'static RwLock<HashMap<RunEventSegmentCacheKey, RunEventSegmentCacheEntry>> {
     static CACHE: OnceLock<RwLock<HashMap<RunEventSegmentCacheKey, RunEventSegmentCacheEntry>>> =
         OnceLock::new();
     CACHE.get_or_init(|| RwLock::new(HashMap::new()))
@@ -8289,7 +8289,7 @@ fn publish_synced_artifact_temp(temp_path: &Path, path: &Path) -> Result<(), &'s
     const MOVEFILE_REPLACE_EXISTING: u32 = 0x1;
     const MOVEFILE_WRITE_THROUGH: u32 = 0x8;
 
-    extern "system" {
+    unsafe extern "system" {
         fn MoveFileExW(
             existing_file_name: *const u16,
             new_file_name: *const u16,

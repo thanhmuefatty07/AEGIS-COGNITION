@@ -1,20 +1,29 @@
-//! Authoritative single-node runtime facade.
+//! Authoritative single-node runtime and fenced lease state machine.
 //!
-//! This is the first integration seam between the existing TaskLedger and the
-//! resource contracts. It intentionally does not execute user code; it proves
-//! admission/state transitions before a future scheduler invokes an execution lane.
+//! Python proposes work through typed JSON, but Rust owns the task status,
+//! attempt, lease and execution-lane state.  A caller receives only an opaque
+//! lease token; all authoritative lease attributes are looked up in Rust.
 
 use crate::resource::{
     AdmissionController, AdmissionDecision, ExecutionLane, ExecutionLaneRegistry, ResourceError,
-    ResourceLease, ResourceRequest,
+    ResourceLeaseToken, ResourceRequest, WorkKind,
 };
 use crate::task_ledger::{TaskCard, TaskLedger, TaskLedgerError, TaskStatus};
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum RuntimeAdmission {
-    Admitted(ResourceLease),
+    Admitted(ResourceLeaseToken),
     Queued { position: usize, reason: String },
     Rejected { reason: ResourceError },
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum RuntimeOutcome {
+    Done,
+    Failed,
+    RetryWait,
+    Cancelled,
+    TimedOut,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -22,8 +31,10 @@ pub enum RuntimeError {
     Task(TaskLedgerError),
     Resource(ResourceError),
     TaskRequestMismatch,
+    AttemptMismatch,
     InvalidTransition(TaskStatus),
     InvalidOutcome(String),
+    LaneAccounting(ExecutionLane),
 }
 
 #[derive(Debug)]
@@ -51,12 +62,62 @@ impl AuthoritativeRuntime {
         if task.task_id != request.task_id {
             return Err(RuntimeError::TaskRequestMismatch);
         }
+        if task.attempt_id != request.attempt_id {
+            return Err(RuntimeError::AttemptMismatch);
+        }
+        if task.status != TaskStatus::Pending {
+            return Err(RuntimeError::InvalidTransition(task.status));
+        }
         self.ledger.insert_task(task).map_err(RuntimeError::Task)?;
         self.ledger
-            .mark_status(request.task_id, TaskStatus::Ready)
+            .transition_status(request.task_id, TaskStatus::Ready)
             .map_err(RuntimeError::Task)?;
+        self.admit_existing(request, now_ms)
+    }
 
+    pub fn retry(
+        &mut self,
+        task_id: u128,
+        request: ResourceRequest,
+        now_ms: u64,
+    ) -> Result<RuntimeAdmission, RuntimeError> {
+        if request.task_id != task_id {
+            return Err(RuntimeError::TaskRequestMismatch);
+        }
+        let current_attempt = self
+            .ledger
+            .task(task_id)
+            .ok_or(RuntimeError::Task(TaskLedgerError::MissingTask(task_id)))?
+            .attempt_id;
+        if request.attempt_id <= current_attempt {
+            return Err(RuntimeError::AttemptMismatch);
+        }
+        self.ledger
+            .set_attempt_id(task_id, request.attempt_id)
+            .map_err(RuntimeError::Task)?;
+        self.ledger
+            .transition_status(task_id, TaskStatus::Ready)
+            .map_err(RuntimeError::Task)?;
+        self.admit_existing(request, now_ms)
+    }
+
+    fn admit_existing(
+        &mut self,
+        request: ResourceRequest,
+        now_ms: u64,
+    ) -> Result<RuntimeAdmission, RuntimeError> {
         let lane = lane_for_work_kind(request.work_kind);
+        self.ledger
+            .validate_status_transition(request.task_id, TaskStatus::Admitted)
+            .map_err(|error| match error {
+                TaskLedgerError::InvalidStatusTransition { from, .. } => {
+                    RuntimeError::InvalidTransition(from)
+                }
+                other => RuntimeError::Task(other),
+            })?;
+        if !TaskStatus::Admitted.can_transition_to(TaskStatus::Running) {
+            return Err(RuntimeError::InvalidTransition(TaskStatus::Admitted));
+        }
         if !self.lanes.try_acquire(lane) {
             let position = self
                 .admission
@@ -70,10 +131,21 @@ impl AuthoritativeRuntime {
         let decision = self.admission.admit(request, now_ms);
         match decision {
             AdmissionDecision::Admitted(lease) => {
-                self.ledger
-                    .mark_status(lease.task_id, TaskStatus::Running)
-                    .map_err(RuntimeError::Task)?;
-                Ok(RuntimeAdmission::Admitted(lease))
+                if let Err(error) = self
+                    .ledger
+                    .transition_status(lease.task_id, TaskStatus::Admitted)
+                    .and_then(|_| {
+                        self.ledger
+                            .transition_status(lease.task_id, TaskStatus::Running)
+                    })
+                {
+                    let _ = self.admission.release(lease.lease_id);
+                    let _ = self.lanes.release(lane);
+                    return Err(RuntimeError::Task(error));
+                }
+                Ok(RuntimeAdmission::Admitted(ResourceLeaseToken::from_lease(
+                    &lease,
+                )))
             }
             AdmissionDecision::Queued { position, reason } => {
                 let _ = self.lanes.release(lane);
@@ -86,72 +158,178 @@ impl AuthoritativeRuntime {
         }
     }
 
-    pub fn complete(&mut self, lease: ResourceLease) -> Result<(), RuntimeError> {
+    pub fn finish(
+        &mut self,
+        token: ResourceLeaseToken,
+        outcome: RuntimeOutcome,
+    ) -> Result<(), RuntimeError> {
+        if outcome == RuntimeOutcome::Cancelled {
+            return self.cancel_and_release(token);
+        }
+        let target = match outcome {
+            RuntimeOutcome::Done => TaskStatus::Done,
+            RuntimeOutcome::Failed => TaskStatus::Failed,
+            RuntimeOutcome::RetryWait => TaskStatus::RetryWait,
+            RuntimeOutcome::TimedOut => TaskStatus::TimedOut,
+            RuntimeOutcome::Cancelled => unreachable!("cancelled is handled above"),
+        };
+        self.release_and_transition(token, target)
+    }
+
+    #[cfg(test)]
+    fn begin_cancellation(&mut self, token: &ResourceLeaseToken) -> Result<(), RuntimeError> {
+        let lease = self
+            .admission
+            .inspect_token(token)
+            .map_err(RuntimeError::Resource)?;
+        self.ledger
+            .validate_status_transition(lease.task_id, TaskStatus::Cancelling)
+            .map_err(|error| match error {
+                TaskLedgerError::InvalidStatusTransition { from, .. } => {
+                    RuntimeError::InvalidTransition(from)
+                }
+                other => RuntimeError::Task(other),
+            })?;
+        self.ledger
+            .transition_status(lease.task_id, TaskStatus::Cancelling)
+            .map_err(RuntimeError::Task)
+    }
+
+    fn cancel_and_release(&mut self, token: ResourceLeaseToken) -> Result<(), RuntimeError> {
+        // Validate both transitions and both resource counters before exposing
+        // Cancelling. If any precondition fails, the call is side-effect free.
+        let lease = self
+            .admission
+            .inspect_token(&token)
+            .map_err(RuntimeError::Resource)?
+            .clone();
+        self.ledger
+            .validate_status_transition(lease.task_id, TaskStatus::Cancelling)
+            .map_err(map_transition_error)?;
+        if !TaskStatus::Cancelling.can_transition_to(TaskStatus::Cancelled) {
+            return Err(RuntimeError::InvalidTransition(TaskStatus::Cancelling));
+        }
         let lane = lane_for_work_kind(lease.work_kind);
-        let _ = self.lanes.release(lane);
-        self.admission
-            .release(lease.lease_id)
+        if !self.lanes.can_release(lane) {
+            return Err(RuntimeError::LaneAccounting(lane));
+        }
+
+        self.ledger
+            .transition_status(lease.task_id, TaskStatus::Cancelling)
+            .map_err(RuntimeError::Task)?;
+        let release_result = self
+            .admission
+            .release_fenced(&token)
+            .map_err(RuntimeError::Resource)
+            .and_then(|released| {
+                debug_assert_eq!(released.lease_id, lease.lease_id);
+                if self.lanes.release(lane) {
+                    Ok(())
+                } else {
+                    Err(RuntimeError::LaneAccounting(lane))
+                }
+            });
+        match release_result {
+            Ok(()) => self
+                .ledger
+                .transition_status(lease.task_id, TaskStatus::Cancelled)
+                .map_err(RuntimeError::Task),
+            Err(error) => {
+                let _ = self
+                    .ledger
+                    .transition_status(lease.task_id, TaskStatus::NeedsReconciliation);
+                Err(error)
+            }
+        }
+    }
+
+    fn release_and_transition(
+        &mut self,
+        token: ResourceLeaseToken,
+        target: TaskStatus,
+    ) -> Result<(), RuntimeError> {
+        // Validate every mutable subsystem before changing any of them. This
+        // makes duplicate, stale, and forged completion calls side-effect free.
+        let lease = self
+            .admission
+            .inspect_token(&token)
+            .map_err(RuntimeError::Resource)?
+            .clone();
+        self.ledger
+            .validate_status_transition(lease.task_id, target)
+            .map_err(|error| match error {
+                TaskLedgerError::InvalidStatusTransition { from, .. } => {
+                    RuntimeError::InvalidTransition(from)
+                }
+                other => RuntimeError::Task(other),
+            })?;
+        let lane = lane_for_work_kind(lease.work_kind);
+        if !self.lanes.can_release(lane) {
+            return Err(RuntimeError::LaneAccounting(lane));
+        }
+
+        let released = self
+            .admission
+            .release_fenced(&token)
             .map_err(RuntimeError::Resource)?;
+        debug_assert_eq!(released.lease_id, lease.lease_id);
+        if !self.lanes.release(lane) {
+            return Err(RuntimeError::LaneAccounting(lane));
+        }
         self.ledger
-            .mark_status(lease.task_id, TaskStatus::Done)
+            .transition_status(lease.task_id, target)
             .map_err(RuntimeError::Task)
-    }
-
-    pub fn fail(&mut self, lease: ResourceLease) -> Result<(), RuntimeError> {
-        self.release_lease(&lease)?;
-        self.ledger
-            .mark_status(lease.task_id, TaskStatus::Failed)
-            .map_err(RuntimeError::Task)
-    }
-
-    pub fn cancel(&mut self, lease: ResourceLease) -> Result<(), RuntimeError> {
-        lease.cancel();
-        self.release_lease(&lease)?;
-        self.ledger
-            .mark_status(lease.task_id, TaskStatus::Cancelled)
-            .map_err(RuntimeError::Task)
-    }
-
-    fn release_lease(&mut self, lease: &ResourceLease) -> Result<(), RuntimeError> {
-        self.admission
-            .release(lease.lease_id)
-            .map_err(RuntimeError::Resource)?;
-        let _ = self.lanes.release(lane_for_work_kind(lease.work_kind));
-        Ok(())
     }
 }
 
-fn lane_for_work_kind(kind: crate::resource::WorkKind) -> ExecutionLane {
+fn map_transition_error(error: TaskLedgerError) -> RuntimeError {
+    match error {
+        TaskLedgerError::InvalidStatusTransition { from, .. } => {
+            RuntimeError::InvalidTransition(from)
+        }
+        other => RuntimeError::Task(other),
+    }
+}
+
+fn lane_for_work_kind(kind: WorkKind) -> ExecutionLane {
     match kind {
-        crate::resource::WorkKind::NativeTask => ExecutionLane::Cpu,
-        crate::resource::WorkKind::PythonCognition => ExecutionLane::PythonCognition,
-        crate::resource::WorkKind::Tool => ExecutionLane::Untrusted,
-        crate::resource::WorkKind::Agent => ExecutionLane::PythonCognition,
-        crate::resource::WorkKind::Accelerator => ExecutionLane::Accelerator,
+        WorkKind::NativeTask => ExecutionLane::Cpu,
+        WorkKind::PythonCognition | WorkKind::Agent => ExecutionLane::PythonCognition,
+        WorkKind::Tool => ExecutionLane::Untrusted,
+        WorkKind::Accelerator => ExecutionLane::Accelerator,
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::resource::{CpuRequest, MemoryRequest, WorkKind};
+    use crate::resource::{CpuRequest, MemoryRequest, ResourceError, ResourceLeaseToken};
 
-    #[test]
-    fn task_ledger_and_admission_move_together() {
+    fn runtime() -> AuthoritativeRuntime {
         let profile = crate::resource::HardwareProfile::probe();
-        let mut runtime = AuthoritativeRuntime::new(60_000, &profile);
-        let task = TaskCard::new(1, vec![], 0, None, None);
-        let mut request = ResourceRequest::minimal(1, WorkKind::NativeTask);
+        AuthoritativeRuntime::new(60_000, &profile)
+    }
+
+    fn request(task_id: u128, attempt_id: u64) -> ResourceRequest {
+        let mut request = ResourceRequest::minimal(task_id, WorkKind::NativeTask);
+        request.attempt_id = attempt_id;
         request.cpu = CpuRequest {
             min_threads: 1,
             max_threads: 1,
         };
         request.host_memory = MemoryRequest { bytes: 1 };
+        request
+    }
+
+    #[test]
+    fn task_ledger_and_admission_move_together() {
+        let mut runtime = runtime();
+        let task = TaskCard::new(1, vec![], 0, None, None);
         let result = runtime
-            .submit(task, request, 1)
+            .submit(task, request(1, 1), 1)
             .expect("submit should be valid");
-        let lease = match result {
-            RuntimeAdmission::Admitted(lease) => lease,
+        let token = match result {
+            RuntimeAdmission::Admitted(token) => token,
             other => panic!("expected admitted task, got {other:?}"),
         };
         assert_eq!(
@@ -159,11 +337,98 @@ mod tests {
             Some(TaskStatus::Running)
         );
         runtime
-            .complete(lease)
+            .finish(token, RuntimeOutcome::Done)
             .expect("completion should release resources");
         assert_eq!(
             runtime.ledger.task(1).map(|task| task.status),
             Some(TaskStatus::Done)
         );
+    }
+
+    #[test]
+    fn forged_or_duplicate_token_is_side_effect_free() {
+        let mut runtime = runtime();
+        let task = TaskCard::new(1, vec![], 0, None, None);
+        let token = match runtime.submit(task, request(1, 1), 1).unwrap() {
+            RuntimeAdmission::Admitted(token) => token,
+            other => panic!("expected admission, got {other:?}"),
+        };
+        let before_lane = runtime.lanes.clone();
+        let mut forged = token.clone();
+        forged.generation = forged.generation.saturating_add(1);
+        assert!(matches!(
+            runtime.finish(forged, RuntimeOutcome::Done),
+            Err(RuntimeError::Resource(ResourceError::LeaseFenced(1)))
+        ));
+        assert_eq!(runtime.lanes, before_lane);
+        runtime.finish(token.clone(), RuntimeOutcome::Done).unwrap();
+        let after = runtime.lanes.clone();
+        assert!(matches!(
+            runtime.finish(token, RuntimeOutcome::Done),
+            Err(RuntimeError::Resource(ResourceError::UnknownLease(1)))
+        ));
+        assert_eq!(runtime.lanes, after);
+    }
+
+    #[test]
+    fn state_machine_supports_retry_and_fenced_attempts() {
+        let mut runtime = runtime();
+        let task = TaskCard::new(1, vec![], 0, None, None);
+        let token = match runtime.submit(task, request(1, 1), 1).unwrap() {
+            RuntimeAdmission::Admitted(token) => token,
+            other => panic!("expected admission, got {other:?}"),
+        };
+        runtime.finish(token, RuntimeOutcome::RetryWait).unwrap();
+        assert_eq!(
+            runtime.ledger.task(1).map(|task| task.status),
+            Some(TaskStatus::RetryWait)
+        );
+        let retry_token = match runtime.retry(1, request(1, 2), 2).unwrap() {
+            RuntimeAdmission::Admitted(token) => token,
+            other => panic!("expected retry admission, got {other:?}"),
+        };
+        assert_eq!(retry_token.attempt_id, 2);
+        runtime
+            .finish(retry_token, RuntimeOutcome::TimedOut)
+            .unwrap();
+        assert_eq!(
+            runtime.ledger.task(1).map(|task| task.status),
+            Some(TaskStatus::TimedOut)
+        );
+    }
+
+    #[test]
+    fn cancellation_exposes_cancelling_transition_before_release() {
+        let mut runtime = runtime();
+        let task = TaskCard::new(1, vec![], 0, None, None);
+        let token = match runtime.submit(task, request(1, 1), 1).unwrap() {
+            RuntimeAdmission::Admitted(token) => token,
+            other => panic!("expected admission, got {other:?}"),
+        };
+        runtime.begin_cancellation(&token).unwrap();
+        assert_eq!(
+            runtime.ledger.task(1).map(|task| task.status),
+            Some(TaskStatus::Cancelling)
+        );
+        runtime
+            .release_and_transition(token, TaskStatus::Cancelled)
+            .unwrap();
+        assert_eq!(
+            runtime.ledger.task(1).map(|task| task.status),
+            Some(TaskStatus::Cancelled)
+        );
+    }
+
+    #[test]
+    fn token_does_not_serialize_authoritative_grants() {
+        let token = ResourceLeaseToken {
+            schema: crate::resource::LEASE_TOKEN_SCHEMA_V1.to_string(),
+            lease_id: 1,
+            generation: 1,
+            attempt_id: 1,
+        };
+        let json = serde_json::to_string(&token).unwrap();
+        assert!(!json.contains("granted"));
+        assert!(!json.contains("work_kind"));
     }
 }
