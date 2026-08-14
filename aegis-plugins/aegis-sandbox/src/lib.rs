@@ -247,10 +247,10 @@ impl SandboxStateStore {
             fs::read_dir(&self.root).map_err(|error| SandboxError::StateIo(error.to_string()))?
         {
             let entry = entry.map_err(|error| SandboxError::StateIo(error.to_string()))?;
-            if entry.path().extension().is_some_and(|ext| ext == "json") {
-                if let Some(stem) = entry.path().file_stem().and_then(|stem| stem.to_str()) {
-                    keys.push(stem.to_string());
-                }
+            if entry.path().extension().is_some_and(|ext| ext == "json")
+                && let Some(stem) = entry.path().file_stem().and_then(|stem| stem.to_str())
+            {
+                keys.push(stem.to_string());
             }
         }
         keys.sort();

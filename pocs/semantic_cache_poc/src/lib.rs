@@ -50,10 +50,10 @@ impl SemanticCache {
             threshold,
             file_path: file_path.clone(),
         };
-        if let Some(ref path) = file_path {
-            if Path::new(path).exists() {
-                let _ = cache.load_from_file(path);
-            }
+        if let Some(ref path) = file_path
+            && Path::new(path).exists()
+        {
+            let _ = cache.load_from_file(path);
         }
         cache
     }

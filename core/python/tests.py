@@ -348,6 +348,16 @@ def _minimal_supply_chain_root(root: Path) -> Path:
         encoding="utf-8",
     )
     (root / "core" / "rust" / "src" / "tool_gateway.rs").write_text("tool gateway", encoding="utf-8")
+    for relative in (
+        "core/rust/src/resource.rs",
+        "core/rust/src/resource_platform.rs",
+        "core/rust/src/runtime.rs",
+        "core/rust/src/execution.rs",
+        "schemas/lease-token-v1.json",
+    ):
+        path = root / relative
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text("provenance fixture", encoding="utf-8")
     return root
 
 
@@ -737,7 +747,11 @@ arrow = "54"
 arrow-buffer = "54"
 blake3 = "1.5.0"
 pyo3 = { version = "0.29.2", features = ["extension-module"] }
+rayon = "1.12"
 wasmtime = "47.0.3"
+
+[target.'cfg(windows)'.dependencies]
+windows-sys = "0.61.2"
 """,
             encoding="utf-8",
         )
@@ -755,7 +769,9 @@ checksum = "{idx:064x}"
                     ("arrow-buffer", "54.3.1"),
                     ("blake3", "1.5.0"),
                     ("pyo3", "0.29.2"),
+                    ("rayon", "1.12.0"),
                     ("wasmtime", "47.0.3"),
+                    ("windows-sys", "0.61.2"),
                 ),
                 start=1,
             )
@@ -766,7 +782,7 @@ checksum = "{idx:064x}"
         report = evaluate_dependency_audit_gate(root)
         assert report["truth_claim"] is False
         assert report["overall_ok"] is True
-        assert report["passed"] == 6
+        assert report["passed"] == 8
         assert all(record["record_digest"] for record in report["records"])
 
         (root / "Cargo.lock").write_text("version = 4\n", encoding="utf-8")

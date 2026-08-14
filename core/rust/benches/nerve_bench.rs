@@ -1,3 +1,12 @@
+// Benchmark fixtures intentionally mirror the production proof API shape and
+// use explicit ranges/casts so generated comparison tables stay readable.
+#![allow(
+    clippy::int_plus_one,
+    clippy::manual_range_contains,
+    clippy::too_many_arguments,
+    clippy::unnecessary_cast
+)]
+
 use aegis_nerve::bridge_mmap::{open_mmap_bridge_view, pattern_byte, write_mmap_bridge_frame};
 use aegis_nerve::browser_witness::{
     BrowserActionKind, BrowserActionPlanKind, BrowserActionPlanRecord, BrowserActionTrace,

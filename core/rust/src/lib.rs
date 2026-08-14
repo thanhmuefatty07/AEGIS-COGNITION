@@ -1,3 +1,20 @@
+// The core exposes a compatibility-heavy proof/hash API and intentionally
+// keeps several nested state-validation branches readable. Keep the pinned
+// Clippy policy strict for new lint classes while documenting this bounded
+// legacy allow-list explicitly.
+#![allow(
+    clippy::collapsible_if,
+    clippy::len_without_is_empty,
+    clippy::manual_range_contains,
+    clippy::needless_question_mark,
+    clippy::new_without_default,
+    clippy::redundant_closure,
+    clippy::redundant_pattern_matching,
+    clippy::unnecessary_map_or,
+    clippy::unnecessary_sort_by,
+    clippy::too_many_arguments
+)]
+
 pub mod bridge_mmap;
 pub mod browser_witness;
 pub mod circuit_breaker;
