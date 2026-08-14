@@ -54,6 +54,8 @@ from scripts.supply_chain_gate import (
 )
 from scripts.tcp_cluster_soak_gate import evaluate_tcp_cluster_soak_gate, write_real_multi_machine_cluster_soak_capture
 
+REPO_ROOT = Path(__file__).resolve().parents[2]
+
 
 def test_message_validates_and_converts():
     message = build_message(1, 2, b'abc')
@@ -112,7 +114,7 @@ def test_bridge_batch_ok():
 
 def test_build_preflight_reports_missing_toolchain_cleanly():
     with patch("core.python.preflight.which", return_value=None):
-        result = check_build_preflight(r'c:\Users\ADMIN\AEGIS-COGNITION')
+        result = check_build_preflight(str(REPO_ROOT))
         assert result.python_bridge_present
         assert result.rust_core_present
         assert not result.cargo_present
@@ -122,7 +124,7 @@ def test_build_preflight_reports_missing_toolchain_cleanly():
 
 def test_build_preflight_reports_present_toolchain_cleanly():
     with patch("core.python.preflight.which", return_value="/path/to/binary"):
-        result = check_build_preflight(r'c:\Users\ADMIN\AEGIS-COGNITION')
+        result = check_build_preflight(str(REPO_ROOT))
         assert result.python_bridge_present
         assert result.rust_core_present
         assert result.cargo_present
@@ -1966,8 +1968,8 @@ def test_bridge_batch_mixed_invalid():
 
 def test_deployment_manifest_valid():
     from scripts.deployment_manifest import build_deployment_manifest
-    manifest = build_deployment_manifest(r'c:\Users\ADMIN\AEGIS-COGNITION')
-    assert manifest.root == r'c:\Users\ADMIN\AEGIS-COGNITION'
+    manifest = build_deployment_manifest(str(REPO_ROOT))
+    assert manifest.root == str(REPO_ROOT)
     assert manifest.python_bridge_ready
     assert manifest.rust_core_ready
     assert manifest.packaging_ready
@@ -2364,6 +2366,9 @@ def test_hermes_session_recovery_baseline_gate_binds_physical_artifacts():
                 baseline_dir / "recovered.json",
             ),
             patch("scripts.hermes_session_recovery_baseline_gate._criterion_estimate_ns", return_value=1.0),
+            # The production gate binds this to the checked-out research repo;
+            # the unit fixture supplies a deterministic commit binding.
+            patch("scripts.hermes_session_recovery_baseline_gate._git_commit", return_value="a" * 40),
         ):
             report = gate.evaluate_hermes_session_recovery_baseline(Path.cwd())
         payload = gate.report_to_dict(report)
@@ -2392,6 +2397,7 @@ def test_hermes_persistence_baseline_gate_binds_physical_artifacts():
             patch("scripts.hermes_persistence_baseline_gate.BASELINE_DB_PATH", baseline_dir / "state.db"),
             patch("scripts.hermes_persistence_baseline_gate.BASELINE_TRANSCRIPT_PATH", baseline_dir / "transcript.json"),
             patch("scripts.hermes_persistence_baseline_gate._criterion_estimate_ns", return_value=1.0),
+            patch("scripts.hermes_persistence_baseline_gate._git_commit", return_value="a" * 40),
         ):
             report = gate.evaluate_hermes_persistence_baseline(Path.cwd())
         payload = gate.report_to_dict(report)
@@ -2421,6 +2427,7 @@ def test_hermes_rpc_baseline_gate_uses_aggregate_mmap_overhead():
             patch("scripts.hermes_rpc_baseline_gate.BASELINE_MMAP_PATH", baseline_dir / "context.aegmmap"),
             patch("scripts.hermes_rpc_baseline_gate._measure_json_rpc_context_ns") as json_rpc_measure,
             patch("scripts.hermes_rpc_baseline_gate._measure_mmap_payload_view_ns", return_value=1_000.0),
+            patch("scripts.hermes_rpc_baseline_gate._git_commit", return_value="a" * 40),
         ):
             json_rpc_measure.return_value = (
                 1_000_000.0,
