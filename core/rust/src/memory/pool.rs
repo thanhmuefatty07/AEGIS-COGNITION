@@ -123,7 +123,7 @@ mod win32 {
 
 #[cfg(any(target_os = "linux", target_os = "macos"))]
 mod unix {
-    extern "C" {
+    unsafe extern "C" {
         pub fn mmap(
             addr: *mut std::ffi::c_void,
             len: usize,
