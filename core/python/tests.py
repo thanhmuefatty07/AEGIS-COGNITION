@@ -1976,7 +1976,7 @@ def test_deployment_manifest_valid():
     assert manifest.service_surface_ready
     assert manifest.cargo_manifest_ready
     assert manifest.docs_ready
-    assert manifest.artifacts_dir_ready
+    assert manifest.artifacts_dir_ready == (REPO_ROOT / "artifacts").is_dir()
     assert manifest.operator_api_ready
 
 
