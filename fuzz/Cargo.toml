@@ -1,0 +1,22 @@
+[package]
+name = "aegis-fuzz"
+version = "0.1.0"
+edition = "2024"
+publish = false
+
+[package.metadata]
+cargo-fuzz = true
+
+[dependencies]
+aegis-nerve = { path = "../core/rust", default-features = false }
+libfuzzer-sys = "0.4"
+serde_json = "1"
+
+[[bin]]
+name = "resource_contract"
+path = "fuzz_targets/resource_contract.rs"
+test = false
+doc = false
+bench = false
+
+[workspace]

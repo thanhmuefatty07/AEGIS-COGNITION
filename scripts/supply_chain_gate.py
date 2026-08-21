@@ -19,12 +19,17 @@ RUST_PROVENANCE_FILES: tuple[str, ...] = (
     "core/rust/src/resource_platform.rs",
     "core/rust/src/runtime.rs",
     "core/rust/src/execution.rs",
+    "core/rust/src/telemetry.rs",
     "core/rust/src/tool_gateway.rs",
     "schemas/lease-token-v1.json",
+    "schemas/runtime-telemetry-v1.json",
+    "fuzz/Cargo.toml",
+    "fuzz/Cargo.lock",
 )
 PYTHON_PROVENANCE_FILES: tuple[str, ...] = (
     "pyproject.toml",
     "core/python/pyproject.toml",
+    "scripts/secret_scan.py",
 )
 FORBIDDEN_WASI_PATTERNS: tuple[str, ...] = (
     "wasmtime-wasi",

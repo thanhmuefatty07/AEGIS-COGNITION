@@ -87,6 +87,21 @@ impl ExecutionLanes {
         })?)
     }
 
+    /// Execute an accelerator-capable work unit only when the probed profile
+    /// advertised accelerator capacity. Vendor-specific execution remains an
+    /// adapter concern; this lane is the bounded admission seam.
+    pub fn run_accelerator<F, R>(&self, work: F) -> Result<R, ResourceError>
+    where
+        F: FnOnce() -> R + Send,
+        R: Send,
+    {
+        Ok(self.with_lane(ExecutionLane::Accelerator, || {
+            catch_unwind(AssertUnwindSafe(work)).map_err(|_| {
+                ResourceError::InvalidRequest("accelerator lane work panicked".to_string())
+            })
+        })?)
+    }
+
     pub fn run_io<F, R>(&self, future: F) -> Result<R, ResourceError>
     where
         F: Future<Output = R>,
@@ -152,5 +167,15 @@ mod tests {
         let lanes = ExecutionLanes::new(&profile).unwrap();
         assert_eq!(lanes.run_io(async { 7_u8 }).unwrap(), 7);
         assert_eq!(lanes.snapshot().lanes[&ExecutionLane::Io].active, 0);
+    }
+
+    #[test]
+    fn accelerator_lane_is_optional_and_fails_closed_without_a_device() {
+        let profile = HardwareProfile::probe();
+        let lanes = ExecutionLanes::new(&profile).unwrap();
+        assert_eq!(
+            lanes.run_accelerator(|| 7),
+            Err(ResourceError::ResourceExhausted)
+        );
     }
 }

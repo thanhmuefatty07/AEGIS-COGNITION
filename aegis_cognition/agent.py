@@ -3,7 +3,7 @@ AEGIS Agent — Simple, drop-in AI agent API.
 
 Usage:
     from aegis_cognition import Agent
-    
+
     agent = Agent(task="Find trending repos on GitHub")
     result = agent.run()
     print(result.output)
@@ -19,7 +19,7 @@ import asyncio
 import os
 import sys
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable, cast
 
 # ── Configuration ──────────────────────────────────────────────────
 
@@ -36,7 +36,9 @@ def _load_config() -> dict[str, Any]:
     except ImportError:
         import tomli as tomllib  # type: ignore[no-redef]
     with open(_CONFIG_FILE, "rb") as f:
-        return tomllib.load(f)
+        loader = cast(Callable[..., object], getattr(tomllib, "load"))
+        loaded = loader(f)
+    return cast(dict[str, Any], loaded) if isinstance(loaded, dict) else {}
 
 
 def _get_api_key() -> str | None:
@@ -54,6 +56,7 @@ def _get_trust_level() -> str:
 
 
 # ── Agent ──────────────────────────────────────────────────────────
+
 
 class Agent:
     """
@@ -109,14 +112,14 @@ class Agent:
         Returns (formatted_task, system_context).
         """
         task_type = self._kwargs.get("task_type", "R1")
-        
+
         # 1. Run RAG retrieval
         from aegis_cognition.rag import RAGManager
         from aegis_cognition.prompt import PromptBuilder
-        
+
         rag_mgr = RAGManager(top_k=self._kwargs.get("top_k", 3))
         rag_context = rag_mgr.retrieve_and_format(task)
-        
+
         # 2. Build system instructions
         builder = PromptBuilder(
             trust_level=self.trust_level,
@@ -124,7 +127,7 @@ class Agent:
             security_level=self._kwargs.get("security_level"),
             constraints=self._kwargs.get("constraints"),
         )
-        
+
         system_context = builder.build(
             task,
             primary_objective=self._kwargs.get("primary_objective"),
@@ -137,24 +140,29 @@ class Agent:
             error_handlers=self._kwargs.get("error_handlers"),
             completion_conditions=self._kwargs.get("completion_conditions"),
         )
-        
+
         # 3. If RAG context is retrieved, append it
         formatted_task = task
         if rag_context:
             formatted_task = f"{task}\n\n{rag_context}"
-            
+
         return formatted_task, system_context
 
     def _index_completed_run(self, task: str, output: Any, aegis_result: Any) -> None:
         """Indexes the successful session transcript for future RAG recall."""
         try:
-            from aegis_adapter import LearningManager
+            try:
+                from core.python.aegis_adapter import LearningManager
+            except ImportError:
+                sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "core" / "python"))
+                from aegis_adapter import LearningManager
+
             mgr = LearningManager()
-            
+
             # Use hot_commit artifact hash as the session_id
             session_id = aegis_result.hot_commit.artifact_hash
             content = f"Task: {task}\nOutput: {output}"
-            
+
             mgr.index_session(session_id=session_id, content=content)
         except Exception as e:
             print(f"\u26a0\ufe0f Auto-indexing session failed: {e}", file=sys.stderr)
@@ -167,8 +175,11 @@ class Agent:
             RunResult with .output, .provider, .trust_level, .hot_commit
         """
         # Load the existing Friendly Gateway adapter
-        sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "core" / "python"))
-        from aegis_adapter import AegisAdapter
+        try:
+            from core.python.aegis_adapter import AegisAdapter
+        except ImportError:
+            sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "core" / "python"))
+            from aegis_adapter import AegisAdapter
 
         formatted_task, system_context = self._prepare_rag_and_prompt(self.task)
 
@@ -200,8 +211,11 @@ class Agent:
 
     async def arun(self) -> RunResult:
         """Async version of run()."""
-        sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "core" / "python"))
-        from aegis_adapter import AegisAdapter
+        try:
+            from core.python.aegis_adapter import AegisAdapter
+        except ImportError:
+            sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "core" / "python"))
+            from aegis_adapter import AegisAdapter
 
         formatted_task, system_context = self._prepare_rag_and_prompt(self.task)
 
@@ -211,9 +225,9 @@ class Agent:
             trust_level=self.trust_level,
         )
         aegis_result = await adapter.run(formatted_task, system_context=system_context)
-        
+
         self._index_completed_run(self.task, aegis_result.output, aegis_result)
-        
+
         return RunResult(
             task=aegis_result.task,
             output=aegis_result.output,
@@ -227,6 +241,7 @@ class Agent:
 
 
 # ── RunResult ──────────────────────────────────────────────────────
+
 
 class RunResult:
     """Result returned by Agent.run()."""
@@ -251,12 +266,14 @@ class RunResult:
 
 # ── Convenience function ───────────────────────────────────────────
 
+
 def run(task: str, **kwargs: Any) -> RunResult:
     """Quick one-liner to run a task."""
     return Agent(task=task, **kwargs).run()
 
 
 # ── Friendly Errors ────────────────────────────────────────────────
+
 
 class ConfigError(RuntimeError):
     """Friendly configuration error with actionable fix suggestions."""

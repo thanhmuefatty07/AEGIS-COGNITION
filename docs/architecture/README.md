@@ -24,8 +24,15 @@ that a platform adapter is active merely because it is compiled.
 | Resource request/lease | `core/rust/src/resource.rs` | Rust unit tests |
 | Bounded admission | `core/rust/src/resource.rs` | Rust unit tests |
 | Execution lane limits | `core/rust/src/resource.rs`, `core/rust/src/execution.rs` | bounded executor unit tests; stress fairness NOT VERIFIED |
+| Accelerator seam | `core/rust/src/resource.rs`, `core/rust/src/execution.rs` | optional lane fails closed when no device is advertised; vendor backend NOT VERIFIED |
 | Python boundary | `core/rust/src/ffi.rs`, `aegis_cognition/runtime.py` | opaque token tests; native wheel build required |
-| OS hard enforcement | `core/rust/src/resource_platform.rs` | Linux fixture + Windows target compile; live privileged tests NOT VERIFIED |
+| OS resource control | `core/rust/src/resource_platform.rs` | Linux fixture + Windows target compile; macOS cooperative adapter; live privileged tests NOT VERIFIED |
 | End-to-end scheduler/TaskLedger integration | `core/rust/src/runtime.rs`, `task_ledger.rs` | lease/state/attempt integration tests |
 | Policy provenance | `ResourcePolicy`, benchmark protocol | ASSUMED until H0/H1/H2 retained outputs |
 | Wasmtime migration | `docs/architecture/WASMTIME_MIGRATION.md` | static/security gate + Rust tests required |
+| Runtime telemetry facade | `core/rust/src/telemetry.rs`, `schemas/runtime-telemetry-v1.json` | bounded, correlated, non-authoritative sink tests; OTel export NOT VERIFIED |
+
+The durable standards mapping is in
+[`STANDARDS_APPLICABILITY.md`](STANDARDS_APPLICABILITY.md). The testing tiers
+and evidence-label rules are in
+[`TESTING_AND_EVIDENCE.md`](TESTING_AND_EVIDENCE.md).

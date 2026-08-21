@@ -47,7 +47,8 @@ def main() -> int:
         ),
         check(
             "native_boundary_versions",
-            dependencies.get("pyo3", {}).get("version") == "0.29.2" and dependencies.get("wasmtime") == "47.0.3",
+            dependencies.get("pyo3", {}).get("version") == "0.29.2"
+            and dependencies.get("wasmtime") in {"47.0.3", "=47.0.3"},
             "PyO3 0.29.2 and Wasmtime 47.0.3 are the approved native boundary versions",
         ),
         check(
@@ -66,8 +67,11 @@ def main() -> int:
         ),
         check(
             "maturin_native_packaging",
-            root_build.get("build-backend") == "maturin" and maturin.get("module-name") == "aegis_cognition.aegis_nerve",
-            "the root wheel must use maturin for the PyO3 extension",
+            root_build.get("build-backend") == "maturin"
+            and root_build.get("requires") == ["maturin==1.14.1"]
+            and maturin.get("module-name") == "aegis_cognition.aegis_nerve"
+            and any(entry.get("path") == "core/**/*.py" and entry.get("format") == "wheel" for entry in maturin.get("include", [])),
+            "the root wheel must use pinned maturin and include the bridge package",
         ),
         check(
             "rust_2024_workspace",
@@ -105,6 +109,43 @@ def main() -> int:
                 for marker in ("AUTH-001", "FFI-001", "OS-001", "WASM-001", "PERF-001")
             ),
             "architecture requirements must map to implementation and evidence",
+        ),
+        check(
+            "standards_and_evidence_docs",
+            all(
+                (ROOT / path).is_file()
+                for path in (
+                    "docs/architecture/STANDARDS_APPLICABILITY.md",
+                    "docs/architecture/TESTING_AND_EVIDENCE.md",
+                    "docs/architecture/SECURITY_AND_OPERATIONS.md",
+                )
+            ),
+            "standards applicability, test process, and security/operations scope must be durable",
+        ),
+        check(
+            "contract_inventory",
+            (ROOT / "docs/architecture/CONTRACT_INVENTORY.md").is_file()
+            and all(
+                marker in read("docs/architecture/CONTRACT_INVENTORY.md")
+                for marker in (
+                    "aegis-resource-contract-v1",
+                    "aegis-resource-lease-token-v1",
+                    "aegis-runtime-admission-v1",
+                    "aegis-runtime-telemetry-v1",
+                )
+            ),
+            "persisted formats and the coarse FFI surface must be inventoried",
+        ),
+        check(
+            "telemetry_contract",
+            json.loads(read("schemas/runtime-telemetry-v1.json")).get("$id", "").endswith("runtime-telemetry-v1.json")
+            and (ROOT / "core/rust/src/telemetry.rs").exists(),
+            "runtime telemetry must have a versioned schema and Rust facade",
+        ),
+        check(
+            "secret_scan_gate",
+            (ROOT / "scripts/secret_scan.py").is_file(),
+            "tracked-source secret scan must be available to CI",
         ),
         check(
             "adr_evidence_fields",

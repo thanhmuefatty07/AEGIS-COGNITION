@@ -262,6 +262,49 @@ mod windows {
 #[cfg(target_os = "windows")]
 pub use windows::WindowsJobObjectController;
 
+#[cfg(target_os = "macos")]
+mod macos {
+    use super::*;
+
+    /// macOS has no equivalent of the Linux cgroup v2 or Windows Job Object
+    /// contract used by this runtime slice. This adapter exposes cooperative
+    /// cancellation and measurement-only capability levels explicitly.
+    #[derive(Clone, Debug, Default)]
+    pub struct MacosCooperativeController;
+
+    impl ResourceController for MacosCooperativeController {
+        fn capabilities(&self) -> ResourceControlCapabilities {
+            ResourceControlCapabilities::for_current_platform()
+        }
+
+        fn sample(&self) -> ResourceUsageSample {
+            ResourceUsageSample {
+                schema: RESOURCE_CONTRACT_SCHEMA_V1.to_string(),
+                sampled_at_ms: now_ms(),
+                cpu_threads_active: 0,
+                host_memory_bytes: None,
+                queue_depth: 0,
+                memory_pressure: false,
+            }
+        }
+
+        fn terminate(&self, lease: &ResourceLease) -> Result<(), ResourceError> {
+            lease.cancel();
+            Ok(())
+        }
+    }
+
+    fn now_ms() -> u64 {
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|value| value.as_millis() as u64)
+            .unwrap_or(0)
+    }
+}
+
+#[cfg(target_os = "macos")]
+pub use macos::MacosCooperativeController;
+
 #[cfg(all(test, target_os = "linux"))]
 mod tests {
     use super::*;

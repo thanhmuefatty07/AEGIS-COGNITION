@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 """DX Metrics — Measure and validate Developer Experience quality."""
 
-import time
 import sys
 from pathlib import Path
 
@@ -17,6 +16,7 @@ def test_import_count():
 def test_agent_creation():
     """Agent should be creatable with minimal code."""
     import ast
+
     code = """
 from aegis_cognition import Agent
 agent = Agent(task="test")
@@ -32,15 +32,15 @@ def test_accessible_run():
     # Check that the package has Agent and run exposed
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
     from aegis_cognition import Agent, run
+
     assert Agent is not None
     assert run is not None
-    print(f"  Agent exposed: YES  run() exposed: YES ")
+    print("  Agent exposed: YES  run() exposed: YES ")
 
 
 def test_friendly_errors():
     """All error templates return actionable messages."""
     from aegis_cognition.errors import (
-        friendly_error,
         _api_key_missing,
         _approval_required,
         _browser_evidence_missing,
@@ -87,8 +87,10 @@ def test_cli_help():
     pkg_dir = Path(__file__).resolve().parents[1] / "aegis_cognition"
     sys.path.insert(0, str(pkg_dir.parent))
     from aegis_cognition.cli import _print_help
+
     result = None
     import io
+
     old_stdout = sys.stdout
     sys.stdout = io.StringIO()
     try:
@@ -96,10 +98,10 @@ def test_cli_help():
         result = sys.stdout.getvalue()
     finally:
         sys.stdout = old_stdout
-    assert "aegis" in result.lower(), f"CLI help missing 'aegis'"
-    assert "init" in result, f"CLI help missing 'init' command"
-    assert "run" in result, f"CLI help missing 'run' command"
-    print(f"  CLI help: present with init+run commands ")
+    assert "aegis" in result.lower(), "CLI help missing 'aegis'"
+    assert "init" in result, "CLI help missing 'init' command"
+    assert "run" in result, "CLI help missing 'run' command"
+    print("  CLI help: present with init+run commands ")
 
 
 def test_examples_exist():
@@ -111,7 +113,7 @@ def test_examples_exist():
         assert cat_dir.exists(), f"Missing directory: examples/{cat}"
         py_files = list(cat_dir.glob("*.py"))
         assert len(py_files) > 0, f"No examples in examples/{cat}"
-    print(f"  Examples: 3 categories with scripts ")
+    print("  Examples: 3 categories with scripts ")
 
 
 def main():

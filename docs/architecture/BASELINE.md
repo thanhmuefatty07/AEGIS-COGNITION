@@ -20,8 +20,9 @@ Snapshot captured during implementation on 2026-08-14 (UTC+7).
 - Linux cgroup v2 and Windows Job Object adapters exist as opt-in controllers;
   a compiled adapter is not evidence that the current process has permission to
   enforce it.
-- The root wheel is configured through maturin and the native extension uses
-  the `python-extension` Cargo feature only for packaging.
+- The root wheel is configured through pinned maturin 1.14.1, includes the
+  `core/python` bridge package explicitly, and the native extension uses the
+  `python-extension` Cargo feature only for packaging.
 
 ## Deliberately not claimed
 
@@ -39,3 +40,8 @@ Snapshot captured during implementation on 2026-08-14 (UTC+7).
 3. Establish retained H0/H1/H2 workload benchmarks before freezing policy values.
 4. Complete Wasmtime fuzz/adversarial/replay-parity evidence.
 5. Run dependency, secret, full workspace, and release packaging gates in CI/release environments.
+
+The canonical distribution is the root `aegis-cognition` wheel. The
+`core/python/pyproject.toml` file remains a compatibility manifest for bridge
+only deployments and tests; it is not a second root build path. The root
+maturin wheel is the only package published by the release workflow.

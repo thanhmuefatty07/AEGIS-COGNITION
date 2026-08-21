@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://aegis-cognition.ai/schemas/runtime-telemetry-v1.json",
+  "title": "AEGIS runtime telemetry event v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "emitted_at_ms", "correlation", "kind", "outcome"],
+  "properties": {
+    "schema": {"const": "aegis-runtime-telemetry-v1"},
+    "emitted_at_ms": {"type": "integer", "minimum": 0},
+    "correlation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["mission_id", "task_id", "run_id", "attempt_id"],
+      "properties": {
+        "mission_id": {"type": "string", "minLength": 1},
+        "task_id": {"type": "integer", "minimum": 1},
+        "run_id": {"type": "integer", "minimum": 1},
+        "attempt_id": {"type": "integer", "minimum": 1},
+        "lease_id": {"type": ["integer", "null"], "minimum": 1}
+      }
+    },
+    "kind": {
+      "enum": ["admission", "queue", "lane", "resource", "cancellation", "timeout", "sandbox", "provider", "replay"]
+    },
+    "outcome": {"type": "string", "minLength": 1, "maxLength": 128},
+    "queue_depth": {"type": ["integer", "null"], "minimum": 0},
+    "active": {"type": ["integer", "null"], "minimum": 0},
+    "limit": {"type": ["integer", "null"], "minimum": 0}
+  }
+}
