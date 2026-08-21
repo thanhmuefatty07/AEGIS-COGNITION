@@ -355,7 +355,12 @@ def _minimal_supply_chain_root(root: Path) -> Path:
         "core/rust/src/resource_platform.rs",
         "core/rust/src/runtime.rs",
         "core/rust/src/execution.rs",
+        "core/rust/src/telemetry.rs",
         "schemas/lease-token-v1.json",
+        "schemas/runtime-telemetry-v1.json",
+        "fuzz/Cargo.toml",
+        "fuzz/Cargo.lock",
+        "scripts/secret_scan.py",
     ):
         path = root / relative
         path.parent.mkdir(parents=True, exist_ok=True)
