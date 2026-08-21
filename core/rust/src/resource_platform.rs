@@ -11,7 +11,10 @@ use crate::resource::{
 
 #[cfg(target_os = "linux")]
 mod linux {
-    use super::*;
+    use super::{
+        RESOURCE_CONTRACT_SCHEMA_V1, ResourceControlCapabilities, ResourceController,
+        ResourceError, ResourceLease, ResourceUsageSample,
+    };
     use std::fs;
     use std::path::{Path, PathBuf};
 
@@ -264,7 +267,10 @@ pub use windows::WindowsJobObjectController;
 
 #[cfg(target_os = "macos")]
 mod macos {
-    use super::*;
+    use super::{
+        RESOURCE_CONTRACT_SCHEMA_V1, ResourceControlCapabilities, ResourceController,
+        ResourceError, ResourceLease, ResourceUsageSample,
+    };
 
     /// macOS has no equivalent of the Linux cgroup v2 or Windows Job Object
     /// contract used by this runtime slice. This adapter exposes cooperative
