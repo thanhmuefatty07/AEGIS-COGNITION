@@ -1,6 +1,6 @@
 # Architecture v1 traceability matrix
 
-Status is evidence-based as of 2026-08-14 (UTC+7). `PROVEN` means a repository
+Status is evidence-based as of 2026-08-22 (UTC+7). `PROVEN` means a repository
 artifact or deterministic test currently demonstrates the requirement;
 `MEASURED` means a benchmark was run and its output is retained; `ASSUMED`
 means an explicit default is in use but has not been frozen by H0/H1/H2 data;
@@ -16,14 +16,17 @@ means an explicit default is in use but has not been frozen by H0/H1/H2 data;
 | OS-001 | Linux cgroup v2 enforcement adapter | `resource_platform.rs` | `PROVEN` code path and fixture test; privileged host enforcement `NOT VERIFIED` |
 | OS-002 | Windows Job Object enforcement adapter | `resource_platform.rs` | `PROVEN` Windows-target compilation required; live process test `NOT VERIFIED` |
 | LANE-001 | Actual bounded CPU/Python/I/O/untrusted primitives | `execution.rs` | `PROVEN` implementation and unit tests; stress fairness `NOT VERIFIED` |
+| LANE-002 | Optional accelerator lane with CPU-only fallback | `resource.rs`, `execution.rs` | `PROVEN`: zero advertised devices reject accelerator work without affecting CPU lanes; vendor adapters `NOT VERIFIED` |
 | PY-001 | Production/forward Python lanes | `.python-version`, `.github/workflows/ci.yml` | `PROVEN` policy is 3.14.7 / 3.15.0rc1 with prereleases enabled |
-| PKG-001 | Maturin owns the native wheel build | `pyproject.toml`, Cargo `python-extension` feature | `PROVEN` configuration; wheel build is CI/release evidence |
+| PKG-001 | Maturin owns the native wheel build | `pyproject.toml`, Cargo `python-extension` feature | `PROVEN` pinned 1.14.1 configuration and local clean-wheel import; exact Tier-1 matrix remains `NOT VERIFIED` |
 | RUST-001 | Rust 2024 migration | all workspace manifests and Windows FFI declarations | `PROVEN` workspace library check passes |
-| WASM-001 | Wasmtime 47 migration is security-reviewed | `Cargo.toml`, `WASMTIME_MIGRATION.md`, sandbox tests | `PROVEN` configuration/static gates; fuzz and hostile-kernel evidence `NOT VERIFIED` |
-| CI-001 | CI runs the resolved environment | `.github/workflows/ci.yml` | `PROVEN` Python uses `uv run --locked`; prior red run is superseded only after rerun |
+| WASM-001 | Wasmtime 47 migration is security-reviewed | `Cargo.toml`, `WASMTIME_MIGRATION.md`, sandbox tests, `fuzz/` | `PROVEN` exact 47.0.3 configuration/static gates and Rust behavior tests; fuzz and hostile-kernel evidence `NOT VERIFIED` |
+| CI-001 | CI runs the resolved environment | `.github/workflows/ci.yml`, `.github/workflows/deep.yml` | `PROVEN` workflow definitions use pinned actions, locked uv, strict checks, deep/fuzz paths; current-SHA runner result pending |
 | DOC-001 | Decisions and requirements are durable | `docs/adr/`, this matrix | `PROVEN` ADRs carry decision, security, performance, operations, rollback, and evidence fields |
+| TEL-001 | Bounded non-authoritative runtime telemetry with correlation IDs | `core/rust/src/telemetry.rs`, `schemas/runtime-telemetry-v1.json` | `PROVEN`: schema, correlation validation, bounded-drop behavior; OTel exporter `NOT VERIFIED` |
+| STD-001 | Standards applicability and test-process mapping | `docs/architecture/STANDARDS_APPLICABILITY.md`, `TESTING_AND_EVIDENCE.md` | `PROVEN`: durable matrix and evidence-label process |
 | PERF-001 | Hardware policy is measurement-backed | `scripts/resource_policy_benchmark.py` | `MEASURED` only for explicitly recorded local runs; H0/H1/H2 freeze `NOT VERIFIED` |
-| SCM-001 | Dependency/secret/release gates are reproducible | `scripts/supply_chain_gate.py`, CI | `PROVEN` gate definitions; final green CI/release run required |
+| SCM-001 | Dependency/secret/release gates are reproducible | `scripts/supply_chain_gate.py`, `scripts/secret_scan.py`, CI | `PROVEN` gate definitions; external signed release attestation and final release run `NOT VERIFIED` |
 
 ## Evidence discipline
 

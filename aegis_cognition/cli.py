@@ -17,10 +17,8 @@ Setup flow (< 2 minutes):
 
 from __future__ import annotations
 
-import os
 import sys
 from pathlib import Path
-from typing import Any
 
 
 def main() -> None:
@@ -45,7 +43,7 @@ def main() -> None:
         _print_help()
     else:
         print(f"Unknown command: {command}")
-        print(f"Run 'aegis --help' for available commands.")
+        print("Run 'aegis --help' for available commands.")
 
 
 def _print_help() -> None:
@@ -73,6 +71,7 @@ def _print_help() -> None:
 
 
 # ── Commands ────────────────────────────────────────────────────────
+
 
 def _cmd_init() -> None:
     """Interactive setup wizard."""
@@ -106,7 +105,7 @@ def _cmd_init() -> None:
     if not api_key:
         print()
         print("  Skipping API key — you can set it later with:")
-        print(f"    export OPENAI_API_KEY='sk-...'")
+        print("    export OPENAI_API_KEY='sk-...'")
         print()
 
     # Step 3: Trust level
@@ -142,14 +141,14 @@ enabled = true
     print()
     print("  You're ready to go. Try:")
     print('    aegis run "Find trending repos on GitHub"')
-    print('    aegis examples')
+    print("    aegis examples")
     print()
 
 
 def _cmd_run(args: list[str]) -> None:
     """Run an AI agent task."""
     if not args:
-        print("Usage: aegis run \"task description\"")
+        print('Usage: aegis run "task description"')
         return
 
     task = " ".join(args)
@@ -170,6 +169,7 @@ def _cmd_run(args: list[str]) -> None:
 
     try:
         from aegis_cognition import Agent
+
         agent = Agent(task=task)
         result = agent.run()
         print(f"  {result.output}")
@@ -237,12 +237,13 @@ def _cmd_config(args: list[str]) -> None:
 
 # ── Helpers ─────────────────────────────────────────────────────────
 
+
 def _prompt(text: str, default: str = "") -> str:
     """Prompt for input with default."""
     try:
         result = input(f"{text} [{default}]: ").strip()
         return result or default
-    except (EOFError, KeyboardInterrupt):
+    except EOFError, KeyboardInterrupt:
         print()
         sys.exit(0)
 
@@ -253,7 +254,7 @@ def _prompt_secret(text: str) -> str:
         import msvcrt
 
         print(f"{text}: ", end="", flush=True)
-        chars = []
+        chars: list[str] = []
         while True:
             ch = msvcrt.getch()
             if ch in (b"\r", b"\n"):

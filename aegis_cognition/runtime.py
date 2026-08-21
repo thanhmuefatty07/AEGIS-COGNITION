@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import os
 import platform
-from typing import Any
+from typing import Any, cast
 
 RESOURCE_CONTRACT_SCHEMA_V1 = "aegis-resource-contract-v1"
 
@@ -22,7 +22,7 @@ def _native_module() -> Any | None:
             from aegis_cognition import aegis_nerve  # type: ignore[import-not-found]
         except ImportError:
             return None
-    return aegis_nerve
+    return cast(Any, aegis_nerve)
 
 
 def native_runtime_available() -> bool:

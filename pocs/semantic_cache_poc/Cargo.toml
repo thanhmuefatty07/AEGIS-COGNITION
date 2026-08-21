@@ -2,6 +2,7 @@
 name = "semantic_cache_poc"
 version = "0.1.0"
 edition = "2024"
+rust-version.workspace = true
 
 [lib]
 name = "semantic_cache_poc"
