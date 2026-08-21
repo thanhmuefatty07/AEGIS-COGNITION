@@ -134,9 +134,9 @@ def _lock_package(entry: Any) -> LockPackage | None:
 
 def _manifest_version(value: Any) -> str:
     if isinstance(value, str):
-        return value
+        return value.lstrip("=")
     if isinstance(value, dict) and isinstance(value.get("version"), str):
-        return value["version"]
+        return value["version"].lstrip("=")
     return ""
 
 

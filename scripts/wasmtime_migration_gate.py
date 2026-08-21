@@ -14,12 +14,12 @@ sandbox_tree = "\n".join(path.read_text(encoding="utf-8") for path in (ROOT / "c
 cli = (ROOT / "core" / "rust" / "src" / "cli" / "mod.rs").read_text(encoding="utf-8")
 source = (sandbox + sandbox_tree + cli).lower()
 
-required_manifest = 'wasmtime = "47.0.3"'
+required_manifest = ('wasmtime = "47.0.3"', 'wasmtime = "=47.0.3"')
 required_symbols = ("consume_fuel", "epoch_interruption", "memory", "wasi")
 
 missing = []
-if required_manifest not in manifest:
-    missing.append(required_manifest)
+if not any(version in manifest for version in required_manifest):
+    missing.append("wasmtime pinned to 47.0.3")
 missing.extend(symbol for symbol in required_symbols if symbol not in source)
 if missing:
     raise SystemExit("Wasmtime migration gate failed: " + ", ".join(missing))

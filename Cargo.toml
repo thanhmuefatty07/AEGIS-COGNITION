@@ -13,6 +13,9 @@ members = [
 ]
 resolver = "2"
 
+[workspace.package]
+rust-version = "1.97.1"
+
 [profile.test]
 debug = 0
 

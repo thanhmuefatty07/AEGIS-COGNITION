@@ -8,12 +8,15 @@ import sys
 from pathlib import Path
 from typing import Any
 
-# Import LearningManager from the core path
-sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "core" / "python"))
 try:
-    from aegis_adapter import LearningManager
+    from core.python.aegis_adapter import LearningManager
 except ImportError:
-    LearningManager = None
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "core" / "python"))
+    try:
+        from aegis_adapter import LearningManager
+    except ImportError:
+        LearningManager = None
+
 
 class RAGManager:
     """
@@ -60,7 +63,7 @@ class RAGManager:
 
         try:
             search_result = self.learning_manager.search_past(query, top_k=self.top_k)
-            candidates = search_result.results
+            candidates: list[Any] = list(search_result.results)
         except Exception:
             candidates = []
 
@@ -99,7 +102,7 @@ class RAGManager:
         context_payload = ""
         for i, candidate in enumerate(candidates):
             context_payload += (
-                f"--- Candidate {i+1} ---\n"
+                f"--- Candidate {i + 1} ---\n"
                 f"- Hash: {candidate.evidence_ref_hash}\n"
                 f"- Session Segment: {candidate.segment_id}\n"
                 f"- Match Tier: {candidate.tier}\n"

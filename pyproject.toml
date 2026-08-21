@@ -1,5 +1,5 @@
 [build-system]
-requires = ["maturin>=1.9,<2"]
+requires = ["maturin==1.14.1"]
 build-backend = "maturin"
 
 [project]
@@ -37,7 +37,7 @@ dependencies = [
 [project.optional-dependencies]
 browser = ["playwright>=1.40,<2"]
 all = ["playwright>=1.40,<2", "fastapi>=0.110,<1", "openai>=1.40,<2", "uvicorn[standard]>=0.27,<1"]
-dev = ["pytest>=8,<9", "pytest-asyncio>=0.23,<1", "ruff>=0.3,<1"]
+dev = ["pyright>=1.1,<2", "pytest>=8,<9", "pytest-asyncio>=0.23,<1", "ruff>=0.3,<1"]
 
 [project.scripts]
 aegis = "aegis_cognition.cli:main"
@@ -54,6 +54,7 @@ module-name = "aegis_cognition.aegis_nerve"
 bindings = "pyo3"
 python-source = "."
 features = ["python-extension"]
+include = [{ path = "core/**/*.py", format = "wheel" }]
 
 [tool.ruff]
 line-length = 120
@@ -62,3 +63,12 @@ target-version = "py314"
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 testpaths = ["tests"]
+
+[tool.pyright]
+include = ["aegis_cognition"]
+exclude = ["**/__pycache__", "core/python", "tests"]
+extraPaths = ["core/python"]
+pythonVersion = "3.14"
+typeCheckingMode = "strict"
+reportMissingTypeStubs = false
+reportPrivateUsage = false
