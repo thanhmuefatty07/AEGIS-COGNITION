@@ -13,6 +13,7 @@ runtime/resource contracts below.
 | `aegis-resource-lease-token-v1` | `schemas/lease-token-v1.json`, `resource.rs` | Rust lease ledger | Token carries identity/fencing only; it never carries a mutable grant |
 | `aegis-runtime-admission-v1` | `runtime.rs`, `ffi.rs` | Rust runtime authority | Submit/retry/finish must pass attempt and lease fencing |
 | `aegis-runtime-telemetry-v1` | `schemas/runtime-telemetry-v1.json`, `telemetry.rs` | Observation only | Bounded sink may drop oldest events; dropped telemetry cannot change authority |
+| Python runtime telemetry bridge | `aegis_cognition/observability.py`, `ffi.rs` (`aegis_runtime_telemetry_emit`) | Observation only | Validate schema/correlation before Rust bounded sink; forwarding failure is degraded telemetry only |
 | Replay/event archives | `replay.rs`, Arrow/binary archive modules | Rust replay ledger | Append-only, hash-bound, crash-prefix recovery; format-specific tests own migration proof |
 | Python↔Rust PyO3 symbols | `ffi.rs`, `aegis_cognition/runtime.py` | Rust implementation | Coarse calls only; Python fallback is explicitly non-authoritative |
 
@@ -27,6 +28,8 @@ The supported resource/runtime entry points are:
 - `aegis_runtime_submit` — submit and return an opaque lease token;
 - `aegis_runtime_retry` — start a fenced newer attempt;
 - `aegis_runtime_finish` — complete by opaque token and outcome.
+- `aegis_runtime_telemetry_emit` — validate and record one bounded observation event.
+- `aegis_runtime_telemetry_snapshot` — inspect bounded observation events and drop count.
 
 Other PyO3 symbols in `ffi.rs` belong to legacy frame/LLM/browser/evidence
 surfaces and are not allowed to mint resource authority. New FFI calls must be
