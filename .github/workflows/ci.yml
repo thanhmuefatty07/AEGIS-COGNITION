@@ -29,9 +29,13 @@ jobs:
         run: python scripts/architecture_fitness.py
       - name: Secret scan
         run: python scripts/secret_scan.py
+      - name: Resolve pinned Rust toolchain
+        id: rust-toolchain
+        shell: bash
+        run: echo "channel=$(python scripts/rust_toolchain.py)" >> "$GITHUB_OUTPUT"
       - uses: dtolnay/rust-toolchain@4360b52568e2003a75bf9bc1d59f33a8e3fc893c # stable
         with:
-          toolchain: file
+          toolchain: ${{ steps.rust-toolchain.outputs.channel }}
           components: rustfmt, clippy
       - uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
         with:
@@ -80,8 +84,6 @@ jobs:
           - python-version: '3.15.0-rc.1'
             experimental: false
           - python-version: '3.14.7t'
-            experimental: true
-          - python-version: '3.15.0-rc.1t'
             experimental: true
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
@@ -135,9 +137,13 @@ jobs:
           - os: macos-14
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - name: Resolve pinned Rust toolchain
+        id: rust-toolchain
+        shell: bash
+        run: echo "channel=$(python scripts/rust_toolchain.py)" >> "$GITHUB_OUTPUT"
       - uses: dtolnay/rust-toolchain@4360b52568e2003a75bf9bc1d59f33a8e3fc893c # stable
         with:
-          toolchain: file
+          toolchain: ${{ steps.rust-toolchain.outputs.channel }}
       - name: Portable Rust library check
         env:
           PYO3_PYTHON: python
