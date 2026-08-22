@@ -11,10 +11,19 @@ members = [
     "pocs/tool_batching_poc",
     "pocs/code_orchestration_poc",
 ]
-resolver = "2"
+default-members = [
+    "core/rust",
+    "aegis-plugins/aegis-search-sdk",
+    "aegis-plugins/aegis-browser",
+    "aegis-plugins/aegis-sandbox",
+    "aegis-plugins/aegis-skills",
+    "aegis-plugins/aegis-evidence",
+    "aegis-plugins/aegis-bench",
+]
+resolver = "3"
 
 [workspace.package]
-rust-version = "1.97.1"
+rust-version = "1.97"
 
 [profile.test]
 debug = 0

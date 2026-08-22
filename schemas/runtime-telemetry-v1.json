@@ -21,7 +21,7 @@
       }
     },
     "kind": {
-      "enum": ["admission", "queue", "lane", "resource", "cancellation", "timeout", "sandbox", "provider", "replay"]
+      "enum": ["agent", "admission", "evidence", "queue", "lane", "memory", "resource", "cancellation", "timeout", "sandbox", "tool", "provider", "replay"]
     },
     "outcome": {"type": "string", "minLength": 1, "maxLength": 128},
     "queue_depth": {"type": ["integer", "null"], "minimum": 0},

@@ -3,6 +3,7 @@ name = "aegis-search-sdk"
 version = "0.1.0"
 edition = "2024"
 rust-version.workspace = true
+publish = false
 description = "Programmable AEGIS search primitives and pipeline orchestration"
 
 [lib]
@@ -14,7 +15,7 @@ default = []
 python = ["dep:pyo3"]
 
 [dependencies]
-aegis-nerve = { path = "../../core/rust" }
+aegis-nerve = { path = "../../core/rust", version = "0.1.0" }
 aho-corasick = "1.1.2"
 anyhow = "1"
 blake3 = "1.5.0"
@@ -28,8 +29,8 @@ tokio = { version = "1.35", features = ["macros", "rt-multi-thread", "time"] }
 url = "2"
 
 [dev-dependencies]
-aegis-evidence = { path = "../aegis-evidence" }
-aegis-sandbox = { path = "../aegis-sandbox" }
+aegis-evidence = { path = "../aegis-evidence", version = "0.1.0" }
+aegis-sandbox = { path = "../aegis-sandbox", version = "0.1.0" }
 criterion = "0.5"
 tempfile = "3"
 

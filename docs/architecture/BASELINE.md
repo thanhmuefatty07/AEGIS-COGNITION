@@ -6,6 +6,9 @@ Snapshot captured during implementation on 2026-08-14 (UTC+7).
 
 - Repository default branch is `main`.
 - Rust workspace contains the existing `aegis-nerve` crate and plugin/POC members.
+- Rust resolver 3 is active. Production/default commands use `default-members`
+  and deep evidence explicitly opts into the full workspace so POCs remain
+  visible without making them part of the fast authority gate.
 - The existing Rust core is a large modular crate with task ledger, replay, evidence,
   sandbox, telemetry, and FFI modules.
 - Root Python metadata and `core/python/pyproject.toml` previously declared different
@@ -32,6 +35,8 @@ Snapshot captured during implementation on 2026-08-14 (UTC+7).
 - Hardware memory capacity is only populated where the portable probe can read an
   authoritative source; unknown is represented as `null`.
 - Python fallback capability data is informational and not an admission authority.
+- Python runtime telemetry is observation-only; it cannot make admission,
+  evidence, or lease decisions.
 
 ## Required follow-up evidence
 

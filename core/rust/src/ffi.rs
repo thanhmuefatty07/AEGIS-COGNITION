@@ -445,6 +445,22 @@ pub fn aegis_physical_metrics_prometheus() -> PyResult<String> {
 }
 
 #[pyfunction]
+pub fn aegis_runtime_telemetry_emit(event_json: String) -> PyResult<String> {
+    py_safe(move || {
+        crate::telemetry::record_python_event_json(&event_json)
+            .map_err(|error| pyo3::exceptions::PyValueError::new_err(error.to_string()))
+    })?
+}
+
+#[pyfunction]
+pub fn aegis_runtime_telemetry_snapshot() -> PyResult<String> {
+    py_safe(|| {
+        crate::telemetry::python_event_snapshot_json()
+            .map_err(|error| pyo3::exceptions::PyRuntimeError::new_err(error.to_string()))
+    })?
+}
+
+#[pyfunction]
 pub fn aegis_trust_level() -> PyResult<String> {
     py_safe(|| trust_level_label(crate::hot_engine::TrustLevel::from_env()).to_string())
 }
@@ -954,6 +970,8 @@ pub fn aegis_nerve(_py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(aegis_harness_generate_skeleton, m)?)?;
     m.add_function(wrap_pyfunction!(aegis_harness_analyze_errors, m)?)?;
     m.add_function(wrap_pyfunction!(aegis_physical_metrics_prometheus, m)?)?;
+    m.add_function(wrap_pyfunction!(aegis_runtime_telemetry_emit, m)?)?;
+    m.add_function(wrap_pyfunction!(aegis_runtime_telemetry_snapshot, m)?)?;
     m.add_function(wrap_pyfunction!(aegis_trust_level, m)?)?;
     m.add_function(wrap_pyfunction!(aegis_hot_hash, m)?)?;
     m.add_function(wrap_pyfunction!(aegis_hot_commit, m)?)?;

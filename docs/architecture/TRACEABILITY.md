@@ -27,6 +27,11 @@ means an explicit default is in use but has not been frozen by H0/H1/H2 data;
 | STD-001 | Standards applicability and test-process mapping | `docs/architecture/STANDARDS_APPLICABILITY.md`, `TESTING_AND_EVIDENCE.md` | `PROVEN`: durable matrix and evidence-label process |
 | PERF-001 | Hardware policy is measurement-backed | `scripts/resource_policy_benchmark.py` | `MEASURED` only for explicitly recorded local runs; H0/H1/H2 freeze `NOT VERIFIED` |
 | SCM-001 | Dependency/secret/release gates are reproducible | `scripts/supply_chain_gate.py`, `scripts/secret_scan.py`, CI | `PROVEN` gate definitions; external signed release attestation and final release run `NOT VERIFIED` |
+| PY-002 | Agent facade has explicit application/config/infrastructure boundaries | `aegis_cognition/agent.py`, `application.py`, `config.py`, `infrastructure.py` | `PROVEN`: architecture fitness, strict Pyright/Ruff, 89-test local regression |
+| PY-003 | Gateway provider/evidence/learning responsibilities are split | `core/python/aegis/*.py`, `core/python/aegis_adapter.py` | `PROVEN`: adapter responsibility gate and bridge regression suite |
+| TEL-002 | Python provider/tool/evidence events share Rust-compatible correlation IDs | `aegis_cognition/observability.py`, `core/python/aegis_adapter.py`, `core/rust/src/ffi.rs` | `PROVEN` local bounded-chain tests; native wheel FFI forwarding requires rebuild |
+| TOOL-001 | Rust toolchain and CI derive from one exact source | `rust-toolchain.toml`, `scripts/rust_toolchain.py`, workflows | `PROVEN`: architecture fitness; beta forward-compat lane is experimental |
+| TOOL-002 | Fast CI excludes POCs while deep evidence retains them | `Cargo.toml`, `ci.yml`, `deep.yml` | `PROVEN` configuration; final remote run tracked per commit |
 
 ## Evidence discipline
 

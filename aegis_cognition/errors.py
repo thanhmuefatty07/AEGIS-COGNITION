@@ -15,6 +15,42 @@ from __future__ import annotations
 from typing import NoReturn
 
 
+class ConfigError(RuntimeError):
+    """Configuration failure with a stable, actionable public error model."""
+
+    @classmethod
+    def api_key_missing(cls) -> ConfigError:
+        return cls(_api_key_missing())
+
+    @classmethod
+    def invalid_trust_level(cls, level: str) -> ConfigError:
+        return cls(_invalid_trust_level(level))
+
+    @classmethod
+    def invalid_file(cls, path: object, detail: str) -> ConfigError:
+        return cls(f"Could not read configuration {path}: {detail}")
+
+    @classmethod
+    def task_missing(cls) -> ConfigError:
+        return cls("Agent task must be a non-empty string")
+
+    @classmethod
+    def max_steps_invalid(cls, value: int) -> ConfigError:
+        return cls(f"max_steps must be positive, got {value}")
+
+
+class ProviderError(RuntimeError):
+    """Provider failure with user-facing retry guidance."""
+
+    @classmethod
+    def rate_limited(cls, provider: str) -> ProviderError:
+        return cls(_rate_limited() + f"\nProvider: {provider}\n")
+
+    @classmethod
+    def all_throttled(cls) -> ProviderError:
+        return cls(_all_providers_throttled())
+
+
 def friendly_error(error: Exception) -> str:
     """Transform an internal error into a friendly, actionable message."""
     msg = str(error)

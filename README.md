@@ -3,7 +3,7 @@
 > Cryptographically-verified AI agent harness — drop-in developer experience.
 
 [![Python 3.14–3.15](https://img.shields.io/badge/python-3.14--3.15-blue.svg)](https://www.python.org/downloads/)
-[![Rust](https://img.shields.io/badge/rust-1.97.1-orange.svg)](https://www.rust-lang.org/)
+[![Rust](https://img.shields.io/badge/rust-toolchain-orange.svg)](https://www.rust-lang.org/)
 [![License](https://img.shields.io/badge/license-BUSL--1.1-green.svg)](core/rust/AEGIS-COGNITION/COMMERCIAL_CLOSURE_REPORT.md)
 [![Status](https://img.shields.io/badge/status-evidence--in--progress-yellow.svg)](docs/architecture/BASELINE.md)
 

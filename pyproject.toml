@@ -60,6 +60,9 @@ include = [{ path = "core/**/*.py", format = "wheel" }]
 line-length = 120
 target-version = "py314"
 
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F", "UP", "B", "SIM", "PERF", "RUF", "ASYNC"]
+
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 testpaths = ["tests"]

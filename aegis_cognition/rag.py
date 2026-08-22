@@ -4,18 +4,9 @@ Retrieves past session context using LearningManager and formats it according to
 """
 
 from __future__ import annotations
-import sys
-from pathlib import Path
 from typing import Any
 
-try:
-    from core.python.aegis_adapter import LearningManager
-except ImportError:
-    sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "core" / "python"))
-    try:
-        from aegis_adapter import LearningManager
-    except ImportError:
-        LearningManager = None
+from core.python.aegis_adapter import LearningManager
 
 
 class RAGManager:
@@ -40,7 +31,7 @@ class RAGManager:
         accuracy_score: float = 0.98,
         verification_method: list[str] | None = None,
     ) -> None:
-        self.learning_manager = learning_manager or (LearningManager() if LearningManager else None)
+        self.learning_manager = learning_manager or LearningManager()
         self.data_sources = data_sources or ["Past Session Transcripts", "Evidence Index", "AST Signatures"]
         self.retrieval_method = retrieval_method
         self.retrieval_level = retrieval_level

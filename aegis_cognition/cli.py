@@ -18,9 +18,7 @@ Setup flow (< 2 minutes):
 from __future__ import annotations
 
 import sys
-from collections.abc import Callable
 from pathlib import Path
-from typing import cast
 
 
 def main() -> None:
@@ -257,7 +255,7 @@ def _prompt_secret(text: str) -> str:
 
         print(f"{text}: ", end="", flush=True)
         chars: list[str] = []
-        getch = cast(Callable[[], bytes], getattr(msvcrt, "getch"))
+        getch = msvcrt.getch
         while True:
             ch: bytes = getch()
             if ch in (b"\r", b"\n"):

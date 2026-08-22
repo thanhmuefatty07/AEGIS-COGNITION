@@ -1,6 +1,10 @@
-FROM rust:1.97.1-bookworm AS rust-builder
+FROM rust:bookworm AS rust-builder
 
 WORKDIR /src
+COPY rust-toolchain.toml ./
+RUN RUST_VERSION=$(sed -n 's/^channel = "\([^"]*\)"/\1/p' rust-toolchain.toml) \
+    && test -n "$RUST_VERSION" \
+    && rustup toolchain install "$RUST_VERSION"
 COPY Cargo.toml Cargo.lock ./
 COPY core/rust/Cargo.toml core/rust/Cargo.toml
 COPY core/rust core/rust

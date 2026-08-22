@@ -1,7 +1,9 @@
+use parking_lot::Mutex;
 use serde::{Deserialize, Serialize};
 use std::collections::VecDeque;
 use std::io::{Read, Write};
 use std::net::TcpListener;
+use std::sync::OnceLock;
 use thiserror::Error;
 
 pub const RUNTIME_TELEMETRY_SCHEMA_V1: &str = "aegis-runtime-telemetry-v1";
@@ -18,13 +20,17 @@ pub struct TelemetryCorrelation {
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum RuntimeTelemetryKind {
+    Agent,
     Admission,
+    Evidence,
     Queue,
     Lane,
+    Memory,
     Resource,
     Cancellation,
     Timeout,
     Sandbox,
+    Tool,
     Provider,
     Replay,
 }
@@ -48,18 +54,8 @@ impl RuntimeTelemetryEvent {
         kind: RuntimeTelemetryKind,
         outcome: impl Into<String>,
     ) -> Result<Self, TelemetryError> {
-        if correlation.mission_id.trim().is_empty()
-            || correlation.task_id == 0
-            || correlation.run_id == 0
-            || correlation.attempt_id == 0
-        {
-            return Err(TelemetryError::InvalidCorrelation);
-        }
         let outcome = outcome.into();
-        if outcome.is_empty() || outcome.len() > 128 {
-            return Err(TelemetryError::InvalidOutcome);
-        }
-        Ok(Self {
+        let event = Self {
             schema: RUNTIME_TELEMETRY_SCHEMA_V1.to_string(),
             emitted_at_ms,
             correlation,
@@ -68,7 +64,24 @@ impl RuntimeTelemetryEvent {
             queue_depth: None,
             active: None,
             limit: None,
-        })
+        };
+        event.validate()?;
+        Ok(event)
+    }
+
+    pub fn validate(&self) -> Result<(), TelemetryError> {
+        if self.schema != RUNTIME_TELEMETRY_SCHEMA_V1
+            || self.correlation.mission_id.trim().is_empty()
+            || self.correlation.task_id == 0
+            || self.correlation.run_id == 0
+            || self.correlation.attempt_id == 0
+        {
+            return Err(TelemetryError::InvalidCorrelation);
+        }
+        if self.outcome.is_empty() || self.outcome.len() > 128 {
+            return Err(TelemetryError::InvalidOutcome);
+        }
+        Ok(())
     }
 }
 
@@ -78,6 +91,8 @@ pub enum TelemetryError {
     InvalidCorrelation,
     #[error("invalid telemetry outcome")]
     InvalidOutcome,
+    #[error("invalid telemetry event")]
+    InvalidEvent,
     #[error("telemetry sink capacity must be non-zero")]
     InvalidCapacity,
 }
@@ -125,6 +140,36 @@ impl TelemetrySink for BoundedTelemetrySink {
     fn dropped(&self) -> u64 {
         self.dropped
     }
+}
+
+static PYTHON_TELEMETRY_SINK: OnceLock<Mutex<BoundedTelemetrySink>> = OnceLock::new();
+
+fn python_telemetry_sink() -> &'static Mutex<BoundedTelemetrySink> {
+    PYTHON_TELEMETRY_SINK.get_or_init(|| Mutex::new(BoundedTelemetrySink::new(1024).unwrap()))
+}
+
+/// Validate and record a coarse event crossing the Python/Rust boundary.
+///
+/// The event is observation-only: dropping or failing to export telemetry can
+/// never alter resource admission, evidence authority, or replay state.
+pub fn record_python_event_json(event_json: &str) -> Result<String, TelemetryError> {
+    let event: RuntimeTelemetryEvent =
+        serde_json::from_str(event_json).map_err(|_| TelemetryError::InvalidEvent)?;
+    event.validate()?;
+    let mut sink = python_telemetry_sink().lock();
+    sink.record(event.clone())?;
+    serde_json::to_string(&event).map_err(|_| TelemetryError::InvalidEvent)
+}
+
+pub fn python_event_snapshot_json() -> Result<String, TelemetryError> {
+    let sink = python_telemetry_sink().lock();
+    serde_json::to_string(&serde_json::json!({
+        "schema": RUNTIME_TELEMETRY_SCHEMA_V1,
+        "events": sink.snapshot(),
+        "dropped": sink.dropped(),
+        "authoritative": false,
+    }))
+    .map_err(|_| TelemetryError::InvalidEvent)
 }
 
 const REQUEST_BUFFER_BYTES: usize = 1024;
@@ -231,5 +276,21 @@ mod tests {
         )
         .unwrap_err();
         assert_eq!(error, TelemetryError::InvalidCorrelation);
+    }
+
+    #[test]
+    fn json_boundary_rejects_wrong_schema_and_preserves_correlation() {
+        let event = event("provider_started");
+        let encoded = serde_json::to_string(&event).unwrap();
+        let recorded = record_python_event_json(&encoded).unwrap();
+        let decoded: RuntimeTelemetryEvent = serde_json::from_str(&recorded).unwrap();
+        assert_eq!(decoded.schema, RUNTIME_TELEMETRY_SCHEMA_V1);
+        assert_eq!(decoded.correlation.mission_id, "mission-1");
+
+        let wrong_schema = encoded.replace(RUNTIME_TELEMETRY_SCHEMA_V1, "wrong-schema");
+        assert_eq!(
+            record_python_event_json(&wrong_schema).unwrap_err(),
+            TelemetryError::InvalidCorrelation
+        );
     }
 }

@@ -17,6 +17,9 @@ from __future__ import annotations
 __version__ = "0.1.0"
 __all__ = [
     "Agent",
+    "CorrelationContext",
+    "RuntimeMetrics",
+    "RuntimeTelemetry",
     "finish_runtime_lease",
     "hardware_profile",
     "resource_contract_version",
@@ -28,6 +31,8 @@ __all__ = [
 # Re-export the Friendly Gateway Agent with simple name
 from .agent import Agent
 from .agent import run as run
+from .metrics import RuntimeMetrics
+from .observability import CorrelationContext, RuntimeTelemetry
 from .runtime import (
     finish_runtime_lease,
     hardware_profile,

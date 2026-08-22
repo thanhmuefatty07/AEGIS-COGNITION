@@ -6,6 +6,8 @@ import json
 import tomllib
 from pathlib import Path
 
+from rust_toolchain import derived_minimum, read_channel
+
 ROOT = Path(__file__).resolve().parents[1]
 
 
@@ -29,6 +31,8 @@ def main() -> int:
     rust_manifest = toml("core/rust/Cargo.toml")
     dependencies = rust_manifest["dependencies"]
     toolchain = toml("rust-toolchain.toml")["toolchain"]
+    rust_channel = read_channel(ROOT)
+    rust_minimum = derived_minimum(rust_channel)
     schema = json.loads(read("schemas/resource-contract-v1.json"))
     token_schema = json.loads(read("schemas/lease-token-v1.json"))
     workspace = toml("Cargo.toml")["workspace"]
@@ -42,8 +46,25 @@ def main() -> int:
         ),
         check(
             "rust_toolchain_pinned",
-            toolchain.get("channel") == "1.97.1" and {"rustfmt", "clippy"}.issubset(toolchain.get("components", [])),
-            "rust-toolchain.toml must pin 1.97.1 with rustfmt and clippy",
+            toolchain.get("channel") == rust_channel
+            and {"rustfmt", "clippy"}.issubset(toolchain.get("components", []))
+            and workspace.get("package", {}).get("rust-version") == rust_minimum,
+            "rust-toolchain.toml is the exact source; Cargo must use its derived major.minor minimum",
+        ),
+        check(
+            "rust_2024_workspace_resolver",
+            workspace.get("resolver") == "3"
+            and set(workspace.get("default-members", []))
+            == {
+                "core/rust",
+                "aegis-plugins/aegis-search-sdk",
+                "aegis-plugins/aegis-browser",
+                "aegis-plugins/aegis-sandbox",
+                "aegis-plugins/aegis-skills",
+                "aegis-plugins/aegis-evidence",
+                "aegis-plugins/aegis-bench",
+            },
+            "Rust 2024 must use resolver 3 and production default-members must exclude POCs",
         ),
         check(
             "native_boundary_versions",
@@ -159,6 +180,46 @@ def main() -> int:
             "benchmark_claims_are_labeled",
             "69x faster" not in read("README.md") and "All benchmarks verified" not in read("README.md"),
             "README must not present stale benchmark numbers as current proof",
+        ),
+        check(
+            "canonical_python_boundaries",
+            "sys.path.insert" not in read("aegis_cognition/agent.py")
+            and "sys.path.insert" not in read("aegis_cognition/rag.py")
+            and (ROOT / "aegis_cognition/application.py").is_file()
+            and (ROOT / "aegis_cognition/config.py").is_file()
+            and (ROOT / "aegis_cognition/infrastructure.py").is_file(),
+            "canonical Agent must use explicit application/config/infrastructure boundaries",
+        ),
+        check(
+            "gateway_responsibilities_split",
+            all(
+                (ROOT / path).is_file()
+                for path in (
+                    "core/python/aegis/contracts.py",
+                    "core/python/aegis/provider.py",
+                    "core/python/aegis/evidence.py",
+                    "core/python/aegis/learning.py",
+                )
+            )
+            and len(read("core/python/aegis_adapter.py").splitlines()) <= 700
+            and "class LearningManager" not in read("core/python/aegis_adapter.py")
+            and "async def _invoke_with_provider_route" not in read("core/python/aegis_adapter.py")
+            and "def commit_hot_evidence(" not in read("core/python/aegis_adapter.py"),
+            "gateway DTOs, provider policy, evidence, and learning must stay outside the facade",
+        ),
+        check(
+            "legacy_subtree_is_reference_only",
+            all(
+                path.relative_to(ROOT / "AEGIS-COGNITION").as_posix()
+                in {
+                    "DX_TRANSFORMATION_REPORT.md",
+                    "LEGACY_OWNERSHIP.md",
+                    "artifacts/extreme_testing/EXTREME_TESTING_CHAOS_REPORT.md",
+                }
+                for path in (ROOT / "AEGIS-COGNITION").rglob("*")
+                if path.is_file()
+            ),
+            "nested AEGIS-COGNITION must not contain executable implementation copies",
         ),
     ]
 
