@@ -11,6 +11,12 @@ The current runtime direction is intentionally conservative:
 - CPU-only execution is mandatory; accelerator adapters are optional.
 - OS enforcement is reported by capability level. Unsupported controls are never advertised as hard limits.
 
+The foundation convergence pass makes ownership executable: the exact Rust
+compiler channel comes from `rust-toolchain.toml`, production fast gates use
+resolver 3 `default-members`, the public Python Agent is a facade over
+application/config/infrastructure modules, and the compatibility gateway
+delegates provider/evidence/learning responsibilities to `core/python/aegis/`.
+
 The current closure slice includes the Rust resource contract, fenced runtime,
 bounded execution primitives, and opt-in Linux/Windows OS adapters. It still
 does not certify production readiness, cross-host benchmark superiority, or
@@ -31,6 +37,9 @@ that a platform adapter is active merely because it is compiled.
 | Policy provenance | `ResourcePolicy`, benchmark protocol | ASSUMED until H0/H1/H2 retained outputs |
 | Wasmtime migration | `docs/architecture/WASMTIME_MIGRATION.md` | static/security gate + Rust tests required |
 | Runtime telemetry facade | `core/rust/src/telemetry.rs`, `schemas/runtime-telemetry-v1.json` | bounded, correlated, non-authoritative sink tests; OTel export NOT VERIFIED |
+| Python runtime telemetry | `aegis_cognition/observability.py`, `metrics.py`, `core/rust/src/ffi.rs` | bounded correlation-chain tests; exporter/backend availability NOT VERIFIED |
+| Python application boundaries | `aegis_cognition/agent.py`, `application.py`, `config.py`, `infrastructure.py` | architecture fitness + strict Ruff/Pyright + regression tests |
+| Gateway responsibility boundaries | `core/python/aegis/contracts.py`, `provider.py`, `evidence.py`, `learning.py` | architecture fitness + full Python bridge regression suite |
 
 The durable standards mapping is in
 [`STANDARDS_APPLICABILITY.md`](STANDARDS_APPLICABILITY.md). The testing tiers

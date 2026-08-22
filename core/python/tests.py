@@ -798,7 +798,7 @@ checksum = "{idx:064x}"
 
 
 def test_aegis_adapter_dev_mode_runs_without_rust_extension():
-    with patch.dict("sys.modules", {"aegis_nerve": None}):
+    with patch.dict("sys.modules", {"aegis_nerve": None, "aegis_cognition.aegis_nerve": None}):
         with patch.dict(os.environ, {"AEGIS_TRUST_LEVEL": "DEV"}):
             result = Agent("inspect page", llm=lambda task: {"done": task}).run_sync()
 
@@ -831,7 +831,7 @@ def test_aegis_adapter_langgraph_style_invoke_batch_preserves_evidence():
             calls.append(task)
             return {"echo": task, "mode": kwargs.get("mode", "sync")}
 
-    with patch.dict("sys.modules", {"aegis_nerve": None}):
+    with patch.dict("sys.modules", {"aegis_nerve": None, "aegis_cognition.aegis_nerve": None}):
         with patch.dict(os.environ, {"AEGIS_TRUST_LEVEL": "DEV"}):
             agent = Agent(llm=RunnableLlm(), provider="local/dev")
             output = agent.invoke({"input": "inspect page"}, mode="sync")
@@ -864,7 +864,7 @@ def test_aegis_adapter_langgraph_style_ainvoke_accepts_message_input():
     async def async_llm(task, **kwargs):
         return {"async_echo": task, "tag": kwargs["tag"]}
 
-    with patch.dict("sys.modules", {"aegis_nerve": None}):
+    with patch.dict("sys.modules", {"aegis_nerve": None, "aegis_cognition.aegis_nerve": None}):
         with patch.dict(os.environ, {"AEGIS_TRUST_LEVEL": "DEV"}):
             agent = Agent(llm=async_llm)
             output = asyncio.run(
@@ -905,7 +905,7 @@ def test_aegis_adapter_trust_policy_snapshot_modes_are_hash_bound():
 
 
 def test_aegis_adapter_prod_requires_rust_hot_engine_extension():
-    with patch.dict("sys.modules", {"aegis_nerve": None}):
+    with patch.dict("sys.modules", {"aegis_nerve": None, "aegis_cognition.aegis_nerve": None}):
         with patch.dict(os.environ, {"AEGIS_TRUST_LEVEL": "PROD"}):
             with pytest.raises(RuntimeError, match="Rust aegis_nerve extension"):
                 commit_hot_evidence(b"prod evidence")
@@ -1407,7 +1407,7 @@ def test_aegis_adapter_dev_provider_fallback_records_route_evidence():
         calls.append(("nim/llama-3-70b", task))
         return {"provider": "reserve", "task": task}
 
-    with patch.dict("sys.modules", {"aegis_nerve": None}):
+    with patch.dict("sys.modules", {"aegis_nerve": None, "aegis_cognition.aegis_nerve": None}):
         with patch.dict(os.environ, {"AEGIS_TRUST_LEVEL": "DEV"}):
             result = Agent(
                 "inspect page",
@@ -1526,7 +1526,7 @@ def test_aegis_adapter_provider_budget_skips_exhausted_primary_and_hashes_eviden
         calls.append(("nim/llama-3-70b", task))
         return {"provider": "reserve", "task": task}
 
-    with patch.dict("sys.modules", {"aegis_nerve": None}):
+    with patch.dict("sys.modules", {"aegis_nerve": None, "aegis_cognition.aegis_nerve": None}):
         with patch.dict(os.environ, {"AEGIS_TRUST_LEVEL": "DEV"}):
             result = Agent(
                 "inspect page",
@@ -1579,7 +1579,7 @@ def test_aegis_adapter_prod_all_providers_throttled_fails_before_hot_commit():
     def throttled(task):
         raise ProviderRateLimitError("HTTP 429")
 
-    with patch.dict("sys.modules", {"aegis_nerve": None}):
+    with patch.dict("sys.modules", {"aegis_nerve": None, "aegis_cognition.aegis_nerve": None}):
         with patch.dict(os.environ, {"AEGIS_TRUST_LEVEL": "PROD"}):
             with pytest.raises(ProviderRateLimitError, match="all providers throttled"):
                 Agent(
@@ -1614,7 +1614,7 @@ def test_aegis_adapter_dev_browser_action_capture_commits_hot_evidence_before_co
                 "handle_valid": True,
             }
 
-        with patch.dict("sys.modules", {"aegis_nerve": None}):
+        with patch.dict("sys.modules", {"aegis_nerve": None, "aegis_cognition.aegis_nerve": None}):
             with patch.dict(os.environ, {"AEGIS_TRUST_LEVEL": "DEV"}):
                 result = Agent("inspect page").capture_browser_action_sync(
                     browser_session=session,
@@ -1649,7 +1649,7 @@ def test_aegis_adapter_default_browser_action_uses_batch_hot_evidence_without_ru
     with TemporaryDirectory() as tmp:
         session = _FakeBrowserSession()
 
-        with patch.dict("sys.modules", {"aegis_nerve": None}):
+        with patch.dict("sys.modules", {"aegis_nerve": None, "aegis_cognition.aegis_nerve": None}):
             with patch.dict(os.environ, {"AEGIS_TRUST_LEVEL": "DEV"}):
                 result = Agent("inspect page").capture_browser_action_sync(
                     browser_session=session,
@@ -1678,7 +1678,7 @@ def test_aegis_adapter_browser_action_accepts_session_bound_action():
     with TemporaryDirectory() as tmp:
         session = _FakeBrowserSession()
 
-        with patch.dict("sys.modules", {"aegis_nerve": None}):
+        with patch.dict("sys.modules", {"aegis_nerve": None, "aegis_cognition.aegis_nerve": None}):
             result = Agent(
                 "inspect page",
                 trust_level="DEV",
@@ -1713,7 +1713,7 @@ def test_aegis_adapter_hot_first_browser_action_returns_hot_evidence_before_cold
             publish_release,
         )
 
-        with patch.dict("sys.modules", {"aegis_nerve": None}):
+        with patch.dict("sys.modules", {"aegis_nerve": None, "aegis_cognition.aegis_nerve": None}):
             with patch.dict(os.environ, {"AEGIS_TRUST_LEVEL": "DEV"}):
                 result = Agent("inspect page").capture_browser_action_hot_first_sync(
                     browser_session=session,
@@ -2589,7 +2589,7 @@ def test_python_mmap_bridge_exposes_payload_memoryview_without_copy():
 
 
 def test_python_mmap_wasm_execution_requires_rust_wasmtime_extension():
-    with patch.dict("sys.modules", {"aegis_nerve": None}):
+    with patch.dict("sys.modules", {"aegis_nerve": None, "aegis_cognition.aegis_nerve": None}):
         with pytest.raises(RuntimeError, match="Rust-owned mmap Wasm|aegis_nerve extension"):
             execute_mmap_wasm_bridge_frame("missing.aegmmap", 1000)
 

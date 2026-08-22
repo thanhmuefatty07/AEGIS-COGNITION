@@ -3,6 +3,7 @@ name = "aegis-evidence"
 version = "0.1.0"
 edition = "2024"
 rust-version.workspace = true
+publish = false
 description = "AEGIS evidence binding and audit trail"
 
 [lib]
