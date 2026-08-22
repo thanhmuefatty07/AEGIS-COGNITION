@@ -88,9 +88,7 @@ class RuntimeTelemetry:
         context = correlation or self.current_correlation
         if context is None:
             raise ValueError("telemetry events require a correlation context")
-        correlation_mapping = (
-            context.as_mapping() if isinstance(context, CorrelationContext) else dict(context)
-        )
+        correlation_mapping = context.as_mapping() if isinstance(context, CorrelationContext) else dict(context)
         _validate_correlation(correlation_mapping)
         if not kind or not outcome or len(outcome) > 128:
             raise ValueError("telemetry kind/outcome must be non-empty and bounded")

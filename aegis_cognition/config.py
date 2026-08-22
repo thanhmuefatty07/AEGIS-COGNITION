@@ -32,9 +32,7 @@ def load_config(path: Path = CONFIG_FILE) -> dict[str, Any]:
 
 def resolve_api_key(config: Mapping[str, Any]) -> str | None:
     llm = config.get("llm", {})
-    configured: object = (
-        cast(Mapping[str, object], llm).get("api_key") if isinstance(llm, Mapping) else None
-    )
+    configured: object = cast(Mapping[str, object], llm).get("api_key") if isinstance(llm, Mapping) else None
     return (
         configured
         if isinstance(configured, str) and configured
@@ -44,9 +42,7 @@ def resolve_api_key(config: Mapping[str, Any]) -> str | None:
 
 def resolve_trust_level(config: Mapping[str, Any], override: str | None = None) -> str:
     trust = config.get("trust", {})
-    configured: object = (
-        cast(Mapping[str, object], trust).get("level") if isinstance(trust, Mapping) else None
-    )
+    configured: object = cast(Mapping[str, object], trust).get("level") if isinstance(trust, Mapping) else None
     selected: object = override or configured or os.environ.get("AEGIS_TRUST_LEVEL") or "DEV"
     return str(selected).strip().upper()
 
