@@ -18,7 +18,13 @@ Setup flow (< 2 minutes):
 from __future__ import annotations
 
 import sys
+from collections.abc import Callable
 from pathlib import Path
+from typing import Protocol, cast
+
+
+class _Msvcrt(Protocol):
+    getch: Callable[[], bytes]
 
 
 def main() -> None:
@@ -255,7 +261,7 @@ def _prompt_secret(text: str) -> str:
 
         print(f"{text}: ", end="", flush=True)
         chars: list[str] = []
-        getch = msvcrt.getch
+        getch = cast(_Msvcrt, msvcrt).getch
         while True:
             ch: bytes = getch()
             if ch in (b"\r", b"\n"):
