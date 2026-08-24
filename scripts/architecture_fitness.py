@@ -87,6 +87,21 @@ def main() -> int:
             "resource and runtime contract modules must exist",
         ),
         check(
+            "resource_runtime_acceptance_surfaces",
+            all(
+                marker in read(path)
+                for path, marker in (
+                    ("core/rust/src/resource.rs", "pub fn capacity_feedback"),
+                    ("core/rust/src/runtime.rs", "pub fn drain_queued"),
+                    ("core/rust/src/runtime.rs", "pub fn reap_expired"),
+                    ("core/rust/src/execution.rs", "pub fn run_untrusted_process"),
+                    ("core/rust/src/execution.rs", "pub trait AcceleratorExecutor"),
+                    ("core/rust/src/ffi.rs", "pub fn aegis_resource_usage_sample"),
+                )
+            ),
+            "resource feedback, queued admission, deadlines, process isolation, accelerator seams, and sampling must remain present",
+        ),
+        check(
             "maturin_native_packaging",
             root_build.get("build-backend") == "maturin"
             and root_build.get("requires") == ["maturin==1.14.1"]
@@ -167,6 +182,13 @@ def main() -> int:
             "secret_scan_gate",
             (ROOT / "scripts/secret_scan.py").is_file(),
             "tracked-source secret scan must be available to CI",
+        ),
+        check(
+            "release_evidence_gate",
+            (ROOT / "scripts/release_evidence.py").is_file()
+            and (ROOT / ".github/workflows/release.yml").is_file()
+            and "attest-build-provenance" in read(".github/workflows/release.yml"),
+            "release artifacts must have reproducible hash/SBOM evidence and a provenance-attestation path",
         ),
         check(
             "adr_evidence_fields",

@@ -2,6 +2,7 @@
 
 use crate::learning::LearningLedger;
 use crate::memory::session_search::SessionSearchIndex;
+use crate::resource::ResourceController;
 use blake3::Hasher;
 use parking_lot::Mutex;
 use pyo3::prelude::*;
@@ -383,6 +384,20 @@ pub fn aegis_llm_request(
             crate::llm::build_llm_request(request_id, session_id, &prompt, model_hint_static);
         request.is_valid()
     })
+}
+
+/// Return one observation-only resource sample. This never updates
+/// admission state; callers must feed samples back through Rust policy APIs.
+#[pyfunction]
+pub fn aegis_resource_usage_sample() -> PyResult<String> {
+    py_safe(|| {
+        let sample = crate::resource::PortableResourceController.sample();
+        serde_json::to_string(&sample).map_err(|error| {
+            pyo3::exceptions::PyRuntimeError::new_err(format!(
+                "resource usage serialization failed: {error}"
+            ))
+        })
+    })?
 }
 
 #[pyfunction]
@@ -959,6 +974,7 @@ pub fn aegis_nerve(_py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(aegis_resource_contract_version, m)?)?;
     m.add_function(wrap_pyfunction!(aegis_resource_admission_preview, m)?)?;
     m.add_function(wrap_pyfunction!(aegis_execution_lanes, m)?)?;
+    m.add_function(wrap_pyfunction!(aegis_resource_usage_sample, m)?)?;
     m.add_function(wrap_pyfunction!(aegis_runtime_submit, m)?)?;
     m.add_function(wrap_pyfunction!(aegis_runtime_retry, m)?)?;
     m.add_function(wrap_pyfunction!(aegis_runtime_finish, m)?)?;

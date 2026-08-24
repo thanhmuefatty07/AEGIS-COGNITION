@@ -22,3 +22,20 @@ lane throughput, p50/p95 latency, queue behavior, and policy source. A command
 run on the wrong hardware must be labeled `mismatch` rather than reused. Until
 all three profiles have retained raw output and review, `ResourcePolicy`
 values remain assumptions and are not advertised as measured performance.
+
+## Stable scheduler benchmark IDs
+
+The Rust Criterion harness `core/rust/benches/resource_runtime.rs` owns the
+initial architecture IDs:
+
+| ID | Measurement |
+|---|---|
+| `SCH-004` | resource admission decision |
+| `SCH-005` | lease acquire/release |
+| `SCH-006` | deterministic capacity feedback |
+| `SCH-007` | bounded queue behavior at limits 1/8/32 |
+| `SCH-008` | TaskLedger-integrated runtime submit/finish |
+
+These are microbenchmarks, not end-to-end product SLOs. Run them with the
+recorded compiler, OS, CPU quota, memory profile, sample count, and raw
+Criterion output before comparing hosts or freezing policy values.

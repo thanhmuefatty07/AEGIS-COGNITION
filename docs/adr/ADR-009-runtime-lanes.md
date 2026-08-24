@@ -18,6 +18,12 @@ Options were one global pool, advisory labels, or registry-backed executors.
 Rayon CPU, current-thread Tokio I/O, Python-blocking, and untrusted primitives.
 All primitives acquire and release the corresponding lane.
 
+The untrusted native-process path uses an argv-only `Command` invocation and
+requires `ResourceController::apply_to_process` before the child is allowed to
+run. Cooperative closures remain available only for trusted adapters and unit
+tests. `AcceleratorExecutor` is a capability seam; vendor SDKs are not core
+dependencies.
+
 ## Trade-offs and consequences
 
 Extra pools and synchronization cost resources, but prevent a blocking class

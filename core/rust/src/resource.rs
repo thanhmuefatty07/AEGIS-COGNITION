@@ -5,7 +5,7 @@
 //! [`ResourceController`] trait; unsupported enforcement is reported explicitly.
 
 use serde::{Deserialize, Serialize};
-use std::collections::{BTreeMap, VecDeque};
+use std::collections::{BTreeMap, BTreeSet, VecDeque};
 use std::sync::{
     Arc,
     atomic::{AtomicBool, Ordering},
@@ -169,6 +169,14 @@ pub struct AcceleratorProfile {
     pub memory_domain: MemoryDomainId,
     pub capabilities: Vec<String>,
     pub health: DeviceHealth,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+pub struct AcceleratorRequest {
+    pub kind: AcceleratorKind,
+    pub backend: Option<BackendKind>,
+    pub required_capabilities: Vec<String>,
+    pub memory: MemoryRequest,
 }
 
 #[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd, Serialize, Deserialize)]
@@ -446,6 +454,12 @@ pub struct ResourceRequest {
     pub work_kind: WorkKind,
     pub cpu: CpuRequest,
     pub host_memory: MemoryRequest,
+    #[serde(default)]
+    pub accelerator: Option<AcceleratorRequest>,
+    /// Compatibility field retained for the v1 JSON contract. New callers
+    /// should use `accelerator.memory` so capability requirements travel with
+    /// the request instead of being inferred from a byte count.
+    #[serde(default)]
     pub accelerator_memory: Option<MemoryRequest>,
     pub io: IoRequest,
     pub process_limit: Option<u32>,
@@ -467,6 +481,7 @@ impl ResourceRequest {
             work_kind,
             cpu: CpuRequest::default(),
             host_memory: MemoryRequest { bytes: 1 },
+            accelerator: None,
             accelerator_memory: None,
             io: IoRequest::default(),
             process_limit: None,
@@ -499,6 +514,18 @@ impl ResourceRequest {
         if self.host_memory.bytes == 0 || self.io.max_in_flight == 0 {
             return Err(ResourceError::InvalidRequest(
                 "memory and IO budgets must be non-zero".to_string(),
+            ));
+        }
+        if self
+            .accelerator
+            .as_ref()
+            .is_some_and(|request| request.memory.bytes == 0)
+            || self
+                .accelerator_memory
+                .is_some_and(|request| request.bytes == 0)
+        {
+            return Err(ResourceError::InvalidRequest(
+                "accelerator memory must be non-zero".to_string(),
             ));
         }
         if self
@@ -536,8 +563,10 @@ impl GrantedResources {
             cpu_threads: request.cpu.max_threads,
             host_memory_bytes: request.host_memory.bytes,
             accelerator_memory_bytes: request
-                .accelerator_memory
-                .map(|value| value.bytes)
+                .accelerator
+                .as_ref()
+                .map(|value| value.memory.bytes)
+                .or_else(|| request.accelerator_memory.map(|value| value.bytes))
                 .unwrap_or(0),
             io_in_flight: request.io.max_in_flight,
             process_limit: request.process_limit.unwrap_or(1),
@@ -566,6 +595,8 @@ impl GrantedResources {
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub enum ResourceError {
     InvalidRequest(String),
+    CapabilityDenied(String),
+    ResourceUnavailable(String),
     DeadlineExceeded,
     ResourceExhausted,
     UnknownLease(LeaseId),
@@ -655,6 +686,10 @@ pub struct AdmissionController {
     next_lease_id: LeaseId,
     generation: u64,
     active: BTreeMap<LeaseId, ResourceLease>,
+    accelerator_capabilities: BTreeSet<String>,
+    accelerator_kinds: BTreeSet<AcceleratorKind>,
+    accelerator_backends: BTreeSet<BackendKind>,
+    accelerator_available: bool,
 }
 
 impl AdmissionController {
@@ -675,6 +710,10 @@ impl AdmissionController {
             next_lease_id: 1,
             generation: 0,
             active: BTreeMap::new(),
+            accelerator_capabilities: BTreeSet::new(),
+            accelerator_kinds: BTreeSet::new(),
+            accelerator_backends: BTreeSet::new(),
+            accelerator_available: false,
         }
     }
 
@@ -694,11 +733,42 @@ impl AdmissionController {
             OperatingProfile::BalancedLaptop => cpu.max(2),
             OperatingProfile::Performance => cpu.max(4),
         };
-        Self::new(
+        let healthy_accelerators = profile
+            .accelerators
+            .iter()
+            .filter(|accelerator| accelerator.health == DeviceHealth::Healthy)
+            .collect::<Vec<_>>();
+        let accelerator_memory_domains = healthy_accelerators
+            .iter()
+            .map(|accelerator| accelerator.memory_domain.clone())
+            .collect::<BTreeSet<_>>();
+        let accelerator_memory_bytes = accelerator_memory_domains
+            .iter()
+            .filter_map(|domain_id| {
+                profile
+                    .memory_domains
+                    .iter()
+                    .find(|domain| &domain.id == domain_id)
+                    .and_then(|domain| domain.capacity_bytes)
+            })
+            .fold(0_u64, u64::saturating_add);
+        let accelerator_capabilities = healthy_accelerators
+            .iter()
+            .flat_map(|accelerator| accelerator.capabilities.iter().cloned())
+            .collect::<BTreeSet<_>>();
+        let accelerator_kinds = healthy_accelerators
+            .iter()
+            .map(|accelerator| accelerator.kind)
+            .collect::<BTreeSet<_>>();
+        let accelerator_backends = healthy_accelerators
+            .iter()
+            .map(|accelerator| accelerator.backend)
+            .collect::<BTreeSet<_>>();
+        let mut controller = Self::new(
             GrantedResources {
                 cpu_threads: cpu.max(1),
                 host_memory_bytes: host_memory,
-                accelerator_memory_bytes: 0,
+                accelerator_memory_bytes,
                 io_in_flight: concurrency,
                 process_limit: concurrency,
                 thread_limit: cpu.max(1),
@@ -707,7 +777,12 @@ impl AdmissionController {
             concurrency
                 .saturating_mul(profile.policy.queue_multiplier)
                 .max(1) as usize,
-        )
+        );
+        controller.accelerator_available = !healthy_accelerators.is_empty();
+        controller.accelerator_capabilities = accelerator_capabilities;
+        controller.accelerator_kinds = accelerator_kinds;
+        controller.accelerator_backends = accelerator_backends;
+        controller
     }
 
     pub fn queued(&self) -> usize {
@@ -721,6 +796,37 @@ impl AdmissionController {
     }
     pub fn used(&self) -> GrantedResources {
         self.used
+    }
+
+    pub fn capacity_feedback(&mut self, sample: &ResourceUsageSample) -> CapacityFeedback {
+        let previous = self.capacity;
+        if sample.memory_pressure {
+            let safe_capacity = self
+                .used
+                .host_memory_bytes
+                .saturating_add(previous.host_memory_bytes.saturating_mul(75) / 100)
+                .max(self.used.host_memory_bytes);
+            self.capacity.host_memory_bytes = self.capacity.host_memory_bytes.min(safe_capacity);
+        }
+        if sample.cpu_threads_active > 0 {
+            self.capacity.cpu_threads = self
+                .capacity
+                .cpu_threads
+                .min(sample.cpu_threads_active.max(self.used.cpu_threads));
+        }
+        let changed = self.capacity != previous;
+        CapacityFeedback {
+            previous,
+            current: self.capacity,
+            changed,
+            reason: if sample.memory_pressure {
+                "memory pressure reduced admission headroom".to_string()
+            } else if sample.cpu_threads_active > 0 {
+                "observed CPU activity bounded admission width".to_string()
+            } else {
+                "no capacity change".to_string()
+            },
+        }
     }
 
     pub fn enqueue(
@@ -739,6 +845,46 @@ impl AdmissionController {
     pub fn admit(&mut self, request: ResourceRequest, now_ms: u64) -> AdmissionDecision {
         if let Err(error) = request.validate(now_ms) {
             return AdmissionDecision::Rejected { reason: error };
+        }
+        let accelerator_requested = request.work_kind == WorkKind::Accelerator
+            || request.accelerator.is_some()
+            || request.accelerator_memory.is_some();
+        if accelerator_requested && !self.accelerator_available {
+            return AdmissionDecision::Rejected {
+                reason: ResourceError::CapabilityDenied(
+                    "no healthy accelerator backend is advertised".to_string(),
+                ),
+            };
+        }
+        if let Some(accelerator) = &request.accelerator {
+            if !self.accelerator_kinds.contains(&accelerator.kind) {
+                return AdmissionDecision::Rejected {
+                    reason: ResourceError::CapabilityDenied(
+                        "requested accelerator kind is unavailable".to_string(),
+                    ),
+                };
+            }
+            if accelerator
+                .backend
+                .is_some_and(|backend| !self.accelerator_backends.contains(&backend))
+            {
+                return AdmissionDecision::Rejected {
+                    reason: ResourceError::CapabilityDenied(
+                        "requested accelerator backend is unavailable".to_string(),
+                    ),
+                };
+            }
+            if accelerator
+                .required_capabilities
+                .iter()
+                .any(|capability| !self.accelerator_capabilities.contains(capability))
+            {
+                return AdmissionDecision::Rejected {
+                    reason: ResourceError::CapabilityDenied(
+                        "requested accelerator capability is unavailable".to_string(),
+                    ),
+                };
+            }
         }
         let granted = GrantedResources::from_request(&request);
         if granted.fits_within(self.capacity, self.used) {
@@ -811,12 +957,28 @@ impl AdmissionController {
         self.release(token.lease_id)
     }
 
+    pub fn expired_tokens(&self, now_ms: u64) -> Vec<ResourceLeaseToken> {
+        self.active
+            .values()
+            .filter(|lease| lease.is_expired(now_ms))
+            .map(ResourceLeaseToken::from_lease)
+            .collect()
+    }
+
     /// Remove the oldest bounded queue item for a caller that is ready to
     /// retry admission after releasing capacity. The controller does not
     /// spawn or execute work implicitly.
     pub fn pop_queued(&mut self) -> Option<ResourceRequest> {
         self.queued_requests.pop_front()
     }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+pub struct CapacityFeedback {
+    pub previous: GrantedResources,
+    pub current: GrantedResources,
+    pub changed: bool,
+    pub reason: String,
 }
 
 #[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd, Serialize, Deserialize)]
@@ -931,9 +1093,30 @@ pub struct ResourceUsageSample {
     pub memory_pressure: bool,
 }
 
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+pub struct ResourceScope {
+    pub schema: String,
+    pub lease_id: LeaseId,
+    pub backend: String,
+    pub enforcement: ResourceControlCapabilities,
+}
+
 pub trait ResourceController: Send + Sync {
     fn capabilities(&self) -> ResourceControlCapabilities;
     fn sample(&self) -> ResourceUsageSample;
+    fn create_scope(&self, lease: &ResourceLease) -> Result<ResourceScope, ResourceError> {
+        Ok(ResourceScope {
+            schema: RESOURCE_CONTRACT_SCHEMA_V1.to_string(),
+            lease_id: lease.lease_id,
+            backend: self.capabilities().backend.clone(),
+            enforcement: self.capabilities(),
+        })
+    }
+    fn apply_to_process(&self, _lease: &ResourceLease, _pid: u32) -> Result<(), ResourceError> {
+        Err(ResourceError::UnsupportedControl(
+            "controller does not expose process attachment".to_string(),
+        ))
+    }
     fn terminate(&self, lease: &ResourceLease) -> Result<(), ResourceError>;
 }
 
@@ -1007,6 +1190,10 @@ fn unix_time_millis() -> u64 {
         .duration_since(UNIX_EPOCH)
         .map(|duration| duration.as_millis() as u64)
         .unwrap_or(0)
+}
+
+pub(crate) fn unix_time_millis_for_runtime() -> u64 {
+    unix_time_millis()
 }
 
 fn default_attempt_id() -> u64 {
@@ -1173,5 +1360,137 @@ mod tests {
         }
         assert!(!lanes.try_acquire(ExecutionLane::Cpu));
         assert!(lanes.release(ExecutionLane::Cpu));
+    }
+
+    #[test]
+    fn accelerator_requests_fail_closed_without_capability() {
+        let mut controller = AdmissionController::new(capacity(), 1);
+        let mut request = ResourceRequest::minimal(1, WorkKind::Accelerator);
+        request.accelerator = Some(AcceleratorRequest {
+            kind: AcceleratorKind::Gpu,
+            backend: Some(BackendKind::Cuda),
+            required_capabilities: vec!["matrix".to_string()],
+            memory: MemoryRequest { bytes: 1 },
+        });
+        assert!(matches!(
+            controller.admit(request, 1),
+            AdmissionDecision::Rejected {
+                reason: ResourceError::CapabilityDenied(_)
+            }
+        ));
+    }
+
+    #[test]
+    fn accelerator_admission_matches_healthy_kind_backend_and_capabilities() {
+        let mut profile = HardwareProfile::probe();
+        profile.memory_domains.push(MemoryDomain {
+            id: "gpu-memory".to_string(),
+            kind: MemoryDomainKind::DiscreteAccelerator,
+            capacity_bytes: Some(1024),
+            available_bytes: Some(1024),
+            reserved_bytes: 0,
+        });
+        profile.accelerators.push(AcceleratorProfile {
+            id: "gpu-0".to_string(),
+            kind: AcceleratorKind::Gpu,
+            backend: BackendKind::Cuda,
+            vendor: "test".to_string(),
+            memory_domain: "gpu-memory".to_string(),
+            capabilities: vec!["matrix".to_string()],
+            health: DeviceHealth::Healthy,
+        });
+        profile.accelerators.push(AcceleratorProfile {
+            id: "failed-npu".to_string(),
+            kind: AcceleratorKind::Npu,
+            backend: BackendKind::Other,
+            vendor: "test".to_string(),
+            memory_domain: "missing".to_string(),
+            capabilities: vec!["inference".to_string()],
+            health: DeviceHealth::Failed,
+        });
+        let mut controller = AdmissionController::from_hardware(&profile);
+        let mut request = ResourceRequest::minimal(1, WorkKind::Accelerator);
+        request.accelerator = Some(AcceleratorRequest {
+            kind: AcceleratorKind::Npu,
+            backend: Some(BackendKind::Other),
+            required_capabilities: vec!["inference".to_string()],
+            memory: MemoryRequest { bytes: 1 },
+        });
+        assert!(matches!(
+            controller.admit(request.clone(), 1),
+            AdmissionDecision::Rejected {
+                reason: ResourceError::CapabilityDenied(_)
+            }
+        ));
+        request.accelerator = Some(AcceleratorRequest {
+            kind: AcceleratorKind::Gpu,
+            backend: Some(BackendKind::Cuda),
+            required_capabilities: vec!["matrix".to_string()],
+            memory: MemoryRequest { bytes: 1 },
+        });
+        assert!(matches!(
+            controller.admit(request, 1),
+            AdmissionDecision::Admitted(_)
+        ));
+    }
+
+    #[test]
+    fn pressure_feedback_reduces_headroom_without_revoking_used_capacity() {
+        let mut controller = AdmissionController::new(capacity(), 1);
+        let sample = ResourceUsageSample {
+            schema: RESOURCE_CONTRACT_SCHEMA_V1.to_string(),
+            sampled_at_ms: 1,
+            cpu_threads_active: 0,
+            host_memory_bytes: Some(900),
+            queue_depth: 1,
+            memory_pressure: true,
+        };
+        let feedback = controller.capacity_feedback(&sample);
+        assert!(feedback.changed);
+        assert!(feedback.current.host_memory_bytes < feedback.previous.host_memory_bytes);
+        assert!(feedback.current.host_memory_bytes >= controller.used().host_memory_bytes);
+    }
+
+    #[test]
+    fn accelerator_memory_uses_the_profile_memory_domain_once() {
+        let mut profile = HardwareProfile::probe();
+        profile.memory_domains.push(MemoryDomain {
+            id: "gpu-0-memory".to_string(),
+            kind: MemoryDomainKind::DiscreteAccelerator,
+            capacity_bytes: Some(4096),
+            available_bytes: Some(4096),
+            reserved_bytes: 0,
+        });
+        profile.accelerators.push(AcceleratorProfile {
+            id: "gpu-0".to_string(),
+            kind: AcceleratorKind::Gpu,
+            backend: BackendKind::Cuda,
+            vendor: "test".to_string(),
+            memory_domain: "gpu-0-memory".to_string(),
+            capabilities: vec!["matrix".to_string()],
+            health: DeviceHealth::Healthy,
+        });
+        profile.accelerators.push(AcceleratorProfile {
+            id: "gpu-1".to_string(),
+            kind: AcceleratorKind::Gpu,
+            backend: BackendKind::Cuda,
+            vendor: "test".to_string(),
+            memory_domain: "gpu-0-memory".to_string(),
+            capabilities: vec!["matrix".to_string()],
+            health: DeviceHealth::Healthy,
+        });
+        let controller = AdmissionController::from_hardware(&profile);
+        assert_eq!(controller.capacity().accelerator_memory_bytes, 4096);
+        let mut request = ResourceRequest::minimal(1, WorkKind::Accelerator);
+        request.accelerator = Some(AcceleratorRequest {
+            kind: AcceleratorKind::Gpu,
+            backend: Some(BackendKind::Cuda),
+            required_capabilities: vec!["matrix".to_string()],
+            memory: MemoryRequest { bytes: 1024 },
+        });
+        assert!(matches!(
+            controller.clone().admit(request, 1),
+            AdmissionDecision::Admitted(_)
+        ));
     }
 }
