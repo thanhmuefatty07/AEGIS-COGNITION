@@ -25,6 +25,26 @@
       "properties": { "bytes": { "type": "integer", "minimum": 1 } },
       "additionalProperties": false
     },
+    "accelerator": {
+      "type": ["object", "null"],
+      "required": ["kind", "required_capabilities", "memory"],
+      "properties": {
+        "kind": { "enum": ["Cpu", "Gpu", "Npu", "Other"] },
+        "backend": { "enum": ["Cpu", "Cuda", "Rocm", "Metal", "Vulkan", "Other", null] },
+        "required_capabilities": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 },
+          "uniqueItems": true
+        },
+        "memory": {
+          "type": "object",
+          "required": ["bytes"],
+          "properties": { "bytes": { "type": "integer", "minimum": 1 } },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
     "accelerator_memory": {
       "type": ["object", "null"],
       "properties": { "bytes": { "type": "integer", "minimum": 1 } },

@@ -6,14 +6,14 @@
 
 use crate::resource::{
     RESOURCE_CONTRACT_SCHEMA_V1, ResourceControlCapabilities, ResourceController, ResourceError,
-    ResourceLease, ResourceUsageSample,
+    ResourceLease, ResourceScope, ResourceUsageSample,
 };
 
 #[cfg(target_os = "linux")]
 mod linux {
     use super::{
         RESOURCE_CONTRACT_SCHEMA_V1, ResourceControlCapabilities, ResourceController,
-        ResourceError, ResourceLease, ResourceUsageSample,
+        ResourceError, ResourceLease, ResourceScope, ResourceUsageSample,
     };
     use std::fs;
     use std::path::{Path, PathBuf};
@@ -48,6 +48,16 @@ mod linux {
         ) -> Result<(), ResourceError> {
             let group = self.root.join(format!("aegis-{}", lease.lease_id));
             fs::create_dir_all(&group).map_err(io_error)?;
+            self.configure_group(&group, lease)?;
+            write_limit(&group.join("cgroup.procs"), pid.to_string())?;
+            Ok(())
+        }
+
+        fn configure_group(
+            &self,
+            group: &Path,
+            lease: &ResourceLease,
+        ) -> Result<(), ResourceError> {
             write_limit(
                 &group.join("memory.max"),
                 lease.granted.host_memory_bytes.to_string(),
@@ -57,9 +67,7 @@ mod linux {
                 lease.granted.process_limit.to_string(),
             )?;
             let quota = u64::from(lease.granted.cpu_threads).saturating_mul(100_000);
-            write_limit(&group.join("cpu.max"), format!("{quota} 100000"))?;
-            write_limit(&group.join("cgroup.procs"), pid.to_string())?;
-            Ok(())
+            write_limit(&group.join("cpu.max"), format!("{quota} 100000"))
         }
 
         fn group_for(&self, lease: &ResourceLease) -> PathBuf {
@@ -93,6 +101,22 @@ mod linux {
                 queue_depth: 0,
                 memory_pressure: pressure,
             }
+        }
+
+        fn create_scope(&self, lease: &ResourceLease) -> Result<ResourceScope, ResourceError> {
+            let group = self.group_for(lease);
+            fs::create_dir_all(&group).map_err(io_error)?;
+            self.configure_group(&group, lease)?;
+            Ok(ResourceScope {
+                schema: RESOURCE_CONTRACT_SCHEMA_V1.to_string(),
+                lease_id: lease.lease_id,
+                backend: "linux-cgroup-v2".to_string(),
+                enforcement: self.capabilities(),
+            })
+        }
+
+        fn apply_to_process(&self, lease: &ResourceLease, pid: u32) -> Result<(), ResourceError> {
+            Self::apply_to_process(self, lease, pid)
         }
 
         fn terminate(&self, lease: &ResourceLease) -> Result<(), ResourceError> {
@@ -163,11 +187,7 @@ mod windows {
             Ok(Self { handle })
         }
 
-        pub fn apply_to_process(
-            &self,
-            lease: &ResourceLease,
-            pid: u32,
-        ) -> Result<(), ResourceError> {
+        fn configure_limits(&self, lease: &ResourceLease) -> Result<(), ResourceError> {
             let mut limits = JOBOBJECT_EXTENDED_LIMIT_INFORMATION::default();
             limits.BasicLimitInformation.LimitFlags =
                 JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE | JOB_OBJECT_LIMIT_PROCESS_MEMORY;
@@ -183,6 +203,15 @@ mod windows {
             if ok == 0 {
                 return Err(last_error("SetInformationJobObject"));
             }
+            Ok(())
+        }
+
+        pub fn apply_to_process(
+            &self,
+            lease: &ResourceLease,
+            pid: u32,
+        ) -> Result<(), ResourceError> {
+            self.configure_limits(lease)?;
             let process = unsafe {
                 OpenProcess(
                     PROCESS_SET_QUOTA | PROCESS_TERMINATE | PROCESS_QUERY_LIMITED_INFORMATION,
@@ -237,6 +266,20 @@ mod windows {
                 queue_depth: 0,
                 memory_pressure: false,
             }
+        }
+
+        fn create_scope(&self, lease: &ResourceLease) -> Result<ResourceScope, ResourceError> {
+            self.configure_limits(lease)?;
+            Ok(ResourceScope {
+                schema: RESOURCE_CONTRACT_SCHEMA_V1.to_string(),
+                lease_id: lease.lease_id,
+                backend: "windows-job-object".to_string(),
+                enforcement: self.capabilities(),
+            })
+        }
+
+        fn apply_to_process(&self, lease: &ResourceLease, pid: u32) -> Result<(), ResourceError> {
+            Self::apply_to_process(self, lease, pid)
         }
 
         fn terminate(&self, _lease: &ResourceLease) -> Result<(), ResourceError> {

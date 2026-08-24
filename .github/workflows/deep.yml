@@ -57,12 +57,14 @@ jobs:
       - name: Replay and resource evidence
         run: |
           python scripts/resource_policy_benchmark.py --profile H1 --iterations 200 --output artifacts/resource-policy-local-only.json
+          cargo bench --manifest-path core/rust/Cargo.toml --bench resource_runtime --no-default-features -- --sample-size 10
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: deep-evidence-${{ github.sha }}
           path: |
             artifacts/resource-policy-local-only.json
             artifacts/rust-coverage.lcov
+            target/criterion
 
   fuzz-resource-contract:
     name: Resource contract fuzz smoke

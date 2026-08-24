@@ -19,6 +19,10 @@ Expose normalized capability, admission, lane, and sandbox status through the
 Rust facade. It reports decisions already made by authority and labels
 measurement versus enforcement.
 
+`ResourceUsageSample` is observation-only. `AuthoritativeRuntime` may feed a
+validated sample into deterministic `CapacityFeedback`, which can tighten
+future admission but cannot alter an existing lease or task state.
+
 ## Trade-offs and consequences
 
 The facade may omit platform-specific detail, but it avoids coupling policy to

@@ -19,6 +19,12 @@ Validate a `ResourceRequest`, check checked arithmetic against capacity, issue a
 Rust-held lease, and only then allow execution. Queues have finite limits and
 unknown capacity is conservative.
 
+Queued requests are re-attempted only by `AuthoritativeRuntime::drain_queued`,
+which restores `TaskLedger` state before returning an opaque token. Deadline
+reaping releases the lease and lane counters before moving a task to the
+explicit `TimedOut` state. Resource samples may reduce future capacity but
+cannot revoke an active lease.
+
 ## Trade-offs and consequences
 
 Some work queues instead of starting immediately, and throughput can be lower
