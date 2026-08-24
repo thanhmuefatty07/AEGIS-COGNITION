@@ -5,6 +5,7 @@
 
 use aegis_nerve::bridge_mmap::{open_mmap_bridge_view, write_mmap_bridge_frame};
 use aegis_nerve::ffi::{aegis_hot_hash, aegis_status};
+use aegis_nerve::message::MessageFrame;
 use aegis_nerve::sandbox::WasmtimeSandbox;
 use aegis_nerve::task_ledger::{TaskCard, TaskLedger};
 use criterion::{BatchSize, Criterion, black_box, criterion_group, criterion_main};
@@ -75,6 +76,24 @@ fn benchmark_scheduler(c: &mut Criterion) {
     });
 }
 
+fn benchmark_communication_payloads(c: &mut Criterion) {
+    for (id, bytes) in [
+        ("IPC-001_payload_64B", 64usize),
+        ("IPC-002_payload_1KiB", 1024),
+        ("IPC-003_payload_64KiB", 64 * 1024),
+        ("IPC-004_payload_1MiB", 1024 * 1024),
+        ("IPC-005_payload_16MiB", 16 * 1024 * 1024),
+    ] {
+        let payload = vec![0xA5; bytes];
+        c.bench_function(id, |bencher| {
+            bencher.iter(|| {
+                let frame = MessageFrame::new(black_box(payload.clone()));
+                black_box(frame.is_valid())
+            });
+        });
+    }
+}
+
 fn benchmark_cpu(c: &mut Criterion) {
     let payload = vec![0x5A; 64 * 1024];
     c.bench_function("CPU-001_hashing_batch", |bencher| {
@@ -131,6 +150,6 @@ fn benchmark_sandbox(c: &mut Criterion) {
 criterion_group! {
     name = benches;
     config = Criterion::default().measurement_time(Duration::from_secs(1)).sample_size(10);
-    targets = benchmark_ffi, benchmark_scheduler, benchmark_cpu, benchmark_sandbox
+    targets = benchmark_ffi, benchmark_scheduler, benchmark_communication_payloads, benchmark_cpu, benchmark_sandbox
 }
 criterion_main!(benches);
