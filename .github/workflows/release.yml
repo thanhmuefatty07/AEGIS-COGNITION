@@ -30,13 +30,13 @@ jobs:
       - name: Install locked build tooling
         run: python -m pip install --upgrade pip "uv==${{ env.UV_VERSION }}"
       - name: Resolve locked environment
-        run: uv sync --locked --extra all --extra dev
+        run: uv sync --locked --no-install-project --extra all --extra dev
       - name: Build versioned wheel
         run: uv build --wheel --out-dir artifacts/wheels
       - name: Verify release payload and generate SBOM
         run: |
           python -m py_compile scripts/release_evidence.py
-          uv run --locked --extra all --extra dev ruff check scripts/release_evidence.py
+          uv run --no-project ruff check scripts/release_evidence.py
           python scripts/release_evidence.py --artifacts artifacts/wheels --output artifacts/release
       - name: Rust metadata evidence
         run: cargo metadata --locked --format-version 1 > artifacts/release/cargo-metadata.json
