@@ -8204,6 +8204,53 @@ mod replay_internal_tests {
         );
         assert!(events.is_empty());
     }
+
+    #[test]
+    fn binary_archive_recovery_preserves_committed_prefix_and_rejects_invalid_header() {
+        let path = std::env::temp_dir().join(format!(
+            "aegis-binary-recovery-{}-{}.bin",
+            std::process::id(),
+            1_u64
+        ));
+        let event = RunEvent::new(
+            1,
+            1,
+            RunEventKind::MissionCompiled,
+            1,
+            [1; 32],
+            None,
+            [0; 32],
+        );
+        let ledger = RunEventLedger::from_events(1, vec![event]).unwrap();
+        BinaryRunEventSegment::write_ledger(&path, &ledger).unwrap();
+        let mut bytes = std::fs::read(&path).unwrap();
+
+        bytes.extend(std::iter::repeat_n(
+            0xaa,
+            BinaryRunEventSegment::record_bytes() / 2,
+        ));
+        std::fs::write(&path, &bytes).unwrap();
+        let recovered = BinaryRunEventSegment::recover_last_valid_prefix_mmap(&path).unwrap();
+        assert_eq!(recovered.recovered_event_count, 1);
+        assert!(recovered.trailing_partial_bytes > 0);
+
+        bytes[BinaryRunEventSegment::header_bytes() + 5] ^= 0xff;
+        std::fs::write(&path, &bytes).unwrap();
+        let corrupted = BinaryRunEventSegment::recover_last_valid_prefix_mmap(&path).unwrap();
+        assert_eq!(corrupted.recovered_event_count, 0);
+
+        BinaryRunEventSegment::write_ledger(&path, &ledger).unwrap();
+        let mut future_version = std::fs::read(&path).unwrap();
+        future_version[8..16].copy_from_slice(&99_u64.to_le_bytes());
+        std::fs::write(&path, &future_version).unwrap();
+        assert!(BinaryRunEventSegment::recover_last_valid_prefix_mmap(&path).is_err());
+
+        bytes.truncate(BinaryRunEventSegment::header_bytes());
+        std::fs::write(&path, &bytes).unwrap();
+        let header_only = BinaryRunEventSegment::recover_last_valid_prefix_mmap(&path).unwrap();
+        assert_eq!(header_only.recovered_event_count, 0);
+        let _ = std::fs::remove_file(path);
+    }
 }
 
 fn blake3_hash_bytes(bytes: &[u8]) -> [u8; 32] {

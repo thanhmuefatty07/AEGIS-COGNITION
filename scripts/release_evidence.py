@@ -79,6 +79,8 @@ def build_evidence(root: Path, artifacts: Path, output: Path) -> None:
     manifest = {
         "schema": "aegis-release-evidence-v1",
         "revision": git_revision(root),
+        "ref": os.environ.get("GITHUB_REF", "local"),
+        "run_id": os.environ.get("GITHUB_RUN_ID", "local"),
         "artifacts": entries,
         "verification": "PROVEN for generated hashes; external signature/promotion remains separate",
     }

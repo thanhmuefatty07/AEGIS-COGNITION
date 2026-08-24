@@ -20,6 +20,12 @@ lock state, workload/sample count, and whether the result is `PROVEN`,
 `MEASURED`, `ASSUMED`, or `NOT VERIFIED`. A local result must never be relabeled
 as a cross-platform or H0/H1/H2 result.
 
+`docs/architecture/evidence/current.json` is the tracked schema/template. The
+workflow materializes a checkout-bound `artifacts/evidence/current.json` and
+the consistency gate validates `EvidenceSHA == git rev-parse HEAD`. Remote run
+IDs and artifact URLs are filled only after the run completes; old run IDs are
+kept under `historical_evidence`, never copied into a current row.
+
 The current repository intentionally keeps privileged OS enforcement, macOS
 live controls, H0/H1/H2 freeze data, fuzz campaigns, external signed release
 attestation, and full OTel export as open evidence. CI definitions establish

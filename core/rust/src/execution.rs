@@ -311,4 +311,26 @@ mod tests {
         assert!(matches!(error, ResourceError::UnsupportedControl(_)));
         assert_eq!(lanes.snapshot().lanes[&ExecutionLane::Untrusted].active, 0);
     }
+
+    #[test]
+    fn cpu_lane_stress_completes_all_contenders_without_starvation() {
+        let profile = HardwareProfile::probe();
+        let lanes = Arc::new(ExecutionLanes::new(&profile).unwrap());
+        let completed = Arc::new(std::sync::atomic::AtomicUsize::new(0));
+        let handles: Vec<_> = (0..64)
+            .map(|_| {
+                let lanes = Arc::clone(&lanes);
+                let completed = Arc::clone(&completed);
+                std::thread::spawn(move || {
+                    lanes.run_cpu(|| 1 + 1).unwrap();
+                    completed.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+                })
+            })
+            .collect();
+        for handle in handles {
+            handle.join().unwrap();
+        }
+        assert_eq!(completed.load(std::sync::atomic::Ordering::SeqCst), 64);
+        assert_eq!(lanes.snapshot().lanes[&ExecutionLane::Cpu].active, 0);
+    }
 }

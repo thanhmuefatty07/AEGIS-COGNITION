@@ -44,4 +44,8 @@ that a platform adapter is active merely because it is compiled.
 The durable standards mapping is in
 [`STANDARDS_APPLICABILITY.md`](STANDARDS_APPLICABILITY.md). The testing tiers
 and evidence-label rules are in
-[`TESTING_AND_EVIDENCE.md`](TESTING_AND_EVIDENCE.md).
+[`TESTING_AND_EVIDENCE.md`](TESTING_AND_EVIDENCE.md). The current evidence
+entry point is [`VERIFICATION_INDEX.md`](VERIFICATION_INDEX.md); its
+machine-readable template is [`evidence/current.json`](evidence/current.json),
+and unresolved closure work is retained in
+[`NOT_VERIFIED_REGISTRY.md`](NOT_VERIFIED_REGISTRY.md).

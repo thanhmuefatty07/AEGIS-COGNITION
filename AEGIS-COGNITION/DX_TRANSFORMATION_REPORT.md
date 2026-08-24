@@ -1,13 +1,17 @@
 # AEGIS-COGNITION DX Transformation Report
 
 **Generated**: 2026-06-11
-**Status**: COMPLETE
+**Status**: HISTORICAL / SUPERSEDED — retained for audit context; current
+architecture and release claims are governed by `docs/architecture/evidence/current.json`.
 
 ---
 
 ## Executive Summary
 
-AEGIS-COGNITION has been transformed from a research-grade cryptographic engine (30+ min setup, 20+ imports) into a production-ready developer tool with **1 import, 3 lines of code, < 2 min setup** — matching the DX quality of Hermes, LangGraph, and Browser-Use while retaining full cryptographic integrity and 69-29,443x performance advantages.
+The original report recorded a developer-experience transformation and made
+production/performance claims that were not independently retained under the
+current evidence policy. Treat its numbers and “production-ready” language as
+historical assertions, not current proof.
 
 ---
 
@@ -165,4 +169,4 @@ AEGIS-COGNITION/
 
 ---
 
-*DX Transformation complete: `dx_transformation_complete=true`*
+*Historical DX transformation report retained; current closure is tracked by the architecture evidence manifest.*

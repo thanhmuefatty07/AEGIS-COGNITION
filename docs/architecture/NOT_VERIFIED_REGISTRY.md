@@ -1,0 +1,25 @@
+# NOT VERIFIED registry
+
+This registry is intentionally explicit. An unavailable platform or privilege
+does not become a pass, and it does not get silently removed from the closure
+scope. Each row has an owner and a reproducible closure procedure.
+
+| ID | Area | Reason | Risk | Required environment / closure test | Owner | Status |
+|---|---|---|---|---|---|---|
+| NV-001 | Linux cgroup v2 live enforcement | Current Windows/local fixture is not privileged cgroup evidence | Process can escape limits if adapter wiring is wrong | Privileged Linux runner: create isolated cgroup, apply CPU/memory/pids limits, attach child, verify live pressure, cancellation, deadline, and `cgroup.kill`; retain JSON/logs | Runtime | NOT VERIFIED |
+| NV-002 | Windows Job Object live enforcement | Compile/fixture path is not a live child-process containment run | Memory/process containment may differ at runtime | Windows runner: spawn controlled child, assign Job Object, verify memory/process limit, termination and deadline; retain event log and report | Runtime | NOT VERIFIED |
+| NV-003 | macOS controls | Adapter is cooperative/measurement-only | No kernel-equivalent limit is claimed | macOS runner: report CPU/memory/process/thread/I/O/termination capability levels and run cooperative cancellation; do not claim kernel enforcement | Runtime | NOT VERIFIED |
+| NV-004 | External signed attestation | GitHub attestation is unavailable for this private user-owned repository | Release provenance lacks provider signature | Public/eligible repository or supported attestation provider; rerun release and verify predicate subject digest; keep failure reason while unavailable | Release | NOT VERIFIED |
+| NV-005 | H0/H1/H2 hardware policy freeze | No retained representative workload on named hardware tiers | Resource defaults remain assumptions | Three named hardware profiles with raw JSON/CSV and markdown p50/p95/p99, RSS, CPU, queue, rejection, cancellation, fairness and pressure results | Performance | NOT VERIFIED |
+| NV-006 | External OpenTelemetry exporter | Internal bounded telemetry facade exists; exporter not exercised | Export correlation/failure semantics may drift | Configured OTLP endpoint: verify parent/child, retry, cancel, failure, finalization and dropped-event behavior without authority coupling | Observability | NOT VERIFIED |
+| NV-007 | Full fuzz campaign | Current target/build/smoke does not prove all parser/protocol/runtime/FFI/archive targets | Hostile input regressions can remain undiscovered | Nightly >=10 minutes and weekly/release >=60 minutes where runner allows; retain seed, corpus, crashes, command, commit, duration and executions; zero reproducible crash/UB | Security | NOT VERIFIED |
+| NV-008 | Tier-1 wheel parity | Existing matrix proves build/import scope but not all clean installs on every OS/ABI | Native packaging can diverge by platform | Linux/Windows/macOS builds for policy versions incl. 3.14, supported 3.14t, and 3.15 compatibility; clean install/import/native/runtime/metadata | Release | NOT VERIFIED |
+| NV-009 | Rollback/restore drill | No retained N -> N+1 -> N install and restore smoke | Release recovery may be untested | Isolated environment: install N, install N+1, rollback N, smoke import/runtime, restore persisted fixture and replay committed prefix | Release | NOT VERIFIED |
+| NV-010 | Branch protection | Provider API returned 403 for private repository rules | A bad commit may reach main without required checks | Repository owner enables required CI/deep/release checks and records ruleset URL/export; verify direct push and stale evidence are blocked | Repository | NOT VERIFIED |
+| NV-011 | GT96 closure rows | Several contracts are implemented or represented but lack direct final-SHA proof | Architecture claims can outrun behavior | Execute each row in GT96_TRACEABILITY.md and update its status/evidence ID; rows not implemented stay explicit, not “complete” | Architecture | OPEN |
+| NV-012 | Cross-version schema migration | Current archive validates one current binary format and prefix recovery; old/future fixtures are not retained | A persisted archive may be unreadable after upgrade | Add vN→current fixtures covering unknown optional/added/removed/truncated/corrupt/partial-tail/old/future schema and retain migration report | Replay | NOT VERIFIED |
+| NV-013 | Miri/ASan closure | Only selected `resource::tests` are configured and final-SHA artifacts are not yet retained | Uncovered FFI/native/archive paths may differ | Run exact commands in `SANITIZER_SCOPE.md`, retain logs/toolchain/features/exclusions, and fail on reproducible UB | Security | NOT VERIFIED |
+| NV-014 | Communication payload metrics | Existing microbenchmarks do not yet retain the required 64B–16MB matrix with alloc/copy/RSS/CPU fields | Copy/zero-copy claims may be overstated | Run payload classes 64B, 1KiB, 64KiB, 1MiB, 16MiB and retain p50/p95, throughput, allocations, copies, RSS, CPU | IPC | NOT VERIFIED |
+
+The registry is retained after closure: a closed row changes status and adds
+the closing evidence ID and SHA; it is not deleted.
