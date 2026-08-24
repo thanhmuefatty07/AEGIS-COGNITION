@@ -26,7 +26,7 @@ means an explicit default is in use but has not been frozen by H0/H1/H2 data;
 | PKG-001 | Maturin owns the native wheel build | `pyproject.toml`, Cargo `python-extension` feature | `PROVEN` pinned 1.14.1 configuration and local clean-wheel import; exact Tier-1 matrix remains `NOT VERIFIED` |
 | RUST-001 | Rust 2024 migration | all workspace manifests and Windows FFI declarations | `PROVEN` workspace library check passes |
 | WASM-001 | Wasmtime 47 migration is security-reviewed | `Cargo.toml`, `WASMTIME_MIGRATION.md`, sandbox tests, `fuzz/` | `PROVEN` exact 47.0.3 configuration/static gates and Rust behavior tests; fuzz and hostile-kernel evidence `NOT VERIFIED` |
-| CI-001 | CI runs the resolved environment | `.github/workflows/ci.yml`, `.github/workflows/deep.yml` | `PROVEN` workflow definitions use pinned actions, locked uv, strict checks, deep/fuzz paths; current-SHA runner result pending |
+| CI-001 | CI runs the resolved environment | `.github/workflows/ci.yml`, `.github/workflows/deep.yml` | `PROVEN`: workflow definitions use pinned actions, locked uv, strict checks, deep/fuzz paths; current commit `6e09dba1a1cf227476ef893a35bfd1c050f3a1e0` passed all 9 CI jobs in run [32770728338](https://github.com/thanhmuefatty07/AEGIS-COGNITION/actions/runs/32770728338) |
 | DOC-001 | Decisions and requirements are durable | `docs/adr/`, this matrix | `PROVEN` ADRs carry decision, security, performance, operations, rollback, and evidence fields |
 | TEL-001 | Bounded non-authoritative runtime telemetry with correlation IDs | `core/rust/src/telemetry.rs`, `schemas/runtime-telemetry-v1.json` | `PROVEN`: schema, correlation validation, bounded-drop behavior; OTel exporter `NOT VERIFIED` |
 | TEL-003 | Resource sampling is observation-only and can feed deterministic capacity feedback | `resource.rs`, `ffi.rs`, `aegis_cognition/runtime.py` | `PROVEN`: native sample boundary and pressure-feedback tests; external exporter `NOT VERIFIED` |
@@ -39,7 +39,7 @@ means an explicit default is in use but has not been frozen by H0/H1/H2 data;
 | PY-003 | Gateway provider/evidence/learning responsibilities are split | `core/python/aegis/*.py`, `core/python/aegis_adapter.py` | `PROVEN`: adapter responsibility gate and bridge regression suite |
 | TEL-002 | Python provider/tool/evidence events share Rust-compatible correlation IDs | `aegis_cognition/observability.py`, `core/python/aegis_adapter.py`, `core/rust/src/ffi.rs` | `PROVEN` local bounded-chain tests; native wheel FFI forwarding requires rebuild |
 | TOOL-001 | Rust toolchain and CI derive from one exact source | `rust-toolchain.toml`, `scripts/rust_toolchain.py`, workflows | `PROVEN`: architecture fitness; beta forward-compat lane is experimental |
-| TOOL-002 | Fast CI excludes POCs while deep evidence retains them | `Cargo.toml`, `ci.yml`, `deep.yml` | `PROVEN` configuration; final remote run tracked per commit |
+| TOOL-002 | Fast CI excludes POCs while deep evidence retains them | `Cargo.toml`, `ci.yml`, `deep.yml` | `PROVEN`: configuration and current remote CI result; plugin workflow also passed in run [32770728189](https://github.com/thanhmuefatty07/AEGIS-COGNITION/actions/runs/32770728189) |
 
 ## Evidence discipline
 
