@@ -38,7 +38,13 @@ def parse_counts(output: str) -> dict[str, int | None]:
 
 def toolchain(command: list[str]) -> str:
     executable = command[0].lower() if command else ""
-    probe = ["rustc", "--version"] if "cargo" in executable else ["python", "--version"]
+    if "cargo" in executable:
+        probe = ["rustc", "--version"]
+    elif executable == "uv" and "python" in command:
+        python_index = command.index("python")
+        probe = [*command[: python_index + 1], "--version"]
+    else:
+        probe = ["python", "--version"]
     result = subprocess.run(probe, capture_output=True, text=True, check=False)
     return (result.stdout or result.stderr).strip()
 
