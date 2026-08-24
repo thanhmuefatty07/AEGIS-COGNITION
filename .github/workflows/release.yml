@@ -42,10 +42,18 @@ jobs:
         run: cargo metadata --locked --format-version 1 > artifacts/release/cargo-metadata.json
       - name: Bind current evidence manifest to release artifacts
         run: cp artifacts/evidence/current.json artifacts/release/current-evidence.json
+      - uses: actions/attest-build-provenance@e8998f949152b193b063cb0ec769d69d929409be # v2
+        id: build-provenance
+        continue-on-error: true
+        with:
+          subject-path: artifacts/wheels/*.whl
+      - name: Record attestation outcome
+        if: always()
+        env:
+          ATTESTATION_OUTCOME: ${{ steps.build-provenance.outcome }}
+        run: python scripts/attestation_status.py --output artifacts/release/attestation-status.json
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        if: always()
         with:
           name: aegis-release-evidence-${{ github.sha }}
           path: artifacts/release
-      - uses: actions/attest-build-provenance@e8998f949152b193b063cb0ec769d69d929409be # v2
-        with:
-          subject-path: artifacts/wheels/*.whl
