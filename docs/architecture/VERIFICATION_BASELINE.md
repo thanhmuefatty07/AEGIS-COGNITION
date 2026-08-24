@@ -42,18 +42,21 @@ records what was actually run; it is not a production-readiness certificate.
 
 | Gate | Result | Evidence label | Boundary |
 |---|---|---|---|
-| GitHub CI for `d22a32ef7f0ee007971d26d23f55969fad3c398a` | 9/9 jobs passed | PROVEN | Rust MSRV 1.97.1, Python 3.14.7, 3.14.7t experimental, 3.15.0rc1, beta, and Ubuntu/Windows/macOS Tier-1 lanes; [run 32772520671](https://github.com/thanhmuefatty07/AEGIS-COGNITION/actions/runs/32772520671) |
-| Windows plugin workflow for `d22a32ef7f0ee007971d26d23f55969fad3c398a` | Format, compile, tests, and clippy passed | PROVEN | Windows plugin workspace; [run 32772520755](https://github.com/thanhmuefatty07/AEGIS-COGNITION/actions/runs/32772520755) |
+| GitHub CI for `07101ce3c2df0fedeaa51ea6426a18bb55aa424f` | 10/10 jobs passed | PROVEN | Rust MSRV 1.97.1, beta, Python 3.14.7/3.15.0-rc.1, experimental free-threaded 3.14.7/3.15.0-rc.1, and Ubuntu/Windows/macOS Tier-1 lanes; [run 32778221183](https://github.com/thanhmuefatty07/AEGIS-COGNITION/actions/runs/32778221183) |
+| Windows plugin workflow for `07101ce3c2df0fedeaa51ea6426a18bb55aa424f` | Format, compile, tests, and clippy passed | PROVEN | Windows plugin workspace; [run 32778221299](https://github.com/thanhmuefatty07/AEGIS-COGNITION/actions/runs/32778221299) |
+| Deep evidence for `07101ce3c2df0fedeaa51ea6426a18bb55aa424f` | 3/3 jobs passed | PROVEN | Full workspace tests/nextest, coverage, cargo-deny/audit, repository gates, replay/resource benchmarks, resource-contract fuzz smoke, and selected Miri/AddressSanitizer probes; [run 32778232964](https://github.com/thanhmuefatty07/AEGIS-COGNITION/actions/runs/32778232964) |
+| Release evidence for `07101ce3c2df0fedeaa51ea6426a18bb55aa424f` | Build, wheel verification, SBOM, metadata, and artifact upload passed; attestation persistence blocked | PROVEN + NOT VERIFIED | GitHub reports that attestation is unavailable for user-owned private repositories; [run 32779649368](https://github.com/thanhmuefatty07/AEGIS-COGNITION/actions/runs/32779649368) |
 
 ## Open evidence
 
-- Exact CPython 3.14.7 and 3.15.0rc1 matrix and the current CI/plugin workflow
-  runs are externally proven. The newly added 3.15t experimental lane still
-  requires a post-change runner result. Tier-1 macOS arm64 package/import,
-  privileged Linux cgroup and Windows Job Object enforcement remain open.
+- The current CPython 3.14.7/3.15.0-rc.1 GIL and free-threaded lanes are
+  externally proven by CI. Tier-1 macOS arm64 package/import, privileged Linux
+  cgroup and Windows Job Object enforcement remain open.
 - H0/H1/H2 policy freeze, Wasmtime fuzz/adversarial corpus, replay parity across
-  platforms, sanitizer/Miri campaign, OTel exporter semantics, release restore,
-  signed tag/provenance, and external signed attestation remain `NOT VERIFIED`.
+  platforms, OTel exporter semantics, release restore, signed tag/provenance,
+  and external signed attestation remain `NOT VERIFIED`. The selected
+  resource-contract fuzz, Miri, and AddressSanitizer probes are now proven;
+  this does not close the broader hostile-kernel/platform campaign.
 - GitHub branch-protection state could not be read because the private
   repository plan returned HTTP 403; this is recorded as `NOT VERIFIED`, not as
   a claim that protections are absent.
