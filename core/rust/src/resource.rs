@@ -349,6 +349,16 @@ impl HardwareProfile {
         self.memory_domains
             .iter()
             .find(|domain| domain.id == "host")
+            .or_else(|| {
+                self.memory_domains
+                    .iter()
+                    .find(|domain| domain.kind == MemoryDomainKind::Host)
+            })
+            .or_else(|| {
+                self.memory_domains
+                    .iter()
+                    .find(|domain| domain.kind == MemoryDomainKind::Unified)
+            })
     }
 
     pub fn operating_profile(&self) -> OperatingProfile {
@@ -749,6 +759,7 @@ impl AdmissionController {
                     .memory_domains
                     .iter()
                     .find(|domain| &domain.id == domain_id)
+                    .filter(|domain| domain.kind == MemoryDomainKind::DiscreteAccelerator)
                     .and_then(|domain| domain.capacity_bytes)
             })
             .fold(0_u64, u64::saturating_add);
@@ -1491,6 +1502,42 @@ mod tests {
         assert!(matches!(
             controller.clone().admit(request, 1),
             AdmissionDecision::Admitted(_)
+        ));
+    }
+
+    #[test]
+    fn unified_memory_is_not_double_counted_as_discrete_accelerator_memory() {
+        let mut profile = HardwareProfile::probe();
+        profile.memory_domains[0].kind = MemoryDomainKind::Unified;
+        profile.memory_domains[0].capacity_bytes = Some(4096);
+        profile.memory_domains[0].available_bytes = Some(4096);
+        profile.accelerators.push(AcceleratorProfile {
+            id: "integrated-gpu".to_string(),
+            kind: AcceleratorKind::Gpu,
+            backend: BackendKind::Metal,
+            vendor: "test".to_string(),
+            memory_domain: "host".to_string(),
+            capabilities: vec!["fp16".to_string()],
+            health: DeviceHealth::Healthy,
+        });
+
+        let mut controller = AdmissionController::from_hardware(&profile);
+        assert_eq!(controller.capacity().accelerator_memory_bytes, 0);
+        assert_eq!(
+            controller.capacity().host_memory_bytes,
+            4096 * (100 - u64::from(profile.policy.host_memory_headroom_percent)) / 100
+        );
+
+        let mut request = ResourceRequest::minimal(1, WorkKind::Accelerator);
+        request.accelerator = Some(AcceleratorRequest {
+            kind: AcceleratorKind::Gpu,
+            backend: Some(BackendKind::Metal),
+            required_capabilities: vec!["fp16".to_string()],
+            memory: MemoryRequest { bytes: 1 },
+        });
+        assert!(matches!(
+            controller.admit(request, 1),
+            AdmissionDecision::Queued { .. }
         ));
     }
 }

@@ -35,19 +35,21 @@ records what was actually run; it is not a production-readiness certificate.
 | Execution lane tests | 4/4 passed | PROVEN | Windows host; native process lane fails closed without controller attachment |
 | Default-member Rust nextest | 418/418 passed; 0 skipped; 1 slow | PROVEN | Windows host; includes the new resource contract matrix |
 | Resource runtime benchmarks | `SCH-004` 489 ns median; `SCH-005` 529 ns; `SCH-006` 244 ns; `SCH-007` 382/1,944/6,165 ns; `SCH-008` 1.061 µs | MEASURED | Windows host, Criterion sample-size 10; local comparison only, not H0/H1/H2 evidence |
+| Architecture microbenchmarks | FFI-001 7.56 ns; FFI-002 4.46 µs; FFI-003 24.26 µs; FFI-004 786.90 µs; FFI-005 80.14 µs; SCH-001 148.84 ns; SCH-002 27.12/384.74/4.538 ms; SCH-003 24.54 µs; CPU-001 18.41 µs; CPU-002 16.45 µs; CPU-003 161.10 ns; SBX-001 890.90 µs; SBX-002 3.332 µs; SBX-003 4.381 µs; SBX-004 16.554 ms | MEASURED | Windows host, Criterion sample-size 10; smoke measurement only, not H0/H1/H2 evidence |
 | Release evidence generator | Static implementation present | PROVEN | Generator/workflow path; no tag-triggered attestation run yet |
 
 ## Remote evidence on 2026-08-25
 
 | Gate | Result | Evidence label | Boundary |
 |---|---|---|---|
-| GitHub CI for `6e09dba1a1cf227476ef893a35bfd1c050f3a1e0` | 9/9 jobs passed | PROVEN | Rust MSRV 1.97.1, Python 3.14.7, 3.14.7t experimental, 3.15.0rc1, beta, and Ubuntu/Windows/macOS Tier-1 lanes; [run 32770728338](https://github.com/thanhmuefatty07/AEGIS-COGNITION/actions/runs/32770728338) |
-| Windows plugin workflow for `6e09dba1a1cf227476ef893a35bfd1c050f3a1e0` | Format, compile, tests, and clippy passed | PROVEN | Windows plugin workspace; [run 32770728189](https://github.com/thanhmuefatty07/AEGIS-COGNITION/actions/runs/32770728189) |
+| GitHub CI for `d22a32ef7f0ee007971d26d23f55969fad3c398a` | 9/9 jobs passed | PROVEN | Rust MSRV 1.97.1, Python 3.14.7, 3.14.7t experimental, 3.15.0rc1, beta, and Ubuntu/Windows/macOS Tier-1 lanes; [run 32772520671](https://github.com/thanhmuefatty07/AEGIS-COGNITION/actions/runs/32772520671) |
+| Windows plugin workflow for `d22a32ef7f0ee007971d26d23f55969fad3c398a` | Format, compile, tests, and clippy passed | PROVEN | Windows plugin workspace; [run 32772520755](https://github.com/thanhmuefatty07/AEGIS-COGNITION/actions/runs/32772520755) |
 
 ## Open evidence
 
 - Exact CPython 3.14.7 and 3.15.0rc1 matrix and the current CI/plugin workflow
-  runs are now externally proven. Tier-1 macOS arm64 package/import,
+  runs are externally proven. The newly added 3.15t experimental lane still
+  requires a post-change runner result. Tier-1 macOS arm64 package/import,
   privileged Linux cgroup and Windows Job Object enforcement remain open.
 - H0/H1/H2 policy freeze, Wasmtime fuzz/adversarial corpus, replay parity across
   platforms, sanitizer/Miri campaign, OTel exporter semantics, release restore,
