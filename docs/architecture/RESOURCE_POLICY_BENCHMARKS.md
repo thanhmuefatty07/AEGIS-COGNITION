@@ -17,11 +17,19 @@ python scripts/resource_policy_benchmark.py --profile H1 --output artifacts/reso
 python scripts/resource_policy_benchmark.py --profile H2 --output artifacts/resource-policy-H2.json
 ```
 
-The command records the actual host profile, admission throughput, bounded
-lane throughput, p50/p95 latency, queue behavior, and policy source. A command
-run on the wrong hardware must be labeled `mismatch` rather than reused. Until
-all three profiles have retained raw output and review, `ResourcePolicy`
-values remain assumptions and are not advertised as measured performance.
+The current Python harness records a synthetic admission-shaped latency sample
+and conservative host metadata; it does not yet measure production admission
+throughput, bounded-lane throughput, queue rejection, cancellation, RSS, or
+fairness. Those fields require the retained H0/H1/H2 harness described in the
+remediation directive. A command run on the wrong hardware must be labeled
+`mismatch` rather than reused. Until all three profiles have retained raw JSON,
+CSV, and markdown metrics with review, `ResourcePolicy` values remain
+`ASSUMED` and are not advertised as measured performance.
+
+`scripts/hardware_profile_report.py` records `DETECTED`, `INFERRED`,
+`ASSUMED`, and `UNKNOWN` provenance for each profile field. In particular,
+missing physical-core, NUMA, quota, accelerator, storage, and unified-memory
+data is not filled with guesses.
 
 ## Stable scheduler benchmark IDs
 
@@ -35,6 +43,11 @@ IDs:
 | `FFI-003` | typed 64 KiB payload |
 | `FFI-004` | typed 1 MiB payload by copy |
 | `FFI-005` | mmap/shared-memory handle open |
+| `IPC-001` | framed 64 B payload |
+| `IPC-002` | framed 1 KiB payload |
+| `IPC-003` | framed 64 KiB payload |
+| `IPC-004` | framed 1 MiB payload |
+| `IPC-005` | framed 16 MiB payload |
 | `SCH-001` | task insert |
 | `SCH-002` | DAG validation at 100/1,000/10,000 tasks |
 | `SCH-003` | ready-queue selection |

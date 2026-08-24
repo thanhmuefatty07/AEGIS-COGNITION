@@ -19,4 +19,25 @@ test = false
 doc = false
 bench = false
 
+[[bin]]
+name = "protocol_frame"
+path = "fuzz_targets/protocol_frame.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "runtime_ffi_contract"
+path = "fuzz_targets/runtime_ffi_contract.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "archive_prefix"
+path = "fuzz_targets/archive_prefix.rs"
+test = false
+doc = false
+bench = false
+
 [workspace]

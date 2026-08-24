@@ -1,10 +1,15 @@
-# Architecture v1 traceability matrix
+# Historical architecture v1 traceability snapshot
 
-Status is evidence-based as of 2026-08-25 (UTC+7). `PROVEN` means a repository
-artifact or deterministic test currently demonstrates the requirement;
-`MEASURED` means a benchmark was run and its output is retained; `ASSUMED`
-means an explicit default is in use but has not been frozen by H0/H1/H2 data;
-`NOT VERIFIED` means the required external or platform evidence is still open.
+This file is a historical foundation snapshot retained for audit context. Its
+older CI/deep/release run links are not current evidence because they predate
+the final remediation commit. The current machine-readable source of truth is
+[`evidence/current.json`](evidence/current.json), the current GT96 matrix is
+[`GT96_TRACEABILITY.md`](GT96_TRACEABILITY.md), and the consistency gate rejects
+stale current evidence.
+
+Rows below remain useful as implementation history, but a row must not be
+called current `PROVEN` or `MEASURED` unless it is represented in the current
+manifest with the final SHA.
 
 | ID | Requirement/source | Implementation artifact | Evidence / current status |
 |---|---|---|---|

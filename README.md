@@ -110,6 +110,8 @@ and retain raw output before making performance claims. Current status is
 - [Error Guide](docs/troubleshooting/common-errors.md)
 - [Security Architecture](docs/architecture.md)
 - [Architecture traceability](docs/architecture/TRACEABILITY.md)
+- [Current evidence manifest](docs/architecture/evidence/current.json)
+- [NOT VERIFIED registry](docs/architecture/NOT_VERIFIED_REGISTRY.md)
 
 ## Requirements
 
