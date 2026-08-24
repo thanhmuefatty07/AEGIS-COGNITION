@@ -20,6 +20,11 @@ accelerators, storage, control capabilities, profile epoch, and a
 `ResourcePolicy` provenance record. Unknown memory is conservative, finite, and
 never represented as an unbounded grant.
 
+`ResourceRequest` may carry capability-driven accelerator requirements. The
+admission controller sums capacity through the referenced memory domain, so
+unified memory is not double-counted. A missing or unhealthy accelerator is a
+capability denial, not an implicit CPU grant.
+
 ## Trade-offs and consequences
 
 The model is verbose and may underutilize unknown hosts, but it prevents unsafe

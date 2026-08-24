@@ -26,6 +26,17 @@ records what was actually run; it is not a production-readiness certificate.
 | Resource policy benchmark | H1 label, `MEASURED_LOCAL_ONLY`, 4 usable CPUs | MEASURED | Must not be reused as H1 hardware proof |
 | Fuzz target | `cargo check --manifest-path fuzz/Cargo.toml --locked` passed | PROVEN | Build/target exists; campaign result remains NOT VERIFIED |
 
+## Incremental architecture evidence on 2026-08-25
+
+| Gate | Result | Evidence label | Boundary |
+|---|---|---|---|
+| Resource contract unit tests | 10/10 passed | PROVEN | Windows host; accelerator capability/kind/backend matching, failed-device filtering, memory-domain accounting, and pressure feedback |
+| Runtime admission tests | 6/6 runtime cases passed | PROVEN | Windows host; FIFO queue drain and deadline reclamation included |
+| Execution lane tests | 4/4 passed | PROVEN | Windows host; native process lane fails closed without controller attachment |
+| Default-member Rust nextest | 418/418 passed; 0 skipped; 1 slow | PROVEN | Windows host; includes the new resource contract matrix |
+| Resource runtime benchmarks | `SCH-004` 489 ns median; `SCH-005` 529 ns; `SCH-006` 244 ns; `SCH-007` 382/1,944/6,165 ns; `SCH-008` 1.061 µs | MEASURED | Windows host, Criterion sample-size 10; local comparison only, not H0/H1/H2 evidence |
+| Release evidence generator | Static implementation present | PROVEN | Generator/workflow path; no tag-triggered attestation run yet |
+
 ## Open evidence
 
 - Exact CPython 3.14.7 and 3.15.0rc1 matrix, Tier-1 macOS arm64 package/import,

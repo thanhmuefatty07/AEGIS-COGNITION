@@ -88,6 +88,26 @@ def execution_lanes() -> dict[str, Any]:
     }
 
 
+def resource_usage_sample() -> dict[str, Any]:
+    """Return an observation-only native resource sample."""
+
+    native = _native_module()
+    if native is not None:
+        import json
+
+        return json.loads(native.aegis_resource_usage_sample())
+    return {
+        "schema": RESOURCE_CONTRACT_SCHEMA_V1,
+        "authoritative": False,
+        "sampled_at_ms": 0,
+        "cpu_threads_active": 0,
+        "host_memory_bytes": None,
+        "queue_depth": 0,
+        "memory_pressure": False,
+        "verification": "NOT VERIFIED — native Rust runtime is not importable",
+    }
+
+
 def admission_preview(request: dict[str, Any], now_ms: int | None = None) -> dict[str, Any]:
     """Ask Rust to validate one request without creating a Python scheduler.
 

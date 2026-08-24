@@ -25,6 +25,10 @@ harness = false
 name = "skill_improvement"
 harness = false
 
+[[bench]]
+name = "resource_runtime"
+harness = false
+
 [features]
 default = []
 python-extension = ["pyo3/extension-module"]

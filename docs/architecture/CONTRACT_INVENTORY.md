@@ -17,6 +17,17 @@ runtime/resource contracts below.
 | Replay/event archives | `replay.rs`, Arrow/binary archive modules | Rust replay ledger | Append-only, hash-bound, crash-prefix recovery; format-specific tests own migration proof |
 | Python↔Rust PyO3 symbols | `ffi.rs`, `aegis_cognition/runtime.py` | Rust implementation | Coarse calls only; Python fallback is explicitly non-authoritative |
 
+## Runtime control seams
+
+| Seam | Owner | Safety rule | Current evidence |
+|---|---|---|---|
+| `HardwareProfile` + `ResourcePolicy` | Rust `resource.rs` | Unknown capacity is finite and policy provenance is explicit | `PROVEN` unit tests; H0/H1/H2 freeze remains `NOT VERIFIED` |
+| `CapacityFeedback` | Rust `AdmissionController` | Samples may reduce future admission capacity but cannot revoke an active lease | `PROVEN` pressure-feedback test |
+| queued admission drain | Rust `AuthoritativeRuntime` | FIFO bounded queue is re-admitted only through `TaskLedger` transitions | `PROVEN` queue-release integration test |
+| deadline reaper | Rust `AuthoritativeRuntime` | Expired leases become `TimedOut` and release lane/resource counters | `PROVEN` timeout-reclamation test |
+| `AcceleratorExecutor` | Rust execution seam | Vendor adapters are optional; capability matching precedes execution | `PROVEN` CPU-only fail-closed test; vendor backend `NOT VERIFIED` |
+| native process lane | Rust execution + `ResourceController` | Child process must be attached to an OS controller before arbitrary native work runs | `PROVEN` fail-closed portable test; privileged Linux/Windows live enforcement `NOT VERIFIED` |
+
 ## FFI surface for this architecture slice
 
 The supported resource/runtime entry points are:

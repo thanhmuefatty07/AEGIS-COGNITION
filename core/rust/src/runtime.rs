@@ -5,8 +5,8 @@
 //! lease token; all authoritative lease attributes are looked up in Rust.
 
 use crate::resource::{
-    AdmissionController, AdmissionDecision, ExecutionLane, ExecutionLaneRegistry, ResourceError,
-    ResourceLeaseToken, ResourceRequest, WorkKind,
+    AdmissionController, AdmissionDecision, CapacityFeedback, ExecutionLane, ExecutionLaneRegistry,
+    ResourceError, ResourceLeaseToken, ResourceRequest, ResourceUsageSample, WorkKind,
 };
 use crate::task_ledger::{TaskCard, TaskLedger, TaskLedgerError, TaskStatus};
 
@@ -15,6 +15,12 @@ pub enum RuntimeAdmission {
     Admitted(ResourceLeaseToken),
     Queued { position: usize, reason: String },
     Rejected { reason: ResourceError },
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct QueuedRuntimeAdmission {
+    pub task_id: u128,
+    pub admission: RuntimeAdmission,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -163,6 +169,17 @@ impl AuthoritativeRuntime {
         token: ResourceLeaseToken,
         outcome: RuntimeOutcome,
     ) -> Result<(), RuntimeError> {
+        let outcome = if outcome != RuntimeOutcome::Cancelled
+            && self
+                .admission
+                .inspect_token(&token)
+                .map_err(RuntimeError::Resource)?
+                .is_expired(crate::resource::unix_time_millis_for_runtime())
+        {
+            RuntimeOutcome::TimedOut
+        } else {
+            outcome
+        };
         if outcome == RuntimeOutcome::Cancelled {
             return self.cancel_and_release(token);
         }
@@ -174,6 +191,79 @@ impl AuthoritativeRuntime {
             RuntimeOutcome::Cancelled => unreachable!("cancelled is handled above"),
         };
         self.release_and_transition(token, target)
+    }
+
+    /// Re-attempt queued requests in FIFO order after capacity or lane state
+    /// changes. Queue ownership remains in Rust; callers receive only coarse
+    /// outcomes and opaque tokens.
+    pub fn drain_queued(&mut self, now_ms: u64) -> Vec<QueuedRuntimeAdmission> {
+        let queued = self.admission.queued();
+        let mut results = Vec::with_capacity(queued);
+        for _ in 0..queued {
+            let Some(request) = self.admission.pop_queued() else {
+                break;
+            };
+            let task_id = request.task_id;
+            let lane = lane_for_work_kind(request.work_kind);
+            if !self.lanes.try_acquire(lane) {
+                let _ = self.admission.enqueue(request, now_ms);
+                break;
+            }
+            match self.admission.admit(request, now_ms) {
+                AdmissionDecision::Admitted(lease) => {
+                    let admission = self
+                        .ledger
+                        .transition_status(task_id, TaskStatus::Admitted)
+                        .and_then(|_| self.ledger.transition_status(task_id, TaskStatus::Running))
+                        .map(|_| RuntimeAdmission::Admitted(ResourceLeaseToken::from_lease(&lease)))
+                        .unwrap_or_else(|error| {
+                            let _ = self.admission.release(lease.lease_id);
+                            RuntimeAdmission::Rejected {
+                                reason: ResourceError::ResourceUnavailable(format!(
+                                    "queued task state could not be restored: {error:?}"
+                                )),
+                            }
+                        });
+                    if !matches!(admission, RuntimeAdmission::Admitted(_)) {
+                        let _ = self.lanes.release(lane);
+                    }
+                    results.push(QueuedRuntimeAdmission { task_id, admission });
+                }
+                AdmissionDecision::Queued { position, reason } => {
+                    let _ = self.lanes.release(lane);
+                    results.push(QueuedRuntimeAdmission {
+                        task_id,
+                        admission: RuntimeAdmission::Queued { position, reason },
+                    });
+                    break;
+                }
+                AdmissionDecision::Rejected { reason } => {
+                    let _ = self.lanes.release(lane);
+                    results.push(QueuedRuntimeAdmission {
+                        task_id,
+                        admission: RuntimeAdmission::Rejected { reason },
+                    });
+                }
+            }
+        }
+        results
+    }
+
+    /// Release leases that crossed their deadline and preserve the explicit
+    /// `TimedOut` task state. Returns the number of leases reclaimed.
+    pub fn reap_expired(&mut self, now_ms: u64) -> usize {
+        let tokens = self.admission.expired_tokens(now_ms);
+        let mut reclaimed = 0;
+        for token in tokens {
+            if self.finish(token, RuntimeOutcome::TimedOut).is_ok() {
+                reclaimed += 1;
+            }
+        }
+        reclaimed
+    }
+
+    pub fn observe_resource_sample(&mut self, sample: &ResourceUsageSample) -> CapacityFeedback {
+        self.admission.capacity_feedback(sample)
     }
 
     #[cfg(test)]
@@ -416,6 +506,68 @@ mod tests {
         assert_eq!(
             runtime.ledger.task(1).map(|task| task.status),
             Some(TaskStatus::Cancelled)
+        );
+    }
+
+    #[test]
+    fn queued_task_is_released_and_re_admitted_through_the_ledger() {
+        let profile = crate::resource::HardwareProfile::probe();
+        let mut runtime = AuthoritativeRuntime::new(60_000, &profile);
+        runtime.admission = crate::resource::AdmissionController::new(
+            crate::resource::GrantedResources {
+                cpu_threads: 1,
+                host_memory_bytes: 1024,
+                accelerator_memory_bytes: 0,
+                io_in_flight: 1,
+                process_limit: 1,
+                thread_limit: 1,
+                fd_limit: 256,
+            },
+            1,
+        );
+        let first = match runtime
+            .submit(TaskCard::new(1, vec![], 0, None, None), request(1, 1), 1)
+            .unwrap()
+        {
+            RuntimeAdmission::Admitted(token) => token,
+            other => panic!("expected first task admission, got {other:?}"),
+        };
+        assert!(matches!(
+            runtime
+                .submit(TaskCard::new(2, vec![], 0, None, None), request(2, 1), 2)
+                .unwrap(),
+            RuntimeAdmission::Queued { .. }
+        ));
+        runtime.finish(first, RuntimeOutcome::Done).unwrap();
+        let drained = runtime.drain_queued(3);
+        assert!(matches!(
+            drained.as_slice(),
+            [QueuedRuntimeAdmission {
+                task_id: 2,
+                admission: RuntimeAdmission::Admitted(_),
+            }]
+        ));
+        assert_eq!(
+            runtime.ledger.task(2).map(|task| task.status),
+            Some(TaskStatus::Running)
+        );
+    }
+
+    #[test]
+    fn expired_lease_is_reaped_as_timeout_and_capacity_is_reclaimed() {
+        let profile = crate::resource::HardwareProfile::probe();
+        let mut runtime = AuthoritativeRuntime::new(60_000, &profile);
+        let mut request = request(1, 1);
+        request.deadline.deadline_ms = Some(10);
+        let admission = runtime
+            .submit(TaskCard::new(1, vec![], 0, Some(10), None), request, 1)
+            .unwrap();
+        assert!(matches!(admission, RuntimeAdmission::Admitted(_)));
+        assert_eq!(runtime.reap_expired(10), 1);
+        assert_eq!(runtime.admission.active_leases(), 0);
+        assert_eq!(
+            runtime.ledger.task(1).map(|task| task.status),
+            Some(TaskStatus::TimedOut)
         );
     }
 

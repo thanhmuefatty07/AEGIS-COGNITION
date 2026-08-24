@@ -390,7 +390,13 @@ REQUIRED_SYMBOLS = {
         ],
     ),
     "python_friendly_gateway_adapter": (
-        Path("core/python/aegis_adapter.py"),
+        (
+            Path("core/python/aegis_adapter.py"),
+            Path("core/python/aegis/contracts.py"),
+            Path("core/python/aegis/provider.py"),
+            Path("core/python/aegis/evidence.py"),
+            Path("core/python/browser_runtime_adapter.py"),
+        ),
         [
             "AegisAdapter",
             "Agent",
@@ -415,7 +421,7 @@ REQUIRED_SYMBOLS = {
             "last_results",
             "last_batch_results",
             "_task_from_runnable_input",
-            "_task_from_messages",
+            "task_from_messages",
             "capture_browser_action",
             "capture_browser_action_sync",
             "capture_browser_action_hot_first",
@@ -3687,7 +3693,15 @@ def evaluate_constitution(root: str | Path) -> dict:
     checks: list[ConstitutionCheck] = []
 
     for name, (relative_path, needles) in REQUIRED_SYMBOLS.items():
-        text = _read_text(root_path, relative_path)
+        if isinstance(relative_path, tuple):
+            source_texts = [_read_text(root_path, path) for path in relative_path]
+            missing_paths = [str(path) for path, text in zip(relative_path, source_texts) if text is None]
+            text = "\n".join(source for source in source_texts if source is not None)
+            if missing_paths:
+                checks.append(ConstitutionCheck(name, False, f"missing {', '.join(missing_paths)}"))
+                continue
+        else:
+            text = _read_text(root_path, relative_path)
         if text is None:
             checks.append(ConstitutionCheck(name, False, f"missing {relative_path}"))
             continue
