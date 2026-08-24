@@ -37,11 +37,18 @@ records what was actually run; it is not a production-readiness certificate.
 | Resource runtime benchmarks | `SCH-004` 489 ns median; `SCH-005` 529 ns; `SCH-006` 244 ns; `SCH-007` 382/1,944/6,165 ns; `SCH-008` 1.061 µs | MEASURED | Windows host, Criterion sample-size 10; local comparison only, not H0/H1/H2 evidence |
 | Release evidence generator | Static implementation present | PROVEN | Generator/workflow path; no tag-triggered attestation run yet |
 
+## Remote evidence on 2026-08-25
+
+| Gate | Result | Evidence label | Boundary |
+|---|---|---|---|
+| GitHub CI for `6e09dba1a1cf227476ef893a35bfd1c050f3a1e0` | 9/9 jobs passed | PROVEN | Rust MSRV 1.97.1, Python 3.14.7, 3.14.7t experimental, 3.15.0rc1, beta, and Ubuntu/Windows/macOS Tier-1 lanes; [run 32770728338](https://github.com/thanhmuefatty07/AEGIS-COGNITION/actions/runs/32770728338) |
+| Windows plugin workflow for `6e09dba1a1cf227476ef893a35bfd1c050f3a1e0` | Format, compile, tests, and clippy passed | PROVEN | Windows plugin workspace; [run 32770728189](https://github.com/thanhmuefatty07/AEGIS-COGNITION/actions/runs/32770728189) |
+
 ## Open evidence
 
-- Exact CPython 3.14.7 and 3.15.0rc1 matrix, Tier-1 macOS arm64 package/import,
-  privileged Linux cgroup and Windows Job Object enforcement, and current
-  GitHub workflow runs require external runner evidence.
+- Exact CPython 3.14.7 and 3.15.0rc1 matrix and the current CI/plugin workflow
+  runs are now externally proven. Tier-1 macOS arm64 package/import,
+  privileged Linux cgroup and Windows Job Object enforcement remain open.
 - H0/H1/H2 policy freeze, Wasmtime fuzz/adversarial corpus, replay parity across
   platforms, sanitizer/Miri campaign, OTel exporter semantics, release restore,
   signed tag/provenance, and external signed attestation remain `NOT VERIFIED`.
