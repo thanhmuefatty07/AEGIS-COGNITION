@@ -42,6 +42,8 @@ jobs:
         run: cargo nextest run --workspace --no-default-features
       - name: Cargo deny policy
         run: cargo deny check advisories bans licenses sources
+      - name: Prepare coverage output directory
+        run: mkdir -p artifacts
       - name: LLVM coverage evidence
         run: cargo llvm-cov --workspace --no-default-features --lcov --output-path artifacts/rust-coverage.lcov
       - name: Install cargo-audit
@@ -92,8 +94,9 @@ jobs:
           toolchain: nightly
           components: miri
       - name: Miri selected contract probe
-        run: cargo miri test --manifest-path core/rust/Cargo.toml --lib --no-default-features resource::tests
+        run: cargo +nightly miri test --manifest-path core/rust/Cargo.toml --lib --no-default-features resource::tests
       - name: Address sanitizer selected probe
+        if: always()
         env:
           RUSTFLAGS: -Z sanitizer=address
         run: cargo +nightly test --manifest-path core/rust/Cargo.toml --lib --no-default-features resource::tests

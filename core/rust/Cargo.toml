@@ -29,6 +29,10 @@ harness = false
 name = "resource_runtime"
 harness = false
 
+[[bench]]
+name = "architecture_performance"
+harness = false
+
 [features]
 default = []
 python-extension = ["pyo3/extension-module"]

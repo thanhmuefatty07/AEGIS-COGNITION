@@ -22,6 +22,8 @@ target/
 **/target/
 **/target_*/
 **/*target*/
+!fuzz/fuzz_targets/
+!fuzz/fuzz_targets/*.rs
 
 
 # IDE & Editor
