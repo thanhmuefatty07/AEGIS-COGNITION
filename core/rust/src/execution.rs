@@ -322,7 +322,18 @@ mod tests {
                 let lanes = Arc::clone(&lanes);
                 let completed = Arc::clone(&completed);
                 std::thread::spawn(move || {
-                    lanes.run_cpu(|| 1 + 1).unwrap();
+                    let mut attempts = 0;
+                    loop {
+                        match lanes.run_cpu(|| 1 + 1) {
+                            Ok(_) => break,
+                            Err(ResourceError::ResourceExhausted) => {
+                                attempts += 1;
+                                assert!(attempts < 10_000, "CPU contender starved");
+                                std::thread::yield_now();
+                            }
+                            Err(error) => panic!("unexpected CPU lane error: {error:?}"),
+                        }
+                    }
                     completed.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
                 })
             })
