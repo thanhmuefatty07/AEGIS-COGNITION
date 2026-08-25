@@ -19,7 +19,13 @@ def manifest(commit: str) -> dict[str, object]:
                 "head_sha": commit,
             }
         ],
-        "requirements": [{"id": "TEST-001", "tests": "unit", "evidence_ids": ["LOCAL-001"]}],
+        "requirements": [
+            {"id": "TEST-001", "tests": "unit", "evidence_ids": ["LOCAL-001"]},
+            *[
+                {"id": f"GT96-{index:03d}", "tests": "traceability fixture", "evidence_ids": []}
+                for index in range(1, 36)
+            ],
+        ],
         "remediation_requirements": [
             {
                 "id": "TEST-REM-001",
