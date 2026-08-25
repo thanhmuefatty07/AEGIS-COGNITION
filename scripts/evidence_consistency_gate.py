@@ -43,7 +43,7 @@ def load_suite_artifacts(root: Path, expected_head: str) -> dict[str, dict[str, 
     for path in sorted(suite_dir.glob("*.json")):
         try:
             candidate = load_manifest(path)
-        except OSError, ValueError, json.JSONDecodeError:
+        except (OSError, ValueError, json.JSONDecodeError):
             continue
         if candidate.get("schema") != "aegis-suite-evidence-v1":
             continue
