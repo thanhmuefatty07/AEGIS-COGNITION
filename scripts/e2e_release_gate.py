@@ -207,6 +207,9 @@ STAGE_REQUIREMENTS: dict[str, tuple[tuple[str, tuple[str, ...]], ...]] = {
         ("external_deployment_smoke_gate_report.json", ("external_deployment_smoke_admission", "schema")),
         ("external_deployment_smoke_gate_report.json", ("external_deployment_smoke_admission", "expected_capture_path")),
         ("external_deployment_smoke_gate_report.json", ("external_deployment_smoke_admission_hash",)),
+        # The legacy ``external_deployment_smoke_admission_missing`` field
+        # remains disclosure-only;
+        # a passing gate must be witnessed by a valid smoke capture.
         ("external_deployment_smoke_gate_report.json", ("external_deployment_smoke_present",)),
         ("external_deployment_smoke_gate_report.json", ("external_deployment_smoke_admission_blocker_id",)),
         ("external_deployment_smoke_gate_report.json", ("external_deployment_smoke_capture_missing_or_valid",)),
