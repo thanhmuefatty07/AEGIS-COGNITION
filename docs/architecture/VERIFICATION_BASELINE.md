@@ -4,7 +4,7 @@ This document is a rendered view, not the evidence authority. Current evidence
 is in [`evidence/current.json`](evidence/current.json) and is accepted only
 when the consistency gate binds it to the checked-out `main` SHA.
 
-## Current baseline before remediation rerun
+## Historical pre-remediation baseline (immutable)
 
 | Field | Value |
 |---|---|

@@ -33,6 +33,9 @@ that a platform adapter is active merely because it is compiled.
 | Accelerator seam | `core/rust/src/resource.rs`, `core/rust/src/execution.rs` | optional lane fails closed when no device is advertised; vendor backend NOT VERIFIED |
 | Python boundary | `core/rust/src/ffi.rs`, `aegis_cognition/runtime.py` | opaque token tests; native wheel build required |
 | OS resource control | `core/rust/src/resource_platform.rs` | Linux fixture + Windows target compile; macOS cooperative adapter; live privileged tests NOT VERIFIED |
+| GT96 authority contracts | `core/rust/src/gt96.rs`, `GT96_TRACEABILITY.md`, `GT96_TRACEABILITY_DETAIL.md` | direct Rust contract tests; full runtime integration and final-SHA closure remain NOT VERIFIED |
+| Communication payload matrix | `scripts/communication_payload_benchmark.py`, `core/rust/src/ipc.rs` | local 64B–16MiB measured matrix; copy/zero-copy scope remains explicit |
+| Platform closure harnesses | `scripts/linux_cgroup_live_probe.py`, `windows_job_object_live_probe.py`, `macos_capability_probe.py` | platform-specific live/capability evidence retained separately; unavailable lanes NOT VERIFIED |
 | End-to-end scheduler/TaskLedger integration | `core/rust/src/runtime.rs`, `task_ledger.rs` | lease/state/attempt integration tests |
 | Policy provenance | `ResourcePolicy`, benchmark protocol | ASSUMED until H0/H1/H2 retained outputs |
 | Wasmtime migration | `docs/architecture/WASMTIME_MIGRATION.md` | static/security gate + Rust tests required |

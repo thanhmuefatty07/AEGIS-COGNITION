@@ -19,7 +19,18 @@ from typing import Any
 ROOT = Path(__file__).resolve().parents[1]
 MANIFEST = ROOT / "docs" / "architecture" / "evidence" / "current.json"
 SHA_RE = re.compile(r"^[0-9a-f]{40}$")
+GT96_ID_RE = re.compile(r"\|\s*(GT96-\d{3})\s*\|")
 CURRENT_STATUSES = {"PROVEN", "MEASURED", "SOURCE-BACKED"}
+REMEDIATION_STATUSES = CURRENT_STATUSES | {
+    "IMPLEMENTED / NOT VERIFIED",
+    "IMPLEMENTED / PARTIALLY LIVE VERIFIED",
+    "MEASURED LOCAL ONLY / NOT VERIFIED FOR H0-H2",
+    "IMPLEMENTED / MEASURED LOCAL ONLY",
+    "PROVEN LOCAL PACKAGE DRILL / RESTORE NOT VERIFIED",
+    "NOT VERIFIED",
+    "ASSUMED",
+    "NOT IMPLEMENTED",
+}
 
 
 def git_head(root: Path) -> str:
@@ -127,6 +138,20 @@ def materialize_for_head(template: dict[str, Any], expected_head: str) -> dict[s
         elif requirement.get("status") == "PROVEN":
             requirement["status"] = "IMPLEMENTED / NOT VERIFIED"
             requirement["evidence_class"] = "NOT VERIFIED"
+    for requirement in manifest.get("remediation_requirements", []):
+        if isinstance(requirement, dict):
+            requirement["final_sha"] = expected_head
+            evidence_ids = requirement.get("evidence_ids", [])
+            referenced = [evidence_by_id.get(evidence_id) for evidence_id in evidence_ids]
+            proven = bool(referenced) and all(
+                entry and entry.get("status") in CURRENT_STATUSES for entry in referenced
+            )
+            if proven:
+                requirement["status"] = "PROVEN"
+                requirement["evidence_class"] = "PROVEN"
+            elif requirement.get("status") in CURRENT_STATUSES:
+                requirement["status"] = "IMPLEMENTED / NOT VERIFIED"
+                requirement["evidence_class"] = "NOT VERIFIED"
     return manifest
 
 
@@ -173,6 +198,52 @@ def validate_manifest(
                 f"requirement[{requirement_id or index}] references unknown evidence {evidence_id}"
                 for evidence_id in requirement.get("evidence_ids", [])
                 if evidence_id not in evidence_ids
+            )
+
+    remediation_requirements = manifest.get("remediation_requirements")
+    if not isinstance(remediation_requirements, list) or not remediation_requirements:
+        errors.append("manifest.remediation_requirements must be a non-empty array")
+    else:
+        seen_remediation_ids: set[str] = set()
+        for index, requirement in enumerate(remediation_requirements):
+            if not isinstance(requirement, dict):
+                errors.append(f"remediation_requirements[{index}] must be an object")
+                continue
+            requirement_id = requirement.get("id")
+            if not isinstance(requirement_id, str) or not requirement_id:
+                errors.append(f"remediation_requirements[{index}] lacks id")
+            elif requirement_id in seen_remediation_ids:
+                errors.append(f"duplicate remediation requirement id: {requirement_id}")
+            else:
+                seen_remediation_ids.add(requirement_id)
+            for field in ("priority", "implementation", "closure", "evidence_class", "status", "final_sha"):
+                if not isinstance(requirement.get(field), str) or not requirement.get(field):
+                    errors.append(f"remediation[{requirement_id or index}] lacks {field}")
+            if requirement.get("status") not in REMEDIATION_STATUSES:
+                errors.append(f"remediation[{requirement_id or index}] has unsupported status {requirement.get('status')!r}")
+            if requirement.get("evidence_class") not in REMEDIATION_STATUSES:
+                errors.append(
+                    f"remediation[{requirement_id or index}] has unsupported evidence class {requirement.get('evidence_class')!r}"
+                )
+            if requirement.get("final_sha") != expected_head:
+                errors.append(
+                    f"remediation[{requirement_id or index}].final_sha={requirement.get('final_sha')} does not match {expected_head}"
+                )
+
+    gt96_ids = {
+        requirement.get("id")
+        for requirement in requirements
+        if isinstance(requirement, dict) and isinstance(requirement.get("id"), str) and requirement["id"].startswith("GT96-")
+    }
+    detail_path = ROOT / "docs" / "architecture" / "GT96_TRACEABILITY_DETAIL.md"
+    if not detail_path.is_file():
+        errors.append("GT96_TRACEABILITY_DETAIL.md is missing")
+    else:
+        detail_ids = set(GT96_ID_RE.findall(detail_path.read_text(encoding="utf-8")))
+        if detail_ids != gt96_ids:
+            errors.append(
+                "GT96 detail matrix IDs do not match manifest requirements: "
+                f"missing={sorted(gt96_ids - detail_ids)}, extra={sorted(detail_ids - gt96_ids)}"
             )
 
     evidence = manifest.get("evidence")
