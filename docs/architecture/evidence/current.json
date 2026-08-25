@@ -7,6 +7,28 @@
   "source_of_truth": "docs/architecture/evidence/current.json",
   "evidence": [
     {
+      "id": "LOCAL-RUST-001",
+      "kind": "local",
+      "source_artifact": "rust-full-workspace",
+      "run_id": null,
+      "url": null,
+      "head_sha": "CHECKOUT_HEAD",
+      "evidence_class": "NOT VERIFIED",
+      "status": "NOT VERIFIED",
+      "scope": "Final-SHA Windows full-workspace suite; populated only when the retained suite artifact is PROVEN"
+    },
+    {
+      "id": "LOCAL-PYTHON-001",
+      "kind": "local",
+      "source_artifact": "python-cross-language",
+      "run_id": null,
+      "url": null,
+      "head_sha": "CHECKOUT_HEAD",
+      "evidence_class": "NOT VERIFIED",
+      "status": "NOT VERIFIED",
+      "scope": "Final-SHA Windows Python suite; populated only when the retained suite artifact is PROVEN"
+    },
+    {
       "id": "CI-001",
       "kind": "github_actions",
       "workflow": "CI",
@@ -53,7 +75,7 @@
   ],
   "suites": [
     {
-      "name": "rust-default-members-historical-current-baseline",
+      "name": "rust-default-members",
       "command": "cargo nextest run --no-default-features",
       "commit": "CHECKOUT_HEAD",
       "timestamp_utc": "2026-08-25T00:00:00Z",
@@ -65,10 +87,10 @@
       "ignored": null,
       "filtered": null,
       "status": "NOT VERIFIED",
-      "notes": "Populate from suite_evidence.py on the final remediation SHA; do not combine with historical 409/408 scopes."
+      "notes": "Materialized from artifacts/suites/rust-default-members.json when present; historical 409/408 scopes remain separate."
     },
     {
-      "name": "python-tests",
+      "name": "python-cross-language",
       "command": "python -m pytest tests core/python/tests.py -v",
       "commit": "CHECKOUT_HEAD",
       "timestamp_utc": "2026-08-25T00:00:00Z",
@@ -80,7 +102,7 @@
       "ignored": null,
       "filtered": null,
       "status": "NOT VERIFIED",
-      "notes": "Populate from suite_evidence.py on the final remediation SHA; exact CI lanes remain authoritative."
+      "notes": "Materialized from artifacts/suites/python-cross-language.json when present; exact CI lanes remain separate."
     },
     {
       "name": "deep-evidence",
@@ -120,29 +142,29 @@
     {"id": "GT96-009", "implementation": "core/rust/src/runtime.rs", "tests": "result/evidence separation tests", "evidence_ids": ["DEEP-001"], "evidence_class": "NOT VERIFIED", "status": "IMPLEMENTED / NOT VERIFIED"},
     {"id": "GT96-010", "implementation": "core/rust/src/policy.rs", "tests": "evidence contract tests", "evidence_ids": ["DEEP-001"], "evidence_class": "NOT VERIFIED", "status": "IMPLEMENTED / NOT VERIFIED"},
     {"id": "GT96-011", "implementation": "core/rust/src/evidence_index.rs", "tests": "artifact digest tests", "evidence_ids": ["REL-001"], "evidence_class": "NOT VERIFIED", "status": "IMPLEMENTED / NOT VERIFIED"},
-    {"id": "GT96-012", "implementation": "core/rust/src/resource.rs; runtime.rs", "tests": "forged/stale lease tests", "evidence_ids": ["CI-001"], "evidence_class": "PROVEN", "status": "PROVEN"},
+    {"id": "GT96-012", "implementation": "core/rust/src/resource.rs; runtime.rs", "tests": "forged/stale lease tests", "evidence_ids": ["LOCAL-RUST-001"], "evidence_class": "NOT VERIFIED", "status": "IMPLEMENTED / NOT VERIFIED"},
     {"id": "GT96-013", "implementation": "core/rust/src/llm.rs; core/python/aegis/provider.py", "tests": "provider capability tests", "evidence_ids": ["DEEP-001"], "evidence_class": "NOT VERIFIED", "status": "IMPLEMENTED / NOT VERIFIED"},
-    {"id": "GT96-014", "implementation": "core/rust/src/resource.rs; execution.rs", "tests": "lane capability tests", "evidence_ids": ["CI-001"], "evidence_class": "PROVEN", "status": "IMPLEMENTED / NOT VERIFIED"},
-    {"id": "GT96-015", "implementation": "core/rust/src/runtime.rs", "tests": "cancellation transition tests", "evidence_ids": ["CI-001"], "evidence_class": "PROVEN", "status": "PROVEN"},
-    {"id": "GT96-016", "implementation": "core/rust/src/runtime.rs", "tests": "deadline reaper tests", "evidence_ids": ["CI-001"], "evidence_class": "PROVEN", "status": "PROVEN"},
-    {"id": "GT96-017", "implementation": "core/rust/src/resource.rs", "tests": "admission/property tests", "evidence_ids": ["CI-001"], "evidence_class": "PROVEN", "status": "PROVEN"},
-    {"id": "GT96-018", "implementation": "core/rust/src/runtime.rs", "tests": "queue drain integration test", "evidence_ids": ["CI-001"], "evidence_class": "PROVEN", "status": "PROVEN"},
+    {"id": "GT96-014", "implementation": "core/rust/src/resource.rs; execution.rs", "tests": "lane capability tests", "evidence_ids": ["LOCAL-RUST-001"], "evidence_class": "NOT VERIFIED", "status": "IMPLEMENTED / NOT VERIFIED"},
+    {"id": "GT96-015", "implementation": "core/rust/src/runtime.rs", "tests": "cancellation transition tests", "evidence_ids": ["LOCAL-RUST-001"], "evidence_class": "NOT VERIFIED", "status": "IMPLEMENTED / NOT VERIFIED"},
+    {"id": "GT96-016", "implementation": "core/rust/src/runtime.rs", "tests": "deadline reaper tests", "evidence_ids": ["LOCAL-RUST-001"], "evidence_class": "NOT VERIFIED", "status": "IMPLEMENTED / NOT VERIFIED"},
+    {"id": "GT96-017", "implementation": "core/rust/src/resource.rs", "tests": "admission/property tests", "evidence_ids": ["LOCAL-RUST-001"], "evidence_class": "NOT VERIFIED", "status": "IMPLEMENTED / NOT VERIFIED"},
+    {"id": "GT96-018", "implementation": "core/rust/src/runtime.rs", "tests": "queue drain integration test", "evidence_ids": ["LOCAL-RUST-001"], "evidence_class": "NOT VERIFIED", "status": "IMPLEMENTED / NOT VERIFIED"},
     {"id": "GT96-019", "implementation": "core/rust/src/sandbox.rs", "tests": "verification gauntlet tests", "evidence_ids": ["DEEP-001"], "evidence_class": "NOT VERIFIED", "status": "IMPLEMENTED / NOT VERIFIED"},
     {"id": "GT96-020", "implementation": "core/rust/src/runtime.rs", "tests": "finalizer reserve tests", "evidence_ids": ["DEEP-001"], "evidence_class": "NOT VERIFIED", "status": "IMPLEMENTED / NOT VERIFIED"},
     {"id": "GT96-021", "implementation": "core/rust/src/schema.rs", "tests": "schema round-trip tests", "evidence_ids": ["DEEP-001"], "evidence_class": "NOT VERIFIED", "status": "IMPLEMENTED / NOT VERIFIED"},
     {"id": "GT96-022", "implementation": "core/rust/src/context.rs", "tests": "context governor tests", "evidence_ids": ["DEEP-001"], "evidence_class": "NOT VERIFIED", "status": "IMPLEMENTED / NOT VERIFIED"},
     {"id": "GT96-023", "implementation": "core/rust/src/context.rs; memory modules", "tests": "projection/invalidation tests", "evidence_ids": ["DEEP-001"], "evidence_class": "NOT VERIFIED", "status": "IMPLEMENTED / NOT VERIFIED"},
-    {"id": "GT96-024", "implementation": "core/rust/src/message.rs; ipc.rs; ffi.rs", "tests": "FFI/IPC contract tests", "evidence_ids": ["CI-001"], "evidence_class": "NOT VERIFIED", "status": "IMPLEMENTED / NOT VERIFIED"},
+    {"id": "GT96-024", "implementation": "core/rust/src/message.rs; ipc.rs; ffi.rs", "tests": "FFI/IPC contract tests", "evidence_ids": ["LOCAL-RUST-001"], "evidence_class": "NOT VERIFIED", "status": "IMPLEMENTED / NOT VERIFIED"},
     {"id": "GT96-025", "implementation": "core/rust/src/eac/cache; llm.rs", "tests": "cache namespace tests", "evidence_ids": ["DEEP-001"], "evidence_class": "NOT VERIFIED", "status": "IMPLEMENTED / NOT VERIFIED"},
     {"id": "GT96-026", "implementation": "core/rust/src/replay.rs; memory modules", "tests": "rebuild/recovery tests", "evidence_ids": ["DEEP-001"], "evidence_class": "NOT VERIFIED", "status": "IMPLEMENTED / NOT VERIFIED"},
-    {"id": "GT96-027", "implementation": "core/rust/src/telemetry.rs; aegis_cognition/observability.py", "tests": "correlation-chain tests", "evidence_ids": ["CI-001"], "evidence_class": "PROVEN", "status": "PROVEN"},
+    {"id": "GT96-027", "implementation": "core/rust/src/telemetry.rs; aegis_cognition/observability.py", "tests": "correlation-chain tests", "evidence_ids": ["LOCAL-RUST-001"], "evidence_class": "NOT VERIFIED", "status": "IMPLEMENTED / NOT VERIFIED"},
     {"id": "GT96-028", "implementation": "core/rust/src/runtime.rs; llm.rs", "tests": "retry-storm stress/property test", "evidence_ids": ["DEEP-001"], "evidence_class": "NOT VERIFIED", "status": "IMPLEMENTED / NOT VERIFIED"},
-    {"id": "GT96-029", "implementation": "core/rust/src/resource.rs; runtime.rs", "tests": "lease adversarial matrix", "evidence_ids": ["CI-001"], "evidence_class": "PROVEN", "status": "PROVEN"},
+    {"id": "GT96-029", "implementation": "core/rust/src/resource.rs; runtime.rs", "tests": "lease adversarial matrix", "evidence_ids": ["LOCAL-RUST-001"], "evidence_class": "NOT VERIFIED", "status": "IMPLEMENTED / NOT VERIFIED"},
     {"id": "GT96-030", "implementation": "core/rust/src/task_ledger.rs", "tests": "state-machine property tests", "evidence_ids": ["DEEP-001"], "evidence_class": "NOT VERIFIED", "status": "IMPLEMENTED / NOT VERIFIED"},
     {"id": "GT96-031", "implementation": "core/rust/src/replay.rs; schema.rs", "tests": "migration/recovery matrix", "evidence_ids": ["DEEP-001"], "evidence_class": "NOT VERIFIED", "status": "IMPLEMENTED / NOT VERIFIED"},
     {"id": "GT96-032", "implementation": "core/rust/src/replay.rs", "tests": "crash-point recovery tests", "evidence_ids": ["DEEP-001"], "evidence_class": "NOT VERIFIED", "status": "IMPLEMENTED / NOT VERIFIED"},
     {"id": "GT96-033", "implementation": "core/rust/src/ipc.rs; architecture benchmark", "tests": "64B-16MB payload benchmark", "evidence_ids": ["DEEP-001"], "evidence_class": "NOT VERIFIED", "status": "IMPLEMENTED / NOT VERIFIED"},
-    {"id": "GT96-034", "implementation": "core/python/aegis/provider.py", "tests": "provider fallback tests", "evidence_ids": ["CI-001"], "evidence_class": "NOT VERIFIED", "status": "IMPLEMENTED / NOT VERIFIED"},
+    {"id": "GT96-034", "implementation": "core/python/aegis/provider.py", "tests": "provider fallback tests", "evidence_ids": ["LOCAL-PYTHON-001"], "evidence_class": "NOT VERIFIED", "status": "IMPLEMENTED / NOT VERIFIED"},
     {"id": "GT96-035", "implementation": "core/rust/src/eac/cache/semantic.rs", "tests": "cache trust tests", "evidence_ids": ["DEEP-001"], "evidence_class": "NOT VERIFIED", "status": "IMPLEMENTED / NOT VERIFIED"}
   ],
   "not_verified_ids": [
@@ -159,6 +181,7 @@
     "NV-011",
     "NV-012",
     "NV-013",
-    "NV-014"
+    "NV-014",
+    "NV-015"
   ]
 }
