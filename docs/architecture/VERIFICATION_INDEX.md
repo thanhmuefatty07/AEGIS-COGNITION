@@ -8,7 +8,10 @@ evidence and must not be used to close a requirement.
 
 The tracked JSON is a non-self-referential template. CI materializes
 `artifacts/evidence/current.json` with the exact checkout SHA and the gate
-validates that artifact (`generated from checkout HEAD`).
+validates that artifact (`generated from checkout HEAD`). When retained suite
+artifacts exist under `artifacts/suites`, the materializer copies their exact
+command, commit, timestamp, platform, toolchain, and counts into the
+checkout-bound manifest; absent or stale artifacts remain `NOT VERIFIED`.
 
 ## Status vocabulary
 
@@ -23,7 +26,7 @@ validates that artifact (`generated from checkout HEAD`).
 ## Authority rules
 
 1. `current.json` is the only current evidence source of truth.
-2. A current `PROVEN`, `MEASURED`, or `SOURCE-BACKED` row must carry the final commit SHA and run/artifact reference.
+2. A current `PROVEN`, `MEASURED`, or `SOURCE-BACKED` row must carry the final commit SHA and run/artifact reference; local proof rows use `source_artifact` when no hosted run ID exists.
 3. Suite counts always include command, commit, timestamp, platform, toolchain, discovered, passed, failed, ignored, and filtered fields.
 4. Historical counts and reports remain useful context only when explicitly labeled `historical`.
 5. The consistency gate runs in CI and release workflows and rejects stale current evidence.

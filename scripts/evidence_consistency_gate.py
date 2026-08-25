@@ -23,9 +23,7 @@ CURRENT_STATUSES = {"PROVEN", "MEASURED", "SOURCE-BACKED"}
 
 
 def git_head(root: Path) -> str:
-    return subprocess.check_output(
-        ["git", "rev-parse", "HEAD"], cwd=root, text=True, stderr=subprocess.STDOUT
-    ).strip()
+    return subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=root, text=True, stderr=subprocess.STDOUT).strip()
 
 
 def load_manifest(path: Path) -> dict[str, Any]:
@@ -36,11 +34,42 @@ def load_manifest(path: Path) -> dict[str, Any]:
     return value
 
 
+def load_suite_artifacts(root: Path, expected_head: str) -> dict[str, dict[str, Any]]:
+    """Return valid suite evidence available in the current checkout."""
+    suite_dir = root / "artifacts" / "suites"
+    if not suite_dir.is_dir():
+        return {}
+    artifacts: dict[str, dict[str, Any]] = {}
+    for path in sorted(suite_dir.glob("*.json")):
+        try:
+            candidate = load_manifest(path)
+        except OSError, ValueError, json.JSONDecodeError:
+            continue
+        if candidate.get("schema") != "aegis-suite-evidence-v1":
+            continue
+        if candidate.get("commit") != expected_head:
+            continue
+        name = candidate.get("name")
+        if isinstance(name, str) and name:
+            artifacts[name] = candidate
+    return artifacts
+
+
+def find_suite_artifact(suite_artifacts: dict[str, dict[str, Any]], name: str) -> dict[str, Any] | None:
+    """Match canonical CI names and local ``-final`` evidence names."""
+    candidates = (name, f"{name}-final")
+    for candidate in candidates:
+        if candidate in suite_artifacts:
+            return suite_artifacts[candidate]
+    return None
+
+
 def materialize_for_head(template: dict[str, Any], expected_head: str) -> dict[str, Any]:
     """Create a non-self-referential evidence artifact for this checkout."""
     manifest = json.loads(json.dumps(template))
     manifest["commit"] = expected_head
     manifest["generated_at_utc"] = datetime.now(UTC).replace(microsecond=0).isoformat().replace("+00:00", "Z")
+    suite_artifacts = load_suite_artifacts(ROOT, expected_head)
     for entry in manifest.get("evidence", []):
         if isinstance(entry, dict):
             entry["head_sha"] = expected_head
@@ -48,6 +77,14 @@ def materialize_for_head(template: dict[str, Any], expected_head: str) -> dict[s
             entry["url"] = None
             entry["status"] = "NOT VERIFIED"
             entry["evidence_class"] = "NOT VERIFIED"
+            if entry.get("kind") == "local":
+                source_artifact = entry.get("source_artifact")
+                source = (
+                    find_suite_artifact(suite_artifacts, source_artifact) if isinstance(source_artifact, str) else None
+                )
+                if source and source.get("status") == "PROVEN" and source.get("failed") == 0:
+                    entry["status"] = "PROVEN"
+                    entry["evidence_class"] = "PROVEN"
     for suite in manifest.get("suites", []):
         if isinstance(suite, dict):
             suite["commit"] = expected_head
@@ -57,6 +94,39 @@ def materialize_for_head(template: dict[str, Any], expected_head: str) -> dict[s
             suite["failed"] = None
             suite["ignored"] = None
             suite["filtered"] = None
+            source = find_suite_artifact(suite_artifacts, str(suite.get("name", "")))
+            if source:
+                for field in (
+                    "command",
+                    "timestamp_utc",
+                    "platform",
+                    "toolchain",
+                    "discovered",
+                    "passed",
+                    "failed",
+                    "ignored",
+                    "filtered",
+                    "status",
+                ):
+                    if field in source:
+                        suite[field] = source[field]
+    evidence_by_id = {
+        entry.get("id"): entry
+        for entry in manifest.get("evidence", [])
+        if isinstance(entry, dict) and isinstance(entry.get("id"), str)
+    }
+    for requirement in manifest.get("requirements", []):
+        if not isinstance(requirement, dict):
+            continue
+        evidence_ids = requirement.get("evidence_ids", [])
+        referenced = [evidence_by_id.get(evidence_id) for evidence_id in evidence_ids]
+        proven = bool(referenced) and all(entry and entry.get("status") in CURRENT_STATUSES for entry in referenced)
+        if proven:
+            requirement["status"] = "PROVEN"
+            requirement["evidence_class"] = "PROVEN"
+        elif requirement.get("status") == "PROVEN":
+            requirement["status"] = "IMPLEMENTED / NOT VERIFIED"
+            requirement["evidence_class"] = "NOT VERIFIED"
     return manifest
 
 
@@ -77,9 +147,11 @@ def validate_manifest(
 
     requirements = manifest.get("requirements")
     raw_evidence = manifest.get("evidence")
-    evidence_ids = {
-        entry.get("id") for entry in raw_evidence if isinstance(entry, dict)
-    } if isinstance(raw_evidence, list) else set()
+    evidence_ids = (
+        {entry.get("id") for entry in raw_evidence if isinstance(entry, dict)}
+        if isinstance(raw_evidence, list)
+        else set()
+    )
     if not isinstance(requirements, list) or not requirements:
         errors.append("manifest.requirements must be a non-empty array")
     else:
@@ -115,8 +187,7 @@ def validate_manifest(
         head_sha = entry.get("head_sha")
         if status in CURRENT_STATUSES and head_sha != expected_head:
             errors.append(
-                f"evidence[{entry.get('id', index)}] status={status} has head_sha={head_sha}, "
-                f"expected {expected_head}"
+                f"evidence[{entry.get('id', index)}] status={status} has head_sha={head_sha}, expected {expected_head}"
             )
         if status in CURRENT_STATUSES and not entry.get("run_id") and entry.get("kind") != "local":
             errors.append(f"evidence[{entry.get('id', index)}] lacks run_id for current evidence")
@@ -147,8 +218,7 @@ def validate_manifest(
             errors.append(f"suites[{suite.get('name', index)}] missing fields: {', '.join(missing)}")
         if suite.get("commit") != expected_head:
             errors.append(
-                f"suite[{suite.get('name', index)}].commit={suite.get('commit')} "
-                f"does not match {expected_head}"
+                f"suite[{suite.get('name', index)}].commit={suite.get('commit')} does not match {expected_head}"
             )
 
     if verification_index_text is None:
@@ -158,8 +228,7 @@ def validate_manifest(
         else:
             verification_index_text = index_doc.read_text(encoding="utf-8")
     if verification_index_text is not None and not (
-        expected_head in verification_index_text
-        or "generated from checkout HEAD" in verification_index_text
+        expected_head in verification_index_text or "generated from checkout HEAD" in verification_index_text
     ):
         errors.append("VERIFICATION_INDEX.md does not reference the manifest commit")
     return errors
@@ -180,9 +249,7 @@ def main() -> int:
             manifest_path = args.generate.resolve()
             manifest_path.parent.mkdir(parents=True, exist_ok=True)
             manifest_path.write_text(json.dumps(generated, indent=2, sort_keys=True) + "\n", encoding="utf-8")
-        errors = validate_manifest(
-            load_manifest(manifest_path), expected_head, verification_index_text=index_text
-        )
+        errors = validate_manifest(load_manifest(manifest_path), expected_head, verification_index_text=index_text)
     except (OSError, ValueError, subprocess.CalledProcessError, json.JSONDecodeError) as error:
         print(f"evidence consistency gate failed: {error}")
         return 1

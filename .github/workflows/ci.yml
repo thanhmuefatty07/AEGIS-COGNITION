@@ -62,6 +62,8 @@ jobs:
         env:
           PYO3_PYTHON: python3
         run: python scripts/suite_evidence.py --name rust-default-members --output artifacts/suites/rust-default-members.json -- cargo nextest run --no-default-features
+      - name: Bind final Rust suite evidence
+        run: python scripts/evidence_consistency_gate.py --generate artifacts/evidence/current.json
       - name: Clippy strict gate
         env:
           PYO3_PYTHON: python3
@@ -72,6 +74,12 @@ jobs:
         run: python scripts/dependency_audit_gate.py
       - name: Wasmtime migration gate
         run: python scripts/wasmtime_migration_gate.py
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: ci-rust-evidence-${{ github.sha }}
+          path: |
+            artifacts/evidence/current.json
+            artifacts/suites
 
   python-fast-gate:
     name: Python fast gate (${{ matrix.python-version }})
@@ -118,6 +126,8 @@ jobs:
         run: uv run --locked --extra all --extra dev pyright
       - name: Python and cross-language tests
         run: python scripts/suite_evidence.py --name python-cross-language --output artifacts/suites/python-cross-language.json -- uv run --locked --extra all --extra dev python -m pytest tests core/python/tests.py -v
+      - name: Bind final Python suite evidence
+        run: python scripts/evidence_consistency_gate.py --generate artifacts/evidence/current.json
       - name: Build maturin wheel
         run: uv build --wheel --out-dir artifacts/maturin
       - name: Inspect wheel contents
@@ -140,6 +150,12 @@ jobs:
           python -m py_compile scripts/release_evidence.py
           uv run --locked --extra all --extra dev ruff check scripts/release_evidence.py
           python scripts/release_evidence.py --artifacts artifacts/maturin --output artifacts/release-evidence
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: ci-python-evidence-${{ github.sha }}
+          path: |
+            artifacts/evidence/current.json
+            artifacts/suites
 
   rust-msrv:
     name: Rust MSRV (1.97.1)
