@@ -62,6 +62,8 @@ jobs:
           python scripts/resource_policy_benchmark.py --profile H1 --iterations 200 --output artifacts/resource-policy-local-only.json
           python scripts/hardware_profile_report.py --output artifacts/hardware-profile-local-only.json
           python scripts/platform_enforcement_probe.py --output artifacts/platform-enforcement-probe.json
+          python scripts/linux_cgroup_live_probe.py --output artifacts/linux-cgroup-live-probe.json
+          python scripts/communication_payload_benchmark.py --iterations 5 --output artifacts/communication-payload-benchmark.json
           cargo bench --manifest-path core/rust/Cargo.toml --bench resource_runtime --no-default-features -- --sample-size 10
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
@@ -70,6 +72,8 @@ jobs:
             artifacts/resource-policy-local-only.json
             artifacts/hardware-profile-local-only.json
             artifacts/platform-enforcement-probe.json
+            artifacts/linux-cgroup-live-probe.json
+            artifacts/communication-payload-benchmark.json
             artifacts/evidence/current.json
             artifacts/rust-coverage.lcov
             artifacts/suites
