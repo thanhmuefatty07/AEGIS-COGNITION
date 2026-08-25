@@ -162,7 +162,7 @@ AEGIS-COGNITION/
 ## Next Steps (Post-Launch)
 
 1. **Publish to PyPI** — `python -m build && twine upload dist/*`
-2. **Write blog post** — "AEGIS-COGNITION: The AI agent harness that's 69x faster than Hermes"
+2. **Write blog post** — publish comparative performance only after the workload, baseline, and independent verification are retained together
 3. **Create tutorial video** — 5-minute YouTube walkthrough
 4. **Add more examples** — LangGraph integration, FastAPI server, CI/CD pipeline
 5. **Track DX metrics** — Time-to-first-agent, install failures, support tickets

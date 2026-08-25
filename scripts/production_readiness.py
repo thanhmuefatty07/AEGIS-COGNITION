@@ -188,6 +188,10 @@ def build_production_readiness_report(deployment: object, e2e_release_gate: dict
         "deployment_manifest_production_deployable": deployment_deployable,
         "e2e_release_gate_production_deployable": e2e_deployable,
         "production_gap_disclosed": (deployment_deployable and e2e_deployable) or len(active_blockers) > 0,
+        "deployment_policy_source": string_attr(deployment, "deployment_policy_source"),
+        "deployment_policy_hash": string_attr(deployment, "deployment_policy_hash"),
+        "deployment_registry_source": string_attr(deployment, "deployment_registry_source"),
+        "deployment_registry_hash": string_attr(deployment, "deployment_registry_hash"),
         "production_blocker_hash": string_attr(deployment, "production_blocker_hash"),
         "active_production_blocker_hash": string_attr(deployment, "active_production_blocker_hash"),
         "e2e_release_gate_active_production_blocker_hash": str(
