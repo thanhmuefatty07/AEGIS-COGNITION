@@ -170,6 +170,10 @@ class BenchmarkGateReport:
     failed: int
     checks: list[BenchmarkGateCheck]
 
+    @property
+    def benchmark_class(self) -> str:
+        return "THRESHOLD_ASSERTION_GATE"
+
 
 def _estimate_path(root: Path, name: str) -> Path:
     return root / "target" / "criterion" / name / "new" / "estimates.json"
@@ -232,12 +236,43 @@ def evaluate_benchmarks(
 
 
 def report_to_dict(report: BenchmarkGateReport) -> dict:
+    measurements = [
+        {
+            "name": check.name,
+            "metric": "criterion_point_estimate_ns",
+            "estimate_ns": check.estimate_ns,
+            "threshold_ns": check.threshold_ns,
+            "baseline_available": False,
+            "candidate_available": check.estimate_ns is not None,
+            "delta_available": False,
+            "p50_available": False,
+            "p95_available": False,
+            "p99_available": False,
+        }
+        for check in report.checks
+    ]
     return {
+        "schema": "aegis-benchmark-gate-v2",
+        "truth_claim": False,
+        "claim_scope": "LOCAL_CHECKOUT_ONLY",
+        "claim_label": "MEASURED LOCAL ONLY",
+        "independent_verification": "NOT VERIFIED",
+        "benchmark_class": report.benchmark_class,
         "suite_name": report.suite_name,
         "scope_warning": report.scope_warning,
         "overall_ok": report.overall_ok,
         "passed": report.passed,
         "failed": report.failed,
+        "benchmark_checks": {
+            "executed": len(report.checks),
+            "passed": report.passed,
+            "failed": report.failed,
+            "interpretation": "Criterion point-estimate threshold assertions; not a baseline comparison.",
+        },
+        "performance_measurements": measurements,
+        "performance_claim": (
+            "This gate makes no baseline, delta, p50, p95, p99, end-to-end latency, or network RTT claim."
+        ),
         "checks": [
             {
                 "name": check.name,

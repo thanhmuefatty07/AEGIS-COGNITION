@@ -3,9 +3,11 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import platform
 import re
+import shlex
 import subprocess
 from datetime import UTC, datetime
 from pathlib import Path
@@ -49,6 +51,38 @@ def toolchain(command: list[str]) -> str:
     return (result.stdout or result.stderr).strip()
 
 
+def _sha256(value: str) -> str:
+    return hashlib.sha256(value.encode("utf-8", errors="replace")).hexdigest()
+
+
+def _git_remote_observation(revision: str) -> dict[str, object]:
+    """Report only what the local git ref cache can establish.
+
+    This deliberately does not call the network.  A cached origin ref is not
+    an independent GitHub observation, so the scope is explicit in the JSON.
+    """
+    try:
+        remote_head = subprocess.check_output(
+            ["git", "rev-parse", "origin/main"], text=True, stderr=subprocess.DEVNULL
+        ).strip()
+        contains = subprocess.run(
+            ["git", "merge-base", "--is-ancestor", revision, "origin/main"],
+            check=False,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        ).returncode == 0
+    except (OSError, subprocess.CalledProcessError):
+        remote_head = ""
+        contains = False
+    return {
+        "ref": "origin/main",
+        "head": remote_head,
+        "contains_commit": contains,
+        "observation_scope": "LOCAL_GIT_REF_CACHE_ONLY",
+        "independent_verification": "NOT VERIFIED",
+    }
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--name", required=True)
@@ -60,16 +94,23 @@ def main() -> int:
         command = command[1:]
     if not command:
         raise SystemExit("a command is required after --")
+    started = datetime.now(UTC)
     completed = subprocess.run(command, capture_output=True, text=True, check=False)
-    output = (completed.stdout or "") + (completed.stderr or "")
+    finished = datetime.now(UTC)
+    stdout = completed.stdout or ""
+    stderr = completed.stderr or ""
+    output = stdout + stderr
     counts = parse_counts(output)
     revision = subprocess.check_output(["git", "rev-parse", "HEAD"], text=True).strip()
     result = {
         "schema": "aegis-suite-evidence-v1",
         "name": args.name,
-        "command": " ".join(command),
+        "command": shlex.join(command),
         "commit": revision,
-        "timestamp_utc": datetime.now(UTC).replace(microsecond=0).isoformat().replace("+00:00", "Z"),
+        "timestamp_utc": finished.replace(microsecond=0).isoformat().replace("+00:00", "Z"),
+        "started_at_utc": started.isoformat().replace("+00:00", "Z"),
+        "finished_at_utc": finished.isoformat().replace("+00:00", "Z"),
+        "duration_seconds": (finished - started).total_seconds(),
         "platform": platform.platform(),
         "toolchain": toolchain(command),
         "discovered": counts["discovered"],
@@ -80,6 +121,13 @@ def main() -> int:
         "skipped": counts["skipped"],
         "exit_code": completed.returncode,
         "status": "PROVEN" if completed.returncode == 0 else "FAILED",
+        "claim_scope": "LOCAL_CHECKOUT_ONLY",
+        "claim_label": "LOCALLY PROVEN" if completed.returncode == 0 else "LOCAL FAILED",
+        "independent_verification": "NOT VERIFIED",
+        "stdout_sha256": _sha256(stdout),
+        "stderr_sha256": _sha256(stderr),
+        "combined_output_sha256": _sha256(output),
+        "remote_observation": _git_remote_observation(revision),
     }
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(result, indent=2, sort_keys=True) + "\n", encoding="utf-8")

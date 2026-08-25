@@ -88,6 +88,9 @@ def materialize_for_head(template: dict[str, Any], expected_head: str) -> dict[s
             entry["url"] = None
             entry["status"] = "NOT VERIFIED"
             entry["evidence_class"] = "NOT VERIFIED"
+            entry["claim_scope"] = "LOCAL_CHECKOUT_ONLY" if entry.get("kind") == "local" else "UNSPECIFIED"
+            entry["claim_label"] = "LOCAL EVIDENCE NOT VERIFIED" if entry.get("kind") == "local" else "NOT VERIFIED"
+            entry["independent_verification"] = "NOT VERIFIED"
             if entry.get("kind") == "local":
                 source_artifact = entry.get("source_artifact")
                 source = (
@@ -96,6 +99,13 @@ def materialize_for_head(template: dict[str, Any], expected_head: str) -> dict[s
                 if source and source.get("status") == "PROVEN" and source.get("failed") == 0:
                     entry["status"] = "PROVEN"
                     entry["evidence_class"] = "PROVEN"
+                    entry["claim_scope"] = "LOCAL_CHECKOUT_ONLY"
+                    entry["claim_label"] = "LOCALLY PROVEN"
+                    entry["independent_verification"] = "NOT VERIFIED"
+                elif entry.get("kind") == "local":
+                    entry["claim_scope"] = "LOCAL_CHECKOUT_ONLY"
+                    entry["claim_label"] = "LOCAL EVIDENCE NOT VERIFIED"
+                    entry["independent_verification"] = "NOT VERIFIED"
     for suite in manifest.get("suites", []):
         if isinstance(suite, dict):
             suite["commit"] = expected_head
@@ -105,6 +115,9 @@ def materialize_for_head(template: dict[str, Any], expected_head: str) -> dict[s
             suite["failed"] = None
             suite["ignored"] = None
             suite["filtered"] = None
+            suite["claim_scope"] = "LOCAL_CHECKOUT_ONLY"
+            suite["claim_label"] = "LOCAL SUITE NOT VERIFIED"
+            suite["independent_verification"] = "NOT VERIFIED"
             source = find_suite_artifact(suite_artifacts, str(suite.get("name", "")))
             if source:
                 for field in (
@@ -118,6 +131,16 @@ def materialize_for_head(template: dict[str, Any], expected_head: str) -> dict[s
                     "ignored",
                     "filtered",
                     "status",
+                    "started_at_utc",
+                    "finished_at_utc",
+                    "duration_seconds",
+                    "claim_scope",
+                    "claim_label",
+                    "independent_verification",
+                    "stdout_sha256",
+                    "stderr_sha256",
+                    "combined_output_sha256",
+                    "remote_observation",
                 ):
                     if field in source:
                         suite[field] = source[field]
