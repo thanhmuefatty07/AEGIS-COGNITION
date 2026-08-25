@@ -20,6 +20,18 @@ def manifest(commit: str) -> dict[str, object]:
             }
         ],
         "requirements": [{"id": "TEST-001", "tests": "unit", "evidence_ids": ["LOCAL-001"]}],
+        "remediation_requirements": [
+            {
+                "id": "TEST-REM-001",
+                "priority": "P0",
+                "implementation": "unit",
+                "closure": "test",
+                "evidence_ids": [],
+                "evidence_class": "NOT VERIFIED",
+                "status": "IMPLEMENTED / NOT VERIFIED",
+                "final_sha": commit,
+            }
+        ],
         "suites": [
             {
                 "name": "unit",
