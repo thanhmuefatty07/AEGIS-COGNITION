@@ -8,6 +8,8 @@ from typing import Any
 ROOT = Path(__file__).resolve().parents[1]
 ARTIFACTS_DIR = ROOT / "artifacts"
 REPORT_PATH = ARTIFACTS_DIR / "deployment_manifest_report.json"
+DEPLOYMENT_POLICY_RELATIVE_PATH = "docs/architecture/deployment_policy.json"
+NOT_VERIFIED_REGISTRY_RELATIVE_PATH = "docs/architecture/not_verified_registry.json"
 
 RELEASE_PROFILE = "minimal-prod-single-writer"
 DEPLOYMENT_TOPOLOGY = "single-node-core-with-candidate-workers"
@@ -360,26 +362,31 @@ PRODUCTION_BLOCKERS: tuple[dict[str, Any], ...] = (
         "id": "external_signed_attestation_missing",
         "blocks_production": True,
         "evidence_artifact": "supply_chain_gate_report.json",
+        "registry_ids": ["NV-004"],
     },
     {
         "id": "real_multi_machine_cluster_soak_missing",
         "blocks_production": True,
         "evidence_artifact": "tcp_cluster_soak_gate_report.json",
+        "registry_ids": ["NV-016"],
     },
     {
         "id": "full_quickjs_interpreter_cold_start_missing",
         "blocks_production": True,
         "evidence_artifact": "quickjs_cold_start_gate_report.json",
+        "registry_ids": ["NV-017"],
     },
     {
         "id": "live_provider_429_soak_missing",
         "blocks_production": True,
         "evidence_artifact": "dynamic_provider_fallback_gate_report.json",
+        "registry_ids": ["NV-018"],
     },
     {
         "id": "external_deployment_smoke_missing",
         "blocks_production": True,
         "evidence_artifact": "external_deployment_smoke_gate_report.json",
+        "registry_ids": ["NV-019"],
     },
 )
 
@@ -409,6 +416,10 @@ class DeploymentManifest:
     operator_runbook: dict[str, Any]
     production_blockers: tuple[dict[str, Any], ...]
     active_production_blockers: tuple[dict[str, Any], ...]
+    deployment_policy_source: str
+    deployment_policy_hash: str
+    deployment_registry_source: str
+    deployment_registry_hash: str
     production_packaging_smoke_present: bool
     production_packaging_smoke_hash: str
     external_signed_attestation_present: bool
@@ -483,6 +494,10 @@ class DeploymentManifest:
             "operator_runbook": self.operator_runbook,
             "production_blockers": list(self.production_blockers),
             "active_production_blockers": list(self.active_production_blockers),
+            "deployment_policy_source": self.deployment_policy_source,
+            "deployment_policy_hash": self.deployment_policy_hash,
+            "deployment_registry_source": self.deployment_registry_source,
+            "deployment_registry_hash": self.deployment_registry_hash,
             "production_packaging_smoke_present": self.production_packaging_smoke_present,
             "production_packaging_smoke_hash": self.production_packaging_smoke_hash,
             "external_signed_attestation_present": self.external_signed_attestation_present,
@@ -537,6 +552,7 @@ class DeploymentManifest:
 def build_deployment_manifest(root: str | Path) -> DeploymentManifest:
     root_path = Path(root)
     artifacts_dir = root_path / "artifacts"
+    production_blockers, policy_hash, registry_info = _load_deployment_policy(root_path)
     python_bridge_ready = (root_path / "core" / "python" / "bridge.py").exists()
     rust_core_ready = (root_path / "core" / "rust" / "src" / "lib.rs").exists()
     packaging_ready = (root_path / "pyproject.toml").exists() and python_bridge_ready and rust_core_ready
@@ -610,13 +626,15 @@ def build_deployment_manifest(root: str | Path) -> DeploymentManifest:
     operator_rollback_defined = _operator_rollback_defined(ROLLBACK_PLAN)
     operator_runbook_defined = _operator_runbook_defined(OPERATOR_RUNBOOK)
     production_blockers_declared = _production_blockers_declared(
-        PRODUCTION_BLOCKERS,
+        production_blockers,
         REQUIRED_RELEASE_ARTIFACTS,
+        registry_info["registry_ids"],
     )
     quickjs_cold_start_gate = _read_json(artifacts_dir / "quickjs_cold_start_gate_report.json")
     tcp_cluster_soak_gate = _read_json(artifacts_dir / "tcp_cluster_soak_gate_report.json")
     dynamic_provider_fallback_gate = _read_json(artifacts_dir / "dynamic_provider_fallback_gate_report.json")
     active_production_blockers = _active_production_blockers(
+        blockers=production_blockers,
         external_signed_attestation_present=external_signed_attestation_present,
         real_multi_node_cluster_present=tcp_cluster_soak_gate.get("real_multi_node_cluster_test_present") is True,
         full_quickjs_interpreter_present=(
@@ -656,7 +674,7 @@ def build_deployment_manifest(root: str | Path) -> DeploymentManifest:
             "operator_runbook_defined": operator_runbook_defined,
             "non_core_commit_authority_count": non_core_commit_authority_count,
         },
-        "production_blockers": PRODUCTION_BLOCKERS,
+        "production_blockers": production_blockers,
         "active_production_blockers": active_production_blockers,
         "production_deployable": production_deployable,
         "production_packaging_smoke_hash": production_packaging_smoke_hash,
@@ -684,7 +702,7 @@ def build_deployment_manifest(root: str | Path) -> DeploymentManifest:
     health_check_hash = _stable_hash(HEALTH_CHECKS)
     rollback_plan_hash = _stable_hash(ROLLBACK_PLAN)
     operator_runbook_hash = _stable_hash(OPERATOR_RUNBOOK)
-    production_blocker_hash = _stable_hash(PRODUCTION_BLOCKERS)
+    production_blocker_hash = _stable_hash(production_blockers)
     active_production_blocker_hash = _stable_hash(active_production_blockers)
     config_layer_hash = _stable_hash(config_layers)
     artifact_index_hash = _stable_hash(artifact_hashes)
@@ -741,6 +759,8 @@ def build_deployment_manifest(root: str | Path) -> DeploymentManifest:
         _check("operator_rollback_defined", operator_rollback_defined),
         _check("operator_runbook_defined", operator_runbook_defined),
         _check("production_blockers_declared", production_blockers_declared),
+        _check("production_blockers_derived_from_policy", bool(policy_hash)),
+        _check("production_blockers_reference_registry", production_blockers_declared),
         _check("active_production_blocker_hash_bound", _nonzero_hex(active_production_blocker_hash)),
         _check("release_attestation_hash_bound", _nonzero_hex(release_attestation_hash)),
         _check("production_packaging_smoke_present", production_packaging_smoke_present),
@@ -799,8 +819,12 @@ def build_deployment_manifest(root: str | Path) -> DeploymentManifest:
         health_checks=HEALTH_CHECKS,
         rollback_plan=ROLLBACK_PLAN,
         operator_runbook=OPERATOR_RUNBOOK,
-        production_blockers=PRODUCTION_BLOCKERS,
+        production_blockers=production_blockers,
         active_production_blockers=active_production_blockers,
+        deployment_policy_source=registry_info["policy_source"],
+        deployment_policy_hash=policy_hash,
+        deployment_registry_source=registry_info["registry_source"],
+        deployment_registry_hash=registry_info["registry_hash"],
         production_packaging_smoke_present=production_packaging_smoke_present,
         production_packaging_smoke_hash=production_packaging_smoke_hash,
         external_signed_attestation_present=external_signed_attestation_present,
@@ -999,28 +1023,65 @@ def _operator_runbook_defined(runbook: dict[str, Any]) -> bool:
     )
 
 
+def _load_deployment_policy(root_path: Path) -> tuple[tuple[dict[str, Any], ...], str, dict[str, Any]]:
+    policy_path = root_path / DEPLOYMENT_POLICY_RELATIVE_PATH
+    registry_path = root_path / NOT_VERIFIED_REGISTRY_RELATIVE_PATH
+    policy = _read_json(policy_path)
+    blockers_value = policy.get("blockers")
+    blockers = tuple(item for item in blockers_value if isinstance(item, dict)) if isinstance(blockers_value, list) else ()
+    if not blockers:
+        blockers = PRODUCTION_BLOCKERS
+    registry = _read_json(registry_path)
+    registry_entries = registry.get("entries", [])
+    registry_ids = {
+        str(entry.get("id"))
+        for entry in registry_entries
+        if isinstance(entry, dict) and isinstance(entry.get("id"), str)
+    }
+    if not registry_ids:
+        registry_ids = {
+            registry_id
+            for blocker in blockers
+            for registry_id in blocker.get("registry_ids", [])
+            if isinstance(registry_id, str)
+        }
+    return (
+        blockers,
+        _file_hash(policy_path),
+        {
+            "policy_source": DEPLOYMENT_POLICY_RELATIVE_PATH if policy_path.is_file() else "embedded-fallback",
+            "registry_source": NOT_VERIFIED_REGISTRY_RELATIVE_PATH if registry_path.is_file() else "embedded-fallback",
+            "registry_hash": _file_hash(registry_path),
+            "registry_ids": registry_ids,
+        },
+    )
+
+
 def _production_blockers_declared(
     blockers: tuple[dict[str, Any], ...],
     required_artifacts: tuple[str, ...],
+    registry_ids: set[str],
 ) -> bool:
     artifact_names = set(required_artifacts) | {"deployment_manifest_report.json"}
-    required_ids = {
-        "external_signed_attestation_missing",
-        "real_multi_machine_cluster_soak_missing",
-        "full_quickjs_interpreter_cold_start_missing",
-        "live_provider_429_soak_missing",
-        "external_deployment_smoke_missing",
-    }
     observed_ids = {blocker["id"] for blocker in blockers}
-    return required_ids.issubset(observed_ids) and all(
+    referenced_registry_ids = {
+        registry_id
+        for blocker in blockers
+        for registry_id in blocker.get("registry_ids", [])
+        if isinstance(registry_id, str)
+    }
+    return bool(observed_ids) and len(observed_ids) == len(blockers) and all(
         blocker["blocks_production"] is True
         and blocker["evidence_artifact"] in artifact_names
+        and referenced_registry_ids
+        and set(blocker.get("registry_ids", [])) <= registry_ids
         for blocker in blockers
     )
 
 
 def _active_production_blockers(
     *,
+    blockers: tuple[dict[str, Any], ...],
     external_signed_attestation_present: bool,
     real_multi_node_cluster_present: bool,
     full_quickjs_interpreter_present: bool,
@@ -1039,7 +1100,7 @@ def _active_production_blockers(
             **blocker,
             "active": True,
         }
-        for blocker in PRODUCTION_BLOCKERS
+        for blocker in blockers
         if blocker_state.get(str(blocker["id"]), False)
     )
 

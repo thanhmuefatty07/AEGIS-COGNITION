@@ -661,6 +661,9 @@ def test_e2e_release_gate_binds_goal_to_next_action_artifacts():
         assert report["truth_claim"] is False
         assert report["overall_ok"] is True
         assert report["passed"] == 20
+        assert report["failed"] == 0
+        assert report["not_verified"] == 0
+        assert report["verification_complete"] is True
         assert report["digest_algorithm"] == "sha256-artifact-index"
         assert report["production_deployable"] is False
         assert report["production_gap_disclosed"] is True
@@ -1984,6 +1987,10 @@ def test_deployment_manifest_valid():
     assert manifest.docs_ready
     assert manifest.artifacts_dir_ready == (REPO_ROOT / "artifacts").is_dir()
     assert manifest.operator_api_ready
+    assert manifest.deployment_policy_source == "docs/architecture/deployment_policy.json"
+    assert manifest.deployment_registry_source == "docs/architecture/not_verified_registry.json"
+    assert len(manifest.deployment_policy_hash) == 64
+    assert len(manifest.deployment_registry_hash) == 64
 
 
 def test_benchmark_gate_accepts_estimate_under_threshold():

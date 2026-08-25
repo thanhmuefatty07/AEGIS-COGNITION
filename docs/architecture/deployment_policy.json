@@ -1,0 +1,38 @@
+{
+  "schema": "aegis-deployment-policy-v1",
+  "truth_claim": false,
+  "production_deployability_requires_all_blockers_clear": true,
+  "registry_source": "docs/architecture/not_verified_registry.json",
+  "blockers": [
+    {
+      "id": "external_signed_attestation_missing",
+      "blocks_production": true,
+      "evidence_artifact": "supply_chain_gate_report.json",
+      "registry_ids": ["NV-004"]
+    },
+    {
+      "id": "real_multi_machine_cluster_soak_missing",
+      "blocks_production": true,
+      "evidence_artifact": "tcp_cluster_soak_gate_report.json",
+      "registry_ids": ["NV-016"]
+    },
+    {
+      "id": "full_quickjs_interpreter_cold_start_missing",
+      "blocks_production": true,
+      "evidence_artifact": "quickjs_cold_start_gate_report.json",
+      "registry_ids": ["NV-017"]
+    },
+    {
+      "id": "live_provider_429_soak_missing",
+      "blocks_production": true,
+      "evidence_artifact": "dynamic_provider_fallback_gate_report.json",
+      "registry_ids": ["NV-018"]
+    },
+    {
+      "id": "external_deployment_smoke_missing",
+      "blocks_production": true,
+      "evidence_artifact": "external_deployment_smoke_gate_report.json",
+      "registry_ids": ["NV-019"]
+    }
+  ]
+}

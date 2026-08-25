@@ -1,5 +1,10 @@
 # NOT VERIFIED registry
 
+The machine-readable source used by deployment gates is
+[`not_verified_registry.json`](not_verified_registry.json); blocker policy is
+[`deployment_policy.json`](deployment_policy.json). This Markdown table is a
+human-readable companion and cannot clear a blocker by itself.
+
 This registry is intentionally explicit. An unavailable platform or privilege
 does not become a pass, and it does not get silently removed from the closure
 scope. Each row has an owner and a reproducible closure procedure.

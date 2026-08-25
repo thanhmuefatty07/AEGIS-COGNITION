@@ -1,0 +1,25 @@
+{
+  "schema": "aegis-not-verified-registry-v1",
+  "truth_claim": false,
+  "entries": [
+    {"id": "NV-001", "title": "Linux cgroup v2 enforcement", "status": "NOT VERIFIED"},
+    {"id": "NV-002", "title": "Windows Job Object live process enforcement", "status": "IMPLEMENTED / PARTIALLY LIVE VERIFIED"},
+    {"id": "NV-003", "title": "macOS resource enforcement", "status": "NOT VERIFIED"},
+    {"id": "NV-004", "title": "External signed release attestation", "status": "NOT VERIFIED"},
+    {"id": "NV-005", "title": "Hardware policy freeze for H0-H2", "status": "MEASURED LOCAL ONLY / NOT VERIFIED FOR H0-H2"},
+    {"id": "NV-006", "title": "OpenTelemetry exporter", "status": "NOT VERIFIED"},
+    {"id": "NV-007", "title": "Fuzz campaign evidence", "status": "NOT VERIFIED"},
+    {"id": "NV-008", "title": "Tier-1 wheel parity", "status": "NOT VERIFIED"},
+    {"id": "NV-009", "title": "Restore from external release backup", "status": "PROVEN LOCAL PACKAGE DRILL / RESTORE NOT VERIFIED"},
+    {"id": "NV-010", "title": "Branch protection and hosted CI observation", "status": "NOT VERIFIED"},
+    {"id": "NV-011", "title": "GT96 requirement closure", "status": "IN PROGRESS"},
+    {"id": "NV-012", "title": "Production migration rehearsal", "status": "NOT VERIFIED"},
+    {"id": "NV-013", "title": "Miri and AddressSanitizer evidence", "status": "NOT VERIFIED"},
+    {"id": "NV-014", "title": "Communication exporter", "status": "IMPLEMENTED / MEASURED LOCAL ONLY"},
+    {"id": "NV-015", "title": "GitHub hosted-runner evidence for current head", "status": "NOT VERIFIED"},
+    {"id": "NV-016", "title": "Real multi-machine TCP cluster soak", "status": "NOT VERIFIED"},
+    {"id": "NV-017", "title": "Full QuickJS interpreter cold-start", "status": "NOT VERIFIED"},
+    {"id": "NV-018", "title": "Live provider HTTP 429 soak", "status": "NOT VERIFIED"},
+    {"id": "NV-019", "title": "External deployment smoke", "status": "NOT VERIFIED"}
+  ]
+}

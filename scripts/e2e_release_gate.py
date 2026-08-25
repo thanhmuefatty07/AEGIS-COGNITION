@@ -261,6 +261,8 @@ class E2EStageCheck:
     artifact_refs: tuple[str, ...]
     digest: str
     detail: str
+    status: str
+    not_verified_reason: str
 
 
 def evaluate_e2e_release_gate(root: str | Path = ROOT) -> dict[str, Any]:
@@ -328,21 +330,31 @@ def evaluate_e2e_release_gate(root: str | Path = ROOT) -> dict[str, Any]:
         _evaluate_stage(stage, payloads, artifacts_dir)
         for stage in STAGES
     )
-    passed = sum(1 for check in stage_checks if check.ok)
-    failed = len(stage_checks) - passed
+    passed = sum(1 for check in stage_checks if check.status == "PASS")
+    failed = sum(1 for check in stage_checks if check.status == "FAIL")
+    not_verified = sum(1 for check in stage_checks if check.status == "NOT VERIFIED")
     production_blockers = _dict_list(deployment_manifest.get("production_blockers", []))
     active_production_blockers = _dict_list(deployment_manifest.get("active_production_blockers", []))
     production_deployable = deployment_manifest.get("production_deployable") is True
     unsigned_report = {
         "suite_name": "AEGIS E2E Release Gate",
-        "schema": "aegis-e2e-release-gate-report-v1",
+        "schema": "aegis-e2e-release-gate-report-v2",
         "truth_claim": False,
+        "claim_scope": "LOCAL_CHECKOUT_ONLY",
+        "claim_label": "LOCAL E2E GATE; INDEPENDENT VERIFICATION NOT VERIFIED",
+        "independent_verification": "NOT VERIFIED",
         "verifier": "rust-replay-and-artifact-gates",
         "digest_algorithm": "sha256-artifact-index",
         "stage_order": list(STAGES),
+        "total": len(stage_checks),
         "passed": passed,
         "failed": failed,
-        "overall_ok": failed == 0,
+        "not_verified": not_verified,
+        "verification_complete": not_verified == 0,
+        "gate_status": (
+            "FAILED" if failed else "INCOMPLETE / NOT VERIFIED" if not_verified else "PASS"
+        ),
+        "overall_ok": failed == 0 and not_verified == 0,
         "production_deployable": production_deployable,
         "production_blockers": production_blockers,
         "active_production_blockers": active_production_blockers,
@@ -358,6 +370,8 @@ def evaluate_e2e_release_gate(root: str | Path = ROOT) -> dict[str, Any]:
                 "artifact_refs": list(check.artifact_refs),
                 "digest": check.digest,
                 "detail": check.detail,
+                "status": check.status,
+                "not_verified_reason": check.not_verified_reason,
             }
             for check in stage_checks
         ],
@@ -403,8 +417,47 @@ def _evaluate_stage(
         }
     )
     ok = not missing and all(digest for digest in artifact_digests.values())
-    detail = "ok" if ok else f"missing_or_invalid={missing}"
-    return E2EStageCheck(stage, ok, tuple(refs), digest, detail)
+    not_verified_reason = _known_unavailable_reason(stage, payloads)
+    if ok:
+        status = "PASS"
+        detail = "pass"
+    elif not_verified_reason:
+        status = "NOT VERIFIED"
+        detail = f"not_verified={not_verified_reason}; missing_or_invalid={missing}"
+    else:
+        status = "FAIL"
+        detail = f"missing_or_invalid={missing}"
+    return E2EStageCheck(stage, status == "PASS", tuple(refs), digest, detail, status, not_verified_reason)
+
+
+def _known_unavailable_reason(stage: str, payloads: dict[str, dict[str, Any]]) -> str:
+    """Classify an unavailable environment as unknown, not as a product failure."""
+    payload = payloads.get(
+        {
+            "tcp_cluster_soak": "tcp_cluster_soak_gate_report.json",
+            "quickjs_cold_start": "quickjs_cold_start_gate_report.json",
+            "dynamic_provider_fallback": "dynamic_provider_fallback_gate_report.json",
+            "external_deployment_smoke": "external_deployment_smoke_gate_report.json",
+        }.get(stage, ""),
+        {},
+    )
+    if not payload:
+        return ""
+    if stage == "tcp_cluster_soak" and (
+        payload.get("real_multi_node_cluster_test_present") is False
+        or payload.get("real_multi_machine_cluster_capture_missing_or_valid") is False
+    ):
+        return "requires a real non-loopback multi-machine cluster capture"
+    if stage == "quickjs_cold_start" and payload.get("real_quickjs_interpreter_cold_start_present") is False:
+        return "requires a full QuickJS interpreter cold-start capture"
+    if stage == "dynamic_provider_fallback" and payload.get("live_provider_traffic_present") is False:
+        return "requires live provider HTTP 429 traffic capture"
+    if stage == "external_deployment_smoke" and (
+        payload.get("external_deployment_smoke_present") is False
+        or payload.get("external_deployment_smoke_capture_missing_or_valid") is False
+    ):
+        return "requires an externally deployed runtime capture"
+    return ""
 
 
 def _read_json_artifact(path: Path) -> dict[str, Any]:
