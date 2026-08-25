@@ -28,6 +28,7 @@ pub mod execution;
 pub mod ffi;
 pub mod goal_intake;
 pub mod governance;
+pub mod gt96;
 pub mod guardrail;
 pub mod harness;
 pub mod hot_engine;
