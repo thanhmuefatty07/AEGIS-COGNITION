@@ -218,6 +218,14 @@ impl GoalContract {
         if expected_version != self.version {
             return Err(ContractError::InvalidVersion);
         }
+        for existing in &self.acceptance_criteria {
+            if !acceptance_criteria
+                .iter()
+                .any(|criterion| criterion.id == existing.id)
+            {
+                return Err(ContractError::MissingCriterion);
+            }
+        }
         let mut next = Self::new(
             objective,
             acceptance_criteria,
@@ -1032,9 +1040,46 @@ mod tests {
             current.evolve(0, "wrong", vec![criterion("c1")]),
             Err(ContractError::InvalidVersion)
         );
-        let next = current.evolve(1, "updated", vec![criterion("c1")]).unwrap();
+        let next = current
+            .evolve(1, "updated", vec![criterion("c1"), criterion("c2")])
+            .unwrap();
         assert_eq!(next.version, 2);
         assert_ne!(next.contract_hash, current.contract_hash);
+    }
+
+    #[test]
+    fn goal_contract_rejects_empty_fields_duplicates_and_removed_criteria() {
+        assert_eq!(
+            GoalContract::new(
+                "",
+                vec![criterion("c1")],
+                vec!["constraint".to_string()],
+                vec!["invariant".to_string()],
+                vec!["non-goal".to_string()],
+                SideEffectClass::None,
+                true,
+                policy(),
+            ),
+            Err(ContractError::EmptyField)
+        );
+        assert_eq!(
+            GoalContract::new(
+                "objective",
+                vec![criterion("c1"), criterion("c1")],
+                vec!["constraint".to_string()],
+                vec!["invariant".to_string()],
+                vec!["non-goal".to_string()],
+                SideEffectClass::None,
+                true,
+                policy(),
+            ),
+            Err(ContractError::DuplicateCriterion)
+        );
+        let current = contract();
+        assert_eq!(
+            current.evolve(1, "updated", vec![criterion("c1")]),
+            Err(ContractError::MissingCriterion)
+        );
     }
 
     #[test]

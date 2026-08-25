@@ -44,6 +44,11 @@ def capability_matrix(system: str) -> dict[str, str]:
 def build_report() -> dict[str, object]:
     system = platform.system()
     privileged_requested = os.environ.get("AEGIS_RUN_PRIVILEGED_PROBES") == "1"
+    harnesses = {
+        "Linux": "scripts/linux_cgroup_live_probe.py --output artifacts/local-runtime/linux-cgroup-live-probe.json",
+        "Windows": "scripts/windows_job_object_live_probe.py --output artifacts/local-runtime/windows-job-object-live-<sha>.json",
+        "Darwin": "scripts/macos_capability_probe.py --output artifacts/local-runtime/macos-capability-probe.json",
+    }
     return {
         "schema": "aegis-platform-enforcement-probe-v1",
         "generated_at_utc": datetime.now(UTC).replace(microsecond=0).isoformat().replace("+00:00", "Z"),
@@ -58,7 +63,8 @@ def build_report() -> dict[str, object]:
         "privileged_probe_requested": privileged_requested,
         "status": "IMPLEMENTED / NOT VERIFIED",
         "reason": "runner must execute and retain the platform-specific child-process harness",
-        "closure": "Run a real child-process limit/termination/deadline test with required OS privileges and retain logs plus this JSON.",
+        "closure": harnesses.get(system, "Run the applicable platform harness and retain its JSON."),
+        "harnesses": harnesses,
     }
 
 

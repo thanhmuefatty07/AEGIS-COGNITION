@@ -86,6 +86,19 @@ def child_command() -> list[str]:
     return [sys.executable, "-c", "import time; time.sleep(60)"]
 
 
+def pressure_child_command() -> list[str]:
+    code = (
+        "import time\n"
+        "blocks=[]\n"
+        "while True:\n"
+        "    block=bytearray(4 * 1024 * 1024)\n"
+        "    block[0]=1\n"
+        "    blocks.append(block)\n"
+        "    time.sleep(0.02)\n"
+    )
+    return [sys.executable, "-c", code]
+
+
 def probe(output: Path | None = None) -> dict[str, object]:
     report: dict[str, object] = {
         "schema": "aegis-windows-job-object-live-probe-v1",
@@ -137,6 +150,8 @@ def probe(output: Path | None = None) -> dict[str, object]:
 
     child: subprocess.Popen[bytes] | None = None
     second: subprocess.Popen[bytes] | None = None
+    pressure_child: subprocess.Popen[bytes] | None = None
+    pressure_job = None
     try:
         limits = ExtendedLimitInformation()
         limits.basic_limit_information.limit_flags = (
@@ -200,8 +215,70 @@ def probe(output: Path | None = None) -> dict[str, object]:
         report["checks"]["termination_observed"] = terminated and child.poll() is not None
         report["checks"]["deadline_cancellation_observed"] = report["checks"]["termination_observed"]
         report["checks"]["memory_limit_configured"] = configured
+        report["checks"]["memory_pressure_child_assigned"] = False
         report["checks"]["memory_pressure_kill_observed"] = False
-        report["notes"] = "Memory ceiling was configured and bound to the child; allocation-pressure kill requires a separate stress fixture."
+        pressure_job = kernel32.CreateJobObjectW(None, None)
+        if pressure_job:
+            pressure_limits = ExtendedLimitInformation()
+            pressure_limits.basic_limit_information.limit_flags = (
+                JOB_OBJECT_LIMIT_PROCESS_MEMORY | JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE
+            )
+            pressure_limits.process_memory_limit = 48 * 1024 * 1024
+            pressure_configured = bool(
+                kernel32.SetInformationJobObject(
+                    pressure_job,
+                    JOB_OBJECT_EXTENDED_LIMIT_INFORMATION,
+                    ctypes.byref(pressure_limits),
+                    ctypes.sizeof(pressure_limits),
+                )
+            )
+            report["checks"]["memory_pressure_limits_configured"] = pressure_configured
+            if pressure_configured:
+                pressure_child = subprocess.Popen(
+                    pressure_child_command(), stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
+                )
+                assigned_pressure = bool(
+                    kernel32.AssignProcessToJobObject(
+                        pressure_job, ctypes.c_void_p(pressure_child._handle)
+                    )
+                )
+                report["checks"]["memory_pressure_child_assigned"] = assigned_pressure
+                if assigned_pressure:
+                    baseline = BasicAccountingInformation()
+                    returned = ctypes.c_ulong(0)
+                    kernel32.QueryInformationJobObject(
+                        pressure_job,
+                        JOB_OBJECT_BASIC_ACCOUNTING_INFORMATION,
+                        ctypes.byref(baseline),
+                        ctypes.sizeof(baseline),
+                        ctypes.byref(returned),
+                    )
+                    pressure_deadline = time.monotonic() + 8.0
+                    while time.monotonic() < pressure_deadline and pressure_child.poll() is None:
+                        time.sleep(0.05)
+                    after = BasicAccountingInformation()
+                    kernel32.QueryInformationJobObject(
+                        pressure_job,
+                        JOB_OBJECT_BASIC_ACCOUNTING_INFORMATION,
+                        ctypes.byref(after),
+                        ctypes.sizeof(after),
+                        ctypes.byref(returned),
+                    )
+                    pressure_terminated = pressure_child.poll() is not None
+                    report["checks"]["memory_pressure_process_terminated_by_job"] = (
+                        pressure_terminated
+                        and after.total_terminated_processes > baseline.total_terminated_processes
+                    )
+                    report["checks"]["memory_pressure_kill_observed"] = report["checks"][
+                        "memory_pressure_process_terminated_by_job"
+                    ]
+        report["notes"] = (
+            "Memory pressure uses a separate 48 MiB Job Object and is marked observed only when "
+            "the child exits before the bounded wait and Job Object accounting records termination."
+        )
+        if report["checks"].get("memory_pressure_kill_observed") is True:
+            report["verification_scope"]["verified"].append("memory_pressure_kill_observed")
+            report["verification_scope"]["not_verified"] = []
         checks = report["checks"]
         required = [
             "limits_configured",
@@ -222,10 +299,12 @@ def probe(output: Path | None = None) -> dict[str, object]:
     except (OSError, ctypes.ArgumentError, subprocess.SubprocessError, TimeoutError) as exc:
         report["reason"] = str(exc)
     finally:
-        for process in (second, child):
+        for process in (pressure_child, second, child):
             if process is not None and process.poll() is None:
                 process.kill()
                 process.wait(timeout=5)
+        if pressure_job:
+            kernel32.CloseHandle(pressure_job)
         kernel32.CloseHandle(job)
     return _write(report, output)
 

@@ -31,5 +31,9 @@ checkout-bound manifest; absent or stale artifacts remain `NOT VERIFIED`.
 4. Historical counts and reports remain useful context only when explicitly labeled `historical`.
 5. The consistency gate runs in CI and release workflows and rejects stale current evidence.
 
-The complete requirement mapping is [`GT96_TRACEABILITY.md`](GT96_TRACEABILITY.md),
-and unresolved closure work is tracked in [`NOT_VERIFIED_REGISTRY.md`](NOT_VERIFIED_REGISTRY.md).
+The complete GT96 requirement mapping is [`GT96_TRACEABILITY.md`](GT96_TRACEABILITY.md),
+with the row-level evidence fields defined in
+[`GT96_TRACEABILITY_DETAIL.md`](GT96_TRACEABILITY_DETAIL.md). The P0/P1/P2
+remediation lanes are machine-readable in `current.json` under
+`remediation_requirements`; unresolved platform and provider gaps are tracked in
+[`NOT_VERIFIED_REGISTRY.md`](NOT_VERIFIED_REGISTRY.md).
