@@ -76,7 +76,7 @@ historical assertions, not current proof.
 
 3. **Friendly error patterns** — Every error follows: (1) what happened, (2) how to fix, (3) docs link. No cryptographic jargon in user-facing messages.
 
-4. **No compromise** — Cryptographic integrity, replay ledger, WASM sandbox, and 69-29,443x Hermes kill-shots are fully preserved.
+4. **No unscoped performance claim** — Cryptographic integrity, replay ledger, and WASM sandbox work are preserved; historical comparative measurements remain local-scope only.
 
 ---
 
@@ -152,10 +152,10 @@ AEGIS-COGNITION/
 - Orthogonal 3-Pillar architecture (Hot Engine / Cold Ledger / Friendly Gateway)
 - BLAKE3 hash chains + Replay Ledger + Event Sourcing
 - Wasmtime sandbox (fuel + epoch + memory + WASI deny)
-- All 4 Hermes kill-shots (69x, 29,443x, 119x, 76x)
+- Historical local micro-path measurements (not an independent comparative benchmark)
 - 177/177 constitution checks
-- 86/86 benchmark gates
-- `production_deployable=true`
+- 86 local Criterion threshold assertions; no baseline/delta/p50/p95/p99 claim
+- `production_deployable` is artifact/policy-derived and is currently `false`
 
 ---
 

@@ -40,7 +40,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - 0 unused-import warnings / 0 dead-code warnings / 0 unused-variable warnings.
 - `cargo clippy -W clippy::too_many_arguments` hits on `skill_improvement_record_hash` = **0**.
 - Bandit: 0 Critical / 0 High (1 Medium, 660 Low — Medium is the documented pickle advisory).
-- All 5 production blockers remain cleared; production_deployable remains **true**.
+- Historical closure claims are superseded: current `production_deployable` is
+  derived from the deployment policy and local artifacts, and is **false** until
+  the active blockers are independently closed.
 
 ### Deferred With Rationale (audit-completed, execution deferred)
 - **27→29 bare `blake3::hash` calls (ISSUE-003 / R4)**: per-site migration plan lives at

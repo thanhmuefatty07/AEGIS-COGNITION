@@ -1,10 +1,11 @@
-# AEGIS-COGNITION Commercialization Closure Report
+# AEGIS-COGNITION Commercialization Closure Report (historical draft)
 
 ## Executive Summary
 
-AEGIS-COGNITION has achieved `production_deployable=true` (all 5 blockers cleared) and now has 
-Enterprise SaaS infrastructure: Ed25519 license key system, RBAC engine, pricing tiers ($29-$499+/mo), 
-and a landing page. Projected ARR of $1.1M (Year 1) to $63M (Year 3) with 85% gross margin.
+This is a historical commercialization draft, not a release approval. The
+current deployment status is derived from the machine-readable policy and local
+artifacts; the current checkout is **not production deployable**. Pricing and
+revenue figures below are planning scenarios, not validated forecasts.
 
 ---
 
@@ -13,11 +14,11 @@ and a landing page. Projected ARR of $1.1M (Year 1) to $63M (Year 3) with 85% gr
 | Metric | Value |
 |--------|-------|
 | Constitution Audit | 177/177 PASS |
-| Benchmark Gates | 86/86 PASS |
-| Production Deployable | **true** |
-| Active Blockers | **0** |
+| Benchmark evidence | 86 local Criterion threshold assertions; no performance baseline |
+| Production Deployable | **false — local evidence only** |
+| Active Blockers | **derive from `deployment_manifest_report.json`** |
 
-### Resolved Blockers
+### Formerly Reported Resolutions (historical; not independently verified)
 
 | # | Blocker | Resolution | Evidence |
 |---|---------|------------|----------|
@@ -63,13 +64,13 @@ and a landing page. Projected ARR of $1.1M (Year 1) to $63M (Year 3) with 85% gr
 
 All Hermes kill-shots preserved:
 
-| Metric | AEGIS | Hermes Baseline | Speedup | Status |
+| Metric | Local observation | Comparison baseline | Comparative claim | Evidence status |
 |--------|-------|-----------------|---------|--------|
-| FTS5 Search | 123.91μs | 8.59ms | **69.29x** | ✅ |
-| JSON-RPC Context | 1.50μs | 44.14ms | **29,443x** | ✅ |
-| Session Recovery | 1.97ms | 236.61ms | **119.81x** | ✅ |
-| Persistence Write | 29.48ms | 2,252ms | **76.43x** | ✅ |
-| Context Pollution | 16 tokens/step | 50,000 | **99.97% less** | ✅ |
+| FTS5 Search | local historical sample | comparison baseline not bound | no comparative claim | not release evidence |
+| JSON-RPC Context | local historical sample | comparison baseline not bound | no comparative claim | not release evidence |
+| Session Recovery | local historical sample | comparison baseline not bound | no comparative claim | not release evidence |
+| Persistence Write | local historical sample | comparison baseline not bound | no comparative claim | not release evidence |
+| Context Pollution | local historical sample | comparison baseline not bound | no comparative claim | not release evidence |
 
 ---
 
@@ -81,7 +82,7 @@ All Hermes kill-shots preserved:
 | Year 2 | 50 @ $499 | 250 @ $99 | 500 @ $29 | $9.75M | 80% |
 | Year 3 | 150 @ $499 | 1,000 @ $99 | 2,000 @ $29 | $63M | 85% |
 
-**Valuation potential**: $600M - $1.2B (10-20x ARR multiple)
+**Valuation scenario**: $600M - $1.2B (assumption-dependent; not validated)
 
 ---
 
@@ -96,15 +97,15 @@ All Hermes kill-shots preserved:
 
 ### Existing (unchanged, preserved)
 - Orthogonal 3-Pillar Architecture (hot_engine, cold_ledger, friendly_gateway)
-- All 5 production blocker captures
+- Historical blocker-capture references; current closure remains not verified
 - Constitution audit (177/177)
-- Benchmark gates (86/86)
+- 86 local threshold assertions; performance baseline and independent verification unavailable
 
 ---
 
 ## 6. Go-to-Market Checklist
 
-- [x] Production deployable (all blockers cleared)
+- [ ] Production deployable (current policy remains blocked)
 - [x] Ed25519 license key system
 - [x] RBAC engine with audit logging
 - [x] Pricing page (4 tiers)
@@ -127,8 +128,8 @@ All Hermes kill-shots preserved:
 | Cryptographic integrity | BLAKE3 chain | None | None | None |
 | Zero-copy I/O | Yes (mmap) | No | No | No |
 | Deterministic replay | Full | No | Partial | No |
-| Enterprise compliance | SOC2/HIPAA ready | N/A | N/A | N/A |
-| Performance (JSON-RPC) | 1.50μs | 44.14ms | 15ms | 30ms |
+| Enterprise compliance | Not certified; controls require separate audit | N/A | N/A | N/A |
+| Performance (JSON-RPC) | Historical local sample; no bound baseline | unavailable | unavailable | unavailable |
 | Open Core | Yes | Yes | Yes | Yes |
 | Pricing | Free → $499+ | Free | Free | Free |
 
@@ -142,7 +143,7 @@ All Hermes kill-shots preserved:
 4. **Cloud Sync Beta** — Invite-only for Pro subscribers
 5. **Managed Hosting** — Kubernetes deployment for Enterprise tier
 6. **Product Hunt Launch** — Target: Top 5 Product of the Day
-7. **HN "Show HN"** — "AEGIS-COGNITION: 29,443x faster than LangGraph, cryptographically verified"
+7. **HN "Show HN"** — publish only after independently verified, scope-matched performance evidence exists
 8. **Content Marketing** — 1 technical blog post per week
 
 ---
@@ -160,4 +161,4 @@ All Hermes kill-shots preserved:
 ---
 
 *Report generated: 2026-06-11*
-*Constitution: 177/177 PASS | Benchmarks: 86/86 PASS | Production: DEPLOYABLE*
+*Constitution: 177/177 local checks | Benchmark: 86 local threshold assertions | Production: NOT DEPLOYABLE*
