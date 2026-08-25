@@ -59,7 +59,14 @@ impl SemanticCache {
         cache
     }
 
-    pub fn lookup(&self, prompt: &str, embedding: Vec<f32>, namespace: &str) -> Option<String> {
+    /// Return a cache candidate only. A semantic hit is never an
+    /// authoritative result or evidence of task completion.
+    pub fn lookup_candidate(
+        &self,
+        prompt: &str,
+        embedding: Vec<f32>,
+        namespace: &str,
+    ) -> Option<String> {
         // 1. Exact Match via BLAKE3 Hash check first
         let query_hash = blake3::hash(prompt.trim().as_bytes()).to_hex().to_string();
         for record in &self.records {
@@ -86,6 +93,22 @@ impl SemanticCache {
         }
 
         best_response
+    }
+
+    /// Compatibility alias whose contract is deliberately candidate-only.
+    pub fn lookup(&self, prompt: &str, embedding: Vec<f32>, namespace: &str) -> Option<String> {
+        self.lookup_candidate(prompt, embedding, namespace)
+    }
+
+    /// Semantic cache output cannot be promoted directly to authoritative
+    /// state. Execution and verification must happen through the runtime.
+    pub fn lookup_authoritative(
+        &self,
+        _prompt: &str,
+        _embedding: Vec<f32>,
+        _namespace: &str,
+    ) -> Result<String, &'static str> {
+        Err("semantic cache is candidate-only and cannot provide an authoritative result")
     }
 
     pub fn insert(
@@ -555,5 +578,24 @@ mod tests {
             }
             other => panic!("Expected CacheInvalidate, got {:?}", other),
         }
+    }
+
+    #[test]
+    fn semantic_cache_cannot_be_promoted_to_authoritative_result() {
+        let mut cache = SemanticCache::new(0.9, None);
+        cache.insert(
+            "candidate prompt".to_string(),
+            "candidate response".to_string(),
+            vec![1.0, 0.0],
+            "trust-domain".to_string(),
+        );
+        assert_eq!(
+            cache.lookup_authoritative("candidate prompt", vec![1.0, 0.0], "trust-domain"),
+            Err("semantic cache is candidate-only and cannot provide an authoritative result")
+        );
+        assert_eq!(
+            cache.lookup_candidate("candidate prompt", vec![1.0, 0.0], "trust-domain"),
+            Some("candidate response".to_string())
+        );
     }
 }

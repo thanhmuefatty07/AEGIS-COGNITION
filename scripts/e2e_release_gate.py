@@ -12,7 +12,10 @@ if str(ROOT) not in sys.path:
 from scripts.cluster_loopback_gate import evaluate_cluster_loopback_gate
 from scripts.deployment_manifest import build_deployment_manifest
 from scripts.dynamic_provider_fallback_gate import evaluate_dynamic_provider_fallback_gate
-from scripts.external_deployment_smoke_gate import evaluate_external_deployment_smoke_gate
+from scripts.external_deployment_smoke_gate import (
+    evaluate_external_deployment_smoke_gate,
+    write_external_deployment_smoke_capture,
+)
 from scripts.hot_browser_shadow_gate import evaluate_hot_browser_shadow_gate
 from scripts.production_packaging_smoke_gate import evaluate_production_packaging_smoke_gate
 from scripts.quickjs_cold_start_gate import evaluate_quickjs_cold_start_gate
@@ -204,7 +207,7 @@ STAGE_REQUIREMENTS: dict[str, tuple[tuple[str, tuple[str, ...]], ...]] = {
         ("external_deployment_smoke_gate_report.json", ("external_deployment_smoke_admission", "schema")),
         ("external_deployment_smoke_gate_report.json", ("external_deployment_smoke_admission", "expected_capture_path")),
         ("external_deployment_smoke_gate_report.json", ("external_deployment_smoke_admission_hash",)),
-        ("external_deployment_smoke_gate_report.json", ("external_deployment_smoke_admission_missing",)),
+        ("external_deployment_smoke_gate_report.json", ("external_deployment_smoke_present",)),
         ("external_deployment_smoke_gate_report.json", ("external_deployment_smoke_admission_blocker_id",)),
         ("external_deployment_smoke_gate_report.json", ("external_deployment_smoke_capture_missing_or_valid",)),
         ("external_deployment_smoke_gate_report.json", ("external_deployment_smoke_state_recorded",)),
@@ -301,6 +304,9 @@ def evaluate_e2e_release_gate(root: str | Path = ROOT) -> dict[str, Any]:
         json.dumps(production_packaging_smoke_gate, indent=2, sort_keys=True),
         encoding="utf-8",
     )
+    # Bind a local/external health capture after the e2e-owned artifacts have
+    # settled so the health-body hash cannot go stale during this same gate.
+    write_external_deployment_smoke_capture(root_path)
     external_deployment_smoke_gate = evaluate_external_deployment_smoke_gate(root_path)
     (artifacts_dir / "external_deployment_smoke_gate_report.json").write_text(
         json.dumps(external_deployment_smoke_gate, indent=2, sort_keys=True),
