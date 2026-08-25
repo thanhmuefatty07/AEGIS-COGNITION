@@ -1588,7 +1588,7 @@ REQUIRED_SYMBOLS = {
         Path("scripts/e2e_release_gate.py"),
         [
             "evaluate_e2e_release_gate",
-            "aegis-e2e-release-gate-report-v1",
+            "aegis-e2e-release-gate-report-v2",
             "goal_intake",
             "task_plan",
             "context_pack",
