@@ -3,9 +3,9 @@ document_id: AEGIS-LAB-RUNTIME-MASTER-PLAN
 document_type: canonical_current_implementation_plan
 status: IN_EXECUTION
 authority: derived_from_checkout_and_evidence_manifest
-applies_to_commit: f9645caf6d17cee2023d52183990ffcf8317e456
+applies_to_commit: 5fa910d5cb9a1a0b9f0c343e1faf342f52f5c325
 created_at: 2026-08-26
-last_verified_at: 2026-09-01
+last_verified_at: 2026-09-02
 supersedes: browser-native-proposal-and-cumulative-harness-roadmap-as-execution-authority
 evidence_source: docs/architecture/evidence/current.json
 execution_scope: working_tree_uncommitted
@@ -869,8 +869,9 @@ trợ năm kind có adapter rõ ràng: `search_program` (được parse thành
 capture), `experiment_action`, `simulation_action` và `tool_call` (được
 chuyển vào generic tool fence). Mọi edge runner hiện được chuẩn hóa qua
 `ExecutionCellRegistry`; mỗi binding có `cell_id`, action kind, capability,
-effect class và trust envelope, còn manifest được lưu trong snapshot/dossier
-hash. Tool action chỉ
+effect class và trust envelope; `execution_cell_manifest_recorded` bind canonical
+inventory, count và projection digest vào event ledger trước invocation, còn
+snapshot/dossier vẫn giữ projection tương thích. Tool action chỉ
 được `read_only`, `network_read` hoặc `compute` nếu chưa có policy
 `allow_external_writes` rõ ràng. Action khác, thiếu schema, quá quota, provider không được cấu hình hoặc payload không typed đều trở thành
 blocker; model không thể cung cấp Python callable, code tùy ý, credential hay
@@ -1216,9 +1217,10 @@ trusted cho `search_program`, `browser_action`, `experiment_action`,
 `simulation_action`, `tool_call`, `skill_execution` và `post_completion_effect`; custom binding có thể khai báo rõ
 `cell_id`, capability, effect class và trust level. Dispatcher không còn lấy
 runner từ một nhánh tùy ý sau khi controller đã chọn action: cell identity và
-policy được kiểm tra trước invocation, manifest được bind vào snapshot/dossier
-hash, duplicate action-kind hoặc cell/effect/capability mismatch trở thành
-blocker. Sau khi manifest được chụp, registry được seal; mutation hậu cấu hình
+policy được kiểm tra trước invocation, `execution_cell_manifest_recorded` bind
+canonical manifest/count/digest vào native event ledger trước cell execution,
+còn snapshot/dossier giữ projection tương thích; duplicate action-kind hoặc cell/effect/capability mismatch trở thành
+blocker. Sau khi manifest event được chụp, registry được seal; mutation hậu cấu hình
 bị từ chối để binding thực thi không thể lệch khỏi replay. Test registry chứng
 minh identity, capability, effect, duplicate registration và late mutation đều
 fail-closed. Crash recovery giờ quét event log thay vì dựa vào
@@ -1228,7 +1230,7 @@ native-required/PROD runs cũng bật strict resolution sau khi convert các leg
 options thành binding:
 dispatcher không còn rơi xuống legacy runner trong `options` nếu lane bị bỏ
 thiếu; test search/browser/skill chứng minh adapter ngoài registry không được gọi.
-Sau khi manifest được chụp, registry được seal để late registration không thể
+Sau khi manifest event được chụp, registry được seal để late registration không thể
 làm lệch binding replay; regression chứng minh mutation hậu cấu hình bị từ chối.
 Post-completion `memory.index_session` cũng được resolve qua dedicated cell;
 `PROD` hoặc policy bắt buộc sẽ ghi `post_completion_effect_missing` nếu không có
@@ -1795,7 +1797,7 @@ rejection is local evidence, not hosted memory authority or semantic quality.
 
 | ID | Phạm vi còn mở | Vì sao chưa đóng | Điều kiện đóng bắt buộc | Trạng thái hiện tại |
 |---|---|---|---|---|
-| LAB-AUTH-001 | Native single-writer chưa bao phủ toàn bộ Agent/tool lifecycle | Browser/research/skill/experiment, explicit generic tool calls, typed controller search/browser/experiment/simulation action plans, gateway/controller model calls, compatibility Agent `memory.search_past` context retrieval and post-completion memory index hiện đã pre-admit + settle native; generic tool có lease/effect/role/schema/stop-rule, retry fence; các explicit lanes có cooperative `CANCELLED` settlement trước abort; high-level `_call_fenced` còn chặn adapter nuốt cancellation; launcher-owned browser session hiện giữ bound suốt controller loop rồi cleanup; `Agent(..., lab=True)` trong packaged native lane hiện tự ghi durable replay archive; strict archive verifier đối chiếu persisted `manifest_hash` nên tail thiếu không được coi là completion; native-required gateway có post-construction callback handshake và route/receipt reconciliation, nên factory nhận nhưng bỏ qua fence hoặc trả route không có nested provider receipts đều bị fail-closed; explicit edge runners giờ được gom vào `ExecutionCellRegistry`, kiểm tra `cell_id`/capability/effect/trust`, seal sau khi chụp manifest và lưu manifest trong snapshot/dossier hash; sealed snapshot lookup không bị thay thế bởi mutation hậu cấu hình; event-log-driven recovery hiện settle được mọi admission mở của research/experiment/browser/skill/tool/context retrieval thành `REJECTED` với `UNKNOWN_SIDE_EFFECT` và chuyển dossier sang `blocked`. Tuy nhiên planner/lease của side effect phát sinh ngầm, adapter ngoài registry contract, process-level non-cooperative interruption, retry policy xuyên adapter và hosted multi-process single-writer chưa được native controller sở hữu/chứng minh; route reconciliation không thể hoàn tác effect đã xảy ra trước khi adapter trả kết quả | Một seed Agent lifecycle chạy qua native controller duy nhất; replay fresh process cho cùng prefix/verdict; duplicate, timeout, cancellation, in-flight interruption (kể cả adapter nuốt cancellation và process-level non-cooperative) và partial failure đều fail-closed; proof không chỉ là hash-chain của Python projection; packaged generic-tool + gateway smoke, typed controller action replay, launcher browser continuity, experiment/simulation action replay, context-retrieval and completion-effect rejection/required-policy tests, mixed-lane recovery replay, registry manifest replay and hosted writer evidence | `OPEN_LOCAL` |
+| LAB-AUTH-001 | Native single-writer chưa bao phủ toàn bộ Agent/tool lifecycle | Browser/research/skill/experiment, explicit generic tool calls, typed controller search/browser/experiment/simulation action plans, gateway/controller model calls, compatibility Agent `memory.search_past` context retrieval and post-completion memory index hiện đã pre-admit + settle native; generic tool có lease/effect/role/schema/stop-rule, retry fence; các explicit lanes có cooperative `CANCELLED` settlement trước abort; high-level `_call_fenced` còn chặn adapter nuốt cancellation; launcher-owned browser session hiện giữ bound suốt controller loop rồi cleanup; `Agent(..., lab=True)` trong packaged native lane hiện tự ghi durable replay archive; strict archive verifier đối chiếu persisted `manifest_hash` nên tail thiếu không được coi là completion; native-required gateway có post-construction callback handshake và route/receipt reconciliation, nên factory nhận nhưng bỏ qua fence hoặc trả route không có nested provider receipts đều bị fail-closed; explicit edge runners giờ được gom vào `ExecutionCellRegistry`, kiểm tra `cell_id`/capability/effect/trust`, seal sau khi chụp manifest event và lưu canonical inventory/hash vào native event ledger cùng snapshot/dossier projection; sealed snapshot lookup không bị thay thế bởi mutation hậu cấu hình; event-log-driven recovery hiện settle được mọi admission mở của research/experiment/browser/skill/tool/context retrieval thành `REJECTED` với `UNKNOWN_SIDE_EFFECT` và chuyển dossier sang `blocked`. Tuy nhiên planner/lease của side effect phát sinh ngầm, adapter ngoài registry contract, process-level non-cooperative interruption, retry policy xuyên adapter và hosted multi-process single-writer chưa được native controller sở hữu/chứng minh; route reconciliation không thể hoàn tác effect đã xảy ra trước khi adapter trả kết quả | Một seed Agent lifecycle chạy qua native controller duy nhất; replay fresh process cho cùng prefix/verdict; duplicate, timeout, cancellation, in-flight interruption (kể cả adapter nuốt cancellation và process-level non-cooperative) và partial failure đều fail-closed; proof không chỉ là hash-chain của Python projection; packaged generic-tool + gateway smoke, typed controller action replay, launcher browser continuity, experiment/simulation action replay, context-retrieval and completion-effect rejection/required-policy tests, mixed-lane recovery replay, registry manifest replay and hosted writer evidence | `OPEN_LOCAL` |
 | LAB-BROWSER-002 | Browser process/OS isolation và continuous hostile-content boundary | Local `BrowserCell` là capability/role boundary và nay chặn literal cùng legacy decimal/octal/hex IPv4 private/loopback/link-local/multicast/reserved/unspecified IP; managed Playwright có resolution preflight và route-time kiểm tra mọi địa chỉ phân giải, nhưng chưa có DNS rebinding race proof, crash injection, kernel/job/cgroup enforcement và cross-domain hosted witness | Hosted Linux/Windows/macOS runs với process crash, DNS rebinding/egress/private-IP/redirect/prompt-injection corpus, retained raw witness và independent verifier | `OPEN_EXTERNAL` |
 | LAB-RESEARCH-003 | Live research quality | Search IR/fetch/citation/contradiction adapter đã bounded, nhưng semantic extraction, freshness quality, provider drift và independent contradiction retrieval chưa có evidence ngoài fixture/live example.com | Real provider snapshots với timestamps, provenance clusters, exact spans, contradiction recall/precision protocol, redacted raw responses và replay | `OPEN_EXTERNAL` |
 | LAB-PHYS-004 | Validated scientific simulation/hardware energy | Euler/RK4, units, Nyquist, calibration và residual gates mới là bounded contracts; chưa chứng minh PDE/stiffness/circuit solver, sensor model hay calibrated hardware energy | Multi-problem solver validation, convergence/discrepancy report, blind rerun, instrument calibration/uncertainty and independent replication; no promotion from `MEASURED_INPUTS_ONLY` without witness | `OPEN_EXTERNAL` |
@@ -2905,6 +2907,21 @@ longer matches the sealed archive. Python archive/recovery coverage confirms
 the new verifier is called for both write and restore. This closes a local
 snapshot-to-archive binding gap; it does not provide signatures, hosted writer
 authority, cross-platform crash injection, or final-SHA release evidence.
+
+**M2 execution-cell manifest binding continuation (2026-09-02):** registry
+metadata is now emitted as exactly one `execution_cell_manifest_recorded`
+projection record immediately after Lab construction and before any selected
+cell executes. The record carries schema `aegis-execution-cell-manifest-v1`,
+cell count, canonical inventory and a domain-separated projection digest; Rust
+requires sequence 2/epoch 1 after `MissionCreated`, validates normalized cell
+identity/action/capability/effect/trust fields and rechecks the digest on
+snapshot restore. Python refuses to serialize or restore a manifest whose
+top-level projection differs from that event. The local regression covers
+round-trip, top-level tamper rejection, duplicate/invalid native records and
+atomic rejection; the full native suite is **441 passed** and Python remains
+**349 passed**. This closes the local registry-to-ledger binding gap, but it
+does not prove universal adapter side-effect authority, hosted single-writer
+ownership, process containment or external release provenance.
 
 #### M5 — Research, browser và experiment cells
 
