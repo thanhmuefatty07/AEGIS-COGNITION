@@ -1696,6 +1696,37 @@ class ExperimentSpec:
     uncertainty_required: bool = False
     min_clean_replicates: int = 0
 
+    def validate(self) -> None:
+        if (
+            type(self.experiment_id) is not str
+            or type(self.hypothesis_id) is not str
+            or type(self.design) is not str
+            or type(self.measurement_unit) is not str
+            or not self.experiment_id.strip()
+            or not self.hypothesis_id.strip()
+            or not self.design.strip()
+            or not self.measurement_unit.strip()
+            or type(self.variables) not in (list, tuple)
+            or type(self.controls) not in (list, tuple)
+            or type(self.preregistered_seeds) not in (list, tuple)
+            or not self.variables
+            or not self.controls
+            or any(type(item) is not str or not item.strip() for item in self.variables)
+            or any(type(item) is not str or not item.strip() for item in self.controls)
+            or len(self.preregistered_seeds) < 5
+            or any(type(seed) is not int for seed in self.preregistered_seeds)
+            or len(set(self.preregistered_seeds)) != len(self.preregistered_seeds)
+            or type(self.expected_observations) is not int
+            or self.expected_observations < 1
+            or type(self.uncertainty_required) is not bool
+            or type(self.min_clean_replicates) is not int
+            or self.min_clean_replicates < 0
+            or self.min_clean_replicates > self.expected_observations
+        ):
+            raise ValueError(
+                "experiment requires unique integer seeds, controls and a positive observation quota"
+            )
+
 
 @dataclass(frozen=True)
 class ObservationRecord:
@@ -4411,18 +4442,8 @@ class LabRun:
     def add_experiment(self, experiment: ExperimentSpec) -> None:
         if self.state not in {"researching", "experimenting", "reviewing"}:
             raise ValueError(f"cannot add experiment in state {self.state}")
-        if (
-            not experiment.experiment_id.strip()
-            or not experiment.design.strip()
-            or not experiment.variables
-            or not experiment.controls
-            or len(experiment.preregistered_seeds) < 5
-            or experiment.expected_observations < 1
-            or experiment.min_clean_replicates < 0
-            or experiment.min_clean_replicates > experiment.expected_observations
-            or experiment.hypothesis_id not in self.hypotheses
-            or experiment.experiment_id in self.experiments
-        ):
+        experiment.validate()
+        if experiment.hypothesis_id not in self.hypotheses or experiment.experiment_id in self.experiments:
             raise ValueError("experiment requires controls and at least five preregistered seeds")
         DEFAULT_UNIT_REGISTRY.signature(experiment.measurement_unit)
         snapshot = self._projection_snapshot()
@@ -5391,20 +5412,25 @@ class LabRun:
                 for item in raw_hypotheses
             )
         }
+        for item in raw_experiments:
+            for field in ("variables", "controls", "preregistered_seeds"):
+                raw_values = item.get(field)
+                if isinstance(raw_values, (str, bytes)) or not isinstance(raw_values, (list, tuple)):
+                    raise ValueError(f"invalid experiment {field} in lab snapshot")
         restored.experiments = {
             record.experiment_id: record
             for record in (
                 ExperimentSpec(
-                    experiment_id=str(item["experiment_id"]),
-                    hypothesis_id=str(item["hypothesis_id"]),
-                    design=str(item["design"]),
-                    variables=tuple(str(value) for value in item["variables"]),
-                    controls=tuple(str(value) for value in item["controls"]),
-                    preregistered_seeds=tuple(int(value) for value in item["preregistered_seeds"]),
-                    expected_observations=int(item["expected_observations"]),
-                    measurement_unit=str(item.get("measurement_unit", "score")),
-                    uncertainty_required=bool(item.get("uncertainty_required", False)),
-                    min_clean_replicates=int(item.get("min_clean_replicates", 0)),
+                    experiment_id=item["experiment_id"],
+                    hypothesis_id=item["hypothesis_id"],
+                    design=item["design"],
+                    variables=tuple(item["variables"]),
+                    controls=tuple(item["controls"]),
+                    preregistered_seeds=tuple(item["preregistered_seeds"]),
+                    expected_observations=item["expected_observations"],
+                    measurement_unit=item.get("measurement_unit", "score"),
+                    uncertainty_required=item.get("uncertainty_required", False),
+                    min_clean_replicates=item.get("min_clean_replicates", 0),
                 )
                 for item in raw_experiments
             )
@@ -5799,17 +5825,8 @@ class LabRun:
             ):
                 raise ValueError("invalid hypothesis in lab snapshot")
         for experiment in self.experiments.values():
-            if (
-                not experiment.experiment_id.strip()
-                or not experiment.design.strip()
-                or not experiment.variables
-                or not experiment.controls
-                or len(experiment.preregistered_seeds) < 5
-                or experiment.expected_observations < 1
-                or experiment.min_clean_replicates < 0
-                or experiment.min_clean_replicates > experiment.expected_observations
-                or experiment.hypothesis_id not in self.hypotheses
-            ):
+            experiment.validate()
+            if experiment.hypothesis_id not in self.hypotheses:
                 raise ValueError("invalid experiment in lab snapshot")
             DEFAULT_UNIT_REGISTRY.signature(experiment.measurement_unit)
         for observation in self.observations.values():
@@ -7254,17 +7271,25 @@ class LabApplication:
         if not isinstance(value, dict):
             raise TypeError("experiment spec must be a mapping")
         payload = cast(dict[str, Any], value)
+        raw_variables = payload["variables"]
+        raw_controls = payload["controls"]
+        raw_seeds = payload["preregistered_seeds"]
+        if any(
+            isinstance(raw, (str, bytes)) or not isinstance(raw, (list, tuple))
+            for raw in (raw_variables, raw_controls, raw_seeds)
+        ):
+            raise TypeError("experiment variables, controls and seeds must be sequences")
         return ExperimentSpec(
-            experiment_id=str(payload["experiment_id"]),
-            hypothesis_id=str(payload["hypothesis_id"]),
-            design=str(payload["design"]),
-            variables=tuple(str(item) for item in payload["variables"]),
-            controls=tuple(str(item) for item in payload["controls"]),
-            preregistered_seeds=tuple(int(item) for item in payload["preregistered_seeds"]),
-            expected_observations=int(payload["expected_observations"]),
-            measurement_unit=str(payload.get("measurement_unit", "score")),
-            uncertainty_required=bool(payload.get("uncertainty_required", False)),
-            min_clean_replicates=int(payload.get("min_clean_replicates", 0)),
+            experiment_id=payload["experiment_id"],
+            hypothesis_id=payload["hypothesis_id"],
+            design=payload["design"],
+            variables=tuple(raw_variables),
+            controls=tuple(raw_controls),
+            preregistered_seeds=tuple(raw_seeds),
+            expected_observations=payload["expected_observations"],
+            measurement_unit=payload.get("measurement_unit", "score"),
+            uncertainty_required=payload.get("uncertainty_required", False),
+            min_clean_replicates=payload.get("min_clean_replicates", 0),
         )
 
     @staticmethod
