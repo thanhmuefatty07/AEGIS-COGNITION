@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import math
 import multiprocessing
+import asyncio
 import socket
 import sys
 import time
@@ -193,6 +194,177 @@ def test_lab_snapshot_rejects_lossy_record_metadata(
     records[0][field] = value
     with pytest.raises(ValueError):
         LabRun.from_payload(payload)
+
+
+@pytest.mark.parametrize(
+    ("collection", "field", "value"),
+    (
+        ("claims", "statement", 1),
+        ("claims", "confidence_bps", "5000"),
+        ("hypotheses", "falsifiers", "negative result"),
+        ("hypotheses", "prior_bps", "5000"),
+        ("experiment_spec", "preregistered_seeds", [1, 2, 3, 4, "5"]),
+    ),
+)
+def test_controller_structured_records_reject_lossy_metadata(
+    collection: str, field: str, value: object
+) -> None:
+    run = LabRun("strict controller records")
+    run.add_source(SourceRecord("s1", "https://example.test", "content", "snapshot", 1))
+    payload: dict[str, object] = {}
+    if collection == "claims":
+        payload["claims"] = [{
+            "claim_id": "c1",
+            "statement": "supported",
+            "source_ids": ["s1"],
+            "confidence_bps": 5_000,
+        }]
+    elif collection == "hypotheses":
+        payload["hypotheses"] = [{
+            "hypothesis_id": "h1",
+            "statement": "holds",
+            "falsifiers": ["negative"],
+            "prior_bps": 5_000,
+        }]
+    else:
+        payload["experiment_spec"] = {
+            "experiment_id": "e1",
+            "hypothesis_id": "h1",
+            "design": "paired",
+            "variables": ["x"],
+            "controls": ["baseline"],
+            "preregistered_seeds": [1, 2, 3, 4, 5],
+            "expected_observations": 1,
+        }
+    record = payload[collection]
+    assert isinstance(record, list) if collection != "experiment_spec" else isinstance(record, dict)
+    if collection == "experiment_spec":
+        assert isinstance(record, dict)
+        record[field] = value
+    else:
+        assert isinstance(record, list)
+        record[0][field] = value
+
+    LabApplication._ingest_structured_step(run, payload)
+
+    expected_blocker = {
+        "claims": "invalid_controller_claim",
+        "hypotheses": "invalid_controller_hypothesis",
+        "experiment_spec": "invalid_controller_experiment",
+    }[collection]
+    assert expected_blocker in run.blockers
+    if collection == "claims":
+        assert not run.claims
+    elif collection == "hypotheses":
+        assert not run.hypotheses
+    else:
+        assert not run.experiments
+
+
+@pytest.mark.parametrize(
+    ("field", "value"),
+    (
+        ("uri", 1),
+        ("retrieved_at_ms", "1"),
+        ("trust_tier", 1.0),
+        ("citation_spans", [{"start": "0", "end": 1, "text_hash": "a" * 64}]),
+    ),
+)
+def test_search_ingestion_rejects_lossy_source_metadata(field: str, value: object) -> None:
+    run = LabRun("strict search records")
+    LabApplication._ingest_search_candidates(
+        run,
+        [{"source_id": "s1", "uri": "https://example.test", "content": "evidence", field: value}],
+    )
+    assert "invalid_source_record" in run.blockers
+    assert not run.sources
+
+
+@pytest.mark.parametrize(
+    "collection",
+    (
+        "events",
+        "blockers",
+        "security_events",
+    ),
+)
+def test_lab_snapshot_rejects_lossy_event_and_operator_metadata(collection: str) -> None:
+    payload = _ready_run().to_payload()
+    assert collection in payload
+    if collection == "events":
+        payload["events"][0]["sequence"] = "1"
+    elif collection == "blockers":
+        payload["blockers"] = [1]
+    else:
+        payload["security_events"] = [{"reason": 1}]
+    with pytest.raises(ValueError):
+        LabRun.from_payload(payload)
+
+
+def test_lab_snapshot_rejects_lossy_tool_and_skill_admission_metadata() -> None:
+    run = LabRun("strict execution metadata")
+    run.admit_tool_execution(
+        tool_name="fixture.tool",
+        input_payload={"query": "bounded"},
+        policy_payload={"effect": "compute"},
+        effect_class="compute",
+    )
+    payload = run.to_payload()
+    payload["tool_execution_admissions"][0]["attempt"] = "1"
+    with pytest.raises(ValueError):
+        LabRun.from_payload(payload)
+
+    registry, manifest = _skill_fixture()
+    skill_run = LabRun("strict skill metadata")
+    skill_run.admit_skill(
+        registry,
+        manifest.skill_id,
+        manifest.version,
+        available_capabilities=("network.read",),
+        preconditions={"budget_available": True, "host_allowlisted": True},
+    )
+    skill_payload = skill_run.to_payload()
+    skill_payload["skill_admissions"][0]["precondition_results"] = [
+        ["budget_available", 1],
+        ["host_allowlisted", True],
+    ]
+    with pytest.raises(ValueError):
+        LabRun.from_payload(skill_payload)
+
+
+def test_lab_start_rejects_non_string_mission_and_scope_entries() -> None:
+    lab = Lab(policy=LabPolicy(trust_level="DEV"), llm=lambda _task, **_: {"answer": "ok"})
+    with pytest.raises(ValueError):
+        lab.start(1)  # type: ignore[arg-type]
+    with pytest.raises(ValueError):
+        lab.start("strict scope", scope=[1])  # type: ignore[list-item]
+
+
+def test_controller_action_and_tool_inputs_reject_lossy_metadata() -> None:
+    run = LabRun("strict action metadata")
+    config = SimpleNamespace(
+        max_steps=3,
+        trust_level="DEV",
+        task="strict action metadata",
+        options={"lab_allow_external_writes": False},
+    )
+    app = LabApplication(
+        config=config,
+        gateway_factory=lambda **_: object(),
+        telemetry=None,
+        correlation=None,
+    )
+    action_output = {
+        "schema": "aegis-lab-action-plan-v1",
+        "actions": [{"kind": 1}],
+    }
+    asyncio.run(app._execute_controller_action_plan(run, action_output, config.options, run_id=run.mission_id))
+    assert "controller_action_kind_invalid" in run.blockers
+
+    run = LabRun("strict tool metadata")
+    config.options["tool_calls"] = [{"tool_name": 1}]
+    asyncio.run(app._run_tool_calls(run, config.options))
+    assert "tool_call_invalid" in run.blockers
 
 
 def test_process_execution_cell_terminates_non_cooperative_runner() -> None:
