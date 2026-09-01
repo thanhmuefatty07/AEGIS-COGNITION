@@ -439,6 +439,15 @@ def test_process_execution_cell_rejects_lossy_timeout_metadata() -> None:
         ProcessExecutionCell(_non_cooperative_process_task, start_method=1)  # type: ignore[arg-type]
 
 
+def test_replay_writer_lease_rejects_lossy_directory_metadata() -> None:
+    with pytest.raises(TypeError, match="string or path-like"):
+        ReplayWriterLease(1)  # type: ignore[arg-type]
+    with pytest.raises(TypeError, match="string or path-like"):
+        ReplayWriterLease(b"replay")  # type: ignore[arg-type]
+    with pytest.raises(ValueError, match="non-empty"):
+        ReplayWriterLease("   ")
+
+
 def test_lab_native_authority_admits_each_event_append(monkeypatch: pytest.MonkeyPatch) -> None:
     calls: list[list[dict[str, object]]] = []
 
