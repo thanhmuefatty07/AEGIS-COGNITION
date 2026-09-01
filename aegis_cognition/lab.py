@@ -7749,8 +7749,6 @@ class LabApplication:
         the context before it can be presented to the controller.
         """
 
-        if self.context_retriever is None:
-            return ""
         runner = self._resolve_execution_cell(
             run,
             action_kind="context_retrieval",
@@ -7759,7 +7757,7 @@ class LabApplication:
             effect_class="read_only",
         )
         if not callable(runner):
-            if self._execution_cells_strict:
+            if self._execution_cells_strict and self.context_retriever is not None:
                 run.record_blocker("execution_cell_not_registered:context_retrieval")
             return ""
         query = run.objective
@@ -7934,7 +7932,7 @@ class LabApplication:
             for parameter in signature.parameters.values()
         )
 
-    def _provider_attempt_hook(self, event: str, payload: Mapping[str, Any]) -> Any:
+    def _provider_attempt_hook(self, event: str, payload: Any) -> Any:
         """Native-fence every provider candidate attempted by a gateway.
 
         The outer ``gateway.*`` execution receipt remains useful for the
@@ -7943,10 +7941,21 @@ class LabApplication:
         provider output and prompts never enter the event payload.
         """
 
+        if type(event) is not str or not event.strip():
+            raise ValueError("provider attempt fence event must be a non-empty string")
+        if not isinstance(payload, Mapping):
+            raise TypeError("provider attempt fence payload must be a mapping")
+        raw_payload = cast(Mapping[Any, Any], payload)
+        if any(type(key) is not str for key in raw_payload):
+            raise TypeError("provider attempt fence payload keys must be strings")
         run = self._active_run
         if run is None:
             raise RuntimeError("provider attempt fence is unavailable outside a Lab run")
-        normalized_payload = {**self._provider_attempt_context, **dict(payload)}
+        typed_payload = cast(Mapping[str, Any], raw_payload)
+        normalized_payload: dict[str, Any] = {
+            **self._provider_attempt_context,
+            **dict(typed_payload),
+        }
         if event == "admit":
             return self._admit_provider_attempt(run, normalized_payload)
         if event == "settle":
@@ -7955,29 +7964,53 @@ class LabApplication:
         raise ValueError("unknown provider attempt fence event")
 
     def _admit_provider_attempt(self, run: LabRun, payload: Mapping[str, Any]) -> dict[str, Any]:
-        phase = str(payload.get("phase", "")).strip().lower()
-        call_id = str(payload.get("call_id", "")).strip()
-        provider = str(payload.get("provider", "")).strip()
+        raw_phase = payload.get("phase", "")
+        raw_call_id = payload.get("call_id", "")
+        raw_provider = payload.get("provider", "")
         candidate_index = payload.get("candidate_index")
+        candidate_count = payload.get("candidate_count", candidate_index)
         gateway_attempt = payload.get("gateway_attempt", 1)
+        gateway_max_attempts = payload.get("gateway_max_attempts")
         timeout_seconds = payload.get("timeout_seconds")
         idempotency_key = payload.get("idempotency_key")
+        raw_task = payload.get("task", "")
         if (
-            not phase
-            or not call_id
-            or not provider
+            type(raw_phase) is not str
+            or not raw_phase.strip()
+            or raw_phase != raw_phase.strip()
+            or raw_phase != raw_phase.lower()
+            or type(raw_call_id) is not str
+            or not raw_call_id.strip()
+            or raw_call_id != raw_call_id.strip()
+            or type(raw_provider) is not str
+            or not raw_provider.strip()
+            or raw_provider != raw_provider.strip()
             or type(candidate_index) is not int
             or candidate_index < 1
+            or type(candidate_count) is not int
+            or candidate_count < candidate_index
             or type(gateway_attempt) is not int
             or gateway_attempt < 1
+            or (
+                gateway_max_attempts is not None
+                and (
+                    type(gateway_max_attempts) is not int
+                    or gateway_max_attempts < gateway_attempt
+                )
+            )
             or isinstance(timeout_seconds, bool)
             or not isinstance(timeout_seconds, (int, float))
             or not math.isfinite(float(timeout_seconds))
             or float(timeout_seconds) <= 0
-            or not isinstance(idempotency_key, str)
+            or type(idempotency_key) is not str
             or not _is_digest(idempotency_key)
+            or type(raw_task) is not str
+            or not raw_task.strip()
         ):
             raise ValueError("provider attempt fence identity/deadline is invalid")
+        phase = raw_phase.lower()
+        call_id = raw_call_id
+        provider = raw_provider
         input_payload = {
             "schema": "aegis-provider-attempt-input-v1",
             "phase": phase,
@@ -7985,8 +8018,8 @@ class LabApplication:
             "provider": provider,
             "gateway_attempt": gateway_attempt,
             "candidate_index": candidate_index,
-            "candidate_count": int(payload.get("candidate_count", candidate_index)),
-            "task_hash": _hash(payload.get("task", "")),
+            "candidate_count": candidate_count,
+            "task_hash": _hash(raw_task),
         }
         policy_payload = {
             "schema": "aegis-provider-attempt-policy-v1",
@@ -8050,45 +8083,98 @@ class LabApplication:
         if not isinstance(fence, Mapping):
             raise ValueError("provider attempt settlement fence is missing")
         fence_map = cast(dict[str, Any], fence)
-        status = str(payload.get("status", "")).strip().upper()
+        raw_status = payload.get("status", "")
+        raw_provider = payload.get("provider", "")
+        raw_phase = payload.get("phase", "")
+        raw_call_id = payload.get("call_id", "")
+        raw_gateway_attempt = payload.get("gateway_attempt", 1)
+        raw_candidate_index = payload.get("candidate_index", 0)
+        raw_error = payload.get("error", "provider_failure")
+        if (
+            type(raw_status) is not str
+            or raw_status != raw_status.strip()
+            or type(raw_provider) is not str
+            or not raw_provider.strip()
+            or raw_provider != raw_provider.strip()
+            or type(raw_phase) is not str
+            or not raw_phase.strip()
+            or raw_phase != raw_phase.strip()
+            or raw_phase != raw_phase.lower()
+            or type(raw_call_id) is not str
+            or not raw_call_id.strip()
+            or raw_call_id != raw_call_id.strip()
+            or type(raw_gateway_attempt) is not int
+            or raw_gateway_attempt < 1
+            or type(raw_candidate_index) is not int
+            or raw_candidate_index < 1
+            or (raw_status != "SUCCESS" and (type(raw_error) is not str or not raw_error.strip()))
+            or (raw_status == "SUCCESS" and "result" not in payload)
+        ):
+            raise ValueError("provider attempt settlement metadata is invalid")
+        for field in (
+            "tool_name",
+            "execution_id",
+            "admission_id",
+            "effect_class",
+            "actor_role",
+            "expected_observation_schema",
+            "stop_rule",
+            "idempotency_key",
+        ):
+            value = fence_map.get(field)
+            if type(value) is not str or not value.strip():
+                raise ValueError("provider attempt settlement fence metadata is invalid")
+        for field in ("lease_id", "attempt"):
+            value = fence_map.get(field)
+            if type(value) is not int or value < 1:
+                raise ValueError("provider attempt settlement fence counters are invalid")
+        timeout_seconds = fence_map.get("timeout_seconds")
+        if not _is_finite_number(timeout_seconds):
+            raise ValueError("provider attempt settlement fence deadline is invalid")
+        timeout_value = cast(int | float, timeout_seconds)
+        if timeout_value <= 0:
+            raise ValueError("provider attempt settlement fence deadline is invalid")
+        if not _is_digest(cast(str, fence_map["idempotency_key"])):
+            raise ValueError("provider attempt settlement fence idempotency key is invalid")
+        status = raw_status
         if status not in {"SUCCESS", "REJECTED", "TIMED_OUT", "CANCELLED"}:
             raise ValueError("provider attempt settlement status is invalid")
         result_payload: dict[str, Any] = {
             "schema": "aegis-provider-attempt-result-v1",
-            "provider": str(payload.get("provider", "")),
-            "phase": str(payload.get("phase", "")),
-            "gateway_attempt": payload.get("gateway_attempt", 1),
-            "candidate_index": payload.get("candidate_index", 0),
+            "provider": raw_provider,
+            "phase": raw_phase,
+            "gateway_attempt": raw_gateway_attempt,
+            "candidate_index": raw_candidate_index,
             "status": status,
         }
         if status == "SUCCESS":
-            result_payload["output_hash"] = _hash(payload.get("result"))
+            result_payload["output_hash"] = _hash(payload["result"])
         else:
-            result_payload["error"] = str(payload.get("error", "provider_failure"))
+            result_payload["error"] = raw_error
         run.record_tool_execution(
-            tool_name=str(fence_map["tool_name"]),
-            execution_id=str(fence_map["execution_id"]),
-            admission_id=str(fence_map["admission_id"]),
+            tool_name=fence_map["tool_name"],
+            execution_id=fence_map["execution_id"],
+            admission_id=fence_map["admission_id"],
             input_payload=fence_map["input_payload"],
             policy_payload=fence_map["policy_payload"],
             result=result_payload,
-            effect_class=str(fence_map["effect_class"]),
-            actor_role=str(fence_map["actor_role"]),
-            expected_observation_schema=str(fence_map["expected_observation_schema"]),
-            stop_rule=str(fence_map["stop_rule"]),
-            lease_id=int(fence_map["lease_id"]),
-            attempt=int(fence_map["attempt"]),
+            effect_class=fence_map["effect_class"],
+            actor_role=fence_map["actor_role"],
+            expected_observation_schema=fence_map["expected_observation_schema"],
+            stop_rule=fence_map["stop_rule"],
+            lease_id=fence_map["lease_id"],
+            attempt=fence_map["attempt"],
             status=status,
-            idempotency_key=str(fence_map["idempotency_key"]),
-            timeout_seconds=float(fence_map["timeout_seconds"]),
+            idempotency_key=fence_map["idempotency_key"],
+            timeout_seconds=float(timeout_value),
         )
         key = (
-            str(payload.get("phase", "")).strip().lower(),
-            str(payload.get("call_id", "")).strip(),
-            int(payload.get("gateway_attempt", 1)),
+            raw_phase.lower(),
+            raw_call_id,
+            raw_gateway_attempt,
         )
         self._provider_attempt_receipts.setdefault(key, []).append(
-            (str(payload.get("provider", "")).strip(), status)
+            (raw_provider, status)
         )
 
     def _assert_provider_attempt_fence(
@@ -8115,16 +8201,63 @@ class LabApplication:
             return
         if route is None:
             raise RuntimeError("native Lab authority requires a provider route receipt")
+        route_hash = getattr(route, "route_hash", None)
+        if type(route_hash) is not str or not _is_digest(route_hash):
+            raise RuntimeError("native Lab authority requires a canonical provider route hash")
         raw_attempted = getattr(route, "attempted_providers", None)
         if not isinstance(raw_attempted, (list, tuple)):
             raise RuntimeError("native Lab authority requires typed provider attempts")
         typed_attempted = cast(list[Any] | tuple[Any, ...], raw_attempted)
-        attempted = tuple(str(provider).strip() for provider in typed_attempted)
-        if not attempted or any(not provider for provider in attempted):
+        if any(
+            type(provider) is not str
+            or not provider.strip()
+            or provider != provider.strip()
+            for provider in typed_attempted
+        ):
+            raise RuntimeError("native Lab authority requires canonical provider names")
+        attempted = tuple(typed_attempted)
+        if not attempted:
             raise RuntimeError("native Lab authority requires at least one provider attempt")
-        selected = str(getattr(route, "selected_provider", "")).strip()
-        if not selected or selected not in attempted:
+        selected = getattr(route, "selected_provider", None)
+        if (
+            type(selected) is not str
+            or not selected.strip()
+            or selected != selected.strip()
+            or selected not in attempted
+        ):
             raise RuntimeError("native Lab authority provider selection is inconsistent")
+        raw_throttled = getattr(route, "throttled_providers", None)
+        if not isinstance(raw_throttled, (list, tuple)):
+            raise RuntimeError("native Lab authority requires typed throttled providers")
+        typed_throttled = cast(list[Any] | tuple[Any, ...], raw_throttled)
+        if any(
+            type(provider) is not str
+            or not provider.strip()
+            or provider != provider.strip()
+            for provider in typed_throttled
+        ):
+            raise RuntimeError("native Lab authority requires canonical throttled providers")
+        fallback_used = getattr(route, "fallback_used", None)
+        if type(fallback_used) is not bool:
+            raise RuntimeError("native Lab authority requires a typed provider fallback flag")
+        optional_route_fields = {
+            "schema": "aegis-friendly-provider-route-v1",
+            "trust_level": run.trust_level,
+            "throttled_provider_count": len(typed_throttled),
+            "provider_budget_hash": None,
+        }
+        for field, expected in optional_route_fields.items():
+            if not hasattr(route, field):
+                continue
+            value = getattr(route, field)
+            if field == "provider_budget_hash":
+                if type(value) is not str or not _is_digest(value):
+                    raise RuntimeError("native Lab authority provider budget hash is invalid")
+            elif field == "throttled_provider_count":
+                if type(value) is not int or value != expected:
+                    raise RuntimeError("native Lab authority throttled count is inconsistent")
+            elif type(value) is not str or value != expected:
+                raise RuntimeError(f"native Lab authority provider route {field} is invalid")
 
         observed = tuple(
             self._provider_attempt_receipts.get((phase, call_id, gateway_attempt), ())
@@ -9448,6 +9581,21 @@ class LabApplication:
         route = getattr(result, "provider_route", None)
         budget = getattr(result, "provider_budget", None)
         try:
+            if run.require_native_authority:
+                result_provider = getattr(result, "provider", None)
+                result_trust_level = getattr(result, "trust_level", None)
+                if (
+                    type(result_provider) is not str
+                    or not result_provider.strip()
+                    or result_provider != result_provider.strip()
+                    or type(result_trust_level) is not str
+                    or result_trust_level != run.trust_level
+                ):
+                    raise RuntimeError("native Lab authority gateway result identity is invalid")
+                if budget is not None:
+                    budget_hash = getattr(budget, "budget_evidence_hash", None)
+                    if type(budget_hash) is not str or not _is_digest(budget_hash):
+                        raise RuntimeError("native Lab authority provider budget evidence is invalid")
             self._assert_provider_attempt_fence(
                 run,
                 phase=normalized_phase,
