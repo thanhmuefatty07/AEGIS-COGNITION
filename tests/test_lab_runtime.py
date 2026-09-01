@@ -773,6 +773,21 @@ def test_lab_cancellation_receipts_reject_lossy_boundary_metadata() -> None:
         )
 
 
+def test_lab_admission_binder_rejects_malformed_identity_payload() -> None:
+    run = LabRun("strict admission binder")
+    run._append(
+        "research_program_admitted",
+        {"program_hash": 1, "admission_id": "malformed", "operation_count": 1},
+        event_state_epoch=1,
+    )
+    with pytest.raises(ValueError, match="identity metadata"):
+        run.admit_research_program(
+            program_hash="a" * 64,
+            operation_count=1,
+            provider="provider.test",
+        )
+
+
 @pytest.mark.parametrize(
     ("action", "match"),
     (

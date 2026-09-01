@@ -3286,6 +3286,8 @@ class LabRun:
         settlement cannot be turned into a new side-effect receipt.
         """
 
+        if type(identity) is not str or type(admission_id) is not str:
+            raise ValueError(f"{label} settlement identity is invalid")
         normalized_identity = identity.strip()
         normalized_admission_id = admission_id.strip()
         if not normalized_identity or not normalized_admission_id:
@@ -3294,12 +3296,18 @@ class LabRun:
         settled = False
         for event in self.events:
             payload = event.payload
-            if event.kind not in {admission_kind, record_kind} or not isinstance(payload, dict):
+            if event.kind not in {admission_kind, record_kind}:
                 continue
-            typed_payload = {
-                str(key): value for key, value in cast(dict[Any, Any], payload).items()
-            }
-            event_identity = str(typed_payload.get(identity_key, "")).strip()
+            if type(payload) is not dict:
+                raise ValueError(f"{label} admission payload is invalid")
+            raw_payload = cast(dict[Any, Any], payload)
+            if any(type(key) is not str for key in raw_payload):
+                raise ValueError(f"{label} admission payload is invalid")
+            typed_payload = cast(dict[str, Any], raw_payload)
+            raw_event_identity = typed_payload.get(identity_key, "")
+            if type(raw_event_identity) is not str:
+                raise ValueError(f"{label} admission identity metadata is invalid")
+            event_identity = raw_event_identity.strip()
             if event_identity != normalized_identity:
                 continue
             if event.kind == admission_kind:
@@ -3316,6 +3324,8 @@ class LabRun:
         stored_admission_id = admission.get("admission_id")
         if stored_admission_id is None and admission_kind == "skill_admission_recorded":
             stored_admission_id = admission.get("admission_hash")
+        if type(stored_admission_id) is not str:
+            raise ValueError(f"{label} admission identity metadata is invalid")
         if stored_admission_id != normalized_admission_id:
             raise ValueError(f"{label} settlement admission binding mismatch")
         if any(admission.get(key) != value for key, value in expected.items()):
@@ -3333,18 +3343,25 @@ class LabRun:
     ) -> None:
         """Reject an explicit identity already present in the event ledger."""
 
+        if type(identity) is not str:
+            raise ValueError(f"{label} identity must be non-empty")
         normalized_identity = identity.strip()
         if not normalized_identity:
             raise ValueError(f"{label} identity must be non-empty")
         for event in self.events:
             if event.kind not in {admission_kind, record_kind}:
                 continue
-            payload = cast(dict[str, object], event.payload)
-            try:
-                event_identity = payload.get(identity_key, "")
-            except AttributeError:
-                continue
-            if str(event_identity).strip() == normalized_identity:
+            payload = event.payload
+            if type(payload) is not dict:
+                raise ValueError(f"{label} admission payload is invalid")
+            raw_payload = cast(dict[Any, Any], payload)
+            if any(type(key) is not str for key in raw_payload):
+                raise ValueError(f"{label} admission payload is invalid")
+            typed_payload = cast(dict[str, object], raw_payload)
+            event_identity = typed_payload.get(identity_key, "")
+            if type(event_identity) is not str:
+                raise ValueError(f"{label} admission identity metadata is invalid")
+            if event_identity.strip() == normalized_identity:
                 raise ValueError(f"{label} identity is duplicated")
 
     def admit_skill(

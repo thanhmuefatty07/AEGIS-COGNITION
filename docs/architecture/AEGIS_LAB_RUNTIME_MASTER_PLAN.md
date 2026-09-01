@@ -2718,6 +2718,18 @@ tests**; targeted Ruff and Pyright remain clean. This is local cancellation
 contract evidence only; process-level interruption, hidden side effects and
 hosted single-writer authority remain open under `LAB-AUTH-001`.
 
+**M2 admission-binder continuation (2026-09-02):** the shared
+`_require_open_admission` and `_assert_admission_identity_available` paths now
+reject malformed event payload containers, non-string keys/identities and
+invalid stored admission IDs instead of stringifying or skipping them. A
+malformed replay prefix therefore fails closed before it can match a legitimate
+identity; valid event-chain and settlement behavior is unchanged. Negative
+coverage now totals **279 focused Lab tests** and **385 combined
+Python/cross-language tests**; targeted Ruff and Pyright remain clean. This is
+local replay-binder evidence only; native authority outside the projection,
+process-level interruption and hosted multi-process writer proof remain open
+under `LAB-AUTH-001`.
+
 #### M5 — Research, browser và experiment cells
 
 **Entry:** M2–M4 pass cho local cells; capability registry sealed.
