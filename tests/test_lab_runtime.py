@@ -2666,6 +2666,19 @@ def test_simulation_cell_enforces_constraints_and_integrates_with_lab() -> None:
         )
 
 
+def test_simulation_and_electrical_contracts_reject_lossy_numeric_metadata() -> None:
+    with pytest.raises(ValueError, match="simulation spec"):
+        SimulationSpec("sim", "e1", "ab" * 32, (1, "2")).validate()  # type: ignore[arg-type]
+    with pytest.raises(ValueError, match="simulation spec"):
+        SimulationSpec("sim", "e1", "ab" * 32, (1, 1)).validate()
+    with pytest.raises(ValueError, match="simulation spec"):
+        SimulationSpec("sim", "e1", "ab" * 32, (1,), max_steps=True).validate()  # type: ignore[arg-type]
+    with pytest.raises(ValueError, match="physical constraint"):
+        PhysicalConstraint("energy", True).validate()  # type: ignore[arg-type]
+    with pytest.raises(ValueError, match="electrical signal"):
+        ElectricalSignalSpec("signal", 10.0, 0.2, 5.0, max_samples=True).validate()  # type: ignore[arg-type]
+
+
 def test_electrical_signal_cell_binds_sampling_ohms_and_energy_units() -> None:
     spec = ElectricalSignalSpec(
         signal_id="dc-load",

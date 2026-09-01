@@ -2519,6 +2519,14 @@ Regression coverage exercises each rejected field. This improves local
 epistemic integrity and replay safety; it is not calibration evidence and does
 not close `LAB-PHYS-004`.
 
+**P3 numerical-contract continuation (2026-09-02):** `SimulationSpec`,
+`PhysicalConstraint` and `ElectricalSignalSpec` now reject lossy boolean/string
+numeric metadata, duplicate/non-integer seeds, invalid digest subjects and
+non-integral step/sample quotas. Mapping coercion preserves raw values until
+these validators run. Regression coverage confirms malformed numerical
+contracts fail closed. This is bounded input/invariant evidence only; it does
+not prove solver convergence, hardware calibration or physical validity.
+
 #### M5 — Research, browser và experiment cells
 
 **Entry:** M2–M4 pass cho local cells; capability registry sealed.
