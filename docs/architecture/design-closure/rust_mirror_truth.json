@@ -201,8 +201,8 @@
   "limitations": [
     "the nested subtree has no Cargo.toml and is not in cargo metadata workspace members; textual references are historical/documentary, not execution proof"
   ],
-  "HEAD": "b3017abde81973d8a5642c846f2fc3afd87de33f",
-  "WORKTREE_EPOCH": "acc233b17ccba201ce5069e8fb6eeddbd83cdb539d8168c108517810aaed27d8",
-  "generated_at": "2026-09-01T22:46:47.754016+00:00",
+  "HEAD": "914002a5f117f6c9f317d84a2ff67750cbcd0653",
+  "WORKTREE_EPOCH": "7f8ae7f668967407c0448c5d92c043e449ee307a06d426cbd1c31e15a192f829",
+  "generated_at": "2026-09-01T22:50:38.369215+00:00",
   "method": "aegis-design-closure-reconciliation-v1; direct Git/filesystem/source inspection, prior artifact hash reuse, disposable wheel reconciliation, bounded local probes"
 }

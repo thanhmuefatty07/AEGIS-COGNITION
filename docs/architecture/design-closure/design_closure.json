@@ -3,227 +3,25 @@
   "status": "PARTIAL_LOCAL",
   "epoch_stable": true,
   "epoch_start": {
-    "WORKTREE_EPOCH": "acc233b17ccba201ce5069e8fb6eeddbd83cdb539d8168c108517810aaed27d8",
-    "HEAD": "b3017abde81973d8a5642c846f2fc3afd87de33f",
-    "tracked_diff_sha256": "525c7b3ecc875b4ac96104b7c9bf0979fa7c5f69ddb34ff1d0e21c32e2da9d01",
+    "WORKTREE_EPOCH": "7f8ae7f668967407c0448c5d92c043e449ee307a06d426cbd1c31e15a192f829",
+    "HEAD": "914002a5f117f6c9f317d84a2ff67750cbcd0653",
+    "tracked_diff_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
     "untracked_architecture_relevant": []
   },
   "epoch_end": {
-    "WORKTREE_EPOCH": "acc233b17ccba201ce5069e8fb6eeddbd83cdb539d8168c108517810aaed27d8",
-    "HEAD": "b3017abde81973d8a5642c846f2fc3afd87de33f",
-    "tracked_diff_sha256": "525c7b3ecc875b4ac96104b7c9bf0979fa7c5f69ddb34ff1d0e21c32e2da9d01",
+    "WORKTREE_EPOCH": "7f8ae7f668967407c0448c5d92c043e449ee307a06d426cbd1c31e15a192f829",
+    "HEAD": "914002a5f117f6c9f317d84a2ff67750cbcd0653",
+    "tracked_diff_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
     "untracked_architecture_relevant": []
   },
   "collection_state": {
-    "head": "b3017abde81973d8a5642c846f2fc3afd87de33f",
+    "head": "914002a5f117f6c9f317d84a2ff67750cbcd0653",
     "branch": "main",
     "origin_main": "origin/main",
     "ahead_behind": "0\t0",
-    "entries": [
-      {
-        "status": " M",
-        "path": "docs/architecture/AEGIS_LAB_RUNTIME_MASTER_PLAN.md"
-      },
-      {
-        "status": " M",
-        "path": "docs/architecture/design-closure/AEGIS_FINAL_DESIGN_CLOSURE.md"
-      },
-      {
-        "status": " M",
-        "path": "docs/architecture/design-closure/artifact_retention.json"
-      },
-      {
-        "status": " M",
-        "path": "docs/architecture/design-closure/cohesion_candidates.json"
-      },
-      {
-        "status": " M",
-        "path": "docs/architecture/design-closure/config_precedence.json"
-      },
-      {
-        "status": " M",
-        "path": "docs/architecture/design-closure/data_movement.json"
-      },
-      {
-        "status": " M",
-        "path": "docs/architecture/design-closure/delete_candidates.json"
-      },
-      {
-        "status": " M",
-        "path": "docs/architecture/design-closure/design_closure.json"
-      },
-      {
-        "status": " M",
-        "path": "docs/architecture/design-closure/design_closure_collect.py"
-      },
-      {
-        "status": " M",
-        "path": "docs/architecture/design-closure/dynamic_reachability.json"
-      },
-      {
-        "status": " M",
-        "path": "docs/architecture/design-closure/entrypoint_truth.json"
-      },
-      {
-        "status": " M",
-        "path": "docs/architecture/design-closure/error_semantics.json"
-      },
-      {
-        "status": " M",
-        "path": "docs/architecture/design-closure/external_boundary.json"
-      },
-      {
-        "status": " M",
-        "path": "docs/architecture/design-closure/ffi_actual_surface.json"
-      },
-      {
-        "status": " M",
-        "path": "docs/architecture/design-closure/invariant_matrix.json"
-      },
-      {
-        "status": " M",
-        "path": "docs/architecture/design-closure/packaging_truth.json"
-      },
-      {
-        "status": " M",
-        "path": "docs/architecture/design-closure/performance_baseline.json"
-      },
-      {
-        "status": " M",
-        "path": "docs/architecture/design-closure/retry_truth.json"
-      },
-      {
-        "status": " M",
-        "path": "docs/architecture/design-closure/rust_mirror_truth.json"
-      },
-      {
-        "status": " M",
-        "path": "docs/architecture/design-closure/rust_public_surface.json"
-      },
-      {
-        "status": " M",
-        "path": "docs/architecture/design-closure/schema_graph.json"
-      },
-      {
-        "status": " M",
-        "path": "docs/architecture/design-closure/side_effect_bypasses.json"
-      },
-      {
-        "status": " M",
-        "path": "docs/architecture/design-closure/side_effect_chains.json"
-      },
-      {
-        "status": " M",
-        "path": "docs/architecture/design-closure/state_divergence.json"
-      },
-      {
-        "status": " M",
-        "path": "docs/architecture/design-closure/trust_truth.json"
-      }
-    ],
+    "entries": [],
     "staged": [],
-    "modified": [
-      {
-        "status": " M",
-        "path": "docs/architecture/AEGIS_LAB_RUNTIME_MASTER_PLAN.md"
-      },
-      {
-        "status": " M",
-        "path": "docs/architecture/design-closure/AEGIS_FINAL_DESIGN_CLOSURE.md"
-      },
-      {
-        "status": " M",
-        "path": "docs/architecture/design-closure/artifact_retention.json"
-      },
-      {
-        "status": " M",
-        "path": "docs/architecture/design-closure/cohesion_candidates.json"
-      },
-      {
-        "status": " M",
-        "path": "docs/architecture/design-closure/config_precedence.json"
-      },
-      {
-        "status": " M",
-        "path": "docs/architecture/design-closure/data_movement.json"
-      },
-      {
-        "status": " M",
-        "path": "docs/architecture/design-closure/delete_candidates.json"
-      },
-      {
-        "status": " M",
-        "path": "docs/architecture/design-closure/design_closure.json"
-      },
-      {
-        "status": " M",
-        "path": "docs/architecture/design-closure/design_closure_collect.py"
-      },
-      {
-        "status": " M",
-        "path": "docs/architecture/design-closure/dynamic_reachability.json"
-      },
-      {
-        "status": " M",
-        "path": "docs/architecture/design-closure/entrypoint_truth.json"
-      },
-      {
-        "status": " M",
-        "path": "docs/architecture/design-closure/error_semantics.json"
-      },
-      {
-        "status": " M",
-        "path": "docs/architecture/design-closure/external_boundary.json"
-      },
-      {
-        "status": " M",
-        "path": "docs/architecture/design-closure/ffi_actual_surface.json"
-      },
-      {
-        "status": " M",
-        "path": "docs/architecture/design-closure/invariant_matrix.json"
-      },
-      {
-        "status": " M",
-        "path": "docs/architecture/design-closure/packaging_truth.json"
-      },
-      {
-        "status": " M",
-        "path": "docs/architecture/design-closure/performance_baseline.json"
-      },
-      {
-        "status": " M",
-        "path": "docs/architecture/design-closure/retry_truth.json"
-      },
-      {
-        "status": " M",
-        "path": "docs/architecture/design-closure/rust_mirror_truth.json"
-      },
-      {
-        "status": " M",
-        "path": "docs/architecture/design-closure/rust_public_surface.json"
-      },
-      {
-        "status": " M",
-        "path": "docs/architecture/design-closure/schema_graph.json"
-      },
-      {
-        "status": " M",
-        "path": "docs/architecture/design-closure/side_effect_bypasses.json"
-      },
-      {
-        "status": " M",
-        "path": "docs/architecture/design-closure/side_effect_chains.json"
-      },
-      {
-        "status": " M",
-        "path": "docs/architecture/design-closure/state_divergence.json"
-      },
-      {
-        "status": " M",
-        "path": "docs/architecture/design-closure/trust_truth.json"
-      }
-    ],
+    "modified": [],
     "untracked": [],
     "stderr": ""
   },
@@ -257,13 +55,13 @@
       "status": "FAIL",
       "decisive_errors": [
         "evidence consistency gate failed: manifest.commit must be a 40-character lowercase git SHA",
-        "evidence consistency gate failed: remediation[P0-PROVENANCE].final_sha=CHECKOUT_HEAD does not match b3017abde81973d8a5642c846f2fc3afd87de33f",
-        "evidence consistency gate failed: remediation[P0-COUNTS].final_sha=CHECKOUT_HEAD does not match b3017abde81973d8a5642c846f2fc3afd87de33f",
-        "evidence consistency gate failed: remediation[P0-SOURCE-OF-TRUTH].final_sha=CHECKOUT_HEAD does not match b3017abde81973d8a5642c846f2fc3afd87de33f",
-        "evidence consistency gate failed: remediation[P0-GT96].final_sha=CHECKOUT_HEAD does not match b3017abde81973d8a5642c846f2fc3afd87de33f",
-        "evidence consistency gate failed: remediation[P0-MEMORY-CLAIMS].final_sha=CHECKOUT_HEAD does not match b3017abde81973d8a5642c846f2fc3afd87de33f",
-        "evidence consistency gate failed: remediation[P0-LABEL-AUDIT].final_sha=CHECKOUT_HEAD does not match b3017abde81973d8a5642c846f2fc3afd87de33f",
-        "evidence consistency gate failed: remediation[P1-LINUX-CGROUP].final_sha=CHECKOUT_HEAD does not match b3017abde81973d8a5642c846f2fc3afd87de33f"
+        "evidence consistency gate failed: remediation[P0-PROVENANCE].final_sha=CHECKOUT_HEAD does not match 914002a5f117f6c9f317d84a2ff67750cbcd0653",
+        "evidence consistency gate failed: remediation[P0-COUNTS].final_sha=CHECKOUT_HEAD does not match 914002a5f117f6c9f317d84a2ff67750cbcd0653",
+        "evidence consistency gate failed: remediation[P0-SOURCE-OF-TRUTH].final_sha=CHECKOUT_HEAD does not match 914002a5f117f6c9f317d84a2ff67750cbcd0653",
+        "evidence consistency gate failed: remediation[P0-GT96].final_sha=CHECKOUT_HEAD does not match 914002a5f117f6c9f317d84a2ff67750cbcd0653",
+        "evidence consistency gate failed: remediation[P0-MEMORY-CLAIMS].final_sha=CHECKOUT_HEAD does not match 914002a5f117f6c9f317d84a2ff67750cbcd0653",
+        "evidence consistency gate failed: remediation[P0-LABEL-AUDIT].final_sha=CHECKOUT_HEAD does not match 914002a5f117f6c9f317d84a2ff67750cbcd0653",
+        "evidence consistency gate failed: remediation[P1-LINUX-CGROUP].final_sha=CHECKOUT_HEAD does not match 914002a5f117f6c9f317d84a2ff67750cbcd0653"
       ],
       "error_count": 34
     },
@@ -358,8 +156,8 @@
   "limitations": [
     "audit output/cache directories are excluded from epoch hashing to avoid self-reference; their per-file hashes are recorded separately"
   ],
-  "HEAD": "b3017abde81973d8a5642c846f2fc3afd87de33f",
-  "WORKTREE_EPOCH": "acc233b17ccba201ce5069e8fb6eeddbd83cdb539d8168c108517810aaed27d8",
-  "generated_at": "2026-09-01T22:46:47.754016+00:00",
+  "HEAD": "914002a5f117f6c9f317d84a2ff67750cbcd0653",
+  "WORKTREE_EPOCH": "7f8ae7f668967407c0448c5d92c043e449ee307a06d426cbd1c31e15a192f829",
+  "generated_at": "2026-09-01T22:50:38.369215+00:00",
   "method": "aegis-design-closure-reconciliation-v1; direct Git/filesystem/source inspection, prior artifact hash reuse, disposable wheel reconciliation, bounded local probes"
 }
