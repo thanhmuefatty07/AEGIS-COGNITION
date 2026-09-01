@@ -2885,8 +2885,8 @@ post-completion persistence policy and trust-level override/configuration also
 fail closed on non-boolean/non-string values; malformed policy is recorded as a
 blocker before any compatibility effect is invoked. Native event/transition,
 archive, and skill validators now reject non-boolean results as well. Focused
-coverage is **317 Lab tests** and the combined Python/cross-language gate is
-**423 tests**;
+coverage is **318 Lab tests** and the combined Python/cross-language gate is
+**424 tests**;
 targeted Ruff and Pyright remain clean. This is local boundary evidence only;
 hosted authority, process containment, live provider semantics, and signed
 release provenance remain external blockers.
