@@ -1989,7 +1989,7 @@ nhất; `docs/ENGINEERING_CONSTITUTION.md` là policy; `current.json`,
 
 | Mục | Kết luận | Bằng chứng quyết định | Giới hạn không được suy diễn |
 |---|---|---|---|
-| `LAB-DOC-008` | `LOCAL-PROVEN` | `scripts/document_consistency_gate.py` pass; canonical plan, inventory, ADR compatibility note và Markdown link/metadata parity không drift trong checkout | Chưa phải final-SHA attestation vì chưa commit |
+| `LAB-DOC-008` | `LOCAL-PROVEN` | `scripts/document_consistency_gate.py` pass; canonical plan, inventory, ADR compatibility note và Markdown link/metadata parity không drift trong checkout | Chưa phải final-SHA attestation vì tracked template vẫn giữ `CHECKOUT_HEAD`, chưa có signer/hosted release IDs |
 | `LAB-QUALITY-009` | `LOCAL-PROVEN` | full `ruff check scripts` pass; direct-entrypoint loader và warning-as-error regression pass | Chỉ áp dụng checkout hiện tại |
 | Browser launch admission | `LOCAL-PROVEN` | browser launcher được ghi `browser_action_admitted` với `action_kind=launch` **trước** khi gọi launcher; success/rejection/cancellation đều settle; regression launcher order pass; v63 wheel smoke pass | Không chứng minh browser process bị kernel-isolated |
 | Provider-attempt route reconciliation | `LOCAL-PROVEN` | native-required gateway bắt buộc route typed, selected provider và ordered attempted list khớp nested `provider.*` receipts; adapter cài nhưng bỏ qua hook bị settle `REJECTED`; regression retry + no-hook pass | Chỉ phát hiện sau khi adapter trả kết quả; không thu hồi được provider effect ngoài contract; provider HTTP/SDK/hosted evidence vẫn mở |
@@ -2014,7 +2014,7 @@ nhất; `docs/ENGINEERING_CONSTITUTION.md` là policy; `current.json`,
 | `LAB-RESEARCH-003` | `OPEN_EXTERNAL` | Plumbing/fetch/citation/rejection đã có, nhưng semantic freshness, provider drift, contradiction recall/precision và quality của nguồn thật chưa được chứng minh | real provider snapshots, timestamps/provenance clusters, exact spans, contradiction protocol, redacted raw responses và independent replay |
 | `LAB-PHYS-004` | `OPEN_EXTERNAL` | Euler/RK4, unit algebra, Nyquist, calibration/residual gates chỉ là bounded contracts; electrical output vẫn `MEASURED_INPUTS_ONLY`; chưa có PDE/stiff/circuit solver và calibrated hardware energy | multi-problem convergence/discrepancy, blind rerun, instrument calibration/uncertainty, hardware witness và independent replication |
 | `LAB-BENCH-005` | `OPEN_EXTERNAL` | isolated validator subprocess chứng minh protocol/hash/timeout/output fail-closed, không chứng minh hidden scorer secrecy, contamination resistance hay generalization | sealed hidden validator ngoài candidate-controlled infrastructure, lookup adversary, multiple runs with dispersion/outliers và independent reproduction |
-| `LAB-RELEASE-006` | `BLOCKED_EXTERNAL` | tracked `current.json` vẫn có `CHECKOUT_HEAD`; working tree chưa có final commit, signer, hosted CI/release/deployment IDs. Gate đúng khi từ chối manifest này | commit final, regenerate parity artifacts, signed subject hash, hosted IDs và rollback record trỏ đúng final artifact; tuyệt đối không sửa placeholder bằng tay |
+| `LAB-RELEASE-006` | `BLOCKED_EXTERNAL` | tracked `current.json` vẫn có `CHECKOUT_HEAD`; `main` đã có commit và đồng bộ `origin/main`, nhưng signer, hosted CI/release/deployment IDs và final-SHA-bound retained evidence vẫn thiếu. Gate đúng khi từ chối manifest này | regenerate parity artifacts from the final commit, signed subject hash, hosted IDs và rollback record trỏ đúng final artifact; tuyệt đối không sửa placeholder bằng tay |
 | `LAB-OPS-007` | `OPEN_EXTERNAL` | v63 chỉ là một Windows/CPython lane. WSL2 không khởi động được (`HYPERV_NOT_INSTALLED`); Job Object memory-pressure kill cũng chưa observed; chưa có soak, telemetry, restore, Linux/macOS hoặc dependency-drift evidence | cross-platform package/runtime, deterministic pressure-kill witness, multi-run soak, structured metrics/logs/traces, restore drill và dependency-drift check |
 
 **WSL/virtualization classification:** `wsl.exe` có mặt và default version là 2,
@@ -3333,6 +3333,17 @@ cross-process or hosted single-writer enforcement, OS descendant containment,
 randomized latency/copy-count distributions, external independent verification,
 or final release provenance. Therefore the replay/recovery gate remains
 `PARTIAL_LOCAL`, M7 is not passed, and no release status changes.
+
+**Repository synchronization continuation (2026-09-02):** all local semantic
+changes in this convergence slice are committed as
+`3318630c067d2f37a4bd770a37ee9d1031ab6649` on `main` and pushed to
+`origin/main`; the working tree is clean and the remote/local revision counts
+are equal. This closes repository synchronization for the current slice only.
+The tracked evidence template still deliberately contains `CHECKOUT_HEAD`,
+and no signer, hosted CI/release/deployment IDs or independent final-SHA
+attestation exist, so `LAB-RELEASE-006` remains `BLOCKED_EXTERNAL` and the
+evidence-consistency template must continue to fail closed rather than be
+edited by hand.
 
 Không được gọi toàn hệ thống “production-ready” khi bất kỳ gate bắt buộc nào
 ở trên còn `OPEN_*`, `BLOCKED_*`, `UNKNOWN` hoặc chỉ có fixture/mock evidence.
