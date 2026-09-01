@@ -2647,6 +2647,18 @@ This closes a local compatibility-ingestion bypass only; arbitrary adapter
 side effects, process containment and hosted single-writer authority remain
 open under `LAB-AUTH-001`.
 
+**P2 browser-action boundary continuation (2026-09-02):** `BrowserCellPolicy`,
+`BrowserObserverView`, `BrowserCell` and the typed browser action executor now
+reject non-canonical host/URL projections, untyped action kinds, selector/value
+coercions, boolean/string wait durations, non-list network logs and invalid
+recovery counts. Observer actions remain read-only and actor actions retain
+the explicit legacy callable compatibility boundary; Lab controller paths
+continue to admit only typed mappings. Negative coverage now totals **273
+focused Lab tests** and **379 combined Python/cross-language tests**. This is
+local browser contract evidence only; DNS rebinding, browser-process/OS
+containment, crash injection and hosted cross-platform continuity remain
+`OPEN_EXTERNAL` under `LAB-BROWSER-002` and `LAB-AUTH-001`.
+
 #### M5 — Research, browser và experiment cells
 
 **Entry:** M2–M4 pass cho local cells; capability registry sealed.

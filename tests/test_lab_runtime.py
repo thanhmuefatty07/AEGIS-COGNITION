@@ -51,6 +51,7 @@ from aegis_cognition.lab import (
     UnitRegistry,
     _bounded_retry_attempts,
     _authority_mode_from_options,
+    _execute_browser_action,
     calibrate_simulation,
 )
 
@@ -539,6 +540,43 @@ def test_browser_policy_rejects_lossy_metadata() -> None:
         BrowserCellPolicy(require_https=1).validate()  # type: ignore[arg-type]
     with pytest.raises(ValueError, match="browser policy"):
         BrowserCellPolicy(max_actions=1.0).validate()  # type: ignore[arg-type]
+    with pytest.raises(ValueError, match="browser policy"):
+        BrowserCellPolicy(allowed_hosts=(" allowed.example",)).validate()
+
+
+@pytest.mark.parametrize(
+    ("action", "match"),
+    (
+        ({"kind": 1}, "kind"),
+        ({"kind": "goto", "url": 1}, "URL"),
+        ({"kind": "click", "selector": 1}, "selector"),
+        ({"kind": "fill", "selector": "#q", "value": 1}, "value"),
+        ({"kind": "wait", "milliseconds": "1"}, "within"),
+        ({"kind": "wait", "milliseconds": True}, "within"),
+    ),
+)
+def test_browser_action_rejects_lossy_metadata(action: dict[str, object], match: str) -> None:
+    import asyncio
+
+    class Session:
+        current_url = "https://allowed.example/start"
+
+    cell = BrowserCell(BrowserCellPolicy(("allowed.example",)))
+    session = Session()
+    asyncio.run(cell.bind(session))
+    with pytest.raises((TypeError, ValueError), match=match):
+        asyncio.run(_execute_browser_action(session, action, cell))
+
+
+def test_browser_observer_rejects_non_string_url_projection() -> None:
+    import asyncio
+
+    class Session:
+        current_url = 1
+
+    cell = BrowserCell(BrowserCellPolicy())
+    with pytest.raises(RuntimeError, match="URL"):
+        asyncio.run(cell.bind(Session()))
 
 
 def test_lab_native_controller_is_the_projection_event_writer(monkeypatch: pytest.MonkeyPatch) -> None:
