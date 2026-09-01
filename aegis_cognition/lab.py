@@ -5299,6 +5299,88 @@ class LabRun:
             event_state_epoch=self.state_epoch + 1,
         )
 
+    def _assert_projection_admission_consistency(self) -> None:
+        """Keep mutable admission projections bound to immutable events.
+
+        Native snapshots may expose admission identities, but older/native
+        compatibility reducers do not necessarily retain every admission
+        field.  The Python projection therefore needs its own binding check:
+        a same-ID metadata mutation must not be exportable as if it were the
+        admission that was actually appended to the event ledger.
+        """
+
+        def canonical(value: Any) -> Any:
+            try:
+                normalized: Any = json.loads(
+                    json.dumps(value, sort_keys=True, separators=(",", ":"))
+                )
+            except (TypeError, ValueError, OverflowError) as exc:
+                raise RuntimeError(
+                    "native projection diverged: admission is not canonical JSON"
+                ) from exc
+            if isinstance(normalized, dict):
+                cast(dict[Any, Any], normalized).pop("trust_policy_hash", None)
+            return cast(Any, normalized)
+
+        def event_admissions(
+            kind: str,
+            identity_key: str,
+        ) -> dict[str, tuple[LabEvent, dict[str, Any]]]:
+            result: dict[str, tuple[LabEvent, dict[str, Any]]] = {}
+            for event in self.events:
+                if event.kind != kind:
+                    continue
+                payload = event.payload
+                if type(payload) is not dict or any(
+                    type(key) is not str for key in cast(dict[Any, Any], payload)
+                ):
+                    raise RuntimeError(
+                        f"native projection diverged: event_{event.sequence}=invalid_admission_payload"
+                    )
+                typed_payload = cast(dict[str, Any], payload)
+                identity = typed_payload.get(identity_key)
+                if type(identity) is not str or not identity.strip():
+                    raise RuntimeError(
+                        f"native projection diverged: event_{event.sequence}=invalid_admission_identity"
+                    )
+                if identity in result:
+                    raise RuntimeError(
+                        f"native projection diverged: event_{event.sequence}=duplicate_admission_identity"
+                    )
+                result[identity] = (event, typed_payload)
+            return result
+
+        tool_events = event_admissions("tool_execution_admitted", "execution_id")
+        if set(self.tool_execution_admissions) != set(tool_events):
+            raise RuntimeError("native projection diverged: tool_execution_admissions=identity_set")
+        for execution_id, admission in self.tool_execution_admissions.items():
+            if type(execution_id) is not str or type(admission) is not dict:
+                raise RuntimeError("native projection diverged: tool_execution_admissions=invalid")
+            _, event_payload = tool_events[execution_id]
+            if canonical(admission) != canonical(event_payload):
+                raise RuntimeError(
+                    f"native projection diverged: tool_execution_admission:{execution_id}=different"
+                )
+
+        skill_events = event_admissions("skill_admission_recorded", "admission_hash")
+        if set(self.skill_admissions) != set(skill_events):
+            raise RuntimeError("native projection diverged: skill_admissions=identity_set")
+        for admission_hash, admission in self.skill_admissions.items():
+            if type(admission_hash) is not str or type(admission) is not SkillAdmission:
+                raise RuntimeError("native projection diverged: skill_admissions=invalid")
+            event, event_payload = skill_events[admission_hash]
+            raw_event_binding = event_payload.get("admission_event_hash", "")
+            if type(raw_event_binding) is not str or raw_event_binding:
+                raise RuntimeError(
+                    f"native projection diverged: event_{event.sequence}=skill_event_binding"
+                )
+            expected = dict(event_payload)
+            expected["admission_event_hash"] = event.event_hash
+            if canonical(asdict(admission)) != canonical(expected):
+                raise RuntimeError(
+                    f"native projection diverged: skill_admission:{admission_hash}=different"
+                )
+
     def _assert_native_projection_consistency(self) -> None:
         """Fail closed when the Python view no longer matches native state.
 
@@ -5309,6 +5391,7 @@ class LabRun:
         behavior and are covered by the event-chain tests instead.
         """
 
+        self._assert_projection_admission_consistency()
         native_controller = self._native_controller
         if self.trust_policy_hash is not None:
             for event in self.events:
@@ -6590,7 +6673,10 @@ class LabRun:
                 raise ValueError("lab snapshot is rejected by native controller") from exc
         else:
             restored._validate_native_event_chain(tuple(restored.events))
-        restored._assert_native_projection_consistency()
+        try:
+            restored._assert_native_projection_consistency()
+        except RuntimeError as exc:
+            raise ValueError("lab snapshot projection is inconsistent") from exc
         if restored.state == "completed":
             if not restored._completion_requirements_met():
                 raise ValueError("completed lab snapshot does not satisfy evidence quotas")

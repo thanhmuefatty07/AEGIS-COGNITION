@@ -362,6 +362,40 @@ def test_lab_snapshot_rejects_lossy_tool_and_skill_admission_metadata() -> None:
         LabRun.from_payload(skill_payload)
 
 
+def test_lab_snapshot_rejects_admission_projection_drift() -> None:
+    run = LabRun("admission projection binding")
+    run.admit_tool_execution(
+        tool_name="fixture.tool",
+        input_payload={"query": "bounded"},
+        policy_payload={"effect": "compute"},
+        effect_class="compute",
+        execution_id="tool-projection-binding",
+    )
+    tampered_tool = run.to_payload()
+    tampered_tool["tool_execution_admissions"][0]["effect_class"] = "external_write"
+    with pytest.raises(ValueError, match="projection"):
+        LabRun.from_payload(tampered_tool)
+
+    run.tool_execution_admissions["tool-projection-binding"]["effect_class"] = "external_write"
+    with pytest.raises(RuntimeError, match="native projection diverged"):
+        run.to_payload()
+
+    registry, manifest = _skill_fixture()
+    skill_run = LabRun("skill projection binding")
+    admission = skill_run.admit_skill(
+        registry,
+        manifest.skill_id,
+        manifest.version,
+        available_capabilities=("network.read",),
+        preconditions={"budget_available": True, "host_allowlisted": True},
+    )
+    tampered_skill = LabRun.from_payload(skill_run.to_payload()).to_payload()
+    tampered_skill["skill_admissions"][0]["admission_event_hash"] = "f" * 64
+    with pytest.raises(ValueError, match="projection"):
+        LabRun.from_payload(tampered_skill)
+    assert admission.admission_hash in skill_run.skill_admissions
+
+
 def test_lab_start_rejects_non_string_mission_and_scope_entries() -> None:
     lab = Lab(policy=LabPolicy(trust_level="DEV"), llm=lambda _task, **_: {"answer": "ok"})
     with pytest.raises(ValueError):

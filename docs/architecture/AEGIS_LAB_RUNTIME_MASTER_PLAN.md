@@ -2848,6 +2848,20 @@ and signed attestation are absent. `LAB-RELEASE-006` therefore remains
 `BLOCKED_EXTERNAL`; the temporary manifest is not release evidence and was not
 added to the repository.
 
+**M2 admission-projection binding continuation (2026-09-02):** mutable
+`tool_execution_admissions` and `skill_admissions` projections are now compared
+with their immutable admission events before dossier/snapshot export and after
+snapshot restore. The comparison removes only the policy hash injected at the
+event boundary, binds a skill admission's `admission_event_hash` to the actual
+event hash, and rejects identity-set drift or same-ID metadata replacement. A
+tampered tool admission can therefore no longer change its effect class while
+retaining a valid event hash-chain; the live export path fails closed as well.
+Focused coverage is **302 Lab tests** and the combined Python/cross-language
+gate is **408 tests**; targeted Ruff and Pyright are clean. This closes a local
+projection-integrity gap only; hidden adapter effects, process containment,
+rollback of already-executed effects and hosted single-writer authority remain
+open under `LAB-AUTH-001`.
+
 #### M5 — Research, browser và experiment cells
 
 **Entry:** M2–M4 pass cho local cells; capability registry sealed.
