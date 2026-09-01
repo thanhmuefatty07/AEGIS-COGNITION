@@ -1737,6 +1737,7 @@ class AdaptiveDecision:
     step: int
     token_budget: int
     reason: str
+    potential: tuple[int, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -2396,12 +2397,138 @@ class AdaptiveController:
         self.finalization_remaining = finalization_reserve
         self.recovery_remaining = recovery_reserve
         self.step = 0
-        self._last_signature: tuple[int, ...] | None = None
+        self._last_signature: str | None = None
         self._repeated = 0
+
+    @staticmethod
+    def progress_potential(run: LabRun) -> tuple[int, ...]:
+        """Return an unweighted, verifier-owned gap tuple for one run.
+
+        The tuple is intentionally qualitative rather than a fabricated
+        weighted score: each component counts an unresolved evidence obligation
+        and lower is better.  It is safe to persist in a controller-decision
+        event and deterministic across processes for the same projection.
+        """
+
+        unreplicated = 0
+        uncertainty_gaps = 0
+        for experiment in run.experiments.values():
+            clean_replicates = sum(
+                1
+                for observation in run.observations.values()
+                if observation.experiment_id == experiment.experiment_id
+                and observation.replication_of is not None
+                and observation.clean
+            )
+            unreplicated += max(0, experiment.min_clean_replicates - clean_replicates)
+            if experiment.uncertainty_required:
+                uncertainty_gaps += sum(
+                    1
+                    for observation in run.observations.values()
+                    if observation.experiment_id == experiment.experiment_id
+                    and observation.uncertainty is None
+                )
+        return (
+            int(not bool(run.sources)),
+            int(not bool(run.claims)),
+            int(not bool(run.hypotheses)),
+            int(not bool(run.experiments)),
+            int(not bool(run.observations)),
+            unreplicated,
+            uncertainty_gaps,
+            len(run.blockers),
+        )
+
+    @staticmethod
+    def _state_signature(run: LabRun) -> str:
+        """Hash evidence content, not only collection sizes, for plateau detection."""
+
+        return _hash(
+            {
+                "state": run.state,
+                "sources": tuple(
+                    sorted(
+                        (
+                            source.source_id,
+                            source.uri,
+                            source.content_hash,
+                            source.snapshot_hash,
+                            source.retrieved_at_ms,
+                            source.trust_tier,
+                            source.relation,
+                        )
+                        for source in run.sources.values()
+                    )
+                ),
+                "claims": tuple(
+                    sorted(
+                        (
+                            claim.claim_id,
+                            claim.statement,
+                            claim.source_ids,
+                            claim.confidence_bps,
+                            claim.status,
+                        )
+                        for claim in run.claims.values()
+                    )
+                ),
+                "hypotheses": tuple(
+                    sorted(
+                        (
+                            hypothesis.hypothesis_id,
+                            hypothesis.statement,
+                            hypothesis.prior_bps,
+                            hypothesis.falsifiers,
+                            hypothesis.supporting_claim_ids,
+                            hypothesis.contradicting_claim_ids,
+                        )
+                        for hypothesis in run.hypotheses.values()
+                    )
+                ),
+                "experiments": tuple(
+                    sorted(
+                        (
+                            experiment.experiment_id,
+                            experiment.hypothesis_id,
+                            experiment.design,
+                            experiment.variables,
+                            experiment.controls,
+                            experiment.preregistered_seeds,
+                            experiment.expected_observations,
+                            experiment.measurement_unit,
+                            experiment.uncertainty_required,
+                            experiment.min_clean_replicates,
+                        )
+                        for experiment in run.experiments.values()
+                    )
+                ),
+                "observations": tuple(
+                    sorted(
+                        (
+                            observation.observation_id,
+                            observation.experiment_id,
+                            observation.seed,
+                            observation.measurement,
+                            observation.unit,
+                            observation.raw_artifact_hash,
+                            observation.environment_hash,
+                            observation.valid,
+                            observation.uncertainty,
+                            observation.replication_of,
+                            observation.clean,
+                            observation.epistemic_status,
+                        )
+                        for observation in run.observations.values()
+                    )
+                ),
+                "blockers": tuple(sorted(run.blockers)),
+            }
+        )
 
     def next(self, run: LabRun) -> AdaptiveDecision | None:
         if self.step >= self.max_steps or self.exploration_remaining <= 0:
             return None
+        potential = self.progress_potential(run)
         if not run.sources:
             phase, reason = "research", "source provenance is missing"
         elif not run.claims or not run.hypotheses:
@@ -2415,17 +2542,10 @@ class AdaptiveController:
         self.step += 1
         token_budget = max(1, self.exploration_remaining // max(1, self.max_steps - self.step + 1))
         self.exploration_remaining -= token_budget
-        return AdaptiveDecision(phase, self.step, token_budget, reason)
+        return AdaptiveDecision(phase, self.step, token_budget, reason, potential)
 
     def observe(self, run: LabRun) -> bool:
-        signature = (
-            len(run.sources),
-            len(run.claims),
-            len(run.hypotheses),
-            len(run.experiments),
-            len(run.observations),
-            len(run.blockers),
-        )
+        signature = self._state_signature(run)
         if signature == self._last_signature:
             self._repeated += 1
         else:
@@ -9284,6 +9404,7 @@ class LabApplication:
                 "max_steps": iterations,
                 "phase": decision.phase,
                 "reason": decision.reason,
+                "progress_potential": decision.potential,
                 "token_budget": decision.token_budget,
                 "source_count": len(run.sources),
                 "claim_count": len(run.claims),
