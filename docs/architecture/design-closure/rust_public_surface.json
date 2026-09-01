@@ -964,9 +964,9 @@
     "cfg/macro/trait expansion not exhaustive",
     "no extra tooling installed"
   ],
-  "WORKTREE_EPOCH": "bacf2a70fefcde582dfde4ec028bba17dc7a4a7da9846ac98d641827a10e9256",
-  "HEAD": "1e1dae4174e0484418398129eaed797d93df0d6e",
-  "generated_at": "2026-09-01T23:19:48.522653+00:00",
+  "WORKTREE_EPOCH": "22ed4acf1cdac014885967b15b8328bdf1f9b150fe893f5bf796ca3f84087b81",
+  "HEAD": "5fa910d5cb9a1a0b9f0c343e1faf342f52f5c325",
+  "generated_at": "2026-09-01T23:53:13.952813+00:00",
   "collector_version/method": "aegis-final-design-closure-v1; direct Git/filesystem/AST/Cargo plus bounded disposable-wheel probes",
   "reused_prior_artifact": "C:\\Users\\ADMIN\\AEGIS-COGNITION\\docs\\architecture\\evidence-pack\\final_rust_public_api.json",
   "reused_prior_artifact_sha256": "2e5d1270d9fedc2cb2e308728987897f22c3fa869d6822d2c0acd6810c79c2d9",
@@ -6877,7 +6877,7 @@
     },
     {
       "path": "core/rust/src/lab.rs",
-      "line": 100,
+      "line": 101,
       "kind": "struct",
       "name": "LabMissionSpec",
       "exposure_class": "CRATE_INTERNAL",
@@ -6886,7 +6886,7 @@
     },
     {
       "path": "core/rust/src/lab.rs",
-      "line": 116,
+      "line": 117,
       "kind": "fn",
       "name": "new",
       "exposure_class": "CRATE_INTERNAL",
@@ -6895,7 +6895,7 @@
     },
     {
       "path": "core/rust/src/lab.rs",
-      "line": 140,
+      "line": 141,
       "kind": "fn",
       "name": "validate",
       "exposure_class": "CRATE_INTERNAL",
@@ -6904,7 +6904,7 @@
     },
     {
       "path": "core/rust/src/lab.rs",
-      "line": 155,
+      "line": 156,
       "kind": "fn",
       "name": "mission_hash",
       "exposure_class": "CRATE_INTERNAL",
@@ -6913,7 +6913,7 @@
     },
     {
       "path": "core/rust/src/lab.rs",
-      "line": 161,
+      "line": 162,
       "kind": "struct",
       "name": "SourceRecord",
       "exposure_class": "CRATE_INTERNAL",
@@ -6922,7 +6922,7 @@
     },
     {
       "path": "core/rust/src/lab.rs",
-      "line": 174,
+      "line": 175,
       "kind": "fn",
       "name": "validate",
       "exposure_class": "CRATE_INTERNAL",
@@ -6931,7 +6931,7 @@
     },
     {
       "path": "core/rust/src/lab.rs",
-      "line": 193,
+      "line": 194,
       "kind": "struct",
       "name": "ClaimRecord",
       "exposure_class": "CRATE_INTERNAL",
@@ -6940,7 +6940,7 @@
     },
     {
       "path": "core/rust/src/lab.rs",
-      "line": 202,
+      "line": 203,
       "kind": "enum",
       "name": "ClaimStatus",
       "exposure_class": "CRATE_INTERNAL",
@@ -6949,7 +6949,7 @@
     },
     {
       "path": "core/rust/src/lab.rs",
-      "line": 226,
+      "line": 227,
       "kind": "struct",
       "name": "HypothesisRecord",
       "exposure_class": "CRATE_INTERNAL",
@@ -6958,7 +6958,7 @@
     },
     {
       "path": "core/rust/src/lab.rs",
-      "line": 255,
+      "line": 256,
       "kind": "struct",
       "name": "ExperimentSpec",
       "exposure_class": "CRATE_INTERNAL",
@@ -6967,7 +6967,7 @@
     },
     {
       "path": "core/rust/src/lab.rs",
-      "line": 287,
+      "line": 288,
       "kind": "struct",
       "name": "ObservationRecord",
       "exposure_class": "CRATE_INTERNAL",
@@ -6976,7 +6976,7 @@
     },
     {
       "path": "core/rust/src/lab.rs",
-      "line": 304,
+      "line": 305,
       "kind": "struct",
       "name": "ResearchProgramReceipt",
       "exposure_class": "CRATE_INTERNAL",
@@ -6985,7 +6985,7 @@
     },
     {
       "path": "core/rust/src/lab.rs",
-      "line": 324,
+      "line": 325,
       "kind": "struct",
       "name": "SecurityEventRecord",
       "exposure_class": "CRATE_INTERNAL",
@@ -6994,7 +6994,7 @@
     },
     {
       "path": "core/rust/src/lab.rs",
-      "line": 434,
+      "line": 435,
       "kind": "struct",
       "name": "BenchmarkProtocolV2",
       "exposure_class": "CRATE_INTERNAL",
@@ -7003,7 +7003,7 @@
     },
     {
       "path": "core/rust/src/lab.rs",
-      "line": 449,
+      "line": 450,
       "kind": "enum",
       "name": "BenchmarkDirection",
       "exposure_class": "CRATE_INTERNAL",
@@ -7012,7 +7012,7 @@
     },
     {
       "path": "core/rust/src/lab.rs",
-      "line": 455,
+      "line": 456,
       "kind": "struct",
       "name": "BenchmarkResultV2",
       "exposure_class": "CRATE_INTERNAL",
@@ -7021,7 +7021,7 @@
     },
     {
       "path": "core/rust/src/lab.rs",
-      "line": 473,
+      "line": 474,
       "kind": "fn",
       "name": "validate",
       "exposure_class": "CRATE_INTERNAL",
@@ -7030,7 +7030,7 @@
     },
     {
       "path": "core/rust/src/lab.rs",
-      "line": 498,
+      "line": 499,
       "kind": "fn",
       "name": "protocol_hash",
       "exposure_class": "CRATE_INTERNAL",
@@ -7039,7 +7039,7 @@
     },
     {
       "path": "core/rust/src/lab.rs",
-      "line": 503,
+      "line": 504,
       "kind": "fn",
       "name": "evaluate_benchmark",
       "exposure_class": "CRATE_INTERNAL",
@@ -7048,7 +7048,7 @@
     },
     {
       "path": "core/rust/src/lab.rs",
-      "line": 582,
+      "line": 583,
       "kind": "struct",
       "name": "LabEvent",
       "exposure_class": "CRATE_INTERNAL",
@@ -7057,7 +7057,7 @@
     },
     {
       "path": "core/rust/src/lab.rs",
-      "line": 611,
+      "line": 612,
       "kind": "fn",
       "name": "is_valid",
       "exposure_class": "CRATE_INTERNAL",
@@ -7066,7 +7066,7 @@
     },
     {
       "path": "core/rust/src/lab.rs",
-      "line": 616,
+      "line": 617,
       "kind": "fn",
       "name": "verify_event_chain",
       "exposure_class": "CRATE_INTERNAL",
@@ -7075,7 +7075,7 @@
     },
     {
       "path": "core/rust/src/lab.rs",
-      "line": 653,
+      "line": 654,
       "kind": "struct",
       "name": "LabRunManifest",
       "exposure_class": "CRATE_INTERNAL",
@@ -7084,7 +7084,7 @@
     },
     {
       "path": "core/rust/src/lab.rs",
-      "line": 668,
+      "line": 669,
       "kind": "enum",
       "name": "LabError",
       "exposure_class": "CRATE_INTERNAL",
@@ -7093,7 +7093,7 @@
     },
     {
       "path": "core/rust/src/lab.rs",
-      "line": 680,
+      "line": 681,
       "kind": "struct",
       "name": "LabRuntime",
       "exposure_class": "CRATE_INTERNAL",
@@ -7102,7 +7102,7 @@
     },
     {
       "path": "core/rust/src/lab.rs",
-      "line": 696,
+      "line": 697,
       "kind": "struct",
       "name": "LabController",
       "exposure_class": "CRATE_INTERNAL",
@@ -7111,7 +7111,7 @@
     },
     {
       "path": "core/rust/src/lab.rs",
-      "line": 793,
+      "line": 794,
       "kind": "fn",
       "name": "new",
       "exposure_class": "CRATE_INTERNAL",
@@ -7120,7 +7120,7 @@
     },
     {
       "path": "core/rust/src/lab.rs",
-      "line": 824,
+      "line": 825,
       "kind": "fn",
       "name": "runtime",
       "exposure_class": "CRATE_INTERNAL",
@@ -7129,7 +7129,7 @@
     },
     {
       "path": "core/rust/src/lab.rs",
-      "line": 828,
+      "line": 829,
       "kind": "fn",
       "name": "budget_remaining",
       "exposure_class": "CRATE_INTERNAL",
@@ -7138,7 +7138,7 @@
     },
     {
       "path": "core/rust/src/lab.rs",
-      "line": 832,
+      "line": 833,
       "kind": "fn",
       "name": "finalization_state",
       "exposure_class": "CRATE_INTERNAL",
@@ -7147,7 +7147,7 @@
     },
     {
       "path": "core/rust/src/lab.rs",
-      "line": 836,
+      "line": 837,
       "kind": "fn",
       "name": "steps",
       "exposure_class": "CRATE_INTERNAL",
@@ -7156,7 +7156,7 @@
     },
     {
       "path": "core/rust/src/lab.rs",
-      "line": 871,
+      "line": 872,
       "kind": "fn",
       "name": "snapshot_json",
       "exposure_class": "CRATE_INTERNAL",
@@ -7165,7 +7165,7 @@
     },
     {
       "path": "core/rust/src/lab.rs",
-      "line": 875,
+      "line": 876,
       "kind": "fn",
       "name": "from_snapshot_json",
       "exposure_class": "CRATE_INTERNAL",
@@ -7174,7 +7174,7 @@
     },
     {
       "path": "core/rust/src/lab.rs",
-      "line": 902,
+      "line": 903,
       "kind": "fn",
       "name": "admit_exploration",
       "exposure_class": "CRATE_INTERNAL",
@@ -7183,7 +7183,7 @@
     },
     {
       "path": "core/rust/src/lab.rs",
-      "line": 925,
+      "line": 926,
       "kind": "fn",
       "name": "begin_finalization",
       "exposure_class": "CRATE_INTERNAL",
@@ -7192,7 +7192,7 @@
     },
     {
       "path": "core/rust/src/lab.rs",
-      "line": 932,
+      "line": 933,
       "kind": "fn",
       "name": "reopen_for_critical_gap",
       "exposure_class": "CRATE_INTERNAL",
@@ -7201,7 +7201,7 @@
     },
     {
       "path": "core/rust/src/lab.rs",
-      "line": 944,
+      "line": 945,
       "kind": "fn",
       "name": "admit_projection_exploration",
       "exposure_class": "CRATE_INTERNAL",
@@ -7210,7 +7210,7 @@
     },
     {
       "path": "core/rust/src/lab.rs",
-      "line": 980,
+      "line": 981,
       "kind": "fn",
       "name": "admit_projection_event",
       "exposure_class": "CRATE_INTERNAL",
@@ -7219,7 +7219,7 @@
     },
     {
       "path": "core/rust/src/lab.rs",
-      "line": 1052,
+      "line": 1054,
       "kind": "fn",
       "name": "admit_projection_record",
       "exposure_class": "CRATE_INTERNAL",
@@ -7228,7 +7228,7 @@
     },
     {
       "path": "core/rust/src/lab.rs",
-      "line": 2486,
+      "line": 2608,
       "kind": "fn",
       "name": "transition",
       "exposure_class": "CRATE_INTERNAL",
@@ -7237,7 +7237,7 @@
     },
     {
       "path": "core/rust/src/lab.rs",
-      "line": 2490,
+      "line": 2612,
       "kind": "fn",
       "name": "record_source",
       "exposure_class": "CRATE_INTERNAL",
@@ -7246,7 +7246,7 @@
     },
     {
       "path": "core/rust/src/lab.rs",
-      "line": 2494,
+      "line": 2616,
       "kind": "fn",
       "name": "record_claim",
       "exposure_class": "CRATE_INTERNAL",
@@ -7255,7 +7255,7 @@
     },
     {
       "path": "core/rust/src/lab.rs",
-      "line": 2498,
+      "line": 2620,
       "kind": "fn",
       "name": "record_hypothesis",
       "exposure_class": "CRATE_INTERNAL",
@@ -7264,7 +7264,7 @@
     },
     {
       "path": "core/rust/src/lab.rs",
-      "line": 2502,
+      "line": 2624,
       "kind": "fn",
       "name": "schedule_experiment",
       "exposure_class": "CRATE_INTERNAL",
@@ -7273,7 +7273,7 @@
     },
     {
       "path": "core/rust/src/lab.rs",
-      "line": 2506,
+      "line": 2628,
       "kind": "fn",
       "name": "record_observation",
       "exposure_class": "CRATE_INTERNAL",
@@ -7282,7 +7282,7 @@
     },
     {
       "path": "core/rust/src/lab.rs",
-      "line": 2510,
+      "line": 2632,
       "kind": "fn",
       "name": "record_research_program",
       "exposure_class": "CRATE_INTERNAL",
@@ -7291,7 +7291,7 @@
     },
     {
       "path": "core/rust/src/lab.rs",
-      "line": 2517,
+      "line": 2639,
       "kind": "fn",
       "name": "record_security_event",
       "exposure_class": "CRATE_INTERNAL",
@@ -7300,7 +7300,7 @@
     },
     {
       "path": "core/rust/src/lab.rs",
-      "line": 2521,
+      "line": 2643,
       "kind": "fn",
       "name": "review_and_complete",
       "exposure_class": "CRATE_INTERNAL",
@@ -7309,7 +7309,7 @@
     },
     {
       "path": "core/rust/src/lab.rs",
-      "line": 2530,
+      "line": 2652,
       "kind": "fn",
       "name": "new",
       "exposure_class": "CRATE_INTERNAL",
@@ -7318,7 +7318,7 @@
     },
     {
       "path": "core/rust/src/lab.rs",
-      "line": 2547,
+      "line": 2669,
       "kind": "fn",
       "name": "mission",
       "exposure_class": "CRATE_INTERNAL",
@@ -7327,7 +7327,7 @@
     },
     {
       "path": "core/rust/src/lab.rs",
-      "line": 2551,
+      "line": 2673,
       "kind": "fn",
       "name": "state",
       "exposure_class": "CRATE_INTERNAL",
@@ -7336,7 +7336,7 @@
     },
     {
       "path": "core/rust/src/lab.rs",
-      "line": 2555,
+      "line": 2677,
       "kind": "fn",
       "name": "state_epoch",
       "exposure_class": "CRATE_INTERNAL",
@@ -7345,7 +7345,7 @@
     },
     {
       "path": "core/rust/src/lab.rs",
-      "line": 2559,
+      "line": 2681,
       "kind": "fn",
       "name": "events",
       "exposure_class": "CRATE_INTERNAL",
@@ -7354,7 +7354,7 @@
     },
     {
       "path": "core/rust/src/lab.rs",
-      "line": 2563,
+      "line": 2685,
       "kind": "fn",
       "name": "sources",
       "exposure_class": "CRATE_INTERNAL",
@@ -7363,7 +7363,7 @@
     },
     {
       "path": "core/rust/src/lab.rs",
-      "line": 2567,
+      "line": 2689,
       "kind": "fn",
       "name": "claims",
       "exposure_class": "CRATE_INTERNAL",
@@ -7372,7 +7372,7 @@
     },
     {
       "path": "core/rust/src/lab.rs",
-      "line": 2571,
+      "line": 2693,
       "kind": "fn",
       "name": "hypotheses",
       "exposure_class": "CRATE_INTERNAL",
@@ -7381,7 +7381,7 @@
     },
     {
       "path": "core/rust/src/lab.rs",
-      "line": 2575,
+      "line": 2697,
       "kind": "fn",
       "name": "experiments",
       "exposure_class": "CRATE_INTERNAL",
@@ -7390,7 +7390,7 @@
     },
     {
       "path": "core/rust/src/lab.rs",
-      "line": 2579,
+      "line": 2701,
       "kind": "fn",
       "name": "observations",
       "exposure_class": "CRATE_INTERNAL",
@@ -7399,7 +7399,7 @@
     },
     {
       "path": "core/rust/src/lab.rs",
-      "line": 2583,
+      "line": 2705,
       "kind": "fn",
       "name": "replayable",
       "exposure_class": "CRATE_INTERNAL",
@@ -7408,7 +7408,7 @@
     },
     {
       "path": "core/rust/src/lab.rs",
-      "line": 2587,
+      "line": 2709,
       "kind": "fn",
       "name": "snapshot_json",
       "exposure_class": "CRATE_INTERNAL",
@@ -7417,7 +7417,7 @@
     },
     {
       "path": "core/rust/src/lab.rs",
-      "line": 2591,
+      "line": 2713,
       "kind": "fn",
       "name": "from_snapshot_json",
       "exposure_class": "CRATE_INTERNAL",
@@ -7426,7 +7426,7 @@
     },
     {
       "path": "core/rust/src/lab.rs",
-      "line": 2663,
+      "line": 2785,
       "kind": "fn",
       "name": "transition",
       "exposure_class": "CRATE_INTERNAL",
@@ -7435,7 +7435,7 @@
     },
     {
       "path": "core/rust/src/lab.rs",
-      "line": 2676,
+      "line": 2798,
       "kind": "fn",
       "name": "record_source",
       "exposure_class": "CRATE_INTERNAL",
@@ -7444,7 +7444,7 @@
     },
     {
       "path": "core/rust/src/lab.rs",
-      "line": 2694,
+      "line": 2816,
       "kind": "fn",
       "name": "record_claim",
       "exposure_class": "CRATE_INTERNAL",
@@ -7453,7 +7453,7 @@
     },
     {
       "path": "core/rust/src/lab.rs",
-      "line": 2711,
+      "line": 2833,
       "kind": "fn",
       "name": "record_hypothesis",
       "exposure_class": "CRATE_INTERNAL",
@@ -7462,7 +7462,7 @@
     },
     {
       "path": "core/rust/src/lab.rs",
-      "line": 2732,
+      "line": 2854,
       "kind": "fn",
       "name": "schedule_experiment",
       "exposure_class": "CRATE_INTERNAL",
@@ -7471,7 +7471,7 @@
     },
     {
       "path": "core/rust/src/lab.rs",
-      "line": 2756,
+      "line": 2878,
       "kind": "fn",
       "name": "record_observation",
       "exposure_class": "CRATE_INTERNAL",
@@ -7480,7 +7480,7 @@
     },
     {
       "path": "core/rust/src/lab.rs",
-      "line": 2777,
+      "line": 2899,
       "kind": "fn",
       "name": "record_research_program",
       "exposure_class": "CRATE_INTERNAL",
@@ -7489,7 +7489,7 @@
     },
     {
       "path": "core/rust/src/lab.rs",
-      "line": 2793,
+      "line": 2915,
       "kind": "fn",
       "name": "record_security_event",
       "exposure_class": "CRATE_INTERNAL",
@@ -7498,7 +7498,7 @@
     },
     {
       "path": "core/rust/src/lab.rs",
-      "line": 2813,
+      "line": 2935,
       "kind": "fn",
       "name": "review_and_complete",
       "exposure_class": "CRATE_INTERNAL",
@@ -7507,7 +7507,7 @@
     },
     {
       "path": "core/rust/src/lab.rs",
-      "line": 2848,
+      "line": 2970,
       "kind": "fn",
       "name": "manifest",
       "exposure_class": "CRATE_INTERNAL",
@@ -7516,7 +7516,7 @@
     },
     {
       "path": "core/rust/src/lab.rs",
-      "line": 2917,
+      "line": 3039,
       "kind": "fn",
       "name": "canonical_hash",
       "exposure_class": "CRATE_INTERNAL",
