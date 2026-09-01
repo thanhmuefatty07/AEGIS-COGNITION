@@ -5994,14 +5994,28 @@ class LabPolicy:
         )
 
     def validate(self) -> None:
+        if type(self.trust_level) is not str:
+            raise ValueError("lab policy trust level must be a string")
         _normalize_lab_trust_level(self.trust_level)
-        if self.max_browser_actions < 1:
+        if type(self.allowed_hosts) not in (list, tuple):
+            raise ValueError("lab policy hosts must be a sequence")
+        if type(self.require_https) is not bool:
+            raise ValueError("lab policy HTTPS requirement must be boolean")
+        if type(self.max_browser_actions) is not int or self.max_browser_actions < 1:
             raise ValueError("lab policy browser quota must be positive")
+        if type(self.replay_directory) not in (str, type(None)):
+            raise ValueError("lab policy replay directory must be a string or unset")
+        if any(type(host) is not str for host in self.allowed_hosts):
+            raise ValueError("lab policy hosts must be strings")
         normalized_hosts = tuple(host.strip().lower() for host in self.allowed_hosts)
         if any(not host or host != original for host, original in zip(normalized_hosts, self.allowed_hosts, strict=True)):
             raise ValueError("lab policy hosts must be lowercase and trimmed")
         if self.replay_directory is not None and not self.replay_directory.strip():
             raise ValueError("lab policy replay directory must be non-empty")
+        if type(self.replay_archive) is not bool:
+            raise ValueError("lab policy replay archive flag must be boolean")
+        if type(self.allow_external_writes) is not bool:
+            raise ValueError("lab policy external-write flag must be boolean")
         if self.require_native_authority is not None and type(self.require_native_authority) is not bool:
             raise ValueError("lab policy native-authority requirement must be boolean or unset")
 
@@ -6040,8 +6054,14 @@ class LabBudget:
     recovery_reserve: int | None = None
 
     def validate(self) -> None:
+        if type(self.max_steps) is not int or type(self.token_budget) is not int:
+            raise ValueError("lab budget bounds must be integers")
         if self.max_steps < 1 or self.token_budget < 1:
             raise ValueError("lab budget bounds must be positive")
+        if self.finalization_reserve is not None and type(self.finalization_reserve) is not int:
+            raise ValueError("lab finalization reserve must be an integer or unset")
+        if self.recovery_reserve is not None and type(self.recovery_reserve) is not int:
+            raise ValueError("lab recovery reserve must be an integer or unset")
         finalization = self.finalization_reserve
         recovery = self.recovery_reserve
         if finalization is None:
@@ -6125,10 +6145,15 @@ class ProcessExecutionCell:
     ) -> None:
         if not callable(runner):
             raise TypeError("process execution runner must be callable")
-        if not math.isfinite(float(timeout_seconds)) or float(timeout_seconds) <= 0:
+        if (
+            type(timeout_seconds) not in (int, float)
+            or isinstance(timeout_seconds, bool)
+            or not math.isfinite(float(timeout_seconds))
+            or float(timeout_seconds) <= 0
+        ):
             raise ValueError("process execution timeout must be finite and positive")
         available_methods = multiprocessing.get_all_start_methods()
-        if start_method not in available_methods:
+        if type(start_method) is not str or start_method not in available_methods:
             raise ValueError("process execution start method is unavailable")
         self.runner = runner
         self.timeout_seconds = float(timeout_seconds)
@@ -6139,7 +6164,7 @@ class ProcessExecutionCell:
     def active_pid(self) -> int | None:
         process = self._active_process
         pid = getattr(process, "pid", None) if process is not None else None
-        return int(pid) if isinstance(pid, int) and pid > 0 else None
+        return pid if type(pid) is int and pid > 0 else None
 
     @staticmethod
     def _terminate_process(process: Any) -> None:
@@ -6315,8 +6340,12 @@ class ExecutionCellBinding:
     trust_policy_hash: str | None = None
 
     def validate(self) -> None:
-        if not self.cell_id.strip():
+        if type(self.cell_id) is not str or not self.cell_id.strip():
             raise ValueError("execution cell id must be non-empty")
+        if type(self.action_kinds) not in (list, tuple):
+            raise ValueError("execution cell action kinds must be a sequence")
+        if any(type(kind) is not str for kind in self.action_kinds):
+            raise ValueError("execution cell action kinds must be strings")
         kinds = tuple(kind.strip().lower() for kind in self.action_kinds)
         if not kinds or any(kind not in _EXECUTION_CELL_ACTION_KINDS for kind in kinds):
             raise ValueError("execution cell action kind is unsupported")
@@ -6327,13 +6356,27 @@ class ExecutionCellBinding:
             raise TypeError("browser execution cell must expose capture_action")
         if not callable(self.runner) and not browser_adapter:
             raise TypeError("execution cell runner must be callable")
+        if type(self.capabilities) not in (list, tuple):
+            raise ValueError("execution cell capabilities must be a sequence")
+        if any(type(capability) is not str for capability in self.capabilities):
+            raise ValueError("execution cell capabilities must be strings")
         if any(not capability.strip() for capability in self.capabilities):
             raise ValueError("execution cell capabilities must be non-empty")
+        if type(self.effect_classes) not in (list, tuple):
+            raise ValueError("execution cell effect classes must be a sequence")
+        if any(type(effect) is not str for effect in self.effect_classes):
+            raise ValueError("execution cell effect classes must be strings")
         if any(not effect.strip() for effect in self.effect_classes):
             raise ValueError("execution cell effect classes must be non-empty")
+        if type(self.trust_levels) not in (list, tuple):
+            raise ValueError("execution cell trust levels must be a sequence")
+        if any(type(level) is not str for level in self.trust_levels):
+            raise ValueError("execution cell trust levels must be strings")
         normalized_trust = tuple(level.strip().upper() for level in self.trust_levels)
         if not normalized_trust or any(level not in {"DEV", "STAGING", "PROD"} for level in normalized_trust):
             raise ValueError("execution cell trust level is unsupported")
+        if type(self.trust_policy_hash) not in (str, type(None)):
+            raise ValueError("execution cell trust policy hash must be a string or unset")
         if self.trust_policy_hash is not None and not _is_digest(self.trust_policy_hash):
             raise ValueError("execution cell trust policy hash is invalid")
 
@@ -6347,6 +6390,10 @@ class ExecutionCellRegistry:
         *,
         trust_policy_hash: str | None = None,
     ) -> None:
+        if type(bindings) not in (list, tuple):
+            raise TypeError("execution cell registry bindings must be a sequence")
+        if type(trust_policy_hash) not in (str, type(None)):
+            raise ValueError("execution cell registry trust policy hash must be a string or unset")
         if trust_policy_hash is not None and not _is_digest(trust_policy_hash):
             raise ValueError("execution cell registry trust policy hash is invalid")
         self._trust_policy_hash = trust_policy_hash
@@ -6406,6 +6453,18 @@ class ExecutionCellRegistry:
         effect_class: str | None = None,
         trust_policy_hash: str | None = None,
     ) -> Any:
+        if type(action_kind) is not str or not action_kind.strip():
+            raise ValueError("execution cell action kind must be a non-empty string")
+        if type(trust_level) is not str or not trust_level.strip():
+            raise ValueError("execution cell trust level must be a non-empty string")
+        if type(cell_id) not in (str, type(None)):
+            raise ValueError("execution cell id must be a string or unset")
+        if type(capability) not in (str, type(None)):
+            raise ValueError("execution cell capability must be a string or unset")
+        if type(effect_class) not in (str, type(None)):
+            raise ValueError("execution cell effect must be a string or unset")
+        if type(trust_policy_hash) not in (str, type(None)):
+            raise ValueError("execution cell trust policy hash must be a string or unset")
         normalized_kind = action_kind.strip().lower()
         bindings = self._sealed_bindings if self._sealed_bindings is not None else self._bindings
         binding = bindings.get(normalized_kind)
