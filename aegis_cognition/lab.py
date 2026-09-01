@@ -2182,6 +2182,11 @@ def _is_digest(value: str) -> bool:
     return bool(re.fullmatch(r"[0-9a-f]{64}", value))
 
 
+_BROWSER_ACTION_KINDS = frozenset({"launch", "goto", "click", "fill", "type", "wait"})
+_BROWSER_OBSERVATION_KINDS = frozenset({"read_url", "accessibility", "network_log", "wait"})
+_BROWSER_SETTLEMENT_STATUSES = frozenset({"SUCCESS", "REJECTED", "CANCELLED"})
+
+
 class SkillAdmissionError(ValueError):
     """Raised when a skill cannot be admitted or its result is untrusted."""
 
@@ -4051,8 +4056,17 @@ class LabRun:
 
         if self.state in {"completed", "aborted"}:
             raise ValueError(f"cannot admit browser action in state {self.state}")
+        if (
+            type(action_kind) is not str
+            or type(action) is not dict
+            or type(policy) is not BrowserCellPolicy
+            or type(lease_id) is not int
+            or type(action_id) is not str
+        ):
+            raise ValueError("browser action admission contract is invalid")
+        policy.validate()
         normalized_kind = action_kind.strip().lower()
-        if normalized_kind not in {"launch", "goto", "click", "fill", "type", "wait"}:
+        if normalized_kind not in _BROWSER_ACTION_KINDS:
             raise ValueError("invalid browser action kind")
         if lease_id < 1 or not action_id.strip():
             raise ValueError("browser action lease and identity must be valid")
@@ -4102,18 +4116,31 @@ class LabRun:
 
         if self.state in {"completed", "aborted"}:
             raise ValueError(f"cannot record browser action in state {self.state}")
+        if (
+            type(action_id) is not str
+            or type(admission_id) is not str
+            or type(action_kind) is not str
+            or type(action) is not dict
+            or type(policy) is not BrowserCellPolicy
+            or type(lease_id) is not int
+            or type(status) is not str
+            or (input_hash is not None and type(input_hash) is not str)
+            or (policy_hash is not None and type(policy_hash) is not str)
+        ):
+            raise ValueError("browser action settlement contract is invalid")
+        policy.validate()
         normalized_kind = action_kind.strip().lower()
         normalized_status = status.strip().upper()
-        if normalized_kind not in {"launch", "goto", "click", "fill", "type", "wait"}:
+        if normalized_kind not in _BROWSER_ACTION_KINDS:
             raise ValueError("invalid browser action kind")
-        if normalized_status not in {"SUCCESS", "REJECTED", "CANCELLED"}:
+        if normalized_status not in _BROWSER_SETTLEMENT_STATUSES:
             raise ValueError("invalid browser action status")
         if lease_id < 1 or not action_id.strip() or not admission_id.strip():
             raise ValueError("browser action settlement identity is invalid")
-        normalized_input_hash = input_hash or _hash(action)
-        normalized_policy_hash = policy_hash or _hash(
+        normalized_input_hash = _hash(action) if input_hash is None else input_hash
+        normalized_policy_hash = _hash(
             {"schema": "aegis-browser-cell-policy-v1", **asdict(policy)}
-        )
+        ) if policy_hash is None else policy_hash
         if not _is_digest(normalized_input_hash) or not _is_digest(normalized_policy_hash):
             raise ValueError("browser action settlement hashes are invalid")
         self._require_open_admission(
@@ -4169,8 +4196,17 @@ class LabRun:
 
         if self.state in {"completed", "aborted"}:
             raise ValueError(f"cannot admit browser observation in state {self.state}")
+        if (
+            type(observation_kind) is not str
+            or type(action) is not dict
+            or type(policy) is not BrowserCellPolicy
+            or type(lease_id) is not int
+            or type(observation_count) is not int
+        ):
+            raise ValueError("browser observation admission contract is invalid")
+        policy.validate()
         normalized_kind = observation_kind.strip().lower()
-        if normalized_kind not in {"read_url", "accessibility", "network_log", "wait"}:
+        if normalized_kind not in _BROWSER_OBSERVATION_KINDS:
             raise ValueError("invalid browser observation kind")
         if lease_id < 1 or observation_count < 1:
             raise ValueError("browser observation lease and count must be positive")
@@ -4226,14 +4262,30 @@ class LabRun:
 
         if self.state in {"completed", "aborted"}:
             raise ValueError(f"cannot record browser observation in state {self.state}")
+        if (
+            type(observation_kind) is not str
+            or type(action) is not dict
+            or type(policy) is not BrowserCellPolicy
+            or type(lease_id) is not int
+            or type(observation_count) is not int
+            or type(status) is not str
+            or (admission_id is not None and type(admission_id) is not str)
+            or (observation_id is not None and type(observation_id) is not str)
+            or (input_hash is not None and type(input_hash) is not str)
+            or (policy_hash is not None and type(policy_hash) is not str)
+        ):
+            raise ValueError("browser observation settlement contract is invalid")
+        policy.validate()
         normalized_kind = observation_kind.strip().lower()
-        if normalized_kind not in {"read_url", "accessibility", "network_log", "wait"}:
+        if normalized_kind not in _BROWSER_OBSERVATION_KINDS:
             raise ValueError("invalid browser observation kind")
         if lease_id < 1 or observation_count < 1:
             raise ValueError("browser observation lease and count must be positive")
         normalized_status = status.strip().upper()
-        if normalized_status not in {"SUCCESS", "REJECTED", "CANCELLED"}:
+        if normalized_status not in _BROWSER_SETTLEMENT_STATUSES:
             raise ValueError("invalid browser observation status")
+        if admission_id is None and observation_id is not None:
+            raise ValueError("browser observation settlement identity is invalid")
         if admission_id is None:
             observation_id, admission_id = self.admit_browser_observation(
                 observation_kind=normalized_kind,
@@ -4244,10 +4296,10 @@ class LabRun:
             )
         if not observation_id or not admission_id.strip():
             raise ValueError("browser observation settlement identity is invalid")
-        normalized_input_hash = input_hash or _hash(action)
-        normalized_policy_hash = policy_hash or _hash(
+        normalized_input_hash = _hash(action) if input_hash is None else input_hash
+        normalized_policy_hash = _hash(
             {"schema": "aegis-browser-cell-policy-v1", **asdict(policy)}
-        )
+        ) if policy_hash is None else policy_hash
         if not _is_digest(normalized_input_hash) or not _is_digest(normalized_policy_hash):
             raise ValueError("browser observation settlement hashes are invalid")
         self._require_open_admission(

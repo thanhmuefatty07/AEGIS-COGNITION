@@ -544,6 +544,76 @@ def test_browser_policy_rejects_lossy_metadata() -> None:
         BrowserCellPolicy(allowed_hosts=(" allowed.example",)).validate()
 
 
+def test_lab_browser_receipts_reject_lossy_boundary_metadata() -> None:
+    policy = BrowserCellPolicy(("allowed.example",))
+    action = {"kind": "click", "selector": "#submit"}
+    run = LabRun("strict browser receipts")
+    with pytest.raises(ValueError, match="admission contract"):
+        run.admit_browser_action(
+            action_kind=1,  # type: ignore[arg-type]
+            action=action,
+            policy=policy,
+            lease_id=True,  # type: ignore[arg-type]
+            action_id="browser-1",
+        )
+    with pytest.raises(ValueError, match="admission contract"):
+        run.admit_browser_action(
+            action_kind="click",
+            action=action,
+            policy={"allowed_hosts": ("allowed.example",)},  # type: ignore[arg-type]
+            lease_id=1,
+            action_id="browser-1",
+        )
+    admission_id = run.admit_browser_action(
+        action_kind="click",
+        action=action,
+        policy=policy,
+        lease_id=1,
+        action_id="browser-1",
+    )
+    with pytest.raises(ValueError, match="hashes"):
+        run.record_browser_action(
+            action_id="browser-1",
+            admission_id=admission_id,
+            action_kind="click",
+            action=action,
+            result={"ok": True},
+            policy=policy,
+            lease_id=1,
+            input_hash="",
+        )
+    with pytest.raises(ValueError, match="settlement contract"):
+        run.record_browser_action(
+            action_id="browser-1",
+            admission_id=admission_id,
+            action_kind="click",
+            action=action,
+            result={"ok": True},
+            policy=policy,
+            lease_id=1,
+            status=True,  # type: ignore[arg-type]
+        )
+    observation = LabRun("strict browser observations")
+    with pytest.raises(ValueError, match="admission contract"):
+        observation.admit_browser_observation(
+            observation_kind="read_url",
+            action=action,
+            policy=policy,
+            lease_id=1,
+            observation_count=False,  # type: ignore[arg-type]
+        )
+    with pytest.raises(ValueError, match="settlement contract"):
+        observation.record_browser_observation(
+            observation_kind="read_url",
+            action=action,
+            result={"url": "https://allowed.example"},
+            policy=policy,
+            lease_id=1,
+            observation_count=1,
+            observation_id=1,  # type: ignore[arg-type]
+        )
+
+
 @pytest.mark.parametrize(
     ("action", "match"),
     (
