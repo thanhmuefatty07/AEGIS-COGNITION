@@ -1,0 +1,43 @@
+{
+  "schema": "aegis-final-module-split-candidates-v1",
+  "rows": [
+    {
+      "path": "aegis_cognition/lab.py",
+      "classification": "SPLIT_CANDIDATE",
+      "reason": "effect/state/orchestration clusters"
+    },
+    {
+      "path": "core/rust/src/ffi.rs",
+      "classification": "STRONG_SPLIT_CANDIDATE",
+      "reason": "PyO3 conversion/native contracts/Lab binding/error boundary mixed"
+    },
+    {
+      "path": "core/rust/src/lab.rs",
+      "classification": "KEEP_MONOLITHIC",
+      "reason": "cohesive contract-dense reducer/state"
+    },
+    {
+      "path": "core/rust/src/replay.rs",
+      "classification": "KEEP_MONOLITHIC",
+      "reason": "single hash/replay integrity invariant"
+    },
+    {
+      "path": "core/rust/src/cli/mod.rs",
+      "classification": "SPLIT_CANDIDATE",
+      "reason": "parse/policy/dispatch/presentation"
+    },
+    {
+      "path": "scripts/evidence_consistency_gate.py",
+      "classification": "SPLIT_CANDIDATE",
+      "reason": "manifest/commit/evidence/report mixed"
+    }
+  ],
+  "do_not_split_yet": true,
+  "limitations": [
+    "no split performed"
+  ],
+  "WORKTREE_EPOCH": "3783037b7a38cf214bdfe4b593496971ccafec29fd6b5b05f413a98ea51918c6",
+  "HEAD": "f9645caf6d17cee2023d52183990ffcf8317e456",
+  "generated_at": "2026-08-28T02:58:56.366605+00:00",
+  "collector_version/method": "aegis-final-design-closure-v1; direct Git/filesystem/AST/Cargo plus bounded disposable-wheel probes"
+}

@@ -1,0 +1,211 @@
+{
+  "schema": "aegis-design-error-semantics-v1",
+  "rows": [
+    {
+      "failure": "invalid input/contract",
+      "origin": "Python/Lab/Rust validation",
+      "handling": "ValueError/PyValueError before effect",
+      "classification": "FAIL_CLOSED",
+      "status": "SOURCE_PROVEN_LOCAL",
+      "trace": "input -> Python/Rust validation -> ValueError/PyValueError -> no effect -> no settlement event -> rejection returned"
+    },
+    {
+      "failure": "native admission rejection",
+      "origin": "LabController.admit_record_json",
+      "handling": "Python raises generic RuntimeError and rolls back projection; Rust variant detail is flattened",
+      "classification": "FAIL_CLOSED_STRUCTURED_DETAIL_LOST",
+      "status": "SOURCE_PROVEN_LOCAL",
+      "trace": "Lab event -> PyO3 admit_record_json -> Rust LabError -> generic Python RuntimeError -> Python projection rollback -> non-success result/replay blocker"
+    },
+    {
+      "failure": "provider non-rate-limit failure",
+      "origin": "provider route/adapter",
+      "handling": "settled REJECTED/TIMED_OUT then original exception re-raised; Lab outer retry may recur",
+      "classification": "FAIL_CLOSED_LOCALLY_BUT_RETRY_DUPLICATE_RISK",
+      "status": "SOURCE_PROVEN_LOCAL",
+      "trace": "provider SDK/route -> exception -> Lab settlement REJECTED/TIMED_OUT when fenced -> outer exception/retry -> replay stores error type, not full structured variant"
+    },
+    {
+      "failure": "provider timeout",
+      "origin": "SDK/provider",
+      "handling": "no local success on exception; external commit before timeout is ambiguous",
+      "classification": "AMBIGUOUS_EXTERNAL_COMMIT",
+      "status": "EXTERNAL_NOT_VERIFIED",
+      "trace": "provider SDK timeout -> Python exception -> local non-success settlement -> external receipt/commit state unknown -> replay cannot prove whether remote effect committed"
+    },
+    {
+      "failure": "provider cancellation",
+      "origin": "provider route/Lab",
+      "handling": "settled CANCELLED and propagates cancellation",
+      "classification": "FAIL_CLOSED_LOCALLY",
+      "status": "SOURCE_PROVEN_LOCAL",
+      "trace": "CancelledError -> route/Lab CANCELLED settlement -> propagation -> replay terminal CANCELLED -> user cancellation"
+    },
+    {
+      "failure": "process crash/no child message",
+      "origin": "ProcessExecutionCell/benchmark validator",
+      "handling": "RuntimeError/nonzero/timeout; caller settles REJECTED",
+      "classification": "FAIL_CLOSED_LOCALLY_DESCENDANT_CLEANUP_EXTERNAL",
+      "status": "PARTIALLY_PROVEN_LOCAL",
+      "trace": "child/process -> missing message/nonzero/timeout -> RuntimeError -> REJECTED settlement -> local replay records failure; descendant cleanup is external"
+    },
+    {
+      "failure": "browser failure/cancellation",
+      "origin": "BrowserCell/Playwright",
+      "handling": "known errors settle REJECTED; CancelledError settles CANCELLED",
+      "classification": "FAIL_CLOSED_LOCALLY_BROWSER_BOUNDARY_EXTERNAL",
+      "status": "PARTIALLY_PROVEN_LOCAL",
+      "trace": "Playwright/browser adapter -> known exception or CancelledError -> REJECTED/CANCELLED settlement -> replay terminal status -> user error/cancel"
+    },
+    {
+      "failure": "replay corruption",
+      "origin": "Python/Rust snapshot/event chain",
+      "handling": "validation rejects restore/replay",
+      "classification": "FAIL_CLOSED",
+      "status": "SOURCE_AND_TEST_PROVEN_LOCAL",
+      "trace": "archive/snapshot -> hash/schema/sequence validation -> recovery error -> no reconstructed success -> fail-closed user result"
+    },
+    {
+      "failure": "budget exhaustion",
+      "origin": "Lab/native resource",
+      "handling": "admission/step budget rejects before effect",
+      "classification": "FAIL_CLOSED",
+      "status": "SOURCE_AND_TEST_PROVEN_LOCAL",
+      "trace": "admission/resource ledger -> budget error/status -> no sink invocation -> rejected/blocked settlement -> replay blocker"
+    },
+    {
+      "failure": "benchmark validator failure",
+      "origin": "hidden validator subprocess",
+      "handling": "timeout/nonzero/invalid JSON/schema/hash raises; gate remains failed",
+      "classification": "FAIL_CLOSED_GATE",
+      "status": "SOURCE_PROVEN_LOCAL",
+      "trace": "validator subprocess -> timeout/nonzero/invalid JSON/hash -> Python validation exception -> gate failure -> no acceptance evidence"
+    }
+  ],
+  "structured_to_string_sites": [
+    {
+      "path": "core/rust/src/ffi.rs",
+      "line": 138,
+      "text": ".map_err(|err| pyo3::exceptions::PyRuntimeError::new_err(format!(\"{err:?}\")))?;"
+    },
+    {
+      "path": "core/rust/src/ffi.rs",
+      "line": 193,
+      "text": "serde_json::to_string(&crate::resource::HardwareProfile::probe()).map_err(|error| {"
+    },
+    {
+      "path": "core/rust/src/ffi.rs",
+      "line": 194,
+      "text": "pyo3::exceptions::PyRuntimeError::new_err(format!("
+    },
+    {
+      "path": "core/rust/src/ffi.rs",
+      "line": 220,
+      "text": "pyo3::exceptions::PyValueError::new_err(format!("
+    },
+    {
+      "path": "core/rust/src/ffi.rs",
+      "line": 227,
+      "text": "serde_json::to_string(&decision).map_err(|error| {"
+    },
+    {
+      "path": "core/rust/src/ffi.rs",
+      "line": 228,
+      "text": "pyo3::exceptions::PyRuntimeError::new_err(format!("
+    },
+    {
+      "path": "core/rust/src/ffi.rs",
+      "line": 239,
+      "text": "serde_json::to_string(&crate::resource::ExecutionLaneRegistry::for_profile("
+    },
+    {
+      "path": "core/rust/src/ffi.rs",
+      "line": 243,
+      "text": "pyo3::exceptions::PyRuntimeError::new_err(format!("
+    },
+    {
+      "path": "core/rust/src/ffi.rs",
+      "line": 263,
+      "text": "pyo3::exceptions::PyValueError::new_err(format!("
+    },
+    {
+      "path": "core/rust/src/ffi.rs",
+      "line": 269,
+      "text": "pyo3::exceptions::PyValueError::new_err(format!("
+    },
+    {
+      "path": "core/rust/src/ffi.rs",
+      "line": 276,
+      "text": "pyo3::exceptions::PyRuntimeError::new_err(format!(\"runtime submit failed: {error:?}\"))"
+    },
+    {
+      "path": "core/rust/src/ffi.rs",
+      "line": 296,
+      "text": "serde_json::to_string(&response).map_err(|error| {"
+    },
+    {
+      "path": "core/rust/src/ffi.rs",
+      "line": 297,
+      "text": "pyo3::exceptions::PyRuntimeError::new_err(format!("
+    },
+    {
+      "path": "core/rust/src/ffi.rs",
+      "line": 310,
+      "text": "pyo3::exceptions::PyValueError::new_err(format!("
+    },
+    {
+      "path": "core/rust/src/ffi.rs",
+      "line": 316,
+      "text": "pyo3::exceptions::PyRuntimeError::new_err(format!(\"runtime retry failed: {error:?}\"))"
+    },
+    {
+      "path": "core/rust/src/ffi.rs",
+      "line": 336,
+      "text": "serde_json::to_string(&response).map_err(|error| {"
+    },
+    {
+      "path": "core/rust/src/ffi.rs",
+      "line": 337,
+      "text": "pyo3::exceptions::PyRuntimeError::new_err(format!("
+    },
+    {
+      "path": "core/rust/src/ffi.rs",
+      "line": 349,
+      "text": "pyo3::exceptions::PyValueError::new_err(format!("
+    },
+    {
+      "path": "core/rust/src/ffi.rs",
+      "line": 363,
+      "text": "pyo3::exceptions::PyValueError::new_err(format!(\"invalid runtime outcome: {error:?}\"))"
+    },
+    {
+      "path": "core/rust/src/ffi.rs",
+      "line": 369,
+      "text": "pyo3::exceptions::PyRuntimeError::new_err(format!("
+    }
+  ],
+  "broad_catch_suspects": [
+    {
+      "path": "aegis_cognition/application.py",
+      "line": 150,
+      "text": "except Exception:"
+    },
+    {
+      "path": "aegis_cognition/application.py",
+      "line": 195,
+      "text": "except Exception:"
+    },
+    {
+      "path": "core/python/aegis_adapter.py",
+      "line": 129,
+      "text": "except Exception:"
+    }
+  ],
+  "limitations": [
+    "no live provider/browser/OS descendant failure induced"
+  ],
+  "HEAD": "f9645caf6d17cee2023d52183990ffcf8317e456",
+  "WORKTREE_EPOCH": "6e8c4adfdccec80543825a18e3885da36acb62c7574807342ae8ccf4c0d64ec6",
+  "generated_at": "2026-09-01T02:54:46.298383+00:00",
+  "method": "aegis-design-closure-reconciliation-v1; direct Git/filesystem/source inspection, prior artifact hash reuse, disposable wheel reconciliation, bounded local probes"
+}

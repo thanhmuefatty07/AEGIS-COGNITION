@@ -1,0 +1,1405 @@
+{
+  "schema": "aegis-design-dependency-roles-v1",
+  "rows": [
+    {
+      "ecosystem": "python",
+      "name": "blake3",
+      "role": "REQUIRED_RUNTIME",
+      "evidence": {
+        "name": "blake3",
+        "used_by": [
+          "aegis_cognition/errors.py",
+          "aegis_cognition/lab.py",
+          "aegis_cognition/prompt.py",
+          "core/python/operator_api.py",
+          "core/python/tests.py",
+          "docs/architecture/evidence-pack/collect.py",
+          "scripts/_audit_regen_requirements.py",
+          "scripts/benchmark_gate.py",
+          "scripts/constitution_audit.py",
+          "scripts/dependency_audit_gate.py",
+          "scripts/extreme_testing_suite.py",
+          "scripts/governance_gate.py",
+          "scripts/hermes_baseline_gate.py",
+          "scripts/hermes_persistence_baseline_gate.py",
+          "scripts/hermes_rpc_baseline_gate.py",
+          "scripts/hermes_session_recovery_baseline_gate.py",
+          "scripts/release_install_smoke.py",
+          "scripts/run_checks.py",
+          "scripts/sota_baseline_gate.py"
+        ],
+        "usage_hits": 46,
+        "role": "production/test/build/unknown",
+        "duplicate_capability": "unknown",
+        "feature_flags": "unknown",
+        "runtime_relevance": "high"
+      }
+    },
+    {
+      "ecosystem": "python",
+      "name": "fastapi",
+      "role": "REQUIRED_RUNTIME",
+      "evidence": {
+        "name": "fastapi",
+        "used_by": [
+          "docs/architecture/evidence-pack/collect.py",
+          "scripts/_audit_regen_requirements.py",
+          "scripts/mock_429_llm_server.py"
+        ],
+        "usage_hits": 5,
+        "role": "production/test/build/unknown",
+        "duplicate_capability": "unknown",
+        "feature_flags": "unknown",
+        "runtime_relevance": "high"
+      }
+    },
+    {
+      "ecosystem": "python",
+      "name": "openai",
+      "role": "REQUIRED_RUNTIME",
+      "evidence": {
+        "name": "openai",
+        "used_by": [
+          "aegis_cognition/cli.py",
+          "aegis_cognition/errors.py",
+          "core/python/aegis_cli.py",
+          "core/python/nim_client.py",
+          "core/python/tests.py",
+          "docs/architecture/evidence-pack/collect.py",
+          "scripts/_audit_regen_requirements.py"
+        ],
+        "usage_hits": 19,
+        "role": "production/test/build/unknown",
+        "duplicate_capability": "unknown",
+        "feature_flags": "unknown",
+        "runtime_relevance": "high"
+      }
+    },
+    {
+      "ecosystem": "python",
+      "name": "python-dotenv",
+      "role": "REQUIRED_RUNTIME",
+      "evidence": {
+        "name": "python-dotenv",
+        "used_by": [
+          "scripts/_audit_regen_requirements.py"
+        ],
+        "usage_hits": 1,
+        "role": "production/test/build/unknown",
+        "duplicate_capability": "unknown",
+        "feature_flags": "unknown",
+        "runtime_relevance": "unknown"
+      }
+    },
+    {
+      "ecosystem": "python",
+      "name": "pyyaml",
+      "role": "REQUIRED_RUNTIME",
+      "evidence": {
+        "name": "pyyaml",
+        "used_by": [
+          "docs/architecture/evidence-pack/collect.py",
+          "scripts/_audit_regen_requirements.py"
+        ],
+        "usage_hits": 2,
+        "role": "production/test/build/unknown",
+        "duplicate_capability": "unknown",
+        "feature_flags": "unknown",
+        "runtime_relevance": "high"
+      }
+    },
+    {
+      "ecosystem": "rust",
+      "name": "serde",
+      "role": "REQUIRED_RUNTIME",
+      "evidence": {
+        "name": "serde",
+        "manifest": "aegis-plugins/aegis-bench/Cargo.toml",
+        "used_by": [
+          "aegis-plugins/aegis-bench/src/lib.rs"
+        ],
+        "usage_hits": 1,
+        "role": "production/test/build/POC/unknown",
+        "feature_flags": "line-level Cargo feature declaration",
+        "runtime_relevance": "unknown"
+      }
+    },
+    {
+      "ecosystem": "rust",
+      "name": "thiserror",
+      "role": "REQUIRED_RUNTIME",
+      "evidence": {
+        "name": "thiserror",
+        "manifest": "aegis-plugins/aegis-bench/Cargo.toml",
+        "used_by": [
+          "aegis-plugins/aegis-bench/src/lib.rs"
+        ],
+        "usage_hits": 1,
+        "role": "production/test/build/POC/unknown",
+        "feature_flags": "line-level Cargo feature declaration",
+        "runtime_relevance": "unknown"
+      }
+    },
+    {
+      "ecosystem": "rust",
+      "name": "anyhow",
+      "role": "UNKNOWN",
+      "evidence": {
+        "name": "anyhow",
+        "manifest": "aegis-plugins/aegis-browser/Cargo.toml",
+        "used_by": [],
+        "usage_hits": 0,
+        "role": "production/test/build/POC/unknown",
+        "feature_flags": "line-level Cargo feature declaration",
+        "runtime_relevance": "unknown"
+      }
+    },
+    {
+      "ecosystem": "rust",
+      "name": "blake3",
+      "role": "REQUIRED_RUNTIME",
+      "evidence": {
+        "name": "blake3",
+        "manifest": "aegis-plugins/aegis-browser/Cargo.toml",
+        "used_by": [
+          "aegis-plugins/aegis-browser/src/lib.rs"
+        ],
+        "usage_hits": 1,
+        "role": "production/test/build/POC/unknown",
+        "feature_flags": "line-level Cargo feature declaration",
+        "runtime_relevance": "unknown"
+      }
+    },
+    {
+      "ecosystem": "rust",
+      "name": "pyo3",
+      "role": "UNKNOWN",
+      "evidence": {
+        "name": "pyo3",
+        "manifest": "aegis-plugins/aegis-browser/Cargo.toml",
+        "used_by": [],
+        "usage_hits": 0,
+        "role": "production/test/build/POC/unknown",
+        "feature_flags": "line-level Cargo feature declaration",
+        "runtime_relevance": "unknown"
+      }
+    },
+    {
+      "ecosystem": "rust",
+      "name": "serde",
+      "role": "REQUIRED_RUNTIME",
+      "evidence": {
+        "name": "serde",
+        "manifest": "aegis-plugins/aegis-browser/Cargo.toml",
+        "used_by": [
+          "aegis-plugins/aegis-browser/src/lib.rs"
+        ],
+        "usage_hits": 1,
+        "role": "production/test/build/POC/unknown",
+        "feature_flags": "line-level Cargo feature declaration",
+        "runtime_relevance": "unknown"
+      }
+    },
+    {
+      "ecosystem": "rust",
+      "name": "serde_json",
+      "role": "REQUIRED_RUNTIME",
+      "evidence": {
+        "name": "serde_json",
+        "manifest": "aegis-plugins/aegis-browser/Cargo.toml",
+        "used_by": [
+          "aegis-plugins/aegis-browser/src/lib.rs"
+        ],
+        "usage_hits": 1,
+        "role": "production/test/build/POC/unknown",
+        "feature_flags": "line-level Cargo feature declaration",
+        "runtime_relevance": "unknown"
+      }
+    },
+    {
+      "ecosystem": "rust",
+      "name": "thiserror",
+      "role": "REQUIRED_RUNTIME",
+      "evidence": {
+        "name": "thiserror",
+        "manifest": "aegis-plugins/aegis-browser/Cargo.toml",
+        "used_by": [
+          "aegis-plugins/aegis-browser/src/lib.rs"
+        ],
+        "usage_hits": 1,
+        "role": "production/test/build/POC/unknown",
+        "feature_flags": "line-level Cargo feature declaration",
+        "runtime_relevance": "unknown"
+      }
+    },
+    {
+      "ecosystem": "rust",
+      "name": "tokio",
+      "role": "UNKNOWN",
+      "evidence": {
+        "name": "tokio",
+        "manifest": "aegis-plugins/aegis-browser/Cargo.toml",
+        "used_by": [],
+        "usage_hits": 0,
+        "role": "production/test/build/POC/unknown",
+        "feature_flags": "line-level Cargo feature declaration",
+        "runtime_relevance": "unknown"
+      }
+    },
+    {
+      "ecosystem": "rust",
+      "name": "url",
+      "role": "REQUIRED_RUNTIME",
+      "evidence": {
+        "name": "url",
+        "manifest": "aegis-plugins/aegis-browser/Cargo.toml",
+        "used_by": [
+          "aegis-plugins/aegis-browser/src/lib.rs"
+        ],
+        "usage_hits": 10,
+        "role": "production/test/build/POC/unknown",
+        "feature_flags": "line-level Cargo feature declaration",
+        "runtime_relevance": "unknown"
+      }
+    },
+    {
+      "ecosystem": "rust",
+      "name": "blake3",
+      "role": "REQUIRED_RUNTIME",
+      "evidence": {
+        "name": "blake3",
+        "manifest": "aegis-plugins/aegis-evidence/Cargo.toml",
+        "used_by": [
+          "aegis-plugins/aegis-evidence/src/lib.rs"
+        ],
+        "usage_hits": 3,
+        "role": "production/test/build/POC/unknown",
+        "feature_flags": "line-level Cargo feature declaration",
+        "runtime_relevance": "unknown"
+      }
+    },
+    {
+      "ecosystem": "rust",
+      "name": "serde",
+      "role": "REQUIRED_RUNTIME",
+      "evidence": {
+        "name": "serde",
+        "manifest": "aegis-plugins/aegis-evidence/Cargo.toml",
+        "used_by": [
+          "aegis-plugins/aegis-evidence/src/lib.rs"
+        ],
+        "usage_hits": 1,
+        "role": "production/test/build/POC/unknown",
+        "feature_flags": "line-level Cargo feature declaration",
+        "runtime_relevance": "unknown"
+      }
+    },
+    {
+      "ecosystem": "rust",
+      "name": "thiserror",
+      "role": "REQUIRED_RUNTIME",
+      "evidence": {
+        "name": "thiserror",
+        "manifest": "aegis-plugins/aegis-evidence/Cargo.toml",
+        "used_by": [
+          "aegis-plugins/aegis-evidence/src/lib.rs"
+        ],
+        "usage_hits": 1,
+        "role": "production/test/build/POC/unknown",
+        "feature_flags": "line-level Cargo feature declaration",
+        "runtime_relevance": "unknown"
+      }
+    },
+    {
+      "ecosystem": "rust",
+      "name": "anyhow",
+      "role": "UNKNOWN",
+      "evidence": {
+        "name": "anyhow",
+        "manifest": "aegis-plugins/aegis-sandbox/Cargo.toml",
+        "used_by": [],
+        "usage_hits": 0,
+        "role": "production/test/build/POC/unknown",
+        "feature_flags": "line-level Cargo feature declaration",
+        "runtime_relevance": "unknown"
+      }
+    },
+    {
+      "ecosystem": "rust",
+      "name": "blake3",
+      "role": "REQUIRED_RUNTIME",
+      "evidence": {
+        "name": "blake3",
+        "manifest": "aegis-plugins/aegis-sandbox/Cargo.toml",
+        "used_by": [
+          "aegis-plugins/aegis-sandbox/src/lib.rs"
+        ],
+        "usage_hits": 1,
+        "role": "production/test/build/POC/unknown",
+        "feature_flags": "line-level Cargo feature declaration",
+        "runtime_relevance": "unknown"
+      }
+    },
+    {
+      "ecosystem": "rust",
+      "name": "pyo3",
+      "role": "UNKNOWN",
+      "evidence": {
+        "name": "pyo3",
+        "manifest": "aegis-plugins/aegis-sandbox/Cargo.toml",
+        "used_by": [],
+        "usage_hits": 0,
+        "role": "production/test/build/POC/unknown",
+        "feature_flags": "line-level Cargo feature declaration",
+        "runtime_relevance": "unknown"
+      }
+    },
+    {
+      "ecosystem": "rust",
+      "name": "serde",
+      "role": "REQUIRED_RUNTIME",
+      "evidence": {
+        "name": "serde",
+        "manifest": "aegis-plugins/aegis-sandbox/Cargo.toml",
+        "used_by": [
+          "aegis-plugins/aegis-sandbox/src/lib.rs"
+        ],
+        "usage_hits": 4,
+        "role": "production/test/build/POC/unknown",
+        "feature_flags": "line-level Cargo feature declaration",
+        "runtime_relevance": "unknown"
+      }
+    },
+    {
+      "ecosystem": "rust",
+      "name": "serde_json",
+      "role": "REQUIRED_RUNTIME",
+      "evidence": {
+        "name": "serde_json",
+        "manifest": "aegis-plugins/aegis-sandbox/Cargo.toml",
+        "used_by": [
+          "aegis-plugins/aegis-sandbox/src/lib.rs"
+        ],
+        "usage_hits": 2,
+        "role": "production/test/build/POC/unknown",
+        "feature_flags": "line-level Cargo feature declaration",
+        "runtime_relevance": "unknown"
+      }
+    },
+    {
+      "ecosystem": "rust",
+      "name": "tempfile",
+      "role": "REQUIRED_RUNTIME",
+      "evidence": {
+        "name": "tempfile",
+        "manifest": "aegis-plugins/aegis-sandbox/Cargo.toml",
+        "used_by": [
+          "aegis-plugins/aegis-sandbox/src/lib.rs"
+        ],
+        "usage_hits": 2,
+        "role": "production/test/build/POC/unknown",
+        "feature_flags": "line-level Cargo feature declaration",
+        "runtime_relevance": "unknown"
+      }
+    },
+    {
+      "ecosystem": "rust",
+      "name": "thiserror",
+      "role": "REQUIRED_RUNTIME",
+      "evidence": {
+        "name": "thiserror",
+        "manifest": "aegis-plugins/aegis-sandbox/Cargo.toml",
+        "used_by": [
+          "aegis-plugins/aegis-sandbox/src/lib.rs"
+        ],
+        "usage_hits": 1,
+        "role": "production/test/build/POC/unknown",
+        "feature_flags": "line-level Cargo feature declaration",
+        "runtime_relevance": "unknown"
+      }
+    },
+    {
+      "ecosystem": "rust",
+      "name": "tokio",
+      "role": "UNKNOWN",
+      "evidence": {
+        "name": "tokio",
+        "manifest": "aegis-plugins/aegis-sandbox/Cargo.toml",
+        "used_by": [],
+        "usage_hits": 0,
+        "role": "production/test/build/POC/unknown",
+        "feature_flags": "line-level Cargo feature declaration",
+        "runtime_relevance": "unknown"
+      }
+    },
+    {
+      "ecosystem": "rust",
+      "name": "aegis-nerve",
+      "role": "REQUIRED_RUNTIME",
+      "evidence": {
+        "name": "aegis-nerve",
+        "manifest": "aegis-plugins/aegis-search-sdk/Cargo.toml",
+        "used_by": [
+          "aegis-plugins/aegis-search-sdk/examples/pipeline_evidence.rs",
+          "aegis-plugins/aegis-search-sdk/src/lib.rs",
+          "aegis-plugins/aegis-search-sdk/tests/evidence_integration.rs"
+        ],
+        "usage_hits": 4,
+        "role": "production/test/build/POC/unknown",
+        "feature_flags": "line-level Cargo feature declaration",
+        "runtime_relevance": "unknown"
+      }
+    },
+    {
+      "ecosystem": "rust",
+      "name": "aho-corasick",
+      "role": "UNKNOWN",
+      "evidence": {
+        "name": "aho-corasick",
+        "manifest": "aegis-plugins/aegis-search-sdk/Cargo.toml",
+        "used_by": [],
+        "usage_hits": 0,
+        "role": "production/test/build/POC/unknown",
+        "feature_flags": "line-level Cargo feature declaration",
+        "runtime_relevance": "unknown"
+      }
+    },
+    {
+      "ecosystem": "rust",
+      "name": "anyhow",
+      "role": "UNKNOWN",
+      "evidence": {
+        "name": "anyhow",
+        "manifest": "aegis-plugins/aegis-search-sdk/Cargo.toml",
+        "used_by": [],
+        "usage_hits": 0,
+        "role": "production/test/build/POC/unknown",
+        "feature_flags": "line-level Cargo feature declaration",
+        "runtime_relevance": "unknown"
+      }
+    },
+    {
+      "ecosystem": "rust",
+      "name": "blake3",
+      "role": "REQUIRED_RUNTIME",
+      "evidence": {
+        "name": "blake3",
+        "manifest": "aegis-plugins/aegis-search-sdk/Cargo.toml",
+        "used_by": [
+          "aegis-plugins/aegis-search-sdk/examples/pipeline_evidence.rs",
+          "aegis-plugins/aegis-search-sdk/src/lib.rs",
+          "aegis-plugins/aegis-search-sdk/tests/evidence_integration.rs"
+        ],
+        "usage_hits": 4,
+        "role": "production/test/build/POC/unknown",
+        "feature_flags": "line-level Cargo feature declaration",
+        "runtime_relevance": "unknown"
+      }
+    },
+    {
+      "ecosystem": "rust",
+      "name": "futures",
+      "role": "UNKNOWN",
+      "evidence": {
+        "name": "futures",
+        "manifest": "aegis-plugins/aegis-search-sdk/Cargo.toml",
+        "used_by": [],
+        "usage_hits": 0,
+        "role": "production/test/build/POC/unknown",
+        "feature_flags": "line-level Cargo feature declaration",
+        "runtime_relevance": "unknown"
+      }
+    },
+    {
+      "ecosystem": "rust",
+      "name": "pyo3",
+      "role": "REQUIRED_RUNTIME",
+      "evidence": {
+        "name": "pyo3",
+        "manifest": "aegis-plugins/aegis-search-sdk/Cargo.toml",
+        "used_by": [
+          "aegis-plugins/aegis-search-sdk/src/lib.rs"
+        ],
+        "usage_hits": 4,
+        "role": "production/test/build/POC/unknown",
+        "feature_flags": "line-level Cargo feature declaration",
+        "runtime_relevance": "unknown"
+      }
+    },
+    {
+      "ecosystem": "rust",
+      "name": "reqwest",
+      "role": "REQUIRED_RUNTIME",
+      "evidence": {
+        "name": "reqwest",
+        "manifest": "aegis-plugins/aegis-search-sdk/Cargo.toml",
+        "used_by": [
+          "aegis-plugins/aegis-search-sdk/src/lib.rs"
+        ],
+        "usage_hits": 3,
+        "role": "production/test/build/POC/unknown",
+        "feature_flags": "line-level Cargo feature declaration",
+        "runtime_relevance": "unknown"
+      }
+    },
+    {
+      "ecosystem": "rust",
+      "name": "serde",
+      "role": "REQUIRED_RUNTIME",
+      "evidence": {
+        "name": "serde",
+        "manifest": "aegis-plugins/aegis-search-sdk/Cargo.toml",
+        "used_by": [
+          "aegis-plugins/aegis-search-sdk/src/lib.rs"
+        ],
+        "usage_hits": 1,
+        "role": "production/test/build/POC/unknown",
+        "feature_flags": "line-level Cargo feature declaration",
+        "runtime_relevance": "unknown"
+      }
+    },
+    {
+      "ecosystem": "rust",
+      "name": "serde_json",
+      "role": "REQUIRED_RUNTIME",
+      "evidence": {
+        "name": "serde_json",
+        "manifest": "aegis-plugins/aegis-search-sdk/Cargo.toml",
+        "used_by": [
+          "aegis-plugins/aegis-search-sdk/src/lib.rs"
+        ],
+        "usage_hits": 2,
+        "role": "production/test/build/POC/unknown",
+        "feature_flags": "line-level Cargo feature declaration",
+        "runtime_relevance": "unknown"
+      }
+    },
+    {
+      "ecosystem": "rust",
+      "name": "thiserror",
+      "role": "REQUIRED_RUNTIME",
+      "evidence": {
+        "name": "thiserror",
+        "manifest": "aegis-plugins/aegis-search-sdk/Cargo.toml",
+        "used_by": [
+          "aegis-plugins/aegis-search-sdk/src/lib.rs"
+        ],
+        "usage_hits": 1,
+        "role": "production/test/build/POC/unknown",
+        "feature_flags": "line-level Cargo feature declaration",
+        "runtime_relevance": "unknown"
+      }
+    },
+    {
+      "ecosystem": "rust",
+      "name": "tokio",
+      "role": "REQUIRED_RUNTIME",
+      "evidence": {
+        "name": "tokio",
+        "manifest": "aegis-plugins/aegis-search-sdk/Cargo.toml",
+        "used_by": [
+          "aegis-plugins/aegis-search-sdk/benches/search_bench.rs",
+          "aegis-plugins/aegis-search-sdk/examples/pipeline_aggregate.rs",
+          "aegis-plugins/aegis-search-sdk/examples/pipeline_dedupe.rs",
+          "aegis-plugins/aegis-search-sdk/examples/pipeline_filter.rs",
+          "aegis-plugins/aegis-search-sdk/examples/pipeline_lexical.rs",
+          "aegis-plugins/aegis-search-sdk/src/lib.rs",
+          "aegis-plugins/aegis-search-sdk/tests/search_sandbox_integration.rs"
+        ],
+        "usage_hits": 8,
+        "role": "production/test/build/POC/unknown",
+        "feature_flags": "line-level Cargo feature declaration",
+        "runtime_relevance": "unknown"
+      }
+    },
+    {
+      "ecosystem": "rust",
+      "name": "url",
+      "role": "REQUIRED_RUNTIME",
+      "evidence": {
+        "name": "url",
+        "manifest": "aegis-plugins/aegis-search-sdk/Cargo.toml",
+        "used_by": [
+          "aegis-plugins/aegis-search-sdk/src/lib.rs"
+        ],
+        "usage_hits": 16,
+        "role": "production/test/build/POC/unknown",
+        "feature_flags": "line-level Cargo feature declaration",
+        "runtime_relevance": "unknown"
+      }
+    },
+    {
+      "ecosystem": "rust",
+      "name": "blake3",
+      "role": "REQUIRED_RUNTIME",
+      "evidence": {
+        "name": "blake3",
+        "manifest": "aegis-plugins/aegis-skills/Cargo.toml",
+        "used_by": [
+          "aegis-plugins/aegis-skills/src/lib.rs"
+        ],
+        "usage_hits": 1,
+        "role": "production/test/build/POC/unknown",
+        "feature_flags": "line-level Cargo feature declaration",
+        "runtime_relevance": "unknown"
+      }
+    },
+    {
+      "ecosystem": "rust",
+      "name": "pulldown-cmark",
+      "role": "REQUIRED_RUNTIME",
+      "evidence": {
+        "name": "pulldown-cmark",
+        "manifest": "aegis-plugins/aegis-skills/Cargo.toml",
+        "used_by": [
+          "aegis-plugins/aegis-skills/src/lib.rs"
+        ],
+        "usage_hits": 1,
+        "role": "production/test/build/POC/unknown",
+        "feature_flags": "line-level Cargo feature declaration",
+        "runtime_relevance": "unknown"
+      }
+    },
+    {
+      "ecosystem": "rust",
+      "name": "serde",
+      "role": "REQUIRED_RUNTIME",
+      "evidence": {
+        "name": "serde",
+        "manifest": "aegis-plugins/aegis-skills/Cargo.toml",
+        "used_by": [
+          "aegis-plugins/aegis-skills/src/lib.rs"
+        ],
+        "usage_hits": 1,
+        "role": "production/test/build/POC/unknown",
+        "feature_flags": "line-level Cargo feature declaration",
+        "runtime_relevance": "unknown"
+      }
+    },
+    {
+      "ecosystem": "rust",
+      "name": "thiserror",
+      "role": "REQUIRED_RUNTIME",
+      "evidence": {
+        "name": "thiserror",
+        "manifest": "aegis-plugins/aegis-skills/Cargo.toml",
+        "used_by": [
+          "aegis-plugins/aegis-skills/src/lib.rs"
+        ],
+        "usage_hits": 1,
+        "role": "production/test/build/POC/unknown",
+        "feature_flags": "line-level Cargo feature declaration",
+        "runtime_relevance": "unknown"
+      }
+    },
+    {
+      "ecosystem": "rust",
+      "name": "thiserror",
+      "role": "REQUIRED_RUNTIME",
+      "evidence": {
+        "name": "thiserror",
+        "manifest": "core/rust/Cargo.toml",
+        "used_by": [
+          "core/rust/src/telemetry.rs"
+        ],
+        "usage_hits": 1,
+        "role": "production/test/build/POC/unknown",
+        "feature_flags": "line-level Cargo feature declaration",
+        "runtime_relevance": "unknown"
+      }
+    },
+    {
+      "ecosystem": "rust",
+      "name": "memmap2",
+      "role": "REQUIRED_RUNTIME",
+      "evidence": {
+        "name": "memmap2",
+        "manifest": "core/rust/Cargo.toml",
+        "used_by": [
+          "core/rust/src/bridge_mmap.rs",
+          "core/rust/src/replay.rs",
+          "core/rust/src/shm.rs",
+          "core/rust/src/tests.rs"
+        ],
+        "usage_hits": 4,
+        "role": "production/test/build/POC/unknown",
+        "feature_flags": "line-level Cargo feature declaration",
+        "runtime_relevance": "unknown"
+      }
+    },
+    {
+      "ecosystem": "rust",
+      "name": "parking_lot",
+      "role": "REQUIRED_RUNTIME",
+      "evidence": {
+        "name": "parking_lot",
+        "manifest": "core/rust/Cargo.toml",
+        "used_by": [
+          "core/rust/src/eac/events.rs",
+          "core/rust/src/ffi.rs",
+          "core/rust/src/hot_engine.rs",
+          "core/rust/src/mvcc.rs",
+          "core/rust/src/physical.rs",
+          "core/rust/src/replay.rs",
+          "core/rust/src/sandbox.rs",
+          "core/rust/src/telemetry.rs"
+        ],
+        "usage_hits": 11,
+        "role": "production/test/build/POC/unknown",
+        "feature_flags": "line-level Cargo feature declaration",
+        "runtime_relevance": "unknown"
+      }
+    },
+    {
+      "ecosystem": "rust",
+      "name": "ed25519-dalek",
+      "role": "REQUIRED_RUNTIME",
+      "evidence": {
+        "name": "ed25519-dalek",
+        "manifest": "core/rust/Cargo.toml",
+        "used_by": [
+          "core/rust/src/licensing.rs"
+        ],
+        "usage_hits": 2,
+        "role": "production/test/build/POC/unknown",
+        "feature_flags": "line-level Cargo feature declaration",
+        "runtime_relevance": "unknown"
+      }
+    },
+    {
+      "ecosystem": "rust",
+      "name": "pyo3",
+      "role": "REQUIRED_RUNTIME",
+      "evidence": {
+        "name": "pyo3",
+        "manifest": "core/rust/Cargo.toml",
+        "used_by": [
+          "core/rust/src/ffi.rs",
+          "core/rust/src/governance.rs",
+          "core/rust/src/tests.rs"
+        ],
+        "usage_hits": 88,
+        "role": "production/test/build/POC/unknown",
+        "feature_flags": "line-level Cargo feature declaration",
+        "runtime_relevance": "unknown"
+      }
+    },
+    {
+      "ecosystem": "rust",
+      "name": "arrow",
+      "role": "REQUIRED_RUNTIME",
+      "evidence": {
+        "name": "arrow",
+        "manifest": "core/rust/Cargo.toml",
+        "used_by": [
+          "core/rust/benches/nerve_bench.rs",
+          "core/rust/src/cli/mod.rs",
+          "core/rust/src/governance.rs",
+          "core/rust/src/memory/session_search.rs",
+          "core/rust/src/mvcc.rs",
+          "core/rust/src/orchestrator.rs",
+          "core/rust/src/replay.rs",
+          "core/rust/src/tests.rs"
+        ],
+        "usage_hits": 215,
+        "role": "production/test/build/POC/unknown",
+        "feature_flags": "line-level Cargo feature declaration",
+        "runtime_relevance": "unknown"
+      }
+    },
+    {
+      "ecosystem": "rust",
+      "name": "arrow-buffer",
+      "role": "REQUIRED_RUNTIME",
+      "evidence": {
+        "name": "arrow-buffer",
+        "manifest": "core/rust/Cargo.toml",
+        "used_by": [
+          "core/rust/src/replay.rs"
+        ],
+        "usage_hits": 1,
+        "role": "production/test/build/POC/unknown",
+        "feature_flags": "line-level Cargo feature declaration",
+        "runtime_relevance": "unknown"
+      }
+    },
+    {
+      "ecosystem": "rust",
+      "name": "flatbuffers",
+      "role": "REQUIRED_RUNTIME",
+      "evidence": {
+        "name": "flatbuffers",
+        "manifest": "core/rust/Cargo.toml",
+        "used_by": [
+          "core/rust/src/replay.rs"
+        ],
+        "usage_hits": 1,
+        "role": "production/test/build/POC/unknown",
+        "feature_flags": "line-level Cargo feature declaration",
+        "runtime_relevance": "unknown"
+      }
+    },
+    {
+      "ecosystem": "rust",
+      "name": "syn",
+      "role": "REQUIRED_RUNTIME",
+      "evidence": {
+        "name": "syn",
+        "manifest": "core/rust/Cargo.toml",
+        "used_by": [
+          "core/rust/benches/architecture_performance.rs",
+          "core/rust/src/guardrail.rs",
+          "core/rust/src/harness.rs",
+          "core/rust/src/physical.rs"
+        ],
+        "usage_hits": 22,
+        "role": "production/test/build/POC/unknown",
+        "feature_flags": "line-level Cargo feature declaration",
+        "runtime_relevance": "unknown"
+      }
+    },
+    {
+      "ecosystem": "rust",
+      "name": "proc-macro2",
+      "role": "REQUIRED_RUNTIME",
+      "evidence": {
+        "name": "proc-macro2",
+        "manifest": "core/rust/Cargo.toml",
+        "used_by": [
+          "core/rust/src/physical.rs"
+        ],
+        "usage_hits": 1,
+        "role": "production/test/build/POC/unknown",
+        "feature_flags": "line-level Cargo feature declaration",
+        "runtime_relevance": "unknown"
+      }
+    },
+    {
+      "ecosystem": "rust",
+      "name": "quote",
+      "role": "REQUIRED_RUNTIME",
+      "evidence": {
+        "name": "quote",
+        "manifest": "core/rust/Cargo.toml",
+        "used_by": [
+          "core/rust/src/harness.rs",
+          "core/rust/src/physical.rs"
+        ],
+        "usage_hits": 3,
+        "role": "production/test/build/POC/unknown",
+        "feature_flags": "line-level Cargo feature declaration",
+        "runtime_relevance": "unknown"
+      }
+    },
+    {
+      "ecosystem": "rust",
+      "name": "serde",
+      "role": "REQUIRED_RUNTIME",
+      "evidence": {
+        "name": "serde",
+        "manifest": "core/rust/Cargo.toml",
+        "used_by": [
+          "core/rust/AEGIS-COGNITION/core/rust/src/rbac.rs",
+          "core/rust/src/browser_witness.rs",
+          "core/rust/src/cli/mod.rs",
+          "core/rust/src/eac/cache/semantic.rs",
+          "core/rust/src/eac/events.rs",
+          "core/rust/src/eac/sandbox/batch.rs",
+          "core/rust/src/eac/sandbox/runtime.rs",
+          "core/rust/src/ffi.rs",
+          "core/rust/src/gt96.rs",
+          "core/rust/src/lab.rs",
+          "core/rust/src/licensing.rs",
+          "core/rust/src/physical.rs",
+          "core/rust/src/policy.rs",
+          "core/rust/src/replay.rs",
+          "core/rust/src/resource.rs",
+          "core/rust/src/telemetry.rs"
+        ],
+        "usage_hits": 60,
+        "role": "production/test/build/POC/unknown",
+        "feature_flags": "line-level Cargo feature declaration",
+        "runtime_relevance": "unknown"
+      }
+    },
+    {
+      "ecosystem": "rust",
+      "name": "serde_json",
+      "role": "REQUIRED_RUNTIME",
+      "evidence": {
+        "name": "serde_json",
+        "manifest": "core/rust/Cargo.toml",
+        "used_by": [
+          "core/rust/benches/architecture_performance.rs",
+          "core/rust/src/browser_witness.rs",
+          "core/rust/src/cli/mod.rs",
+          "core/rust/src/eac/cache/semantic.rs",
+          "core/rust/src/eac/sandbox/batch.rs",
+          "core/rust/src/eac/sandbox/runtime.rs",
+          "core/rust/src/ffi.rs",
+          "core/rust/src/lab.rs",
+          "core/rust/src/llm.rs",
+          "core/rust/src/physical.rs",
+          "core/rust/src/replay.rs",
+          "core/rust/src/runtime.rs",
+          "core/rust/src/telemetry.rs",
+          "core/rust/src/tests.rs",
+          "core/rust/tests/resource_contract_matrix.rs"
+        ],
+        "usage_hits": 267,
+        "role": "production/test/build/POC/unknown",
+        "feature_flags": "line-level Cargo feature declaration",
+        "runtime_relevance": "unknown"
+      }
+    },
+    {
+      "ecosystem": "rust",
+      "name": "regex",
+      "role": "REQUIRED_RUNTIME",
+      "evidence": {
+        "name": "regex",
+        "manifest": "core/rust/Cargo.toml",
+        "used_by": [
+          "core/rust/src/browser_witness.rs",
+          "core/rust/src/eac/sandbox/runtime.rs",
+          "core/rust/src/evidence_index.rs",
+          "core/rust/src/harness.rs"
+        ],
+        "usage_hits": 15,
+        "role": "production/test/build/POC/unknown",
+        "feature_flags": "line-level Cargo feature declaration",
+        "runtime_relevance": "unknown"
+      }
+    },
+    {
+      "ecosystem": "rust",
+      "name": "tracing",
+      "role": "REQUIRED_RUNTIME",
+      "evidence": {
+        "name": "tracing",
+        "manifest": "core/rust/Cargo.toml",
+        "used_by": [
+          "core/rust/src/eac/cache/semantic.rs",
+          "core/rust/src/eac/sandbox/batch.rs",
+          "core/rust/src/physical.rs"
+        ],
+        "usage_hits": 5,
+        "role": "production/test/build/POC/unknown",
+        "feature_flags": "line-level Cargo feature declaration",
+        "runtime_relevance": "unknown"
+      }
+    },
+    {
+      "ecosystem": "rust",
+      "name": "tracing-subscriber",
+      "role": "REQUIRED_RUNTIME",
+      "evidence": {
+        "name": "tracing-subscriber",
+        "manifest": "core/rust/Cargo.toml",
+        "used_by": [
+          "core/rust/src/lib.rs"
+        ],
+        "usage_hits": 2,
+        "role": "production/test/build/POC/unknown",
+        "feature_flags": "line-level Cargo feature declaration",
+        "runtime_relevance": "unknown"
+      }
+    },
+    {
+      "ecosystem": "rust",
+      "name": "wasmtime",
+      "role": "REQUIRED_RUNTIME",
+      "evidence": {
+        "name": "wasmtime",
+        "manifest": "core/rust/Cargo.toml",
+        "used_by": [
+          "core/rust/benches/nerve_bench.rs",
+          "core/rust/benches/skill_improvement.rs",
+          "core/rust/src/cli/mod.rs",
+          "core/rust/src/governance.rs",
+          "core/rust/src/replay.rs",
+          "core/rust/src/sandbox.rs",
+          "core/rust/src/skill_registry.rs",
+          "core/rust/src/tests.rs",
+          "core/rust/src/tool_gateway.rs"
+        ],
+        "usage_hits": 49,
+        "role": "production/test/build/POC/unknown",
+        "feature_flags": "line-level Cargo feature declaration",
+        "runtime_relevance": "unknown"
+      }
+    },
+    {
+      "ecosystem": "rust",
+      "name": "wat",
+      "role": "REQUIRED_RUNTIME",
+      "evidence": {
+        "name": "wat",
+        "manifest": "core/rust/Cargo.toml",
+        "used_by": [
+          "core/rust/benches/architecture_performance.rs",
+          "core/rust/benches/nerve_bench.rs",
+          "core/rust/src/cli/mod.rs",
+          "core/rust/src/tests.rs"
+        ],
+        "usage_hits": 37,
+        "role": "production/test/build/POC/unknown",
+        "feature_flags": "line-level Cargo feature declaration",
+        "runtime_relevance": "unknown"
+      }
+    },
+    {
+      "ecosystem": "rust",
+      "name": "blake3",
+      "role": "REQUIRED_RUNTIME",
+      "evidence": {
+        "name": "blake3",
+        "manifest": "core/rust/Cargo.toml",
+        "used_by": [
+          "core/rust/benches/nerve_bench.rs",
+          "core/rust/src/bridge_mmap.rs",
+          "core/rust/src/browser_witness.rs",
+          "core/rust/src/circuit_breaker.rs",
+          "core/rust/src/cli/mod.rs",
+          "core/rust/src/context.rs",
+          "core/rust/src/distributed.rs",
+          "core/rust/src/eac/cache/semantic.rs",
+          "core/rust/src/eac/events.rs",
+          "core/rust/src/eac/sandbox/runtime.rs",
+          "core/rust/src/evidence_index.rs",
+          "core/rust/src/ffi.rs",
+          "core/rust/src/goal_intake.rs",
+          "core/rust/src/governance.rs",
+          "core/rust/src/gt96.rs",
+          "core/rust/src/hot_engine.rs",
+          "core/rust/src/lab.rs",
+          "core/rust/src/learning/mod.rs",
+          "core/rust/src/licensing.rs",
+          "core/rust/src/llm.rs",
+          "core/rust/src/memory/nudge.rs",
+          "core/rust/src/memory/session_search.rs",
+          "core/rust/src/memory/user_model.rs",
+          "core/rust/src/orchestrator.rs",
+          "core/rust/src/physical.rs",
+          "core/rust/src/policy.rs",
+          "core/rust/src/replay.rs",
+          "core/rust/src/skill_registry.rs",
+          "core/rust/src/task_ledger.rs",
+          "core/rust/src/tests.rs",
+          "core/rust/src/tool_gateway.rs"
+        ],
+        "usage_hits": 125,
+        "role": "production/test/build/POC/unknown",
+        "feature_flags": "line-level Cargo feature declaration",
+        "runtime_relevance": "unknown"
+      }
+    },
+    {
+      "ecosystem": "rust",
+      "name": "xxhash-rust",
+      "role": "REQUIRED_RUNTIME",
+      "evidence": {
+        "name": "xxhash-rust",
+        "manifest": "core/rust/Cargo.toml",
+        "used_by": [
+          "core/rust/src/physical.rs"
+        ],
+        "usage_hits": 4,
+        "role": "production/test/build/POC/unknown",
+        "feature_flags": "line-level Cargo feature declaration",
+        "runtime_relevance": "unknown"
+      }
+    },
+    {
+      "ecosystem": "rust",
+      "name": "aho-corasick",
+      "role": "REQUIRED_RUNTIME",
+      "evidence": {
+        "name": "aho-corasick",
+        "manifest": "core/rust/Cargo.toml",
+        "used_by": [
+          "core/rust/src/evidence_index.rs",
+          "core/rust/src/guardrail.rs"
+        ],
+        "usage_hits": 2,
+        "role": "production/test/build/POC/unknown",
+        "feature_flags": "line-level Cargo feature declaration",
+        "runtime_relevance": "unknown"
+      }
+    },
+    {
+      "ecosystem": "rust",
+      "name": "tokio",
+      "role": "REQUIRED_RUNTIME",
+      "evidence": {
+        "name": "tokio",
+        "manifest": "core/rust/Cargo.toml",
+        "used_by": [
+          "core/rust/src/eac/sandbox/batch.rs",
+          "core/rust/src/execution.rs",
+          "core/rust/src/hot_engine.rs"
+        ],
+        "usage_hits": 9,
+        "role": "production/test/build/POC/unknown",
+        "feature_flags": "line-level Cargo feature declaration",
+        "runtime_relevance": "unknown"
+      }
+    },
+    {
+      "ecosystem": "rust",
+      "name": "rayon",
+      "role": "REQUIRED_RUNTIME",
+      "evidence": {
+        "name": "rayon",
+        "manifest": "core/rust/Cargo.toml",
+        "used_by": [
+          "core/rust/src/execution.rs"
+        ],
+        "usage_hits": 2,
+        "role": "production/test/build/POC/unknown",
+        "feature_flags": "line-level Cargo feature declaration",
+        "runtime_relevance": "unknown"
+      }
+    },
+    {
+      "ecosystem": "rust",
+      "name": "aegis-nerve",
+      "role": "REQUIRED_RUNTIME",
+      "evidence": {
+        "name": "aegis-nerve",
+        "manifest": "fuzz/Cargo.toml",
+        "used_by": [
+          "fuzz/fuzz_targets/archive_prefix.rs",
+          "fuzz/fuzz_targets/protocol_frame.rs",
+          "fuzz/fuzz_targets/resource_contract.rs",
+          "fuzz/fuzz_targets/runtime_ffi_contract.rs"
+        ],
+        "usage_hits": 4,
+        "role": "production/test/build/POC/unknown",
+        "feature_flags": "line-level Cargo feature declaration",
+        "runtime_relevance": "unknown"
+      }
+    },
+    {
+      "ecosystem": "rust",
+      "name": "libfuzzer-sys",
+      "role": "REQUIRED_RUNTIME",
+      "evidence": {
+        "name": "libfuzzer-sys",
+        "manifest": "fuzz/Cargo.toml",
+        "used_by": [
+          "fuzz/fuzz_targets/archive_prefix.rs",
+          "fuzz/fuzz_targets/protocol_frame.rs",
+          "fuzz/fuzz_targets/resource_contract.rs",
+          "fuzz/fuzz_targets/runtime_ffi_contract.rs"
+        ],
+        "usage_hits": 4,
+        "role": "production/test/build/POC/unknown",
+        "feature_flags": "line-level Cargo feature declaration",
+        "runtime_relevance": "unknown"
+      }
+    },
+    {
+      "ecosystem": "rust",
+      "name": "serde_json",
+      "role": "REQUIRED_RUNTIME",
+      "evidence": {
+        "name": "serde_json",
+        "manifest": "fuzz/Cargo.toml",
+        "used_by": [
+          "fuzz/fuzz_targets/resource_contract.rs",
+          "fuzz/fuzz_targets/runtime_ffi_contract.rs"
+        ],
+        "usage_hits": 2,
+        "role": "production/test/build/POC/unknown",
+        "feature_flags": "line-level Cargo feature declaration",
+        "runtime_relevance": "unknown"
+      }
+    },
+    {
+      "ecosystem": "rust",
+      "name": "serde",
+      "role": "REQUIRED_RUNTIME",
+      "evidence": {
+        "name": "serde",
+        "manifest": "pocs/code_orchestration_poc/Cargo.toml",
+        "used_by": [
+          "pocs/code_orchestration_poc/src/lib.rs"
+        ],
+        "usage_hits": 1,
+        "role": "production/test/build/POC/unknown",
+        "feature_flags": "line-level Cargo feature declaration",
+        "runtime_relevance": "unknown"
+      }
+    },
+    {
+      "ecosystem": "rust",
+      "name": "serde_json",
+      "role": "REQUIRED_RUNTIME",
+      "evidence": {
+        "name": "serde_json",
+        "manifest": "pocs/code_orchestration_poc/Cargo.toml",
+        "used_by": [
+          "pocs/code_orchestration_poc/src/lib.rs"
+        ],
+        "usage_hits": 3,
+        "role": "production/test/build/POC/unknown",
+        "feature_flags": "line-level Cargo feature declaration",
+        "runtime_relevance": "unknown"
+      }
+    },
+    {
+      "ecosystem": "rust",
+      "name": "tokio",
+      "role": "UNKNOWN",
+      "evidence": {
+        "name": "tokio",
+        "manifest": "pocs/code_orchestration_poc/Cargo.toml",
+        "used_by": [],
+        "usage_hits": 0,
+        "role": "production/test/build/POC/unknown",
+        "feature_flags": "line-level Cargo feature declaration",
+        "runtime_relevance": "unknown"
+      }
+    },
+    {
+      "ecosystem": "rust",
+      "name": "blake3",
+      "role": "REQUIRED_RUNTIME",
+      "evidence": {
+        "name": "blake3",
+        "manifest": "pocs/code_orchestration_poc/Cargo.toml",
+        "used_by": [
+          "pocs/code_orchestration_poc/src/lib.rs"
+        ],
+        "usage_hits": 1,
+        "role": "production/test/build/POC/unknown",
+        "feature_flags": "line-level Cargo feature declaration",
+        "runtime_relevance": "unknown"
+      }
+    },
+    {
+      "ecosystem": "rust",
+      "name": "pyo3",
+      "role": "REQUIRED_RUNTIME",
+      "evidence": {
+        "name": "pyo3",
+        "manifest": "pocs/semantic_cache_poc/Cargo.toml",
+        "used_by": [
+          "pocs/semantic_cache_poc/src/lib.rs"
+        ],
+        "usage_hits": 9,
+        "role": "production/test/build/POC/unknown",
+        "feature_flags": "line-level Cargo feature declaration",
+        "runtime_relevance": "unknown"
+      }
+    },
+    {
+      "ecosystem": "rust",
+      "name": "serde",
+      "role": "REQUIRED_RUNTIME",
+      "evidence": {
+        "name": "serde",
+        "manifest": "pocs/semantic_cache_poc/Cargo.toml",
+        "used_by": [
+          "pocs/semantic_cache_poc/src/lib.rs"
+        ],
+        "usage_hits": 1,
+        "role": "production/test/build/POC/unknown",
+        "feature_flags": "line-level Cargo feature declaration",
+        "runtime_relevance": "unknown"
+      }
+    },
+    {
+      "ecosystem": "rust",
+      "name": "serde_json",
+      "role": "REQUIRED_RUNTIME",
+      "evidence": {
+        "name": "serde_json",
+        "manifest": "pocs/semantic_cache_poc/Cargo.toml",
+        "used_by": [
+          "pocs/semantic_cache_poc/src/lib.rs"
+        ],
+        "usage_hits": 2,
+        "role": "production/test/build/POC/unknown",
+        "feature_flags": "line-level Cargo feature declaration",
+        "runtime_relevance": "unknown"
+      }
+    },
+    {
+      "ecosystem": "rust",
+      "name": "blake3",
+      "role": "UNKNOWN",
+      "evidence": {
+        "name": "blake3",
+        "manifest": "pocs/semantic_cache_poc/Cargo.toml",
+        "used_by": [],
+        "usage_hits": 0,
+        "role": "production/test/build/POC/unknown",
+        "feature_flags": "line-level Cargo feature declaration",
+        "runtime_relevance": "unknown"
+      }
+    },
+    {
+      "ecosystem": "rust",
+      "name": "serde",
+      "role": "REQUIRED_RUNTIME",
+      "evidence": {
+        "name": "serde",
+        "manifest": "pocs/tool_batching_poc/Cargo.toml",
+        "used_by": [
+          "pocs/tool_batching_poc/src/lib.rs"
+        ],
+        "usage_hits": 1,
+        "role": "production/test/build/POC/unknown",
+        "feature_flags": "line-level Cargo feature declaration",
+        "runtime_relevance": "unknown"
+      }
+    },
+    {
+      "ecosystem": "rust",
+      "name": "serde_json",
+      "role": "REQUIRED_RUNTIME",
+      "evidence": {
+        "name": "serde_json",
+        "manifest": "pocs/tool_batching_poc/Cargo.toml",
+        "used_by": [
+          "pocs/tool_batching_poc/src/lib.rs"
+        ],
+        "usage_hits": 7,
+        "role": "production/test/build/POC/unknown",
+        "feature_flags": "line-level Cargo feature declaration",
+        "runtime_relevance": "unknown"
+      }
+    },
+    {
+      "ecosystem": "rust",
+      "name": "tokio",
+      "role": "REQUIRED_RUNTIME",
+      "evidence": {
+        "name": "tokio",
+        "manifest": "pocs/tool_batching_poc/Cargo.toml",
+        "used_by": [
+          "pocs/tool_batching_poc/src/lib.rs"
+        ],
+        "usage_hits": 4,
+        "role": "production/test/build/POC/unknown",
+        "feature_flags": "line-level Cargo feature declaration",
+        "runtime_relevance": "unknown"
+      }
+    }
+  ],
+  "suspicious_direct_dependencies": "No UNUSED_SUSPECT proven by lexical absence",
+  "limitations": [
+    "runtime feature matrix not executed"
+  ],
+  "WORKTREE_EPOCH": "6e8c4adfdccec80543825a18e3885da36acb62c7574807342ae8ccf4c0d64ec6",
+  "HEAD": "f9645caf6d17cee2023d52183990ffcf8317e456",
+  "generated_at": "2026-09-01T02:55:23.4422434+00:00",
+  "collector_version/method": "aegis-final-design-closure-v1; direct Git/filesystem/AST/Cargo plus bounded disposable-wheel probes",
+  "reused_prior_artifact": "C:\\Users\\ADMIN\\AEGIS-COGNITION\\docs\\architecture\\evidence-pack\\final_dependency_roles.json",
+  "reused_prior_artifact_sha256": "44048ab5a37e1dcf4f1315db673172b152547c7fb11f9eb89d183a84e20228b1",
+  "source_epoch_note": "product source unchanged relative to prior bounded local probe; this reconciliation did not repeat equivalent workload",
+  "historical_source_epoch": "549114d28117c7374ab5e1e1b1c0706876887eb55365684c7ec896fe2c779b2d",
+  "method": "aegis-design-closure-reconciliation-v1; direct Git/filesystem/source inspection, prior artifact hash reuse, disposable wheel reconciliation, bounded local probes"
+}

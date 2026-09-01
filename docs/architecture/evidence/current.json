@@ -182,7 +182,12 @@
     "NV-012",
     "NV-013",
     "NV-014",
-    "NV-015"
+    "NV-015",
+    "NV-016",
+    "NV-017",
+    "NV-018",
+    "NV-019",
+    "NV-020"
   ],
   "remediation_requirements": [
     {"id": "P0-PROVENANCE", "priority": "P0", "implementation": "scripts/evidence_consistency_gate.py; .github/workflows", "closure": "Final-SHA build, test, wheel, metadata, SBOM, upload, and signed-attestation artifacts", "evidence_ids": ["CI-001", "DEEP-001", "REL-001"], "evidence_class": "NOT VERIFIED", "status": "IMPLEMENTED / NOT VERIFIED", "final_sha": "CHECKOUT_HEAD"},

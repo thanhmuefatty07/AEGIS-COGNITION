@@ -1,0 +1,57 @@
+{
+  "schema": "aegis-empirical-experiment-output-v1",
+  "experiment_id": "EXP-FFI-001",
+  "status": "COMPLETE",
+  "HEAD": "f9645caf6d17cee2023d52183990ffcf8317e456",
+  "WORKTREE_EPOCH": "549114d28117c7374ab5e1e1b1c0706876887eb55365684c7ec896fe2c779b2d",
+  "generated_at": "2026-08-31T08:45:23.079168+00:00",
+  "question": "What is the observed frequency and payload shape of representative FFI calls?",
+  "why_it_matters": "This result is an input to the final architecture/master plan decision.",
+  "leading_hypothesis": "Scalar status/schema validation calls are small control calls.",
+  "rival_hypotheses": [
+    "Large DTOs/callbacks dominate despite scalar calls being cheap."
+  ],
+  "falsification_criteria": [
+    "A bounded observation contradicts the leading hypothesis within the stated scope."
+  ],
+  "controlled_variables": [
+    "current checkout",
+    "bounded local input",
+    "no external side effects"
+  ],
+  "uncontrolled_variables": [
+    "host scheduling",
+    "filesystem cache/antivirus",
+    "machine-specific toolchain"
+  ],
+  "method": "Thirty deterministic scalar native calls in the clean wheel; no external effects.",
+  "commands": [],
+  "raw_artifacts": [
+    {
+      "path": "docs/architecture/empirical-research/raw/exp_ffi_001.json",
+      "sha256": "09a3412def5dfa181af86f273c36bceee574c2adb86293c6f72e8631775a7242",
+      "kind": "raw"
+    }
+  ],
+  "measurements": [
+    {
+      "metric": "ffi.representative.calls",
+      "value": 30,
+      "unit": "calls",
+      "n": 1,
+      "evidence_class": "MEASURED"
+    }
+  ],
+  "observed_failures": [],
+  "interpretation": "Representative scalar FFI calls completed or were explicitly recorded.",
+  "what_was_falsified": [],
+  "what_remains_unknown": [
+    "all candidate frequencies",
+    "large DTO copies/allocation"
+  ],
+  "evidence_class": "MEASURED",
+  "limitations": [
+    "single scalar workload"
+  ],
+  "recommended_next_decision_input": "Profile real Lab payloads before boundary optimization."
+}

@@ -1,0 +1,1415 @@
+{
+  "schema": "aegis-architecture-performance-v1",
+  "local_profile": {
+    "status": "NOT_MEASURABLE_LOCALLY",
+    "reason": "No external credentials/provider execution was invoked; no expensive Lab/benchmark workload was run for safety.",
+    "startup_import": "not executed in this collection pass",
+    "run_ffi_time": "NOT_MEASURED",
+    "event_writes": "NOT_MEASURED",
+    "serialization": "NOT_MEASURED",
+    "subprocesses": "NOT_MEASURED"
+  },
+  "static_suspects": [
+    {
+      "suspect": "repeated_serialization",
+      "hits": 696,
+      "sample": [
+        {
+          "path": "aegis-plugins/aegis-browser/Cargo.toml",
+          "line": 22,
+          "text": "serde_json = \"1.0\"",
+          "category": "PRODUCT"
+        },
+        {
+          "path": "aegis-plugins/aegis-browser/src/lib.rs",
+          "line": 147,
+          "text": "let payload = serde_json::to_vec(self).unwrap_or_default();",
+          "category": "PRODUCT"
+        },
+        {
+          "path": "aegis-plugins/aegis-sandbox/Cargo.toml",
+          "line": 22,
+          "text": "serde_json = \"1.0\"",
+          "category": "PRODUCT"
+        },
+        {
+          "path": "aegis-plugins/aegis-sandbox/src/lib.rs",
+          "line": 233,
+          "text": "let payload = serde_json::to_vec_pretty(value)",
+          "category": "PRODUCT"
+        },
+        {
+          "path": "aegis-plugins/aegis-sandbox/src/lib.rs",
+          "line": 241,
+          "text": "serde_json::from_slice(&payload).map_err(|error| SandboxError::Serde(error.to_string()))",
+          "category": "PRODUCT"
+        },
+        {
+          "path": "aegis-plugins/aegis-search-sdk/Cargo.toml",
+          "line": 26,
+          "text": "serde_json = \"1.0\"",
+          "category": "PRODUCT"
+        },
+        {
+          "path": "aegis-plugins/aegis-search-sdk/src/lib.rs",
+          "line": 502,
+          "text": "serde_json::to_string(&results)",
+          "category": "PRODUCT"
+        },
+        {
+          "path": "aegis-plugins/aegis-search-sdk/src/lib.rs",
+          "line": 560,
+          "text": "let payload = serde_json::to_vec(candidate).unwrap_or_default();",
+          "category": "PRODUCT"
+        },
+        {
+          "path": "aegis_cognition/benchmark.py",
+          "line": 24,
+          "text": "encoded = json.dumps(payload, sort_keys=True, separators=(\",\", \":\"), default=str).encode()",
+          "category": "PRODUCT"
+        },
+        {
+          "path": "aegis_cognition/benchmark.py",
+          "line": 211,
+          "text": "payload = json.dumps(",
+          "category": "PRODUCT"
+        },
+        {
+          "path": "aegis_cognition/benchmark.py",
+          "line": 253,
+          "text": "result = json.loads(stdout)",
+          "category": "PRODUCT"
+        },
+        {
+          "path": "aegis_cognition/lab.py",
+          "line": 39,
+          "text": "payload = json.dumps(value, sort_keys=True, separators=(\",\", \":\"), default=str).encode()",
+          "category": "LAB"
+        },
+        {
+          "path": "aegis_cognition/lab.py",
+          "line": 104,
+          "text": "payload = json.dumps(value, separators=(\",\", \":\"), ensure_ascii=False).encode()",
+          "category": "LAB"
+        },
+        {
+          "path": "aegis_cognition/lab.py",
+          "line": 111,
+          "text": "payload = json.dumps(",
+          "category": "LAB"
+        },
+        {
+          "path": "aegis_cognition/lab.py",
+          "line": 1191,
+          "text": "encoded = json.dumps(value, separators=(\",\", \":\"), ensure_ascii=False).encode()",
+          "category": "LAB"
+        },
+        {
+          "path": "aegis_cognition/lab.py",
+          "line": 1279,
+          "text": "content = json.dumps(",
+          "category": "LAB"
+        },
+        {
+          "path": "aegis_cognition/lab.py",
+          "line": 1310,
+          "text": "encoded = json.dumps(payload, sort_keys=True, separators=(\",\", \":\"), default=str).encode(\"utf-8\")",
+          "category": "LAB"
+        },
+        {
+          "path": "aegis_cognition/lab.py",
+          "line": 2497,
+          "text": "json.dumps(mission, separators=(\",\", \":\"), ensure_ascii=False)",
+          "category": "LAB"
+        },
+        {
+          "path": "aegis_cognition/lab.py",
+          "line": 3342,
+          "text": "canonical_payload = json.loads(",
+          "category": "LAB"
+        },
+        {
+          "path": "aegis_cognition/lab.py",
+          "line": 3343,
+          "text": "json.dumps(payload, sort_keys=True, separators=(\",\", \":\"), default=str)",
+          "category": "LAB"
+        },
+        {
+          "path": "aegis_cognition/lab.py",
+          "line": 3442,
+          "text": "return json.dumps(",
+          "category": "LAB"
+        },
+        {
+          "path": "aegis_cognition/lab.py",
+          "line": 3460,
+          "text": "return json.dumps(",
+          "category": "LAB"
+        },
+        {
+          "path": "aegis_cognition/lab.py",
+          "line": 3503,
+          "text": "json.dumps(spend, separators=(\",\", \":\")),",
+          "category": "LAB"
+        },
+        {
+          "path": "aegis_cognition/lab.py",
+          "line": 3509,
+          "text": "payload_json = json.dumps(",
+          "category": "LAB"
+        },
+        {
+          "path": "aegis_cognition/lab.py",
+          "line": 4681,
+          "text": "json.dumps(events),",
+          "category": "LAB"
+        }
+      ],
+      "status": "SUSPECT_ONLY_UNMEASURED"
+    },
+    {
+      "suspect": "repeated_hashing",
+      "hits": 898,
+      "sample": [
+        {
+          "path": "_session_report_hardening_8_1_2026_06_16.md",
+          "line": 7,
+          "text": "an explicit user-denial of the retry against a workspace member. TASK 1 (BLAKE3",
+          "category": "DOCUMENTATION"
+        },
+        {
+          "path": "_session_report_hardening_8_1_2026_06_16.md",
+          "line": 8,
+          "text": "migration to `blake3_domain_hash`) cannot be done as specified because the",
+          "category": "DOCUMENTATION"
+        },
+        {
+          "path": "_session_report_hardening_8_1_2026_06_16.md",
+          "line": 15,
+          "text": "## TASK 1: BLAKE3 Migration",
+          "category": "DOCUMENTATION"
+        },
+        {
+          "path": "_session_report_hardening_8_1_2026_06_16.md",
+          "line": 22,
+          "text": "- Evidence: `artifacts/hardening/blake3_task1_infeasible_2026_06_16.md`",
+          "category": "DOCUMENTATION"
+        },
+        {
+          "path": "_session_report_hardening_8_1_2026_06_16.md",
+          "line": 24,
+          "text": "Reason: `blake3_domain_hash` does not exist (0 matches in `core/rust/src/`).",
+          "category": "DOCUMENTATION"
+        },
+        {
+          "path": "_session_report_hardening_8_1_2026_06_16.md",
+          "line": 29,
+          "text": "(`artifacts/audit_2026_06_15/blake3_domain_prefix_plan.md`) itself recommends",
+          "category": "DOCUMENTATION"
+        },
+        {
+          "path": "_session_report_hardening_8_1_2026_06_16.md",
+          "line": 86,
+          "text": "| `artifacts/hardening/blake3_task1_infeasible_2026_06_16.md` | (later) | ~3.5 KB |",
+          "category": "DOCUMENTATION"
+        },
+        {
+          "path": "_session_report_hardening_8_1_2026_06_16.md",
+          "line": 96,
+          "text": "No `core/rust/` source files modified. No on-disk BLAKE3 ledger touched.",
+          "category": "DOCUMENTATION"
+        },
+        {
+          "path": "_session_report_hardening_8_1_2026_06_16.md",
+          "line": 109,
+          "text": "`blake3_task1_infeasible_2026_06_16.md` — introduce the helper, write",
+          "category": "DOCUMENTATION"
+        },
+        {
+          "path": "AEGIS-COGNITION/artifacts/extreme_testing/EXTREME_TESTING_CHAOS_REPORT.md",
+          "line": 15,
+          "text": "| Load Test Ceiling | ~80,000 ops/sec BLAKE3 hashing (Python simulation) |",
+          "category": "DOCUMENTATION"
+        },
+        {
+          "path": "AEGIS-COGNITION/artifacts/extreme_testing/EXTREME_TESTING_CHAOS_REPORT.md",
+          "line": 55,
+          "text": "| BLAKE3 Chain Integrity | **Maintained** | — | PASS |",
+          "category": "DOCUMENTATION"
+        },
+        {
+          "path": "AEGIS-COGNITION/artifacts/extreme_testing/EXTREME_TESTING_CHAOS_REPORT.md",
+          "line": 57,
+          "text": "**Observation**: Arena operations remain sub-20µs even at 10K concurrent payloads. The Python BLAKE3 hashing overhead dominates (12.8µs avg vs Rust SIMD 2.02µs baseline).",
+          "category": "DOCUMENTATION"
+        },
+        {
+          "path": "AEGIS-COGNITION/artifacts/extreme_testing/EXTREME_TESTING_CHAOS_REPORT.md",
+          "line": 81,
+          "text": "| one_byte | 1 byte | Accepted (valid mmap, content mismatch handled by BLAKE3) |",
+          "category": "DOCUMENTATION"
+        },
+        {
+          "path": "AEGIS-COGNITION/artifacts/extreme_testing/EXTREME_TESTING_CHAOS_REPORT.md",
+          "line": 135,
+          "text": "| Data loss | **None detected** (BLAKE3 chain integrity maintained) |",
+          "category": "DOCUMENTATION"
+        },
+        {
+          "path": "AEGIS-COGNITION/artifacts/extreme_testing/EXTREME_TESTING_CHAOS_REPORT.md",
+          "line": 138,
+          "text": "**Observation**: Python `file.write()` + BLAKE3 hash-per-line pattern survives SIGKILL cleanly because writes are line-buffered and the file is opened in append mode. Rust `fs::OpenOptions().append(true)` with `sync_all` would provide even stronger durability.",
+          "category": "DOCUMENTATION"
+        },
+        {
+          "path": "AEGIS-COGNITION/artifacts/extreme_testing/EXTREME_TESTING_CHAOS_REPORT.md",
+          "line": 162,
+          "text": "**Attack vector**: Modify 1 byte in a sealed Arrow IPC file. **Defense**: `ReplayDeterminismProof` recomputes BLAKE3 over the physical file bytes. Any bit flip produces a different hash, which fails `replay_hash_chain_valid`.",
+          "category": "DOCUMENTATION"
+        },
+        {
+          "path": "AEGIS-COGNITION/artifacts/extreme_testing/EXTREME_TESTING_CHAOS_REPORT.md",
+          "line": 206,
+          "text": "| BLAKE3 Chain Tamper Detection | **PASS** | 1-bit flip → hash mismatch confirmed |",
+          "category": "DOCUMENTATION"
+        },
+        {
+          "path": "AEGIS-COGNITION/artifacts/extreme_testing/EXTREME_TESTING_CHAOS_REPORT.md",
+          "line": 276,
+          "text": "CRYPTO BYPASS:       IMPOSSIBLE (BLAKE3 chain + 1-bit detection)",
+          "category": "DOCUMENTATION"
+        },
+        {
+          "path": "AEGIS-COGNITION/DX_TRANSFORMATION_REPORT.md",
+          "line": 26,
+          "text": "| **Error messages** | Cryptic (BLAKE3 mismatches, hash chain errors) | Friendly (actionable: \"How to fix\", \"Option 1/2\") | Actionable | PASS |",
+          "category": "DOCUMENTATION"
+        },
+        {
+          "path": "AEGIS-COGNITION/DX_TRANSFORMATION_REPORT.md",
+          "line": 153,
+          "text": "- BLAKE3 hash chains + Replay Ledger + Event Sourcing",
+          "category": "DOCUMENTATION"
+        },
+        {
+          "path": "aegis-plugins/aegis-browser/Cargo.toml",
+          "line": 19,
+          "text": "blake3 = \"1.5.0\"",
+          "category": "PRODUCT"
+        },
+        {
+          "path": "aegis-plugins/aegis-browser/src/lib.rs",
+          "line": 148,
+          "text": "*blake3::hash(&payload).as_bytes()",
+          "category": "PRODUCT"
+        },
+        {
+          "path": "aegis-plugins/aegis-evidence/Cargo.toml",
+          "line": 14,
+          "text": "blake3 = \"1.5.0\"",
+          "category": "PRODUCT"
+        },
+        {
+          "path": "aegis-plugins/aegis-evidence/src/lib.rs",
+          "line": 72,
+          "text": "let mut hasher = blake3::Hasher::new();",
+          "category": "PRODUCT"
+        },
+        {
+          "path": "aegis-plugins/aegis-evidence/src/lib.rs",
+          "line": 107,
+          "text": "let mut hasher = blake3::Hasher::new();",
+          "category": "PRODUCT"
+        }
+      ],
+      "status": "SUSPECT_ONLY_UNMEASURED"
+    },
+    {
+      "suspect": "copies_clones",
+      "hits": 1046,
+      "sample": [
+        {
+          "path": "aegis-plugins/aegis-bench/src/lib.rs",
+          "line": 65,
+          "text": ".ok_or_else(|| BenchError::MissingMetric(name.clone()))?;",
+          "category": "PRODUCT"
+        },
+        {
+          "path": "aegis-plugins/aegis-bench/src/lib.rs",
+          "line": 67,
+          "text": "name: name.clone(),",
+          "category": "PRODUCT"
+        },
+        {
+          "path": "aegis-plugins/aegis-bench/src/lib.rs",
+          "line": 72,
+          "text": "return Err(BenchError::GateFailed(name.clone()));",
+          "category": "PRODUCT"
+        },
+        {
+          "path": "aegis-plugins/aegis-browser/src/lib.rs",
+          "line": 139,
+          "text": ".clone()",
+          "category": "PRODUCT"
+        },
+        {
+          "path": "aegis-plugins/aegis-browser/src/lib.rs",
+          "line": 148,
+          "text": "*blake3::hash(&payload).as_bytes()",
+          "category": "PRODUCT"
+        },
+        {
+          "path": "aegis-plugins/aegis-browser/src/lib.rs",
+          "line": 228,
+          "text": "self.current_url = Some(url.clone());",
+          "category": "PRODUCT"
+        },
+        {
+          "path": "aegis-plugins/aegis-browser/src/lib.rs",
+          "line": 233,
+          "text": "self.dom.insert(selector.clone(), text.clone());",
+          "category": "PRODUCT"
+        },
+        {
+          "path": "aegis-plugins/aegis-browser/src/lib.rs",
+          "line": 239,
+          "text": "BrowserCommand::ExtractLinks => self.current_url.clone().unwrap_or_default(),",
+          "category": "PRODUCT"
+        },
+        {
+          "path": "aegis-plugins/aegis-evidence/src/lib.rs",
+          "line": 77,
+          "text": "hasher.update(&self.timestamp_ms.to_le_bytes());",
+          "category": "PRODUCT"
+        },
+        {
+          "path": "aegis-plugins/aegis-evidence/src/lib.rs",
+          "line": 78,
+          "text": "*hasher.finalize().as_bytes()",
+          "category": "PRODUCT"
+        },
+        {
+          "path": "aegis-plugins/aegis-evidence/src/lib.rs",
+          "line": 109,
+          "text": "hasher.update(&self.sequence.to_le_bytes());",
+          "category": "PRODUCT"
+        },
+        {
+          "path": "aegis-plugins/aegis-evidence/src/lib.rs",
+          "line": 111,
+          "text": "hasher.update(self.operation.as_bytes());",
+          "category": "PRODUCT"
+        },
+        {
+          "path": "aegis-plugins/aegis-evidence/src/lib.rs",
+          "line": 114,
+          "text": "*hasher.finalize().as_bytes()",
+          "category": "PRODUCT"
+        },
+        {
+          "path": "aegis-plugins/aegis-evidence/src/lib.rs",
+          "line": 197,
+          "text": "*blake3::hash(label.as_bytes()).as_bytes()",
+          "category": "PRODUCT"
+        },
+        {
+          "path": "aegis-plugins/aegis-evidence/src/lib.rs",
+          "line": 205,
+          "text": "store.bind(binding.clone()).unwrap();",
+          "category": "PRODUCT"
+        },
+        {
+          "path": "aegis-plugins/aegis-sandbox/src/lib.rs",
+          "line": 210,
+          "text": "hasher.update(self.stdout.as_bytes());",
+          "category": "PRODUCT"
+        },
+        {
+          "path": "aegis-plugins/aegis-sandbox/src/lib.rs",
+          "line": 211,
+          "text": "hasher.update(self.stderr.as_bytes());",
+          "category": "PRODUCT"
+        },
+        {
+          "path": "aegis-plugins/aegis-sandbox/src/lib.rs",
+          "line": 212,
+          "text": "*hasher.finalize().as_bytes()",
+          "category": "PRODUCT"
+        },
+        {
+          "path": "aegis-plugins/aegis-search-sdk/examples/pipeline_evidence.rs",
+          "line": 5,
+          "text": "*blake3::hash(label.as_bytes()).as_bytes()",
+          "category": "PRODUCT"
+        },
+        {
+          "path": "aegis-plugins/aegis-search-sdk/src/lib.rs",
+          "line": 260,
+          "text": "query.text.clone(),",
+          "category": "PRODUCT"
+        },
+        {
+          "path": "aegis-plugins/aegis-search-sdk/src/lib.rs",
+          "line": 261,
+          "text": "query.text.clone(),",
+          "category": "PRODUCT"
+        },
+        {
+          "path": "aegis-plugins/aegis-search-sdk/src/lib.rs",
+          "line": 324,
+          "text": "DedupeKey::Id => candidate.id.clone(),",
+          "category": "PRODUCT"
+        },
+        {
+          "path": "aegis-plugins/aegis-search-sdk/src/lib.rs",
+          "line": 327,
+          "text": ".clone()",
+          "category": "PRODUCT"
+        },
+        {
+          "path": "aegis-plugins/aegis-search-sdk/src/lib.rs",
+          "line": 328,
+          "text": ".unwrap_or_else(|| candidate.id.clone()),",
+          "category": "PRODUCT"
+        },
+        {
+          "path": "aegis-plugins/aegis-search-sdk/src/lib.rs",
+          "line": 329,
+          "text": "DedupeKey::Title => candidate.title.clone(),",
+          "category": "PRODUCT"
+        }
+      ],
+      "status": "SUSPECT_ONLY_UNMEASURED"
+    },
+    {
+      "suspect": "lock_heavy",
+      "hits": 112,
+      "sample": [
+        {
+          "path": "aegis_cognition/lab.py",
+          "line": 5156,
+          "text": "fcntl.flock(handle.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)",
+          "category": "LAB"
+        },
+        {
+          "path": "aegis_cognition/lab.py",
+          "line": 5177,
+          "text": "fcntl.flock(handle.fileno(), fcntl.LOCK_UN)",
+          "category": "LAB"
+        },
+        {
+          "path": "aegis_cognition/metrics.py",
+          "line": 18,
+          "text": "self._lock = threading.Lock()",
+          "category": "PRODUCT"
+        },
+        {
+          "path": "Cargo.lock",
+          "line": 57,
+          "text": "\"parking_lot\",",
+          "category": "UNKNOWN"
+        },
+        {
+          "path": "Cargo.lock",
+          "line": 1970,
+          "text": "name = \"parking_lot\"",
+          "category": "UNKNOWN"
+        },
+        {
+          "path": "Cargo.lock",
+          "line": 1976,
+          "text": "\"parking_lot_core\",",
+          "category": "UNKNOWN"
+        },
+        {
+          "path": "Cargo.lock",
+          "line": 1980,
+          "text": "name = \"parking_lot_core\"",
+          "category": "UNKNOWN"
+        },
+        {
+          "path": "Cargo.lock",
+          "line": 2931,
+          "text": "\"parking_lot\",",
+          "category": "UNKNOWN"
+        },
+        {
+          "path": "core/rust/benches/nerve_bench.rs",
+          "line": 2440,
+          "text": "assert!(closure.proves_r4_without_staging_or_hitl_hard_block());",
+          "category": "PRODUCT"
+        },
+        {
+          "path": "core/rust/benches/nerve_bench.rs",
+          "line": 2447,
+          "text": "closure.proves_r4_without_staging_or_hitl_hard_block(),",
+          "category": "PRODUCT"
+        },
+        {
+          "path": "core/rust/Cargo.toml",
+          "line": 45,
+          "text": "parking_lot = \"0.12\"",
+          "category": "PRODUCT"
+        },
+        {
+          "path": "core/rust/src/eac/events.rs",
+          "line": 108,
+          "text": "events: parking_lot::Mutex<Vec<EacEvent>>,",
+          "category": "PRODUCT"
+        },
+        {
+          "path": "core/rust/src/eac/events.rs",
+          "line": 121,
+          "text": "events: parking_lot::Mutex::new(Vec::new()),",
+          "category": "PRODUCT"
+        },
+        {
+          "path": "core/rust/src/eac/events.rs",
+          "line": 134,
+          "text": "self.events.lock().push(event);",
+          "category": "PRODUCT"
+        },
+        {
+          "path": "core/rust/src/eac/events.rs",
+          "line": 139,
+          "text": "self.events.lock().len()",
+          "category": "PRODUCT"
+        },
+        {
+          "path": "core/rust/src/eac/events.rs",
+          "line": 144,
+          "text": "self.events.lock().is_empty()",
+          "category": "PRODUCT"
+        },
+        {
+          "path": "core/rust/src/eac/events.rs",
+          "line": 149,
+          "text": "let mut guard = self.events.lock();",
+          "category": "PRODUCT"
+        },
+        {
+          "path": "core/rust/src/eac/events.rs",
+          "line": 155,
+          "text": "self.events.lock().clone()",
+          "category": "PRODUCT"
+        },
+        {
+          "path": "core/rust/src/execution.rs",
+          "line": 16,
+          "text": "use std::sync::{Arc, Mutex};",
+          "category": "PRODUCT"
+        },
+        {
+          "path": "core/rust/src/execution.rs",
+          "line": 49,
+          "text": "registry: Arc<Mutex<ExecutionLaneRegistry>>,",
+          "category": "PRODUCT"
+        },
+        {
+          "path": "core/rust/src/execution.rs",
+          "line": 51,
+          "text": "io_runtime: Mutex<tokio::runtime::Runtime>,",
+          "category": "PRODUCT"
+        },
+        {
+          "path": "core/rust/src/execution.rs",
+          "line": 77,
+          "text": "registry: Arc::new(Mutex::new(registry)),",
+          "category": "PRODUCT"
+        },
+        {
+          "path": "core/rust/src/execution.rs",
+          "line": 79,
+          "text": "io_runtime: Mutex::new(io_runtime),",
+          "category": "PRODUCT"
+        },
+        {
+          "path": "core/rust/src/execution.rs",
+          "line": 85,
+          "text": ".lock()",
+          "category": "PRODUCT"
+        },
+        {
+          "path": "core/rust/src/execution.rs",
+          "line": 86,
+          "text": ".expect(\"execution lane mutex poisoned\")",
+          "category": "PRODUCT"
+        }
+      ],
+      "status": "SUSPECT_ONLY_UNMEASURED"
+    },
+    {
+      "suspect": "filesystem_scans",
+      "hits": 23,
+      "sample": [
+        {
+          "path": ".github/workflows/ci.yml",
+          "line": 143,
+          "text": "wheels = glob.glob(\"target/wheels/*.whl\") + glob.glob(\"artifacts/maturin/*.whl\")",
+          "category": "UNKNOWN"
+        },
+        {
+          "path": "Cargo.lock",
+          "line": 870,
+          "text": "\"walkdir\",",
+          "category": "UNKNOWN"
+        },
+        {
+          "path": "Cargo.lock",
+          "line": 3206,
+          "text": "name = \"walkdir\"",
+          "category": "UNKNOWN"
+        },
+        {
+          "path": "core/python/tests.py",
+          "line": 1614,
+          "text": "metadata_seen_during_hot_commit.extend(output_root.rglob(\"producer-metadata.json\"))",
+          "category": "TEST"
+        },
+        {
+          "path": "core/python/tests.py",
+          "line": 1761,
+          "text": "assert list(output_root.rglob(\"producer-metadata.json\")) == []",
+          "category": "TEST"
+        },
+        {
+          "path": "core/python/tests.py",
+          "line": 2898,
+          "text": "metadata_seen_during_hot_batch.extend(output_root.rglob(\"producer-metadata.json\"))",
+          "category": "TEST"
+        },
+        {
+          "path": "core/python/tests.py",
+          "line": 3005,
+          "text": "assert list(output_root.rglob(\"producer-metadata.json\")) == []",
+          "category": "TEST"
+        },
+        {
+          "path": "docs/architecture/evidence-pack/collect.py",
+          "line": 47,
+          "text": "for dirpath, dirnames, filenames in os.walk(ROOT):",
+          "category": "SCRIPT"
+        },
+        {
+          "path": "docs/architecture/evidence-pack/collect.py",
+          "line": 444,
+          "text": "ci_text = \"\\n\".join(p.read_text(encoding=\"utf-8\", errors=\"replace\") for p in (ROOT / \".github/workflows\").glob(\"*.yml\")) if (ROOT / \".github/workflows\").exists() else \"\"",
+          "category": "SCRIPT"
+        },
+        {
+          "path": "docs/architecture/evidence-pack/collect.py",
+          "line": 638,
+          "text": "\"filesystem_scans\": r\"rglob\\(|glob\\(|os\\.walk|walkdir\",",
+          "category": "SCRIPT"
+        },
+        {
+          "path": "scripts/_audit_regen_requirements.py",
+          "line": 105,
+          "text": "for path in (root / src_dir).rglob(\"*.py\"):",
+          "category": "SCRIPT"
+        },
+        {
+          "path": "scripts/architecture_fitness.py",
+          "line": 197,
+          "text": "for path in (ROOT / \"docs\" / \"adr\").glob(\"ADR-*.md\")",
+          "category": "SCRIPT"
+        },
+        {
+          "path": "scripts/architecture_fitness.py",
+          "line": 241,
+          "text": "for path in (ROOT / \"AEGIS-COGNITION\").rglob(\"*\")",
+          "category": "SCRIPT"
+        },
+        {
+          "path": "scripts/document_consistency_gate.py",
+          "line": 65,
+          "text": "matches = [path for path in root.glob(pattern) if path.is_file()]",
+          "category": "SCRIPT"
+        },
+        {
+          "path": "scripts/document_consistency_gate.py",
+          "line": 146,
+          "text": "for directory, dirnames, filenames in os.walk(root):",
+          "category": "SCRIPT"
+        },
+        {
+          "path": "scripts/evidence_consistency_gate.py",
+          "line": 289,
+          "text": "for path in sorted(suite_dir.glob(\"*.json\")):",
+          "category": "SCRIPT"
+        },
+        {
+          "path": "scripts/release_evidence.py",
+          "line": 63,
+          "text": "files = sorted(path for path in artifacts.rglob(\"*\") if path.is_file())",
+          "category": "SCRIPT"
+        },
+        {
+          "path": "scripts/run_checks.py",
+          "line": 308,
+          "text": "inputs = list((rust_root / 'src').rglob('*.rs'))",
+          "category": "SCRIPT"
+        },
+        {
+          "path": "scripts/run_checks.py",
+          "line": 309,
+          "text": "inputs.extend((rust_root / 'benches').rglob('*.rs'))",
+          "category": "SCRIPT"
+        },
+        {
+          "path": "scripts/run_checks.py",
+          "line": 319,
+          "text": "inputs = list((rust_root / 'src').rglob('*.rs'))",
+          "category": "SCRIPT"
+        },
+        {
+          "path": "scripts/run_checks.py",
+          "line": 346,
+          "text": "inputs.extend(criterion_root.rglob('estimates.json'))",
+          "category": "SCRIPT"
+        },
+        {
+          "path": "scripts/supply_chain_gate.py",
+          "line": 194,
+          "text": "for path in sorted(root_path.glob(glob))",
+          "category": "SCRIPT"
+        },
+        {
+          "path": "scripts/wasmtime_migration_gate.py",
+          "line": 13,
+          "text": "sandbox_tree = \"\\n\".join(path.read_text(encoding=\"utf-8\") for path in (ROOT / \"core\" / \"rust\" / \"src\" / \"eac\").rglob(\"*.rs\"))",
+          "category": "SCRIPT"
+        }
+      ],
+      "status": "SUSPECT_ONLY_UNMEASURED"
+    },
+    {
+      "suspect": "context_reconstruction",
+      "hits": 1641,
+      "sample": [
+        {
+          "path": "AEGIS-COGNITION/artifacts/extreme_testing/EXTREME_TESTING_CHAOS_REPORT.md",
+          "line": 27,
+          "text": "| `.unwrap()` in prod code | 15+ | Low-Medium | bridge_mmap.rs header parsing (10), context.rs node lookup (1), evidence_index.rs (1) |",
+          "category": "DOCUMENTATION"
+        },
+        {
+          "path": "AEGIS-COGNITION/DX_TRANSFORMATION_REPORT.md",
+          "line": 4,
+          "text": "**Status**: HISTORICAL / SUPERSEDED — retained for audit context; current",
+          "category": "DOCUMENTATION"
+        },
+        {
+          "path": "AEGIS-COGNITION/LEGACY_OWNERSHIP.md",
+          "line": 7,
+          "text": "- The tracked transformation report is retained as historical context only.",
+          "category": "DOCUMENTATION"
+        },
+        {
+          "path": "aegis-plugins/aegis-browser/src/lib.rs",
+          "line": 81,
+          "text": "pub struct BrowserContext<D> {",
+          "category": "PRODUCT"
+        },
+        {
+          "path": "aegis-plugins/aegis-browser/src/lib.rs",
+          "line": 87,
+          "text": "context: &'a mut BrowserContext<D>,",
+          "category": "PRODUCT"
+        },
+        {
+          "path": "aegis-plugins/aegis-browser/src/lib.rs",
+          "line": 158,
+          "text": "pub fn context(self) -> BrowserContext<D> {",
+          "category": "PRODUCT"
+        },
+        {
+          "path": "aegis-plugins/aegis-browser/src/lib.rs",
+          "line": 159,
+          "text": "BrowserContext {",
+          "category": "PRODUCT"
+        },
+        {
+          "path": "aegis-plugins/aegis-browser/src/lib.rs",
+          "line": 170,
+          "text": "impl<D: BrowserDriver> BrowserContext<D> {",
+          "category": "PRODUCT"
+        },
+        {
+          "path": "aegis-plugins/aegis-browser/src/lib.rs",
+          "line": 172,
+          "text": "Page { context: self }",
+          "category": "PRODUCT"
+        },
+        {
+          "path": "aegis-plugins/aegis-browser/src/lib.rs",
+          "line": 183,
+          "text": "self.context",
+          "category": "PRODUCT"
+        },
+        {
+          "path": "aegis-plugins/aegis-browser/src/lib.rs",
+          "line": 192,
+          "text": "self.context.browser.driver.execute(BrowserCommand::Click {",
+          "category": "PRODUCT"
+        },
+        {
+          "path": "aegis-plugins/aegis-browser/src/lib.rs",
+          "line": 198,
+          "text": "self.context",
+          "category": "PRODUCT"
+        },
+        {
+          "path": "aegis-plugins/aegis-browser/src/lib.rs",
+          "line": 208,
+          "text": "self.context",
+          "category": "PRODUCT"
+        },
+        {
+          "path": "aegis-plugins/aegis-browser/src/lib.rs",
+          "line": 217,
+          "text": "self.context",
+          "category": "PRODUCT"
+        },
+        {
+          "path": "aegis-plugins/aegis-browser/src/lib.rs",
+          "line": 266,
+          "text": "let mut context = browser.context();",
+          "category": "PRODUCT"
+        },
+        {
+          "path": "aegis-plugins/aegis-browser/src/lib.rs",
+          "line": 267,
+          "text": "let mut page = context.page();",
+          "category": "PRODUCT"
+        },
+        {
+          "path": "aegis-plugins/aegis-search-sdk/tests/evidence_integration.rs",
+          "line": 10,
+          "text": "fn retrieved_candidate_can_be_bound_into_evidence_audit() {",
+          "category": "TEST"
+        },
+        {
+          "path": "aegis-plugins/aegis-skills/skills/evidence-retrieval-skill/SKILL.md",
+          "line": 7,
+          "text": "Use when replay, memory, or context needs fast local evidence retrieval.",
+          "category": "DOCUMENTATION"
+        },
+        {
+          "path": "aegis-plugins/aegis-skills/skills/research-skill/SKILL.md",
+          "line": 4,
+          "text": "Research is a pipeline: decompose, retrieve, cross-check, bind evidence, and",
+          "category": "DOCUMENTATION"
+        },
+        {
+          "path": "aegis-plugins/aegis-skills/skills/search-sdk-skill/SKILL.md",
+          "line": 25,
+          "text": "Do not treat retrieved text as final truth without verification.",
+          "category": "DOCUMENTATION"
+        },
+        {
+          "path": "aegis_cognition/__init__.py",
+          "line": 27,
+          "text": "\"CorrelationContext\",",
+          "category": "PRODUCT"
+        },
+        {
+          "path": "aegis_cognition/__init__.py",
+          "line": 115,
+          "text": "from .observability import CorrelationContext, RuntimeTelemetry",
+          "category": "PRODUCT"
+        },
+        {
+          "path": "aegis_cognition/application.py",
+          "line": 15,
+          "text": "from .observability import CorrelationContext, RuntimeTelemetry",
+          "category": "PRODUCT"
+        },
+        {
+          "path": "aegis_cognition/application.py",
+          "line": 32,
+          "text": "self.correlation = CorrelationContext.new()",
+          "category": "PRODUCT"
+        },
+        {
+          "path": "aegis_cognition/application.py",
+          "line": 36,
+          "text": "rag_context = self._retrieve_context(task)",
+          "category": "PRODUCT"
+        }
+      ],
+      "status": "SUSPECT_ONLY_UNMEASURED"
+    },
+    {
+      "suspect": "subprocess_startup",
+      "hits": 50,
+      "sample": [
+        {
+          "path": "aegis_cognition/benchmark.py",
+          "line": 223,
+          "text": "process: subprocess.Popen[str] | None = None",
+          "category": "PRODUCT"
+        },
+        {
+          "path": "aegis_cognition/benchmark.py",
+          "line": 225,
+          "text": "process = subprocess.Popen(",
+          "category": "PRODUCT"
+        },
+        {
+          "path": "core/python/tests.py",
+          "line": 2057,
+          "text": "patch(\"scripts.run_checks.subprocess.run\", side_effect=fake_run),",
+          "category": "TEST"
+        },
+        {
+          "path": "core/python/tests.py",
+          "line": 2532,
+          "text": "with patch(\"scripts.run_checks.subprocess.run\", side_effect=fake_run):",
+          "category": "TEST"
+        },
+        {
+          "path": "core/rust/src/execution.rs",
+          "line": 145,
+          "text": "let mut child = Command::new(program)",
+          "category": "PRODUCT"
+        },
+        {
+          "path": "docs/architecture/evidence-pack/collect.py",
+          "line": 65,
+          "text": "p = subprocess.run(args, cwd=ROOT, text=True, capture_output=True, timeout=timeout, check=False)",
+          "category": "SCRIPT"
+        },
+        {
+          "path": "docs/architecture/evidence-pack/collect.py",
+          "line": 208,
+          "text": "side_names = (\"open\", \"urlopen\", \"Popen\", \"run\", \"serve_forever\", \"create_task\", \"launch\", \"connect\", \"write_text\", \"unlink\", \"mkdir\", \"remove\", \"invoke\", \"index_session\")",
+          "category": "SCRIPT"
+        },
+        {
+          "path": "docs/architecture/evidence-pack/collect.py",
+          "line": 389,
+          "text": "\"PROCESS_SPAWN\": r\"Popen|subprocess\\.|create_subprocess|multiprocessing|os\\.system\",",
+          "category": "SCRIPT"
+        },
+        {
+          "path": "docs/architecture/evidence-pack/collect.py",
+          "line": 426,
+          "text": "rust_sites = scan_text(r\"TcpListener|TcpStream|std::fs::|Command::new|std::process|wasmtime|mmap|unsafe\\b|File::create\", safe_files({\".rs\"}))",
+          "category": "SCRIPT"
+        },
+        {
+          "path": "docs/architecture/evidence-pack/collect.py",
+          "line": 640,
+          "text": "\"subprocess_startup\": r\"Popen|subprocess\\.run|Command::new\",",
+          "category": "SCRIPT"
+        },
+        {
+          "path": "scripts/external_deployment_smoke_gate.py",
+          "line": 548,
+          "text": "result = subprocess.run(",
+          "category": "SCRIPT"
+        },
+        {
+          "path": "scripts/extreme_testing_suite.py",
+          "line": 385,
+          "text": "proc = subprocess.Popen(",
+          "category": "SCRIPT"
+        },
+        {
+          "path": "scripts/hermes_baseline_gate.py",
+          "line": 77,
+          "text": "result = subprocess.run(",
+          "category": "SCRIPT"
+        },
+        {
+          "path": "scripts/hermes_baseline_gate.py",
+          "line": 91,
+          "text": "result = subprocess.run(",
+          "category": "SCRIPT"
+        },
+        {
+          "path": "scripts/hermes_persistence_baseline_gate.py",
+          "line": 77,
+          "text": "result = subprocess.run(",
+          "category": "SCRIPT"
+        },
+        {
+          "path": "scripts/hermes_persistence_baseline_gate.py",
+          "line": 91,
+          "text": "result = subprocess.run(",
+          "category": "SCRIPT"
+        },
+        {
+          "path": "scripts/hermes_rpc_baseline_gate.py",
+          "line": 69,
+          "text": "result = subprocess.run(",
+          "category": "SCRIPT"
+        },
+        {
+          "path": "scripts/hermes_rpc_baseline_gate.py",
+          "line": 83,
+          "text": "result = subprocess.run(",
+          "category": "SCRIPT"
+        },
+        {
+          "path": "scripts/hermes_session_recovery_baseline_gate.py",
+          "line": 80,
+          "text": "result = subprocess.run(",
+          "category": "SCRIPT"
+        },
+        {
+          "path": "scripts/hermes_session_recovery_baseline_gate.py",
+          "line": 94,
+          "text": "result = subprocess.run(",
+          "category": "SCRIPT"
+        },
+        {
+          "path": "scripts/linux_cgroup_live_probe.py",
+          "line": 80,
+          "text": "child: subprocess.Popen[bytes] | None = None",
+          "category": "SCRIPT"
+        },
+        {
+          "path": "scripts/linux_cgroup_live_probe.py",
+          "line": 88,
+          "text": "child = subprocess.Popen([sys.executable, \"-c\", _child_code()], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)",
+          "category": "SCRIPT"
+        },
+        {
+          "path": "scripts/local_git_backup.py",
+          "line": 13,
+          "text": "return subprocess.run(",
+          "category": "SCRIPT"
+        },
+        {
+          "path": "scripts/macos_capability_probe.py",
+          "line": 37,
+          "text": "child = subprocess.Popen([sys.executable, \"-c\", \"import time; time.sleep(30)\"])",
+          "category": "SCRIPT"
+        },
+        {
+          "path": "scripts/production_closure.py",
+          "line": 146,
+          "text": "result = subprocess.run(",
+          "category": "SCRIPT"
+        }
+      ],
+      "status": "SUSPECT_ONLY_UNMEASURED"
+    },
+    {
+      "suspect": "ffi_crossing",
+      "hits": 374,
+      "sample": [
+        {
+          "path": ".github/workflows/ci.yml",
+          "line": 148,
+          "text": "assert any(\"aegis_nerve\" in name for name in names)",
+          "category": "UNKNOWN"
+        },
+        {
+          "path": "AEGIS-COGNITION/DX_TRANSFORMATION_REPORT.md",
+          "line": 75,
+          "text": "2. **Graceful degradation** — When the Rust `aegis_nerve` extension is missing, DEV mode falls back to Python BLAKE2 hashing with a warning. STAGING/PROD require the extension.",
+          "category": "DOCUMENTATION"
+        },
+        {
+          "path": "aegis-plugins/aegis-search-sdk/examples/pipeline_evidence.rs",
+          "line": 1,
+          "text": "use aegis_nerve::evidence_index::HotEvidenceIndex;",
+          "category": "PRODUCT"
+        },
+        {
+          "path": "aegis-plugins/aegis-search-sdk/src/lib.rs",
+          "line": 1,
+          "text": "use aegis_nerve::evidence_index::{CandidateEvidenceRef, HotEvidenceIndex, SortedEvidenceSet};",
+          "category": "PRODUCT"
+        },
+        {
+          "path": "aegis-plugins/aegis-search-sdk/src/lib.rs",
+          "line": 494,
+          "text": "#[pyfunction]",
+          "category": "PRODUCT"
+        },
+        {
+          "path": "aegis-plugins/aegis-search-sdk/src/lib.rs",
+          "line": 495,
+          "text": "fn lexical_sync(query: &PySearchQuery) -> PyResult<String> {",
+          "category": "PRODUCT"
+        },
+        {
+          "path": "aegis-plugins/aegis-search-sdk/src/lib.rs",
+          "line": 507,
+          "text": "fn aegis_search_sdk(_py: Python<'_>, module: &Bound<'_, PyModule>) -> PyResult<()> {",
+          "category": "PRODUCT"
+        },
+        {
+          "path": "aegis-plugins/aegis-search-sdk/src/lib.rs",
+          "line": 509,
+          "text": "module.add_function(wrap_pyfunction!(lexical_sync, module)?)?;",
+          "category": "PRODUCT"
+        },
+        {
+          "path": "aegis-plugins/aegis-search-sdk/src/lib.rs",
+          "line": 569,
+          "text": "use aegis_nerve::evidence_index::EvidenceCandidateTier;",
+          "category": "PRODUCT"
+        },
+        {
+          "path": "aegis-plugins/aegis-search-sdk/tests/evidence_integration.rs",
+          "line": 2,
+          "text": "use aegis_nerve::evidence_index::HotEvidenceIndex;",
+          "category": "TEST"
+        },
+        {
+          "path": "aegis_cognition/lab.py",
+          "line": 1199,
+          "text": "import aegis_nerve  # type: ignore[import-not-found]",
+          "category": "LAB"
+        },
+        {
+          "path": "aegis_cognition/lab.py",
+          "line": 1201,
+          "text": "return cast(Any, aegis_nerve)",
+          "category": "LAB"
+        },
+        {
+          "path": "aegis_cognition/lab.py",
+          "line": 1204,
+          "text": "from aegis_cognition import aegis_nerve  # type: ignore[import-not-found]",
+          "category": "LAB"
+        },
+        {
+          "path": "aegis_cognition/lab.py",
+          "line": 1206,
+          "text": "return cast(Any, aegis_nerve)",
+          "category": "LAB"
+        },
+        {
+          "path": "aegis_cognition/lab.py",
+          "line": 1208,
+          "text": "raise ImportError(\"Rust aegis_nerve extension is unavailable\") from exc",
+          "category": "LAB"
+        },
+        {
+          "path": "aegis_cognition/lab.py",
+          "line": 3539,
+          "text": "aegis_nerve = _native_lab_module()",
+          "category": "LAB"
+        },
+        {
+          "path": "aegis_cognition/lab.py",
+          "line": 3544,
+          "text": "verifier = getattr(aegis_nerve, \"aegis_lab_verify_event_chain\", None)",
+          "category": "LAB"
+        },
+        {
+          "path": "aegis_cognition/lab.py",
+          "line": 3560,
+          "text": "aegis_nerve = _native_lab_module()",
+          "category": "LAB"
+        },
+        {
+          "path": "aegis_cognition/lab.py",
+          "line": 3565,
+          "text": "validator = getattr(aegis_nerve, \"aegis_lab_validate_transition\", None)",
+          "category": "LAB"
+        },
+        {
+          "path": "aegis_cognition/lab.py",
+          "line": 4662,
+          "text": "aegis_nerve = _native_lab_module()",
+          "category": "LAB"
+        },
+        {
+          "path": "aegis_cognition/lab.py",
+          "line": 4663,
+          "text": "archive = getattr(aegis_nerve, \"aegis_lab_archive_events\", None)",
+          "category": "LAB"
+        },
+        {
+          "path": "aegis_cognition/lab.py",
+          "line": 4693,
+          "text": "aegis_nerve, \"aegis_lab_verify_archive_against_manifest\", None",
+          "category": "LAB"
+        },
+        {
+          "path": "aegis_cognition/lab.py",
+          "line": 4695,
+          "text": "verifier = getattr(aegis_nerve, \"aegis_lab_verify_archive\", None)",
+          "category": "LAB"
+        },
+        {
+          "path": "aegis_cognition/lab.py",
+          "line": 4860,
+          "text": "aegis_nerve = _native_lab_module()",
+          "category": "LAB"
+        },
+        {
+          "path": "aegis_cognition/lab.py",
+          "line": 4861,
+          "text": "verifier = getattr(aegis_nerve, \"aegis_lab_verify_event_chain\", None)",
+          "category": "LAB"
+        }
+      ],
+      "status": "SUSPECT_ONLY_UNMEASURED"
+    },
+    {
+      "suspect": "unbounded_collections",
+      "hits": 1079,
+      "sample": [
+        {
+          "path": ".github/workflows/ci.yml",
+          "line": 146,
+          "text": "names = wheel.namelist()",
+          "category": "UNKNOWN"
+        },
+        {
+          "path": "AEGIS-COGNITION/artifacts/extreme_testing/EXTREME_TESTING_CHAOS_REPORT.md",
+          "line": 138,
+          "text": "**Observation**: Python `file.write()` + BLAKE3 hash-per-line pattern survives SIGKILL cleanly because writes are line-buffered and the file is opened in append mode. Rust `fs::OpenOptions().append(true)` with `sync_all` would provide even stronger durability.",
+          "category": "DOCUMENTATION"
+        },
+        {
+          "path": "aegis-plugins/aegis-bench/src/lib.rs",
+          "line": 23,
+          "text": "pub metrics: Vec<BenchMetric>,",
+          "category": "PRODUCT"
+        },
+        {
+          "path": "aegis-plugins/aegis-evidence/src/lib.rs",
+          "line": 46,
+          "text": "audit: Vec<AuditRecord>,",
+          "category": "PRODUCT"
+        },
+        {
+          "path": "aegis-plugins/aegis-evidence/src/lib.rs",
+          "line": 147,
+          "text": "pub fn audit_trail(&self, evidence_ref_hash: [u8; 32]) -> Vec<&AuditRecord> {",
+          "category": "PRODUCT"
+        },
+        {
+          "path": "aegis-plugins/aegis-sandbox/src/lib.rs",
+          "line": 244,
+          "text": "pub fn list_states(&self) -> Result<Vec<String>, SandboxError> {",
+          "category": "PRODUCT"
+        },
+        {
+          "path": "aegis-plugins/aegis-search-sdk/src/lib.rs",
+          "line": 23,
+          "text": "pub sources: Vec<String>,",
+          "category": "PRODUCT"
+        },
+        {
+          "path": "aegis-plugins/aegis-search-sdk/src/lib.rs",
+          "line": 39,
+          "text": "pub candidates: Vec<SearchCandidate>,",
+          "category": "PRODUCT"
+        },
+        {
+          "path": "aegis-plugins/aegis-search-sdk/src/lib.rs",
+          "line": 98,
+          "text": "operations: Vec<SearchOperation>,",
+          "category": "PRODUCT"
+        },
+        {
+          "path": "aegis-plugins/aegis-search-sdk/src/lib.rs",
+          "line": 125,
+          "text": "fn normalized_terms(&self) -> Vec<String> {",
+          "category": "PRODUCT"
+        },
+        {
+          "path": "aegis-plugins/aegis-search-sdk/src/lib.rs",
+          "line": 169,
+          "text": "pub fn from_candidates(candidates: Vec<SearchCandidate>) -> Self {",
+          "category": "PRODUCT"
+        },
+        {
+          "path": "aegis-plugins/aegis-search-sdk/src/lib.rs",
+          "line": 449,
+          "text": ") -> Vec<CandidateEvidenceRef> {",
+          "category": "PRODUCT"
+        },
+        {
+          "path": "aegis-plugins/aegis-search-sdk/src/lib.rs",
+          "line": 514,
+          "text": "fn normalized_terms(text: &str) -> Vec<String> {",
+          "category": "PRODUCT"
+        },
+        {
+          "path": "aegis-plugins/aegis-skills/src/lib.rs",
+          "line": 58,
+          "text": "pub fn headings(&self) -> Vec<String> {",
+          "category": "PRODUCT"
+        },
+        {
+          "path": "aegis-plugins/aegis-skills/src/lib.rs",
+          "line": 102,
+          "text": "pub fn select_for_task(&self, task: &str, max_skills: usize) -> Vec<&Skill> {",
+          "category": "PRODUCT"
+        },
+        {
+          "path": "aegis-plugins/aegis-skills/src/lib.rs",
+          "line": 117,
+          "text": ".collect::<Vec<_>>();",
+          "category": "PRODUCT"
+        },
+        {
+          "path": "aegis-plugins/aegis-skills/src/lib.rs",
+          "line": 136,
+          "text": "pub fn builtin_skills() -> Result<Vec<Skill>, SkillError> {",
+          "category": "PRODUCT"
+        },
+        {
+          "path": "aegis_cognition/application.py",
+          "line": 132,
+          "text": "lab_events=tuple(asdict(event) for event in dossier.events),",
+          "category": "PRODUCT"
+        },
+        {
+          "path": "aegis_cognition/benchmark.py",
+          "line": 23,
+          "text": "payload = asdict(cast(Any, value)) if is_dataclass(value) else value",
+          "category": "PRODUCT"
+        },
+        {
+          "path": "aegis_cognition/benchmark.py",
+          "line": 125,
+          "text": "return _digest({\"schema\": \"aegis-environment-fingerprint-v1\", **asdict(self)})",
+          "category": "PRODUCT"
+        },
+        {
+          "path": "aegis_cognition/benchmark.py",
+          "line": 226,
+          "text": "list(argv),",
+          "category": "PRODUCT"
+        },
+        {
+          "path": "aegis_cognition/benchmark.py",
+          "line": 274,
+          "text": "\"command\": list(argv),",
+          "category": "PRODUCT"
+        },
+        {
+          "path": "aegis_cognition/benchmark.py",
+          "line": 337,
+          "text": "records.append(record)",
+          "category": "PRODUCT"
+        },
+        {
+          "path": "aegis_cognition/benchmark.py",
+          "line": 370,
+          "text": "failures.append(\"environment_hash_mismatch\")",
+          "category": "PRODUCT"
+        },
+        {
+          "path": "aegis_cognition/benchmark.py",
+          "line": 373,
+          "text": "failures.append(str(exc))",
+          "category": "PRODUCT"
+        }
+      ],
+      "status": "SUSPECT_ONLY_UNMEASURED"
+    }
+  ]
+}

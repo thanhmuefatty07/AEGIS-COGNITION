@@ -1,0 +1,44 @@
+{
+  "schema": "aegis-design-config-precedence-v1",
+  "precedence_by_boundary": [
+    {
+      "boundary": "trust level",
+      "order": "explicit override > config.toml trust.level > AEGIS_TRUST_LEVEL > DEV",
+      "evidence": "aegis_cognition/config.py resolve_trust_level"
+    },
+    {
+      "boundary": "API key",
+      "order": "config llm.api_key > OPENAI_API_KEY > AEGIS_API_KEY",
+      "evidence": "aegis_cognition/config.py AgentConfig.from_inputs"
+    },
+    {
+      "boundary": "Agent/Lab options",
+      "order": "Agent kwargs/options > LabPolicy/LabBudget merged options > defaults; policy setdefault allows explicit option override",
+      "evidence": "aegis_cognition/lab.py LabPolicy.start/_gateway"
+    },
+    {
+      "boundary": "retry counts",
+      "order": "per-run options override defaults, then cap at max_steps; no provider SDK override known",
+      "evidence": "lab.py gateway/tool/experiment/simulation"
+    },
+    {
+      "boundary": "Rust trust",
+      "order": "AEGIS_TRUST_LEVEL > Rust default PROD",
+      "evidence": "core/rust/src/hot_engine.rs TrustLevel::from_env"
+    }
+  ],
+  "duplicated_defaults": [
+    "trust (DEV/PROD)",
+    "retry (adapter/provider/Lab/SDK)",
+    "retention/archive",
+    "package/CLI owner"
+  ],
+  "security_relevant_override": "Lab policy browser/replay/native/external-write values use setdefault, so explicit options can override policy; this is a design blocker until authority is explicit",
+  "limitations": [
+    "provider/deployment environment matrix not contacted"
+  ],
+  "HEAD": "f9645caf6d17cee2023d52183990ffcf8317e456",
+  "WORKTREE_EPOCH": "6e8c4adfdccec80543825a18e3885da36acb62c7574807342ae8ccf4c0d64ec6",
+  "generated_at": "2026-09-01T02:54:46.298383+00:00",
+  "method": "aegis-design-closure-reconciliation-v1; direct Git/filesystem/source inspection, prior artifact hash reuse, disposable wheel reconciliation, bounded local probes"
+}

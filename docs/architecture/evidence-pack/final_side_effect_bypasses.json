@@ -1,0 +1,67 @@
+{
+  "schema": "aegis-final-side-effect-bypasses-v1",
+  "rows": [
+    {
+      "sink": "urllib.request.urlopen",
+      "locations": [
+        "aegis_cognition/lab.py"
+      ],
+      "classification": "PARTIALLY_FENCED",
+      "can_execute_without_admission": "POSSIBLE_LEGACY_HELPER"
+    },
+    {
+      "sink": "provider SDK invoke",
+      "locations": [
+        "core/python/aegis/provider.py",
+        "core/python/aegis_adapter.py"
+      ],
+      "classification": "COMPATIBILITY_BYPASS",
+      "can_execute_without_admission": "YES"
+    },
+    {
+      "sink": "Playwright launch",
+      "locations": [
+        "core/python/browser_playwright_runtime.py",
+        "core/python/browser_runtime_adapter.py"
+      ],
+      "classification": "PARTIALLY_FENCED",
+      "can_execute_without_admission": "CONFIG_DEPENDENT"
+    },
+    {
+      "sink": "subprocess.Popen/run",
+      "locations": [
+        "core/python/browser_ops_bench.py",
+        "aegis_cognition/benchmark.py",
+        "scripts/*"
+      ],
+      "classification": "LEGACY_BYPASS",
+      "can_execute_without_admission": "YES_TOOLING"
+    },
+    {
+      "sink": "filesystem writes",
+      "locations": [
+        "aegis_cognition/lab.py",
+        "core/python/operator_api.py",
+        "scripts/*"
+      ],
+      "classification": "PARTIALLY_FENCED",
+      "can_execute_without_admission": "YES_OPERATOR_AUDIT"
+    },
+    {
+      "sink": "sys.path/environment mutation",
+      "locations": [
+        "scripts/*",
+        "aegis_cognition/dx_metrics.py"
+      ],
+      "classification": "TEST_ONLY",
+      "can_execute_without_admission": "YES"
+    }
+  ],
+  "limitations": [
+    "call-site audit only"
+  ],
+  "WORKTREE_EPOCH": "3783037b7a38cf214bdfe4b593496971ccafec29fd6b5b05f413a98ea51918c6",
+  "HEAD": "f9645caf6d17cee2023d52183990ffcf8317e456",
+  "generated_at": "2026-08-28T02:58:56.366605+00:00",
+  "collector_version/method": "aegis-final-design-closure-v1; direct Git/filesystem/AST/Cargo plus bounded disposable-wheel probes"
+}

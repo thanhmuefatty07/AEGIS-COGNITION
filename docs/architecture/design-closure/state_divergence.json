@@ -1,0 +1,152 @@
+{
+  "schema": "aegis-design-state-divergence-v1",
+  "rows": [
+    {
+      "entity": "Mission",
+      "python": "LabRun mission_id/objective/scope/non_goals; mission_id includes created_at_ms",
+      "rust": "LabMissionSpec mission_id/objective/scope/contract_hash/BudgetPolicy/required_evidence/max_steps/schema",
+      "classification": "SEMANTIC_DIVERGENCE",
+      "field_comparison": {
+        "python_only": [
+          "non_goals",
+          "token_budget scalar"
+        ],
+        "rust_only": [
+          "contract_hash",
+          "budget vectors",
+          "required_evidence",
+          "schema"
+        ],
+        "shared": "mission_id/objective/scope"
+      },
+      "evidence": "aegis_cognition/lab.py LabRun/_initialize_native_controller; core/rust/src/lab.rs LabMissionSpec"
+    },
+    {
+      "entity": "Source",
+      "python": "SourceRecord hashes are str; relation/citation_spans/extractor/provenance fields",
+      "rust": "typed hashes [u8;32], HTTPS/credential/hash validation",
+      "classification": "LOSSY_PROJECTION",
+      "field_comparison": {
+        "python_only": [
+          "relation",
+          "citation_spans"
+        ],
+        "rust_only": [
+          "typed hash validation"
+        ],
+        "shared": "source_id,uri,retrieved_at_ms,trust_tier,extractor,provenance_cluster"
+      },
+      "native_projection_behavior": "valid hex hashes are materialized into typed runtime.sources; opaque compatibility labels remain projection-only",
+      "evidence": "lab.py SourceRecord/add_source; core/rust/src/lab.rs SourceRecord/admit_projection_record"
+    },
+    {
+      "entity": "Claim",
+      "python": "status str, tuple source_ids, confidence_bps int",
+      "rust": "ClaimStatus enum, Vec source_ids, u16 confidence_bps",
+      "classification": "LOSSY_PROJECTION",
+      "native_projection_behavior": "a valid typed source chain materializes runtime.claims; adapter-only fields remain in projection payload",
+      "evidence": "lab.py ClaimRecord/add_claim; core/rust/src/lab.rs ClaimRecord"
+    },
+    {
+      "entity": "Hypothesis",
+      "python": "tuple links/falsifiers and Python validation",
+      "rust": "Vec links/falsifiers with typed validation",
+      "classification": "LOSSY_PROJECTION",
+      "native_projection_behavior": "a valid typed claim chain materializes runtime.hypotheses; projection IDs/payload remain for compatibility",
+      "evidence": "lab.py HypothesisRecord/add_hypothesis; core/rust/src/lab.rs HypothesisRecord"
+    },
+    {
+      "entity": "Experiment",
+      "python": "tuple variables/controls/seeds, optional uncertainty, min_clean_replicates default 0",
+      "rust": "Vec fields, at least five seeds, dimensional unit and hypothesis validation",
+      "classification": "LOSSY_PROJECTION",
+      "native_projection_behavior": "a valid typed prerequisite chain materializes runtime.experiments while projection retains the adapter payload",
+      "evidence": "lab.py ExperimentSpec; core/rust/src/lab.rs ExperimentSpec"
+    },
+    {
+      "entity": "Observation",
+      "python": "string hashes, reported_unit, optional uncertainty/replication/operator/clean",
+      "rust": "typed hashes, uncertainty/replication/operator/clean, no reported_unit",
+      "classification": "LOSSY_PROJECTION",
+      "native_projection_behavior": "a valid typed prerequisite/hash chain materializes runtime.observations; projection retains reported_unit and adapter fields",
+      "evidence": "lab.py ObservationRecord; core/rust/src/lab.rs ObservationRecord"
+    },
+    {
+      "entity": "Artifact",
+      "python": "LabDossier manifest/artifact hashes; no canonical typed ArtifactRef in lab.py",
+      "rust": "typed gt96::ArtifactRef and replay/hash structures",
+      "classification": "SEMANTIC_DIVERGENCE",
+      "evidence": "lab.py LabDossier.manifest; core/rust/src/gt96.rs ArtifactRef"
+    },
+    {
+      "entity": "Event",
+      "python": "payload-bearing LabEvent with string kind and Python event hash",
+      "rust": "typed LabEventKind, hash-only payload reference, Rust chain",
+      "classification": "LOSSY_PROJECTION",
+      "native_projection_behavior": "Python payload_json is admitted and stored in projection_payloads, not in typed Rust LabEvent payload",
+      "evidence": "lab.py LabEvent/_append; core/rust/src/lab.rs LabEvent/admit_projection_record"
+    },
+    {
+      "entity": "Replay",
+      "python": "Python archive/replay and optional native reconstruction",
+      "rust": "LabController snapshot/replay with native runtime",
+      "classification": "AUTHORITY_DIVERGENCE",
+      "compatibility": "Python aegis-lab-run-v1 and Rust mission schema aegis-lab-runtime-v1 are not cross-compatible snapshots",
+      "evidence": "lab.py to_payload/from_payload; core/rust/src/lab.rs snapshot_json/from_snapshot_json"
+    },
+    {
+      "entity": "ExecutionCell",
+      "python": "callable registry, admission dictionaries and retry options",
+      "rust": "typed action plan/resource lease/admission maps",
+      "classification": "SEMANTIC_DIVERGENCE",
+      "evidence": "lab.py cell runners; core/rust/src/lab.rs controller projection and resource types"
+    },
+    {
+      "entity": "TrustLevel",
+      "python": "Agent/Lab default DEV; evidence adapter None normalizes PROD",
+      "rust": "TrustLevel::from_env default PROD",
+      "classification": "SEMANTIC_DIVERGENCE",
+      "evidence": "config.py, lab.py, core/python/aegis/evidence.py, core/rust/src/hot_engine.rs"
+    },
+    {
+      "entity": "RetryPolicy",
+      "python": "AegisAgent/provider/Lab gateway/tool/experiment loops",
+      "rust": "native admission/resource checks, no single retry owner",
+      "classification": "AUTHORITY_DIVERGENCE",
+      "evidence": "aegis_adapter.py, provider.py, lab.py, core/rust/src/lab.rs"
+    }
+  ],
+  "conclusion": "both Python and Rust contain explicit records; the bridge now conditionally materializes valid typed records while retaining a lossy adapter projection, and no single lossless canonical reducer is proven",
+  "required_entities_checked": [
+    "LabRun",
+    "LabController",
+    "Mission",
+    "Event",
+    "Budget",
+    "Attempt",
+    "Lease",
+    "ExecutionCell",
+    "Source",
+    "Claim",
+    "Hypothesis",
+    "Experiment",
+    "Observation",
+    "Evidence",
+    "Artifact",
+    "ProviderRequest",
+    "Replay state",
+    "Trust policy",
+    "Retry policy"
+  ],
+  "limitations": [
+    "field comparison is source-based; bounded local native snapshot/restore, fresh-process replay, typed materialization, and Python-projection mutation probes were executed, but no lossless cross-language canonical model was proven"
+  ],
+  "native_projection_probe": {
+    "status": "NOT_VERIFIED",
+    "reason": "dependency-complete combined venv unavailable"
+  },
+  "HEAD": "f9645caf6d17cee2023d52183990ffcf8317e456",
+  "WORKTREE_EPOCH": "6e8c4adfdccec80543825a18e3885da36acb62c7574807342ae8ccf4c0d64ec6",
+  "generated_at": "2026-09-01T02:54:46.298383+00:00",
+  "method": "aegis-design-closure-reconciliation-v1; direct Git/filesystem/source inspection, prior artifact hash reuse, disposable wheel reconciliation, bounded local probes"
+}

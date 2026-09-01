@@ -1,0 +1,49 @@
+{
+  "schema": "aegis-empirical-experiment-output-v1",
+  "experiment_id": "EXP-PROV-001",
+  "status": "PARTIAL",
+  "HEAD": "f9645caf6d17cee2023d52183990ffcf8317e456",
+  "WORKTREE_EPOCH": "549114d28117c7374ab5e1e1b1c0706876887eb55365684c7ec896fe2c779b2d",
+  "generated_at": "2026-08-31T08:45:23.079168+00:00",
+  "question": "Can claims trace to raw result, source, environment and current SHA?",
+  "why_it_matters": "This result is an input to the final architecture/master plan decision.",
+  "leading_hypothesis": "Manifest intends to bind claims.",
+  "rival_hypotheses": [
+    "Historical hashes are sufficient despite missing current binding."
+  ],
+  "falsification_criteria": [
+    "A bounded observation contradicts the leading hypothesis within the stated scope."
+  ],
+  "controlled_variables": [
+    "current checkout",
+    "bounded local input",
+    "no external side effects"
+  ],
+  "uncontrolled_variables": [
+    "host scheduling",
+    "filesystem cache/antivirus",
+    "machine-specific toolchain"
+  ],
+  "method": "Direct current-worktree source/manifest inspection plus codebase-memory graph evidence; no product mutation.",
+  "commands": [],
+  "raw_artifacts": [
+    {
+      "path": "docs/architecture/empirical-research/raw/exp_prov_001.json",
+      "sha256": "7abdbc0b0659b0ec563e67e8981d22eca3955fb64e0a0dcf1f19d93b40e92f20",
+      "kind": "raw"
+    }
+  ],
+  "measurements": [],
+  "observed_failures": [],
+  "interpretation": "CHECKOUT_HEAD placeholders and missing retained artifacts break a complete current-SHA chain.",
+  "what_was_falsified": [],
+  "what_remains_unknown": [
+    "final SHA owner/attestation",
+    "remote CI retention"
+  ],
+  "evidence_class": "INFERRED",
+  "limitations": [
+    "static inspection is not runtime proof"
+  ],
+  "recommended_next_decision_input": "Carry this result into target architecture design; do not treat it as implementation authorization."
+}

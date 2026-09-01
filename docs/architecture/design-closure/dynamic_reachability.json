@@ -1,0 +1,509 @@
+{
+  "schema": "aegis-design-dynamic-reachability-v1",
+  "dynamic_imports": [
+    {
+      "path": "core/python/tests.py",
+      "line": 2822,
+      "call": "__import__",
+      "source": "capture = __import__(\"asyncio\").run(scenario())",
+      "classification": "TEST_ONLY",
+      "actual_module_source": [
+        "asyncio"
+      ],
+      "resolved_modules": [
+        "asyncio"
+      ],
+      "dispatch_mode": "literal_stdlib_import",
+      "entrypoint": "test scenario executed by asyncio.run",
+      "reachable_from_product": false,
+      "reachability": "not product runtime"
+    },
+    {
+      "path": "core/python/tests.py",
+      "line": 2875,
+      "call": "__import__",
+      "source": "capture = __import__(\"asyncio\").run(scenario())",
+      "classification": "TEST_ONLY",
+      "actual_module_source": [
+        "asyncio"
+      ],
+      "resolved_modules": [
+        "asyncio"
+      ],
+      "dispatch_mode": "literal_stdlib_import",
+      "entrypoint": "test scenario executed by asyncio.run",
+      "reachable_from_product": false,
+      "reachability": "not product runtime"
+    },
+    {
+      "path": "core/python/tests.py",
+      "line": 2955,
+      "call": "__import__",
+      "source": "capture = __import__(\"asyncio\").run(scenario())",
+      "classification": "TEST_ONLY",
+      "actual_module_source": [
+        "asyncio"
+      ],
+      "resolved_modules": [
+        "asyncio"
+      ],
+      "dispatch_mode": "literal_stdlib_import",
+      "entrypoint": "test scenario executed by asyncio.run",
+      "reachable_from_product": false,
+      "reachability": "not product runtime"
+    },
+    {
+      "path": "core/python/tests.py",
+      "line": 2992,
+      "call": "__import__",
+      "source": "capture = __import__(\"asyncio\").run(scenario())",
+      "classification": "TEST_ONLY",
+      "actual_module_source": [
+        "asyncio"
+      ],
+      "resolved_modules": [
+        "asyncio"
+      ],
+      "dispatch_mode": "literal_stdlib_import",
+      "entrypoint": "test scenario executed by asyncio.run",
+      "reachable_from_product": false,
+      "reachability": "not product runtime"
+    },
+    {
+      "path": "core/python/tests.py",
+      "line": 3069,
+      "call": "__import__",
+      "source": "snapshot, network = __import__(\"asyncio\").run(scenario())",
+      "classification": "TEST_ONLY",
+      "actual_module_source": [
+        "asyncio"
+      ],
+      "resolved_modules": [
+        "asyncio"
+      ],
+      "dispatch_mode": "literal_stdlib_import",
+      "entrypoint": "test scenario executed by asyncio.run",
+      "reachable_from_product": false,
+      "reachability": "not product runtime"
+    },
+    {
+      "path": "core/python/tests.py",
+      "line": 3094,
+      "call": "__import__",
+      "source": "__import__(\"asyncio\").run(scenario())",
+      "classification": "TEST_ONLY",
+      "actual_module_source": [
+        "asyncio"
+      ],
+      "resolved_modules": [
+        "asyncio"
+      ],
+      "dispatch_mode": "literal_stdlib_import",
+      "entrypoint": "test scenario executed by asyncio.run",
+      "reachable_from_product": false,
+      "reachability": "not product runtime"
+    },
+    {
+      "path": "core/python/tests.py",
+      "line": 3159,
+      "call": "__import__",
+      "source": "capture = __import__(\"asyncio\").run(scenario())",
+      "classification": "TEST_ONLY",
+      "actual_module_source": [
+        "asyncio"
+      ],
+      "resolved_modules": [
+        "asyncio"
+      ],
+      "dispatch_mode": "literal_stdlib_import",
+      "entrypoint": "test scenario executed by asyncio.run",
+      "reachable_from_product": false,
+      "reachability": "not product runtime"
+    },
+    {
+      "path": "core/python/tests.py",
+      "line": 3188,
+      "call": "__import__",
+      "source": "first, second = __import__(\"asyncio\").run(scenario())",
+      "classification": "TEST_ONLY",
+      "actual_module_source": [
+        "asyncio"
+      ],
+      "resolved_modules": [
+        "asyncio"
+      ],
+      "dispatch_mode": "literal_stdlib_import",
+      "entrypoint": "test scenario executed by asyncio.run",
+      "reachable_from_product": false,
+      "reachability": "not product runtime"
+    },
+    {
+      "path": "core/python/tests.py",
+      "line": 3225,
+      "call": "__import__",
+      "source": "scorecard = __import__(\"asyncio\").run(scenario())",
+      "classification": "TEST_ONLY",
+      "actual_module_source": [
+        "asyncio"
+      ],
+      "resolved_modules": [
+        "asyncio"
+      ],
+      "dispatch_mode": "literal_stdlib_import",
+      "entrypoint": "test scenario executed by asyncio.run",
+      "reachable_from_product": false,
+      "reachability": "not product runtime"
+    },
+    {
+      "path": "core/python/tests.py",
+      "line": 3260,
+      "call": "__import__",
+      "source": "record = __import__(\"asyncio\").run(scenario())",
+      "classification": "TEST_ONLY",
+      "actual_module_source": [
+        "asyncio"
+      ],
+      "resolved_modules": [
+        "asyncio"
+      ],
+      "dispatch_mode": "literal_stdlib_import",
+      "entrypoint": "test scenario executed by asyncio.run",
+      "reachable_from_product": false,
+      "reachability": "not product runtime"
+    },
+    {
+      "path": "core/python/tests.py",
+      "line": 3291,
+      "call": "__import__",
+      "source": "record = __import__(\"asyncio\").run(scenario())",
+      "classification": "TEST_ONLY",
+      "actual_module_source": [
+        "asyncio"
+      ],
+      "resolved_modules": [
+        "asyncio"
+      ],
+      "dispatch_mode": "literal_stdlib_import",
+      "entrypoint": "test scenario executed by asyncio.run",
+      "reachable_from_product": false,
+      "reachability": "not product runtime"
+    },
+    {
+      "path": "core/python/tests.py",
+      "line": 3406,
+      "call": "__import__",
+      "source": "reply_async = __import__(\"asyncio\").run(client.ainvoke(\"Hello model async\"))",
+      "classification": "TEST_ONLY",
+      "actual_module_source": [
+        "asyncio"
+      ],
+      "resolved_modules": [
+        "asyncio"
+      ],
+      "dispatch_mode": "literal_stdlib_import",
+      "entrypoint": "test scenario executed by asyncio.run",
+      "reachable_from_product": false,
+      "reachability": "not product runtime"
+    },
+    {
+      "path": "scripts/_audit_regen_requirements.py",
+      "line": 158,
+      "call": "__import__",
+      "source": "f\"# Auto-generated by scripts/_audit_regen_requirements.py on {__import__('datetime').date.today()}\",",
+      "classification": "SCRIPT_ONLY",
+      "actual_module_source": [
+        "datetime"
+      ],
+      "resolved_modules": [
+        "datetime"
+      ],
+      "dispatch_mode": "literal_stdlib_import",
+      "entrypoint": "requirements-audit generator",
+      "reachable_from_product": false,
+      "reachability": "not product runtime"
+    },
+    {
+      "path": "scripts/e2e_release_gate.py",
+      "line": 31,
+      "call": "import_module",
+      "source": "name: import_module(name)",
+      "classification": "SCRIPT_ONLY",
+      "actual_module_source": [
+        "scripts.cluster_loopback_gate",
+        "scripts.deployment_manifest",
+        "scripts.dynamic_provider_fallback_gate",
+        "scripts.external_deployment_smoke_gate",
+        "scripts.hot_browser_shadow_gate",
+        "scripts.production_packaging_smoke_gate",
+        "scripts.quickjs_cold_start_gate",
+        "scripts.shadow_sealer_soak_gate",
+        "scripts.supply_chain_gate",
+        "scripts.tcp_cluster_soak_gate"
+      ],
+      "resolved_modules": [
+        "scripts.cluster_loopback_gate",
+        "scripts.deployment_manifest",
+        "scripts.dynamic_provider_fallback_gate",
+        "scripts.external_deployment_smoke_gate",
+        "scripts.hot_browser_shadow_gate",
+        "scripts.production_packaging_smoke_gate",
+        "scripts.quickjs_cold_start_gate",
+        "scripts.shadow_sealer_soak_gate",
+        "scripts.supply_chain_gate",
+        "scripts.tcp_cluster_soak_gate"
+      ],
+      "dispatch_mode": "static_dispatch_list",
+      "entrypoint": "_load_e2e_dependencies at module import",
+      "reachable_from_product": false,
+      "reachability": "not product runtime"
+    },
+    {
+      "path": "scripts/run_checks.py",
+      "line": 79,
+      "call": "import_module",
+      "source": "name: import_module(name)",
+      "classification": "SCRIPT_ONLY",
+      "actual_module_source": [
+        "core.python",
+        "scripts.benchmark_gate",
+        "scripts.cluster_loopback_gate",
+        "scripts.constitution_audit",
+        "scripts.deployment_manifest",
+        "scripts.dependency_audit_gate",
+        "scripts.dynamic_provider_fallback_gate",
+        "scripts.e2e_release_gate",
+        "scripts.external_deployment_smoke_gate",
+        "scripts.governance_gate",
+        "scripts.hermes_baseline_gate",
+        "scripts.hermes_persistence_baseline_gate",
+        "scripts.hermes_rpc_baseline_gate",
+        "scripts.hermes_session_recovery_baseline_gate",
+        "scripts.hot_browser_shadow_gate",
+        "scripts.production_closure",
+        "scripts.production_packaging_smoke_gate",
+        "scripts.production_readiness",
+        "scripts.progress_gate",
+        "scripts.provider_route_gate",
+        "scripts.python_hotpath_gate",
+        "scripts.quickjs_cold_start_gate",
+        "scripts.shadow_sealer_soak_gate",
+        "scripts.sota_baseline_gate",
+        "scripts.supply_chain_gate",
+        "scripts.tcp_cluster_soak_gate"
+      ],
+      "resolved_modules": [
+        "core.python",
+        "scripts.benchmark_gate",
+        "scripts.cluster_loopback_gate",
+        "scripts.constitution_audit",
+        "scripts.deployment_manifest",
+        "scripts.dependency_audit_gate",
+        "scripts.dynamic_provider_fallback_gate",
+        "scripts.e2e_release_gate",
+        "scripts.external_deployment_smoke_gate",
+        "scripts.governance_gate",
+        "scripts.hermes_baseline_gate",
+        "scripts.hermes_persistence_baseline_gate",
+        "scripts.hermes_rpc_baseline_gate",
+        "scripts.hermes_session_recovery_baseline_gate",
+        "scripts.hot_browser_shadow_gate",
+        "scripts.production_closure",
+        "scripts.production_packaging_smoke_gate",
+        "scripts.production_readiness",
+        "scripts.progress_gate",
+        "scripts.provider_route_gate",
+        "scripts.python_hotpath_gate",
+        "scripts.quickjs_cold_start_gate",
+        "scripts.shadow_sealer_soak_gate",
+        "scripts.sota_baseline_gate",
+        "scripts.supply_chain_gate",
+        "scripts.tcp_cluster_soak_gate"
+      ],
+      "dispatch_mode": "static_dispatch_list",
+      "entrypoint": "run_checks gate dispatch",
+      "reachable_from_product": false,
+      "reachability": "not product runtime"
+    }
+  ],
+  "dynamic_count": 15,
+  "sys_path_records": [
+    {
+      "module": "aegis_cognition.dx_metrics",
+      "path": "aegis_cognition/dx_metrics.py",
+      "line": 23,
+      "call": "sys.path.insert",
+      "source": "sys.path.insert(0, str(Path(__file__).resolve().parents[1]))",
+      "why": "source-checkout metrics import",
+      "normal_install_unnecessary": true,
+      "removing_breaks_current_script_execution": "NO for installed package",
+      "classification": "LEGACY",
+      "runtime_required": false,
+      "direct_file_execution_only": true
+    },
+    {
+      "module": "scripts._debug_probe",
+      "path": "scripts/_debug_probe.py",
+      "line": 8,
+      "call": "sys.path.insert",
+      "source": "sys.path.insert(0, r\"C:\\Users\\ADMIN\\AEGIS-COGNITION\\scripts\")",
+      "why": "repository-root import for direct script execution",
+      "normal_install_unnecessary": true,
+      "removing_breaks_current_script_execution": "YES for direct invocation outside repo",
+      "classification": "DIRECT_SCRIPT_BOOTSTRAP_ONLY",
+      "runtime_required": false,
+      "direct_file_execution_only": true
+    },
+    {
+      "module": "scripts.benchmark_preflight",
+      "path": "scripts/benchmark_preflight.py",
+      "line": 12,
+      "call": "sys.path.insert",
+      "source": "sys.path.insert(0, str(project_root))",
+      "why": "repository-root import for direct script execution",
+      "normal_install_unnecessary": true,
+      "removing_breaks_current_script_execution": "YES for direct invocation outside repo",
+      "classification": "DIRECT_SCRIPT_BOOTSTRAP_ONLY",
+      "runtime_required": false,
+      "direct_file_execution_only": true
+    },
+    {
+      "module": "scripts.benchmark_wrapper",
+      "path": "scripts/benchmark_wrapper.py",
+      "line": 14,
+      "call": "sys.path.insert",
+      "source": "sys.path.insert(0, str(project_root))",
+      "why": "repository-root import for direct script execution",
+      "normal_install_unnecessary": true,
+      "removing_breaks_current_script_execution": "YES for direct invocation outside repo",
+      "classification": "DIRECT_SCRIPT_BOOTSTRAP_ONLY",
+      "runtime_required": false,
+      "direct_file_execution_only": true
+    },
+    {
+      "module": "scripts.e2e_release_gate",
+      "path": "scripts/e2e_release_gate.py",
+      "line": 26,
+      "call": "sys.path.insert",
+      "source": "sys.path.insert(0, str(ROOT))",
+      "why": "repository-root import for direct script execution",
+      "normal_install_unnecessary": true,
+      "removing_breaks_current_script_execution": "YES for direct invocation outside repo",
+      "classification": "DIRECT_SCRIPT_BOOTSTRAP_ONLY",
+      "runtime_required": false,
+      "direct_file_execution_only": true
+    },
+    {
+      "module": "scripts.external_deployment_smoke_gate",
+      "path": "scripts/external_deployment_smoke_gate.py",
+      "line": 27,
+      "call": "sys.path.insert",
+      "source": "sys.path.insert(0, str(ROOT))",
+      "why": "repository-root import for direct script execution",
+      "normal_install_unnecessary": true,
+      "removing_breaks_current_script_execution": "YES for direct invocation outside repo",
+      "classification": "DIRECT_SCRIPT_BOOTSTRAP_ONLY",
+      "runtime_required": false,
+      "direct_file_execution_only": true
+    },
+    {
+      "module": "scripts.hermes_rpc_baseline_gate",
+      "path": "scripts/hermes_rpc_baseline_gate.py",
+      "line": 14,
+      "call": "sys.path.insert",
+      "source": "sys.path.insert(0, str(ROOT))",
+      "why": "repository-root import for direct script execution",
+      "normal_install_unnecessary": true,
+      "removing_breaks_current_script_execution": "YES for direct invocation outside repo",
+      "classification": "DIRECT_SCRIPT_BOOTSTRAP_ONLY",
+      "runtime_required": false,
+      "direct_file_execution_only": true
+    },
+    {
+      "module": "scripts.production_closure",
+      "path": "scripts/production_closure.py",
+      "line": 14,
+      "call": "sys.path.insert",
+      "source": "sys.path.insert(0, str(ROOT))",
+      "why": "repository-root import for direct script execution",
+      "normal_install_unnecessary": true,
+      "removing_breaks_current_script_execution": "YES for direct invocation outside repo",
+      "classification": "DIRECT_SCRIPT_BOOTSTRAP_ONLY",
+      "runtime_required": false,
+      "direct_file_execution_only": true
+    },
+    {
+      "module": "scripts.production_packaging_smoke_gate",
+      "path": "scripts/production_packaging_smoke_gate.py",
+      "line": 16,
+      "call": "sys.path.insert",
+      "source": "sys.path.insert(0, str(ROOT))",
+      "why": "repository-root import for direct script execution",
+      "normal_install_unnecessary": true,
+      "removing_breaks_current_script_execution": "YES for direct invocation outside repo",
+      "classification": "DIRECT_SCRIPT_BOOTSTRAP_ONLY",
+      "runtime_required": false,
+      "direct_file_execution_only": true
+    },
+    {
+      "module": "scripts.production_readiness",
+      "path": "scripts/production_readiness.py",
+      "line": 9,
+      "call": "sys.path.insert",
+      "source": "sys.path.insert(0, str(ROOT))",
+      "why": "repository-root import for direct script execution",
+      "normal_install_unnecessary": true,
+      "removing_breaks_current_script_execution": "YES for direct invocation outside repo",
+      "classification": "DIRECT_SCRIPT_BOOTSTRAP_ONLY",
+      "runtime_required": false,
+      "direct_file_execution_only": true
+    },
+    {
+      "module": "scripts.python_hotpath_gate",
+      "path": "scripts/python_hotpath_gate.py",
+      "line": 11,
+      "call": "sys.path.insert",
+      "source": "sys.path.insert(0, str(ROOT))",
+      "why": "repository-root import for direct script execution",
+      "normal_install_unnecessary": true,
+      "removing_breaks_current_script_execution": "YES for direct invocation outside repo",
+      "classification": "DIRECT_SCRIPT_BOOTSTRAP_ONLY",
+      "runtime_required": false,
+      "direct_file_execution_only": true
+    },
+    {
+      "module": "scripts.run_checks",
+      "path": "scripts/run_checks.py",
+      "line": 75,
+      "call": "sys.path.insert",
+      "source": "sys.path.insert(0, str(ROOT_PATH))",
+      "why": "repository-root import for direct script execution",
+      "normal_install_unnecessary": true,
+      "removing_breaks_current_script_execution": "YES for direct invocation outside repo",
+      "classification": "DIRECT_SCRIPT_BOOTSTRAP_ONLY",
+      "runtime_required": false,
+      "direct_file_execution_only": true
+    },
+    {
+      "module": "scripts.smoke_check",
+      "path": "scripts/smoke_check.py",
+      "line": 7,
+      "call": "sys.path.insert",
+      "source": "sys.path.insert(0, str(PROJECT_ROOT))",
+      "why": "repository-root import for direct script execution",
+      "normal_install_unnecessary": true,
+      "removing_breaks_current_script_execution": "YES for direct invocation outside repo",
+      "classification": "DIRECT_SCRIPT_BOOTSTRAP_ONLY",
+      "runtime_required": false,
+      "direct_file_execution_only": true
+    }
+  ],
+  "sys_path_count": 13,
+  "conclusion": "all 15 observed dynamic-import records resolve to stdlib literals or finite developer/test dispatch lists; none has a product-runtime reachability edge in the inspected tree",
+  "limitations": [
+    "runtime plugin/entry-point discovery outside these records remains not proven"
+  ],
+  "HEAD": "f9645caf6d17cee2023d52183990ffcf8317e456",
+  "WORKTREE_EPOCH": "6e8c4adfdccec80543825a18e3885da36acb62c7574807342ae8ccf4c0d64ec6",
+  "generated_at": "2026-09-01T02:54:46.298383+00:00",
+  "method": "aegis-design-closure-reconciliation-v1; direct Git/filesystem/source inspection, prior artifact hash reuse, disposable wheel reconciliation, bounded local probes"
+}

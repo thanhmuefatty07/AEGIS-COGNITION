@@ -1,0 +1,42 @@
+{
+  "measurements": [
+    {
+      "metric": "hardware.cpu_hash.local",
+      "value": 0.0547,
+      "unit": "ms",
+      "n": 5,
+      "min": 0.0421,
+      "max": 0.0639,
+      "mean": 0.05434,
+      "stdev": 0.009027070399636862,
+      "raw_values": [
+        0.0639,
+        0.0491,
+        0.0421,
+        0.0619,
+        0.0547
+      ],
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "hardware.disk_write.local",
+      "value": 0.5078,
+      "unit": "ms",
+      "n": 5,
+      "min": 0.4738,
+      "max": 0.6852,
+      "mean": 0.54452,
+      "stdev": 0.08488007422239922,
+      "raw_values": [
+        0.6852,
+        0.4953,
+        0.5078,
+        0.5605,
+        0.4738
+      ],
+      "evidence_class": "MEASURED"
+    }
+  ],
+  "energy": "NOT_MEASURED",
+  "cross_machine": false
+}

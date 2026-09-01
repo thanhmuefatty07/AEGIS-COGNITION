@@ -1,0 +1,110 @@
+{
+  "schema": "aegis-design-trust-truth-v1",
+  "defaults": [
+    {
+      "path": "aegis_cognition/config.py",
+      "default": "DEV",
+      "class": "LEGACY_DRIFT_OR_COMPATIBILITY"
+    },
+    {
+      "path": "aegis_cognition/lab.py",
+      "default": "DEV",
+      "class": "CONTEXTUAL_DEFAULT_PLAUSIBLE"
+    },
+    {
+      "path": "core/python/aegis/evidence.py",
+      "default": "PROD",
+      "class": "LEGACY_DRIFT"
+    },
+    {
+      "path": "core/python/aegis_cli.py",
+      "default": "PROD or CLI policy",
+      "class": "COMPATIBILITY"
+    }
+  ],
+  "simulations": [
+    {
+      "path": "Agent()",
+      "result": "BLOCKED_BEFORE_CONSTRUCTION",
+      "reason": "API key missing; no external call"
+    },
+    {
+      "path": "AgentConfig dummy DEV",
+      "result": "CONSTRUCTIBLE",
+      "effective_trust": "DEV"
+    },
+    {
+      "path": "LabPolicy()",
+      "result": "CONSTRUCTIBLE",
+      "effective_trust": "DEV"
+    },
+    {
+      "path": "compatibility CLI",
+      "result": "INDEPENDENT_INSTALL_BROKEN",
+      "effective_trust": "NOT_REACHED"
+    },
+    {
+      "path": "normalize_trust_level(None)",
+      "result": "SOURCE_DEFAULT",
+      "effective_trust": "PROD"
+    }
+  ],
+  "conclusion": "DEV/PROD split is proven local and blocks canonical policy",
+  "limitations": [
+    "no credentials/provider"
+  ],
+  "WORKTREE_EPOCH": "6e8c4adfdccec80543825a18e3885da36acb62c7574807342ae8ccf4c0d64ec6",
+  "HEAD": "f9645caf6d17cee2023d52183990ffcf8317e456",
+  "generated_at": "2026-09-01T02:54:46.298383+00:00",
+  "collector_version/method": "aegis-final-design-closure-v1; direct Git/filesystem/AST/Cargo plus bounded disposable-wheel probes",
+  "reused_prior_artifact": "C:\\Users\\ADMIN\\AEGIS-COGNITION\\docs\\architecture\\evidence-pack\\final_trust_policy.json",
+  "reused_prior_artifact_sha256": "6493723017232896d5163be2f2bb960cddd6c06e5f9ca637774fc05f9bd09e6c",
+  "source_epoch_note": "prior bounded workload/artifact reused; equivalent workload was not repeated in this reconciliation, so reused measurements are not source-fresh",
+  "canonical_subject_primitive": {
+    "path": "core/python/aegis/trust_policy.py",
+    "status": "LOCAL-PROVEN",
+    "scope": "canonical schema fields and BLAKE2b-256 subject hash consumed by root config and core evidence bridge",
+    "limitation": "contextual DEV/PROD defaults and cross-cell Rust/provider/browser/process policy receipts remain open"
+  },
+  "effective_local_probe": {
+    "env_AEGIS_TRUST_LEVEL": null,
+    "AgentConfig_default": "DEV",
+    "AgentConfig_mission_hash_binding": "from_inputs creates a canonical 64-hex subject; Agent(lab=True) binds lab_trust_policy_hash and gateway receives the same hash",
+    "LabPolicy_default": "DEV",
+    "LabPolicy_native_authority_required": "False when trust=DEV",
+    "AegisAdapter_default": "PROD",
+    "evidence.normalize_trust_level(None)": "PROD",
+    "rust_TrustLevel_from_env_default": "PROD",
+    "lab_policy_hash_binding": "LabPolicy hash is propagated into Lab options/native mission contract hash; core bridge hash equivalence is tested for DEV/STAGING/PROD; native-required gateway drops/mismatch fail closed",
+    "result": "local defaults are inconsistent across public paths; mission-bound hash propagation is locally proven; no provider call was made"
+  },
+  "authority_matrix": [
+    {
+      "boundary": "Agent/AgentConfig",
+      "default": "DEV",
+      "owner": "aegis_cognition.config",
+      "hash_binding": "validated missions create a canonical subject; legacy direct AgentConfig may have no hash"
+    },
+    {
+      "boundary": "LabPolicy/LabRun",
+      "default": "DEV",
+      "owner": "aegis_cognition.lab",
+      "hash_binding": "Lab facade and Agent(lab=True) bind the mission subject; direct legacy snapshots may be unbound"
+    },
+    {
+      "boundary": "AegisAdapter/evidence",
+      "default": "PROD",
+      "owner": "core/python/aegis",
+      "hash_binding": "explicit hash mismatch rejected"
+    },
+    {
+      "boundary": "Rust hot_engine",
+      "default": "PROD",
+      "owner": "core/rust",
+      "hash_binding": "mission contract hash receives Lab policy subject"
+    }
+  ],
+  "classification": "LEGACY_DRIFT_WITH_LAB_BOUNDARY",
+  "security_implication": "global default owner and cross-cell receipt propagation remain unproven; local Lab hash mismatch is fail-closed",
+  "method": "aegis-design-closure-reconciliation-v1; direct Git/filesystem/source inspection, prior artifact hash reuse, disposable wheel reconciliation, bounded local probes"
+}

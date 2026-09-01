@@ -1,0 +1,39 @@
+{
+  "schema": "aegis-final-artifact-retention-v1",
+  "artifacts": [
+    {
+      "kind": "current manifest",
+      "path": "docs/architecture/evidence/current.json",
+      "tracked": true,
+      "retained": true,
+      "hash": "b6c013110c13460eaf844c3e68930976032e105a60911132b41517a21d7e0a7d",
+      "sha_binding": "BROKEN CHECKOUT_HEAD/remediation mismatch",
+      "replayable": "gate fails"
+    },
+    {
+      "kind": "final pack",
+      "path": "docs/architecture/evidence-pack/",
+      "tracked": false,
+      "retained": true,
+      "hash": "per-file JSON",
+      "sha_binding": "WORKTREE_EPOCH"
+    },
+    {
+      "kind": "disposable wheel/temp logs",
+      "path": "C:\\Users\\ADMIN\\AppData\\Local\\Temp\\aegis-final-design-closure",
+      "tracked": false,
+      "retained": true,
+      "hash": "wheel/build hashes in packaging artifact",
+      "sha_binding": "epoch/command only",
+      "replayable": "clean install"
+    }
+  ],
+  "historical_v63": "not present; prior artifacts were disposable and not manifest-bound",
+  "limitations": [
+    "external CI/deleted temp unavailable"
+  ],
+  "WORKTREE_EPOCH": "3783037b7a38cf214bdfe4b593496971ccafec29fd6b5b05f413a98ea51918c6",
+  "HEAD": "f9645caf6d17cee2023d52183990ffcf8317e456",
+  "generated_at": "2026-08-28T02:58:56.366605+00:00",
+  "collector_version/method": "aegis-final-design-closure-v1; direct Git/filesystem/AST/Cargo plus bounded disposable-wheel probes"
+}

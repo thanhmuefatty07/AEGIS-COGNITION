@@ -66,7 +66,7 @@ class MmapBridgeFrame:
         self._mmap.close()
         self._file.close()
 
-    def __enter__(self) -> "MmapBridgeFrame":
+    def __enter__(self) -> MmapBridgeFrame:
         return self
 
     def __exit__(self, exc_type, exc, tb) -> None:

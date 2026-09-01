@@ -1,0 +1,187 @@
+{
+  "schema": "aegis-final-error-semantics-v1",
+  "rows": [
+    {
+      "failure": "invalid input",
+      "origin": "Python/Lab",
+      "error": "ValueError/ConfigError",
+      "handling": "rejection",
+      "status": "PARTIALLY_TRACED"
+    },
+    {
+      "failure": "native rejection",
+      "origin": "FFI/resource",
+      "error": "bool/string/PyErr",
+      "handling": "caller branch",
+      "status": "PARTIALLY_TRACED"
+    },
+    {
+      "failure": "provider failure",
+      "origin": "SDK/adapter",
+      "error": "provider exception/broad conversion",
+      "handling": "fallback/retry",
+      "status": "PARTIALLY_TRACED"
+    },
+    {
+      "failure": "timeout/cancel",
+      "origin": "cell/process/browser",
+      "error": "CancelledError/timeout/status",
+      "handling": "fenced path only",
+      "status": "PARTIALLY_TRACED"
+    },
+    {
+      "failure": "process crash",
+      "origin": "child/native",
+      "error": "returncode/manifest",
+      "handling": "specific handlers",
+      "status": "UNKNOWN"
+    },
+    {
+      "failure": "browser failure",
+      "origin": "Playwright",
+      "error": "adapter exception",
+      "handling": "runtime branch",
+      "status": "UNKNOWN"
+    },
+    {
+      "failure": "replay corruption",
+      "origin": "archive reader",
+      "error": "native recovery error",
+      "handling": "fail closed candidate",
+      "status": "TESTABLE_LOCAL"
+    },
+    {
+      "failure": "budget exhaustion",
+      "origin": "Lab/native resource",
+      "error": "status/exception",
+      "handling": "terminal/reject",
+      "status": "TESTABLE_LOCAL"
+    }
+  ],
+  "structured_to_string_sites": [
+    {
+      "path": "core/rust/src/ffi.rs",
+      "line": 138,
+      "text": ".map_err(|err| pyo3::exceptions::PyRuntimeError::new_err(format!(\"{err:?}\")))?;"
+    },
+    {
+      "path": "core/rust/src/ffi.rs",
+      "line": 193,
+      "text": "serde_json::to_string(&crate::resource::HardwareProfile::probe()).map_err(|error| {"
+    },
+    {
+      "path": "core/rust/src/ffi.rs",
+      "line": 194,
+      "text": "pyo3::exceptions::PyRuntimeError::new_err(format!("
+    },
+    {
+      "path": "core/rust/src/ffi.rs",
+      "line": 220,
+      "text": "pyo3::exceptions::PyValueError::new_err(format!("
+    },
+    {
+      "path": "core/rust/src/ffi.rs",
+      "line": 227,
+      "text": "serde_json::to_string(&decision).map_err(|error| {"
+    },
+    {
+      "path": "core/rust/src/ffi.rs",
+      "line": 228,
+      "text": "pyo3::exceptions::PyRuntimeError::new_err(format!("
+    },
+    {
+      "path": "core/rust/src/ffi.rs",
+      "line": 239,
+      "text": "serde_json::to_string(&crate::resource::ExecutionLaneRegistry::for_profile("
+    },
+    {
+      "path": "core/rust/src/ffi.rs",
+      "line": 243,
+      "text": "pyo3::exceptions::PyRuntimeError::new_err(format!("
+    },
+    {
+      "path": "core/rust/src/ffi.rs",
+      "line": 263,
+      "text": "pyo3::exceptions::PyValueError::new_err(format!("
+    },
+    {
+      "path": "core/rust/src/ffi.rs",
+      "line": 269,
+      "text": "pyo3::exceptions::PyValueError::new_err(format!("
+    },
+    {
+      "path": "core/rust/src/ffi.rs",
+      "line": 276,
+      "text": "pyo3::exceptions::PyRuntimeError::new_err(format!(\"runtime submit failed: {error:?}\"))"
+    },
+    {
+      "path": "core/rust/src/ffi.rs",
+      "line": 296,
+      "text": "serde_json::to_string(&response).map_err(|error| {"
+    },
+    {
+      "path": "core/rust/src/ffi.rs",
+      "line": 297,
+      "text": "pyo3::exceptions::PyRuntimeError::new_err(format!("
+    },
+    {
+      "path": "core/rust/src/ffi.rs",
+      "line": 310,
+      "text": "pyo3::exceptions::PyValueError::new_err(format!("
+    },
+    {
+      "path": "core/rust/src/ffi.rs",
+      "line": 316,
+      "text": "pyo3::exceptions::PyRuntimeError::new_err(format!(\"runtime retry failed: {error:?}\"))"
+    },
+    {
+      "path": "core/rust/src/ffi.rs",
+      "line": 336,
+      "text": "serde_json::to_string(&response).map_err(|error| {"
+    },
+    {
+      "path": "core/rust/src/ffi.rs",
+      "line": 337,
+      "text": "pyo3::exceptions::PyRuntimeError::new_err(format!("
+    },
+    {
+      "path": "core/rust/src/ffi.rs",
+      "line": 349,
+      "text": "pyo3::exceptions::PyValueError::new_err(format!("
+    },
+    {
+      "path": "core/rust/src/ffi.rs",
+      "line": 363,
+      "text": "pyo3::exceptions::PyValueError::new_err(format!(\"invalid runtime outcome: {error:?}\"))"
+    },
+    {
+      "path": "core/rust/src/ffi.rs",
+      "line": 369,
+      "text": "pyo3::exceptions::PyRuntimeError::new_err(format!("
+    }
+  ],
+  "broad_catch_suspects": [
+    {
+      "path": "aegis_cognition/application.py",
+      "line": 150,
+      "text": "except Exception:"
+    },
+    {
+      "path": "aegis_cognition/application.py",
+      "line": 195,
+      "text": "except Exception:"
+    },
+    {
+      "path": "core/python/aegis_adapter.py",
+      "line": 129,
+      "text": "except Exception:"
+    }
+  ],
+  "limitations": [
+    "no live failure induced"
+  ],
+  "WORKTREE_EPOCH": "3783037b7a38cf214bdfe4b593496971ccafec29fd6b5b05f413a98ea51918c6",
+  "HEAD": "f9645caf6d17cee2023d52183990ffcf8317e456",
+  "generated_at": "2026-08-28T02:58:56.366605+00:00",
+  "collector_version/method": "aegis-final-design-closure-v1; direct Git/filesystem/AST/Cargo plus bounded disposable-wheel probes"
+}

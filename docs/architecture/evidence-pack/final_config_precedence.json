@@ -1,0 +1,62 @@
+{
+  "schema": "aegis-final-config-precedence-v1",
+  "precedence": [
+    {
+      "order": 1,
+      "source": "hard-coded defaults",
+      "examples": [
+        "AgentConfig DEV",
+        "LabPolicy DEV",
+        "LabBudget"
+      ]
+    },
+    {
+      "order": 2,
+      "source": "environment/provider secrets",
+      "examples": [
+        "API key/provider env"
+      ]
+    },
+    {
+      "order": 3,
+      "source": "CLI/Agent kwargs",
+      "examples": [
+        "trust/browser/lab/max_steps"
+      ]
+    },
+    {
+      "order": 4,
+      "source": "LabPolicy/LabRun",
+      "examples": [
+        "hosts/HTTPS/browser/replay/native authority"
+      ]
+    },
+    {
+      "order": 5,
+      "source": "Rust resource/controller",
+      "examples": [
+        "schema/token/step/replay"
+      ]
+    },
+    {
+      "order": 6,
+      "source": "deployment/host",
+      "examples": [
+        "filesystem/process/browser/quotas"
+      ]
+    }
+  ],
+  "duplicated_defaults": [
+    "trust",
+    "retry",
+    "retention",
+    "package/CLI"
+  ],
+  "limitations": [
+    "provider/deployment env matrix not contacted"
+  ],
+  "WORKTREE_EPOCH": "3783037b7a38cf214bdfe4b593496971ccafec29fd6b5b05f413a98ea51918c6",
+  "HEAD": "f9645caf6d17cee2023d52183990ffcf8317e456",
+  "generated_at": "2026-08-28T02:58:56.366605+00:00",
+  "collector_version/method": "aegis-final-design-closure-v1; direct Git/filesystem/AST/Cargo plus bounded disposable-wheel probes"
+}

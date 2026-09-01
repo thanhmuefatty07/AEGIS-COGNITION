@@ -1,0 +1,114 @@
+{
+  "schema": "aegis-design-invariant-matrix-v1",
+  "rows": [
+    {
+      "id": "I-001",
+      "invariant": "one authoritative Lab reducer",
+      "classification": "PARTIALLY_ENFORCED",
+      "evidence": "Rust resource/replay authority exists; Python LabRun remains mutable projection"
+    },
+    {
+      "id": "I-002",
+      "invariant": "no external effect before admission",
+      "classification": "PARTIALLY_ENFORCED",
+      "evidence": "explicit Lab cells fenced; compatibility/provider paths bypass"
+    },
+    {
+      "id": "I-003",
+      "invariant": "every admitted effect has exactly one terminal settlement",
+      "classification": "TEST_PROVEN_LOCAL",
+      "evidence": "duplicate/unknown settlement rejected in bounded lifecycle test"
+    },
+    {
+      "id": "I-004",
+      "invariant": "stale settlement rejected",
+      "classification": "TEST_PROVEN_LOCAL",
+      "evidence": "settlement with unknown/stale admission rejected locally"
+    },
+    {
+      "id": "I-005",
+      "invariant": "duplicate settlement rejected",
+      "classification": "TEST_PROVEN_LOCAL",
+      "evidence": "duplicate terminal event rejected locally"
+    },
+    {
+      "id": "I-006",
+      "invariant": "cancellation cannot become success",
+      "classification": "PARTIALLY_ENFORCED",
+      "evidence": "explicit fenced path only; provider/browser external paths not exercised"
+    },
+    {
+      "id": "I-007",
+      "invariant": "crash prefix cannot become false success",
+      "classification": "PARTIALLY_ENFORCED",
+      "evidence": "archive/hash metadata and local replay prefix checks are tested; process crash/descendant recovery is not exercised"
+    },
+    {
+      "id": "I-008",
+      "invariant": "budget conservation",
+      "classification": "TEST_PROVEN_LOCAL",
+      "evidence": "native/Lab budget contracts and bounded lifecycle"
+    },
+    {
+      "id": "I-009",
+      "invariant": "execution registry sealed before execution",
+      "classification": "TEST_PROVEN_LOCAL",
+      "evidence": "cell registry snapshot/seal path"
+    },
+    {
+      "id": "I-010",
+      "invariant": "PROD cannot silently use Python fallback",
+      "classification": "PARTIALLY_ENFORCED",
+      "evidence": "PROD normalization exists; DEV defaults and compatibility fallback remain"
+    },
+    {
+      "id": "I-011",
+      "invariant": "telemetry cannot mutate authority",
+      "classification": "PARTIALLY_ENFORCED",
+      "evidence": "observability is mostly separate; broad catches/control branches remain"
+    },
+    {
+      "id": "I-012",
+      "invariant": "evidence cannot self-declare verification",
+      "classification": "PARTIALLY_ENFORCED",
+      "evidence": "Rust ValidatorProof rejects verdict=false; Python truth_claim defaults False and candidate tiers cannot become PhysicalWitness without validator evidence; end-to-end hidden validator remains external"
+    },
+    {
+      "id": "I-013",
+      "invariant": "replay manifest binds runtime configuration",
+      "classification": "PARTIALLY_ENFORCED",
+      "evidence": "hash/archive metadata present; complete configuration binding not proven"
+    },
+    {
+      "id": "I-014",
+      "invariant": "package owner is unambiguous",
+      "classification": "TEST_PROVEN_LOCAL",
+      "evidence": "fresh root/core wheels and a dependency-complete combined venv show exactly one aegis console script; the independent core probe also passes browser/batch/learning compatibility without a console-script collision"
+    },
+    {
+      "id": "I-015",
+      "invariant": "trust policy owner is unambiguous",
+      "classification": "VIOLATED",
+      "evidence": "AgentConfig/LabPolicy default DEV while AegisAdapter/evidence/Rust normalize None/env to PROD; local probe confirms split"
+    },
+    {
+      "id": "I-016",
+      "invariant": "retry policy owner is unambiguous",
+      "classification": "VIOLATED",
+      "evidence": "AegisAgent, provider route, Lab gateway/tool/experiment/simulation and unknown SDK layers remain independently bounded"
+    }
+  ],
+  "baseline_status": "PASS",
+  "limitations": [
+    "current state, not target recommendation"
+  ],
+  "WORKTREE_EPOCH": "6e8c4adfdccec80543825a18e3885da36acb62c7574807342ae8ccf4c0d64ec6",
+  "HEAD": "f9645caf6d17cee2023d52183990ffcf8317e456",
+  "generated_at": "2026-09-01T02:54:46.298383+00:00",
+  "collector_version/method": "aegis-final-design-closure-v1; direct Git/filesystem/AST/Cargo plus bounded disposable-wheel probes",
+  "reused_prior_artifact": "C:\\Users\\ADMIN\\AEGIS-COGNITION\\docs\\architecture\\evidence-pack\\final_invariant_matrix.json",
+  "reused_prior_artifact_sha256": "e60154f660c73c074a24682cdbebaef8509846aeb03d7a26b9a5b1952743364f",
+  "source_epoch_note": "prior bounded workload/artifact reused; equivalent workload was not repeated in this reconciliation, so reused measurements are not source-fresh",
+  "invariant_ids": "I-001 through I-016",
+  "method": "aegis-design-closure-reconciliation-v1; direct Git/filesystem/source inspection, prior artifact hash reuse, disposable wheel reconciliation, bounded local probes"
+}

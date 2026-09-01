@@ -1,0 +1,48 @@
+{
+  "schema": "aegis-final-data-movement-v1",
+  "flow": [
+    {
+      "step": "Python LabRun",
+      "representation": "dict/dataclass",
+      "operation": "validate/hash",
+      "copy": "object traversal/allocation"
+    },
+    {
+      "step": "PyO3",
+      "representation": "str/bytes/int",
+      "operation": "argument conversion",
+      "copy": "may copy; zero-copy NOT proven"
+    },
+    {
+      "step": "Rust replay",
+      "representation": "typed/encoded records",
+      "operation": "hash/segment/archive",
+      "copy": "owned buffers"
+    },
+    {
+      "step": "Python result",
+      "representation": "decoded dict/string",
+      "operation": "projection/error",
+      "copy": "conversion allocation"
+    },
+    {
+      "step": "artifact",
+      "representation": "snapshot/Arrow/binary",
+      "operation": "write/recover",
+      "copy": "temp/write buffers"
+    }
+  ],
+  "repeated_encode_decode": [
+    "provider bridge",
+    "event/result",
+    "snapshot/recovery",
+    "FFI bytes/strings"
+  ],
+  "limitations": [
+    "allocation counts not measured"
+  ],
+  "WORKTREE_EPOCH": "3783037b7a38cf214bdfe4b593496971ccafec29fd6b5b05f413a98ea51918c6",
+  "HEAD": "f9645caf6d17cee2023d52183990ffcf8317e456",
+  "generated_at": "2026-08-28T02:58:56.366605+00:00",
+  "collector_version/method": "aegis-final-design-closure-v1; direct Git/filesystem/AST/Cargo plus bounded disposable-wheel probes"
+}

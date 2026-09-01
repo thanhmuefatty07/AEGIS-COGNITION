@@ -1,0 +1,140 @@
+{
+  "schema": "aegis-empirical-experiment-output-v1",
+  "experiment_id": "EXP-RPL-001",
+  "status": "COMPLETE",
+  "HEAD": "f9645caf6d17cee2023d52183990ffcf8317e456",
+  "WORKTREE_EPOCH": "549114d28117c7374ab5e1e1b1c0706876887eb55365684c7ec896fe2c779b2d",
+  "generated_at": "2026-08-31T08:45:23.079168+00:00",
+  "question": "What portion of replay cost is encode/hash/write/flush/fsync?",
+  "why_it_matters": "This result is an input to the final architecture/master plan decision.",
+  "leading_hypothesis": "Durability synchronization is materially distinct from encode and hash.",
+  "rival_hypotheses": [
+    "Host/filesystem scheduling dominates all components equally."
+  ],
+  "falsification_criteria": [
+    "A bounded observation contradicts the leading hypothesis within the stated scope."
+  ],
+  "controlled_variables": [
+    "current checkout",
+    "bounded local input",
+    "no external side effects"
+  ],
+  "uncontrolled_variables": [
+    "host scheduling",
+    "filesystem cache/antivirus",
+    "machine-specific toolchain"
+  ],
+  "method": "Five bounded local observations per component; no production replay settings changed.",
+  "commands": [],
+  "raw_artifacts": [
+    {
+      "path": "docs/architecture/empirical-research/raw/exp_rpl_001.json",
+      "sha256": "7e86f0bb0f70c209572365c3b4a40b5a4152253cacb56ce596bbf865c39bc904",
+      "kind": "raw"
+    }
+  ],
+  "measurements": [
+    {
+      "metric": "replay.encode",
+      "value": 0.0994,
+      "unit": "ms",
+      "n": 5,
+      "min": 0.0829,
+      "max": 0.1162,
+      "mean": 0.09944,
+      "stdev": 0.011782741616449034,
+      "raw_values": [
+        0.0994,
+        0.1162,
+        0.1,
+        0.0987,
+        0.0829
+      ],
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "replay.hash",
+      "value": 0.0522,
+      "unit": "ms",
+      "n": 5,
+      "min": 0.0388,
+      "max": 0.0615,
+      "mean": 0.05092,
+      "stdev": 0.008126315278156515,
+      "raw_values": [
+        0.0615,
+        0.0497,
+        0.0522,
+        0.0524,
+        0.0388
+      ],
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "replay.write.buffered_only",
+      "value": 0.6752,
+      "unit": "ms",
+      "n": 5,
+      "min": 0.5597,
+      "max": 0.8252,
+      "mean": 0.71182,
+      "stdev": 0.11322169403431483,
+      "raw_values": [
+        0.824,
+        0.8252,
+        0.675,
+        0.6752,
+        0.5597
+      ],
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "replay.write.flush",
+      "value": 0.0823,
+      "unit": "ms",
+      "n": 5,
+      "min": 0.0604,
+      "max": 0.1433,
+      "mean": 0.09588,
+      "stdev": 0.03366655610542902,
+      "raw_values": [
+        0.1433,
+        0.1172,
+        0.0604,
+        0.0823,
+        0.0762
+      ],
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "replay.write.fsync",
+      "value": 5.3887,
+      "unit": "ms",
+      "n": 5,
+      "min": 2.7879,
+      "max": 5.7173,
+      "mean": 4.5141,
+      "stdev": 1.381039943303596,
+      "raw_values": [
+        3.2486,
+        2.7879,
+        5.3887,
+        5.7173,
+        5.428
+      ],
+      "evidence_class": "MEASURED"
+    }
+  ],
+  "observed_failures": [],
+  "interpretation": "The components are separable under explicitly different durability labels.",
+  "what_was_falsified": [],
+  "what_remains_unknown": [
+    "OS-crash/power-loss durability",
+    "rotation/checkpoint costs"
+  ],
+  "evidence_class": "MEASURED",
+  "limitations": [
+    "n=5 descriptive only; cache/antivirus uncontrolled"
+  ],
+  "recommended_next_decision_input": "Keep durability class and raw samples in every future replay benchmark."
+}

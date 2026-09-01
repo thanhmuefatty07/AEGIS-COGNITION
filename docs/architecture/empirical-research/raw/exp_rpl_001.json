@@ -1,0 +1,100 @@
+{
+  "payload_bytes": 4288,
+  "durability_labels": {
+    "buffered": "BUFFERED_ONLY",
+    "flush": "UNKNOWN_DURABILITY",
+    "fsync": "PROCESS_CRASH_DURABLE; OS/power crash unproven"
+  },
+  "measurements": [
+    {
+      "metric": "replay.encode",
+      "value": 0.0994,
+      "unit": "ms",
+      "n": 5,
+      "min": 0.0829,
+      "max": 0.1162,
+      "mean": 0.09944,
+      "stdev": 0.011782741616449034,
+      "raw_values": [
+        0.0994,
+        0.1162,
+        0.1,
+        0.0987,
+        0.0829
+      ],
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "replay.hash",
+      "value": 0.0522,
+      "unit": "ms",
+      "n": 5,
+      "min": 0.0388,
+      "max": 0.0615,
+      "mean": 0.05092,
+      "stdev": 0.008126315278156515,
+      "raw_values": [
+        0.0615,
+        0.0497,
+        0.0522,
+        0.0524,
+        0.0388
+      ],
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "replay.write.buffered_only",
+      "value": 0.6752,
+      "unit": "ms",
+      "n": 5,
+      "min": 0.5597,
+      "max": 0.8252,
+      "mean": 0.71182,
+      "stdev": 0.11322169403431483,
+      "raw_values": [
+        0.824,
+        0.8252,
+        0.675,
+        0.6752,
+        0.5597
+      ],
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "replay.write.flush",
+      "value": 0.0823,
+      "unit": "ms",
+      "n": 5,
+      "min": 0.0604,
+      "max": 0.1433,
+      "mean": 0.09588,
+      "stdev": 0.03366655610542902,
+      "raw_values": [
+        0.1433,
+        0.1172,
+        0.0604,
+        0.0823,
+        0.0762
+      ],
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "replay.write.fsync",
+      "value": 5.3887,
+      "unit": "ms",
+      "n": 5,
+      "min": 2.7879,
+      "max": 5.7173,
+      "mean": 4.5141,
+      "stdev": 1.381039943303596,
+      "raw_values": [
+        3.2486,
+        2.7879,
+        5.3887,
+        5.7173,
+        5.428
+      ],
+      "evidence_class": "MEASURED"
+    }
+  ]
+}

@@ -1,0 +1,129 @@
+{
+  "wheel": {
+    "status": "NOT_VERIFIED"
+  },
+  "core_wheel": {
+    "status": "NOT_VERIFIED"
+  },
+  "current_source_bound_replacement": {
+    "status": "PASS_LOCAL_SOURCE_BOUND",
+    "path": "C:/Users/ADMIN/AEGIS-COGNITION/artifacts/local-runtime/m2-native-rollback-20260901/wheel-current-final2/aegis_cognition-0.1.0-cp314-cp314-win_amd64.whl",
+    "sha256": "8a1c8a74e46f1eff5032829101376d4acba9f01cf0bd4ec0bc3685c4c8141f62",
+    "bytes": 7796486,
+    "python": "3.14.0",
+    "platform": "Windows CPython 3.14 win_amd64",
+    "native_member": "aegis_cognition/aegis_nerve.cp314-win_amd64.pyd",
+    "native_member_sha256": "d7dcc950bfe251a89ca56470cc2e1078ac94aa9b4aa66708feaafa487460bea2",
+    "build_input_epoch": "6e8c4adfdccec80543825a18e3885da36acb62c7574807342ae8ccf4c0d64ec6",
+    "clean_probe": {
+      "status": "PASS_LOCAL_CLEAN_IMPORT",
+      "repo_paths_on_sys_path": [],
+      "module_paths_under_clean_venv": true,
+      "native_restore": true,
+      "native_verifier": true,
+      "authority": "rust_native_verified",
+      "dependency_complete_install": "NOT_VERIFIED — probe used --no-deps and supplied only local blake3"
+    },
+    "source_attestation": "PARTIAL_LOCAL_BUILD_INPUT; source epoch is not embedded or externally signed"
+  },
+  "current_combined_dependency_complete_probe": {
+    "status": "PASS_LOCAL_COMBINED_INSTALL",
+    "artifact": "C:/Users/ADMIN/AEGIS-COGNITION/artifacts/local-runtime/combined-runtime-probe-20260901/combined_runtime_probe.json",
+    "root_wheel_sha256": "8a1c8a74e46f1eff5032829101376d4acba9f01cf0bd4ec0bc3685c4c8141f62",
+    "core_wheel_sha256": "87c91bfce4804a376790c86875a4de17dd9a7d5feabec2150ad435edd977d605",
+    "repo_paths_on_sys_path": [],
+    "single_aegis_console_owner": true,
+    "root_console_script": "aegis=aegis_cognition.cli:main",
+    "core_console_scripts": [],
+    "record_integrity": {
+      "root_record_rows": 49,
+      "root_record_hashes_verified": 48,
+      "core_record_rows": 33,
+      "core_record_hashes_verified": 32,
+      "record_hash_mismatches": []
+    },
+    "native_import": true,
+    "cli_help_exit": 0,
+    "provider_or_browser_called": false,
+    "runtime_python": "3.14.0",
+    "runtime_platform": "Windows CPython 3.14 win_amd64",
+    "core_only_probe": {
+      "status": "PASS",
+      "repo_paths_on_sys_path": [],
+      "offline_agent_result_schema": "aegis-friendly-gateway-run-v1",
+      "browser_artifact_count": 8,
+      "browser_predicate_ok": true,
+      "bridge_batch_ok": true,
+      "truth_claim": false
+    }
+  },
+  "build_command": ".venv\\Scripts\\maturin.exe build -m core/rust/Cargo.toml -o <TEMP_ROOT>\\wheel --target-dir <TEMP_ROOT>\\cargo-target -i .venv\\Scripts\\python.exe -j 2 --locked",
+  "core_build_command": "uv build --wheel --python .venv\\Scripts\\python.exe --no-managed-python core/python",
+  "build_log": "NOT_FOUND",
+  "replacement_reason": "ARTIFACT_MISSING",
+  "tool_versions": {
+    "python": {
+      "exit": 0,
+      "stdout": "Python 3.14.0",
+      "stderr": ""
+    },
+    "rustc": {
+      "exit": 0,
+      "stdout": "rustc 1.97.1 (8bab26f4f 2026-07-14)",
+      "stderr": ""
+    },
+    "cargo": {
+      "exit": 0,
+      "stdout": "cargo 1.97.1 (c980f4866 2026-06-30)",
+      "stderr": ""
+    },
+    "uv": {
+      "exit": 0,
+      "stdout": "uv 0.9.9 (4fac4cb7e 2025-11-12)",
+      "stderr": ""
+    },
+    "maturin": {
+      "exit": 0,
+      "stdout": "maturin 1.14.1",
+      "stderr": ""
+    }
+  },
+  "classification": "UNKNOWN",
+  "expected_root": "C:\\Users\\ADMIN\\AppData\\Local\\Temp\\aegis-lab-native-wheel-v63",
+  "documented_wheel_sha256": "e2ae96f1c7886e3f2f7a1e522cb5e2d783b90df96db8caed2ef44eca2afd41bf",
+  "expected_records": [
+    "install-smoke-v63.json",
+    "controller-smoke-v63.json",
+    "recovery-smoke-v63.json",
+    "rollback-v62-v63.json"
+  ],
+  "present_records": [],
+  "missing_records": [
+    "C:\\Users\\ADMIN\\AppData\\Local\\Temp\\aegis-lab-native-wheel-v63\\install-smoke-v63.json",
+    "C:\\Users\\ADMIN\\AppData\\Local\\Temp\\aegis-lab-native-wheel-v63\\controller-smoke-v63.json",
+    "C:\\Users\\ADMIN\\AppData\\Local\\Temp\\aegis-lab-native-wheel-v63\\recovery-smoke-v63.json",
+    "C:\\Users\\ADMIN\\AppData\\Local\\Temp\\aegis-lab-native-wheel-v63\\rollback-v62-v63.json"
+  ],
+  "parsed_records": [],
+  "wheel_exists": false,
+  "rollback_subject_verified": false,
+  "reason": "all four documented v63 records and the referenced wheel directory are absent; historical claims cannot be replayed",
+  "new_wheel_justification": "ARTIFACT_MISSING",
+  "root_clean_install": {
+    "status": "NOT_VERIFIED"
+  },
+  "core_python_independent_install": {
+    "status": "NOT_VERIFIED"
+  },
+  "combined_install": {
+    "status": "NOT_VERIFIED"
+  },
+  "classification": "V63_ARTIFACT_MISSING_CURRENT_REPLACEMENT_LOCALLY_PROVEN",
+  "classification_note": "The documented v63 subject is unreplayable; the current replacement wheel and fresh dependency-complete combined installation are locally proven with one root aegis console owner, but release provenance, hosted parity and external attestation remain open.",
+  "secondary_classifications": [],
+  "HEAD": "f9645caf6d17cee2023d52183990ffcf8317e456",
+  "WORKTREE_EPOCH": "6e8c4adfdccec80543825a18e3885da36acb62c7574807342ae8ccf4c0d64ec6",
+  "generated_at": "2026-09-01T02:54:46.298383+00:00",
+  "method": "aegis-design-closure-reconciliation-v1; direct Git/filesystem/source inspection, prior artifact hash reuse, disposable wheel reconciliation, bounded local probes",
+  "limitations": []
+}

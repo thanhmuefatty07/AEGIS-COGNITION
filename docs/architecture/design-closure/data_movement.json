@@ -1,0 +1,52 @@
+{
+  "schema": "aegis-design-data-movement-v1",
+  "flow": [
+    {
+      "step": "Python LabRun",
+      "representation": "dict/dataclass",
+      "operation": "validate/hash",
+      "copy": "object traversal/allocation"
+    },
+    {
+      "step": "PyO3",
+      "representation": "str/bytes/int",
+      "operation": "argument conversion",
+      "copy": "may copy; zero-copy NOT proven"
+    },
+    {
+      "step": "Rust replay",
+      "representation": "typed/encoded records",
+      "operation": "hash/segment/archive",
+      "copy": "owned buffers"
+    },
+    {
+      "step": "Python result",
+      "representation": "decoded dict/string",
+      "operation": "projection/error",
+      "copy": "conversion allocation"
+    },
+    {
+      "step": "artifact",
+      "representation": "snapshot/Arrow/binary",
+      "operation": "write/recover",
+      "copy": "temp/write buffers"
+    }
+  ],
+  "repeated_encode_decode": [
+    "provider bridge",
+    "event/result",
+    "snapshot/recovery",
+    "FFI bytes/strings"
+  ],
+  "limitations": [
+    "allocation counts not measured"
+  ],
+  "WORKTREE_EPOCH": "6e8c4adfdccec80543825a18e3885da36acb62c7574807342ae8ccf4c0d64ec6",
+  "HEAD": "f9645caf6d17cee2023d52183990ffcf8317e456",
+  "generated_at": "2026-09-01T02:54:46.298383+00:00",
+  "collector_version/method": "aegis-final-design-closure-v1; direct Git/filesystem/AST/Cargo plus bounded disposable-wheel probes",
+  "reused_prior_artifact": "C:\\Users\\ADMIN\\AEGIS-COGNITION\\docs\\architecture\\evidence-pack\\final_data_movement.json",
+  "reused_prior_artifact_sha256": "9763e00e9185ab7cdd00a0bf4e54e8079b9a69d97e23a2b708a6f0002824d4eb",
+  "source_epoch_note": "prior bounded workload/artifact reused; equivalent workload was not repeated in this reconciliation, so reused measurements are not source-fresh",
+  "method": "aegis-design-closure-reconciliation-v1; direct Git/filesystem/source inspection, prior artifact hash reuse, disposable wheel reconciliation, bounded local probes"
+}

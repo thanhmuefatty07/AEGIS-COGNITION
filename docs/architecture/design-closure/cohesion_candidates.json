@@ -1,0 +1,53 @@
+{
+  "schema": "aegis-design-cohesion-candidates-v1",
+  "rows": [
+    {
+      "path": "aegis_cognition/lab.py",
+      "classification": "SPLIT_CANDIDATE",
+      "reason": "effect/state/orchestration clusters"
+    },
+    {
+      "path": "core/rust/src/ffi.rs",
+      "classification": "STRONG_SPLIT_CANDIDATE",
+      "reason": "PyO3 conversion/native contracts/Lab binding/error boundary mixed"
+    },
+    {
+      "path": "core/rust/src/lab.rs",
+      "classification": "KEEP_AS_IS",
+      "reason": "cohesive contract-dense reducer/state"
+    },
+    {
+      "path": "core/rust/src/replay.rs",
+      "classification": "KEEP_AS_IS",
+      "reason": "single hash/replay integrity invariant"
+    },
+    {
+      "path": "core/rust/src/cli/mod.rs",
+      "classification": "SPLIT_CANDIDATE",
+      "reason": "parse/policy/dispatch/presentation"
+    },
+    {
+      "path": "scripts/evidence_consistency_gate.py",
+      "classification": "SPLIT_CANDIDATE",
+      "reason": "manifest/commit/evidence/report mixed"
+    },
+    {
+      "path": "core/python/aegis_adapter.py",
+      "classification": "REORGANIZE_INTERNAL_ONLY",
+      "reason": "compatibility adapter mixes route/retry/error/effect translation",
+      "do_not_split": true
+    }
+  ],
+  "do_not_split_yet": true,
+  "limitations": [
+    "no split performed"
+  ],
+  "WORKTREE_EPOCH": "6e8c4adfdccec80543825a18e3885da36acb62c7574807342ae8ccf4c0d64ec6",
+  "HEAD": "f9645caf6d17cee2023d52183990ffcf8317e456",
+  "generated_at": "2026-09-01T02:54:46.298383+00:00",
+  "collector_version/method": "aegis-final-design-closure-v1; direct Git/filesystem/AST/Cargo plus bounded disposable-wheel probes",
+  "reused_prior_artifact": "C:\\Users\\ADMIN\\AEGIS-COGNITION\\docs\\architecture\\evidence-pack\\final_module_split_candidates.json",
+  "reused_prior_artifact_sha256": "f14fd096b524da36c2b0aac7b4c107f98a5d90c4e5c1a64afbf5a52637405188",
+  "source_epoch_note": "prior bounded workload/artifact reused; equivalent workload was not repeated in this reconciliation, so reused measurements are not source-fresh",
+  "method": "aegis-design-closure-reconciliation-v1; direct Git/filesystem/source inspection, prior artifact hash reuse, disposable wheel reconciliation, bounded local probes"
+}

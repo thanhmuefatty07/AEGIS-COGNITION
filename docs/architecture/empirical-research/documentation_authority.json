@@ -1,0 +1,48 @@
+{
+  "schema": "aegis-empirical-experiment-output-v1",
+  "experiment_id": "EXP-DOC-001",
+  "status": "PARTIAL",
+  "HEAD": "f9645caf6d17cee2023d52183990ffcf8317e456",
+  "WORKTREE_EPOCH": "549114d28117c7374ab5e1e1b1c0706876887eb55365684c7ec896fe2c779b2d",
+  "generated_at": "2026-08-31T08:45:23.079168+00:00",
+  "question": "Which docs are current, normative, generated or historical?",
+  "why_it_matters": "This result is an input to the final architecture/master plan decision.",
+  "leading_hypothesis": "Executable source/manifests outrank historical prose.",
+  "rival_hypotheses": [
+    "Document labels alone establish authority."
+  ],
+  "falsification_criteria": [
+    "A bounded observation contradicts the leading hypothesis within the stated scope."
+  ],
+  "controlled_variables": [
+    "current checkout",
+    "bounded local input",
+    "no external side effects"
+  ],
+  "uncontrolled_variables": [
+    "host scheduling",
+    "filesystem cache/antivirus",
+    "machine-specific toolchain"
+  ],
+  "method": "Direct current-worktree source/manifest inspection plus codebase-memory graph evidence; no product mutation.",
+  "commands": [],
+  "raw_artifacts": [
+    {
+      "path": "docs/architecture/empirical-research/raw/exp_doc_001.json",
+      "sha256": "5e2c7cef26b08434ce374f6253f48ecb59ae261f0a5d3e4f9a33c1833fc3d654",
+      "kind": "raw"
+    }
+  ],
+  "measurements": [],
+  "observed_failures": [],
+  "interpretation": "Architecture/audit/master-plan documents overlap; current manifest retains CHECKOUT_HEAD placeholders.",
+  "what_was_falsified": [],
+  "what_remains_unknown": [
+    "human intent behind conflicting docs"
+  ],
+  "evidence_class": "INFERRED",
+  "limitations": [
+    "static inspection is not runtime proof"
+  ],
+  "recommended_next_decision_input": "Carry this result into target architecture design; do not treat it as implementation authorization."
+}

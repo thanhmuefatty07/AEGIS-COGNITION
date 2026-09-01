@@ -1,0 +1,65 @@
+{
+  "schema": "aegis-final-delete-candidates-v1",
+  "rows": [
+    {
+      "path": "core/rust/AEGIS-COGNITION/",
+      "classification": "ARCHIVE_ONLY",
+      "references": "tracked clean tree; no Cargo/package/runtime inclusion; textual same-name documentation mentions but no proven execution edge",
+      "removal_effect": {
+        "build": "NO",
+        "test": "NO",
+        "package": "NO",
+        "runtime": "NO",
+        "docs": "POSSIBLE history/reference loss",
+        "tooling": "NO direct execution ref"
+      }
+    },
+    {
+      "path": "core/python/",
+      "classification": "MIGRATION_REQUIRED",
+      "references": "independent package/CLI/compatibility tests",
+      "removal_effect": {
+        "build": "YES",
+        "test": "YES",
+        "package": "YES",
+        "runtime": "YES",
+        "docs": "POSSIBLE",
+        "tooling": "YES"
+      }
+    },
+    {
+      "path": "pocs and workspace POC crates",
+      "classification": "UNKNOWN",
+      "references": "Cargo workspace members",
+      "removal_effect": {
+        "build": "YES metadata",
+        "test": "UNKNOWN",
+        "package": "YES POC",
+        "runtime": "UNKNOWN",
+        "docs": "POSSIBLE",
+        "tooling": "POSSIBLE"
+      }
+    },
+    {
+      "path": "historical architecture docs",
+      "classification": "ARCHIVE_ONLY",
+      "references": "history/docs",
+      "removal_effect": {
+        "build": "NO",
+        "test": "NO",
+        "package": "NO",
+        "runtime": "NO",
+        "docs": "history loss",
+        "tooling": "NO"
+      }
+    }
+  ],
+  "strong_delete_candidates": [],
+  "limitations": [
+    "nothing deleted"
+  ],
+  "WORKTREE_EPOCH": "3783037b7a38cf214bdfe4b593496971ccafec29fd6b5b05f413a98ea51918c6",
+  "HEAD": "f9645caf6d17cee2023d52183990ffcf8317e456",
+  "generated_at": "2026-08-28T02:58:56.366605+00:00",
+  "collector_version/method": "aegis-final-design-closure-v1; direct Git/filesystem/AST/Cargo plus bounded disposable-wheel probes"
+}

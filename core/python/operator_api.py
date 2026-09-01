@@ -294,7 +294,7 @@ def _safe_int(value: Any) -> int:
 
 def build_operator_http_handler(api: OperatorEvidenceApi) -> type[BaseHTTPRequestHandler]:
     class OperatorEvidenceRequestHandler(BaseHTTPRequestHandler):
-        def do_GET(self) -> None:  # noqa: N802 - stdlib handler API
+        def do_GET(self) -> None:
             response = api.handle_get(self.path)
             self.send_response(response.status)
             self.send_header("Content-Type", response.content_type)
@@ -397,10 +397,11 @@ def _extract_observed_ok(payload: Any) -> bool | None:
     direct = payload.get("overall_ok")
     if isinstance(direct, bool):
         return direct
-    nested_results: list[bool] = []
-    for value in payload.values():
-        if isinstance(value, dict) and isinstance(value.get("overall_ok"), bool):
-            nested_results.append(value["overall_ok"])
+    nested_results = [
+        value["overall_ok"]
+        for value in payload.values()
+        if isinstance(value, dict) and isinstance(value.get("overall_ok"), bool)
+    ]
     if nested_results:
         return all(nested_results)
     report = payload.get("report")

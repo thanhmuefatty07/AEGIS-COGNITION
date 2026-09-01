@@ -1,0 +1,48 @@
+{
+  "schema": "aegis-empirical-experiment-output-v1",
+  "experiment_id": "EXP-COH-001",
+  "status": "COMPLETE",
+  "HEAD": "f9645caf6d17cee2023d52183990ffcf8317e456",
+  "WORKTREE_EPOCH": "549114d28117c7374ab5e1e1b1c0706876887eb55365684c7ec896fe2c779b2d",
+  "generated_at": "2026-08-31T08:45:23.079168+00:00",
+  "question": "Which modules have separable responsibility clusters?",
+  "why_it_matters": "This result is an input to the final architecture/master plan decision.",
+  "leading_hypothesis": "ffi.rs has separable binding/conversion/error families.",
+  "rival_hypotheses": [
+    "Shared invariants make any split harmful."
+  ],
+  "falsification_criteria": [
+    "A bounded observation contradicts the leading hypothesis within the stated scope."
+  ],
+  "controlled_variables": [
+    "current checkout",
+    "bounded local input",
+    "no external side effects"
+  ],
+  "uncontrolled_variables": [
+    "host scheduling",
+    "filesystem cache/antivirus",
+    "machine-specific toolchain"
+  ],
+  "method": "Direct current-worktree source/manifest inspection plus codebase-memory graph evidence; no product mutation.",
+  "commands": [],
+  "raw_artifacts": [
+    {
+      "path": "docs/architecture/empirical-research/raw/exp_coh_001.json",
+      "sha256": "88ae433332a3785f9a3f82094d9957e969e232bd6bac957270fb3f0d95340986",
+      "kind": "raw"
+    }
+  ],
+  "measurements": [],
+  "observed_failures": [],
+  "interpretation": "ffi.rs is strongest split candidate; lab.py/CLI/evidence gate are candidates; adapter should reorganize internally; no split performed.",
+  "what_was_falsified": [],
+  "what_remains_unknown": [
+    "runtime cross-cluster call frequency"
+  ],
+  "evidence_class": "INFERRED",
+  "limitations": [
+    "static inspection is not runtime proof"
+  ],
+  "recommended_next_decision_input": "Carry this result into target architecture design; do not treat it as implementation authorization."
+}

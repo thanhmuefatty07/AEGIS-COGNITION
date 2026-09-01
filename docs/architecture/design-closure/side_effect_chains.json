@@ -1,0 +1,206 @@
+{
+  "schema": "aegis-design-side-effect-chains-v1",
+  "chains": [
+    {
+      "effect": "PROVIDER CALL",
+      "entrypoint": "aegis_cognition/application.py -> AegisAdapter -> provider.py",
+      "stages": [
+        {
+          "stage": "orchestrator",
+          "status": "PRESENT_AND_MECHANICAL",
+          "evidence": "AgentApplication/AgentApplication.run"
+        },
+        {
+          "stage": "IR/request",
+          "status": "PRESENT_BY_CONVENTION",
+          "evidence": "adapter builds provider request"
+        },
+        {
+          "stage": "cell/admission",
+          "status": "PRESENT_AND_MECHANICAL",
+          "scope": "LabApplication gateway only",
+          "evidence": "lab.py _run_admitted_gateway"
+        },
+        {
+          "stage": "capability/budget/attempt/lease",
+          "status": "PRESENT_AND_MECHANICAL",
+          "scope": "Lab gateway plus nested provider-attempt admission"
+        },
+        {
+          "stage": "effect sink",
+          "status": "PRESENT_AND_MECHANICAL",
+          "evidence": "provider.py invoke_with_provider_route"
+        },
+        {
+          "stage": "settlement/evidence/replay",
+          "status": "PRESENT_AND_MECHANICAL",
+          "scope": "Lab path; compatibility path has no Lab event"
+        }
+      ],
+      "overall": "BYPASSABLE",
+      "reason": "non-Lab Agent/AegisAdapter/provider route is directly callable; SDK receipt/idempotency remains external",
+      "can_execute_without_authoritative_admission": true
+    },
+    {
+      "effect": "NETWORK FETCH",
+      "entrypoint": "LabApplication -> SearchProgramExecutor._fetch",
+      "stages": [
+        {
+          "stage": "orchestrator",
+          "status": "PRESENT_AND_MECHANICAL",
+          "evidence": "_run_search_program"
+        },
+        {
+          "stage": "IR/request",
+          "status": "PRESENT_AND_MECHANICAL",
+          "evidence": "research program validation"
+        },
+        {
+          "stage": "cell/admission",
+          "status": "PRESENT_AND_MECHANICAL",
+          "evidence": "research action admission before executor"
+        },
+        {
+          "stage": "capability/budget/attempt",
+          "status": "PRESENT_AND_MECHANICAL",
+          "evidence": "allowlist, HTTPS, byte quota, Lab budget"
+        },
+        {
+          "stage": "lease",
+          "status": "UNKNOWN",
+          "evidence": "no independent helper-wide lease proof"
+        },
+        {
+          "stage": "effect sink",
+          "status": "PRESENT_AND_MECHANICAL",
+          "evidence": "urllib.request.urlopen in asyncio.to_thread"
+        },
+        {
+          "stage": "settlement/evidence/replay",
+          "status": "PRESENT_AND_MECHANICAL",
+          "scope": "strict Lab research path"
+        }
+      ],
+      "overall": "BYPASSABLE",
+      "reason": "compatibility search callback can run outside strict research-cell path; DNS/redirect/platform enforcement needs external probe",
+      "can_execute_without_authoritative_admission": "compatibility-mode dependent"
+    },
+    {
+      "effect": "BROWSER ACTION",
+      "entrypoint": "LabApplication -> BrowserCell -> browser_runtime_adapter/Playwright",
+      "stages": [
+        {
+          "stage": "orchestrator",
+          "status": "PRESENT_BY_CONVENTION",
+          "evidence": "browser action dispatcher"
+        },
+        {
+          "stage": "cell/admission",
+          "status": "PRESENT_AND_MECHANICAL",
+          "evidence": "BrowserCell.admit before acquire/action"
+        },
+        {
+          "stage": "capability/budget",
+          "status": "PRESENT_AND_MECHANICAL",
+          "evidence": "browser policy and Lab admission"
+        },
+        {
+          "stage": "attempt/lease",
+          "status": "UNKNOWN",
+          "evidence": "recover max_attempts is local; OS/browser lease and descendant containment external"
+        },
+        {
+          "stage": "effect sink",
+          "status": "PRESENT_AND_MECHANICAL",
+          "evidence": "Playwright adapter"
+        },
+        {
+          "stage": "settlement/evidence/replay",
+          "status": "PRESENT_AND_MECHANICAL",
+          "scope": "explicit Lab browser path"
+        }
+      ],
+      "overall": "FENCED_IN_LAB_ONLY",
+      "reason": "live browser permissions, SSRF/redirect behavior, and descendant cleanup are external-only",
+      "can_execute_without_authoritative_admission": "direct compatibility adapter possible"
+    },
+    {
+      "effect": "PROCESS SPAWN",
+      "entrypoint": "Lab ProcessExecutionCell / benchmark hidden validator",
+      "stages": [
+        {
+          "stage": "orchestrator",
+          "status": "PRESENT_BY_CONVENTION",
+          "evidence": "experiment/benchmark dispatch"
+        },
+        {
+          "stage": "admission",
+          "status": "PRESENT_AND_MECHANICAL",
+          "scope": "Lab ProcessExecutionCell"
+        },
+        {
+          "stage": "budget",
+          "status": "PRESENT_AND_MECHANICAL",
+          "scope": "Lab limits"
+        },
+        {
+          "stage": "effect sink",
+          "status": "PRESENT_AND_MECHANICAL",
+          "evidence": "benchmark.py subprocess.Popen shell=False timeout"
+        },
+        {
+          "stage": "settlement/evidence/replay",
+          "status": "PRESENT_AND_MECHANICAL",
+          "scope": "Lab process path; benchmark gate is operator/test infrastructure"
+        }
+      ],
+      "overall": "FENCED_IN_LAB_ONLY",
+      "reason": "child descendants, OS limits, and operator-injected argv are not fully proven",
+      "can_execute_without_authoritative_admission": "YES for benchmark/tooling paths"
+    },
+    {
+      "effect": "FILESYSTEM WRITE",
+      "entrypoint": "LabRun archive/replay versus CLI/scripts",
+      "stages": [
+        {
+          "stage": "orchestrator",
+          "status": "PRESENT_BY_CONVENTION",
+          "scope": "Lab archive path"
+        },
+        {
+          "stage": "admission",
+          "status": "PRESENT_BY_CONVENTION",
+          "scope": "Lab memory/replay events"
+        },
+        {
+          "stage": "capability/budget",
+          "status": "PRESENT_AND_MECHANICAL",
+          "scope": "Lab path"
+        },
+        {
+          "stage": "lease",
+          "status": "UNKNOWN",
+          "scope": "filesystem ownership not globally leased"
+        },
+        {
+          "stage": "effect sink",
+          "status": "PRESENT_AND_MECHANICAL",
+          "evidence": "Lab archive plus direct CLI/script writes"
+        },
+        {
+          "stage": "settlement/evidence/replay",
+          "status": "PRESENT_AND_MECHANICAL",
+          "scope": "Lab path"
+        }
+      ],
+      "overall": "BYPASSABLE",
+      "reason": "CLI config writes, report generators and operator/audit writes are direct effects outside Lab authority",
+      "can_execute_without_authoritative_admission": true
+    }
+  ],
+  "HEAD": "f9645caf6d17cee2023d52183990ffcf8317e456",
+  "WORKTREE_EPOCH": "6e8c4adfdccec80543825a18e3885da36acb62c7574807342ae8ccf4c0d64ec6",
+  "generated_at": "2026-09-01T02:54:46.298383+00:00",
+  "method": "aegis-design-closure-reconciliation-v1; direct Git/filesystem/source inspection, prior artifact hash reuse, disposable wheel reconciliation, bounded local probes",
+  "limitations": []
+}

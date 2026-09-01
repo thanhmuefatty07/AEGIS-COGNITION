@@ -1,0 +1,1096 @@
+{
+  "schema": "aegis-design-closure-v1",
+  "status": "PARTIAL_LOCAL",
+  "epoch_stable": true,
+  "epoch_start": {
+    "WORKTREE_EPOCH": "6e8c4adfdccec80543825a18e3885da36acb62c7574807342ae8ccf4c0d64ec6",
+    "HEAD": "f9645caf6d17cee2023d52183990ffcf8317e456",
+    "tracked_diff_sha256": "287b7162d3f1f8a19d5c7a3e8e05b2a5c3860d1eef7ecba33ca193689096e024",
+    "untracked_architecture_relevant": [
+      [
+        "aegis_cognition/benchmark.py",
+        "813ee04c7e9ceb2727611f4f799c542aa1d341f401785d39c6d2a0d409ebdf32"
+      ],
+      [
+        "aegis_cognition/lab.py",
+        "53eefb19734af1ad1434ec96d4a6855484f77303200dd506a1ef66c5594d051e"
+      ],
+      [
+        "core/python/aegis/trust_policy.py",
+        "0ba16e0073b8e40a2007af7e6ee2d4415dd4d210b88fb123ec87a78aa9bae396"
+      ],
+      [
+        "core/python/setup.py",
+        "90182b320dd3e20f6f57e79ee3566184d0232141b1a45f76bedc5c96dfe05b97"
+      ],
+      [
+        "core/rust/src/lab.rs",
+        "d74a6bb40d64a3e7d2779d3f05fbb8254f2f96d43c4e9c0459d69e9e78ab1c08"
+      ],
+      [
+        "docs/ARCHITECTURE_FREEZE.md",
+        "374b0f37f8be8c43bee437d2808d819d9ea488ff197e476ee4d52b838eb29ed8"
+      ],
+      [
+        "docs/adr/ADR-015-portability.md",
+        "100c23e8dc0bdb4604c72e79848d01848c6674d93aea4ffd53a079f50268682e"
+      ],
+      [
+        "docs/api/agent.md",
+        "33c886bc0426b8fcda128ef31b14f726d3c0f28db82093bd990f6ac55e6695b8"
+      ],
+      [
+        "docs/api/cli.md",
+        "9d57f5e7c81dfc30ada7c5f6d8d1c91ca7a893f777e03f2171924a6d438f17f0"
+      ],
+      [
+        "docs/architecture.md",
+        "e08dde6935591310ce09e44563e4fe4e908b75bf7d311fb9a8be841877a2f808"
+      ],
+      [
+        "docs/architecture/AEGIS_CURRENT_ARCHITECTURE_TRUTH_AUDIT.md",
+        "98567c519b39844c3f4fd9f7d0585ffab1e9c56b1f7db1855aef4aee78242405"
+      ],
+      [
+        "docs/architecture/AEGIS_LAB_RUNTIME_MASTER_PLAN.md",
+        "de1e986972c570ebdf5f75cd3a19d08268fd9a91a81d00b7ecaf9f7423202df1"
+      ],
+      [
+        "docs/architecture/AEGIS_LAB_STATUS_GENERATED.md",
+        "8bc91d2f93e26aad0c81a222a8263077ff72e620be0a37c18f9d2962f835d9a3"
+      ],
+      [
+        "docs/architecture/document_inventory.json",
+        "0715e2ab68fefd3072e46157e3857c14bd6141146a7390b59bd3dc324b23a59e"
+      ],
+      [
+        "docs/troubleshooting/common-errors.md",
+        "3403db4f190deb72ea6e7265042cdd7fe13fd02f95e3355861b518b008f48000"
+      ],
+      [
+        "docs/tutorials/browser-automation.md",
+        "a579b43dced12867e61417a1e83db854d159cb959f04fc5d9089805fccc463cb"
+      ],
+      [
+        "docs/tutorials/web-research.md",
+        "24a6b5abc9f86f66adcf6bc820c7d8467a8a77cfe8f3250eb2e23b1188c07c59"
+      ],
+      [
+        "scripts/document_consistency_gate.py",
+        "9dbf33023515df47576862737c8fd94c415c907a37e3ae50922651aeb3009cf9"
+      ],
+      [
+        "scripts/release_controller_action_smoke.py",
+        "add0e158a3bcac9b22a7816610b97565f6ed3136262b1cea37f5b664f76cc72c"
+      ],
+      [
+        "scripts/release_recovery_smoke.py",
+        "42c8ac8593b595fa7fdccef44ca5a4fdcf1a786162667ca06e5e61a7cd026fd8"
+      ],
+      [
+        "tests/test_constitution_audit_gates.py",
+        "e25d86f5b72e7bf691f1d05ffa2786079bb728f48676f6dacd2c2dd7bb345922"
+      ],
+      [
+        "tests/test_document_consistency_gate.py",
+        "d55185e89de5136fa76be4b7e7b6f3d50488284ca22d74c7eb36f1398e3baa33"
+      ],
+      [
+        "tests/test_lab_runtime.py",
+        "f53b5239005190097350218c556f874660e323ccf61a06fb2bb55fad56b90c16"
+      ]
+    ]
+  },
+  "epoch_end": {
+    "WORKTREE_EPOCH": "6e8c4adfdccec80543825a18e3885da36acb62c7574807342ae8ccf4c0d64ec6",
+    "HEAD": "f9645caf6d17cee2023d52183990ffcf8317e456",
+    "tracked_diff_sha256": "287b7162d3f1f8a19d5c7a3e8e05b2a5c3860d1eef7ecba33ca193689096e024",
+    "untracked_architecture_relevant": [
+      [
+        "aegis_cognition/benchmark.py",
+        "813ee04c7e9ceb2727611f4f799c542aa1d341f401785d39c6d2a0d409ebdf32"
+      ],
+      [
+        "aegis_cognition/lab.py",
+        "53eefb19734af1ad1434ec96d4a6855484f77303200dd506a1ef66c5594d051e"
+      ],
+      [
+        "core/python/aegis/trust_policy.py",
+        "0ba16e0073b8e40a2007af7e6ee2d4415dd4d210b88fb123ec87a78aa9bae396"
+      ],
+      [
+        "core/python/setup.py",
+        "90182b320dd3e20f6f57e79ee3566184d0232141b1a45f76bedc5c96dfe05b97"
+      ],
+      [
+        "core/rust/src/lab.rs",
+        "d74a6bb40d64a3e7d2779d3f05fbb8254f2f96d43c4e9c0459d69e9e78ab1c08"
+      ],
+      [
+        "docs/ARCHITECTURE_FREEZE.md",
+        "374b0f37f8be8c43bee437d2808d819d9ea488ff197e476ee4d52b838eb29ed8"
+      ],
+      [
+        "docs/adr/ADR-015-portability.md",
+        "100c23e8dc0bdb4604c72e79848d01848c6674d93aea4ffd53a079f50268682e"
+      ],
+      [
+        "docs/api/agent.md",
+        "33c886bc0426b8fcda128ef31b14f726d3c0f28db82093bd990f6ac55e6695b8"
+      ],
+      [
+        "docs/api/cli.md",
+        "9d57f5e7c81dfc30ada7c5f6d8d1c91ca7a893f777e03f2171924a6d438f17f0"
+      ],
+      [
+        "docs/architecture.md",
+        "e08dde6935591310ce09e44563e4fe4e908b75bf7d311fb9a8be841877a2f808"
+      ],
+      [
+        "docs/architecture/AEGIS_CURRENT_ARCHITECTURE_TRUTH_AUDIT.md",
+        "98567c519b39844c3f4fd9f7d0585ffab1e9c56b1f7db1855aef4aee78242405"
+      ],
+      [
+        "docs/architecture/AEGIS_LAB_RUNTIME_MASTER_PLAN.md",
+        "de1e986972c570ebdf5f75cd3a19d08268fd9a91a81d00b7ecaf9f7423202df1"
+      ],
+      [
+        "docs/architecture/AEGIS_LAB_STATUS_GENERATED.md",
+        "8bc91d2f93e26aad0c81a222a8263077ff72e620be0a37c18f9d2962f835d9a3"
+      ],
+      [
+        "docs/architecture/document_inventory.json",
+        "0715e2ab68fefd3072e46157e3857c14bd6141146a7390b59bd3dc324b23a59e"
+      ],
+      [
+        "docs/troubleshooting/common-errors.md",
+        "3403db4f190deb72ea6e7265042cdd7fe13fd02f95e3355861b518b008f48000"
+      ],
+      [
+        "docs/tutorials/browser-automation.md",
+        "a579b43dced12867e61417a1e83db854d159cb959f04fc5d9089805fccc463cb"
+      ],
+      [
+        "docs/tutorials/web-research.md",
+        "24a6b5abc9f86f66adcf6bc820c7d8467a8a77cfe8f3250eb2e23b1188c07c59"
+      ],
+      [
+        "scripts/document_consistency_gate.py",
+        "9dbf33023515df47576862737c8fd94c415c907a37e3ae50922651aeb3009cf9"
+      ],
+      [
+        "scripts/release_controller_action_smoke.py",
+        "add0e158a3bcac9b22a7816610b97565f6ed3136262b1cea37f5b664f76cc72c"
+      ],
+      [
+        "scripts/release_recovery_smoke.py",
+        "42c8ac8593b595fa7fdccef44ca5a4fdcf1a786162667ca06e5e61a7cd026fd8"
+      ],
+      [
+        "tests/test_constitution_audit_gates.py",
+        "e25d86f5b72e7bf691f1d05ffa2786079bb728f48676f6dacd2c2dd7bb345922"
+      ],
+      [
+        "tests/test_document_consistency_gate.py",
+        "d55185e89de5136fa76be4b7e7b6f3d50488284ca22d74c7eb36f1398e3baa33"
+      ],
+      [
+        "tests/test_lab_runtime.py",
+        "f53b5239005190097350218c556f874660e323ccf61a06fb2bb55fad56b90c16"
+      ]
+    ]
+  },
+  "collection_state": {
+    "head": "f9645caf6d17cee2023d52183990ffcf8317e456",
+    "branch": "main",
+    "origin_main": "origin/main",
+    "ahead_behind": "10\t0",
+    "entries": [
+      {
+        "status": " M",
+        "path": ".github/workflows/ci.yml"
+      },
+      {
+        "status": " M",
+        "path": ".github/workflows/deep.yml"
+      },
+      {
+        "status": " M",
+        "path": ".github/workflows/release.yml"
+      },
+      {
+        "status": " M",
+        "path": ".gitignore"
+      },
+      {
+        "status": " M",
+        "path": "aegis_cognition/__init__.py"
+      },
+      {
+        "status": " M",
+        "path": "aegis_cognition/agent.py"
+      },
+      {
+        "status": " M",
+        "path": "aegis_cognition/application.py"
+      },
+      {
+        "status": " M",
+        "path": "aegis_cognition/config.py"
+      },
+      {
+        "status": " M",
+        "path": "aegis_cognition/models.py"
+      },
+      {
+        "status": " M",
+        "path": "core/python/aegis/evidence.py"
+      },
+      {
+        "status": " M",
+        "path": "core/python/aegis/provider.py"
+      },
+      {
+        "status": " M",
+        "path": "core/python/aegis_adapter.py"
+      },
+      {
+        "status": " M",
+        "path": "core/python/aegis_cli.py"
+      },
+      {
+        "status": " M",
+        "path": "core/python/bridge.py"
+      },
+      {
+        "status": " M",
+        "path": "core/python/bridge_mmap.py"
+      },
+      {
+        "status": " M",
+        "path": "core/python/browser_live_collector.py"
+      },
+      {
+        "status": " M",
+        "path": "core/python/browser_ops_bench.py"
+      },
+      {
+        "status": " M",
+        "path": "core/python/browser_playwright_runtime.py"
+      },
+      {
+        "status": " M",
+        "path": "core/python/browser_runtime_adapter.py"
+      },
+      {
+        "status": " M",
+        "path": "core/python/integration.py"
+      },
+      {
+        "status": " M",
+        "path": "core/python/nim_client.py"
+      },
+      {
+        "status": " M",
+        "path": "core/python/operator_api.py"
+      },
+      {
+        "status": " M",
+        "path": "core/python/orchestrator.py"
+      },
+      {
+        "status": " M",
+        "path": "core/python/pyproject.toml"
+      },
+      {
+        "status": " M",
+        "path": "core/python/tests.py"
+      },
+      {
+        "status": " M",
+        "path": "core/rust/benches/nerve_bench.rs"
+      },
+      {
+        "status": " M",
+        "path": "core/rust/src/ffi.rs"
+      },
+      {
+        "status": " M",
+        "path": "core/rust/src/gt96.rs"
+      },
+      {
+        "status": " M",
+        "path": "core/rust/src/lib.rs"
+      },
+      {
+        "status": " M",
+        "path": "core/rust/src/memory/fold.rs"
+      },
+      {
+        "status": " M",
+        "path": "core/rust/src/physical.rs"
+      },
+      {
+        "status": " M",
+        "path": "core/rust/src/replay.rs"
+      },
+      {
+        "status": " M",
+        "path": "core/rust/src/task_ledger.rs"
+      },
+      {
+        "status": " M",
+        "path": "core/rust/src/tests.rs"
+      },
+      {
+        "status": " M",
+        "path": "core/rust/src/tool_gateway.rs"
+      },
+      {
+        "status": " M",
+        "path": "docs/adr/ADR-012-portability.md"
+      },
+      {
+        "status": " M",
+        "path": "docs/architecture/CONTRACT_INVENTORY.md"
+      },
+      {
+        "status": " M",
+        "path": "docs/architecture/GT96_TRACEABILITY.md"
+      },
+      {
+        "status": " M",
+        "path": "docs/architecture/NOT_VERIFIED_REGISTRY.md"
+      },
+      {
+        "status": " M",
+        "path": "docs/architecture/deployment_policy.json"
+      },
+      {
+        "status": " M",
+        "path": "docs/architecture/evidence/current.json"
+      },
+      {
+        "status": " M",
+        "path": "docs/architecture/not_verified_registry.json"
+      },
+      {
+        "status": " M",
+        "path": "\"planning pdf/AEGIS-COGNITION_ Agent Harness Continuation Plan.md\""
+      },
+      {
+        "status": " M",
+        "path": "pyproject.toml"
+      },
+      {
+        "status": " M",
+        "path": "scripts/_audit_regen_requirements.py"
+      },
+      {
+        "status": " M",
+        "path": "scripts/_debug_probe.py"
+      },
+      {
+        "status": " M",
+        "path": "scripts/architecture_fitness.py"
+      },
+      {
+        "status": " M",
+        "path": "scripts/constitution_audit.py"
+      },
+      {
+        "status": " M",
+        "path": "scripts/dynamic_provider_fallback_gate.py"
+      },
+      {
+        "status": " M",
+        "path": "scripts/e2e_release_gate.py"
+      },
+      {
+        "status": " M",
+        "path": "scripts/evidence_consistency_gate.py"
+      },
+      {
+        "status": " M",
+        "path": "scripts/external_deployment_smoke_gate.py"
+      },
+      {
+        "status": " M",
+        "path": "scripts/extreme_testing_suite.py"
+      },
+      {
+        "status": " M",
+        "path": "scripts/hermes_rpc_baseline_gate.py"
+      },
+      {
+        "status": " M",
+        "path": "scripts/production_closure.py"
+      },
+      {
+        "status": " M",
+        "path": "scripts/production_packaging_smoke_gate.py"
+      },
+      {
+        "status": " M",
+        "path": "scripts/production_readiness.py"
+      },
+      {
+        "status": " M",
+        "path": "scripts/python_hotpath_gate.py"
+      },
+      {
+        "status": " M",
+        "path": "scripts/release_install_smoke.py"
+      },
+      {
+        "status": " M",
+        "path": "scripts/release_rollback_drill.py"
+      },
+      {
+        "status": " M",
+        "path": "scripts/run_checks.py"
+      },
+      {
+        "status": " M",
+        "path": "scripts/smoke_check.py"
+      },
+      {
+        "status": " M",
+        "path": "scripts/sota_baseline_gate.py"
+      },
+      {
+        "status": " M",
+        "path": "scripts/supply_chain_gate.py"
+      },
+      {
+        "status": " M",
+        "path": "tests/test_evidence_consistency_gate.py"
+      },
+      {
+        "status": " M",
+        "path": "uv.lock"
+      },
+      {
+        "status": "??",
+        "path": ".serena/"
+      },
+      {
+        "status": "??",
+        "path": "aegis_cognition/benchmark.py"
+      },
+      {
+        "status": "??",
+        "path": "aegis_cognition/lab.py"
+      },
+      {
+        "status": "??",
+        "path": "core/python/aegis/trust_policy.py"
+      },
+      {
+        "status": "??",
+        "path": "core/python/setup.py"
+      },
+      {
+        "status": "??",
+        "path": "core/rust/src/lab.rs"
+      },
+      {
+        "status": "??",
+        "path": "docs/ARCHITECTURE_FREEZE.md"
+      },
+      {
+        "status": "??",
+        "path": "docs/adr/ADR-015-portability.md"
+      },
+      {
+        "status": "??",
+        "path": "docs/api/"
+      },
+      {
+        "status": "??",
+        "path": "docs/architecture.md"
+      },
+      {
+        "status": "??",
+        "path": "docs/architecture/AEGIS_CURRENT_ARCHITECTURE_TRUTH_AUDIT.md"
+      },
+      {
+        "status": "??",
+        "path": "docs/architecture/AEGIS_LAB_RUNTIME_MASTER_PLAN.md"
+      },
+      {
+        "status": "??",
+        "path": "docs/architecture/AEGIS_LAB_STATUS_GENERATED.md"
+      },
+      {
+        "status": "??",
+        "path": "docs/architecture/design-closure/"
+      },
+      {
+        "status": "??",
+        "path": "docs/architecture/document_inventory.json"
+      },
+      {
+        "status": "??",
+        "path": "docs/architecture/empirical-research/"
+      },
+      {
+        "status": "??",
+        "path": "docs/architecture/evidence-pack/"
+      },
+      {
+        "status": "??",
+        "path": "docs/troubleshooting/"
+      },
+      {
+        "status": "??",
+        "path": "docs/tutorials/"
+      },
+      {
+        "status": "??",
+        "path": "scripts/document_consistency_gate.py"
+      },
+      {
+        "status": "??",
+        "path": "scripts/release_controller_action_smoke.py"
+      },
+      {
+        "status": "??",
+        "path": "scripts/release_recovery_smoke.py"
+      },
+      {
+        "status": "??",
+        "path": "tests/test_constitution_audit_gates.py"
+      },
+      {
+        "status": "??",
+        "path": "tests/test_document_consistency_gate.py"
+      },
+      {
+        "status": "??",
+        "path": "tests/test_lab_runtime.py"
+      }
+    ],
+    "staged": [],
+    "modified": [
+      {
+        "status": " M",
+        "path": ".github/workflows/ci.yml"
+      },
+      {
+        "status": " M",
+        "path": ".github/workflows/deep.yml"
+      },
+      {
+        "status": " M",
+        "path": ".github/workflows/release.yml"
+      },
+      {
+        "status": " M",
+        "path": ".gitignore"
+      },
+      {
+        "status": " M",
+        "path": "aegis_cognition/__init__.py"
+      },
+      {
+        "status": " M",
+        "path": "aegis_cognition/agent.py"
+      },
+      {
+        "status": " M",
+        "path": "aegis_cognition/application.py"
+      },
+      {
+        "status": " M",
+        "path": "aegis_cognition/config.py"
+      },
+      {
+        "status": " M",
+        "path": "aegis_cognition/models.py"
+      },
+      {
+        "status": " M",
+        "path": "core/python/aegis/evidence.py"
+      },
+      {
+        "status": " M",
+        "path": "core/python/aegis/provider.py"
+      },
+      {
+        "status": " M",
+        "path": "core/python/aegis_adapter.py"
+      },
+      {
+        "status": " M",
+        "path": "core/python/aegis_cli.py"
+      },
+      {
+        "status": " M",
+        "path": "core/python/bridge.py"
+      },
+      {
+        "status": " M",
+        "path": "core/python/bridge_mmap.py"
+      },
+      {
+        "status": " M",
+        "path": "core/python/browser_live_collector.py"
+      },
+      {
+        "status": " M",
+        "path": "core/python/browser_ops_bench.py"
+      },
+      {
+        "status": " M",
+        "path": "core/python/browser_playwright_runtime.py"
+      },
+      {
+        "status": " M",
+        "path": "core/python/browser_runtime_adapter.py"
+      },
+      {
+        "status": " M",
+        "path": "core/python/integration.py"
+      },
+      {
+        "status": " M",
+        "path": "core/python/nim_client.py"
+      },
+      {
+        "status": " M",
+        "path": "core/python/operator_api.py"
+      },
+      {
+        "status": " M",
+        "path": "core/python/orchestrator.py"
+      },
+      {
+        "status": " M",
+        "path": "core/python/pyproject.toml"
+      },
+      {
+        "status": " M",
+        "path": "core/python/tests.py"
+      },
+      {
+        "status": " M",
+        "path": "core/rust/benches/nerve_bench.rs"
+      },
+      {
+        "status": " M",
+        "path": "core/rust/src/ffi.rs"
+      },
+      {
+        "status": " M",
+        "path": "core/rust/src/gt96.rs"
+      },
+      {
+        "status": " M",
+        "path": "core/rust/src/lib.rs"
+      },
+      {
+        "status": " M",
+        "path": "core/rust/src/memory/fold.rs"
+      },
+      {
+        "status": " M",
+        "path": "core/rust/src/physical.rs"
+      },
+      {
+        "status": " M",
+        "path": "core/rust/src/replay.rs"
+      },
+      {
+        "status": " M",
+        "path": "core/rust/src/task_ledger.rs"
+      },
+      {
+        "status": " M",
+        "path": "core/rust/src/tests.rs"
+      },
+      {
+        "status": " M",
+        "path": "core/rust/src/tool_gateway.rs"
+      },
+      {
+        "status": " M",
+        "path": "docs/adr/ADR-012-portability.md"
+      },
+      {
+        "status": " M",
+        "path": "docs/architecture/CONTRACT_INVENTORY.md"
+      },
+      {
+        "status": " M",
+        "path": "docs/architecture/GT96_TRACEABILITY.md"
+      },
+      {
+        "status": " M",
+        "path": "docs/architecture/NOT_VERIFIED_REGISTRY.md"
+      },
+      {
+        "status": " M",
+        "path": "docs/architecture/deployment_policy.json"
+      },
+      {
+        "status": " M",
+        "path": "docs/architecture/evidence/current.json"
+      },
+      {
+        "status": " M",
+        "path": "docs/architecture/not_verified_registry.json"
+      },
+      {
+        "status": " M",
+        "path": "\"planning pdf/AEGIS-COGNITION_ Agent Harness Continuation Plan.md\""
+      },
+      {
+        "status": " M",
+        "path": "pyproject.toml"
+      },
+      {
+        "status": " M",
+        "path": "scripts/_audit_regen_requirements.py"
+      },
+      {
+        "status": " M",
+        "path": "scripts/_debug_probe.py"
+      },
+      {
+        "status": " M",
+        "path": "scripts/architecture_fitness.py"
+      },
+      {
+        "status": " M",
+        "path": "scripts/constitution_audit.py"
+      },
+      {
+        "status": " M",
+        "path": "scripts/dynamic_provider_fallback_gate.py"
+      },
+      {
+        "status": " M",
+        "path": "scripts/e2e_release_gate.py"
+      },
+      {
+        "status": " M",
+        "path": "scripts/evidence_consistency_gate.py"
+      },
+      {
+        "status": " M",
+        "path": "scripts/external_deployment_smoke_gate.py"
+      },
+      {
+        "status": " M",
+        "path": "scripts/extreme_testing_suite.py"
+      },
+      {
+        "status": " M",
+        "path": "scripts/hermes_rpc_baseline_gate.py"
+      },
+      {
+        "status": " M",
+        "path": "scripts/production_closure.py"
+      },
+      {
+        "status": " M",
+        "path": "scripts/production_packaging_smoke_gate.py"
+      },
+      {
+        "status": " M",
+        "path": "scripts/production_readiness.py"
+      },
+      {
+        "status": " M",
+        "path": "scripts/python_hotpath_gate.py"
+      },
+      {
+        "status": " M",
+        "path": "scripts/release_install_smoke.py"
+      },
+      {
+        "status": " M",
+        "path": "scripts/release_rollback_drill.py"
+      },
+      {
+        "status": " M",
+        "path": "scripts/run_checks.py"
+      },
+      {
+        "status": " M",
+        "path": "scripts/smoke_check.py"
+      },
+      {
+        "status": " M",
+        "path": "scripts/sota_baseline_gate.py"
+      },
+      {
+        "status": " M",
+        "path": "scripts/supply_chain_gate.py"
+      },
+      {
+        "status": " M",
+        "path": "tests/test_evidence_consistency_gate.py"
+      },
+      {
+        "status": " M",
+        "path": "uv.lock"
+      }
+    ],
+    "untracked": [
+      {
+        "status": "??",
+        "path": ".serena/"
+      },
+      {
+        "status": "??",
+        "path": "aegis_cognition/benchmark.py"
+      },
+      {
+        "status": "??",
+        "path": "aegis_cognition/lab.py"
+      },
+      {
+        "status": "??",
+        "path": "core/python/aegis/trust_policy.py"
+      },
+      {
+        "status": "??",
+        "path": "core/python/setup.py"
+      },
+      {
+        "status": "??",
+        "path": "core/rust/src/lab.rs"
+      },
+      {
+        "status": "??",
+        "path": "docs/ARCHITECTURE_FREEZE.md"
+      },
+      {
+        "status": "??",
+        "path": "docs/adr/ADR-015-portability.md"
+      },
+      {
+        "status": "??",
+        "path": "docs/api/"
+      },
+      {
+        "status": "??",
+        "path": "docs/architecture.md"
+      },
+      {
+        "status": "??",
+        "path": "docs/architecture/AEGIS_CURRENT_ARCHITECTURE_TRUTH_AUDIT.md"
+      },
+      {
+        "status": "??",
+        "path": "docs/architecture/AEGIS_LAB_RUNTIME_MASTER_PLAN.md"
+      },
+      {
+        "status": "??",
+        "path": "docs/architecture/AEGIS_LAB_STATUS_GENERATED.md"
+      },
+      {
+        "status": "??",
+        "path": "docs/architecture/design-closure/"
+      },
+      {
+        "status": "??",
+        "path": "docs/architecture/document_inventory.json"
+      },
+      {
+        "status": "??",
+        "path": "docs/architecture/empirical-research/"
+      },
+      {
+        "status": "??",
+        "path": "docs/architecture/evidence-pack/"
+      },
+      {
+        "status": "??",
+        "path": "docs/troubleshooting/"
+      },
+      {
+        "status": "??",
+        "path": "docs/tutorials/"
+      },
+      {
+        "status": "??",
+        "path": "scripts/document_consistency_gate.py"
+      },
+      {
+        "status": "??",
+        "path": "scripts/release_controller_action_smoke.py"
+      },
+      {
+        "status": "??",
+        "path": "scripts/release_recovery_smoke.py"
+      },
+      {
+        "status": "??",
+        "path": "tests/test_constitution_audit_gates.py"
+      },
+      {
+        "status": "??",
+        "path": "tests/test_document_consistency_gate.py"
+      },
+      {
+        "status": "??",
+        "path": "tests/test_lab_runtime.py"
+      }
+    ],
+    "stderr": ""
+  },
+  "v63": {
+    "classification": "V63_ARTIFACT_MISSING",
+    "expected_root": "C:\\Users\\ADMIN\\AppData\\Local\\Temp\\aegis-lab-native-wheel-v63",
+    "documented_wheel_sha256": "e2ae96f1c7886e3f2f7a1e522cb5e2d783b90df96db8caed2ef44eca2afd41bf",
+    "expected_records": [
+      "install-smoke-v63.json",
+      "controller-smoke-v63.json",
+      "recovery-smoke-v63.json",
+      "rollback-v62-v63.json"
+    ],
+    "present_records": [],
+    "missing_records": [
+      "C:\\Users\\ADMIN\\AppData\\Local\\Temp\\aegis-lab-native-wheel-v63\\install-smoke-v63.json",
+      "C:\\Users\\ADMIN\\AppData\\Local\\Temp\\aegis-lab-native-wheel-v63\\controller-smoke-v63.json",
+      "C:\\Users\\ADMIN\\AppData\\Local\\Temp\\aegis-lab-native-wheel-v63\\recovery-smoke-v63.json",
+      "C:\\Users\\ADMIN\\AppData\\Local\\Temp\\aegis-lab-native-wheel-v63\\rollback-v62-v63.json"
+    ],
+    "parsed_records": [],
+    "wheel_exists": false,
+    "rollback_subject_verified": false,
+    "reason": "all four documented v63 records and the referenced wheel directory are absent; historical claims cannot be replayed",
+    "new_wheel_justification": "ARTIFACT_MISSING"
+  },
+  "verification": {
+    "evidence_consistency_gate": {
+      "command": ".venv\\Scripts\\python.exe scripts/evidence_consistency_gate.py",
+      "exit": 1,
+      "status": "FAIL",
+      "decisive_errors": [
+        "evidence consistency gate failed: manifest.commit must be a 40-character lowercase git SHA",
+        "evidence consistency gate failed: remediation[P0-PROVENANCE].final_sha=CHECKOUT_HEAD does not match f9645caf6d17cee2023d52183990ffcf8317e456",
+        "evidence consistency gate failed: remediation[P0-COUNTS].final_sha=CHECKOUT_HEAD does not match f9645caf6d17cee2023d52183990ffcf8317e456",
+        "evidence consistency gate failed: remediation[P0-SOURCE-OF-TRUTH].final_sha=CHECKOUT_HEAD does not match f9645caf6d17cee2023d52183990ffcf8317e456",
+        "evidence consistency gate failed: remediation[P0-GT96].final_sha=CHECKOUT_HEAD does not match f9645caf6d17cee2023d52183990ffcf8317e456",
+        "evidence consistency gate failed: remediation[P0-MEMORY-CLAIMS].final_sha=CHECKOUT_HEAD does not match f9645caf6d17cee2023d52183990ffcf8317e456",
+        "evidence consistency gate failed: remediation[P0-LABEL-AUDIT].final_sha=CHECKOUT_HEAD does not match f9645caf6d17cee2023d52183990ffcf8317e456",
+        "evidence consistency gate failed: remediation[P1-LINUX-CGROUP].final_sha=CHECKOUT_HEAD does not match f9645caf6d17cee2023d52183990ffcf8317e456"
+      ],
+      "error_count": 34
+    },
+    "m2_fresh_process_replay": {
+      "status": "PASS_LOCAL_ONLY",
+      "path": "C:\\Users\\ADMIN\\AEGIS-COGNITION\\artifacts\\local-runtime\\m2-all-lane-fresh-replay-20260901\\m2_all_lane_fresh_replay.json",
+      "sha256": "76650fbea44947f16b305479d58ebd6ed4852224d662295d772cd097aa07057b",
+      "checks": {
+        "schema": true,
+        "status": true,
+        "lanes": true,
+        "parent_valid": true,
+        "child_valid": true,
+        "recovery_complete": true,
+        "non_success": true
+      },
+      "recorded_source_epoch": "b4f5b77e125fd1b902547916bb7384d5d69d9216a04c5aad31ab82cdf24e6b6f",
+      "source_epoch_status": "HISTORICAL_REUSED; recorded source epoch differs from current collection epoch and is not merged as current source proof"
+    },
+    "current_combined_runtime_probe": {
+      "status": "PASS_LOCAL_COMBINED_INSTALL",
+      "artifact": "artifacts/local-runtime/combined-runtime-probe-20260901/combined_runtime_probe.json",
+      "root_wheel_sha256": "8a1c8a74e46f1eff5032829101376d4acba9f01cf0bd4ec0bc3685c4c8141f62",
+      "core_wheel_sha256": "87c91bfce4804a376790c86875a4de17dd9a7d5feabec2150ad435edd977d605",
+      "dependency_complete_install": true,
+      "repo_paths_on_sys_path": [],
+      "single_aegis_console_owner": true,
+      "record_hash_mismatches": [],
+      "native_import": true,
+      "cli_help_exit": 0,
+      "limitations": [
+        "local Windows evidence only; no hosted parity, signature or final-SHA attestation"
+      ]
+    },
+    "document_consistency_gate": "PASS (run separately after collection)",
+    "collector_py_compile": "PASS"
+  },
+  "decision_summary": {
+    "safe_to_design_target_architecture": "YES",
+    "safe_to_begin_surgical_convergence": "NO",
+    "strong_delete_candidates": [],
+    "strong_split_candidates": [
+      "core/rust/src/ffi.rs"
+    ],
+    "local_blockers": [
+      "final SHA/current.json provenance",
+      "Python/Rust authority divergence and lossy Lab projection",
+      "DEV/PROD trust policy contradiction",
+      "layered retry ownership and duplicate-effect risk"
+    ],
+    "local_questions_exhausted": [
+      "v63 artifact availability",
+      "current package/CLI owner and stale collision provenance",
+      "standalone core bridge/browser/batch/learning compatibility",
+      "nested mirror Cargo reachability",
+      "dynamic imports/sys.path product reachability",
+      "actual FFI registration count and local hazard conditions",
+      "local Python/Rust model fields and projection behavior",
+      "local side-effect admission paths",
+      "local error handling and schema/version surfaces",
+      "local performance baseline reuse and artifact retention"
+    ],
+    "external_only": [
+      "Linux/macOS/Windows native enforcement",
+      "hosted queue/lease/telemetry/restore",
+      "multi-machine clocks/order",
+      "provider SDK retry/idempotency and receipts",
+      "live browser SSRF/permissions/descendant cleanup",
+      "hardware/electrical calibration",
+      "independent scientific/generalization benchmark",
+      "signed release attestation and owner-approved final manifest"
+    ]
+  },
+  "artifacts": [
+    "artifact_retention.json",
+    "cohesion_candidates.json",
+    "config_precedence.json",
+    "data_movement.json",
+    "delete_candidates.json",
+    "dynamic_reachability.json",
+    "entrypoint_truth.json",
+    "error_semantics.json",
+    "external_boundary.json",
+    "ffi_actual_surface.json",
+    "invariant_matrix.json",
+    "packaging_truth.json",
+    "performance_baseline.json",
+    "retry_truth.json",
+    "rust_mirror_truth.json",
+    "rust_public_surface.json",
+    "schema_graph.json",
+    "side_effect_bypasses.json",
+    "side_effect_chains.json",
+    "state_divergence.json",
+    "trust_truth.json"
+  ],
+  "epoch_exclusions": [
+    "docs/architecture/evidence-pack/",
+    "docs/architecture/design-closure/",
+    "docs/architecture/empirical-research/",
+    "artifacts/local-runtime/",
+    ".venv/",
+    "target/",
+    ".git/",
+    ".serena/",
+    "cache directories"
+  ],
+  "limitations": [
+    "audit output/cache directories are excluded from epoch hashing to avoid self-reference; their per-file hashes are recorded separately"
+  ],
+  "HEAD": "f9645caf6d17cee2023d52183990ffcf8317e456",
+  "WORKTREE_EPOCH": "6e8c4adfdccec80543825a18e3885da36acb62c7574807342ae8ccf4c0d64ec6",
+  "generated_at": "2026-09-01T02:54:46.298383+00:00",
+  "method": "aegis-design-closure-reconciliation-v1; direct Git/filesystem/source inspection, prior artifact hash reuse, disposable wheel reconciliation, bounded local probes"
+}

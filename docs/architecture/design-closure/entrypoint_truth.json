@@ -1,0 +1,78 @@
+{
+  "schema": "aegis-design-entrypoint-truth-v1",
+  "roots": [
+    {
+      "root": "aegis_cognition.Agent",
+      "class": "PRIMARY_PUBLIC",
+      "reachable": "AgentApplication; LabApplication only when lab=True; credential/provider dependent",
+      "proof": "source + clean wheel import"
+    },
+    {
+      "root": "AgentApplication",
+      "class": "PRIMARY_PUBLIC",
+      "reachable": "application orchestration -> provider or Lab",
+      "proof": "source symbol"
+    },
+    {
+      "root": "Lab/LabSession/LabPolicy",
+      "class": "PRIMARY_PUBLIC",
+      "reachable": "Python LabRun projection -> native controller/cells/replay",
+      "proof": "source + local lifecycle"
+    },
+    {
+      "root": "root aegis CLI",
+      "class": "PRIMARY_PUBLIC",
+      "reachable": "aegis_cognition.cli:main",
+      "proof": "wheel entry point + --help PASS"
+    },
+    {
+      "root": "core/python aegis CLI",
+      "class": "PUBLIC_COMPATIBILITY",
+      "reachable": "legacy source-level aegis_cli:main; current core wheel publishes no console script and does not contain aegis_cli.py",
+      "proof": "core wheel RECORD + independent core probe PASS_NO_CONSOLE_SCRIPT"
+    },
+    {
+      "root": "Rust binary",
+      "class": "PRIMARY_PUBLIC",
+      "reachable": "Cargo target/CLI dispatch",
+      "proof": "cargo metadata/source"
+    },
+    {
+      "root": "PyO3 module",
+      "class": "PRIMARY_PUBLIC",
+      "reachable": "aegis_cognition.aegis_nerve native bindings",
+      "proof": "clean wheel import"
+    },
+    {
+      "root": "operator API",
+      "class": "INTERNAL_OPERATOR",
+      "reachable": "operator/artifact routes",
+      "proof": "source inventory"
+    },
+    {
+      "root": "cluster worker",
+      "class": "INTERNAL_OPERATOR",
+      "reachable": "worker/queue paths",
+      "proof": "source; hosted behavior not proven"
+    },
+    {
+      "root": "plugin entry points",
+      "class": "POC",
+      "reachable": "workspace/plugin crates; runtime discovery not proven",
+      "proof": "cargo metadata"
+    },
+    {
+      "root": "scripts and gates",
+      "class": "DEVELOPER_TOOL",
+      "reachable": "explicit direct invocation/CI only",
+      "proof": "source"
+    }
+  ],
+  "limitations": [
+    "codebase-memory index is secondary: it is ready but detects 97 changed files versus origin and is not used as sole truth"
+  ],
+  "HEAD": "f9645caf6d17cee2023d52183990ffcf8317e456",
+  "WORKTREE_EPOCH": "6e8c4adfdccec80543825a18e3885da36acb62c7574807342ae8ccf4c0d64ec6",
+  "generated_at": "2026-09-01T02:54:46.298383+00:00",
+  "method": "aegis-design-closure-reconciliation-v1; direct Git/filesystem/source inspection, prior artifact hash reuse, disposable wheel reconciliation, bounded local probes"
+}

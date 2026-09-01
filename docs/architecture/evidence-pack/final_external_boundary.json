@@ -1,0 +1,80 @@
+{
+  "schema": "aegis-final-external-boundary-v1",
+  "items": [
+    {
+      "unknown": "current.json/final SHA binding",
+      "class": "LOCAL_ACTIONABLE",
+      "reason": "policy/source decision"
+    },
+    {
+      "unknown": "package/CLI ownership",
+      "class": "LOCAL_ACTIONABLE",
+      "reason": "conflict proven locally"
+    },
+    {
+      "unknown": "canonical state/trust/retry owner",
+      "class": "LOCAL_ACTIONABLE",
+      "reason": "divergence proven locally"
+    },
+    {
+      "unknown": "full plugin/subprocess reachability",
+      "class": "LOCAL_ACTIONABLE",
+      "reason": "more contract work possible"
+    },
+    {
+      "unknown": "Windows process/browser containment",
+      "class": "WINDOWS_NATIVE_REQUIRED",
+      "reason": "OS-level child tests"
+    },
+    {
+      "unknown": "Linux sandbox/namespace/seccomp",
+      "class": "LINUX_NATIVE_REQUIRED",
+      "reason": "not available on Windows"
+    },
+    {
+      "unknown": "macOS sandbox",
+      "class": "MACOS_NATIVE_REQUIRED",
+      "reason": "platform-specific"
+    },
+    {
+      "unknown": "hosted multi-worker lease/queue",
+      "class": "HOSTED_REQUIRED",
+      "reason": "deployed shared service"
+    },
+    {
+      "unknown": "cross-machine ordering/clock/failure",
+      "class": "MULTI_MACHINE_REQUIRED",
+      "reason": "single checkout"
+    },
+    {
+      "unknown": "provider hidden retry/idempotency",
+      "class": "LIVE_PROVIDER_REQUIRED",
+      "reason": "provider contract"
+    },
+    {
+      "unknown": "live browser SSRF/redirect/permissions",
+      "class": "LIVE_BROWSER_REQUIRED",
+      "reason": "controlled browser"
+    },
+    {
+      "unknown": "hardware/electrical behavior",
+      "class": "HARDWARE_REQUIRED",
+      "reason": "software cannot represent"
+    },
+    {
+      "unknown": "scientific validity",
+      "class": "SCIENTIFIC_VALIDATION_ONLY",
+      "reason": "domain replication"
+    },
+    {
+      "unknown": "independent security/performance reproduction",
+      "class": "INDEPENDENT_VALIDATION_REQUIRED",
+      "reason": "self-audit is not independent"
+    }
+  ],
+  "WORKTREE_EPOCH": "3783037b7a38cf214bdfe4b593496971ccafec29fd6b5b05f413a98ea51918c6",
+  "HEAD": "f9645caf6d17cee2023d52183990ffcf8317e456",
+  "generated_at": "2026-08-28T02:58:56.366605+00:00",
+  "collector_version/method": "aegis-final-design-closure-v1; direct Git/filesystem/AST/Cargo plus bounded disposable-wheel probes",
+  "limitations": []
+}

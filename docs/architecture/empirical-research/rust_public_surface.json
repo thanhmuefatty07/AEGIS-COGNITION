@@ -1,0 +1,49 @@
+{
+  "schema": "aegis-empirical-experiment-output-v1",
+  "experiment_id": "EXP-API-001",
+  "status": "COMPLETE",
+  "HEAD": "f9645caf6d17cee2023d52183990ffcf8317e456",
+  "WORKTREE_EPOCH": "549114d28117c7374ab5e1e1b1c0706876887eb55365684c7ec896fe2c779b2d",
+  "generated_at": "2026-08-31T08:45:23.079168+00:00",
+  "question": "What deliberate Rust public surface exists?",
+  "why_it_matters": "This result is an input to the final architecture/master plan decision.",
+  "leading_hypothesis": "Most pub declarations without consumer edges are accidental suspects.",
+  "rival_hypotheses": [
+    "Plugin/workspace consumers make all pub declarations intentional."
+  ],
+  "falsification_criteria": [
+    "A bounded observation contradicts the leading hypothesis within the stated scope."
+  ],
+  "controlled_variables": [
+    "current checkout",
+    "bounded local input",
+    "no external side effects"
+  ],
+  "uncontrolled_variables": [
+    "host scheduling",
+    "filesystem cache/antivirus",
+    "machine-specific toolchain"
+  ],
+  "method": "Direct current-worktree source/manifest inspection plus codebase-memory graph evidence; no product mutation.",
+  "commands": [],
+  "raw_artifacts": [
+    {
+      "path": "docs/architecture/empirical-research/raw/exp_api_001.json",
+      "sha256": "dea18b5df46e2aa21756036e6b84a606d2f1149f609012b9e9e71a437b22696d",
+      "kind": "raw"
+    }
+  ],
+  "measurements": [],
+  "observed_failures": [],
+  "interpretation": "Cargo/source graph separates FFI, crate-internal, compatibility, test and accidental-suspect surfaces; no visibility changes.",
+  "what_was_falsified": [],
+  "what_remains_unknown": [
+    "macro/trait/cfg expansion",
+    "rust-analyzer consumer resolution"
+  ],
+  "evidence_class": "SOURCE_BACKED",
+  "limitations": [
+    "static inspection is not runtime proof"
+  ],
+  "recommended_next_decision_input": "Carry this result into target architecture design; do not treat it as implementation authorization."
+}

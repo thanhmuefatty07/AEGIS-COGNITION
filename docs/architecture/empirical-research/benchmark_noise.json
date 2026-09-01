@@ -1,0 +1,69 @@
+{
+  "schema": "aegis-empirical-experiment-output-v1",
+  "experiment_id": "EXP-BENCH-002",
+  "status": "COMPLETE",
+  "HEAD": "f9645caf6d17cee2023d52183990ffcf8317e456",
+  "WORKTREE_EPOCH": "549114d28117c7374ab5e1e1b1c0706876887eb55365684c7ec896fe2c779b2d",
+  "generated_at": "2026-08-31T08:45:23.079168+00:00",
+  "question": "How noisy is a bounded local primitive?",
+  "why_it_matters": "This result is an input to the final architecture/master plan decision.",
+  "leading_hypothesis": "Even deterministic hash timing has host variance.",
+  "rival_hypotheses": [
+    "Small variance is robust enough for a general claim."
+  ],
+  "falsification_criteria": [
+    "A bounded observation contradicts the leading hypothesis within the stated scope."
+  ],
+  "controlled_variables": [
+    "current checkout",
+    "bounded local input",
+    "no external side effects"
+  ],
+  "uncontrolled_variables": [
+    "host scheduling",
+    "filesystem cache/antivirus",
+    "machine-specific toolchain"
+  ],
+  "method": "Seven same-process local repetitions with raw values.",
+  "commands": [],
+  "raw_artifacts": [
+    {
+      "path": "docs/architecture/empirical-research/raw/exp_bench_002.json",
+      "sha256": "dc4edd4d23005fc1871e802b9791044067754bfeb723b9ec0af643a6de779ad8",
+      "kind": "raw"
+    }
+  ],
+  "measurements": [
+    {
+      "metric": "benchmark.hash.noise",
+      "value": 27.3,
+      "unit": "us",
+      "n": 7,
+      "min": 27.2,
+      "max": 35.2,
+      "mean": 28.65714285714286,
+      "stdev": 2.931926069359608,
+      "raw_values": [
+        35.2,
+        28.7,
+        27.6,
+        27.3,
+        27.3,
+        27.2,
+        27.3
+      ],
+      "evidence_class": "MEASURED"
+    }
+  ],
+  "observed_failures": [],
+  "interpretation": "Noise and raw samples are recorded; no robust tail claim.",
+  "what_was_falsified": [],
+  "what_remains_unknown": [
+    "cross-process/reboot repeatability"
+  ],
+  "evidence_class": "MEASURED",
+  "limitations": [
+    "n=7"
+  ],
+  "recommended_next_decision_input": "Use process-isolated repeated runs for material comparisons."
+}

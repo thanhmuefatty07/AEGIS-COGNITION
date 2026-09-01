@@ -1,0 +1,151 @@
+{
+  "schema": "aegis-final-packaging-truth-v1",
+  "classification": "OVERLAPPING",
+  "root_pyproject": {
+    "path": "pyproject.toml",
+    "build": "maturin",
+    "package": "aegis-cognition==0.1.0",
+    "python": ">=3.14,<3.16",
+    "console_script": "aegis=aegis_cognition.cli:main",
+    "native": "aegis_cognition.aegis_nerve"
+  },
+  "core_python_pyproject": {
+    "path": "core/python/pyproject.toml",
+    "build": "setuptools",
+    "package": "aegis-cognition-core-python==0.1.0",
+    "python": ">=3.14,<3.16",
+    "console_script": "aegis=aegis_cli:main"
+  },
+  "wheel": {
+    "status": "BUILT_AND_LISTED",
+    "path": "C:\\Users\\ADMIN\\AppData\\Local\\Temp\\aegis-final-design-closure\\wheel\\aegis_cognition-0.1.0-cp314-cp314-win_amd64.whl",
+    "filename": "aegis_cognition-0.1.0-cp314-cp314-win_amd64.whl",
+    "bytes": 13402247,
+    "sha256": "2205adbf6aaa4937c1f2678bf2109b48371e70eb50c474ebe379f14b4088fccf",
+    "file_count": 48,
+    "files": [
+      "aegis_cognition-0.1.0.dist-info/METADATA",
+      "aegis_cognition-0.1.0.dist-info/RECORD",
+      "aegis_cognition-0.1.0.dist-info/WHEEL",
+      "aegis_cognition-0.1.0.dist-info/entry_points.txt",
+      "aegis_cognition-0.1.0.dist-info/sboms/aegis-nerve.cyclonedx.json",
+      "aegis_cognition/__init__.py",
+      "aegis_cognition/aegis_nerve.cp314-win_amd64.pyd",
+      "aegis_cognition/agent.py",
+      "aegis_cognition/application.py",
+      "aegis_cognition/benchmark.py",
+      "aegis_cognition/cli.py",
+      "aegis_cognition/config.py",
+      "aegis_cognition/dx_metrics.py",
+      "aegis_cognition/errors.py",
+      "aegis_cognition/infrastructure.py",
+      "aegis_cognition/lab.py",
+      "aegis_cognition/metrics.py",
+      "aegis_cognition/models.py",
+      "aegis_cognition/observability.py",
+      "aegis_cognition/prompt.py",
+      "aegis_cognition/rag.py",
+      "aegis_cognition/runtime.py",
+      "core/__init__.py",
+      "core/python/__init__.py",
+      "core/python/aegis/__init__.py",
+      "core/python/aegis/contracts.py",
+      "core/python/aegis/evidence.py",
+      "core/python/aegis/hashing.py",
+      "core/python/aegis/learning.py",
+      "core/python/aegis/native.py",
+      "core/python/aegis/provider.py",
+      "core/python/aegis_adapter.py",
+      "core/python/aegis_cli.py",
+      "core/python/bridge.py",
+      "core/python/bridge_mmap.py",
+      "core/python/browser_live_collector.py",
+      "core/python/browser_ops_bench.py",
+      "core/python/browser_playwright_runtime.py",
+      "core/python/browser_runtime_adapter.py",
+      "core/python/integration.py",
+      "core/python/nim_client.py",
+      "core/python/operator_api.py",
+      "core/python/operator_api_healthcheck.py",
+      "core/python/operator_api_server.py",
+      "core/python/orchestrator.py",
+      "core/python/preflight.py",
+      "core/python/service.py",
+      "core/python/tests.py"
+    ]
+  },
+  "root_clean_install": {
+    "status": "PASS",
+    "python": "C:\\Users\\ADMIN\\AppData\\Local\\Temp\\aegis-final-design-closure\\wheel-venv-proper-20260828-092953\\Scripts\\python.exe",
+    "import_exit": 0,
+    "import": {
+      "repo_on_sys_path": false,
+      "package_file": "C:\\Users\\ADMIN\\AppData\\Local\\Temp\\aegis-final-design-closure\\wheel-venv-proper-20260828-092953\\Lib\\site-packages\\aegis_cognition\\__init__.py",
+      "package_spec_origin": "C:\\Users\\ADMIN\\AppData\\Local\\Temp\\aegis-final-design-closure\\wheel-venv-proper-20260828-092953\\Lib\\site-packages\\aegis_cognition\\__init__.py",
+      "package_path": [
+        "C:\\Users\\ADMIN\\AppData\\Local\\Temp\\aegis-final-design-closure\\wheel-venv-proper-20260828-092953\\Lib\\site-packages\\aegis_cognition"
+      ],
+      "native_file": "C:\\Users\\ADMIN\\AppData\\Local\\Temp\\aegis-final-design-closure\\wheel-venv-proper-20260828-092953\\Lib\\site-packages\\aegis_cognition\\aegis_nerve.cp314-win_amd64.pyd",
+      "version": "0.1.0",
+      "entry_points": [
+        "EntryPoint(name='aegis', value='aegis_cognition.cli:main', group='console_scripts')"
+      ]
+    },
+    "import_stderr": "",
+    "cli_exit": 0,
+    "cli_stdout": "AEGIS-COGNITION v0.1.0 — Cryptographically-verified AI agent harness\n\n  Commands:\n    aegis init                        Interactive setup wizard\n    aegis run <task>                  Run an AI agent task\n    aegis examples                    Show example tasks\n    aegis version                     Show version\n    aegis config show                 Show current configuration\n    aegis config set <key> <value>    Set a configuration value\n\n  Quick Start:\n    pip install aegis-cognition\n    aegis init\n    aegis run \"Find trending repos on GitHub\"\n\n  Docs: https://docs.aegis-cognition.ai\n\n",
+    "cli_stderr": ""
+  },
+  "core_python_independent_install": {
+    "status": "BROKEN",
+    "console_script": "C:\\Users\\ADMIN\\AppData\\Local\\Temp\\aegis-final-design-closure\\corepy-venv-proper-20260828-095151\\Scripts\\aegis.exe",
+    "console_script_exit": 1,
+    "console_stdout": "",
+    "console_stderr": "Traceback (most recent call last):\n  File \"<frozen runpy>\", line 198, in _run_module_as_main\n  File \"<frozen runpy>\", line 88, in _run_code\n  File \"C:\\Users\\ADMIN\\AppData\\Local\\Temp\\aegis-final-design-closure\\corepy-venv-proper-20260828-095151\\Scripts\\aegis.exe\\__main__.py\", line 4, in <module>\n    from aegis_cli import main\nModuleNotFoundError: No module named 'aegis_cli'\n",
+    "observed_issue": "entrypoint imports absent top-level aegis_cli"
+  },
+  "source_to_wheel_to_import": [
+    {
+      "source": "aegis_cognition/*.py",
+      "wheel": "aegis_cognition/*.py",
+      "import": "aegis_cognition",
+      "status": "PROVEN_BY_WHEEL_LISTING"
+    },
+    {
+      "source": "core/rust/src/lib.rs + PyO3",
+      "wheel": "aegis_cognition/aegis_nerve*.pyd",
+      "import": "aegis_cognition.aegis_nerve",
+      "status": "PROVEN_BY_WHEEL_AND_IMPORT"
+    },
+    {
+      "source": "core/python/*.py",
+      "wheel": "core/python/*.py",
+      "import": "core.python.* / compatibility",
+      "status": "PROVEN_BY_WHEEL_LISTING; top-level compatibility not proven"
+    },
+    {
+      "source": "aegis_cognition/cli.py",
+      "wheel": "aegis.exe",
+      "import": "aegis_cognition.cli:main",
+      "status": "PROVEN"
+    },
+    {
+      "source": "core/python/aegis_cli.py",
+      "wheel": "aegis.exe in separate distribution",
+      "import": "aegis_cli:main",
+      "status": "BROKEN_INDEPENDENT_INSTALL"
+    }
+  ],
+  "duplicate_or_shadowing": [
+    "two distributions declare console script aegis",
+    "core/python layout conflicts with top-level aegis_cli entrypoint"
+  ],
+  "limitations": [
+    "both distributions not co-installed",
+    "debug wheel only"
+  ],
+  "WORKTREE_EPOCH": "3783037b7a38cf214bdfe4b593496971ccafec29fd6b5b05f413a98ea51918c6",
+  "HEAD": "f9645caf6d17cee2023d52183990ffcf8317e456",
+  "generated_at": "2026-08-28T02:58:56.366605+00:00",
+  "collector_version/method": "aegis-final-design-closure-v1; direct Git/filesystem/AST/Cargo plus bounded disposable-wheel probes"
+}

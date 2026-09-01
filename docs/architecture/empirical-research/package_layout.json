@@ -1,0 +1,61 @@
+{
+  "schema": "aegis-empirical-experiment-output-v1",
+  "experiment_id": "EXP-PKG-001",
+  "status": "COMPLETE",
+  "HEAD": "f9645caf6d17cee2023d52183990ffcf8317e456",
+  "WORKTREE_EPOCH": "549114d28117c7374ab5e1e1b1c0706876887eb55365684c7ec896fe2c779b2d",
+  "generated_at": "2026-08-31T08:45:23.079168+00:00",
+  "question": "What package/layout and CLI ownership exists in clean installs?",
+  "why_it_matters": "This result is an input to the final architecture/master plan decision.",
+  "leading_hypothesis": "The root wheel is canonical and works independently.",
+  "rival_hypotheses": [
+    "The core/python distribution is harmless compatibility-only."
+  ],
+  "falsification_criteria": [
+    "A bounded observation contradicts the leading hypothesis within the stated scope."
+  ],
+  "controlled_variables": [
+    "current checkout",
+    "bounded local input",
+    "no external side effects"
+  ],
+  "uncontrolled_variables": [
+    "host scheduling",
+    "filesystem cache/antivirus",
+    "machine-specific toolchain"
+  ],
+  "method": "One disposable wheel built outside the repository because the retained v63 artifacts were missing; RECORD/METADATA inspection plus clean root/core/combined probes.",
+  "commands": [],
+  "raw_artifacts": [
+    {
+      "path": "docs/architecture/empirical-research/raw/exp_pkg_001.json",
+      "sha256": "b41c62bf4f48539d61ec0118266ec06ba480579b73a2704de4bffe074d291eb5",
+      "kind": "raw"
+    }
+  ],
+  "measurements": [
+    {
+      "metric": "wheel.file_count",
+      "value": 48,
+      "unit": "files",
+      "evidence_class": "MEASURED"
+    }
+  ],
+  "observed_failures": [
+    "core/python CLI failed",
+    "combined `aegis` console-script collision"
+  ],
+  "interpretation": "root=PASS; core=BROKEN; combined=PASS_WITH_COLLISION.",
+  "what_was_falsified": [
+    "A single unambiguous `aegis` console-script owner exists in combined installs."
+  ],
+  "what_remains_unknown": [
+    "editable-install parity",
+    "fresh src-layout variant"
+  ],
+  "evidence_class": "MEASURED",
+  "limitations": [
+    "single Windows/CPython lane; temporary wheel and environments are disposable"
+  ],
+  "recommended_next_decision_input": "Resolve package owner and console-script collision before convergence."
+}

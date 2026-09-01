@@ -1,0 +1,167 @@
+{
+  "schema": "aegis-design-schema-graph-v1",
+  "contracts": [
+    {
+      "id": "aegis-resource-contract-v1",
+      "writer": "Rust/native",
+      "reader": "PyO3",
+      "version": "v1",
+      "status": "PROVEN_LOCAL"
+    },
+    {
+      "id": "aegis-nerve schema 11408661",
+      "writer": "ffi.rs",
+      "reader": "native module",
+      "version": "1 validation API",
+      "status": "PROVEN_LOCAL"
+    },
+    {
+      "id": "aegis-lab-action-plan-v1",
+      "writer": "Lab controller",
+      "reader": "registry/dispatcher",
+      "version": "v1",
+      "status": "PARTIALLY_PROVEN"
+    },
+    {
+      "id": "Lab event/hash/replay",
+      "writer": "LabRun/Rust replay",
+      "reader": "archive/recovery",
+      "version": "event/segment",
+      "status": "PARTIALLY_PROVEN"
+    },
+    {
+      "id": "BenchmarkProtocolV2/telemetry candidates",
+      "writer": "benchmark/telemetry",
+      "reader": "gates",
+      "version": "source-labelled",
+      "status": "PARTIALLY_PROVEN"
+    },
+    {
+      "id": "provider/agent dictionaries",
+      "writer": "Python adapters",
+      "reader": "SDK/application",
+      "version": "unversioned",
+      "status": "RISK"
+    },
+    {
+      "id": "PyO3 DTO boundary",
+      "writer": "ffi.rs",
+      "reader": "Python bindings",
+      "version": "unversioned per function",
+      "compatibility": "not globally versioned",
+      "migration": "none proven",
+      "hash_binding": "per payload/unknown",
+      "test_coverage": "representative local calls",
+      "status": "PARTIALLY_PROVEN"
+    },
+    {
+      "id": "snapshot format",
+      "writer": "Python LabRun / Rust LabController",
+      "reader": "recovery/archive",
+      "version": "Python aegis-lab-run-v1; Rust mission aegis-lab-runtime-v1; no top-level controller version",
+      "compatibility": "CROSS_LANGUAGE_INCOMPATIBLE_NOT_PROVEN",
+      "migration": "none proven",
+      "hash_binding": "per event/snapshot fields; no common envelope proven",
+      "test_coverage": "local same-language recovery only",
+      "status": "RISK"
+    },
+    {
+      "id": "artifact manifest",
+      "writer": "release/evidence scripts",
+      "reader": "gates/archive",
+      "version": "source-labelled",
+      "compatibility": "current.json binding broken",
+      "migration": "none proven",
+      "hash_binding": "SHA/epoch mixed",
+      "test_coverage": "gate fails",
+      "status": "RISK"
+    },
+    {
+      "id": "lease token",
+      "writer": "Lab controller",
+      "reader": "execution cell",
+      "version": "UNVERSIONED",
+      "compatibility": "local-only",
+      "migration": "none proven",
+      "hash_binding": "metadata only",
+      "test_coverage": "partial lifecycle",
+      "status": "PARTIALLY_PROVEN"
+    },
+    {
+      "id": "telemetry record",
+      "writer": "observability/benchmark",
+      "reader": "gates/metrics",
+      "version": "UNVERSIONED",
+      "compatibility": "UNKNOWN",
+      "migration": "none proven",
+      "hash_binding": "NOT_AUTHORITY",
+      "test_coverage": "candidate only",
+      "status": "UNKNOWN"
+    },
+    {
+      "id": "provider receipt",
+      "writer": "provider SDK",
+      "reader": "evidence/replay",
+      "version": "EXTERNAL",
+      "compatibility": "provider-specific",
+      "migration": "external",
+      "hash_binding": "not locally proven",
+      "test_coverage": "no live provider",
+      "status": "UNKNOWN"
+    },
+    {
+      "id": "browser receipt",
+      "writer": "Playwright adapter",
+      "reader": "evidence/replay",
+      "version": "EXTERNAL",
+      "compatibility": "adapter-specific",
+      "migration": "external",
+      "hash_binding": "not locally proven",
+      "test_coverage": "no live browser",
+      "status": "UNKNOWN"
+    },
+    {
+      "id": "research receipt",
+      "writer": "search/fetch helpers",
+      "reader": "evidence/replay",
+      "version": "aegis-research-program payload family; receipt envelope not globally versioned",
+      "compatibility": "PARTIAL_LOCAL",
+      "migration": "none proven",
+      "hash_binding": "content/snapshot hashes in records; end-to-end receipt binding not proven",
+      "test_coverage": "local helper tests; no live research",
+      "status": "PARTIALLY_PROVEN"
+    }
+  ],
+  "unversioned": [
+    "provider dictionaries",
+    "config/env payloads",
+    "operator JSON"
+  ],
+  "limitations": [
+    "no full migration registry"
+  ],
+  "WORKTREE_EPOCH": "6e8c4adfdccec80543825a18e3885da36acb62c7574807342ae8ccf4c0d64ec6",
+  "HEAD": "f9645caf6d17cee2023d52183990ffcf8317e456",
+  "generated_at": "2026-09-01T02:54:46.298383+00:00",
+  "collector_version/method": "aegis-final-design-closure-v1; direct Git/filesystem/AST/Cargo plus bounded disposable-wheel probes",
+  "reused_prior_artifact": "C:\\Users\\ADMIN\\AEGIS-COGNITION\\docs\\architecture\\evidence-pack\\final_schema_contracts.json",
+  "reused_prior_artifact_sha256": "a8aae486a2316dae6488ff8137076305ac99bd9da95b9fb12ea92b00098e4116",
+  "source_epoch_note": "prior bounded workload/artifact reused; equivalent workload was not repeated in this reconciliation, so reused measurements are not source-fresh",
+  "required_format_families_checked": [
+    "JSON schemas",
+    "PyO3 DTOs",
+    "replay events",
+    "snapshot",
+    "artifact manifest",
+    "benchmark protocol",
+    "resource contract",
+    "lease token",
+    "telemetry",
+    "evidence records",
+    "execution-cell manifest",
+    "provider receipt",
+    "browser receipt",
+    "research receipt"
+  ],
+  "method": "aegis-design-closure-reconciliation-v1; direct Git/filesystem/source inspection, prior artifact hash reuse, disposable wheel reconciliation, bounded local probes"
+}

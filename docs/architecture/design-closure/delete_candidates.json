@@ -1,0 +1,69 @@
+{
+  "schema": "aegis-design-delete-candidates-v1",
+  "rows": [
+    {
+      "path": "core/rust/AEGIS-COGNITION/",
+      "classification": "HISTORICAL_KEEP",
+      "references": "tracked clean tree; no Cargo/package/runtime inclusion; textual same-name documentation mentions but no proven execution edge",
+      "removal_effect": {
+        "build": "NO",
+        "test": "NO",
+        "package": "NO",
+        "runtime": "NO",
+        "docs": "POSSIBLE history/reference loss",
+        "tooling": "NO direct execution ref"
+      }
+    },
+    {
+      "path": "core/python/",
+      "classification": "DELETE_AFTER_MIGRATION",
+      "references": "independent package/CLI/compatibility tests",
+      "removal_effect": {
+        "build": "YES",
+        "test": "YES",
+        "package": "YES",
+        "runtime": "YES",
+        "docs": "POSSIBLE",
+        "tooling": "YES"
+      }
+    },
+    {
+      "path": "pocs and workspace POC crates",
+      "classification": "UNKNOWN",
+      "references": "Cargo workspace members",
+      "removal_effect": {
+        "build": "YES metadata",
+        "test": "UNKNOWN",
+        "package": "YES POC",
+        "runtime": "UNKNOWN",
+        "docs": "POSSIBLE",
+        "tooling": "POSSIBLE"
+      }
+    },
+    {
+      "path": "historical architecture docs",
+      "classification": "HISTORICAL_KEEP",
+      "references": "history/docs",
+      "removal_effect": {
+        "build": "NO",
+        "test": "NO",
+        "package": "NO",
+        "runtime": "NO",
+        "docs": "history loss",
+        "tooling": "NO"
+      }
+    }
+  ],
+  "strong_delete_candidates": [],
+  "limitations": [
+    "nothing deleted"
+  ],
+  "WORKTREE_EPOCH": "6e8c4adfdccec80543825a18e3885da36acb62c7574807342ae8ccf4c0d64ec6",
+  "HEAD": "f9645caf6d17cee2023d52183990ffcf8317e456",
+  "generated_at": "2026-09-01T02:54:46.298383+00:00",
+  "collector_version/method": "aegis-final-design-closure-v1; direct Git/filesystem/AST/Cargo plus bounded disposable-wheel probes",
+  "reused_prior_artifact": "C:\\Users\\ADMIN\\AEGIS-COGNITION\\docs\\architecture\\evidence-pack\\final_delete_candidates.json",
+  "reused_prior_artifact_sha256": "819f18cc9c8756df57f1e5776e4437f14e445e18e434f5bc077774e26da79264",
+  "source_epoch_note": "prior bounded workload/artifact reused; equivalent workload was not repeated in this reconciliation, so reused measurements are not source-fresh",
+  "method": "aegis-design-closure-reconciliation-v1; direct Git/filesystem/source inspection, prior artifact hash reuse, disposable wheel reconciliation, bounded local probes"
+}

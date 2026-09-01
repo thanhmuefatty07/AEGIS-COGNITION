@@ -1,0 +1,71 @@
+{
+  "schema": "aegis-empirical-environment-v1",
+  "experiment_id": "ENV-001",
+  "status": "COMPLETE",
+  "HEAD": "f9645caf6d17cee2023d52183990ffcf8317e456",
+  "WORKTREE_EPOCH": "549114d28117c7374ab5e1e1b1c0706876887eb55365684c7ec896fe2c779b2d",
+  "generated_at": "2026-08-31T08:45:23.079168+00:00",
+  "method": "aegis-empirical-research-execution-v1; bounded local probes and direct source inspection; no production mutation",
+  "limitations": [
+    "memory topology, power governor and virtualization are not fully exposed"
+  ],
+  "os": "Windows-11-10.0.26200-SP0",
+  "kernel": "11",
+  "architecture": "AMD64",
+  "cpu": "Intel64 Family 6 Model 142 Stepping 10, GenuineIntel",
+  "cpu_count": 4,
+  "python": "3.14.0",
+  "tool_versions": {
+    "python": {
+      "args": [
+        "C:\\Users\\ADMIN\\AEGIS-COGNITION\\.venv\\Scripts\\python.exe",
+        "--version"
+      ],
+      "cwd": "C:\\Users\\ADMIN\\AEGIS-COGNITION",
+      "exit": 0,
+      "stdout": "Python 3.14.0\n",
+      "stderr": ""
+    },
+    "rustc": {
+      "args": [
+        "rustc",
+        "--version"
+      ],
+      "cwd": "C:\\Users\\ADMIN\\AEGIS-COGNITION",
+      "exit": 0,
+      "stdout": "rustc 1.97.1 (8bab26f4f 2026-07-14)\n",
+      "stderr": ""
+    },
+    "cargo": {
+      "args": [
+        "cargo",
+        "--version"
+      ],
+      "cwd": "C:\\Users\\ADMIN\\AEGIS-COGNITION",
+      "exit": 0,
+      "stdout": "cargo 1.97.1 (c980f4866 2026-06-30)\n",
+      "stderr": ""
+    },
+    "maturin": {
+      "args": [
+        "C:\\Users\\ADMIN\\AEGIS-COGNITION\\.venv\\Scripts\\maturin.exe",
+        "--version"
+      ],
+      "cwd": "C:\\Users\\ADMIN\\AEGIS-COGNITION",
+      "exit": 0,
+      "stdout": "maturin 1.14.1\n",
+      "stderr": ""
+    },
+    "uv": {
+      "args": [
+        "uv",
+        "--version"
+      ],
+      "cwd": "C:\\Users\\ADMIN\\AEGIS-COGNITION",
+      "exit": 0,
+      "stdout": "uv 0.9.9 (4fac4cb7e 2025-11-12)\n",
+      "stderr": ""
+    }
+  },
+  "lock_hash": "ecd78e65bcb72fea8897673fe80dbe0c47b6484e54ef030d8ccbbe0bc676d349"
+}

@@ -1,0 +1,60 @@
+{
+  "schema": "aegis-final-trust-policy-v1",
+  "defaults": [
+    {
+      "path": "aegis_cognition/config.py",
+      "default": "DEV",
+      "class": "LEGACY_DRIFT_OR_COMPATIBILITY"
+    },
+    {
+      "path": "aegis_cognition/lab.py",
+      "default": "DEV",
+      "class": "CONTEXTUAL_DEFAULT_PLAUSIBLE"
+    },
+    {
+      "path": "core/python/aegis/evidence.py",
+      "default": "PROD",
+      "class": "LEGACY_DRIFT"
+    },
+    {
+      "path": "core/python/aegis_cli.py",
+      "default": "PROD or CLI policy",
+      "class": "COMPATIBILITY"
+    }
+  ],
+  "simulations": [
+    {
+      "path": "Agent()",
+      "result": "BLOCKED_BEFORE_CONSTRUCTION",
+      "reason": "API key missing; no external call"
+    },
+    {
+      "path": "AgentConfig dummy DEV",
+      "result": "CONSTRUCTIBLE",
+      "effective_trust": "DEV"
+    },
+    {
+      "path": "LabPolicy()",
+      "result": "CONSTRUCTIBLE",
+      "effective_trust": "DEV"
+    },
+    {
+      "path": "compatibility CLI",
+      "result": "INDEPENDENT_INSTALL_BROKEN",
+      "effective_trust": "NOT_REACHED"
+    },
+    {
+      "path": "normalize_trust_level(None)",
+      "result": "SOURCE_DEFAULT",
+      "effective_trust": "PROD"
+    }
+  ],
+  "conclusion": "DEV/PROD split is proven local and blocks canonical policy",
+  "limitations": [
+    "no credentials/provider"
+  ],
+  "WORKTREE_EPOCH": "3783037b7a38cf214bdfe4b593496971ccafec29fd6b5b05f413a98ea51918c6",
+  "HEAD": "f9645caf6d17cee2023d52183990ffcf8317e456",
+  "generated_at": "2026-08-28T02:58:56.366605+00:00",
+  "collector_version/method": "aegis-final-design-closure-v1; direct Git/filesystem/AST/Cargo plus bounded disposable-wheel probes"
+}

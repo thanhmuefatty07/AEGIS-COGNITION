@@ -18,8 +18,12 @@ from typing import Any
 
 ROOT = Path(__file__).resolve().parents[1]
 MANIFEST = ROOT / "docs" / "architecture" / "evidence" / "current.json"
+NOT_VERIFIED_REGISTRY = ROOT / "docs" / "architecture" / "not_verified_registry.json"
+DEPLOYMENT_POLICY = ROOT / "docs" / "architecture" / "deployment_policy.json"
+REGISTRY_MARKDOWN_RELATIVE = Path("docs") / "architecture" / "NOT_VERIFIED_REGISTRY.md"
 SHA_RE = re.compile(r"^[0-9a-f]{40}$")
 GT96_ID_RE = re.compile(r"\|\s*(GT96-\d{3})\s*\|")
+NV_ID_RE = re.compile(r"^\|\s*(NV-\d{3})\s*\|", re.MULTILINE)
 CURRENT_STATUSES = {"PROVEN", "MEASURED", "SOURCE-BACKED"}
 REMEDIATION_STATUSES = CURRENT_STATUSES | {
     "IMPLEMENTED / NOT VERIFIED",
@@ -43,6 +47,237 @@ def load_manifest(path: Path) -> dict[str, Any]:
     if not isinstance(value, dict):
         raise ValueError("evidence manifest must be a JSON object")
     return value
+
+
+def registry_ids() -> set[str]:
+    """Load the canonical blocker IDs used by generated evidence artifacts."""
+
+    registry = load_manifest(NOT_VERIFIED_REGISTRY)
+    raw_entries = registry.get("entries")
+    if not isinstance(raw_entries, list):
+        return set()
+    return {
+        str(entry["id"])
+        for entry in raw_entries
+        if isinstance(entry, dict)
+        and isinstance(entry.get("id"), str)
+        and entry["id"].strip()
+    }
+
+
+def registry_markdown_ids(path: Path | None = None) -> tuple[str, ...]:
+    """Read the human view's IDs without treating its prose as authority."""
+
+    target = path or (ROOT / REGISTRY_MARKDOWN_RELATIVE)
+    try:
+        text = target.read_text(encoding="utf-8")
+    except OSError:
+        return ()
+    return tuple(NV_ID_RE.findall(text))
+
+
+def registry_markdown_statuses(path: Path | None = None) -> dict[str, str]:
+    """Read blocker statuses from the human view for drift detection only."""
+
+    target = path or (ROOT / REGISTRY_MARKDOWN_RELATIVE)
+    try:
+        text = target.read_text(encoding="utf-8")
+    except OSError:
+        return {}
+    statuses: dict[str, str] = {}
+    for line in text.splitlines():
+        if not line.lstrip().startswith("| NV-"):
+            continue
+        cells = [cell.strip() for cell in line.strip().strip("|").split("|")]
+        if len(cells) >= 7 and NV_ID_RE.fullmatch(f"| {cells[0]} |"):
+            statuses[cells[0]] = cells[-1]
+    return statuses
+
+
+def gt96_markdown_statuses(path: Path | None = None) -> dict[str, str]:
+    """Read GT96 status cells for machine-to-human drift detection."""
+
+    target = path or (ROOT / "docs" / "architecture" / "GT96_TRACEABILITY.md")
+    try:
+        text = target.read_text(encoding="utf-8")
+    except OSError:
+        return {}
+    statuses: dict[str, str] = {}
+    for line in text.splitlines():
+        if not line.lstrip().startswith("| GT96-"):
+            continue
+        cells = [cell.strip() for cell in line.strip().strip("|").split("|")]
+        if len(cells) >= 2 and GT96_ID_RE.fullmatch(f"| {cells[0]} |"):
+            statuses[cells[0]] = cells[-1]
+    return statuses
+
+
+def validate_registry_parity(manifest: dict[str, Any]) -> list[str]:
+    """Reject dropped or unknown blocker IDs across machine authorities.
+
+    The registry remains the canonical inventory.  The evidence manifest is
+    required to materialize every registry ID, while deployment policy may
+    reference the production-blocking subset only.  This deliberately does
+    not rewrite any file: stale tracked evidence must fail closed until a
+    generated artifact is produced for the checked-out SHA.
+    """
+
+    if "not_verified_ids" not in manifest:
+        # Small unit-test fixtures and legacy manifests predate the registry
+        # field; the full checkout manifest is still required to carry it.
+        return []
+    errors: list[str] = []
+    try:
+        registry = load_manifest(NOT_VERIFIED_REGISTRY)
+        policy = load_manifest(DEPLOYMENT_POLICY)
+    except (OSError, ValueError, json.JSONDecodeError) as error:
+        return [f"registry authority unreadable: {error}"]
+    raw_entries = registry.get("entries")
+    registry_ids: set[str] = set()
+    registry_statuses: dict[str, str] = {}
+    if not isinstance(raw_entries, list) or not raw_entries:
+        errors.append("not-verified registry entries must be a non-empty array")
+    else:
+        for index, entry in enumerate(raw_entries):
+            if not isinstance(entry, dict) or not isinstance(entry.get("id"), str) or not entry["id"].strip():
+                errors.append(f"not-verified registry entry[{index}] lacks a valid id")
+                continue
+            registry_id = str(entry["id"])
+            if registry_id in registry_ids:
+                errors.append(f"duplicate not-verified registry id: {registry_id}")
+            registry_ids.add(registry_id)
+            if isinstance(entry.get("status"), str) and entry["status"].strip():
+                registry_statuses[registry_id] = str(entry["status"]).strip()
+    manifest_ids = {
+        item for item in manifest.get("not_verified_ids", ()) if isinstance(item, str)
+    }
+    if manifest_ids != registry_ids:
+        errors.append(
+            "evidence manifest not_verified_ids do not match registry: "
+            f"missing={sorted(registry_ids - manifest_ids)}, "
+            f"unknown={sorted(manifest_ids - registry_ids)}"
+        )
+    raw_blockers = policy.get("blockers")
+    policy_ids: set[str] = set()
+    if raw_blockers is not None and not isinstance(raw_blockers, list):
+        errors.append("deployment policy blockers must be an array")
+    elif isinstance(raw_blockers, list):
+        for index, blocker in enumerate(raw_blockers):
+            if not isinstance(blocker, dict):
+                errors.append(f"deployment policy blocker[{index}] must be an object")
+                continue
+            raw_policy_ids = blocker.get("registry_ids", ())
+            if not isinstance(raw_policy_ids, (list, tuple)):
+                errors.append(f"deployment policy blocker[{index}] registry_ids must be an array")
+                continue
+            for registry_id in raw_policy_ids:
+                if isinstance(registry_id, str) and registry_id.strip():
+                    policy_ids.add(registry_id)
+    if not policy_ids.issubset(registry_ids):
+        errors.append(
+            "deployment policy references unknown registry IDs: "
+            f"{sorted(policy_ids - registry_ids)}"
+        )
+    if not policy_ids.issubset(manifest_ids):
+        errors.append(
+            "deployment policy registry IDs are missing from evidence manifest: "
+            f"{sorted(policy_ids - manifest_ids)}"
+        )
+
+    # The Markdown view is intentionally non-authoritative, but it must still
+    # enumerate the same inventory so a human review cannot silently omit a
+    # blocker.  Small test fixtures may omit the companion document; the full
+    # checkout is checked whenever the file exists.
+    markdown_path = ROOT / REGISTRY_MARKDOWN_RELATIVE
+    if markdown_path.is_file():
+        markdown_ids = registry_markdown_ids(markdown_path)
+        if len(markdown_ids) != len(set(markdown_ids)):
+            errors.append("NOT_VERIFIED_REGISTRY.md contains duplicate blocker IDs")
+        if set(markdown_ids) != registry_ids:
+            errors.append(
+                "NOT_VERIFIED_REGISTRY.md IDs do not match registry: "
+                f"missing={sorted(registry_ids - set(markdown_ids))}, "
+                f"unknown={sorted(set(markdown_ids) - registry_ids)}"
+            )
+        markdown_statuses = registry_markdown_statuses(markdown_path)
+        if len(registry_statuses) == len(registry_ids) and len(markdown_statuses) == len(registry_ids):
+            status_mismatches = sorted(
+                registry_id
+                for registry_id in registry_ids
+                if registry_statuses.get(registry_id) != markdown_statuses.get(registry_id)
+            )
+            if status_mismatches:
+                errors.append(
+                    "NOT_VERIFIED_REGISTRY.md statuses do not match registry: "
+                    f"{status_mismatches}"
+                )
+
+        # GT96 has its own requirement matrix. Compare its human status cells
+        # to the tracked machine manifest, while leaving generated checkout
+        # evidence free to derive release-scoped status separately.
+        tracked_manifest_path = ROOT / "docs" / "architecture" / "evidence" / "current.json"
+        if tracked_manifest_path.is_file():
+            try:
+                tracked_manifest = load_manifest(tracked_manifest_path)
+            except (OSError, ValueError, json.JSONDecodeError):
+                tracked_manifest = {}
+            tracked_requirements = tracked_manifest.get("requirements", ())
+            tracked_statuses = {
+                str(item["id"]): str(item["status"]).strip()
+                for item in tracked_requirements
+                if isinstance(item, dict)
+                and isinstance(item.get("id"), str)
+                and item["id"].startswith("GT96-")
+                and isinstance(item.get("status"), str)
+                and item["status"].strip()
+            }
+            gt96_statuses = gt96_markdown_statuses(
+                ROOT / "docs" / "architecture" / "GT96_TRACEABILITY.md"
+            )
+            if tracked_statuses and len(gt96_statuses) == len(tracked_statuses):
+                gt96_mismatches = sorted(
+                    requirement_id
+                    for requirement_id in tracked_statuses
+                    if tracked_statuses.get(requirement_id) != gt96_statuses.get(requirement_id)
+                )
+                if gt96_mismatches:
+                    errors.append(
+                        "GT96_TRACEABILITY.md statuses do not match current evidence: "
+                        f"{gt96_mismatches}"
+                    )
+
+    # A deployment policy is allowed to block only the release-critical subset,
+    # but omission must be explicit.  When the policy declares the companion
+    # list, require a disjoint, complete partition of the registry.
+    raw_non_blocking = policy.get("non_blocking_registry_ids")
+    if raw_non_blocking is not None:
+        if not isinstance(raw_non_blocking, list) or any(
+            not isinstance(item, str) or not item.strip() for item in raw_non_blocking
+        ):
+            errors.append("deployment policy non_blocking_registry_ids must be an array of IDs")
+        else:
+            non_blocking_ids = {str(item) for item in raw_non_blocking}
+            if len(non_blocking_ids) != len(raw_non_blocking):
+                errors.append("deployment policy non_blocking_registry_ids contains duplicates")
+            if not non_blocking_ids.issubset(registry_ids):
+                errors.append(
+                    "deployment policy non_blocking_registry_ids references unknown IDs: "
+                    f"{sorted(non_blocking_ids - registry_ids)}"
+                )
+            overlap = sorted(policy_ids & non_blocking_ids)
+            if overlap:
+                errors.append(
+                    "deployment policy blocking and non-blocking IDs overlap: "
+                    f"{overlap}"
+                )
+            covered = policy_ids | non_blocking_ids
+            if covered != registry_ids:
+                errors.append(
+                    "deployment policy does not partition the registry: "
+                    f"missing={sorted(registry_ids - covered)}, "
+                    f"unknown={sorted(covered - registry_ids)}"
+                )
+    return errors
 
 
 def load_suite_artifacts(root: Path, expected_head: str) -> dict[str, dict[str, Any]]:
@@ -80,6 +315,12 @@ def materialize_for_head(template: dict[str, Any], expected_head: str) -> dict[s
     manifest = json.loads(json.dumps(template))
     manifest["commit"] = expected_head
     manifest["generated_at_utc"] = datetime.now(UTC).replace(microsecond=0).isoformat().replace("+00:00", "Z")
+    try:
+        manifest["not_verified_ids"] = sorted(registry_ids())
+    except (OSError, ValueError, json.JSONDecodeError):
+        # Keep generation deterministic and let validation emit the precise
+        # registry-authority error instead of silently retaining stale IDs.
+        manifest["not_verified_ids"] = []
     suite_artifacts = load_suite_artifacts(ROOT, expected_head)
     for entry in manifest.get("evidence", []):
         if isinstance(entry, dict):
@@ -182,6 +423,7 @@ def validate_manifest(
     manifest: dict[str, Any], expected_head: str, *, verification_index_text: str | None = None
 ) -> list[str]:
     errors: list[str] = []
+    errors.extend(validate_registry_parity(manifest))
     commit = manifest.get("commit")
     if not isinstance(commit, str) or not SHA_RE.fullmatch(commit):
         errors.append("manifest.commit must be a 40-character lowercase git SHA")
@@ -239,9 +481,15 @@ def validate_manifest(
                 errors.append(f"duplicate remediation requirement id: {requirement_id}")
             else:
                 seen_remediation_ids.add(requirement_id)
-            for field in ("priority", "implementation", "closure", "evidence_class", "status", "final_sha"):
-                if not isinstance(requirement.get(field), str) or not requirement.get(field):
-                    errors.append(f"remediation[{requirement_id or index}] lacks {field}")
+            missing_fields = [
+                field
+                for field in ("priority", "implementation", "closure", "evidence_class", "status", "final_sha")
+                if not isinstance(requirement.get(field), str) or not requirement.get(field)
+            ]
+            errors.extend(
+                f"remediation[{requirement_id or index}] lacks {field}"
+                for field in missing_fields
+            )
             if requirement.get("status") not in REMEDIATION_STATUSES:
                 errors.append(f"remediation[{requirement_id or index}] has unsupported status {requirement.get('status')!r}")
             if requirement.get("evidence_class") not in REMEDIATION_STATUSES:

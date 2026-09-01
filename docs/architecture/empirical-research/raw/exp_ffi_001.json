@@ -1,0 +1,11 @@
+{
+  "args": [
+    "C:\\Users\\ADMIN\\AppData\\Local\\Temp\\aegis-empirical-execution-20260831\\root-venv-154100\\Scripts\\python.exe",
+    "-c",
+    "import json,time; import aegis_cognition.aegis_nerve as n; t=time.perf_counter_ns(); [n.aegis_validate_schema(11408661,1) for _ in range(30)]; print(json.dumps({'calls':30,'elapsed_ns':time.perf_counter_ns()-t,'status':n.aegis_status(),'schema':n.aegis_nerve_schema_id()}))"
+  ],
+  "cwd": "C:\\Users\\ADMIN\\AppData\\Local\\Temp",
+  "exit": 0,
+  "stdout": "{\"calls\": 30, \"elapsed_ns\": 10922100, \"status\": \"aegis-nerve-ready\", \"schema\": 11408661}\n",
+  "stderr": ""
+}

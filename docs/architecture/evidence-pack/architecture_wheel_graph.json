@@ -1,0 +1,46 @@
+{
+  "schema": "aegis-architecture-wheel-graph-v1",
+  "mappings": [
+    {
+      "source_path": "aegis_cognition/*",
+      "wheel_path": "aegis_cognition/*",
+      "import_name": "aegis_cognition",
+      "basis": "root pyproject/maturin python-source"
+    },
+    {
+      "source_path": "core/python/*",
+      "wheel_path": "aegis_cognition/core/python/* (intended by include core/**/*.py)",
+      "import_name": "core.python.* or compatibility modules",
+      "basis": "root maturin include; exact wheel listing not run"
+    },
+    {
+      "source_path": "core/rust/src/lib.rs + feature python-extension",
+      "wheel_path": "aegis_cognition/aegis_nerve*.pyd|*.so",
+      "import_name": "aegis_cognition.aegis_nerve",
+      "basis": "[tool.maturin] module-name"
+    },
+    {
+      "source_path": "core/python/aegis_cli.py",
+      "wheel_path": "console-script aegis",
+      "import_name": "aegis_cli:main",
+      "basis": "core/python pyproject"
+    },
+    {
+      "source_path": "aegis_cognition/cli.py",
+      "wheel_path": "console-script aegis",
+      "import_name": "aegis_cognition.cli:main",
+      "basis": "root pyproject"
+    }
+  ],
+  "duplicate_imports": [
+    "aegis (two console-script owners)",
+    "core.python compatibility imports overlap root package"
+  ],
+  "existing_wheels": [],
+  "build_status": "NOT_RUN_FOR_SAFETY",
+  "root_pyproject_excerpt": {
+    "maturin": "present",
+    "module_name": "aegis_cognition.aegis_nerve"
+  },
+  "core_python_project_present": true
+}

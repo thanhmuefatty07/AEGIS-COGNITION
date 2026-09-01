@@ -1,0 +1,4325 @@
+{
+  "schema": "aegis-architecture-concurrency-v1",
+  "python": [
+    {
+      "path": "aegis_cognition/__init__.py",
+      "line": 43,
+      "text": "\"ProcessExecutionCell\",",
+      "category": "PRODUCT"
+    },
+    {
+      "path": "aegis_cognition/__init__.py",
+      "line": 98,
+      "text": "ProcessExecutionCell,",
+      "category": "PRODUCT"
+    },
+    {
+      "path": "aegis_cognition/application.py",
+      "line": 5,
+      "text": "import asyncio",
+      "category": "PRODUCT"
+    },
+    {
+      "path": "aegis_cognition/application.py",
+      "line": 175,
+      "text": "asyncio.get_running_loop()",
+      "category": "PRODUCT"
+    },
+    {
+      "path": "aegis_cognition/application.py",
+      "line": 177,
+      "text": "return asyncio.run(self.arun())",
+      "category": "PRODUCT"
+    },
+    {
+      "path": "aegis_cognition/benchmark.py",
+      "line": 12,
+      "text": "import subprocess",
+      "category": "PRODUCT"
+    },
+    {
+      "path": "aegis_cognition/benchmark.py",
+      "line": 99,
+      "text": "cpu_model=platform.processor() or \"unknown\",",
+      "category": "PRODUCT"
+    },
+    {
+      "path": "aegis_cognition/benchmark.py",
+      "line": 188,
+      "text": "\"\"\"Run a harness-owned validator outside the candidate process.",
+      "category": "PRODUCT"
+    },
+    {
+      "path": "aegis_cognition/benchmark.py",
+      "line": 193,
+      "text": "This is process isolation for the local harness, not a claim of hosted",
+      "category": "PRODUCT"
+    },
+    {
+      "path": "aegis_cognition/benchmark.py",
+      "line": 222,
+      "text": "creationflags = getattr(subprocess, \"CREATE_NEW_PROCESS_GROUP\", 0) if os.name == \"nt\" else 0",
+      "category": "PRODUCT"
+    },
+    {
+      "path": "aegis_cognition/benchmark.py",
+      "line": 223,
+      "text": "process: subprocess.Popen[str] | None = None",
+      "category": "PRODUCT"
+    },
+    {
+      "path": "aegis_cognition/benchmark.py",
+      "line": 225,
+      "text": "process = subprocess.Popen(",
+      "category": "PRODUCT"
+    },
+    {
+      "path": "aegis_cognition/benchmark.py",
+      "line": 227,
+      "text": "stdin=subprocess.PIPE,",
+      "category": "PRODUCT"
+    },
+    {
+      "path": "aegis_cognition/benchmark.py",
+      "line": 228,
+      "text": "stdout=subprocess.PIPE,",
+      "category": "PRODUCT"
+    },
+    {
+      "path": "aegis_cognition/benchmark.py",
+      "line": 229,
+      "text": "stderr=subprocess.PIPE,",
+      "category": "PRODUCT"
+    },
+    {
+      "path": "aegis_cognition/benchmark.py",
+      "line": 237,
+      "text": "stdout, stderr = process.communicate(payload, timeout=float(timeout_seconds))",
+      "category": "PRODUCT"
+    },
+    {
+      "path": "aegis_cognition/benchmark.py",
+      "line": 238,
+      "text": "except subprocess.TimeoutExpired as exc:",
+      "category": "PRODUCT"
+    },
+    {
+      "path": "aegis_cognition/benchmark.py",
+      "line": 239,
+      "text": "assert process is not None",
+      "category": "PRODUCT"
+    },
+    {
+      "path": "aegis_cognition/benchmark.py",
+      "line": 241,
+      "text": "process.kill()",
+      "category": "PRODUCT"
+    },
+    {
+      "path": "aegis_cognition/benchmark.py",
+      "line": 242,
+      "text": "with contextlib.suppress(subprocess.TimeoutExpired):",
+      "category": "PRODUCT"
+    },
+    {
+      "path": "aegis_cognition/benchmark.py",
+      "line": 243,
+      "text": "process.communicate(timeout=1.0)",
+      "category": "PRODUCT"
+    },
+    {
+      "path": "aegis_cognition/benchmark.py",
+      "line": 247,
+      "text": "assert process is not None",
+      "category": "PRODUCT"
+    },
+    {
+      "path": "aegis_cognition/benchmark.py",
+      "line": 250,
+      "text": "if process.returncode != 0:",
+      "category": "PRODUCT"
+    },
+    {
+      "path": "aegis_cognition/benchmark.py",
+      "line": 251,
+      "text": "raise RuntimeError(f\"hidden validator exited with status {process.returncode}\")",
+      "category": "PRODUCT"
+    },
+    {
+      "path": "aegis_cognition/benchmark.py",
+      "line": 273,
+      "text": "\"kind\": \"isolated-process\",",
+      "category": "PRODUCT"
+    },
+    {
+      "path": "aegis_cognition/lab.py",
+      "line": 12,
+      "text": "import asyncio",
+      "category": "LAB"
+    },
+    {
+      "path": "aegis_cognition/lab.py",
+      "line": 18,
+      "text": "import multiprocessing",
+      "category": "LAB"
+    },
+    {
+      "path": "aegis_cognition/lab.py",
+      "line": 517,
+      "text": "return await asyncio.to_thread(read_response)",
+      "category": "LAB"
+    },
+    {
+      "path": "aegis_cognition/lab.py",
+      "line": 1239,
+      "text": "task = asyncio.current_task()",
+      "category": "LAB"
+    },
+    {
+      "path": "aegis_cognition/lab.py",
+      "line": 1241,
+      "text": "raise asyncio.CancelledError",
+      "category": "LAB"
+    },
+    {
+      "path": "aegis_cognition/lab.py",
+      "line": 1245,
+      "text": "raise asyncio.CancelledError",
+      "category": "LAB"
+    },
+    {
+      "path": "aegis_cognition/lab.py",
+      "line": 1323,
+      "text": "infer hardware energy from CPU time, wall time or process utilization.",
+      "category": "LAB"
+    },
+    {
+      "path": "aegis_cognition/lab.py",
+      "line": 1669,
+      "text": "It is a local capability boundary; process isolation and hostile-browser",
+      "category": "LAB"
+    },
+    {
+      "path": "aegis_cognition/lab.py",
+      "line": 3953,
+      "text": "An ungraceful process stop can occur after admission and before the",
+      "category": "LAB"
+    },
+    {
+      "path": "aegis_cognition/lab.py",
+      "line": 4016,
+      "text": "reason: str = \"process_interruption\",",
+      "category": "LAB"
+    },
+    {
+      "path": "aegis_cognition/lab.py",
+      "line": 4189,
+      "text": "reason: str = \"process_interruption\",",
+      "category": "LAB"
+    },
+    {
+      "path": "aegis_cognition/lab.py",
+      "line": 4986,
+      "text": "def _process_execution_worker(",
+      "category": "LAB"
+    },
+    {
+      "path": "aegis_cognition/lab.py",
+      "line": 4992,
+      "text": "\"\"\"Execute one picklable edge runner outside the Lab event-loop process.\"\"\"",
+      "category": "LAB"
+    },
+    {
+      "path": "aegis_cognition/lab.py",
+      "line": 4997,
+      "text": "result = asyncio.run(result)",
+      "category": "LAB"
+    },
+    {
+      "path": "aegis_cognition/lab.py",
+      "line": 4999,
+      "text": "except BaseException as exc:  # pragma: no cover - exercised in child process",
+      "category": "LAB"
+    },
+    {
+      "path": "aegis_cognition/lab.py",
+      "line": 5009,
+      "text": "class ProcessExecutionCell:",
+      "category": "LAB"
+    },
+    {
+      "path": "aegis_cognition/lab.py",
+      "line": 5010,
+      "text": "\"\"\"Run one picklable adapter in a killable child process.",
+      "category": "LAB"
+    },
+    {
+      "path": "aegis_cognition/lab.py",
+      "line": 5014,
+      "text": "alive. OS-level resource enforcement, descendant-process cleanup and",
+      "category": "LAB"
+    },
+    {
+      "path": "aegis_cognition/lab.py",
+      "line": 5027,
+      "text": "raise TypeError(\"process execution runner must be callable\")",
+      "category": "LAB"
+    },
+    {
+      "path": "aegis_cognition/lab.py",
+      "line": 5029,
+      "text": "raise ValueError(\"process execution timeout must be finite and positive\")",
+      "category": "LAB"
+    },
+    {
+      "path": "aegis_cognition/lab.py",
+      "line": 5030,
+      "text": "available_methods = multiprocessing.get_all_start_methods()",
+      "category": "LAB"
+    },
+    {
+      "path": "aegis_cognition/lab.py",
+      "line": 5032,
+      "text": "raise ValueError(\"process execution start method is unavailable\")",
+      "category": "LAB"
+    },
+    {
+      "path": "aegis_cognition/lab.py",
+      "line": 5036,
+      "text": "self._active_process: Any | None = None",
+      "category": "LAB"
+    },
+    {
+      "path": "aegis_cognition/lab.py",
+      "line": 5040,
+      "text": "process = self._active_process",
+      "category": "LAB"
+    },
+    {
+      "path": "aegis_cognition/lab.py",
+      "line": 5041,
+      "text": "pid = getattr(process, \"pid\", None) if process is not None else None",
+      "category": "LAB"
+    },
+    {
+      "path": "aegis_cognition/lab.py",
+      "line": 5045,
+      "text": "def _terminate_process(process: Any) -> None:",
+      "category": "LAB"
+    },
+    {
+      "path": "aegis_cognition/lab.py",
+      "line": 5046,
+      "text": "if process is None:",
+      "category": "LAB"
+    },
+    {
+      "path": "aegis_cognition/lab.py",
+      "line": 5049,
+      "text": "if process.is_alive():",
+      "category": "LAB"
+    },
+    {
+      "path": "aegis_cognition/lab.py",
+      "line": 5050,
+      "text": "process.terminate()",
+      "category": "LAB"
+    },
+    {
+      "path": "aegis_cognition/lab.py",
+      "line": 5051,
+      "text": "process.join(timeout=1.0)",
+      "category": "LAB"
+    },
+    {
+      "path": "aegis_cognition/lab.py",
+      "line": 5052,
+      "text": "if process.is_alive() and hasattr(process, \"kill\"):",
+      "category": "LAB"
+    },
+    {
+      "path": "aegis_cognition/lab.py",
+      "line": 5053,
+      "text": "process.kill()",
+      "category": "LAB"
+    },
+    {
+      "path": "aegis_cognition/lab.py",
+      "line": 5054,
+      "text": "process.join(timeout=1.0)",
+      "category": "LAB"
+    },
+    {
+      "path": "aegis_cognition/lab.py",
+      "line": 5056,
+      "text": "# A process that failed before start or already exited is already",
+      "category": "LAB"
+    },
+    {
+      "path": "aegis_cognition/lab.py",
+      "line": 5061,
+      "text": "if self._active_process is not None:",
+      "category": "LAB"
+    },
+    {
+      "path": "aegis_cognition/lab.py",
+      "line": 5062,
+      "text": "raise RuntimeError(\"process execution cell is busy\")",
+      "category": "LAB"
+    },
+    {
+      "path": "aegis_cognition/lab.py",
+      "line": 5063,
+      "text": "context: Any = multiprocessing.get_context(self.start_method)",
+      "category": "LAB"
+    },
+    {
+      "path": "aegis_cognition/lab.py",
+      "line": 5065,
+      "text": "process: Any = context.Process(",
+      "category": "LAB"
+    },
+    {
+      "path": "aegis_cognition/lab.py",
+      "line": 5066,
+      "text": "target=_process_execution_worker,",
+      "category": "LAB"
+    },
+    {
+      "path": "aegis_cognition/lab.py",
+      "line": 5068,
+      "text": "name=\"aegis-lab-process-cell\",",
+      "category": "LAB"
+    },
+    {
+      "path": "aegis_cognition/lab.py",
+      "line": 5070,
+      "text": "process.daemon = True",
+      "category": "LAB"
+    },
+    {
+      "path": "aegis_cognition/lab.py",
+      "line": 5072,
+      "text": "self._active_process = process",
+      "category": "LAB"
+    },
+    {
+      "path": "aegis_cognition/lab.py",
+      "line": 5074,
+      "text": "process.start()",
+      "category": "LAB"
+    },
+    {
+      "path": "aegis_cognition/lab.py",
+      "line": 5082,
+      "text": "raise RuntimeError(\"process execution runner returned an invalid message\")",
+      "category": "LAB"
+    },
+    {
+      "path": "aegis_cognition/lab.py",
+      "line": 5088,
+      "text": "f\"process execution runner failed: {message[1]}: {message[2]}\"",
+      "category": "LAB"
+    },
+    {
+      "path": "aegis_cognition/lab.py",
+      "line": 5090,
+      "text": "raise RuntimeError(\"process execution runner returned an invalid message\")",
+      "category": "LAB"
+    },
+    {
+      "path": "aegis_cognition/lab.py",
+      "line": 5091,
+      "text": "if not process.is_alive():",
+      "category": "LAB"
+    },
+    {
+      "path": "aegis_cognition/lab.py",
+      "line": 5092,
+      "text": "process.join()",
+      "category": "LAB"
+    },
+    {
+      "path": "aegis_cognition/lab.py",
+      "line": 5093,
+      "text": "raise RuntimeError(\"process execution runner exited without a result\")",
+      "category": "LAB"
+    },
+    {
+      "path": "aegis_cognition/lab.py",
+      "line": 5096,
+      "text": "self._terminate_process(process)",
+      "category": "LAB"
+    },
+    {
+      "path": "aegis_cognition/lab.py",
+      "line": 5097,
+      "text": "raise TimeoutError(\"process execution cell timed out\")",
+      "category": "LAB"
+    },
+    {
+      "path": "aegis_cognition/lab.py",
+      "line": 5098,
+      "text": "await asyncio.sleep(min(0.02, max(0.001, remaining)))",
+      "category": "LAB"
+    },
+    {
+      "path": "aegis_cognition/lab.py",
+      "line": 5099,
+      "text": "except asyncio.CancelledError:",
+      "category": "LAB"
+    },
+    {
+      "path": "aegis_cognition/lab.py",
+      "line": 5101,
+      "text": "self._terminate_process(process)",
+      "category": "LAB"
+    },
+    {
+      "path": "aegis_cognition/lab.py",
+      "line": 5105,
+      "text": "self._terminate_process(process)",
+      "category": "LAB"
+    },
+    {
+      "path": "aegis_cognition/lab.py",
+      "line": 5107,
+      "text": "process.join(timeout=1.0)",
+      "category": "LAB"
+    },
+    {
+      "path": "aegis_cognition/lab.py",
+      "line": 5112,
+      "text": "self._active_process = None",
+      "category": "LAB"
+    },
+    {
+      "path": "aegis_cognition/lab.py",
+      "line": 5116,
+      "text": "\"\"\"Advisory cross-process lease for one durable replay directory.",
+      "category": "LAB"
+    },
+    {
+      "path": "aegis_cognition/lab.py",
+      "line": 5118,
+      "text": "The lock is held by an open file descriptor, so normal process exit releases",
+      "category": "LAB"
+    },
+    {
+      "path": "aegis_cognition/lab.py",
+      "line": 5156,
+      "text": "fcntl.flock(handle.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)",
+      "category": "LAB"
+    },
+    {
+      "path": "aegis_cognition/lab.py",
+      "line": 5177,
+      "text": "fcntl.flock(handle.fileno(), fcntl.LOCK_UN)",
+      "category": "LAB"
+    },
+    {
+      "path": "aegis_cognition/lab.py",
+      "line": 5343,
+      "text": "self._task: asyncio.Task[tuple[Any, LabDossier]] | None = None",
+      "category": "LAB"
+    },
+    {
+      "path": "aegis_cognition/lab.py",
+      "line": 5345,
+      "text": "self._event_signal: asyncio.Event | None = None",
+      "category": "LAB"
+    },
+    {
+      "path": "aegis_cognition/lab.py",
+      "line": 5369,
+      "text": "def _ensure_started(self) -> asyncio.Task[tuple[Any, LabDossier]]:",
+      "category": "LAB"
+    },
+    {
+      "path": "aegis_cognition/lab.py",
+      "line": 5372,
+      "text": "asyncio.get_running_loop()",
+      "category": "LAB"
+    },
+    {
+      "path": "aegis_cognition/lab.py",
+      "line": 5375,
+      "text": "self._task = asyncio.create_task(self._execute(), name=\"aegis-lab-session\")",
+      "category": "LAB"
+    },
+    {
+      "path": "aegis_cognition/lab.py",
+      "line": 5377,
+      "text": "asyncio.get_running_loop().call_soon(self._task.cancel)",
+      "category": "LAB"
+    },
+    {
+      "path": "aegis_cognition/lab.py",
+      "line": 5389,
+      "text": "except asyncio.CancelledError:",
+      "category": "LAB"
+    },
+    {
+      "path": "aegis_cognition/lab.py",
+      "line": 5409,
+      "text": "self._event_signal = asyncio.Event()",
+      "category": "LAB"
+    },
+    {
+      "path": "aegis_cognition/lab.py",
+      "line": 5878,
+      "text": "except asyncio.CancelledError:",
+      "category": "LAB"
+    },
+    {
+      "path": "aegis_cognition/lab.py",
+      "line": 6235,
+      "text": "except asyncio.CancelledError:",
+      "category": "LAB"
+    },
+    {
+      "path": "aegis_cognition/lab.py",
+      "line": 6380,
+      "text": "except asyncio.CancelledError:",
+      "category": "LAB"
+    },
+    {
+      "path": "aegis_cognition/lab.py",
+      "line": 6576,
+      "text": "except asyncio.CancelledError:",
+      "category": "LAB"
+    },
+    {
+      "path": "aegis_cognition/lab.py",
+      "line": 6628,
+      "text": "except asyncio.CancelledError:",
+      "category": "LAB"
+    },
+    {
+      "path": "aegis_cognition/lab.py",
+      "line": 6705,
+      "text": "except asyncio.CancelledError:",
+      "category": "LAB"
+    },
+    {
+      "path": "aegis_cognition/lab.py",
+      "line": 6800,
+      "text": "except asyncio.CancelledError:",
+      "category": "LAB"
+    },
+    {
+      "path": "aegis_cognition/lab.py",
+      "line": 6891,
+      "text": "except asyncio.CancelledError:",
+      "category": "LAB"
+    },
+    {
+      "path": "aegis_cognition/lab.py",
+      "line": 7006,
+      "text": "except asyncio.CancelledError:",
+      "category": "LAB"
+    },
+    {
+      "path": "aegis_cognition/lab.py",
+      "line": 7133,
+      "text": "except asyncio.CancelledError:",
+      "category": "LAB"
+    },
+    {
+      "path": "aegis_cognition/lab.py",
+      "line": 7268,
+      "text": "except asyncio.CancelledError:",
+      "category": "LAB"
+    },
+    {
+      "path": "aegis_cognition/lab.py",
+      "line": 7576,
+      "text": "except asyncio.CancelledError:",
+      "category": "LAB"
+    },
+    {
+      "path": "aegis_cognition/lab.py",
+      "line": 7647,
+      "text": "except asyncio.CancelledError:",
+      "category": "LAB"
+    },
+    {
+      "path": "aegis_cognition/lab.py",
+      "line": 7757,
+      "text": "# launcher, so no launcher can create a process before the",
+      "category": "LAB"
+    },
+    {
+      "path": "aegis_cognition/lab.py",
+      "line": 7784,
+      "text": "except asyncio.CancelledError:",
+      "category": "LAB"
+    },
+    {
+      "path": "aegis_cognition/lab.py",
+      "line": 7921,
+      "text": "except asyncio.CancelledError:",
+      "category": "LAB"
+    },
+    {
+      "path": "aegis_cognition/lab.py",
+      "line": 8028,
+      "text": "except asyncio.CancelledError:",
+      "category": "LAB"
+    },
+    {
+      "path": "aegis_cognition/lab.py",
+      "line": 8197,
+      "text": "except asyncio.CancelledError:",
+      "category": "LAB"
+    },
+    {
+      "path": "aegis_cognition/lab.py",
+      "line": 8318,
+      "text": "\"mode\": \"isolated_process\"",
+      "category": "LAB"
+    },
+    {
+      "path": "aegis_cognition/lab.py",
+      "line": 8320,
+      "text": "else \"in_process_callback\",",
+      "category": "LAB"
+    },
+    {
+      "path": "aegis_cognition/lab.py",
+      "line": 8585,
+      "text": "\"ProcessExecutionCell\",",
+      "category": "LAB"
+    },
+    {
+      "path": "aegis_cognition/metrics.py",
+      "line": 1,
+      "text": "\"\"\"Thread-safe runtime metrics with a bounded, low-cardinality surface.\"\"\"",
+      "category": "PRODUCT"
+    },
+    {
+      "path": "aegis_cognition/metrics.py",
+      "line": 6,
+      "text": "import threading",
+      "category": "PRODUCT"
+    },
+    {
+      "path": "aegis_cognition/metrics.py",
+      "line": 18,
+      "text": "self._lock = threading.Lock()",
+      "category": "PRODUCT"
+    },
+    {
+      "path": "aegis_cognition/prompt.py",
+      "line": 129,
+      "text": "# Section 3: EXECUTION PROCESS (QUY TRÌNH THỰC HIỆN)",
+      "category": "PRODUCT"
+    },
+    {
+      "path": "aegis_cognition/runtime.py",
+      "line": 103,
+      "text": "\"cpu_threads_active\": 0,",
+      "category": "PRODUCT"
+    },
+    {
+      "path": "cluster/worker_service.py",
+      "line": 17,
+      "text": "The worker process is intentionally minimal:",
+      "category": "UNKNOWN"
+    },
+    {
+      "path": "cluster/worker_service.py",
+      "line": 18,
+      "text": "- no state, no caching, no concurrency beyond ``threading``;",
+      "category": "UNKNOWN"
+    },
+    {
+      "path": "cluster/worker_service.py",
+      "line": 99,
+      "text": "class ThreadedTCPServer(socketserver.ThreadingMixIn, socketserver.TCPServer):",
+      "category": "UNKNOWN"
+    },
+    {
+      "path": "cluster/worker_service.py",
+      "line": 101,
+      "text": "daemon_threads = True",
+      "category": "UNKNOWN"
+    },
+    {
+      "path": "cluster/worker_service.py",
+      "line": 106,
+      "text": "with ThreadedTCPServer((bind_host, PORT), ClusterWorkerHandler) as srv:",
+      "category": "UNKNOWN"
+    },
+    {
+      "path": "core/python/aegis/provider.py",
+      "line": 5,
+      "text": "import asyncio",
+      "category": "COMPATIBILITY"
+    },
+    {
+      "path": "core/python/aegis/provider.py",
+      "line": 212,
+      "text": "# The hook is a trusted in-process fence.  The Lab callback hashes",
+      "category": "COMPATIBILITY"
+    },
+    {
+      "path": "core/python/aegis/provider.py",
+      "line": 220,
+      "text": "except asyncio.CancelledError:",
+      "category": "COMPATIBILITY"
+    },
+    {
+      "path": "core/python/aegis_adapter.py",
+      "line": 3,
+      "text": "import asyncio",
+      "category": "COMPATIBILITY"
+    },
+    {
+      "path": "core/python/aegis_adapter.py",
+      "line": 187,
+      "text": "asyncio.get_running_loop()",
+      "category": "COMPATIBILITY"
+    },
+    {
+      "path": "core/python/aegis_adapter.py",
+      "line": 189,
+      "text": "return asyncio.run(self.run(task, **kwargs))",
+      "category": "COMPATIBILITY"
+    },
+    {
+      "path": "core/python/aegis_adapter.py",
+      "line": 201,
+      "text": "asyncio.get_running_loop()",
+      "category": "COMPATIBILITY"
+    },
+    {
+      "path": "core/python/aegis_adapter.py",
+      "line": 203,
+      "text": "return asyncio.run(self.ainvoke(input, **kwargs))",
+      "category": "COMPATIBILITY"
+    },
+    {
+      "path": "core/python/aegis_adapter.py",
+      "line": 216,
+      "text": "asyncio.get_running_loop()",
+      "category": "COMPATIBILITY"
+    },
+    {
+      "path": "core/python/aegis_adapter.py",
+      "line": 218,
+      "text": "return asyncio.run(self.abatch(inputs, **kwargs))",
+      "category": "COMPATIBILITY"
+    },
+    {
+      "path": "core/python/aegis_adapter.py",
+      "line": 282,
+      "text": "asyncio.get_running_loop()",
+      "category": "COMPATIBILITY"
+    },
+    {
+      "path": "core/python/aegis_adapter.py",
+      "line": 284,
+      "text": "return asyncio.run(self.capture_browser_action(**kwargs))",
+      "category": "COMPATIBILITY"
+    },
+    {
+      "path": "core/python/aegis_adapter.py",
+      "line": 345,
+      "text": "asyncio.get_running_loop()",
+      "category": "COMPATIBILITY"
+    },
+    {
+      "path": "core/python/aegis_adapter.py",
+      "line": 347,
+      "text": "return asyncio.run(self.capture_browser_action_hot_first(**kwargs))",
+      "category": "COMPATIBILITY"
+    },
+    {
+      "path": "core/python/aegis_adapter.py",
+      "line": 510,
+      "text": "await asyncio.sleep(2 ** retries)",
+      "category": "COMPATIBILITY"
+    },
+    {
+      "path": "core/python/browser_playwright_runtime.py",
+      "line": 3,
+      "text": "import asyncio",
+      "category": "COMPATIBILITY"
+    },
+    {
+      "path": "core/python/browser_playwright_runtime.py",
+      "line": 237,
+      "text": "if not await asyncio.to_thread(_hostname_resolution_is_safe, parsed_initial.hostname):",
+      "category": "COMPATIBILITY"
+    },
+    {
+      "path": "core/python/browser_playwright_runtime.py",
+      "line": 258,
+      "text": "await asyncio.to_thread(_hostname_resolution_is_safe, parsed.hostname)",
+      "category": "COMPATIBILITY"
+    },
+    {
+      "path": "core/python/browser_runtime_adapter.py",
+      "line": 10,
+      "text": "import threading",
+      "category": "COMPATIBILITY"
+    },
+    {
+      "path": "core/python/browser_runtime_adapter.py",
+      "line": 236,
+      "text": "thread = threading.Thread(",
+      "category": "COMPATIBILITY"
+    },
+    {
+      "path": "core/python/browser_runtime_adapter.py",
+      "line": 241,
+      "text": "thread.start()",
+      "category": "COMPATIBILITY"
+    },
+    {
+      "path": "core/python/nim_client.py",
+      "line": 17,
+      "text": "import asyncio",
+      "category": "COMPATIBILITY"
+    },
+    {
+      "path": "core/python/nim_client.py",
+      "line": 243,
+      "text": "loop = asyncio.get_running_loop()",
+      "category": "COMPATIBILITY"
+    },
+    {
+      "path": "core/python/operator_api.py",
+      "line": 5,
+      "text": "from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer",
+      "category": "COMPATIBILITY"
+    },
+    {
+      "path": "core/python/operator_api.py",
+      "line": 315,
+      "text": ") -> ThreadingHTTPServer:",
+      "category": "COMPATIBILITY"
+    },
+    {
+      "path": "core/python/operator_api.py",
+      "line": 317,
+      "text": "return ThreadingHTTPServer((host, port), build_operator_http_handler(api))",
+      "category": "COMPATIBILITY"
+    },
+    {
+      "path": "core/python/tests.py",
+      "line": 3,
+      "text": "import asyncio",
+      "category": "TEST"
+    },
+    {
+      "path": "core/python/tests.py",
+      "line": 9,
+      "text": "import threading",
+      "category": "TEST"
+    },
+    {
+      "path": "core/python/tests.py",
+      "line": 709,
+      "text": "\"process_llm_request_with_budget_admission route_request_with_budget \"",
+      "category": "TEST"
+    },
+    {
+      "path": "core/python/tests.py",
+      "line": 710,
+      "text": "\"admission_proof.is_valid_for process_llm_request_with_budget_admission_replay\",",
+      "category": "TEST"
+    },
+    {
+      "path": "core/python/tests.py",
+      "line": 877,
+      "text": "output = asyncio.run(",
+      "category": "TEST"
+    },
+    {
+      "path": "core/python/tests.py",
+      "line": 1723,
+      "text": "publish_entered = threading.Event()",
+      "category": "TEST"
+    },
+    {
+      "path": "core/python/tests.py",
+      "line": 1724,
+      "text": "publish_release = threading.Event()",
+      "category": "TEST"
+    },
+    {
+      "path": "core/python/tests.py",
+      "line": 1932,
+      "text": "thread = threading.Thread(target=server.serve_forever, daemon=True)",
+      "category": "TEST"
+    },
+    {
+      "path": "core/python/tests.py",
+      "line": 1933,
+      "text": "thread.start()",
+      "category": "TEST"
+    },
+    {
+      "path": "core/python/tests.py",
+      "line": 1941,
+      "text": "thread.join(timeout=5)",
+      "category": "TEST"
+    },
+    {
+      "path": "core/python/tests.py",
+      "line": 2040,
+      "text": "class FakeCompletedProcess:",
+      "category": "TEST"
+    },
+    {
+      "path": "core/python/tests.py",
+      "line": 2051,
+      "text": "return FakeCompletedProcess()",
+      "category": "TEST"
+    },
+    {
+      "path": "core/python/tests.py",
+      "line": 2057,
+      "text": "patch(\"scripts.run_checks.subprocess.run\", side_effect=fake_run),",
+      "category": "TEST"
+    },
+    {
+      "path": "core/python/tests.py",
+      "line": 2475,
+      "text": "class FakeCompletedProcess:",
+      "category": "TEST"
+    },
+    {
+      "path": "core/python/tests.py",
+      "line": 2529,
+      "text": "return FakeCompletedProcess()",
+      "category": "TEST"
+    },
+    {
+      "path": "core/python/tests.py",
+      "line": 2532,
+      "text": "with patch(\"scripts.run_checks.subprocess.run\", side_effect=fake_run):",
+      "category": "TEST"
+    },
+    {
+      "path": "core/python/tests.py",
+      "line": 2748,
+      "text": "publish_entered: threading.Event,",
+      "category": "TEST"
+    },
+    {
+      "path": "core/python/tests.py",
+      "line": 2749,
+      "text": "publish_release: threading.Event,",
+      "category": "TEST"
+    },
+    {
+      "path": "core/python/tests.py",
+      "line": 2822,
+      "text": "capture = __import__(\"asyncio\").run(scenario())",
+      "category": "TEST"
+    },
+    {
+      "path": "core/python/tests.py",
+      "line": 2875,
+      "text": "capture = __import__(\"asyncio\").run(scenario())",
+      "category": "TEST"
+    },
+    {
+      "path": "core/python/tests.py",
+      "line": 2955,
+      "text": "capture = __import__(\"asyncio\").run(scenario())",
+      "category": "TEST"
+    },
+    {
+      "path": "core/python/tests.py",
+      "line": 2973,
+      "text": "publish_entered = threading.Event()",
+      "category": "TEST"
+    },
+    {
+      "path": "core/python/tests.py",
+      "line": 2974,
+      "text": "publish_release = threading.Event()",
+      "category": "TEST"
+    },
+    {
+      "path": "core/python/tests.py",
+      "line": 2992,
+      "text": "capture = __import__(\"asyncio\").run(scenario())",
+      "category": "TEST"
+    },
+    {
+      "path": "core/python/tests.py",
+      "line": 3069,
+      "text": "snapshot, network = __import__(\"asyncio\").run(scenario())",
+      "category": "TEST"
+    },
+    {
+      "path": "core/python/tests.py",
+      "line": 3094,
+      "text": "__import__(\"asyncio\").run(scenario())",
+      "category": "TEST"
+    },
+    {
+      "path": "core/python/tests.py",
+      "line": 3159,
+      "text": "capture = __import__(\"asyncio\").run(scenario())",
+      "category": "TEST"
+    },
+    {
+      "path": "core/python/tests.py",
+      "line": 3188,
+      "text": "first, second = __import__(\"asyncio\").run(scenario())",
+      "category": "TEST"
+    },
+    {
+      "path": "core/python/tests.py",
+      "line": 3225,
+      "text": "scorecard = __import__(\"asyncio\").run(scenario())",
+      "category": "TEST"
+    },
+    {
+      "path": "core/python/tests.py",
+      "line": 3260,
+      "text": "record = __import__(\"asyncio\").run(scenario())",
+      "category": "TEST"
+    },
+    {
+      "path": "core/python/tests.py",
+      "line": 3291,
+      "text": "record = __import__(\"asyncio\").run(scenario())",
+      "category": "TEST"
+    },
+    {
+      "path": "core/python/tests.py",
+      "line": 3406,
+      "text": "reply_async = __import__(\"asyncio\").run(client.ainvoke(\"Hello model async\"))",
+      "category": "TEST"
+    },
+    {
+      "path": "docs/architecture/evidence-pack/collect.py",
+      "line": 14,
+      "text": "import subprocess",
+      "category": "SCRIPT"
+    },
+    {
+      "path": "docs/architecture/evidence-pack/collect.py",
+      "line": 65,
+      "text": "p = subprocess.run(args, cwd=ROOT, text=True, capture_output=True, timeout=timeout, check=False)",
+      "category": "SCRIPT"
+    },
+    {
+      "path": "docs/architecture/evidence-pack/collect.py",
+      "line": 208,
+      "text": "side_names = (\"open\", \"urlopen\", \"Popen\", \"run\", \"serve_forever\", \"create_task\", \"launch\", \"connect\", \"write_text\", \"unlink\", \"mkdir\", \"remove\", \"invoke\", \"index_session\")",
+      "category": "SCRIPT"
+    },
+    {
+      "path": "docs/architecture/evidence-pack/collect.py",
+      "line": 322,
+      "text": "for key, value in ((\"ffi\", \"PyO3/native boundary\"), (\"lab\", \"Lab controller/state/events\"), (\"replay\", \"replay/archive/validation\"), (\"resource\", \"resource admission/platform\"), (\"execution\", \"execution lanes/processes\"), (\"gt96\", \"GT96 invariants/budget\"), (\"telemetry\", \"telemetry\"), (\"sandbox\", \"sandbox/Wasmtime\"), (\"tool_gateway\", \"tool/provider gateway\"), (\"task_ledger\", \"task lifecycle\"), (\"memory\", \"memory/storage\"), (\"cli\", \"CLI\")):",
+      "category": "SCRIPT"
+    },
+    {
+      "path": "docs/architecture/evidence-pack/collect.py",
+      "line": 330,
+      "text": "global _TEXT_PATHS",
+      "category": "SCRIPT"
+    },
+    {
+      "path": "docs/architecture/evidence-pack/collect.py",
+      "line": 389,
+      "text": "\"PROCESS_SPAWN\": r\"Popen|subprocess\\.|create_subprocess|multiprocessing|os\\.system\",",
+      "category": "SCRIPT"
+    },
+    {
+      "path": "docs/architecture/evidence-pack/collect.py",
+      "line": 426,
+      "text": "rust_sites = scan_text(r\"TcpListener|TcpStream|std::fs::|Command::new|std::process|wasmtime|mmap|unsafe\\b|File::create\", safe_files({\".rs\"}))",
+      "category": "SCRIPT"
+    },
+    {
+      "path": "docs/architecture/evidence-pack/collect.py",
+      "line": 427,
+      "text": "return {\"schema\": \"aegis-architecture-side-effect-graph-v1\", \"python_function_records\": records[:2000], \"python_records_truncated\": len(records) > 2000, \"rust_side_effect_sites\": rust_sites[:3000], \"rust_sites_truncated\": len(rust_sites) > 3000, \"effect_classes\": sorted(effect_patterns), \"production_roots\": sorted(roots), \"limitations\": [\"dynamic dispatch, decorators, macro expansion and subprocess descendants are not fully resolved\", \"missing stage labels are not proof of absence\"]}",
+      "category": "SCRIPT"
+    },
+    {
+      "path": "docs/architecture/evidence-pack/collect.py",
+      "line": 489,
+      "text": "side_effect_patterns = {\"NETWORK\": re.compile(\"network|http|socket\", re.I), \"FILESYSTEM\": re.compile(\"file|path|replay|archive\", re.I), \"PROCESS\": re.compile(\"process|spawn|job\", re.I), \"BROWSER\": re.compile(\"browser|playwright\", re.I), \"PROVIDER\": re.compile(\"llm|provider|model\", re.I)}",
+      "category": "SCRIPT"
+    },
+    {
+      "path": "docs/architecture/evidence-pack/collect.py",
+      "line": 528,
+      "text": "rows.append({**x, \"owner\": \"nearest function requires AST/rust-analyzer resolution\", \"retry_count_policy\": \"literal nearby; see source line\", \"backoff\": \"exponential/constant/unknown\", \"idempotency_assumption\": \"not mechanically established\", \"effect_class\": \"provider/tool/network/process/unknown\", \"budget_integration\": \"unknown unless budget/ledger appears nearby\", \"attempt_identity\": \"unknown\", \"cancellation_behavior\": \"cancellation keyword present/unknown\"})",
+      "category": "SCRIPT"
+    },
+    {
+      "path": "docs/architecture/evidence-pack/collect.py",
+      "line": 627,
+      "text": "py = scan_text(r\"asyncio|create_task|Thread|threading|multiprocessing|Lock\\(|RLock\\(|Semaphore\\(|global |asyncio\\.Lock|Process\", safe_files({\".py\"}))",
+      "category": "SCRIPT"
+    },
+    {
+      "path": "docs/architecture/evidence-pack/collect.py",
+      "line": 628,
+      "text": "rs = scan_text(r\"tokio::|spawn\\(|rayon|Arc<|Mutex<|RwLock<|Atomic|TcpListener|TcpStream|thread::|std::thread|mpsc\", safe_files({\".rs\"}))",
+      "category": "SCRIPT"
+    },
+    {
+      "path": "docs/architecture/evidence-pack/collect.py",
+      "line": 637,
+      "text": "\"lock_heavy\": r\"Mutex|RwLock|Lock\\(|parking_lot|threading\\.Lock\",",
+      "category": "SCRIPT"
+    },
+    {
+      "path": "docs/architecture/evidence-pack/collect.py",
+      "line": 640,
+      "text": "\"subprocess_startup\": r\"Popen|subprocess\\.run|Command::new\",",
+      "category": "SCRIPT"
+    },
+    {
+      "path": "docs/architecture/evidence-pack/collect.py",
+      "line": 648,
+      "text": "return {\"schema\": \"aegis-architecture-performance-v1\", \"local_profile\": {\"status\": \"NOT_MEASURABLE_LOCALLY\", \"reason\": \"No external credentials/provider execution was invoked; no expensive Lab/benchmark workload was run for safety.\", \"startup_import\": \"not executed in this collection pass\", \"run_ffi_time\": \"NOT_MEASURED\", \"event_writes\": \"NOT_MEASURED\", \"serialization\": \"NOT_MEASURED\", \"subprocesses\": \"NOT_MEASURED\"}, \"static_suspects\": rows}",
+      "category": "SCRIPT"
+    },
+    {
+      "path": "docs/architecture/evidence-pack/collect.py",
+      "line": 738,
+      "text": "The allowed final class is deliberately conservative: static absence yields `UNKNOWN`, not delete authorization. Dynamic imports, plugin discovery, packaging includes, console scripts, subprocesses, and documentation references are separately recorded.",
+      "category": "SCRIPT"
+    },
+    {
+      "path": "docs/architecture/evidence-pack/collect.py",
+      "line": 817,
+      "text": "**`NOT_MEASURABLE_LOCALLY` for representative Lab/non-Lab runs in this pass.** No external credentials/provider call, native wheel build, Lab workload, benchmark, or browser session was invoked. Startup/FFI/event/hash/serialization/subprocess timings are therefore not invented. The profile status and reason are in `architecture_performance.json`.",
+      "category": "SCRIPT"
+    },
+    {
+      "path": "docs/architecture/evidence-pack/collect.py",
+      "line": 821,
+      "text": "The artifact records lexical suspects only: repeated JSON/Serde serialization, repeated hashing, clones/copies, lock use, filesystem scans, context reconstruction, subprocess startup, FFI crossings, and unbounded collection growth. All are `SUSPECT_ONLY_UNMEASURED`; no performance regression or optimization claim follows.",
+      "category": "SCRIPT"
+    },
+    {
+      "path": "docs/architecture/evidence-pack/collect.py",
+      "line": 825,
+      "text": "Fresh pattern inventory covers Python asyncio/tasks/threads/processes/locks/global state and Rust Tokio/spawn/Rayon/Arc/Mutex/RwLock/atomics/TCP. Full rows are in `architecture_concurrency.json`. Flags are `MULTIPLE_WRITERS`, `LOCK_ACROSS_AWAIT`, `GLOBAL_MUTABLE`, `POTENTIAL_CONTENTION`, and `UNKNOWN`; no race is claimed without a reproducer or proof.",
+      "category": "SCRIPT"
+    },
+    {
+      "path": "docs/architecture/evidence-pack/collect.py",
+      "line": 860,
+      "text": "cells -> benchmark subprocess [E]",
+      "category": "SCRIPT"
+    },
+    {
+      "path": "docs/architecture/evidence-pack/collect.py",
+      "line": 865,
+      "text": "browser runtime -> network/process/browser [E]",
+      "category": "SCRIPT"
+    },
+    {
+      "path": "examples/advanced/multi_agent.py",
+      "line": 7,
+      "text": "import asyncio",
+      "category": "UNKNOWN"
+    },
+    {
+      "path": "examples/advanced/multi_agent.py",
+      "line": 24,
+      "text": "results = await asyncio.gather(*(research_topic(t) for t in topics))",
+      "category": "UNKNOWN"
+    },
+    {
+      "path": "examples/advanced/multi_agent.py",
+      "line": 34,
+      "text": "asyncio.run(main())",
+      "category": "UNKNOWN"
+    },
+    {
+      "path": "scripts/_audit_regen_requirements.py",
+      "line": 40,
+      "text": "__future__ abc argparse ast asyncio base64 binascii bisect builtins cmath",
+      "category": "SCRIPT"
+    },
+    {
+      "path": "scripts/_audit_regen_requirements.py",
+      "line": 46,
+      "text": "signal site socket sqlite3 ssl stat statistics string struct subprocess sys",
+      "category": "SCRIPT"
+    },
+    {
+      "path": "scripts/_audit_regen_requirements.py",
+      "line": 47,
+      "text": "tempfile textwrap threading time tokenize token tomllib traceback types typing",
+      "category": "SCRIPT"
+    },
+    {
+      "path": "scripts/_audit_regen_requirements.py",
+      "line": 146,
+      "text": "\"pytest_asyncio\": \"pytest-asyncio>=0.23\",",
+      "category": "SCRIPT"
+    },
+    {
+      "path": "scripts/architecture_fitness.py",
+      "line": 97,
+      "text": "(\"core/rust/src/execution.rs\", \"pub fn run_untrusted_process\"),",
+      "category": "SCRIPT"
+    },
+    {
+      "path": "scripts/architecture_fitness.py",
+      "line": 102,
+      "text": "\"resource feedback, queued admission, deadlines, process isolation, accelerator seams, and sampling must remain present\",",
+      "category": "SCRIPT"
+    },
+    {
+      "path": "scripts/architecture_fitness.py",
+      "line": 159,
+      "text": "\"standards applicability, test process, and security/operations scope must be durable\",",
+      "category": "SCRIPT"
+    },
+    {
+      "path": "scripts/attestation_status.py",
+      "line": 8,
+      "text": "import subprocess",
+      "category": "SCRIPT"
+    },
+    {
+      "path": "scripts/attestation_status.py",
+      "line": 20,
+      "text": "head_sha = subprocess.check_output([\"git\", \"rev-parse\", \"HEAD\"], text=True).strip()",
+      "category": "SCRIPT"
+    },
+    {
+      "path": "scripts/attestation_status.py",
+      "line": 21,
+      "text": "except (OSError, subprocess.CalledProcessError):",
+      "category": "SCRIPT"
+    },
+    {
+      "path": "scripts/communication_payload_benchmark.py",
+      "line": 24,
+      "text": "return int(psutil.Process().memory_info().rss)",
+      "category": "SCRIPT"
+    },
+    {
+      "path": "scripts/communication_payload_benchmark.py",
+      "line": 82,
+      "text": "before_cpu = time.process_time_ns()",
+      "category": "SCRIPT"
+    },
+    {
+      "path": "scripts/communication_payload_benchmark.py",
+      "line": 86,
+      "text": "cpu_ns += time.process_time_ns() - before_cpu",
+      "category": "SCRIPT"
+    },
+    {
+      "path": "scripts/constitution_audit.py",
+      "line": 41,
+      "text": "\"distributed execution now has deterministic single-writer/lease microbenchmarks plus in-process loopback and TCP loopback socket evidence\",",
+      "category": "SCRIPT"
+    },
+    {
+      "path": "scripts/constitution_audit.py",
+      "line": 86,
+      "text": "\"process_llm_request_with_budget_admission\",",
+      "category": "SCRIPT"
+    },
+    {
+      "path": "scripts/constitution_audit.py",
+      "line": 87,
+      "text": "\"process_llm_request_with_budget_admission_replay\",",
+      "category": "SCRIPT"
+    },
+    {
+      "path": "scripts/constitution_audit.py",
+      "line": 1746,
+      "text": "\"PROCESS_MODEL\",",
+      "category": "SCRIPT"
+    },
+    {
+      "path": "scripts/constitution_audit.py",
+      "line": 2214,
+      "text": "\"LangGraph-style thread checkpoint JSON\",",
+      "category": "SCRIPT"
+    },
+    {
+      "path": "scripts/constitution_audit.py",
+      "line": 2978,
+      "text": "\"process_llm_request_with_budget_admission\",",
+      "category": "SCRIPT"
+    },
+    {
+      "path": "scripts/constitution_audit.py",
+      "line": 2979,
+      "text": "\"process_llm_request_with_budget_admission_replay\",",
+      "category": "SCRIPT"
+    },
+    {
+      "path": "scripts/constitution_audit.py",
+      "line": 3008,
+      "text": "\"Context Governor must not run global graph knapsack per turn\",",
+      "category": "SCRIPT"
+    },
+    {
+      "path": "scripts/constitution_audit.py",
+      "line": 3009,
+      "text": "\"CogniFold may fold and rescore the global graph in the background\",",
+      "category": "SCRIPT"
+    },
+    {
+      "path": "scripts/deployment_manifest.py",
+      "line": 148,
+      "text": "\"process\": \"aegis-nerve-core\",",
+      "category": "SCRIPT"
+    },
+    {
+      "path": "scripts/deployment_manifest.py",
+      "line": 156,
+      "text": "\"process\": \"aegis-python-gateway\",",
+      "category": "SCRIPT"
+    },
+    {
+      "path": "scripts/deployment_manifest.py",
+      "line": 164,
+      "text": "\"process\": \"aegis-browser-collector\",",
+      "category": "SCRIPT"
+    },
+    {
+      "path": "scripts/deployment_manifest.py",
+      "line": 172,
+      "text": "\"process\": \"aegis-remote-worker\",",
+      "category": "SCRIPT"
+    },
+    {
+      "path": "scripts/deployment_manifest.py",
+      "line": 180,
+      "text": "\"process\": \"aegis-operator-api\",",
+      "category": "SCRIPT"
+    },
+    {
+      "path": "scripts/deployment_manifest.py",
+      "line": 269,
+      "text": "PROCESS_MODEL: dict[str, Any] = {",
+      "category": "SCRIPT"
+    },
+    {
+      "path": "scripts/deployment_manifest.py",
+      "line": 293,
+      "text": "\"liveness\": \"process-plus-metrics-port\",",
+      "category": "SCRIPT"
+    },
+    {
+      "path": "scripts/deployment_manifest.py",
+      "line": 305,
+      "text": "\"liveness\": \"collector-process-health\",",
+      "category": "SCRIPT"
+    },
+    {
+      "path": "scripts/deployment_manifest.py",
+      "line": 413,
+      "text": "process_model: dict[str, Any]",
+      "category": "SCRIPT"
+    },
+    {
+      "path": "scripts/deployment_manifest.py",
+      "line": 438,
+      "text": "process_model_hash: str",
+      "category": "SCRIPT"
+    },
+    {
+      "path": "scripts/deployment_manifest.py",
+      "line": 491,
+      "text": "\"process_model\": self.process_model,",
+      "category": "SCRIPT"
+    },
+    {
+      "path": "scripts/deployment_manifest.py",
+      "line": 516,
+      "text": "\"process_model_hash\": self.process_model_hash,",
+      "category": "SCRIPT"
+    },
+    {
+      "path": "scripts/deployment_manifest.py",
+      "line": 661,
+      "text": "\"process_model\": PROCESS_MODEL,",
+      "category": "SCRIPT"
+    },
+    {
+      "path": "scripts/deployment_manifest.py",
+      "line": 701,
+      "text": "process_model_hash = _stable_hash(PROCESS_MODEL)",
+      "category": "SCRIPT"
+    },
+    {
+      "path": "scripts/deployment_manifest.py",
+      "line": 727,
+      "text": "\"process_model_hash\": process_model_hash,",
+      "category": "SCRIPT"
+    },
+    {
+      "path": "scripts/deployment_manifest.py",
+      "line": 784,
+      "text": "\"process_model_hash\": process_model_hash,",
+      "category": "SCRIPT"
+    },
+    {
+      "path": "scripts/deployment_manifest.py",
+      "line": 818,
+      "text": "process_model=PROCESS_MODEL,",
+      "category": "SCRIPT"
+    },
+    {
+      "path": "scripts/deployment_manifest.py",
+      "line": 843,
+      "text": "process_model_hash=process_model_hash,",
+      "category": "SCRIPT"
+    },
+    {
+      "path": "scripts/deployment_manifest.py",
+      "line": 951,
+      "text": "\"process_model\",",
+      "category": "SCRIPT"
+    },
+    {
+      "path": "scripts/evidence_consistency_gate.py",
+      "line": 14,
+      "text": "import subprocess",
+      "category": "SCRIPT"
+    },
+    {
+      "path": "scripts/evidence_consistency_gate.py",
+      "line": 41,
+      "text": "return subprocess.check_output([\"git\", \"rev-parse\", \"HEAD\"], cwd=root, text=True, stderr=subprocess.STDOUT).strip()",
+      "category": "SCRIPT"
+    },
+    {
+      "path": "scripts/evidence_consistency_gate.py",
+      "line": 595,
+      "text": "except (OSError, ValueError, subprocess.CalledProcessError, json.JSONDecodeError) as error:",
+      "category": "SCRIPT"
+    },
+    {
+      "path": "scripts/external_deployment_smoke_gate.py",
+      "line": 6,
+      "text": "import subprocess",
+      "category": "SCRIPT"
+    },
+    {
+      "path": "scripts/external_deployment_smoke_gate.py",
+      "line": 548,
+      "text": "result = subprocess.run(",
+      "category": "SCRIPT"
+    },
+    {
+      "path": "scripts/external_deployment_smoke_gate.py",
+      "line": 555,
+      "text": "except (OSError, subprocess.TimeoutExpired) as exc:",
+      "category": "SCRIPT"
+    },
+    {
+      "path": "scripts/extreme_testing_suite.py",
+      "line": 19,
+      "text": "import subprocess",
+      "category": "SCRIPT"
+    },
+    {
+      "path": "scripts/extreme_testing_suite.py",
+      "line": 22,
+      "text": "import threading",
+      "category": "SCRIPT"
+    },
+    {
+      "path": "scripts/extreme_testing_suite.py",
+      "line": 42,
+      "text": "self._lock = threading.Lock()",
+      "category": "SCRIPT"
+    },
+    {
+      "path": "scripts/extreme_testing_suite.py",
+      "line": 123,
+      "text": "process = psutil.Process()",
+      "category": "SCRIPT"
+    },
+    {
+      "path": "scripts/extreme_testing_suite.py",
+      "line": 135,
+      "text": "rss = process.memory_info().rss / (1024 * 1024)",
+      "category": "SCRIPT"
+    },
+    {
+      "path": "scripts/extreme_testing_suite.py",
+      "line": 366,
+      "text": "\"\"\"Spawn a child process writing BLAKE3-chained data, kill it, verify chain.\"\"\"",
+      "category": "SCRIPT"
+    },
+    {
+      "path": "scripts/extreme_testing_suite.py",
+      "line": 385,
+      "text": "proc = subprocess.Popen(",
+      "category": "SCRIPT"
+    },
+    {
+      "path": "scripts/extreme_testing_suite.py",
+      "line": 387,
+      "text": "stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True",
+      "category": "SCRIPT"
+    },
+    {
+      "path": "scripts/hardware_profile_report.py",
+      "line": 22,
+      "text": "\"logical_processors\": {\"value\": os.cpu_count(), \"provenance\": \"DETECTED\"},",
+      "category": "SCRIPT"
+    },
+    {
+      "path": "scripts/hermes_baseline_gate.py",
+      "line": 5,
+      "text": "import subprocess",
+      "category": "SCRIPT"
+    },
+    {
+      "path": "scripts/hermes_baseline_gate.py",
+      "line": 77,
+      "text": "result = subprocess.run(",
+      "category": "SCRIPT"
+    },
+    {
+      "path": "scripts/hermes_baseline_gate.py",
+      "line": 91,
+      "text": "result = subprocess.run(",
+      "category": "SCRIPT"
+    },
+    {
+      "path": "scripts/hermes_baseline_gate.py",
+      "line": 97,
+      "text": "except (OSError, subprocess.CalledProcessError):",
+      "category": "SCRIPT"
+    },
+    {
+      "path": "scripts/hermes_persistence_baseline_gate.py",
+      "line": 5,
+      "text": "import subprocess",
+      "category": "SCRIPT"
+    },
+    {
+      "path": "scripts/hermes_persistence_baseline_gate.py",
+      "line": 77,
+      "text": "result = subprocess.run(",
+      "category": "SCRIPT"
+    },
+    {
+      "path": "scripts/hermes_persistence_baseline_gate.py",
+      "line": 91,
+      "text": "result = subprocess.run(",
+      "category": "SCRIPT"
+    },
+    {
+      "path": "scripts/hermes_persistence_baseline_gate.py",
+      "line": 97,
+      "text": "except (OSError, subprocess.CalledProcessError):",
+      "category": "SCRIPT"
+    },
+    {
+      "path": "scripts/hermes_rpc_baseline_gate.py",
+      "line": 5,
+      "text": "import subprocess",
+      "category": "SCRIPT"
+    },
+    {
+      "path": "scripts/hermes_rpc_baseline_gate.py",
+      "line": 69,
+      "text": "result = subprocess.run(",
+      "category": "SCRIPT"
+    },
+    {
+      "path": "scripts/hermes_rpc_baseline_gate.py",
+      "line": 83,
+      "text": "result = subprocess.run(",
+      "category": "SCRIPT"
+    },
+    {
+      "path": "scripts/hermes_rpc_baseline_gate.py",
+      "line": 89,
+      "text": "except (OSError, subprocess.CalledProcessError):",
+      "category": "SCRIPT"
+    },
+    {
+      "path": "scripts/hermes_session_recovery_baseline_gate.py",
+      "line": 5,
+      "text": "import subprocess",
+      "category": "SCRIPT"
+    },
+    {
+      "path": "scripts/hermes_session_recovery_baseline_gate.py",
+      "line": 80,
+      "text": "result = subprocess.run(",
+      "category": "SCRIPT"
+    },
+    {
+      "path": "scripts/hermes_session_recovery_baseline_gate.py",
+      "line": 94,
+      "text": "result = subprocess.run(",
+      "category": "SCRIPT"
+    },
+    {
+      "path": "scripts/hermes_session_recovery_baseline_gate.py",
+      "line": 100,
+      "text": "except (OSError, subprocess.CalledProcessError):",
+      "category": "SCRIPT"
+    },
+    {
+      "path": "scripts/linux_cgroup_live_probe.py",
+      "line": 16,
+      "text": "import subprocess",
+      "category": "SCRIPT"
+    },
+    {
+      "path": "scripts/linux_cgroup_live_probe.py",
+      "line": 80,
+      "text": "child: subprocess.Popen[bytes] | None = None",
+      "category": "SCRIPT"
+    },
+    {
+      "path": "scripts/linux_cgroup_live_probe.py",
+      "line": 88,
+      "text": "child = subprocess.Popen([sys.executable, \"-c\", _child_code()], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)",
+      "category": "SCRIPT"
+    },
+    {
+      "path": "scripts/linux_cgroup_live_probe.py",
+      "line": 119,
+      "text": "except (OSError, subprocess.SubprocessError, TimeoutError) as exc:",
+      "category": "SCRIPT"
+    },
+    {
+      "path": "scripts/local_git_backup.py",
+      "line": 8,
+      "text": "import subprocess",
+      "category": "SCRIPT"
+    },
+    {
+      "path": "scripts/local_git_backup.py",
+      "line": 12,
+      "text": "def _run(root: Path, *args: str, check: bool = True) -> subprocess.CompletedProcess[str]:",
+      "category": "SCRIPT"
+    },
+    {
+      "path": "scripts/local_git_backup.py",
+      "line": 13,
+      "text": "return subprocess.run(",
+      "category": "SCRIPT"
+    },
+    {
+      "path": "scripts/macos_capability_probe.py",
+      "line": 9,
+      "text": "import subprocess",
+      "category": "SCRIPT"
+    },
+    {
+      "path": "scripts/macos_capability_probe.py",
+      "line": 25,
+      "text": "\"process_count\": \"MEASUREMENT_ONLY\",",
+      "category": "SCRIPT"
+    },
+    {
+      "path": "scripts/macos_capability_probe.py",
+      "line": 26,
+      "text": "\"thread_count\": \"MEASUREMENT_ONLY\",",
+      "category": "SCRIPT"
+    },
+    {
+      "path": "scripts/macos_capability_probe.py",
+      "line": 37,
+      "text": "child = subprocess.Popen([sys.executable, \"-c\", \"import time; time.sleep(30)\"])",
+      "category": "SCRIPT"
+    },
+    {
+      "path": "scripts/mock_429_llm_server.py",
+      "line": 13,
+      "text": "global request_count",
+      "category": "SCRIPT"
+    },
+    {
+      "path": "scripts/platform_enforcement_probe.py",
+      "line": 18,
+      "text": "\"process_count\": \"KERNEL_ENFORCED if privileged cgroup v2 live test passes\",",
+      "category": "SCRIPT"
+    },
+    {
+      "path": "scripts/platform_enforcement_probe.py",
+      "line": 19,
+      "text": "\"thread_count\": \"BEST_EFFORT\",",
+      "category": "SCRIPT"
+    },
+    {
+      "path": "scripts/platform_enforcement_probe.py",
+      "line": 27,
+      "text": "\"process_count\": \"BEST_EFFORT until live count test\",",
+      "category": "SCRIPT"
+    },
+    {
+      "path": "scripts/platform_enforcement_probe.py",
+      "line": 28,
+      "text": "\"thread_count\": \"BEST_EFFORT\",",
+      "category": "SCRIPT"
+    },
+    {
+      "path": "scripts/platform_enforcement_probe.py",
+      "line": 36,
+      "text": "\"process_count\": \"MEASUREMENT_ONLY\",",
+      "category": "SCRIPT"
+    },
+    {
+      "path": "scripts/platform_enforcement_probe.py",
+      "line": 37,
+      "text": "\"thread_count\": \"MEASUREMENT_ONLY\",",
+      "category": "SCRIPT"
+    },
+    {
+      "path": "scripts/platform_enforcement_probe.py",
+      "line": 41,
+      "text": "return {name: \"UNKNOWN\" for name in (\"cpu\", \"memory\", \"process_count\", \"thread_count\", \"io\", \"termination\")}",
+      "category": "SCRIPT"
+    },
+    {
+      "path": "scripts/platform_enforcement_probe.py",
+      "line": 65,
+      "text": "\"reason\": \"runner must execute and retain the platform-specific child-process harness\",",
+      "category": "SCRIPT"
+    },
+    {
+      "path": "scripts/production_closure.py",
+      "line": 5,
+      "text": "import subprocess",
+      "category": "SCRIPT"
+    },
+    {
+      "path": "scripts/production_closure.py",
+      "line": 146,
+      "text": "result = subprocess.run(",
+      "category": "SCRIPT"
+    },
+    {
+      "path": "scripts/production_closure.py",
+      "line": 154,
+      "text": "except subprocess.TimeoutExpired as exc:",
+      "category": "SCRIPT"
+    },
+    {
+      "path": "scripts/production_packaging_smoke_gate.py",
+      "line": 4,
+      "text": "import subprocess",
+      "category": "SCRIPT"
+    },
+    {
+      "path": "scripts/production_packaging_smoke_gate.py",
+      "line": 234,
+      "text": "result = subprocess.run(",
+      "category": "SCRIPT"
+    },
+    {
+      "path": "scripts/production_packaging_smoke_gate.py",
+      "line": 243,
+      "text": "except (OSError, subprocess.TimeoutExpired) as exc:",
+      "category": "SCRIPT"
+    },
+    {
+      "path": "scripts/provider_route_gate.py",
+      "line": 82,
+      "text": "\"ok\": \"process_llm_request_with_budget_admission\" in orchestrator_source",
+      "category": "SCRIPT"
+    },
+    {
+      "path": "scripts/provider_route_gate.py",
+      "line": 102,
+      "text": "\"ok\": \"process_llm_request_with_budget_admission_replay\" in orchestrator_source",
+      "category": "SCRIPT"
+    },
+    {
+      "path": "scripts/quickjs_cold_start_gate.py",
+      "line": 4,
+      "text": "import subprocess",
+      "category": "SCRIPT"
+    },
+    {
+      "path": "scripts/quickjs_cold_start_gate.py",
+      "line": 344,
+      "text": "result = subprocess.run(",
+      "category": "SCRIPT"
+    },
+    {
+      "path": "scripts/quickjs_cold_start_gate.py",
+      "line": 356,
+      "text": "except (OSError, subprocess.TimeoutExpired) as exc:",
+      "category": "SCRIPT"
+    },
+    {
+      "path": "scripts/release_controller_action_smoke.py",
+      "line": 9,
+      "text": "import subprocess",
+      "category": "SCRIPT"
+    },
+    {
+      "path": "scripts/release_controller_action_smoke.py",
+      "line": 226,
+      "text": "subprocess.run(",
+      "category": "SCRIPT"
+    },
+    {
+      "path": "scripts/release_controller_action_smoke.py",
+      "line": 233,
+      "text": "completed = subprocess.run(",
+      "category": "SCRIPT"
+    },
+    {
+      "path": "scripts/release_controller_action_smoke.py",
+      "line": 245,
+      "text": "report[\"python\"] = subprocess.check_output(",
+      "category": "SCRIPT"
+    },
+    {
+      "path": "scripts/release_controller_action_smoke.py",
+      "line": 270,
+      "text": "except (OSError, ValueError, subprocess.CalledProcessError, json.JSONDecodeError) as error:",
+      "category": "SCRIPT"
+    },
+    {
+      "path": "scripts/release_evidence.py",
+      "line": 14,
+      "text": "import subprocess",
+      "category": "SCRIPT"
+    },
+    {
+      "path": "scripts/release_evidence.py",
+      "line": 33,
+      "text": "return subprocess.check_output(",
+      "category": "SCRIPT"
+    },
+    {
+      "path": "scripts/release_evidence.py",
+      "line": 34,
+      "text": "[\"git\", \"rev-parse\", \"HEAD\"], cwd=root, text=True, stderr=subprocess.DEVNULL",
+      "category": "SCRIPT"
+    },
+    {
+      "path": "scripts/release_evidence.py",
+      "line": 36,
+      "text": "except (OSError, subprocess.CalledProcessError):",
+      "category": "SCRIPT"
+    },
+    {
+      "path": "scripts/release_install_smoke.py",
+      "line": 9,
+      "text": "import subprocess",
+      "category": "SCRIPT"
+    },
+    {
+      "path": "scripts/release_install_smoke.py",
+      "line": 42,
+      "text": "install = subprocess.run(",
+      "category": "SCRIPT"
+    },
+    {
+      "path": "scripts/release_install_smoke.py",
+      "line": 49,
+      "text": "imported = subprocess.run(",
+      "category": "SCRIPT"
+    },
+    {
+      "path": "scripts/release_install_smoke.py",
+      "line": 62,
+      "text": "\"python\": subprocess.check_output([str(python), \"--version\"], text=True).strip(),",
+      "category": "SCRIPT"
+    },
+    {
+      "path": "scripts/release_install_smoke.py",
+      "line": 69,
+      "text": "except (OSError, subprocess.CalledProcessError) as error:",
+      "category": "SCRIPT"
+    },
+    {
+      "path": "scripts/release_recovery_smoke.py",
+      "line": 9,
+      "text": "import subprocess",
+      "category": "SCRIPT"
+    },
+    {
+      "path": "scripts/release_recovery_smoke.py",
+      "line": 163,
+      "text": "subprocess.run(",
+      "category": "SCRIPT"
+    },
+    {
+      "path": "scripts/release_recovery_smoke.py",
+      "line": 170,
+      "text": "completed = subprocess.run(",
+      "category": "SCRIPT"
+    },
+    {
+      "path": "scripts/release_recovery_smoke.py",
+      "line": 182,
+      "text": "report[\"python\"] = subprocess.check_output([str(python), \"--version\"], text=True).strip()",
+      "category": "SCRIPT"
+    },
+    {
+      "path": "scripts/release_recovery_smoke.py",
+      "line": 184,
+      "text": "except (OSError, ValueError, subprocess.CalledProcessError, json.JSONDecodeError) as error:",
+      "category": "SCRIPT"
+    },
+    {
+      "path": "scripts/release_rollback_drill.py",
+      "line": 8,
+      "text": "import subprocess",
+      "category": "SCRIPT"
+    },
+    {
+      "path": "scripts/release_rollback_drill.py",
+      "line": 24,
+      "text": "subprocess.run(",
+      "category": "SCRIPT"
+    },
+    {
+      "path": "scripts/release_rollback_drill.py",
+      "line": 33,
+      "text": "subprocess.run(",
+      "category": "SCRIPT"
+    },
+    {
+      "path": "scripts/release_rollback_drill.py",
+      "line": 67,
+      "text": "except (OSError, subprocess.CalledProcessError) as error:",
+      "category": "SCRIPT"
+    },
+    {
+      "path": "scripts/resource_policy_benchmark.py",
+      "line": 31,
+      "text": "\"\"\"Return process RSS where the host exposes a direct measurement.\"\"\"",
+      "category": "SCRIPT"
+    },
+    {
+      "path": "scripts/resource_policy_benchmark.py",
+      "line": 50,
+      "text": "get_process_memory_info = psapi.GetProcessMemoryInfo",
+      "category": "SCRIPT"
+    },
+    {
+      "path": "scripts/resource_policy_benchmark.py",
+      "line": 51,
+      "text": "get_process_memory_info.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_ulong]",
+      "category": "SCRIPT"
+    },
+    {
+      "path": "scripts/resource_policy_benchmark.py",
+      "line": 52,
+      "text": "get_process_memory_info.restype = ctypes.c_int",
+      "category": "SCRIPT"
+    },
+    {
+      "path": "scripts/resource_policy_benchmark.py",
+      "line": 53,
+      "text": "process = ctypes.c_void_p(-1)",
+      "category": "SCRIPT"
+    },
+    {
+      "path": "scripts/resource_policy_benchmark.py",
+      "line": 54,
+      "text": "ok = get_process_memory_info(process, ctypes.byref(counters), ctypes.sizeof(counters))",
+      "category": "SCRIPT"
+    },
+    {
+      "path": "scripts/resource_policy_benchmark.py",
+      "line": 85,
+      "text": "cpu_start = time.process_time_ns()",
+      "category": "SCRIPT"
+    },
+    {
+      "path": "scripts/resource_policy_benchmark.py",
+      "line": 106,
+      "text": "cpu_elapsed_ns = time.process_time_ns() - cpu_start",
+      "category": "SCRIPT"
+    },
+    {
+      "path": "scripts/resource_policy_benchmark.py",
+      "line": 145,
+      "text": "\"rss_provenance\": \"MEASURED_PROCESS_RSS\" if rss is not None else \"UNKNOWN\",",
+      "category": "SCRIPT"
+    },
+    {
+      "path": "scripts/run_checks.py",
+      "line": 5,
+      "text": "import subprocess",
+      "category": "SCRIPT"
+    },
+    {
+      "path": "scripts/run_checks.py",
+      "line": 367,
+      "text": "result = subprocess.run(",
+      "category": "SCRIPT"
+    },
+    {
+      "path": "scripts/run_checks.py",
+      "line": 714,
+      "text": "result = subprocess.run(",
+      "category": "SCRIPT"
+    },
+    {
+      "path": "scripts/run_checks.py",
+      "line": 872,
+      "text": "result = subprocess.run(",
+      "category": "SCRIPT"
+    },
+    {
+      "path": "scripts/run_checks.py",
+      "line": 1678,
+      "text": "except (OSError, subprocess.CalledProcessError) as exc:",
+      "category": "SCRIPT"
+    },
+    {
+      "path": "scripts/run_checks.py",
+      "line": 1747,
+      "text": "except (OSError, subprocess.CalledProcessError, ValueError) as exc:",
+      "category": "SCRIPT"
+    },
+    {
+      "path": "scripts/run_checks.py",
+      "line": 2020,
+      "text": "'process_model_hash': deployment.process_model_hash,",
+      "category": "SCRIPT"
+    },
+    {
+      "path": "scripts/secret_scan.py",
+      "line": 11,
+      "text": "import subprocess",
+      "category": "SCRIPT"
+    },
+    {
+      "path": "scripts/secret_scan.py",
+      "line": 34,
+      "text": "result = subprocess.run(",
+      "category": "SCRIPT"
+    },
+    {
+      "path": "scripts/sota_baseline_gate.py",
+      "line": 4,
+      "text": "import subprocess",
+      "category": "SCRIPT"
+    },
+    {
+      "path": "scripts/sota_baseline_gate.py",
+      "line": 23,
+      "text": "\"LangGraph-style thread checkpoint JSON\",",
+      "category": "SCRIPT"
+    },
+    {
+      "path": "scripts/sota_baseline_gate.py",
+      "line": 80,
+      "text": "result = subprocess.run(",
+      "category": "SCRIPT"
+    },
+    {
+      "path": "scripts/sota_baseline_gate.py",
+      "line": 95,
+      "text": "\"thread_id\": \"thread-0001\",",
+      "category": "SCRIPT"
+    },
+    {
+      "path": "scripts/suite_evidence.py",
+      "line": 11,
+      "text": "import subprocess",
+      "category": "SCRIPT"
+    },
+    {
+      "path": "scripts/suite_evidence.py",
+      "line": 50,
+      "text": "result = subprocess.run(probe, capture_output=True, text=True, check=False)",
+      "category": "SCRIPT"
+    },
+    {
+      "path": "scripts/suite_evidence.py",
+      "line": 65,
+      "text": "remote_head = subprocess.check_output(",
+      "category": "SCRIPT"
+    },
+    {
+      "path": "scripts/suite_evidence.py",
+      "line": 66,
+      "text": "[\"git\", \"rev-parse\", \"origin/main\"], text=True, stderr=subprocess.DEVNULL",
+      "category": "SCRIPT"
+    },
+    {
+      "path": "scripts/suite_evidence.py",
+      "line": 68,
+      "text": "contains = subprocess.run(",
+      "category": "SCRIPT"
+    },
+    {
+      "path": "scripts/suite_evidence.py",
+      "line": 71,
+      "text": "stdout=subprocess.DEVNULL,",
+      "category": "SCRIPT"
+    },
+    {
+      "path": "scripts/suite_evidence.py",
+      "line": 72,
+      "text": "stderr=subprocess.DEVNULL,",
+      "category": "SCRIPT"
+    },
+    {
+      "path": "scripts/suite_evidence.py",
+      "line": 74,
+      "text": "except (OSError, subprocess.CalledProcessError):",
+      "category": "SCRIPT"
+    },
+    {
+      "path": "scripts/suite_evidence.py",
+      "line": 98,
+      "text": "completed = subprocess.run(command, capture_output=True, text=True, check=False)",
+      "category": "SCRIPT"
+    },
+    {
+      "path": "scripts/suite_evidence.py",
+      "line": 104,
+      "text": "revision = subprocess.check_output([\"git\", \"rev-parse\", \"HEAD\"], text=True).strip()",
+      "category": "SCRIPT"
+    },
+    {
+      "path": "scripts/windows_job_object_live_probe.py",
+      "line": 5,
+      "text": "process-count rule is observed, and job termination actually stops the child.",
+      "category": "SCRIPT"
+    },
+    {
+      "path": "scripts/windows_job_object_live_probe.py",
+      "line": 17,
+      "text": "import subprocess",
+      "category": "SCRIPT"
+    },
+    {
+      "path": "scripts/windows_job_object_live_probe.py",
+      "line": 26,
+      "text": "JOB_OBJECT_LIMIT_PROCESS_MEMORY = 0x100",
+      "category": "SCRIPT"
+    },
+    {
+      "path": "scripts/windows_job_object_live_probe.py",
+      "line": 27,
+      "text": "JOB_OBJECT_LIMIT_ACTIVE_PROCESS = 0x8",
+      "category": "SCRIPT"
+    },
+    {
+      "path": "scripts/windows_job_object_live_probe.py",
+      "line": 29,
+      "text": "PROCESS_ALL_ACCESS_QUERY = 0x1000",
+      "category": "SCRIPT"
+    },
+    {
+      "path": "scripts/windows_job_object_live_probe.py",
+      "line": 49,
+      "text": "(\"per_process_user_time_limit\", LargeInteger),",
+      "category": "SCRIPT"
+    },
+    {
+      "path": "scripts/windows_job_object_live_probe.py",
+      "line": 54,
+      "text": "(\"active_process_limit\", ctypes.c_ulong),",
+      "category": "SCRIPT"
+    },
+    {
+      "path": "scripts/windows_job_object_live_probe.py",
+      "line": 65,
+      "text": "(\"process_memory_limit\", ctypes.c_size_t),",
+      "category": "SCRIPT"
+    },
+    {
+      "path": "scripts/windows_job_object_live_probe.py",
+      "line": 67,
+      "text": "(\"peak_process_memory_used\", ctypes.c_size_t),",
+      "category": "SCRIPT"
+    },
+    {
+      "path": "scripts/windows_job_object_live_probe.py",
+      "line": 79,
+      "text": "(\"total_processes\", ctypes.c_ulong),",
+      "category": "SCRIPT"
+    },
+    {
+      "path": "scripts/windows_job_object_live_probe.py",
+      "line": 80,
+      "text": "(\"active_processes\", ctypes.c_ulong),",
+      "category": "SCRIPT"
+    },
+    {
+      "path": "scripts/windows_job_object_live_probe.py",
+      "line": 81,
+      "text": "(\"total_terminated_processes\", ctypes.c_ulong),",
+      "category": "SCRIPT"
+    },
+    {
+      "path": "scripts/windows_job_object_live_probe.py",
+      "line": 114,
+      "text": "\"process_assignment_and_containment\",",
+      "category": "SCRIPT"
+    },
+    {
+      "path": "scripts/windows_job_object_live_probe.py",
+      "line": 115,
+      "text": "\"active_process_limit\",",
+      "category": "SCRIPT"
+    },
+    {
+      "path": "scripts/windows_job_object_live_probe.py",
+      "line": 121,
+      "text": "\"process_memory_bytes\": 128 * 1024 * 1024,",
+      "category": "SCRIPT"
+    },
+    {
+      "path": "scripts/windows_job_object_live_probe.py",
+      "line": 122,
+      "text": "\"active_process_limit\": 1,",
+      "category": "SCRIPT"
+    },
+    {
+      "path": "scripts/windows_job_object_live_probe.py",
+      "line": 135,
+      "text": "kernel32.AssignProcessToJobObject.argtypes = [ctypes.c_void_p, ctypes.c_void_p]",
+      "category": "SCRIPT"
+    },
+    {
+      "path": "scripts/windows_job_object_live_probe.py",
+      "line": 136,
+      "text": "kernel32.AssignProcessToJobObject.restype = ctypes.c_int",
+      "category": "SCRIPT"
+    },
+    {
+      "path": "scripts/windows_job_object_live_probe.py",
+      "line": 137,
+      "text": "kernel32.IsProcessInJob.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.POINTER(ctypes.c_int)]",
+      "category": "SCRIPT"
+    },
+    {
+      "path": "scripts/windows_job_object_live_probe.py",
+      "line": 138,
+      "text": "kernel32.IsProcessInJob.restype = ctypes.c_int",
+      "category": "SCRIPT"
+    },
+    {
+      "path": "scripts/windows_job_object_live_probe.py",
+      "line": 151,
+      "text": "child: subprocess.Popen[bytes] | None = None",
+      "category": "SCRIPT"
+    },
+    {
+      "path": "scripts/windows_job_object_live_probe.py",
+      "line": 152,
+      "text": "second: subprocess.Popen[bytes] | None = None",
+      "category": "SCRIPT"
+    },
+    {
+      "path": "scripts/windows_job_object_live_probe.py",
+      "line": 153,
+      "text": "pressure_child: subprocess.Popen[bytes] | None = None",
+      "category": "SCRIPT"
+    },
+    {
+      "path": "scripts/windows_job_object_live_probe.py",
+      "line": 158,
+      "text": "JOB_OBJECT_LIMIT_PROCESS_MEMORY",
+      "category": "SCRIPT"
+    },
+    {
+      "path": "scripts/windows_job_object_live_probe.py",
+      "line": 159,
+      "text": "| JOB_OBJECT_LIMIT_ACTIVE_PROCESS",
+      "category": "SCRIPT"
+    },
+    {
+      "path": "scripts/windows_job_object_live_probe.py",
+      "line": 162,
+      "text": "limits.basic_limit_information.active_process_limit = 1",
+      "category": "SCRIPT"
+    },
+    {
+      "path": "scripts/windows_job_object_live_probe.py",
+      "line": 163,
+      "text": "limits.process_memory_limit = 128 * 1024 * 1024",
+      "category": "SCRIPT"
+    },
+    {
+      "path": "scripts/windows_job_object_live_probe.py",
+      "line": 177,
+      "text": "child = subprocess.Popen(child_command(), stdout=subprocess.PIPE, stderr=subprocess.PIPE)",
+      "category": "SCRIPT"
+    },
+    {
+      "path": "scripts/windows_job_object_live_probe.py",
+      "line": 178,
+      "text": "assigned = bool(kernel32.AssignProcessToJobObject(job, ctypes.c_void_p(child._handle)))",
+      "category": "SCRIPT"
+    },
+    {
+      "path": "scripts/windows_job_object_live_probe.py",
+      "line": 181,
+      "text": "report[\"reason\"] = f\"AssignProcessToJobObject failed: {ctypes.get_last_error()}\"",
+      "category": "SCRIPT"
+    },
+    {
+      "path": "scripts/windows_job_object_live_probe.py",
+      "line": 185,
+      "text": "process_in_job = bool(",
+      "category": "SCRIPT"
+    },
+    {
+      "path": "scripts/windows_job_object_live_probe.py",
+      "line": 186,
+      "text": "kernel32.IsProcessInJob(ctypes.c_void_p(child._handle), job, ctypes.byref(in_job))",
+      "category": "SCRIPT"
+    },
+    {
+      "path": "scripts/windows_job_object_live_probe.py",
+      "line": 188,
+      "text": "report[\"checks\"][\"process_containment_observed\"] = process_in_job",
+      "category": "SCRIPT"
+    },
+    {
+      "path": "scripts/windows_job_object_live_probe.py",
+      "line": 201,
+      "text": "report[\"checks\"][\"active_process_count_observed\"] = accounting_ok and accounting.active_processes >= 1",
+      "category": "SCRIPT"
+    },
+    {
+      "path": "scripts/windows_job_object_live_probe.py",
+      "line": 203,
+      "text": "second = subprocess.Popen(child_command(), stdout=subprocess.PIPE, stderr=subprocess.PIPE)",
+      "category": "SCRIPT"
+    },
+    {
+      "path": "scripts/windows_job_object_live_probe.py",
+      "line": 204,
+      "text": "second_assigned = bool(kernel32.AssignProcessToJobObject(job, ctypes.c_void_p(second._handle)))",
+      "category": "SCRIPT"
+    },
+    {
+      "path": "scripts/windows_job_object_live_probe.py",
+      "line": 205,
+      "text": "report[\"checks\"][\"second_process_rejected_by_active_limit\"] = not second_assigned",
+      "category": "SCRIPT"
+    },
+    {
+      "path": "scripts/windows_job_object_live_probe.py",
+      "line": 224,
+      "text": "JOB_OBJECT_LIMIT_PROCESS_MEMORY | JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE",
+      "category": "SCRIPT"
+    },
+    {
+      "path": "scripts/windows_job_object_live_probe.py",
+      "line": 226,
+      "text": "pressure_limits.process_memory_limit = 48 * 1024 * 1024",
+      "category": "SCRIPT"
+    },
+    {
+      "path": "scripts/windows_job_object_live_probe.py",
+      "line": 237,
+      "text": "pressure_child = subprocess.Popen(",
+      "category": "SCRIPT"
+    },
+    {
+      "path": "scripts/windows_job_object_live_probe.py",
+      "line": 238,
+      "text": "pressure_child_command(), stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL",
+      "category": "SCRIPT"
+    },
+    {
+      "path": "scripts/windows_job_object_live_probe.py",
+      "line": 241,
+      "text": "kernel32.AssignProcessToJobObject(",
+      "category": "SCRIPT"
+    },
+    {
+      "path": "scripts/windows_job_object_live_probe.py",
+      "line": 268,
+      "text": "report[\"checks\"][\"memory_pressure_process_terminated_by_job\"] = (",
+      "category": "SCRIPT"
+    },
+    {
+      "path": "scripts/windows_job_object_live_probe.py",
+      "line": 270,
+      "text": "and after.total_terminated_processes > baseline.total_terminated_processes",
+      "category": "SCRIPT"
+    },
+    {
+      "path": "scripts/windows_job_object_live_probe.py",
+      "line": 273,
+      "text": "\"memory_pressure_process_terminated_by_job\"",
+      "category": "SCRIPT"
+    },
+    {
+      "path": "scripts/windows_job_object_live_probe.py",
+      "line": 286,
+      "text": "\"process_containment_observed\",",
+      "category": "SCRIPT"
+    },
+    {
+      "path": "scripts/windows_job_object_live_probe.py",
+      "line": 287,
+      "text": "\"active_process_count_observed\",",
+      "category": "SCRIPT"
+    },
+    {
+      "path": "scripts/windows_job_object_live_probe.py",
+      "line": 288,
+      "text": "\"second_process_rejected_by_active_limit\",",
+      "category": "SCRIPT"
+    },
+    {
+      "path": "scripts/windows_job_object_live_probe.py",
+      "line": 299,
+      "text": "except (OSError, ctypes.ArgumentError, subprocess.SubprocessError, TimeoutError) as exc:",
+      "category": "SCRIPT"
+    },
+    {
+      "path": "scripts/windows_job_object_live_probe.py",
+      "line": 302,
+      "text": "for process in (pressure_child, second, child):",
+      "category": "SCRIPT"
+    },
+    {
+      "path": "scripts/windows_job_object_live_probe.py",
+      "line": 303,
+      "text": "if process is not None and process.poll() is None:",
+      "category": "SCRIPT"
+    },
+    {
+      "path": "scripts/windows_job_object_live_probe.py",
+      "line": 304,
+      "text": "process.kill()",
+      "category": "SCRIPT"
+    },
+    {
+      "path": "scripts/windows_job_object_live_probe.py",
+      "line": 305,
+      "text": "process.wait(timeout=5)",
+      "category": "SCRIPT"
+    },
+    {
+      "path": "tests/test_lab_runtime.py",
+      "line": 5,
+      "text": "import multiprocessing",
+      "category": "TEST"
+    },
+    {
+      "path": "tests/test_lab_runtime.py",
+      "line": 32,
+      "text": "ProcessExecutionCell,",
+      "category": "TEST"
+    },
+    {
+      "path": "tests/test_lab_runtime.py",
+      "line": 75,
+      "text": "def _non_cooperative_process_task() -> None:",
+      "category": "TEST"
+    },
+    {
+      "path": "tests/test_lab_runtime.py",
+      "line": 90,
+      "text": "def test_replay_writer_lease_serializes_processes(tmp_path: Path) -> None:",
+      "category": "TEST"
+    },
+    {
+      "path": "tests/test_lab_runtime.py",
+      "line": 91,
+      "text": "context = multiprocessing.get_context(\"spawn\")",
+      "category": "TEST"
+    },
+    {
+      "path": "tests/test_lab_runtime.py",
+      "line": 94,
+      "text": "process = context.Process(",
+      "category": "TEST"
+    },
+    {
+      "path": "tests/test_lab_runtime.py",
+      "line": 98,
+      "text": "process.start()",
+      "category": "TEST"
+    },
+    {
+      "path": "tests/test_lab_runtime.py",
+      "line": 105,
+      "text": "process.join(timeout=10)",
+      "category": "TEST"
+    },
+    {
+      "path": "tests/test_lab_runtime.py",
+      "line": 106,
+      "text": "assert process.exitcode == 0",
+      "category": "TEST"
+    },
+    {
+      "path": "tests/test_lab_runtime.py",
+      "line": 110,
+      "text": "if process.is_alive():",
+      "category": "TEST"
+    },
+    {
+      "path": "tests/test_lab_runtime.py",
+      "line": 111,
+      "text": "process.terminate()",
+      "category": "TEST"
+    },
+    {
+      "path": "tests/test_lab_runtime.py",
+      "line": 112,
+      "text": "process.join(timeout=5)",
+      "category": "TEST"
+    },
+    {
+      "path": "tests/test_lab_runtime.py",
+      "line": 147,
+      "text": "def test_process_execution_cell_terminates_non_cooperative_runner() -> None:",
+      "category": "TEST"
+    },
+    {
+      "path": "tests/test_lab_runtime.py",
+      "line": 148,
+      "text": "import asyncio",
+      "category": "TEST"
+    },
+    {
+      "path": "tests/test_lab_runtime.py",
+      "line": 150,
+      "text": "cell = ProcessExecutionCell(_non_cooperative_process_task, timeout_seconds=0.2)",
+      "category": "TEST"
+    },
+    {
+      "path": "tests/test_lab_runtime.py",
+      "line": 153,
+      "text": "task = asyncio.create_task(cell())",
+      "category": "TEST"
+    },
+    {
+      "path": "tests/test_lab_runtime.py",
+      "line": 154,
+      "text": "await asyncio.sleep(0.1)",
+      "category": "TEST"
+    },
+    {
+      "path": "tests/test_lab_runtime.py",
+      "line": 156,
+      "text": "with pytest.raises(TimeoutError, match=\"process execution cell timed out\"):",
+      "category": "TEST"
+    },
+    {
+      "path": "tests/test_lab_runtime.py",
+      "line": 160,
+      "text": "asyncio.run(exercise())",
+      "category": "TEST"
+    },
+    {
+      "path": "tests/test_lab_runtime.py",
+      "line": 163,
+      "text": "def test_process_execution_cell_kills_child_on_task_cancellation() -> None:",
+      "category": "TEST"
+    },
+    {
+      "path": "tests/test_lab_runtime.py",
+      "line": 164,
+      "text": "import asyncio",
+      "category": "TEST"
+    },
+    {
+      "path": "tests/test_lab_runtime.py",
+      "line": 166,
+      "text": "cell = ProcessExecutionCell(_non_cooperative_process_task, timeout_seconds=5.0)",
+      "category": "TEST"
+    },
+    {
+      "path": "tests/test_lab_runtime.py",
+      "line": 169,
+      "text": "task = asyncio.create_task(cell())",
+      "category": "TEST"
+    },
+    {
+      "path": "tests/test_lab_runtime.py",
+      "line": 170,
+      "text": "await asyncio.sleep(0.1)",
+      "category": "TEST"
+    },
+    {
+      "path": "tests/test_lab_runtime.py",
+      "line": 173,
+      "text": "with pytest.raises(asyncio.CancelledError):",
+      "category": "TEST"
+    },
+    {
+      "path": "tests/test_lab_runtime.py",
+      "line": 177,
+      "text": "asyncio.run(exercise())",
+      "category": "TEST"
+    },
+    {
+      "path": "tests/test_lab_runtime.py",
+      "line": 345,
+      "text": "import asyncio",
+      "category": "TEST"
+    },
+    {
+      "path": "tests/test_lab_runtime.py",
+      "line": 357,
+      "text": "result, receipt = asyncio.run(",
+      "category": "TEST"
+    },
+    {
+      "path": "tests/test_lab_runtime.py",
+      "line": 376,
+      "text": "asyncio.run(",
+      "category": "TEST"
+    },
+    {
+      "path": "tests/test_lab_runtime.py",
+      "line": 388,
+      "text": "asyncio.run(",
+      "category": "TEST"
+    },
+    {
+      "path": "tests/test_lab_runtime.py",
+      "line": 720,
+      "text": "import asyncio",
+      "category": "TEST"
+    },
+    {
+      "path": "tests/test_lab_runtime.py",
+      "line": 723,
+      "text": "asyncio.run(cell.admit(Session()))",
+      "category": "TEST"
+    },
+    {
+      "path": "tests/test_lab_runtime.py",
+      "line": 726,
+      "text": "asyncio.run(cell.admit(Session()))",
+      "category": "TEST"
+    },
+    {
+      "path": "tests/test_lab_runtime.py",
+      "line": 731,
+      "text": "asyncio.run(cell.admit(Session()))",
+      "category": "TEST"
+    },
+    {
+      "path": "tests/test_lab_runtime.py",
+      "line": 735,
+      "text": "asyncio.run(BrowserCell(BrowserCellPolicy((\"allowed.example\",))).admit(Session()))",
+      "category": "TEST"
+    },
+    {
+      "path": "tests/test_lab_runtime.py",
+      "line": 739,
+      "text": "asyncio.run(BrowserCell(BrowserCellPolicy()).admit(Session()))",
+      "category": "TEST"
+    },
+    {
+      "path": "tests/test_lab_runtime.py",
+      "line": 743,
+      "text": "asyncio.run(BrowserCell(BrowserCellPolicy()).admit(Session()))",
+      "category": "TEST"
+    },
+    {
+      "path": "tests/test_lab_runtime.py",
+      "line": 747,
+      "text": "asyncio.run(BrowserCell(BrowserCellPolicy()).admit(Session()))",
+      "category": "TEST"
+    },
+    {
+      "path": "tests/test_lab_runtime.py",
+      "line": 760,
+      "text": "import asyncio",
+      "category": "TEST"
+    },
+    {
+      "path": "tests/test_lab_runtime.py",
+      "line": 764,
+      "text": "acquired = asyncio.run(cell.acquire(lambda: session))",
+      "category": "TEST"
+    },
+    {
+      "path": "tests/test_lab_runtime.py",
+      "line": 767,
+      "text": "asyncio.run(cell.release())",
+      "category": "TEST"
+    },
+    {
+      "path": "tests/test_lab_runtime.py",
+      "line": 771,
+      "text": "asyncio.run(cell.acquire(lambda: Session()))",
+      "category": "TEST"
+    },
+    {
+      "path": "tests/test_lab_runtime.py",
+      "line": 784,
+      "text": "import asyncio",
+      "category": "TEST"
+    },
+    {
+      "path": "tests/test_lab_runtime.py",
+      "line": 794,
+      "text": "asyncio.run(cell.acquire(launcher))",
+      "category": "TEST"
+    },
+    {
+      "path": "tests/test_lab_runtime.py",
+      "line": 796,
+      "text": "recovered = asyncio.run(cell.recover(launcher, max_attempts=2))",
+      "category": "TEST"
+    },
+    {
+      "path": "tests/test_lab_runtime.py",
+      "line": 803,
+      "text": "import asyncio",
+      "category": "TEST"
+    },
+    {
+      "path": "tests/test_lab_runtime.py",
+      "line": 818,
+      "text": "asyncio.run(cell.acquire(lambda: Session()))",
+      "category": "TEST"
+    },
+    {
+      "path": "tests/test_lab_runtime.py",
+      "line": 819,
+      "text": "assert asyncio.run(cell.observe({\"kind\": \"read_url\"})) == \"https://allowed.example/start\"",
+      "category": "TEST"
+    },
+    {
+      "path": "tests/test_lab_runtime.py",
+      "line": 820,
+      "text": "assert asyncio.run(cell.observe({\"kind\": \"accessibility\"})) == {\"role\": \"document\"}",
+      "category": "TEST"
+    },
+    {
+      "path": "tests/test_lab_runtime.py",
+      "line": 824,
+      "text": "asyncio.run(cell.observe({\"kind\": \"goto\", \"url\": \"https://allowed.example/next\"}))",
+      "category": "TEST"
+    },
+    {
+      "path": "tests/test_lab_runtime.py",
+      "line": 826,
+      "text": "asyncio.run(cell.observe(lambda _session: None))",
+      "category": "TEST"
+    },
+    {
+      "path": "tests/test_lab_runtime.py",
+      "line": 1019,
+      "text": "import asyncio",
+      "category": "TEST"
+    },
+    {
+      "path": "tests/test_lab_runtime.py",
+      "line": 1024,
+      "text": "asyncio.run(",
+      "category": "TEST"
+    },
+    {
+      "path": "tests/test_lab_runtime.py",
+      "line": 1037,
+      "text": "import asyncio",
+      "category": "TEST"
+    },
+    {
+      "path": "tests/test_lab_runtime.py",
+      "line": 1042,
+      "text": "asyncio.run(launch_playwright_session(initial_url=url))",
+      "category": "TEST"
+    },
+    {
+      "path": "tests/test_lab_runtime.py",
+      "line": 1048,
+      "text": "import asyncio",
+      "category": "TEST"
+    },
+    {
+      "path": "tests/test_lab_runtime.py",
+      "line": 1060,
+      "text": "asyncio.run(",
+      "category": "TEST"
+    },
+    {
+      "path": "tests/test_lab_runtime.py",
+      "line": 1131,
+      "text": "session = asyncio.run(",
+      "category": "TEST"
+    },
+    {
+      "path": "tests/test_lab_runtime.py",
+      "line": 1141,
+      "text": "asyncio.run(context.handler(private_route))",
+      "category": "TEST"
+    },
+    {
+      "path": "tests/test_lab_runtime.py",
+      "line": 1145,
+      "text": "asyncio.run(context.handler(public_route))",
+      "category": "TEST"
+    },
+    {
+      "path": "tests/test_lab_runtime.py",
+      "line": 1148,
+      "text": "asyncio.run(session.close())",
+      "category": "TEST"
+    },
+    {
+      "path": "tests/test_lab_runtime.py",
+      "line": 1170,
+      "text": "import asyncio",
+      "category": "TEST"
+    },
+    {
+      "path": "tests/test_lab_runtime.py",
+      "line": 1192,
+      "text": "results = asyncio.run(executor.execute(program, task=\"bounded\", run_id=\"r1\"))",
+      "category": "TEST"
+    },
+    {
+      "path": "tests/test_lab_runtime.py",
+      "line": 1201,
+      "text": "import asyncio",
+      "category": "TEST"
+    },
+    {
+      "path": "tests/test_lab_runtime.py",
+      "line": 1236,
+      "text": "results = asyncio.run(SearchProgramExecutor().execute(program))",
+      "category": "TEST"
+    },
+    {
+      "path": "tests/test_lab_runtime.py",
+      "line": 1248,
+      "text": "import asyncio",
+      "category": "TEST"
+    },
+    {
+      "path": "tests/test_lab_runtime.py",
+      "line": 1252,
+      "text": "asyncio.run(SearchProgramExecutor().execute(program))",
+      "category": "TEST"
+    },
+    {
+      "path": "tests/test_lab_runtime.py",
+      "line": 1256,
+      "text": "import asyncio",
+      "category": "TEST"
+    },
+    {
+      "path": "tests/test_lab_runtime.py",
+      "line": 1270,
+      "text": "asyncio.run(SearchProgramExecutor().execute(program))",
+      "category": "TEST"
+    },
+    {
+      "path": "tests/test_lab_runtime.py",
+      "line": 1274,
+      "text": "import asyncio",
+      "category": "TEST"
+    },
+    {
+      "path": "tests/test_lab_runtime.py",
+      "line": 1281,
+      "text": "asyncio.run(SearchProgramExecutor(query_provider=provider).execute(program))",
+      "category": "TEST"
+    },
+    {
+      "path": "tests/test_lab_runtime.py",
+      "line": 1285,
+      "text": "import asyncio",
+      "category": "TEST"
+    },
+    {
+      "path": "tests/test_lab_runtime.py",
+      "line": 1303,
+      "text": "asyncio.run(SearchProgramExecutor(query_provider=stale_provider).execute(fresh_program))",
+      "category": "TEST"
+    },
+    {
+      "path": "tests/test_lab_runtime.py",
+      "line": 1329,
+      "text": "results = asyncio.run(",
+      "category": "TEST"
+    },
+    {
+      "path": "tests/test_lab_runtime.py",
+      "line": 1351,
+      "text": "asyncio.run(",
+      "category": "TEST"
+    },
+    {
+      "path": "tests/test_lab_runtime.py",
+      "line": 1357,
+      "text": "import asyncio",
+      "category": "TEST"
+    },
+    {
+      "path": "tests/test_lab_runtime.py",
+      "line": 1393,
+      "text": "asyncio.run(SearchProgramExecutor().execute(program))",
+      "category": "TEST"
+    },
+    {
+      "path": "tests/test_lab_runtime.py",
+      "line": 1542,
+      "text": "import asyncio",
+      "category": "TEST"
+    },
+    {
+      "path": "tests/test_lab_runtime.py",
+      "line": 1563,
+      "text": "result = asyncio.run(SimulationCell(max_steps=100).run(spec, runner))",
+      "category": "TEST"
+    },
+    {
+      "path": "tests/test_lab_runtime.py",
+      "line": 1566,
+      "text": "asyncio.run(",
+      "category": "TEST"
+    },
+    {
+      "path": "tests/test_lab_runtime.py",
+      "line": 1583,
+      "text": "unit_result = asyncio.run(",
+      "category": "TEST"
+    },
+    {
+      "path": "tests/test_lab_runtime.py",
+      "line": 1604,
+      "text": "convergence_result = asyncio.run(",
+      "category": "TEST"
+    },
+    {
+      "path": "tests/test_lab_runtime.py",
+      "line": 1616,
+      "text": "asyncio.run(",
+      "category": "TEST"
+    },
+    {
+      "path": "tests/test_lab_runtime.py",
+      "line": 1727,
+      "text": "import asyncio",
+      "category": "TEST"
+    },
+    {
+      "path": "tests/test_lab_runtime.py",
+      "line": 1739,
+      "text": "uncalibrated = asyncio.run(SimulationCell().run(SimulationSpec(**base), runner))",
+      "category": "TEST"
+    },
+    {
+      "path": "tests/test_lab_runtime.py",
+      "line": 1749,
+      "text": "inferred = asyncio.run(SimulationCell().run(calibrated, runner))",
+      "category": "TEST"
+    },
+    {
+      "path": "tests/test_lab_runtime.py",
+      "line": 1984,
+      "text": "def test_benchmark_isolated_validator_binds_input_and_runs_outside_process() -> None:",
+      "category": "TEST"
+    },
+    {
+      "path": "tests/test_lab_runtime.py",
+      "line": 2167,
+      "text": "import asyncio",
+      "category": "TEST"
+    },
+    {
+      "path": "tests/test_lab_runtime.py",
+      "line": 2179,
+      "text": "asyncio.run(app.run())",
+      "category": "TEST"
+    },
+    {
+      "path": "tests/test_lab_runtime.py",
+      "line": 2183,
+      "text": "import asyncio",
+      "category": "TEST"
+    },
+    {
+      "path": "tests/test_lab_runtime.py",
+      "line": 2248,
+      "text": "result, dossier = asyncio.run(lab.start(\"native gateway fence\").result())",
+      "category": "TEST"
+    },
+    {
+      "path": "tests/test_lab_runtime.py",
+      "line": 2285,
+      "text": "import asyncio",
+      "category": "TEST"
+    },
+    {
+      "path": "tests/test_lab_runtime.py",
+      "line": 2356,
+      "text": "result, dossier = asyncio.run(",
+      "category": "TEST"
+    },
+    {
+      "path": "tests/test_lab_runtime.py",
+      "line": 2401,
+      "text": "import asyncio",
+      "category": "TEST"
+    },
+    {
+      "path": "tests/test_lab_runtime.py",
+      "line": 2435,
+      "text": "asyncio.run(",
+      "category": "TEST"
+    },
+    {
+      "path": "tests/test_lab_runtime.py",
+      "line": 2452,
+      "text": "import asyncio",
+      "category": "TEST"
+    },
+    {
+      "path": "tests/test_lab_runtime.py",
+      "line": 2503,
+      "text": "gate = asyncio.Event()",
+      "category": "TEST"
+    },
+    {
+      "path": "tests/test_lab_runtime.py",
+      "line": 2517,
+      "text": "result_task = asyncio.create_task(session.result())",
+      "category": "TEST"
+    },
+    {
+      "path": "tests/test_lab_runtime.py",
+      "line": 2525,
+      "text": "with pytest.raises(asyncio.CancelledError):",
+      "category": "TEST"
+    },
+    {
+      "path": "tests/test_lab_runtime.py",
+      "line": 2541,
+      "text": "asyncio.run(exercise())",
+      "category": "TEST"
+    },
+    {
+      "path": "tests/test_lab_runtime.py",
+      "line": 3144,
+      "text": "import asyncio",
+      "category": "TEST"
+    },
+    {
+      "path": "tests/test_lab_runtime.py",
+      "line": 3197,
+      "text": "result, dossier = asyncio.run(",
+      "category": "TEST"
+    },
+    {
+      "path": "tests/test_lab_runtime.py",
+      "line": 3221,
+      "text": "import asyncio",
+      "category": "TEST"
+    },
+    {
+      "path": "tests/test_lab_runtime.py",
+      "line": 3254,
+      "text": "gate = asyncio.Event()",
+      "category": "TEST"
+    },
+    {
+      "path": "tests/test_lab_runtime.py",
+      "line": 3278,
+      "text": "result_task = asyncio.create_task(session.result())",
+      "category": "TEST"
+    },
+    {
+      "path": "tests/test_lab_runtime.py",
+      "line": 3286,
+      "text": "with pytest.raises(asyncio.CancelledError):",
+      "category": "TEST"
+    },
+    {
+      "path": "tests/test_lab_runtime.py",
+      "line": 3302,
+      "text": "asyncio.run(exercise())",
+      "category": "TEST"
+    },
+    {
+      "path": "tests/test_lab_runtime.py",
+      "line": 3373,
+      "text": "import asyncio",
+      "category": "TEST"
+    },
+    {
+      "path": "tests/test_lab_runtime.py",
+      "line": 3398,
+      "text": "events, result, dossier = asyncio.run(collect())",
+      "category": "TEST"
+    },
+    {
+      "path": "tests/test_lab_runtime.py",
+      "line": 3582,
+      "text": "import asyncio",
+      "category": "TEST"
+    },
+    {
+      "path": "tests/test_lab_runtime.py",
+      "line": 3585,
+      "text": "gate = asyncio.Event()",
+      "category": "TEST"
+    },
+    {
+      "path": "tests/test_lab_runtime.py",
+      "line": 3608,
+      "text": "task = asyncio.create_task(session.result())",
+      "category": "TEST"
+    },
+    {
+      "path": "tests/test_lab_runtime.py",
+      "line": 3613,
+      "text": "with pytest.raises(asyncio.CancelledError):",
+      "category": "TEST"
+    },
+    {
+      "path": "tests/test_lab_runtime.py",
+      "line": 3620,
+      "text": "asyncio.run(exercise())",
+      "category": "TEST"
+    },
+    {
+      "path": "tests/test_lab_runtime.py",
+      "line": 3626,
+      "text": "import asyncio",
+      "category": "TEST"
+    },
+    {
+      "path": "tests/test_lab_runtime.py",
+      "line": 3629,
+      "text": "gate = asyncio.Event()",
+      "category": "TEST"
+    },
+    {
+      "path": "tests/test_lab_runtime.py",
+      "line": 3634,
+      "text": "except asyncio.CancelledError:",
+      "category": "TEST"
+    },
+    {
+      "path": "tests/test_lab_runtime.py",
+      "line": 3653,
+      "text": "result_task = asyncio.create_task(session.result())",
+      "category": "TEST"
+    },
+    {
+      "path": "tests/test_lab_runtime.py",
+      "line": 3658,
+      "text": "with pytest.raises(asyncio.CancelledError):",
+      "category": "TEST"
+    },
+    {
+      "path": "tests/test_lab_runtime.py",
+      "line": 3669,
+      "text": "asyncio.run(exercise())",
+      "category": "TEST"
+    },
+    {
+      "path": "tests/test_lab_runtime.py",
+      "line": 3673,
+      "text": "import asyncio",
+      "category": "TEST"
+    },
+    {
+      "path": "tests/test_lab_runtime.py",
+      "line": 3676,
+      "text": "gate = asyncio.Event()",
+      "category": "TEST"
+    },
+    {
+      "path": "tests/test_lab_runtime.py",
+      "line": 3688,
+      "text": "task = asyncio.create_task(session.result())",
+      "category": "TEST"
+    },
+    {
+      "path": "tests/test_lab_runtime.py",
+      "line": 3693,
+      "text": "with pytest.raises(asyncio.CancelledError):",
+      "category": "TEST"
+    },
+    {
+      "path": "tests/test_lab_runtime.py",
+      "line": 3700,
+      "text": "asyncio.run(exercise())",
+      "category": "TEST"
+    },
+    {
+      "path": "tests/test_lab_runtime.py",
+      "line": 3741,
+      "text": "import asyncio",
+      "category": "TEST"
+    },
+    {
+      "path": "tests/test_lab_runtime.py",
+      "line": 3760,
+      "text": "asyncio.run(app._run_post_completion_effect(run, SimpleNamespace(output={\"answer\": \"ok\"})))",
+      "category": "TEST"
+    },
+    {
+      "path": "tests/test_lab_runtime.py",
+      "line": 3775,
+      "text": "import asyncio",
+      "category": "TEST"
+    },
+    {
+      "path": "tests/test_lab_runtime.py",
+      "line": 3794,
+      "text": "context = asyncio.run(app._run_context_retrieval(run, app.config.options))",
+      "category": "TEST"
+    },
+    {
+      "path": "tests/test_lab_runtime.py",
+      "line": 3818,
+      "text": "import asyncio",
+      "category": "TEST"
+    },
+    {
+      "path": "tests/test_lab_runtime.py",
+      "line": 3831,
+      "text": "assert asyncio.run(app._run_context_retrieval(run, app.config.options)) == \"\"",
+      "category": "TEST"
+    },
+    {
+      "path": "tests/test_lab_runtime.py",
+      "line": 3848,
+      "text": "import asyncio",
+      "category": "TEST"
+    },
+    {
+      "path": "tests/test_lab_runtime.py",
+      "line": 3865,
+      "text": "assert asyncio.run(app._run_context_retrieval(run, app.config.options)) == \"\"",
+      "category": "TEST"
+    },
+    {
+      "path": "tests/test_lab_runtime.py",
+      "line": 3875,
+      "text": "import asyncio",
+      "category": "TEST"
+    },
+    {
+      "path": "tests/test_lab_runtime.py",
+      "line": 3898,
+      "text": "assert asyncio.run(app._run_context_retrieval(run, app.config.options)) == \"\"",
+      "category": "TEST"
+    },
+    {
+      "path": "tests/test_lab_runtime.py",
+      "line": 3904,
+      "text": "import asyncio",
+      "category": "TEST"
+    },
+    {
+      "path": "tests/test_lab_runtime.py",
+      "line": 3925,
+      "text": "asyncio.run(app._run_post_completion_effect(run, SimpleNamespace(output=\"ok\")))",
+      "category": "TEST"
+    },
+    {
+      "path": "tests/test_lab_runtime.py",
+      "line": 3938,
+      "text": "import asyncio",
+      "category": "TEST"
+    },
+    {
+      "path": "tests/test_lab_runtime.py",
+      "line": 3954,
+      "text": "asyncio.run(app._run_post_completion_effect(run, SimpleNamespace(output=\"ok\")))",
+      "category": "TEST"
+    },
+    {
+      "path": "tests/test_lab_runtime.py",
+      "line": 3965,
+      "text": "import asyncio",
+      "category": "TEST"
+    },
+    {
+      "path": "tests/test_lab_runtime.py",
+      "line": 3984,
+      "text": "asyncio.run(app._run_post_completion_effect(run, SimpleNamespace(output=\"ok\")))",
+      "category": "TEST"
+    },
+    {
+      "path": "tests/test_lab_runtime.py",
+      "line": 4145,
+      "text": "import asyncio",
+      "category": "TEST"
+    },
+    {
+      "path": "tests/test_lab_runtime.py",
+      "line": 4194,
+      "text": "_result, dossier = asyncio.run(app.run())",
+      "category": "TEST"
+    }
+  ],
+  "python_truncated": false,
+  "rust": [
+    {
+      "path": "aegis-plugins/aegis-search-sdk/benches/search_bench.rs",
+      "line": 5,
+      "text": "let runtime = tokio::runtime::Runtime::new().unwrap();",
+      "category": "PRODUCT"
+    },
+    {
+      "path": "aegis-plugins/aegis-search-sdk/examples/pipeline_aggregate.rs",
+      "line": 3,
+      "text": "#[tokio::main]",
+      "category": "PRODUCT"
+    },
+    {
+      "path": "aegis-plugins/aegis-search-sdk/examples/pipeline_dedupe.rs",
+      "line": 3,
+      "text": "#[tokio::main]",
+      "category": "PRODUCT"
+    },
+    {
+      "path": "aegis-plugins/aegis-search-sdk/examples/pipeline_filter.rs",
+      "line": 3,
+      "text": "#[tokio::main]",
+      "category": "PRODUCT"
+    },
+    {
+      "path": "aegis-plugins/aegis-search-sdk/examples/pipeline_lexical.rs",
+      "line": 3,
+      "text": "#[tokio::main]",
+      "category": "PRODUCT"
+    },
+    {
+      "path": "aegis-plugins/aegis-search-sdk/src/lib.rs",
+      "line": 497,
+      "text": "let runtime = tokio::runtime::Runtime::new()",
+      "category": "PRODUCT"
+    },
+    {
+      "path": "aegis-plugins/aegis-search-sdk/src/lib.rs",
+      "line": 564,
+      "text": "pub type SharedSearchClient = Arc<SearchClient>;",
+      "category": "PRODUCT"
+    },
+    {
+      "path": "aegis-plugins/aegis-search-sdk/src/lib.rs",
+      "line": 575,
+      "text": "#[tokio::test]",
+      "category": "PRODUCT"
+    },
+    {
+      "path": "aegis-plugins/aegis-search-sdk/tests/search_sandbox_integration.rs",
+      "line": 7,
+      "text": "#[tokio::test]",
+      "category": "TEST"
+    },
+    {
+      "path": "core/rust/src/cli/mod.rs",
+      "line": 33,
+      "text": "use std::net::{SocketAddr, TcpListener, TcpStream};",
+      "category": "PRODUCT"
+    },
+    {
+      "path": "core/rust/src/cli/mod.rs",
+      "line": 35,
+      "text": "use std::thread;",
+      "category": "PRODUCT"
+    },
+    {
+      "path": "core/rust/src/cli/mod.rs",
+      "line": 731,
+      "text": "let listener = std::net::TcpListener::bind(addr)?;",
+      "category": "PRODUCT"
+    },
+    {
+      "path": "core/rust/src/cli/mod.rs",
+      "line": 1771,
+      "text": "TcpListener::bind(\"127.0.0.1:0\").map_err(|_| \"failed to bind tcp cluster soak listener\")?;",
+      "category": "PRODUCT"
+    },
+    {
+      "path": "core/rust/src/cli/mod.rs",
+      "line": 2731,
+      "text": ") -> thread::JoinHandle<Result<(), &'static str>> {",
+      "category": "PRODUCT"
+    },
+    {
+      "path": "core/rust/src/cli/mod.rs",
+      "line": 2732,
+      "text": "thread::spawn(move || {",
+      "category": "PRODUCT"
+    },
+    {
+      "path": "core/rust/src/cli/mod.rs",
+      "line": 2734,
+      "text": "TcpStream::connect(address).map_err(|_| \"tcp cluster worker connect failed\")?;",
+      "category": "PRODUCT"
+    },
+    {
+      "path": "core/rust/src/cli/mod.rs",
+      "line": 2756,
+      "text": "fn configure_tcp_cluster_stream(stream: &TcpStream) -> Result<(), &'static str> {",
+      "category": "PRODUCT"
+    },
+    {
+      "path": "core/rust/src/cli/mod.rs",
+      "line": 2770,
+      "text": "fn write_tcp_cluster_hello(stream: &mut TcpStream, worker_id: u128) -> Result<(), &'static str> {",
+      "category": "PRODUCT"
+    },
+    {
+      "path": "core/rust/src/cli/mod.rs",
+      "line": 2782,
+      "text": "fn read_tcp_cluster_hello(stream: &mut TcpStream) -> Result<u128, &'static str> {",
+      "category": "PRODUCT"
+    },
+    {
+      "path": "core/rust/src/cli/mod.rs",
+      "line": 2794,
+      "text": "stream: &mut TcpStream,",
+      "category": "PRODUCT"
+    },
+    {
+      "path": "core/rust/src/cli/mod.rs",
+      "line": 2810,
+      "text": "stream: &mut TcpStream,",
+      "category": "PRODUCT"
+    },
+    {
+      "path": "core/rust/src/cli/mod.rs",
+      "line": 2820,
+      "text": "stream: &mut TcpStream,",
+      "category": "PRODUCT"
+    },
+    {
+      "path": "core/rust/src/cli/mod.rs",
+      "line": 2833,
+      "text": "stream: &mut TcpStream,",
+      "category": "PRODUCT"
+    },
+    {
+      "path": "core/rust/src/cli/mod.rs",
+      "line": 2842,
+      "text": "fn write_tcp_cluster_stop(stream: &mut TcpStream) -> Result<(), &'static str> {",
+      "category": "PRODUCT"
+    },
+    {
+      "path": "core/rust/src/eac/cache/semantic.rs",
+      "line": 260,
+      "text": "// Atomic write via temporary file to prevent corruption",
+      "category": "PRODUCT"
+    },
+    {
+      "path": "core/rust/src/eac/events.rs",
+      "line": 108,
+      "text": "events: parking_lot::Mutex<Vec<EacEvent>>,",
+      "category": "PRODUCT"
+    },
+    {
+      "path": "core/rust/src/eac/events.rs",
+      "line": 109,
+      "text": "next_id: std::sync::atomic::AtomicU64,",
+      "category": "PRODUCT"
+    },
+    {
+      "path": "core/rust/src/eac/events.rs",
+      "line": 122,
+      "text": "next_id: std::sync::atomic::AtomicU64::new(1),",
+      "category": "PRODUCT"
+    },
+    {
+      "path": "core/rust/src/eac/events.rs",
+      "line": 129,
+      "text": ".fetch_add(1, std::sync::atomic::Ordering::Relaxed)",
+      "category": "PRODUCT"
+    },
+    {
+      "path": "core/rust/src/eac/sandbox/batch.rs",
+      "line": 59,
+      "text": "/// Uses `std::thread` for concurrency instead of async to avoid pulling",
+      "category": "PRODUCT"
+    },
+    {
+      "path": "core/rust/src/eac/sandbox/batch.rs",
+      "line": 107,
+      "text": "fn execute_parallel<F>(calls: Vec<ToolCall>, executor: Arc<F>) -> Vec<ToolResult>",
+      "category": "PRODUCT"
+    },
+    {
+      "path": "core/rust/src/eac/sandbox/batch.rs",
+      "line": 115,
+      "text": "std::thread::spawn(move || exec(call))",
+      "category": "PRODUCT"
+    },
+    {
+      "path": "core/rust/src/eac/sandbox/batch.rs",
+      "line": 123,
+      "text": "fn execute_sequential<F>(calls: Vec<ToolCall>, executor: Arc<F>) -> Vec<ToolResult>",
+      "category": "PRODUCT"
+    },
+    {
+      "path": "core/rust/src/eac/sandbox/runtime.rs",
+      "line": 5,
+      "text": "//! - `FilesystemSerde` API for atomic state persistence with BLAKE3-hashed",
+      "category": "PRODUCT"
+    },
+    {
+      "path": "core/rust/src/eac/sandbox/runtime.rs",
+      "line": 254,
+      "text": "/// Replaces in-memory REPL state with atomic filesystem writes and",
+      "category": "PRODUCT"
+    },
+    {
+      "path": "core/rust/src/eac/sandbox/runtime.rs",
+      "line": 271,
+      "text": "/// Filesystem-backed state serialization with atomic writes and BLAKE3",
+      "category": "PRODUCT"
+    },
+    {
+      "path": "core/rust/src/eac/sandbox/runtime.rs",
+      "line": 296,
+      "text": "/// Persist state to disk using atomic write (write-to-temp + rename).",
+      "category": "PRODUCT"
+    },
+    {
+      "path": "core/rust/src/eac/sandbox/runtime.rs",
+      "line": 328,
+      "text": "// Atomic write: temp file → rename.",
+      "category": "PRODUCT"
+    },
+    {
+      "path": "core/rust/src/execution.rs",
+      "line": 11,
+      "text": "use rayon::ThreadPool;",
+      "category": "PRODUCT"
+    },
+    {
+      "path": "core/rust/src/execution.rs",
+      "line": 49,
+      "text": "registry: Arc<Mutex<ExecutionLaneRegistry>>,",
+      "category": "PRODUCT"
+    },
+    {
+      "path": "core/rust/src/execution.rs",
+      "line": 51,
+      "text": "io_runtime: Mutex<tokio::runtime::Runtime>,",
+      "category": "PRODUCT"
+    },
+    {
+      "path": "core/rust/src/execution.rs",
+      "line": 63,
+      "text": "let cpu_pool = rayon::ThreadPoolBuilder::new()",
+      "category": "PRODUCT"
+    },
+    {
+      "path": "core/rust/src/execution.rs",
+      "line": 70,
+      "text": "let io_runtime = tokio::runtime::Builder::new_current_thread()",
+      "category": "PRODUCT"
+    },
+    {
+      "path": "core/rust/src/execution.rs",
+      "line": 150,
+      "text": ".spawn()",
+      "category": "PRODUCT"
+    },
+    {
+      "path": "core/rust/src/execution.rs",
+      "line": 182,
+      "text": "std::thread::sleep(Duration::from_millis(2));",
+      "category": "PRODUCT"
+    },
+    {
+      "path": "core/rust/src/execution.rs",
+      "line": 319,
+      "text": "let completed = Arc::new(std::sync::atomic::AtomicUsize::new(0));",
+      "category": "PRODUCT"
+    },
+    {
+      "path": "core/rust/src/execution.rs",
+      "line": 324,
+      "text": "std::thread::spawn(move || {",
+      "category": "PRODUCT"
+    },
+    {
+      "path": "core/rust/src/execution.rs",
+      "line": 332,
+      "text": "std::thread::yield_now();",
+      "category": "PRODUCT"
+    },
+    {
+      "path": "core/rust/src/execution.rs",
+      "line": 337,
+      "text": "completed.fetch_add(1, std::sync::atomic::Ordering::SeqCst);",
+      "category": "PRODUCT"
+    },
+    {
+      "path": "core/rust/src/execution.rs",
+      "line": 344,
+      "text": "assert_eq!(completed.load(std::sync::atomic::Ordering::SeqCst), 64);",
+      "category": "PRODUCT"
+    },
+    {
+      "path": "core/rust/src/ffi.rs",
+      "line": 13,
+      "text": "static SESSION_INDEX: OnceLock<Mutex<SessionSearchIndex>> = OnceLock::new();",
+      "category": "PRODUCT"
+    },
+    {
+      "path": "core/rust/src/ffi.rs",
+      "line": 14,
+      "text": "static SESSION_LEDGER: OnceLock<Mutex<LearningLedger>> = OnceLock::new();",
+      "category": "PRODUCT"
+    },
+    {
+      "path": "core/rust/src/ffi.rs",
+      "line": 15,
+      "text": "static AUTHORITATIVE_RUNTIME: OnceLock<Mutex<crate::runtime::AuthoritativeRuntime>> =",
+      "category": "PRODUCT"
+    },
+    {
+      "path": "core/rust/src/ffi.rs",
+      "line": 18,
+      "text": "fn get_session_index() -> &'static Mutex<SessionSearchIndex> {",
+      "category": "PRODUCT"
+    },
+    {
+      "path": "core/rust/src/ffi.rs",
+      "line": 28,
+      "text": "fn get_session_ledger() -> &'static Mutex<LearningLedger> {",
+      "category": "PRODUCT"
+    },
+    {
+      "path": "core/rust/src/ffi.rs",
+      "line": 32,
+      "text": "fn get_authoritative_runtime() -> &'static Mutex<crate::runtime::AuthoritativeRuntime> {",
+      "category": "PRODUCT"
+    },
+    {
+      "path": "core/rust/src/gt96.rs",
+      "line": 754,
+      "text": "// atomic and cannot corrupt the ledger or epoch.",
+      "category": "PRODUCT"
+    },
+    {
+      "path": "core/rust/src/gt96.rs",
+      "line": 1462,
+      "text": "fn failed_refund_is_atomic_and_cannot_mint_budget() {",
+      "category": "PRODUCT"
+    },
+    {
+      "path": "core/rust/src/guardrail.rs",
+      "line": 99,
+      "text": "if seg_str == \"tcpstream\" || seg_str == \"connect\" {",
+      "category": "PRODUCT"
+    },
+    {
+      "path": "core/rust/src/guardrail.rs",
+      "line": 115,
+      "text": "\"tcpstream::connect\",",
+      "category": "PRODUCT"
+    },
+    {
+      "path": "core/rust/src/guardrail.rs",
+      "line": 142,
+      "text": "\"tcpstream::connect\",",
+      "category": "PRODUCT"
+    },
+    {
+      "path": "core/rust/src/harness.rs",
+      "line": 105,
+      "text": "|| proposed.contains(\"TcpStream\")",
+      "category": "PRODUCT"
+    },
+    {
+      "path": "core/rust/src/hot_engine.rs",
+      "line": 6,
+      "text": "use std::sync::atomic::{AtomicU64, Ordering};",
+      "category": "PRODUCT"
+    },
+    {
+      "path": "core/rust/src/hot_engine.rs",
+      "line": 7,
+      "text": "use std::thread::JoinHandle;",
+      "category": "PRODUCT"
+    },
+    {
+      "path": "core/rust/src/hot_engine.rs",
+      "line": 8,
+      "text": "use tokio::io::AsyncWriteExt;",
+      "category": "PRODUCT"
+    },
+    {
+      "path": "core/rust/src/hot_engine.rs",
+      "line": 9,
+      "text": "use tokio::sync::{mpsc, oneshot};",
+      "category": "PRODUCT"
+    },
+    {
+      "path": "core/rust/src/hot_engine.rs",
+      "line": 16,
+      "text": "/// Depth of the shadow-sealer bounded mpsc channel.",
+      "category": "PRODUCT"
+    },
+    {
+      "path": "core/rust/src/hot_engine.rs",
+      "line": 24,
+      "text": "///   `mpsc::channel` channel-capacity argument with predictable wait-queue",
+      "category": "PRODUCT"
+    },
+    {
+      "path": "core/rust/src/hot_engine.rs",
+      "line": 120,
+      "text": "inner: Arc<Mutex<ArenaInner>>,",
+      "category": "PRODUCT"
+    },
+    {
+      "path": "core/rust/src/hot_engine.rs",
+      "line": 124,
+      "text": "total_commits: Arc<AtomicU64>,",
+      "category": "PRODUCT"
+    },
+    {
+      "path": "core/rust/src/hot_engine.rs",
+      "line": 125,
+      "text": "total_degraded_commits: Arc<AtomicU64>,",
+      "category": "PRODUCT"
+    },
+    {
+      "path": "core/rust/src/hot_engine.rs",
+      "line": 138,
+      "text": "payload: Option<Arc<[u8]>>,",
+      "category": "PRODUCT"
+    },
+    {
+      "path": "core/rust/src/hot_engine.rs",
+      "line": 146,
+      "text": "payload: Arc<[u8]>,",
+      "category": "PRODUCT"
+    },
+    {
+      "path": "core/rust/src/hot_engine.rs",
+      "line": 150,
+      "text": "sender: mpsc::Sender<ShadowSealCommand>,",
+      "category": "PRODUCT"
+    },
+    {
+      "path": "core/rust/src/hot_engine.rs",
+      "line": 152,
+      "text": "queued_admissions: Arc<AtomicU64>,",
+      "category": "PRODUCT"
+    },
+    {
+      "path": "core/rust/src/hot_engine.rs",
+      "line": 153,
+      "text": "backpressure_rejections: Arc<AtomicU64>,",
+      "category": "PRODUCT"
+    },
+    {
+      "path": "core/rust/src/hot_engine.rs",
+      "line": 156,
+      "text": "paused_receiver: Option<mpsc::Receiver<ShadowSealCommand>>,",
+      "category": "PRODUCT"
+    },
+    {
+      "path": "core/rust/src/hot_engine.rs",
+      "line": 202,
+      "text": "total_commits: Arc::new(AtomicU64::new(0)),",
+      "category": "PRODUCT"
+    },
+    {
+      "path": "core/rust/src/hot_engine.rs",
+      "line": 203,
+      "text": "total_degraded_commits: Arc::new(AtomicU64::new(0)),",
+      "category": "PRODUCT"
+    },
+    {
+      "path": "core/rust/src/hot_engine.rs",
+      "line": 231,
+      "text": "let payload: Arc<[u8]> = Arc::from(bytes);",
+      "category": "PRODUCT"
+    },
+    {
+      "path": "core/rust/src/hot_engine.rs",
+      "line": 281,
+      "text": "pub fn payload_arc(&self, handle: &EvidenceHandle) -> Result<Arc<[u8]>, HotEngineError> {",
+      "category": "PRODUCT"
+    },
+    {
+      "path": "core/rust/src/hot_engine.rs",
+      "line": 400,
+      "text": "let (sender, receiver) = mpsc::channel(queue_depth);",
+      "category": "PRODUCT"
+    },
+    {
+      "path": "core/rust/src/hot_engine.rs",
+      "line": 401,
+      "text": "let join = std::thread::Builder::new()",
+      "category": "PRODUCT"
+    },
+    {
+      "path": "core/rust/src/hot_engine.rs",
+      "line": 403,
+      "text": ".spawn(move || {",
+      "category": "PRODUCT"
+    },
+    {
+      "path": "core/rust/src/hot_engine.rs",
+      "line": 404,
+      "text": "let runtime = tokio::runtime::Builder::new_current_thread()",
+      "category": "PRODUCT"
+    },
+    {
+      "path": "core/rust/src/hot_engine.rs",
+      "line": 414,
+      "text": "queued_admissions: Arc::new(AtomicU64::new(0)),",
+      "category": "PRODUCT"
+    },
+    {
+      "path": "core/rust/src/hot_engine.rs",
+      "line": 415,
+      "text": "backpressure_rejections: Arc::new(AtomicU64::new(0)),",
+      "category": "PRODUCT"
+    },
+    {
+      "path": "core/rust/src/hot_engine.rs",
+      "line": 425,
+      "text": "let (sender, receiver) = mpsc::channel(queue_depth);",
+      "category": "PRODUCT"
+    },
+    {
+      "path": "core/rust/src/hot_engine.rs",
+      "line": 429,
+      "text": "queued_admissions: Arc::new(AtomicU64::new(0)),",
+      "category": "PRODUCT"
+    },
+    {
+      "path": "core/rust/src/hot_engine.rs",
+      "line": 430,
+      "text": "backpressure_rejections: Arc::new(AtomicU64::new(0)),",
+      "category": "PRODUCT"
+    },
+    {
+      "path": "core/rust/src/hot_engine.rs",
+      "line": 454,
+      "text": "Err(mpsc::error::TrySendError::Full(_)) => {",
+      "category": "PRODUCT"
+    },
+    {
+      "path": "core/rust/src/hot_engine.rs",
+      "line": 463,
+      "text": "Err(mpsc::error::TrySendError::Closed(_)) => Err(HotEngineError::SealerClosed),",
+      "category": "PRODUCT"
+    },
+    {
+      "path": "core/rust/src/hot_engine.rs",
+      "line": 511,
+      "text": "async fn shadow_sealer_loop(directory: PathBuf, mut receiver: mpsc::Receiver<ShadowSealCommand>) {",
+      "category": "PRODUCT"
+    },
+    {
+      "path": "core/rust/src/hot_engine.rs",
+      "line": 547,
+      "text": "let mut file = tokio::fs::File::create(&path)",
+      "category": "PRODUCT"
+    },
+    {
+      "path": "core/rust/src/lab.rs",
+      "line": 1007,
+      "text": "// adapter-side rollback cannot be the only atomicity guarantee.",
+      "category": "LAB"
+    },
+    {
+      "path": "core/rust/src/memory/pool.rs",
+      "line": 2,
+      "text": "use std::sync::atomic::{AtomicUsize, Ordering};",
+      "category": "PRODUCT"
+    },
+    {
+      "path": "core/rust/src/memory/pool.rs",
+      "line": 18,
+      "text": "used: Arc<AtomicUsize>,",
+      "category": "PRODUCT"
+    },
+    {
+      "path": "core/rust/src/memory/pool.rs",
+      "line": 49,
+      "text": "used: Arc<AtomicUsize>,",
+      "category": "PRODUCT"
+    },
+    {
+      "path": "core/rust/src/memory/pool.rs",
+      "line": 56,
+      "text": "used: Arc::new(AtomicUsize::new(0)),",
+      "category": "PRODUCT"
+    },
+    {
+      "path": "core/rust/src/memory/pool.rs",
+      "line": 239,
+      "text": "pub fn spawn_background_population(&self) -> std::thread::JoinHandle<()> {",
+      "category": "PRODUCT"
+    },
+    {
+      "path": "core/rust/src/memory/pool.rs",
+      "line": 242,
+      "text": "std::thread::spawn(move || {",
+      "category": "PRODUCT"
+    },
+    {
+      "path": "core/rust/src/memory/pool.rs",
+      "line": 295,
+      "text": "fn try_account_bytes(used: &AtomicUsize, capacity: usize, size: usize) -> bool {",
+      "category": "PRODUCT"
+    },
+    {
+      "path": "core/rust/src/mvcc.rs",
+      "line": 13,
+      "text": "pub payload: Arc<RecordBatch>,",
+      "category": "PRODUCT"
+    },
+    {
+      "path": "core/rust/src/mvcc.rs",
+      "line": 29,
+      "text": "states: RwLock<BTreeMap<StateVersion, MvccState>>,",
+      "category": "PRODUCT"
+    },
+    {
+      "path": "core/rust/src/mvcc.rs",
+      "line": 30,
+      "text": "latest_version: parking_lot::Mutex<StateVersion>,",
+      "category": "PRODUCT"
+    },
+    {
+      "path": "core/rust/src/physical.rs",
+      "line": 6,
+      "text": "use std::sync::atomic::{AtomicU64, Ordering};",
+      "category": "PRODUCT"
+    },
+    {
+      "path": "core/rust/src/physical.rs",
+      "line": 10,
+      "text": "static ACCEPTED_ARTIFACTS: AtomicU64 = AtomicU64::new(0);",
+      "category": "PRODUCT"
+    },
+    {
+      "path": "core/rust/src/physical.rs",
+      "line": 11,
+      "text": "static REJECTED_ARTIFACTS: AtomicU64 = AtomicU64::new(0);",
+      "category": "PRODUCT"
+    },
+    {
+      "path": "core/rust/src/physical.rs",
+      "line": 12,
+      "text": "static HARD_BACKTRACKS: AtomicU64 = AtomicU64::new(0);",
+      "category": "PRODUCT"
+    },
+    {
+      "path": "core/rust/src/physical.rs",
+      "line": 13,
+      "text": "static CONSENSUS_COMMITS: AtomicU64 = AtomicU64::new(0);",
+      "category": "PRODUCT"
+    },
+    {
+      "path": "core/rust/src/physical.rs",
+      "line": 14,
+      "text": "static CONSENSUS_FAILURES: AtomicU64 = AtomicU64::new(0);",
+      "category": "PRODUCT"
+    },
+    {
+      "path": "core/rust/src/physical.rs",
+      "line": 15,
+      "text": "static TOTAL_FUEL_CONSUMED: AtomicU64 = AtomicU64::new(0);",
+      "category": "PRODUCT"
+    },
+    {
+      "path": "core/rust/src/physical.rs",
+      "line": 16,
+      "text": "static LAST_PAV_BITS: AtomicU64 = AtomicU64::new(0);",
+      "category": "PRODUCT"
+    },
+    {
+      "path": "core/rust/src/physical.rs",
+      "line": 400,
+      "text": "static AST_SIGNATURES: OnceLock<RwLock<BTreeMap<u64, Arc<AstSignature>>>> = OnceLock::new();",
+      "category": "PRODUCT"
+    },
+    {
+      "path": "core/rust/src/physical.rs",
+      "line": 401,
+      "text": "static AST_DISTANCE_CACHE: OnceLock<RwLock<AstDistanceCache>> = OnceLock::new();",
+      "category": "PRODUCT"
+    },
+    {
+      "path": "core/rust/src/physical.rs",
+      "line": 404,
+      "text": "fn ast_signature_registry() -> &'static RwLock<BTreeMap<u64, Arc<AstSignature>>> {",
+      "category": "PRODUCT"
+    },
+    {
+      "path": "core/rust/src/physical.rs",
+      "line": 408,
+      "text": "fn ast_distance_cache() -> &'static RwLock<AstDistanceCache> {",
+      "category": "PRODUCT"
+    },
+    {
+      "path": "core/rust/src/replay.rs",
+      "line": 641,
+      "text": "_mmap: Arc<Mmap>,",
+      "category": "PRODUCT"
+    },
+    {
+      "path": "core/rust/src/replay.rs",
+      "line": 683,
+      "text": "events: Arc<Vec<RunEvent>>,",
+      "category": "PRODUCT"
+    },
+    {
+      "path": "core/rust/src/replay.rs",
+      "line": 6303,
+      "text": "fn arrow_buffer_from_mmap(mmap: Arc<Mmap>) -> Result<Buffer, &'static str> {",
+      "category": "PRODUCT"
+    },
+    {
+      "path": "core/rust/src/replay.rs",
+      "line": 6319,
+      "text": "//   (3) wrapped the `Arc<Mmap>` (the allocation owner) in a custom",
+      "category": "PRODUCT"
+    },
+    {
+      "path": "core/rust/src/replay.rs",
+      "line": 7148,
+      "text": "-> &'static RwLock<HashMap<RunEventSegmentCacheKey, RunEventSegmentCacheEntry>> {",
+      "category": "PRODUCT"
+    },
+    {
+      "path": "core/rust/src/replay.rs",
+      "line": 7149,
+      "text": "static CACHE: OnceLock<RwLock<HashMap<RunEventSegmentCacheKey, RunEventSegmentCacheEntry>>> =",
+      "category": "PRODUCT"
+    },
+    {
+      "path": "core/rust/src/replay.rs",
+      "line": 8422,
+      "text": "// SAFETY: FFI call to Win32 `MoveFileExW` for atomic file rename. Both",
+      "category": "PRODUCT"
+    },
+    {
+      "path": "core/rust/src/resource.rs",
+      "line": 11,
+      "text": "atomic::{AtomicBool, Ordering},",
+      "category": "PRODUCT"
+    },
+    {
+      "path": "core/rust/src/resource.rs",
+      "line": 312,
+      "text": "let usable_parallelism = std::thread::available_parallelism()",
+      "category": "PRODUCT"
+    },
+    {
+      "path": "core/rust/src/resource.rs",
+      "line": 637,
+      "text": "cancelled: Arc<AtomicBool>,",
+      "category": "PRODUCT"
+    },
+    {
+      "path": "core/rust/src/resource.rs",
+      "line": 916,
+      "text": "cancelled: Arc::new(AtomicBool::new(false)),",
+      "category": "PRODUCT"
+    },
+    {
+      "path": "core/rust/src/sandbox.rs",
+      "line": 11,
+      "text": "use std::thread::JoinHandle;",
+      "category": "PRODUCT"
+    },
+    {
+      "path": "core/rust/src/sandbox.rs",
+      "line": 223,
+      "text": "module_cache: RwLock<HashMap<[u8; 32], Module>>,",
+      "category": "PRODUCT"
+    },
+    {
+      "path": "core/rust/src/sandbox.rs",
+      "line": 225,
+      "text": "wasm_pre_cache: RwLock<HashMap<[u8; 32], InstancePre<LimiterState>>>,",
+      "category": "PRODUCT"
+    },
+    {
+      "path": "core/rust/src/sandbox.rs",
+      "line": 227,
+      "text": "quickjs_bridge_pre_cache: RwLock<HashMap<[u8; 32], InstancePre<QuickJsBridgeState>>>,",
+      "category": "PRODUCT"
+    },
+    {
+      "path": "core/rust/src/sandbox.rs",
+      "line": 808,
+      "text": "shutdown: Arc<(Mutex<bool>, Condvar)>,",
+      "category": "PRODUCT"
+    },
+    {
+      "path": "core/rust/src/sandbox.rs",
+      "line": 822,
+      "text": "let handle = std::thread::spawn(move || {",
+      "category": "PRODUCT"
+    },
+    {
+      "path": "core/rust/src/shm.rs",
+      "line": 115,
+      "text": "std::thread::yield_now();",
+      "category": "PRODUCT"
+    },
+    {
+      "path": "core/rust/src/shm.rs",
+      "line": 117,
+      "text": "std::thread::sleep(std::time::Duration::from_micros(50));",
+      "category": "PRODUCT"
+    },
+    {
+      "path": "core/rust/src/telemetry.rs",
+      "line": 5,
+      "text": "use std::net::TcpListener;",
+      "category": "PRODUCT"
+    },
+    {
+      "path": "core/rust/src/telemetry.rs",
+      "line": 145,
+      "text": "static PYTHON_TELEMETRY_SINK: OnceLock<Mutex<BoundedTelemetrySink>> = OnceLock::new();",
+      "category": "PRODUCT"
+    },
+    {
+      "path": "core/rust/src/telemetry.rs",
+      "line": 147,
+      "text": "fn python_telemetry_sink() -> &'static Mutex<BoundedTelemetrySink> {",
+      "category": "PRODUCT"
+    },
+    {
+      "path": "core/rust/src/telemetry.rs",
+      "line": 196,
+      "text": "pub fn serve_physical_metrics_once(listener: &TcpListener) -> std::io::Result<()> {",
+      "category": "PRODUCT"
+    },
+    {
+      "path": "core/rust/src/tests.rs",
+      "line": 3030,
+      "text": "use std::net::{TcpListener, TcpStream};",
+      "category": "PRODUCT"
+    },
+    {
+      "path": "core/rust/src/tests.rs",
+      "line": 3032,
+      "text": "let listener = TcpListener::bind(\"127.0.0.1:0\").unwrap();",
+      "category": "PRODUCT"
+    },
+    {
+      "path": "core/rust/src/tests.rs",
+      "line": 3034,
+      "text": "let handle = std::thread::spawn(move || {",
+      "category": "PRODUCT"
+    },
+    {
+      "path": "core/rust/src/tests.rs",
+      "line": 3038,
+      "text": "let mut stream = TcpStream::connect(addr).unwrap();",
+      "category": "PRODUCT"
+    },
+    {
+      "path": "core/rust/src/tests.rs",
+      "line": 3327,
+      "text": "use std::sync::atomic::{AtomicUsize, Ordering};",
+      "category": "PRODUCT"
+    },
+    {
+      "path": "core/rust/src/tests.rs",
+      "line": 3332,
+      "text": "let counter = Arc::new(AtomicUsize::new(0));",
+      "category": "PRODUCT"
+    },
+    {
+      "path": "core/rust/src/tests.rs",
+      "line": 3334,
+      "text": "std::thread::spawn(move || {",
+      "category": "PRODUCT"
+    },
+    {
+      "path": "core/rust/src/tests.rs",
+      "line": 3335,
+      "text": "std::thread::sleep(Duration::from_micros(10));",
+      "category": "PRODUCT"
+    },
+    {
+      "path": "core/rust/src/tests.rs",
+      "line": 3343,
+      "text": "let counter2 = Arc::new(AtomicUsize::new(0));",
+      "category": "PRODUCT"
+    },
+    {
+      "path": "core/rust/src/tests.rs",
+      "line": 3345,
+      "text": "std::thread::spawn(move || {",
+      "category": "PRODUCT"
+    },
+    {
+      "path": "core/rust/src/tests.rs",
+      "line": 3346,
+      "text": "std::thread::sleep(Duration::from_millis(2));",
+      "category": "PRODUCT"
+    },
+    {
+      "path": "core/rust/src/tests.rs",
+      "line": 3810,
+      "text": "let bad_net = \"use std::net::TcpStream; fn main() {}\";",
+      "category": "PRODUCT"
+    },
+    {
+      "path": "core/rust/src/tests.rs",
+      "line": 3873,
+      "text": "guardrail.verify_invariants(\"use std::net::TcpStream;\"),",
+      "category": "PRODUCT"
+    },
+    {
+      "path": "pocs/tool_batching_poc/src/lib.rs",
+      "line": 48,
+      "text": "futures.push(tokio::spawn(async move { exec(call).await }));",
+      "category": "POC"
+    },
+    {
+      "path": "pocs/tool_batching_poc/src/lib.rs",
+      "line": 79,
+      "text": "tokio::time::sleep(Duration::from_millis(50)).await;",
+      "category": "POC"
+    },
+    {
+      "path": "pocs/tool_batching_poc/src/lib.rs",
+      "line": 131,
+      "text": "#[tokio::test]",
+      "category": "POC"
+    },
+    {
+      "path": "pocs/tool_batching_poc/src/lib.rs",
+      "line": 163,
+      "text": "#[tokio::test]",
+      "category": "POC"
+    }
+  ],
+  "rust_truncated": false,
+  "flags": [
+    "MULTIPLE_WRITERS",
+    "LOCK_ACROSS_AWAIT",
+    "GLOBAL_MUTABLE",
+    "POTENTIAL_CONTENTION",
+    "UNKNOWN"
+  ],
+  "note": "Pattern evidence only; no race claim is made."
+}

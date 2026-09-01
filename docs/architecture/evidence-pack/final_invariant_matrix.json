@@ -1,0 +1,78 @@
+{
+  "schema": "aegis-final-invariant-matrix-v1",
+  "rows": [
+    {
+      "invariant": "Rust authoritative state",
+      "classification": "PARTIALLY_ENFORCED",
+      "evidence": "native resource/replay exists; Python LabRun mutable projection"
+    },
+    {
+      "invariant": "no side effect before admission",
+      "classification": "PARTIALLY_ENFORCED",
+      "evidence": "explicit cells fenced; compatibility bypasses"
+    },
+    {
+      "invariant": "one terminal settlement per admission",
+      "classification": "TEST_PROVEN_LOCAL",
+      "evidence": "duplicate/unknown settlement rejected; chain verify passed"
+    },
+    {
+      "invariant": "budget conservation",
+      "classification": "TEST_PROVEN_LOCAL",
+      "evidence": "native/Lab contracts; all effects not exercised"
+    },
+    {
+      "invariant": "attempt fencing",
+      "classification": "PARTIALLY_ENFORCED",
+      "evidence": "execution/attempt/lease explicit; SDK outside"
+    },
+    {
+      "invariant": "cancellation cannot become success",
+      "classification": "PARTIALLY_ENFORCED",
+      "evidence": "explicit fenced path only"
+    },
+    {
+      "invariant": "replay prefix cannot imply false success",
+      "classification": "TEST_PROVEN_LOCAL",
+      "evidence": "archive/hash metadata; external crash untested"
+    },
+    {
+      "invariant": "explicit cell registry",
+      "classification": "TEST_PROVEN_LOCAL",
+      "evidence": "supported kinds and sealed snapshot"
+    },
+    {
+      "invariant": "no silent fallback in PROD",
+      "classification": "PARTIALLY_ENFORCED",
+      "evidence": "PROD normalization vs DEV defaults/fallback"
+    },
+    {
+      "invariant": "one canonical package",
+      "classification": "VIOLATED",
+      "evidence": "two distributions and aegis owners"
+    },
+    {
+      "invariant": "one canonical trust policy",
+      "classification": "VIOLATED",
+      "evidence": "DEV vs PROD"
+    },
+    {
+      "invariant": "one canonical retry policy",
+      "classification": "VIOLATED",
+      "evidence": "adapter/provider/Lab/SDK"
+    },
+    {
+      "invariant": "telemetry observational only",
+      "classification": "PARTIALLY_ENFORCED",
+      "evidence": "broad catches/control branches"
+    }
+  ],
+  "baseline_status": "PASS",
+  "limitations": [
+    "current state, not target recommendation"
+  ],
+  "WORKTREE_EPOCH": "3783037b7a38cf214bdfe4b593496971ccafec29fd6b5b05f413a98ea51918c6",
+  "HEAD": "f9645caf6d17cee2023d52183990ffcf8317e456",
+  "generated_at": "2026-08-28T02:58:56.366605+00:00",
+  "collector_version/method": "aegis-final-design-closure-v1; direct Git/filesystem/AST/Cargo plus bounded disposable-wheel probes"
+}

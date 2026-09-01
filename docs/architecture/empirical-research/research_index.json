@@ -1,0 +1,314 @@
+{
+  "schema": "aegis-empirical-research-index-v1",
+  "experiment_id": "INDEX-001",
+  "status": "PARTIAL_LOCAL",
+  "HEAD": "f9645caf6d17cee2023d52183990ffcf8317e456",
+  "WORKTREE_EPOCH": "549114d28117c7374ab5e1e1b1c0706876887eb55365684c7ec896fe2c779b2d",
+  "generated_at": "2026-08-31T08:45:23.079168+00:00",
+  "method": "aegis-empirical-research-execution-v1; bounded local probes and direct source inspection; no production mutation",
+  "limitations": [
+    "empirical-research output/raw excluded from epoch to avoid self-reference"
+  ],
+  "epoch_start": {
+    "HEAD": "f9645caf6d17cee2023d52183990ffcf8317e456",
+    "tracked_diff_sha256": "f62f42f48e4fffb3584719b6791ff39bef10960f413a8d9cd420a3f72886f8ae",
+    "untracked_architecture_relevant": [
+      [
+        "aegis_cognition/benchmark.py",
+        "813ee04c7e9ceb2727611f4f799c542aa1d341f401785d39c6d2a0d409ebdf32"
+      ],
+      [
+        "aegis_cognition/lab.py",
+        "e0fa0303d215cb1979f51bb6a44852c3faa266b855965f3c2d92a39008bb5458"
+      ],
+      [
+        "core/rust/src/lab.rs",
+        "d69ad287311dd443cc3c7c285daab4bdcf70bc20e6b3485622260633e8ade594"
+      ],
+      [
+        "docs/adr/ADR-015-portability.md",
+        "100c23e8dc0bdb4604c72e79848d01848c6674d93aea4ffd53a079f50268682e"
+      ],
+      [
+        "docs/api/agent.md",
+        "33c886bc0426b8fcda128ef31b14f726d3c0f28db82093bd990f6ac55e6695b8"
+      ],
+      [
+        "docs/api/cli.md",
+        "9d57f5e7c81dfc30ada7c5f6d8d1c91ca7a893f777e03f2171924a6d438f17f0"
+      ],
+      [
+        "docs/architecture.md",
+        "e08dde6935591310ce09e44563e4fe4e908b75bf7d311fb9a8be841877a2f808"
+      ],
+      [
+        "docs/architecture/AEGIS_CURRENT_ARCHITECTURE_TRUTH_AUDIT.md",
+        "0ad33fc1c281eb48d1c6fcc92d041a4b4f10114b159ca3cd6b89dafa4caf2b27"
+      ],
+      [
+        "docs/architecture/AEGIS_LAB_RUNTIME_MASTER_PLAN.md",
+        "8081b090fbf6dbee120384ca55b5aefc5030ea7fe3b9f427c17c14c9c642628a"
+      ],
+      [
+        "docs/architecture/AEGIS_LAB_STATUS_GENERATED.md",
+        "f0e8d45bf6ac70070ba09f70cab133a41342c7642f12dd900331c3f19412e529"
+      ],
+      [
+        "docs/architecture/document_inventory.json",
+        "1a0e749eb9e5f486193a3ab7a1c008ab34ac70b959fea62e4ae593c5937d4b9c"
+      ],
+      [
+        "docs/troubleshooting/common-errors.md",
+        "3403db4f190deb72ea6e7265042cdd7fe13fd02f95e3355861b518b008f48000"
+      ],
+      [
+        "docs/tutorials/browser-automation.md",
+        "a579b43dced12867e61417a1e83db854d159cb959f04fc5d9089805fccc463cb"
+      ],
+      [
+        "docs/tutorials/web-research.md",
+        "24a6b5abc9f86f66adcf6bc820c7d8467a8a77cfe8f3250eb2e23b1188c07c59"
+      ],
+      [
+        "scripts/document_consistency_gate.py",
+        "9dbf33023515df47576862737c8fd94c415c907a37e3ae50922651aeb3009cf9"
+      ],
+      [
+        "scripts/release_controller_action_smoke.py",
+        "add0e158a3bcac9b22a7816610b97565f6ed3136262b1cea37f5b664f76cc72c"
+      ],
+      [
+        "scripts/release_recovery_smoke.py",
+        "42c8ac8593b595fa7fdccef44ca5a4fdcf1a786162667ca06e5e61a7cd026fd8"
+      ],
+      [
+        "tests/test_document_consistency_gate.py",
+        "d55185e89de5136fa76be4b7e7b6f3d50488284ca22d74c7eb36f1398e3baa33"
+      ],
+      [
+        "tests/test_lab_runtime.py",
+        "1ea7f56f4ca27a810f56c0ddf725f167d86d64b06e95224508e261d9e68334c6"
+      ]
+    ],
+    "WORKTREE_EPOCH": "549114d28117c7374ab5e1e1b1c0706876887eb55365684c7ec896fe2c779b2d"
+  },
+  "epoch_end": {
+    "HEAD": "f9645caf6d17cee2023d52183990ffcf8317e456",
+    "tracked_diff_sha256": "f62f42f48e4fffb3584719b6791ff39bef10960f413a8d9cd420a3f72886f8ae",
+    "untracked_architecture_relevant": [
+      [
+        "aegis_cognition/benchmark.py",
+        "813ee04c7e9ceb2727611f4f799c542aa1d341f401785d39c6d2a0d409ebdf32"
+      ],
+      [
+        "aegis_cognition/lab.py",
+        "e0fa0303d215cb1979f51bb6a44852c3faa266b855965f3c2d92a39008bb5458"
+      ],
+      [
+        "core/rust/src/lab.rs",
+        "d69ad287311dd443cc3c7c285daab4bdcf70bc20e6b3485622260633e8ade594"
+      ],
+      [
+        "docs/adr/ADR-015-portability.md",
+        "100c23e8dc0bdb4604c72e79848d01848c6674d93aea4ffd53a079f50268682e"
+      ],
+      [
+        "docs/api/agent.md",
+        "33c886bc0426b8fcda128ef31b14f726d3c0f28db82093bd990f6ac55e6695b8"
+      ],
+      [
+        "docs/api/cli.md",
+        "9d57f5e7c81dfc30ada7c5f6d8d1c91ca7a893f777e03f2171924a6d438f17f0"
+      ],
+      [
+        "docs/architecture.md",
+        "e08dde6935591310ce09e44563e4fe4e908b75bf7d311fb9a8be841877a2f808"
+      ],
+      [
+        "docs/architecture/AEGIS_CURRENT_ARCHITECTURE_TRUTH_AUDIT.md",
+        "0ad33fc1c281eb48d1c6fcc92d041a4b4f10114b159ca3cd6b89dafa4caf2b27"
+      ],
+      [
+        "docs/architecture/AEGIS_LAB_RUNTIME_MASTER_PLAN.md",
+        "8081b090fbf6dbee120384ca55b5aefc5030ea7fe3b9f427c17c14c9c642628a"
+      ],
+      [
+        "docs/architecture/AEGIS_LAB_STATUS_GENERATED.md",
+        "f0e8d45bf6ac70070ba09f70cab133a41342c7642f12dd900331c3f19412e529"
+      ],
+      [
+        "docs/architecture/document_inventory.json",
+        "1a0e749eb9e5f486193a3ab7a1c008ab34ac70b959fea62e4ae593c5937d4b9c"
+      ],
+      [
+        "docs/troubleshooting/common-errors.md",
+        "3403db4f190deb72ea6e7265042cdd7fe13fd02f95e3355861b518b008f48000"
+      ],
+      [
+        "docs/tutorials/browser-automation.md",
+        "a579b43dced12867e61417a1e83db854d159cb959f04fc5d9089805fccc463cb"
+      ],
+      [
+        "docs/tutorials/web-research.md",
+        "24a6b5abc9f86f66adcf6bc820c7d8467a8a77cfe8f3250eb2e23b1188c07c59"
+      ],
+      [
+        "scripts/document_consistency_gate.py",
+        "9dbf33023515df47576862737c8fd94c415c907a37e3ae50922651aeb3009cf9"
+      ],
+      [
+        "scripts/release_controller_action_smoke.py",
+        "add0e158a3bcac9b22a7816610b97565f6ed3136262b1cea37f5b664f76cc72c"
+      ],
+      [
+        "scripts/release_recovery_smoke.py",
+        "42c8ac8593b595fa7fdccef44ca5a4fdcf1a786162667ca06e5e61a7cd026fd8"
+      ],
+      [
+        "tests/test_document_consistency_gate.py",
+        "d55185e89de5136fa76be4b7e7b6f3d50488284ca22d74c7eb36f1398e3baa33"
+      ],
+      [
+        "tests/test_lab_runtime.py",
+        "1ea7f56f4ca27a810f56c0ddf725f167d86d64b06e95224508e261d9e68334c6"
+      ]
+    ],
+    "WORKTREE_EPOCH": "549114d28117c7374ab5e1e1b1c0706876887eb55365684c7ec896fe2c779b2d"
+  },
+  "epoch_stable": true,
+  "experiments": [
+    {
+      "experiment_id": "EXP-PKG-001",
+      "status": "COMPLETE",
+      "artifact": "docs/architecture/empirical-research/package_layout.json",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "experiment_id": "EXP-IMP-001",
+      "status": "COMPLETE",
+      "artifact": "docs/architecture/empirical-research/import_costs.json",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "experiment_id": "EXP-RPL-001",
+      "status": "COMPLETE",
+      "artifact": "docs/architecture/empirical-research/replay_decomposition.json",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "experiment_id": "EXP-FFI-001",
+      "status": "COMPLETE",
+      "artifact": "docs/architecture/empirical-research/ffi_runtime_profile.json",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "experiment_id": "EXP-DATA-001",
+      "status": "PARTIAL",
+      "artifact": "docs/architecture/empirical-research/data_movement.json",
+      "evidence_class": "INFERRED"
+    },
+    {
+      "experiment_id": "EXP-API-001",
+      "status": "COMPLETE",
+      "artifact": "docs/architecture/empirical-research/rust_public_surface.json",
+      "evidence_class": "SOURCE_BACKED"
+    },
+    {
+      "experiment_id": "EXP-CLEAN-001",
+      "status": "COMPLETE",
+      "artifact": "docs/architecture/empirical-research/cleanup_reachability.json",
+      "evidence_class": "INFERRED"
+    },
+    {
+      "experiment_id": "EXP-DEP-001",
+      "status": "PARTIAL",
+      "artifact": "docs/architecture/empirical-research/dependency_rent.json",
+      "evidence_class": "INFERRED"
+    },
+    {
+      "experiment_id": "EXP-COH-001",
+      "status": "COMPLETE",
+      "artifact": "docs/architecture/empirical-research/cohesion.json",
+      "evidence_class": "INFERRED"
+    },
+    {
+      "experiment_id": "EXP-ERR-001",
+      "status": "PARTIAL",
+      "artifact": "docs/architecture/empirical-research/error_semantics.json",
+      "evidence_class": "INFERRED"
+    },
+    {
+      "experiment_id": "EXP-TRUST-001",
+      "status": "COMPLETE",
+      "artifact": "docs/architecture/empirical-research/trust.json",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "experiment_id": "EXP-RETRY-001",
+      "status": "COMPLETE",
+      "artifact": "docs/architecture/empirical-research/retry.json",
+      "evidence_class": "INFERRED"
+    },
+    {
+      "experiment_id": "EXP-EFFECT-001",
+      "status": "COMPLETE",
+      "artifact": "docs/architecture/empirical-research/effect_paths.json",
+      "evidence_class": "INFERRED"
+    },
+    {
+      "experiment_id": "EXP-SCHEMA-001",
+      "status": "PARTIAL",
+      "artifact": "docs/architecture/empirical-research/schema_lifecycle.json",
+      "evidence_class": "INFERRED"
+    },
+    {
+      "experiment_id": "EXP-DOC-001",
+      "status": "PARTIAL",
+      "artifact": "docs/architecture/empirical-research/documentation_authority.json",
+      "evidence_class": "INFERRED"
+    },
+    {
+      "experiment_id": "EXP-BENCH-001",
+      "status": "COMPLETE",
+      "artifact": "docs/architecture/empirical-research/measurement_contract.json",
+      "evidence_class": "SOURCE_BACKED"
+    },
+    {
+      "experiment_id": "EXP-QUALITY-001",
+      "status": "PARTIAL",
+      "artifact": "docs/architecture/empirical-research/test_invariant_map.json",
+      "evidence_class": "INFERRED"
+    },
+    {
+      "experiment_id": "EXP-GRADER-001",
+      "status": "PARTIAL",
+      "artifact": "docs/architecture/empirical-research/grader_validation.json",
+      "evidence_class": "INFERRED"
+    },
+    {
+      "experiment_id": "EXP-PROV-001",
+      "status": "PARTIAL",
+      "artifact": "docs/architecture/empirical-research/provenance.json",
+      "evidence_class": "INFERRED"
+    },
+    {
+      "experiment_id": "EXP-HW-002",
+      "status": "PARTIAL",
+      "artifact": "docs/architecture/empirical-research/scaling_model_feasibility.json",
+      "evidence_class": "INFERRED"
+    },
+    {
+      "experiment_id": "EXP-BENCH-002",
+      "status": "COMPLETE",
+      "artifact": "docs/architecture/empirical-research/benchmark_noise.json",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "experiment_id": "EXP-HW-001",
+      "status": "COMPLETE",
+      "artifact": "docs/architecture/empirical-research/hardware_calibration.json",
+      "evidence_class": "MEASURED"
+    }
+  ],
+  "report": "docs/architecture/empirical-research/EMPIRICAL_RESEARCH_REPORT.md"
+}

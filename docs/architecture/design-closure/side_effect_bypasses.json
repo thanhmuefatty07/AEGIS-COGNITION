@@ -1,0 +1,46 @@
+{
+  "schema": "aegis-design-side-effect-bypasses-v1",
+  "rows": [
+    {
+      "sink": "urllib.request.urlopen",
+      "classification": "FENCED_IN_LAB_ONLY",
+      "can_execute_without_authoritative_admission": "NO in strict research-cell path; YES via compatibility callback/direct helper",
+      "evidence": "aegis_cognition/lab.py SearchProgramExecutor._fetch lines 475-494"
+    },
+    {
+      "sink": "provider SDK invoke",
+      "classification": "COMPATIBILITY_BYPASS",
+      "can_execute_without_authoritative_admission": "YES",
+      "evidence": "aegis_cognition/application.py and core/python/aegis/provider.py route do not require Lab admission"
+    },
+    {
+      "sink": "Playwright launch/action",
+      "classification": "FENCED_IN_LAB_ONLY",
+      "can_execute_without_authoritative_admission": "YES via direct compatibility runtime; Lab path admits before acquire/action",
+      "evidence": "core/python/browser_playwright_runtime.py:244; lab.py BrowserCell"
+    },
+    {
+      "sink": "subprocess/Popen",
+      "classification": "DIRECT_OPERATOR_EFFECT",
+      "can_execute_without_authoritative_admission": "YES for benchmark hidden validator and developer tooling; Lab cell is admitted",
+      "evidence": "aegis_cognition/benchmark.py:225, shell=False"
+    },
+    {
+      "sink": "filesystem writes",
+      "classification": "DIRECT_OPERATOR_EFFECT",
+      "can_execute_without_authoritative_admission": "YES for CLI/scripts/operator; Lab archive path is evented",
+      "evidence": "aegis_cognition/cli.py:143 and LabRun archive/replay"
+    },
+    {
+      "sink": "sys.path/environment mutation",
+      "classification": "TEST_ONLY",
+      "can_execute_without_authoritative_admission": "YES setup by direct script/test execution",
+      "evidence": "13 sys.path records are direct script bootstrap or legacy metrics"
+    }
+  ],
+  "HEAD": "f9645caf6d17cee2023d52183990ffcf8317e456",
+  "WORKTREE_EPOCH": "6e8c4adfdccec80543825a18e3885da36acb62c7574807342ae8ccf4c0d64ec6",
+  "generated_at": "2026-09-01T02:54:46.298383+00:00",
+  "method": "aegis-design-closure-reconciliation-v1; direct Git/filesystem/source inspection, prior artifact hash reuse, disposable wheel reconciliation, bounded local probes",
+  "limitations": []
+}

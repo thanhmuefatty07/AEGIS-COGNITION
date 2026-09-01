@@ -1,0 +1,208 @@
+{
+  "schema": "aegis-design-rust-mirror-truth-v1",
+  "status": "INSPECTED",
+  "root": "core/rust/AEGIS-COGNITION",
+  "files": [
+    {
+      "path": "core/rust/AEGIS-COGNITION/COMMERCIAL_CLOSURE_REPORT.md",
+      "tracked": true,
+      "git_status": "CLEAN",
+      "history": [
+        "9af7d47a49bf46ae943979d498d55d165daabc72 2026-08-25 18:44:41 +0700 Disclose evidence scope and derive release blockers",
+        "4f76fdfa645ed2e34492aa921fe94fc410729378 2026-08-13 18:14:54 +0700 initial commit: AEGIS-COGNITION codebase"
+      ],
+      "content_sha256": "a82e04e9d6418dbe04da653cb70c5623cc09392321769cc6739dab7b2ab671ad",
+      "references_by_basename_or_exact_path": [
+        "CLEANUP_REPORT.md",
+        "PROJECT_OVERVIEW_DETAILED.md",
+        "README.md",
+        "docs/architecture/document_inventory.json"
+      ],
+      "reference_categories": {
+        "production_source": [],
+        "docs_history": [
+          "CLEANUP_REPORT.md",
+          "PROJECT_OVERVIEW_DETAILED.md",
+          "README.md",
+          "docs/architecture/document_inventory.json"
+        ],
+        "tooling": []
+      },
+      "cargo_reachable": false,
+      "package_reachable": false,
+      "script_reachable": false,
+      "ci_reachable": false,
+      "test_reachable": false,
+      "documentation_reachable": true,
+      "tool_workspace": false,
+      "nested_cargo_manifest": false,
+      "workspace_member": false,
+      "canonical_twin": null,
+      "canonical_content_identical": false,
+      "generated": false,
+      "classification": "ACTIVE_HISTORY"
+    },
+    {
+      "path": "core/rust/AEGIS-COGNITION/core/rust/src/licensing.rs",
+      "tracked": true,
+      "git_status": "CLEAN",
+      "history": [
+        "4f76fdfa645ed2e34492aa921fe94fc410729378 2026-08-13 18:14:54 +0700 initial commit: AEGIS-COGNITION codebase"
+      ],
+      "content_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "references_by_basename_or_exact_path": [
+        "CHANGELOG.md",
+        "COMPREHENSIVE_HARDENING_REPORT.md",
+        "EXTREME_AUDIT_REPORT.md",
+        "PROJECT_OVERVIEW_DETAILED.md",
+        "core/rust/AEGIS-COGNITION/COMMERCIAL_CLOSURE_REPORT.md"
+      ],
+      "reference_categories": {
+        "production_source": [],
+        "docs_history": [
+          "CHANGELOG.md",
+          "COMPREHENSIVE_HARDENING_REPORT.md",
+          "EXTREME_AUDIT_REPORT.md",
+          "PROJECT_OVERVIEW_DETAILED.md",
+          "core/rust/AEGIS-COGNITION/COMMERCIAL_CLOSURE_REPORT.md"
+        ],
+        "tooling": []
+      },
+      "cargo_reachable": false,
+      "package_reachable": false,
+      "script_reachable": false,
+      "ci_reachable": false,
+      "test_reachable": false,
+      "documentation_reachable": true,
+      "tool_workspace": false,
+      "nested_cargo_manifest": false,
+      "workspace_member": false,
+      "canonical_twin": {
+        "path": "core/rust/src/licensing.rs",
+        "bytes": 17843,
+        "sha256": "5815516d0cc23df123f7acbae0d6b9fd2b0bb9885a6e43f35d1f0ceff9ad38ee"
+      },
+      "canonical_content_identical": false,
+      "generated": false,
+      "classification": "ACTIVE_HISTORY"
+    },
+    {
+      "path": "core/rust/AEGIS-COGNITION/core/rust/src/rbac.rs",
+      "tracked": true,
+      "git_status": "CLEAN",
+      "history": [
+        "4f76fdfa645ed2e34492aa921fe94fc410729378 2026-08-13 18:14:54 +0700 initial commit: AEGIS-COGNITION codebase"
+      ],
+      "content_sha256": "a42432953005190190b4dea186cb152e754ebd7fc3122c9b8906cb8d6bc831a3",
+      "references_by_basename_or_exact_path": [
+        "PROJECT_OVERVIEW_DETAILED.md",
+        "core/rust/AEGIS-COGNITION/COMMERCIAL_CLOSURE_REPORT.md"
+      ],
+      "reference_categories": {
+        "production_source": [],
+        "docs_history": [
+          "PROJECT_OVERVIEW_DETAILED.md",
+          "core/rust/AEGIS-COGNITION/COMMERCIAL_CLOSURE_REPORT.md"
+        ],
+        "tooling": []
+      },
+      "cargo_reachable": false,
+      "package_reachable": false,
+      "script_reachable": false,
+      "ci_reachable": false,
+      "test_reachable": false,
+      "documentation_reachable": true,
+      "tool_workspace": false,
+      "nested_cargo_manifest": false,
+      "workspace_member": false,
+      "canonical_twin": null,
+      "canonical_content_identical": false,
+      "generated": false,
+      "classification": "ACTIVE_HISTORY"
+    },
+    {
+      "path": "core/rust/AEGIS-COGNITION/website/index.html",
+      "tracked": true,
+      "git_status": "CLEAN",
+      "history": [
+        "9af7d47a49bf46ae943979d498d55d165daabc72 2026-08-25 18:44:41 +0700 Disclose evidence scope and derive release blockers",
+        "4f76fdfa645ed2e34492aa921fe94fc410729378 2026-08-13 18:14:54 +0700 initial commit: AEGIS-COGNITION codebase"
+      ],
+      "content_sha256": "b4b64caebd62ccd33f2bb29ddaeaec4d88c3f5b28d3dcb13899f6eb41167fe51",
+      "references_by_basename_or_exact_path": [
+        "PROJECT_OVERVIEW_DETAILED.md",
+        "core/rust/AEGIS-COGNITION/COMMERCIAL_CLOSURE_REPORT.md"
+      ],
+      "reference_categories": {
+        "production_source": [],
+        "docs_history": [
+          "PROJECT_OVERVIEW_DETAILED.md",
+          "core/rust/AEGIS-COGNITION/COMMERCIAL_CLOSURE_REPORT.md"
+        ],
+        "tooling": []
+      },
+      "cargo_reachable": false,
+      "package_reachable": false,
+      "script_reachable": false,
+      "ci_reachable": false,
+      "test_reachable": false,
+      "documentation_reachable": true,
+      "tool_workspace": false,
+      "nested_cargo_manifest": false,
+      "workspace_member": false,
+      "canonical_twin": null,
+      "canonical_content_identical": false,
+      "generated": false,
+      "classification": "ACTIVE_HISTORY"
+    }
+  ],
+  "nested_manifest_exists": false,
+  "nested_manifests": [],
+  "cargo_workspace": {
+    "metadata_status": "PASS",
+    "workspace_root": "C:\\Users\\ADMIN\\AEGIS-COGNITION",
+    "default_members": [
+      "path+file:///C:/Users/ADMIN/AEGIS-COGNITION/core/rust#aegis-nerve@0.1.0"
+    ],
+    "member_manifest_paths": [
+      "C:\\Users\\ADMIN\\AEGIS-COGNITION\\core\\rust\\Cargo.toml",
+      "C:\\Users\\ADMIN\\AEGIS-COGNITION\\aegis-plugins\\aegis-search-sdk\\Cargo.toml",
+      "C:\\Users\\ADMIN\\AEGIS-COGNITION\\aegis-plugins\\aegis-evidence\\Cargo.toml",
+      "C:\\Users\\ADMIN\\AEGIS-COGNITION\\aegis-plugins\\aegis-sandbox\\Cargo.toml",
+      "C:\\Users\\ADMIN\\AEGIS-COGNITION\\aegis-plugins\\aegis-browser\\Cargo.toml",
+      "C:\\Users\\ADMIN\\AEGIS-COGNITION\\aegis-plugins\\aegis-skills\\Cargo.toml",
+      "C:\\Users\\ADMIN\\AEGIS-COGNITION\\aegis-plugins\\aegis-bench\\Cargo.toml",
+      "C:\\Users\\ADMIN\\AEGIS-COGNITION\\pocs\\semantic_cache_poc\\Cargo.toml",
+      "C:\\Users\\ADMIN\\AEGIS-COGNITION\\pocs\\tool_batching_poc\\Cargo.toml",
+      "C:\\Users\\ADMIN\\AEGIS-COGNITION\\pocs\\code_orchestration_poc\\Cargo.toml"
+    ],
+    "mirror_is_member": false,
+    "canonical_manifest": "core/rust/Cargo.toml"
+  },
+  "canonical_twins": {
+    "licensing.rs": {
+      "path": "core/rust/src/licensing.rs",
+      "bytes": 17843,
+      "sha256": "5815516d0cc23df123f7acbae0d6b9fd2b0bb9885a6e43f35d1f0ceff9ad38ee"
+    }
+  },
+  "subtree_classification": "ACTIVE_HISTORY_NOT_EXECUTABLE",
+  "deletion_effect": {
+    "cargo_build": "NO",
+    "cargo_test": "NO",
+    "python_build": "NO",
+    "wheel": "NO",
+    "runtime": "NO",
+    "scripts": "NO direct execution edge",
+    "CI": "NO direct execution edge",
+    "documentation": "POSSIBLE reference/history loss",
+    "developer_tooling": "NO direct execution edge"
+  },
+  "limitations": [
+    "the nested subtree has no Cargo.toml and is not in cargo metadata workspace members; textual references are historical/documentary, not execution proof"
+  ],
+  "HEAD": "f9645caf6d17cee2023d52183990ffcf8317e456",
+  "WORKTREE_EPOCH": "6e8c4adfdccec80543825a18e3885da36acb62c7574807342ae8ccf4c0d64ec6",
+  "generated_at": "2026-09-01T02:54:46.298383+00:00",
+  "method": "aegis-design-closure-reconciliation-v1; direct Git/filesystem/source inspection, prior artifact hash reuse, disposable wheel reconciliation, bounded local probes"
+}

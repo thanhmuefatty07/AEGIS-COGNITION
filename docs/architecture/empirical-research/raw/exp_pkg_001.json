@@ -1,0 +1,113 @@
+{
+  "wheel": {
+    "path": "C:\\Users\\ADMIN\\AppData\\Local\\Temp\\aegis-empirical-execution-20260831\\wheel\\aegis_cognition-0.1.0-cp314-cp314-win_amd64.whl",
+    "sha256": "d9c5aeef1c948b186a0e02a46fc7b3b44d543035ea63470c39cb08c2e9d2a8ac",
+    "bytes": 13402367,
+    "file_count": 48,
+    "files": [
+      "aegis_cognition-0.1.0.dist-info/METADATA",
+      "aegis_cognition-0.1.0.dist-info/RECORD",
+      "aegis_cognition-0.1.0.dist-info/WHEEL",
+      "aegis_cognition-0.1.0.dist-info/entry_points.txt",
+      "aegis_cognition-0.1.0.dist-info/sboms/aegis-nerve.cyclonedx.json",
+      "aegis_cognition/__init__.py",
+      "aegis_cognition/aegis_nerve.cp314-win_amd64.pyd",
+      "aegis_cognition/agent.py",
+      "aegis_cognition/application.py",
+      "aegis_cognition/benchmark.py",
+      "aegis_cognition/cli.py",
+      "aegis_cognition/config.py",
+      "aegis_cognition/dx_metrics.py",
+      "aegis_cognition/errors.py",
+      "aegis_cognition/infrastructure.py",
+      "aegis_cognition/lab.py",
+      "aegis_cognition/metrics.py",
+      "aegis_cognition/models.py",
+      "aegis_cognition/observability.py",
+      "aegis_cognition/prompt.py",
+      "aegis_cognition/rag.py",
+      "aegis_cognition/runtime.py",
+      "core/__init__.py",
+      "core/python/__init__.py",
+      "core/python/aegis/__init__.py",
+      "core/python/aegis/contracts.py",
+      "core/python/aegis/evidence.py",
+      "core/python/aegis/hashing.py",
+      "core/python/aegis/learning.py",
+      "core/python/aegis/native.py",
+      "core/python/aegis/provider.py",
+      "core/python/aegis_adapter.py",
+      "core/python/aegis_cli.py",
+      "core/python/bridge.py",
+      "core/python/bridge_mmap.py",
+      "core/python/browser_live_collector.py",
+      "core/python/browser_ops_bench.py",
+      "core/python/browser_playwright_runtime.py",
+      "core/python/browser_runtime_adapter.py",
+      "core/python/integration.py",
+      "core/python/nim_client.py",
+      "core/python/operator_api.py",
+      "core/python/operator_api_healthcheck.py",
+      "core/python/operator_api_server.py",
+      "core/python/orchestrator.py",
+      "core/python/preflight.py",
+      "core/python/service.py",
+      "core/python/tests.py"
+    ],
+    "record_excerpt": "aegis_cognition/__init__.py,sha256=uZqcMT4d6hYVn3YSPBhnJ-H-vI4LgcbDGpdms70i95o,2861\naegis_cognition/aegis_nerve.cp314-win_amd64.pyd,sha256=IolJrsuFEpSYiM-BHGllkAvbmh5eafMcSJGLW-U2zbs,43913216\naegis_cognition/agent.py,sha256=dZ5aAdhjWzSzYq0r51CK3lNy6YzcVxnZizClYRql0_Y,3538\naegis_cognition/application.py,sha256=e4uLURCXXw9gvLZ1Y2nRVYuyyrc193Q_BbjRumYN6h0,8758\naegis_cognition/benchmark.py,sha256=gT7gTH6c6ycnYR9PeZxUKqHTQfQBeF05xtKg1Anr3zI,19618\naegis_cognition/cli.py,sha256=6V9-7kOQcrABBKSQltdHizLulu33gMJS3lnkWlk4l_I,7889\naegis_cognition/config.py,sha256=HzANuotU0ML9TrLCa1P70tedGrYVxbDUhDma5jj_zKM,2909\naegis_cognition/dx_metrics.py,sha256=sGJTVwvMZejQTB9hjMP1LzxK1fz8Wk3AfELYhQvDEmM,1553\naegis_cognition/errors.py,sha256=qze9v8IWKeOdJzfDyVYZxWwOOH35hNz8SX3wv6X93-w,10424\naegis_cognition/infrastructure.py,sha256=LQ66PxZcbjY-dIiTQYJsOSS_brmDcN3rWOPw8_D6CE4,528\naegis_cognition/lab.py,sha256=4PoDA9IVyxl59Ru2pEhSw_qiZrhVll88LZKjkAi7VFg,391601\naegis_cognition/metrics.py,sha256=EwdHI0fUfY-Siq1qANvZnslzMmNusDSz8HjgVkYm8gc,2552\naegis_cognition/models.py,sha256=wfQBcQo9aGnfhOyOyyz0F7J65FIFzNeLlpzHnX6c2I0,634\naegis_cognition/observability.py,sha256=bpOh-XZljFloHUfOUTztcfOAoCSATcYfxh3assRE1A8,5368\naegis_cognition/prompt.py,sha256=qk8BohzfqfCABUPjC0mH0mYh3k_2MaREC4b8ZA_221I,8372\naegis_cognition/rag.py,sha256=I4EhY0Xu2s2bHRAak4p3qyJz-XiqyX9gD5N0yLy2dw0,4315\naegis_cognition/runtime.py,sha256=oVeSuqlASecBPOxbhkBdfAbRAyio71NA2pDvKvPXE28,5543\naegis_cognition-0.1.0.dist-info/METADATA,sha256=gGGZklzS6svACUblwzBBo-gae0G5L1CJ4rwD-dAhFgc,6612\naegis_cognition-0.1.0.dist-info/WHEEL,sha256=TaIKf5lAAGEk4VpBZdZm7x95yHEoG3pvy-lh-8YcCc8,97\naegis_cognition-0.1.0.dist-info/entry_points.txt,sha256=jPRRe9TWjEUa-Gxi_vUCiM7Iv4vbm7VnYLsTVGdrMXw,49\naegis_cognition-0.1.0.dist-info/sboms/aegis-nerve.cyclonedx.json,sha256=di17az3m67u-J3Jh-rGrE8TyG3wgfFzpUZnY-e-eFIw,346243\ncore/__init__.py,sha256=frcCV1k9oG9oKj3dpUqdJg1PxRT2RSN_XKdLCPjaYaY,2\ncore/python/__init__.py,sha256=owk85Ocqq39AOUg2MGyA_P3MOd_A-foZ3l1NA99TQxA,666\ncore/python/aegis/__init__.py,sha256=Sv56R6Wppc9wOLhPyyhiyhV6GmnIjkEcYUB_86mZdE4,850\ncore/python/aegis/contracts.py,sha256=NlqFeuA7a9L-cC-UlzAXvVxNKA5bKN3-Pz8ZAVj9CFQ,3982\ncore/python/aegis/evidence.py,sha256=5tkXsES_rgQpwRL6WpLWigLGtKYGsGPOgddD6m5QKqc,6148\ncore/python/aegis/hashing.py,sha256=1F_9xmQAhx4XQMuGyPPt7DGl5G6Ok6vgkPBBlOGHFIY,493\ncore/python/aegis/learning.py,sha256=T4fmD5AHCxXUzHHcJDmccqTkrb59xqkZFTY3e-e6Sdw,4165\ncore/python/aegis/native.py,sha256=7v3bBtYlZAu-3yL50kfhv7YPG0wTzPvncT1fm3GaWRU,889\ncore/python/aegis/provider.py,sha256=_2tSGraH_PkMV_xycfxGhNEtIRj9crz8iDUEyQSYZgE,15616\ncore/python/aegis_adapter.py,sha256=m69h0ty7UXrWOmPTQkUdOB3042PB4nlhdT_gsgIAtyM,20717\ncore/python/aegis_cli.py,sha256=DE6fGW3mSbfPTZTo6irOmIh-rDdI2qqfKUU-Vrhi-t8,5820\ncore/python/bridge.py,sha256=qnAB01K-IHc5uRLuAC4kxAC9pYitc2vHRWPALFSOaFo,1353\ncore/python/bridge_mmap.py,sha256=mLn7TNA63kaMBNGHd_uC3JklZyd1-CiQX8UemIfBEuY,4642\ncore/python/browser_live_collector.py,sha256=3wHyCR22HfEWbAq0ZlCCPl6B9bYLzvUoYTXmWy92mY0,7753\ncore/python/browser_ops_bench.py,sha256=i8zYD0I8HAvZUIKsxvBXY1PI8O8KF6X0b497c7tgTvM,8122\ncore/python/browser_playwright_runtime.py,sha256=Ekn8cOsLxBo68lKL7ye_4077EfiD7c95Kq_0N290zg8,10950\ncore/python/browser_runtime_adapter.py,sha256=H2XzPfmg_p0mqJL140nx3ZJxUr2ffrUnBve_KwmaCcc,21520\ncore/python/integration.py,sha256=XCNqICvheYA8S6vxMDJsvFOYtumMmNbgnmshDTGjsQI,3195\ncore/python/nim_client.py,sha256=GbjJ1aChhrkibr-VfaLw4NgGrUzgSfNCK9ygYB5erPw,8364\ncore/python/operator_api.py,sha256=KkZlOG-_fqbOEgG9S6elvmqONVK0EgnVT8Q0rZwHn1g,17294\ncore/python/operator_api_healthcheck.py,sha256=-pEkeqQX3cN6POWL9q02cvc_uY05uKQr5LIi549gquk,447\ncore/python/operator_api_server.py,sha256=AIIki3hpt1JCoDavlz5sHokez_ZcWXXuhum4M7ji0x8,695\ncore/python/orchestrator.py,sha256=jLmGA7cRsHwDMl1x_cAG6xUZ9HwFRzYEPMDshYyUShk,2572\ncore/python/preflight.py,sha256=zbskDbXJx0e3Hpknkp_Q1egSv2Me1Q-b8l4brLeE4Ss,1187\ncore/python/service.py,sha256=c2O9_P4_PpC85Y2_3trPMA1XI9O8e6eV5JY_H31nqm0,976\ncore/python/tests.py,sha256=fBp7a7m4W5_JxNy9X2Quk01axDlmyrP4R1eJ9E8-npc,152521\naegis_cognition-0.1.0.dist-info/RECORD,,\n"
+  },
+  "root": {
+    "import": {
+      "args": [
+        "C:\\Users\\ADMIN\\AppData\\Local\\Temp\\aegis-empirical-execution-20260831\\root-venv-154100\\Scripts\\python.exe",
+        "-c",
+        "import importlib.metadata as m,json,pathlib,sys; import aegis_cognition; import aegis_cognition.aegis_nerve as n; print(json.dumps({'repo_on_sys_path':any('AEGIS-COGNITION' in str(x) for x in sys.path),'package_file':str(pathlib.Path(aegis_cognition.__file__).resolve()),'path':[str(x) for x in aegis_cognition.__path__],'native':str(pathlib.Path(n.__file__).resolve()),'dist':m.version('aegis-cognition'),'entry_points':[str(x) for x in m.distribution('aegis-cognition').entry_points if x.group=='console_scripts']}))"
+      ],
+      "cwd": "C:\\Users\\ADMIN\\AppData\\Local\\Temp",
+      "exit": 0,
+      "stdout": "{\"repo_on_sys_path\": false, \"package_file\": \"C:\\\\Users\\\\ADMIN\\\\AppData\\\\Local\\\\Temp\\\\aegis-empirical-execution-20260831\\\\root-venv-154100\\\\Lib\\\\site-packages\\\\aegis_cognition\\\\__init__.py\", \"path\": [\"C:\\\\Users\\\\ADMIN\\\\AppData\\\\Local\\\\Temp\\\\aegis-empirical-execution-20260831\\\\root-venv-154100\\\\Lib\\\\site-packages\\\\aegis_cognition\"], \"native\": \"C:\\\\Users\\\\ADMIN\\\\AppData\\\\Local\\\\Temp\\\\aegis-empirical-execution-20260831\\\\root-venv-154100\\\\Lib\\\\site-packages\\\\aegis_cognition\\\\aegis_nerve.cp314-win_amd64.pyd\", \"dist\": \"0.1.0\", \"entry_points\": [\"EntryPoint(name='aegis', value='aegis_cognition.cli:main', group='console_scripts')\"]}\n",
+      "stderr": ""
+    },
+    "cli": {
+      "args": [
+        "C:\\Users\\ADMIN\\AppData\\Local\\Temp\\aegis-empirical-execution-20260831\\root-venv-154100\\Scripts\\aegis.exe",
+        "--help"
+      ],
+      "cwd": "C:\\Users\\ADMIN\\AppData\\Local\\Temp",
+      "exit": 0,
+      "stdout": "AEGIS-COGNITION v0.1.0 — Cryptographically-verified AI agent harness\n\n  Commands:\n    aegis init                        Interactive setup wizard\n    aegis run <task>                  Run an AI agent task\n    aegis examples                    Show example tasks\n    aegis version                     Show version\n    aegis config show                 Show current configuration\n    aegis config set <key> <value>    Set a configuration value\n\n  Quick Start:\n    pip install aegis-cognition\n    aegis init\n    aegis run \"Find trending repos on GitHub\"\n\n  Docs: https://docs.aegis-cognition.ai\n\n",
+      "stderr": ""
+    }
+  },
+  "core": {
+    "args": [
+      "C:\\Users\\ADMIN\\AppData\\Local\\Temp\\aegis-empirical-execution-20260831\\core-venv-154100\\Scripts\\aegis.exe",
+      "--help"
+    ],
+    "cwd": "C:\\Users\\ADMIN\\AppData\\Local\\Temp",
+    "exit": 1,
+    "stdout": "",
+    "stderr": "Traceback (most recent call last):\n  File \"<frozen runpy>\", line 198, in _run_module_as_main\n  File \"<frozen runpy>\", line 88, in _run_code\n  File \"C:\\Users\\ADMIN\\AppData\\Local\\Temp\\aegis-empirical-execution-20260831\\core-venv-154100\\Scripts\\aegis.exe\\__main__.py\", line 4, in <module>\n    from aegis_cli import main\nModuleNotFoundError: No module named 'aegis_cli'\n"
+  },
+  "combined": {
+    "args": [
+      "C:\\Users\\ADMIN\\AppData\\Local\\Temp\\aegis-empirical-execution-20260831\\combined-venv-154100\\Scripts\\aegis.exe",
+      "--help"
+    ],
+    "cwd": "C:\\Users\\ADMIN\\AppData\\Local\\Temp",
+    "exit": 0,
+    "stdout": "AEGIS-COGNITION v0.1.0 — Cryptographically-verified AI agent harness\n\n  Commands:\n    aegis init                        Interactive setup wizard\n    aegis run <task>                  Run an AI agent task\n    aegis examples                    Show example tasks\n    aegis version                     Show version\n    aegis config show                 Show current configuration\n    aegis config set <key> <value>    Set a configuration value\n\n  Quick Start:\n    pip install aegis-cognition\n    aegis init\n    aegis run \"Find trending repos on GitHub\"\n\n  Docs: https://docs.aegis-cognition.ai\n\n",
+    "stderr": ""
+  },
+  "combined_metadata": {
+    "args": [
+      "C:\\Users\\ADMIN\\AppData\\Local\\Temp\\aegis-empirical-execution-20260831\\combined-venv-154100\\Scripts\\python.exe",
+      "-c",
+      "import importlib.metadata as m,json; ds=[d for d in m.distributions() if d.metadata.get('Name','').lower().startswith('aegis')]; print(json.dumps({'dists':[d.metadata.get('Name')+'=='+d.version for d in ds],'scripts':[str(x) for d in ds for x in d.entry_points if x.group=='console_scripts' and x.name=='aegis']}))"
+    ],
+    "cwd": "C:\\Users\\ADMIN\\AppData\\Local\\Temp",
+    "exit": 0,
+    "stdout": "{\"dists\": [\"aegis-cognition==0.1.0\", \"aegis-cognition-core-python==0.1.0\"], \"scripts\": [\"EntryPoint(name='aegis', value='aegis_cognition.cli:main', group='console_scripts')\", \"EntryPoint(name='aegis', value='aegis_cli:main', group='console_scripts')\"]}\n",
+    "stderr": ""
+  }
+}

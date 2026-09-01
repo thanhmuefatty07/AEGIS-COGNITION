@@ -1,0 +1,67 @@
+{
+  "schema": "aegis-final-concurrency-ownership-v1",
+  "rows": [
+    {
+      "state": "LabApplication",
+      "owner": "Python instance",
+      "writers": "instance mutation",
+      "classification": "PROCESS_LOCAL_ONLY"
+    },
+    {
+      "state": "LabRun",
+      "owner": "one run projection",
+      "writers": "admission/event mutation",
+      "classification": "PROCESS_LOCAL_ONLY"
+    },
+    {
+      "state": "ExecutionCellRegistry",
+      "owner": "config boundary",
+      "writers": "sealed snapshot",
+      "classification": "SINGLE_WRITER_PROVEN_LOCAL"
+    },
+    {
+      "state": "ReplayWriterLease",
+      "owner": "filesystem",
+      "writers": "advisory lease",
+      "classification": "ADVISORY_SINGLE_WRITER"
+    },
+    {
+      "state": "native controller",
+      "owner": "Rust run",
+      "writers": "native transitions",
+      "classification": "PROCESS_LOCAL_ONLY"
+    },
+    {
+      "state": "provider route",
+      "owner": "Python+SDK",
+      "writers": "no single lock",
+      "classification": "UNKNOWN"
+    },
+    {
+      "state": "browser session",
+      "owner": "adapter",
+      "writers": "async page actions",
+      "classification": "PROCESS_LOCAL_ONLY"
+    },
+    {
+      "state": "memory index",
+      "owner": "Python/backend",
+      "writers": "backend-specific",
+      "classification": "HOSTED_NOT_VERIFIED"
+    },
+    {
+      "state": "runtime scheduler",
+      "owner": "Tokio/workers",
+      "writers": "locks/tasks",
+      "classification": "UNKNOWN"
+    }
+  ],
+  "lock_across_await_suspects": [],
+  "limitations": [
+    "no concurrent stress"
+  ],
+  "WORKTREE_EPOCH": "3783037b7a38cf214bdfe4b593496971ccafec29fd6b5b05f413a98ea51918c6",
+  "HEAD": "f9645caf6d17cee2023d52183990ffcf8317e456",
+  "generated_at": "2026-08-28T02:58:56.366605+00:00",
+  "collector_version/method": "aegis-final-design-closure-v1; direct Git/filesystem/AST/Cargo plus bounded disposable-wheel probes"
+}

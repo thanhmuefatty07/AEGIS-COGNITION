@@ -1,0 +1,85 @@
+{
+  "schema": "aegis-final-state-divergence-v1",
+  "rows": [
+    {
+      "entity": "LabRun",
+      "python": "mutable Python projection",
+      "rust": "typed Rust controller/replay",
+      "classification": "AUTHORITY_DIVERGENCE"
+    },
+    {
+      "entity": "LabController",
+      "python": "PyO3 selected APIs",
+      "rust": "Rust controller",
+      "classification": "LOSSY_PROJECTION"
+    },
+    {
+      "entity": "Event",
+      "python": "Python event/hash",
+      "rust": "Rust typed hash chain",
+      "classification": "LOSSLESS_PROJECTION_NOT_PROVEN"
+    },
+    {
+      "entity": "Budget",
+      "python": "LabBudget",
+      "rust": "native resource contracts",
+      "classification": "SEMANTIC_DIVERGENCE"
+    },
+    {
+      "entity": "Attempt",
+      "python": "Python retries",
+      "rust": "native admission",
+      "classification": "SEMANTIC_DIVERGENCE"
+    },
+    {
+      "entity": "Lease",
+      "python": "advisory local lease",
+      "rust": "segment metadata",
+      "classification": "AUTHORITY_DIVERGENCE"
+    },
+    {
+      "entity": "TrustLevel",
+      "python": "DEV defaults",
+      "rust": "PROD normalization",
+      "classification": "SEMANTIC_DIVERGENCE"
+    },
+    {
+      "entity": "RetryPolicy",
+      "python": "adapter/provider/Lab loops",
+      "rust": "native checks",
+      "classification": "AUTHORITY_DIVERGENCE"
+    },
+    {
+      "entity": "Evidence/Claim",
+      "python": "Python records",
+      "rust": "native hash/replay",
+      "classification": "LOSSY_PROJECTION"
+    },
+    {
+      "entity": "ProviderRequest",
+      "python": "Python SDK",
+      "rust": "native boundary only",
+      "classification": "EXTERNAL_BOUNDARY"
+    },
+    {
+      "entity": "Replay",
+      "python": "Python archive",
+      "rust": "Rust replay",
+      "classification": "LOSSLESS_PROJECTION_NOT_PROVEN"
+    },
+    {
+      "entity": "ExecutionCell",
+      "python": "Python callable registry",
+      "rust": "Rust action plan",
+      "classification": "SEMANTIC_DIVERGENCE"
+    }
+  ],
+  "conclusion": "no single canonical owner proven for all entities",
+  "limitations": [
+    "all event variants not field-compared"
+  ],
+  "WORKTREE_EPOCH": "3783037b7a38cf214bdfe4b593496971ccafec29fd6b5b05f413a98ea51918c6",
+  "HEAD": "f9645caf6d17cee2023d52183990ffcf8317e456",
+  "generated_at": "2026-08-28T02:58:56.366605+00:00",
+  "collector_version/method": "aegis-final-design-closure-v1; direct Git/filesystem/AST/Cargo plus bounded disposable-wheel probes"
+}

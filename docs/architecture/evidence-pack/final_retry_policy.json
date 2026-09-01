@@ -1,0 +1,51 @@
+{
+  "schema": "aegis-final-retry-policy-v1",
+  "actual_retries": [
+    {
+      "owner": "provider.py invoke_with_provider_route",
+      "trigger": "rate-limit/candidate failure",
+      "max_attempts": "finite candidate loop; config dependent",
+      "backoff": "not global; SDK may retry",
+      "budget": "not LabBudget-bound on compatibility path",
+      "idempotency": "external provider"
+    },
+    {
+      "owner": "aegis_adapter.py AegisAgent.run",
+      "trigger": "agent failure",
+      "max_attempts": "configured adapter bound",
+      "backoff": "exponential sleep",
+      "budget": "compatibility-local",
+      "idempotency": "not global"
+    },
+    {
+      "owner": "lab.py _call_fenced",
+      "trigger": "timeout/cancel/transient",
+      "max_attempts": "attempt field; global bound not proven",
+      "backoff": "branch-specific",
+      "budget": "LabRun reserves",
+      "idempotency": "explicit admission dedup"
+    },
+    {
+      "owner": "provider SDK",
+      "trigger": "SDK transient",
+      "max_attempts": "UNKNOWN",
+      "backoff": "UNKNOWN",
+      "budget": "UNKNOWN",
+      "idempotency": "external"
+    }
+  ],
+  "amplification": "N_total <= N_app x N_route_candidates x N_sdk x N_tool; exact finite bound NOT VERIFIED",
+  "duplicate_effect_risks": [
+    "ambiguous provider timeout",
+    "compatibility retry outside Lab",
+    "SDK under route retry",
+    "rerun after partial effect"
+  ],
+  "limitations": [
+    "no external retry"
+  ],
+  "WORKTREE_EPOCH": "3783037b7a38cf214bdfe4b593496971ccafec29fd6b5b05f413a98ea51918c6",
+  "HEAD": "f9645caf6d17cee2023d52183990ffcf8317e456",
+  "generated_at": "2026-08-28T02:58:56.366605+00:00",
+  "collector_version/method": "aegis-final-design-closure-v1; direct Git/filesystem/AST/Cargo plus bounded disposable-wheel probes"
+}

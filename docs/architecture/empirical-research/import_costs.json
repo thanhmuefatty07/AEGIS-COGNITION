@@ -1,0 +1,5432 @@
+{
+  "schema": "aegis-empirical-experiment-output-v1",
+  "experiment_id": "EXP-IMP-001",
+  "status": "COMPLETE",
+  "HEAD": "f9645caf6d17cee2023d52183990ffcf8317e456",
+  "WORKTREE_EPOCH": "549114d28117c7374ab5e1e1b1c0706876887eb55365684c7ec896fe2c779b2d",
+  "generated_at": "2026-08-31T08:45:23.079168+00:00",
+  "question": "What are process-isolated production import costs?",
+  "why_it_matters": "This result is an input to the final architecture/master plan decision.",
+  "leading_hypothesis": "The public root import is required eager surface; optional bridges are candidates.",
+  "rival_hypotheses": [
+    "Import-time output alone proves a lazy-import decision."
+  ],
+  "falsification_criteria": [
+    "A bounded observation contradicts the leading hypothesis within the stated scope."
+  ],
+  "controlled_variables": [
+    "current checkout",
+    "bounded local input",
+    "no external side effects"
+  ],
+  "uncontrolled_variables": [
+    "host scheduling",
+    "filesystem cache/antivirus",
+    "machine-specific toolchain"
+  ],
+  "method": "Process-isolated Python -X importtime probes in the new clean wheel environment.",
+  "commands": [],
+  "raw_artifacts": [
+    {
+      "path": "docs/architecture/empirical-research/raw/exp_imp_001.json",
+      "sha256": "854b255dc040b4f39210c016603510b5b1fa08e2af30b1466224e144975a1bdc",
+      "kind": "raw"
+    }
+  ],
+  "measurements": [
+    {
+      "metric": "import.self.asyncio.coroutines",
+      "value": 1458,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 1458,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.contextvars",
+      "value": 1646,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 1646,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.asyncio.format_helpers",
+      "value": 1320,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 1320,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.asyncio.base_futures",
+      "value": 1358,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 1358,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.asyncio.exceptions",
+      "value": 1464,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 1464,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.asyncio.base_tasks",
+      "value": 1561,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 1561,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self._asyncio",
+      "value": 1890,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 6272,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.asyncio.events",
+      "value": 1913,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 11149,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.asyncio.futures",
+      "value": 1582,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 1582,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.asyncio.protocols",
+      "value": 1577,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 1577,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.asyncio.transports",
+      "value": 1642,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 1642,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.asyncio.log",
+      "value": 1404,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 1404,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.asyncio.sslproto",
+      "value": 3871,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 6916,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.asyncio.mixins",
+      "value": 1264,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 1264,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.asyncio.locks",
+      "value": 1780,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 3043,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.math",
+      "value": 138,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 138,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.asyncio.queues",
+      "value": 1670,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 1670,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.asyncio.timeouts",
+      "value": 1800,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 1800,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.asyncio.tasks",
+      "value": 2107,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 5713,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.asyncio.staggered",
+      "value": 1588,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 10344,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.asyncio.trsock",
+      "value": 1477,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 1477,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.asyncio.base_events",
+      "value": 3031,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 139431,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.asyncio.graph",
+      "value": 3214,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 3214,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.asyncio.runners",
+      "value": 1727,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 1727,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.asyncio.streams",
+      "value": 1872,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 1872,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.asyncio.subprocess",
+      "value": 1616,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 1616,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.asyncio.taskgroups",
+      "value": 1459,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 1459,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.asyncio.threads",
+      "value": 1358,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 1358,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self._overlapped",
+      "value": 2721,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 2721,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.asyncio.base_subprocess",
+      "value": 1657,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 1657,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.asyncio.proactor_events",
+      "value": 2408,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 2408,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.select",
+      "value": 1661,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 1661,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.selectors",
+      "value": 2224,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 3884,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.asyncio.selector_events",
+      "value": 2101,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 5985,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.zlib",
+      "value": 145,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 145,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.compression",
+      "value": 2022,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 2022,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.compression._common",
+      "value": 2405,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 4427,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.compression._common._streams",
+      "value": 2068,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 2068,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self._bz2",
+      "value": 1761,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 1761,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.bz2",
+      "value": 1936,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 10190,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self._lzma",
+      "value": 1829,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 1829,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.lzma",
+      "value": 1775,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 3603,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self._zstd",
+      "value": 2049,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 2049,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.compression.zstd._zstdfile",
+      "value": 2176,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 2176,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.compression.zstd",
+      "value": 2598,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 6822,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.shutil",
+      "value": 2296,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 23055,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self._bisect",
+      "value": 80,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 80,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.bisect",
+      "value": 1587,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 1667,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self._random",
+      "value": 80,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 80,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.random",
+      "value": 2092,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 3838,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.tempfile",
+      "value": 1985,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 28877,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.asyncio.windows_utils",
+      "value": 1640,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 30517,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.asyncio.windows_events",
+      "value": 2535,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 45820,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.asyncio",
+      "value": 2188,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 198682,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self._datetime",
+      "value": 114,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 114,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.datetime",
+      "value": 1616,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 1729,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.tomllib._re",
+      "value": 2679,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 4408,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.tomllib._parser",
+      "value": 4491,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 8898,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.tomllib",
+      "value": 2749,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 11647,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.aegis_cognition.errors",
+      "value": 1214,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 1214,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.aegis_cognition.config",
+      "value": 2885,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 15744,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.core",
+      "value": 1651,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 1651,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.core.python.orchestrator",
+      "value": 3861,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 3861,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.core.python.integration",
+      "value": 4250,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 4250,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.core.python.preflight",
+      "value": 2110,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 2110,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.core.python.service",
+      "value": 2032,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 2032,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self._hashlib",
+      "value": 5590,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 5590,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self._blake2",
+      "value": 143,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 143,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.hashlib",
+      "value": 1861,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 7592,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.http",
+      "value": 4018,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 4018,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.email",
+      "value": 2649,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 2649,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.urllib",
+      "value": 2881,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 2881,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.ipaddress",
+      "value": 4440,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 4440,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.urllib.parse",
+      "value": 4349,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 11670,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.email._parseaddr",
+      "value": 2238,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 2238,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.email.utils",
+      "value": 3270,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 19825,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.html.entities",
+      "value": 4836,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 4836,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.html",
+      "value": 3165,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 8000,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.email.errors",
+      "value": 2433,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 2433,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.email.quoprimime",
+      "value": 1510,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 1510,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.email.base64mime",
+      "value": 1595,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 1595,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.quopri",
+      "value": 1294,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 1294,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.email.encoders",
+      "value": 1100,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 2393,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.email.charset",
+      "value": 1467,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 3860,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.email.header",
+      "value": 2064,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 9028,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.email._policybase",
+      "value": 1940,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 10968,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.email.feedparser",
+      "value": 2386,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 15787,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.email.parser",
+      "value": 1732,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 17518,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.email._encoded_words",
+      "value": 1368,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 1368,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.email.iterators",
+      "value": 1102,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 1102,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.email.message",
+      "value": 1968,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 4438,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.http.client",
+      "value": 2865,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 24819,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.mimetypes",
+      "value": 1671,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 1671,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.socketserver",
+      "value": 1921,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 1921,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.http.server",
+      "value": 3653,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 63904,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self._json",
+      "value": 105,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 105,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.json.scanner",
+      "value": 1675,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 1780,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.json.decoder",
+      "value": 2379,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 4158,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.json.encoder",
+      "value": 1714,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 1714,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.json",
+      "value": 2389,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 8260,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.core.python.operator_api",
+      "value": 6004,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 85759,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.core.python.browser_live_collector",
+      "value": 3044,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 3044,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.core.python.browser_runtime_adapter",
+      "value": 7937,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 7937,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.core.python.aegis",
+      "value": 1329,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 1329,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.core.python.aegis.contracts",
+      "value": 11950,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 13279,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.core.python.aegis.hashing",
+      "value": 944,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 944,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.core.python.aegis.native",
+      "value": 956,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 956,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.core.python.aegis.evidence",
+      "value": 978,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 1933,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.core.python.aegis.provider",
+      "value": 1013,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 1013,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.core.python.aegis.learning",
+      "value": 3802,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 3802,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.core.python.aegis_adapter",
+      "value": 1479,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 33427,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.core.python",
+      "value": 1238,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 134327,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.core.python.aegis_adapter",
+      "value": 53,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 134379,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.aegis_cognition.infrastructure",
+      "value": 973,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 135351,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.multiprocessing.process",
+      "value": 1741,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 1741,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self._compat_pickle",
+      "value": 1780,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 1780,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self._pickle",
+      "value": 183,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 183,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.pickle",
+      "value": 2396,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 4359,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.multiprocessing.reduction",
+      "value": 1713,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 6071,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.multiprocessing.context",
+      "value": 2413,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 10225,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.multiprocessing",
+      "value": 2175,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 12399,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self._markupbase",
+      "value": 1961,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 1961,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.html.parser",
+      "value": 3458,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 5419,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.urllib.response",
+      "value": 1453,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 1453,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.urllib.error",
+      "value": 1579,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 3032,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.urllib.request",
+      "value": 3274,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 6306,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.blake3.blake3",
+      "value": 1037,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 1037,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.blake3",
+      "value": 1770,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 2807,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self._wmi",
+      "value": 5008,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 5008,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.platform",
+      "value": 2795,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 7802,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.numbers",
+      "value": 1907,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 1907,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.fractions",
+      "value": 3223,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 3223,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self._decimal",
+      "value": 2628,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 2628,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.decimal",
+      "value": 1855,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 4483,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self._statistics",
+      "value": 64,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 64,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.statistics",
+      "value": 2865,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 12540,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.aegis_cognition.benchmark",
+      "value": 6723,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 27064,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.aegis_cognition.lab",
+      "value": 39048,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 93041,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.aegis_cognition.models",
+      "value": 2312,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 2312,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self._hmac",
+      "value": 130,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 130,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.hmac",
+      "value": 1722,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 1851,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.secrets",
+      "value": 1772,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 3622,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.aegis_cognition.metrics",
+      "value": 1029,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 1029,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.aegis_cognition.observability",
+      "value": 2221,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 6872,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.aegis_cognition.prompt",
+      "value": 1025,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 1025,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.aegis_cognition.rag",
+      "value": 893,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 893,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.aegis_cognition.application",
+      "value": 1265,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 455182,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.aegis_cognition.runtime",
+      "value": 1005,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 1005,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.aegis_cognition.agent",
+      "value": 1247,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 506179,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.aegis_cognition",
+      "value": 1919,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 509749,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.asyncio.base_tasks",
+      "value": 1499,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 1499,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self._asyncio",
+      "value": 2089,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 6459,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.asyncio.events",
+      "value": 1909,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 12035,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.asyncio.futures",
+      "value": 1584,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 1584,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.asyncio.protocols",
+      "value": 1561,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 1561,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.asyncio.transports",
+      "value": 2014,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 2014,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.asyncio.log",
+      "value": 1551,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 1551,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.asyncio.sslproto",
+      "value": 4280,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 7844,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.asyncio.mixins",
+      "value": 1374,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 1374,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.asyncio.locks",
+      "value": 1870,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 3243,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.math",
+      "value": 133,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 133,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.asyncio.queues",
+      "value": 1589,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 1589,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.asyncio.timeouts",
+      "value": 1602,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 1602,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.asyncio.tasks",
+      "value": 1940,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 5262,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.asyncio.staggered",
+      "value": 1703,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 10207,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.asyncio.trsock",
+      "value": 1448,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 1448,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.asyncio.base_events",
+      "value": 3804,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 147049,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.asyncio.graph",
+      "value": 3673,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 3673,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.asyncio.runners",
+      "value": 1848,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 1848,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.asyncio.streams",
+      "value": 1775,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 1775,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.asyncio.subprocess",
+      "value": 1589,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 1589,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.asyncio.taskgroups",
+      "value": 1426,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 1426,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.asyncio.threads",
+      "value": 1315,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 1315,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self._overlapped",
+      "value": 2787,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 2787,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.asyncio.base_subprocess",
+      "value": 1635,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 1635,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.asyncio.proactor_events",
+      "value": 1905,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 1905,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.select",
+      "value": 1622,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 1622,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.selectors",
+      "value": 2007,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 3629,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.asyncio.selector_events",
+      "value": 2073,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 5702,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.zlib",
+      "value": 146,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 146,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.compression",
+      "value": 1952,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 1952,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.compression._common",
+      "value": 2178,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 4129,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.compression._common._streams",
+      "value": 1964,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 1964,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self._bz2",
+      "value": 1980,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 1980,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.bz2",
+      "value": 1782,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 9854,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self._lzma",
+      "value": 2344,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 2344,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.lzma",
+      "value": 1938,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 4282,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self._zstd",
+      "value": 2114,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 2114,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.compression.zstd._zstdfile",
+      "value": 2130,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 2130,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.compression.zstd",
+      "value": 2593,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 6836,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.shutil",
+      "value": 2405,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 23521,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self._bisect",
+      "value": 78,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 78,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.bisect",
+      "value": 1454,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 1532,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self._random",
+      "value": 49,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 49,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.random",
+      "value": 1949,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 3529,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.tempfile",
+      "value": 2558,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 29608,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.asyncio.windows_utils",
+      "value": 1659,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 31266,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.asyncio.windows_events",
+      "value": 2711,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 46004,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.asyncio",
+      "value": 2290,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 206965,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self._datetime",
+      "value": 105,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 105,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.datetime",
+      "value": 1526,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 1630,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.tomllib._re",
+      "value": 2408,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 4038,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.tomllib._parser",
+      "value": 2403,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 6441,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.tomllib",
+      "value": 2243,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 8683,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.aegis_cognition.errors",
+      "value": 1010,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 1010,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.aegis_cognition.config",
+      "value": 2250,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 11942,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.core",
+      "value": 1707,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 1707,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.core.python.orchestrator",
+      "value": 4838,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 4838,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.core.python.integration",
+      "value": 3919,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 3919,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.core.python.preflight",
+      "value": 2686,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 2686,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.core.python.service",
+      "value": 2872,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 2872,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self._hashlib",
+      "value": 4356,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 4356,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self._blake2",
+      "value": 100,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 100,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.hashlib",
+      "value": 2376,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 6831,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.http",
+      "value": 3575,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 3575,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.email",
+      "value": 2244,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 2244,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.urllib",
+      "value": 2567,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 2567,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.ipaddress",
+      "value": 4908,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 4908,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.urllib.parse",
+      "value": 4678,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 12152,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.email._parseaddr",
+      "value": 2076,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 2076,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.email.utils",
+      "value": 2946,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 19417,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.html.entities",
+      "value": 4548,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 4548,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.html",
+      "value": 5234,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 9782,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.email.errors",
+      "value": 2442,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 2442,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.email.quoprimime",
+      "value": 2247,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 2247,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.email.base64mime",
+      "value": 3297,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 3297,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.quopri",
+      "value": 2399,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 2399,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.email.encoders",
+      "value": 2148,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 4546,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.email.charset",
+      "value": 2433,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 6979,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.email.header",
+      "value": 2939,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 15461,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.email._policybase",
+      "value": 3179,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 18639,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.email.feedparser",
+      "value": 3309,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 24390,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.email.parser",
+      "value": 2016,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 26405,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.email._encoded_words",
+      "value": 2417,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 2417,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.email.iterators",
+      "value": 1855,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 1855,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.email.message",
+      "value": 3293,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 7565,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.http.client",
+      "value": 2906,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 36876,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.mimetypes",
+      "value": 2470,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 2470,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.socketserver",
+      "value": 2804,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 2804,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.http.server",
+      "value": 3963,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 78883,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self._json",
+      "value": 193,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 193,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.json.scanner",
+      "value": 2334,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 2527,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.json.decoder",
+      "value": 3324,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 5851,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.json.encoder",
+      "value": 2443,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 2443,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.json",
+      "value": 3146,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 11438,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.core.python.operator_api",
+      "value": 7876,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 105027,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.core.python.browser_live_collector",
+      "value": 3717,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 3717,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.core.python.browser_runtime_adapter",
+      "value": 12082,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 12082,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.core.python.aegis",
+      "value": 1402,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 1402,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.core.python.aegis.contracts",
+      "value": 21462,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 22864,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.core.python.aegis.hashing",
+      "value": 1061,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 1061,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.core.python.aegis.native",
+      "value": 1152,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 1152,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.core.python.aegis.evidence",
+      "value": 1207,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 2359,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.core.python.aegis.provider",
+      "value": 1598,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 1598,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.core.python.aegis.learning",
+      "value": 4225,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 4225,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.core.python.aegis_adapter",
+      "value": 2485,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 50389,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.core.python",
+      "value": 1281,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 172714,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.core.python.aegis_adapter",
+      "value": 58,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 172772,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.aegis_cognition.infrastructure",
+      "value": 933,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 173704,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.multiprocessing.process",
+      "value": 2237,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 2237,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self._compat_pickle",
+      "value": 2482,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 2482,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self._pickle",
+      "value": 260,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 260,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.pickle",
+      "value": 3763,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 6505,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.multiprocessing.reduction",
+      "value": 2358,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 8863,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.multiprocessing.context",
+      "value": 3821,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 14920,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.multiprocessing",
+      "value": 3497,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 18416,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self._markupbase",
+      "value": 3394,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 3394,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.html.parser",
+      "value": 7820,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 11214,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.urllib.response",
+      "value": 1519,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 1519,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.urllib.error",
+      "value": 1560,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 3079,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.urllib.request",
+      "value": 3462,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 6540,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.blake3.blake3",
+      "value": 1370,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 1370,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.blake3",
+      "value": 2216,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 3586,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self._wmi",
+      "value": 5688,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 5688,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.platform",
+      "value": 3476,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 9163,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.numbers",
+      "value": 2240,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 2240,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.fractions",
+      "value": 5853,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 5853,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self._decimal",
+      "value": 3854,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 3854,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.decimal",
+      "value": 2220,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 6074,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self._statistics",
+      "value": 116,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 116,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.statistics",
+      "value": 3398,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 17679,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.aegis_cognition.benchmark",
+      "value": 9405,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 36246,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.aegis_cognition.lab",
+      "value": 36019,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 112019,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.aegis_cognition.models",
+      "value": 2563,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 2563,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self._hmac",
+      "value": 146,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 146,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.hmac",
+      "value": 1879,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 2025,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.secrets",
+      "value": 1738,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 3762,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.aegis_cognition.metrics",
+      "value": 965,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 965,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.aegis_cognition.observability",
+      "value": 2166,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 6892,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.aegis_cognition.prompt",
+      "value": 1128,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 1128,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.aegis_cognition.rag",
+      "value": 1279,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 1279,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.aegis_cognition.application",
+      "value": 1255,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 517744,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.aegis_cognition.runtime",
+      "value": 850,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 850,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.aegis_cognition.agent",
+      "value": 1211,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 570322,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.aegis_cognition",
+      "value": 1811,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 573770,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.aegis_cognition.agent",
+      "value": 46,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 573815,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.asyncio.base_tasks",
+      "value": 1933,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 1933,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self._asyncio",
+      "value": 2620,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 8521,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.asyncio.events",
+      "value": 2678,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 15474,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.asyncio.futures",
+      "value": 2237,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 2237,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.asyncio.protocols",
+      "value": 2043,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 2043,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.asyncio.transports",
+      "value": 2310,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 2310,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.asyncio.log",
+      "value": 1725,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 1725,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.asyncio.sslproto",
+      "value": 5536,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 9570,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.asyncio.mixins",
+      "value": 1887,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 1887,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.asyncio.locks",
+      "value": 2045,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 3932,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.math",
+      "value": 173,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 173,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.asyncio.queues",
+      "value": 2115,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 2115,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.asyncio.timeouts",
+      "value": 2297,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 2297,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.asyncio.tasks",
+      "value": 2711,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 7294,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.asyncio.staggered",
+      "value": 1578,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 12802,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.asyncio.trsock",
+      "value": 1905,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 1905,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.asyncio.base_events",
+      "value": 4527,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 198281,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.asyncio.graph",
+      "value": 4663,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 4663,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.asyncio.runners",
+      "value": 1932,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 1932,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.asyncio.streams",
+      "value": 2147,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 2147,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.asyncio.subprocess",
+      "value": 2063,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 2063,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.asyncio.taskgroups",
+      "value": 1618,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 1618,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.asyncio.threads",
+      "value": 2390,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 2390,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self._overlapped",
+      "value": 3623,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 3623,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.asyncio.base_subprocess",
+      "value": 2414,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 2414,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.asyncio.proactor_events",
+      "value": 2964,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 2964,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.select",
+      "value": 1801,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 1801,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.selectors",
+      "value": 2671,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 4472,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.asyncio.selector_events",
+      "value": 2732,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 7204,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.zlib",
+      "value": 216,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 216,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.compression",
+      "value": 2108,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 2108,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.compression._common",
+      "value": 3329,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 5437,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.compression._common._streams",
+      "value": 2585,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 2585,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self._bz2",
+      "value": 2030,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 2030,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.bz2",
+      "value": 2400,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 12451,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self._lzma",
+      "value": 2405,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 2405,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.lzma",
+      "value": 2138,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 4542,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self._zstd",
+      "value": 2676,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 2676,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.compression.zstd._zstdfile",
+      "value": 3030,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 3030,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.compression.zstd",
+      "value": 4274,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 9979,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.shutil",
+      "value": 3601,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 30788,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self._bisect",
+      "value": 79,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 79,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.bisect",
+      "value": 1859,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 1937,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self._random",
+      "value": 68,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 68,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.random",
+      "value": 2239,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 4244,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.tempfile",
+      "value": 2728,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 37759,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.asyncio.windows_utils",
+      "value": 2130,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 39889,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.asyncio.windows_events",
+      "value": 4332,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 60423,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.asyncio",
+      "value": 3300,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 276814,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self._datetime",
+      "value": 105,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 105,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.datetime",
+      "value": 1988,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 2092,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.tomllib._re",
+      "value": 4074,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 6165,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.tomllib._parser",
+      "value": 3211,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 9376,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.tomllib",
+      "value": 2624,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 12000,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.aegis_cognition.errors",
+      "value": 1478,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 1478,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.aegis_cognition.config",
+      "value": 3502,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 16979,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.core",
+      "value": 2454,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 2454,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.core.python.orchestrator",
+      "value": 5211,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 5211,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.core.python.integration",
+      "value": 6526,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 6526,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.core.python.preflight",
+      "value": 2989,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 2989,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.core.python.service",
+      "value": 3041,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 3041,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self._hashlib",
+      "value": 5863,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 5863,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self._blake2",
+      "value": 140,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 140,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.hashlib",
+      "value": 2597,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 8599,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.http",
+      "value": 4078,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 4078,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.email",
+      "value": 2413,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 2413,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.urllib",
+      "value": 3380,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 3380,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.ipaddress",
+      "value": 4796,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 4796,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.urllib.parse",
+      "value": 4388,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 12563,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.email._parseaddr",
+      "value": 3004,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 3004,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.email.utils",
+      "value": 3878,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 21857,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.html.entities",
+      "value": 3835,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 3835,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.html",
+      "value": 3308,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 7142,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.email.errors",
+      "value": 2592,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 2592,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.email.quoprimime",
+      "value": 3161,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 3161,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.email.base64mime",
+      "value": 1871,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 1871,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.quopri",
+      "value": 2083,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 2083,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.email.encoders",
+      "value": 1826,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 3908,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.email.charset",
+      "value": 1546,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 5454,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.email.header",
+      "value": 3146,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 13631,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.email._policybase",
+      "value": 2276,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 15907,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.email.feedparser",
+      "value": 2460,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 20958,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.email.parser",
+      "value": 2052,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 23010,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.email._encoded_words",
+      "value": 2888,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 2888,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.email.iterators",
+      "value": 1700,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 1700,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.email.message",
+      "value": 3058,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 7645,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.http.client",
+      "value": 3211,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 33865,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.mimetypes",
+      "value": 1960,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 1960,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.socketserver",
+      "value": 1963,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 1963,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.http.server",
+      "value": 2935,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 73799,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self._json",
+      "value": 130,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 130,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.json.scanner",
+      "value": 2407,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 2536,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.json.decoder",
+      "value": 2283,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 4818,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.json.encoder",
+      "value": 1946,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 1946,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.json",
+      "value": 2245,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 9009,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.core.python.operator_api",
+      "value": 5900,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 97304,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.core.python.browser_live_collector",
+      "value": 6600,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 6600,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.core.python.browser_runtime_adapter",
+      "value": 13138,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 13138,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.core.python.aegis",
+      "value": 1588,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 1588,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.core.python.aegis.contracts",
+      "value": 15024,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 16612,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.core.python.aegis.hashing",
+      "value": 1122,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 1122,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.core.python.aegis.native",
+      "value": 1138,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 1138,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.core.python.aegis.evidence",
+      "value": 1763,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 2901,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.core.python.aegis.provider",
+      "value": 1373,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 1373,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.core.python.aegis.learning",
+      "value": 6445,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 6445,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.core.python.aegis_adapter",
+      "value": 2363,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 50551,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.core.python",
+      "value": 1519,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 169592,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.core.python.aegis_adapter",
+      "value": 64,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 169656,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.aegis_cognition.infrastructure",
+      "value": 1148,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 170803,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.multiprocessing.process",
+      "value": 1868,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 1868,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self._compat_pickle",
+      "value": 1890,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 1890,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self._pickle",
+      "value": 198,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 198,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.pickle",
+      "value": 2439,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 4527,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.multiprocessing.reduction",
+      "value": 1740,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 6266,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.multiprocessing.context",
+      "value": 3333,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 11466,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.multiprocessing",
+      "value": 3118,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 14584,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self._markupbase",
+      "value": 3062,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 3062,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.html.parser",
+      "value": 5857,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 8919,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.urllib.response",
+      "value": 1942,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 1942,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.urllib.error",
+      "value": 2001,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 3942,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.urllib.request",
+      "value": 4030,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 7972,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.blake3.blake3",
+      "value": 1315,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 1315,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.blake3",
+      "value": 2055,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 3370,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self._wmi",
+      "value": 5923,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 5923,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.platform",
+      "value": 4448,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 10370,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.numbers",
+      "value": 2124,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 2124,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.fractions",
+      "value": 6188,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 6188,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self._decimal",
+      "value": 3237,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 3237,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.decimal",
+      "value": 1902,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 5139,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self._statistics",
+      "value": 80,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 80,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.statistics",
+      "value": 3227,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 16756,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.aegis_cognition.benchmark",
+      "value": 10877,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 38002,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.aegis_cognition.lab",
+      "value": 53378,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 126222,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.aegis_cognition.models",
+      "value": 3114,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 3114,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self._hmac",
+      "value": 205,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 205,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.hmac",
+      "value": 2381,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 2585,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.secrets",
+      "value": 2300,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 4885,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.aegis_cognition.metrics",
+      "value": 1417,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 1417,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.aegis_cognition.observability",
+      "value": 3444,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 9745,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.aegis_cognition.prompt",
+      "value": 1408,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 1408,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.aegis_cognition.rag",
+      "value": 1190,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 1190,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.aegis_cognition.application",
+      "value": 1598,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 607870,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.aegis_cognition.runtime",
+      "value": 1263,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 1263,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.aegis_cognition.agent",
+      "value": 1744,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 685163,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.aegis_cognition",
+      "value": 2654,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 690069,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.aegis_cognition.lab",
+      "value": 81,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 690150,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.core.python.orchestrator",
+      "value": 4322,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 66946,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.core.python.integration",
+      "value": 4026,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 4026,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.posix",
+      "value": 773,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 773,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.posix",
+      "value": 689,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 689,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.posixpath",
+      "value": 331,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 1792,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.contextlib",
+      "value": 2162,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 2162,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.fnmatch",
+      "value": 1826,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 1826,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.glob",
+      "value": 1983,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 5970,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.pwd",
+      "value": 810,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 810,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.grp",
+      "value": 696,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 696,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.fcntl",
+      "value": 720,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 720,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.posix",
+      "value": 632,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 632,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.pathlib._os",
+      "value": 2095,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 3445,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.pathlib",
+      "value": 3325,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 16035,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.zlib",
+      "value": 157,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 157,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.compression",
+      "value": 2003,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 2003,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.compression._common",
+      "value": 2634,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 4637,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.compression._common._streams",
+      "value": 2050,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 2050,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self._bz2",
+      "value": 3384,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 3384,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.bz2",
+      "value": 1891,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 11961,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self._lzma",
+      "value": 1685,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 1685,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.lzma",
+      "value": 1748,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 3433,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self._zstd",
+      "value": 4024,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 4024,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.compression.zstd._zstdfile",
+      "value": 2991,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 2991,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.compression.zstd",
+      "value": 3161,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 10175,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.shutil",
+      "value": 2709,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 28432,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.core.python.preflight",
+      "value": 2897,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 47364,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.core.python.service",
+      "value": 2438,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 2438,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.__future__",
+      "value": 1686,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 1686,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self._hashlib",
+      "value": 9462,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 9462,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self._blake2",
+      "value": 101,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 101,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.hashlib",
+      "value": 2619,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 12182,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.http",
+      "value": 2826,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 2826,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self._datetime",
+      "value": 116,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 116,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.datetime",
+      "value": 2208,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 2324,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.email",
+      "value": 2007,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 2007,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.urllib",
+      "value": 1841,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 1841,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.math",
+      "value": 193,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 193,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self._contextvars",
+      "value": 92,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 92,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self._py_warnings",
+      "value": 2336,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 2427,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.warnings",
+      "value": 2066,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 4492,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.ipaddress",
+      "value": 2848,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 2848,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.urllib.parse",
+      "value": 3442,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 12815,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.email._parseaddr",
+      "value": 1572,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 1572,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.email.utils",
+      "value": 2394,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 18787,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.html.entities",
+      "value": 3047,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 3047,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.html",
+      "value": 2537,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 5584,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.email.errors",
+      "value": 3061,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 3061,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.binascii",
+      "value": 126,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 126,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self._string",
+      "value": 84,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 84,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.string",
+      "value": 2340,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 2424,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.email.quoprimime",
+      "value": 1587,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 4010,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self._struct",
+      "value": 164,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 164,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.struct",
+      "value": 1536,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 1699,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.base64",
+      "value": 1784,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 3483,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.email.base64mime",
+      "value": 1537,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 5019,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.quopri",
+      "value": 1546,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 1546,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.email.encoders",
+      "value": 1393,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 2939,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.email.charset",
+      "value": 1507,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 4445,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.email.header",
+      "value": 1923,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 15522,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.email._policybase",
+      "value": 1673,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 17194,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.email.feedparser",
+      "value": 2945,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 23200,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.email.parser",
+      "value": 2342,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 25541,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.email._encoded_words",
+      "value": 1677,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 1677,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.email.iterators",
+      "value": 1415,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 1415,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.email.message",
+      "value": 2087,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 5178,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self._socket",
+      "value": 4071,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 4071,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.socket",
+      "value": 3196,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 7267,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self._ssl",
+      "value": 5147,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 5147,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.ssl",
+      "value": 4829,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 9976,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.http.client",
+      "value": 3561,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 51520,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.mimetypes",
+      "value": 2082,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 2082,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.select",
+      "value": 2207,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 2207,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.selectors",
+      "value": 1933,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 1933,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.threading",
+      "value": 2289,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 2289,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.socketserver",
+      "value": 2266,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 6488,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.http.server",
+      "value": 3801,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 95614,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self._json",
+      "value": 112,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 112,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.json.scanner",
+      "value": 1666,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 1777,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.json.decoder",
+      "value": 3221,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 4998,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.json.encoder",
+      "value": 1747,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 1747,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.json",
+      "value": 2162,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 8906,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self._typing",
+      "value": 86,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 86,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.typing",
+      "value": 4830,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 4916,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.core.python.operator_api",
+      "value": 6218,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 129519,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.concurrent",
+      "value": 1981,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 1981,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.textwrap",
+      "value": 2247,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 2247,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.codeop",
+      "value": 1604,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 1604,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self._colorize",
+      "value": 10994,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 10994,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.traceback",
+      "value": 2757,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 17600,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.atexit",
+      "value": 80,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 80,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.logging",
+      "value": 3982,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 21661,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.concurrent.futures._base",
+      "value": 2477,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 24138,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self._interpreters",
+      "value": 112,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 112,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.concurrent.futures",
+      "value": 2333,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 28562,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self._heapq",
+      "value": 90,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 90,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.heapq",
+      "value": 1747,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 1836,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self._locale",
+      "value": 120,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 120,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.locale",
+      "value": 2211,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 2331,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.signal",
+      "value": 2034,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 2034,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.fcntl",
+      "value": 758,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 758,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.msvcrt",
+      "value": 99,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 99,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.subprocess",
+      "value": 2313,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 7532,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.asyncio.constants",
+      "value": 1965,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 1965,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.asyncio.coroutines",
+      "value": 1315,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 1315,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.contextvars",
+      "value": 1562,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 1562,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.asyncio.format_helpers",
+      "value": 1240,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 1240,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.asyncio.base_futures",
+      "value": 1532,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 1532,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.asyncio.exceptions",
+      "value": 1499,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 1499,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.asyncio.base_tasks",
+      "value": 1437,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 1437,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self._asyncio",
+      "value": 2484,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 6949,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.asyncio.events",
+      "value": 2032,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 11781,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.asyncio.futures",
+      "value": 1495,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 1495,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.asyncio.protocols",
+      "value": 1444,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 1444,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.asyncio.transports",
+      "value": 1559,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 1559,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.asyncio.log",
+      "value": 1357,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 1357,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.asyncio.sslproto",
+      "value": 2083,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 4998,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.asyncio.mixins",
+      "value": 1354,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 1354,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.asyncio.locks",
+      "value": 1860,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 3214,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.asyncio.queues",
+      "value": 1563,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 1563,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.asyncio.timeouts",
+      "value": 1545,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 1545,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.asyncio.tasks",
+      "value": 1856,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 4962,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.asyncio.staggered",
+      "value": 1652,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 9827,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.asyncio.trsock",
+      "value": 1489,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 1489,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.asyncio.base_events",
+      "value": 3496,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 75736,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.asyncio.graph",
+      "value": 4821,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 4821,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.asyncio.runners",
+      "value": 1943,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 1943,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.asyncio.streams",
+      "value": 1776,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 1776,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.asyncio.subprocess",
+      "value": 1499,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 1499,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.asyncio.taskgroups",
+      "value": 1445,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 1445,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.asyncio.threads",
+      "value": 1406,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 1406,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self._overlapped",
+      "value": 2918,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 2918,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.asyncio.base_subprocess",
+      "value": 1640,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 1640,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.asyncio.proactor_events",
+      "value": 1949,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 1949,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.asyncio.selector_events",
+      "value": 1923,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 1923,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self._bisect",
+      "value": 76,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 76,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.bisect",
+      "value": 1578,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 1654,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self._random",
+      "value": 65,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 65,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.random",
+      "value": 1945,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 3662,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.tempfile",
+      "value": 2259,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 5921,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.asyncio.windows_utils",
+      "value": 1676,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 7597,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.asyncio.windows_events",
+      "value": 2460,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 18485,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.asyncio",
+      "value": 2238,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 109346,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.core.python.browser_live_collector",
+      "value": 2926,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 2926,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.core.python.browser_runtime_adapter",
+      "value": 8186,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 8186,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.core.python.aegis",
+      "value": 1122,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 1122,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.core.python.aegis.contracts",
+      "value": 11643,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 12764,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.core.python.aegis.hashing",
+      "value": 911,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 911,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.core.python.aegis.native",
+      "value": 998,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 998,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.core.python.aegis.evidence",
+      "value": 906,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 1903,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.core.python.aegis.provider",
+      "value": 1051,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 1051,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.core.python.aegis.learning",
+      "value": 4254,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 4254,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.core.python.aegis_adapter",
+      "value": 1402,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 142739,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.core.python",
+      "value": 1299,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 395998,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.core.python.aegis",
+      "value": 29,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 396026,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    },
+    {
+      "metric": "import.self.core.python.aegis.provider",
+      "value": 52,
+      "unit": "us",
+      "n": 1,
+      "cumulative_value": 396078,
+      "cumulative_unit": "us",
+      "evidence_class": "MEASURED"
+    }
+  ],
+  "observed_failures": [],
+  "interpretation": "Import self/cumulative timings are recorded without introducing lazy imports.",
+  "what_was_falsified": [],
+  "what_remains_unknown": [
+    "startup across host states",
+    "optional dependency policy"
+  ],
+  "evidence_class": "MEASURED",
+  "limitations": [
+    "importtime is host-specific and descriptive"
+  ],
+  "recommended_next_decision_input": "Use import data as baseline only; do not change imports in this pass."
+}

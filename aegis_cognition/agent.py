@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import os
+from pathlib import Path
 from typing import Any
 
 from .application import AgentApplication
@@ -9,6 +11,7 @@ from .config import AgentConfig, load_config
 from .errors import ConfigError, ProviderError
 from .models import RunResult
 from .observability import RuntimeTelemetry
+from .runtime import native_runtime_available
 
 
 # Kept as compatibility aliases for callers that used the old private helpers.
@@ -25,22 +28,41 @@ class Agent:
         llm: Any = None,
         trust_level: str | None = None,
         browser: bool = False,
+        lab: bool = False,
         max_steps: int = 100,
         telemetry: RuntimeTelemetry | None = None,
         **kwargs: Any,
     ) -> None:
+        # Lab compatibility runs retain a durable replay snapshot by default,
+        # matching the public ``Lab`` facade.  Operators can opt out with
+        # ``lab_replay_archive=False`` or supply an explicit directory; the
+        # archive remains a post-run evidence artifact and never widens the
+        # model's execution capabilities.  A source checkout without the
+        # compiled authority keeps the legacy no-archive development path;
+        # explicitly requesting the archive still fails closed there.
+        replay_requested = kwargs.get("lab_replay_archive")
+        if lab and replay_requested is not False and (
+            replay_requested is True or native_runtime_available()
+        ):
+            configured_replay_dir = os.environ.get("AEGIS_LAB_REPLAY_DIR", "").strip()
+            kwargs.setdefault(
+                "lab_replay_directory",
+                configured_replay_dir or str(Path.cwd() / ".aegis" / "lab-replay"),
+            )
         self._config = AgentConfig.from_inputs(
             task,
             llm=llm,
             trust_level=trust_level,
             browser=browser,
             max_steps=max_steps,
+            lab=lab,
             **kwargs,
         )
         self.task = self._config.task
         self.llm = self._config.llm
         self.trust_level = self._config.trust_level
         self.browser = self._config.browser
+        self.lab = bool(self._config.options.get("lab", False))
         self.max_steps = self._config.max_steps
         self._kwargs = self._config.options
         self.telemetry = telemetry or RuntimeTelemetry()

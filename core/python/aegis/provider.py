@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
+import asyncio
 import inspect
 import json
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from typing import Any
 
 from .contracts import (
@@ -180,6 +181,8 @@ async def invoke_with_provider_route(
     task: str,
     provider_budgets: tuple[ProviderBudgetRecord, ...],
     required_tokens: int,
+    attempt_hook: Callable[[str, Mapping[str, Any]], Any] | None = None,
+    attempt_context: Mapping[str, Any] | None = None,
     **kwargs: Any,
 ) -> tuple[Any, str | None, ProviderRouteRecord, ProviderBudgetEvidence]:
     candidates = [
@@ -192,6 +195,7 @@ async def invoke_with_provider_route(
     skipped: list[str] = []
     last_rate_limit: Exception | None = None
 
+    base_context = dict(attempt_context or {})
     for index, (provider, llm) in enumerate(candidates):
         selected_name = provider or provider_name(llm) or "default"
         if provider_budgets:
@@ -200,14 +204,57 @@ async def invoke_with_provider_route(
                 skipped.append(selected_name)
                 continue
         attempted.append(selected_name)
+        attempt_payload: dict[str, Any] = {
+            **base_context,
+            "provider": selected_name,
+            "candidate_index": index + 1,
+            "candidate_count": len(candidates),
+            # The hook is a trusted in-process fence.  The Lab callback hashes
+            # the task before persisting any receipt; the raw prompt is never
+            # written to the replay payload.
+            "task": task,
+        }
+        fence = await _notify_attempt_hook(attempt_hook, "admit", attempt_payload)
         try:
             output = await invoke_llm(llm, task, **kwargs)
+        except asyncio.CancelledError:
+            await _notify_attempt_hook(
+                attempt_hook,
+                "settle",
+                {
+                    **attempt_payload,
+                    "fence": fence,
+                    "status": "CANCELLED",
+                    "error": "CancelledError",
+                },
+            )
+            raise
         except Exception as exc:
+            await _notify_attempt_hook(
+                attempt_hook,
+                "settle",
+                {
+                    **attempt_payload,
+                    "fence": fence,
+                    "status": "TIMED_OUT" if isinstance(exc, TimeoutError) else "REJECTED",
+                    "error": type(exc).__name__,
+                },
+            )
             if not is_rate_limit_error(exc):
                 raise
             throttled.append(selected_name)
             last_rate_limit = exc
             continue
+        await _notify_attempt_hook(
+            attempt_hook,
+            "settle",
+            {
+                **attempt_payload,
+                "fence": fence,
+                "status": "SUCCESS",
+                "result": output,
+            },
+        )
         budget_evidence = provider_budget_evidence(
             trust_level=trust_level,
             provider_budgets=provider_budgets,
@@ -232,6 +279,19 @@ async def invoke_with_provider_route(
     if skipped:
         message = f"{message}; skipped={','.join(skipped)}"
     raise ProviderRateLimitError(message)
+
+
+async def _notify_attempt_hook(
+    hook: Callable[[str, Mapping[str, Any]], Any] | None,
+    event: str,
+    payload: Mapping[str, Any],
+) -> Any:
+    """Invoke an optional Lab fence without imposing an async-only API."""
+
+    if hook is None:
+        return None
+    result = hook(event, payload)
+    return await result if inspect.isawaitable(result) else result
 
 
 async def invoke_llm(llm: Any, task: str, **kwargs: Any) -> Any:

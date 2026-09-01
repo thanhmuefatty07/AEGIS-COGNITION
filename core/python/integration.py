@@ -1,6 +1,21 @@
 from dataclasses import dataclass
 
-from .orchestrator import MessageFrame, ZeroCopyFrame, build_message, to_zero_copy, validate_runtime_message
+try:
+    from .orchestrator import (
+        MessageFrame,
+        ZeroCopyFrame,
+        build_message,
+        to_zero_copy,
+        validate_runtime_message,
+    )
+except ImportError:
+    from orchestrator import (
+        MessageFrame,
+        ZeroCopyFrame,
+        build_message,
+        to_zero_copy,
+        validate_runtime_message,
+    )
 
 
 RUST_SCHEMA_ID = 0xAE1515

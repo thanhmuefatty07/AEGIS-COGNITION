@@ -1,0 +1,59 @@
+{
+  "schema": "aegis-final-schema-contracts-v1",
+  "contracts": [
+    {
+      "id": "aegis-resource-contract-v1",
+      "writer": "Rust/native",
+      "reader": "PyO3",
+      "version": "v1",
+      "status": "PROVEN_LOCAL"
+    },
+    {
+      "id": "aegis-nerve schema 11408661",
+      "writer": "ffi.rs",
+      "reader": "native module",
+      "version": "1 validation API",
+      "status": "PROVEN_LOCAL"
+    },
+    {
+      "id": "aegis-lab-action-plan-v1",
+      "writer": "Lab controller",
+      "reader": "registry/dispatcher",
+      "version": "v1",
+      "status": "PARTIALLY_PROVEN"
+    },
+    {
+      "id": "Lab event/hash/replay",
+      "writer": "LabRun/Rust replay",
+      "reader": "archive/recovery",
+      "version": "event/segment",
+      "status": "PARTIALLY_PROVEN"
+    },
+    {
+      "id": "BenchmarkProtocolV2/telemetry candidates",
+      "writer": "benchmark/telemetry",
+      "reader": "gates",
+      "version": "source-labelled",
+      "status": "PARTIALLY_PROVEN"
+    },
+    {
+      "id": "provider/agent dictionaries",
+      "writer": "Python adapters",
+      "reader": "SDK/application",
+      "version": "unversioned",
+      "status": "RISK"
+    }
+  ],
+  "unversioned": [
+    "provider dictionaries",
+    "config/env payloads",
+    "operator JSON"
+  ],
+  "limitations": [
+    "no full migration registry"
+  ],
+  "WORKTREE_EPOCH": "3783037b7a38cf214bdfe4b593496971ccafec29fd6b5b05f413a98ea51918c6",
+  "HEAD": "f9645caf6d17cee2023d52183990ffcf8317e456",
+  "generated_at": "2026-08-28T02:58:56.366605+00:00",
+  "collector_version/method": "aegis-final-design-closure-v1; direct Git/filesystem/AST/Cargo plus bounded disposable-wheel probes"
+}

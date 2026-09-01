@@ -1,0 +1,26 @@
+{
+  "measurement": {
+    "metric": "benchmark.hash.noise",
+    "value": 27.3,
+    "unit": "us",
+    "n": 7,
+    "min": 27.2,
+    "max": 35.2,
+    "mean": 28.65714285714286,
+    "stdev": 2.931926069359608,
+    "raw_values": [
+      35.2,
+      28.7,
+      27.6,
+      27.3,
+      27.3,
+      27.2,
+      27.3
+    ],
+    "evidence_class": "MEASURED"
+  },
+  "protocol": {
+    "n": 7,
+    "payload_bytes": 11264
+  }
+}

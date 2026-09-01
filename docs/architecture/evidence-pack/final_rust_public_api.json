@@ -1,0 +1,1002 @@
+{
+  "schema": "aegis-final-rust-public-api-v1",
+  "workspace_status": "PROVEN",
+  "modules": [
+    {
+      "module": "aegis-nerve::AEGIS-COGNITION::core::rust::src::licensing",
+      "path": "core/rust/AEGIS-COGNITION/core/rust/src/licensing.rs",
+      "fan_in": 0,
+      "fan_out": 0,
+      "public_declarations": 0,
+      "class": "INTERNAL_PUBLIC",
+      "ffi_reachable": false,
+      "test_only": false
+    },
+    {
+      "module": "aegis-nerve::AEGIS-COGNITION::core::rust::src::rbac",
+      "path": "core/rust/AEGIS-COGNITION/core/rust/src/rbac.rs",
+      "fan_in": 0,
+      "fan_out": 0,
+      "public_declarations": 22,
+      "class": "DECLARED_PUBLIC",
+      "ffi_reachable": false,
+      "test_only": false
+    },
+    {
+      "module": "aegis-nerve::benches::architecture_performance",
+      "path": "core/rust/benches/architecture_performance.rs",
+      "fan_in": 0,
+      "fan_out": 0,
+      "public_declarations": 0,
+      "class": "INTERNAL_PUBLIC",
+      "ffi_reachable": false,
+      "test_only": false
+    },
+    {
+      "module": "aegis-nerve::benches::nerve_bench",
+      "path": "core/rust/benches/nerve_bench.rs",
+      "fan_in": 0,
+      "fan_out": 0,
+      "public_declarations": 0,
+      "class": "INTERNAL_PUBLIC",
+      "ffi_reachable": false,
+      "test_only": false
+    },
+    {
+      "module": "aegis-nerve::benches::resource_runtime",
+      "path": "core/rust/benches/resource_runtime.rs",
+      "fan_in": 0,
+      "fan_out": 0,
+      "public_declarations": 0,
+      "class": "INTERNAL_PUBLIC",
+      "ffi_reachable": false,
+      "test_only": false
+    },
+    {
+      "module": "aegis-nerve::benches::shadow_sealer_throughput",
+      "path": "core/rust/benches/shadow_sealer_throughput.rs",
+      "fan_in": 0,
+      "fan_out": 0,
+      "public_declarations": 0,
+      "class": "INTERNAL_PUBLIC",
+      "ffi_reachable": false,
+      "test_only": false
+    },
+    {
+      "module": "aegis-nerve::benches::skill_improvement",
+      "path": "core/rust/benches/skill_improvement.rs",
+      "fan_in": 0,
+      "fan_out": 0,
+      "public_declarations": 0,
+      "class": "INTERNAL_PUBLIC",
+      "ffi_reachable": false,
+      "test_only": false
+    },
+    {
+      "module": "aegis-nerve::src::bridge_mmap",
+      "path": "core/rust/src/bridge_mmap.rs",
+      "fan_in": 0,
+      "fan_out": 0,
+      "public_declarations": 21,
+      "class": "DECLARED_PUBLIC",
+      "ffi_reachable": false,
+      "test_only": false
+    },
+    {
+      "module": "aegis-nerve::src::browser_witness",
+      "path": "core/rust/src/browser_witness.rs",
+      "fan_in": 0,
+      "fan_out": 0,
+      "public_declarations": 94,
+      "class": "DECLARED_PUBLIC",
+      "ffi_reachable": false,
+      "test_only": false
+    },
+    {
+      "module": "aegis-nerve::src::circuit_breaker",
+      "path": "core/rust/src/circuit_breaker.rs",
+      "fan_in": 0,
+      "fan_out": 0,
+      "public_declarations": 14,
+      "class": "DECLARED_PUBLIC",
+      "ffi_reachable": false,
+      "test_only": false
+    },
+    {
+      "module": "aegis-nerve::src::cli",
+      "path": "core/rust/src/cli/mod.rs",
+      "fan_in": 0,
+      "fan_out": 0,
+      "public_declarations": 33,
+      "class": "DECLARED_PUBLIC",
+      "ffi_reachable": false,
+      "test_only": false
+    },
+    {
+      "module": "aegis-nerve::src::context",
+      "path": "core/rust/src/context.rs",
+      "fan_in": 0,
+      "fan_out": 0,
+      "public_declarations": 40,
+      "class": "DECLARED_PUBLIC",
+      "ffi_reachable": false,
+      "test_only": false
+    },
+    {
+      "module": "aegis-nerve::src::descriptor",
+      "path": "core/rust/src/descriptor.rs",
+      "fan_in": 0,
+      "fan_out": 0,
+      "public_declarations": 4,
+      "class": "DECLARED_PUBLIC",
+      "ffi_reachable": false,
+      "test_only": false
+    },
+    {
+      "module": "aegis-nerve::src::distributed",
+      "path": "core/rust/src/distributed.rs",
+      "fan_in": 0,
+      "fan_out": 0,
+      "public_declarations": 29,
+      "class": "DECLARED_PUBLIC",
+      "ffi_reachable": false,
+      "test_only": false
+    },
+    {
+      "module": "aegis-nerve::src::eac::cache",
+      "path": "core/rust/src/eac/cache/mod.rs",
+      "fan_in": 0,
+      "fan_out": 0,
+      "public_declarations": 2,
+      "class": "DECLARED_PUBLIC",
+      "ffi_reachable": false,
+      "test_only": false
+    },
+    {
+      "module": "aegis-nerve::src::eac::cache::semantic",
+      "path": "core/rust/src/eac/cache/semantic.rs",
+      "fan_in": 0,
+      "fan_out": 0,
+      "public_declarations": 14,
+      "class": "DECLARED_PUBLIC",
+      "ffi_reachable": false,
+      "test_only": false
+    },
+    {
+      "module": "aegis-nerve::src::eac::events",
+      "path": "core/rust/src/eac/events.rs",
+      "fan_in": 0,
+      "fan_out": 0,
+      "public_declarations": 19,
+      "class": "DECLARED_PUBLIC",
+      "ffi_reachable": false,
+      "test_only": false
+    },
+    {
+      "module": "aegis-nerve::src::eac",
+      "path": "core/rust/src/eac/mod.rs",
+      "fan_in": 0,
+      "fan_out": 0,
+      "public_declarations": 3,
+      "class": "DECLARED_PUBLIC",
+      "ffi_reachable": false,
+      "test_only": false
+    },
+    {
+      "module": "aegis-nerve::src::eac::sandbox::batch",
+      "path": "core/rust/src/eac/sandbox/batch.rs",
+      "fan_in": 0,
+      "fan_out": 0,
+      "public_declarations": 6,
+      "class": "DECLARED_PUBLIC",
+      "ffi_reachable": false,
+      "test_only": false
+    },
+    {
+      "module": "aegis-nerve::src::eac::sandbox",
+      "path": "core/rust/src/eac/sandbox/mod.rs",
+      "fan_in": 0,
+      "fan_out": 0,
+      "public_declarations": 4,
+      "class": "DECLARED_PUBLIC",
+      "ffi_reachable": false,
+      "test_only": false
+    },
+    {
+      "module": "aegis-nerve::src::eac::sandbox::runtime",
+      "path": "core/rust/src/eac/sandbox/runtime.rs",
+      "fan_in": 0,
+      "fan_out": 0,
+      "public_declarations": 15,
+      "class": "DECLARED_PUBLIC",
+      "ffi_reachable": false,
+      "test_only": false
+    },
+    {
+      "module": "aegis-nerve::src::evidence_index",
+      "path": "core/rust/src/evidence_index.rs",
+      "fan_in": 0,
+      "fan_out": 0,
+      "public_declarations": 158,
+      "class": "DECLARED_PUBLIC",
+      "ffi_reachable": false,
+      "test_only": false
+    },
+    {
+      "module": "aegis-nerve::src::execution",
+      "path": "core/rust/src/execution.rs",
+      "fan_in": 0,
+      "fan_out": 0,
+      "public_declarations": 11,
+      "class": "DECLARED_PUBLIC",
+      "ffi_reachable": false,
+      "test_only": false
+    },
+    {
+      "module": "aegis-nerve::src::ffi",
+      "path": "core/rust/src/ffi.rs",
+      "fan_in": 0,
+      "fan_out": 0,
+      "public_declarations": 61,
+      "class": "DECLARED_PUBLIC",
+      "ffi_reachable": true,
+      "test_only": false
+    },
+    {
+      "module": "aegis-nerve::src::goal_intake",
+      "path": "core/rust/src/goal_intake.rs",
+      "fan_in": 0,
+      "fan_out": 0,
+      "public_declarations": 13,
+      "class": "DECLARED_PUBLIC",
+      "ffi_reachable": false,
+      "test_only": false
+    },
+    {
+      "module": "aegis-nerve::src::governance",
+      "path": "core/rust/src/governance.rs",
+      "fan_in": 0,
+      "fan_out": 0,
+      "public_declarations": 47,
+      "class": "DECLARED_PUBLIC",
+      "ffi_reachable": false,
+      "test_only": false
+    },
+    {
+      "module": "aegis-nerve::src::gt96",
+      "path": "core/rust/src/gt96.rs",
+      "fan_in": 0,
+      "fan_out": 0,
+      "public_declarations": 88,
+      "class": "DECLARED_PUBLIC",
+      "ffi_reachable": false,
+      "test_only": false
+    },
+    {
+      "module": "aegis-nerve::src::guardrail",
+      "path": "core/rust/src/guardrail.rs",
+      "fan_in": 0,
+      "fan_out": 0,
+      "public_declarations": 12,
+      "class": "DECLARED_PUBLIC",
+      "ffi_reachable": false,
+      "test_only": false
+    },
+    {
+      "module": "aegis-nerve::src::harness",
+      "path": "core/rust/src/harness.rs",
+      "fan_in": 0,
+      "fan_out": 0,
+      "public_declarations": 5,
+      "class": "DECLARED_PUBLIC",
+      "ffi_reachable": false,
+      "test_only": false
+    },
+    {
+      "module": "aegis-nerve::src::hot_engine",
+      "path": "core/rust/src/hot_engine.rs",
+      "fan_in": 0,
+      "fan_out": 0,
+      "public_declarations": 40,
+      "class": "DECLARED_PUBLIC",
+      "ffi_reachable": false,
+      "test_only": false
+    },
+    {
+      "module": "aegis-nerve::src::integrations",
+      "path": "core/rust/src/integrations.rs",
+      "fan_in": 0,
+      "fan_out": 0,
+      "public_declarations": 3,
+      "class": "DECLARED_PUBLIC",
+      "ffi_reachable": false,
+      "test_only": false
+    },
+    {
+      "module": "aegis-nerve::src::ipc",
+      "path": "core/rust/src/ipc.rs",
+      "fan_in": 0,
+      "fan_out": 0,
+      "public_declarations": 10,
+      "class": "DECLARED_PUBLIC",
+      "ffi_reachable": false,
+      "test_only": false
+    },
+    {
+      "module": "aegis-nerve::src::lab",
+      "path": "core/rust/src/lab.rs",
+      "fan_in": 0,
+      "fan_out": 0,
+      "public_declarations": 75,
+      "class": "DECLARED_PUBLIC",
+      "ffi_reachable": false,
+      "test_only": false
+    },
+    {
+      "module": "aegis-nerve::src::layout",
+      "path": "core/rust/src/layout.rs",
+      "fan_in": 0,
+      "fan_out": 0,
+      "public_declarations": 7,
+      "class": "DECLARED_PUBLIC",
+      "ffi_reachable": false,
+      "test_only": false
+    },
+    {
+      "module": "aegis-nerve::src::learning",
+      "path": "core/rust/src/learning/mod.rs",
+      "fan_in": 0,
+      "fan_out": 0,
+      "public_declarations": 12,
+      "class": "DECLARED_PUBLIC",
+      "ffi_reachable": false,
+      "test_only": false
+    },
+    {
+      "module": "aegis-nerve::crate",
+      "path": "core/rust/src/lib.rs",
+      "fan_in": 0,
+      "fan_out": 0,
+      "public_declarations": 45,
+      "class": "DECLARED_PUBLIC",
+      "ffi_reachable": false,
+      "test_only": false
+    },
+    {
+      "module": "aegis-nerve::src::licensing",
+      "path": "core/rust/src/licensing.rs",
+      "fan_in": 0,
+      "fan_out": 0,
+      "public_declarations": 25,
+      "class": "DECLARED_PUBLIC",
+      "ffi_reachable": false,
+      "test_only": false
+    },
+    {
+      "module": "aegis-nerve::src::llm",
+      "path": "core/rust/src/llm.rs",
+      "fan_in": 0,
+      "fan_out": 0,
+      "public_declarations": 144,
+      "class": "DECLARED_PUBLIC",
+      "ffi_reachable": false,
+      "test_only": false
+    },
+    {
+      "module": "aegis-nerve::bin",
+      "path": "core/rust/src/main.rs",
+      "fan_in": 0,
+      "fan_out": 0,
+      "public_declarations": 0,
+      "class": "INTERNAL_PUBLIC",
+      "ffi_reachable": false,
+      "test_only": false
+    },
+    {
+      "module": "aegis-nerve::src::memory::fidelity",
+      "path": "core/rust/src/memory/fidelity.rs",
+      "fan_in": 0,
+      "fan_out": 0,
+      "public_declarations": 4,
+      "class": "DECLARED_PUBLIC",
+      "ffi_reachable": false,
+      "test_only": false
+    },
+    {
+      "module": "aegis-nerve::src::memory::fold",
+      "path": "core/rust/src/memory/fold.rs",
+      "fan_in": 0,
+      "fan_out": 0,
+      "public_declarations": 58,
+      "class": "DECLARED_PUBLIC",
+      "ffi_reachable": false,
+      "test_only": false
+    },
+    {
+      "module": "aegis-nerve::src::memory::frame",
+      "path": "core/rust/src/memory/frame.rs",
+      "fan_in": 0,
+      "fan_out": 0,
+      "public_declarations": 16,
+      "class": "DECLARED_PUBLIC",
+      "ffi_reachable": false,
+      "test_only": false
+    },
+    {
+      "module": "aegis-nerve::src::memory",
+      "path": "core/rust/src/memory/mod.rs",
+      "fan_in": 0,
+      "fan_out": 0,
+      "public_declarations": 10,
+      "class": "DECLARED_PUBLIC",
+      "ffi_reachable": false,
+      "test_only": false
+    },
+    {
+      "module": "aegis-nerve::src::memory::nudge",
+      "path": "core/rust/src/memory/nudge.rs",
+      "fan_in": 0,
+      "fan_out": 0,
+      "public_declarations": 11,
+      "class": "DECLARED_PUBLIC",
+      "ffi_reachable": false,
+      "test_only": false
+    },
+    {
+      "module": "aegis-nerve::src::memory::pool",
+      "path": "core/rust/src/memory/pool.rs",
+      "fan_in": 0,
+      "fan_out": 0,
+      "public_declarations": 26,
+      "class": "DECLARED_PUBLIC",
+      "ffi_reachable": false,
+      "test_only": false
+    },
+    {
+      "module": "aegis-nerve::src::memory::session_search",
+      "path": "core/rust/src/memory/session_search.rs",
+      "fan_in": 0,
+      "fan_out": 0,
+      "public_declarations": 9,
+      "class": "DECLARED_PUBLIC",
+      "ffi_reachable": false,
+      "test_only": false
+    },
+    {
+      "module": "aegis-nerve::src::memory::user_model",
+      "path": "core/rust/src/memory/user_model.rs",
+      "fan_in": 0,
+      "fan_out": 0,
+      "public_declarations": 13,
+      "class": "DECLARED_PUBLIC",
+      "ffi_reachable": false,
+      "test_only": false
+    },
+    {
+      "module": "aegis-nerve::src::message",
+      "path": "core/rust/src/message.rs",
+      "fan_in": 0,
+      "fan_out": 0,
+      "public_declarations": 7,
+      "class": "DECLARED_PUBLIC",
+      "ffi_reachable": false,
+      "test_only": false
+    },
+    {
+      "module": "aegis-nerve::src::mvcc",
+      "path": "core/rust/src/mvcc.rs",
+      "fan_in": 0,
+      "fan_out": 0,
+      "public_declarations": 9,
+      "class": "DECLARED_PUBLIC",
+      "ffi_reachable": false,
+      "test_only": false
+    },
+    {
+      "module": "aegis-nerve::src::orchestrator",
+      "path": "core/rust/src/orchestrator.rs",
+      "fan_in": 0,
+      "fan_out": 0,
+      "public_declarations": 32,
+      "class": "DECLARED_PUBLIC",
+      "ffi_reachable": false,
+      "test_only": false
+    },
+    {
+      "module": "aegis-nerve::src::physical",
+      "path": "core/rust/src/physical.rs",
+      "fan_in": 0,
+      "fan_out": 0,
+      "public_declarations": 33,
+      "class": "DECLARED_PUBLIC",
+      "ffi_reachable": false,
+      "test_only": false
+    },
+    {
+      "module": "aegis-nerve::src::policy",
+      "path": "core/rust/src/policy.rs",
+      "fan_in": 0,
+      "fan_out": 0,
+      "public_declarations": 69,
+      "class": "DECLARED_PUBLIC",
+      "ffi_reachable": false,
+      "test_only": false
+    },
+    {
+      "module": "aegis-nerve::src::replay",
+      "path": "core/rust/src/replay.rs",
+      "fan_in": 0,
+      "fan_out": 0,
+      "public_declarations": 188,
+      "class": "DECLARED_PUBLIC",
+      "ffi_reachable": false,
+      "test_only": false
+    },
+    {
+      "module": "aegis-nerve::src::resource",
+      "path": "core/rust/src/resource.rs",
+      "fan_in": 0,
+      "fan_out": 0,
+      "public_declarations": 79,
+      "class": "DECLARED_PUBLIC",
+      "ffi_reachable": false,
+      "test_only": false
+    },
+    {
+      "module": "aegis-nerve::src::resource_platform",
+      "path": "core/rust/src/resource_platform.rs",
+      "fan_in": 0,
+      "fan_out": 0,
+      "public_declarations": 12,
+      "class": "DECLARED_PUBLIC",
+      "ffi_reachable": false,
+      "test_only": false
+    },
+    {
+      "module": "aegis-nerve::src::runtime",
+      "path": "core/rust/src/runtime.rs",
+      "fan_in": 0,
+      "fan_out": 0,
+      "public_declarations": 12,
+      "class": "DECLARED_PUBLIC",
+      "ffi_reachable": false,
+      "test_only": false
+    },
+    {
+      "module": "aegis-nerve::src::sac",
+      "path": "core/rust/src/sac.rs",
+      "fan_in": 0,
+      "fan_out": 0,
+      "public_declarations": 19,
+      "class": "DECLARED_PUBLIC",
+      "ffi_reachable": false,
+      "test_only": false
+    },
+    {
+      "module": "aegis-nerve::src::sandbox",
+      "path": "core/rust/src/sandbox.rs",
+      "fan_in": 0,
+      "fan_out": 0,
+      "public_declarations": 45,
+      "class": "DECLARED_PUBLIC",
+      "ffi_reachable": false,
+      "test_only": false
+    },
+    {
+      "module": "aegis-nerve::src::schema",
+      "path": "core/rust/src/schema.rs",
+      "fan_in": 0,
+      "fan_out": 0,
+      "public_declarations": 9,
+      "class": "DECLARED_PUBLIC",
+      "ffi_reachable": false,
+      "test_only": false
+    },
+    {
+      "module": "aegis-nerve::src::shm",
+      "path": "core/rust/src/shm.rs",
+      "fan_in": 0,
+      "fan_out": 0,
+      "public_declarations": 7,
+      "class": "DECLARED_PUBLIC",
+      "ffi_reachable": false,
+      "test_only": false
+    },
+    {
+      "module": "aegis-nerve::src::skill_registry",
+      "path": "core/rust/src/skill_registry.rs",
+      "fan_in": 0,
+      "fan_out": 0,
+      "public_declarations": 59,
+      "class": "DECLARED_PUBLIC",
+      "ffi_reachable": false,
+      "test_only": false
+    },
+    {
+      "module": "aegis-nerve::src::speculative::draft",
+      "path": "core/rust/src/speculative/draft.rs",
+      "fan_in": 0,
+      "fan_out": 0,
+      "public_declarations": 7,
+      "class": "DECLARED_PUBLIC",
+      "ffi_reachable": false,
+      "test_only": false
+    },
+    {
+      "module": "aegis-nerve::src::speculative",
+      "path": "core/rust/src/speculative/mod.rs",
+      "fan_in": 0,
+      "fan_out": 0,
+      "public_declarations": 5,
+      "class": "DECLARED_PUBLIC",
+      "ffi_reachable": false,
+      "test_only": false
+    },
+    {
+      "module": "aegis-nerve::src::speculative::orchestrator",
+      "path": "core/rust/src/speculative/orchestrator.rs",
+      "fan_in": 0,
+      "fan_out": 0,
+      "public_declarations": 4,
+      "class": "DECLARED_PUBLIC",
+      "ffi_reachable": false,
+      "test_only": false
+    },
+    {
+      "module": "aegis-nerve::src::speculative::verifier",
+      "path": "core/rust/src/speculative/verifier.rs",
+      "fan_in": 0,
+      "fan_out": 0,
+      "public_declarations": 6,
+      "class": "DECLARED_PUBLIC",
+      "ffi_reachable": false,
+      "test_only": false
+    },
+    {
+      "module": "aegis-nerve::src::task_ledger",
+      "path": "core/rust/src/task_ledger.rs",
+      "fan_in": 0,
+      "fan_out": 0,
+      "public_declarations": 31,
+      "class": "DECLARED_PUBLIC",
+      "ffi_reachable": false,
+      "test_only": false
+    },
+    {
+      "module": "aegis-nerve::src::telemetry",
+      "path": "core/rust/src/telemetry.rs",
+      "fan_in": 0,
+      "fan_out": 0,
+      "public_declarations": 15,
+      "class": "DECLARED_PUBLIC",
+      "ffi_reachable": false,
+      "test_only": false
+    },
+    {
+      "module": "aegis-nerve::src::tests",
+      "path": "core/rust/src/tests.rs",
+      "fan_in": 0,
+      "fan_out": 0,
+      "public_declarations": 0,
+      "class": "INTERNAL_PUBLIC",
+      "ffi_reachable": false,
+      "test_only": true
+    },
+    {
+      "module": "aegis-nerve::src::tool_gateway",
+      "path": "core/rust/src/tool_gateway.rs",
+      "fan_in": 0,
+      "fan_out": 0,
+      "public_declarations": 35,
+      "class": "DECLARED_PUBLIC",
+      "ffi_reachable": false,
+      "test_only": false
+    },
+    {
+      "module": "aegis-nerve::tests::resource_contract_matrix",
+      "path": "core/rust/tests/resource_contract_matrix.rs",
+      "fan_in": 0,
+      "fan_out": 0,
+      "public_declarations": 0,
+      "class": "INTERNAL_PUBLIC",
+      "ffi_reachable": false,
+      "test_only": true
+    },
+    {
+      "module": "aegis-search-sdk::benches::search_bench",
+      "path": "aegis-plugins/aegis-search-sdk/benches/search_bench.rs",
+      "fan_in": 0,
+      "fan_out": 0,
+      "public_declarations": 0,
+      "class": "INTERNAL_PUBLIC",
+      "ffi_reachable": false,
+      "test_only": false
+    },
+    {
+      "module": "aegis-search-sdk::examples::pipeline_aggregate",
+      "path": "aegis-plugins/aegis-search-sdk/examples/pipeline_aggregate.rs",
+      "fan_in": 0,
+      "fan_out": 0,
+      "public_declarations": 0,
+      "class": "INTERNAL_PUBLIC",
+      "ffi_reachable": false,
+      "test_only": false
+    },
+    {
+      "module": "aegis-search-sdk::examples::pipeline_dedupe",
+      "path": "aegis-plugins/aegis-search-sdk/examples/pipeline_dedupe.rs",
+      "fan_in": 0,
+      "fan_out": 0,
+      "public_declarations": 0,
+      "class": "INTERNAL_PUBLIC",
+      "ffi_reachable": false,
+      "test_only": false
+    },
+    {
+      "module": "aegis-search-sdk::examples::pipeline_evidence",
+      "path": "aegis-plugins/aegis-search-sdk/examples/pipeline_evidence.rs",
+      "fan_in": 0,
+      "fan_out": 0,
+      "public_declarations": 0,
+      "class": "INTERNAL_PUBLIC",
+      "ffi_reachable": false,
+      "test_only": false
+    },
+    {
+      "module": "aegis-search-sdk::examples::pipeline_filter",
+      "path": "aegis-plugins/aegis-search-sdk/examples/pipeline_filter.rs",
+      "fan_in": 0,
+      "fan_out": 0,
+      "public_declarations": 0,
+      "class": "INTERNAL_PUBLIC",
+      "ffi_reachable": false,
+      "test_only": false
+    },
+    {
+      "module": "aegis-search-sdk::examples::pipeline_lexical",
+      "path": "aegis-plugins/aegis-search-sdk/examples/pipeline_lexical.rs",
+      "fan_in": 0,
+      "fan_out": 0,
+      "public_declarations": 0,
+      "class": "INTERNAL_PUBLIC",
+      "ffi_reachable": false,
+      "test_only": false
+    },
+    {
+      "module": "aegis-search-sdk::crate",
+      "path": "aegis-plugins/aegis-search-sdk/src/lib.rs",
+      "fan_in": 0,
+      "fan_out": 0,
+      "public_declarations": 38,
+      "class": "DECLARED_PUBLIC",
+      "ffi_reachable": false,
+      "test_only": false
+    },
+    {
+      "module": "aegis-search-sdk::tests::evidence_integration",
+      "path": "aegis-plugins/aegis-search-sdk/tests/evidence_integration.rs",
+      "fan_in": 0,
+      "fan_out": 0,
+      "public_declarations": 0,
+      "class": "INTERNAL_PUBLIC",
+      "ffi_reachable": false,
+      "test_only": true
+    },
+    {
+      "module": "aegis-search-sdk::tests::search_sandbox_integration",
+      "path": "aegis-plugins/aegis-search-sdk/tests/search_sandbox_integration.rs",
+      "fan_in": 0,
+      "fan_out": 0,
+      "public_declarations": 0,
+      "class": "INTERNAL_PUBLIC",
+      "ffi_reachable": false,
+      "test_only": true
+    },
+    {
+      "module": "aegis-evidence::crate",
+      "path": "aegis-plugins/aegis-evidence/src/lib.rs",
+      "fan_in": 0,
+      "fan_out": 0,
+      "public_declarations": 15,
+      "class": "DECLARED_PUBLIC",
+      "ffi_reachable": false,
+      "test_only": false
+    },
+    {
+      "module": "aegis-sandbox::crate",
+      "path": "aegis-plugins/aegis-sandbox/src/lib.rs",
+      "fan_in": 0,
+      "fan_out": 0,
+      "public_declarations": 22,
+      "class": "DECLARED_PUBLIC",
+      "ffi_reachable": false,
+      "test_only": false
+    },
+    {
+      "module": "aegis-browser::crate",
+      "path": "aegis-plugins/aegis-browser/src/lib.rs",
+      "fan_in": 0,
+      "fan_out": 0,
+      "public_declarations": 26,
+      "class": "DECLARED_PUBLIC",
+      "ffi_reachable": false,
+      "test_only": false
+    },
+    {
+      "module": "aegis-skills::crate",
+      "path": "aegis-plugins/aegis-skills/src/lib.rs",
+      "fan_in": 0,
+      "fan_out": 0,
+      "public_declarations": 13,
+      "class": "DECLARED_PUBLIC",
+      "ffi_reachable": false,
+      "test_only": false
+    },
+    {
+      "module": "aegis-bench::crate",
+      "path": "aegis-plugins/aegis-bench/src/lib.rs",
+      "fan_in": 0,
+      "fan_out": 0,
+      "public_declarations": 9,
+      "class": "DECLARED_PUBLIC",
+      "ffi_reachable": false,
+      "test_only": false
+    },
+    {
+      "module": "semantic_cache_poc::crate",
+      "path": "pocs/semantic_cache_poc/src/lib.rs",
+      "fan_in": 0,
+      "fan_out": 0,
+      "public_declarations": 9,
+      "class": "DECLARED_PUBLIC",
+      "ffi_reachable": false,
+      "test_only": false
+    },
+    {
+      "module": "tool_batching_poc::crate",
+      "path": "pocs/tool_batching_poc/src/lib.rs",
+      "fan_in": 0,
+      "fan_out": 0,
+      "public_declarations": 6,
+      "class": "DECLARED_PUBLIC",
+      "ffi_reachable": false,
+      "test_only": false
+    },
+    {
+      "module": "code_orchestration_poc::crate",
+      "path": "pocs/code_orchestration_poc/src/lib.rs",
+      "fan_in": 0,
+      "fan_out": 0,
+      "public_declarations": 7,
+      "class": "DECLARED_PUBLIC",
+      "ffi_reachable": false,
+      "test_only": false
+    }
+  ],
+  "nested_rust_mirror": {
+    "status": "INSPECTED",
+    "root": "core/rust/AEGIS-COGNITION",
+    "files": [
+      {
+        "path": "core/rust/AEGIS-COGNITION/COMMERCIAL_CLOSURE_REPORT.md",
+        "tracked": true,
+        "git_status": "CLEAN",
+        "content_sha256": "a82e04e9d6418dbe04da653cb70c5623cc09392321769cc6739dab7b2ab671ad",
+        "history": [
+          "9af7d47a49bf46ae943979d498d55d165daabc72 2026-08-25 18:44:41 +0700 Disclose evidence scope and derive release blockers",
+          "4f76fdfa645ed2e34492aa921fe94fc410729378 2026-08-13 18:14:54 +0700 initial commit: AEGIS-COGNITION codebase"
+        ],
+        "history_status": "AVAILABLE",
+        "canonical_duplicate_hash_matches": [],
+        "references_outside_mirror": [
+          "CLEANUP_REPORT.md",
+          "PROJECT_OVERVIEW_DETAILED.md",
+          "README.md",
+          "docs/architecture/document_inventory.json"
+        ],
+        "classification": "UNKNOWN",
+        "removal_effect": {
+          "build": "NO local reference",
+          "test": "NO local reference",
+          "package": "NO Cargo/package inclusion",
+          "runtime": "NO local reference",
+          "docs": "NO direct reference found",
+          "tooling": "NO direct reference found"
+        },
+        "owner_decision_required": true
+      },
+      {
+        "path": "core/rust/AEGIS-COGNITION/core/rust/src/licensing.rs",
+        "tracked": true,
+        "git_status": "CLEAN",
+        "content_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "history": [
+          "4f76fdfa645ed2e34492aa921fe94fc410729378 2026-08-13 18:14:54 +0700 initial commit: AEGIS-COGNITION codebase"
+        ],
+        "history_status": "AVAILABLE",
+        "canonical_duplicate_hash_matches": [],
+        "references_outside_mirror": [
+          "CHANGELOG.md",
+          "COMPREHENSIVE_HARDENING_REPORT.md",
+          "EXTREME_AUDIT_REPORT.md",
+          "PROJECT_OVERVIEW_DETAILED.md",
+          "core/rust/AEGIS-COGNITION/COMMERCIAL_CLOSURE_REPORT.md"
+        ],
+        "classification": "UNKNOWN",
+        "removal_effect": {
+          "build": "NO local reference",
+          "test": "NO local reference",
+          "package": "NO Cargo/package inclusion",
+          "runtime": "NO local reference",
+          "docs": "NO direct reference found",
+          "tooling": "NO direct reference found"
+        },
+        "owner_decision_required": true
+      },
+      {
+        "path": "core/rust/AEGIS-COGNITION/core/rust/src/rbac.rs",
+        "tracked": true,
+        "git_status": "CLEAN",
+        "content_sha256": "a42432953005190190b4dea186cb152e754ebd7fc3122c9b8906cb8d6bc831a3",
+        "history": [
+          "4f76fdfa645ed2e34492aa921fe94fc410729378 2026-08-13 18:14:54 +0700 initial commit: AEGIS-COGNITION codebase"
+        ],
+        "history_status": "AVAILABLE",
+        "canonical_duplicate_hash_matches": [],
+        "references_outside_mirror": [
+          "PROJECT_OVERVIEW_DETAILED.md",
+          "core/rust/AEGIS-COGNITION/COMMERCIAL_CLOSURE_REPORT.md"
+        ],
+        "classification": "UNKNOWN",
+        "removal_effect": {
+          "build": "NO local reference",
+          "test": "NO local reference",
+          "package": "NO Cargo/package inclusion",
+          "runtime": "NO local reference",
+          "docs": "NO direct reference found",
+          "tooling": "NO direct reference found"
+        },
+        "owner_decision_required": true
+      },
+      {
+        "path": "core/rust/AEGIS-COGNITION/website/index.html",
+        "tracked": true,
+        "git_status": "CLEAN",
+        "content_sha256": "b4b64caebd62ccd33f2bb29ddaeaec4d88c3f5b28d3dcb13899f6eb41167fe51",
+        "history": [
+          "9af7d47a49bf46ae943979d498d55d165daabc72 2026-08-25 18:44:41 +0700 Disclose evidence scope and derive release blockers",
+          "4f76fdfa645ed2e34492aa921fe94fc410729378 2026-08-13 18:14:54 +0700 initial commit: AEGIS-COGNITION codebase"
+        ],
+        "history_status": "AVAILABLE",
+        "canonical_duplicate_hash_matches": [],
+        "references_outside_mirror": [
+          "PROJECT_OVERVIEW_DETAILED.md",
+          "core/rust/AEGIS-COGNITION/COMMERCIAL_CLOSURE_REPORT.md"
+        ],
+        "classification": "UNKNOWN",
+        "removal_effect": {
+          "build": "NO local reference",
+          "test": "NO local reference",
+          "package": "NO Cargo/package inclusion",
+          "runtime": "NO local reference",
+          "docs": "NO direct reference found",
+          "tooling": "NO direct reference found"
+        },
+        "owner_decision_required": true
+      }
+    ],
+    "tree_classification": "UNKNOWN / ARCHIVE_ONLY CANDIDATE",
+    "conclusion": "Four files are outside Cargo workspace membership and no external references were found; ownership/history is unresolved, so deletion is not authorized",
+    "limitations": [
+      "search is bounded to current checkout and excludes generated/cache trees"
+    ]
+  },
+  "limitations": [
+    "cfg/macro/trait expansion not exhaustive",
+    "no extra tooling installed"
+  ],
+  "WORKTREE_EPOCH": "3783037b7a38cf214bdfe4b593496971ccafec29fd6b5b05f413a98ea51918c6",
+  "HEAD": "f9645caf6d17cee2023d52183990ffcf8317e456",
+  "generated_at": "2026-08-28T02:58:56.366605+00:00",
+  "collector_version/method": "aegis-final-design-closure-v1; direct Git/filesystem/AST/Cargo plus bounded disposable-wheel probes"
+}

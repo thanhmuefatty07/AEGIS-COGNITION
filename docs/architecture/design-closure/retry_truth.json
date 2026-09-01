@@ -1,0 +1,132 @@
+{
+  "schema": "aegis-design-retry-truth-v1",
+  "layers": [
+    {
+      "owner": "AegisAgent.run",
+      "trigger": "ProviderRateLimitError",
+      "default": "max_retries=3 total gateway calls including first",
+      "max_attempts": 3,
+      "backoff": "exponential sleep",
+      "timeout": "inherited provider call",
+      "effect_class": "provider call",
+      "attempt_id": "adapter retry counter; no shared Lab admission on compatibility path",
+      "budget_integration": "compatibility-local, not LabBudget",
+      "idempotency": "not globally enforced",
+      "cancellation": "not rate-limit retry; other exceptions propagate",
+      "formula": "N_agent <= 3",
+      "evidence": "core/python/aegis_adapter.py AegisAgent.run"
+    },
+    {
+      "owner": "provider.invoke_with_provider_route",
+      "trigger": "rate-limit candidate failure",
+      "default": "one pass over [primary,*fallback]",
+      "max_attempts": "P=1+#fallbacks",
+      "backoff": "none in route; SDK may retry",
+      "timeout": "provider/SDK dependent",
+      "effect_class": "provider call per candidate",
+      "attempt_id": "provider candidate index; no global id",
+      "budget_integration": "not LabBudget-bound on compatibility path",
+      "idempotency": "external provider",
+      "cancellation": "CancelledError propagates",
+      "formula": "N_route <= P",
+      "evidence": "core/python/aegis/provider.py"
+    },
+    {
+      "owner": "LabApplication._run_admitted_gateway",
+      "trigger": "any Exception",
+      "default": "gateway_max_attempts=1, capped by max_steps",
+      "max_attempts": "G=min(gateway_max_attempts,max_steps)",
+      "backoff": "recursive retry; no uniform backoff",
+      "timeout": "finite gateway_timeout_seconds default 60.0 enforced by asyncio.wait_for for cooperative async calls",
+      "effect_class": "provider gateway",
+      "attempt_id": "per-attempt admission/execution id",
+      "budget_integration": "Lab step/reserve and native admission",
+      "idempotency": "deterministic local 64-hex key bound to mission/execution/input/policy and checked at admission/settlement; external receipt not proven",
+      "cancellation": "CancelledError settles CANCELLED; deadline settles TIMED_OUT",
+      "formula": "N_gateway <= G; default G=1",
+      "evidence": "aegis_cognition/lab.py _run_admitted_gateway"
+    },
+    {
+      "owner": "LabApplication._run_tool_calls",
+      "trigger": "any Exception",
+      "default": "tool_max_attempts=1, capped by max_steps",
+      "max_attempts": "T=min(tool_max_attempts,max_steps)",
+      "backoff": "none uniform",
+      "timeout": "finite tool_timeout_seconds default 30.0 enforced by asyncio.wait_for for cooperative async calls",
+      "effect_class": "tool effect",
+      "attempt_id": "per-tool-attempt admission",
+      "budget_integration": "Lab steps/reserves",
+      "idempotency": "deterministic local 64-hex key bound to mission/call/execution/input/policy and checked at admission/settlement; runner external effect not proven",
+      "cancellation": "cancellation settles terminal non-success; deadline settles TIMED_OUT",
+      "formula": "N_tool <= T",
+      "evidence": "aegis_cognition/lab.py _run_tool_calls"
+    },
+    {
+      "owner": "LabApplication experiment/simulation",
+      "trigger": "runner failure",
+      "default": "experiment_max_attempts/simulation_max_attempts, capped by max_steps",
+      "max_attempts": "E/S capped by max_steps",
+      "backoff": "none uniform",
+      "timeout": "finite experiment_timeout_seconds/simulation_timeout_seconds default 30.0 enforced by asyncio.wait_for for cooperative async calls",
+      "effect_class": "process/experiment effect",
+      "attempt_id": "per experiment/simulation admission",
+      "budget_integration": "Lab budget/step",
+      "idempotency": "deterministic local 64-hex key bound to mission/execution/input/policy and checked at admission/settlement; runner external effect not proven",
+      "cancellation": "terminal non-success; deadline settles TIMED_OUT",
+      "formula": "N_exp<=E; N_sim<=S",
+      "evidence": "aegis_cognition/lab.py _run_admitted_experiment/simulation"
+    },
+    {
+      "owner": "ProcessExecutionCell",
+      "trigger": "child timeout, cancellation or exit without result",
+      "default": "one child invocation; timeout_seconds=30.0 unless caller supplies another finite positive value",
+      "max_attempts": 1,
+      "backoff": "none; the cell has no retry loop",
+      "timeout": "parent monotonic deadline; timeout terminates child and raises TimeoutError; cancellation terminates child then propagates CancelledError",
+      "effect_class": "process execution",
+      "attempt_id": "enclosing Lab execution admission; child PID is not an authority identity",
+      "budget_integration": "enclosing Lab cell/budget only; ProcessExecutionCell does not own Lab budget",
+      "idempotency": "enclosing execution idempotency when admitted; no external-effect idempotency is established by the child cell",
+      "cancellation": "local child termination is proven; descendant and OS resource containment remain external",
+      "formula": "N_process_cell <= 1 per invocation before any enclosing retry",
+      "evidence": "aegis_cognition/lab.py ProcessExecutionCell; tests/test_lab_runtime.py process_execution_cell timeout/cancellation tests"
+    },
+    {
+      "owner": "provider SDK",
+      "trigger": "SDK transient",
+      "default": "UNKNOWN",
+      "max_attempts": "UNKNOWN",
+      "backoff": "UNKNOWN",
+      "timeout": "UNKNOWN",
+      "effect_class": "provider external",
+      "attempt_id": "UNKNOWN",
+      "budget_integration": "UNKNOWN",
+      "idempotency": "provider-specific",
+      "cancellation": "provider-specific",
+      "formula": "N_sdk UNKNOWN",
+      "evidence": "provider package not contacted"
+    }
+  ],
+  "derived_bounds": [
+    "non-Lab AegisAgent over provider route: N_provider_invocations <= 3*P before unknown SDK retries",
+    "Lab gateway uses AegisAdapter (not AegisAgent): N_provider_invocations <= G*P before unknown SDK retries",
+    "Lab gateway/tool/experiment/simulation local receipts have deterministic idempotency keys and finite cooperative deadlines",
+    "ProcessExecutionCell itself performs no retry: N_process_cell <= 1 per invocation; an enclosing Lab policy may still retry the admission",
+    "global N_external is NOT VERIFIED because user runners/callables, external effects and SDK retry semantics remain open"
+  ],
+  "duplicate_effect_risks": [
+    "outer Lab gateway retries any Exception, including ambiguous timeout after external commit",
+    "adapter/provider/SDK layers can multiply attempts",
+    "provider candidate fallback may execute a different external effect",
+    "user-supplied runner can contain its own retry",
+    "non-cooperative or synchronous runner can outlive an asyncio deadline"
+  ],
+  "classification": "LAYERED_RETRY_OWNER_OPEN",
+  "limitations": [
+    "no live provider or SDK retry probe"
+  ],
+  "HEAD": "f9645caf6d17cee2023d52183990ffcf8317e456",
+  "WORKTREE_EPOCH": "6e8c4adfdccec80543825a18e3885da36acb62c7574807342ae8ccf4c0d64ec6",
+  "generated_at": "2026-09-01T02:54:46.298383+00:00",
+  "method": "aegis-design-closure-reconciliation-v1; direct Git/filesystem/source inspection, prior artifact hash reuse, disposable wheel reconciliation, bounded local probes"
+}

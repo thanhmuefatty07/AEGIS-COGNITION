@@ -1,0 +1,102 @@
+{
+  "status": "PASS_REUSED_PRIOR_LOCAL_PROBE",
+  "environment": {
+    "python": "3.14.0 (main, Oct 31 2025, 22:59:46) [MSC v.1944 64 bit (AMD64)]",
+    "platform": "Windows-11-10.0.26200-SP0",
+    "wheel_python": "C:\\Users\\ADMIN\\AppData\\Local\\Temp\\aegis-final-design-closure\\wheel-venv-proper-20260828-092953\\Scripts\\python.exe"
+  },
+  "segments": {
+    "agent_config_construction": {
+      "n": 15,
+      "median_ns": 1600,
+      "p95_ns": 4400,
+      "min_ns": 1400,
+      "max_ns": 16600
+    },
+    "lab_policy_construction": {
+      "n": 15,
+      "median_ns": 1300,
+      "p95_ns": 2800,
+      "min_ns": 1200,
+      "max_ns": 7400
+    },
+    "local_execution_cell_lifecycle": {
+      "n": 15,
+      "median_ns": 2715500,
+      "p95_ns": 2754200,
+      "min_ns": 2652400,
+      "max_ns": 3955500
+    },
+    "event_admit_settle": {
+      "n": 20,
+      "median_ns": 2682950.0,
+      "p95_ns": 2807900,
+      "min_ns": 2638100,
+      "max_ns": 3414300
+    },
+    "replay_write": {
+      "n": 8,
+      "median_ns": 47057050.0,
+      "p95_ns": 51694400,
+      "min_ns": 44818200,
+      "max_ns": 52552600
+    },
+    "native_validation": {
+      "n": 30,
+      "median_ns": 3900.0,
+      "p95_ns": 4400,
+      "min_ns": 2300,
+      "max_ns": 66000
+    },
+    "ffi_round_trip": {
+      "n": 30,
+      "median_ns": 8500.0,
+      "p95_ns": 8800,
+      "min_ns": 8300,
+      "max_ns": 61400
+    },
+    "serialization_round_trip": {
+      "n": 30,
+      "median_ns": 5450.0,
+      "p95_ns": 7900,
+      "min_ns": 5200,
+      "max_ns": 39000
+    },
+    "hash_operation": {
+      "n": 30,
+      "median_ns": 1700.0,
+      "p95_ns": 2300,
+      "min_ns": 1600,
+      "max_ns": 46400
+    }
+  },
+  "counters": {
+    "ffi_crossings": 120,
+    "json_encodes": 30,
+    "json_decodes": 30,
+    "hash_operations": 30,
+    "filesystem_writes": 8,
+    "copy_suspects": 30
+  },
+  "agent_construction": {
+    "status": "NOT_VERIFIED_WITHOUT_CREDENTIALS",
+    "safe_substitute": "AgentConfig dummy key only; Agent rejects before construction without API key"
+  },
+  "workdir": "C:\\Users\\ADMIN\\AppData\\Local\\Temp\\aegis-final-design-closure\\clean-run-proper",
+  "network_provider_browser": "NOT_USED",
+  "repetitions_are_small_and_local": true,
+  "limitations": [
+    "debug wheel",
+    "Agent() credential-gated",
+    "timings are local evidence only"
+  ],
+  "WORKTREE_EPOCH": "6e8c4adfdccec80543825a18e3885da36acb62c7574807342ae8ccf4c0d64ec6",
+  "HEAD": "f9645caf6d17cee2023d52183990ffcf8317e456",
+  "generated_at": "2026-09-01T02:54:46.298383+00:00",
+  "collector_version/method": "aegis-final-design-closure-v1; direct Git/filesystem/AST/Cargo plus bounded disposable-wheel probes",
+  "reused_prior_artifact": "C:\\Users\\ADMIN\\AEGIS-COGNITION\\docs\\architecture\\evidence-pack\\final_performance_baseline.json",
+  "reused_prior_artifact_sha256": "e4cdc4fdc3fd71e3f190aa9a0fbbf340f9cd5eeab527fc2a71bc7e3e9724cb75",
+  "source_epoch_note": "prior bounded workload/artifact reused; equivalent workload was not repeated in this reconciliation, so reused measurements are not source-fresh",
+  "schema": "aegis-design-performance-baseline-v1",
+  "method": "aegis-design-closure-reconciliation-v1; direct Git/filesystem/source inspection, prior artifact hash reuse, disposable wheel reconciliation, bounded local probes"
+}

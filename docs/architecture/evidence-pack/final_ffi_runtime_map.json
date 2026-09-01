@@ -1,0 +1,3997 @@
+{
+  "schema": "aegis-final-ffi-runtime-map-v1",
+  "candidate_count": 93,
+  "records": [
+    {
+      "python_facing_name": "SearchQuery",
+      "rust_function_or_type": "PySearchQuery",
+      "path": "aegis-plugins/aegis-search-sdk/src/lib.rs",
+      "line": 475,
+      "caller_candidates": [],
+      "input_type": null,
+      "output_type": "PyClass",
+      "serialization": "typed/native or unknown",
+      "copying": "unknown",
+      "side_effect_class": "UNKNOWN",
+      "authority_relevance": "UNKNOWN",
+      "estimated_frequency": "UNKNOWN",
+      "flags": [],
+      "reachability_class": "UNKNOWN"
+    },
+    {
+      "python_facing_name": "lexical_sync",
+      "rust_function_or_type": "lexical_sync",
+      "path": "aegis-plugins/aegis-search-sdk/src/lib.rs",
+      "line": 494,
+      "caller_candidates": [],
+      "input_type": "query: &PySearchQuery",
+      "output_type": "PyResult<String>",
+      "serialization": "JSON/bytes/string boundary suspected",
+      "copying": "unknown",
+      "side_effect_class": "UNKNOWN",
+      "authority_relevance": "UNKNOWN",
+      "estimated_frequency": "PER_RUN",
+      "flags": [
+        "STRINGLY_TYPED"
+      ],
+      "reachability_class": "UNKNOWN"
+    },
+    {
+      "python_facing_name": "aegis_status",
+      "rust_function_or_type": "aegis_status",
+      "path": "core/rust/src/ffi.rs",
+      "line": 45,
+      "caller_candidates": [],
+      "input_type": "",
+      "output_type": "PyResult<&'static str>",
+      "serialization": "typed/native or unknown",
+      "copying": "unknown",
+      "side_effect_class": "UNKNOWN",
+      "authority_relevance": "UNKNOWN",
+      "estimated_frequency": "UNKNOWN",
+      "flags": [],
+      "reachability_class": "REACHABLE_FROM_PUBLIC_API"
+    },
+    {
+      "python_facing_name": "aegis_validate_schema",
+      "rust_function_or_type": "aegis_validate_schema",
+      "path": "core/rust/src/ffi.rs",
+      "line": 50,
+      "caller_candidates": [],
+      "input_type": "schema_id: u64, version: u32",
+      "output_type": "PyResult<bool>",
+      "serialization": "JSON/bytes/string boundary suspected",
+      "copying": "unknown",
+      "side_effect_class": "UNKNOWN",
+      "authority_relevance": "UNKNOWN",
+      "estimated_frequency": "UNKNOWN",
+      "flags": [
+        "LARGE_PAYLOAD"
+      ],
+      "reachability_class": "REACHABLE_FROM_PUBLIC_API"
+    },
+    {
+      "python_facing_name": "aegis_validate_layout",
+      "rust_function_or_type": "aegis_validate_layout",
+      "path": "core/rust/src/ffi.rs",
+      "line": 55,
+      "caller_candidates": [],
+      "input_type": "header_bytes: usize, alignment: usize",
+      "output_type": "PyResult<bool>",
+      "serialization": "JSON/bytes/string boundary suspected",
+      "copying": "unknown",
+      "side_effect_class": "UNKNOWN",
+      "authority_relevance": "UNKNOWN",
+      "estimated_frequency": "UNKNOWN",
+      "flags": [
+        "LARGE_PAYLOAD"
+      ],
+      "reachability_class": "REACHABLE_FROM_PUBLIC_API"
+    },
+    {
+      "python_facing_name": "aegis_memory_alignment",
+      "rust_function_or_type": "aegis_memory_alignment",
+      "path": "core/rust/src/ffi.rs",
+      "line": 60,
+      "caller_candidates": [],
+      "input_type": "alignment: usize",
+      "output_type": "PyResult<bool>",
+      "serialization": "typed/native or unknown",
+      "copying": "unknown",
+      "side_effect_class": "UNKNOWN",
+      "authority_relevance": "UNKNOWN",
+      "estimated_frequency": "UNKNOWN",
+      "flags": [],
+      "reachability_class": "UNKNOWN"
+    },
+    {
+      "python_facing_name": "aegis_nerve_schema_id",
+      "rust_function_or_type": "aegis_nerve_schema_id",
+      "path": "core/rust/src/ffi.rs",
+      "line": 65,
+      "caller_candidates": [],
+      "input_type": "",
+      "output_type": "PyResult<u64>",
+      "serialization": "typed/native or unknown",
+      "copying": "unknown",
+      "side_effect_class": "UNKNOWN",
+      "authority_relevance": "UNKNOWN",
+      "estimated_frequency": "UNKNOWN",
+      "flags": [],
+      "reachability_class": "REACHABLE_FROM_PUBLIC_API"
+    },
+    {
+      "python_facing_name": "aegis_frame_is_valid",
+      "rust_function_or_type": "aegis_frame_is_valid",
+      "path": "core/rust/src/ffi.rs",
+      "line": 70,
+      "caller_candidates": [],
+      "input_type": "payload_len: usize",
+      "output_type": "PyResult<bool>",
+      "serialization": "typed/native or unknown",
+      "copying": "unknown",
+      "side_effect_class": "UNKNOWN",
+      "authority_relevance": "UNKNOWN",
+      "estimated_frequency": "UNKNOWN",
+      "flags": [],
+      "reachability_class": "UNKNOWN"
+    },
+    {
+      "python_facing_name": "aegis_message_frame_valid",
+      "rust_function_or_type": "aegis_message_frame_valid",
+      "path": "core/rust/src/ffi.rs",
+      "line": 75,
+      "caller_candidates": [],
+      "input_type": "payload_len: usize,\n    message_id: u128,\n    session_id: u128,",
+      "output_type": "PyResult<bool>",
+      "serialization": "typed/native or unknown",
+      "copying": "unknown",
+      "side_effect_class": "UNKNOWN",
+      "authority_relevance": "UNKNOWN",
+      "estimated_frequency": "UNKNOWN",
+      "flags": [],
+      "reachability_class": "UNKNOWN"
+    },
+    {
+      "python_facing_name": "aegis_zero_copy_ready",
+      "rust_function_or_type": "aegis_zero_copy_ready",
+      "path": "core/rust/src/ffi.rs",
+      "line": 84,
+      "caller_candidates": [],
+      "input_type": "schema_id: u64, version: u32, payload_len: usize",
+      "output_type": "PyResult<bool>",
+      "serialization": "JSON/bytes/string boundary suspected",
+      "copying": "unknown",
+      "side_effect_class": "UNKNOWN",
+      "authority_relevance": "UNKNOWN",
+      "estimated_frequency": "UNKNOWN",
+      "flags": [
+        "LARGE_PAYLOAD"
+      ],
+      "reachability_class": "UNKNOWN"
+    },
+    {
+      "python_facing_name": "aegis_mmap_bridge_header_bytes",
+      "rust_function_or_type": "aegis_mmap_bridge_header_bytes",
+      "path": "core/rust/src/ffi.rs",
+      "line": 89,
+      "caller_candidates": [],
+      "input_type": "",
+      "output_type": "PyResult<usize>",
+      "serialization": "JSON/bytes/string boundary suspected",
+      "copying": "unknown",
+      "side_effect_class": "UNKNOWN",
+      "authority_relevance": "UNKNOWN",
+      "estimated_frequency": "UNKNOWN",
+      "flags": [
+        "LARGE_PAYLOAD"
+      ],
+      "reachability_class": "UNKNOWN"
+    },
+    {
+      "python_facing_name": "aegis_mmap_bridge_payload_alignment",
+      "rust_function_or_type": "aegis_mmap_bridge_payload_alignment",
+      "path": "core/rust/src/ffi.rs",
+      "line": 94,
+      "caller_candidates": [],
+      "input_type": "",
+      "output_type": "PyResult<usize>",
+      "serialization": "JSON/bytes/string boundary suspected",
+      "copying": "unknown",
+      "side_effect_class": "FILESYSTEM",
+      "authority_relevance": "UNKNOWN",
+      "estimated_frequency": "UNKNOWN",
+      "flags": [
+        "STRINGLY_TYPED"
+      ],
+      "reachability_class": "UNKNOWN"
+    },
+    {
+      "python_facing_name": "aegis_write_mmap_bridge_pattern",
+      "rust_function_or_type": "aegis_write_mmap_bridge_pattern",
+      "path": "core/rust/src/ffi.rs",
+      "line": 99,
+      "caller_candidates": [
+        {
+          "path": "core/python/bridge_mmap.py",
+          "line": 91
+        },
+        {
+          "path": "scripts/constitution_audit.py",
+          "line": 227
+        },
+        {
+          "path": "core/python/bridge_mmap.py",
+          "line": 91
+        },
+        {
+          "path": "scripts/constitution_audit.py",
+          "line": 227
+        }
+      ],
+      "input_type": "path: String,\n    message_id: u128,\n    session_id: u128,\n    payload_len: usize,",
+      "output_type": "PyResult<(u128, u128, u64, u64, Vec<u8>)>",
+      "serialization": "JSON/bytes/string boundary suspected",
+      "copying": "unknown",
+      "side_effect_class": "FILESYSTEM",
+      "authority_relevance": "UNKNOWN",
+      "estimated_frequency": "UNKNOWN",
+      "flags": [
+        "STRINGLY_TYPED"
+      ],
+      "reachability_class": "UNKNOWN"
+    },
+    {
+      "python_facing_name": "aegis_validate_mmap_bridge_frame",
+      "rust_function_or_type": "aegis_validate_mmap_bridge_frame",
+      "path": "core/rust/src/ffi.rs",
+      "line": 124,
+      "caller_candidates": [
+        {
+          "path": "core/python/bridge_mmap.py",
+          "line": 109
+        },
+        {
+          "path": "scripts/constitution_audit.py",
+          "line": 228
+        },
+        {
+          "path": "core/python/bridge_mmap.py",
+          "line": 109
+        },
+        {
+          "path": "scripts/constitution_audit.py",
+          "line": 228
+        }
+      ],
+      "input_type": "path: String",
+      "output_type": "PyResult<bool>",
+      "serialization": "JSON/bytes/string boundary suspected",
+      "copying": "unknown",
+      "side_effect_class": "FILESYSTEM",
+      "authority_relevance": "UNKNOWN",
+      "estimated_frequency": "UNKNOWN",
+      "flags": [
+        "STRINGLY_TYPED"
+      ],
+      "reachability_class": "UNKNOWN"
+    },
+    {
+      "python_facing_name": "aegis_execute_mmap_wasm_bridge_frame",
+      "rust_function_or_type": "aegis_execute_mmap_wasm_bridge_frame",
+      "path": "core/rust/src/ffi.rs",
+      "line": 129,
+      "caller_candidates": [
+        {
+          "path": "core/python/bridge_mmap.py",
+          "line": 117
+        },
+        {
+          "path": "scripts/constitution_audit.py",
+          "line": 230
+        },
+        {
+          "path": "core/python/bridge_mmap.py",
+          "line": 117
+        },
+        {
+          "path": "scripts/constitution_audit.py",
+          "line": 230
+        }
+      ],
+      "input_type": "path: String,\n    fuel_limit: u64,",
+      "output_type": "PyResult<(u64, Vec<u8>)>",
+      "serialization": "JSON/bytes/string boundary suspected",
+      "copying": "unknown",
+      "side_effect_class": "FILESYSTEM",
+      "authority_relevance": "UNKNOWN",
+      "estimated_frequency": "UNKNOWN",
+      "flags": [
+        "STRINGLY_TYPED"
+      ],
+      "reachability_class": "UNKNOWN"
+    },
+    {
+      "python_facing_name": "aegis_new_message_identity",
+      "rust_function_or_type": "aegis_new_message_identity",
+      "path": "core/rust/src/ffi.rs",
+      "line": 143,
+      "caller_candidates": [],
+      "input_type": "message_id: u128, session_id: u128",
+      "output_type": "PyResult<bool>",
+      "serialization": "typed/native or unknown",
+      "copying": "unknown",
+      "side_effect_class": "UNKNOWN",
+      "authority_relevance": "UNKNOWN",
+      "estimated_frequency": "UNKNOWN",
+      "flags": [],
+      "reachability_class": "UNKNOWN"
+    },
+    {
+      "python_facing_name": "aegis_can_bridge_python",
+      "rust_function_or_type": "aegis_can_bridge_python",
+      "path": "core/rust/src/ffi.rs",
+      "line": 148,
+      "caller_candidates": [],
+      "input_type": "payload_len: usize,\n    message_id: u128,\n    session_id: u128,",
+      "output_type": "PyResult<bool>",
+      "serialization": "typed/native or unknown",
+      "copying": "unknown",
+      "side_effect_class": "UNKNOWN",
+      "authority_relevance": "UNKNOWN",
+      "estimated_frequency": "UNKNOWN",
+      "flags": [],
+      "reachability_class": "UNKNOWN"
+    },
+    {
+      "python_facing_name": "aegis_layout_header_bytes",
+      "rust_function_or_type": "aegis_layout_header_bytes",
+      "path": "core/rust/src/ffi.rs",
+      "line": 157,
+      "caller_candidates": [],
+      "input_type": "",
+      "output_type": "PyResult<usize>",
+      "serialization": "JSON/bytes/string boundary suspected",
+      "copying": "unknown",
+      "side_effect_class": "UNKNOWN",
+      "authority_relevance": "UNKNOWN",
+      "estimated_frequency": "UNKNOWN",
+      "flags": [
+        "LARGE_PAYLOAD"
+      ],
+      "reachability_class": "UNKNOWN"
+    },
+    {
+      "python_facing_name": "aegis_layout_payload_alignment",
+      "rust_function_or_type": "aegis_layout_payload_alignment",
+      "path": "core/rust/src/ffi.rs",
+      "line": 162,
+      "caller_candidates": [],
+      "input_type": "",
+      "output_type": "PyResult<usize>",
+      "serialization": "typed/native or unknown",
+      "copying": "unknown",
+      "side_effect_class": "UNKNOWN",
+      "authority_relevance": "UNKNOWN",
+      "estimated_frequency": "UNKNOWN",
+      "flags": [],
+      "reachability_class": "UNKNOWN"
+    },
+    {
+      "python_facing_name": "aegis_descriptor_valid",
+      "rust_function_or_type": "aegis_descriptor_valid",
+      "path": "core/rust/src/ffi.rs",
+      "line": 167,
+      "caller_candidates": [],
+      "input_type": "payload_len: usize",
+      "output_type": "PyResult<bool>",
+      "serialization": "typed/native or unknown",
+      "copying": "unknown",
+      "side_effect_class": "UNKNOWN",
+      "authority_relevance": "UNKNOWN",
+      "estimated_frequency": "UNKNOWN",
+      "flags": [],
+      "reachability_class": "UNKNOWN"
+    },
+    {
+      "python_facing_name": "aegis_cli_status",
+      "rust_function_or_type": "aegis_cli_status",
+      "path": "core/rust/src/ffi.rs",
+      "line": 172,
+      "caller_candidates": [],
+      "input_type": "",
+      "output_type": "PyResult<&'static str>",
+      "serialization": "typed/native or unknown",
+      "copying": "unknown",
+      "side_effect_class": "UNKNOWN",
+      "authority_relevance": "UNKNOWN",
+      "estimated_frequency": "UNKNOWN",
+      "flags": [],
+      "reachability_class": "UNKNOWN"
+    },
+    {
+      "python_facing_name": "aegis_cli_schema",
+      "rust_function_or_type": "aegis_cli_schema",
+      "path": "core/rust/src/ffi.rs",
+      "line": 177,
+      "caller_candidates": [],
+      "input_type": "",
+      "output_type": "PyResult<&'static str>",
+      "serialization": "typed/native or unknown",
+      "copying": "unknown",
+      "side_effect_class": "UNKNOWN",
+      "authority_relevance": "UNKNOWN",
+      "estimated_frequency": "UNKNOWN",
+      "flags": [],
+      "reachability_class": "UNKNOWN"
+    },
+    {
+      "python_facing_name": "aegis_release_ready",
+      "rust_function_or_type": "aegis_release_ready",
+      "path": "core/rust/src/ffi.rs",
+      "line": 182,
+      "caller_candidates": [],
+      "input_type": "",
+      "output_type": "PyResult<bool>",
+      "serialization": "typed/native or unknown",
+      "copying": "unknown",
+      "side_effect_class": "UNKNOWN",
+      "authority_relevance": "UNKNOWN",
+      "estimated_frequency": "PER_RUN",
+      "flags": [],
+      "reachability_class": "UNKNOWN"
+    },
+    {
+      "python_facing_name": "aegis_hardware_profile",
+      "rust_function_or_type": "aegis_hardware_profile",
+      "path": "core/rust/src/ffi.rs",
+      "line": 190,
+      "caller_candidates": [
+        {
+          "path": "aegis_cognition/runtime.py",
+          "line": 41
+        },
+        {
+          "path": "aegis_cognition/runtime.py",
+          "line": 41
+        }
+      ],
+      "input_type": "",
+      "output_type": "PyResult<String>",
+      "serialization": "JSON/bytes/string boundary suspected",
+      "copying": "suspected",
+      "side_effect_class": "FILESYSTEM",
+      "authority_relevance": "UNKNOWN",
+      "estimated_frequency": "PER_RUN",
+      "flags": [
+        "COPY_HEAVY",
+        "LARGE_PAYLOAD",
+        "STRINGLY_TYPED"
+      ],
+      "reachability_class": "UNKNOWN"
+    },
+    {
+      "python_facing_name": "aegis_resource_contract_version",
+      "rust_function_or_type": "aegis_resource_contract_version",
+      "path": "core/rust/src/ffi.rs",
+      "line": 201,
+      "caller_candidates": [
+        {
+          "path": "aegis_cognition/runtime.py",
+          "line": 71
+        },
+        {
+          "path": "aegis_cognition/runtime.py",
+          "line": 71
+        }
+      ],
+      "input_type": "",
+      "output_type": "PyResult<&'static str>",
+      "serialization": "typed/native or unknown",
+      "copying": "unknown",
+      "side_effect_class": "UNKNOWN",
+      "authority_relevance": "UNKNOWN",
+      "estimated_frequency": "UNKNOWN",
+      "flags": [],
+      "reachability_class": "REACHABLE_FROM_PUBLIC_API"
+    },
+    {
+      "python_facing_name": "aegis_resource_admission_preview",
+      "rust_function_or_type": "aegis_resource_admission_preview",
+      "path": "core/rust/src/ffi.rs",
+      "line": 211,
+      "caller_candidates": [
+        {
+          "path": "aegis_cognition/runtime.py",
+          "line": 129
+        },
+        {
+          "path": "aegis_cognition/runtime.py",
+          "line": 129
+        }
+      ],
+      "input_type": "request_json: String,\n    now_ms: Option<u64>,",
+      "output_type": "PyResult<String>",
+      "serialization": "JSON/bytes/string boundary suspected",
+      "copying": "suspected",
+      "side_effect_class": "UNKNOWN",
+      "authority_relevance": "UNKNOWN",
+      "estimated_frequency": "UNKNOWN",
+      "flags": [
+        "COPY_HEAVY",
+        "LARGE_PAYLOAD",
+        "STRINGLY_TYPED"
+      ],
+      "reachability_class": "UNKNOWN"
+    },
+    {
+      "python_facing_name": "aegis_execution_lanes",
+      "rust_function_or_type": "aegis_execution_lanes",
+      "path": "core/rust/src/ffi.rs",
+      "line": 235,
+      "caller_candidates": [
+        {
+          "path": "aegis_cognition/runtime.py",
+          "line": 82
+        },
+        {
+          "path": "aegis_cognition/runtime.py",
+          "line": 82
+        }
+      ],
+      "input_type": "",
+      "output_type": "PyResult<String>",
+      "serialization": "JSON/bytes/string boundary suspected",
+      "copying": "suspected",
+      "side_effect_class": "FILESYSTEM",
+      "authority_relevance": "UNKNOWN",
+      "estimated_frequency": "UNKNOWN",
+      "flags": [
+        "COPY_HEAVY",
+        "LARGE_PAYLOAD",
+        "STRINGLY_TYPED"
+      ],
+      "reachability_class": "UNKNOWN"
+    },
+    {
+      "python_facing_name": "aegis_runtime_submit",
+      "rust_function_or_type": "aegis_runtime_submit",
+      "path": "core/rust/src/ffi.rs",
+      "line": 253,
+      "caller_candidates": [
+        {
+          "path": "aegis_cognition/runtime.py",
+          "line": 151
+        },
+        {
+          "path": "aegis_cognition/runtime.py",
+          "line": 151
+        }
+      ],
+      "input_type": "task_id: u128,\n    dependency_ids_json: String,\n    request_json: String,\n    now_ms: u64,",
+      "output_type": "PyResult<String>",
+      "serialization": "JSON/bytes/string boundary suspected",
+      "copying": "suspected",
+      "side_effect_class": "UNKNOWN",
+      "authority_relevance": "UNKNOWN",
+      "estimated_frequency": "PER_RUN",
+      "flags": [
+        "COPY_HEAVY",
+        "LARGE_PAYLOAD",
+        "STRINGLY_TYPED"
+      ],
+      "reachability_class": "UNKNOWN"
+    },
+    {
+      "python_facing_name": "aegis_runtime_retry",
+      "rust_function_or_type": "aegis_runtime_retry",
+      "path": "core/rust/src/ffi.rs",
+      "line": 305,
+      "caller_candidates": [
+        {
+          "path": "aegis_cognition/runtime.py",
+          "line": 184
+        },
+        {
+          "path": "aegis_cognition/runtime.py",
+          "line": 184
+        }
+      ],
+      "input_type": "task_id: u128, request_json: String, now_ms: u64",
+      "output_type": "PyResult<String>",
+      "serialization": "JSON/bytes/string boundary suspected",
+      "copying": "suspected",
+      "side_effect_class": "UNKNOWN",
+      "authority_relevance": "UNKNOWN",
+      "estimated_frequency": "PER_RUN",
+      "flags": [
+        "COPY_HEAVY",
+        "LARGE_PAYLOAD",
+        "STRINGLY_TYPED"
+      ],
+      "reachability_class": "UNKNOWN"
+    },
+    {
+      "python_facing_name": "aegis_runtime_finish",
+      "rust_function_or_type": "aegis_runtime_finish",
+      "path": "core/rust/src/ffi.rs",
+      "line": 344,
+      "caller_candidates": [
+        {
+          "path": "aegis_cognition/runtime.py",
+          "line": 168
+        },
+        {
+          "path": "aegis_cognition/runtime.py",
+          "line": 168
+        }
+      ],
+      "input_type": "lease_token_json: String, outcome: String",
+      "output_type": "PyResult<bool>",
+      "serialization": "JSON/bytes/string boundary suspected",
+      "copying": "suspected",
+      "side_effect_class": "UNKNOWN",
+      "authority_relevance": "UNKNOWN",
+      "estimated_frequency": "PER_RUN",
+      "flags": [
+        "COPY_HEAVY",
+        "LARGE_PAYLOAD",
+        "STRINGLY_TYPED"
+      ],
+      "reachability_class": "UNKNOWN"
+    },
+    {
+      "python_facing_name": "aegis_llm_request",
+      "rust_function_or_type": "aegis_llm_request",
+      "path": "core/rust/src/ffi.rs",
+      "line": 376,
+      "caller_candidates": [],
+      "input_type": "request_id: u128,\n    session_id: u128,\n    prompt: String,\n    model_hint: Option<String>,",
+      "output_type": "PyResult<bool>",
+      "serialization": "JSON/bytes/string boundary suspected",
+      "copying": "unknown",
+      "side_effect_class": "PROVIDER",
+      "authority_relevance": "UNKNOWN",
+      "estimated_frequency": "UNKNOWN",
+      "flags": [
+        "STRINGLY_TYPED"
+      ],
+      "reachability_class": "UNKNOWN"
+    },
+    {
+      "python_facing_name": "aegis_resource_usage_sample",
+      "rust_function_or_type": "aegis_resource_usage_sample",
+      "path": "core/rust/src/ffi.rs",
+      "line": 394,
+      "caller_candidates": [
+        {
+          "path": "aegis_cognition/runtime.py",
+          "line": 98
+        },
+        {
+          "path": "scripts/architecture_fitness.py",
+          "line": 99
+        },
+        {
+          "path": "aegis_cognition/runtime.py",
+          "line": 98
+        },
+        {
+          "path": "scripts/architecture_fitness.py",
+          "line": 99
+        }
+      ],
+      "input_type": "",
+      "output_type": "PyResult<String>",
+      "serialization": "JSON/bytes/string boundary suspected",
+      "copying": "suspected",
+      "side_effect_class": "UNKNOWN",
+      "authority_relevance": "UNKNOWN",
+      "estimated_frequency": "PER_RUN",
+      "flags": [
+        "COPY_HEAVY",
+        "LARGE_PAYLOAD",
+        "STRINGLY_TYPED"
+      ],
+      "reachability_class": "UNKNOWN"
+    },
+    {
+      "python_facing_name": "aegis_llm_route",
+      "rust_function_or_type": "aegis_llm_route",
+      "path": "core/rust/src/ffi.rs",
+      "line": 406,
+      "caller_candidates": [],
+      "input_type": "request_id: u128, session_id: u128, prompt: String",
+      "output_type": "PyResult<bool>",
+      "serialization": "JSON/bytes/string boundary suspected",
+      "copying": "unknown",
+      "side_effect_class": "NETWORK",
+      "authority_relevance": "UNKNOWN",
+      "estimated_frequency": "UNKNOWN",
+      "flags": [
+        "STRINGLY_TYPED"
+      ],
+      "reachability_class": "UNKNOWN"
+    },
+    {
+      "python_facing_name": "aegis_llm_bridge_key",
+      "rust_function_or_type": "aegis_llm_bridge_key",
+      "path": "core/rust/src/ffi.rs",
+      "line": 424,
+      "caller_candidates": [],
+      "input_type": "request_id: u128, session_id: u128",
+      "output_type": "PyResult<(u128, u128)>",
+      "serialization": "JSON/bytes/string boundary suspected",
+      "copying": "unknown",
+      "side_effect_class": "PROVIDER",
+      "authority_relevance": "UNKNOWN",
+      "estimated_frequency": "UNKNOWN",
+      "flags": [
+        "STRINGLY_TYPED"
+      ],
+      "reachability_class": "UNKNOWN"
+    },
+    {
+      "python_facing_name": "aegis_llm_normalize",
+      "rust_function_or_type": "aegis_llm_normalize",
+      "path": "core/rust/src/ffi.rs",
+      "line": 429,
+      "caller_candidates": [],
+      "input_type": "request_id: u128, session_id: u128, content: String",
+      "output_type": "PyResult<bool>",
+      "serialization": "JSON/bytes/string boundary suspected",
+      "copying": "unknown",
+      "side_effect_class": "PROVIDER",
+      "authority_relevance": "UNKNOWN",
+      "estimated_frequency": "UNKNOWN",
+      "flags": [
+        "STRINGLY_TYPED"
+      ],
+      "reachability_class": "UNKNOWN"
+    },
+    {
+      "python_facing_name": "aegis_llm_reject",
+      "rust_function_or_type": "aegis_llm_reject",
+      "path": "core/rust/src/ffi.rs",
+      "line": 438,
+      "caller_candidates": [],
+      "input_type": "request_id: u128, session_id: u128, error: String",
+      "output_type": "PyResult<bool>",
+      "serialization": "JSON/bytes/string boundary suspected",
+      "copying": "unknown",
+      "side_effect_class": "PROVIDER",
+      "authority_relevance": "UNKNOWN",
+      "estimated_frequency": "UNKNOWN",
+      "flags": [
+        "STRINGLY_TYPED"
+      ],
+      "reachability_class": "UNKNOWN"
+    },
+    {
+      "python_facing_name": "aegis_harness_generate_skeleton",
+      "rust_function_or_type": "aegis_harness_generate_skeleton",
+      "path": "core/rust/src/ffi.rs",
+      "line": 448,
+      "caller_candidates": [
+        {
+          "path": "core/python/orchestrator.py",
+          "line": 59
+        },
+        {
+          "path": "core/python/orchestrator.py",
+          "line": 59
+        }
+      ],
+      "input_type": "code: String",
+      "output_type": "PyResult<String>",
+      "serialization": "JSON/bytes/string boundary suspected",
+      "copying": "unknown",
+      "side_effect_class": "UNKNOWN",
+      "authority_relevance": "UNKNOWN",
+      "estimated_frequency": "UNKNOWN",
+      "flags": [
+        "STRINGLY_TYPED"
+      ],
+      "reachability_class": "UNKNOWN"
+    },
+    {
+      "python_facing_name": "aegis_harness_analyze_errors",
+      "rust_function_or_type": "aegis_harness_analyze_errors",
+      "path": "core/rust/src/ffi.rs",
+      "line": 454,
+      "caller_candidates": [
+        {
+          "path": "core/python/orchestrator.py",
+          "line": 83
+        },
+        {
+          "path": "core/python/orchestrator.py",
+          "line": 83
+        }
+      ],
+      "input_type": "logs: String",
+      "output_type": "PyResult<Vec<String>>",
+      "serialization": "JSON/bytes/string boundary suspected",
+      "copying": "unknown",
+      "side_effect_class": "UNKNOWN",
+      "authority_relevance": "UNKNOWN",
+      "estimated_frequency": "UNKNOWN",
+      "flags": [
+        "STRINGLY_TYPED"
+      ],
+      "reachability_class": "UNKNOWN"
+    },
+    {
+      "python_facing_name": "aegis_physical_metrics_prometheus",
+      "rust_function_or_type": "aegis_physical_metrics_prometheus",
+      "path": "core/rust/src/ffi.rs",
+      "line": 460,
+      "caller_candidates": [],
+      "input_type": "",
+      "output_type": "PyResult<String>",
+      "serialization": "JSON/bytes/string boundary suspected",
+      "copying": "suspected",
+      "side_effect_class": "UNKNOWN",
+      "authority_relevance": "UNKNOWN",
+      "estimated_frequency": "PER_RUN",
+      "flags": [
+        "COPY_HEAVY",
+        "LARGE_PAYLOAD",
+        "STRINGLY_TYPED"
+      ],
+      "reachability_class": "UNKNOWN"
+    },
+    {
+      "python_facing_name": "aegis_runtime_telemetry_emit",
+      "rust_function_or_type": "aegis_runtime_telemetry_emit",
+      "path": "core/rust/src/ffi.rs",
+      "line": 465,
+      "caller_candidates": [
+        {
+          "path": "aegis_cognition/observability.py",
+          "line": 130
+        },
+        {
+          "path": "aegis_cognition/observability.py",
+          "line": 130
+        }
+      ],
+      "input_type": "event_json: String",
+      "output_type": "PyResult<String>",
+      "serialization": "JSON/bytes/string boundary suspected",
+      "copying": "suspected",
+      "side_effect_class": "UNKNOWN",
+      "authority_relevance": "UNKNOWN",
+      "estimated_frequency": "PER_RUN",
+      "flags": [
+        "COPY_HEAVY",
+        "LARGE_PAYLOAD",
+        "STRINGLY_TYPED"
+      ],
+      "reachability_class": "UNKNOWN"
+    },
+    {
+      "python_facing_name": "aegis_runtime_telemetry_snapshot",
+      "rust_function_or_type": "aegis_runtime_telemetry_snapshot",
+      "path": "core/rust/src/ffi.rs",
+      "line": 473,
+      "caller_candidates": [],
+      "input_type": "",
+      "output_type": "PyResult<String>",
+      "serialization": "JSON/bytes/string boundary suspected",
+      "copying": "suspected",
+      "side_effect_class": "UNKNOWN",
+      "authority_relevance": "UNKNOWN",
+      "estimated_frequency": "PER_RUN",
+      "flags": [
+        "COPY_HEAVY",
+        "LARGE_PAYLOAD",
+        "STRINGLY_TYPED"
+      ],
+      "reachability_class": "UNKNOWN"
+    },
+    {
+      "python_facing_name": "aegis_trust_level",
+      "rust_function_or_type": "aegis_trust_level",
+      "path": "core/rust/src/ffi.rs",
+      "line": 481,
+      "caller_candidates": [
+        {
+          "path": "scripts/constitution_audit.py",
+          "line": 377
+        },
+        {
+          "path": "scripts/constitution_audit.py",
+          "line": 377
+        }
+      ],
+      "input_type": "",
+      "output_type": "PyResult<String>",
+      "serialization": "JSON/bytes/string boundary suspected",
+      "copying": "unknown",
+      "side_effect_class": "UNKNOWN",
+      "authority_relevance": "HIGH",
+      "estimated_frequency": "PER_RUN",
+      "flags": [
+        "AUTHORITY_SENSITIVE",
+        "STRINGLY_TYPED"
+      ],
+      "reachability_class": "UNKNOWN"
+    },
+    {
+      "python_facing_name": "aegis_hot_hash",
+      "rust_function_or_type": "aegis_hot_hash",
+      "path": "core/rust/src/ffi.rs",
+      "line": 486,
+      "caller_candidates": [
+        {
+          "path": "scripts/constitution_audit.py",
+          "line": 378
+        },
+        {
+          "path": "scripts/constitution_audit.py",
+          "line": 378
+        }
+      ],
+      "input_type": "payload: Vec<u8>",
+      "output_type": "PyResult<String>",
+      "serialization": "JSON/bytes/string boundary suspected",
+      "copying": "unknown",
+      "side_effect_class": "UNKNOWN",
+      "authority_relevance": "UNKNOWN",
+      "estimated_frequency": "UNKNOWN",
+      "flags": [
+        "LARGE_PAYLOAD",
+        "STRINGLY_TYPED"
+      ],
+      "reachability_class": "REACHABLE_FROM_PUBLIC_API"
+    },
+    {
+      "python_facing_name": "aegis_hot_commit",
+      "rust_function_or_type": "aegis_hot_commit",
+      "path": "core/rust/src/ffi.rs",
+      "line": 491,
+      "caller_candidates": [
+        {
+          "path": "core/python/aegis/evidence.py",
+          "line": 87
+        },
+        {
+          "path": "scripts/constitution_audit.py",
+          "line": 379
+        },
+        {
+          "path": "tests/test_lab_runtime.py",
+          "line": 860
+        },
+        {
+          "path": "tests/test_lab_runtime.py",
+          "line": 953
+        },
+        {
+          "path": "tests/test_lab_runtime.py",
+          "line": 2309
+        },
+        {
+          "path": "tests/test_lab_runtime.py",
+          "line": 2475
+        },
+        {
+          "path": "core/python/aegis/evidence.py",
+          "line": 87
+        },
+        {
+          "path": "scripts/constitution_audit.py",
+          "line": 379
+        },
+        {
+          "path": "tests/test_lab_runtime.py",
+          "line": 860
+        },
+        {
+          "path": "tests/test_lab_runtime.py",
+          "line": 953
+        },
+        {
+          "path": "tests/test_lab_runtime.py",
+          "line": 2309
+        },
+        {
+          "path": "tests/test_lab_runtime.py",
+          "line": 2475
+        }
+      ],
+      "input_type": "payload: Vec<u8>,\n    trust_level: Option<String>,\n    max_live_bytes: Option<usize>,\n    max_artifact_bytes: Option<usize>,",
+      "output_type": "PyResult<String>",
+      "serialization": "JSON/bytes/string boundary suspected",
+      "copying": "unknown",
+      "side_effect_class": "UNKNOWN",
+      "authority_relevance": "UNKNOWN",
+      "estimated_frequency": "UNKNOWN",
+      "flags": [
+        "LARGE_PAYLOAD",
+        "STRINGLY_TYPED"
+      ],
+      "reachability_class": "UNKNOWN"
+    },
+    {
+      "python_facing_name": "aegis_hot_commit_batch",
+      "rust_function_or_type": "aegis_hot_commit_batch",
+      "path": "core/rust/src/ffi.rs",
+      "line": 538,
+      "caller_candidates": [
+        {
+          "path": "core/python/aegis/evidence.py",
+          "line": 150
+        },
+        {
+          "path": "scripts/constitution_audit.py",
+          "line": 380
+        },
+        {
+          "path": "core/python/aegis/evidence.py",
+          "line": 150
+        },
+        {
+          "path": "scripts/constitution_audit.py",
+          "line": 380
+        }
+      ],
+      "input_type": "payloads: Vec<Vec<u8>>,\n    trust_level: Option<String>,\n    max_live_bytes: Option<usize>,\n    max_artifact_bytes: Option<usize>,",
+      "output_type": "PyResult<String>",
+      "serialization": "JSON/bytes/string boundary suspected",
+      "copying": "unknown",
+      "side_effect_class": "UNKNOWN",
+      "authority_relevance": "UNKNOWN",
+      "estimated_frequency": "UNKNOWN",
+      "flags": [
+        "LARGE_PAYLOAD",
+        "STRINGLY_TYPED"
+      ],
+      "reachability_class": "UNKNOWN"
+    },
+    {
+      "python_facing_name": "UNKNOWN",
+      "rust_function_or_type": "UNKNOWN",
+      "path": "core/rust/src/ffi.rs",
+      "line": 620,
+      "caller_candidates": [
+        {
+          "path": "aegis_cognition/lab.py",
+          "line": 219
+        },
+        {
+          "path": "scripts/hardware_profile_report.py",
+          "line": 23
+        },
+        {
+          "path": "scripts/hardware_profile_report.py",
+          "line": 24
+        },
+        {
+          "path": "scripts/hardware_profile_report.py",
+          "line": 25
+        },
+        {
+          "path": "scripts/hardware_profile_report.py",
+          "line": 26
+        },
+        {
+          "path": "scripts/hardware_profile_report.py",
+          "line": 29
+        },
+        {
+          "path": "scripts/hardware_profile_report.py",
+          "line": 30
+        },
+        {
+          "path": "scripts/hardware_profile_report.py",
+          "line": 32
+        },
+        {
+          "path": "scripts/hardware_profile_report.py",
+          "line": 33
+        },
+        {
+          "path": "scripts/platform_enforcement_probe.py",
+          "line": 41
+        },
+        {
+          "path": "scripts/resource_policy_benchmark.py",
+          "line": 145
+        },
+        {
+          "path": "scripts/resource_policy_benchmark.py",
+          "line": 175
+        },
+        {
+          "path": "aegis_cognition/lab.py",
+          "line": 219
+        },
+        {
+          "path": "scripts/hardware_profile_report.py",
+          "line": 23
+        },
+        {
+          "path": "scripts/hardware_profile_report.py",
+          "line": 24
+        },
+        {
+          "path": "scripts/hardware_profile_report.py",
+          "line": 25
+        },
+        {
+          "path": "scripts/hardware_profile_report.py",
+          "line": 26
+        },
+        {
+          "path": "scripts/hardware_profile_report.py",
+          "line": 29
+        },
+        {
+          "path": "scripts/hardware_profile_report.py",
+          "line": 30
+        },
+        {
+          "path": "scripts/hardware_profile_report.py",
+          "line": 32
+        },
+        {
+          "path": "scripts/hardware_profile_report.py",
+          "line": 33
+        },
+        {
+          "path": "scripts/platform_enforcement_probe.py",
+          "line": 41
+        },
+        {
+          "path": "scripts/resource_policy_benchmark.py",
+          "line": 145
+        },
+        {
+          "path": "scripts/resource_policy_benchmark.py",
+          "line": 175
+        }
+      ],
+      "input_type": null,
+      "output_type": "UNKNOWN",
+      "serialization": "JSON/bytes/string boundary suspected",
+      "copying": "unknown",
+      "side_effect_class": "FILESYSTEM",
+      "authority_relevance": "UNKNOWN",
+      "estimated_frequency": "UNKNOWN",
+      "flags": [
+        "STRINGLY_TYPED"
+      ],
+      "reachability_class": "UNKNOWN"
+    },
+    {
+      "python_facing_name": "UNKNOWN",
+      "rust_function_or_type": "UNKNOWN",
+      "path": "core/rust/src/ffi.rs",
+      "line": 636,
+      "caller_candidates": [
+        {
+          "path": "aegis_cognition/lab.py",
+          "line": 219
+        },
+        {
+          "path": "scripts/hardware_profile_report.py",
+          "line": 23
+        },
+        {
+          "path": "scripts/hardware_profile_report.py",
+          "line": 24
+        },
+        {
+          "path": "scripts/hardware_profile_report.py",
+          "line": 25
+        },
+        {
+          "path": "scripts/hardware_profile_report.py",
+          "line": 26
+        },
+        {
+          "path": "scripts/hardware_profile_report.py",
+          "line": 29
+        },
+        {
+          "path": "scripts/hardware_profile_report.py",
+          "line": 30
+        },
+        {
+          "path": "scripts/hardware_profile_report.py",
+          "line": 32
+        },
+        {
+          "path": "scripts/hardware_profile_report.py",
+          "line": 33
+        },
+        {
+          "path": "scripts/platform_enforcement_probe.py",
+          "line": 41
+        },
+        {
+          "path": "scripts/resource_policy_benchmark.py",
+          "line": 145
+        },
+        {
+          "path": "scripts/resource_policy_benchmark.py",
+          "line": 175
+        },
+        {
+          "path": "aegis_cognition/lab.py",
+          "line": 219
+        },
+        {
+          "path": "scripts/hardware_profile_report.py",
+          "line": 23
+        },
+        {
+          "path": "scripts/hardware_profile_report.py",
+          "line": 24
+        },
+        {
+          "path": "scripts/hardware_profile_report.py",
+          "line": 25
+        },
+        {
+          "path": "scripts/hardware_profile_report.py",
+          "line": 26
+        },
+        {
+          "path": "scripts/hardware_profile_report.py",
+          "line": 29
+        },
+        {
+          "path": "scripts/hardware_profile_report.py",
+          "line": 30
+        },
+        {
+          "path": "scripts/hardware_profile_report.py",
+          "line": 32
+        },
+        {
+          "path": "scripts/hardware_profile_report.py",
+          "line": 33
+        },
+        {
+          "path": "scripts/platform_enforcement_probe.py",
+          "line": 41
+        },
+        {
+          "path": "scripts/resource_policy_benchmark.py",
+          "line": 145
+        },
+        {
+          "path": "scripts/resource_policy_benchmark.py",
+          "line": 175
+        }
+      ],
+      "input_type": null,
+      "output_type": "UNKNOWN",
+      "serialization": "JSON/bytes/string boundary suspected",
+      "copying": "unknown",
+      "side_effect_class": "FILESYSTEM",
+      "authority_relevance": "UNKNOWN",
+      "estimated_frequency": "UNKNOWN",
+      "flags": [
+        "STRINGLY_TYPED"
+      ],
+      "reachability_class": "UNKNOWN"
+    },
+    {
+      "python_facing_name": "aegis_eac_cache_invalidate",
+      "rust_function_or_type": "aegis_eac_cache_invalidate",
+      "path": "core/rust/src/ffi.rs",
+      "line": 654,
+      "caller_candidates": [],
+      "input_type": "namespace: String,\n    threshold: f32,\n    cache_file: Option<String>,",
+      "output_type": "PyResult<bool>",
+      "serialization": "JSON/bytes/string boundary suspected",
+      "copying": "unknown",
+      "side_effect_class": "FILESYSTEM",
+      "authority_relevance": "UNKNOWN",
+      "estimated_frequency": "UNKNOWN",
+      "flags": [
+        "STRINGLY_TYPED"
+      ],
+      "reachability_class": "UNKNOWN"
+    },
+    {
+      "python_facing_name": "aegis_eac_batch",
+      "rust_function_or_type": "aegis_eac_batch",
+      "path": "core/rust/src/ffi.rs",
+      "line": 671,
+      "caller_candidates": [],
+      "input_type": "calls_json: String, policy: String",
+      "output_type": "PyResult<String>",
+      "serialization": "JSON/bytes/string boundary suspected",
+      "copying": "suspected",
+      "side_effect_class": "UNKNOWN",
+      "authority_relevance": "UNKNOWN",
+      "estimated_frequency": "UNKNOWN",
+      "flags": [
+        "COPY_HEAVY",
+        "LARGE_PAYLOAD",
+        "STRINGLY_TYPED"
+      ],
+      "reachability_class": "UNKNOWN"
+    },
+    {
+      "python_facing_name": "UNKNOWN",
+      "rust_function_or_type": "UNKNOWN",
+      "path": "core/rust/src/ffi.rs",
+      "line": 707,
+      "caller_candidates": [
+        {
+          "path": "aegis_cognition/lab.py",
+          "line": 219
+        },
+        {
+          "path": "scripts/hardware_profile_report.py",
+          "line": 23
+        },
+        {
+          "path": "scripts/hardware_profile_report.py",
+          "line": 24
+        },
+        {
+          "path": "scripts/hardware_profile_report.py",
+          "line": 25
+        },
+        {
+          "path": "scripts/hardware_profile_report.py",
+          "line": 26
+        },
+        {
+          "path": "scripts/hardware_profile_report.py",
+          "line": 29
+        },
+        {
+          "path": "scripts/hardware_profile_report.py",
+          "line": 30
+        },
+        {
+          "path": "scripts/hardware_profile_report.py",
+          "line": 32
+        },
+        {
+          "path": "scripts/hardware_profile_report.py",
+          "line": 33
+        },
+        {
+          "path": "scripts/platform_enforcement_probe.py",
+          "line": 41
+        },
+        {
+          "path": "scripts/resource_policy_benchmark.py",
+          "line": 145
+        },
+        {
+          "path": "scripts/resource_policy_benchmark.py",
+          "line": 175
+        },
+        {
+          "path": "aegis_cognition/lab.py",
+          "line": 219
+        },
+        {
+          "path": "scripts/hardware_profile_report.py",
+          "line": 23
+        },
+        {
+          "path": "scripts/hardware_profile_report.py",
+          "line": 24
+        },
+        {
+          "path": "scripts/hardware_profile_report.py",
+          "line": 25
+        },
+        {
+          "path": "scripts/hardware_profile_report.py",
+          "line": 26
+        },
+        {
+          "path": "scripts/hardware_profile_report.py",
+          "line": 29
+        },
+        {
+          "path": "scripts/hardware_profile_report.py",
+          "line": 30
+        },
+        {
+          "path": "scripts/hardware_profile_report.py",
+          "line": 32
+        },
+        {
+          "path": "scripts/hardware_profile_report.py",
+          "line": 33
+        },
+        {
+          "path": "scripts/platform_enforcement_probe.py",
+          "line": 41
+        },
+        {
+          "path": "scripts/resource_policy_benchmark.py",
+          "line": 145
+        },
+        {
+          "path": "scripts/resource_policy_benchmark.py",
+          "line": 175
+        }
+      ],
+      "input_type": null,
+      "output_type": "UNKNOWN",
+      "serialization": "JSON/bytes/string boundary suspected",
+      "copying": "suspected",
+      "side_effect_class": "UNKNOWN",
+      "authority_relevance": "UNKNOWN",
+      "estimated_frequency": "UNKNOWN",
+      "flags": [
+        "COPY_HEAVY",
+        "LARGE_PAYLOAD",
+        "STRINGLY_TYPED"
+      ],
+      "reachability_class": "UNKNOWN"
+    },
+    {
+      "python_facing_name": "aegis_eac_load_state",
+      "rust_function_or_type": "aegis_eac_load_state",
+      "path": "core/rust/src/ffi.rs",
+      "line": 738,
+      "caller_candidates": [],
+      "input_type": "base_dir: String, turn_index: u64",
+      "output_type": "PyResult<String>",
+      "serialization": "JSON/bytes/string boundary suspected",
+      "copying": "unknown",
+      "side_effect_class": "FILESYSTEM",
+      "authority_relevance": "UNKNOWN",
+      "estimated_frequency": "PER_RUN",
+      "flags": [
+        "COPY_HEAVY",
+        "STRINGLY_TYPED"
+      ],
+      "reachability_class": "UNKNOWN"
+    },
+    {
+      "python_facing_name": "aegis_get_learning_stats",
+      "rust_function_or_type": "aegis_get_learning_stats",
+      "path": "core/rust/src/ffi.rs",
+      "line": 764,
+      "caller_candidates": [
+        {
+          "path": "core/python/aegis/learning.py",
+          "line": 97
+        },
+        {
+          "path": "core/python/tests.py",
+          "line": 3415
+        },
+        {
+          "path": "core/python/aegis/learning.py",
+          "line": 97
+        },
+        {
+          "path": "core/python/tests.py",
+          "line": 3415
+        }
+      ],
+      "input_type": "ledger_json: String,\n    _skill_registry_stats_json: String,\n    search_index_count: u64,\n    user_model_count: u64,",
+      "output_type": "PyResult<String>",
+      "serialization": "JSON/bytes/string boundary suspected",
+      "copying": "suspected",
+      "side_effect_class": "PROVIDER",
+      "authority_relevance": "UNKNOWN",
+      "estimated_frequency": "UNKNOWN",
+      "flags": [
+        "COPY_HEAVY",
+        "LARGE_PAYLOAD",
+        "STRINGLY_TYPED"
+      ],
+      "reachability_class": "UNKNOWN"
+    },
+    {
+      "python_facing_name": "aegis_trigger_memory_nudge",
+      "rust_function_or_type": "aegis_trigger_memory_nudge",
+      "path": "core/rust/src/ffi.rs",
+      "line": 832,
+      "caller_candidates": [
+        {
+          "path": "core/python/aegis/learning.py",
+          "line": 119
+        },
+        {
+          "path": "core/python/aegis/learning.py",
+          "line": 119
+        }
+      ],
+      "input_type": "session_id_str: String,\n    nudge_id: u128,\n    candidate_count: usize,",
+      "output_type": "PyResult<String>",
+      "serialization": "JSON/bytes/string boundary suspected",
+      "copying": "unknown",
+      "side_effect_class": "UNKNOWN",
+      "authority_relevance": "UNKNOWN",
+      "estimated_frequency": "UNKNOWN",
+      "flags": [
+        "STRINGLY_TYPED"
+      ],
+      "reachability_class": "UNKNOWN"
+    },
+    {
+      "python_facing_name": "aegis_index_session",
+      "rust_function_or_type": "aegis_index_session",
+      "path": "core/rust/src/ffi.rs",
+      "line": 875,
+      "caller_candidates": [
+        {
+          "path": "core/python/aegis/learning.py",
+          "line": 116
+        },
+        {
+          "path": "core/python/tests.py",
+          "line": 3417
+        },
+        {
+          "path": "core/python/tests.py",
+          "line": 3438
+        },
+        {
+          "path": "core/python/aegis/learning.py",
+          "line": 116
+        },
+        {
+          "path": "core/python/tests.py",
+          "line": 3417
+        },
+        {
+          "path": "core/python/tests.py",
+          "line": 3438
+        }
+      ],
+      "input_type": "session_id: u128, content: String, timestamp: u64",
+      "output_type": "PyResult<String>",
+      "serialization": "JSON/bytes/string boundary suspected",
+      "copying": "unknown",
+      "side_effect_class": "UNKNOWN",
+      "authority_relevance": "UNKNOWN",
+      "estimated_frequency": "UNKNOWN",
+      "flags": [
+        "STRINGLY_TYPED"
+      ],
+      "reachability_class": "UNKNOWN"
+    },
+    {
+      "python_facing_name": "aegis_search_past_sessions",
+      "rust_function_or_type": "aegis_search_past_sessions",
+      "path": "core/rust/src/ffi.rs",
+      "line": 903,
+      "caller_candidates": [
+        {
+          "path": "core/python/aegis/learning.py",
+          "line": 105
+        },
+        {
+          "path": "core/python/tests.py",
+          "line": 3416
+        },
+        {
+          "path": "core/python/aegis/learning.py",
+          "line": 105
+        },
+        {
+          "path": "core/python/tests.py",
+          "line": 3416
+        }
+      ],
+      "input_type": "query: String, top_k: usize",
+      "output_type": "PyResult<String>",
+      "serialization": "JSON/bytes/string boundary suspected",
+      "copying": "unknown",
+      "side_effect_class": "UNKNOWN",
+      "authority_relevance": "UNKNOWN",
+      "estimated_frequency": "UNKNOWN",
+      "flags": [
+        "STRINGLY_TYPED"
+      ],
+      "reachability_class": "UNKNOWN"
+    },
+    {
+      "python_facing_name": "LabController",
+      "rust_function_or_type": "PyLabController",
+      "path": "core/rust/src/ffi.rs",
+      "line": 956,
+      "caller_candidates": [
+        {
+          "path": "aegis_cognition/lab.py",
+          "line": 2456
+        },
+        {
+          "path": "tests/test_lab_runtime.py",
+          "line": 213
+        },
+        {
+          "path": "tests/test_lab_runtime.py",
+          "line": 250
+        },
+        {
+          "path": "tests/test_lab_runtime.py",
+          "line": 853
+        },
+        {
+          "path": "tests/test_lab_runtime.py",
+          "line": 946
+        },
+        {
+          "path": "tests/test_lab_runtime.py",
+          "line": 2204
+        },
+        {
+          "path": "tests/test_lab_runtime.py",
+          "line": 2306
+        },
+        {
+          "path": "tests/test_lab_runtime.py",
+          "line": 2413
+        },
+        {
+          "path": "tests/test_lab_runtime.py",
+          "line": 2472
+        },
+        {
+          "path": "tests/test_lab_runtime.py",
+          "line": 3164
+        },
+        {
+          "path": "tests/test_lab_runtime.py",
+          "line": 3241
+        }
+      ],
+      "input_type": null,
+      "output_type": "PyClass",
+      "serialization": "typed/native or unknown",
+      "copying": "unknown",
+      "side_effect_class": "UNKNOWN",
+      "authority_relevance": "HIGH",
+      "estimated_frequency": "PER_RUN",
+      "flags": [
+        "AUTHORITY_SENSITIVE"
+      ],
+      "reachability_class": "REACHABLE_FROM_LAB"
+    },
+    {
+      "python_facing_name": "aegis_lab_verify_event_chain",
+      "rust_function_or_type": "aegis_lab_verify_event_chain",
+      "path": "core/rust/src/ffi.rs",
+      "line": 1166,
+      "caller_candidates": [
+        {
+          "path": "aegis_cognition/lab.py",
+          "line": 3544
+        },
+        {
+          "path": "aegis_cognition/lab.py",
+          "line": 4861
+        },
+        {
+          "path": "tests/test_lab_runtime.py",
+          "line": 185
+        },
+        {
+          "path": "tests/test_lab_runtime.py",
+          "line": 271
+        },
+        {
+          "path": "tests/test_lab_runtime.py",
+          "line": 302
+        },
+        {
+          "path": "tests/test_lab_runtime.py",
+          "line": 2207
+        },
+        {
+          "path": "tests/test_lab_runtime.py",
+          "line": 2327
+        },
+        {
+          "path": "tests/test_lab_runtime.py",
+          "line": 2416
+        },
+        {
+          "path": "tests/test_lab_runtime.py",
+          "line": 2493
+        },
+        {
+          "path": "tests/test_lab_runtime.py",
+          "line": 3167
+        },
+        {
+          "path": "tests/test_lab_runtime.py",
+          "line": 3244
+        },
+        {
+          "path": "aegis_cognition/lab.py",
+          "line": 3544
+        },
+        {
+          "path": "aegis_cognition/lab.py",
+          "line": 4861
+        },
+        {
+          "path": "tests/test_lab_runtime.py",
+          "line": 185
+        },
+        {
+          "path": "tests/test_lab_runtime.py",
+          "line": 271
+        },
+        {
+          "path": "tests/test_lab_runtime.py",
+          "line": 302
+        },
+        {
+          "path": "tests/test_lab_runtime.py",
+          "line": 2207
+        },
+        {
+          "path": "tests/test_lab_runtime.py",
+          "line": 2327
+        },
+        {
+          "path": "tests/test_lab_runtime.py",
+          "line": 2416
+        },
+        {
+          "path": "tests/test_lab_runtime.py",
+          "line": 2493
+        },
+        {
+          "path": "tests/test_lab_runtime.py",
+          "line": 3167
+        },
+        {
+          "path": "tests/test_lab_runtime.py",
+          "line": 3244
+        }
+      ],
+      "input_type": "events_json: String",
+      "output_type": "PyResult<bool>",
+      "serialization": "JSON/bytes/string boundary suspected",
+      "copying": "suspected",
+      "side_effect_class": "UNKNOWN",
+      "authority_relevance": "HIGH",
+      "estimated_frequency": "PER_RUN",
+      "flags": [
+        "AUTHORITY_SENSITIVE",
+        "COPY_HEAVY",
+        "LARGE_PAYLOAD",
+        "STRINGLY_TYPED"
+      ],
+      "reachability_class": "REACHABLE_FROM_LAB"
+    },
+    {
+      "python_facing_name": "aegis_lab_validate_transition",
+      "rust_function_or_type": "aegis_lab_validate_transition",
+      "path": "core/rust/src/ffi.rs",
+      "line": 1183,
+      "caller_candidates": [
+        {
+          "path": "aegis_cognition/lab.py",
+          "line": 3565
+        },
+        {
+          "path": "tests/test_lab_runtime.py",
+          "line": 192
+        },
+        {
+          "path": "tests/test_lab_runtime.py",
+          "line": 216
+        },
+        {
+          "path": "tests/test_lab_runtime.py",
+          "line": 253
+        },
+        {
+          "path": "tests/test_lab_runtime.py",
+          "line": 275
+        },
+        {
+          "path": "tests/test_lab_runtime.py",
+          "line": 307
+        },
+        {
+          "path": "tests/test_lab_runtime.py",
+          "line": 856
+        },
+        {
+          "path": "tests/test_lab_runtime.py",
+          "line": 949
+        },
+        {
+          "path": "tests/test_lab_runtime.py",
+          "line": 2211
+        },
+        {
+          "path": "tests/test_lab_runtime.py",
+          "line": 2331
+        },
+        {
+          "path": "tests/test_lab_runtime.py",
+          "line": 2420
+        },
+        {
+          "path": "tests/test_lab_runtime.py",
+          "line": 2497
+        },
+        {
+          "path": "tests/test_lab_runtime.py",
+          "line": 3171
+        },
+        {
+          "path": "tests/test_lab_runtime.py",
+          "line": 3248
+        },
+        {
+          "path": "aegis_cognition/lab.py",
+          "line": 3565
+        },
+        {
+          "path": "tests/test_lab_runtime.py",
+          "line": 192
+        },
+        {
+          "path": "tests/test_lab_runtime.py",
+          "line": 216
+        },
+        {
+          "path": "tests/test_lab_runtime.py",
+          "line": 253
+        },
+        {
+          "path": "tests/test_lab_runtime.py",
+          "line": 275
+        },
+        {
+          "path": "tests/test_lab_runtime.py",
+          "line": 307
+        },
+        {
+          "path": "tests/test_lab_runtime.py",
+          "line": 856
+        },
+        {
+          "path": "tests/test_lab_runtime.py",
+          "line": 949
+        },
+        {
+          "path": "tests/test_lab_runtime.py",
+          "line": 2211
+        },
+        {
+          "path": "tests/test_lab_runtime.py",
+          "line": 2331
+        },
+        {
+          "path": "tests/test_lab_runtime.py",
+          "line": 2420
+        },
+        {
+          "path": "tests/test_lab_runtime.py",
+          "line": 2497
+        },
+        {
+          "path": "tests/test_lab_runtime.py",
+          "line": 3171
+        },
+        {
+          "path": "tests/test_lab_runtime.py",
+          "line": 3248
+        }
+      ],
+      "input_type": "current: String, next: String",
+      "output_type": "PyResult<bool>",
+      "serialization": "JSON/bytes/string boundary suspected",
+      "copying": "unknown",
+      "side_effect_class": "UNKNOWN",
+      "authority_relevance": "HIGH",
+      "estimated_frequency": "PER_RUN",
+      "flags": [
+        "AUTHORITY_SENSITIVE",
+        "STRINGLY_TYPED"
+      ],
+      "reachability_class": "REACHABLE_FROM_LAB"
+    },
+    {
+      "python_facing_name": "aegis_lab_validate_snapshot",
+      "rust_function_or_type": "aegis_lab_validate_snapshot",
+      "path": "core/rust/src/ffi.rs",
+      "line": 1211,
+      "caller_candidates": [],
+      "input_type": "snapshot_json: String",
+      "output_type": "PyResult<bool>",
+      "serialization": "JSON/bytes/string boundary suspected",
+      "copying": "suspected",
+      "side_effect_class": "FILESYSTEM",
+      "authority_relevance": "HIGH",
+      "estimated_frequency": "PER_RUN",
+      "flags": [
+        "AUTHORITY_SENSITIVE",
+        "COPY_HEAVY",
+        "LARGE_PAYLOAD",
+        "STRINGLY_TYPED"
+      ],
+      "reachability_class": "REACHABLE_FROM_LAB"
+    },
+    {
+      "python_facing_name": "aegis_lab_archive_events",
+      "rust_function_or_type": "aegis_lab_archive_events",
+      "path": "core/rust/src/ffi.rs",
+      "line": 1220,
+      "caller_candidates": [
+        {
+          "path": "aegis_cognition/lab.py",
+          "line": 4663
+        },
+        {
+          "path": "tests/test_lab_runtime.py",
+          "line": 616
+        },
+        {
+          "path": "tests/test_lab_runtime.py",
+          "line": 655
+        },
+        {
+          "path": "tests/test_lab_runtime.py",
+          "line": 692
+        },
+        {
+          "path": "aegis_cognition/lab.py",
+          "line": 4663
+        },
+        {
+          "path": "tests/test_lab_runtime.py",
+          "line": 616
+        },
+        {
+          "path": "tests/test_lab_runtime.py",
+          "line": 655
+        },
+        {
+          "path": "tests/test_lab_runtime.py",
+          "line": 692
+        }
+      ],
+      "input_type": "events_json: String,\n    directory: String,\n    run_id: u128,\n    max_events_per_segment: usize,",
+      "output_type": "PyResult<String>",
+      "serialization": "JSON/bytes/string boundary suspected",
+      "copying": "suspected",
+      "side_effect_class": "FILESYSTEM",
+      "authority_relevance": "HIGH",
+      "estimated_frequency": "PER_RUN",
+      "flags": [
+        "AUTHORITY_SENSITIVE",
+        "COPY_HEAVY",
+        "LARGE_PAYLOAD",
+        "STRINGLY_TYPED"
+      ],
+      "reachability_class": "REACHABLE_FROM_LAB"
+    },
+    {
+      "python_facing_name": "aegis_lab_verify_archive",
+      "rust_function_or_type": "aegis_lab_verify_archive",
+      "path": "core/rust/src/ffi.rs",
+      "line": 1254,
+      "caller_candidates": [
+        {
+          "path": "aegis_cognition/lab.py",
+          "line": 4695
+        },
+        {
+          "path": "aegis_cognition/lab.py",
+          "line": 4748
+        },
+        {
+          "path": "tests/test_lab_runtime.py",
+          "line": 629
+        },
+        {
+          "path": "tests/test_lab_runtime.py",
+          "line": 673
+        },
+        {
+          "path": "aegis_cognition/lab.py",
+          "line": 4695
+        },
+        {
+          "path": "aegis_cognition/lab.py",
+          "line": 4748
+        },
+        {
+          "path": "tests/test_lab_runtime.py",
+          "line": 629
+        },
+        {
+          "path": "tests/test_lab_runtime.py",
+          "line": 673
+        }
+      ],
+      "input_type": "directory: String, run_id: u128",
+      "output_type": "PyResult<bool>",
+      "serialization": "JSON/bytes/string boundary suspected",
+      "copying": "suspected",
+      "side_effect_class": "FILESYSTEM",
+      "authority_relevance": "HIGH",
+      "estimated_frequency": "PER_RUN",
+      "flags": [
+        "AUTHORITY_SENSITIVE",
+        "COPY_HEAVY",
+        "STRINGLY_TYPED"
+      ],
+      "reachability_class": "REACHABLE_FROM_LAB"
+    },
+    {
+      "python_facing_name": "aegis_lab_verify_archive_against_manifest",
+      "rust_function_or_type": "aegis_lab_verify_archive_against_manifest",
+      "path": "core/rust/src/ffi.rs",
+      "line": 1277,
+      "caller_candidates": [
+        {
+          "path": "aegis_cognition/lab.py",
+          "line": 4693
+        },
+        {
+          "path": "aegis_cognition/lab.py",
+          "line": 4746
+        },
+        {
+          "path": "tests/test_lab_runtime.py",
+          "line": 662
+        },
+        {
+          "path": "tests/test_lab_runtime.py",
+          "line": 699
+        },
+        {
+          "path": "aegis_cognition/lab.py",
+          "line": 4693
+        },
+        {
+          "path": "aegis_cognition/lab.py",
+          "line": 4746
+        },
+        {
+          "path": "tests/test_lab_runtime.py",
+          "line": 662
+        },
+        {
+          "path": "tests/test_lab_runtime.py",
+          "line": 699
+        }
+      ],
+      "input_type": "directory: String,\n    run_id: u128,\n    expected_manifest_hash: Vec<u8>,",
+      "output_type": "PyResult<bool>",
+      "serialization": "JSON/bytes/string boundary suspected",
+      "copying": "unknown",
+      "side_effect_class": "FILESYSTEM",
+      "authority_relevance": "HIGH",
+      "estimated_frequency": "PER_RUN",
+      "flags": [
+        "AUTHORITY_SENSITIVE",
+        "STRINGLY_TYPED"
+      ],
+      "reachability_class": "REACHABLE_FROM_LAB"
+    },
+    {
+      "python_facing_name": "SemanticCache",
+      "rust_function_or_type": "SemanticCache",
+      "path": "pocs/semantic_cache_poc/src/lib.rs",
+      "line": 16,
+      "caller_candidates": [],
+      "input_type": null,
+      "output_type": "PyClass",
+      "serialization": "JSON/bytes/string boundary suspected",
+      "copying": "suspected",
+      "side_effect_class": "FILESYSTEM",
+      "authority_relevance": "UNKNOWN",
+      "estimated_frequency": "UNKNOWN",
+      "flags": [
+        "COPY_HEAVY",
+        "LARGE_PAYLOAD",
+        "STRINGLY_TYPED"
+      ],
+      "reachability_class": "UNKNOWN"
+    },
+    {
+      "python_facing_name": "new",
+      "rust_function_or_type": "PySearchQuery.new",
+      "path": "aegis-plugins/aegis-search-sdk/src/lib.rs",
+      "line": 483,
+      "caller_candidates": [
+        {
+          "path": "aegis_cognition/application.py",
+          "line": 32
+        },
+        {
+          "path": "aegis_cognition/lab.py",
+          "line": 5508
+        },
+        {
+          "path": "aegis_cognition/observability.py",
+          "line": 33
+        },
+        {
+          "path": "core/python/tests.py",
+          "line": 347
+        },
+        {
+          "path": "core/python/tests.py",
+          "line": 348
+        },
+        {
+          "path": "core/python/tests.py",
+          "line": 2012
+        },
+        {
+          "path": "scripts/_audit_regen_requirements.py",
+          "line": 10
+        },
+        {
+          "path": "scripts/benchmark_gate.py",
+          "line": 179
+        },
+        {
+          "path": "scripts/constitution_audit.py",
+          "line": 722
+        },
+        {
+          "path": "scripts/constitution_audit.py",
+          "line": 2494
+        },
+        {
+          "path": "scripts/constitution_audit.py",
+          "line": 2528
+        },
+        {
+          "path": "scripts/constitution_audit.py",
+          "line": 2529
+        },
+        {
+          "path": "scripts/constitution_audit.py",
+          "line": 2530
+        },
+        {
+          "path": "scripts/constitution_audit.py",
+          "line": 2531
+        },
+        {
+          "path": "scripts/constitution_audit.py",
+          "line": 2534
+        },
+        {
+          "path": "scripts/constitution_audit.py",
+          "line": 2536
+        },
+        {
+          "path": "scripts/constitution_audit.py",
+          "line": 2539
+        },
+        {
+          "path": "scripts/constitution_audit.py",
+          "line": 2607
+        },
+        {
+          "path": "scripts/constitution_audit.py",
+          "line": 2627
+        },
+        {
+          "path": "scripts/constitution_audit.py",
+          "line": 3199
+        },
+        {
+          "path": "scripts/constitution_audit.py",
+          "line": 3247
+        },
+        {
+          "path": "scripts/hermes_baseline_gate.py",
+          "line": 49
+        },
+        {
+          "path": "scripts/hermes_baseline_gate.py",
+          "line": 144
+        },
+        {
+          "path": "scripts/hermes_baseline_gate.py",
+          "line": 145
+        },
+        {
+          "path": "scripts/hermes_baseline_gate.py",
+          "line": 154
+        },
+        {
+          "path": "scripts/hermes_baseline_gate.py",
+          "line": 155
+        },
+        {
+          "path": "scripts/hermes_baseline_gate.py",
+          "line": 161
+        },
+        {
+          "path": "scripts/hermes_baseline_gate.py",
+          "line": 162
+        },
+        {
+          "path": "scripts/hermes_persistence_baseline_gate.py",
+          "line": 49
+        },
+        {
+          "path": "scripts/hermes_persistence_baseline_gate.py",
+          "line": 162
+        }
+      ],
+      "input_type": "text: String",
+      "output_type": "Self",
+      "serialization": "typed PyO3 method; serialization unknown",
+      "copying": "unknown",
+      "side_effect_class": "UNKNOWN",
+      "authority_relevance": "UNKNOWN",
+      "estimated_frequency": "UNKNOWN",
+      "flags": [
+        "STRINGLY_TYPED"
+      ],
+      "pymethods_receiver": "PySearchQuery",
+      "reachability_class": "UNKNOWN"
+    },
+    {
+      "python_facing_name": "with_source",
+      "rust_function_or_type": "PySearchQuery.with_source",
+      "path": "aegis-plugins/aegis-search-sdk/src/lib.rs",
+      "line": 488,
+      "caller_candidates": [],
+      "input_type": "&mut self, source: String",
+      "output_type": "()",
+      "serialization": "typed PyO3 method; serialization unknown",
+      "copying": "unknown",
+      "side_effect_class": "UNKNOWN",
+      "authority_relevance": "UNKNOWN",
+      "estimated_frequency": "UNKNOWN",
+      "flags": [
+        "STRINGLY_TYPED"
+      ],
+      "pymethods_receiver": "PySearchQuery",
+      "reachability_class": "UNKNOWN"
+    },
+    {
+      "python_facing_name": "new",
+      "rust_function_or_type": "PyLabController.new",
+      "path": "core/rust/src/ffi.rs",
+      "line": 964,
+      "caller_candidates": [
+        {
+          "path": "aegis_cognition/application.py",
+          "line": 32
+        },
+        {
+          "path": "aegis_cognition/lab.py",
+          "line": 5508
+        },
+        {
+          "path": "aegis_cognition/observability.py",
+          "line": 33
+        },
+        {
+          "path": "core/python/tests.py",
+          "line": 347
+        },
+        {
+          "path": "core/python/tests.py",
+          "line": 348
+        },
+        {
+          "path": "core/python/tests.py",
+          "line": 2012
+        },
+        {
+          "path": "scripts/_audit_regen_requirements.py",
+          "line": 10
+        },
+        {
+          "path": "scripts/benchmark_gate.py",
+          "line": 179
+        },
+        {
+          "path": "scripts/constitution_audit.py",
+          "line": 722
+        },
+        {
+          "path": "scripts/constitution_audit.py",
+          "line": 2494
+        },
+        {
+          "path": "scripts/constitution_audit.py",
+          "line": 2528
+        },
+        {
+          "path": "scripts/constitution_audit.py",
+          "line": 2529
+        },
+        {
+          "path": "scripts/constitution_audit.py",
+          "line": 2530
+        },
+        {
+          "path": "scripts/constitution_audit.py",
+          "line": 2531
+        },
+        {
+          "path": "scripts/constitution_audit.py",
+          "line": 2534
+        },
+        {
+          "path": "scripts/constitution_audit.py",
+          "line": 2536
+        },
+        {
+          "path": "scripts/constitution_audit.py",
+          "line": 2539
+        },
+        {
+          "path": "scripts/constitution_audit.py",
+          "line": 2607
+        },
+        {
+          "path": "scripts/constitution_audit.py",
+          "line": 2627
+        },
+        {
+          "path": "scripts/constitution_audit.py",
+          "line": 3199
+        },
+        {
+          "path": "scripts/constitution_audit.py",
+          "line": 3247
+        },
+        {
+          "path": "scripts/hermes_baseline_gate.py",
+          "line": 49
+        },
+        {
+          "path": "scripts/hermes_baseline_gate.py",
+          "line": 144
+        },
+        {
+          "path": "scripts/hermes_baseline_gate.py",
+          "line": 145
+        },
+        {
+          "path": "scripts/hermes_baseline_gate.py",
+          "line": 154
+        },
+        {
+          "path": "scripts/hermes_baseline_gate.py",
+          "line": 155
+        },
+        {
+          "path": "scripts/hermes_baseline_gate.py",
+          "line": 161
+        },
+        {
+          "path": "scripts/hermes_baseline_gate.py",
+          "line": 162
+        },
+        {
+          "path": "scripts/hermes_persistence_baseline_gate.py",
+          "line": 49
+        },
+        {
+          "path": "scripts/hermes_persistence_baseline_gate.py",
+          "line": 162
+        }
+      ],
+      "input_type": "mission_json: String",
+      "output_type": "PyResult<Self>",
+      "serialization": "typed PyO3 method; serialization unknown",
+      "copying": "unknown",
+      "side_effect_class": "UNKNOWN",
+      "authority_relevance": "HIGH",
+      "estimated_frequency": "PER_RUN",
+      "flags": [
+        "AUTHORITY_SENSITIVE",
+        "LARGE_PAYLOAD",
+        "STRINGLY_TYPED"
+      ],
+      "pymethods_receiver": "PyLabController",
+      "reachability_class": "UNKNOWN"
+    },
+    {
+      "python_facing_name": "from_snapshot_json",
+      "rust_function_or_type": "PyLabController.from_snapshot_json",
+      "path": "core/rust/src/ffi.rs",
+      "line": 976,
+      "caller_candidates": [],
+      "input_type": "snapshot_json: String",
+      "output_type": "PyResult<Self>",
+      "serialization": "typed PyO3 method; serialization unknown",
+      "copying": "unknown",
+      "side_effect_class": "UNKNOWN",
+      "authority_relevance": "HIGH",
+      "estimated_frequency": "PER_RUN",
+      "flags": [
+        "AUTHORITY_SENSITIVE",
+        "LARGE_PAYLOAD",
+        "STRINGLY_TYPED"
+      ],
+      "pymethods_receiver": "PyLabController",
+      "reachability_class": "UNKNOWN"
+    },
+    {
+      "python_facing_name": "state",
+      "rust_function_or_type": "PyLabController.state",
+      "path": "core/rust/src/ffi.rs",
+      "line": 983,
+      "caller_candidates": [
+        {
+          "path": "aegis_cognition/errors.py",
+          "line": 267
+        },
+        {
+          "path": "aegis_cognition/lab.py",
+          "line": 865
+        },
+        {
+          "path": "aegis_cognition/lab.py",
+          "line": 895
+        },
+        {
+          "path": "aegis_cognition/lab.py",
+          "line": 961
+        },
+        {
+          "path": "aegis_cognition/lab.py",
+          "line": 989
+        },
+        {
+          "path": "aegis_cognition/lab.py",
+          "line": 990
+        },
+        {
+          "path": "aegis_cognition/lab.py",
+          "line": 991
+        },
+        {
+          "path": "aegis_cognition/lab.py",
+          "line": 992
+        },
+        {
+          "path": "aegis_cognition/lab.py",
+          "line": 993
+        },
+        {
+          "path": "aegis_cognition/lab.py",
+          "line": 1000
+        },
+        {
+          "path": "aegis_cognition/lab.py",
+          "line": 1003
+        },
+        {
+          "path": "aegis_cognition/lab.py",
+          "line": 1012
+        },
+        {
+          "path": "aegis_cognition/lab.py",
+          "line": 1028
+        },
+        {
+          "path": "aegis_cognition/lab.py",
+          "line": 1034
+        },
+        {
+          "path": "aegis_cognition/lab.py",
+          "line": 1043
+        },
+        {
+          "path": "aegis_cognition/lab.py",
+          "line": 1047
+        },
+        {
+          "path": "aegis_cognition/lab.py",
+          "line": 1048
+        },
+        {
+          "path": "aegis_cognition/lab.py",
+          "line": 1054
+        },
+        {
+          "path": "aegis_cognition/lab.py",
+          "line": 1059
+        },
+        {
+          "path": "aegis_cognition/lab.py",
+          "line": 1072
+        },
+        {
+          "path": "aegis_cognition/lab.py",
+          "line": 2407
+        },
+        {
+          "path": "aegis_cognition/lab.py",
+          "line": 2511
+        },
+        {
+          "path": "aegis_cognition/lab.py",
+          "line": 2591
+        },
+        {
+          "path": "aegis_cognition/lab.py",
+          "line": 2592
+        },
+        {
+          "path": "aegis_cognition/lab.py",
+          "line": 2655
+        },
+        {
+          "path": "aegis_cognition/lab.py",
+          "line": 2656
+        },
+        {
+          "path": "aegis_cognition/lab.py",
+          "line": 2702
+        },
+        {
+          "path": "aegis_cognition/lab.py",
+          "line": 2703
+        },
+        {
+          "path": "aegis_cognition/lab.py",
+          "line": 2778
+        },
+        {
+          "path": "aegis_cognition/lab.py",
+          "line": 2779
+        }
+      ],
+      "input_type": "&self",
+      "output_type": "String",
+      "serialization": "typed PyO3 method; serialization unknown",
+      "copying": "unknown",
+      "side_effect_class": "UNKNOWN",
+      "authority_relevance": "HIGH",
+      "estimated_frequency": "PER_RUN",
+      "flags": [
+        "AUTHORITY_SENSITIVE"
+      ],
+      "pymethods_receiver": "PyLabController",
+      "reachability_class": "UNKNOWN"
+    },
+    {
+      "python_facing_name": "state_epoch",
+      "rust_function_or_type": "PyLabController.state_epoch",
+      "path": "core/rust/src/ffi.rs",
+      "line": 988,
+      "caller_candidates": [
+        {
+          "path": "aegis_cognition/lab.py",
+          "line": 1177
+        },
+        {
+          "path": "aegis_cognition/lab.py",
+          "line": 1186
+        },
+        {
+          "path": "aegis_cognition/lab.py",
+          "line": 1611
+        },
+        {
+          "path": "aegis_cognition/lab.py",
+          "line": 2408
+        },
+        {
+          "path": "aegis_cognition/lab.py",
+          "line": 2538
+        },
+        {
+          "path": "aegis_cognition/lab.py",
+          "line": 2551
+        },
+        {
+          "path": "aegis_cognition/lab.py",
+          "line": 2573
+        },
+        {
+          "path": "aegis_cognition/lab.py",
+          "line": 2598
+        },
+        {
+          "path": "aegis_cognition/lab.py",
+          "line": 2607
+        },
+        {
+          "path": "aegis_cognition/lab.py",
+          "line": 2632
+        },
+        {
+          "path": "aegis_cognition/lab.py",
+          "line": 2667
+        },
+        {
+          "path": "aegis_cognition/lab.py",
+          "line": 2731
+        },
+        {
+          "path": "aegis_cognition/lab.py",
+          "line": 2822
+        },
+        {
+          "path": "aegis_cognition/lab.py",
+          "line": 2897
+        },
+        {
+          "path": "aegis_cognition/lab.py",
+          "line": 2914
+        },
+        {
+          "path": "aegis_cognition/lab.py",
+          "line": 2948
+        },
+        {
+          "path": "aegis_cognition/lab.py",
+          "line": 2987
+        },
+        {
+          "path": "aegis_cognition/lab.py",
+          "line": 3040
+        },
+        {
+          "path": "aegis_cognition/lab.py",
+          "line": 3094
+        },
+        {
+          "path": "aegis_cognition/lab.py",
+          "line": 3146
+        },
+        {
+          "path": "aegis_cognition/lab.py",
+          "line": 3193
+        },
+        {
+          "path": "aegis_cognition/lab.py",
+          "line": 3257
+        },
+        {
+          "path": "aegis_cognition/lab.py",
+          "line": 3298
+        },
+        {
+          "path": "aegis_cognition/lab.py",
+          "line": 3309
+        },
+        {
+          "path": "aegis_cognition/lab.py",
+          "line": 3325
+        },
+        {
+          "path": "aegis_cognition/lab.py",
+          "line": 3357
+        },
+        {
+          "path": "aegis_cognition/lab.py",
+          "line": 3364
+        },
+        {
+          "path": "aegis_cognition/lab.py",
+          "line": 3395
+        },
+        {
+          "path": "aegis_cognition/lab.py",
+          "line": 3414
+        },
+        {
+          "path": "aegis_cognition/lab.py",
+          "line": 3446
+        }
+      ],
+      "input_type": "&self",
+      "output_type": "u64",
+      "serialization": "typed PyO3 method; serialization unknown",
+      "copying": "unknown",
+      "side_effect_class": "UNKNOWN",
+      "authority_relevance": "HIGH",
+      "estimated_frequency": "PER_RUN",
+      "flags": [
+        "AUTHORITY_SENSITIVE"
+      ],
+      "pymethods_receiver": "PyLabController",
+      "reachability_class": "UNKNOWN"
+    },
+    {
+      "python_facing_name": "steps",
+      "rust_function_or_type": "PyLabController.steps",
+      "path": "core/rust/src/ffi.rs",
+      "line": 993,
+      "caller_candidates": [
+        {
+          "path": "aegis_cognition/application.py",
+          "line": 66
+        },
+        {
+          "path": "aegis_cognition/errors.py",
+          "line": 9
+        },
+        {
+          "path": "aegis_cognition/lab.py",
+          "line": 831
+        },
+        {
+          "path": "aegis_cognition/lab.py",
+          "line": 876
+        },
+        {
+          "path": "aegis_cognition/lab.py",
+          "line": 893
+        },
+        {
+          "path": "aegis_cognition/lab.py",
+          "line": 951
+        },
+        {
+          "path": "aegis_cognition/lab.py",
+          "line": 960
+        },
+        {
+          "path": "aegis_cognition/lab.py",
+          "line": 973
+        },
+        {
+          "path": "aegis_cognition/lab.py",
+          "line": 974
+        },
+        {
+          "path": "aegis_cognition/lab.py",
+          "line": 1046
+        },
+        {
+          "path": "aegis_cognition/lab.py",
+          "line": 1078
+        },
+        {
+          "path": "aegis_cognition/lab.py",
+          "line": 7829
+        },
+        {
+          "path": "aegis_cognition/prompt.py",
+          "line": 54
+        },
+        {
+          "path": "aegis_cognition/prompt.py",
+          "line": 77
+        },
+        {
+          "path": "aegis_cognition/prompt.py",
+          "line": 78
+        },
+        {
+          "path": "aegis_cognition/prompt.py",
+          "line": 79
+        },
+        {
+          "path": "aegis_cognition/prompt.py",
+          "line": 95
+        },
+        {
+          "path": "aegis_cognition/prompt.py",
+          "line": 124
+        },
+        {
+          "path": "core/python/operator_api.py",
+          "line": 210
+        },
+        {
+          "path": "core/python/operator_api.py",
+          "line": 211
+        },
+        {
+          "path": "core/python/tests.py",
+          "line": 1845
+        },
+        {
+          "path": "core/python/tests.py",
+          "line": 1917
+        },
+        {
+          "path": "core/python/tests.py",
+          "line": 2296
+        },
+        {
+          "path": "scripts/deployment_manifest.py",
+          "line": 329
+        },
+        {
+          "path": "scripts/deployment_manifest.py",
+          "line": 1005
+        },
+        {
+          "path": "scripts/deployment_manifest.py",
+          "line": 1011
+        },
+        {
+          "path": "scripts/deployment_manifest.py",
+          "line": 1012
+        },
+        {
+          "path": "scripts/deployment_manifest.py",
+          "line": 1013
+        },
+        {
+          "path": "scripts/production_closure.py",
+          "line": 43
+        },
+        {
+          "path": "scripts/production_closure.py",
+          "line": 63
+        }
+      ],
+      "input_type": "&self",
+      "output_type": "u32",
+      "serialization": "typed PyO3 method; serialization unknown",
+      "copying": "unknown",
+      "side_effect_class": "UNKNOWN",
+      "authority_relevance": "HIGH",
+      "estimated_frequency": "PER_RUN",
+      "flags": [
+        "AUTHORITY_SENSITIVE"
+      ],
+      "pymethods_receiver": "PyLabController",
+      "reachability_class": "UNKNOWN"
+    },
+    {
+      "python_facing_name": "replayable",
+      "rust_function_or_type": "PyLabController.replayable",
+      "path": "core/rust/src/ffi.rs",
+      "line": 998,
+      "caller_candidates": [
+        {
+          "path": "aegis_cognition/lab.py",
+          "line": 7867
+        }
+      ],
+      "input_type": "&self",
+      "output_type": "bool",
+      "serialization": "typed PyO3 method; serialization unknown",
+      "copying": "unknown",
+      "side_effect_class": "UNKNOWN",
+      "authority_relevance": "HIGH",
+      "estimated_frequency": "PER_RUN",
+      "flags": [
+        "AUTHORITY_SENSITIVE"
+      ],
+      "pymethods_receiver": "PyLabController",
+      "reachability_class": "UNKNOWN"
+    },
+    {
+      "python_facing_name": "budget_remaining_json",
+      "rust_function_or_type": "PyLabController.budget_remaining_json",
+      "path": "core/rust/src/ffi.rs",
+      "line": 1001,
+      "caller_candidates": [],
+      "input_type": "&self",
+      "output_type": "PyResult<String>",
+      "serialization": "typed PyO3 method; serialization unknown",
+      "copying": "unknown",
+      "side_effect_class": "UNKNOWN",
+      "authority_relevance": "HIGH",
+      "estimated_frequency": "PER_RUN",
+      "flags": [
+        "AUTHORITY_SENSITIVE",
+        "LARGE_PAYLOAD",
+        "STRINGLY_TYPED"
+      ],
+      "pymethods_receiver": "PyLabController",
+      "reachability_class": "UNKNOWN"
+    },
+    {
+      "python_facing_name": "snapshot_json",
+      "rust_function_or_type": "PyLabController.snapshot_json",
+      "path": "core/rust/src/ffi.rs",
+      "line": 1016,
+      "caller_candidates": [],
+      "input_type": "&self",
+      "output_type": "PyResult<String>",
+      "serialization": "typed PyO3 method; serialization unknown",
+      "copying": "unknown",
+      "side_effect_class": "UNKNOWN",
+      "authority_relevance": "HIGH",
+      "estimated_frequency": "PER_RUN",
+      "flags": [
+        "AUTHORITY_SENSITIVE",
+        "LARGE_PAYLOAD",
+        "STRINGLY_TYPED"
+      ],
+      "pymethods_receiver": "PyLabController",
+      "reachability_class": "UNKNOWN"
+    },
+    {
+      "python_facing_name": "admit_exploration",
+      "rust_function_or_type": "PyLabController.admit_exploration",
+      "path": "core/rust/src/ffi.rs",
+      "line": 1020,
+      "caller_candidates": [
+        {
+          "path": "aegis_cognition/lab.py",
+          "line": 3281
+        },
+        {
+          "path": "aegis_cognition/lab.py",
+          "line": 8104
+        },
+        {
+          "path": "tests/test_lab_runtime.py",
+          "line": 139
+        }
+      ],
+      "input_type": "&mut self, expected_state_epoch: u64, spend_json: String",
+      "output_type": "PyResult<()>",
+      "serialization": "typed PyO3 method; serialization unknown",
+      "copying": "unknown",
+      "side_effect_class": "UNKNOWN",
+      "authority_relevance": "HIGH",
+      "estimated_frequency": "PER_RUN",
+      "flags": [
+        "AUTHORITY_SENSITIVE",
+        "LARGE_PAYLOAD",
+        "STRINGLY_TYPED"
+      ],
+      "pymethods_receiver": "PyLabController",
+      "reachability_class": "UNKNOWN"
+    },
+    {
+      "python_facing_name": "transition",
+      "rust_function_or_type": "PyLabController.transition",
+      "path": "core/rust/src/ffi.rs",
+      "line": 1032,
+      "caller_candidates": [
+        {
+          "path": "aegis_cognition/lab.py",
+          "line": 2511
+        },
+        {
+          "path": "aegis_cognition/lab.py",
+          "line": 2940
+        },
+        {
+          "path": "aegis_cognition/lab.py",
+          "line": 3557
+        },
+        {
+          "path": "aegis_cognition/lab.py",
+          "line": 3568
+        },
+        {
+          "path": "aegis_cognition/lab.py",
+          "line": 3573
+        },
+        {
+          "path": "aegis_cognition/lab.py",
+          "line": 3575
+        },
+        {
+          "path": "aegis_cognition/lab.py",
+          "line": 3577
+        },
+        {
+          "path": "aegis_cognition/lab.py",
+          "line": 3592
+        },
+        {
+          "path": "aegis_cognition/lab.py",
+          "line": 3602
+        },
+        {
+          "path": "aegis_cognition/lab.py",
+          "line": 3609
+        },
+        {
+          "path": "aegis_cognition/lab.py",
+          "line": 3616
+        },
+        {
+          "path": "aegis_cognition/lab.py",
+          "line": 3618
+        },
+        {
+          "path": "aegis_cognition/lab.py",
+          "line": 3659
+        },
+        {
+          "path": "aegis_cognition/lab.py",
+          "line": 3718
+        },
+        {
+          "path": "aegis_cognition/lab.py",
+          "line": 3845
+        },
+        {
+          "path": "aegis_cognition/lab.py",
+          "line": 3849
+        },
+        {
+          "path": "aegis_cognition/lab.py",
+          "line": 3850
+        },
+        {
+          "path": "aegis_cognition/lab.py",
+          "line": 4024
+        },
+        {
+          "path": "aegis_cognition/lab.py",
+          "line": 4025
+        },
+        {
+          "path": "aegis_cognition/lab.py",
+          "line": 4038
+        },
+        {
+          "path": "aegis_cognition/lab.py",
+          "line": 4177
+        },
+        {
+          "path": "aegis_cognition/lab.py",
+          "line": 4208
+        },
+        {
+          "path": "aegis_cognition/lab.py",
+          "line": 4235
+        },
+        {
+          "path": "aegis_cognition/lab.py",
+          "line": 8462
+        },
+        {
+          "path": "aegis_cognition/lab.py",
+          "line": 8500
+        },
+        {
+          "path": "tests/test_lab_runtime.py",
+          "line": 279
+        },
+        {
+          "path": "tests/test_lab_runtime.py",
+          "line": 280
+        }
+      ],
+      "input_type": "&mut self, next: String",
+      "output_type": "PyResult<()>",
+      "serialization": "typed PyO3 method; serialization unknown",
+      "copying": "unknown",
+      "side_effect_class": "UNKNOWN",
+      "authority_relevance": "HIGH",
+      "estimated_frequency": "PER_RUN",
+      "flags": [
+        "AUTHORITY_SENSITIVE",
+        "STRINGLY_TYPED"
+      ],
+      "pymethods_receiver": "PyLabController",
+      "reachability_class": "UNKNOWN"
+    },
+    {
+      "python_facing_name": "begin_finalization",
+      "rust_function_or_type": "PyLabController.begin_finalization",
+      "path": "core/rust/src/ffi.rs",
+      "line": 1041,
+      "caller_candidates": [
+        {
+          "path": "aegis_cognition/lab.py",
+          "line": 3301
+        },
+        {
+          "path": "aegis_cognition/lab.py",
+          "line": 3847
+        }
+      ],
+      "input_type": "&mut self",
+      "output_type": "PyResult<()>",
+      "serialization": "typed PyO3 method; serialization unknown",
+      "copying": "unknown",
+      "side_effect_class": "UNKNOWN",
+      "authority_relevance": "HIGH",
+      "estimated_frequency": "PER_RUN",
+      "flags": [
+        "AUTHORITY_SENSITIVE"
+      ],
+      "pymethods_receiver": "PyLabController",
+      "reachability_class": "UNKNOWN"
+    },
+    {
+      "python_facing_name": "reopen_for_critical_gap",
+      "rust_function_or_type": "PyLabController.reopen_for_critical_gap",
+      "path": "core/rust/src/ffi.rs",
+      "line": 1047,
+      "caller_candidates": [
+        {
+          "path": "aegis_cognition/lab.py",
+          "line": 3317
+        }
+      ],
+      "input_type": "&mut self",
+      "output_type": "PyResult<()>",
+      "serialization": "typed PyO3 method; serialization unknown",
+      "copying": "unknown",
+      "side_effect_class": "UNKNOWN",
+      "authority_relevance": "HIGH",
+      "estimated_frequency": "PER_RUN",
+      "flags": [
+        "AUTHORITY_SENSITIVE"
+      ],
+      "pymethods_receiver": "PyLabController",
+      "reachability_class": "UNKNOWN"
+    },
+    {
+      "python_facing_name": "admit_event_json",
+      "rust_function_or_type": "PyLabController.admit_event_json",
+      "path": "core/rust/src/ffi.rs",
+      "line": 1055,
+      "caller_candidates": [
+        {
+          "path": "aegis_cognition/lab.py",
+          "line": 3478
+        },
+        {
+          "path": "aegis_cognition/lab.py",
+          "line": 4608
+        },
+        {
+          "path": "tests/test_lab_runtime.py",
+          "line": 209
+        },
+        {
+          "path": "tests/test_lab_runtime.py",
+          "line": 238
+        },
+        {
+          "path": "tests/test_lab_runtime.py",
+          "line": 841
+        },
+        {
+          "path": "tests/test_lab_runtime.py",
+          "line": 934
+        },
+        {
+          "path": "tests/test_lab_runtime.py",
+          "line": 2192
+        },
+        {
+          "path": "tests/test_lab_runtime.py",
+          "line": 2294
+        },
+        {
+          "path": "tests/test_lab_runtime.py",
+          "line": 2409
+        },
+        {
+          "path": "tests/test_lab_runtime.py",
+          "line": 2460
+        },
+        {
+          "path": "tests/test_lab_runtime.py",
+          "line": 3152
+        },
+        {
+          "path": "tests/test_lab_runtime.py",
+          "line": 3229
+        }
+      ],
+      "input_type": "&mut self, event_json: String, state: Option<String>",
+      "output_type": "PyResult<()>",
+      "serialization": "typed PyO3 method; serialization unknown",
+      "copying": "unknown",
+      "side_effect_class": "UNKNOWN",
+      "authority_relevance": "HIGH",
+      "estimated_frequency": "PER_RUN",
+      "flags": [
+        "AUTHORITY_SENSITIVE",
+        "LARGE_PAYLOAD",
+        "STRINGLY_TYPED"
+      ],
+      "pymethods_receiver": "PyLabController",
+      "reachability_class": "UNKNOWN"
+    },
+    {
+      "python_facing_name": "admit_record_json",
+      "rust_function_or_type": "PyLabController.admit_record_json",
+      "path": "core/rust/src/ffi.rs",
+      "line": 1077,
+      "caller_candidates": [
+        {
+          "path": "aegis_cognition/lab.py",
+          "line": 3494
+        },
+        {
+          "path": "tests/test_lab_runtime.py",
+          "line": 241
+        },
+        {
+          "path": "tests/test_lab_runtime.py",
+          "line": 844
+        },
+        {
+          "path": "tests/test_lab_runtime.py",
+          "line": 937
+        },
+        {
+          "path": "tests/test_lab_runtime.py",
+          "line": 2195
+        },
+        {
+          "path": "tests/test_lab_runtime.py",
+          "line": 2297
+        },
+        {
+          "path": "tests/test_lab_runtime.py",
+          "line": 2463
+        },
+        {
+          "path": "tests/test_lab_runtime.py",
+          "line": 3155
+        },
+        {
+          "path": "tests/test_lab_runtime.py",
+          "line": 3232
+        }
+      ],
+      "input_type": "&mut self,\n        event_json: String,\n        payload_json: String,\n        state: Option<String>,",
+      "output_type": "PyResult<()>",
+      "serialization": "typed PyO3 method; serialization unknown",
+      "copying": "unknown",
+      "side_effect_class": "UNKNOWN",
+      "authority_relevance": "HIGH",
+      "estimated_frequency": "PER_RUN",
+      "flags": [
+        "AUTHORITY_SENSITIVE",
+        "LARGE_PAYLOAD",
+        "STRINGLY_TYPED"
+      ],
+      "pymethods_receiver": "PyLabController",
+      "reachability_class": "UNKNOWN"
+    },
+    {
+      "python_facing_name": "admit_exploration_event_json",
+      "rust_function_or_type": "PyLabController.admit_exploration_event_json",
+      "path": "core/rust/src/ffi.rs",
+      "line": 1098,
+      "caller_candidates": [
+        {
+          "path": "aegis_cognition/lab.py",
+          "line": 3495
+        }
+      ],
+      "input_type": "&mut self,\n        event_json: String,\n        expected_state_epoch: u64,\n        spend_json: String,",
+      "output_type": "PyResult<()>",
+      "serialization": "typed PyO3 method; serialization unknown",
+      "copying": "unknown",
+      "side_effect_class": "UNKNOWN",
+      "authority_relevance": "HIGH",
+      "estimated_frequency": "PER_RUN",
+      "flags": [
+        "AUTHORITY_SENSITIVE",
+        "LARGE_PAYLOAD",
+        "STRINGLY_TYPED"
+      ],
+      "pymethods_receiver": "PyLabController",
+      "reachability_class": "UNKNOWN"
+    },
+    {
+      "python_facing_name": "record_source_json",
+      "rust_function_or_type": "PyLabController.record_source_json",
+      "path": "core/rust/src/ffi.rs",
+      "line": 1120,
+      "caller_candidates": [],
+      "input_type": "&mut self, payload: String",
+      "output_type": "PyResult<()>",
+      "serialization": "typed PyO3 method; serialization unknown",
+      "copying": "unknown",
+      "side_effect_class": "UNKNOWN",
+      "authority_relevance": "HIGH",
+      "estimated_frequency": "PER_RUN",
+      "flags": [
+        "AUTHORITY_SENSITIVE",
+        "LARGE_PAYLOAD",
+        "STRINGLY_TYPED"
+      ],
+      "pymethods_receiver": "PyLabController",
+      "reachability_class": "UNKNOWN"
+    },
+    {
+      "python_facing_name": "record_claim_json",
+      "rust_function_or_type": "PyLabController.record_claim_json",
+      "path": "core/rust/src/ffi.rs",
+      "line": 1128,
+      "caller_candidates": [],
+      "input_type": "&mut self, payload: String",
+      "output_type": "PyResult<()>",
+      "serialization": "typed PyO3 method; serialization unknown",
+      "copying": "unknown",
+      "side_effect_class": "UNKNOWN",
+      "authority_relevance": "HIGH",
+      "estimated_frequency": "PER_RUN",
+      "flags": [
+        "AUTHORITY_SENSITIVE",
+        "LARGE_PAYLOAD",
+        "STRINGLY_TYPED"
+      ],
+      "pymethods_receiver": "PyLabController",
+      "reachability_class": "UNKNOWN"
+    },
+    {
+      "python_facing_name": "record_hypothesis_json",
+      "rust_function_or_type": "PyLabController.record_hypothesis_json",
+      "path": "core/rust/src/ffi.rs",
+      "line": 1134,
+      "caller_candidates": [],
+      "input_type": "&mut self, payload: String",
+      "output_type": "PyResult<()>",
+      "serialization": "typed PyO3 method; serialization unknown",
+      "copying": "unknown",
+      "side_effect_class": "UNKNOWN",
+      "authority_relevance": "HIGH",
+      "estimated_frequency": "PER_RUN",
+      "flags": [
+        "AUTHORITY_SENSITIVE",
+        "LARGE_PAYLOAD",
+        "STRINGLY_TYPED"
+      ],
+      "pymethods_receiver": "PyLabController",
+      "reachability_class": "UNKNOWN"
+    },
+    {
+      "python_facing_name": "schedule_experiment_json",
+      "rust_function_or_type": "PyLabController.schedule_experiment_json",
+      "path": "core/rust/src/ffi.rs",
+      "line": 1142,
+      "caller_candidates": [],
+      "input_type": "&mut self, payload: String",
+      "output_type": "PyResult<()>",
+      "serialization": "typed PyO3 method; serialization unknown",
+      "copying": "unknown",
+      "side_effect_class": "UNKNOWN",
+      "authority_relevance": "HIGH",
+      "estimated_frequency": "PER_RUN",
+      "flags": [
+        "AUTHORITY_SENSITIVE",
+        "LARGE_PAYLOAD",
+        "STRINGLY_TYPED"
+      ],
+      "pymethods_receiver": "PyLabController",
+      "reachability_class": "UNKNOWN"
+    },
+    {
+      "python_facing_name": "record_observation_json",
+      "rust_function_or_type": "PyLabController.record_observation_json",
+      "path": "core/rust/src/ffi.rs",
+      "line": 1150,
+      "caller_candidates": [],
+      "input_type": "&mut self, payload: String",
+      "output_type": "PyResult<()>",
+      "serialization": "typed PyO3 method; serialization unknown",
+      "copying": "unknown",
+      "side_effect_class": "UNKNOWN",
+      "authority_relevance": "HIGH",
+      "estimated_frequency": "PER_RUN",
+      "flags": [
+        "AUTHORITY_SENSITIVE",
+        "LARGE_PAYLOAD",
+        "STRINGLY_TYPED"
+      ],
+      "pymethods_receiver": "PyLabController",
+      "reachability_class": "UNKNOWN"
+    },
+    {
+      "python_facing_name": "review_and_complete",
+      "rust_function_or_type": "PyLabController.review_and_complete",
+      "path": "core/rust/src/ffi.rs",
+      "line": 1158,
+      "caller_candidates": [],
+      "input_type": "&mut self",
+      "output_type": "PyResult<()>",
+      "serialization": "typed PyO3 method; serialization unknown",
+      "copying": "unknown",
+      "side_effect_class": "UNKNOWN",
+      "authority_relevance": "HIGH",
+      "estimated_frequency": "PER_RUN",
+      "flags": [
+        "AUTHORITY_SENSITIVE"
+      ],
+      "pymethods_receiver": "PyLabController",
+      "reachability_class": "UNKNOWN"
+    },
+    {
+      "python_facing_name": "new",
+      "rust_function_or_type": "SemanticCache.new",
+      "path": "pocs/semantic_cache_poc/src/lib.rs",
+      "line": 47,
+      "caller_candidates": [
+        {
+          "path": "aegis_cognition/application.py",
+          "line": 32
+        },
+        {
+          "path": "aegis_cognition/lab.py",
+          "line": 5508
+        },
+        {
+          "path": "aegis_cognition/observability.py",
+          "line": 33
+        },
+        {
+          "path": "core/python/tests.py",
+          "line": 347
+        },
+        {
+          "path": "core/python/tests.py",
+          "line": 348
+        },
+        {
+          "path": "core/python/tests.py",
+          "line": 2012
+        },
+        {
+          "path": "scripts/_audit_regen_requirements.py",
+          "line": 10
+        },
+        {
+          "path": "scripts/benchmark_gate.py",
+          "line": 179
+        },
+        {
+          "path": "scripts/constitution_audit.py",
+          "line": 722
+        },
+        {
+          "path": "scripts/constitution_audit.py",
+          "line": 2494
+        },
+        {
+          "path": "scripts/constitution_audit.py",
+          "line": 2528
+        },
+        {
+          "path": "scripts/constitution_audit.py",
+          "line": 2529
+        },
+        {
+          "path": "scripts/constitution_audit.py",
+          "line": 2530
+        },
+        {
+          "path": "scripts/constitution_audit.py",
+          "line": 2531
+        },
+        {
+          "path": "scripts/constitution_audit.py",
+          "line": 2534
+        },
+        {
+          "path": "scripts/constitution_audit.py",
+          "line": 2536
+        },
+        {
+          "path": "scripts/constitution_audit.py",
+          "line": 2539
+        },
+        {
+          "path": "scripts/constitution_audit.py",
+          "line": 2607
+        },
+        {
+          "path": "scripts/constitution_audit.py",
+          "line": 2627
+        },
+        {
+          "path": "scripts/constitution_audit.py",
+          "line": 3199
+        },
+        {
+          "path": "scripts/constitution_audit.py",
+          "line": 3247
+        },
+        {
+          "path": "scripts/hermes_baseline_gate.py",
+          "line": 49
+        },
+        {
+          "path": "scripts/hermes_baseline_gate.py",
+          "line": 144
+        },
+        {
+          "path": "scripts/hermes_baseline_gate.py",
+          "line": 145
+        },
+        {
+          "path": "scripts/hermes_baseline_gate.py",
+          "line": 154
+        },
+        {
+          "path": "scripts/hermes_baseline_gate.py",
+          "line": 155
+        },
+        {
+          "path": "scripts/hermes_baseline_gate.py",
+          "line": 161
+        },
+        {
+          "path": "scripts/hermes_baseline_gate.py",
+          "line": 162
+        },
+        {
+          "path": "scripts/hermes_persistence_baseline_gate.py",
+          "line": 49
+        },
+        {
+          "path": "scripts/hermes_persistence_baseline_gate.py",
+          "line": 162
+        }
+      ],
+      "input_type": "threshold: f32, file_path: Option<String>",
+      "output_type": "Self",
+      "serialization": "typed PyO3 method; serialization unknown",
+      "copying": "unknown",
+      "side_effect_class": "UNKNOWN",
+      "authority_relevance": "UNKNOWN",
+      "estimated_frequency": "UNKNOWN",
+      "flags": [
+        "STRINGLY_TYPED"
+      ],
+      "pymethods_receiver": "SemanticCache",
+      "reachability_class": "UNKNOWN"
+    },
+    {
+      "python_facing_name": "lookup",
+      "rust_function_or_type": "SemanticCache.lookup",
+      "path": "pocs/semantic_cache_poc/src/lib.rs",
+      "line": 60,
+      "caller_candidates": [
+        {
+          "path": "aegis_cognition/lab.py",
+          "line": 5239
+        },
+        {
+          "path": "aegis_cognition/lab.py",
+          "line": 5245
+        },
+        {
+          "path": "aegis_cognition/lab.py",
+          "line": 5576
+        },
+        {
+          "path": "pocs/run_benchmarks.py",
+          "line": 23
+        },
+        {
+          "path": "pocs/run_benchmarks.py",
+          "line": 73
+        },
+        {
+          "path": "pocs/run_benchmarks.py",
+          "line": 80
+        },
+        {
+          "path": "pocs/run_benchmarks.py",
+          "line": 87
+        },
+        {
+          "path": "scripts/benchmark_gate.py",
+          "line": 28
+        },
+        {
+          "path": "scripts/benchmark_gate.py",
+          "line": 48
+        },
+        {
+          "path": "scripts/extreme_testing_suite.py",
+          "line": 606
+        },
+        {
+          "path": "scripts/extreme_testing_suite.py",
+          "line": 731
+        },
+        {
+          "path": "scripts/linux_cgroup_live_probe.py",
+          "line": 7
+        },
+        {
+          "path": "tests/test_lab_runtime.py",
+          "line": 3553
+        },
+        {
+          "path": "tests/test_lab_runtime.py",
+          "line": 3554
+        },
+        {
+          "path": "tests/test_lab_runtime.py",
+          "line": 3570
+        }
+      ],
+      "input_type": "&self, prompt: &str, embedding: Vec<f32>, namespace: &str",
+      "output_type": "Option<String>",
+      "serialization": "typed PyO3 method; serialization unknown",
+      "copying": "unknown",
+      "side_effect_class": "UNKNOWN",
+      "authority_relevance": "UNKNOWN",
+      "estimated_frequency": "UNKNOWN",
+      "flags": [],
+      "pymethods_receiver": "SemanticCache",
+      "reachability_class": "UNKNOWN"
+    },
+    {
+      "python_facing_name": "insert",
+      "rust_function_or_type": "SemanticCache.insert",
+      "path": "pocs/semantic_cache_poc/src/lib.rs",
+      "line": 85,
+      "caller_candidates": [
+        {
+          "path": "aegis_cognition/dx_metrics.py",
+          "line": 23
+        },
+        {
+          "path": "pocs/run_benchmarks.py",
+          "line": 40
+        },
+        {
+          "path": "pocs/run_benchmarks.py",
+          "line": 55
+        },
+        {
+          "path": "pocs/run_benchmarks.py",
+          "line": 91
+        },
+        {
+          "path": "scripts/_debug_probe.py",
+          "line": 8
+        },
+        {
+          "path": "scripts/architecture_fitness.py",
+          "line": 208
+        },
+        {
+          "path": "scripts/architecture_fitness.py",
+          "line": 209
+        },
+        {
+          "path": "scripts/benchmark_preflight.py",
+          "line": 12
+        },
+        {
+          "path": "scripts/benchmark_wrapper.py",
+          "line": 14
+        },
+        {
+          "path": "scripts/e2e_release_gate.py",
+          "line": 26
+        },
+        {
+          "path": "scripts/external_deployment_smoke_gate.py",
+          "line": 27
+        },
+        {
+          "path": "scripts/hermes_rpc_baseline_gate.py",
+          "line": 14
+        },
+        {
+          "path": "scripts/production_closure.py",
+          "line": 14
+        },
+        {
+          "path": "scripts/production_packaging_smoke_gate.py",
+          "line": 16
+        },
+        {
+          "path": "scripts/production_readiness.py",
+          "line": 9
+        },
+        {
+          "path": "scripts/python_hotpath_gate.py",
+          "line": 11
+        },
+        {
+          "path": "scripts/run_checks.py",
+          "line": 75
+        },
+        {
+          "path": "scripts/smoke_check.py",
+          "line": 7
+        }
+      ],
+      "input_type": "&mut self,\n        prompt: String,\n        response: String,\n        embedding: Vec<f32>,\n        namespace: String,",
+      "output_type": "()",
+      "serialization": "typed PyO3 method; serialization unknown",
+      "copying": "unknown",
+      "side_effect_class": "UNKNOWN",
+      "authority_relevance": "UNKNOWN",
+      "estimated_frequency": "UNKNOWN",
+      "flags": [
+        "STRINGLY_TYPED"
+      ],
+      "pymethods_receiver": "SemanticCache",
+      "reachability_class": "UNKNOWN"
+    },
+    {
+      "python_facing_name": "invalidate",
+      "rust_function_or_type": "SemanticCache.invalidate",
+      "path": "pocs/semantic_cache_poc/src/lib.rs",
+      "line": 114,
+      "caller_candidates": [
+        {
+          "path": "aegis_cognition/lab.py",
+          "line": 3585
+        }
+      ],
+      "input_type": "&mut self, namespace: &str",
+      "output_type": "()",
+      "serialization": "typed PyO3 method; serialization unknown",
+      "copying": "unknown",
+      "side_effect_class": "UNKNOWN",
+      "authority_relevance": "UNKNOWN",
+      "estimated_frequency": "UNKNOWN",
+      "flags": [],
+      "pymethods_receiver": "SemanticCache",
+      "reachability_class": "UNKNOWN"
+    },
+    {
+      "python_facing_name": "size",
+      "rust_function_or_type": "SemanticCache.size",
+      "path": "pocs/semantic_cache_poc/src/lib.rs",
+      "line": 121,
+      "caller_candidates": [
+        {
+          "path": "aegis_cognition/lab.py",
+          "line": 972
+        },
+        {
+          "path": "aegis_cognition/lab.py",
+          "line": 4661
+        },
+        {
+          "path": "aegis_cognition/lab.py",
+          "line": 5775
+        },
+        {
+          "path": "pocs/run_benchmarks.py",
+          "line": 161
+        },
+        {
+          "path": "scripts/communication_payload_benchmark.py",
+          "line": 125
+        },
+        {
+          "path": "scripts/communication_payload_benchmark.py",
+          "line": 126
+        },
+        {
+          "path": "scripts/communication_payload_benchmark.py",
+          "line": 129
+        },
+        {
+          "path": "scripts/communication_payload_benchmark.py",
+          "line": 133
+        },
+        {
+          "path": "scripts/constitution_audit.py",
+          "line": 1046
+        },
+        {
+          "path": "scripts/extreme_testing_suite.py",
+          "line": 203
+        },
+        {
+          "path": "scripts/extreme_testing_suite.py",
+          "line": 206
+        },
+        {
+          "path": "scripts/extreme_testing_suite.py",
+          "line": 220
+        },
+        {
+          "path": "scripts/hermes_session_recovery_baseline_gate.py",
+          "line": 180
+        },
+        {
+          "path": "scripts/hermes_session_recovery_baseline_gate.py",
+          "line": 185
+        },
+        {
+          "path": "scripts/hermes_session_recovery_baseline_gate.py",
+          "line": 186
+        },
+        {
+          "path": "scripts/hermes_session_recovery_baseline_gate.py",
+          "line": 187
+        },
+        {
+          "path": "scripts/run_checks.py",
+          "line": 203
+        }
+      ],
+      "input_type": "&self",
+      "output_type": "usize",
+      "serialization": "typed PyO3 method; serialization unknown",
+      "copying": "unknown",
+      "side_effect_class": "UNKNOWN",
+      "authority_relevance": "UNKNOWN",
+      "estimated_frequency": "UNKNOWN",
+      "flags": [],
+      "pymethods_receiver": "SemanticCache",
+      "reachability_class": "UNKNOWN"
+    },
+    {
+      "python_facing_name": "save_to_file",
+      "rust_function_or_type": "SemanticCache.save_to_file",
+      "path": "pocs/semantic_cache_poc/src/lib.rs",
+      "line": 125,
+      "caller_candidates": [],
+      "input_type": "&self, path: &str",
+      "output_type": "PyResult<()>",
+      "serialization": "typed PyO3 method; serialization unknown",
+      "copying": "unknown",
+      "side_effect_class": "UNKNOWN",
+      "authority_relevance": "UNKNOWN",
+      "estimated_frequency": "UNKNOWN",
+      "flags": [],
+      "pymethods_receiver": "SemanticCache",
+      "reachability_class": "UNKNOWN"
+    },
+    {
+      "python_facing_name": "load_from_file",
+      "rust_function_or_type": "SemanticCache.load_from_file",
+      "path": "pocs/semantic_cache_poc/src/lib.rs",
+      "line": 138,
+      "caller_candidates": [],
+      "input_type": "&mut self, path: &str",
+      "output_type": "PyResult<()>",
+      "serialization": "typed PyO3 method; serialization unknown",
+      "copying": "unknown",
+      "side_effect_class": "UNKNOWN",
+      "authority_relevance": "UNKNOWN",
+      "estimated_frequency": "UNKNOWN",
+      "flags": [],
+      "pymethods_receiver": "SemanticCache",
+      "reachability_class": "UNKNOWN"
+    }
+  ],
+  "runtime_representative_calls": [
+    {
+      "caller": "aegis_cognition.aegis_nerve",
+      "rust": "core/rust/src/ffi.rs",
+      "payload": "scalar/bytes",
+      "effect": "read_only/compute",
+      "calls_per_probe_run": 4,
+      "serialization": "PyO3 conversion",
+      "copying": "may copy",
+      "error": "bool/string/PyErr"
+    }
+  ],
+  "runtime_frequency_status": "MEASURED_FOR_EXPLICIT_NATIVE_PROBE_ONLY; LAB_WIDE_NOT_VERIFIED",
+  "baseline_counters": {
+    "ffi_crossings": 120,
+    "json_encodes": 30,
+    "json_decodes": 30,
+    "hash_operations": 30,
+    "filesystem_writes": 8,
+    "copy_suspects": 30
+  },
+  "special_audit": {
+    "Box::leak": {
+      "hits": [
+        {
+          "path": "core/rust/src/ffi.rs",
+          "line": 385,
+          "text": "let model_hint_static = model_hint.map(|s| &*Box::leak(s.into_boxed_str()));"
+        },
+        {
+          "path": "core/rust/src/ffi.rs",
+          "line": 441,
+          "text": "let error_static = Box::leak(error.into_boxed_str());"
+        }
+      ],
+      "classification": "BOUNDED_LEAK",
+      "reachable_status": "NOT_PROVEN_FOR_EVERY_OCCURRENCE"
+    },
+    "unwrap": {
+      "hits": [
+        {
+          "path": "core/rust/src/ffi.rs",
+          "line": 24,
+          "text": "Mutex::new(SessionSearchIndex::new(epoch_hash).unwrap())"
+        }
+      ],
+      "classification": "PANIC_RISK",
+      "reachable_status": "NOT_PROVEN_FOR_EVERY_OCCURRENCE"
+    },
+    "expect": {
+      "hits": [],
+      "classification": "PANIC_RISK",
+      "reachable_status": "NOT_PROVEN_FOR_EVERY_OCCURRENCE"
+    },
+    "panic": {
+      "hits": [],
+      "classification": "PANIC_RISK",
+      "reachable_status": "NOT_PROVEN_FOR_EVERY_OCCURRENCE"
+    },
+    "static/global": {
+      "hits": [
+        {
+          "path": "core/rust/src/ffi.rs",
+          "line": 13,
+          "text": "static SESSION_INDEX: OnceLock<Mutex<SessionSearchIndex>> = OnceLock::new();"
+        },
+        {
+          "path": "core/rust/src/ffi.rs",
+          "line": 14,
+          "text": "static SESSION_LEDGER: OnceLock<Mutex<LearningLedger>> = OnceLock::new();"
+        },
+        {
+          "path": "core/rust/src/ffi.rs",
+          "line": 15,
+          "text": "static AUTHORITATIVE_RUNTIME: OnceLock<Mutex<crate::runtime::AuthoritativeRuntime>> ="
+        },
+        {
+          "path": "core/rust/src/ffi.rs",
+          "line": 18,
+          "text": "fn get_session_index() -> &'static Mutex<SessionSearchIndex> {"
+        },
+        {
+          "path": "core/rust/src/ffi.rs",
+          "line": 28,
+          "text": "fn get_session_ledger() -> &'static Mutex<LearningLedger> {"
+        },
+        {
+          "path": "core/rust/src/ffi.rs",
+          "line": 32,
+          "text": "fn get_authoritative_runtime() -> &'static Mutex<crate::runtime::AuthoritativeRuntime> {"
+        },
+        {
+          "path": "core/rust/src/ffi.rs",
+          "line": 46,
+          "text": "pub fn aegis_status() -> PyResult<&'static str> {"
+        },
+        {
+          "path": "core/rust/src/ffi.rs",
+          "line": 173,
+          "text": "pub fn aegis_cli_status() -> PyResult<&'static str> {"
+        },
+        {
+          "path": "core/rust/src/ffi.rs",
+          "line": 178,
+          "text": "pub fn aegis_cli_schema() -> PyResult<&'static str> {"
+        },
+        {
+          "path": "core/rust/src/ffi.rs",
+          "line": 202,
+          "text": "pub fn aegis_resource_contract_version() -> PyResult<&'static str> {"
+        },
+        {
+          "path": "core/rust/src/ffi.rs",
+          "line": 1391,
+          "text": "fn trust_level_label(level: crate::hot_engine::TrustLevel) -> &'static str {"
+        },
+        {
+          "path": "core/rust/src/ffi.rs",
+          "line": 1399,
+          "text": "fn admission_label(admission: crate::hot_engine::ArenaAdmission) -> &'static str {"
+        },
+        {
+          "path": "core/rust/src/ffi.rs",
+          "line": 1419,
+          "text": "fn lab_state_label(state: crate::lab::LabRunState) -> &'static str {"
+        }
+      ],
+      "classification": "UNKNOWN",
+      "reachable_status": "NOT_PROVEN_FOR_EVERY_OCCURRENCE"
+    }
+  },
+  "limitations": [
+    "indirect/macro reachability incomplete",
+    "no live sink"
+  ],
+  "WORKTREE_EPOCH": "3783037b7a38cf214bdfe4b593496971ccafec29fd6b5b05f413a98ea51918c6",
+  "HEAD": "f9645caf6d17cee2023d52183990ffcf8317e456",
+  "generated_at": "2026-08-28T02:58:56.366605+00:00",
+  "collector_version/method": "aegis-final-design-closure-v1; direct Git/filesystem/AST/Cargo plus bounded disposable-wheel probes"
+}

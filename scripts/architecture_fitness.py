@@ -37,6 +37,22 @@ def main() -> int:
     token_schema = json.loads(read("schemas/lease-token-v1.json"))
     workspace = toml("Cargo.toml")["workspace"]
     cargo_manifests = [ROOT / member / "Cargo.toml" for member in workspace["members"]]
+    maturin_includes = {
+        (entry.get("path"), entry.get("format"))
+        for entry in maturin.get("include", [])
+        if isinstance(entry, dict)
+    }
+    # The root package intentionally lists the two bridge package patterns
+    # explicitly.  Accept that equivalent, narrower form as well as the
+    # historical recursive glob; the narrower form avoids accidentally
+    # packaging unrelated Python files under ``core``.
+    bridge_included = (
+        ("core/**/*.py", "wheel") in maturin_includes
+        or {
+            ("core/python/*.py", "wheel"),
+            ("core/python/aegis/*.py", "wheel"),
+        }.issubset(maturin_includes)
+    )
 
     checks = [
         check(
@@ -106,7 +122,7 @@ def main() -> int:
             root_build.get("build-backend") == "maturin"
             and root_build.get("requires") == ["maturin==1.14.1"]
             and maturin.get("module-name") == "aegis_cognition.aegis_nerve"
-            and any(entry.get("path") == "core/**/*.py" and entry.get("format") == "wheel" for entry in maturin.get("include", [])),
+            and bridge_included,
             "the root wheel must use pinned maturin and include the bridge package",
         ),
         check(

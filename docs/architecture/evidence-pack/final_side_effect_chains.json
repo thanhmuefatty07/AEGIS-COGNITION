@@ -1,0 +1,85 @@
+{
+  "schema": "aegis-final-side-effect-chains-v1",
+  "chains": [
+    {
+      "effect": "PROVIDER_CALL",
+      "entrypoint": "Agent -> AgentApplication.arun",
+      "stages": [
+        "orchestration:PROVEN_PRESENT",
+        "declaration:CONVENTION_ONLY",
+        "admission:PROVEN_PRESENT",
+        "capability:PROVEN_PRESENT",
+        "budget:PROVEN_PRESENT",
+        "attempt/lease:PROVEN_PRESENT",
+        "sink:OPTIONAL",
+        "result:OPTIONAL",
+        "settlement:PROVEN_PRESENT",
+        "evidence:PROVEN_PRESENT"
+      ],
+      "overall": "PARTIALLY_FENCED",
+      "reason": "compatibility/provider route and SDK independently callable"
+    },
+    {
+      "effect": "NETWORK",
+      "entrypoint": "Lab search/fetch cell",
+      "stages": [
+        "orchestration:PROVEN_PRESENT",
+        "declaration:PROVEN_PRESENT",
+        "admission:PROVEN_PRESENT",
+        "capability/budget/lease:PROVEN_PRESENT",
+        "sink:OPTIONAL urllib/HTTP",
+        "settlement/evidence:PROVEN_PRESENT"
+      ],
+      "overall": "PARTIALLY_FENCED",
+      "reason": "SSRF/redirect/DNS closure not proven"
+    },
+    {
+      "effect": "BROWSER",
+      "entrypoint": "Lab browser cell",
+      "stages": [
+        "orchestration:PROVEN_PRESENT",
+        "declaration/admission:PROVEN_PRESENT",
+        "capability/budget:PROVEN_PRESENT",
+        "sink:OPTIONAL Playwright",
+        "settlement/replay:PROVEN_PRESENT"
+      ],
+      "overall": "PARTIALLY_FENCED",
+      "reason": "live browser/descendant containment not exercised"
+    },
+    {
+      "effect": "PROCESS_SPAWN",
+      "entrypoint": "experiment/benchmark cell",
+      "stages": [
+        "orchestration:PROVEN_PRESENT",
+        "admission:PROVEN_PRESENT",
+        "capability/budget:PROVEN_PRESENT",
+        "sink:OPTIONAL subprocess",
+        "settlement:PROVEN_PRESENT"
+      ],
+      "overall": "PARTIALLY_FENCED",
+      "reason": "OS isolation platform dependent"
+    },
+    {
+      "effect": "FILESYSTEM_WRITE",
+      "entrypoint": "LabRun.archive_to_native",
+      "stages": [
+        "orchestration:PROVEN_PRESENT",
+        "admission:CONVENTION_ONLY",
+        "capability/budget:PROVEN_PRESENT",
+        "lease:ADVISORY_SINGLE_WRITER",
+        "sink:PROVEN_PRESENT",
+        "evidence:PROVEN_PRESENT"
+      ],
+      "overall": "PARTIALLY_FENCED",
+      "reason": "local lease not hosted/multi-process proof"
+    }
+  ],
+  "limitations": [
+    "no live sink invoked",
+    "SDK/subprocess descendant reachability incomplete"
+  ],
+  "WORKTREE_EPOCH": "3783037b7a38cf214bdfe4b593496971ccafec29fd6b5b05f413a98ea51918c6",
+  "HEAD": "f9645caf6d17cee2023d52183990ffcf8317e456",
+  "generated_at": "2026-08-28T02:58:56.366605+00:00",
+  "collector_version/method": "aegis-final-design-closure-v1; direct Git/filesystem/AST/Cargo plus bounded disposable-wheel probes"
+}

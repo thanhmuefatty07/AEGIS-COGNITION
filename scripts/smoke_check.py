@@ -6,10 +6,9 @@ PROJECT_ROOT = Path(r'c:\Users\ADMIN\AEGIS-COGNITION')
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from core.python import build_message, validate_bridge_batch, validate_bridge_smoke
-
-
 def main() -> int:
+    from core.python import build_message, validate_bridge_batch, validate_bridge_smoke
+
     message = build_message(1, 2, b'abc')
     batch = validate_bridge_batch([message])
     result = validate_bridge_smoke(message)

@@ -1,0 +1,89 @@
+{
+  "experiment_id": "EXP-HW-002",
+  "question": "Can one-host data identify a cross-machine scaling model?",
+  "finding": "Regimes can be named, but status is MODEL_ESTIMATE_UNVALIDATED and other hosts are OUT_OF_VALIDATED_DOMAIN.",
+  "source_epoch": {
+    "HEAD": "f9645caf6d17cee2023d52183990ffcf8317e456",
+    "tracked_diff_sha256": "f62f42f48e4fffb3584719b6791ff39bef10960f413a8d9cd420a3f72886f8ae",
+    "untracked_architecture_relevant": [
+      [
+        "aegis_cognition/benchmark.py",
+        "813ee04c7e9ceb2727611f4f799c542aa1d341f401785d39c6d2a0d409ebdf32"
+      ],
+      [
+        "aegis_cognition/lab.py",
+        "e0fa0303d215cb1979f51bb6a44852c3faa266b855965f3c2d92a39008bb5458"
+      ],
+      [
+        "core/rust/src/lab.rs",
+        "d69ad287311dd443cc3c7c285daab4bdcf70bc20e6b3485622260633e8ade594"
+      ],
+      [
+        "docs/adr/ADR-015-portability.md",
+        "100c23e8dc0bdb4604c72e79848d01848c6674d93aea4ffd53a079f50268682e"
+      ],
+      [
+        "docs/api/agent.md",
+        "33c886bc0426b8fcda128ef31b14f726d3c0f28db82093bd990f6ac55e6695b8"
+      ],
+      [
+        "docs/api/cli.md",
+        "9d57f5e7c81dfc30ada7c5f6d8d1c91ca7a893f777e03f2171924a6d438f17f0"
+      ],
+      [
+        "docs/architecture.md",
+        "e08dde6935591310ce09e44563e4fe4e908b75bf7d311fb9a8be841877a2f808"
+      ],
+      [
+        "docs/architecture/AEGIS_CURRENT_ARCHITECTURE_TRUTH_AUDIT.md",
+        "0ad33fc1c281eb48d1c6fcc92d041a4b4f10114b159ca3cd6b89dafa4caf2b27"
+      ],
+      [
+        "docs/architecture/AEGIS_LAB_RUNTIME_MASTER_PLAN.md",
+        "8081b090fbf6dbee120384ca55b5aefc5030ea7fe3b9f427c17c14c9c642628a"
+      ],
+      [
+        "docs/architecture/AEGIS_LAB_STATUS_GENERATED.md",
+        "f0e8d45bf6ac70070ba09f70cab133a41342c7642f12dd900331c3f19412e529"
+      ],
+      [
+        "docs/architecture/document_inventory.json",
+        "1a0e749eb9e5f486193a3ab7a1c008ab34ac70b959fea62e4ae593c5937d4b9c"
+      ],
+      [
+        "docs/troubleshooting/common-errors.md",
+        "3403db4f190deb72ea6e7265042cdd7fe13fd02f95e3355861b518b008f48000"
+      ],
+      [
+        "docs/tutorials/browser-automation.md",
+        "a579b43dced12867e61417a1e83db854d159cb959f04fc5d9089805fccc463cb"
+      ],
+      [
+        "docs/tutorials/web-research.md",
+        "24a6b5abc9f86f66adcf6bc820c7d8467a8a77cfe8f3250eb2e23b1188c07c59"
+      ],
+      [
+        "scripts/document_consistency_gate.py",
+        "9dbf33023515df47576862737c8fd94c415c907a37e3ae50922651aeb3009cf9"
+      ],
+      [
+        "scripts/release_controller_action_smoke.py",
+        "add0e158a3bcac9b22a7816610b97565f6ed3136262b1cea37f5b664f76cc72c"
+      ],
+      [
+        "scripts/release_recovery_smoke.py",
+        "42c8ac8593b595fa7fdccef44ca5a4fdcf1a786162667ca06e5e61a7cd026fd8"
+      ],
+      [
+        "tests/test_document_consistency_gate.py",
+        "d55185e89de5136fa76be4b7e7b6f3d50488284ca22d74c7eb36f1398e3baa33"
+      ],
+      [
+        "tests/test_lab_runtime.py",
+        "1ea7f56f4ca27a810f56c0ddf725f167d86d64b06e95224508e261d9e68334c6"
+      ]
+    ],
+    "WORKTREE_EPOCH": "549114d28117c7374ab5e1e1b1c0706876887eb55365684c7ec896fe2c779b2d"
+  },
+  "method": "direct source/manifest inspection plus codebase-memory graph where available"
+}

@@ -1,0 +1,3170 @@
+{
+  "schema": "aegis-architecture-reachability-v1",
+  "roots": {
+    "PUBLIC_API": [
+      "aegis_cognition",
+      "aegis_cognition.agent",
+      "aegis_cognition.application",
+      "aegis_cognition.cli"
+    ],
+    "LAB": [
+      "aegis_cognition.agent",
+      "aegis_cognition.application",
+      "aegis_cognition.lab"
+    ],
+    "CLI": [
+      "aegis_cognition.cli",
+      "core.python.aegis_cli"
+    ],
+    "FFI": [
+      "aegis_cognition.runtime",
+      "core.python.aegis_adapter",
+      "core.python.bridge",
+      "core.python.bridge_mmap"
+    ],
+    "PLUGIN": [],
+    "TEST_ONLY": [
+      "core.python.tests",
+      "tests.test_document_consistency_gate",
+      "tests.test_evidence_consistency_gate",
+      "tests.test_lab_runtime",
+      "tests.test_runtime_contracts",
+      "tests.test_suite_evidence"
+    ],
+    "SCRIPT_ONLY": [
+      "scripts._audit_regen_requirements",
+      "scripts._debug_probe",
+      "scripts.architecture_fitness",
+      "scripts.attestation_status",
+      "scripts.benchmark_gate",
+      "scripts.benchmark_preflight",
+      "scripts.benchmark_wrapper",
+      "scripts.cluster_loopback_gate",
+      "scripts.communication_payload_benchmark",
+      "scripts.constitution_audit",
+      "scripts.dependency_audit_gate",
+      "scripts.deployment_manifest",
+      "scripts.document_consistency_gate",
+      "scripts.dynamic_provider_fallback_gate",
+      "scripts.e2e_release_gate",
+      "scripts.evidence_consistency_gate",
+      "scripts.external_deployment_smoke_gate",
+      "scripts.extreme_testing_suite",
+      "scripts.governance_gate",
+      "scripts.hardware_profile_report",
+      "scripts.hermes_baseline_gate",
+      "scripts.hermes_persistence_baseline_gate",
+      "scripts.hermes_rpc_baseline_gate",
+      "scripts.hermes_session_recovery_baseline_gate",
+      "scripts.hot_browser_shadow_gate",
+      "scripts.linux_cgroup_live_probe",
+      "scripts.local_git_backup",
+      "scripts.macos_capability_probe",
+      "scripts.mock_429_llm_server",
+      "scripts.platform_enforcement_probe",
+      "scripts.production_closure",
+      "scripts.production_packaging_smoke_gate",
+      "scripts.production_readiness",
+      "scripts.progress_gate",
+      "scripts.provider_route_gate",
+      "scripts.python_hotpath_gate",
+      "scripts.quickjs_cold_start_gate",
+      "scripts.release_controller_action_smoke",
+      "scripts.release_evidence",
+      "scripts.release_install_smoke",
+      "scripts.release_recovery_smoke",
+      "scripts.release_rollback_drill",
+      "scripts.resource_policy_benchmark",
+      "scripts.run_checks",
+      "scripts.rust_toolchain",
+      "scripts.secret_scan",
+      "scripts.shadow_sealer_soak_gate",
+      "scripts.smoke_check",
+      "scripts.sota_baseline_gate",
+      "scripts.suite_evidence",
+      "scripts.supply_chain_gate",
+      "scripts.tcp_cluster_soak_gate",
+      "scripts.wasmtime_migration_gate",
+      "scripts.windows_job_object_live_probe"
+    ],
+    "POC_ONLY": [
+      "pocs.run_benchmarks"
+    ]
+  },
+  "files": [
+    {
+      "path": "aegis_cognition/__init__.py",
+      "module": "aegis_cognition",
+      "reachable_from": [
+        "CLI",
+        "FFI",
+        "LAB",
+        "PUBLIC_API",
+        "TEST_ONLY"
+      ],
+      "dynamic_reference": false,
+      "packaging_reference": true,
+      "test_reference": false,
+      "ci_reference": true,
+      "doc_schema_reference": true,
+      "delete_confidence_class": "ACTIVE"
+    },
+    {
+      "path": "aegis_cognition/agent.py",
+      "module": "aegis_cognition.agent",
+      "reachable_from": [
+        "LAB",
+        "PUBLIC_API",
+        "TEST_ONLY"
+      ],
+      "dynamic_reference": false,
+      "packaging_reference": true,
+      "test_reference": false,
+      "ci_reference": false,
+      "doc_schema_reference": true,
+      "delete_confidence_class": "ACTIVE"
+    },
+    {
+      "path": "aegis_cognition/application.py",
+      "module": "aegis_cognition.application",
+      "reachable_from": [
+        "LAB",
+        "PUBLIC_API",
+        "TEST_ONLY"
+      ],
+      "dynamic_reference": false,
+      "packaging_reference": true,
+      "test_reference": false,
+      "ci_reference": false,
+      "doc_schema_reference": true,
+      "delete_confidence_class": "ACTIVE"
+    },
+    {
+      "path": "aegis_cognition/benchmark.py",
+      "module": "aegis_cognition.benchmark",
+      "reachable_from": [
+        "LAB",
+        "PUBLIC_API",
+        "TEST_ONLY"
+      ],
+      "dynamic_reference": false,
+      "packaging_reference": true,
+      "test_reference": false,
+      "ci_reference": false,
+      "doc_schema_reference": true,
+      "delete_confidence_class": "ACTIVE"
+    },
+    {
+      "path": "aegis_cognition/cli.py",
+      "module": "aegis_cognition.cli",
+      "reachable_from": [
+        "CLI",
+        "PUBLIC_API"
+      ],
+      "dynamic_reference": false,
+      "packaging_reference": true,
+      "test_reference": false,
+      "ci_reference": false,
+      "doc_schema_reference": true,
+      "delete_confidence_class": "ACTIVE"
+    },
+    {
+      "path": "aegis_cognition/config.py",
+      "module": "aegis_cognition.config",
+      "reachable_from": [
+        "LAB",
+        "PUBLIC_API",
+        "TEST_ONLY"
+      ],
+      "dynamic_reference": false,
+      "packaging_reference": true,
+      "test_reference": false,
+      "ci_reference": false,
+      "doc_schema_reference": false,
+      "delete_confidence_class": "ACTIVE"
+    },
+    {
+      "path": "aegis_cognition/dx_metrics.py",
+      "module": "aegis_cognition.dx_metrics",
+      "reachable_from": [],
+      "dynamic_reference": true,
+      "packaging_reference": true,
+      "test_reference": false,
+      "ci_reference": false,
+      "doc_schema_reference": false,
+      "delete_confidence_class": "UNKNOWN"
+    },
+    {
+      "path": "aegis_cognition/errors.py",
+      "module": "aegis_cognition.errors",
+      "reachable_from": [
+        "LAB",
+        "PUBLIC_API",
+        "TEST_ONLY"
+      ],
+      "dynamic_reference": false,
+      "packaging_reference": true,
+      "test_reference": false,
+      "ci_reference": false,
+      "doc_schema_reference": false,
+      "delete_confidence_class": "ACTIVE"
+    },
+    {
+      "path": "aegis_cognition/infrastructure.py",
+      "module": "aegis_cognition.infrastructure",
+      "reachable_from": [
+        "LAB",
+        "PUBLIC_API",
+        "TEST_ONLY"
+      ],
+      "dynamic_reference": false,
+      "packaging_reference": true,
+      "test_reference": false,
+      "ci_reference": false,
+      "doc_schema_reference": false,
+      "delete_confidence_class": "ACTIVE"
+    },
+    {
+      "path": "aegis_cognition/lab.py",
+      "module": "aegis_cognition.lab",
+      "reachable_from": [
+        "LAB",
+        "PUBLIC_API",
+        "TEST_ONLY"
+      ],
+      "dynamic_reference": false,
+      "packaging_reference": true,
+      "test_reference": false,
+      "ci_reference": false,
+      "doc_schema_reference": true,
+      "delete_confidence_class": "ACTIVE"
+    },
+    {
+      "path": "aegis_cognition/metrics.py",
+      "module": "aegis_cognition.metrics",
+      "reachable_from": [
+        "LAB",
+        "PUBLIC_API",
+        "TEST_ONLY"
+      ],
+      "dynamic_reference": false,
+      "packaging_reference": true,
+      "test_reference": false,
+      "ci_reference": false,
+      "doc_schema_reference": false,
+      "delete_confidence_class": "ACTIVE"
+    },
+    {
+      "path": "aegis_cognition/models.py",
+      "module": "aegis_cognition.models",
+      "reachable_from": [
+        "LAB",
+        "PUBLIC_API",
+        "TEST_ONLY"
+      ],
+      "dynamic_reference": false,
+      "packaging_reference": true,
+      "test_reference": false,
+      "ci_reference": false,
+      "doc_schema_reference": false,
+      "delete_confidence_class": "ACTIVE"
+    },
+    {
+      "path": "aegis_cognition/observability.py",
+      "module": "aegis_cognition.observability",
+      "reachable_from": [
+        "LAB",
+        "PUBLIC_API",
+        "TEST_ONLY"
+      ],
+      "dynamic_reference": false,
+      "packaging_reference": true,
+      "test_reference": false,
+      "ci_reference": false,
+      "doc_schema_reference": true,
+      "delete_confidence_class": "ACTIVE"
+    },
+    {
+      "path": "aegis_cognition/prompt.py",
+      "module": "aegis_cognition.prompt",
+      "reachable_from": [
+        "LAB",
+        "PUBLIC_API",
+        "TEST_ONLY"
+      ],
+      "dynamic_reference": false,
+      "packaging_reference": true,
+      "test_reference": false,
+      "ci_reference": false,
+      "doc_schema_reference": false,
+      "delete_confidence_class": "ACTIVE"
+    },
+    {
+      "path": "aegis_cognition/rag.py",
+      "module": "aegis_cognition.rag",
+      "reachable_from": [
+        "LAB",
+        "PUBLIC_API",
+        "TEST_ONLY"
+      ],
+      "dynamic_reference": false,
+      "packaging_reference": true,
+      "test_reference": false,
+      "ci_reference": false,
+      "doc_schema_reference": false,
+      "delete_confidence_class": "ACTIVE"
+    },
+    {
+      "path": "aegis_cognition/runtime.py",
+      "module": "aegis_cognition.runtime",
+      "reachable_from": [
+        "FFI",
+        "LAB",
+        "PUBLIC_API",
+        "TEST_ONLY"
+      ],
+      "dynamic_reference": false,
+      "packaging_reference": true,
+      "test_reference": false,
+      "ci_reference": false,
+      "doc_schema_reference": true,
+      "delete_confidence_class": "ACTIVE"
+    },
+    {
+      "path": "cluster/worker_service.py",
+      "module": "cluster.worker_service",
+      "reachable_from": [],
+      "dynamic_reference": false,
+      "packaging_reference": false,
+      "test_reference": false,
+      "ci_reference": false,
+      "doc_schema_reference": true,
+      "delete_confidence_class": "UNKNOWN"
+    },
+    {
+      "path": "core/__init__.py",
+      "module": "core",
+      "reachable_from": [
+        "SCRIPT_ONLY",
+        "TEST_ONLY"
+      ],
+      "dynamic_reference": false,
+      "packaging_reference": true,
+      "test_reference": false,
+      "ci_reference": true,
+      "doc_schema_reference": true,
+      "delete_confidence_class": "ACTIVE"
+    },
+    {
+      "path": "core/python/__init__.py",
+      "module": "core.python",
+      "reachable_from": [
+        "SCRIPT_ONLY",
+        "TEST_ONLY"
+      ],
+      "dynamic_reference": false,
+      "packaging_reference": true,
+      "test_reference": false,
+      "ci_reference": false,
+      "doc_schema_reference": true,
+      "delete_confidence_class": "ACTIVE"
+    },
+    {
+      "path": "core/python/aegis/__init__.py",
+      "module": "core.python.aegis",
+      "reachable_from": [],
+      "dynamic_reference": false,
+      "packaging_reference": true,
+      "test_reference": false,
+      "ci_reference": false,
+      "doc_schema_reference": true,
+      "delete_confidence_class": "UNKNOWN"
+    },
+    {
+      "path": "core/python/aegis/contracts.py",
+      "module": "core.python.aegis.contracts",
+      "reachable_from": [
+        "FFI",
+        "LAB",
+        "PUBLIC_API",
+        "TEST_ONLY"
+      ],
+      "dynamic_reference": false,
+      "packaging_reference": true,
+      "test_reference": false,
+      "ci_reference": false,
+      "doc_schema_reference": true,
+      "delete_confidence_class": "ACTIVE"
+    },
+    {
+      "path": "core/python/aegis/evidence.py",
+      "module": "core.python.aegis.evidence",
+      "reachable_from": [
+        "FFI",
+        "LAB",
+        "PUBLIC_API",
+        "TEST_ONLY"
+      ],
+      "dynamic_reference": false,
+      "packaging_reference": true,
+      "test_reference": false,
+      "ci_reference": false,
+      "doc_schema_reference": false,
+      "delete_confidence_class": "ACTIVE"
+    },
+    {
+      "path": "core/python/aegis/hashing.py",
+      "module": "core.python.aegis.hashing",
+      "reachable_from": [
+        "FFI",
+        "LAB",
+        "PUBLIC_API",
+        "TEST_ONLY"
+      ],
+      "dynamic_reference": false,
+      "packaging_reference": true,
+      "test_reference": false,
+      "ci_reference": false,
+      "doc_schema_reference": false,
+      "delete_confidence_class": "ACTIVE"
+    },
+    {
+      "path": "core/python/aegis/learning.py",
+      "module": "core.python.aegis.learning",
+      "reachable_from": [
+        "FFI",
+        "LAB",
+        "PUBLIC_API",
+        "TEST_ONLY"
+      ],
+      "dynamic_reference": false,
+      "packaging_reference": true,
+      "test_reference": false,
+      "ci_reference": false,
+      "doc_schema_reference": false,
+      "delete_confidence_class": "ACTIVE"
+    },
+    {
+      "path": "core/python/aegis/native.py",
+      "module": "core.python.aegis.native",
+      "reachable_from": [
+        "FFI",
+        "LAB",
+        "PUBLIC_API",
+        "TEST_ONLY"
+      ],
+      "dynamic_reference": false,
+      "packaging_reference": true,
+      "test_reference": false,
+      "ci_reference": false,
+      "doc_schema_reference": false,
+      "delete_confidence_class": "ACTIVE"
+    },
+    {
+      "path": "core/python/aegis/provider.py",
+      "module": "core.python.aegis.provider",
+      "reachable_from": [
+        "FFI",
+        "LAB",
+        "PUBLIC_API",
+        "TEST_ONLY"
+      ],
+      "dynamic_reference": false,
+      "packaging_reference": true,
+      "test_reference": false,
+      "ci_reference": false,
+      "doc_schema_reference": true,
+      "delete_confidence_class": "ACTIVE"
+    },
+    {
+      "path": "core/python/aegis_adapter.py",
+      "module": "core.python.aegis_adapter",
+      "reachable_from": [
+        "FFI",
+        "LAB",
+        "PUBLIC_API",
+        "TEST_ONLY"
+      ],
+      "dynamic_reference": false,
+      "packaging_reference": true,
+      "test_reference": false,
+      "ci_reference": false,
+      "doc_schema_reference": true,
+      "delete_confidence_class": "ACTIVE"
+    },
+    {
+      "path": "core/python/aegis_cli.py",
+      "module": "core.python.aegis_cli",
+      "reachable_from": [
+        "CLI"
+      ],
+      "dynamic_reference": false,
+      "packaging_reference": true,
+      "test_reference": false,
+      "ci_reference": false,
+      "doc_schema_reference": true,
+      "delete_confidence_class": "ACTIVE"
+    },
+    {
+      "path": "core/python/bridge.py",
+      "module": "core.python.bridge",
+      "reachable_from": [
+        "FFI"
+      ],
+      "dynamic_reference": false,
+      "packaging_reference": true,
+      "test_reference": false,
+      "ci_reference": false,
+      "doc_schema_reference": false,
+      "delete_confidence_class": "ACTIVE"
+    },
+    {
+      "path": "core/python/bridge_mmap.py",
+      "module": "core.python.bridge_mmap",
+      "reachable_from": [
+        "FFI",
+        "SCRIPT_ONLY",
+        "TEST_ONLY"
+      ],
+      "dynamic_reference": false,
+      "packaging_reference": true,
+      "test_reference": false,
+      "ci_reference": false,
+      "doc_schema_reference": false,
+      "delete_confidence_class": "ACTIVE"
+    },
+    {
+      "path": "core/python/browser_live_collector.py",
+      "module": "core.python.browser_live_collector",
+      "reachable_from": [
+        "FFI",
+        "LAB",
+        "PUBLIC_API",
+        "TEST_ONLY"
+      ],
+      "dynamic_reference": false,
+      "packaging_reference": true,
+      "test_reference": false,
+      "ci_reference": false,
+      "doc_schema_reference": false,
+      "delete_confidence_class": "ACTIVE"
+    },
+    {
+      "path": "core/python/browser_ops_bench.py",
+      "module": "core.python.browser_ops_bench",
+      "reachable_from": [
+        "TEST_ONLY"
+      ],
+      "dynamic_reference": false,
+      "packaging_reference": true,
+      "test_reference": false,
+      "ci_reference": false,
+      "doc_schema_reference": false,
+      "delete_confidence_class": "ACTIVE"
+    },
+    {
+      "path": "core/python/browser_playwright_runtime.py",
+      "module": "core.python.browser_playwright_runtime",
+      "reachable_from": [
+        "TEST_ONLY"
+      ],
+      "dynamic_reference": false,
+      "packaging_reference": true,
+      "test_reference": false,
+      "ci_reference": false,
+      "doc_schema_reference": true,
+      "delete_confidence_class": "ACTIVE"
+    },
+    {
+      "path": "core/python/browser_runtime_adapter.py",
+      "module": "core.python.browser_runtime_adapter",
+      "reachable_from": [
+        "FFI",
+        "LAB",
+        "PUBLIC_API",
+        "TEST_ONLY"
+      ],
+      "dynamic_reference": false,
+      "packaging_reference": true,
+      "test_reference": false,
+      "ci_reference": false,
+      "doc_schema_reference": false,
+      "delete_confidence_class": "ACTIVE"
+    },
+    {
+      "path": "core/python/integration.py",
+      "module": "core.python.integration",
+      "reachable_from": [
+        "TEST_ONLY"
+      ],
+      "dynamic_reference": false,
+      "packaging_reference": true,
+      "test_reference": false,
+      "ci_reference": false,
+      "doc_schema_reference": false,
+      "delete_confidence_class": "ACTIVE"
+    },
+    {
+      "path": "core/python/nim_client.py",
+      "module": "core.python.nim_client",
+      "reachable_from": [
+        "TEST_ONLY"
+      ],
+      "dynamic_reference": false,
+      "packaging_reference": true,
+      "test_reference": false,
+      "ci_reference": false,
+      "doc_schema_reference": false,
+      "delete_confidence_class": "ACTIVE"
+    },
+    {
+      "path": "core/python/operator_api.py",
+      "module": "core.python.operator_api",
+      "reachable_from": [
+        "SCRIPT_ONLY",
+        "TEST_ONLY"
+      ],
+      "dynamic_reference": false,
+      "packaging_reference": true,
+      "test_reference": false,
+      "ci_reference": false,
+      "doc_schema_reference": false,
+      "delete_confidence_class": "ACTIVE"
+    },
+    {
+      "path": "core/python/operator_api_healthcheck.py",
+      "module": "core.python.operator_api_healthcheck",
+      "reachable_from": [],
+      "dynamic_reference": false,
+      "packaging_reference": true,
+      "test_reference": false,
+      "ci_reference": false,
+      "doc_schema_reference": false,
+      "delete_confidence_class": "UNKNOWN"
+    },
+    {
+      "path": "core/python/operator_api_server.py",
+      "module": "core.python.operator_api_server",
+      "reachable_from": [],
+      "dynamic_reference": false,
+      "packaging_reference": true,
+      "test_reference": false,
+      "ci_reference": false,
+      "doc_schema_reference": true,
+      "delete_confidence_class": "UNKNOWN"
+    },
+    {
+      "path": "core/python/orchestrator.py",
+      "module": "core.python.orchestrator",
+      "reachable_from": [
+        "TEST_ONLY"
+      ],
+      "dynamic_reference": false,
+      "packaging_reference": true,
+      "test_reference": false,
+      "ci_reference": false,
+      "doc_schema_reference": false,
+      "delete_confidence_class": "ACTIVE"
+    },
+    {
+      "path": "core/python/preflight.py",
+      "module": "core.python.preflight",
+      "reachable_from": [
+        "TEST_ONLY"
+      ],
+      "dynamic_reference": false,
+      "packaging_reference": true,
+      "test_reference": false,
+      "ci_reference": false,
+      "doc_schema_reference": false,
+      "delete_confidence_class": "ACTIVE"
+    },
+    {
+      "path": "core/python/service.py",
+      "module": "core.python.service",
+      "reachable_from": [
+        "TEST_ONLY"
+      ],
+      "dynamic_reference": false,
+      "packaging_reference": true,
+      "test_reference": false,
+      "ci_reference": false,
+      "doc_schema_reference": false,
+      "delete_confidence_class": "ACTIVE"
+    },
+    {
+      "path": "core/python/tests.py",
+      "module": "core.python.tests",
+      "reachable_from": [
+        "TEST_ONLY"
+      ],
+      "dynamic_reference": true,
+      "packaging_reference": true,
+      "test_reference": false,
+      "ci_reference": true,
+      "doc_schema_reference": true,
+      "delete_confidence_class": "ACTIVE"
+    },
+    {
+      "path": "examples/advanced/custom_tools.py",
+      "module": "examples.advanced.custom_tools",
+      "reachable_from": [],
+      "dynamic_reference": false,
+      "packaging_reference": false,
+      "test_reference": false,
+      "ci_reference": false,
+      "doc_schema_reference": false,
+      "delete_confidence_class": "UNKNOWN"
+    },
+    {
+      "path": "examples/advanced/multi_agent.py",
+      "module": "examples.advanced.multi_agent",
+      "reachable_from": [],
+      "dynamic_reference": false,
+      "packaging_reference": false,
+      "test_reference": false,
+      "ci_reference": false,
+      "doc_schema_reference": false,
+      "delete_confidence_class": "UNKNOWN"
+    },
+    {
+      "path": "examples/basic/hello_world.py",
+      "module": "examples.basic.hello_world",
+      "reachable_from": [],
+      "dynamic_reference": false,
+      "packaging_reference": false,
+      "test_reference": false,
+      "ci_reference": false,
+      "doc_schema_reference": true,
+      "delete_confidence_class": "UNKNOWN"
+    },
+    {
+      "path": "examples/basic/simple_research.py",
+      "module": "examples.basic.simple_research",
+      "reachable_from": [],
+      "dynamic_reference": false,
+      "packaging_reference": false,
+      "test_reference": false,
+      "ci_reference": false,
+      "doc_schema_reference": false,
+      "delete_confidence_class": "UNKNOWN"
+    },
+    {
+      "path": "examples/basic/translation.py",
+      "module": "examples.basic.translation",
+      "reachable_from": [],
+      "dynamic_reference": false,
+      "packaging_reference": false,
+      "test_reference": false,
+      "ci_reference": false,
+      "doc_schema_reference": false,
+      "delete_confidence_class": "UNKNOWN"
+    },
+    {
+      "path": "examples/browser/amazon_scraper.py",
+      "module": "examples.browser.amazon_scraper",
+      "reachable_from": [],
+      "dynamic_reference": false,
+      "packaging_reference": false,
+      "test_reference": false,
+      "ci_reference": false,
+      "doc_schema_reference": false,
+      "delete_confidence_class": "UNKNOWN"
+    },
+    {
+      "path": "examples/browser/github_trending.py",
+      "module": "examples.browser.github_trending",
+      "reachable_from": [],
+      "dynamic_reference": false,
+      "packaging_reference": false,
+      "test_reference": false,
+      "ci_reference": false,
+      "doc_schema_reference": false,
+      "delete_confidence_class": "UNKNOWN"
+    },
+    {
+      "path": "pocs/run_benchmarks.py",
+      "module": "pocs.run_benchmarks",
+      "reachable_from": [
+        "POC_ONLY"
+      ],
+      "dynamic_reference": false,
+      "packaging_reference": false,
+      "test_reference": false,
+      "ci_reference": false,
+      "doc_schema_reference": false,
+      "delete_confidence_class": "ACTIVE"
+    },
+    {
+      "path": "scripts/_audit_regen_requirements.py",
+      "module": "scripts._audit_regen_requirements",
+      "reachable_from": [
+        "SCRIPT_ONLY"
+      ],
+      "dynamic_reference": true,
+      "packaging_reference": true,
+      "test_reference": false,
+      "ci_reference": false,
+      "doc_schema_reference": false,
+      "delete_confidence_class": "ACTIVE"
+    },
+    {
+      "path": "scripts/_debug_probe.py",
+      "module": "scripts._debug_probe",
+      "reachable_from": [
+        "SCRIPT_ONLY"
+      ],
+      "dynamic_reference": true,
+      "packaging_reference": true,
+      "test_reference": false,
+      "ci_reference": false,
+      "doc_schema_reference": true,
+      "delete_confidence_class": "ACTIVE"
+    },
+    {
+      "path": "scripts/architecture_fitness.py",
+      "module": "scripts.architecture_fitness",
+      "reachable_from": [
+        "SCRIPT_ONLY"
+      ],
+      "dynamic_reference": false,
+      "packaging_reference": true,
+      "test_reference": false,
+      "ci_reference": true,
+      "doc_schema_reference": true,
+      "delete_confidence_class": "ACTIVE"
+    },
+    {
+      "path": "scripts/attestation_status.py",
+      "module": "scripts.attestation_status",
+      "reachable_from": [
+        "SCRIPT_ONLY"
+      ],
+      "dynamic_reference": false,
+      "packaging_reference": true,
+      "test_reference": false,
+      "ci_reference": true,
+      "doc_schema_reference": false,
+      "delete_confidence_class": "ACTIVE"
+    },
+    {
+      "path": "scripts/benchmark_gate.py",
+      "module": "scripts.benchmark_gate",
+      "reachable_from": [
+        "SCRIPT_ONLY",
+        "TEST_ONLY"
+      ],
+      "dynamic_reference": false,
+      "packaging_reference": true,
+      "test_reference": false,
+      "ci_reference": false,
+      "doc_schema_reference": false,
+      "delete_confidence_class": "ACTIVE"
+    },
+    {
+      "path": "scripts/benchmark_preflight.py",
+      "module": "scripts.benchmark_preflight",
+      "reachable_from": [
+        "SCRIPT_ONLY"
+      ],
+      "dynamic_reference": true,
+      "packaging_reference": true,
+      "test_reference": false,
+      "ci_reference": false,
+      "doc_schema_reference": false,
+      "delete_confidence_class": "ACTIVE"
+    },
+    {
+      "path": "scripts/benchmark_wrapper.py",
+      "module": "scripts.benchmark_wrapper",
+      "reachable_from": [
+        "SCRIPT_ONLY"
+      ],
+      "dynamic_reference": true,
+      "packaging_reference": true,
+      "test_reference": false,
+      "ci_reference": false,
+      "doc_schema_reference": false,
+      "delete_confidence_class": "ACTIVE"
+    },
+    {
+      "path": "scripts/cluster_loopback_gate.py",
+      "module": "scripts.cluster_loopback_gate",
+      "reachable_from": [
+        "SCRIPT_ONLY",
+        "TEST_ONLY"
+      ],
+      "dynamic_reference": false,
+      "packaging_reference": true,
+      "test_reference": false,
+      "ci_reference": false,
+      "doc_schema_reference": false,
+      "delete_confidence_class": "ACTIVE"
+    },
+    {
+      "path": "scripts/communication_payload_benchmark.py",
+      "module": "scripts.communication_payload_benchmark",
+      "reachable_from": [
+        "SCRIPT_ONLY"
+      ],
+      "dynamic_reference": false,
+      "packaging_reference": true,
+      "test_reference": false,
+      "ci_reference": true,
+      "doc_schema_reference": true,
+      "delete_confidence_class": "ACTIVE"
+    },
+    {
+      "path": "scripts/constitution_audit.py",
+      "module": "scripts.constitution_audit",
+      "reachable_from": [
+        "SCRIPT_ONLY",
+        "TEST_ONLY"
+      ],
+      "dynamic_reference": false,
+      "packaging_reference": true,
+      "test_reference": false,
+      "ci_reference": false,
+      "doc_schema_reference": true,
+      "delete_confidence_class": "ACTIVE"
+    },
+    {
+      "path": "scripts/dependency_audit_gate.py",
+      "module": "scripts.dependency_audit_gate",
+      "reachable_from": [
+        "SCRIPT_ONLY",
+        "TEST_ONLY"
+      ],
+      "dynamic_reference": false,
+      "packaging_reference": true,
+      "test_reference": false,
+      "ci_reference": true,
+      "doc_schema_reference": true,
+      "delete_confidence_class": "ACTIVE"
+    },
+    {
+      "path": "scripts/deployment_manifest.py",
+      "module": "scripts.deployment_manifest",
+      "reachable_from": [
+        "SCRIPT_ONLY",
+        "TEST_ONLY"
+      ],
+      "dynamic_reference": false,
+      "packaging_reference": true,
+      "test_reference": false,
+      "ci_reference": false,
+      "doc_schema_reference": false,
+      "delete_confidence_class": "ACTIVE"
+    },
+    {
+      "path": "scripts/document_consistency_gate.py",
+      "module": "scripts.document_consistency_gate",
+      "reachable_from": [
+        "SCRIPT_ONLY"
+      ],
+      "dynamic_reference": false,
+      "packaging_reference": true,
+      "test_reference": false,
+      "ci_reference": true,
+      "doc_schema_reference": true,
+      "delete_confidence_class": "ACTIVE"
+    },
+    {
+      "path": "scripts/dynamic_provider_fallback_gate.py",
+      "module": "scripts.dynamic_provider_fallback_gate",
+      "reachable_from": [
+        "SCRIPT_ONLY",
+        "TEST_ONLY"
+      ],
+      "dynamic_reference": false,
+      "packaging_reference": true,
+      "test_reference": false,
+      "ci_reference": false,
+      "doc_schema_reference": true,
+      "delete_confidence_class": "ACTIVE"
+    },
+    {
+      "path": "scripts/e2e_release_gate.py",
+      "module": "scripts.e2e_release_gate",
+      "reachable_from": [
+        "SCRIPT_ONLY",
+        "TEST_ONLY"
+      ],
+      "dynamic_reference": true,
+      "packaging_reference": true,
+      "test_reference": false,
+      "ci_reference": false,
+      "doc_schema_reference": false,
+      "delete_confidence_class": "ACTIVE"
+    },
+    {
+      "path": "scripts/evidence_consistency_gate.py",
+      "module": "scripts.evidence_consistency_gate",
+      "reachable_from": [
+        "SCRIPT_ONLY",
+        "TEST_ONLY"
+      ],
+      "dynamic_reference": false,
+      "packaging_reference": true,
+      "test_reference": false,
+      "ci_reference": true,
+      "doc_schema_reference": true,
+      "delete_confidence_class": "ACTIVE"
+    },
+    {
+      "path": "scripts/external_deployment_smoke_gate.py",
+      "module": "scripts.external_deployment_smoke_gate",
+      "reachable_from": [
+        "SCRIPT_ONLY",
+        "TEST_ONLY"
+      ],
+      "dynamic_reference": true,
+      "packaging_reference": true,
+      "test_reference": false,
+      "ci_reference": false,
+      "doc_schema_reference": true,
+      "delete_confidence_class": "ACTIVE"
+    },
+    {
+      "path": "scripts/extreme_testing_suite.py",
+      "module": "scripts.extreme_testing_suite",
+      "reachable_from": [
+        "SCRIPT_ONLY"
+      ],
+      "dynamic_reference": false,
+      "packaging_reference": true,
+      "test_reference": false,
+      "ci_reference": false,
+      "doc_schema_reference": false,
+      "delete_confidence_class": "ACTIVE"
+    },
+    {
+      "path": "scripts/governance_gate.py",
+      "module": "scripts.governance_gate",
+      "reachable_from": [
+        "SCRIPT_ONLY",
+        "TEST_ONLY"
+      ],
+      "dynamic_reference": false,
+      "packaging_reference": true,
+      "test_reference": false,
+      "ci_reference": false,
+      "doc_schema_reference": false,
+      "delete_confidence_class": "ACTIVE"
+    },
+    {
+      "path": "scripts/hardware_profile_report.py",
+      "module": "scripts.hardware_profile_report",
+      "reachable_from": [
+        "SCRIPT_ONLY"
+      ],
+      "dynamic_reference": false,
+      "packaging_reference": true,
+      "test_reference": false,
+      "ci_reference": true,
+      "doc_schema_reference": true,
+      "delete_confidence_class": "ACTIVE"
+    },
+    {
+      "path": "scripts/hermes_baseline_gate.py",
+      "module": "scripts.hermes_baseline_gate",
+      "reachable_from": [
+        "SCRIPT_ONLY",
+        "TEST_ONLY"
+      ],
+      "dynamic_reference": false,
+      "packaging_reference": true,
+      "test_reference": false,
+      "ci_reference": false,
+      "doc_schema_reference": false,
+      "delete_confidence_class": "ACTIVE"
+    },
+    {
+      "path": "scripts/hermes_persistence_baseline_gate.py",
+      "module": "scripts.hermes_persistence_baseline_gate",
+      "reachable_from": [
+        "SCRIPT_ONLY",
+        "TEST_ONLY"
+      ],
+      "dynamic_reference": false,
+      "packaging_reference": true,
+      "test_reference": false,
+      "ci_reference": false,
+      "doc_schema_reference": false,
+      "delete_confidence_class": "ACTIVE"
+    },
+    {
+      "path": "scripts/hermes_rpc_baseline_gate.py",
+      "module": "scripts.hermes_rpc_baseline_gate",
+      "reachable_from": [
+        "SCRIPT_ONLY",
+        "TEST_ONLY"
+      ],
+      "dynamic_reference": true,
+      "packaging_reference": true,
+      "test_reference": false,
+      "ci_reference": false,
+      "doc_schema_reference": false,
+      "delete_confidence_class": "ACTIVE"
+    },
+    {
+      "path": "scripts/hermes_session_recovery_baseline_gate.py",
+      "module": "scripts.hermes_session_recovery_baseline_gate",
+      "reachable_from": [
+        "SCRIPT_ONLY",
+        "TEST_ONLY"
+      ],
+      "dynamic_reference": false,
+      "packaging_reference": true,
+      "test_reference": false,
+      "ci_reference": false,
+      "doc_schema_reference": false,
+      "delete_confidence_class": "ACTIVE"
+    },
+    {
+      "path": "scripts/hot_browser_shadow_gate.py",
+      "module": "scripts.hot_browser_shadow_gate",
+      "reachable_from": [
+        "SCRIPT_ONLY",
+        "TEST_ONLY"
+      ],
+      "dynamic_reference": false,
+      "packaging_reference": true,
+      "test_reference": false,
+      "ci_reference": false,
+      "doc_schema_reference": false,
+      "delete_confidence_class": "ACTIVE"
+    },
+    {
+      "path": "scripts/linux_cgroup_live_probe.py",
+      "module": "scripts.linux_cgroup_live_probe",
+      "reachable_from": [
+        "SCRIPT_ONLY"
+      ],
+      "dynamic_reference": false,
+      "packaging_reference": true,
+      "test_reference": false,
+      "ci_reference": true,
+      "doc_schema_reference": true,
+      "delete_confidence_class": "ACTIVE"
+    },
+    {
+      "path": "scripts/local_git_backup.py",
+      "module": "scripts.local_git_backup",
+      "reachable_from": [
+        "SCRIPT_ONLY"
+      ],
+      "dynamic_reference": false,
+      "packaging_reference": true,
+      "test_reference": false,
+      "ci_reference": false,
+      "doc_schema_reference": false,
+      "delete_confidence_class": "ACTIVE"
+    },
+    {
+      "path": "scripts/macos_capability_probe.py",
+      "module": "scripts.macos_capability_probe",
+      "reachable_from": [
+        "SCRIPT_ONLY"
+      ],
+      "dynamic_reference": false,
+      "packaging_reference": true,
+      "test_reference": false,
+      "ci_reference": false,
+      "doc_schema_reference": true,
+      "delete_confidence_class": "ACTIVE"
+    },
+    {
+      "path": "scripts/mock_429_llm_server.py",
+      "module": "scripts.mock_429_llm_server",
+      "reachable_from": [
+        "SCRIPT_ONLY"
+      ],
+      "dynamic_reference": false,
+      "packaging_reference": true,
+      "test_reference": false,
+      "ci_reference": false,
+      "doc_schema_reference": false,
+      "delete_confidence_class": "ACTIVE"
+    },
+    {
+      "path": "scripts/platform_enforcement_probe.py",
+      "module": "scripts.platform_enforcement_probe",
+      "reachable_from": [
+        "SCRIPT_ONLY"
+      ],
+      "dynamic_reference": false,
+      "packaging_reference": true,
+      "test_reference": false,
+      "ci_reference": true,
+      "doc_schema_reference": false,
+      "delete_confidence_class": "ACTIVE"
+    },
+    {
+      "path": "scripts/production_closure.py",
+      "module": "scripts.production_closure",
+      "reachable_from": [
+        "SCRIPT_ONLY",
+        "TEST_ONLY"
+      ],
+      "dynamic_reference": true,
+      "packaging_reference": true,
+      "test_reference": false,
+      "ci_reference": false,
+      "doc_schema_reference": false,
+      "delete_confidence_class": "ACTIVE"
+    },
+    {
+      "path": "scripts/production_packaging_smoke_gate.py",
+      "module": "scripts.production_packaging_smoke_gate",
+      "reachable_from": [
+        "SCRIPT_ONLY",
+        "TEST_ONLY"
+      ],
+      "dynamic_reference": true,
+      "packaging_reference": true,
+      "test_reference": false,
+      "ci_reference": false,
+      "doc_schema_reference": false,
+      "delete_confidence_class": "ACTIVE"
+    },
+    {
+      "path": "scripts/production_readiness.py",
+      "module": "scripts.production_readiness",
+      "reachable_from": [
+        "SCRIPT_ONLY",
+        "TEST_ONLY"
+      ],
+      "dynamic_reference": true,
+      "packaging_reference": true,
+      "test_reference": false,
+      "ci_reference": false,
+      "doc_schema_reference": false,
+      "delete_confidence_class": "ACTIVE"
+    },
+    {
+      "path": "scripts/progress_gate.py",
+      "module": "scripts.progress_gate",
+      "reachable_from": [
+        "SCRIPT_ONLY",
+        "TEST_ONLY"
+      ],
+      "dynamic_reference": false,
+      "packaging_reference": true,
+      "test_reference": false,
+      "ci_reference": false,
+      "doc_schema_reference": false,
+      "delete_confidence_class": "ACTIVE"
+    },
+    {
+      "path": "scripts/provider_route_gate.py",
+      "module": "scripts.provider_route_gate",
+      "reachable_from": [
+        "SCRIPT_ONLY",
+        "TEST_ONLY"
+      ],
+      "dynamic_reference": false,
+      "packaging_reference": true,
+      "test_reference": false,
+      "ci_reference": false,
+      "doc_schema_reference": false,
+      "delete_confidence_class": "ACTIVE"
+    },
+    {
+      "path": "scripts/python_hotpath_gate.py",
+      "module": "scripts.python_hotpath_gate",
+      "reachable_from": [
+        "SCRIPT_ONLY",
+        "TEST_ONLY"
+      ],
+      "dynamic_reference": true,
+      "packaging_reference": true,
+      "test_reference": false,
+      "ci_reference": false,
+      "doc_schema_reference": false,
+      "delete_confidence_class": "ACTIVE"
+    },
+    {
+      "path": "scripts/quickjs_cold_start_gate.py",
+      "module": "scripts.quickjs_cold_start_gate",
+      "reachable_from": [
+        "SCRIPT_ONLY",
+        "TEST_ONLY"
+      ],
+      "dynamic_reference": false,
+      "packaging_reference": true,
+      "test_reference": false,
+      "ci_reference": false,
+      "doc_schema_reference": true,
+      "delete_confidence_class": "ACTIVE"
+    },
+    {
+      "path": "scripts/release_controller_action_smoke.py",
+      "module": "scripts.release_controller_action_smoke",
+      "reachable_from": [
+        "SCRIPT_ONLY"
+      ],
+      "dynamic_reference": false,
+      "packaging_reference": true,
+      "test_reference": false,
+      "ci_reference": true,
+      "doc_schema_reference": true,
+      "delete_confidence_class": "ACTIVE"
+    },
+    {
+      "path": "scripts/release_evidence.py",
+      "module": "scripts.release_evidence",
+      "reachable_from": [
+        "SCRIPT_ONLY"
+      ],
+      "dynamic_reference": false,
+      "packaging_reference": true,
+      "test_reference": false,
+      "ci_reference": true,
+      "doc_schema_reference": true,
+      "delete_confidence_class": "ACTIVE"
+    },
+    {
+      "path": "scripts/release_install_smoke.py",
+      "module": "scripts.release_install_smoke",
+      "reachable_from": [
+        "SCRIPT_ONLY"
+      ],
+      "dynamic_reference": false,
+      "packaging_reference": true,
+      "test_reference": false,
+      "ci_reference": true,
+      "doc_schema_reference": false,
+      "delete_confidence_class": "ACTIVE"
+    },
+    {
+      "path": "scripts/release_recovery_smoke.py",
+      "module": "scripts.release_recovery_smoke",
+      "reachable_from": [
+        "SCRIPT_ONLY"
+      ],
+      "dynamic_reference": false,
+      "packaging_reference": true,
+      "test_reference": false,
+      "ci_reference": false,
+      "doc_schema_reference": true,
+      "delete_confidence_class": "ACTIVE"
+    },
+    {
+      "path": "scripts/release_rollback_drill.py",
+      "module": "scripts.release_rollback_drill",
+      "reachable_from": [
+        "SCRIPT_ONLY"
+      ],
+      "dynamic_reference": false,
+      "packaging_reference": true,
+      "test_reference": false,
+      "ci_reference": false,
+      "doc_schema_reference": false,
+      "delete_confidence_class": "ACTIVE"
+    },
+    {
+      "path": "scripts/resource_policy_benchmark.py",
+      "module": "scripts.resource_policy_benchmark",
+      "reachable_from": [
+        "SCRIPT_ONLY"
+      ],
+      "dynamic_reference": false,
+      "packaging_reference": true,
+      "test_reference": false,
+      "ci_reference": true,
+      "doc_schema_reference": true,
+      "delete_confidence_class": "ACTIVE"
+    },
+    {
+      "path": "scripts/run_checks.py",
+      "module": "scripts.run_checks",
+      "reachable_from": [
+        "SCRIPT_ONLY",
+        "TEST_ONLY"
+      ],
+      "dynamic_reference": true,
+      "packaging_reference": true,
+      "test_reference": false,
+      "ci_reference": false,
+      "doc_schema_reference": false,
+      "delete_confidence_class": "ACTIVE"
+    },
+    {
+      "path": "scripts/rust_toolchain.py",
+      "module": "scripts.rust_toolchain",
+      "reachable_from": [
+        "SCRIPT_ONLY"
+      ],
+      "dynamic_reference": false,
+      "packaging_reference": true,
+      "test_reference": false,
+      "ci_reference": true,
+      "doc_schema_reference": true,
+      "delete_confidence_class": "ACTIVE"
+    },
+    {
+      "path": "scripts/secret_scan.py",
+      "module": "scripts.secret_scan",
+      "reachable_from": [
+        "SCRIPT_ONLY"
+      ],
+      "dynamic_reference": false,
+      "packaging_reference": true,
+      "test_reference": false,
+      "ci_reference": true,
+      "doc_schema_reference": true,
+      "delete_confidence_class": "ACTIVE"
+    },
+    {
+      "path": "scripts/shadow_sealer_soak_gate.py",
+      "module": "scripts.shadow_sealer_soak_gate",
+      "reachable_from": [
+        "SCRIPT_ONLY",
+        "TEST_ONLY"
+      ],
+      "dynamic_reference": false,
+      "packaging_reference": true,
+      "test_reference": false,
+      "ci_reference": false,
+      "doc_schema_reference": false,
+      "delete_confidence_class": "ACTIVE"
+    },
+    {
+      "path": "scripts/smoke_check.py",
+      "module": "scripts.smoke_check",
+      "reachable_from": [
+        "SCRIPT_ONLY"
+      ],
+      "dynamic_reference": true,
+      "packaging_reference": true,
+      "test_reference": false,
+      "ci_reference": false,
+      "doc_schema_reference": false,
+      "delete_confidence_class": "ACTIVE"
+    },
+    {
+      "path": "scripts/sota_baseline_gate.py",
+      "module": "scripts.sota_baseline_gate",
+      "reachable_from": [
+        "SCRIPT_ONLY",
+        "TEST_ONLY"
+      ],
+      "dynamic_reference": false,
+      "packaging_reference": true,
+      "test_reference": false,
+      "ci_reference": false,
+      "doc_schema_reference": false,
+      "delete_confidence_class": "ACTIVE"
+    },
+    {
+      "path": "scripts/suite_evidence.py",
+      "module": "scripts.suite_evidence",
+      "reachable_from": [
+        "SCRIPT_ONLY",
+        "TEST_ONLY"
+      ],
+      "dynamic_reference": false,
+      "packaging_reference": true,
+      "test_reference": false,
+      "ci_reference": true,
+      "doc_schema_reference": false,
+      "delete_confidence_class": "ACTIVE"
+    },
+    {
+      "path": "scripts/supply_chain_gate.py",
+      "module": "scripts.supply_chain_gate",
+      "reachable_from": [
+        "SCRIPT_ONLY",
+        "TEST_ONLY"
+      ],
+      "dynamic_reference": false,
+      "packaging_reference": true,
+      "test_reference": false,
+      "ci_reference": false,
+      "doc_schema_reference": true,
+      "delete_confidence_class": "ACTIVE"
+    },
+    {
+      "path": "scripts/tcp_cluster_soak_gate.py",
+      "module": "scripts.tcp_cluster_soak_gate",
+      "reachable_from": [
+        "SCRIPT_ONLY",
+        "TEST_ONLY"
+      ],
+      "dynamic_reference": false,
+      "packaging_reference": true,
+      "test_reference": false,
+      "ci_reference": false,
+      "doc_schema_reference": true,
+      "delete_confidence_class": "ACTIVE"
+    },
+    {
+      "path": "scripts/wasmtime_migration_gate.py",
+      "module": "scripts.wasmtime_migration_gate",
+      "reachable_from": [
+        "SCRIPT_ONLY"
+      ],
+      "dynamic_reference": false,
+      "packaging_reference": true,
+      "test_reference": false,
+      "ci_reference": true,
+      "doc_schema_reference": true,
+      "delete_confidence_class": "ACTIVE"
+    },
+    {
+      "path": "scripts/windows_job_object_live_probe.py",
+      "module": "scripts.windows_job_object_live_probe",
+      "reachable_from": [
+        "SCRIPT_ONLY"
+      ],
+      "dynamic_reference": false,
+      "packaging_reference": true,
+      "test_reference": false,
+      "ci_reference": false,
+      "doc_schema_reference": true,
+      "delete_confidence_class": "ACTIVE"
+    },
+    {
+      "path": "tests/test_document_consistency_gate.py",
+      "module": "tests.test_document_consistency_gate",
+      "reachable_from": [
+        "TEST_ONLY"
+      ],
+      "dynamic_reference": false,
+      "packaging_reference": true,
+      "test_reference": true,
+      "ci_reference": false,
+      "doc_schema_reference": true,
+      "delete_confidence_class": "ACTIVE"
+    },
+    {
+      "path": "tests/test_evidence_consistency_gate.py",
+      "module": "tests.test_evidence_consistency_gate",
+      "reachable_from": [
+        "TEST_ONLY"
+      ],
+      "dynamic_reference": false,
+      "packaging_reference": true,
+      "test_reference": true,
+      "ci_reference": false,
+      "doc_schema_reference": true,
+      "delete_confidence_class": "ACTIVE"
+    },
+    {
+      "path": "tests/test_lab_runtime.py",
+      "module": "tests.test_lab_runtime",
+      "reachable_from": [
+        "TEST_ONLY"
+      ],
+      "dynamic_reference": false,
+      "packaging_reference": true,
+      "test_reference": true,
+      "ci_reference": false,
+      "doc_schema_reference": true,
+      "delete_confidence_class": "ACTIVE"
+    },
+    {
+      "path": "tests/test_runtime_contracts.py",
+      "module": "tests.test_runtime_contracts",
+      "reachable_from": [
+        "TEST_ONLY"
+      ],
+      "dynamic_reference": false,
+      "packaging_reference": true,
+      "test_reference": true,
+      "ci_reference": false,
+      "doc_schema_reference": true,
+      "delete_confidence_class": "ACTIVE"
+    },
+    {
+      "path": "tests/test_suite_evidence.py",
+      "module": "tests.test_suite_evidence",
+      "reachable_from": [
+        "TEST_ONLY"
+      ],
+      "dynamic_reference": false,
+      "packaging_reference": true,
+      "test_reference": true,
+      "ci_reference": false,
+      "doc_schema_reference": true,
+      "delete_confidence_class": "ACTIVE"
+    }
+  ],
+  "limitations": [
+    "dynamic import/plugin entrypoint reachability is uncertain",
+    "absence of static reachability is not deletion authorization"
+  ],
+  "collection_state_before_generation": {
+    "command_exit": 0,
+    "stderr": "",
+    "head": "f9645caf6d17cee2023d52183990ffcf8317e456",
+    "branch": "main",
+    "origin_main": "origin/main",
+    "ahead_behind": "10\t0",
+    "entries": [
+      {
+        "status": " M",
+        "path": ".github/workflows/ci.yml",
+        "category": "UNKNOWN"
+      },
+      {
+        "status": " M",
+        "path": ".github/workflows/deep.yml",
+        "category": "UNKNOWN"
+      },
+      {
+        "status": " M",
+        "path": ".github/workflows/release.yml",
+        "category": "UNKNOWN"
+      },
+      {
+        "status": " M",
+        "path": ".gitignore",
+        "category": "UNKNOWN"
+      },
+      {
+        "status": " M",
+        "path": "aegis_cognition/__init__.py",
+        "category": "PRODUCT"
+      },
+      {
+        "status": " M",
+        "path": "aegis_cognition/agent.py",
+        "category": "PRODUCT"
+      },
+      {
+        "status": " M",
+        "path": "aegis_cognition/application.py",
+        "category": "PRODUCT"
+      },
+      {
+        "status": " M",
+        "path": "aegis_cognition/models.py",
+        "category": "PRODUCT"
+      },
+      {
+        "status": " M",
+        "path": "core/python/aegis/provider.py",
+        "category": "COMPATIBILITY"
+      },
+      {
+        "status": " M",
+        "path": "core/python/aegis_adapter.py",
+        "category": "COMPATIBILITY"
+      },
+      {
+        "status": " M",
+        "path": "core/python/aegis_cli.py",
+        "category": "COMPATIBILITY"
+      },
+      {
+        "status": " M",
+        "path": "core/python/bridge.py",
+        "category": "COMPATIBILITY"
+      },
+      {
+        "status": " M",
+        "path": "core/python/bridge_mmap.py",
+        "category": "COMPATIBILITY"
+      },
+      {
+        "status": " M",
+        "path": "core/python/browser_live_collector.py",
+        "category": "COMPATIBILITY"
+      },
+      {
+        "status": " M",
+        "path": "core/python/browser_ops_bench.py",
+        "category": "COMPATIBILITY"
+      },
+      {
+        "status": " M",
+        "path": "core/python/browser_playwright_runtime.py",
+        "category": "COMPATIBILITY"
+      },
+      {
+        "status": " M",
+        "path": "core/python/browser_runtime_adapter.py",
+        "category": "COMPATIBILITY"
+      },
+      {
+        "status": " M",
+        "path": "core/python/nim_client.py",
+        "category": "COMPATIBILITY"
+      },
+      {
+        "status": " M",
+        "path": "core/python/operator_api.py",
+        "category": "COMPATIBILITY"
+      },
+      {
+        "status": " M",
+        "path": "core/python/orchestrator.py",
+        "category": "COMPATIBILITY"
+      },
+      {
+        "status": " M",
+        "path": "core/python/tests.py",
+        "category": "TEST"
+      },
+      {
+        "status": " M",
+        "path": "core/rust/benches/nerve_bench.rs",
+        "category": "PRODUCT"
+      },
+      {
+        "status": " M",
+        "path": "core/rust/src/ffi.rs",
+        "category": "PRODUCT"
+      },
+      {
+        "status": " M",
+        "path": "core/rust/src/gt96.rs",
+        "category": "PRODUCT"
+      },
+      {
+        "status": " M",
+        "path": "core/rust/src/lib.rs",
+        "category": "PRODUCT"
+      },
+      {
+        "status": " M",
+        "path": "core/rust/src/memory/fold.rs",
+        "category": "PRODUCT"
+      },
+      {
+        "status": " M",
+        "path": "core/rust/src/physical.rs",
+        "category": "PRODUCT"
+      },
+      {
+        "status": " M",
+        "path": "core/rust/src/replay.rs",
+        "category": "PRODUCT"
+      },
+      {
+        "status": " M",
+        "path": "core/rust/src/task_ledger.rs",
+        "category": "PRODUCT"
+      },
+      {
+        "status": " M",
+        "path": "core/rust/src/tests.rs",
+        "category": "PRODUCT"
+      },
+      {
+        "status": " M",
+        "path": "core/rust/src/tool_gateway.rs",
+        "category": "PRODUCT"
+      },
+      {
+        "status": " M",
+        "path": "docs/adr/ADR-012-portability.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": " M",
+        "path": "docs/architecture/CONTRACT_INVENTORY.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": " M",
+        "path": "docs/architecture/GT96_TRACEABILITY.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": " M",
+        "path": "docs/architecture/NOT_VERIFIED_REGISTRY.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": " M",
+        "path": "docs/architecture/deployment_policy.json",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": " M",
+        "path": "docs/architecture/evidence/current.json",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": " M",
+        "path": "pyproject.toml",
+        "category": "UNKNOWN"
+      },
+      {
+        "status": " M",
+        "path": "scripts/_audit_regen_requirements.py",
+        "category": "SCRIPT"
+      },
+      {
+        "status": " M",
+        "path": "scripts/_debug_probe.py",
+        "category": "SCRIPT"
+      },
+      {
+        "status": " M",
+        "path": "scripts/constitution_audit.py",
+        "category": "SCRIPT"
+      },
+      {
+        "status": " M",
+        "path": "scripts/dynamic_provider_fallback_gate.py",
+        "category": "SCRIPT"
+      },
+      {
+        "status": " M",
+        "path": "scripts/e2e_release_gate.py",
+        "category": "SCRIPT"
+      },
+      {
+        "status": " M",
+        "path": "scripts/evidence_consistency_gate.py",
+        "category": "SCRIPT"
+      },
+      {
+        "status": " M",
+        "path": "scripts/external_deployment_smoke_gate.py",
+        "category": "SCRIPT"
+      },
+      {
+        "status": " M",
+        "path": "scripts/extreme_testing_suite.py",
+        "category": "SCRIPT"
+      },
+      {
+        "status": " M",
+        "path": "scripts/hermes_rpc_baseline_gate.py",
+        "category": "SCRIPT"
+      },
+      {
+        "status": " M",
+        "path": "scripts/production_closure.py",
+        "category": "SCRIPT"
+      },
+      {
+        "status": " M",
+        "path": "scripts/production_readiness.py",
+        "category": "SCRIPT"
+      },
+      {
+        "status": " M",
+        "path": "scripts/python_hotpath_gate.py",
+        "category": "SCRIPT"
+      },
+      {
+        "status": " M",
+        "path": "scripts/release_install_smoke.py",
+        "category": "SCRIPT"
+      },
+      {
+        "status": " M",
+        "path": "scripts/release_rollback_drill.py",
+        "category": "SCRIPT"
+      },
+      {
+        "status": " M",
+        "path": "scripts/run_checks.py",
+        "category": "SCRIPT"
+      },
+      {
+        "status": " M",
+        "path": "scripts/smoke_check.py",
+        "category": "SCRIPT"
+      },
+      {
+        "status": " M",
+        "path": "scripts/sota_baseline_gate.py",
+        "category": "SCRIPT"
+      },
+      {
+        "status": " M",
+        "path": "scripts/supply_chain_gate.py",
+        "category": "SCRIPT"
+      },
+      {
+        "status": " M",
+        "path": "tests/test_evidence_consistency_gate.py",
+        "category": "TEST"
+      },
+      {
+        "status": " M",
+        "path": "uv.lock",
+        "category": "UNKNOWN"
+      },
+      {
+        "status": "??",
+        "path": ".serena/",
+        "category": "UNKNOWN"
+      },
+      {
+        "status": "??",
+        "path": "aegis_cognition/benchmark.py",
+        "category": "PRODUCT"
+      },
+      {
+        "status": "??",
+        "path": "aegis_cognition/lab.py",
+        "category": "LAB"
+      },
+      {
+        "status": "??",
+        "path": "core/rust/src/lab.rs",
+        "category": "LAB"
+      },
+      {
+        "status": "??",
+        "path": "docs/adr/ADR-015-portability.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "??",
+        "path": "docs/api/",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "??",
+        "path": "docs/architecture.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "??",
+        "path": "docs/architecture/AEGIS_CURRENT_ARCHITECTURE_TRUTH_AUDIT.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "??",
+        "path": "docs/architecture/AEGIS_LAB_RUNTIME_MASTER_PLAN.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "??",
+        "path": "docs/architecture/AEGIS_LAB_STATUS_GENERATED.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "??",
+        "path": "docs/architecture/document_inventory.json",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "??",
+        "path": "docs/architecture/evidence-pack/",
+        "category": "GENERATED"
+      },
+      {
+        "status": "??",
+        "path": "docs/troubleshooting/",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "??",
+        "path": "docs/tutorials/",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "??",
+        "path": "scripts/document_consistency_gate.py",
+        "category": "SCRIPT"
+      },
+      {
+        "status": "??",
+        "path": "scripts/release_controller_action_smoke.py",
+        "category": "SCRIPT"
+      },
+      {
+        "status": "??",
+        "path": "scripts/release_recovery_smoke.py",
+        "category": "SCRIPT"
+      },
+      {
+        "status": "??",
+        "path": "tests/test_document_consistency_gate.py",
+        "category": "TEST"
+      },
+      {
+        "status": "??",
+        "path": "tests/test_lab_runtime.py",
+        "category": "TEST"
+      }
+    ],
+    "tracked_modified": [
+      {
+        "status": " M",
+        "path": ".github/workflows/ci.yml",
+        "category": "UNKNOWN"
+      },
+      {
+        "status": " M",
+        "path": ".github/workflows/deep.yml",
+        "category": "UNKNOWN"
+      },
+      {
+        "status": " M",
+        "path": ".github/workflows/release.yml",
+        "category": "UNKNOWN"
+      },
+      {
+        "status": " M",
+        "path": ".gitignore",
+        "category": "UNKNOWN"
+      },
+      {
+        "status": " M",
+        "path": "aegis_cognition/__init__.py",
+        "category": "PRODUCT"
+      },
+      {
+        "status": " M",
+        "path": "aegis_cognition/agent.py",
+        "category": "PRODUCT"
+      },
+      {
+        "status": " M",
+        "path": "aegis_cognition/application.py",
+        "category": "PRODUCT"
+      },
+      {
+        "status": " M",
+        "path": "aegis_cognition/models.py",
+        "category": "PRODUCT"
+      },
+      {
+        "status": " M",
+        "path": "core/python/aegis/provider.py",
+        "category": "COMPATIBILITY"
+      },
+      {
+        "status": " M",
+        "path": "core/python/aegis_adapter.py",
+        "category": "COMPATIBILITY"
+      },
+      {
+        "status": " M",
+        "path": "core/python/aegis_cli.py",
+        "category": "COMPATIBILITY"
+      },
+      {
+        "status": " M",
+        "path": "core/python/bridge.py",
+        "category": "COMPATIBILITY"
+      },
+      {
+        "status": " M",
+        "path": "core/python/bridge_mmap.py",
+        "category": "COMPATIBILITY"
+      },
+      {
+        "status": " M",
+        "path": "core/python/browser_live_collector.py",
+        "category": "COMPATIBILITY"
+      },
+      {
+        "status": " M",
+        "path": "core/python/browser_ops_bench.py",
+        "category": "COMPATIBILITY"
+      },
+      {
+        "status": " M",
+        "path": "core/python/browser_playwright_runtime.py",
+        "category": "COMPATIBILITY"
+      },
+      {
+        "status": " M",
+        "path": "core/python/browser_runtime_adapter.py",
+        "category": "COMPATIBILITY"
+      },
+      {
+        "status": " M",
+        "path": "core/python/nim_client.py",
+        "category": "COMPATIBILITY"
+      },
+      {
+        "status": " M",
+        "path": "core/python/operator_api.py",
+        "category": "COMPATIBILITY"
+      },
+      {
+        "status": " M",
+        "path": "core/python/orchestrator.py",
+        "category": "COMPATIBILITY"
+      },
+      {
+        "status": " M",
+        "path": "core/python/tests.py",
+        "category": "TEST"
+      },
+      {
+        "status": " M",
+        "path": "core/rust/benches/nerve_bench.rs",
+        "category": "PRODUCT"
+      },
+      {
+        "status": " M",
+        "path": "core/rust/src/ffi.rs",
+        "category": "PRODUCT"
+      },
+      {
+        "status": " M",
+        "path": "core/rust/src/gt96.rs",
+        "category": "PRODUCT"
+      },
+      {
+        "status": " M",
+        "path": "core/rust/src/lib.rs",
+        "category": "PRODUCT"
+      },
+      {
+        "status": " M",
+        "path": "core/rust/src/memory/fold.rs",
+        "category": "PRODUCT"
+      },
+      {
+        "status": " M",
+        "path": "core/rust/src/physical.rs",
+        "category": "PRODUCT"
+      },
+      {
+        "status": " M",
+        "path": "core/rust/src/replay.rs",
+        "category": "PRODUCT"
+      },
+      {
+        "status": " M",
+        "path": "core/rust/src/task_ledger.rs",
+        "category": "PRODUCT"
+      },
+      {
+        "status": " M",
+        "path": "core/rust/src/tests.rs",
+        "category": "PRODUCT"
+      },
+      {
+        "status": " M",
+        "path": "core/rust/src/tool_gateway.rs",
+        "category": "PRODUCT"
+      },
+      {
+        "status": " M",
+        "path": "docs/adr/ADR-012-portability.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": " M",
+        "path": "docs/architecture/CONTRACT_INVENTORY.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": " M",
+        "path": "docs/architecture/GT96_TRACEABILITY.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": " M",
+        "path": "docs/architecture/NOT_VERIFIED_REGISTRY.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": " M",
+        "path": "docs/architecture/deployment_policy.json",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": " M",
+        "path": "docs/architecture/evidence/current.json",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": " M",
+        "path": "pyproject.toml",
+        "category": "UNKNOWN"
+      },
+      {
+        "status": " M",
+        "path": "scripts/_audit_regen_requirements.py",
+        "category": "SCRIPT"
+      },
+      {
+        "status": " M",
+        "path": "scripts/_debug_probe.py",
+        "category": "SCRIPT"
+      },
+      {
+        "status": " M",
+        "path": "scripts/constitution_audit.py",
+        "category": "SCRIPT"
+      },
+      {
+        "status": " M",
+        "path": "scripts/dynamic_provider_fallback_gate.py",
+        "category": "SCRIPT"
+      },
+      {
+        "status": " M",
+        "path": "scripts/e2e_release_gate.py",
+        "category": "SCRIPT"
+      },
+      {
+        "status": " M",
+        "path": "scripts/evidence_consistency_gate.py",
+        "category": "SCRIPT"
+      },
+      {
+        "status": " M",
+        "path": "scripts/external_deployment_smoke_gate.py",
+        "category": "SCRIPT"
+      },
+      {
+        "status": " M",
+        "path": "scripts/extreme_testing_suite.py",
+        "category": "SCRIPT"
+      },
+      {
+        "status": " M",
+        "path": "scripts/hermes_rpc_baseline_gate.py",
+        "category": "SCRIPT"
+      },
+      {
+        "status": " M",
+        "path": "scripts/production_closure.py",
+        "category": "SCRIPT"
+      },
+      {
+        "status": " M",
+        "path": "scripts/production_readiness.py",
+        "category": "SCRIPT"
+      },
+      {
+        "status": " M",
+        "path": "scripts/python_hotpath_gate.py",
+        "category": "SCRIPT"
+      },
+      {
+        "status": " M",
+        "path": "scripts/release_install_smoke.py",
+        "category": "SCRIPT"
+      },
+      {
+        "status": " M",
+        "path": "scripts/release_rollback_drill.py",
+        "category": "SCRIPT"
+      },
+      {
+        "status": " M",
+        "path": "scripts/run_checks.py",
+        "category": "SCRIPT"
+      },
+      {
+        "status": " M",
+        "path": "scripts/smoke_check.py",
+        "category": "SCRIPT"
+      },
+      {
+        "status": " M",
+        "path": "scripts/sota_baseline_gate.py",
+        "category": "SCRIPT"
+      },
+      {
+        "status": " M",
+        "path": "scripts/supply_chain_gate.py",
+        "category": "SCRIPT"
+      },
+      {
+        "status": " M",
+        "path": "tests/test_evidence_consistency_gate.py",
+        "category": "TEST"
+      },
+      {
+        "status": " M",
+        "path": "uv.lock",
+        "category": "UNKNOWN"
+      }
+    ],
+    "staged": [],
+    "untracked": [
+      {
+        "status": "??",
+        "path": ".serena/",
+        "category": "UNKNOWN"
+      },
+      {
+        "status": "??",
+        "path": "aegis_cognition/benchmark.py",
+        "category": "PRODUCT"
+      },
+      {
+        "status": "??",
+        "path": "aegis_cognition/lab.py",
+        "category": "LAB"
+      },
+      {
+        "status": "??",
+        "path": "core/rust/src/lab.rs",
+        "category": "LAB"
+      },
+      {
+        "status": "??",
+        "path": "docs/adr/ADR-015-portability.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "??",
+        "path": "docs/api/",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "??",
+        "path": "docs/architecture.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "??",
+        "path": "docs/architecture/AEGIS_CURRENT_ARCHITECTURE_TRUTH_AUDIT.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "??",
+        "path": "docs/architecture/AEGIS_LAB_RUNTIME_MASTER_PLAN.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "??",
+        "path": "docs/architecture/AEGIS_LAB_STATUS_GENERATED.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "??",
+        "path": "docs/architecture/document_inventory.json",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "??",
+        "path": "docs/architecture/evidence-pack/",
+        "category": "GENERATED"
+      },
+      {
+        "status": "??",
+        "path": "docs/troubleshooting/",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "??",
+        "path": "docs/tutorials/",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "??",
+        "path": "scripts/document_consistency_gate.py",
+        "category": "SCRIPT"
+      },
+      {
+        "status": "??",
+        "path": "scripts/release_controller_action_smoke.py",
+        "category": "SCRIPT"
+      },
+      {
+        "status": "??",
+        "path": "scripts/release_recovery_smoke.py",
+        "category": "SCRIPT"
+      },
+      {
+        "status": "??",
+        "path": "tests/test_document_consistency_gate.py",
+        "category": "TEST"
+      },
+      {
+        "status": "??",
+        "path": "tests/test_lab_runtime.py",
+        "category": "TEST"
+      }
+    ],
+    "total_entries": 77
+  },
+  "collection_state_after_generation": {
+    "command_exit": 0,
+    "stderr": "",
+    "head": "f9645caf6d17cee2023d52183990ffcf8317e456",
+    "branch": "main",
+    "origin_main": "origin/main",
+    "ahead_behind": "10\t0",
+    "entries": [
+      {
+        "status": " M",
+        "path": ".github/workflows/ci.yml",
+        "category": "UNKNOWN"
+      },
+      {
+        "status": " M",
+        "path": ".github/workflows/deep.yml",
+        "category": "UNKNOWN"
+      },
+      {
+        "status": " M",
+        "path": ".github/workflows/release.yml",
+        "category": "UNKNOWN"
+      },
+      {
+        "status": " M",
+        "path": ".gitignore",
+        "category": "UNKNOWN"
+      },
+      {
+        "status": " M",
+        "path": "aegis_cognition/__init__.py",
+        "category": "PRODUCT"
+      },
+      {
+        "status": " M",
+        "path": "aegis_cognition/agent.py",
+        "category": "PRODUCT"
+      },
+      {
+        "status": " M",
+        "path": "aegis_cognition/application.py",
+        "category": "PRODUCT"
+      },
+      {
+        "status": " M",
+        "path": "aegis_cognition/models.py",
+        "category": "PRODUCT"
+      },
+      {
+        "status": " M",
+        "path": "core/python/aegis/provider.py",
+        "category": "COMPATIBILITY"
+      },
+      {
+        "status": " M",
+        "path": "core/python/aegis_adapter.py",
+        "category": "COMPATIBILITY"
+      },
+      {
+        "status": " M",
+        "path": "core/python/aegis_cli.py",
+        "category": "COMPATIBILITY"
+      },
+      {
+        "status": " M",
+        "path": "core/python/bridge.py",
+        "category": "COMPATIBILITY"
+      },
+      {
+        "status": " M",
+        "path": "core/python/bridge_mmap.py",
+        "category": "COMPATIBILITY"
+      },
+      {
+        "status": " M",
+        "path": "core/python/browser_live_collector.py",
+        "category": "COMPATIBILITY"
+      },
+      {
+        "status": " M",
+        "path": "core/python/browser_ops_bench.py",
+        "category": "COMPATIBILITY"
+      },
+      {
+        "status": " M",
+        "path": "core/python/browser_playwright_runtime.py",
+        "category": "COMPATIBILITY"
+      },
+      {
+        "status": " M",
+        "path": "core/python/browser_runtime_adapter.py",
+        "category": "COMPATIBILITY"
+      },
+      {
+        "status": " M",
+        "path": "core/python/nim_client.py",
+        "category": "COMPATIBILITY"
+      },
+      {
+        "status": " M",
+        "path": "core/python/operator_api.py",
+        "category": "COMPATIBILITY"
+      },
+      {
+        "status": " M",
+        "path": "core/python/orchestrator.py",
+        "category": "COMPATIBILITY"
+      },
+      {
+        "status": " M",
+        "path": "core/python/tests.py",
+        "category": "TEST"
+      },
+      {
+        "status": " M",
+        "path": "core/rust/benches/nerve_bench.rs",
+        "category": "PRODUCT"
+      },
+      {
+        "status": " M",
+        "path": "core/rust/src/ffi.rs",
+        "category": "PRODUCT"
+      },
+      {
+        "status": " M",
+        "path": "core/rust/src/gt96.rs",
+        "category": "PRODUCT"
+      },
+      {
+        "status": " M",
+        "path": "core/rust/src/lib.rs",
+        "category": "PRODUCT"
+      },
+      {
+        "status": " M",
+        "path": "core/rust/src/memory/fold.rs",
+        "category": "PRODUCT"
+      },
+      {
+        "status": " M",
+        "path": "core/rust/src/physical.rs",
+        "category": "PRODUCT"
+      },
+      {
+        "status": " M",
+        "path": "core/rust/src/replay.rs",
+        "category": "PRODUCT"
+      },
+      {
+        "status": " M",
+        "path": "core/rust/src/task_ledger.rs",
+        "category": "PRODUCT"
+      },
+      {
+        "status": " M",
+        "path": "core/rust/src/tests.rs",
+        "category": "PRODUCT"
+      },
+      {
+        "status": " M",
+        "path": "core/rust/src/tool_gateway.rs",
+        "category": "PRODUCT"
+      },
+      {
+        "status": " M",
+        "path": "docs/adr/ADR-012-portability.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": " M",
+        "path": "docs/architecture/CONTRACT_INVENTORY.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": " M",
+        "path": "docs/architecture/GT96_TRACEABILITY.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": " M",
+        "path": "docs/architecture/NOT_VERIFIED_REGISTRY.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": " M",
+        "path": "docs/architecture/deployment_policy.json",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": " M",
+        "path": "docs/architecture/evidence/current.json",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": " M",
+        "path": "pyproject.toml",
+        "category": "UNKNOWN"
+      },
+      {
+        "status": " M",
+        "path": "scripts/_audit_regen_requirements.py",
+        "category": "SCRIPT"
+      },
+      {
+        "status": " M",
+        "path": "scripts/_debug_probe.py",
+        "category": "SCRIPT"
+      },
+      {
+        "status": " M",
+        "path": "scripts/constitution_audit.py",
+        "category": "SCRIPT"
+      },
+      {
+        "status": " M",
+        "path": "scripts/dynamic_provider_fallback_gate.py",
+        "category": "SCRIPT"
+      },
+      {
+        "status": " M",
+        "path": "scripts/e2e_release_gate.py",
+        "category": "SCRIPT"
+      },
+      {
+        "status": " M",
+        "path": "scripts/evidence_consistency_gate.py",
+        "category": "SCRIPT"
+      },
+      {
+        "status": " M",
+        "path": "scripts/external_deployment_smoke_gate.py",
+        "category": "SCRIPT"
+      },
+      {
+        "status": " M",
+        "path": "scripts/extreme_testing_suite.py",
+        "category": "SCRIPT"
+      },
+      {
+        "status": " M",
+        "path": "scripts/hermes_rpc_baseline_gate.py",
+        "category": "SCRIPT"
+      },
+      {
+        "status": " M",
+        "path": "scripts/production_closure.py",
+        "category": "SCRIPT"
+      },
+      {
+        "status": " M",
+        "path": "scripts/production_readiness.py",
+        "category": "SCRIPT"
+      },
+      {
+        "status": " M",
+        "path": "scripts/python_hotpath_gate.py",
+        "category": "SCRIPT"
+      },
+      {
+        "status": " M",
+        "path": "scripts/release_install_smoke.py",
+        "category": "SCRIPT"
+      },
+      {
+        "status": " M",
+        "path": "scripts/release_rollback_drill.py",
+        "category": "SCRIPT"
+      },
+      {
+        "status": " M",
+        "path": "scripts/run_checks.py",
+        "category": "SCRIPT"
+      },
+      {
+        "status": " M",
+        "path": "scripts/smoke_check.py",
+        "category": "SCRIPT"
+      },
+      {
+        "status": " M",
+        "path": "scripts/sota_baseline_gate.py",
+        "category": "SCRIPT"
+      },
+      {
+        "status": " M",
+        "path": "scripts/supply_chain_gate.py",
+        "category": "SCRIPT"
+      },
+      {
+        "status": " M",
+        "path": "tests/test_evidence_consistency_gate.py",
+        "category": "TEST"
+      },
+      {
+        "status": " M",
+        "path": "uv.lock",
+        "category": "UNKNOWN"
+      },
+      {
+        "status": "??",
+        "path": ".serena/",
+        "category": "UNKNOWN"
+      },
+      {
+        "status": "??",
+        "path": "aegis_cognition/benchmark.py",
+        "category": "PRODUCT"
+      },
+      {
+        "status": "??",
+        "path": "aegis_cognition/lab.py",
+        "category": "LAB"
+      },
+      {
+        "status": "??",
+        "path": "core/rust/src/lab.rs",
+        "category": "LAB"
+      },
+      {
+        "status": "??",
+        "path": "docs/adr/ADR-015-portability.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "??",
+        "path": "docs/api/",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "??",
+        "path": "docs/architecture.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "??",
+        "path": "docs/architecture/AEGIS_CURRENT_ARCHITECTURE_TRUTH_AUDIT.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "??",
+        "path": "docs/architecture/AEGIS_LAB_RUNTIME_MASTER_PLAN.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "??",
+        "path": "docs/architecture/AEGIS_LAB_STATUS_GENERATED.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "??",
+        "path": "docs/architecture/document_inventory.json",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "??",
+        "path": "docs/architecture/evidence-pack/",
+        "category": "GENERATED"
+      },
+      {
+        "status": "??",
+        "path": "docs/troubleshooting/",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "??",
+        "path": "docs/tutorials/",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "??",
+        "path": "scripts/document_consistency_gate.py",
+        "category": "SCRIPT"
+      },
+      {
+        "status": "??",
+        "path": "scripts/release_controller_action_smoke.py",
+        "category": "SCRIPT"
+      },
+      {
+        "status": "??",
+        "path": "scripts/release_recovery_smoke.py",
+        "category": "SCRIPT"
+      },
+      {
+        "status": "??",
+        "path": "tests/test_document_consistency_gate.py",
+        "category": "TEST"
+      },
+      {
+        "status": "??",
+        "path": "tests/test_lab_runtime.py",
+        "category": "TEST"
+      }
+    ],
+    "tracked_modified": [
+      {
+        "status": " M",
+        "path": ".github/workflows/ci.yml",
+        "category": "UNKNOWN"
+      },
+      {
+        "status": " M",
+        "path": ".github/workflows/deep.yml",
+        "category": "UNKNOWN"
+      },
+      {
+        "status": " M",
+        "path": ".github/workflows/release.yml",
+        "category": "UNKNOWN"
+      },
+      {
+        "status": " M",
+        "path": ".gitignore",
+        "category": "UNKNOWN"
+      },
+      {
+        "status": " M",
+        "path": "aegis_cognition/__init__.py",
+        "category": "PRODUCT"
+      },
+      {
+        "status": " M",
+        "path": "aegis_cognition/agent.py",
+        "category": "PRODUCT"
+      },
+      {
+        "status": " M",
+        "path": "aegis_cognition/application.py",
+        "category": "PRODUCT"
+      },
+      {
+        "status": " M",
+        "path": "aegis_cognition/models.py",
+        "category": "PRODUCT"
+      },
+      {
+        "status": " M",
+        "path": "core/python/aegis/provider.py",
+        "category": "COMPATIBILITY"
+      },
+      {
+        "status": " M",
+        "path": "core/python/aegis_adapter.py",
+        "category": "COMPATIBILITY"
+      },
+      {
+        "status": " M",
+        "path": "core/python/aegis_cli.py",
+        "category": "COMPATIBILITY"
+      },
+      {
+        "status": " M",
+        "path": "core/python/bridge.py",
+        "category": "COMPATIBILITY"
+      },
+      {
+        "status": " M",
+        "path": "core/python/bridge_mmap.py",
+        "category": "COMPATIBILITY"
+      },
+      {
+        "status": " M",
+        "path": "core/python/browser_live_collector.py",
+        "category": "COMPATIBILITY"
+      },
+      {
+        "status": " M",
+        "path": "core/python/browser_ops_bench.py",
+        "category": "COMPATIBILITY"
+      },
+      {
+        "status": " M",
+        "path": "core/python/browser_playwright_runtime.py",
+        "category": "COMPATIBILITY"
+      },
+      {
+        "status": " M",
+        "path": "core/python/browser_runtime_adapter.py",
+        "category": "COMPATIBILITY"
+      },
+      {
+        "status": " M",
+        "path": "core/python/nim_client.py",
+        "category": "COMPATIBILITY"
+      },
+      {
+        "status": " M",
+        "path": "core/python/operator_api.py",
+        "category": "COMPATIBILITY"
+      },
+      {
+        "status": " M",
+        "path": "core/python/orchestrator.py",
+        "category": "COMPATIBILITY"
+      },
+      {
+        "status": " M",
+        "path": "core/python/tests.py",
+        "category": "TEST"
+      },
+      {
+        "status": " M",
+        "path": "core/rust/benches/nerve_bench.rs",
+        "category": "PRODUCT"
+      },
+      {
+        "status": " M",
+        "path": "core/rust/src/ffi.rs",
+        "category": "PRODUCT"
+      },
+      {
+        "status": " M",
+        "path": "core/rust/src/gt96.rs",
+        "category": "PRODUCT"
+      },
+      {
+        "status": " M",
+        "path": "core/rust/src/lib.rs",
+        "category": "PRODUCT"
+      },
+      {
+        "status": " M",
+        "path": "core/rust/src/memory/fold.rs",
+        "category": "PRODUCT"
+      },
+      {
+        "status": " M",
+        "path": "core/rust/src/physical.rs",
+        "category": "PRODUCT"
+      },
+      {
+        "status": " M",
+        "path": "core/rust/src/replay.rs",
+        "category": "PRODUCT"
+      },
+      {
+        "status": " M",
+        "path": "core/rust/src/task_ledger.rs",
+        "category": "PRODUCT"
+      },
+      {
+        "status": " M",
+        "path": "core/rust/src/tests.rs",
+        "category": "PRODUCT"
+      },
+      {
+        "status": " M",
+        "path": "core/rust/src/tool_gateway.rs",
+        "category": "PRODUCT"
+      },
+      {
+        "status": " M",
+        "path": "docs/adr/ADR-012-portability.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": " M",
+        "path": "docs/architecture/CONTRACT_INVENTORY.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": " M",
+        "path": "docs/architecture/GT96_TRACEABILITY.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": " M",
+        "path": "docs/architecture/NOT_VERIFIED_REGISTRY.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": " M",
+        "path": "docs/architecture/deployment_policy.json",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": " M",
+        "path": "docs/architecture/evidence/current.json",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": " M",
+        "path": "pyproject.toml",
+        "category": "UNKNOWN"
+      },
+      {
+        "status": " M",
+        "path": "scripts/_audit_regen_requirements.py",
+        "category": "SCRIPT"
+      },
+      {
+        "status": " M",
+        "path": "scripts/_debug_probe.py",
+        "category": "SCRIPT"
+      },
+      {
+        "status": " M",
+        "path": "scripts/constitution_audit.py",
+        "category": "SCRIPT"
+      },
+      {
+        "status": " M",
+        "path": "scripts/dynamic_provider_fallback_gate.py",
+        "category": "SCRIPT"
+      },
+      {
+        "status": " M",
+        "path": "scripts/e2e_release_gate.py",
+        "category": "SCRIPT"
+      },
+      {
+        "status": " M",
+        "path": "scripts/evidence_consistency_gate.py",
+        "category": "SCRIPT"
+      },
+      {
+        "status": " M",
+        "path": "scripts/external_deployment_smoke_gate.py",
+        "category": "SCRIPT"
+      },
+      {
+        "status": " M",
+        "path": "scripts/extreme_testing_suite.py",
+        "category": "SCRIPT"
+      },
+      {
+        "status": " M",
+        "path": "scripts/hermes_rpc_baseline_gate.py",
+        "category": "SCRIPT"
+      },
+      {
+        "status": " M",
+        "path": "scripts/production_closure.py",
+        "category": "SCRIPT"
+      },
+      {
+        "status": " M",
+        "path": "scripts/production_readiness.py",
+        "category": "SCRIPT"
+      },
+      {
+        "status": " M",
+        "path": "scripts/python_hotpath_gate.py",
+        "category": "SCRIPT"
+      },
+      {
+        "status": " M",
+        "path": "scripts/release_install_smoke.py",
+        "category": "SCRIPT"
+      },
+      {
+        "status": " M",
+        "path": "scripts/release_rollback_drill.py",
+        "category": "SCRIPT"
+      },
+      {
+        "status": " M",
+        "path": "scripts/run_checks.py",
+        "category": "SCRIPT"
+      },
+      {
+        "status": " M",
+        "path": "scripts/smoke_check.py",
+        "category": "SCRIPT"
+      },
+      {
+        "status": " M",
+        "path": "scripts/sota_baseline_gate.py",
+        "category": "SCRIPT"
+      },
+      {
+        "status": " M",
+        "path": "scripts/supply_chain_gate.py",
+        "category": "SCRIPT"
+      },
+      {
+        "status": " M",
+        "path": "tests/test_evidence_consistency_gate.py",
+        "category": "TEST"
+      },
+      {
+        "status": " M",
+        "path": "uv.lock",
+        "category": "UNKNOWN"
+      }
+    ],
+    "staged": [],
+    "untracked": [
+      {
+        "status": "??",
+        "path": ".serena/",
+        "category": "UNKNOWN"
+      },
+      {
+        "status": "??",
+        "path": "aegis_cognition/benchmark.py",
+        "category": "PRODUCT"
+      },
+      {
+        "status": "??",
+        "path": "aegis_cognition/lab.py",
+        "category": "LAB"
+      },
+      {
+        "status": "??",
+        "path": "core/rust/src/lab.rs",
+        "category": "LAB"
+      },
+      {
+        "status": "??",
+        "path": "docs/adr/ADR-015-portability.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "??",
+        "path": "docs/api/",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "??",
+        "path": "docs/architecture.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "??",
+        "path": "docs/architecture/AEGIS_CURRENT_ARCHITECTURE_TRUTH_AUDIT.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "??",
+        "path": "docs/architecture/AEGIS_LAB_RUNTIME_MASTER_PLAN.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "??",
+        "path": "docs/architecture/AEGIS_LAB_STATUS_GENERATED.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "??",
+        "path": "docs/architecture/document_inventory.json",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "??",
+        "path": "docs/architecture/evidence-pack/",
+        "category": "GENERATED"
+      },
+      {
+        "status": "??",
+        "path": "docs/troubleshooting/",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "??",
+        "path": "docs/tutorials/",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "??",
+        "path": "scripts/document_consistency_gate.py",
+        "category": "SCRIPT"
+      },
+      {
+        "status": "??",
+        "path": "scripts/release_controller_action_smoke.py",
+        "category": "SCRIPT"
+      },
+      {
+        "status": "??",
+        "path": "scripts/release_recovery_smoke.py",
+        "category": "SCRIPT"
+      },
+      {
+        "status": "??",
+        "path": "tests/test_document_consistency_gate.py",
+        "category": "TEST"
+      },
+      {
+        "status": "??",
+        "path": "tests/test_lab_runtime.py",
+        "category": "TEST"
+      }
+    ],
+    "total_entries": 77
+  }
+}

@@ -16,6 +16,8 @@ class RunResult:
     provider: str | None
     hot_commit: Any
     correlation: dict[str, Any] | None = None
+    lab_manifest: dict[str, Any] | None = None
+    lab_events: tuple[dict[str, Any], ...] = ()
 
     def __repr__(self) -> str:
         return f"RunResult(output={str(self.output)[:80]!r}, provider={self.provider!r})"

@@ -1,0 +1,65 @@
+{
+  "schema": "aegis-design-external-boundary-v1",
+  "items": [
+    {
+      "unknown": "Linux native enforcement",
+      "class": "LINUX_NATIVE_REQUIRED",
+      "future_test": "clean Linux wheel + child/resource policy probes"
+    },
+    {
+      "unknown": "macOS native enforcement",
+      "class": "MACOS_NATIVE_REQUIRED",
+      "future_test": "clean macOS wheel + child/resource policy probes"
+    },
+    {
+      "unknown": "Windows memory-pressure kill/descendant limits",
+      "class": "WINDOWS_NATIVE_REQUIRED",
+      "future_test": "deterministic Job Object pressure witness"
+    },
+    {
+      "unknown": "hosted lease/queue/telemetry/restore",
+      "class": "HOSTED_CI_REQUIRED",
+      "future_test": "deployed multi-worker recovery/restore"
+    },
+    {
+      "unknown": "cross-machine ordering and clocks",
+      "class": "MULTI_MACHINE_REQUIRED",
+      "future_test": "multi-host failure/clock test"
+    },
+    {
+      "unknown": "provider SDK retries/idempotency",
+      "class": "LIVE_PROVIDER_REQUIRED",
+      "future_test": "provider-specific receipt/retry contract"
+    },
+    {
+      "unknown": "live browser SSRF/redirect/permissions",
+      "class": "LIVE_BROWSER_REQUIRED",
+      "future_test": "controlled browser corpus"
+    },
+    {
+      "unknown": "hardware/electrical calibration",
+      "class": "HARDWARE_REQUIRED",
+      "future_test": "instrumented calibration witness"
+    },
+    {
+      "unknown": "scientific/generalization claims",
+      "class": "OTHER_EXTERNAL",
+      "future_test": "independent benchmark/scientific replication"
+    },
+    {
+      "unknown": "signed release attestation",
+      "class": "RELEASE_SIGNER_REQUIRED",
+      "future_test": "signed artifact subject hash and attestation verification"
+    },
+    {
+      "unknown": "final commit and repository manifest ownership",
+      "class": "REPOSITORY_OWNER_REQUIRED",
+      "future_test": "owner-approved final commit, regenerated manifest and hosted release IDs"
+    }
+  ],
+  "HEAD": "f9645caf6d17cee2023d52183990ffcf8317e456",
+  "WORKTREE_EPOCH": "6e8c4adfdccec80543825a18e3885da36acb62c7574807342ae8ccf4c0d64ec6",
+  "generated_at": "2026-09-01T02:54:46.298383+00:00",
+  "method": "aegis-design-closure-reconciliation-v1; direct Git/filesystem/source inspection, prior artifact hash reuse, disposable wheel reconciliation, bounded local probes",
+  "limitations": []
+}
