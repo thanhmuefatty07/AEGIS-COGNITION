@@ -1472,15 +1472,15 @@ def _missing_benchmark_validator(_: tuple[float, ...]) -> bool:
 
 
 def _valid_citation_span(span: Any) -> bool:
-    if not isinstance(span, dict):
+    if type(span) is not dict:
         return False
     span_mapping = cast(dict[str, Any], span)
-    try:
-        start = int(span_mapping.get("start", -1))
-        end = int(span_mapping.get("end", -1))
-    except (TypeError, ValueError):
+    start = span_mapping.get("start", -1)
+    end = span_mapping.get("end", -1)
+    text_hash = span_mapping.get("text_hash", "")
+    if type(start) is not int or type(end) is not int or type(text_hash) is not str:
         return False
-    return start >= 0 and end >= start and len(str(span_mapping.get("text_hash", ""))) == 64
+    return start >= 0 and end >= start and len(text_hash) == 64
 
 
 def _atomic_write_json(path: Path, payload: Any) -> None:
@@ -1735,6 +1735,38 @@ class SourceRecord:
     citation_spans: tuple[dict[str, Any], ...] = ()
     provenance_cluster: str = ""
 
+    def validate(self) -> None:
+        if (
+            type(self.source_id) is not str
+            or type(self.uri) is not str
+            or type(self.content_hash) is not str
+            or type(self.snapshot_hash) is not str
+            or type(self.extractor) is not str
+            or type(self.relation) is not str
+            or type(self.provenance_cluster) is not str
+            or type(self.retrieved_at_ms) is not int
+            or type(self.trust_tier) is not int
+            or type(self.citation_spans) not in (list, tuple)
+            or not self.source_id.strip()
+            or not self.uri.strip()
+            or not self.content_hash.strip()
+            or not self.snapshot_hash.strip()
+            or not self.relation.strip()
+            or self.retrieved_at_ms <= 0
+            or self.trust_tier < 1
+            or (self.provenance_cluster and not self.provenance_cluster.strip())
+            or any(not _valid_citation_span(span) for span in self.citation_spans)
+        ):
+            raise ValueError("source identity, provenance and citation metadata are invalid")
+        parsed_uri = urlparse(self.uri)
+        if (
+            parsed_uri.scheme != "https"
+            or not parsed_uri.hostname
+            or parsed_uri.username
+            or parsed_uri.password
+        ):
+            raise ValueError("source URI must be a credential-free HTTPS URL")
+
 
 @dataclass(frozen=True)
 class ClaimRecord:
@@ -1743,6 +1775,21 @@ class ClaimRecord:
     source_ids: tuple[str, ...]
     confidence_bps: int
     status: str = "unresolved"
+
+    def validate(self) -> None:
+        if (
+            type(self.claim_id) is not str
+            or type(self.statement) is not str
+            or type(self.status) is not str
+            or type(self.source_ids) not in (list, tuple)
+            or type(self.confidence_bps) is not int
+            or not self.claim_id.strip()
+            or not self.statement.strip()
+            or not self.source_ids
+            or any(type(source_id) is not str or not source_id.strip() for source_id in self.source_ids)
+            or not 0 <= self.confidence_bps <= 10_000
+        ):
+            raise ValueError("claim identity, citations and confidence metadata are invalid")
 
 
 @dataclass(frozen=True)
@@ -1753,6 +1800,26 @@ class HypothesisRecord:
     falsifiers: tuple[str, ...]
     supporting_claim_ids: tuple[str, ...] = ()
     contradicting_claim_ids: tuple[str, ...] = ()
+
+    def validate(self) -> None:
+        if (
+            type(self.hypothesis_id) is not str
+            or type(self.statement) is not str
+            or type(self.falsifiers) not in (list, tuple)
+            or type(self.supporting_claim_ids) not in (list, tuple)
+            or type(self.contradicting_claim_ids) not in (list, tuple)
+            or type(self.prior_bps) is not int
+            or not self.hypothesis_id.strip()
+            or not self.statement.strip()
+            or not self.falsifiers
+            or any(type(item) is not str or not item.strip() for item in self.falsifiers)
+            or any(
+                type(claim_id) is not str or not claim_id.strip()
+                for claim_id in (*self.supporting_claim_ids, *self.contradicting_claim_ids)
+            )
+            or not 0 <= self.prior_bps <= 10_000
+        ):
+            raise ValueError("hypothesis identity, falsifiers and prior metadata are invalid")
 
 
 @dataclass(frozen=True)
@@ -4478,23 +4545,13 @@ class LabRun:
     def add_source(self, source: SourceRecord) -> None:
         if self.state not in {"planned", "researching"}:
             raise ValueError(f"cannot add source in state {self.state}")
-        parsed_uri = urlparse(source.uri)
-        if (
-            not source.source_id.strip()
-            or not source.uri.strip()
-            or parsed_uri.scheme != "https"
-            or not parsed_uri.hostname
-            or parsed_uri.username
-            or parsed_uri.password
-            or not source.content_hash
-            or not source.snapshot_hash
-            or source.retrieved_at_ms <= 0
-            or source.trust_tier < 1
-            or source.source_id in self.sources
-            or not source.relation.strip()
-            or (source.provenance_cluster and not source.provenance_cluster.strip())
-            or any(not _valid_citation_span(span) for span in source.citation_spans)
-        ):
+        if type(source) is not SourceRecord:
+            raise ValueError("invalid or duplicate source record")
+        try:
+            source.validate()
+        except ValueError as exc:
+            raise ValueError("invalid or duplicate source record") from exc
+        if source.source_id in self.sources:
             raise ValueError("invalid or duplicate source record")
         snapshot = self._projection_snapshot()
         if self.state == "planned":
@@ -4514,12 +4571,14 @@ class LabRun:
     def add_claim(self, claim: ClaimRecord) -> None:
         if self.state not in {"researching", "experimenting", "reviewing"}:
             raise ValueError(f"cannot add claim in state {self.state}")
+        if type(claim) is not ClaimRecord:
+            raise ValueError("claim must cite known sources and have bounded confidence")
+        try:
+            claim.validate()
+        except ValueError as exc:
+            raise ValueError("claim must cite known sources and have bounded confidence") from exc
         if (
-            not claim.claim_id.strip()
-            or not claim.statement.strip()
-            or not claim.source_ids
-            or any(source_id not in self.sources for source_id in claim.source_ids)
-            or not 0 <= claim.confidence_bps <= 10_000
+            any(source_id not in self.sources for source_id in claim.source_ids)
             or claim.claim_id in self.claims
         ):
             raise ValueError("claim must cite known sources and have bounded confidence")
@@ -4539,13 +4598,14 @@ class LabRun:
     def add_hypothesis(self, hypothesis: HypothesisRecord) -> None:
         if self.state not in {"researching", "experimenting", "reviewing"}:
             raise ValueError(f"cannot add hypothesis in state {self.state}")
+        if type(hypothesis) is not HypothesisRecord:
+            raise ValueError("hypothesis must include falsifiers and known claim links")
+        try:
+            hypothesis.validate()
+        except ValueError as exc:
+            raise ValueError("hypothesis must include falsifiers and known claim links") from exc
         if (
-            not hypothesis.hypothesis_id.strip()
-            or not hypothesis.statement.strip()
-            or not hypothesis.falsifiers
-            or any(not item.strip() for item in hypothesis.falsifiers)
-            or not 0 <= hypothesis.prior_bps <= 10_000
-            or any(claim_id not in self.claims for claim_id in (*hypothesis.supporting_claim_ids, *hypothesis.contradicting_claim_ids))
+            any(claim_id not in self.claims for claim_id in (*hypothesis.supporting_claim_ids, *hypothesis.contradicting_claim_ids))
             or hypothesis.hypothesis_id in self.hypotheses
         ):
             raise ValueError("hypothesis must include falsifiers and known claim links")
@@ -5377,20 +5437,27 @@ class LabRun:
     def from_payload(cls, payload: dict[str, Any]) -> LabRun:
         """Restore a run only when its snapshot and event chain are valid."""
 
-        if payload.get("schema") != "aegis-lab-run-v1":
+        if type(payload) is not dict or payload.get("schema") != "aegis-lab-run-v1":
             raise ValueError("invalid lab snapshot schema")
-        objective = str(payload.get("objective", ""))
-        mission_id = str(payload.get("mission_id", ""))
-        state = str(payload.get("state", ""))
-        if not objective.strip() or not mission_id.strip() or state not in {
-            "planned",
-            "researching",
-            "experimenting",
-            "reviewing",
-            "completed",
-            "blocked",
-            "aborted",
-        }:
+        objective = payload.get("objective", "")
+        mission_id = payload.get("mission_id", "")
+        state = payload.get("state", "")
+        if (
+            type(objective) is not str
+            or type(mission_id) is not str
+            or type(state) is not str
+            or not objective.strip()
+            or not mission_id.strip()
+            or state not in {
+                "planned",
+                "researching",
+                "experimenting",
+                "reviewing",
+                "completed",
+                "blocked",
+                "aborted",
+            }
+        ):
             raise ValueError("invalid lab snapshot identity or state")
         restored = cls.__new__(cls)
         restored.mission_id = mission_id
@@ -5401,8 +5468,10 @@ class LabRun:
             raise ValueError("invalid lab snapshot scope or non-goals")
         typed_scope = cast(list[Any] | tuple[Any, ...], raw_scope)
         typed_non_goals = cast(list[Any] | tuple[Any, ...], raw_non_goals)
-        restored.scope = tuple(str(item) for item in typed_scope)
-        restored.non_goals = tuple(str(item) for item in typed_non_goals)
+        if any(type(item) is not str for item in (*typed_scope, *typed_non_goals)):
+            raise ValueError("invalid lab snapshot scope or non-goals")
+        restored.scope = tuple(typed_scope)
+        restored.non_goals = tuple(typed_non_goals)
         if any(not item.strip() for item in (*restored.scope, *restored.non_goals)):
             raise ValueError("invalid lab snapshot scope or non-goals")
         raw_require_native = payload.get("require_native_authority", False)
@@ -5422,7 +5491,10 @@ class LabRun:
             if raw_require_native and restored.authority_mode is not AuthorityMode.NATIVE_REQUIRED:
                 raise ValueError("legacy native-authority flag conflicts with Lab authority mode")
         restored.require_native_authority = restored.authority_mode is AuthorityMode.NATIVE_REQUIRED
-        restored.trust_level = _normalize_lab_trust_level(str(payload.get("trust_level", "DEV")))
+        raw_trust_level = payload.get("trust_level", "DEV")
+        if type(raw_trust_level) is not str:
+            raise ValueError("invalid lab trust level in snapshot")
+        restored.trust_level = _normalize_lab_trust_level(raw_trust_level)
         raw_trust_policy_hash = payload.get("trust_policy_hash")
         if raw_trust_policy_hash is not None and (
             not isinstance(raw_trust_policy_hash, str)
@@ -5430,22 +5502,31 @@ class LabRun:
         ):
             raise ValueError("invalid lab trust policy binding in snapshot")
         restored.trust_policy_hash = raw_trust_policy_hash
-        restored.max_steps = int(payload.get("max_steps", 0))
+        raw_max_steps = payload.get("max_steps", 0)
+        if type(raw_max_steps) is not int:
+            raise ValueError("invalid lab snapshot max_steps")
+        restored.max_steps = raw_max_steps
         if restored.max_steps < 1:
             raise ValueError("invalid lab snapshot max_steps")
-        restored.token_budget = int(payload.get("token_budget", max(1, restored.max_steps * 1000)))
-        restored.finalization_reserve = int(
-            payload.get("finalization_reserve", min(max(1, restored.token_budget // 5), max(0, restored.token_budget - 1)))
+        raw_token_budget = payload.get("token_budget", max(1, restored.max_steps * 1000))
+        if type(raw_token_budget) is not int:
+            raise ValueError("invalid lab snapshot token budget")
+        restored.token_budget = raw_token_budget
+        default_finalization = min(
+            max(1, restored.token_budget // 5), max(0, restored.token_budget - 1)
         )
-        restored.recovery_reserve = int(
-            payload.get(
-                "recovery_reserve",
-                min(
-                    max(0, restored.token_budget // 10),
-                    max(0, restored.token_budget - restored.finalization_reserve - 1),
-                ),
-            )
+        raw_finalization = payload.get("finalization_reserve", default_finalization)
+        if type(raw_finalization) is not int:
+            raise ValueError("invalid lab snapshot finalization reserve")
+        restored.finalization_reserve = raw_finalization
+        default_recovery = min(
+            max(0, restored.token_budget // 10),
+            max(0, restored.token_budget - restored.finalization_reserve - 1),
         )
+        raw_recovery = payload.get("recovery_reserve", default_recovery)
+        if type(raw_recovery) is not int:
+            raise ValueError("invalid lab snapshot recovery reserve")
+        restored.recovery_reserve = raw_recovery
         if (
             restored.token_budget < 1
             or restored.finalization_reserve < 0
@@ -5454,30 +5535,46 @@ class LabRun:
         ):
             raise ValueError("invalid lab snapshot budget")
         restored.state = state
-        restored.state_epoch = int(payload.get("state_epoch", 0))
+        raw_state_epoch = payload.get("state_epoch", 0)
+        if type(raw_state_epoch) is not int or raw_state_epoch < 0:
+            raise ValueError("invalid lab snapshot state epoch")
+        restored.state_epoch = raw_state_epoch
         restored._native_controller = None
         restored._native_mission = None
         restored._native_mission_hash = None
         restored._native_finalization_started = False
         restored._initialize_native_controller(objective)
-        raw_sources = cast(list[dict[str, Any]], list(payload.get("sources", ())))
-        raw_claims = cast(list[dict[str, Any]], list(payload.get("claims", ())))
-        raw_hypotheses = cast(list[dict[str, Any]], list(payload.get("hypotheses", ())))
-        raw_experiments = cast(list[dict[str, Any]], list(payload.get("experiments", ())))
-        raw_observations = cast(list[dict[str, Any]], list(payload.get("observations", ())))
-        raw_skill_admissions = cast(list[dict[str, Any]], list(payload.get("skill_admissions", ())))
-        raw_tool_admissions = cast(
-            list[dict[str, Any]], list(payload.get("tool_execution_admissions", ()))
-        )
-        raw_tool_executions = list(payload.get("tool_executions", ()))
+        def snapshot_records(name: str) -> list[dict[str, Any]]:
+            raw_value = payload.get(name, ())
+            if type(raw_value) not in (list, tuple):
+                raise ValueError(f"invalid {name} in lab snapshot")
+            typed_value = cast(list[Any] | tuple[Any, ...], raw_value)
+            if any(type(item) is not dict for item in typed_value):
+                raise ValueError(f"invalid {name} in lab snapshot")
+            return [cast(dict[str, Any], item) for item in typed_value]
+
+        raw_sources = snapshot_records("sources")
+        raw_claims = snapshot_records("claims")
+        raw_hypotheses = snapshot_records("hypotheses")
+        raw_experiments = snapshot_records("experiments")
+        raw_observations = snapshot_records("observations")
+        raw_skill_admissions = snapshot_records("skill_admissions")
+        raw_tool_admissions = snapshot_records("tool_execution_admissions")
+        raw_tool_executions_value = payload.get("tool_executions", ())
+        if type(raw_tool_executions_value) not in (list, tuple):
+            raise ValueError("invalid tool executions in lab snapshot")
+        raw_tool_executions = list(cast(list[Any] | tuple[Any, ...], raw_tool_executions_value))
 
         def require_unique_ids(items: list[Any], key: str) -> None:
             values: list[str] = []
             for item in items:
-                if not isinstance(item, dict) or key not in item:
+                if type(item) is not dict or key not in item:
                     raise ValueError(f"invalid {key} in lab snapshot")
                 item_map = cast(dict[str, Any], item)
-                values.append(str(item_map[key]))
+                value = item_map[key]
+                if type(value) is not str or not value.strip():
+                    raise ValueError(f"invalid {key} in lab snapshot")
+                values.append(value)
             if len(values) != len(set(values)):
                 raise ValueError(f"duplicate {key} in lab snapshot")
 
@@ -5488,10 +5585,20 @@ class LabRun:
         require_unique_ids(raw_observations, "observation_id")
         require_unique_ids(raw_skill_admissions, "admission_hash")
         require_unique_ids(raw_tool_admissions, "execution_id")
-        if any(not str(item).strip() for item in raw_tool_executions):
+        if any(type(item) is not str or not item.strip() for item in raw_tool_executions):
             raise ValueError("invalid tool execution identity in lab snapshot")
-        if len(raw_tool_executions) != len(set(str(item) for item in raw_tool_executions)):
+        if len(raw_tool_executions) != len(set(raw_tool_executions)):
             raise ValueError("duplicate tool execution identity in lab snapshot")
+
+        def snapshot_string_sequence(item: dict[str, Any], key: str) -> tuple[str, ...]:
+            raw_value = item.get(key, ())
+            if type(raw_value) not in (list, tuple):
+                raise ValueError(f"invalid {key} in lab snapshot")
+            typed_value = cast(list[Any] | tuple[Any, ...], raw_value)
+            if any(type(value) is not str for value in typed_value):
+                raise ValueError(f"invalid {key} in lab snapshot")
+            return tuple(typed_value)
+
         restored.sources = {
             record.source_id: record
             for record in (
@@ -5503,11 +5610,11 @@ class LabRun:
             record.claim_id: record
             for record in (
                 ClaimRecord(
-                    claim_id=str(item["claim_id"]),
-                    statement=str(item["statement"]),
-                    source_ids=tuple(str(value) for value in item["source_ids"]),
-                    confidence_bps=int(item["confidence_bps"]),
-                    status=str(item.get("status", "unresolved")),
+                    claim_id=item["claim_id"],
+                    statement=item["statement"],
+                    source_ids=snapshot_string_sequence(item, "source_ids"),
+                    confidence_bps=item["confidence_bps"],
+                    status=item.get("status", "unresolved"),
                 )
                 for item in raw_claims
             )
@@ -5516,12 +5623,12 @@ class LabRun:
             record.hypothesis_id: record
             for record in (
                 HypothesisRecord(
-                    hypothesis_id=str(item["hypothesis_id"]),
-                    statement=str(item["statement"]),
-                    prior_bps=int(item["prior_bps"]),
-                    falsifiers=tuple(str(value) for value in item["falsifiers"]),
-                    supporting_claim_ids=tuple(str(value) for value in item.get("supporting_claim_ids", ())),
-                    contradicting_claim_ids=tuple(str(value) for value in item.get("contradicting_claim_ids", ())),
+                    hypothesis_id=item["hypothesis_id"],
+                    statement=item["statement"],
+                    prior_bps=item["prior_bps"],
+                    falsifiers=snapshot_string_sequence(item, "falsifiers"),
+                    supporting_claim_ids=snapshot_string_sequence(item, "supporting_claim_ids"),
+                    contradicting_claim_ids=snapshot_string_sequence(item, "contradicting_claim_ids"),
                 )
                 for item in raw_hypotheses
             )
@@ -5903,6 +6010,7 @@ class LabRun:
 
     def _validate_snapshot_records(self) -> None:
         for source in self.sources.values():
+            source.validate()
             parsed_uri = urlparse(source.uri)
             if (
                 not source.source_id.strip()
@@ -5921,6 +6029,7 @@ class LabRun:
             ):
                 raise ValueError("invalid source in lab snapshot")
         for claim in self.claims.values():
+            claim.validate()
             if (
                 not claim.claim_id.strip()
                 or not claim.statement.strip()
@@ -5930,6 +6039,7 @@ class LabRun:
             ):
                 raise ValueError("invalid claim in lab snapshot")
         for hypothesis in self.hypotheses.values():
+            hypothesis.validate()
             if (
                 not hypothesis.hypothesis_id.strip()
                 or not hypothesis.statement.strip()

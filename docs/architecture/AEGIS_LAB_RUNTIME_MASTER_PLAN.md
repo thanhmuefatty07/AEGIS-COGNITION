@@ -2556,6 +2556,15 @@ search-as-code input boundary only; live-provider freshness, semantic quality
 and contradiction precision/recall remain `OPEN_EXTERNAL` under
 `LAB-RESEARCH-003`.
 
+**M2 snapshot-contract continuation (2026-09-02):** `LabRun.from_payload`
+now rejects lossy top-level identity, scope, trust, budget, epoch, collection
+and record metadata before native/replay validation; `SourceRecord`,
+`ClaimRecord` and `HypothesisRecord` validate exact field/container types at
+live admission and restore. Regression coverage mutates each boundary with
+string/boolean/numeric substitutions and confirms fail-closed restoration.
+This strengthens local replay integrity; it does not replace fresh-process,
+cross-platform or hosted crash-prefix evidence.
+
 #### M5 — Research, browser và experiment cells
 
 **Entry:** M2–M4 pass cho local cells; capability registry sealed.
