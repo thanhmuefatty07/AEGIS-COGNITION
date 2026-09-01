@@ -2490,6 +2490,17 @@ effect may already have happened before an adapter timeout, and opaque SDK or
 user-runner retries, provider idempotency, hosted single-writer authority and
 finite global `N_external_max` remain NOT VERIFIED, so M4 stays `OPEN_LOCAL`.
 
+**M4 strict retry-policy continuation (2026-09-02):** gateway, generic-tool,
+experiment and simulation retry counts now reject booleans, floats, numeric
+strings, zero and negative values instead of silently coercing them through
+`int(...)`; accepted integer counts are deterministically capped at the
+mission `max_steps` quota. `AdaptiveController` also rejects non-integer
+budget bounds. Regression coverage exercises malformed values and the finite
+cap, while the existing per-lane retry/timeout tests remain green. This makes
+the local retry contract precise but does not establish provider idempotency,
+opaque SDK/user-runner retry absence, external-effect reversal, or a hosted
+global `N_external_max`; M4 remains `OPEN_LOCAL`.
+
 #### M5 — Research, browser và experiment cells
 
 **Entry:** M2–M4 pass cho local cells; capability registry sealed.
