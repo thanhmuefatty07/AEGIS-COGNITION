@@ -2813,6 +2813,20 @@ Python/cross-language tests**; targeted Ruff and Pyright remain clean. This
 is local option-integrity evidence only; browser process/OS containment,
 DNS-race protection and hosted policy enforcement remain external blockers.
 
+**M2/M3 native provider-option continuation (2026-09-02):** native-required
+gateway construction now rejects provider names, fallback pair names,
+`required_tokens`, and provider-budget fields when their types or canonical
+forms would otherwise be rewritten by the compatibility adapter. It also
+rejects malformed budget containers and inconsistent pre-normalized budget
+records before factory construction, so quota admission cannot silently change
+between the caller's policy and the provider-attempt fence. The compatibility
+`Agent` path remains unchanged. Negative coverage now totals **300 focused Lab
+tests** and **406 combined Python/cross-language tests**; targeted Ruff and
+Pyright remain clean. This is local native-input integrity evidence only;
+opaque adapter retries, provider-side idempotency/quota truth, process
+containment, external effect reversal and hosted single-writer authority
+remain open under `LAB-AUTH-001`/`LAB-RESEARCH-003`.
+
 #### M5 — Research, browser và experiment cells
 
 **Entry:** M2–M4 pass cho local cells; capability registry sealed.
