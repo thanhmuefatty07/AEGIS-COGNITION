@@ -1344,6 +1344,33 @@ def test_lab_start_rejects_lossy_browser_flag(monkeypatch: pytest.MonkeyPatch) -
         lab.start("strict browser option", browser="false")  # type: ignore[arg-type]
 
 
+@pytest.mark.parametrize("value", (1, 0, "false", None))
+def test_lab_authority_flags_reject_lossy_boolean_coercion(value: object) -> None:
+    with pytest.raises(ValueError, match="native-authority flag must be boolean"):
+        LabRun("strict authority flag", require_native_authority=value)  # type: ignore[arg-type]
+    with pytest.raises(ValueError, match="native-authority flag must be boolean"):
+        _authority_mode_from_options(
+            {"lab_require_native_authority": value}, default_trust_level="DEV"
+        )
+
+
+def test_agent_entrypoints_reject_lossy_lab_and_browser_flags(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("AEGIS_API_KEY", "test-key")
+    from aegis_cognition.agent import Agent
+    from aegis_cognition.config import AgentConfig
+
+    with pytest.raises(ValueError, match="lab flag must be boolean"):
+        Agent("strict agent flags", lab="false")  # type: ignore[arg-type]
+    with pytest.raises(ValueError, match="browser flag must be boolean"):
+        Agent("strict agent flags", browser=1)  # type: ignore[arg-type]
+    with pytest.raises(ValueError, match="lab flag must be boolean"):
+        AgentConfig.from_inputs("strict config flags", lab="false")
+    with pytest.raises(ValueError, match="browser flag must be boolean"):
+        AgentConfig.from_inputs("strict config flags", browser=1)  # type: ignore[arg-type]
+
+
 @pytest.mark.parametrize(
     ("options", "message"),
     (

@@ -105,17 +105,22 @@ class AgentConfig:
         # Agent(lab=True) is also a mission boundary.  Bind the policy hash
         # before compatibility options reach LabApplication so a gateway or
         # native controller cannot silently operate under another policy.
-        if bool(resolved.options.get("lab")):
+        raw_lab = resolved.options.get("lab", False)
+        if type(raw_lab) is not bool:
+            raise ValueError("Agent lab flag must be boolean")
+        if raw_lab:
             resolved.options.setdefault("lab_trust_policy_hash", resolved.trust_policy_hash)
         resolved.validate()
         return resolved
 
     def validate(self) -> None:
-        if not self.task.strip():
+        if type(self.task) is not str or not self.task.strip():
             raise ConfigError.task_missing()
         if not self.api_key:
             raise ConfigError.api_key_missing()
-        if self.trust_level not in VALID_TRUST_LEVELS:
+        if type(self.trust_level) is not str or self.trust_level not in VALID_TRUST_LEVELS:
             raise ConfigError.invalid_trust_level(self.trust_level)
-        if self.max_steps < 1:
+        if type(self.browser) is not bool:
+            raise ValueError("Agent browser flag must be boolean")
+        if type(self.max_steps) is not int or self.max_steps < 1:
             raise ConfigError.max_steps_invalid(self.max_steps)

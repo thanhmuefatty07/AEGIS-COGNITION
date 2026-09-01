@@ -2864,6 +2864,19 @@ Pyright are clean. This closes local projection-integrity gaps only; hidden
 adapter effects, process containment, rollback of already-executed effects and
 hosted single-writer authority remain open under `LAB-AUTH-001`.
 
+**P1 authority/entrypoint type continuation (2026-09-02):** direct `LabRun`
+construction and the compatibility `Agent`/`AgentConfig` entrypoints now reject
+non-boolean `require_native_authority`, `lab` and `browser` values instead of
+letting `bool(...)` select a different authority or execution path. The
+option-derived authority mode applies the same exact-boolean rule when no
+explicit mode is supplied. This prevents values such as `0`, `1` or
+`"false"` from silently changing native-required versus projection-only
+behavior. Focused coverage is **307 Lab tests** and the combined
+Python/cross-language gate is **413 tests**; targeted Ruff and Pyright are
+clean. This closes local option-boundary coercion only; native single-writer
+coverage across opaque adapters, process descendants and hosted multi-process
+execution remains open under `LAB-AUTH-001`.
+
 #### M5 — Research, browser và experiment cells
 
 **Entry:** M2–M4 pass cho local cells; capability registry sealed.
