@@ -476,6 +476,12 @@ def _native_projection_payload_hash(value: Any) -> str:
     return blake3(b"aegis-lab-projection-payload-v1\0" + payload).hexdigest()
 
 
+def _execution_cell_manifest_hash(manifest: Any) -> str:
+    """Hash the canonical manifest value embedded in its binding event."""
+
+    return _native_projection_payload_hash(manifest)
+
+
 _BUDGET_FIELDS = (
     "tokens",
     "money_minor_units",
@@ -502,6 +508,7 @@ def _budget_vector_payload(value: Any) -> dict[str, int]:
 
 _RUST_EVENT_KINDS = {
     "mission_created": "MissionCreated",
+    "execution_cell_manifest_recorded": "ExecutionCellManifestRecorded",
     "state_changed": "StateChanged",
     "source_captured": "SourceCaptured",
     "claim_recorded": "ClaimRecorded",
@@ -532,6 +539,8 @@ _RUST_EVENT_KINDS = {
     "finalization_started": "FinalizationStarted",
     "finalization_reopened": "FinalizationReopened",
 }
+
+_EXECUTION_CELL_MANIFEST_SCHEMA = "aegis-execution-cell-manifest-v1"
 
 _REPLAY_ARCHIVE_MANIFEST_SCHEMA = "aegis-run-event-segment-manifest-v1"
 _REPLAY_ARCHIVE_MANIFEST_VERSION = 1
@@ -5037,6 +5046,61 @@ class LabRun:
             separators=(",", ":"),
         )
 
+    def bind_execution_cell_manifest(
+        self,
+        manifest: tuple[dict[str, Any], ...] | list[dict[str, Any]],
+    ) -> None:
+        """Seal the execution-cell inventory into the Lab event ledger.
+
+        The registry is an authority boundary, so its snapshot metadata must
+        not exist only as a mutable top-level field.  This event records the
+        canonical manifest and its native projection-payload digest before any
+        controller-selected cell can execute.
+        """
+
+        if type(manifest) not in (list, tuple):
+            raise TypeError("execution cell manifest must be a sequence")
+        if any(type(item) is not dict for item in manifest):
+            raise TypeError("execution cell manifest entries must be mappings")
+        if any(event.kind == "execution_cell_manifest_recorded" for event in self.events):
+            raise RuntimeError("execution cell manifest is already bound")
+        if self.execution_cell_manifest:
+            raise RuntimeError("execution cell manifest is already configured")
+
+        normalized_manifest: list[dict[str, Any]] = []
+        for raw_item in manifest:
+            item = raw_item
+            if any(type(key) is not str for key in item):
+                raise ValueError("execution cell manifest keys must be strings")
+            normalized = dict(item)
+            for key in ("action_kinds", "capabilities", "effect_classes", "trust_levels"):
+                raw_values = normalized.get(key)
+                if type(raw_values) not in (list, tuple):
+                    raise ValueError("execution cell manifest policy fields must be sequences")
+                normalized[key] = tuple(cast(list[Any] | tuple[Any, ...], raw_values))
+            normalized_manifest.append(normalized)
+
+        manifest_value = [dict(item) for item in normalized_manifest]
+        manifest_hash = _execution_cell_manifest_hash(manifest_value)
+        payload = {
+            "schema": _EXECUTION_CELL_MANIFEST_SCHEMA,
+            "cell_count": len(manifest_value),
+            "manifest": manifest_value,
+            "manifest_hash": manifest_hash,
+        }
+        snapshot = self._projection_snapshot()
+
+        def apply_projection() -> None:
+            self.execution_cell_manifest = tuple(normalized_manifest)
+
+        self._append(
+            "execution_cell_manifest_recorded",
+            payload,
+            rollback_snapshot=snapshot,
+            projection_apply=apply_projection,
+            event_state_epoch=self.state_epoch + 1,
+        )
+
     def _admit_native_controller_event(self, event: LabEvent) -> bool:
         """Admit one projection event into the native controller, if present."""
 
@@ -5607,6 +5671,44 @@ class LabRun:
         if self.security_events != security_events:
             raise RuntimeError("native projection diverged: security_events=different")
 
+    def _assert_execution_cell_manifest_consistency(self) -> None:
+        """Keep the mutable manifest projection bound to one immutable event."""
+
+        manifest_events = [
+            event
+            for event in self.events
+            if event.kind == "execution_cell_manifest_recorded"
+        ]
+        if len(manifest_events) > 1:
+            raise RuntimeError("native projection diverged: execution_cell_manifest=duplicate")
+        if not manifest_events:
+            if self.execution_cell_manifest:
+                raise RuntimeError("native projection diverged: execution_cell_manifest=unbound")
+            return
+        event_payload = manifest_events[0].payload
+        if type(event_payload) is not dict:
+            raise RuntimeError("native projection diverged: execution_cell_manifest=invalid")
+        payload = cast(dict[str, Any], event_payload)
+        raw_manifest: Any = payload.get("manifest")
+        if type(raw_manifest) is not list:
+            raise RuntimeError("native projection diverged: execution_cell_manifest=invalid")
+        raw_manifest = cast(list[Any], raw_manifest)
+        if payload.get("schema") != _EXECUTION_CELL_MANIFEST_SCHEMA:
+            raise RuntimeError("native projection diverged: execution_cell_manifest=schema")
+        if payload.get("cell_count") != len(raw_manifest):
+            raise RuntimeError("native projection diverged: execution_cell_manifest=count")
+        if payload.get("manifest_hash") != _execution_cell_manifest_hash(raw_manifest):
+            raise RuntimeError("native projection diverged: execution_cell_manifest=hash")
+        current_manifest = json.loads(
+            json.dumps(
+                list(self.execution_cell_manifest),
+                sort_keys=True,
+                separators=(",", ":"),
+            )
+        )
+        if raw_manifest != current_manifest:
+            raise RuntimeError("native projection diverged: execution_cell_manifest=different")
+
     def _assert_native_projection_consistency(self) -> None:
         """Fail closed when the Python view no longer matches native state.
 
@@ -5620,6 +5722,7 @@ class LabRun:
         self._assert_projection_admission_consistency()
         self._assert_projection_record_consistency()
         self._assert_projection_operator_consistency()
+        self._assert_execution_cell_manifest_consistency()
         native_controller = self._native_controller
         for event in self.events:
             event_payload = event.payload
@@ -8316,12 +8419,12 @@ class LabApplication:
             self.execution_cells = ExecutionCellRegistry(
                 tuple(bindings), trust_policy_hash=run.trust_policy_hash
             )
-            run.execution_cell_manifest = self.execution_cells.manifest()
+            run.bind_execution_cell_manifest(self.execution_cells.manifest())
             self.execution_cells.seal()
         except (TypeError, ValueError) as exc:
             self.execution_cells = ExecutionCellRegistry()
             self.execution_cells.seal()
-            run.execution_cell_manifest = ()
+            run.bind_execution_cell_manifest(())
             run.record_blocker(f"execution_cell_registry_invalid:{type(exc).__name__}")
 
     def _resolve_execution_cell(

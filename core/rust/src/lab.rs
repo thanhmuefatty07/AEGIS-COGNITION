@@ -54,6 +54,7 @@ impl LabRunState {
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub enum LabEventKind {
     MissionCreated,
+    ExecutionCellManifestRecorded,
     StateChanged,
     SourceCaptured,
     ClaimRecorded,
@@ -992,7 +993,8 @@ impl LabController {
         // the typed JSON payload and native cross-reference index.
         if matches!(
             event.kind,
-            LabEventKind::SourceCaptured
+            LabEventKind::ExecutionCellManifestRecorded
+                | LabEventKind::SourceCaptured
                 | LabEventKind::ClaimRecorded
                 | LabEventKind::HypothesisRecorded
                 | LabEventKind::ExperimentScheduled
@@ -1337,6 +1339,9 @@ impl LabController {
 
     fn projection_state_allows(&self, kind: LabEventKind) -> bool {
         match kind {
+            LabEventKind::ExecutionCellManifestRecorded => {
+                matches!(self.runtime.state, LabRunState::Planned)
+            }
             LabEventKind::SourceCaptured => {
                 matches!(self.runtime.state, LabRunState::Researching)
             }
@@ -1453,6 +1458,94 @@ impl LabController {
             Ok(value)
         };
         match kind {
+            LabEventKind::ExecutionCellManifestRecorded => {
+                let schema = non_empty("schema")?;
+                let manifest_hash = non_empty("manifest_hash")?;
+                let manifest = object
+                    .get("manifest")
+                    .and_then(serde_json::Value::as_array)
+                    .ok_or(LabError::InvalidRecord)?;
+                let cell_count = object
+                    .get("cell_count")
+                    .and_then(serde_json::Value::as_u64)
+                    .ok_or(LabError::InvalidRecord)?;
+                if schema != "aegis-execution-cell-manifest-v1"
+                    || !is_hex_digest(&manifest_hash)
+                    || cell_count != manifest.len() as u64
+                    || digest_hex(projection_payload_hash(
+                        object.get("manifest").ok_or(LabError::InvalidRecord)?,
+                    )) != manifest_hash
+                {
+                    return Err(LabError::InvalidRecord);
+                }
+                let normalized_array = |cell: &serde_json::Map<String, serde_json::Value>,
+                                        key: &str,
+                                        require_non_empty: bool,
+                                        lowercase: bool,
+                                        uppercase: bool|
+                 -> Result<Vec<String>, LabError> {
+                    let values = cell
+                        .get(key)
+                        .and_then(serde_json::Value::as_array)
+                        .ok_or(LabError::InvalidRecord)?;
+                    if require_non_empty && values.is_empty() {
+                        return Err(LabError::InvalidRecord);
+                    }
+                    let mut result = Vec::with_capacity(values.len());
+                    for value in values {
+                        let item = value.as_str().ok_or(LabError::InvalidRecord)?;
+                        if item.trim().is_empty()
+                            || item != item.trim()
+                            || (lowercase && item != item.to_ascii_lowercase())
+                            || (uppercase && item != item.to_ascii_uppercase())
+                        {
+                            return Err(LabError::InvalidRecord);
+                        }
+                        result.push(item.to_string());
+                    }
+                    Ok(result)
+                };
+                let mut identities = BTreeSet::new();
+                for entry in manifest {
+                    let cell = entry.as_object().ok_or(LabError::InvalidRecord)?;
+                    let cell_id = cell
+                        .get("cell_id")
+                        .and_then(serde_json::Value::as_str)
+                        .ok_or(LabError::InvalidRecord)?;
+                    if cell_id.trim().is_empty() || cell_id != cell_id.trim() {
+                        return Err(LabError::InvalidRecord);
+                    }
+                    let action_kinds = normalized_array(cell, "action_kinds", true, true, false)?;
+                    if action_kinds.iter().any(|kind| {
+                        !matches!(
+                            kind.as_str(),
+                            "context_retrieval"
+                                | "search_program"
+                                | "browser_action"
+                                | "experiment_action"
+                                | "simulation_action"
+                                | "tool_call"
+                                | "benchmark_validation"
+                                | "skill_execution"
+                                | "post_completion_effect"
+                        )
+                    }) {
+                        return Err(LabError::InvalidRecord);
+                    }
+                    let _ = normalized_array(cell, "capabilities", false, false, false)?;
+                    let _ = normalized_array(cell, "effect_classes", false, false, false)?;
+                    let _ = normalized_array(cell, "trust_levels", true, false, true)?;
+                    if cell
+                        .get("trust_policy_hash")
+                        .is_some_and(|value| value.as_str().is_none_or(|item| !is_hex_digest(item)))
+                    {
+                        return Err(LabError::InvalidRecord);
+                    }
+                    if !identities.insert((cell_id.to_string(), action_kinds)) {
+                        return Err(LabError::InvalidRecord);
+                    }
+                }
+            }
             LabEventKind::SourceCaptured => {
                 let id = non_empty("source_id")?;
                 let uri = non_empty("uri")?;
@@ -2218,6 +2311,18 @@ impl LabController {
         let object = payload.as_object().ok_or(LabError::InvalidRecord)?;
         let parent_hex = digest_hex(event.previous_event_hash);
         match event.kind {
+            LabEventKind::ExecutionCellManifestRecorded => {
+                if event.sequence != 2
+                    || event.state_epoch != 1
+                    || self
+                        .runtime
+                        .events
+                        .first()
+                        .is_none_or(|first| first.kind != LabEventKind::MissionCreated)
+                {
+                    return Err(LabError::InvalidRecord);
+                }
+            }
             LabEventKind::ExperimentExecutionAdmitted
             | LabEventKind::ExperimentExecutionRecorded
             | LabEventKind::ToolExecutionAdmitted
@@ -2439,6 +2544,23 @@ impl LabController {
             {
                 return Err(LabError::InvalidEvent);
             }
+        }
+        let manifest_events = self
+            .runtime
+            .events
+            .iter()
+            .filter(|event| event.kind == LabEventKind::ExecutionCellManifestRecorded)
+            .collect::<Vec<_>>();
+        if manifest_events.len() > 1 {
+            return Err(LabError::InvalidEvent);
+        }
+        if let Some(event) = manifest_events.first() {
+            let Some(payload) = self.projection_payloads.get(&event.sequence) else {
+                return Err(LabError::InvalidEvent);
+            };
+            let mut candidate = self.clone();
+            candidate.validate_projection_payload(event.kind, payload)?;
+            candidate.validate_projection_binding(event, payload)?;
         }
         if self
             .projection_research_programs
@@ -3141,6 +3263,56 @@ mod tests {
         assert_eq!(controller.runtime().state(), LabRunState::Completed);
         assert!(controller.runtime().replayable());
         assert_eq!(controller.runtime().events().len(), 7);
+    }
+
+    #[test]
+    fn native_projection_record_binds_execution_cell_manifest() {
+        let mut controller = LabController::new(mission()).unwrap();
+        let manifest = serde_json::json!([]);
+        let payload = serde_json::json!({
+            "schema": "aegis-execution-cell-manifest-v1",
+            "cell_count": 0,
+            "manifest": manifest.clone(),
+            "manifest_hash": digest_hex(projection_payload_hash(&manifest)),
+        });
+        let payload_json = serde_json::to_string(&payload).unwrap();
+        let event = LabEvent::new(
+            2,
+            1,
+            LabEventKind::ExecutionCellManifestRecorded,
+            projection_payload_hash(&payload),
+            controller.runtime().events()[0].event_hash,
+        );
+        controller
+            .admit_projection_record(event, &payload_json, None)
+            .unwrap();
+        assert_eq!(controller.runtime().events().len(), 2);
+        let snapshot = controller.snapshot_json().unwrap();
+        assert!(LabController::from_snapshot_json(&snapshot).is_ok());
+
+        let mut tampered_controller = LabController::new(mission()).unwrap();
+        let tampered_payload = serde_json::json!({
+            "schema": "aegis-execution-cell-manifest-v1",
+            "cell_count": 0,
+            "manifest": [],
+            "manifest_hash": "0".repeat(64),
+        });
+        let tampered_event = LabEvent::new(
+            2,
+            1,
+            LabEventKind::ExecutionCellManifestRecorded,
+            projection_payload_hash(&tampered_payload),
+            tampered_controller.runtime().events()[0].event_hash,
+        );
+        assert_eq!(
+            tampered_controller.admit_projection_record(
+                tampered_event,
+                &serde_json::to_string(&tampered_payload).unwrap(),
+                None,
+            ),
+            Err(LabError::InvalidRecord)
+        );
+        assert_eq!(tampered_controller.runtime().events().len(), 1);
     }
 
     #[test]
