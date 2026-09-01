@@ -2804,6 +2804,15 @@ hardens local replay-writer input integrity only; stale-process recovery,
 descendant cleanup, cross-platform enforcement and hosted writer evidence
 remain open under `LAB-AUTH-001`/`LAB-OPS-007`.
 
+**P1 capability-flag continuation (2026-09-02):** the public `Lab.start`
+boundary now rejects non-boolean `browser` options rather than treating
+strings such as `"false"` as enabled capability. Regression coverage proves
+the rejection occurs before `AgentConfig` construction or browser setup.
+Negative coverage now totals **294 focused Lab tests** and **400 combined
+Python/cross-language tests**; targeted Ruff and Pyright remain clean. This
+is local option-integrity evidence only; browser process/OS containment,
+DNS-race protection and hosted policy enforcement remain external blockers.
+
 #### M5 — Research, browser và experiment cells
 
 **Entry:** M2–M4 pass cho local cells; capability registry sealed.

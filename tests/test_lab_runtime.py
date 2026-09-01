@@ -1269,6 +1269,17 @@ def test_lab_policy_rejects_security_option_overrides(monkeypatch: pytest.Monkey
         lab.start("conflicting external write policy", lab_allow_external_writes=True)
 
 
+def test_lab_start_rejects_lossy_browser_flag(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("AEGIS_API_KEY", "test-key")
+    lab = Lab(
+        policy=LabPolicy(),
+        budget=LabBudget(max_steps=1, token_budget=100),
+        gateway_factory=lambda **_: None,
+    )
+    with pytest.raises(ValueError, match="browser option must be boolean"):
+        lab.start("strict browser option", browser="false")  # type: ignore[arg-type]
+
+
 def test_native_required_gateway_rejects_adapter_owned_retry_loop(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
