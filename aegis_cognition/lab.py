@@ -5834,6 +5834,8 @@ class LabRun:
             "observation_count": len(self.observations),
             "skill_admission_count": len(self.skill_admissions),
             "tool_execution_count": len(self.tool_executions),
+            "max_external_attempts": self.external_attempt_budget,
+            "external_attempt_count": self.external_attempt_count,
             "execution_cell_manifest": self.execution_cell_manifest,
             # Keep operator-visible blockers in the exported manifest.  The
             # dossier also carries the typed tuple, but ``RunResult`` exposes
