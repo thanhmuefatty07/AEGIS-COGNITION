@@ -7423,6 +7423,10 @@ class ExecutionCellRegistry:
             raise ValueError("execution cell trust level must be a non-empty string")
         if type(cell_id) not in (str, type(None)):
             raise ValueError("execution cell id must be a string or unset")
+        if cell_id is not None and (
+            not cell_id.strip() or cell_id != cell_id.strip()
+        ):
+            raise ValueError("execution cell id must be a non-empty trimmed string")
         if type(capability) not in (str, type(None)):
             raise ValueError("execution cell capability must be a string or unset")
         if type(effect_class) not in (str, type(None)):
@@ -7434,7 +7438,7 @@ class ExecutionCellRegistry:
         binding = bindings.get(normalized_kind)
         if binding is None:
             raise LookupError(f"execution cell is not registered: {normalized_kind}")
-        if cell_id is not None and cell_id.strip() and cell_id.strip() != binding.cell_id:
+        if cell_id is not None and cell_id != binding.cell_id:
             raise PermissionError("controller requested an unregistered execution cell")
         normalized_trust = trust_level.strip().upper()
         if normalized_trust not in binding.trust_levels:

@@ -6829,6 +6829,10 @@ def test_execution_cell_registry_enforces_identity_capability_and_effect() -> No
             capability="network_read",
             effect_class="compute",
         )
+    with pytest.raises(ValueError, match="trimmed string"):
+        registry.resolve("experiment_action", cell_id="   ", trust_level="DEV")
+    with pytest.raises(ValueError, match="trimmed string"):
+        registry.resolve("experiment_action", cell_id=" compute-v1 ", trust_level="DEV")
     with pytest.raises(ValueError):
         ExecutionCellRegistry(
             (
