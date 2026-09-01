@@ -5603,11 +5603,17 @@ class LabRun:
                         mismatches.append(f"event_{expected.sequence}=different")
                         break
 
-        native_state = str(runtime.get("state", "")).strip().lower()
-        if native_state and native_state != self.state:
-            mismatches.append(f"state python={self.state} native={native_state}")
+        raw_native_state = runtime.get("state", "")
+        if type(raw_native_state) is not str:
+            mismatches.append("state=invalid")
+        else:
+            native_state = raw_native_state.strip().lower()
+            if native_state and native_state != self.state:
+                mismatches.append(f"state python={self.state} native={native_state}")
         native_epoch = runtime.get("state_epoch")
-        if isinstance(native_epoch, int) and native_epoch != self.state_epoch:
+        if native_epoch is not None and (
+            type(native_epoch) is not int or native_epoch != self.state_epoch
+        ):
             mismatches.append(
                 f"state_epoch python={self.state_epoch} native={native_epoch}"
             )
@@ -5616,10 +5622,14 @@ class LabRun:
             value = snapshot_map.get(field)
             if isinstance(value, dict):
                 typed_value = cast(dict[Any, Any], value)
-                return {str(key) for key in typed_value}
+                if any(type(key) is not str for key in typed_value):
+                    raise RuntimeError(f"native projection diverged: {field}=invalid")
+                return set(cast(dict[str, Any], typed_value))
             if isinstance(value, list):
                 typed_value = cast(list[Any], value)
-                return {str(item) for item in typed_value}
+                if any(type(item) is not str for item in typed_value):
+                    raise RuntimeError(f"native projection diverged: {field}=invalid")
+                return set(typed_value)
             return None
 
         expected_ids = {
@@ -5642,14 +5652,14 @@ class LabRun:
         actual_payloads = snapshot_map.get("projection_payloads")
         if isinstance(actual_payloads, dict) and actual_payloads:
             typed_actual_payloads = cast(dict[Any, Any], actual_payloads)
+            if any(type(key) is not str for key in typed_actual_payloads):
+                raise RuntimeError("native projection diverged: projection_payloads=invalid")
             expected_payloads = {
                 str(event.sequence): event.payload
                 for event in self.events
                 if event.kind not in {"mission_created", "budget_admitted"}
             }
-            normalized_payloads = {
-                str(key): value for key, value in typed_actual_payloads.items()
-            }
+            normalized_payloads = dict(cast(dict[str, Any], typed_actual_payloads))
             if normalized_payloads != expected_payloads:
                 mismatches.append("projection_payloads=different")
 
