@@ -43,7 +43,7 @@ Các nguồn dưới đây là primary sources từ GitHub/docs/changelog chính
 |---|---|---|
 | [Hermes Agent](https://github.com/NousResearch/Hermes-Agent) | Self-improving loop, skill creation, memory nudges, FTS5 session search, subagents, gateway đa kênh, scheduled automations, cloud/serverless persistence. README nêu rõ skill tự cải thiện, subagent song song, RPC scripts để gom pipeline nhiều bước thành turn ít context. | Rất mạnh về UX và learning loop, nhưng AEGIS phải thêm physical witness, PAV gate, deterministic rollback, và storage chứng cứ mật mã thay vì chỉ memory/search theo hội thoại. |
 | [LangGraph](https://github.com/langchain-ai/langgraph) | Durable execution, stateful long-running workflows, resume sau failure, memory, human-in-the-loop, graph orchestration. README mô tả durable execution và memory cho agent dài hạn. | Python graph runtime hữu dụng nhưng không đủ HPC/zero-trust nếu không có Rust kernel, Wasmtime, physical artifact verification. |
-| [Microsoft AutoGen](https://github.com/microsoft/autogen) / [Microsoft Agent Framework](https://github.com/microsoft/agent-framework) | Multi-agent orchestration, MCP, graph workflows, checkpointing, streaming, HITL, time-travel, OpenTelemetry, production governance. AutoGen hiện maintenance mode, MAF là successor production-ready. | Enterprise framework có nhiều abstraction; AEGIS phải giữ core nhỏ, deterministic, và không để group chat/role-play thay thế evidence. |
+| [Microsoft AutoGen](https://github.com/microsoft/autogen) / [Microsoft Agent Framework](https://github.com/microsoft/agent-framework) | Multi-agent orchestration, MCP, graph workflows, checkpointing, streaming, HITL, time-travel, OpenTelemetry, production governance. AutoGen hiện maintenance mode; MAF được mô tả trong tài liệu công khai như một successor hướng production, nhưng mô tả bên ngoài này không phải bằng chứng AEGIS đã sẵn sàng. | Enterprise framework có nhiều abstraction; AEGIS phải giữ core nhỏ, deterministic, và không để group chat/role-play thay thế evidence. |
 | [OpenAI Agents SDK](https://github.com/openai/openai-agents-python) | Lightweight multi-agent workflows, tools, guardrails, handoffs, sessions, tracing, sandbox agents có filesystem và command execution cho long horizon. | Cần bổ sung token governor vật lý, context ledger độc lập model, và verification gauntlet không phụ thuộc provider. |
 | [CrewAI](https://github.com/crewAIInc/crewAI) | Crews + Flows, event-driven control, task descriptions, memory/guardrails, tracing/control plane, dễ dùng cho enterprise automation. | Role/backstory dễ biến thành role-play nếu không có typed task contracts và external evidence. |
 | [OpenHands](https://github.com/All-Hands-AI/OpenHands) | Software Agent SDK, CLI, local GUI, cloud, REST API, integrations Slack/Jira/Linear, RBAC, multi-user, enterprise self-host. | Mạnh về software engineering UX, nhưng AEGIS phải dùng physical memory, token governor, and deterministic shift protocol cho 100h. |
@@ -3850,7 +3850,7 @@ P1: deterministic replay and policy kernel
 5. crash-after-LLM-before-tool recovery.
 6. deterministic TaskLedger priority baseline with structural `TaskGraphCache`; full dirty-subgraph priority propagation remains pending.
 7. ContextGovernor activated-subgraph baseline.
-8. ContextPackBuilt, PolicyDecisionRecorded, and ApprovalTokenRecorded replay events plus standard Arrow IPC replay roundtrip, sealed segment manifest recovery, segmented Arrow audit proof with semantic mmap scan, mmap-backed sealed segment readback, last-valid-prefix recovery, and approval-boundary sweep; randomized latency/crash/copy-count bench remains pending.
+8. ContextPackBuilt, PolicyDecisionRecorded, and ApprovalTokenRecorded replay events plus standard Arrow IPC replay roundtrip, sealed segment manifest recovery, segmented Arrow audit proof with semantic mmap scan, mmap-backed sealed segment readback, last-valid-prefix recovery, and approval-boundary sweep; a fresh bounded 128-point seeded crash scorecard is now locally proven, while randomized latency/copy-count and broader hosted/process-boundary campaigns remain pending.
 
 P2: evidence indexing and benchmark gauntlet
 1. `EvidenceIndexManifest`.
@@ -3958,12 +3958,21 @@ Questions to answer before implementation:
 
 ### 36.8 Freeze Backlog
 
-1. Add a `docs/ARCHITECTURE_FREEZE.md` generated from this section.
-2. Add `TruthSchemaGate` to `constitution_audit`.
-3. Add `NoOverclaimGate` doc scanner for "implemented" vs "target" language.
-4. Add module ownership map for P0 schemas.
-5. Add Sprint A task cards with evidence contracts.
-6. Add implementation/no-build decision log.
+1. **Completed (design input):** add `docs/ARCHITECTURE_FREEZE.md` with the
+   frozen principles, AF-001–AF-007 decision records, ownership map, migration
+   gates and explicit non-adoption rules derived from this section.
+2. **Completed (local gate):** `scripts/constitution_audit.py` exposes
+   `TruthSchemaGate` for versioned schema identity and Rust owner markers; Rust
+   compile and replay-hash stability remain runtime evidence.
+3. **Completed (local gate):** `NoOverclaimGate` scans high-risk readiness
+   language by sentence context and requires explicit freeze/baseline/benchmark
+   status disclosures.
+4. **Completed (design input):** the P0 module ownership map is recorded in
+   `docs/ARCHITECTURE_FREEZE.md`, including canonical paths and cutover proof.
+5. **Completed (design input):** Sprint A task cards now bind owners, outputs,
+   acceptance evidence, fail-closed behavior and rollback boundaries.
+6. **Completed (design input):** the implementation/no-build decision log now
+   records the evidence, consequence and revisit trigger for each choice.
 
 ---
 
@@ -4096,5 +4105,6 @@ Do not adopt:
 3. Implemented baseline: a tiny deterministic `HotLexicalIndex` inverted index and `hot_lexical_index_top_k` benchmark gate exist before any Tantivy/SeekStorm/BM25S experiment; current fresh mean is about 102.5 us against 10k docs with a 200 us gate.
 4. Implemented baseline: `SortedEvidenceSet`/`HotBitmapFilter` provide no-dependency sorted-Vec filtering, current gated `hot_bitmap_filter_intersection` measured about 51.7 us mean over 65,536 segment ids, and the gate is set to 150 us. `roaring-rs` remains candidate-only until it beats this baseline behind a feature/benchmark gate.
 5. Implemented baseline: `HotTermDictionary` provides no-dependency sorted-Vec prefix expansion over sealed symbol/file terms, `hot_term_dictionary_prefix_expand` measured about 11.1 us mean over 50k terms, and the gate is set to 25 us. `fst` remains candidate-only until it beats this baseline behind a feature/benchmark gate.
-6. Add cold vector expansion replay event before any DiskANN/USearch experiment.
+6. Implemented local baseline: `ColdVectorExpansionReplayRecord` and `ColdVectorExpansionRecorded` bind query hash, index epoch, expansion configuration/artifact, bounded candidate list, and non-zero latency evidence; deterministic in-memory `ColdVectorIndex` emits only `CandidateOnly` refs and has replay/tamper regressions before any DiskANN/USearch adoption. No DiskANN/USearch dependency is enabled.
 7. Implemented baseline: `IndexEpochReplayRecord`, `lexical_query_hash`, and `candidate_list_hash` bind same-query/same-epoch candidate refs for replay; `index_epoch_replay_record` measured about 3.73 us mean with a 10 us gate for the hot hash-binding path.
+8. Implemented local campaign: `replay-chaos-scorecard` exercised 128 deterministic seeded crash points over segmented replay, recovered only valid prefixes, and emitted a hash-bound scorecard plus mmap/write evidence. The artifact is local evidence only; 100h endurance, cross-process/hosted writer enforcement, randomized latency/copy-count dispersion, and independent verification remain pending.

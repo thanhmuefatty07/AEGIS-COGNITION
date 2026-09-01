@@ -89,27 +89,26 @@ def _blake3_hex(root: Path, payload: bytes) -> str:
 
 
 def _build_framework_json_trajectory() -> bytes:
-    records = []
-    for event_id in range(BASELINE_EVENT_COUNT):
-        records.append(
-            {
-                "turn": event_id,
-                "thread_id": "thread-0001",
-                "role": "assistant" if event_id % 2 else "tool",
-                "kind": ("thought", "action", "observation", "checkpoint")[event_id % 4],
-                "checkpoint": {
-                    "step": event_id,
-                    "parents": [max(0, event_id - 1), max(0, event_id - 2)],
-                    "status": "checkpoint" if event_id % 17 == 0 else "running",
-                },
-                "thought": f"plan-{event_id:05d}-" + ("t" * 256),
-                "action": {
-                    "tool": "shell",
-                    "args": "a" * 256,
-                },
-                "observation": f"obs-{event_id:05d}-" + ("x" * BASELINE_OBSERVATION_BYTES),
-            }
-        )
+    records = [
+        {
+            "turn": event_id,
+            "thread_id": "thread-0001",
+            "role": "assistant" if event_id % 2 else "tool",
+            "kind": ("thought", "action", "observation", "checkpoint")[event_id % 4],
+            "checkpoint": {
+                "step": event_id,
+                "parents": [max(0, event_id - 1), max(0, event_id - 2)],
+                "status": "checkpoint" if event_id % 17 == 0 else "running",
+            },
+            "thought": f"plan-{event_id:05d}-" + ("t" * 256),
+            "action": {
+                "tool": "shell",
+                "args": "a" * 256,
+            },
+            "observation": f"obs-{event_id:05d}-" + ("x" * BASELINE_OBSERVATION_BYTES),
+        }
+        for event_id in range(BASELINE_EVENT_COUNT)
+    ]
     return json.dumps(records, separators=(",", ":")).encode("utf-8")
 
 

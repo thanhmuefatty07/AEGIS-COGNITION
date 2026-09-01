@@ -34,6 +34,8 @@ AEGIS_DIRS = [
     "cluster",
 ]
 
+# Keep this human-editable catalogue multiline; the split is intentional so
+# the import-audit rule remains reviewable without a generated blob.
 STDLIB = set("""
 __future__ abc argparse ast asyncio base64 binascii bisect builtins cmath
 collections concurrent configparser contextlib copy csv dataclasses datetime
@@ -45,7 +47,7 @@ signal site socket sqlite3 ssl stat statistics string struct subprocess sys
 tempfile textwrap threading time tokenize token tomllib traceback types typing
 unicodedata unittest urllib uuid venv warnings weakref xml xmlrpc zipfile zlib
 tomli termios tty socketserver
-""".split())
+""".split())  # noqa: SIM905
 
 LOCAL_AEGIS = {
     "aegis_nerve", "aegis", "aegis_cognition", "bridge_mmap", "bridge",
@@ -92,7 +94,7 @@ def load_pyproject_extras(path: Path) -> list[str]:
         deps = data["project"].get("dependencies", [])
         out.extend(deps)
         opt = data["project"].get("optional-dependencies", {})
-        for group, entries in opt.items():
+        for entries in opt.values():
             out.extend(entries)
     return out
 

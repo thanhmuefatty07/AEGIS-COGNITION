@@ -2,60 +2,44 @@
 
 from __future__ import annotations
 
-import hashlib
 import json
-import os
+import hashlib
 from typing import Any
 
 from .contracts import HotCommitRecord, TrustPolicySnapshot
-from .hashing import stable_hash
 from .native import native_module
+from .trust_policy import (
+    TRUST_POLICY_SCHEMA,
+    VALID_TRUST_LEVELS,
+    normalize_trust_level,
+    trust_policy_hash,
+    trust_policy_payload,
+)
 
 
-VALID_TRUST_LEVELS = {"DEV", "STAGING", "PROD"}
-
-
-def normalize_trust_level(value: str | None) -> str:
-    level = (value or os.environ.get("AEGIS_TRUST_LEVEL") or "PROD").strip().upper()
-    if level not in VALID_TRUST_LEVELS:
-        raise ValueError("AEGIS_TRUST_LEVEL must be DEV, STAGING, or PROD")
-    return level
+__all__ = [
+    "VALID_TRUST_LEVELS",
+    "commit_hot_evidence",
+    "commit_hot_evidence_batch",
+    "normalize_trust_level",
+    "trust_policy_snapshot",
+]
 
 
 def trust_policy_snapshot(trust_level: str | None = None) -> TrustPolicySnapshot:
     level = normalize_trust_level(trust_level)
-    physical_witness_required = level == "PROD"
-    fail_closed = level == "PROD"
-    degraded_hot_evidence_allowed = level == "DEV"
-    rust_extension_required = level != "DEV"
-    dual_approval_required = level == "PROD"
-    missing_artifact_policy = {
-        "DEV": "warn_continue",
-        "STAGING": "record_gap_without_truth_claim",
-        "PROD": "fail_closed",
-    }[level]
-    payload = {
-        "schema": "aegis-friendly-trust-policy-v1",
-        "trust_level": level,
-        "physical_witness_required": physical_witness_required,
-        "fail_closed": fail_closed,
-        "degraded_hot_evidence_allowed": degraded_hot_evidence_allowed,
-        "rust_extension_required": rust_extension_required,
-        "missing_artifact_policy": missing_artifact_policy,
-        "dual_approval_required": dual_approval_required,
-        "truth_claim": False,
-    }
+    payload = trust_policy_payload(level)
     return TrustPolicySnapshot(
-        schema="aegis-friendly-trust-policy-v1",
+        schema=TRUST_POLICY_SCHEMA,
         truth_claim=False,
         trust_level=level,
-        physical_witness_required=physical_witness_required,
-        fail_closed=fail_closed,
-        degraded_hot_evidence_allowed=degraded_hot_evidence_allowed,
-        rust_extension_required=rust_extension_required,
-        missing_artifact_policy=missing_artifact_policy,
-        dual_approval_required=dual_approval_required,
-        trust_policy_hash=stable_hash(payload),
+        physical_witness_required=payload["physical_witness_required"],
+        fail_closed=payload["fail_closed"],
+        degraded_hot_evidence_allowed=payload["degraded_hot_evidence_allowed"],
+        rust_extension_required=payload["rust_extension_required"],
+        missing_artifact_policy=payload["missing_artifact_policy"],
+        dual_approval_required=payload["dual_approval_required"],
+        trust_policy_hash=trust_policy_hash(level),
     )
 
 

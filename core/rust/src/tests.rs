@@ -2898,6 +2898,36 @@ mod tests {
     }
 
     #[test]
+    fn pav_is_not_correctness_and_objective_receipt_is_required_for_authoritative_acceptance() {
+        use crate::physical::ObjectiveValidationReceipt;
+
+        let artifact = PhysicalArtifact::new(b"candidate", 100, 10, 4).unwrap();
+        let watchdog = PhysicalWatchdog { epsilon: 0.0001 };
+        assert!(watchdog.accepts(&artifact).is_ok());
+        let receipt = ObjectiveValidationReceipt::new(
+            &artifact,
+            [1; 32],
+            [2; 32],
+            [3; 32],
+            "independent-test-validator",
+            1,
+        )
+        .unwrap();
+        assert!(
+            watchdog
+                .accepts_with_objective(0, &artifact, &receipt)
+                .is_ok()
+        );
+        let mut tampered = receipt.clone();
+        tampered.result_hash = [4; 32];
+        assert!(
+            watchdog
+                .accepts_with_objective(0, &artifact, &tampered)
+                .is_err()
+        );
+    }
+
+    #[test]
     fn pav_watchdog_uses_previous_ast_fingerprint() {
         let old = crate::physical::compute_ast_structural_fingerprint("fn main() { let x = 1; }");
         let new = crate::physical::compute_ast_structural_fingerprint(
@@ -5109,7 +5139,7 @@ mod tests {
         left_done: bool,
         right_done: bool,
     ) -> crate::task_ledger::TaskLedger {
-        use crate::task_ledger::{TaskCard, TaskLedger, TaskStatus};
+        use crate::task_ledger::{TaskCard, TaskLedger};
 
         let mut ledger = TaskLedger::new(60_000);
         ledger
@@ -5130,12 +5160,12 @@ mod tests {
         ledger
             .insert_task(TaskCard::new(6, vec![], 1, Some(100_000), Some(1_000_000)))
             .unwrap();
-        ledger.mark_status(1, TaskStatus::Done).unwrap();
+        ledger.complete_task(1).unwrap();
         if left_done {
-            ledger.mark_status(2, TaskStatus::Done).unwrap();
+            ledger.complete_task(2).unwrap();
         }
         if right_done {
-            ledger.mark_status(3, TaskStatus::Done).unwrap();
+            ledger.complete_task(3).unwrap();
         }
         ledger
     }
@@ -6644,7 +6674,7 @@ mod tests {
 
     #[test]
     fn task_ledger_prefers_critical_path_over_suggested_priority() {
-        use crate::task_ledger::{TaskCard, TaskLedger, TaskStatus};
+        use crate::task_ledger::{TaskCard, TaskLedger};
 
         let mut ledger = TaskLedger::new(60_000);
         ledger
@@ -6666,7 +6696,7 @@ mod tests {
         assert!(first.critical_path_len > decoy.critical_path_len);
         assert!(first.deterministic_priority_score > decoy.deterministic_priority_score);
 
-        ledger.mark_status(1, TaskStatus::Done).unwrap();
+        ledger.complete_task(1).unwrap();
         assert_eq!(ledger.select_next_task(0).unwrap(), Some(2));
     }
 
@@ -6717,7 +6747,7 @@ mod tests {
 
     #[test]
     fn task_ledger_forest_fast_path_counts_blocked_descendants() {
-        use crate::task_ledger::{TaskCard, TaskLedger, TaskStatus};
+        use crate::task_ledger::{TaskCard, TaskLedger};
 
         let mut ledger = TaskLedger::new(10_000);
         ledger
@@ -6735,7 +6765,7 @@ mod tests {
         ledger
             .insert_task(TaskCard::new(5, vec![2], 0, None, None))
             .unwrap();
-        ledger.mark_status(4, TaskStatus::Done).unwrap();
+        ledger.complete_task(4).unwrap();
 
         ledger.recompute_priorities(0).unwrap();
 
@@ -6770,7 +6800,7 @@ mod tests {
 
     #[test]
     fn task_ledger_ready_cache_invalidates_on_status_and_now() {
-        use crate::task_ledger::{TaskCard, TaskLedger, TaskStatus};
+        use crate::task_ledger::{TaskCard, TaskLedger};
 
         let mut ledger = TaskLedger::new(100);
         ledger
@@ -6782,7 +6812,7 @@ mod tests {
         ledger
             .insert_task(TaskCard::new(3, vec![1], 0, None, None))
             .unwrap();
-        ledger.mark_status(1, TaskStatus::Done).unwrap();
+        ledger.complete_task(1).unwrap();
 
         assert_eq!(ledger.ordered_ready_tasks(0).unwrap(), vec![2, 3]);
         let first_score = ledger.task(2).unwrap().deterministic_priority_score;
@@ -6791,7 +6821,7 @@ mod tests {
         assert_eq!(ledger.ordered_ready_tasks(50).unwrap(), vec![2, 3]);
         assert!(ledger.task(2).unwrap().deterministic_priority_score > first_score);
 
-        ledger.mark_status(2, TaskStatus::Done).unwrap();
+        ledger.complete_task(2).unwrap();
         assert_eq!(ledger.ordered_ready_tasks(50).unwrap(), vec![3]);
     }
 
@@ -6822,7 +6852,7 @@ mod tests {
 
     #[test]
     fn task_ledger_selection_proof_rejects_stale_ready_queue() {
-        use crate::task_ledger::{TaskCard, TaskLedger, TaskStatus};
+        use crate::task_ledger::{TaskCard, TaskLedger};
 
         let mut ledger = TaskLedger::new(10_000);
         ledger
@@ -6838,7 +6868,7 @@ mod tests {
         let proof = ledger.select_next_task_proof(0).unwrap().unwrap();
         assert_eq!(proof.selected_task_id, 1);
 
-        ledger.mark_status(1, TaskStatus::Done).unwrap();
+        ledger.complete_task(1).unwrap();
         assert!(!ledger.validates_task_selection_proof(&proof).unwrap());
         let replacement = ledger.select_next_task_proof(0).unwrap().unwrap();
         assert_eq!(replacement.selected_task_id, 2);
@@ -13639,7 +13669,7 @@ mod tests {
     #[test]
     fn next_action_packet_rejects_stale_task_selection_proof() {
         use crate::replay::{NextActionKind, NextActionPacket, RunCheckpoint};
-        use crate::task_ledger::{TaskCard, TaskLedger, TaskStatus};
+        use crate::task_ledger::{TaskCard, TaskLedger};
 
         let mut tasks = TaskLedger::new(10_000);
         tasks
@@ -13683,7 +13713,7 @@ mod tests {
         assert_eq!(packet.task_selection_proof_hash, Some(proof.proof_hash));
         assert!(packet.is_valid_for_task_selection(&checkpoint, &proof));
 
-        tasks.mark_status(1, TaskStatus::Done).unwrap();
+        tasks.complete_task(1).unwrap();
         let replacement = tasks.select_next_task_proof(0).unwrap().unwrap();
         assert_ne!(replacement.selected_task_id, proof.selected_task_id);
         assert!(!packet.is_valid_for_task_selection(&checkpoint, &replacement));

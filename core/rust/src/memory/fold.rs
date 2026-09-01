@@ -2,7 +2,9 @@ use super::fidelity::reinforce;
 use super::frame::{
     ContextPrefix, MemoryEdge, MemoryFrame, MemoryGraph, SemanticNode, SemanticPointer,
 };
-use crate::physical::{BacktrackSignal, PhysicalArtifact, PhysicalWatchdog, TrapReason};
+use crate::physical::{
+    BacktrackSignal, ObjectiveValidationReceipt, PhysicalArtifact, PhysicalWatchdog, TrapReason,
+};
 
 use std::num::NonZeroU32;
 
@@ -699,6 +701,8 @@ impl CogniFoldStore {
 }
 
 impl MemoryCrystallization for CogniFoldStore {
+    /// Candidate-only compatibility path. Authoritative callers must use
+    /// `commit_to_cognifold_with_objective` with a bound receipt.
     fn commit_to_cognifold(
         &mut self,
         session_id: u128,
@@ -737,6 +741,27 @@ impl MemoryCrystallization for CogniFoldStore {
         .map_err(|_| BacktrackSignal::HardBacktrack(TrapReason::PavBelowThreshold))?;
 
         Ok(node)
+    }
+}
+
+impl CogniFoldStore {
+    /// Authoritative memory commit requiring both the advisory PAV gate and an
+    /// objective-level validation receipt. The legacy trait method remains a
+    /// candidate-only compatibility path for existing callers.
+    pub fn commit_to_cognifold_with_objective(
+        &mut self,
+        session_id: u128,
+        artifact: &PhysicalArtifact,
+        watchdog: &PhysicalWatchdog,
+        receipt: &ObjectiveValidationReceipt,
+    ) -> Result<SemanticNode, BacktrackSignal> {
+        if !receipt.is_valid_for(artifact) {
+            return Err(BacktrackSignal::HardBacktrack(
+                TrapReason::InvariantViolation,
+            ));
+        }
+        watchdog.accepts_with_objective(0, artifact, receipt)?;
+        self.commit_to_cognifold(session_id, artifact, watchdog)
     }
 }
 

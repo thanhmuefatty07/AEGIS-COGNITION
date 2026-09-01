@@ -4,52 +4,161 @@ import os
 import shutil
 import subprocess
 import sys
+from importlib import import_module
 from pathlib import Path
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from core.python import (
+        build_message,
+        build_operator_evidence_snapshot,
+        build_service_manifest,
+        check_build_preflight,
+        validate_bridge_batch,
+        validate_bridge_smoke,
+    )
+    from scripts.benchmark_gate import (
+        BENCHMARK_PROFILE_INNOVATION,
+        BENCHMARK_PROFILE_RELEASE,
+        evaluate_benchmarks,
+        report_to_dict as benchmark_report_to_dict,
+    )
+    from scripts.cluster_loopback_gate import evaluate_cluster_loopback_gate
+    from scripts.constitution_audit import evaluate_constitution
+    from scripts.deployment_manifest import build_deployment_manifest
+    from scripts.dependency_audit_gate import evaluate_dependency_audit_gate
+    from scripts.dynamic_provider_fallback_gate import evaluate_dynamic_provider_fallback_gate
+    from scripts.e2e_release_gate import evaluate_e2e_release_gate
+    from scripts.external_deployment_smoke_gate import evaluate_external_deployment_smoke_gate
+    from scripts.governance_gate import evaluate_governance
+    from scripts.hermes_baseline_gate import (
+        evaluate_hermes_baseline,
+        report_to_dict as hermes_baseline_report_to_dict,
+    )
+    from scripts.hermes_persistence_baseline_gate import (
+        evaluate_hermes_persistence_baseline,
+        report_to_dict as hermes_persistence_baseline_report_to_dict,
+    )
+    from scripts.hermes_rpc_baseline_gate import (
+        evaluate_hermes_rpc_baseline,
+        report_to_dict as hermes_rpc_baseline_report_to_dict,
+    )
+    from scripts.hermes_session_recovery_baseline_gate import (
+        evaluate_hermes_session_recovery_baseline,
+        report_to_dict as hermes_session_recovery_baseline_report_to_dict,
+    )
+    from scripts.hot_browser_shadow_gate import evaluate_hot_browser_shadow_gate
+    from scripts.production_closure import build_production_closure_workflow
+    from scripts.production_packaging_smoke_gate import evaluate_production_packaging_smoke_gate
+    from scripts.production_readiness import (
+        build_production_readiness_report,
+        production_blocker_closure_packet as _production_blocker_closure_packet,
+        production_blocker_closure_packets as _production_blocker_closure_packets,
+    )
+    from scripts.progress_gate import evaluate_progress_gate
+    from scripts.provider_route_gate import evaluate_provider_route_gate
+    from scripts.python_hotpath_gate import (
+        evaluate_python_hotpaths,
+        report_to_dict as python_hotpath_report_to_dict,
+    )
+    from scripts.quickjs_cold_start_gate import evaluate_quickjs_cold_start_gate
+    from scripts.shadow_sealer_soak_gate import evaluate_shadow_sealer_soak_gate
+    from scripts.sota_baseline_gate import (
+        evaluate_sota_baseline,
+        report_to_dict as sota_baseline_report_to_dict,
+    )
+    from scripts.supply_chain_gate import evaluate_supply_chain_gate
+    from scripts.tcp_cluster_soak_gate import evaluate_tcp_cluster_soak_gate
 
 ROOT_PATH = Path(__file__).resolve().parents[1]
 if str(ROOT_PATH) not in sys.path:
     sys.path.insert(0, str(ROOT_PATH))
 
-from core.python import build_message, build_operator_evidence_snapshot, build_service_manifest, check_build_preflight, validate_bridge_batch, validate_bridge_smoke
-from scripts.benchmark_gate import evaluate_benchmarks, report_to_dict as benchmark_report_to_dict
-from scripts.benchmark_gate import BENCHMARK_PROFILE_INNOVATION, BENCHMARK_PROFILE_RELEASE
-from scripts.cluster_loopback_gate import evaluate_cluster_loopback_gate
-from scripts.constitution_audit import evaluate_constitution
-from scripts.deployment_manifest import build_deployment_manifest
-from scripts.e2e_release_gate import evaluate_e2e_release_gate
-from scripts.dependency_audit_gate import evaluate_dependency_audit_gate
-from scripts.dynamic_provider_fallback_gate import evaluate_dynamic_provider_fallback_gate
-from scripts.external_deployment_smoke_gate import evaluate_external_deployment_smoke_gate
-from scripts.provider_route_gate import evaluate_provider_route_gate
-from scripts.progress_gate import evaluate_progress_gate
-from scripts.production_closure import build_production_closure_workflow
-from scripts.production_readiness import (
-    build_production_readiness_report,
-    production_blocker_closure_packet as _production_blocker_closure_packet,
-    production_blocker_closure_packets as _production_blocker_closure_packets,
+def _load_runtime_dependencies() -> None:
+    modules = {
+        name: import_module(name)
+        for name in (
+            "core.python",
+            "scripts.benchmark_gate",
+            "scripts.cluster_loopback_gate",
+            "scripts.constitution_audit",
+            "scripts.deployment_manifest",
+            "scripts.dependency_audit_gate",
+            "scripts.dynamic_provider_fallback_gate",
+            "scripts.e2e_release_gate",
+            "scripts.external_deployment_smoke_gate",
+            "scripts.governance_gate",
+            "scripts.hermes_baseline_gate",
+            "scripts.hermes_persistence_baseline_gate",
+            "scripts.hermes_rpc_baseline_gate",
+            "scripts.hermes_session_recovery_baseline_gate",
+            "scripts.hot_browser_shadow_gate",
+            "scripts.production_closure",
+            "scripts.production_packaging_smoke_gate",
+            "scripts.production_readiness",
+            "scripts.progress_gate",
+            "scripts.provider_route_gate",
+            "scripts.python_hotpath_gate",
+            "scripts.quickjs_cold_start_gate",
+            "scripts.shadow_sealer_soak_gate",
+            "scripts.sota_baseline_gate",
+            "scripts.supply_chain_gate",
+            "scripts.tcp_cluster_soak_gate",
+        )
+    }
+    bindings = {
+        "build_message": ("core.python", "build_message"),
+        "build_operator_evidence_snapshot": ("core.python", "build_operator_evidence_snapshot"),
+        "build_service_manifest": ("core.python", "build_service_manifest"),
+        "check_build_preflight": ("core.python", "check_build_preflight"),
+        "validate_bridge_batch": ("core.python", "validate_bridge_batch"),
+        "validate_bridge_smoke": ("core.python", "validate_bridge_smoke"),
+        "evaluate_benchmarks": ("scripts.benchmark_gate", "evaluate_benchmarks"),
+        "benchmark_report_to_dict": ("scripts.benchmark_gate", "report_to_dict"),
+        "BENCHMARK_PROFILE_INNOVATION": ("scripts.benchmark_gate", "BENCHMARK_PROFILE_INNOVATION"),
+        "BENCHMARK_PROFILE_RELEASE": ("scripts.benchmark_gate", "BENCHMARK_PROFILE_RELEASE"),
+        "evaluate_cluster_loopback_gate": ("scripts.cluster_loopback_gate", "evaluate_cluster_loopback_gate"),
+        "evaluate_constitution": ("scripts.constitution_audit", "evaluate_constitution"),
+        "build_deployment_manifest": ("scripts.deployment_manifest", "build_deployment_manifest"),
+        "evaluate_dependency_audit_gate": ("scripts.dependency_audit_gate", "evaluate_dependency_audit_gate"),
+        "evaluate_dynamic_provider_fallback_gate": ("scripts.dynamic_provider_fallback_gate", "evaluate_dynamic_provider_fallback_gate"),
+        "evaluate_e2e_release_gate": ("scripts.e2e_release_gate", "evaluate_e2e_release_gate"),
+        "evaluate_external_deployment_smoke_gate": ("scripts.external_deployment_smoke_gate", "evaluate_external_deployment_smoke_gate"),
+        "evaluate_governance": ("scripts.governance_gate", "evaluate_governance"),
+        "evaluate_hermes_baseline": ("scripts.hermes_baseline_gate", "evaluate_hermes_baseline"),
+        "hermes_baseline_report_to_dict": ("scripts.hermes_baseline_gate", "report_to_dict"),
+        "evaluate_hermes_persistence_baseline": ("scripts.hermes_persistence_baseline_gate", "evaluate_hermes_persistence_baseline"),
+        "hermes_persistence_baseline_report_to_dict": ("scripts.hermes_persistence_baseline_gate", "report_to_dict"),
+        "evaluate_hermes_rpc_baseline": ("scripts.hermes_rpc_baseline_gate", "evaluate_hermes_rpc_baseline"),
+        "hermes_rpc_baseline_report_to_dict": ("scripts.hermes_rpc_baseline_gate", "report_to_dict"),
+        "evaluate_hermes_session_recovery_baseline": ("scripts.hermes_session_recovery_baseline_gate", "evaluate_hermes_session_recovery_baseline"),
+        "hermes_session_recovery_baseline_report_to_dict": ("scripts.hermes_session_recovery_baseline_gate", "report_to_dict"),
+        "evaluate_hot_browser_shadow_gate": ("scripts.hot_browser_shadow_gate", "evaluate_hot_browser_shadow_gate"),
+        "build_production_closure_workflow": ("scripts.production_closure", "build_production_closure_workflow"),
+        "evaluate_production_packaging_smoke_gate": ("scripts.production_packaging_smoke_gate", "evaluate_production_packaging_smoke_gate"),
+        "build_production_readiness_report": ("scripts.production_readiness", "build_production_readiness_report"),
+        "_production_blocker_closure_packet": ("scripts.production_readiness", "production_blocker_closure_packet"),
+        "_production_blocker_closure_packets": ("scripts.production_readiness", "production_blocker_closure_packets"),
+        "evaluate_progress_gate": ("scripts.progress_gate", "evaluate_progress_gate"),
+        "evaluate_provider_route_gate": ("scripts.provider_route_gate", "evaluate_provider_route_gate"),
+        "evaluate_python_hotpaths": ("scripts.python_hotpath_gate", "evaluate_python_hotpaths"),
+        "python_hotpath_report_to_dict": ("scripts.python_hotpath_gate", "report_to_dict"),
+        "evaluate_quickjs_cold_start_gate": ("scripts.quickjs_cold_start_gate", "evaluate_quickjs_cold_start_gate"),
+        "evaluate_shadow_sealer_soak_gate": ("scripts.shadow_sealer_soak_gate", "evaluate_shadow_sealer_soak_gate"),
+        "evaluate_sota_baseline": ("scripts.sota_baseline_gate", "evaluate_sota_baseline"),
+        "sota_baseline_report_to_dict": ("scripts.sota_baseline_gate", "report_to_dict"),
+        "evaluate_supply_chain_gate": ("scripts.supply_chain_gate", "evaluate_supply_chain_gate"),
+        "evaluate_tcp_cluster_soak_gate": ("scripts.tcp_cluster_soak_gate", "evaluate_tcp_cluster_soak_gate"),
+    }
+    globals().update({name: getattr(modules[module], attribute) for name, (module, attribute) in bindings.items()})
+
+
+_load_runtime_dependencies()
+
+_PRODUCTION_CLOSURE_HELPERS = (
+    _production_blocker_closure_packet,
+    _production_blocker_closure_packets,
 )
-from scripts.production_packaging_smoke_gate import evaluate_production_packaging_smoke_gate
-from scripts.quickjs_cold_start_gate import evaluate_quickjs_cold_start_gate
-from scripts.shadow_sealer_soak_gate import evaluate_shadow_sealer_soak_gate
-from scripts.supply_chain_gate import evaluate_supply_chain_gate
-from scripts.tcp_cluster_soak_gate import evaluate_tcp_cluster_soak_gate
-from scripts.hermes_baseline_gate import evaluate_hermes_baseline, report_to_dict as hermes_baseline_report_to_dict
-from scripts.hermes_persistence_baseline_gate import (
-    evaluate_hermes_persistence_baseline,
-    report_to_dict as hermes_persistence_baseline_report_to_dict,
-)
-from scripts.hermes_rpc_baseline_gate import (
-    evaluate_hermes_rpc_baseline,
-    report_to_dict as hermes_rpc_baseline_report_to_dict,
-)
-from scripts.hermes_session_recovery_baseline_gate import (
-    evaluate_hermes_session_recovery_baseline,
-    report_to_dict as hermes_session_recovery_baseline_report_to_dict,
-)
-from scripts.python_hotpath_gate import evaluate_python_hotpaths, report_to_dict as python_hotpath_report_to_dict
-from scripts.governance_gate import evaluate_governance
-from scripts.hot_browser_shadow_gate import evaluate_hot_browser_shadow_gate
-from scripts.sota_baseline_gate import evaluate_sota_baseline, report_to_dict as sota_baseline_report_to_dict
 
 
 ROOT = str(ROOT_PATH)
@@ -299,7 +408,7 @@ def cli_report_content_hash(root: str | Path) -> str:
 
 def baseline_gate_content_hash(root: str | Path, benchmark_profile: str) -> str:
     root_path = Path(root)
-    label = f'AEGIS-BASELINE-GATE-CACHE-v1:{benchmark_profile}'.encode('utf-8')
+    label = f'AEGIS-BASELINE-GATE-CACHE-v1:{benchmark_profile}'.encode()
     payload = _hashed_file_payload(root_path, _baseline_gate_inputs(root_path), label)
     return hashlib.sha256(payload).hexdigest()
 

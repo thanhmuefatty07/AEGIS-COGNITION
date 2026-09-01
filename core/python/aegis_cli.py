@@ -1,6 +1,7 @@
 import sys
 import os
 import re
+from contextlib import suppress
 import yaml
 from pathlib import Path
 
@@ -94,10 +95,8 @@ def save_config(provider: str, api_key: str, trust_level: str, enable_browser: b
     with open(env_path, "w", encoding="utf-8") as f:
         f.write(f'{env_var_name}="{api_key}"\n')
         
-    try:
+    with suppress(Exception):
         env_path.chmod(0o600)
-    except Exception:
-        pass
 
 def setup_wizard():
     print("Welcome to AEGIS-COGNITION Setup")
@@ -120,7 +119,7 @@ def setup_wizard():
     save_config(provider, api_key, trust_level, enable_browser)
     print("Setup complete. Configuration saved to ~/.aegis/config.yaml and ~/.aegis/.env.")
 
-def apply_config_to_runtime(config: dict = None):
+def apply_config_to_runtime(config: dict | None = None):
     try:
         from dotenv import load_dotenv
     except ImportError:
@@ -133,7 +132,7 @@ def apply_config_to_runtime(config: dict = None):
     if config is None:
         config_path = get_aegis_dir() / "config.yaml"
         if config_path.exists():
-            with open(config_path, "r", encoding="utf-8") as f:
+            with open(config_path, encoding="utf-8") as f:
                 config = yaml.safe_load(f)
                 
     if config:

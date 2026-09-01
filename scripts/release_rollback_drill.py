@@ -22,7 +22,7 @@ def digest(path: Path) -> str:
 
 def install(python: Path, wheel: Path) -> None:
     subprocess.run(
-        [str(python), "-m", "pip", "install", "--force-reinstall", "--no-deps", str(wheel)],
+        [str(python), "-m", "pip", "install", "--force-reinstall", str(wheel)],
         check=True,
         capture_output=True,
         text=True,
@@ -35,6 +35,7 @@ def smoke(python: Path) -> None:
         check=True,
         capture_output=True,
         text=True,
+        cwd=python.parent.parent.parent,
     )
 
 

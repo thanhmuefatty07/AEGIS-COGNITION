@@ -124,6 +124,77 @@ pub struct PhysicalArtifact {
     pub bytes_changed: usize,
 }
 
+/// Objective-level validation is separate from PAV. A non-zero AST/fuel
+/// delta proves only that execution changed something; this receipt binds an
+/// independent checker, objective and artifact before a caller can treat the
+/// change as correct.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct ObjectiveValidationReceipt {
+    pub artifact_hash: [u8; 32],
+    pub objective_hash: [u8; 32],
+    pub test_suite_hash: [u8; 32],
+    pub result_hash: [u8; 32],
+    pub validator_id: String,
+    pub checked_at_ms: u64,
+    pub receipt_hash: [u8; 32],
+}
+
+impl ObjectiveValidationReceipt {
+    pub fn new(
+        artifact: &PhysicalArtifact,
+        objective_hash: [u8; 32],
+        test_suite_hash: [u8; 32],
+        result_hash: [u8; 32],
+        validator_id: impl Into<String>,
+        checked_at_ms: u64,
+    ) -> Result<Self, TrapReason> {
+        let validator_id = validator_id.into();
+        if objective_hash == [0; 32]
+            || test_suite_hash == [0; 32]
+            || result_hash == [0; 32]
+            || validator_id.trim().is_empty()
+            || checked_at_ms == 0
+        {
+            return Err(TrapReason::InvariantViolation);
+        }
+        let mut receipt = Self {
+            artifact_hash: artifact.artifact_hash,
+            objective_hash,
+            test_suite_hash,
+            result_hash,
+            validator_id,
+            checked_at_ms,
+            receipt_hash: [0; 32],
+        };
+        receipt.receipt_hash = receipt.compute_hash();
+        Ok(receipt)
+    }
+
+    pub fn compute_hash(&self) -> [u8; 32] {
+        let mut hasher = blake3::Hasher::new();
+        hasher.update(b"aegis-objective-validation-receipt-v1");
+        hasher.update(&self.artifact_hash);
+        hasher.update(&self.objective_hash);
+        hasher.update(&self.test_suite_hash);
+        hasher.update(&self.result_hash);
+        hasher.update(&(self.validator_id.len() as u64).to_le_bytes());
+        hasher.update(self.validator_id.as_bytes());
+        hasher.update(&self.checked_at_ms.to_le_bytes());
+        *hasher.finalize().as_bytes()
+    }
+
+    pub fn is_valid_for(&self, artifact: &PhysicalArtifact) -> bool {
+        self.artifact_hash == artifact.artifact_hash
+            && self.objective_hash != [0; 32]
+            && self.test_suite_hash != [0; 32]
+            && self.result_hash != [0; 32]
+            && !self.validator_id.trim().is_empty()
+            && self.checked_at_ms > 0
+            && self.receipt_hash != [0; 32]
+            && self.receipt_hash == self.compute_hash()
+    }
+}
+
 impl PhysicalArtifact {
     pub fn new(
         payload: &[u8],
@@ -239,8 +310,23 @@ pub struct PhysicalWatchdog {
 }
 
 impl PhysicalWatchdog {
+    /// PAV is an admissibility/novelty signal only. It is not a correctness
+    /// proof; use `accepts_with_objective` at an authoritative commit boundary.
     pub fn accepts(&self, artifact: &PhysicalArtifact) -> Result<(), BacktrackSignal> {
         self.accepts_transition(0, artifact)
+    }
+
+    pub fn accepts_with_objective(
+        &self,
+        old_ast_fingerprint: u64,
+        artifact: &PhysicalArtifact,
+        receipt: &ObjectiveValidationReceipt,
+    ) -> Result<(), BacktrackSignal> {
+        if !receipt.is_valid_for(artifact) {
+            REJECTED_ARTIFACTS.fetch_add(1, Ordering::Relaxed);
+            return Err(self.trigger_circuit_breaker(TrapReason::InvariantViolation));
+        }
+        self.accepts_transition(old_ast_fingerprint, artifact)
     }
 
     pub fn accepts_transition(
@@ -431,10 +517,6 @@ fn register_ast_signature(signature: AstSignature) -> u64 {
     fingerprint
 }
 
-fn lookup_ast_signature(fingerprint: u64) -> Option<Arc<AstSignature>> {
-    ast_signature_registry().read().get(&fingerprint).cloned()
-}
-
 pub fn compute_ast_structural_fingerprint(code: &str) -> u64 {
     if let Some(signature) = AstSignature::from_rust_code(code) {
         register_ast_signature(signature)
@@ -458,16 +540,16 @@ fn ast_distance_from_fingerprints(old_ast_fingerprint: u64, new_ast_fingerprint:
         return distance;
     }
 
-    match (
-        lookup_ast_signature(old_ast_fingerprint),
-        lookup_ast_signature(new_ast_fingerprint),
-    ) {
-        (Some(old_signature), Some(new_signature)) => cache_ast_distance(
-            cache_key,
-            zhang_shasha_distance(&old_signature, &new_signature) as u64,
-        ),
-        _ => legacy_structural_distance(old_ast_fingerprint, new_ast_fingerprint),
-    }
+    // A fingerprint is intentionally opaque. Reconstructing a distance from
+    // an in-process signature registry made PAV depend on call history: the
+    // same pair could produce different values after a restart. Use a stable
+    // symmetric distance for the watchdog; semantic tree-edit distance remains
+    // available through `compute_ast_tree_edit_distance` when source is
+    // present.
+    cache_ast_distance(
+        cache_key,
+        stable_fingerprint_distance(old_ast_fingerprint, new_ast_fingerprint),
+    )
 }
 
 fn ordered_ast_distance_key(left: u64, right: u64) -> (u64, u64) {
@@ -503,31 +585,14 @@ pub(crate) fn ast_distance_cache_slot_count_for_tests() -> usize {
     ast_distance_cache().read().slots.len()
 }
 
-fn legacy_structural_distance(old_ast_fingerprint: u64, new_ast_fingerprint: u64) -> u64 {
+fn stable_fingerprint_distance(old_ast_fingerprint: u64, new_ast_fingerprint: u64) -> u64 {
     if old_ast_fingerprint == new_ast_fingerprint {
         return 0;
     }
-
-    let old_items = old_ast_fingerprint & 0xFFFF;
-    let old_stmts = (old_ast_fingerprint >> 16) & 0xFFFF;
-    let old_exprs = (old_ast_fingerprint >> 32) & 0xFFFF;
-    let old_paths = (old_ast_fingerprint >> 48) & 0xFFFF;
-
-    let new_items = new_ast_fingerprint & 0xFFFF;
-    let new_stmts = (new_ast_fingerprint >> 16) & 0xFFFF;
-    let new_exprs = (new_ast_fingerprint >> 32) & 0xFFFF;
-    let new_paths = (new_ast_fingerprint >> 48) & 0xFFFF;
-
-    let distance = old_items.abs_diff(new_items) * 10
-        + old_stmts.abs_diff(new_stmts) * 4
-        + old_exprs.abs_diff(new_exprs) * 2
-        + old_paths.abs_diff(new_paths);
-
-    if (1..=4096).contains(&distance) {
-        distance
-    } else {
-        1
-    }
+    // Cap the opaque-fingerprint distance. This keeps high-fuel literal edits
+    // below a strict novelty threshold while remaining deterministic across
+    // process restarts.
+    u64::from((old_ast_fingerprint ^ new_ast_fingerprint).count_ones()).min(8)
 }
 
 struct PostorderTree {
@@ -676,6 +741,21 @@ fn compute_tree_distance(
 
 pub struct PhysicalDagOrchestrator {
     pub watchdog: PhysicalWatchdog,
+}
+
+impl PhysicalDagOrchestrator {
+    /// Advance an authoritative state only after objective validation. The
+    /// trait implementation below is retained as a candidate-generation path.
+    pub fn advance_state_with_objective(
+        &self,
+        current_node: DAGNode,
+        artifact: PhysicalArtifact,
+        receipt: &ObjectiveValidationReceipt,
+    ) -> Result<DAGNode, BacktrackSignal> {
+        self.watchdog
+            .accepts_with_objective(current_node.ast_fingerprint, &artifact, receipt)?;
+        Ok(current_node.child_from(&artifact))
+    }
 }
 
 impl DeterministicOrchestrator for PhysicalDagOrchestrator {

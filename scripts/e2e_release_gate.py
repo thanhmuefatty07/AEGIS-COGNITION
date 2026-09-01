@@ -1,28 +1,64 @@
 import json
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 import hashlib
 import sys
+from importlib import import_module
+
+if TYPE_CHECKING:
+    from scripts.cluster_loopback_gate import evaluate_cluster_loopback_gate
+    from scripts.deployment_manifest import build_deployment_manifest
+    from scripts.dynamic_provider_fallback_gate import evaluate_dynamic_provider_fallback_gate
+    from scripts.external_deployment_smoke_gate import (
+        evaluate_external_deployment_smoke_gate,
+        write_external_deployment_smoke_capture,
+    )
+    from scripts.hot_browser_shadow_gate import evaluate_hot_browser_shadow_gate
+    from scripts.production_packaging_smoke_gate import evaluate_production_packaging_smoke_gate
+    from scripts.quickjs_cold_start_gate import evaluate_quickjs_cold_start_gate
+    from scripts.shadow_sealer_soak_gate import evaluate_shadow_sealer_soak_gate
+    from scripts.supply_chain_gate import evaluate_supply_chain_gate
+    from scripts.tcp_cluster_soak_gate import evaluate_tcp_cluster_soak_gate
 
 ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from scripts.cluster_loopback_gate import evaluate_cluster_loopback_gate
-from scripts.deployment_manifest import build_deployment_manifest
-from scripts.dynamic_provider_fallback_gate import evaluate_dynamic_provider_fallback_gate
-from scripts.external_deployment_smoke_gate import (
-    evaluate_external_deployment_smoke_gate,
-    write_external_deployment_smoke_capture,
-)
-from scripts.hot_browser_shadow_gate import evaluate_hot_browser_shadow_gate
-from scripts.production_packaging_smoke_gate import evaluate_production_packaging_smoke_gate
-from scripts.quickjs_cold_start_gate import evaluate_quickjs_cold_start_gate
-from scripts.shadow_sealer_soak_gate import evaluate_shadow_sealer_soak_gate
-from scripts.supply_chain_gate import evaluate_supply_chain_gate
-from scripts.tcp_cluster_soak_gate import evaluate_tcp_cluster_soak_gate
 
+def _load_e2e_dependencies() -> None:
+    modules = {
+        name: import_module(name)
+        for name in (
+            "scripts.cluster_loopback_gate",
+            "scripts.deployment_manifest",
+            "scripts.dynamic_provider_fallback_gate",
+            "scripts.external_deployment_smoke_gate",
+            "scripts.hot_browser_shadow_gate",
+            "scripts.production_packaging_smoke_gate",
+            "scripts.quickjs_cold_start_gate",
+            "scripts.shadow_sealer_soak_gate",
+            "scripts.supply_chain_gate",
+            "scripts.tcp_cluster_soak_gate",
+        )
+    }
+    bindings = {
+        "evaluate_cluster_loopback_gate": ("scripts.cluster_loopback_gate", "evaluate_cluster_loopback_gate"),
+        "build_deployment_manifest": ("scripts.deployment_manifest", "build_deployment_manifest"),
+        "evaluate_dynamic_provider_fallback_gate": ("scripts.dynamic_provider_fallback_gate", "evaluate_dynamic_provider_fallback_gate"),
+        "evaluate_external_deployment_smoke_gate": ("scripts.external_deployment_smoke_gate", "evaluate_external_deployment_smoke_gate"),
+        "write_external_deployment_smoke_capture": ("scripts.external_deployment_smoke_gate", "write_external_deployment_smoke_capture"),
+        "evaluate_hot_browser_shadow_gate": ("scripts.hot_browser_shadow_gate", "evaluate_hot_browser_shadow_gate"),
+        "evaluate_production_packaging_smoke_gate": ("scripts.production_packaging_smoke_gate", "evaluate_production_packaging_smoke_gate"),
+        "evaluate_quickjs_cold_start_gate": ("scripts.quickjs_cold_start_gate", "evaluate_quickjs_cold_start_gate"),
+        "evaluate_shadow_sealer_soak_gate": ("scripts.shadow_sealer_soak_gate", "evaluate_shadow_sealer_soak_gate"),
+        "evaluate_supply_chain_gate": ("scripts.supply_chain_gate", "evaluate_supply_chain_gate"),
+        "evaluate_tcp_cluster_soak_gate": ("scripts.tcp_cluster_soak_gate", "evaluate_tcp_cluster_soak_gate"),
+    }
+    globals().update({name: getattr(modules[module], attribute) for name, (module, attribute) in bindings.items()})
+
+
+_load_e2e_dependencies()
 
 ARTIFACTS_DIR = ROOT / "artifacts"
 REPORT_PATH = ARTIFACTS_DIR / "e2e_release_gate_report.json"

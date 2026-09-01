@@ -13,9 +13,6 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from core.python.bridge_mmap import MMAP_BRIDGE_HEADER_BYTES, MmapBridgeFrame
-
-
 ARTIFACTS_DIR = ROOT / "artifacts"
 REPORT_PATH = ARTIFACTS_DIR / "hermes_rpc_baseline_gate_report.json"
 BASELINE_DIR = ROOT / "target" / "aegis-hermes-rpc-baseline"
@@ -110,6 +107,8 @@ def _pattern_payload(payload_len: int) -> bytes:
 
 
 def _write_synthetic_mmap_frame(path: Path, payload: bytes) -> None:
+    from core.python.bridge_mmap import MMAP_BRIDGE_HEADER_BYTES
+
     header = bytearray(MMAP_BRIDGE_HEADER_BYTES)
     header[0:8] = b"AEGMMAP1"
     struct.pack_into("<II", header, 8, 1, MMAP_BRIDGE_HEADER_BYTES)
@@ -170,9 +169,7 @@ def _measure_json_rpc_context_ns(frames: list[dict]) -> tuple[float, str, int, b
 
     for _ in range(BASELINE_ROUNDS):
         start = time.perf_counter_ns()
-        wire_lines = []
-        for frame in frames:
-            wire_lines.append(json.dumps(frame, separators=(",", ":")))
+        wire_lines = [json.dumps(frame, separators=(",", ":")) for frame in frames]
         hydrated = []
         for line in wire_lines:
             frame = json.loads(line)
@@ -200,6 +197,8 @@ def _measure_json_rpc_context_ns(frames: list[dict]) -> tuple[float, str, int, b
 
 
 def _measure_mmap_payload_view_ns(path: Path, iterations: int = 20_000, rounds: int = 7) -> float:
+    from core.python.bridge_mmap import MmapBridgeFrame
+
     samples: list[float] = []
     checksum = 0
     with MmapBridgeFrame(path) as frame:

@@ -3,6 +3,23 @@
   "truth_claim": false,
   "production_deployability_requires_all_blockers_clear": true,
   "registry_source": "docs/architecture/not_verified_registry.json",
+  "non_blocking_registry_ids": [
+    "NV-001",
+    "NV-002",
+    "NV-003",
+    "NV-005",
+    "NV-006",
+    "NV-007",
+    "NV-008",
+    "NV-009",
+    "NV-010",
+    "NV-011",
+    "NV-012",
+    "NV-013",
+    "NV-014",
+    "NV-015",
+    "NV-020"
+  ],
   "blockers": [
     {
       "id": "external_signed_attestation_missing",

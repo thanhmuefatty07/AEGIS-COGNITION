@@ -3,7 +3,7 @@ from __future__ import annotations
 import asyncio
 import inspect
 import json
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from pathlib import Path
 from typing import Any
 
@@ -89,12 +89,14 @@ class AegisAdapter:
         llm: Any = None,
         model: str | None = None,
         trust_level: str | None = None,
+        trust_policy_hash: str | None = None,
         provider: str | None = None,
         fallback_providers: Any = None,
         provider_budgets: Any = None,
         required_tokens: int = 1,
         correlation: Any = None,
         telemetry: Any = None,
+        provider_attempt_hook: Callable[[str, Mapping[str, Any]], Any] | None = None,
         **_: Any,
     ) -> None:
         self.task = task
@@ -102,11 +104,15 @@ class AegisAdapter:
         self.model = model
         self.trust_level = _normalize_trust_level(trust_level)
         self.trust_policy = trust_policy_snapshot(self.trust_level)
+        if trust_policy_hash is not None and trust_policy_hash != self.trust_policy.trust_policy_hash:
+            raise ValueError("trust policy hash does not match trust level")
+        self.trust_policy_hash = self.trust_policy.trust_policy_hash
         self.provider = provider or _provider_name(llm)
         self.fallback_providers = _normalize_fallback_providers(fallback_providers)
         self.required_tokens = _normalize_positive_int(required_tokens, "required_tokens")
         self.correlation = _normalize_correlation(correlation)
         self.telemetry = telemetry
+        self.provider_attempt_hook = provider_attempt_hook
         self.provider_budgets = _normalize_provider_budgets(
             provider_budgets,
             required_tokens=self.required_tokens,
@@ -132,6 +138,12 @@ class AegisAdapter:
         if not effective_task:
             raise ValueError("Agent.run requires a task")
 
+        # Private Lab metadata is consumed at this boundary and is never
+        # forwarded to a provider adapter.  The compatibility API remains
+        # unchanged for callers that do not install a fence.
+        attempt_hook = kwargs.pop("_provider_attempt_hook", self.provider_attempt_hook)
+        attempt_context = kwargs.pop("_provider_attempt_context", None)
+
         self._emit("provider", "request_started")
         output, provider, provider_route, provider_budget = await _invoke_with_provider_route(
             self.llm,
@@ -141,6 +153,8 @@ class AegisAdapter:
             effective_task,
             self.provider_budgets,
             self.required_tokens,
+            attempt_hook=attempt_hook,
+            attempt_context=attempt_context,
             **kwargs,
         )
         self._emit(

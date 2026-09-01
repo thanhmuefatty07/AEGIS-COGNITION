@@ -11,10 +11,27 @@ from typing import Any, cast
 
 from .errors import ConfigError
 
+try:
+    from core.python.aegis.trust_policy import (
+        VALID_TRUST_LEVELS,
+        trust_policy_hash as _shared_trust_policy_hash,
+    )
+except ImportError:
+    from aegis.trust_policy import (  # type: ignore[import-not-found]
+        VALID_TRUST_LEVELS,
+        trust_policy_hash as _shared_trust_policy_hash,
+    )
+
 
 CONFIG_DIR = Path.home() / ".aegis"
 CONFIG_FILE = CONFIG_DIR / "config.toml"
-VALID_TRUST_LEVELS = frozenset({"DEV", "STAGING", "PROD"})
+def trust_policy_hash(trust_level: str) -> str:
+    """Return the canonical subject hash with the config error contract."""
+
+    try:
+        return _shared_trust_policy_hash(trust_level)
+    except ValueError as exc:
+        raise ConfigError.invalid_trust_level(str(trust_level).strip().upper()) from exc
 
 
 def load_config(path: Path = CONFIG_FILE) -> dict[str, Any]:
@@ -59,6 +76,7 @@ class AgentConfig:
     options: dict[str, Any]
     config: dict[str, Any]
     api_key: str | None
+    trust_policy_hash: str = ""
 
     @classmethod
     def from_inputs(
@@ -72,16 +90,23 @@ class AgentConfig:
         **kwargs: Any,
     ) -> AgentConfig:
         config = load_config()
+        resolved_level = resolve_trust_level(config, trust_level)
         resolved = cls(
             task=task,
             llm=llm,
-            trust_level=resolve_trust_level(config, trust_level),
+            trust_level=resolved_level,
             browser=browser,
             max_steps=max_steps,
             options=dict(kwargs),
             config=config,
             api_key=resolve_api_key(config),
+            trust_policy_hash=trust_policy_hash(resolved_level),
         )
+        # Agent(lab=True) is also a mission boundary.  Bind the policy hash
+        # before compatibility options reach LabApplication so a gateway or
+        # native controller cannot silently operate under another policy.
+        if bool(resolved.options.get("lab")):
+            resolved.options.setdefault("lab_trust_policy_hash", resolved.trust_policy_hash)
         resolved.validate()
         return resolved
 

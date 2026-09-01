@@ -58,6 +58,9 @@ def evaluate_production_packaging_smoke_gate(root: str | Path = ROOT) -> dict[st
         "env_example_hash": _file_hash(root_path / ".env.example"),
         "root_python_project": _project_summary(root_pyproject),
         "core_python_project": _project_summary(core_pyproject),
+        "root_console_scripts": dict(root_pyproject.get("project", {}).get("scripts", {})),
+        "core_console_scripts": dict(core_pyproject.get("project", {}).get("scripts", {})),
+        "core_py_modules": list(core_pyproject.get("tool", {}).get("setuptools", {}).get("py-modules", [])),
         "workspace_members": workspace_cargo.get("workspace", {}).get("members", []),
         "rust_package": _project_summary(core_cargo),
         "rust_bins": [item.get("name") for item in core_cargo.get("bin", []) if isinstance(item, dict)],
@@ -78,12 +81,29 @@ def evaluate_production_packaging_smoke_gate(root: str | Path = ROOT) -> dict[st
         _check("root_pyproject_present", bool(root_pyproject)),
         _check("root_project_name", root_pyproject.get("project", {}).get("name") == "aegis-cognition"),
         _check(
+            "root_aegis_console_script_is_canonical",
+            root_pyproject.get("project", {}).get("scripts", {}).get("aegis")
+            == "aegis_cognition.cli:main",
+        ),
+        _check(
             "python_support_policy_aligned",
             root_pyproject.get("project", {}).get("requires-python") == ">=3.14,<3.16"
             and core_pyproject.get("project", {}).get("requires-python") == ">=3.14,<3.16",
         ),
         _check("core_python_pyproject_present", bool(core_pyproject)),
         _check("core_python_project_name", core_pyproject.get("project", {}).get("name") == "aegis-cognition-core-python"),
+        _check(
+            "core_bridge_does_not_claim_aegis_console_script",
+            "aegis" not in core_pyproject.get("project", {}).get("scripts", {}),
+        ),
+        _check(
+            "core_bridge_runtime_modules_declared",
+            {
+                "aegis_adapter",
+                "browser_live_collector",
+                "browser_runtime_adapter",
+            }.issubset(set(package_surface["core_py_modules"])),
+        ),
         _check("workspace_contains_core_rust", "core/rust" in workspace_cargo.get("workspace", {}).get("members", [])),
         _check("rust_package_present", core_cargo.get("package", {}).get("name") == "aegis-nerve"),
         _check("rust_cli_bin_declared", "aegis-nerve-cli" in package_surface["rust_bins"]),

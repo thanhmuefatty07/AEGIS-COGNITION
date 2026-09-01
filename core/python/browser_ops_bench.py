@@ -7,11 +7,18 @@ import os
 from pathlib import Path
 from typing import Any
 
-from .browser_live_collector import (
-    REQUIRED_BROWSER_ARTIFACT_KINDS,
-    BrowserLiveCollectorProducer,
-)
-from .browser_runtime_adapter import BrowserRuntimeCollectorAdapter
+try:
+    from .browser_live_collector import (
+        REQUIRED_BROWSER_ARTIFACT_KINDS,
+        BrowserLiveCollectorProducer,
+    )
+    from .browser_runtime_adapter import BrowserRuntimeCollectorAdapter
+except ImportError:
+    from browser_live_collector import (
+        REQUIRED_BROWSER_ARTIFACT_KINDS,
+        BrowserLiveCollectorProducer,
+    )
+    from browser_runtime_adapter import BrowserRuntimeCollectorAdapter
 
 
 BrowserTaskAction = Callable[[Any], Awaitable[Any] | Any]
@@ -24,7 +31,7 @@ class BrowserOpsBenchPredicate:
     contains_utf8: str | None = None
     min_bytes: int = 1
 
-    def evaluate(self, artifact_paths: dict[str, Path]) -> "BrowserOpsBenchPredicateResult":
+    def evaluate(self, artifact_paths: dict[str, Path]) -> BrowserOpsBenchPredicateResult:
         if not self.name:
             return BrowserOpsBenchPredicateResult(self.name, self.artifact_kind, "", 0, False, "empty predicate name")
         if self.artifact_kind not in REQUIRED_BROWSER_ARTIFACT_KINDS:
