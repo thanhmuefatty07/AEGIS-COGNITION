@@ -662,6 +662,59 @@ def test_lab_tool_receipts_reject_lossy_boundary_metadata() -> None:
         )
 
 
+def test_lab_experiment_receipts_reject_lossy_boundary_metadata() -> None:
+    run = _ready_run()
+    run.add_experiment(
+        ExperimentSpec("experiment-1", "h1", "bounded", ("seed",), ("baseline",), (1, 2, 3, 4, 5), 1)
+    )
+    with pytest.raises(ValueError, match="admission contract"):
+        run.admit_experiment_execution(
+            experiment_id=1,  # type: ignore[arg-type]
+            attempt=1,
+            input_payload={"seed": 1},
+            policy_payload={"cell": "simulation"},
+        )
+    with pytest.raises(ValueError, match="admission contract"):
+        run.admit_experiment_execution(
+            experiment_id="experiment-1",
+            attempt=1,
+            input_payload={"seed": 1},
+            policy_payload={"cell": "simulation"},
+            execution_id=0,  # type: ignore[arg-type]
+        )
+    execution_id, admission_id = run.admit_experiment_execution(
+        experiment_id="experiment-1",
+        attempt=1,
+        input_payload={"seed": 1},
+        policy_payload={"cell": "simulation"},
+        execution_id="experiment-execution-1",
+    )
+    with pytest.raises(ValueError, match="settlement contract"):
+        run.record_experiment_execution(
+            experiment_id="experiment-1",
+            attempt=1,
+            execution_id=execution_id,
+            admission_id=admission_id,
+            input_payload={"seed": 1},
+            policy_payload={"cell": "simulation"},
+            result={"ok": True},
+            observation_count=1,
+            status=True,  # type: ignore[arg-type]
+        )
+    with pytest.raises(ValueError, match="hashes"):
+        run.record_experiment_execution(
+            experiment_id="experiment-1",
+            attempt=1,
+            execution_id=execution_id,
+            admission_id=admission_id,
+            input_payload={"seed": 1},
+            policy_payload={"cell": "simulation"},
+            result={"ok": True},
+            observation_count=1,
+            input_hash="",
+        )
+
+
 @pytest.mark.parametrize(
     ("action", "match"),
     (

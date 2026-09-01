@@ -3446,6 +3446,15 @@ class LabRun:
 
         if self.state in {"completed", "aborted"}:
             raise ValueError(f"cannot admit experiment execution in state {self.state}")
+        if (
+            type(experiment_id) is not str
+            or type(attempt) is not int
+            or (execution_id is not None and type(execution_id) is not str)
+            or (idempotency_key is not None and type(idempotency_key) is not str)
+            or (timeout_seconds is not None and type(timeout_seconds) not in (int, float))
+            or isinstance(timeout_seconds, bool)
+        ):
+            raise ValueError("experiment execution admission contract is invalid")
         raw_idempotency_key: object = idempotency_key
         raw_timeout_seconds: object = timeout_seconds
         if (
@@ -3468,7 +3477,9 @@ class LabRun:
         ):
             raise ValueError("experiment execution requires a known experiment and positive attempt")
         ordinal = sum(event.kind == "experiment_execution_admitted" for event in self.events) + 1
-        normalized_execution_id = execution_id or f"{experiment_id}-attempt-{attempt}-{ordinal}"
+        normalized_execution_id = (
+            f"{experiment_id}-attempt-{attempt}-{ordinal}" if execution_id is None else execution_id
+        )
         if not normalized_execution_id.strip():
             raise ValueError("experiment execution identity must be non-empty")
         self._assert_admission_identity_available(
@@ -3527,6 +3538,20 @@ class LabRun:
         if self.state in {"completed", "aborted"}:
             raise ValueError(f"cannot record experiment execution in state {self.state}")
         if (
+            type(experiment_id) is not str
+            or type(attempt) is not int
+            or type(execution_id) is not str
+            or (admission_id is not None and type(admission_id) is not str)
+            or type(observation_count) is not int
+            or type(status) is not str
+            or (input_hash is not None and type(input_hash) is not str)
+            or (policy_hash is not None and type(policy_hash) is not str)
+            or (idempotency_key is not None and type(idempotency_key) is not str)
+            or (timeout_seconds is not None and type(timeout_seconds) not in (int, float))
+            or isinstance(timeout_seconds, bool)
+        ):
+            raise ValueError("experiment execution settlement contract is invalid")
+        if (
             experiment_id not in self.experiments
             or type(attempt) is not int
             or attempt < 1
@@ -3538,8 +3563,8 @@ class LabRun:
         normalized_status = status.strip().upper()
         if normalized_status not in {"SUCCESS", "REJECTED", "TIMED_OUT", "CANCELLED"}:
             raise ValueError("invalid experiment execution status")
-        normalized_input_hash = input_hash or _hash(input_payload)
-        normalized_policy_hash = policy_hash or _hash(policy_payload)
+        normalized_input_hash = _hash(input_payload) if input_hash is None else input_hash
+        normalized_policy_hash = _hash(policy_payload) if policy_hash is None else policy_hash
         if not _is_digest(normalized_input_hash) or not _is_digest(normalized_policy_hash):
             raise ValueError("experiment execution settlement hashes are invalid")
         raw_idempotency_key: object = idempotency_key
