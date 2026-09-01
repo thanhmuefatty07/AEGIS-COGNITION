@@ -2186,6 +2186,38 @@ def test_search_program_is_typed_allowlisted_and_hashable() -> None:
         )
 
 
+def test_search_program_rejects_lossy_contract_metadata() -> None:
+    with pytest.raises(ValueError, match="operation arguments must be strings"):
+        SearchProgram.from_mappings([{"kind": "query", "text": 1}])  # type: ignore[list-item]
+    with pytest.raises(ValueError, match="operation kind must be a string"):
+        SearchProgram.from_mappings([{"kind": True, "text": "bounded"}])  # type: ignore[list-item]
+    with pytest.raises(TypeError, match="operations must be mappings"):
+        SearchProgram.from_mappings(["query"])  # type: ignore[list-item]
+    with pytest.raises(ValueError, match="max_candidates"):
+        SearchProgram.from_mappings(
+            [{"kind": "query", "text": "bounded"}], max_candidates=True
+        )  # type: ignore[arg-type]
+    with pytest.raises(ValueError, match="allowlist hosts must be strings"):
+        SearchProgram.from_mappings(
+            [{"kind": "query", "text": "bounded"}], allowed_hosts=(1,)
+        )  # type: ignore[arg-type]
+    with pytest.raises(ValueError, match="freshness bound must be an integer"):
+        SearchProgram.from_mappings(
+            [{"kind": "query", "text": "bounded"}], freshness_max_age_seconds=1.0
+        )  # type: ignore[arg-type]
+
+
+def test_search_executor_rejects_lossy_runtime_metadata() -> None:
+    with pytest.raises(ValueError, match="search executor timeout"):
+        SearchProgramExecutor(timeout_seconds="1")  # type: ignore[arg-type]
+    with pytest.raises(ValueError, match="search executor timeout"):
+        SearchProgramExecutor(timeout_seconds=True)  # type: ignore[arg-type]
+    with pytest.raises(ValueError, match="search executor max_bytes"):
+        SearchProgramExecutor(max_bytes=1.0)  # type: ignore[arg-type]
+    with pytest.raises(ValueError, match="search executor user agent"):
+        SearchProgramExecutor(user_agent=1)  # type: ignore[arg-type]
+
+
 def test_search_program_executor_runs_typed_research_pipeline_with_spans() -> None:
     import asyncio
 
