@@ -6462,6 +6462,30 @@ def test_context_retrieval_uses_registered_execution_cell_without_compat_hook() 
     assert not run.blockers
 
 
+def test_application_context_retrieval_rejects_lossy_top_k() -> None:
+    from aegis_cognition.application import AgentApplication
+
+    app = AgentApplication(
+        SimpleNamespace(options={"top_k": "3"}),
+        telemetry=SimpleNamespace(emit=lambda *_args, **_kwargs: None),
+    )
+    with pytest.raises(ValueError, match="top_k"):
+        app._retrieve_context("bounded query")
+
+
+@pytest.mark.parametrize("artifact_hash", (1, "A" * 64, "not-a-digest"))
+def test_application_index_rejects_lossy_artifact_hash(artifact_hash: object) -> None:
+    from aegis_cognition.application import AgentApplication
+
+    app = AgentApplication(
+        SimpleNamespace(options={}),
+        telemetry=SimpleNamespace(emit=lambda *_args, **_kwargs: None),
+    )
+    result = SimpleNamespace(hot_commit=SimpleNamespace(artifact_hash=artifact_hash))
+    with pytest.raises(ValueError, match="artifact hash"):
+        app._index_completed_run("bounded task", "bounded output", result, strict=True)
+
+
 def test_lab_context_retrieval_prompt_injection_is_rejected_hash_only() -> None:
     import asyncio
 

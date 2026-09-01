@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import re
 import time
 from dataclasses import asdict
 from typing import Any
@@ -42,8 +43,11 @@ class AgentApplication:
 
     def _retrieve_context(self, task: str) -> str:
         options = self.config.options
+        raw_top_k = options.get("top_k", 3)
+        if type(raw_top_k) is not int or raw_top_k < 1:
+            raise ValueError("context retrieval top_k must be a positive integer")
         rag_manager = RAGManager(
-            top_k=int(options.get("top_k", 3)),
+            top_k=raw_top_k,
             learning_manager=build_learning_manager(),
         )
         return rag_manager.retrieve_and_format(task)
@@ -190,12 +194,14 @@ class AgentApplication:
 
     def _index_completed_run(self, task: str, output: Any, result: Any, *, strict: bool = False) -> Any:
         try:
-            manager = build_learning_manager()
             # ``LearningManager.index_session`` uses a bounded native integer
             # session identity, while hot-commit artifacts are 32-byte hex
             # digests.  Bind the first 64 digest bits explicitly instead of
             # passing the full digest through its decimal-string parser.
-            artifact_hash = str(result.hot_commit.artifact_hash)
+            artifact_hash = result.hot_commit.artifact_hash
+            if type(artifact_hash) is not str or not re.fullmatch(r"[0-9a-f]{64}", artifact_hash):
+                raise ValueError("completed result artifact hash must be a canonical digest")
+            manager = build_learning_manager()
             session_id = int(artifact_hash[:16], 16)
             indexed = manager.index_session(session_id=session_id, content=f"Task: {task}\nOutput: {output}")
             self.telemetry.emit("memory", "index_completed", correlation=self.correlation)
