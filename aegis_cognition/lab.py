@@ -3985,6 +3985,12 @@ class LabRun:
 
         if self.state in {"completed", "aborted"}:
             raise ValueError(f"cannot admit research program in state {self.state}")
+        if (
+            type(program_hash) is not str
+            or type(operation_count) is not int
+            or type(provider) is not str
+        ):
+            raise ValueError("research program admission contract is invalid")
         if not _is_digest(program_hash) or operation_count < 1 or not provider.strip():
             raise ValueError("invalid research program admission")
         self._assert_admission_identity_available(
@@ -4036,6 +4042,17 @@ class LabRun:
         if self.state in {"completed", "aborted"}:
             raise ValueError(f"cannot record research program in state {self.state}")
         if (
+            type(program_hash) is not str
+            or type(operation_count) is not int
+            or type(candidate_count) is not int
+            or type(provider) is not str
+            or (admission_id is not None and type(admission_id) is not str)
+            or type(status) is not str
+            or (input_hash is not None and type(input_hash) is not str)
+            or (policy_hash is not None and type(policy_hash) is not str)
+        ):
+            raise ValueError("research program settlement contract is invalid")
+        if (
             not _is_digest(program_hash)
             or operation_count < 1
             or candidate_count < 0
@@ -4051,13 +4068,13 @@ class LabRun:
                 operation_count=operation_count,
                 provider=provider,
             )
-        normalized_input_hash = input_hash or _hash(
+        normalized_input_hash = _hash(
             {
                 "schema": "aegis-research-program-input-v1",
                 "program_hash": program_hash,
                 "provider": provider,
             }
-        )
+        ) if input_hash is None else input_hash
         result_hash = _hash(
             {
                 "schema": "aegis-research-program-result-v1",
@@ -4065,7 +4082,11 @@ class LabRun:
                 "candidate_count": candidate_count,
             }
         )
-        normalized_policy_hash = policy_hash or _hash({"schema": "aegis-research-program-policy-v1"})
+        normalized_policy_hash = (
+            _hash({"schema": "aegis-research-program-policy-v1"})
+            if policy_hash is None
+            else policy_hash
+        )
         if not _is_digest(normalized_input_hash) or not _is_digest(normalized_policy_hash):
             raise ValueError("research program settlement hashes are invalid")
         self._require_open_admission(
