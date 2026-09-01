@@ -7601,9 +7601,25 @@ def test_execution_cell_manifest_round_trips_with_lab_snapshot() -> None:
             )
         )
     assert run.execution_cell_manifest[0]["cell_id"] == "physics-v1"
+    manifest_events = [
+        event for event in run.events if event.kind == "execution_cell_manifest_recorded"
+    ]
+    assert len(manifest_events) == 1
+    assert manifest_events[0].sequence == 2
+    assert manifest_events[0].state_epoch == 1
+    assert manifest_events[0].payload["cell_count"] == 1
     restored = LabRun.from_payload(run.to_payload())
     assert restored.execution_cell_manifest == run.execution_cell_manifest
     assert restored.dossier(finalize=False).manifest["execution_cell_manifest"] == run.execution_cell_manifest
+
+    tampered_projection = run.to_payload()
+    tampered_projection["execution_cell_manifest"] = []
+    with pytest.raises(ValueError, match="projection is inconsistent"):
+        LabRun.from_payload(tampered_projection)
+
+    run.execution_cell_manifest = ()
+    with pytest.raises(RuntimeError, match="execution_cell_manifest=different"):
+        run.to_payload()
 
 
 @pytest.mark.parametrize(
