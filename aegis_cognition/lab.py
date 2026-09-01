@@ -132,16 +132,13 @@ def _authority_mode_from_options(
             if legacy_flag != (normalized_mode is AuthorityMode.NATIVE_REQUIRED):
                 raise ValueError("legacy native-authority flag conflicts with Lab authority mode")
         return normalized_mode
-    return (
-        AuthorityMode.NATIVE_REQUIRED
-        if bool(
-            options.get(
-                "lab_require_native_authority",
-                _normalize_lab_trust_level(default_trust_level) == "PROD",
-            )
-        )
-        else AuthorityMode.PROJECTION_ONLY
+    raw_required = options.get(
+        "lab_require_native_authority",
+        _normalize_lab_trust_level(default_trust_level) == "PROD",
     )
+    if type(raw_required) is not bool:
+        raise ValueError("lab native-authority flag must be boolean")
+    return AuthorityMode.NATIVE_REQUIRED if raw_required else AuthorityMode.PROJECTION_ONLY
 
 
 def _trust_policy_hash(trust_level: str) -> str:
@@ -3247,6 +3244,8 @@ class LabRun:
             raise ValueError("lab task must be non-empty")
         if type(max_steps) is not int or max_steps < 1:
             raise ValueError("lab max_steps must be positive")
+        if type(require_native_authority) is not bool:
+            raise ValueError("lab native-authority flag must be boolean")
         if type(scope) not in (list, tuple) or type(non_goals) not in (list, tuple):
             raise ValueError("lab scope and non-goals must be sequences")
         if any(type(item) is not str or not item.strip() for item in (*scope, *non_goals)):
@@ -3256,12 +3255,12 @@ class LabRun:
         if authority_mode is None:
             normalized_authority_mode = (
                 AuthorityMode.NATIVE_REQUIRED
-                if bool(require_native_authority)
+                if require_native_authority
                 else AuthorityMode.PROJECTION_ONLY
             )
         else:
             normalized_authority_mode = _normalize_authority_mode(authority_mode)
-            if bool(require_native_authority) and normalized_authority_mode is not AuthorityMode.NATIVE_REQUIRED:
+            if require_native_authority and normalized_authority_mode is not AuthorityMode.NATIVE_REQUIRED:
                 raise ValueError("legacy native-authority flag conflicts with Lab authority mode")
         self.authority_mode = normalized_authority_mode
         self.require_native_authority = self.authority_mode is AuthorityMode.NATIVE_REQUIRED
