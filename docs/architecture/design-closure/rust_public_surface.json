@@ -964,9 +964,9 @@
     "cfg/macro/trait expansion not exhaustive",
     "no extra tooling installed"
   ],
-  "WORKTREE_EPOCH": "7f8ae7f668967407c0448c5d92c043e449ee307a06d426cbd1c31e15a192f829",
-  "HEAD": "914002a5f117f6c9f317d84a2ff67750cbcd0653",
-  "generated_at": "2026-09-01T22:50:38.369215+00:00",
+  "WORKTREE_EPOCH": "bacf2a70fefcde582dfde4ec028bba17dc7a4a7da9846ac98d641827a10e9256",
+  "HEAD": "1e1dae4174e0484418398129eaed797d93df0d6e",
+  "generated_at": "2026-09-01T23:19:48.522653+00:00",
   "collector_version/method": "aegis-final-design-closure-v1; direct Git/filesystem/AST/Cargo plus bounded disposable-wheel probes",
   "reused_prior_artifact": "C:\\Users\\ADMIN\\AEGIS-COGNITION\\docs\\architecture\\evidence-pack\\final_rust_public_api.json",
   "reused_prior_artifact_sha256": "2e5d1270d9fedc2cb2e308728987897f22c3fa869d6822d2c0acd6810c79c2d9",
@@ -4861,7 +4861,16 @@
     },
     {
       "path": "core/rust/src/ffi.rs",
-      "line": 1333,
+      "line": 1331,
+      "kind": "fn",
+      "name": "aegis_lab_verify_archive_against_events",
+      "exposure_class": "FFI_INTERNAL",
+      "visibility": "pub",
+      "evidence": "source declaration; consumer fan-in is separate graph evidence"
+    },
+    {
+      "path": "core/rust/src/ffi.rs",
+      "line": 1355,
       "kind": "fn",
       "name": "aegis_lab_verify_archive_against_legacy_manifest",
       "exposure_class": "FFI_INTERNAL",
@@ -4870,7 +4879,7 @@
     },
     {
       "path": "core/rust/src/ffi.rs",
-      "line": 1366,
+      "line": 1388,
       "kind": "fn",
       "name": "aegis_nerve",
       "exposure_class": "FFI_INTERNAL",
@@ -12205,7 +12214,16 @@
     },
     {
       "path": "core/rust/src/replay.rs",
-      "line": 4536,
+      "line": 4542,
+      "kind": "fn",
+      "name": "verify_lab_events_against_archive",
+      "exposure_class": "CRATE_INTERNAL",
+      "visibility": "pub",
+      "evidence": "source declaration; consumer fan-in is separate graph evidence"
+    },
+    {
+      "path": "core/rust/src/replay.rs",
+      "line": 4573,
       "kind": "fn",
       "name": "prove_segmented_arrow_audit",
       "exposure_class": "CRATE_INTERNAL",
@@ -12214,7 +12232,7 @@
     },
     {
       "path": "core/rust/src/replay.rs",
-      "line": 4713,
+      "line": 4750,
       "kind": "fn",
       "name": "compact_to_binary_segment_crash_safe",
       "exposure_class": "CRATE_INTERNAL",
@@ -12223,7 +12241,7 @@
     },
     {
       "path": "core/rust/src/replay.rs",
-      "line": 4814,
+      "line": 4851,
       "kind": "fn",
       "name": "prove_replay_determinism",
       "exposure_class": "CRATE_INTERNAL",
@@ -12232,7 +12250,7 @@
     },
     {
       "path": "core/rust/src/replay.rs",
-      "line": 4868,
+      "line": 4905,
       "kind": "fn",
       "name": "seal_memory_commit_handoff",
       "exposure_class": "CRATE_INTERNAL",
@@ -12241,7 +12259,7 @@
     },
     {
       "path": "core/rust/src/replay.rs",
-      "line": 4971,
+      "line": 5008,
       "kind": "fn",
       "name": "seal_skill_admission_handoff",
       "exposure_class": "CRATE_INTERNAL",
@@ -12250,7 +12268,7 @@
     },
     {
       "path": "core/rust/src/replay.rs",
-      "line": 5073,
+      "line": 5110,
       "kind": "fn",
       "name": "seal_browser_ops_bench_verification_handoff",
       "exposure_class": "CRATE_INTERNAL",
@@ -12259,7 +12277,7 @@
     },
     {
       "path": "core/rust/src/replay.rs",
-      "line": 5169,
+      "line": 5206,
       "kind": "fn",
       "name": "seal_agentic_evidence_sdk_run_handoff",
       "exposure_class": "CRATE_INTERNAL",
@@ -12268,7 +12286,7 @@
     },
     {
       "path": "core/rust/src/replay.rs",
-      "line": 5268,
+      "line": 5305,
       "kind": "fn",
       "name": "recover_manifest_from_segments",
       "exposure_class": "CRATE_INTERNAL",
@@ -12277,7 +12295,7 @@
     },
     {
       "path": "core/rust/src/replay.rs",
-      "line": 5423,
+      "line": 5460,
       "kind": "fn",
       "name": "read_ledger",
       "exposure_class": "CRATE_INTERNAL",
@@ -12286,7 +12304,7 @@
     },
     {
       "path": "core/rust/src/replay.rs",
-      "line": 5451,
+      "line": 5488,
       "kind": "fn",
       "name": "read_ledger_mmap",
       "exposure_class": "CRATE_INTERNAL",
@@ -12295,7 +12313,7 @@
     },
     {
       "path": "core/rust/src/replay.rs",
-      "line": 5458,
+      "line": 5495,
       "kind": "fn",
       "name": "read_ledger_mmap_with_evidence",
       "exposure_class": "CRATE_INTERNAL",
@@ -12304,7 +12322,7 @@
     },
     {
       "path": "core/rust/src/replay.rs",
-      "line": 5591,
+      "line": 5628,
       "kind": "fn",
       "name": "recover_last_valid_ledger_mmap",
       "exposure_class": "CRATE_INTERNAL",
@@ -12313,7 +12331,7 @@
     },
     {
       "path": "core/rust/src/replay.rs",
-      "line": 5642,
+      "line": 5679,
       "kind": "fn",
       "name": "segment_path",
       "exposure_class": "CRATE_INTERNAL",
@@ -12322,7 +12340,7 @@
     },
     {
       "path": "core/rust/src/replay.rs",
-      "line": 5646,
+      "line": 5683,
       "kind": "fn",
       "name": "segment_commit_path",
       "exposure_class": "CRATE_INTERNAL",
@@ -12331,7 +12349,7 @@
     },
     {
       "path": "core/rust/src/replay.rs",
-      "line": 5652,
+      "line": 5689,
       "kind": "fn",
       "name": "is_valid_physical_result",
       "exposure_class": "CRATE_INTERNAL",
@@ -12340,7 +12358,7 @@
     },
     {
       "path": "core/rust/src/replay.rs",
-      "line": 5677,
+      "line": 5714,
       "kind": "fn",
       "name": "run_seeded",
       "exposure_class": "CRATE_INTERNAL",
@@ -12349,7 +12367,7 @@
     },
     {
       "path": "core/rust/src/replay.rs",
-      "line": 5704,
+      "line": 5741,
       "kind": "fn",
       "name": "run_event_boundary_sweep",
       "exposure_class": "CRATE_INTERNAL",
@@ -12358,7 +12376,7 @@
     },
     {
       "path": "core/rust/src/replay.rs",
-      "line": 5713,
+      "line": 5750,
       "kind": "fn",
       "name": "run_approval_boundary_sweep",
       "exposure_class": "CRATE_INTERNAL",
@@ -12367,7 +12385,7 @@
     },
     {
       "path": "core/rust/src/replay.rs",
-      "line": 5728,
+      "line": 5765,
       "kind": "fn",
       "name": "write_scorecard_artifact",
       "exposure_class": "CRATE_INTERNAL",
@@ -12376,7 +12394,7 @@
     },
     {
       "path": "core/rust/src/replay.rs",
-      "line": 5736,
+      "line": 5773,
       "kind": "fn",
       "name": "write_scorecard_artifact_with_io_evidence",
       "exposure_class": "CRATE_INTERNAL",
@@ -12385,7 +12403,7 @@
     },
     {
       "path": "core/rust/src/replay.rs",
-      "line": 5959,
+      "line": 5996,
       "kind": "fn",
       "name": "is_valid_physical_result",
       "exposure_class": "CRATE_INTERNAL",
@@ -12394,7 +12412,7 @@
     },
     {
       "path": "core/rust/src/replay.rs",
-      "line": 6011,
+      "line": 6048,
       "kind": "fn",
       "name": "run_accelerated_100h_proof",
       "exposure_class": "CRATE_INTERNAL",
@@ -12403,7 +12421,7 @@
     },
     {
       "path": "core/rust/src/replay.rs",
-      "line": 6017,
+      "line": 6054,
       "kind": "fn",
       "name": "run_accelerated_proof",
       "exposure_class": "CRATE_INTERNAL",
@@ -12412,7 +12430,7 @@
     },
     {
       "path": "core/rust/src/replay.rs",
-      "line": 6193,
+      "line": 6230,
       "kind": "fn",
       "name": "write_report_artifact",
       "exposure_class": "CRATE_INTERNAL",
@@ -12421,7 +12439,7 @@
     },
     {
       "path": "core/rust/src/replay.rs",
-      "line": 7270,
+      "line": 7307,
       "kind": "fn",
       "name": "approval_token_binding_hash",
       "exposure_class": "CRATE_INTERNAL",
@@ -12430,7 +12448,7 @@
     },
     {
       "path": "core/rust/src/replay.rs",
-      "line": 7278,
+      "line": 7315,
       "kind": "fn",
       "name": "browser_observation_packet_replay_binding_hash",
       "exposure_class": "CRATE_INTERNAL",
@@ -12439,7 +12457,7 @@
     },
     {
       "path": "core/rust/src/replay.rs",
-      "line": 7295,
+      "line": 7332,
       "kind": "fn",
       "name": "agentic_evidence_sdk_run_replay_binding_hash",
       "exposure_class": "CRATE_INTERNAL",
@@ -12448,7 +12466,7 @@
     },
     {
       "path": "core/rust/src/replay.rs",
-      "line": 7331,
+      "line": 7368,
       "kind": "fn",
       "name": "llm_budget_admission_replay_binding_hash",
       "exposure_class": "CRATE_INTERNAL",
@@ -12457,7 +12475,7 @@
     },
     {
       "path": "core/rust/src/replay.rs",
-      "line": 7358,
+      "line": 7395,
       "kind": "fn",
       "name": "shadow_seal_replay_binding_hash",
       "exposure_class": "CRATE_INTERNAL",
@@ -12466,7 +12484,7 @@
     },
     {
       "path": "core/rust/src/replay.rs",
-      "line": 7378,
+      "line": 7415,
       "kind": "fn",
       "name": "goal_intake_replay_binding_hash",
       "exposure_class": "CRATE_INTERNAL",
@@ -12475,7 +12493,7 @@
     },
     {
       "path": "core/rust/src/replay.rs",
-      "line": 7391,
+      "line": 7428,
       "kind": "fn",
       "name": "tool_execution_evidence_hash",
       "exposure_class": "CRATE_INTERNAL",
@@ -12484,7 +12502,7 @@
     },
     {
       "path": "core/rust/src/replay.rs",
-      "line": 7410,
+      "line": 7447,
       "kind": "fn",
       "name": "tool_call_completion_binding_hash",
       "exposure_class": "CRATE_INTERNAL",
@@ -12493,7 +12511,7 @@
     },
     {
       "path": "core/rust/src/replay.rs",
-      "line": 7425,
+      "line": 7462,
       "kind": "fn",
       "name": "memory_commit_binding_hash",
       "exposure_class": "CRATE_INTERNAL",
@@ -12502,7 +12520,7 @@
     },
     {
       "path": "core/rust/src/replay.rs",
-      "line": 7439,
+      "line": 7476,
       "kind": "fn",
       "name": "memory_commit_handoff_proof_hash",
       "exposure_class": "CRATE_INTERNAL",
@@ -12511,7 +12529,7 @@
     },
     {
       "path": "core/rust/src/replay.rs",
-      "line": 7465,
+      "line": 7502,
       "kind": "fn",
       "name": "agentic_evidence_sdk_run_handoff_proof_hash",
       "exposure_class": "CRATE_INTERNAL",
@@ -12520,7 +12538,7 @@
     },
     {
       "path": "core/rust/src/replay.rs",
-      "line": 7501,
+      "line": 7538,
       "kind": "fn",
       "name": "skill_admission_handoff_proof_hash",
       "exposure_class": "CRATE_INTERNAL",
@@ -12529,7 +12547,7 @@
     },
     {
       "path": "core/rust/src/replay.rs",
-      "line": 7532,
+      "line": 7569,
       "kind": "fn",
       "name": "skill_activation_hash",
       "exposure_class": "CRATE_INTERNAL",
@@ -12538,7 +12556,7 @@
     },
     {
       "path": "core/rust/src/replay.rs",
-      "line": 7555,
+      "line": 7592,
       "kind": "fn",
       "name": "browser_ops_bench_verification_replay_binding_hash",
       "exposure_class": "CRATE_INTERNAL",
@@ -12547,7 +12565,7 @@
     },
     {
       "path": "core/rust/src/replay.rs",
-      "line": 7570,
+      "line": 7607,
       "kind": "fn",
       "name": "browser_ops_bench_verification_handoff_proof_hash",
       "exposure_class": "CRATE_INTERNAL",
@@ -12556,7 +12574,7 @@
     },
     {
       "path": "core/rust/src/replay.rs",
-      "line": 7621,
+      "line": 7658,
       "kind": "fn",
       "name": "skill_admission_replay_binding_hash",
       "exposure_class": "CRATE_INTERNAL",
