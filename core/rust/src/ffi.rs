@@ -1325,6 +1325,28 @@ pub fn aegis_lab_verify_archive_against_manifest(
     })?
 }
 
+/// Verify that a Lab snapshot's event identities exactly match the sealed
+/// events retained in the native segmented archive.
+#[pyfunction]
+pub fn aegis_lab_verify_archive_against_events(
+    directory: String,
+    run_id: u128,
+    events_json: String,
+) -> PyResult<bool> {
+    py_safe(move || {
+        let events: Vec<crate::lab::LabEvent> =
+            serde_json::from_str(&events_json).map_err(|error| {
+                pyo3::exceptions::PyValueError::new_err(format!(
+                    "invalid Lab event chain JSON: {error}"
+                ))
+            })?;
+        crate::replay::RunEventSegmentArchive::verify_lab_events_against_archive(
+            directory, run_id, &events,
+        )
+        .map_err(pyo3::exceptions::PyRuntimeError::new_err)
+    })?
+}
+
 /// Verify a pre-schema-marker Lab replay archive against its legacy manifest
 /// hash. This compatibility-only path is explicit so a current manifest can
 /// never silently accept an old hash domain; callers must retain the legacy
@@ -1427,6 +1449,10 @@ pub fn aegis_nerve(_py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(aegis_lab_verify_archive, m)?)?;
     m.add_function(wrap_pyfunction!(
         aegis_lab_verify_archive_against_manifest,
+        m
+    )?)?;
+    m.add_function(wrap_pyfunction!(
+        aegis_lab_verify_archive_against_events,
         m
     )?)?;
     m.add_function(wrap_pyfunction!(
