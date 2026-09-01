@@ -2698,15 +2698,25 @@ effects, process interruption and hosted writer evidence remain open under
 `LAB-PHYS-004`/`LAB-AUTH-001`.
 
 **M5 research-program receipt continuation (2026-09-02):** research-program
- admission and settlement now require exact digest/count/provider/status and
- optional admission/hash metadata before `_is_digest`, lookup or normalization;
- boolean operation/candidate counts and empty supplied digests fail closed
- instead of being treated as valid or recomputed. Replay admission binding and
- candidate-result hashes are unchanged. Negative coverage now totals **277
- focused Lab tests** and **383 combined Python/cross-language tests**; targeted
- Ruff and Pyright remain clean. This closes a local research receipt coercion
- gap only; live-provider semantic/freshness evidence, provider-side effects
- and hosted authority remain open under `LAB-RESEARCH-003`/`LAB-AUTH-001`.
+admission and settlement now require exact digest/count/provider/status and
+optional admission/hash metadata before `_is_digest`, lookup or normalization;
+boolean operation/candidate counts and empty supplied digests fail closed
+instead of being treated as valid or recomputed. Replay admission binding and
+candidate-result hashes are unchanged. Negative coverage now totals **277
+focused Lab tests** and **383 combined Python/cross-language tests**; targeted
+Ruff and Pyright remain clean. This closes a local research receipt coercion
+gap only; live-provider semantic/freshness evidence, provider-side effects
+and hosted authority remain open under `LAB-RESEARCH-003`/`LAB-AUTH-001`.
+
+**M2 cancellation-receipt continuation (2026-09-02):** cancellation admission
+and settlement now reject non-string reasons, request/admission identities and
+statuses before terminal-state short-circuit or normalization. Explicit invalid
+request IDs are no longer discarded by truthiness, while the existing
+replay-visible cancellation and abort ordering is unchanged. Negative coverage
+now totals **278 focused Lab tests** and **384 combined Python/cross-language
+tests**; targeted Ruff and Pyright remain clean. This is local cancellation
+contract evidence only; process-level interruption, hidden side effects and
+hosted single-writer authority remain open under `LAB-AUTH-001`.
 
 #### M5 — Research, browser và experiment cells
 
