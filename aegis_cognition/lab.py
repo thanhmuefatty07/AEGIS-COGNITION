@@ -178,6 +178,184 @@ def _strict_string_sequence(value: Any, *, label: str) -> tuple[str, ...]:
     return tuple(typed_value)
 
 
+def _validate_native_provider_options(options: Mapping[str, Any]) -> None:
+    """Reject provider metadata that a compatibility adapter would coerce.
+
+    The friendly gateway intentionally accepts a broad compatibility surface,
+    including numeric strings in its legacy budget normalizer.  A
+    native-required Lab cannot let that adapter rewrite an input before the
+    provider-attempt fence sees it: the admitted policy would no longer be the
+    exact policy the caller supplied.  Keep this check at the Lab boundary so
+    the compatibility ``Agent`` path remains unchanged.
+    """
+
+    required_tokens = options.get("required_tokens", 1)
+    if type(required_tokens) is not int or required_tokens < 1:
+        raise ValueError("native Lab provider required_tokens must be a positive integer")
+
+    provider = options.get("provider")
+    if provider is not None and (
+        type(provider) is not str or not provider.strip() or provider != provider.strip()
+    ):
+        raise ValueError("native Lab provider name must be a non-empty trimmed string")
+
+    fallback_providers = options.get("fallback_providers")
+    if fallback_providers is not None:
+        if type(fallback_providers) not in (list, tuple):
+            raise ValueError("native Lab fallback_providers must be a list or tuple")
+        typed_fallbacks = cast(list[Any] | tuple[Any, ...], fallback_providers)
+        for item in typed_fallbacks:
+            if isinstance(item, tuple):
+                typed_item = cast(tuple[Any, ...], item)
+                if len(typed_item) != 2:
+                    raise ValueError("native Lab fallback provider entries must be 2-item pairs")
+                name = typed_item[0]
+                if name is not None and (
+                    type(name) is not str or not name.strip() or name != name.strip()
+                ):
+                    raise ValueError(
+                        "native Lab fallback provider names must be null or non-empty trimmed strings"
+                    )
+
+    provider_budgets = options.get("provider_budgets")
+    if provider_budgets is None:
+        return
+    if isinstance(provider_budgets, Mapping):
+        typed_provider_budgets = cast(Mapping[str, Any], provider_budgets)
+        for provider_name, raw_budget in typed_provider_budgets.items():
+            _validate_native_provider_budget_name(provider_name)
+            _validate_native_provider_budget_value(
+                raw_budget,
+                label=str(provider_name),
+                required_tokens=required_tokens,
+            )
+        return
+    if type(provider_budgets) not in (list, tuple):
+        raise ValueError("native Lab provider_budgets must be a mapping, list, or tuple")
+    typed_budgets = cast(list[Any] | tuple[Any, ...], provider_budgets)
+    for index, raw_budget in enumerate(typed_budgets):
+        if _is_provider_budget_record(raw_budget):
+            _validate_native_provider_budget_record(
+                raw_budget,
+                label=f"entry {index}",
+                required_tokens=required_tokens,
+            )
+            continue
+        if not isinstance(raw_budget, Mapping):
+            raise ValueError("native Lab provider budget entries must be mappings")
+        typed_raw_budget = cast(Mapping[str, Any], raw_budget)
+        raw_keys = tuple(typed_raw_budget)
+        if any(type(key) is not str for key in raw_keys):
+            raise ValueError("native Lab provider budget keys must be strings")
+        provider_name = typed_raw_budget.get("provider") or typed_raw_budget.get("provider_name")
+        if provider_name is None:
+            provider_id = typed_raw_budget.get("provider_id")
+            model_name = typed_raw_budget.get("model") or typed_raw_budget.get("model_name")
+            if provider_id is not None and model_name is not None:
+                if type(provider_id) is not str or type(model_name) is not str:
+                    raise ValueError("native Lab provider identifiers must be strings")
+                provider_name = f"{provider_id}/{model_name}"
+        _validate_native_provider_budget_name(provider_name)
+        _validate_native_provider_budget_value(
+            typed_raw_budget,
+            label=f"entry {index}",
+            required_tokens=required_tokens,
+        )
+
+
+def _validate_native_provider_budget_name(value: Any) -> None:
+    if type(value) is not str or not value.strip() or value != value.strip():
+        raise ValueError("native Lab provider budget names must be non-empty trimmed strings")
+
+
+def _validate_native_provider_budget_value(
+    value: Any,
+    *,
+    label: str,
+    required_tokens: int,
+) -> None:
+    if _is_provider_budget_record(value):
+        _validate_native_provider_budget_record(
+            value,
+            label=label,
+            required_tokens=required_tokens,
+        )
+        return
+    if isinstance(value, Mapping):
+        typed_value = cast(Mapping[str, Any], value)
+        keys = tuple(typed_value)
+        if any(type(key) is not str for key in keys):
+            raise ValueError("native Lab provider budget mapping keys must be strings")
+        for field in (
+            "remaining_requests",
+            "requests",
+            "remaining_tokens",
+            "tokens",
+            "reset_epoch_ms",
+        ):
+            if field in typed_value:
+                raw = typed_value[field]
+                if type(raw) is not int or raw < 0:
+                    raise ValueError(f"native Lab {label} budget fields must be non-negative integers")
+        return
+    if isinstance(value, (tuple, list)):
+        typed_value = cast(tuple[Any, ...] | list[Any], value)
+        if len(typed_value) not in (2, 3):
+            raise ValueError("native Lab provider budget values must be mappings or 2/3-item sequences")
+        for raw in typed_value:
+            if type(raw) is not int or raw < 0:
+                raise ValueError(f"native Lab {label} budget fields must be non-negative integers")
+        return
+    raise ValueError("native Lab provider budget values must be mappings or 2/3-item sequences")
+
+
+def _is_provider_budget_record(value: Any) -> bool:
+    try:
+        from core.python.aegis.contracts import ProviderBudgetRecord
+    except ImportError:
+        from aegis.contracts import ProviderBudgetRecord  # type: ignore[import-not-found]
+    return isinstance(value, ProviderBudgetRecord)
+
+
+def _validate_native_provider_budget_record(
+    value: Any,
+    *,
+    label: str,
+    required_tokens: int,
+) -> None:
+    if (
+        type(getattr(value, "schema", None)) is not str
+        or value.schema != "aegis-friendly-provider-budget-record-v1"
+        or type(getattr(value, "truth_claim", None)) is not bool
+        or value.truth_claim is not False
+        or type(getattr(value, "admitted", None)) is not bool
+        or type(getattr(value, "rejection_reason", None)) is not str
+        or type(getattr(value, "budget_hash", None)) is not str
+        or not _is_digest(value.budget_hash)
+    ):
+        raise ValueError(f"native Lab {label} provider budget record is invalid")
+    _validate_native_provider_budget_name(getattr(value, "provider", None))
+    for field in ("remaining_requests", "remaining_tokens", "reset_epoch_ms"):
+        raw = getattr(value, field, None)
+        if type(raw) is not int or raw < 0:
+            raise ValueError(f"native Lab {label} budget fields must be non-negative integers")
+    remaining_requests = value.remaining_requests
+    remaining_tokens = value.remaining_tokens
+    expected_admitted = remaining_requests > 0 and remaining_tokens >= required_tokens
+    expected_reason = (
+        ""
+        if expected_admitted
+        else "remaining_requests_exhausted"
+        if remaining_requests <= 0
+        else "remaining_tokens_insufficient"
+    )
+    if (
+        value.admitted is not expected_admitted
+        or value.rejection_reason != expected_reason
+    ):
+        raise ValueError(f"native Lab {label} provider budget admission is inconsistent")
+
+
 def _is_disallowed_ip_literal(host: str) -> bool:
     """Reject address literals that cannot be safe browser egress targets."""
 
@@ -7891,6 +8069,8 @@ class LabApplication:
             options, default_trust_level=self.config.trust_level
         )
         require_native = authority_mode is AuthorityMode.NATIVE_REQUIRED
+        if require_native:
+            _validate_native_provider_options(options)
         if self._factory_accepts_keyword("provider_attempt_hook"):
             gateway_options["provider_attempt_hook"] = self._provider_attempt_hook_ref
         elif require_native:

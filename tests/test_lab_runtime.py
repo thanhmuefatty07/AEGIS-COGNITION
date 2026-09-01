@@ -1280,6 +1280,89 @@ def test_lab_start_rejects_lossy_browser_flag(monkeypatch: pytest.MonkeyPatch) -
         lab.start("strict browser option", browser="false")  # type: ignore[arg-type]
 
 
+@pytest.mark.parametrize(
+    ("options", "message"),
+    (
+        ({"provider": 7}, "provider name"),
+        ({"fallback_providers": ((7, lambda _task: None),)}, "fallback provider names"),
+        ({"required_tokens": "1024"}, "required_tokens"),
+        (
+            {"provider_budgets": {"fixture": {"remaining_tokens": "1024"}}},
+            "budget fields",
+        ),
+        (
+            {"provider_budgets": ({"provider": 7, "remaining_tokens": 1024},)},
+            "provider budget names",
+        ),
+    ),
+)
+def test_native_gateway_rejects_lossy_provider_options(
+    monkeypatch: pytest.MonkeyPatch,
+    options: dict[str, object],
+    message: str,
+) -> None:
+    """Native Lab must reject metadata before a compatibility adapter can coerce it."""
+
+    monkeypatch.setenv("AEGIS_API_KEY", "test-key")
+    factory_called = False
+
+    def gateway_factory(**_: object) -> object:
+        nonlocal factory_called
+        factory_called = True
+        raise AssertionError("invalid native provider options must fail before factory construction")
+
+    lab = Lab(
+        policy=LabPolicy(trust_level="PROD"),
+        budget=LabBudget(max_steps=1, token_budget=100),
+        gateway_factory=gateway_factory,
+    )
+    session = lab.start("strict provider option", **options)
+    application = LabApplication(
+        config=session.config,
+        gateway_factory=gateway_factory,
+        telemetry=lab.telemetry,
+        correlation=session.correlation,
+    )
+    with pytest.raises(ValueError, match=message):
+        application._gateway("bounded")
+    assert factory_called is False
+
+
+def test_native_gateway_rejects_inconsistent_provider_budget_record(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A pre-normalized budget record cannot bypass quota admission coherence."""
+
+    from core.python.aegis.contracts import ProviderBudgetRecord
+
+    monkeypatch.setenv("AEGIS_API_KEY", "test-key")
+    record = ProviderBudgetRecord(
+        schema="aegis-friendly-provider-budget-record-v1",
+        truth_claim=False,
+        provider="fixture",
+        remaining_requests=0,
+        remaining_tokens=1024,
+        reset_epoch_ms=0,
+        admitted=True,
+        rejection_reason="",
+        budget_hash="a" * 64,
+    )
+    lab = Lab(
+        policy=LabPolicy(trust_level="PROD"),
+        budget=LabBudget(max_steps=1, token_budget=100),
+        gateway_factory=lambda **_: None,
+    )
+    session = lab.start("inconsistent provider budget", provider_budgets=(record,))
+    application = LabApplication(
+        config=session.config,
+        gateway_factory=lambda **_: None,
+        telemetry=lab.telemetry,
+        correlation=session.correlation,
+    )
+    with pytest.raises(ValueError, match="admission is inconsistent"):
+        application._gateway("bounded")
+
+
 def test_native_required_gateway_rejects_adapter_owned_retry_loop(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
