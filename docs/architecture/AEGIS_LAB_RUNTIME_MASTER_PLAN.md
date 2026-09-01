@@ -2828,6 +2828,16 @@ provider-side idempotency/quota truth, process containment, external effect
 reversal and hosted single-writer authority remain open under
 `LAB-AUTH-001`/`LAB-RESEARCH-003`.
 
+**P0 provenance materialization continuation (2026-09-02):** the evidence
+consistency generator was run against the current checkout and its temporary
+manifest passed with commit `3a26c809e1114b7fcf58cfd291bf01b9f013418c`.
+This proves only that a non-self-referential local manifest can bind the
+current SHA and preserve registry parity; the tracked template intentionally
+still contains `CHECKOUT_HEAD`, and retained suite artifacts, hosted run IDs
+and signed attestation are absent. `LAB-RELEASE-006` therefore remains
+`BLOCKED_EXTERNAL`; the temporary manifest is not release evidence and was not
+added to the repository.
+
 #### M5 — Research, browser và experiment cells
 
 **Entry:** M2–M4 pass cho local cells; capability registry sealed.
