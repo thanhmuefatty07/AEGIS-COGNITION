@@ -622,6 +622,10 @@ def test_lab_policy_and_budget_reject_lossy_metadata() -> None:
         LabPolicy(allow_external_writes=1).validate()  # type: ignore[arg-type]
     with pytest.raises(ValueError, match="native-authority"):
         LabPolicy(require_native_authority=1).validate()  # type: ignore[arg-type]
+    with pytest.raises(ValueError, match="external attempt budget"):
+        LabBudget(max_external_attempts=True).validate()  # type: ignore[arg-type]
+    with pytest.raises(ValueError, match="external attempt budget"):
+        LabBudget(max_external_attempts=0).validate()
 
     with pytest.raises(ValueError, match="bounds must be integers"):
         LabBudget(max_steps=True).validate()  # type: ignore[arg-type]
@@ -760,6 +764,40 @@ def test_lab_tool_receipts_reject_lossy_boundary_metadata() -> None:
             effect_class="compute",
             input_hash="",
         )
+
+
+def test_lab_external_attempt_budget_is_global_and_replay_bound() -> None:
+    run = LabRun(
+        "global observed attempt budget",
+        max_steps=1,
+        external_attempt_budget=1,
+    )
+    run.admit_tool_execution(
+        tool_name="fixture.first",
+        input_payload={"query": "bounded"},
+        policy_payload={"effect": "compute"},
+        effect_class="compute",
+        execution_id="first",
+    )
+    assert run.external_attempt_count == 1
+    with pytest.raises(RuntimeError, match="external attempt budget exhausted"):
+        run.admit_tool_execution(
+            tool_name="fixture.second",
+            input_payload={"query": "bounded"},
+            policy_payload={"effect": "compute"},
+            effect_class="compute",
+            execution_id="second",
+        )
+    assert run.external_attempt_count == 1
+    assert sum(event.kind == "tool_execution_admitted" for event in run.events) == 1
+
+    restored = LabRun.from_payload(run.to_payload())
+    assert restored.external_attempt_budget == 1
+    assert restored.external_attempt_count == 1
+    tampered = run.to_payload()
+    tampered["external_attempt_count"] = 0
+    with pytest.raises(ValueError, match="external attempt count"):
+        LabRun.from_payload(tampered)
 
 
 def test_lab_experiment_receipts_reject_lossy_boundary_metadata() -> None:
