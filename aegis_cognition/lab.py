@@ -1193,12 +1193,23 @@ def calibrate_simulation(
     held-out result can justify the ``INFERRED`` epistemic label.
     """
 
-    if not train_pairs or not holdout_pairs or not math.isfinite(tolerance) or tolerance < 0:
+    if (
+        type(train_pairs) not in (list, tuple)
+        or type(holdout_pairs) not in (list, tuple)
+        or not train_pairs
+        or not holdout_pairs
+        or not _is_finite_number(tolerance)
+        or tolerance < 0
+    ):
         raise ValueError("calibration requires non-empty train/holdout pairs and finite tolerance")
     for pair in (*train_pairs, *holdout_pairs):
-        if len(pair) != 2 or any(not math.isfinite(float(value)) for value in pair):
+        if (
+            type(pair) not in (list, tuple)
+            or len(pair) != 2
+            or any(not _is_finite_number(value) for value in pair)
+        ):
             raise ValueError("calibration pairs must contain finite numeric values")
-    errors = [float(simulated) - float(observed) for simulated, observed in holdout_pairs]
+    errors = [simulated - observed for simulated, observed in holdout_pairs]
     rmse = math.sqrt(sum(error * error for error in errors) / len(errors))
     max_abs_error = max(abs(error) for error in errors)
     return CalibrationResult(
@@ -1216,7 +1227,7 @@ class SimulationCell:
     """Fail-closed adapter for deterministic mathematical/physical simulation."""
 
     def __init__(self, *, max_steps: int = 10_000) -> None:
-        if max_steps < 1:
+        if type(max_steps) is not int or max_steps < 1:
             raise ValueError("simulation cell max_steps must be positive")
         self.max_steps = max_steps
 
@@ -1245,27 +1256,31 @@ class SimulationCell:
 
         if not callable(derivative):
             raise TypeError("ODE derivative must be callable")
-        if not math.isfinite(initial_time):
+        if not _is_finite_number(initial_time):
             raise ValueError("ODE initial time must be finite")
-        if not math.isfinite(step_size) or step_size <= 0:
+        if not _is_finite_number(step_size) or step_size <= 0:
             raise ValueError("ODE step size must be finite and positive")
-        if steps < 1 or steps > self.max_steps:
+        if type(steps) is not int or steps < 1 or steps > self.max_steps:
             raise ValueError("ODE steps exceed the simulation cell bound")
+        if type(method) is not str:
+            raise TypeError("ODE method must be a string")
         normalized_method = method.strip().lower()
         if normalized_method not in {"euler", "rk4"}:
             raise ValueError("ODE method must be Euler or RK4")
         if convergence_tolerance is not None and (
-            not math.isfinite(convergence_tolerance) or convergence_tolerance < 0
+            not _is_finite_number(convergence_tolerance) or convergence_tolerance < 0
         ):
             raise ValueError("ODE convergence tolerance must be finite and non-negative")
         if invariant_tolerance is not None and (
             invariant is None
-            or not math.isfinite(invariant_tolerance)
+            or not _is_finite_number(invariant_tolerance)
             or invariant_tolerance < 0
         ):
             raise ValueError("ODE invariant tolerance requires a finite invariant callback")
-        if not initial_state:
+        if type(initial_state) not in (list, tuple) or not initial_state:
             raise ValueError("ODE initial state must be non-empty")
+        if any(not _is_finite_number(value) for value in initial_state):
+            raise ValueError("ODE initial state must contain finite numeric values")
         state = tuple(float(value) for value in initial_state)
         if any(not math.isfinite(value) for value in state):
             raise ValueError("ODE initial state must contain finite values")
@@ -1275,11 +1290,13 @@ class SimulationCell:
             raw = derivative(time_value, candidate)
             if inspect.isawaitable(raw):
                 raise TypeError("ODE derivative must be synchronous")
-            if not isinstance(raw, (list, tuple)):
+            if type(raw) not in (list, tuple):
                 raise ValueError("ODE derivative dimension does not match the state")
             raw_sequence = cast(list[Any] | tuple[Any, ...], raw)
             if len(raw_sequence) != dimension:
                 raise ValueError("ODE derivative dimension does not match the state")
+            if any(not _is_finite_number(value) for value in raw_sequence):
+                raise ValueError("ODE derivative returned invalid numeric values")
             values = tuple(float(value) for value in raw_sequence)
             if any(not math.isfinite(value) for value in values):
                 raise ValueError("ODE derivative returned a non-finite value")
@@ -1313,6 +1330,8 @@ class SimulationCell:
             raw_invariant = invariant(initial_time, state)
             if inspect.isawaitable(raw_invariant):
                 raise TypeError("ODE invariant must be synchronous")
+            if not _is_finite_number(raw_invariant):
+                raise ValueError("ODE invariant returned an invalid numeric value")
             invariant_initial = float(raw_invariant)
             if not math.isfinite(invariant_initial):
                 raise ValueError("ODE invariant returned a non-finite value")
@@ -1338,6 +1357,8 @@ class SimulationCell:
                 raw_invariant = invariant(time_value, state)
                 if inspect.isawaitable(raw_invariant):
                     raise TypeError("ODE invariant must be synchronous")
+                if not _is_finite_number(raw_invariant):
+                    raise ValueError("ODE invariant returned an invalid numeric value")
                 current_invariant = float(raw_invariant)
                 if not math.isfinite(current_invariant):
                     raise ValueError("ODE invariant returned a non-finite value")
@@ -1375,9 +1396,9 @@ class SimulationCell:
         if not callable(runner):
             raise TypeError("simulation runner must be callable")
         result = await _call_fenced(runner, spec, seeds=spec.seeds, max_steps=spec.max_steps)
-        if isinstance(result, dict):
+        if type(result) is dict:
             typed_result: list[Any] | tuple[Any, ...] = [result]
-        elif isinstance(result, (list, tuple)):
+        elif type(result) in (list, tuple):
             typed_result = cast(list[Any] | tuple[Any, ...], result)
         else:
             raise TypeError("simulation runner must return a sequence of observations")
@@ -1386,23 +1407,28 @@ class SimulationCell:
         constraints = {constraint.name: constraint for constraint in spec.constraints}
         out: list[dict[str, Any]] = []
         for raw in typed_result:
-            if not isinstance(raw, dict):
+            if type(raw) is not dict:
                 raise ValueError("simulation observation must be a mapping")
             raw_map = cast(dict[str, Any], raw)
             raw_measurement = raw_map.get("measurement")
-            if raw_measurement is None:
+            if not _is_finite_number(raw_measurement):
                 raise ValueError("simulation observation requires a measurement")
-            measurement = float(raw_measurement)
-            unit = str(raw_map.get("unit", "score"))
+            measurement = float(cast(float, raw_measurement))
+            unit = raw_map.get("unit", "score")
+            if type(unit) is not str or not unit.strip():
+                raise ValueError("simulation observation unit must be a string")
             DEFAULT_UNIT_REGISTRY.signature(unit)
             if not math.isfinite(measurement):
                 raise ValueError("simulation measurement must be finite")
             if spec.convergence_tolerance is not None:
-                try:
-                    convergence_error = float(raw_map["convergence_error"])
-                    convergence_steps = int(raw_map["convergence_steps"])
-                except (KeyError, TypeError, ValueError) as exc:
-                    raise ValueError("simulation convergence evidence is missing") from exc
+                convergence_error = raw_map.get("convergence_error")
+                convergence_steps = raw_map.get("convergence_steps")
+                if (
+                    not _is_finite_number(convergence_error)
+                    or type(convergence_steps) is not int
+                ):
+                    raise ValueError("simulation convergence evidence is missing")
+                convergence_error = float(cast(float, convergence_error))
                 if (
                     not math.isfinite(convergence_error)
                     or convergence_error < 0
@@ -1411,19 +1437,24 @@ class SimulationCell:
                 ):
                     raise ValueError("simulation convergence gate failed")
             residuals = raw_map.get("constraint_residuals", {})
+            residual_units = raw_map.get("constraint_residual_units", {})
+            if type(residuals) is not dict or type(residual_units) is not dict:
+                raise ValueError("simulation constraint residual metadata must be mappings")
+            if not constraints and (residuals or residual_units):
+                raise ValueError("simulation reported undeclared constraint residuals")
             if constraints:
-                if not isinstance(residuals, dict):
-                    raise ValueError("simulation must report named constraint residuals")
                 residual_map = cast(dict[str, Any], residuals)
-                residual_units = raw_map.get("constraint_residual_units", {})
-                if not isinstance(residual_units, dict):
-                    raise ValueError("simulation constraint residual units must be a mapping")
                 residual_units_map = cast(dict[str, Any], residual_units)
                 for name, constraint in constraints.items():
                     if name not in residual_map:
                         raise ValueError(f"simulation constraint residual missing: {name}")
-                    residual = float(residual_map[name])
-                    supplied_unit = str(residual_units_map.get(name, "1"))
+                    raw_residual = residual_map[name]
+                    if not _is_finite_number(raw_residual):
+                        raise ValueError(f"simulation constraint residual is invalid: {name}")
+                    residual = float(cast(float, raw_residual))
+                    supplied_unit = residual_units_map.get(name, "1")
+                    if type(supplied_unit) is not str or not supplied_unit.strip():
+                        raise ValueError(f"simulation constraint unit is invalid: {name}")
                     try:
                         residual = DEFAULT_UNIT_REGISTRY.convert(
                             residual, supplied_unit, constraint.unit
@@ -1444,7 +1475,10 @@ class SimulationCell:
                 )
                 else "SIMULATED"
             )
-            supplied_status = str(raw_map.get("epistemic_status", epistemic_status)).upper()
+            supplied_status = raw_map.get("epistemic_status", epistemic_status)
+            if type(supplied_status) is not str:
+                raise ValueError("simulation epistemic status must be a string")
+            supplied_status = supplied_status.upper()
             if supplied_status != epistemic_status:
                 raise ValueError("simulation epistemic status is not justified by calibration")
             out.append({**raw_map, "epistemic_status": epistemic_status})
@@ -1728,6 +1762,17 @@ class ElectricalSignalCell:
         expected_samples = round(spec.sample_rate_hz * spec.duration_s) + 1
         if expected_samples > self.max_samples:
             raise ValueError("electrical signal exceeds cell sample bound")
+        for name, samples in (
+            ("voltage", voltage_samples),
+            ("current", current_samples),
+            ("reference voltage", reference_voltage_samples),
+            ("reference current", reference_current_samples),
+        ):
+            if samples is not None and (
+                type(samples) not in (list, tuple)
+                or any(not _is_finite_number(value) for value in samples)
+            ):
+                raise ValueError(f"{name} samples must be finite numeric sequences")
         if len(voltage_samples) != expected_samples or len(current_samples) != expected_samples:
             raise ValueError("voltage/current sample count does not match the preregistered contract")
         if reference_voltage_samples is not None and len(reference_voltage_samples) != expected_samples:
