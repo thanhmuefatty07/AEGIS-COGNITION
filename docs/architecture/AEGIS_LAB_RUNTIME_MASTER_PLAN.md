@@ -2730,6 +2730,18 @@ local replay-binder evidence only; native authority outside the projection,
 process-level interruption and hosted multi-process writer proof remain open
 under `LAB-AUTH-001`.
 
+**M2 skill-admission continuation (2026-09-02):** `SkillManifest`,
+`SkillExecutionReceipt` and `SkillRegistry.admit` now reject lossy manifest,
+capability, precondition, mission, epoch and receipt metadata before
+normalization; numeric capabilities are no longer stringified and truthy
+preconditions are no longer converted into booleans. Registry identity and
+validator receipt fields are type-checked while existing capability,
+precondition, hash and replay proofs remain enforced. Negative coverage now
+totals **280 focused Lab tests** and **386 combined Python/cross-language
+tests**; targeted Ruff and Pyright remain clean. This strengthens the local
+skill fence only; external validator/adapter effects, process interruption and
+hosted authority remain open under `LAB-AUTH-001`.
+
 #### M5 — Research, browser và experiment cells
 
 **Entry:** M2–M4 pass cho local cells; capability registry sealed.

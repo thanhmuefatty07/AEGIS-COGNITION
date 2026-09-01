@@ -42,6 +42,7 @@ from aegis_cognition.lab import (
     SearchProgram,
     SearchProgramExecutor,
     SkillAdmissionError,
+    SkillExecutionReceipt,
     SkillManifest,
     SkillRegistry,
     PhysicalConstraint,
@@ -786,6 +787,54 @@ def test_lab_admission_binder_rejects_malformed_identity_payload() -> None:
             operation_count=1,
             provider="provider.test",
         )
+
+
+def test_skill_boundaries_reject_lossy_metadata() -> None:
+    with pytest.raises(SkillAdmissionError, match="manifest metadata types"):
+        SkillManifest(
+            skill_id=1,  # type: ignore[arg-type]
+            version="1.0.0",
+            capabilities=("network.read",),
+            preconditions=("budget_available",),
+            validator_version="validator-v1",
+            implementation_hash="a" * 64,
+            policy_hash="b" * 64,
+        ).validate()
+    registry, manifest = _skill_fixture()
+    with pytest.raises(SkillAdmissionError, match="admission contract"):
+        registry.admit(
+            manifest.skill_id,
+            manifest.version,
+            mission_id="mission",
+            mission_epoch=0,
+            available_capabilities=(1,),  # type: ignore[arg-type]
+            preconditions={"budget_available": True, "host_allowlisted": True},
+            replay_parent_hash="0" * 64,
+        )
+    with pytest.raises(SkillAdmissionError, match="admission contract"):
+        registry.admit(
+            manifest.skill_id,
+            manifest.version,
+            mission_id="mission",
+            mission_epoch=0,
+            available_capabilities=("network.read",),
+            preconditions={"budget_available": 1, "host_allowlisted": True},  # type: ignore[arg-type]
+            replay_parent_hash="0" * 64,
+        )
+    with pytest.raises(SkillAdmissionError, match="execution metadata types"):
+        SkillExecutionReceipt(
+            skill_id=1,  # type: ignore[arg-type]
+            version="1.0.0",
+            admission_hash="a" * 64,
+            mission_id="mission",
+            replay_parent_hash="b" * 64,
+            input_hash="c" * 64,
+            result_hash="d" * 64,
+            artifact_hash="e" * 64,
+            validator_version="validator-v1",
+            status="SUCCESS",
+            execution_hash="f" * 64,
+        ).validate()
 
 
 @pytest.mark.parametrize(
