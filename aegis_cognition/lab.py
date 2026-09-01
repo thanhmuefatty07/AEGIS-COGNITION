@@ -3645,6 +3645,20 @@ class LabRun:
 
         if self.state in {"completed", "aborted"}:
             raise ValueError(f"cannot admit tool execution in state {self.state}")
+        if (
+            type(tool_name) is not str
+            or type(effect_class) is not str
+            or type(actor_role) is not str
+            or type(expected_observation_schema) is not str
+            or type(stop_rule) is not str
+            or type(lease_id) is not int
+            or type(attempt) is not int
+            or (execution_id is not None and type(execution_id) is not str)
+            or (idempotency_key is not None and type(idempotency_key) is not str)
+            or (timeout_seconds is not None and type(timeout_seconds) not in (int, float))
+            or isinstance(timeout_seconds, bool)
+        ):
+            raise ValueError("tool execution admission contract is invalid")
         normalized_tool = tool_name.strip()
         normalized_effect = effect_class.strip()
         normalized_role = actor_role.strip().lower()
@@ -3678,7 +3692,9 @@ class LabRun:
         ):
             raise ValueError("tool execution admission contract is invalid")
         ordinal = sum(event.kind == "tool_execution_admitted" for event in self.events) + 1
-        normalized_execution_id = execution_id or f"tool-{normalized_tool}-{attempt}-{ordinal}"
+        normalized_execution_id = (
+            f"tool-{normalized_tool}-{attempt}-{ordinal}" if execution_id is None else execution_id
+        )
         if not normalized_execution_id.strip() or normalized_execution_id in self.tool_execution_admissions:
             raise ValueError("tool execution identity is duplicated or empty")
         admission_id = f"{normalized_execution_id}-admission"
@@ -3747,6 +3763,24 @@ class LabRun:
         prevents forged identities or policy changes.
         """
 
+        if (
+            type(tool_name) is not str
+            or type(execution_id) is not str
+            or type(admission_id) is not str
+            or type(effect_class) is not str
+            or type(actor_role) is not str
+            or type(expected_observation_schema) is not str
+            or type(stop_rule) is not str
+            or type(lease_id) is not int
+            or type(attempt) is not int
+            or type(status) is not str
+            or (input_hash is not None and type(input_hash) is not str)
+            or (policy_hash is not None and type(policy_hash) is not str)
+            or (idempotency_key is not None and type(idempotency_key) is not str)
+            or (timeout_seconds is not None and type(timeout_seconds) not in (int, float))
+            or isinstance(timeout_seconds, bool)
+        ):
+            raise ValueError("tool execution settlement contract is invalid")
         normalized_status = status.strip().upper()
         if self.state == "completed" or (self.state == "aborted" and normalized_status != "CANCELLED"):
             raise ValueError(f"cannot record tool execution in state {self.state}")
@@ -3757,8 +3791,8 @@ class LabRun:
             raise ValueError("tool execution references unknown admission")
         if execution_id in self.tool_executions:
             raise ValueError("tool execution settlement is duplicated")
-        normalized_input_hash = input_hash or _hash(input_payload)
-        normalized_policy_hash = policy_hash or _hash(policy_payload)
+        normalized_input_hash = _hash(input_payload) if input_hash is None else input_hash
+        normalized_policy_hash = _hash(policy_payload) if policy_hash is None else policy_hash
         if not _is_digest(normalized_input_hash) or not _is_digest(normalized_policy_hash):
             raise ValueError("tool execution settlement hashes are invalid")
         expected: dict[str, Any] = {
