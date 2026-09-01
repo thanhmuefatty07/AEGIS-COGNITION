@@ -754,6 +754,25 @@ def test_lab_research_receipts_reject_lossy_boundary_metadata() -> None:
         )
 
 
+def test_lab_cancellation_receipts_reject_lossy_boundary_metadata() -> None:
+    run = LabRun("strict cancellation receipts")
+    with pytest.raises(ValueError, match="admission contract"):
+        run.admit_cancellation(reason=1, request_id="cancel-1")  # type: ignore[arg-type]
+    with pytest.raises(ValueError, match="admission contract"):
+        run.admit_cancellation(reason="operator_request", request_id=1)  # type: ignore[arg-type]
+    request_id, admission_id = run.admit_cancellation(
+        reason="operator_request", request_id="cancel-1"
+    )
+    with pytest.raises(ValueError, match="settlement contract"):
+        run.record_cancellation(
+            request_id=request_id,
+            admission_id=admission_id,
+            reason="operator_request",
+            result={"accepted": True},
+            status=True,  # type: ignore[arg-type]
+        )
+
+
 @pytest.mark.parametrize(
     ("action", "match"),
     (
