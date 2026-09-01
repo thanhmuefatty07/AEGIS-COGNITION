@@ -3241,6 +3241,13 @@ class LabRun:
     def record_security_event(self, reason: str, *, artifact_hash: str = "", detail: str = "") -> None:
         """Retain a non-authoritative security observation for later review."""
 
+        if (
+            type(reason) is not str
+            or type(artifact_hash) is not str
+            or type(detail) is not str
+            or (artifact_hash and not _is_digest(artifact_hash))
+        ):
+            raise ValueError("security event contract is invalid")
         reason = reason.strip()
         if not reason:
             raise ValueError("security event reason must be non-empty")
@@ -3265,6 +3272,8 @@ class LabRun:
     def record_blocker(self, reason: str, *, detail: str = "") -> None:
         """Record a deduplicated blocker as an auditable evidence event."""
 
+        if type(reason) is not str or type(detail) is not str:
+            raise ValueError("lab blocker contract is invalid")
         reason = reason.strip()
         if not reason:
             raise ValueError("lab blocker reason must be non-empty")
@@ -3291,6 +3300,8 @@ class LabRun:
         previously blocked run became admissible again.
         """
 
+        if type(reason) is not str or type(detail) is not str:
+            raise ValueError("lab blocker contract is invalid")
         reason = reason.strip()
         if not reason:
             raise ValueError("lab blocker reason must be non-empty")
