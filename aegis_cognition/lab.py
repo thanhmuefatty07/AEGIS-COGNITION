@@ -2123,7 +2123,7 @@ class BrowserCellPolicy:
             or any(
                 type(host) is not str
                 or not host.strip()
-                or host.strip() != host.strip().lower()
+                or host != host.strip().lower()
                 for host in self.allowed_hosts
             )
         ):
@@ -2146,7 +2146,9 @@ class BrowserObserverView:
     def current_url(self) -> str:
         value = getattr(self._session, "current_url", "")
         value = value() if callable(value) else value
-        return str(value)
+        if type(value) is not str:
+            raise RuntimeError("browser observer returned a non-string URL")
+        return value
 
     async def get_accessibility_tree(self) -> Any:
         method = getattr(self._session, "get_accessibility_tree", None)
@@ -2159,7 +2161,7 @@ class BrowserObserverView:
         if not callable(method):
             raise RuntimeError("browser observer lacks network projection")
         result = await _call(method)
-        if not isinstance(result, list):
+        if type(result) is not list:
             raise ValueError("browser observer network log must be a list")
         return cast(list[Any], result)
 
@@ -2593,7 +2595,7 @@ class BrowserCell:
 
         if self._closed:
             raise RuntimeError("browser cell is closed")
-        if max_attempts < 1:
+        if type(max_attempts) is not int or max_attempts < 1:
             raise ValueError("browser recovery attempts must be positive")
         await self.release()
         last_error: BaseException | None = None
@@ -2636,10 +2638,13 @@ class BrowserCell:
             raise RuntimeError("browser session is not bound to this cell")
         if self.observation_count >= self.policy.max_observations:
             raise RuntimeError("browser observation quota exhausted")
-        if not isinstance(action, dict):
+        if type(action) is not dict:
             raise TypeError("browser observer actions must be typed mappings")
         action_map = cast(dict[str, Any], action)
-        kind = str(action_map.get("kind", "")).strip().lower()
+        raw_kind = action_map.get("kind", "")
+        if type(raw_kind) is not str:
+            raise TypeError("browser observer action kind must be a string")
+        kind = raw_kind.strip().lower()
         if kind not in {"read_url", "accessibility", "network_log", "wait"}:
             raise RuntimeError("browser observer cannot perform actor action")
         self.validate_url(await self._url(browser_session))
@@ -2647,6 +2652,8 @@ class BrowserCell:
     def validate_url(self, url: str) -> None:
         """Validate both current and requested navigation URLs."""
 
+        if type(url) is not str or not url.strip() or url != url.strip():
+            raise RuntimeError("browser egress URL must be a canonical string")
         parsed = urlparse(url)
         if self.policy.require_https and parsed.scheme != "https":
             raise RuntimeError("browser egress policy requires HTTPS")
@@ -2670,7 +2677,7 @@ class BrowserCell:
                 continue
             value = getattr(browser_session, name)
             value = await _call(value) if callable(value) else value
-            if isinstance(value, str) and value.strip():
+            if type(value) is str and value.strip():
                 return value.strip()
         raise RuntimeError("browser session did not expose a URL")
 
@@ -2699,10 +2706,13 @@ async def _execute_browser_action(
         except (TypeError, ValueError):
             accepts_argument = True
         return await _call(action, browser_session) if accepts_argument else await _call(action)
-    if not isinstance(action, dict):
+    if type(action) is not dict:
         raise TypeError("browser action must be a callable or typed mapping")
     action_map = cast(dict[str, Any], action)
-    kind = str(action_map.get("kind", "")).strip().lower()
+    raw_kind = action_map.get("kind", "")
+    if type(raw_kind) is not str:
+        raise TypeError("browser action kind must be a string")
+    kind = raw_kind.strip().lower()
     if role == "observer":
         if kind == "read_url":
             return await BrowserCell._url(browser_session)
@@ -2720,8 +2730,8 @@ async def _execute_browser_action(
                 raise ValueError("browser observer network log must be a list")
             return cast(list[Any], result)
         if kind == "wait":
-            milliseconds = int(action_map.get("milliseconds", 0))
-            if milliseconds < 0 or milliseconds > 60_000:
+            milliseconds = action_map.get("milliseconds", 0)
+            if type(milliseconds) is not int or milliseconds < 0 or milliseconds > 60_000:
                 raise ValueError("wait action milliseconds must be within [0, 60000]")
             method = getattr(browser_session, "wait_for_timeout", None)
             if not callable(method):
@@ -2729,8 +2739,8 @@ async def _execute_browser_action(
             return await _call(method, milliseconds)
         raise RuntimeError("browser observer cannot perform actor action")
     if kind == "goto":
-        target = str(action_map.get("url", ""))
-        if not target:
+        target = action_map.get("url", "")
+        if type(target) is not str or not target or target != target.strip():
             raise ValueError("goto action requires a URL")
         cell.validate_url(target)
         method = getattr(browser_session, "goto", None)
@@ -2738,26 +2748,28 @@ async def _execute_browser_action(
             raise RuntimeError("browser session does not support typed goto action")
         return await _call(method, target)
     if kind == "click":
-        selector = str(action_map.get("selector", ""))
-        if not selector:
+        selector = action_map.get("selector", "")
+        if type(selector) is not str or not selector or selector != selector.strip():
             raise ValueError("click action requires a selector")
         method = getattr(browser_session, "click", None)
         if method is None:
             raise RuntimeError("browser session does not support typed click action")
         return await _call(method, selector)
     if kind in {"fill", "type"}:
-        selector = str(action_map.get("selector", ""))
-        value = str(action_map.get("value", ""))
-        if not selector:
+        selector = action_map.get("selector", "")
+        value = action_map.get("value", "")
+        if type(selector) is not str or not selector or selector != selector.strip():
             raise ValueError(f"{kind} action requires a selector")
+        if type(value) is not str:
+            raise ValueError(f"{kind} action requires a string value")
         method_name = "fill" if kind == "fill" else "type_text"
         method = getattr(browser_session, method_name, None)
         if method is None:
             raise RuntimeError(f"browser session does not support typed {kind} action")
         return await _call(method, selector, value)
     if kind == "wait":
-        milliseconds = int(action_map.get("milliseconds", 0))
-        if milliseconds < 0 or milliseconds > 60_000:
+        milliseconds = action_map.get("milliseconds", 0)
+        if type(milliseconds) is not int or milliseconds < 0 or milliseconds > 60_000:
             raise ValueError("wait action milliseconds must be within [0, 60000]")
         wait_for_timeout = getattr(browser_session, "wait_for_timeout", None)
         if wait_for_timeout is None:
