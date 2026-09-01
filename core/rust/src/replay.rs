@@ -3659,6 +3659,10 @@ impl RunEventSegmentManifest {
         }
     }
 
+    pub(crate) fn legacy_manifest_hash(&self) -> [u8; 32] {
+        run_event_manifest_hash_legacy(self.run_id, &self.entries)
+    }
+
     pub fn is_valid(&self) -> bool {
         self.manifest_hash == run_event_manifest_hash(self.run_id, &self.entries)
             && self
@@ -7664,27 +7668,41 @@ fn run_event_manifest_hash(run_id: RunId, entries: &[RunEventSegmentEntry]) -> [
     let mut hasher = Hasher::new();
     hasher.update(RUN_EVENT_SEGMENT_MANIFEST_SCHEMA.as_bytes());
     update_u32(&mut hasher, RUN_EVENT_SEGMENT_MANIFEST_VERSION);
-    update_u128(&mut hasher, run_id);
-    update_u64(&mut hasher, entries.len() as u64);
+    update_run_event_manifest_hash_fields(&mut hasher, run_id, entries);
+    *hasher.finalize().as_bytes()
+}
+
+fn run_event_manifest_hash_legacy(run_id: RunId, entries: &[RunEventSegmentEntry]) -> [u8; 32] {
+    let mut hasher = Hasher::new();
+    update_run_event_manifest_hash_fields(&mut hasher, run_id, entries);
+    *hasher.finalize().as_bytes()
+}
+
+fn update_run_event_manifest_hash_fields(
+    hasher: &mut Hasher,
+    run_id: RunId,
+    entries: &[RunEventSegmentEntry],
+) {
+    update_u128(hasher, run_id);
+    update_u64(hasher, entries.len() as u64);
     for entry in entries {
-        update_u64(&mut hasher, entry.segment_id);
-        update_u64(&mut hasher, entry.start_event_id);
-        update_u64(&mut hasher, entry.end_event_id);
-        update_u64(&mut hasher, entry.event_count);
+        update_u64(hasher, entry.segment_id);
+        update_u64(hasher, entry.start_event_id);
+        update_u64(hasher, entry.end_event_id);
+        update_u64(hasher, entry.event_count);
         hasher.update(&entry.first_event_hash);
         hasher.update(&entry.last_event_hash);
         hasher.update(&entry.segment_hash);
         hasher.update(&entry.previous_segment_hash);
         hasher.update(&entry.arrow_schema_hash);
-        update_u64(&mut hasher, entry.arrow_file_bytes);
+        update_u64(hasher, entry.arrow_file_bytes);
         hasher.update(&entry.arrow_file_hash);
         hasher.update(&entry.segment_commit_hash);
-        update_u8(&mut hasher, u8::from(entry.staged_temp_file_used));
-        update_u8(&mut hasher, u8::from(entry.temp_file_synced_before_publish));
-        update_u8(&mut hasher, u8::from(entry.publish_completed));
-        update_u8(&mut hasher, u8::from(entry.parent_directory_sync_attempted));
+        update_u8(hasher, u8::from(entry.staged_temp_file_used));
+        update_u8(hasher, u8::from(entry.temp_file_synced_before_publish));
+        update_u8(hasher, u8::from(entry.publish_completed));
+        update_u8(hasher, u8::from(entry.parent_directory_sync_attempted));
     }
-    *hasher.finalize().as_bytes()
 }
 
 fn segmented_arrow_segment_witness_hash(

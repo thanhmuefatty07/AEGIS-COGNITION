@@ -50,6 +50,7 @@ from aegis_cognition.lab import (
     SimulationSpec,
     SourceRecord,
     UnitRegistry,
+    _hash,
     _bounded_retry_attempts,
     _authority_mode_from_options,
     _execute_browser_action,
@@ -2703,6 +2704,44 @@ def test_lab_snapshot_reads_legacy_archive_without_schema_marker() -> None:
     restored = LabRun.from_payload(payload)
     assert restored.replay_archive is not None
     assert "schema" not in restored.replay_archive
+
+
+def test_lab_recovery_uses_explicit_legacy_manifest_verifier(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    run = _ready_run()
+    payload = run.to_payload()
+    archive = {
+        "manifest_hash": [3] * 32,
+        "run_id": int(run.mission_id, 16),
+        "snapshot_path": str(tmp_path / "legacy.snapshot.json"),
+    }
+    payload["replay_archive"] = archive
+    snapshot_without_archive = dict(payload)
+    snapshot_without_archive["replay_archive"] = None
+    archive["snapshot_hash"] = _hash(snapshot_without_archive)
+    snapshot_path = tmp_path / "legacy.snapshot.json"
+    snapshot_path.write_text(json.dumps(payload), encoding="utf-8")
+    captured: dict[str, object] = {}
+
+    class Native:
+        @staticmethod
+        def aegis_lab_verify_archive_against_legacy_manifest(
+            directory: str, run_id: int, expected_manifest_hash: bytes
+        ) -> bool:
+            captured.update(
+                directory=directory,
+                run_id=run_id,
+                expected_manifest_hash=expected_manifest_hash,
+            )
+            return True
+
+    monkeypatch.setitem(sys.modules, "aegis_nerve", Native())
+    recovered = LabRun.recover_from_archive(str(snapshot_path))
+    assert recovered.mission_id == run.mission_id
+    assert captured["directory"] == str(tmp_path)
+    assert captured["run_id"] == int(run.mission_id, 16)
+    assert captured["expected_manifest_hash"] == bytes([3] * 32)
 
 
 def test_lab_native_archive_prefers_sealed_manifest_identity_verifier(
