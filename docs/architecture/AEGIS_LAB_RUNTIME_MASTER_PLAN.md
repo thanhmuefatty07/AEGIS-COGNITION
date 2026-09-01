@@ -2607,6 +2607,21 @@ This strengthens local snapshot integrity only; process-descendant containment,
 cross-platform crash-prefix injection and hosted restore/single-writer evidence
 remain open under `LAB-AUTH-001`, `LAB-OPS-007` and `LAB-RELEASE-006`.
 
+**M5 provider-boundary continuation (2026-09-02):** `SearchProgramExecutor`
+now fails closed on untyped provider entries, ambiguous `results`/`candidates`
+aliases, non-canonical URI/content/source aliases, mismatched content digests,
+non-digest snapshot hashes, lossy retrieval/trust/score metadata, malformed
+citation spans/digests and invalid provenance clusters. Render, extract, dedupe, rank,
+freshness, redirect and admission paths no longer stringify or numerically
+coerce provider-controlled values; malformed records are rejected rather than
+silently skipped. New negative coverage brings the focused Lab suite to
+**250 passed** and the combined Python/cross-language gate to **356 passed**;
+targeted Ruff and Pyright remain clean. This proves a stricter local provider
+contract and replay-ready source metadata, but not live-provider semantic
+quality, freshness calibration, contradiction precision/recall or DNS-race/
+hosted containment; `LAB-RESEARCH-003`, `LAB-BROWSER-002` and the residual
+authority rows remain open.
+
 #### M5 — Research, browser và experiment cells
 
 **Entry:** M2–M4 pass cho local cells; capability registry sealed.
