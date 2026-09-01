@@ -4473,6 +4473,31 @@ mod tests {
                 .all(|event| event.kind == crate::replay::RunEventKind::LabEventRecorded)
         );
         assert!(archived.verify_hash_chain());
+        assert!(
+            crate::replay::RunEventSegmentArchive::verify_lab_events_against_archive(
+                directory.path(),
+                manifest.run_id,
+                runtime.events(),
+            )
+            .unwrap()
+        );
+
+        let mut tampered = runtime.events().to_vec();
+        tampered[1].payload_hash = [99; 32];
+        tampered[1].event_hash = canonical_hash(&event_without_hash(&tampered[1]));
+        for index in 2..tampered.len() {
+            tampered[index].previous_event_hash = tampered[index - 1].event_hash;
+            tampered[index].event_hash = canonical_hash(&event_without_hash(&tampered[index]));
+        }
+        assert!(verify_event_chain(&tampered));
+        assert!(
+            !crate::replay::RunEventSegmentArchive::verify_lab_events_against_archive(
+                directory.path(),
+                manifest.run_id,
+                &tampered,
+            )
+            .unwrap()
+        );
     }
 
     #[test]
