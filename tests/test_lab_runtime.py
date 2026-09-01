@@ -2625,7 +2625,14 @@ def test_lab_native_archive_adapter_binds_manifest_to_final_event_root(
                 run_id=run_id,
                 segment_size=segment_size,
             )
-            return json.dumps({"manifest_hash": "ab" * 32, "run_id": run_id})
+            return json.dumps(
+                {
+                    "schema": "aegis-run-event-segment-manifest-v1",
+                    "version": 1,
+                    "manifest_hash": "ab" * 32,
+                    "run_id": run_id,
+                }
+            )
 
         @staticmethod
         def aegis_lab_verify_archive(directory: str, run_id: int) -> bool:
@@ -2645,6 +2652,59 @@ def test_lab_native_archive_adapter_binds_manifest_to_final_event_root(
     assert captured["verified_directory"] == str(tmp_path)
 
 
+@pytest.mark.parametrize(
+    ("schema", "version"),
+    (
+        (None, None),
+        ("aegis-run-event-segment-manifest-v1", None),
+        (None, 1),
+        ("aegis-run-event-segment-manifest-v2", 1),
+        ("aegis-run-event-segment-manifest-v1", 2),
+        ("aegis-run-event-segment-manifest-v1", "1"),
+    ),
+)
+def test_lab_native_archive_rejects_missing_or_future_manifest_metadata(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    schema: object,
+    version: object,
+) -> None:
+    run = _ready_run()
+
+    class Native:
+        @staticmethod
+        def aegis_lab_archive_events(
+            events_json: str, directory: str, run_id: int, segment_size: int
+        ) -> str:
+            del events_json, directory, segment_size
+            manifest: dict[str, object] = {
+                "manifest_hash": [1] * 32,
+                "run_id": run_id,
+            }
+            if schema is not None:
+                manifest["schema"] = schema
+            if version is not None:
+                manifest["version"] = version
+            return json.dumps(manifest)
+
+    monkeypatch.setitem(sys.modules, "aegis_nerve", Native())
+    with pytest.raises(RuntimeError, match="versioned manifest"):
+        run.archive_to_native(str(tmp_path))
+
+
+def test_lab_snapshot_reads_legacy_archive_without_schema_marker() -> None:
+    run = _ready_run()
+    payload = run.to_payload()
+    payload["replay_archive"] = {
+        "manifest_hash": [2] * 32,
+        "run_id": int(run.mission_id, 16),
+        "snapshot_path": "legacy.snapshot.json",
+    }
+    restored = LabRun.from_payload(payload)
+    assert restored.replay_archive is not None
+    assert "schema" not in restored.replay_archive
+
+
 def test_lab_native_archive_prefers_sealed_manifest_identity_verifier(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
@@ -2658,7 +2718,14 @@ def test_lab_native_archive_prefers_sealed_manifest_identity_verifier(
             events_json: str, directory: str, run_id: int, segment_size: int
         ) -> str:
             del events_json, directory, segment_size
-            return json.dumps({"manifest_hash": [7] * 32, "run_id": run_id})
+            return json.dumps(
+                {
+                    "schema": "aegis-run-event-segment-manifest-v1",
+                    "version": 1,
+                    "manifest_hash": [7] * 32,
+                    "run_id": run_id,
+                }
+            )
 
         @staticmethod
         def aegis_lab_verify_archive_against_manifest(
@@ -2707,7 +2774,14 @@ def test_lab_native_archive_rejects_non_boolean_verifier_result(
             events_json: str, directory: str, run_id: int, segment_size: int
         ) -> str:
             del events_json, directory, segment_size
-            return json.dumps({"manifest_hash": "cd" * 32, "run_id": run_id})
+            return json.dumps(
+                {
+                    "schema": "aegis-run-event-segment-manifest-v1",
+                    "version": 1,
+                    "manifest_hash": "cd" * 32,
+                    "run_id": run_id,
+                }
+            )
 
         @staticmethod
         def aegis_lab_verify_archive(directory: str, run_id: int) -> int:
@@ -2732,7 +2806,14 @@ def test_lab_recovery_rechecks_persisted_manifest_identity(
             events_json: str, directory: str, run_id: int, segment_size: int
         ) -> str:
             del events_json, directory, segment_size
-            return json.dumps({"manifest_hash": [9] * 32, "run_id": run_id})
+            return json.dumps(
+                {
+                    "schema": "aegis-run-event-segment-manifest-v1",
+                    "version": 1,
+                    "manifest_hash": [9] * 32,
+                    "run_id": run_id,
+                }
+            )
 
         @staticmethod
         def aegis_lab_verify_archive_against_manifest(

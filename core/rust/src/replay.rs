@@ -25,7 +25,7 @@ use arrow_buffer::Buffer;
 use blake3::Hasher;
 use memmap2::{Mmap, MmapOptions};
 use parking_lot::RwLock;
-use serde::Serialize;
+use serde::{Serialize, Serializer};
 use std::collections::HashMap;
 use std::fs::{File, OpenOptions};
 use std::io::{Read, Write};
@@ -40,6 +40,8 @@ pub type SubjectId = u128;
 
 const RUN_EVENT_SEGMENT_COMMIT_MAGIC: &[u8; 8] = b"AEGSCM1\0";
 const RUN_EVENT_SEGMENT_COMMIT_VERSION: u64 = 1;
+pub const RUN_EVENT_SEGMENT_MANIFEST_SCHEMA: &str = "aegis-run-event-segment-manifest-v1";
+pub const RUN_EVENT_SEGMENT_MANIFEST_VERSION: u32 = 1;
 const RUN_EVENT_SEGMENT_COMMIT_HASH_OFFSET: usize = 268;
 const RUN_EVENT_SEGMENT_COMMIT_BYTES: usize = RUN_EVENT_SEGMENT_COMMIT_HASH_OFFSET + 32;
 const RUN_EVENT_SEGMENT_CACHE_MAX_ENTRIES: usize = 256;
@@ -446,11 +448,36 @@ impl RunEventSegmentCommitProof {
     }
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct RunEventSegmentManifest {
     pub run_id: RunId,
     pub entries: Vec<RunEventSegmentEntry>,
     pub manifest_hash: [u8; 32],
+}
+
+impl Serialize for RunEventSegmentManifest {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        #[derive(Serialize)]
+        struct ManifestView<'a> {
+            schema: &'static str,
+            version: u32,
+            run_id: RunId,
+            entries: &'a [RunEventSegmentEntry],
+            manifest_hash: [u8; 32],
+        }
+
+        ManifestView {
+            schema: RUN_EVENT_SEGMENT_MANIFEST_SCHEMA,
+            version: RUN_EVENT_SEGMENT_MANIFEST_VERSION,
+            run_id: self.run_id,
+            entries: &self.entries,
+            manifest_hash: self.manifest_hash,
+        }
+        .serialize(serializer)
+    }
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize)]
@@ -7635,6 +7662,8 @@ fn run_event_segment_hasher(
 
 fn run_event_manifest_hash(run_id: RunId, entries: &[RunEventSegmentEntry]) -> [u8; 32] {
     let mut hasher = Hasher::new();
+    hasher.update(RUN_EVENT_SEGMENT_MANIFEST_SCHEMA.as_bytes());
+    update_u32(&mut hasher, RUN_EVENT_SEGMENT_MANIFEST_VERSION);
     update_u128(&mut hasher, run_id);
     update_u64(&mut hasher, entries.len() as u64);
     for entry in entries {
