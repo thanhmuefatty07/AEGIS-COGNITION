@@ -715,6 +715,45 @@ def test_lab_experiment_receipts_reject_lossy_boundary_metadata() -> None:
         )
 
 
+def test_lab_research_receipts_reject_lossy_boundary_metadata() -> None:
+    run = LabRun("strict research receipts")
+    with pytest.raises(ValueError, match="admission contract"):
+        run.admit_research_program(
+            program_hash=1,  # type: ignore[arg-type]
+            operation_count=1,
+            provider="provider.test",
+        )
+    with pytest.raises(ValueError, match="admission contract"):
+        run.admit_research_program(
+            program_hash="a" * 64,
+            operation_count=True,  # type: ignore[arg-type]
+            provider="provider.test",
+        )
+    admission_id = run.admit_research_program(
+        program_hash="a" * 64,
+        operation_count=1,
+        provider="provider.test",
+    )
+    with pytest.raises(ValueError, match="settlement contract"):
+        run.record_research_program(
+            program_hash="a" * 64,
+            operation_count=1,
+            candidate_count=1,
+            provider="provider.test",
+            admission_id=admission_id,
+            status=True,  # type: ignore[arg-type]
+        )
+    with pytest.raises(ValueError, match="hashes"):
+        run.record_research_program(
+            program_hash="a" * 64,
+            operation_count=1,
+            candidate_count=1,
+            provider="provider.test",
+            admission_id=admission_id,
+            input_hash="",
+        )
+
+
 @pytest.mark.parametrize(
     ("action", "match"),
     (
