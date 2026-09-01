@@ -178,7 +178,7 @@ def _strict_string_sequence(value: Any, *, label: str) -> tuple[str, ...]:
     return tuple(typed_value)
 
 
-def _validate_native_provider_options(options: Mapping[str, Any]) -> None:
+def _validate_native_provider_options(options: Mapping[str, Any], *, llm: Any = None) -> None:
     """Reject provider metadata that a compatibility adapter would coerce.
 
     The friendly gateway intentionally accepts a broad compatibility surface,
@@ -198,6 +198,8 @@ def _validate_native_provider_options(options: Mapping[str, Any]) -> None:
         type(provider) is not str or not provider.strip() or provider != provider.strip()
     ):
         raise ValueError("native Lab provider name must be a non-empty trimmed string")
+    if provider is None:
+        _validate_native_provider_identity(llm, label="primary")
 
     fallback_providers = options.get("fallback_providers")
     if fallback_providers is not None:
@@ -216,6 +218,10 @@ def _validate_native_provider_options(options: Mapping[str, Any]) -> None:
                     raise ValueError(
                         "native Lab fallback provider names must be null or non-empty trimmed strings"
                     )
+                if name is None:
+                    _validate_native_provider_identity(typed_item[1], label="fallback")
+            else:
+                _validate_native_provider_identity(item, label="fallback")
 
     provider_budgets = options.get("provider_budgets")
     if provider_budgets is None:
@@ -266,6 +272,20 @@ def _validate_native_provider_options(options: Mapping[str, Any]) -> None:
 def _validate_native_provider_budget_name(value: Any) -> None:
     if type(value) is not str or not value.strip() or value != value.strip():
         raise ValueError("native Lab provider budget names must be non-empty trimmed strings")
+
+
+def _validate_native_provider_identity(value: Any, *, label: str) -> None:
+    """Prevent falsy/non-text model identifiers from becoming ``default``."""
+
+    if value is None:
+        return
+    for field in ("model", "model_name"):
+        candidate = getattr(value, field, None)
+        if candidate is None:
+            continue
+        if type(candidate) is not str or not candidate.strip() or candidate != candidate.strip():
+            raise ValueError(f"native Lab {label} provider identity must be a non-empty trimmed string")
+        return
 
 
 def _validate_native_provider_budget_value(
@@ -8070,7 +8090,7 @@ class LabApplication:
         )
         require_native = authority_mode is AuthorityMode.NATIVE_REQUIRED
         if require_native:
-            _validate_native_provider_options(options)
+            _validate_native_provider_options(options, llm=self.config.llm)
         if self._factory_accepts_keyword("provider_attempt_hook"):
             gateway_options["provider_attempt_hook"] = self._provider_attempt_hook_ref
         elif require_native:

@@ -1363,6 +1363,40 @@ def test_native_gateway_rejects_inconsistent_provider_budget_record(
         application._gateway("bounded")
 
 
+def test_native_gateway_rejects_lossy_model_provider_identity(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Falsy/non-text model metadata must not collapse to the ``default`` route."""
+
+    class BadModel:
+        model = 0
+
+    class BadFallback:
+        model_name = 0
+
+    monkeypatch.setenv("AEGIS_API_KEY", "test-key")
+    cases = (
+        (BadModel(), {}, "primary provider identity"),
+        (lambda _task: {"ok": True}, {"fallback_providers": (BadFallback(),)}, "fallback provider identity"),
+    )
+    for llm, options, message in cases:
+        lab = Lab(
+            policy=LabPolicy(trust_level="PROD"),
+            budget=LabBudget(max_steps=1, token_budget=100),
+            llm=llm,
+            gateway_factory=lambda **_: None,
+        )
+        session = lab.start("lossy model provider", **options)
+        application = LabApplication(
+            config=session.config,
+            gateway_factory=lambda **_: None,
+            telemetry=lab.telemetry,
+            correlation=session.correlation,
+        )
+        with pytest.raises(ValueError, match=message):
+            application._gateway("bounded")
+
+
 def test_native_required_gateway_rejects_adapter_owned_retry_loop(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
