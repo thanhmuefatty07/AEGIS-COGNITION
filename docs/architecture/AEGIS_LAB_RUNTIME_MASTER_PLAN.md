@@ -2672,6 +2672,19 @@ gap only; arbitrary adapter effects, DNS rebinding, OS/process containment,
 hosted single-writer authority and cross-platform evidence remain open under
 `LAB-AUTH-001`/`LAB-BROWSER-002`.
 
+**P1 generic-tool receipt continuation (2026-09-02):** `LabRun` generic tool
+admission and settlement now reject untyped tool/effect/role/schema/stop-rule
+metadata, boolean leases/attempts, non-string identities/statuses and
+non-string optional digests before normalization. Optional execution IDs no
+longer use truthiness to discard invalid values; supplied empty digests remain
+invalid instead of triggering recomputation, while timeout finiteness and
+admission binding stay enforced. Negative coverage now totals **275 focused
+Lab tests** and **381 combined Python/cross-language tests**; targeted Ruff and
+Pyright remain clean. This strengthens the local generic-tool fence only;
+hidden planner/lease ownership, arbitrary adapter effects, process-level
+interruption and hosted multi-process single-writer evidence remain open under
+`LAB-AUTH-001`.
+
 #### M5 — Research, browser và experiment cells
 
 **Entry:** M2–M4 pass cho local cells; capability registry sealed.
