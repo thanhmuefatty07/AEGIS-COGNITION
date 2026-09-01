@@ -2865,6 +2865,31 @@ def test_adaptive_controller_never_spends_reserved_tokens() -> None:
     assert controller.next(run) is None
 
 
+def test_adaptive_controller_persists_unweighted_gap_potential() -> None:
+    run = LabRun("potential controller")
+    controller = AdaptiveController(max_steps=2, token_budget=100, finalization_reserve=20, recovery_reserve=10)
+
+    decision = controller.next(run)
+    assert decision is not None
+    assert decision.phase == "research"
+    assert decision.potential[:5] == (1, 1, 1, 1, 1)
+
+    run.add_source(SourceRecord("s1", "https://example.test", "content", "snapshot", 1))
+    assert controller.observe(run)
+    assert controller.observe(run)
+    assert not controller.observe(run)
+
+
+def test_adaptive_controller_plateau_detection_hashes_content_not_only_counts() -> None:
+    run = LabRun("content-sensitive controller")
+    run.add_source(SourceRecord("s1", "https://example.test", "content-a", "snapshot-a", 1))
+    controller = AdaptiveController(max_steps=2, token_budget=100, finalization_reserve=20, recovery_reserve=10)
+
+    assert controller.observe(run)
+    run.sources["s1"] = SourceRecord("s1", "https://example.test", "content-b", "snapshot-b", 1)
+    assert controller.observe(run)
+
+
 def test_lab_dossier_blocks_without_valid_observation_and_completes_with_one() -> None:
     run = _ready_run()
     blocked = run.dossier()
@@ -3052,6 +3077,33 @@ def test_benchmark_raw_records_retain_identity_and_reject_duplicates() -> None:
     duplicate_result = evaluate_benchmark(protocol, duplicate, environment_hash="env-v1")
     assert duplicate_result.status == "REJECTED"
     assert any(item.startswith("raw_trial_records_invalid:") for item in duplicate_result.failure_reasons)
+
+
+def test_benchmark_rejects_unregistered_seed_and_duplicate_seed_plan() -> None:
+    protocol = BenchmarkProtocolV2(
+        name="seed-bound",
+        metric="accuracy",
+        preregistered_seeds=(1, 2, 3, 4, 5),
+        frozen_split_hash="split-v1",
+        contamination_checks=("holdout-audit",),
+    )
+    result = evaluate_benchmark(
+        protocol,
+        [{"item_id": "item-a", "trial_index": 0, "seed": 99, "status": "SUCCESS", "value": 0.9}],
+        environment_hash="env-v1",
+    )
+    assert result.status == "REJECTED"
+    assert "raw_trial_records_invalid:ValueError" in result.failure_reasons
+
+    duplicate_seed_protocol = BenchmarkProtocolV2(
+        name="duplicate-seed-plan",
+        metric="accuracy",
+        preregistered_seeds=(1, 1, 2, 3, 4),
+        frozen_split_hash="split-v1",
+        contamination_checks=("holdout-audit",),
+    )
+    with pytest.raises(ValueError, match="preregistered benchmark seeds must be unique"):
+        assert duplicate_seed_protocol.protocol_hash
 
 
 def test_environment_fingerprint_binds_benchmark_to_explicit_host_metadata() -> None:
