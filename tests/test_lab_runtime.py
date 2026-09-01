@@ -4338,7 +4338,7 @@ def test_lab_gateway_calls_are_native_admitted_before_synthesis(monkeypatch: pyt
                 trust_level="DEV",
                 hot_commit=SimpleNamespace(artifact_hash="a" * 64),
                 provider_route=SimpleNamespace(
-                    route_hash="r" * 64,
+                    route_hash="d" * 64,
                     selected_provider="fixture",
                     attempted_providers=("fixture",),
                     throttled_providers=(),
@@ -4527,6 +4527,88 @@ def test_lab_gateway_provider_route_fences_each_candidate(monkeypatch: pytest.Mo
     assert dossier.manifest["event_chain_authority"] == "rust_native_verified"
 
 
+@pytest.mark.parametrize(
+    ("field", "value"),
+    (
+        ("provider", 1),
+        ("candidate_count", "1"),
+        ("task", 1),
+        ("phase", " controller"),
+    ),
+)
+def test_provider_attempt_fence_rejects_lossy_adapter_metadata(
+    field: str, value: object
+) -> None:
+    """An adapter cannot make malformed callback metadata look canonical."""
+
+    from aegis_cognition.lab import LabApplication
+
+    app = LabApplication(
+        config=SimpleNamespace(trust_level="DEV", options={}, max_steps=2),
+        gateway_factory=lambda **_: None,
+        telemetry=SimpleNamespace(),
+        correlation=SimpleNamespace(),
+    )
+    run = LabRun("provider callback boundary", max_steps=2)
+    app._active_run = run
+    app._provider_attempt_context = {
+        "phase": "controller",
+        "call_id": "callback-1",
+        "gateway_attempt": 1,
+        "gateway_max_attempts": 1,
+        "timeout_seconds": 1.0,
+        "idempotency_key": "a" * 64,
+    }
+    payload: dict[str, object] = {
+        "provider": "fixture",
+        "candidate_index": 1,
+        "candidate_count": 1,
+        "task": "bounded",
+    }
+    payload[field] = value
+    with pytest.raises((TypeError, ValueError)):
+        app._provider_attempt_hook("admit", payload)
+    assert run.tool_execution_admissions == {}
+
+
+def test_native_provider_route_requires_canonical_hash(monkeypatch: pytest.MonkeyPatch) -> None:
+    from aegis_cognition.lab import LabApplication
+
+    class NativeController:
+        def __init__(self, _mission_json: str) -> None:
+            pass
+
+        def admit_event_json(self, _event_json: str, _state: str | None = None) -> None:
+            pass
+
+    class Native:
+        LabController = NativeController
+
+    monkeypatch.setitem(sys.modules, "aegis_nerve", Native())
+
+    app = LabApplication(
+        config=SimpleNamespace(trust_level="DEV", options={}, max_steps=1),
+        gateway_factory=lambda **_: None,
+        telemetry=SimpleNamespace(),
+        correlation=SimpleNamespace(),
+    )
+    run = LabRun("provider route boundary", require_native_authority=True, max_steps=1)
+    with pytest.raises(RuntimeError, match="canonical provider route hash"):
+        app._assert_provider_attempt_fence(
+            run,
+            phase="controller",
+            call_id="route-1",
+            gateway_attempt=1,
+            route=SimpleNamespace(
+                route_hash="r" * 64,
+                selected_provider="fixture",
+                attempted_providers=("fixture",),
+                throttled_providers=(),
+                fallback_used=False,
+            ),
+        )
+
+
 def test_native_required_gateway_that_discards_provider_hook_is_rejected(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -4627,7 +4709,7 @@ def test_native_required_gateway_must_settle_nested_provider_receipts(
                 provider="fixture",
                 trust_level="DEV",
                 provider_route=SimpleNamespace(
-                    route_hash="r" * 64,
+                    route_hash="d" * 64,
                     selected_provider="fixture",
                     attempted_providers=("fixture",),
                     throttled_providers=(),
@@ -5430,7 +5512,7 @@ def test_lab_gateway_retry_is_fenced_per_attempt(monkeypatch: pytest.MonkeyPatch
                 trust_level="DEV",
                 hot_commit=SimpleNamespace(artifact_hash="c" * 64),
                 provider_route=SimpleNamespace(
-                    route_hash="r" * 64,
+                    route_hash="d" * 64,
                     selected_provider="fixture",
                     attempted_providers=("fixture",),
                     throttled_providers=(),
@@ -6337,6 +6419,46 @@ def test_lab_context_retrieval_is_admitted_and_hash_bound() -> None:
     assert settled[0].payload["status"] == "SUCCESS"
     assert settled[0].payload["result_hash"]
     assert "source=s1" not in json.dumps(settled[0].payload, sort_keys=True)
+    assert not run.blockers
+
+
+def test_context_retrieval_uses_registered_execution_cell_without_compat_hook() -> None:
+    import asyncio
+
+    from aegis_cognition.lab import LabApplication
+
+    calls: list[str] = []
+
+    async def retrieve(*, query: str, **_: object) -> str:
+        calls.append(query)
+        return "registered context"
+
+    app = LabApplication(
+        config=SimpleNamespace(
+            trust_level="DEV",
+            options={
+                "lab_execution_cells": (
+                    ExecutionCellBinding(
+                        cell_id="context-v1",
+                        action_kinds=("context_retrieval",),
+                        runner=retrieve,
+                        capabilities=("read_only",),
+                        effect_classes=("read_only",),
+                    ),
+                )
+            },
+            max_steps=3,
+        ),
+        gateway_factory=lambda **_: None,
+        telemetry=SimpleNamespace(),
+        correlation=SimpleNamespace(),
+    )
+    run = _ready_run()
+    app._prepare_execution_cells(run, app.config.options)
+    context = asyncio.run(app._run_context_retrieval(run, app.config.options))
+
+    assert context == "registered context"
+    assert calls == [run.objective]
     assert not run.blockers
 
 
