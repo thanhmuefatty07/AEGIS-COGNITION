@@ -5381,6 +5381,150 @@ class LabRun:
                     f"native projection diverged: skill_admission:{admission_hash}=different"
                 )
 
+        tool_settlement_events = event_admissions("tool_execution_recorded", "execution_id")
+        if self.tool_executions != set(tool_settlement_events):
+            raise RuntimeError("native projection diverged: tool_executions=identity_set")
+
+    def _assert_projection_record_consistency(self) -> None:
+        """Bind typed scientific records to the events that admitted them."""
+
+        mismatches: list[str] = []
+
+        def canonical(value: Any) -> Any:
+            try:
+                normalized: Any = json.loads(
+                    json.dumps(value, sort_keys=True, separators=(",", ":"))
+                )
+            except (TypeError, ValueError, OverflowError) as exc:
+                raise RuntimeError(
+                    "native projection diverged: record is not canonical JSON"
+                ) from exc
+            if isinstance(normalized, dict):
+                cast(dict[Any, Any], normalized).pop("trust_policy_hash", None)
+            return cast(Any, normalized)
+
+        record_specs: tuple[tuple[str, str, Mapping[str, Any]], ...] = (
+            ("source_captured", "source_id", cast(Mapping[str, Any], self.sources)),
+            ("claim_recorded", "claim_id", cast(Mapping[str, Any], self.claims)),
+            ("hypothesis_recorded", "hypothesis_id", cast(Mapping[str, Any], self.hypotheses)),
+            ("experiment_scheduled", "experiment_id", cast(Mapping[str, Any], self.experiments)),
+            ("observation_recorded", "observation_id", cast(Mapping[str, Any], self.observations)),
+        )
+        for kind, identifier, records in record_specs:
+            admitted: dict[str, Any] = {}
+            for event in self.events:
+                if event.kind != kind:
+                    continue
+                raw_payload = event.payload
+                if type(raw_payload) is not dict or any(
+                    type(key) is not str for key in cast(dict[Any, Any], raw_payload)
+                ):
+                    mismatches.append(f"{kind}:event_{event.sequence}=invalid")
+                    continue
+                payload = cast(dict[str, Any], raw_payload)
+                record_id = payload.get(identifier)
+                if type(record_id) is not str or not record_id.strip():
+                    mismatches.append(f"{kind}:event_{event.sequence}=identity")
+                    continue
+                if record_id in admitted:
+                    mismatches.append(f"{kind}:{record_id}=duplicate")
+                    continue
+                admitted[record_id] = canonical(payload)
+            current: dict[str, Any] = {}
+            for record_id, record in records.items():
+                if type(record_id) is not str:
+                    mismatches.append(f"{kind}=non_string_identity")
+                    continue
+                try:
+                    current[record_id] = canonical(asdict(record))
+                except (TypeError, ValueError, AttributeError) as exc:
+                    raise RuntimeError(
+                        f"native projection diverged: {kind}:{record_id}=invalid"
+                    ) from exc
+            record_ids: set[str] = set(admitted.keys()) | set(current.keys())
+            mismatches.extend(
+                f"{kind}:{record_id}=different"
+                for record_id in record_ids
+                if admitted.get(record_id) != current.get(record_id)
+            )
+            if mismatches:
+                # Continue collecting the other record classes only when the
+                # current class is clean; one bounded detail is sufficient for
+                # the operator while preserving deterministic failure.
+                raise RuntimeError(
+                    "native projection diverged: " + mismatches[0]
+                )
+
+    def _assert_projection_operator_consistency(self) -> None:
+        """Bind blocker/security projections to their append events."""
+
+        blockers: list[str] = []
+        security_events: list[dict[str, str]] = []
+        for event in self.events:
+            if event.kind == "blocker_recorded" or event.kind == "blocker_resolved":
+                raw_payload = event.payload
+                if type(raw_payload) is not dict or any(
+                    type(key) is not str for key in cast(dict[Any, Any], raw_payload)
+                ):
+                    raise RuntimeError(
+                        f"native projection diverged: event_{event.sequence}=blocker_metadata"
+                    )
+                payload = cast(dict[str, Any], raw_payload)
+                if type(payload.get("reason")) is not str or type(payload.get("detail", "")) is not str:
+                    raise RuntimeError(
+                        f"native projection diverged: event_{event.sequence}=blocker_metadata"
+                    )
+                reason = cast(str, payload["reason"])
+                if not reason.strip():
+                    raise RuntimeError(
+                        f"native projection diverged: event_{event.sequence}=blocker_identity"
+                    )
+                if event.kind == "blocker_recorded":
+                    if reason in blockers:
+                        raise RuntimeError(
+                            f"native projection diverged: event_{event.sequence}=duplicate_blocker"
+                        )
+                    blockers.append(reason)
+                else:
+                    if reason not in blockers:
+                        raise RuntimeError(
+                            f"native projection diverged: event_{event.sequence}=unknown_blocker"
+                        )
+                    blockers.remove(reason)
+            elif event.kind == "security_event_recorded":
+                payload = event.payload
+                if type(payload) is not dict or any(
+                    type(key) is not str for key in cast(dict[Any, Any], payload)
+                ):
+                    raise RuntimeError(
+                        f"native projection diverged: event_{event.sequence}=security_metadata"
+                    )
+                typed_payload = cast(dict[str, Any], payload)
+                if (
+                    type(typed_payload.get("reason")) is not str
+                    or type(typed_payload.get("artifact_hash", "")) is not str
+                    or type(typed_payload.get("detail", "")) is not str
+                    or not cast(str, typed_payload["reason"]).strip()
+                    or (
+                        cast(str, typed_payload.get("artifact_hash", ""))
+                        and not _is_digest(cast(str, typed_payload["artifact_hash"]))
+                    )
+                ):
+                    raise RuntimeError(
+                        f"native projection diverged: event_{event.sequence}=security_metadata"
+                    )
+                security_events.append(
+                    {
+                        "reason": cast(str, typed_payload["reason"]),
+                        "artifact_hash": cast(str, typed_payload.get("artifact_hash", "")),
+                        "detail": cast(str, typed_payload.get("detail", "")),
+                    }
+                )
+        if self.blockers != blockers:
+            raise RuntimeError("native projection diverged: blockers=different")
+        if self.security_events != security_events:
+            raise RuntimeError("native projection diverged: security_events=different")
+
     def _assert_native_projection_consistency(self) -> None:
         """Fail closed when the Python view no longer matches native state.
 
@@ -5392,16 +5536,27 @@ class LabRun:
         """
 
         self._assert_projection_admission_consistency()
+        self._assert_projection_record_consistency()
+        self._assert_projection_operator_consistency()
         native_controller = self._native_controller
-        if self.trust_policy_hash is not None:
-            for event in self.events:
-                event_payload = event.payload
-                if not isinstance(event_payload, dict) or cast(dict[str, Any], event_payload).get(
-                    "trust_policy_hash"
-                ) != self.trust_policy_hash:
+        for event in self.events:
+            event_payload = event.payload
+            if not isinstance(event_payload, dict):
+                if self.trust_policy_hash is not None:
                     raise RuntimeError(
                         f"native projection diverged: event_{event.sequence}=trust_policy_mismatch"
                     )
+                continue
+            raw_event_trust_hash = cast(dict[str, Any], event_payload).get("trust_policy_hash")
+            if self.trust_policy_hash is None:
+                if raw_event_trust_hash is not None:
+                    raise RuntimeError(
+                        f"native projection diverged: event_{event.sequence}=unexpected_trust_policy"
+                    )
+            elif raw_event_trust_hash != self.trust_policy_hash:
+                raise RuntimeError(
+                    f"native projection diverged: event_{event.sequence}=trust_policy_mismatch"
+                )
         snapshot_reader = getattr(native_controller, "snapshot_json", None)
         if native_controller is None or not callable(snapshot_reader):
             return
@@ -5480,56 +5635,6 @@ class LabRun:
                 mismatches.append(
                     f"{field} python={sorted(expected)!r} native={sorted(actual)!r}"
                 )
-
-        def canonical(value: Any) -> Any:
-            result: Any = json.loads(
-                json.dumps(value, sort_keys=True, separators=(",", ":"), default=str)
-            )
-            return result
-
-        # Native projection IDs alone cannot detect replacing a Python record
-        # under the same key.  Reconcile each mutable typed map with the
-        # immutable payload that originally admitted that record; this closes
-        # the same-ID mutation hole without pretending that adapter-only fields
-        # are part of the Rust typed reducer.
-        record_specs: tuple[tuple[str, str, Mapping[str, Any]], ...] = (
-            ("source_captured", "source_id", cast(Mapping[str, Any], self.sources)),
-            ("claim_recorded", "claim_id", cast(Mapping[str, Any], self.claims)),
-            ("hypothesis_recorded", "hypothesis_id", cast(Mapping[str, Any], self.hypotheses)),
-            ("experiment_scheduled", "experiment_id", cast(Mapping[str, Any], self.experiments)),
-            ("observation_recorded", "observation_id", cast(Mapping[str, Any], self.observations)),
-        )
-        def record_payload(value: Any) -> Any:
-            normalized: Any = canonical(value)
-            if isinstance(normalized, dict):
-                cast(dict[Any, Any], normalized).pop("trust_policy_hash", None)
-            return cast(Any, normalized)
-
-        for kind, identifier, records in record_specs:
-            admitted: dict[str, Any] = {}
-            for event in self.events:
-                raw_payload = event.payload
-                if event.kind != kind or not isinstance(raw_payload, dict):
-                    continue
-                payload: dict[str, Any] = {
-                    str(key): value
-                    for key, value in cast(dict[Any, Any], raw_payload).items()
-                }
-                record_id = payload.get(identifier)
-                if isinstance(record_id, str):
-                    admitted[record_id] = record_payload(payload)
-            current = {
-                str(record_id): record_payload(asdict(record))
-                for record_id, record in records.items()
-            }
-            for record_id, payload in current.items():
-                if admitted.get(record_id) != payload:
-                    mismatches.append(f"{kind}:{record_id}=different")
-            mismatches.extend(
-                f"{kind}:{record_id}=missing"
-                for record_id in admitted
-                if record_id not in current
-            )
 
         actual_payloads = snapshot_map.get("projection_payloads")
         if isinstance(actual_payloads, dict) and actual_payloads:
