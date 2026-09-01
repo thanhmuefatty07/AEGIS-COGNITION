@@ -4328,6 +4328,7 @@ mod tests {
         )
         .unwrap();
         assert!(manifest.is_valid());
+        assert_ne!(manifest.manifest_hash, manifest.legacy_manifest_hash());
         let manifest_json = serde_json::to_value(&manifest).unwrap();
         assert_eq!(
             manifest_json["schema"],

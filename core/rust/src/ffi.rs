@@ -1325,6 +1325,41 @@ pub fn aegis_lab_verify_archive_against_manifest(
     })?
 }
 
+/// Verify a pre-schema-marker Lab replay archive against its legacy manifest
+/// hash. This compatibility-only path is explicit so a current manifest can
+/// never silently accept an old hash domain; callers must retain the legacy
+/// snapshot marker and may not append new segments through this verifier.
+#[pyfunction]
+pub fn aegis_lab_verify_archive_against_legacy_manifest(
+    directory: String,
+    run_id: u128,
+    expected_manifest_hash: Vec<u8>,
+) -> PyResult<bool> {
+    py_safe(move || {
+        let expected_manifest_hash: [u8; 32] = expected_manifest_hash.try_into().map_err(|_| {
+            pyo3::exceptions::PyValueError::new_err(
+                "legacy Lab replay manifest hash must contain exactly 32 bytes",
+            )
+        })?;
+        let manifest = crate::replay::RunEventSegmentArchive::recover_manifest_from_segments(
+            directory.clone(),
+            run_id,
+        )
+        .map_err(pyo3::exceptions::PyRuntimeError::new_err)?;
+        if manifest.legacy_manifest_hash() != expected_manifest_hash {
+            return Ok(false);
+        }
+        let ledger = crate::replay::RunEventSegmentArchive::read_ledger_mmap(directory, &manifest)
+            .map_err(pyo3::exceptions::PyRuntimeError::new_err)?;
+        Ok(!ledger.is_empty()
+            && ledger.verify_hash_chain()
+            && ledger
+                .events()
+                .iter()
+                .all(|event| event.kind == crate::replay::RunEventKind::LabEventRecorded))
+    })?
+}
+
 // ─────────────────────────────────────────────────────────────────────────
 
 #[pymodule]
@@ -1392,6 +1427,10 @@ pub fn aegis_nerve(_py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(aegis_lab_verify_archive, m)?)?;
     m.add_function(wrap_pyfunction!(
         aegis_lab_verify_archive_against_manifest,
+        m
+    )?)?;
+    m.add_function(wrap_pyfunction!(
+        aegis_lab_verify_archive_against_legacy_manifest,
         m
     )?)?;
     Ok(())
