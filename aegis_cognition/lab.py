@@ -1745,6 +1745,39 @@ class ObservationRecord:
     epistemic_status: str = "OBSERVED"
     reported_unit: str = ""
 
+    def validate(self) -> None:
+        if (
+            type(self.observation_id) is not str
+            or type(self.experiment_id) is not str
+            or type(self.unit) is not str
+            or type(self.raw_artifact_hash) is not str
+            or type(self.environment_hash) is not str
+            or type(self.operator_id) is not str
+            or type(self.epistemic_status) is not str
+            or type(self.reported_unit) is not str
+            or not self.observation_id.strip()
+            or not self.experiment_id.strip()
+            or type(self.seed) is not int
+            or type(self.measurement) not in (int, float)
+            or isinstance(self.measurement, bool)
+            or not math.isfinite(float(self.measurement))
+            or not self.unit.strip()
+            or not self.raw_artifact_hash.strip()
+            or not self.environment_hash.strip()
+            or type(self.valid) is not bool
+            or type(self.clean) is not bool
+            or self.epistemic_status.upper() not in _EPISTEMIC_STATUSES
+            or (self.replication_of is not None and type(self.replication_of) is not str)
+        ):
+            raise ValueError("observation identity, measurement and epistemic metadata are invalid")
+        if self.uncertainty is not None and (
+            type(self.uncertainty) not in (int, float)
+            or isinstance(self.uncertainty, bool)
+            or not math.isfinite(float(self.uncertainty))
+            or float(self.uncertainty) < 0
+        ):
+            raise ValueError("observation uncertainty must be finite and non-negative")
+
 
 @dataclass(frozen=True)
 class LabEvent:
@@ -4464,16 +4497,11 @@ class LabRun:
     def add_observation(self, observation: ObservationRecord) -> None:
         if self.state not in {"experimenting", "reviewing"}:
             raise ValueError(f"cannot add observation in state {self.state}")
+        observation.validate()
         experiment = self.experiments.get(observation.experiment_id)
         if (
-            not observation.observation_id.strip()
-            or experiment is None
-            or not math.isfinite(observation.measurement)
-            or not observation.unit.strip()
-            or not observation.raw_artifact_hash
-            or not observation.environment_hash
+            experiment is None
             or observation.observation_id in self.observations
-            or observation.epistemic_status.upper() not in _EPISTEMIC_STATUSES
         ):
             raise ValueError("invalid observation or unknown experiment")
         try:
@@ -4483,10 +4511,6 @@ class LabRun:
             raise ValueError("invalid observation unit") from exc
         if observation.seed not in experiment.preregistered_seeds:
             raise ValueError("observation seed was not preregistered")
-        if observation.uncertainty is not None and (
-            not math.isfinite(observation.uncertainty) or observation.uncertainty < 0
-        ):
-            raise ValueError("observation uncertainty must be finite and non-negative")
         if experiment.uncertainty_required and observation.uncertainty is None:
             raise ValueError("experiment requires an uncertainty estimate")
         if observation.replication_of is not None:
@@ -5441,26 +5465,26 @@ class LabRun:
                 ObservationRecord(
                     observation_id=str(item["observation_id"]),
                     experiment_id=str(item["experiment_id"]),
-                    seed=int(item["seed"]),
-                    measurement=float(item["measurement"]),
-                    unit=str(item["unit"]),
-                    raw_artifact_hash=str(item["raw_artifact_hash"]),
-                    environment_hash=str(item["environment_hash"]),
-                    valid=bool(item.get("valid", True)),
+                    seed=item["seed"],
+                    measurement=item["measurement"],
+                    unit=item["unit"],
+                    raw_artifact_hash=item["raw_artifact_hash"],
+                    environment_hash=item["environment_hash"],
+                    valid=item.get("valid", True),
                     uncertainty=(
-                        float(item["uncertainty"])
+                        item["uncertainty"]
                         if item.get("uncertainty") is not None
                         else None
                     ),
                     replication_of=(
-                        str(item["replication_of"])
+                        item["replication_of"]
                         if item.get("replication_of") is not None
                         else None
                     ),
-                    operator_id=str(item.get("operator_id", "")),
-                    clean=bool(item.get("clean", True)),
-                    epistemic_status=str(item.get("epistemic_status", "OBSERVED")).upper(),
-                    reported_unit=str(item.get("reported_unit", "")),
+                    operator_id=item.get("operator_id", ""),
+                    clean=item.get("clean", True),
+                    epistemic_status=item.get("epistemic_status", "OBSERVED"),
+                    reported_unit=item.get("reported_unit", ""),
                 )
                 for item in raw_observations
             )
@@ -5830,14 +5854,9 @@ class LabRun:
                 raise ValueError("invalid experiment in lab snapshot")
             DEFAULT_UNIT_REGISTRY.signature(experiment.measurement_unit)
         for observation in self.observations.values():
+            observation.validate()
             if (
-                not observation.observation_id.strip()
-                or observation.experiment_id not in self.experiments
-                or not math.isfinite(observation.measurement)
-                or not observation.unit.strip()
-                or not observation.raw_artifact_hash
-                or not observation.environment_hash
-                or observation.epistemic_status.upper() not in _EPISTEMIC_STATUSES
+                observation.experiment_id not in self.experiments
             ):
                 raise ValueError("invalid observation in lab snapshot")
             experiment = self.experiments[observation.experiment_id]
@@ -5847,10 +5866,6 @@ class LabRun:
                 DEFAULT_UNIT_REGISTRY.signature(observation.reported_unit)
             if observation.seed not in experiment.preregistered_seeds:
                 raise ValueError("observation seed was not preregistered in lab snapshot")
-            if observation.uncertainty is not None and (
-                not math.isfinite(observation.uncertainty) or observation.uncertainty < 0
-            ):
-                raise ValueError("invalid observation uncertainty in lab snapshot")
             if experiment.uncertainty_required and observation.uncertainty is None:
                 raise ValueError("missing required observation uncertainty in lab snapshot")
             if observation.replication_of is not None:
@@ -8698,27 +8713,27 @@ class LabApplication:
             raw_map = cast(dict[str, Any], raw)
             run.add_observation(
                 ObservationRecord(
-                    observation_id=str(raw_map.get("observation_id", f"observation-{index+1}")),
+                    observation_id=raw_map.get("observation_id", f"observation-{index+1}"),
                     experiment_id=spec.experiment_id,
-                    seed=int(raw_map.get("seed", spec.preregistered_seeds[index % len(spec.preregistered_seeds)])),
-                    measurement=float(raw_map["measurement"]),
-                    unit=str(raw_map.get("unit", spec.measurement_unit)),
-                    raw_artifact_hash=str(raw_map.get("raw_artifact_hash", _hash(raw_map))),
-                    environment_hash=str(raw_map.get("environment_hash", _hash({"run_id": run_id}))),
-                    valid=bool(raw_map.get("valid", True)),
+                    seed=raw_map.get("seed", spec.preregistered_seeds[index % len(spec.preregistered_seeds)]),
+                    measurement=raw_map["measurement"],
+                    unit=raw_map.get("unit", spec.measurement_unit),
+                    raw_artifact_hash=raw_map.get("raw_artifact_hash", _hash(raw_map)),
+                    environment_hash=raw_map.get("environment_hash", _hash({"run_id": run_id})),
+                    valid=raw_map.get("valid", True),
                     uncertainty=(
-                        float(raw_map["uncertainty"])
+                        raw_map["uncertainty"]
                         if raw_map.get("uncertainty") is not None
                         else None
                     ),
                     replication_of=(
-                        str(raw_map["replication_of"])
+                        raw_map["replication_of"]
                         if raw_map.get("replication_of") is not None
                         else None
                     ),
-                    operator_id=str(raw_map.get("operator_id", "")),
-                    clean=bool(raw_map.get("clean", True)),
-                    epistemic_status=str(raw_map.get("epistemic_status", "OBSERVED")).upper(),
+                    operator_id=raw_map.get("operator_id", ""),
+                    clean=raw_map.get("clean", True),
+                    epistemic_status=raw_map.get("epistemic_status", "OBSERVED"),
                 )
             )
 
