@@ -172,7 +172,6 @@ _EXTERNAL_ADMISSION_EVENT_KINDS = frozenset(
         "browser_action_admitted",
         "browser_observation_admitted",
         "skill_admission_recorded",
-        "cancellation_admitted",
     }
 )
 

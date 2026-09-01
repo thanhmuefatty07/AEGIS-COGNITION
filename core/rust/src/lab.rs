@@ -93,7 +93,6 @@ fn is_external_admission_kind(kind: LabEventKind) -> bool {
             | LabEventKind::BrowserActionAdmitted
             | LabEventKind::BrowserObservationAdmitted
             | LabEventKind::SkillAdmissionRecorded
-            | LabEventKind::CancellationAdmitted
     )
 }
 

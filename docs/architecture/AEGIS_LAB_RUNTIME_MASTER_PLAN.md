@@ -3365,7 +3365,9 @@ supported platforms and hosted restore remain NOT VERIFIED, so P1 migration/M7
 does not pass.
 
 **M4 global observed-attempt continuation (2026-09-02):** Lab-owned execution
-admissions now carry one mission-bound finite `max_external_attempts` envelope.
+edge execution admissions now carry one mission-bound finite
+`max_external_attempts` envelope (control-only cancellation admissions are not
+charged against that effect budget, so emergency abort remains available).
 The default conservative envelope is `8 * (max_steps + 1)^3`; an operator may
 set a stricter positive integer through `LabBudget.max_external_attempts`.
 `LabRun` persists both the bound and its exact admission count, binds the count
