@@ -164,6 +164,33 @@ def _bounded_retry_attempts(value: Any, *, max_steps: int, label: str) -> int:
     return min(value, max_steps)
 
 
+_EXTERNAL_ADMISSION_EVENT_KINDS = frozenset(
+    {
+        "experiment_execution_admitted",
+        "tool_execution_admitted",
+        "research_program_admitted",
+        "browser_action_admitted",
+        "browser_observation_admitted",
+        "skill_admission_recorded",
+        "cancellation_admitted",
+    }
+)
+
+
+def _default_external_attempt_budget(max_steps: int) -> int:
+    """Return a finite envelope for Lab-owned admission attempts.
+
+    The envelope covers the bounded controller/action/retry nesting known to
+    this compatibility facade.  It is deliberately conservative and counts
+    *admissions*, not opaque provider SDK requests, browser subrequests, or
+    descendant-process effects.  Those remain separately unverified.
+    """
+
+    if type(max_steps) is not int or max_steps < 1:
+        raise ValueError("external attempt budget max_steps must be a positive integer")
+    return 8 * (max_steps + 1) ** 3
+
+
 def _strict_string_sequence(value: Any, *, label: str) -> tuple[str, ...]:
     """Copy a bounded string sequence without normalizing malformed values."""
 
@@ -3263,6 +3290,7 @@ class LabRun:
         task: str,
         *,
         max_steps: int = 100,
+        external_attempt_budget: int | None = None,
         scope: tuple[str, ...] = (),
         non_goals: tuple[str, ...] = (),
         require_native_authority: bool = False,
@@ -3342,6 +3370,16 @@ class LabRun:
         )[:32]
         self.objective = task
         self.max_steps = max_steps
+        if external_attempt_budget is not None and (
+            type(external_attempt_budget) is not int or external_attempt_budget < 1
+        ):
+            raise ValueError("lab external attempt budget must be a positive integer or unset")
+        self.external_attempt_budget = (
+            external_attempt_budget
+            if external_attempt_budget is not None
+            else _default_external_attempt_budget(max_steps)
+        )
+        self.external_attempt_count = 0
         self.state = "planned"
         self.state_epoch = 0
         self.sources: dict[str, SourceRecord] = {}
@@ -3436,6 +3474,7 @@ class LabRun:
             },
             "required_evidence": True,
             "max_steps": self.max_steps,
+            "max_external_attempts": self.external_attempt_budget,
             "schema": "aegis-lab-runtime-v1",
         }
         try:
@@ -4801,6 +4840,9 @@ class LabRun:
         projection_apply: Callable[[], None] | None = None,
         event_state_epoch: int | None = None,
     ) -> None:
+        is_external_admission = kind in _EXTERNAL_ADMISSION_EVENT_KINDS
+        if is_external_admission and self.external_attempt_count >= self.external_attempt_budget:
+            raise RuntimeError("lab external attempt budget exhausted")
         # Store the canonical payload alongside its digest.  A digest-only
         # event stream can detect tampering but cannot reconstruct a reducer
         # after restart; keeping the immutable payload makes replay auditable.
@@ -4856,6 +4898,8 @@ class LabRun:
             if projection_apply is not None:
                 projection_apply()
             self.state_epoch = candidate_state_epoch
+            if is_external_admission:
+                self.external_attempt_count += 1
         except BaseException:
             self._restore_projection(snapshot)
             raise
@@ -4895,6 +4939,7 @@ class LabRun:
             list(self.security_events),
             self.replay_archive,
             self.execution_cell_manifest,
+            self.external_attempt_count,
             self._native_finalization_started,
             native_snapshot,
         )
@@ -4916,6 +4961,7 @@ class LabRun:
             security_events,
             self.replay_archive,
             self.execution_cell_manifest,
+            external_attempt_count,
             native_finalization_started,
             native_snapshot,
         ) = snapshot
@@ -4930,6 +4976,7 @@ class LabRun:
         self.tool_executions = tool_executions
         self.blockers = blockers
         self.security_events = security_events
+        self.external_attempt_count = external_attempt_count
         self._native_finalization_started = native_finalization_started
         if native_snapshot is None:
             return
@@ -6259,6 +6306,8 @@ class LabRun:
             "trust_level": self.trust_level,
             "trust_policy_hash": self.trust_policy_hash,
             "max_steps": self.max_steps,
+            "max_external_attempts": self.external_attempt_budget,
+            "external_attempt_count": self.external_attempt_count,
             "token_budget": self.token_budget,
             "finalization_reserve": self.finalization_reserve,
             "recovery_reserve": self.recovery_reserve,
@@ -6354,6 +6403,25 @@ class LabRun:
         restored.max_steps = raw_max_steps
         if restored.max_steps < 1:
             raise ValueError("invalid lab snapshot max_steps")
+        raw_external_attempt_budget = payload.get(
+            "max_external_attempts",
+            _default_external_attempt_budget(restored.max_steps),
+        )
+        if (
+            type(raw_external_attempt_budget) is not int
+            or raw_external_attempt_budget < 1
+        ):
+            raise ValueError("invalid lab snapshot external attempt budget")
+        restored.external_attempt_budget = raw_external_attempt_budget
+        has_external_attempt_count = "external_attempt_count" in payload
+        raw_external_attempt_count = payload.get("external_attempt_count", 0)
+        if (
+            type(raw_external_attempt_count) is not int
+            or raw_external_attempt_count < 0
+            or raw_external_attempt_count > restored.external_attempt_budget
+        ):
+            raise ValueError("invalid lab snapshot external attempt count")
+        restored.external_attempt_count = raw_external_attempt_count
         raw_token_budget = payload.get("token_budget", max(1, restored.max_steps * 1000))
         if type(raw_token_budget) is not int:
             raise ValueError("invalid lab snapshot token budget")
@@ -6653,6 +6721,18 @@ class LabRun:
             )
             for item in raw_events
         ]
+        observed_external_attempt_count = sum(
+            event.kind in _EXTERNAL_ADMISSION_EVENT_KINDS for event in restored.events
+        )
+        if observed_external_attempt_count != restored.external_attempt_count:
+            if has_external_attempt_count:
+                raise ValueError("lab snapshot external attempt count is not bound to the event log")
+            # Pre-budget snapshots did not persist this derived counter.  Read
+            # them by reconstructing it from the authoritative event log; new
+            # snapshots always carry the explicit count and are strict.
+            if observed_external_attempt_count > restored.external_attempt_budget:
+                raise ValueError("legacy lab snapshot exceeds external attempt budget")
+            restored.external_attempt_count = observed_external_attempt_count
         restored._native_finalization_started = any(
             event.kind == "finalization_started" for event in restored.events
         )
@@ -7272,6 +7352,7 @@ class LabBudget:
     """Disjoint exploration/finalization/recovery budget for one mission."""
 
     max_steps: int = 100
+    max_external_attempts: int | None = None
     token_budget: int = 100_000
     finalization_reserve: int | None = None
     recovery_reserve: int | None = None
@@ -7281,6 +7362,11 @@ class LabBudget:
             raise ValueError("lab budget bounds must be integers")
         if self.max_steps < 1 or self.token_budget < 1:
             raise ValueError("lab budget bounds must be positive")
+        if self.max_external_attempts is not None and (
+            type(self.max_external_attempts) is not int
+            or self.max_external_attempts < 1
+        ):
+            raise ValueError("lab external attempt budget must be positive or unset")
         if self.finalization_reserve is not None and type(self.finalization_reserve) is not int:
             raise ValueError("lab finalization reserve must be an integer or unset")
         if self.recovery_reserve is not None and type(self.recovery_reserve) is not int:
@@ -7302,11 +7388,14 @@ class LabBudget:
             finalization = min(max(1, self.token_budget // 5), max(0, self.token_budget - 1))
         if recovery is None:
             recovery = min(max(0, self.token_budget // 10), max(0, self.token_budget - finalization - 1))
-        return {
+        options = {
             "lab_token_budget": self.token_budget,
             "lab_finalization_reserve": finalization,
             "lab_recovery_reserve": recovery,
         }
+        if self.max_external_attempts is not None:
+            options["lab_max_external_attempts"] = self.max_external_attempts
+        return options
 
 
 @dataclass(frozen=True)
@@ -8473,6 +8562,8 @@ class LabApplication:
             or candidate_index < 1
             or type(candidate_count) is not int
             or candidate_count < candidate_index
+            or candidate_count > run.max_steps + 1
+            or candidate_index > run.max_steps + 1
             or type(gateway_attempt) is not int
             or gateway_attempt < 1
             or (
@@ -10460,6 +10551,12 @@ class LabApplication:
         if type(raw_token_budget) is not int:
             raise ValueError("lab token budget must be an integer")
         token_budget = raw_token_budget
+        raw_external_attempt_budget = options.get(
+            "lab_max_external_attempts",
+            _default_external_attempt_budget(self.config.max_steps),
+        )
+        if type(raw_external_attempt_budget) is not int or raw_external_attempt_budget < 1:
+            raise ValueError("lab external attempt budget must be a positive integer")
         default_finalization = min(max(1, token_budget // 5), max(0, token_budget - 1))
         default_recovery = min(
             max(0, token_budget // 10),
@@ -10482,6 +10579,7 @@ class LabApplication:
         run = LabRun(
             self.config.task,
             max_steps=self.config.max_steps,
+            external_attempt_budget=raw_external_attempt_budget,
             scope=scope,
             non_goals=non_goals,
             require_native_authority=authority_mode is AuthorityMode.NATIVE_REQUIRED,

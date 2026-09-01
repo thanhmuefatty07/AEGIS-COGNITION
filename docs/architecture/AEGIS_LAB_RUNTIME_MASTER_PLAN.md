@@ -3364,6 +3364,27 @@ migration fixtures, cross-version archive replay, crash injection across
 supported platforms and hosted restore remain NOT VERIFIED, so P1 migration/M7
 does not pass.
 
+**M4 global observed-attempt continuation (2026-09-02):** Lab-owned execution
+admissions now carry one mission-bound finite `max_external_attempts` envelope.
+The default conservative envelope is `8 * (max_steps + 1)^3`; an operator may
+set a stricter positive integer through `LabBudget.max_external_attempts`.
+`LabRun` persists both the bound and its exact admission count, binds the count
+to the event log during snapshot restore, and rejects the next admission before
+projection mutation when the envelope is exhausted. The Rust mission contract
+serializes the same bound, retains it in the mission hash, rejects zero bounds,
+enforces the counter in its atomic projection-record clone, and rejects an
+over-budget restored controller. Provider route metadata is additionally
+bounded to at most primary plus `max_steps` fallback candidates. Python
+regression is **327 Lab tests / 348 repository tests**, and the new Rust
+native budget regression passes alongside the existing workspace suite.
+This closes the previously missing finite bound for **observed Lab-owned
+admissions** locally; it does not prove the number of physical network/browser
+requests, opaque SDK or user-runner retries, provider idempotency, external
+effect reversal, descendant containment, or hosted multi-process writer
+authority. M4 therefore remains `OPEN_LOCAL`, while the remaining gap is now
+explicitly narrowed to unobservable/external attempts rather than an absent
+runtime admission budget.
+
 Không được gọi toàn hệ thống “production-ready” khi bất kỳ gate bắt buộc nào
 ở trên còn `OPEN_*`, `BLOCKED_*`, `UNKNOWN` hoặc chỉ có fixture/mock evidence.
 
