@@ -2697,6 +2697,17 @@ experiment authority fence only; scientific solver validation, hidden adapter
 effects, process interruption and hosted writer evidence remain open under
 `LAB-PHYS-004`/`LAB-AUTH-001`.
 
+**M5 research-program receipt continuation (2026-09-02):** research-program
+ admission and settlement now require exact digest/count/provider/status and
+ optional admission/hash metadata before `_is_digest`, lookup or normalization;
+ boolean operation/candidate counts and empty supplied digests fail closed
+ instead of being treated as valid or recomputed. Replay admission binding and
+ candidate-result hashes are unchanged. Negative coverage now totals **277
+ focused Lab tests** and **383 combined Python/cross-language tests**; targeted
+ Ruff and Pyright remain clean. This closes a local research receipt coercion
+ gap only; live-provider semantic/freshness evidence, provider-side effects
+ and hosted authority remain open under `LAB-RESEARCH-003`/`LAB-AUTH-001`.
+
 #### M5 — Research, browser và experiment cells
 
 **Entry:** M2–M4 pass cho local cells; capability registry sealed.
