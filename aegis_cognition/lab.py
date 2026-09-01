@@ -43,11 +43,12 @@ def _hash(value: Any) -> str:
 
 
 def _is_finite_number(value: Any) -> bool:
-    return (
-        type(value) in (int, float)
-        and not isinstance(value, bool)
-        and math.isfinite(float(value))
-    )
+    if type(value) not in (int, float) or isinstance(value, bool):
+        return False
+    try:
+        return math.isfinite(float(value))
+    except (OverflowError, TypeError, ValueError):
+        return False
 
 
 _LAB_TRUST_LEVELS = frozenset({"DEV", "STAGING", "PROD"})
@@ -594,8 +595,11 @@ class SearchProgramExecutor:
                 rendered: list[dict[str, Any]] = []
                 for candidate in candidates:
                     if not candidate.get("content") and candidate.get("uri"):
-                        content, headers = await self._fetch(str(candidate["uri"]), program.allowed_hosts)
-                        rendered.append(self._candidate_from_content(str(candidate["uri"]), content, headers, relation="render"))
+                        raw_uri = candidate["uri"]
+                        if type(raw_uri) is not str:
+                            raise ValueError("render candidate URI must be a string")
+                        content, headers = await self._fetch(raw_uri, program.allowed_hosts)
+                        rendered.append(self._candidate_from_content(raw_uri, content, headers, relation="render"))
                     else:
                         rendered.append(candidate)
                 candidates = rendered
@@ -606,7 +610,9 @@ class SearchProgramExecutor:
                     raise ValueError("extract selector must be a simple HTML tag")
                 extracted: list[dict[str, Any]] = []
                 for candidate in candidates:
-                    content = str(candidate.get("content", ""))
+                    content = candidate.get("content", "")
+                    if type(content) is not str:
+                        raise ValueError("extract candidate content must be a string")
                     parser = _VisibleTextParser(selector)
                     parser.feed(content)
                     parser.close()
@@ -626,13 +632,21 @@ class SearchProgramExecutor:
             elif operation.kind == "dedupe":
                 unique: dict[tuple[str, str], dict[str, Any]] = {}
                 for candidate in candidates:
-                    key = (str(candidate.get("uri", "")), str(candidate.get("content_hash", "")))
+                    uri = candidate.get("uri", "")
+                    content_hash = candidate.get("content_hash", "")
+                    if type(uri) is not str or type(content_hash) is not str:
+                        raise ValueError("dedupe candidate identity metadata is invalid")
+                    key = (uri, content_hash)
                     unique.setdefault(key, candidate)
                 candidates = list(unique.values())
                 trace_item["candidate_count"] = len(candidates)
             elif operation.kind == "rank":
+                for candidate in candidates:
+                    score = candidate.get("score", 0.0)
+                    if not _is_finite_number(score):
+                        raise ValueError("rank candidate score must be finite and numeric")
                 candidates.sort(
-                    key=lambda item: (-float(item.get("score", 0.0)), str(item.get("uri", ""))),
+                    key=lambda item: (-item.get("score", 0.0), item.get("uri", "")),
                 )
                 trace_item["candidate_count"] = len(candidates)
             trace.append(trace_item)
@@ -670,7 +684,9 @@ class SearchProgramExecutor:
         def read_response() -> tuple[str, dict[str, str]]:
             with urlopen(request, timeout=self.timeout_seconds) as response:
                 final_url_getter = getattr(response, "geturl", None)
-                final_url = str(final_url_getter()) if callable(final_url_getter) else url
+                final_url = final_url_getter() if callable(final_url_getter) else url
+                if type(final_url) is not str:
+                    raise ValueError("research redirect returned an invalid URL")
                 final_parsed = urlparse(final_url)
                 final_host = (final_parsed.hostname or "").lower()
                 if (
@@ -695,38 +711,97 @@ class SearchProgramExecutor:
 
     @staticmethod
     def _normalize_candidates(raw: Any, *, relation: str) -> list[dict[str, Any]]:
-        if isinstance(raw, dict):
+        if type(raw) is dict:
             raw_mapping = cast(dict[str, Any], raw)
-            raw = raw_mapping.get("results", raw_mapping.get("candidates", ()))
+            if "results" not in raw_mapping and "candidates" not in raw_mapping:
+                raise TypeError("query provider result must contain results or candidates")
+            if (
+                "results" in raw_mapping
+                and "candidates" in raw_mapping
+                and raw_mapping["results"] != raw_mapping["candidates"]
+            ):
+                raise ValueError("query provider result aliases disagree")
+            raw = raw_mapping.get("results", raw_mapping.get("candidates"))
         if raw is None:
             return []
-        if isinstance(raw, (str, bytes, dict)):
+        if type(raw) is str:
             raw = [raw]
-        if not isinstance(raw, (list, tuple)):
+        if type(raw) not in (list, tuple):
             raise TypeError("query provider must return a sequence")
         result: list[dict[str, Any]] = []
         typed_raw = cast(list[Any] | tuple[Any, ...], raw)
         for item in typed_raw:
-            if isinstance(item, str):
+            if type(item) is str:
                 item = {"uri": item, "content": ""}
-            if not isinstance(item, dict):
-                continue
+            if type(item) is not dict:
+                raise TypeError("query provider candidates must be mappings or URLs")
             mapping = cast(dict[str, Any], item)
-            uri = str(mapping.get("uri", mapping.get("url", "")))
-            content = str(mapping.get("content", mapping.get("body", mapping.get("snippet", ""))))
-            if not uri:
-                continue
-            result.append({
+            raw_uri = mapping.get("uri", mapping.get("url"))
+            if type(raw_uri) is not str or not raw_uri.strip():
+                raise ValueError("query provider candidate URI must be a non-empty string")
+            if "uri" in mapping and "url" in mapping and mapping["uri"] != mapping["url"]:
+                raise ValueError("query provider candidate URI aliases disagree")
+            content_values = [mapping[name] for name in ("content", "body", "snippet") if name in mapping]
+            if any(type(value) is not str for value in content_values):
+                raise ValueError("query provider candidate content must be a string")
+            if content_values and any(value != content_values[0] for value in content_values[1:]):
+                raise ValueError("query provider candidate content aliases disagree")
+            raw_content = content_values[0] if content_values else ""
+            uri = raw_uri
+            content = raw_content
+            content_hash = mapping.get("content_hash", _hash(content))
+            snapshot_hash = mapping.get(
+                "snapshot_hash", _hash({"uri": uri, "content": content})
+            )
+            retrieved_at_ms = mapping.get("retrieved_at_ms", int(time.time() * 1000))
+            trust_tier = mapping.get("trust_tier", 1)
+            extractor = mapping.get("extractor", "search-program-provider")
+            source_id = mapping.get("source_id", mapping.get("id"))
+            if "source_id" in mapping and "id" in mapping and mapping["source_id"] != mapping["id"]:
+                raise ValueError("query provider candidate source aliases disagree")
+            provenance_cluster = mapping.get("provenance_cluster", "")
+            citation_spans = mapping.get("citation_spans", ())
+            score = mapping.get("score")
+            if (
+                type(content_hash) is not str
+                or content_hash != _hash(content)
+                or type(snapshot_hash) is not str
+                or not snapshot_hash.strip()
+                or not _is_digest(snapshot_hash)
+                or type(retrieved_at_ms) is not int
+                or retrieved_at_ms <= 0
+                or type(trust_tier) is not int
+                or trust_tier < 1
+                or type(extractor) is not str
+                or not extractor.strip()
+                or type(provenance_cluster) is not str
+                or type(citation_spans) not in (list, tuple)
+                or any(not _valid_citation_span(span) for span in citation_spans)
+                or (source_id is not None and (type(source_id) is not str or not source_id.strip()))
+                or (
+                    score is not None
+                    and not _is_finite_number(score)
+                )
+            ):
+                raise ValueError("query provider candidate metadata is invalid")
+            normalized = {
                 **mapping,
                 "uri": uri,
                 "content": content,
                 "relation": relation,
-                "content_hash": str(mapping.get("content_hash", _hash(content))),
-                "snapshot_hash": str(mapping.get("snapshot_hash", _hash({"uri": uri, "content": content}))),
-                "retrieved_at_ms": int(mapping.get("retrieved_at_ms", time.time() * 1000)),
-                "trust_tier": int(mapping.get("trust_tier", 1)),
-                "extractor": str(mapping.get("extractor", "search-program-provider")),
-            })
+                "content_hash": content_hash,
+                "snapshot_hash": snapshot_hash,
+                "retrieved_at_ms": retrieved_at_ms,
+                "trust_tier": trust_tier,
+                "extractor": extractor,
+                "provenance_cluster": provenance_cluster,
+                "citation_spans": citation_spans,
+            }
+            if source_id is not None:
+                normalized["source_id"] = source_id
+            if score is not None:
+                normalized["score"] = score
+            result.append(normalized)
         return result
 
     @staticmethod
@@ -753,7 +828,10 @@ class SearchProgramExecutor:
     @staticmethod
     def _admit_candidates(candidates: list[dict[str, Any]], program: SearchProgram) -> None:
         for candidate in candidates:
-            parsed = urlparse(str(candidate.get("uri", "")))
+            uri = candidate.get("uri", "")
+            if type(uri) is not str:
+                raise ValueError("provider candidate URI must be a string")
+            parsed = urlparse(uri)
             if parsed.scheme != "https" or not parsed.hostname:
                 raise ValueError("provider candidate must use an HTTPS URI")
             if parsed.username or parsed.password:
@@ -770,10 +848,9 @@ class SearchProgramExecutor:
         now_ms = int(time.time() * 1000)
         max_age_ms = program.freshness_max_age_seconds * 1000
         for candidate in candidates:
-            try:
-                retrieved_at_ms = int(candidate.get("retrieved_at_ms", 0))
-            except (TypeError, ValueError) as exc:
-                raise ValueError("provider candidate retrieval time is invalid") from exc
+            retrieved_at_ms = candidate.get("retrieved_at_ms", 0)
+            if type(retrieved_at_ms) is not int or retrieved_at_ms <= 0:
+                raise ValueError("provider candidate retrieval time is invalid")
             age_ms = now_ms - retrieved_at_ms
             if age_ms < 0 or age_ms > max_age_ms:
                 raise ValueError("provider candidate is outside the freshness window")
@@ -785,11 +862,15 @@ class SearchProgramExecutor:
         required = program.min_independent_contradiction_clusters
         if required == 0:
             return
-        clusters = {
-            str(candidate.get("provenance_cluster", "")).strip()
-            for candidate in candidates
-            if str(candidate.get("provenance_cluster", "")).strip()
-        }
+        clusters: set[str] = set()
+        for candidate in candidates:
+            cluster = candidate.get("provenance_cluster", "")
+            if type(cluster) is not str:
+                raise ValueError("provider candidate provenance cluster is invalid")
+            if cluster != cluster.strip():
+                raise ValueError("provider candidate provenance cluster is not canonical")
+            if cluster.strip():
+                clusters.add(cluster.strip())
         if len(clusters) < required:
             raise ValueError("contradiction search lacks independent provenance clusters")
 
@@ -1499,7 +1580,7 @@ def _valid_citation_span(span: Any) -> bool:
     text_hash = span_mapping.get("text_hash", "")
     if type(start) is not int or type(end) is not int or type(text_hash) is not str:
         return False
-    return start >= 0 and end >= start and len(text_hash) == 64
+    return start >= 0 and end >= start and _is_digest(text_hash)
 
 
 def _atomic_write_json(path: Path, payload: Any) -> None:
