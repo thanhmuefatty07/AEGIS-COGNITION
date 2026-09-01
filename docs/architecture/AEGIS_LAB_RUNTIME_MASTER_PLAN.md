@@ -2579,6 +2579,21 @@ observable coercion paths only; hidden adapter effects, process descendants,
 provider/SDK retry behavior and hosted single-writer authority remain
 `OPEN_LOCAL`/`NOT VERIFIED` under `LAB-AUTH-001`.
 
+**P5 benchmark-contract continuation (2026-09-02):** `BenchmarkProtocolV2`,
+`EnvironmentFingerprint` and `BenchmarkTrialRecord` now require exact field
+types, finite numeric values, uppercase trial statuses, integer seed/identity
+metadata and explicit contamination/environment contracts. The evaluator and
+isolated validator boundary reject malformed options, argv containers,
+timeouts, output limits and validator verdicts without coercing strings or
+booleans into accepted measurements; `LabApplication` preserves raw benchmark
+trials, environment and validator metadata until this validation runs. Numeric
+strings remain retained `ERROR` trials rather than becoming successful values.
+Negative coverage now totals **230 focused Lab tests** and **336 combined
+Python/cross-language tests**; targeted Ruff and Pyright are clean. This is
+local benchmark-contract evidence only: hidden scorer secrecy, contamination
+resistance, provider-independent reproduction and hosted evidence remain
+`OPEN_EXTERNAL` under `LAB-BENCH-005` and `LAB-RELEASE-006`.
+
 #### M5 — Research, browser và experiment cells
 
 **Entry:** M2–M4 pass cho local cells; capability registry sealed.
