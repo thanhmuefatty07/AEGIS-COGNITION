@@ -2882,9 +2882,11 @@ entrypoint now rejects non-string directories, boolean/floating/numeric-string
 segment sizes and non-boolean native verifier results instead of allowing
 `str(...)`, `int(...)` or `bool(...)` to rewrite the archive contract. The
 post-completion persistence policy and trust-level override/configuration also
-fail closed on non-boolean/non-string values; malformed policy is recorded as a
-blocker before any compatibility effect is invoked. Native event/transition,
-archive, and skill validators now reject non-boolean results as well. Focused
+fail closed on non-boolean/non-string values; the compatibility replay-archive
+flag is validated before default directory injection, and malformed policy is
+recorded as a blocker before any compatibility effect is invoked. Native
+event/transition, archive, and skill validators now reject non-boolean results
+as well. Focused
 coverage is **318 Lab tests** and the combined Python/cross-language gate is
 **424 tests**;
 targeted Ruff and Pyright remain clean. This is local boundary evidence only;
