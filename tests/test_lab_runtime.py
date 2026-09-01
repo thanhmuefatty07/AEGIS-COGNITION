@@ -1448,6 +1448,8 @@ def test_agent_entrypoints_reject_lossy_lab_and_browser_flags(
         Agent("strict agent flags", lab="false")  # type: ignore[arg-type]
     with pytest.raises(ValueError, match="browser flag must be boolean"):
         Agent("strict agent flags", browser=1)  # type: ignore[arg-type]
+    with pytest.raises(ValueError, match="replay archive flag must be boolean"):
+        Agent("strict agent flags", lab=True, lab_replay_archive="false")  # type: ignore[arg-type]
     with pytest.raises(ValueError, match="lab flag must be boolean"):
         AgentConfig.from_inputs("strict config flags", lab="false")
     with pytest.raises(ValueError, match="browser flag must be boolean"):

@@ -39,6 +39,9 @@ class Agent:
             raise ValueError("Agent browser flag must be boolean")
         if type(max_steps) is not int:
             raise ValueError("Agent max_steps must be an integer")
+        replay_requested = kwargs.get("lab_replay_archive")
+        if replay_requested is not None and type(replay_requested) is not bool:
+            raise ValueError("Agent replay archive flag must be boolean")
         # Lab compatibility runs retain a durable replay snapshot by default,
         # matching the public ``Lab`` facade.  Operators can opt out with
         # ``lab_replay_archive=False`` or supply an explicit directory; the
@@ -46,7 +49,6 @@ class Agent:
         # model's execution capabilities.  A source checkout without the
         # compiled authority keeps the legacy no-archive development path;
         # explicitly requesting the archive still fails closed there.
-        replay_requested = kwargs.get("lab_replay_archive")
         if lab and replay_requested is not False and (
             replay_requested is True or native_runtime_available()
         ):
