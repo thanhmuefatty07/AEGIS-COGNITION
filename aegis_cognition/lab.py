@@ -6885,6 +6885,8 @@ class LabApplication:
             elif isinstance(raw_registry, Mapping):
                 typed_registry = cast(Mapping[str, Any], raw_registry)
                 for key, raw_binding in typed_registry.items():
+                    if type(key) is not str or not key.strip():
+                        raise TypeError("lab execution cell registry keys must be non-empty strings")
                     if isinstance(raw_binding, ExecutionCellBinding):
                         bindings.append(raw_binding)
                         continue
@@ -6909,23 +6911,17 @@ class LabApplication:
                     )
                     if not isinstance(raw_capabilities, (list, tuple)) or not isinstance(raw_effects, (list, tuple)) or not isinstance(raw_trust_levels, (list, tuple)):
                         raise TypeError("lab execution cell policy fields must be sequences")
+                    typed_capabilities = cast(list[Any] | tuple[Any, ...], raw_capabilities)
+                    typed_effects = cast(list[Any] | tuple[Any, ...], raw_effects)
+                    typed_trust_levels = cast(list[Any] | tuple[Any, ...], raw_trust_levels)
                     bindings.append(
                         ExecutionCellBinding(
-                            cell_id=str(binding_map.get("cell_id", key)),
-                            action_kinds=tuple(str(item) for item in typed_kinds),
+                            cell_id=cast(str, binding_map.get("cell_id", key)),
+                            action_kinds=cast(tuple[str, ...], tuple(typed_kinds)),
                             runner=binding_map.get("runner"),
-                            capabilities=tuple(
-                                str(item)
-                                for item in cast(list[Any] | tuple[Any, ...], raw_capabilities)
-                            ),
-                            effect_classes=tuple(
-                                str(item)
-                                for item in cast(list[Any] | tuple[Any, ...], raw_effects)
-                            ),
-                            trust_levels=tuple(
-                                str(item)
-                                for item in cast(list[Any] | tuple[Any, ...], raw_trust_levels)
-                            ),
+                            capabilities=cast(tuple[str, ...], tuple(typed_capabilities)),
+                            effect_classes=cast(tuple[str, ...], tuple(typed_effects)),
+                            trust_levels=cast(tuple[str, ...], tuple(typed_trust_levels)),
                         )
                     )
             elif isinstance(raw_registry, (list, tuple)):
@@ -6960,8 +6956,8 @@ class LabApplication:
         try:
             return self.execution_cells.resolve(
                 action_kind,
-                cell_id=str(cell_id) if cell_id is not None else None,
-                trust_level=str(self.config.trust_level),
+                cell_id=cell_id,
+                trust_level=self.config.trust_level,
                 capability=capability,
                 effect_class=effect_class,
                 trust_policy_hash=run.trust_policy_hash,
