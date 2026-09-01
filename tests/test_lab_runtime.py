@@ -43,6 +43,7 @@ from aegis_cognition.lab import (
     SimulationSpec,
     SourceRecord,
     UnitRegistry,
+    _bounded_retry_attempts,
     _authority_mode_from_options,
     calibrate_simulation,
 )
@@ -2888,6 +2889,17 @@ def test_adaptive_controller_plateau_detection_hashes_content_not_only_counts() 
     assert controller.observe(run)
     run.sources["s1"] = SourceRecord("s1", "https://example.test", "content-b", "snapshot-b", 1)
     assert controller.observe(run)
+
+
+@pytest.mark.parametrize("invalid", (True, False, 1.0, "2", 0, -1, None))
+def test_retry_policy_rejects_lossy_or_non_positive_values(invalid: object) -> None:
+    with pytest.raises(ValueError, match="retry policy"):
+        _bounded_retry_attempts(invalid, max_steps=3, label="fixture")
+
+
+def test_retry_policy_is_finite_and_caps_to_mission_steps() -> None:
+    assert _bounded_retry_attempts(2, max_steps=3, label="fixture") == 2
+    assert _bounded_retry_attempts(99, max_steps=3, label="fixture") == 3
 
 
 def test_lab_dossier_blocks_without_valid_observation_and_completes_with_one() -> None:
