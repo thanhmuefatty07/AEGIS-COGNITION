@@ -2699,7 +2699,7 @@ class SkillRegistry:
         result = await _call_fenced(executor, input_payload)
         validator = self._validators[(manifest.skill_id, manifest.version)]
         accepted = await _call_fenced(validator, result)
-        if not bool(accepted):
+        if type(accepted) is not bool or not accepted:
             raise SkillAdmissionError("skill validator rejected result")
         input_hash = _hash(input_payload)
         result_hash = _hash(result)
@@ -5036,7 +5036,9 @@ class LabRun:
                 raise RuntimeError("native Lab authority verifier is unavailable")
             return
         try:
-            accepted = bool(verifier(self._native_event_wire(events)))
+            accepted = verifier(self._native_event_wire(events))
+            if type(accepted) is not bool:
+                raise TypeError("native Lab authority verifier must return a boolean")
         except Exception as exc:
             raise RuntimeError("native Lab authority verification failed") from exc
         if not accepted:
@@ -5057,7 +5059,9 @@ class LabRun:
                 raise RuntimeError("native Lab transition validator is unavailable")
             return
         try:
-            accepted = bool(validator(current, next_state))
+            accepted = validator(current, next_state)
+            if type(accepted) is not bool:
+                raise TypeError("native Lab transition validator must return a boolean")
         except Exception as exc:
             raise RuntimeError("native Lab transition validation failed") from exc
         if not accepted:
@@ -6929,7 +6933,7 @@ class LabRun:
             verified = verifier(str(path.parent), int(run.mission_id, 16))
         else:
             verified = True
-        if not bool(verified):
+        if type(verified) is not bool or not verified:
             raise ValueError("native lab replay archive recovery failed")
         return run
 
@@ -7108,7 +7112,10 @@ class LabRun:
                 }
                 for event in self.events
             ]
-            return "rust_native_verified" if bool(verifier(json.dumps(events))) else "rust_native_rejected"
+            accepted = verifier(json.dumps(events))
+            if type(accepted) is not bool:
+                return "python_projection_only"
+            return "rust_native_verified" if accepted else "rust_native_rejected"
         except Exception:
             return "python_projection_only"
 
