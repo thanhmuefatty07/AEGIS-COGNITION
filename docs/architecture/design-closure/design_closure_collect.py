@@ -379,7 +379,7 @@ def ffi_surface():
     ffi_text=ffi_path.read_text(encoding="utf-8",errors="replace") if ffi_path.is_file() else ""
     box_leak_present="Box::leak" in ffi_text
     pyfn_count=len(re.findall(r"#\[pyfunction(?:\([^]]*\))?\]",ffi_text)); wrap_count=len(re.findall(r"wrap_pyfunction!",ffi_text)); pymethod_count=len(re.findall(r"#\[pymethods\]",ffi_text))
-    j["registration_summary"]={"pyfunction_attributes":pyfn_count,"wrap_pyfunction_calls":wrap_count,"pymethods_blocks":pymethod_count,"registered_module_functions":wrap_count,"pub_fn_declarations":len(re.findall(r"^\s*pub\s+fn\s+",ffi_text,re.M)),"source":"core/rust/src/ffi.rs","interpretation":"59 registered module functions plus one pymethods class block; pub fn count includes helpers and is not API count"}
+    j["registration_summary"]={"pyfunction_attributes":pyfn_count,"wrap_pyfunction_calls":wrap_count,"pymethods_blocks":pymethod_count,"registered_module_functions":wrap_count,"pub_fn_declarations":len(re.findall(r"^\s*pub\s+fn\s+",ffi_text,re.M)),"source":"core/rust/src/ffi.rs","interpretation":f"{wrap_count} registered module functions plus {pymethod_count} pymethods class block(s); pub fn count includes helpers and is not API count"}
     for x in j.get("records",[]):
         c=x.get("reachability_class","UNKNOWN")
         x["classification"]={"REACHABLE_FROM_PUBLIC_API":"EXPORTED_AND_PUBLICLY_REACHABLE","REACHABLE_FROM_LAB":"EXPORTED_LAB_REACHABLE","REACHABLE_FROM_COMPATIBILITY":"EXPORTED_COMPATIBILITY_ONLY","REACHABLE_FROM_TEST":"EXPORTED_TEST_ONLY","REACHABLE_FROM_POC":"EXPORTED_POC_ONLY","UNUSED_SUSPECT":"EXPORTED_UNUSED_SUSPECT","UNKNOWN":"UNKNOWN"}.get(c,"UNKNOWN")
