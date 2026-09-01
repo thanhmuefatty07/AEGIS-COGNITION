@@ -1861,9 +1861,19 @@ class BrowserCellPolicy:
     max_observations: int = 1_000
 
     def validate(self) -> None:
-        if self.max_actions < 1 or self.max_observations < 1 or any(
-            not host.strip() or host.strip() != host.strip().lower()
-            for host in self.allowed_hosts
+        if (
+            type(self.allowed_hosts) not in (list, tuple)
+            or type(self.require_https) is not bool
+            or type(self.max_actions) is not int
+            or type(self.max_observations) is not int
+            or self.max_actions < 1
+            or self.max_observations < 1
+            or any(
+                type(host) is not str
+                or not host.strip()
+                or host.strip() != host.strip().lower()
+                for host in self.allowed_hosts
+            )
         ):
             raise ValueError("browser policy requires positive quotas and valid hosts")
 
@@ -2701,11 +2711,13 @@ class LabRun:
         finalization_reserve: int | None = None,
         recovery_reserve: int | None = None,
     ) -> None:
-        if not task.strip():
+        if type(task) is not str or not task.strip():
             raise ValueError("lab task must be non-empty")
-        if max_steps < 1:
+        if type(max_steps) is not int or max_steps < 1:
             raise ValueError("lab max_steps must be positive")
-        if any(not item.strip() for item in (*scope, *non_goals)):
+        if type(scope) not in (list, tuple) or type(non_goals) not in (list, tuple):
+            raise ValueError("lab scope and non-goals must be sequences")
+        if any(type(item) is not str or not item.strip() for item in (*scope, *non_goals)):
             raise ValueError("lab scope and non-goals must be non-empty strings")
         self.scope = tuple(scope)
         self.non_goals = tuple(non_goals)
@@ -2728,15 +2740,21 @@ class LabRun:
         # ``None`` preserves legacy direct LabRun/native snapshots.  The public
         # Lab facade supplies the hash, making policy binding explicit there.
         self.trust_policy_hash = trust_policy_hash
-        self.token_budget = int(token_budget if token_budget is not None else max_steps * 1000)
+        if token_budget is not None and type(token_budget) is not int:
+            raise ValueError("lab token budget must be an integer")
+        self.token_budget = token_budget if token_budget is not None else max_steps * 1000
         if self.token_budget < 1:
             raise ValueError("lab token budget must be positive")
-        self.finalization_reserve = int(
+        if finalization_reserve is not None and type(finalization_reserve) is not int:
+            raise ValueError("lab finalization reserve must be an integer")
+        self.finalization_reserve = (
             finalization_reserve
             if finalization_reserve is not None
             else min(max(1, self.token_budget // 5), max(0, self.token_budget - 1))
         )
-        self.recovery_reserve = int(
+        if recovery_reserve is not None and type(recovery_reserve) is not int:
+            raise ValueError("lab recovery reserve must be an integer")
+        self.recovery_reserve = (
             recovery_reserve
             if recovery_reserve is not None
             else min(
@@ -6057,9 +6075,11 @@ class LabMissionSpec:
     non_goals: tuple[str, ...] = ()
 
     def validate(self) -> None:
-        if not self.objective.strip():
+        if type(self.objective) is not str or not self.objective.strip():
             raise ValueError("lab mission objective must be non-empty")
-        if any(not item.strip() for item in (*self.scope, *self.non_goals)):
+        if type(self.scope) not in (list, tuple) or type(self.non_goals) not in (list, tuple):
+            raise ValueError("lab mission scope and non-goals must be sequences")
+        if any(type(item) is not str or not item.strip() for item in (*self.scope, *self.non_goals)):
             raise ValueError("lab mission scope and non-goals must be non-empty strings")
 
 
