@@ -148,6 +148,53 @@ def test_lab_exploration_budget_event_replays_with_finalization_boundary() -> No
     assert restored.events[-1].payload == run.events[-1].payload
 
 
+@pytest.mark.parametrize(
+    ("field", "value"),
+    (
+        ("objective", 1),
+        ("mission_id", 1),
+        ("state", 1),
+        ("scope", [1]),
+        ("max_steps", "3"),
+        ("token_budget", 100.0),
+        ("finalization_reserve", "10"),
+        ("recovery_reserve", False),
+        ("state_epoch", True),
+        ("trust_level", True),
+        ("tool_executions", [1]),
+    ),
+)
+def test_lab_snapshot_rejects_lossy_top_level_metadata(field: str, value: object) -> None:
+    payload = _ready_run().to_payload()
+    payload[field] = value
+    with pytest.raises(ValueError):
+        LabRun.from_payload(payload)
+
+
+@pytest.mark.parametrize(
+    ("collection", "field", "value"),
+    (
+        ("sources", "uri", 1),
+        ("sources", "retrieved_at_ms", "1"),
+        ("sources", "trust_tier", 1.0),
+        ("claims", "statement", 1),
+        ("claims", "source_ids", "s1"),
+        ("claims", "confidence_bps", "5000"),
+        ("hypotheses", "falsifiers", "negative result"),
+        ("hypotheses", "prior_bps", "5000"),
+    ),
+)
+def test_lab_snapshot_rejects_lossy_record_metadata(
+    collection: str, field: str, value: object
+) -> None:
+    payload = _ready_run().to_payload()
+    records = payload[collection]
+    assert isinstance(records, list)
+    records[0][field] = value
+    with pytest.raises(ValueError):
+        LabRun.from_payload(payload)
+
+
 def test_process_execution_cell_terminates_non_cooperative_runner() -> None:
     import asyncio
 
