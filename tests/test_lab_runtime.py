@@ -3095,6 +3095,113 @@ def test_simulation_and_electrical_contracts_reject_lossy_numeric_metadata() -> 
         ElectricalSignalSpec("signal", 10.0, 0.2, 5.0, max_samples=True).validate()  # type: ignore[arg-type]
 
 
+@pytest.mark.parametrize(
+    ("observation", "match"),
+    (
+        ({"measurement": "3.0"}, "measurement"),
+        ({"measurement": 3.0, "unit": 1}, "unit"),
+        ({"measurement": 3.0, "constraint_residuals": []}, "metadata"),
+        ({"measurement": 3.0, "constraint_residuals": {"undeclared": 0.0}}, "undeclared"),
+    ),
+)
+def test_simulation_cell_rejects_lossy_observation_metadata(
+    observation: dict[str, object], match: str
+) -> None:
+    import asyncio
+
+    spec = SimulationSpec("sim-strict", "e-1", "ab" * 32, (1,))
+
+    async def runner(_spec: SimulationSpec, **_: object) -> list[dict[str, object]]:
+        return [observation]
+
+    with pytest.raises(ValueError, match=match):
+        asyncio.run(SimulationCell().run(spec, runner))
+
+
+def test_simulation_cell_rejects_lossy_convergence_metadata() -> None:
+    import asyncio
+
+    spec = SimulationSpec(
+        "sim-strict-convergence",
+        "e-1",
+        "ab" * 32,
+        (1,),
+        convergence_tolerance=0.1,
+        minimum_convergence_steps=1,
+    )
+
+    async def runner(_spec: SimulationSpec, **_: object) -> list[dict[str, object]]:
+        return [{"measurement": 3.0, "convergence_error": "0.01", "convergence_steps": "2"}]
+
+    with pytest.raises(ValueError, match="convergence evidence"):
+        asyncio.run(SimulationCell().run(spec, runner))
+
+
+@pytest.mark.parametrize(
+    "kwargs",
+    (
+        {"initial_state": ("1.0",)},
+        {"initial_state": (1.0,), "steps": True},
+        {"initial_state": (1.0,), "method": 1},
+    ),
+)
+def test_ode_cell_rejects_lossy_input_metadata(kwargs: dict[str, object]) -> None:
+    base: dict[str, object] = {
+        "initial_state": (1.0,),
+        "step_size": 0.1,
+        "steps": 1,
+        "method": "euler",
+    }
+    base.update(kwargs)
+    with pytest.raises((TypeError, ValueError)):
+        SimulationCell().integrate_ode(lambda _time, _state: (1.0,), **base)  # type: ignore[arg-type]
+
+
+def test_ode_cell_rejects_lossy_derivative_and_invariant_values() -> None:
+    with pytest.raises(ValueError, match="derivative"):
+        SimulationCell().integrate_ode(
+            lambda _time, _state: ("1.0",),  # type: ignore[return-value]
+            initial_state=(1.0,),
+            step_size=0.1,
+            steps=1,
+            method="euler",
+        )
+    with pytest.raises(ValueError, match="invariant"):
+        SimulationCell().integrate_ode(
+            lambda _time, _state: (1.0,),
+            initial_state=(1.0,),
+            step_size=0.1,
+            steps=1,
+            method="euler",
+            invariant=lambda _time, _state: "1.0",  # type: ignore[return-value]
+        )
+
+
+def test_calibration_rejects_lossy_numeric_pairs() -> None:
+    with pytest.raises(ValueError, match="calibration pairs"):
+        calibrate_simulation(
+            [("1.0", 1.0)],  # type: ignore[list-item]
+            [(2.0, 2.0)],
+            tolerance=0.1,
+        )
+
+
+def test_electrical_cell_rejects_lossy_sample_values() -> None:
+    spec = ElectricalSignalSpec("strict-signal", 10.0, 0.2, 5.0)
+    with pytest.raises(ValueError, match="samples"):
+        ElectricalSignalCell().run(
+            spec,
+            voltage_samples=("5.0", 5.0, 5.0),  # type: ignore[arg-type]
+            current_samples=(1.0, 1.0, 1.0),
+        )
+    with pytest.raises(ValueError, match="samples"):
+        ElectricalSignalCell().run(
+            spec,
+            voltage_samples=(5.0, 5.0, 5.0),
+            current_samples=(1.0, True, 1.0),  # type: ignore[arg-type]
+        )
+
+
 def test_electrical_signal_cell_binds_sampling_ohms_and_energy_units() -> None:
     spec = ElectricalSignalSpec(
         signal_id="dc-load",
