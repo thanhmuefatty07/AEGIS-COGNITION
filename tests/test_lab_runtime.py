@@ -380,6 +380,36 @@ def test_lab_snapshot_rejects_admission_projection_drift() -> None:
     with pytest.raises(RuntimeError, match="native projection diverged"):
         run.to_payload()
 
+    settled_run = LabRun("settlement projection binding")
+    execution_id, admission_id = settled_run.admit_tool_execution(
+        tool_name="fixture.tool",
+        input_payload={"query": "bounded"},
+        policy_payload={"effect": "compute"},
+        effect_class="compute",
+        execution_id="tool-settlement-binding",
+    )
+    settled_run.record_tool_execution(
+        tool_name="fixture.tool",
+        execution_id=execution_id,
+        admission_id=admission_id,
+        input_payload={"query": "bounded"},
+        policy_payload={"effect": "compute"},
+        result={"ok": True},
+        effect_class="compute",
+    )
+    tampered_settlement = settled_run.to_payload()
+    tampered_settlement["tool_executions"] = []
+    with pytest.raises(ValueError, match="projection"):
+        LabRun.from_payload(tampered_settlement)
+
+    operator_run = LabRun("operator projection binding")
+    operator_run.record_blocker("operator_blocker")
+    operator_run.record_security_event("operator_security", detail="bounded")
+    tampered_operator = operator_run.to_payload()
+    tampered_operator["blockers"] = []
+    with pytest.raises(ValueError, match="projection"):
+        LabRun.from_payload(tampered_operator)
+
     registry, manifest = _skill_fixture()
     skill_run = LabRun("skill projection binding")
     admission = skill_run.admit_skill(
@@ -2027,6 +2057,11 @@ def test_lab_snapshot_replays_after_restart_and_rejects_payload_tampering() -> N
     tampered["events"][1]["payload"]["state"] = "aborted"
     with pytest.raises(ValueError, match="event chain"):
         LabRun.from_payload(tampered)
+
+    tampered_projection = run.to_payload()
+    tampered_projection["sources"][0]["content_hash"] = "f" * 64
+    with pytest.raises(ValueError, match="projection"):
+        LabRun.from_payload(tampered_projection)
 
     duplicate = run.to_payload()
     duplicate["sources"].append(duplicate["sources"][0])
