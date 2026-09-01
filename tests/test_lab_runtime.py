@@ -7,12 +7,17 @@ import asyncio
 import socket
 import sys
 import time
+from dataclasses import replace
 from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
 
-from aegis_cognition.benchmark import BenchmarkProtocolV2, EnvironmentFingerprint, evaluate_benchmark
+from aegis_cognition.benchmark import (
+    BenchmarkProtocolV2,
+    EnvironmentFingerprint,
+    evaluate_benchmark,
+)
 from aegis_cognition.lab import (
     AdaptiveController,
     AuthorityMode,
@@ -3349,6 +3354,110 @@ def test_benchmark_rejects_contamination_and_accepts_strict_raw_trials() -> None
     missing_environment = evaluate_benchmark(protocol, [0.9] * 30, baseline=0.5)
     assert missing_environment.status == "REJECTED"
     assert "environment_hash_missing" in missing_environment.failure_reasons
+
+
+@pytest.mark.parametrize(
+    ("field", "value"),
+    (
+        ("name", 1),
+        ("metric", True),
+        ("alpha", "0.05"),
+        ("alpha", 10**1000),
+        ("min_trials", 30.0),
+        ("warmups", False),
+        ("paired_blocks", "30"),
+        ("preregistered_seeds", [1, 2, 3, 4, "5"]),
+        ("contamination_checks", ["dedupe", 1]),
+        ("percentile", True),
+    ),
+)
+def test_benchmark_protocol_rejects_lossy_metadata(field: str, value: object) -> None:
+    protocol = BenchmarkProtocolV2(
+        name="strict-contract",
+        metric="accuracy",
+        preregistered_seeds=(1, 2, 3, 4, 5),
+        frozen_split_hash="split-v1",
+        contamination_checks=("dedupe",),
+    )
+    with pytest.raises(ValueError):
+        replace(protocol, **{field: value}).validate()
+
+
+@pytest.mark.parametrize(
+    ("field", "value"),
+    (
+        ("os_name", 1),
+        ("logical_cpus", "8"),
+        ("network_policy", False),
+    ),
+)
+def test_benchmark_environment_rejects_lossy_metadata(field: str, value: object) -> None:
+    environment = EnvironmentFingerprint(
+        os_name="test-os",
+        os_release="1",
+        architecture="x86_64",
+        python_version="3.14",
+        cpu_model="fixture-cpu",
+        logical_cpus=8,
+        container_image="sha256:image",
+        gpu_driver="none",
+        locale_name="UTF-8",
+        network_policy="offline",
+    )
+    with pytest.raises(ValueError):
+        replace(environment, **{field: value}).validate()
+
+
+def test_benchmark_evaluator_rejects_lossy_options_without_crashing() -> None:
+    protocol = BenchmarkProtocolV2(
+        name="strict-evaluator",
+        metric="accuracy",
+        preregistered_seeds=(1, 2, 3, 4, 5),
+        frozen_split_hash="split-v1",
+        contamination_checks=("dedupe",),
+    )
+    result = evaluate_benchmark(
+        protocol,
+        [0.9] * 30,
+        baseline="0.5",  # type: ignore[arg-type]
+        warmups="10",  # type: ignore[arg-type]
+        paired_blocks=False,  # type: ignore[arg-type]
+        environment_hash=1,  # type: ignore[arg-type]
+    )
+    assert result.status == "REJECTED"
+    assert {
+        "baseline_invalid",
+        "warmups_invalid",
+        "paired_blocks_invalid",
+        "environment_hash_invalid",
+        "environment_hash_missing",
+    }.issubset(result.failure_reasons)
+
+
+def test_benchmark_trial_mapping_does_not_coerce_numeric_strings() -> None:
+    protocol = BenchmarkProtocolV2(
+        name="strict-trials",
+        metric="accuracy",
+        preregistered_seeds=(1, 2, 3, 4, 5),
+        frozen_split_hash="split-v1",
+        contamination_checks=("dedupe",),
+    )
+    string_metric = evaluate_benchmark(
+        protocol,
+        [{"item_id": "item-a", "trial_index": 0, "seed": 1, "value": "0.9"}],
+        environment_hash="env-v1",
+    )
+    assert string_metric.status == "REJECTED"
+    assert string_metric.raw_records[0].status == "ERROR"
+    assert string_metric.raw_records[0].error_class == "non_numeric_value"
+
+    string_identity = evaluate_benchmark(
+        protocol,
+        [{"item_id": "item-a", "trial_index": "0", "seed": 1, "value": 0.9}],  # type: ignore[list-item]
+        environment_hash="env-v1",
+    )
+    assert string_identity.status == "REJECTED"
+    assert "raw_trial_records_invalid:ValueError" in string_identity.failure_reasons
 
 
 def test_benchmark_hidden_validator_is_fail_closed() -> None:

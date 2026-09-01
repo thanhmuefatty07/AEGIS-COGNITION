@@ -10200,8 +10200,10 @@ class LabApplication:
                 validator_for_evaluation = _missing_benchmark_validator
             try:
                 protocol = raw_protocol if isinstance(raw_protocol, BenchmarkProtocolV2) else BenchmarkProtocolV2(**raw_protocol)
+                if type(raw_trials) not in (list, tuple):
+                    raise TypeError("benchmark trials must be a list or tuple")
                 if validator_requested:
-                    validator_input_payload["trials"] = list(raw_trials)
+                    validator_input_payload["trials"] = raw_trials
                     validator_execution_id, validator_admission_id = run.admit_tool_execution(
                         tool_name="benchmark.hidden_validator",
                         input_payload=validator_input_payload,
@@ -10218,32 +10220,32 @@ class LabApplication:
                 elif isinstance(raw_environment, dict):
                     environment_data = cast(dict[str, Any], raw_environment)
                     environment = EnvironmentFingerprint(
-                        os_name=str(environment_data.get("os_name", "")),
-                        os_release=str(environment_data.get("os_release", "")),
-                        architecture=str(environment_data.get("architecture", "")),
-                        python_version=str(environment_data.get("python_version", "")),
-                        cpu_model=str(environment_data.get("cpu_model", "")),
-                        logical_cpus=int(environment_data.get("logical_cpus", 0)),
-                        container_image=str(environment_data.get("container_image", "")),
-                        gpu_driver=str(environment_data.get("gpu_driver", "")),
-                        locale_name=str(environment_data.get("locale_name", "")),
-                        network_policy=str(environment_data.get("network_policy", "")),
+                        os_name=environment_data.get("os_name", ""),
+                        os_release=environment_data.get("os_release", ""),
+                        architecture=environment_data.get("architecture", ""),
+                        python_version=environment_data.get("python_version", ""),
+                        cpu_model=environment_data.get("cpu_model", ""),
+                        logical_cpus=environment_data.get("logical_cpus", 0),
+                        container_image=environment_data.get("container_image", ""),
+                        gpu_driver=environment_data.get("gpu_driver", ""),
+                        locale_name=environment_data.get("locale_name", ""),
+                        network_policy=environment_data.get("network_policy", ""),
                     )
                 else:
                     environment = None
                 benchmark_result = evaluate_benchmark(
                     protocol,
-                    list(raw_trials),
+                    raw_trials,
                     baseline=options.get("benchmark_baseline"),
-                    contamination_flags=tuple(options.get("contamination_flags", ())),
+                    contamination_flags=options.get("contamination_flags", ()),
                     paired_blocks=options.get("benchmark_paired_blocks"),
                     warmups=options.get("benchmark_warmups"),
-                    environment_hash=str(options.get("benchmark_environment_hash", "")),
+                    environment_hash=options.get("benchmark_environment_hash", ""),
                     environment=environment,
                     validator=validator_for_evaluation,
                     validator_command=options.get("benchmark_validator_command"),
-                    validator_timeout_seconds=float(options.get("benchmark_validator_timeout_seconds", 5.0)),
-                    validator_max_output_bytes=int(options.get("benchmark_validator_max_output_bytes", 65_536)),
+                    validator_timeout_seconds=options.get("benchmark_validator_timeout_seconds", 5.0),
+                    validator_max_output_bytes=options.get("benchmark_validator_max_output_bytes", 65_536),
                 )
                 benchmark_payload = asdict(benchmark_result)
                 if validator_execution_id is not None and validator_admission_id is not None:
