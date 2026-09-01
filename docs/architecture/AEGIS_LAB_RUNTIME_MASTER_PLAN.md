@@ -2546,6 +2546,16 @@ numeric coercion paths; regression coverage includes process-cell and registry
 metadata. This hardens the local registry boundary but does not prove
 descendant cleanup, OS resource enforcement or hosted single-writer authority.
 
+**M5 research-contract continuation (2026-09-02):** `SearchOperation`,
+`SearchProgram` and `SearchProgramExecutor` now reject non-string operation
+arguments, untyped operations, invalid allowlist entries and lossy quota,
+freshness, timeout or byte-limit metadata instead of normalizing through
+`str()`/numeric coercion. Regression coverage confirms malformed search
+programs fail before provider or fetch execution. This closes a local
+search-as-code input boundary only; live-provider freshness, semantic quality
+and contradiction precision/recall remain `OPEN_EXTERNAL` under
+`LAB-RESEARCH-003`.
+
 #### M5 — Research, browser và experiment cells
 
 **Entry:** M2–M4 pass cho local cells; capability registry sealed.
