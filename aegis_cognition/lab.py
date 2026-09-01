@@ -42,6 +42,14 @@ def _hash(value: Any) -> str:
     return blake2b(payload, digest_size=32).hexdigest()
 
 
+def _is_finite_number(value: Any) -> bool:
+    return (
+        type(value) in (int, float)
+        and not isinstance(value, bool)
+        and math.isfinite(float(value))
+    )
+
+
 _LAB_TRUST_LEVELS = frozenset({"DEV", "STAGING", "PROD"})
 
 
@@ -889,7 +897,13 @@ class PhysicalConstraint:
     unit: str = "1"
 
     def validate(self) -> None:
-        if not self.name.strip() or not math.isfinite(self.tolerance) or self.tolerance < 0:
+        if (
+            type(self.name) is not str
+            or type(self.unit) is not str
+            or not self.name.strip()
+            or not _is_finite_number(self.tolerance)
+            or self.tolerance < 0
+        ):
             raise ValueError("physical constraint requires a finite non-negative tolerance")
         DEFAULT_UNIT_REGISTRY.signature(self.unit)
 
@@ -917,22 +931,37 @@ class SimulationSpec:
 
     def validate(self) -> None:
         if (
-            not self.simulation_id.strip()
+            type(self.simulation_id) is not str
+            or type(self.experiment_id) is not str
+            or type(self.model_hash) is not str
+            or type(self.discrepancy_model) is not str
+            or type(self.calibration_hash) is not str
+            or type(self.calibration_holdout_hash) is not str
+            or type(self.numerical_method) is not str
+            or type(self.floating_point_mode) is not str
+            or not self.simulation_id.strip()
             or not self.experiment_id.strip()
-            or len(self.model_hash) != 64
+            or not _is_digest(self.model_hash)
+            or type(self.seeds) not in (list, tuple)
             or not self.seeds
+            or any(type(seed) is not int for seed in self.seeds)
             or len(set(self.seeds)) != len(self.seeds)
+            or type(self.max_steps) is not int
             or self.max_steps < 1
             or not self.discrepancy_model.strip()
+            or type(self.constraints) not in (list, tuple)
+            or any(type(constraint) is not PhysicalConstraint for constraint in self.constraints)
+            or type(self.calibration_observations) is not int
             or self.calibration_observations < 0
-            or (self.calibration_observations > 0 and len(self.calibration_hash) != 64)
+            or (self.calibration_hash and not _is_digest(self.calibration_hash))
             or not self.numerical_method.strip()
             or not self.floating_point_mode.strip()
+            or type(self.minimum_convergence_steps) is not int
             or self.minimum_convergence_steps < 0
         ):
             raise ValueError("simulation spec identity, model hash, seeds and step bound are required")
         if self.convergence_tolerance is not None and (
-            not math.isfinite(self.convergence_tolerance)
+            not _is_finite_number(self.convergence_tolerance)
             or self.convergence_tolerance < 0
             or self.minimum_convergence_steps < 1
         ):
@@ -941,11 +970,11 @@ class SimulationSpec:
             raise ValueError("simulation convergence steps require a tolerance")
         if self.calibration_observations > 0 and (
             not self.calibration_holdout_hash
-            or len(self.calibration_holdout_hash) != 64
+            or not _is_digest(self.calibration_holdout_hash)
             or self.calibration_rmse is None
             or self.calibration_tolerance is None
-            or not math.isfinite(self.calibration_rmse)
-            or not math.isfinite(self.calibration_tolerance)
+            or not _is_finite_number(self.calibration_rmse)
+            or not _is_finite_number(self.calibration_tolerance)
             or self.calibration_rmse < 0
             or self.calibration_tolerance < 0
             or self.calibration_rmse > self.calibration_tolerance
@@ -1449,17 +1478,20 @@ class ElectricalSignalSpec:
 
     def validate(self) -> None:
         if (
-            not self.signal_id.strip()
-            or not math.isfinite(self.sample_rate_hz)
+            type(self.signal_id) is not str
+            or type(self.sensor_calibration_hash) is not str
+            or not self.signal_id.strip()
+            or not _is_finite_number(self.sample_rate_hz)
             or self.sample_rate_hz <= 0
-            or not math.isfinite(self.duration_s)
+            or not _is_finite_number(self.duration_s)
             or self.duration_s <= 0
-            or not math.isfinite(self.resistance_ohm)
+            or not _is_finite_number(self.resistance_ohm)
             or self.resistance_ohm < 0
-            or not math.isfinite(self.max_expected_frequency_hz)
+            or not _is_finite_number(self.max_expected_frequency_hz)
             or self.max_expected_frequency_hz < 0
-            or not math.isfinite(self.voltage_tolerance_v)
+            or not _is_finite_number(self.voltage_tolerance_v)
             or self.voltage_tolerance_v < 0
+            or type(self.max_samples) is not int
             or self.max_samples < 2
         ):
             raise ValueError("electrical signal contract has invalid bounds")
@@ -1467,18 +1499,18 @@ class ElectricalSignalSpec:
         if self.max_expected_frequency_hz > nyquist_hz:
             raise ValueError("sample rate violates declared Nyquist bound")
         if self.anti_alias_cutoff_hz is not None and (
-            not math.isfinite(self.anti_alias_cutoff_hz)
+            not _is_finite_number(self.anti_alias_cutoff_hz)
             or self.anti_alias_cutoff_hz <= 0
             or self.anti_alias_cutoff_hz >= nyquist_hz
         ):
             raise ValueError("anti-alias cutoff must be strictly below Nyquist")
         if (
-            not math.isfinite(self.voltage_sensor_gain)
+            not _is_finite_number(self.voltage_sensor_gain)
             or self.voltage_sensor_gain <= 0
-            or not math.isfinite(self.current_sensor_gain)
+            or not _is_finite_number(self.current_sensor_gain)
             or self.current_sensor_gain <= 0
-            or not math.isfinite(self.voltage_sensor_offset_v)
-            or not math.isfinite(self.current_sensor_offset_a)
+            or not _is_finite_number(self.voltage_sensor_offset_v)
+            or not _is_finite_number(self.current_sensor_offset_a)
         ):
             raise ValueError("sensor calibration parameters must be finite and positive")
         if self.sensor_calibration_hash and not _is_digest(self.sensor_calibration_hash):
@@ -1539,7 +1571,7 @@ class ElectricalSignalCell:
     """Bounded V/I measurement model with Ohm, sampling and energy gates."""
 
     def __init__(self, *, max_samples: int = 1_000_000) -> None:
-        if max_samples < 2:
+        if type(max_samples) is not int or max_samples < 2:
             raise ValueError("electrical cell max_samples must be at least two")
         self.max_samples = max_samples
 
@@ -7317,6 +7349,7 @@ class LabApplication:
         raw_seeds = payload["seeds"]
         if not isinstance(raw_seeds, (list, tuple)):
             raise TypeError("simulation seeds must be a sequence")
+        typed_seeds = cast(list[Any] | tuple[Any, ...], raw_seeds)
         raw_constraints = payload.get("constraints", ())
         if not isinstance(raw_constraints, (list, tuple)):
             raise TypeError("simulation constraints must be a sequence")
@@ -7327,35 +7360,35 @@ class LabApplication:
             constraint = cast(dict[str, Any], raw_constraint)
             constraints.append(
                 PhysicalConstraint(
-                    name=str(constraint["name"]),
-                    tolerance=float(constraint["tolerance"]),
-                    unit=str(constraint.get("unit", "1")),
+                    name=constraint["name"],
+                    tolerance=constraint["tolerance"],
+                    unit=constraint.get("unit", "1"),
                 )
             )
 
         def optional_float(name: str) -> float | None:
             raw = payload.get(name)
-            return float(raw) if raw is not None else None
+            return raw if raw is not None else None
 
         return SimulationSpec(
-            simulation_id=str(payload["simulation_id"]),
-            experiment_id=str(payload["experiment_id"]),
-            model_hash=str(payload["model_hash"]),
-            seeds=tuple(int(item) for item in cast(list[Any] | tuple[Any, ...], raw_seeds)),
-            max_steps=int(payload.get("max_steps", 10_000)),
+            simulation_id=payload["simulation_id"],
+            experiment_id=payload["experiment_id"],
+            model_hash=payload["model_hash"],
+            seeds=tuple(item for item in typed_seeds),
+            max_steps=payload.get("max_steps", 10_000),
             constraints=tuple(constraints),
-            discrepancy_model=str(
-                payload.get("discrepancy_model", "y_real = y_sim + delta(x) + epsilon")
+            discrepancy_model=payload.get(
+                "discrepancy_model", "y_real = y_sim + delta(x) + epsilon"
             ),
-            calibration_hash=str(payload.get("calibration_hash", "")),
-            calibration_observations=int(payload.get("calibration_observations", 0)),
+            calibration_hash=payload.get("calibration_hash", ""),
+            calibration_observations=payload.get("calibration_observations", 0),
             calibration_rmse=optional_float("calibration_rmse"),
             calibration_tolerance=optional_float("calibration_tolerance"),
-            calibration_holdout_hash=str(payload.get("calibration_holdout_hash", "")),
-            numerical_method=str(payload.get("numerical_method", "deterministic-runner")),
-            floating_point_mode=str(payload.get("floating_point_mode", "IEEE754")),
+            calibration_holdout_hash=payload.get("calibration_holdout_hash", ""),
+            numerical_method=payload.get("numerical_method", "deterministic-runner"),
+            floating_point_mode=payload.get("floating_point_mode", "IEEE754"),
             convergence_tolerance=optional_float("convergence_tolerance"),
-            minimum_convergence_steps=int(payload.get("minimum_convergence_steps", 0)),
+            minimum_convergence_steps=payload.get("minimum_convergence_steps", 0),
         )
 
     async def _run_skill_requests(self, run: LabRun, options: dict[str, Any]) -> None:
