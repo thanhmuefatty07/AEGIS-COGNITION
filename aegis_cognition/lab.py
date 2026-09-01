@@ -7468,7 +7468,10 @@ class Lab:
                 str(Path.cwd() / ".aegis" / "lab-replay"),
             )
             merged.setdefault("lab_replay_directory", default_replay_directory)
-        browser_enabled = bool(merged.pop("browser", False))
+        raw_browser = merged.pop("browser", False)
+        if type(raw_browser) is not bool:
+            raise ValueError("Lab browser option must be boolean")
+        browser_enabled = raw_browser
         config = AgentConfig.from_inputs(
             spec.objective,
             llm=self.llm,
