@@ -13,6 +13,11 @@ use crate::gt96::{BudgetPolicy, ContractError};
 
 const LAB_SCHEMA: &str = "aegis-lab-runtime-v1";
 
+fn default_external_attempt_budget(max_steps: u32) -> u64 {
+    let n = u64::from(max_steps).saturating_add(1);
+    n.saturating_mul(n).saturating_mul(n).saturating_mul(8)
+}
+
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub enum LabRunState {
     Planned,
@@ -79,6 +84,19 @@ pub enum LabEventKind {
     FinalizationReopened,
 }
 
+fn is_external_admission_kind(kind: LabEventKind) -> bool {
+    matches!(
+        kind,
+        LabEventKind::ExperimentExecutionAdmitted
+            | LabEventKind::ToolExecutionAdmitted
+            | LabEventKind::ResearchProgramAdmitted
+            | LabEventKind::BrowserActionAdmitted
+            | LabEventKind::BrowserObservationAdmitted
+            | LabEventKind::SkillAdmissionRecorded
+            | LabEventKind::CancellationAdmitted
+    )
+}
+
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub struct LabMissionSpec {
     pub mission_id: String,
@@ -88,6 +106,10 @@ pub struct LabMissionSpec {
     pub budget_policy: BudgetPolicy,
     pub required_evidence: bool,
     pub max_steps: u32,
+    /// Optional bound for Lab-owned execution admissions.  `None` is kept
+    /// only for legacy snapshots created before this contract existed.
+    #[serde(default)]
+    pub max_external_attempts: Option<u64>,
     pub schema: String,
 }
 
@@ -109,6 +131,7 @@ impl LabMissionSpec {
             budget_policy,
             required_evidence,
             max_steps,
+            max_external_attempts: Some(default_external_attempt_budget(max_steps)),
             schema: LAB_SCHEMA.to_string(),
         };
         mission.validate()?;
@@ -122,6 +145,7 @@ impl LabMissionSpec {
             || self.scope.trim().is_empty()
             || self.contract_hash == [0; 32]
             || self.max_steps == 0
+            || self.max_external_attempts == Some(0)
         {
             return Err(LabError::InvalidMission);
         }
@@ -814,6 +838,37 @@ impl LabController {
         self.steps
     }
 
+    fn external_attempt_budget_valid(&self) -> bool {
+        let Some(bound) = self.runtime.mission().max_external_attempts else {
+            // A missing field is a legacy snapshot. It remains readable, but
+            // new missions always carry an explicit bound.
+            return true;
+        };
+        let observed = self
+            .runtime
+            .events
+            .iter()
+            .filter(|event| is_external_admission_kind(event.kind))
+            .count() as u64;
+        observed <= bound
+    }
+
+    fn external_attempt_budget_allows(&self, kind: LabEventKind) -> bool {
+        let Some(bound) = self.runtime.mission().max_external_attempts else {
+            return true;
+        };
+        if !is_external_admission_kind(kind) {
+            return true;
+        }
+        let observed = self
+            .runtime
+            .events
+            .iter()
+            .filter(|event| is_external_admission_kind(event.kind))
+            .count() as u64;
+        observed < bound
+    }
+
     pub fn snapshot_json(&self) -> Result<String, LabError> {
         serde_json::to_string(self).map_err(|_| LabError::InvalidEvent)
     }
@@ -823,6 +878,7 @@ impl LabController {
             serde_json::from_str(snapshot).map_err(|_| LabError::InvalidEvent)?;
         controller.runtime.validate_snapshot()?;
         if controller.steps > controller.runtime.mission().max_steps
+            || !controller.external_attempt_budget_valid()
             || !controller.budget.snapshot_valid()
             || !controller
                 .budget
@@ -1017,6 +1073,9 @@ impl LabController {
         payload_json: &str,
         projection_state: Option<LabRunState>,
     ) -> Result<(), LabError> {
+        if !self.external_attempt_budget_allows(event.kind) {
+            return Err(LabError::InvalidTransition);
+        }
         let payload: serde_json::Value =
             serde_json::from_str(payload_json).map_err(|_| LabError::InvalidRecord)?;
         if event.payload_hash != projection_payload_hash(&payload) {
@@ -3083,6 +3142,72 @@ mod tests {
         assert_eq!(controller.runtime().state(), LabRunState::Completed);
         assert!(controller.runtime().replayable());
         assert_eq!(controller.runtime().events().len(), 7);
+    }
+
+    #[test]
+    fn native_projection_record_enforces_global_external_attempt_budget() {
+        let mut bounded_mission = mission();
+        bounded_mission.max_external_attempts = Some(1);
+        let mut controller = LabController::new(bounded_mission).unwrap();
+        let payload = serde_json::json!({
+            "admission_id": "tool-1-admission",
+            "execution_id": "tool-1",
+            "tool_name": "fixture.lookup",
+            "attempt": 1,
+            "lease_id": 1,
+            "effect_class": "read_only",
+            "actor_role": "actor",
+            "expected_observation_schema": "fixture.v1",
+            "stop_rule": "single_call",
+            "mission_id": "mission-1",
+            "replay_parent_hash": digest_hex(controller.runtime().events()[0].event_hash),
+            "input_hash": "a".repeat(64),
+            "policy_hash": "b".repeat(64),
+            "status": "ADMITTED"
+        });
+        let payload_json = serde_json::to_string(&payload).unwrap();
+        let first_event = LabEvent::new(
+            2,
+            1,
+            LabEventKind::ToolExecutionAdmitted,
+            projection_payload_hash(&payload),
+            controller.runtime().events()[0].event_hash,
+        );
+        controller
+            .admit_projection_record(first_event, &payload_json, None)
+            .unwrap();
+        let before_rejected = controller.snapshot_json().unwrap();
+
+        let second_payload = serde_json::json!({
+            "admission_id": "tool-2-admission",
+            "execution_id": "tool-2",
+            "tool_name": "fixture.lookup",
+            "attempt": 1,
+            "lease_id": 2,
+            "effect_class": "read_only",
+            "actor_role": "actor",
+            "expected_observation_schema": "fixture.v1",
+            "stop_rule": "single_call",
+            "mission_id": "mission-1",
+            "replay_parent_hash": digest_hex(controller.runtime().events().last().unwrap().event_hash),
+            "input_hash": "c".repeat(64),
+            "policy_hash": "d".repeat(64),
+            "status": "ADMITTED"
+        });
+        let second_payload_json = serde_json::to_string(&second_payload).unwrap();
+        let second_event = LabEvent::new(
+            3,
+            2,
+            LabEventKind::ToolExecutionAdmitted,
+            projection_payload_hash(&second_payload),
+            controller.runtime().events().last().unwrap().event_hash,
+        );
+        assert_eq!(
+            controller.admit_projection_record(second_event, &second_payload_json, None),
+            Err(LabError::InvalidTransition)
+        );
+        assert_eq!(controller.snapshot_json().unwrap(), before_rejected);
+        assert!(LabController::from_snapshot_json(&before_rejected).is_ok());
     }
 
     #[test]
