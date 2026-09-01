@@ -7857,14 +7857,23 @@ class LabApplication:
         if not callable(executor):
             raise TypeError("search program executor must be callable")
         result = await _call_fenced(executor, program, task=task, run_id=run_id)
-        if isinstance(result, dict):
+        if type(result) is dict:
             result_map = cast(dict[str, Any], result)
-            result = result_map.get("results", result_map.get("candidates", ()))
+            has_results = "results" in result_map
+            has_candidates = "candidates" in result_map
+            if has_results and has_candidates and result_map["results"] != result_map["candidates"]:
+                raise ValueError("search program executor result aliases disagree")
+            if has_results or has_candidates:
+                result = result_map.get("results", result_map.get("candidates"))
+            elif any(key in result_map for key in ("uri", "url", "content", "body", "snippet")):
+                result = [result_map]
+            else:
+                raise TypeError("search program executor result must contain results or a source record")
         if result is None:
             return []
-        if isinstance(result, (str, bytes, dict)):
+        if type(result) is str:
             return [result]
-        if not isinstance(result, (list, tuple)):
+        if type(result) not in (list, tuple):
             raise TypeError("search program executor must return a sequence")
         typed_result = cast(list[Any] | tuple[Any, ...], result)
         return list(typed_result)[: program.max_candidates]
@@ -9367,34 +9376,44 @@ class LabApplication:
 
     @staticmethod
     def _candidate_fields(raw: Any) -> dict[str, Any] | None:
-        if isinstance(raw, dict):
+        if type(raw) is dict:
             return cast(dict[str, Any], raw)
-        if raw is None or isinstance(raw, (str, bytes)):
+        if raw is None or type(raw) is str:
             return None
-        fields: dict[str, Any] = {}
-        for name in ("source_id", "id", "uri", "url", "content", "body", "snippet", "content_hash", "snapshot_hash", "retrieved_at_ms", "trust_tier", "extractor", "relation", "citation_spans", "provenance_cluster"):
-            if hasattr(raw, name):
-                fields[name] = getattr(raw, name)
-        return fields or None
+        return None
 
     @staticmethod
     def _ingest_search_candidates(run: LabRun, candidates: Any) -> None:
         if candidates is None:
             return
-        if isinstance(candidates, (str, bytes, dict)):
+        if type(candidates) in (str, dict):
             candidates = [candidates]
-        if not isinstance(candidates, (list, tuple)):
+        if type(candidates) not in (list, tuple):
             run.record_blocker("search_results_not_sequence")
             return
         typed_candidates = cast(list[Any] | tuple[Any, ...], candidates)
         for index, candidate in enumerate(typed_candidates):
-            if isinstance(candidate, str):
+            if type(candidate) is str:
                 candidate = {"uri": candidate, "content": candidate}
             raw = LabApplication._candidate_fields(candidate)
             if raw is None:
+                run.record_blocker("invalid_source_record", detail="candidate type")
                 continue
-            content = raw.get("content", raw.get("body", raw.get("snippet", "")))
-            uri = raw.get("uri", raw.get("url", ""))
+            uri_values = [raw[name] for name in ("uri", "url") if name in raw]
+            content_values = [raw[name] for name in ("content", "body", "snippet") if name in raw]
+            source_id_values = [raw[name] for name in ("source_id", "id") if name in raw]
+            if (
+                any(type(value) is not str for value in uri_values)
+                or any(type(value) is not str for value in content_values)
+                or any(type(value) is not str for value in source_id_values)
+                or (uri_values and any(value != uri_values[0] for value in uri_values[1:]))
+                or (content_values and any(value != content_values[0] for value in content_values[1:]))
+                or (source_id_values and any(value != source_id_values[0] for value in source_id_values[1:]))
+            ):
+                run.record_blocker("invalid_source_record", detail="ambiguous alias metadata")
+                continue
+            content = content_values[0] if content_values else ""
+            uri = uri_values[0] if uri_values else ""
             if (
                 type(uri) is not str
                 or type(content) is not str
@@ -9414,9 +9433,18 @@ class LabApplication:
                     detail=marker,
                 )
                 continue
-            supplied_content_hash = raw.get("content_hash")
-            if supplied_content_hash is not None and (
-                type(supplied_content_hash) is not str or supplied_content_hash != digest
+            supplied_content_hash = raw.get("content_hash", digest)
+            supplied_snapshot_hash = raw.get("snapshot_hash", digest)
+            retrieved_at_ms = raw.get("retrieved_at_ms", int(time.time() * 1000))
+            trust_tier = raw.get("trust_tier", 1)
+            extractor = raw.get("extractor", "search-as-code")
+            relation = raw.get("relation", "unknown")
+            provenance_cluster = raw.get("provenance_cluster", "")
+            citation_spans = raw.get("citation_spans", ())
+            source_id = source_id_values[0] if source_id_values else f"source-{len(run.sources)+index+1}"
+            if (
+                type(supplied_content_hash) is not str
+                or supplied_content_hash != digest
             ):
                 run.record_blocker("source_content_hash_mismatch")
                 run.record_security_event(
@@ -9429,21 +9457,44 @@ class LabApplication:
                     ),
                 )
                 continue
+            if (
+                type(supplied_snapshot_hash) is not str
+                or not _is_digest(supplied_snapshot_hash)
+                or type(retrieved_at_ms) is not int
+                or retrieved_at_ms <= 0
+                or type(trust_tier) is not int
+                or trust_tier < 1
+                or type(extractor) is not str
+                or not extractor.strip()
+                or type(relation) is not str
+                or not relation.strip()
+                or type(provenance_cluster) is not str
+                or (provenance_cluster and not provenance_cluster.strip())
+                or type(citation_spans) not in (list, tuple)
+                or any(not _valid_citation_span(span) for span in citation_spans)
+                or type(source_id) is not str
+                or not source_id.strip()
+            ):
+                run.record_blocker("invalid_source_record", detail="provenance metadata")
+                run.record_security_event(
+                    "invalid_source_record",
+                    artifact_hash=digest,
+                    detail="provenance metadata",
+                )
+                continue
             try:
                 run.add_source(
                     SourceRecord(
-                        source_id=raw.get(
-                            "source_id", raw.get("id", f"source-{len(run.sources)+index+1}")
-                        ),
+                        source_id=source_id,
                         uri=uri,
-                        content_hash=raw.get("content_hash", digest),
-                        snapshot_hash=raw.get("snapshot_hash", digest),
-                        retrieved_at_ms=raw.get("retrieved_at_ms", int(time.time() * 1000)),
-                        trust_tier=raw.get("trust_tier", 1),
-                        extractor=raw.get("extractor", "search-as-code"),
-                        relation=raw.get("relation", "unknown"),
-                        citation_spans=raw.get("citation_spans", ()),
-                        provenance_cluster=raw.get("provenance_cluster", ""),
+                        content_hash=supplied_content_hash,
+                        snapshot_hash=supplied_snapshot_hash,
+                        retrieved_at_ms=retrieved_at_ms,
+                        trust_tier=trust_tier,
+                        extractor=extractor,
+                        relation=relation,
+                        citation_spans=citation_spans,
+                        provenance_cluster=provenance_cluster,
                     )
                 )
             except (TypeError, ValueError) as exc:

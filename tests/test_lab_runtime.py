@@ -273,6 +273,7 @@ def test_controller_structured_records_reject_lossy_metadata(
         ("retrieved_at_ms", "1"),
         ("trust_tier", 1.0),
         ("citation_spans", [{"start": "0", "end": 1, "text_hash": "a" * 64}]),
+        ("snapshot_hash", "snapshot"),
     ),
 )
 def test_search_ingestion_rejects_lossy_source_metadata(field: str, value: object) -> None:
@@ -280,6 +281,28 @@ def test_search_ingestion_rejects_lossy_source_metadata(field: str, value: objec
     LabApplication._ingest_search_candidates(
         run,
         [{"source_id": "s1", "uri": "https://example.test", "content": "evidence", field: value}],
+    )
+    assert "invalid_source_record" in run.blockers
+    assert not run.sources
+
+
+@pytest.mark.parametrize("candidate", (None, b"https://example.test", object()))
+def test_search_ingestion_rejects_untyped_candidates(candidate: object) -> None:
+    run = LabRun("strict candidate sequence")
+    LabApplication._ingest_search_candidates(run, [candidate])
+    assert "invalid_source_record" in run.blockers
+    assert not run.sources
+
+
+def test_search_ingestion_rejects_ambiguous_aliases() -> None:
+    run = LabRun("strict candidate aliases")
+    LabApplication._ingest_search_candidates(
+        run,
+        [{
+            "uri": "https://example.test/primary",
+            "url": "https://example.test/secondary",
+            "content": "evidence",
+        }],
     )
     assert "invalid_source_record" in run.blockers
     assert not run.sources
