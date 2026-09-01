@@ -2622,6 +2622,18 @@ quality, freshness calibration, contradiction precision/recall or DNS-race/
 hosted containment; `LAB-RESEARCH-003`, `LAB-BROWSER-002` and the residual
 authority rows remain open.
 
+**M5 compatibility-ingestion continuation (2026-09-02):** the compatibility
+`_run_search_program` and `LabApplication._ingest_search_candidates` paths now
+reject untyped bytes/objects, ambiguous URI/content/source aliases, invalid
+content or snapshot digests, lossy timestamps/trust/identity metadata and
+malformed citation spans instead of silently dropping or coercing records.
+Typed mapping/string inputs remain supported, while every rejected candidate
+leaves a blocker and security-visible reason. Negative coverage now totals
+**255 focused Lab tests** and **361 combined Python/cross-language tests**.
+This closes a local compatibility-ingestion bypass only; arbitrary adapter
+side effects, process containment and hosted single-writer authority remain
+open under `LAB-AUTH-001`.
+
 #### M5 — Research, browser và experiment cells
 
 **Entry:** M2–M4 pass cho local cells; capability registry sealed.
