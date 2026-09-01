@@ -5460,22 +5460,41 @@ class LabRun:
         }
         admissions: dict[tuple[str, str], dict[str, Any]] = {}
         settled: set[tuple[str, str]] = set()
+        known_event_kinds = {
+            kind
+            for admission_kind, (record_kind, _identity_key) in admission_specs.items()
+            for kind in (admission_kind, record_kind)
+        }
         for event in self.events:
-            payload = event.payload
-            if not isinstance(payload, dict):
+            if event.kind not in known_event_kinds:
                 continue
-            payload = cast(dict[str, Any], payload)
+            payload = event.payload
+            if type(payload) is not dict:
+                raise ValueError("execution admission payload is invalid")
+            raw_payload = cast(dict[Any, Any], payload)
+            if any(type(key) is not str for key in raw_payload):
+                raise ValueError("execution admission payload is invalid")
+            payload = cast(dict[str, Any], raw_payload)
             for admission_kind, (record_kind, identity_key) in admission_specs.items():
                 if event.kind == admission_kind:
-                    identity = str(payload.get(identity_key, "")).strip()
+                    raw_identity = payload.get(identity_key, "")
+                    if type(raw_identity) is not str:
+                        raise ValueError("execution admission identity metadata is invalid")
+                    identity = raw_identity.strip()
+                    raw_status = payload.get("status", "ADMITTED")
+                    if type(raw_status) is not str:
+                        raise ValueError("execution admission status metadata is invalid")
                     if identity and (
                         admission_kind == "skill_admission_recorded"
-                        or str(payload.get("status", "")).upper() == "ADMITTED"
+                        or raw_status.upper() == "ADMITTED"
                     ):
                         admissions[(admission_kind, identity)] = dict(payload)
                     break
                 if event.kind == record_kind:
-                    identity = str(payload.get(identity_key, "")).strip()
+                    raw_identity = payload.get(identity_key, "")
+                    if type(raw_identity) is not str:
+                        raise ValueError("execution settlement identity metadata is invalid")
+                    identity = raw_identity.strip()
                     if identity:
                         settled.add((admission_kind, identity))
                     break
@@ -5501,6 +5520,8 @@ class LabRun:
         that transition; this is deliberate fail-closed behavior.
         """
 
+        if type(operator_id) is not str or type(reason) is not str:
+            raise ValueError("reconciliation contract is invalid")
         normalized_operator = operator_id.strip()
         normalized_reason = reason.strip()
         if not normalized_operator or not normalized_reason:
@@ -5673,6 +5694,8 @@ class LabRun:
         an unknown effect to a successful result.
         """
 
+        if type(operator_id) is not str or type(reason) is not str:
+            raise ValueError("reconciliation contract is invalid")
         normalized_operator = operator_id.strip()
         normalized_reason = reason.strip()
         if not normalized_operator or not normalized_reason:

@@ -789,6 +789,25 @@ def test_lab_admission_binder_rejects_malformed_identity_payload() -> None:
         )
 
 
+def test_lab_recovery_rejects_malformed_execution_metadata() -> None:
+    run = LabRun("strict recovery metadata")
+    with pytest.raises(ValueError, match="reconciliation contract"):
+        run.reconcile_unsettled_executions(operator_id=1)  # type: ignore[arg-type]
+    run._append(
+        "research_program_admitted",
+        {
+            "program_hash": "a" * 64,
+            "admission_id": "research-a-admission",
+            "operation_count": 1,
+            "provider": "provider.test",
+            "status": 1,
+        },
+        event_state_epoch=1,
+    )
+    with pytest.raises(ValueError, match="status metadata"):
+        run.unsettled_execution_admissions()
+
+
 def test_skill_boundaries_reject_lossy_metadata() -> None:
     with pytest.raises(SkillAdmissionError, match="manifest metadata types"):
         SkillManifest(
