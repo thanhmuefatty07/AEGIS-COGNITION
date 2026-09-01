@@ -2565,6 +2565,20 @@ string/boolean/numeric substitutions and confirms fail-closed restoration.
 This strengthens local replay integrity; it does not replace fresh-process,
 cross-platform or hosted crash-prefix evidence.
 
+**M2/P1 application-boundary continuation (2026-09-02):** controller-structured
+claims, hypotheses and experiments, search-provider source records, mission
+scope/options, browser policy maps and restore metadata now preserve raw values
+until strict validation; lossy `str()`/`int()`/`bool()` substitutions are
+rejected before they can become apparently valid evidence, policy or scientific
+parameters. Typed controller action plans, skill/tool requests and timeout/
+iteration/search quotas follow the same fail-closed rule. Event, blocker,
+security, tool-admission and skill-admission snapshot fields are also
+type-checked before replay semantics run. Focused coverage is **215 passed**
+and the cross-language Python gate is **321 passed**. This closes locally
+observable coercion paths only; hidden adapter effects, process descendants,
+provider/SDK retry behavior and hosted single-writer authority remain
+`OPEN_LOCAL`/`NOT VERIFIED` under `LAB-AUTH-001`.
+
 #### M5 — Research, browser và experiment cells
 
 **Entry:** M2–M4 pass cho local cells; capability registry sealed.
