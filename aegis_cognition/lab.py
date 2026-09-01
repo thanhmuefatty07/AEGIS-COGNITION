@@ -507,6 +507,9 @@ _RUST_EVENT_KINDS = {
     "finalization_reopened": "FinalizationReopened",
 }
 
+_REPLAY_ARCHIVE_MANIFEST_SCHEMA = "aegis-run-event-segment-manifest-v1"
+_REPLAY_ARCHIVE_MANIFEST_VERSION = 1
+
 
 _SEARCH_OPERATION_KINDS = frozenset(
     {
@@ -1720,6 +1723,8 @@ def _manifest_hash_bytes(manifest: Mapping[str, Any]) -> bytes:
     """Decode the native manifest identity without accepting a partial hash."""
 
     raw_hash = manifest.get("manifest_hash")
+    if type(raw_hash) is str and _is_digest(raw_hash):
+        return bytes.fromhex(raw_hash)
     if not isinstance(raw_hash, list):
         raise ValueError("native replay manifest has no valid 32-byte manifest hash")
     typed_hash = cast(list[Any], raw_hash)
@@ -1728,6 +1733,32 @@ def _manifest_hash_bytes(manifest: Mapping[str, Any]) -> bytes:
     if any(type(value) is not int or not 0 <= value <= 255 for value in typed_hash):
         raise ValueError("native replay manifest hash contains invalid bytes")
     return bytes(typed_hash)
+
+
+def _validate_replay_archive_manifest_metadata(
+    manifest: Mapping[str, Any], *, require_current: bool
+) -> None:
+    """Validate the additive archive schema marker without rewriting legacy data.
+
+    A pre-marker snapshot may still be read for rollback/diagnosis when both
+    metadata fields are absent.  Any partial marker or non-current value is
+    rejected: accepting one field while ignoring the other would make a
+    future archive look compatible with the current verifier.
+    """
+
+    raw_schema = manifest.get("schema")
+    raw_version = manifest.get("version")
+    if raw_schema is None and raw_version is None:
+        if require_current:
+            raise ValueError("native replay manifest schema metadata is missing")
+        return
+    if (
+        type(raw_schema) is not str
+        or raw_schema != _REPLAY_ARCHIVE_MANIFEST_SCHEMA
+        or type(raw_version) is not int
+        or raw_version != _REPLAY_ARCHIVE_MANIFEST_VERSION
+    ):
+        raise ValueError("native replay manifest schema metadata is invalid")
 
 
 async def _call(hook: Any, *args: Any, **kwargs: Any) -> Any:
@@ -6663,6 +6694,10 @@ class LabRun:
             raise ValueError("invalid replay archive manifest in lab snapshot")
         else:
             archive_map = cast(dict[str, Any], raw_archive)
+            _validate_replay_archive_manifest_metadata(
+                archive_map,
+                require_current=False,
+            )
             raw_manifest_hash = archive_map.get("manifest_hash")
             valid_hex_manifest = type(raw_manifest_hash) is str and _is_digest(raw_manifest_hash)
             if type(raw_manifest_hash) is list:
@@ -6872,6 +6907,14 @@ class LabRun:
         if not isinstance(decoded_manifest, dict):
             raise RuntimeError("Rust Lab replay archive returned an invalid manifest")
         manifest = cast(dict[str, Any], decoded_manifest)
+        try:
+            _validate_replay_archive_manifest_metadata(manifest, require_current=True)
+            _manifest_hash_bytes(manifest)
+        except ValueError as exc:
+            raise RuntimeError("Rust Lab replay archive returned an invalid versioned manifest") from exc
+        raw_run_id = manifest.get("run_id")
+        if type(raw_run_id) is not int or raw_run_id != int(self.mission_id, 16):
+            raise RuntimeError("Rust Lab replay archive returned an invalid manifest identity")
         if not manifest.get("manifest_hash"):
             raise RuntimeError("Rust Lab replay archive returned an invalid manifest")
         strict_verifier = getattr(
