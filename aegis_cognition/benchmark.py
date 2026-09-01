@@ -50,6 +50,10 @@ class BenchmarkProtocolV2:
             raise ValueError("strict benchmark requires >=30 trials, >=10 warmups and >=30 paired blocks")
         if len(self.preregistered_seeds) < 5:
             raise ValueError("stochastic benchmark requires at least five preregistered seeds")
+        if any(type(seed) is not int for seed in self.preregistered_seeds):
+            raise ValueError("preregistered benchmark seeds must be integers")
+        if len(set(self.preregistered_seeds)) != len(self.preregistered_seeds):
+            raise ValueError("preregistered benchmark seeds must be unique")
         if not self.frozen_split_hash.strip():
             raise ValueError("frozen split hash is required")
         if not self.contamination_checks or any(not item.strip() for item in self.contamination_checks):
@@ -138,7 +142,13 @@ class BenchmarkTrialRecord:
     artifact_hash: str = ""
 
     def validate(self) -> None:
-        if not self.item_id.strip() or self.trial_index < 0 or self.status not in _TRIAL_STATUSES:
+        if (
+            not self.item_id.strip()
+            or type(self.trial_index) is not int
+            or self.trial_index < 0
+            or type(self.seed) is not int
+            or self.status not in _TRIAL_STATUSES
+        ):
             raise ValueError("benchmark trial identity or status is invalid")
         if self.status == "SUCCESS":
             if self.value is None or not math.isfinite(float(self.value)):
@@ -334,6 +344,8 @@ def _normalize_trial_records(
                 error_class=error_class,
             )
         record.validate()
+        if record.seed not in protocol.preregistered_seeds:
+            raise ValueError("benchmark trial seed is not preregistered")
         records.append(record)
     keys = [record.key for record in records]
     if len(keys) != len(set(keys)):

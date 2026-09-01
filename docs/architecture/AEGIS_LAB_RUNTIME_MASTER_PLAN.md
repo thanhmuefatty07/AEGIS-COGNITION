@@ -1597,6 +1597,18 @@ only: external idempotency, opaque SDK retries, user-runner retries,
 non-cooperative/synchronous work, timeout ambiguity after an external effect,
 and hosted multi-writer authority remain unverified.
 
+**P4 adaptive-progress hardening (2026-09-01, current source):** the
+bounded controller now records an explicit unweighted progress-potential tuple
+for each decision. The tuple covers missing evidence planes, clean-replication
+and uncertainty gaps, and blocker count without inventing calibrated weights.
+Plateau detection hashes the immutable evidence content (including record
+identity and payload fields), rather than only collection sizes, so a same-size
+replacement or tampered projection cannot be mistaken for progress. Regression
+coverage proves potential emission and content-sensitive plateau reset. This is
+local controller evidence only; P4 still lacks calibrated information-gain
+selection, full falsifier/blind-replicator roles and multi-agent coordination
+efficiency evidence.
+
 The prior v63 release-candidate paragraph is historical and is not replayable
 from the current machine: the referenced directory and all four records are
 absent, so the documented v63 wheel hash
