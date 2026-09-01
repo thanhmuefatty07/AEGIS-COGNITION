@@ -33,6 +33,12 @@ class Agent:
         telemetry: RuntimeTelemetry | None = None,
         **kwargs: Any,
     ) -> None:
+        if type(lab) is not bool:
+            raise ValueError("Agent lab flag must be boolean")
+        if type(browser) is not bool:
+            raise ValueError("Agent browser flag must be boolean")
+        if type(max_steps) is not int:
+            raise ValueError("Agent max_steps must be an integer")
         # Lab compatibility runs retain a durable replay snapshot by default,
         # matching the public ``Lab`` facade.  Operators can opt out with
         # ``lab_replay_archive=False`` or supply an explicit directory; the
@@ -62,7 +68,7 @@ class Agent:
         self.llm = self._config.llm
         self.trust_level = self._config.trust_level
         self.browser = self._config.browser
-        self.lab = bool(self._config.options.get("lab", False))
+        self.lab = lab
         self.max_steps = self._config.max_steps
         self._kwargs = self._config.options
         self.telemetry = telemetry or RuntimeTelemetry()
