@@ -2206,6 +2206,18 @@ class SkillManifest:
     risk_class: str = "compute"
 
     def validate(self) -> None:
+        if (
+            type(self.skill_id) is not str
+            or type(self.version) is not str
+            or type(self.capabilities) not in (list, tuple)
+            or type(self.preconditions) not in (list, tuple)
+            or type(self.validator_version) is not str
+            or type(self.implementation_hash) is not str
+            or type(self.policy_hash) is not str
+            or type(self.cost_units) is not int
+            or type(self.risk_class) is not str
+        ):
+            raise SkillAdmissionError("skill manifest metadata types are invalid")
         if not self.skill_id.strip() or not self.version.strip():
             raise SkillAdmissionError("skill identity and version are required")
         if not self.validator_version.strip():
@@ -2353,6 +2365,20 @@ class SkillExecutionReceipt:
         )
 
     def validate(self) -> None:
+        if (
+            type(self.skill_id) is not str
+            or type(self.version) is not str
+            or type(self.admission_hash) is not str
+            or type(self.mission_id) is not str
+            or type(self.replay_parent_hash) is not str
+            or type(self.input_hash) is not str
+            or type(self.result_hash) is not str
+            or type(self.artifact_hash) is not str
+            or type(self.validator_version) is not str
+            or type(self.status) is not str
+            or type(self.execution_hash) is not str
+        ):
+            raise SkillAdmissionError("skill execution metadata types are invalid")
         if not self.skill_id.strip() or not self.version.strip() or not self.mission_id.strip():
             raise SkillAdmissionError("skill execution identity is invalid")
         if self.status not in _SKILL_STATUSES:
@@ -2381,6 +2407,8 @@ class SkillRegistry:
         self._validators: dict[tuple[str, str], Callable[[Any], Any]] = {}
 
     def register(self, manifest: SkillManifest, validator: Callable[[Any], Any]) -> None:
+        if type(manifest) is not SkillManifest:
+            raise SkillAdmissionError("skill manifest type is invalid")
         manifest.validate()
         if not callable(validator):
             raise TypeError("skill validator must be callable")
@@ -2391,6 +2419,8 @@ class SkillRegistry:
         self._validators[key] = validator
 
     def get(self, skill_id: str, version: str) -> SkillManifest:
+        if type(skill_id) is not str or type(version) is not str:
+            raise SkillAdmissionError("skill manifest identity is invalid")
         try:
             return self._manifests[(skill_id, version)]
         except KeyError as exc:
@@ -2407,13 +2437,25 @@ class SkillRegistry:
         preconditions: dict[str, bool],
         replay_parent_hash: str,
     ) -> SkillAdmission:
+        if (
+            type(skill_id) is not str
+            or type(version) is not str
+            or type(mission_id) is not str
+            or type(mission_epoch) is not int
+            or type(replay_parent_hash) is not str
+            or type(available_capabilities) not in (list, tuple, set)
+            or type(preconditions) is not dict
+            or any(type(item) is not str for item in available_capabilities)
+            or any(type(key) is not str or type(value) is not bool for key, value in preconditions.items())
+        ):
+            raise SkillAdmissionError("skill admission contract is invalid")
         manifest = self.get(skill_id, version)
-        capabilities = tuple(sorted(set(str(item) for item in available_capabilities)))
+        capabilities = tuple(sorted(set(available_capabilities)))
         if any(capability not in capabilities for capability in manifest.capabilities):
             raise SkillAdmissionError("skill capability is not granted")
         if tuple(preconditions) != manifest.preconditions:
             raise SkillAdmissionError("skill preconditions must match manifest order")
-        results = tuple((name, bool(preconditions[name])) for name in manifest.preconditions)
+        results = tuple((name, preconditions[name]) for name in manifest.preconditions)
         if not all(value for _, value in results):
             raise SkillAdmissionError("skill precondition is false")
         if not mission_id.strip() or mission_epoch < 0 or not _is_digest(replay_parent_hash):
