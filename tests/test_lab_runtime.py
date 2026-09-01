@@ -614,6 +614,54 @@ def test_lab_browser_receipts_reject_lossy_boundary_metadata() -> None:
         )
 
 
+def test_lab_tool_receipts_reject_lossy_boundary_metadata() -> None:
+    run = LabRun("strict tool receipts")
+    with pytest.raises(ValueError, match="admission contract"):
+        run.admit_tool_execution(
+            tool_name=1,  # type: ignore[arg-type]
+            input_payload={"query": "bounded"},
+            policy_payload={"effect": "compute"},
+            effect_class="compute",
+        )
+    with pytest.raises(ValueError, match="admission contract"):
+        run.admit_tool_execution(
+            tool_name="fixture.tool",
+            input_payload={"query": "bounded"},
+            policy_payload={"effect": "compute"},
+            effect_class="compute",
+            lease_id=True,  # type: ignore[arg-type]
+        )
+    execution_id, admission_id = run.admit_tool_execution(
+        tool_name="fixture.tool",
+        input_payload={"query": "bounded"},
+        policy_payload={"effect": "compute"},
+        effect_class="compute",
+        execution_id="tool-1",
+    )
+    with pytest.raises(ValueError, match="settlement contract"):
+        run.record_tool_execution(
+            tool_name="fixture.tool",
+            execution_id=execution_id,
+            admission_id=admission_id,
+            input_payload={"query": "bounded"},
+            policy_payload={"effect": "compute"},
+            result={"ok": True},
+            effect_class="compute",
+            status=True,  # type: ignore[arg-type]
+        )
+    with pytest.raises(ValueError, match="hashes"):
+        run.record_tool_execution(
+            tool_name="fixture.tool",
+            execution_id=execution_id,
+            admission_id=admission_id,
+            input_payload={"query": "bounded"},
+            policy_payload={"effect": "compute"},
+            result={"ok": True},
+            effect_class="compute",
+            input_hash="",
+        )
+
+
 @pytest.mark.parametrize(
     ("action", "match"),
     (
