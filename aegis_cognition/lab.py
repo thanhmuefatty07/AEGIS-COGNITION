@@ -3885,13 +3885,15 @@ class LabRun:
     def admit_cancellation(self, *, reason: str, request_id: str | None = None) -> tuple[str, str]:
         """Admit a cancellation request before changing run state."""
 
+        if type(reason) is not str or (request_id is not None and type(request_id) is not str):
+            raise ValueError("cancellation admission contract is invalid")
         if self.state in {"completed", "aborted"}:
-            return (request_id or "", "")
+            return (request_id if request_id is not None else "", "")
         normalized_reason = reason.strip()
         if not normalized_reason:
             raise ValueError("cancellation reason must be non-empty")
         ordinal = sum(event.kind == "cancellation_admitted" for event in self.events) + 1
-        normalized_request_id = request_id or f"cancel-{ordinal}"
+        normalized_request_id = f"cancel-{ordinal}" if request_id is None else request_id
         if not normalized_request_id.strip():
             raise ValueError("cancellation request identity must be non-empty")
         self._assert_admission_identity_available(
@@ -3931,6 +3933,13 @@ class LabRun:
     ) -> None:
         """Settle a cancellation request after the state transition attempt."""
 
+        if (
+            type(request_id) is not str
+            or type(admission_id) is not str
+            or type(reason) is not str
+            or type(status) is not str
+        ):
+            raise ValueError("cancellation settlement contract is invalid")
         if not request_id.strip() or not admission_id.strip() or not reason.strip():
             raise ValueError("cancellation settlement identity is invalid")
         normalized_status = status.strip().upper()
