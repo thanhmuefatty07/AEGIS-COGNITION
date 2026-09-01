@@ -181,6 +181,15 @@ def test_process_execution_cell_kills_child_on_task_cancellation() -> None:
     asyncio.run(exercise())
 
 
+def test_process_execution_cell_rejects_lossy_timeout_metadata() -> None:
+    with pytest.raises(ValueError, match="process execution timeout"):
+        ProcessExecutionCell(_non_cooperative_process_task, timeout_seconds="1")  # type: ignore[arg-type]
+    with pytest.raises(ValueError, match="process execution timeout"):
+        ProcessExecutionCell(_non_cooperative_process_task, timeout_seconds=True)  # type: ignore[arg-type]
+    with pytest.raises(ValueError, match="start method"):
+        ProcessExecutionCell(_non_cooperative_process_task, start_method=1)  # type: ignore[arg-type]
+
+
 def test_lab_native_authority_admits_each_event_append(monkeypatch: pytest.MonkeyPatch) -> None:
     calls: list[list[dict[str, object]]] = []
 
@@ -246,6 +255,43 @@ def test_authority_mode_is_explicit_and_legacy_flag_conflicts_fail_closed(
         )
     assert LabPolicy(trust_level="DEV").authority_mode is AuthorityMode.PROJECTION_ONLY
     assert LabPolicy(trust_level="PROD").authority_mode is AuthorityMode.NATIVE_REQUIRED
+
+
+def test_lab_policy_and_budget_reject_lossy_metadata() -> None:
+    with pytest.raises(ValueError, match="trust level"):
+        LabPolicy(trust_level=True).validate()  # type: ignore[arg-type]
+    with pytest.raises(ValueError, match="hosts must be strings"):
+        LabPolicy(allowed_hosts=(1,)).validate()  # type: ignore[arg-type]
+    with pytest.raises(ValueError, match="HTTPS requirement"):
+        LabPolicy(require_https=1).validate()  # type: ignore[arg-type]
+    with pytest.raises(ValueError, match="browser quota"):
+        LabPolicy(max_browser_actions=1.0).validate()  # type: ignore[arg-type]
+    with pytest.raises(ValueError, match="replay directory"):
+        LabPolicy(replay_directory=1).validate()  # type: ignore[arg-type]
+    with pytest.raises(ValueError, match="replay archive"):
+        LabPolicy(replay_archive=1).validate()  # type: ignore[arg-type]
+    with pytest.raises(ValueError, match="external-write"):
+        LabPolicy(allow_external_writes=1).validate()  # type: ignore[arg-type]
+    with pytest.raises(ValueError, match="native-authority"):
+        LabPolicy(require_native_authority=1).validate()  # type: ignore[arg-type]
+
+    with pytest.raises(ValueError, match="bounds must be integers"):
+        LabBudget(max_steps=True).validate()  # type: ignore[arg-type]
+    with pytest.raises(ValueError, match="bounds must be integers"):
+        LabBudget(token_budget=100.0).validate()  # type: ignore[arg-type]
+    with pytest.raises(ValueError, match="finalization reserve"):
+        LabBudget(finalization_reserve="1").validate()  # type: ignore[arg-type]
+    with pytest.raises(ValueError, match="recovery reserve"):
+        LabBudget(recovery_reserve=False).validate()  # type: ignore[arg-type]
+
+
+def test_browser_policy_rejects_lossy_metadata() -> None:
+    with pytest.raises(ValueError, match="browser policy"):
+        BrowserCellPolicy(allowed_hosts=(1,)).validate()  # type: ignore[arg-type]
+    with pytest.raises(ValueError, match="browser policy"):
+        BrowserCellPolicy(require_https=1).validate()  # type: ignore[arg-type]
+    with pytest.raises(ValueError, match="browser policy"):
+        BrowserCellPolicy(max_actions=1.0).validate()  # type: ignore[arg-type]
 
 
 def test_lab_native_controller_is_the_projection_event_writer(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -5571,6 +5617,27 @@ def test_execution_cell_registry_enforces_identity_capability_and_effect() -> No
                 ),
             )
         )
+
+
+def test_execution_cell_binding_rejects_lossy_metadata() -> None:
+    def runner(*_args: object, **_kwargs: object) -> dict[str, bool]:
+        return {"ok": True}
+
+    with pytest.raises(ValueError, match="action kinds must be strings"):
+        ExecutionCellBinding("cell", (1,), runner).validate()  # type: ignore[arg-type]
+    with pytest.raises(ValueError, match="capabilities must be strings"):
+        ExecutionCellBinding("cell", ("tool_call",), runner, capabilities=(1,)).validate()  # type: ignore[arg-type]
+    with pytest.raises(ValueError, match="effect classes must be strings"):
+        ExecutionCellBinding("cell", ("tool_call",), runner, effect_classes=(1,)).validate()  # type: ignore[arg-type]
+    with pytest.raises(ValueError, match="trust levels must be strings"):
+        ExecutionCellBinding("cell", ("tool_call",), runner, trust_levels=(1,)).validate()  # type: ignore[arg-type]
+    with pytest.raises(ValueError, match="trust policy hash"):
+        ExecutionCellBinding("cell", ("tool_call",), runner, trust_policy_hash=1).validate()  # type: ignore[arg-type]
+
+    with pytest.raises(TypeError, match="registry bindings"):
+        ExecutionCellRegistry(None)  # type: ignore[arg-type]
+    with pytest.raises(ValueError, match="registry trust policy hash"):
+        ExecutionCellRegistry(trust_policy_hash=1)  # type: ignore[arg-type]
 
 
 def test_execution_cell_registry_rejects_mutation_after_seal() -> None:
