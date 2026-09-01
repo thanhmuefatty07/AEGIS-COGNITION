@@ -2594,6 +2594,19 @@ local benchmark-contract evidence only: hidden scorer secrecy, contamination
 resistance, provider-independent reproduction and hosted evidence remain
 `OPEN_EXTERNAL` under `LAB-BENCH-005` and `LAB-RELEASE-006`.
 
+**M2 archive/registry-snapshot continuation (2026-09-02):** replay snapshots
+now validate archive manifest hashes (native byte-array or canonical hex form),
+mission/run identity, snapshot path and persisted snapshot hash before restore.
+Execution-cell manifests are checked for canonical IDs, supported action kinds,
+typed capability/effect/trust sequences, policy-hash subjects and duplicate
+identity/action entries; malformed or lossy metadata cannot reach replay
+verification. Recovery also requires an exact persisted snapshot hash instead
+of coercing arbitrary values through `str()`. Negative coverage now totals
+**235 focused Lab tests** and **341 combined Python/cross-language tests**.
+This strengthens local snapshot integrity only; process-descendant containment,
+cross-platform crash-prefix injection and hosted restore/single-writer evidence
+remain open under `LAB-AUTH-001`, `LAB-OPS-007` and `LAB-RELEASE-006`.
+
 #### M5 — Research, browser và experiment cells
 
 **Entry:** M2–M4 pass cho local cells; capability registry sealed.
