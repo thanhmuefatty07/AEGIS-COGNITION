@@ -7016,6 +7016,24 @@ class LabRun:
             verified = True
         if type(verified) is not bool or not verified:
             raise RuntimeError("Rust Lab replay archive failed recovery verification")
+        event_verifier = getattr(
+            aegis_nerve, "aegis_lab_verify_archive_against_events", None
+        )
+        if callable(event_verifier):
+            try:
+                events_verified = event_verifier(
+                    directory,
+                    int(self.mission_id, 16),
+                    self._native_event_wire(tuple(self.events)),
+                )
+            except Exception as exc:
+                raise RuntimeError(
+                    "Rust Lab replay archive event identity verification failed"
+                ) from exc
+            if type(events_verified) is not bool or not events_verified:
+                raise RuntimeError(
+                    "Rust Lab replay archive event identity verification failed"
+                )
         snapshot_path = Path(directory) / f"lab-{self.mission_id}.snapshot.json"
         manifest["snapshot_path"] = str(snapshot_path)
         self.replay_archive = manifest
@@ -7083,6 +7101,24 @@ class LabRun:
             verified = True
         if type(verified) is not bool or not verified:
             raise ValueError("native lab replay archive recovery failed")
+        event_verifier = getattr(
+            native_module, "aegis_lab_verify_archive_against_events", None
+        )
+        if callable(event_verifier):
+            try:
+                events_verified = event_verifier(
+                    str(path.parent),
+                    int(run.mission_id, 16),
+                    run._native_event_wire(tuple(run.events)),
+                )
+            except Exception as exc:
+                raise ValueError(
+                    "native lab replay archive event identity verification failed"
+                ) from exc
+            if type(events_verified) is not bool or not events_verified:
+                raise ValueError(
+                    "native lab replay archive event identity verification failed"
+                )
         return run
 
     def _validate_execution_event_semantics(self) -> None:

@@ -4533,6 +4533,43 @@ impl RunEventSegmentArchive {
         Self::write_ledger(directory, max_events_per_segment, &ledger)
     }
 
+    /// Verify that a persisted Lab archive contains the exact event identity
+    /// sequence supplied by a snapshot.  The segmented archive stores Lab
+    /// event and payload hashes as the primary/secondary hashes of each
+    /// ``LabEventRecorded`` envelope; comparing those hashes prevents a
+    /// snapshot writer from replacing payloads and recomputing a locally
+    /// valid Python chain without changing the already-sealed archive.
+    pub fn verify_lab_events_against_archive(
+        directory: impl AsRef<Path>,
+        run_id: RunId,
+        lab_events: &[crate::lab::LabEvent],
+    ) -> Result<bool, &'static str> {
+        if run_id == 0 || lab_events.is_empty() || !crate::lab::verify_event_chain(lab_events) {
+            return Ok(false);
+        }
+        let manifest = Self::recover_manifest_from_segments(directory.as_ref(), run_id)?;
+        let ledger = Self::read_ledger_mmap(directory, &manifest)?;
+        if ledger.len() != lab_events.len()
+            || ledger
+                .events()
+                .iter()
+                .any(|event| event.kind != RunEventKind::LabEventRecorded)
+        {
+            return Ok(false);
+        }
+        Ok(ledger
+            .events()
+            .iter()
+            .zip(lab_events.iter())
+            .enumerate()
+            .all(|(index, (archived, expected))| {
+                archived.event_id == index as u64 + 1
+                    && archived.subject_id == u128::from(expected.sequence)
+                    && archived.primary_hash == expected.event_hash
+                    && archived.secondary_hash == Some(expected.payload_hash)
+            }))
+    }
+
     pub fn prove_segmented_arrow_audit(
         directory: impl AsRef<Path>,
         manifest: &RunEventSegmentManifest,

@@ -2689,6 +2689,18 @@ def test_lab_native_archive_adapter_binds_manifest_to_final_event_root(
             captured["verified_run_id"] = run_id
             return True
 
+        @staticmethod
+        def aegis_lab_verify_archive_against_events(
+            directory: str, run_id: int, events_json: str
+        ) -> bool:
+            captured["event_verified_directory"] = directory
+            captured["event_verified_run_id"] = run_id
+            captured["event_verified_events"] = json.loads(events_json)
+            captured["event_verification_count"] = captured.get(
+                "event_verification_count", 0
+            ) + 1
+            return True
+
     monkeypatch.setitem(sys.modules, "aegis_nerve", Native())
     manifest = run.archive_to_native(str(tmp_path), max_events_per_segment=2)
     assert manifest["manifest_hash"] == "ab" * 32
@@ -2699,6 +2711,49 @@ def test_lab_native_archive_adapter_binds_manifest_to_final_event_root(
     assert recovered.mission_id == run.mission_id
     assert recovered.verify_event_chain()
     assert captured["verified_directory"] == str(tmp_path)
+    assert captured["event_verified_directory"] == str(tmp_path)
+    assert captured["event_verified_run_id"] == int(run.mission_id, 16)
+    assert captured["event_verified_events"]
+    assert captured["event_verification_count"] == 2
+
+
+def test_lab_native_archive_rejects_snapshot_event_identity_mismatch(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    run = _ready_run()
+
+    class Native:
+        @staticmethod
+        def aegis_lab_archive_events(
+            events_json: str, directory: str, run_id: int, segment_size: int
+        ) -> str:
+            del events_json, directory, segment_size
+            return json.dumps(
+                {
+                    "schema": "aegis-run-event-segment-manifest-v1",
+                    "version": 1,
+                    "manifest_hash": "ab" * 32,
+                    "run_id": run_id,
+                }
+            )
+
+        @staticmethod
+        def aegis_lab_verify_archive_against_manifest(
+            directory: str, run_id: int, expected_manifest_hash: bytes
+        ) -> bool:
+            del directory, run_id, expected_manifest_hash
+            return True
+
+        @staticmethod
+        def aegis_lab_verify_archive_against_events(
+            directory: str, run_id: int, events_json: str
+        ) -> bool:
+            del directory, run_id, events_json
+            return False
+
+    monkeypatch.setitem(sys.modules, "aegis_nerve", Native())
+    with pytest.raises(RuntimeError, match="event identity verification"):
+        run.archive_to_native(str(tmp_path))
 
 
 @pytest.mark.parametrize(
