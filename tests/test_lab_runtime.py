@@ -808,6 +808,19 @@ def test_lab_recovery_rejects_malformed_execution_metadata() -> None:
         run.unsettled_execution_admissions()
 
 
+def test_lab_operator_events_reject_lossy_metadata() -> None:
+    run = LabRun("strict operator events")
+    with pytest.raises(ValueError, match="security event contract"):
+        run.record_security_event(1, detail="detail")  # type: ignore[arg-type]
+    with pytest.raises(ValueError, match="security event contract"):
+        run.record_security_event("security", artifact_hash="not-a-digest")
+    with pytest.raises(ValueError, match="blocker contract"):
+        run.record_blocker(1, detail="detail")  # type: ignore[arg-type]
+    run.record_blocker("operator_gap", detail="detail")
+    with pytest.raises(ValueError, match="blocker contract"):
+        run.resolve_blocker("operator_gap", detail=1)  # type: ignore[arg-type]
+
+
 def test_skill_boundaries_reject_lossy_metadata() -> None:
     with pytest.raises(SkillAdmissionError, match="manifest metadata types"):
         SkillManifest(

@@ -2743,15 +2743,25 @@ skill fence only; external validator/adapter effects, process interruption and
 hosted authority remain open under `LAB-AUTH-001`.
 
 **M2 recovery-admission continuation (2026-09-02):** event-ledger recovery
- enumeration now fails closed on malformed execution payloads, non-string keys,
- identities or statuses instead of silently skipping or stringifying them;
- reconciliation operator/reason fields are type-checked before hashing or
- mutation. Open-admission recovery therefore cannot accidentally treat a
- malformed prefix as having no work to reconcile. Negative coverage now totals
- **281 focused Lab tests** and **387 combined Python/cross-language tests**;
- targeted Ruff and Pyright remain clean. This strengthens local crash-prefix
- accounting only; non-cooperative process effects and hosted writer/restore
- evidence remain open under `LAB-AUTH-001`/`LAB-OPS-007`.
+enumeration now fails closed on malformed execution payloads, non-string keys,
+identities or statuses instead of silently skipping or stringifying them;
+reconciliation operator/reason fields are type-checked before hashing or
+mutation. Open-admission recovery therefore cannot accidentally treat a
+malformed prefix as having no work to reconcile. Negative coverage now totals
+**281 focused Lab tests** and **387 combined Python/cross-language tests**;
+targeted Ruff and Pyright remain clean. This strengthens local crash-prefix
+accounting only; non-cooperative process effects and hosted writer/restore
+evidence remain open under `LAB-AUTH-001`/`LAB-OPS-007`.
+
+**M2 operator-evidence continuation (2026-09-02):** security-event and
+blocker/resolution APIs now require exact reason/detail strings and reject
+non-empty artifact hashes that are not canonical digests before event append.
+This prevents malformed operator metadata from entering the auditable reducer
+or being silently normalized. Negative coverage now totals **282 focused Lab
+tests** and **388 combined Python/cross-language tests**; targeted Ruff and
+Pyright remain clean. This strengthens local forensics metadata only; hosted
+telemetry, process interruption and external authority remain open under
+`LAB-AUTH-001`/`LAB-OPS-007`.
 
 #### M5 — Research, browser và experiment cells
 
