@@ -5886,18 +5886,109 @@ class LabRun:
                 }
             )
         raw_archive = payload.get("replay_archive")
-        restored.replay_archive = (
-            cast(dict[str, Any], raw_archive) if isinstance(raw_archive, dict) else None
-        )
+        if raw_archive is None:
+            restored.replay_archive = None
+        elif type(raw_archive) is not dict:
+            raise ValueError("invalid replay archive manifest in lab snapshot")
+        else:
+            archive_map = cast(dict[str, Any], raw_archive)
+            raw_manifest_hash = archive_map.get("manifest_hash")
+            valid_hex_manifest = type(raw_manifest_hash) is str and _is_digest(raw_manifest_hash)
+            if type(raw_manifest_hash) is list:
+                typed_manifest_hash = cast(list[Any], raw_manifest_hash)
+                valid_byte_manifest = len(typed_manifest_hash) == 32 and all(
+                    type(value) is int and 0 <= value <= 255
+                    for value in typed_manifest_hash
+                )
+            else:
+                valid_byte_manifest = False
+            if not (valid_hex_manifest or valid_byte_manifest):
+                raise ValueError("invalid replay archive manifest hash in lab snapshot")
+            raw_run_id = archive_map.get("run_id")
+            try:
+                expected_run_id = int(restored.mission_id, 16)
+            except ValueError as exc:
+                raise ValueError("invalid replay archive mission identity in lab snapshot") from exc
+            if type(raw_run_id) is not int or raw_run_id != expected_run_id:
+                raise ValueError("invalid replay archive mission identity in lab snapshot")
+            if type(archive_map.get("snapshot_path")) is not str or not archive_map["snapshot_path"].strip():
+                raise ValueError("invalid replay archive snapshot path in lab snapshot")
+            if "snapshot_hash" in archive_map and (
+                type(archive_map["snapshot_hash"]) is not str
+                or not _is_digest(archive_map["snapshot_hash"])
+            ):
+                raise ValueError("invalid replay archive snapshot hash in lab snapshot")
+            restored.replay_archive = dict(archive_map)
         raw_cells = payload.get("execution_cell_manifest", ())
         if not isinstance(raw_cells, (list, tuple)):
             raise ValueError("invalid execution cell manifest in lab snapshot")
         typed_cells = cast(list[Any] | tuple[Any, ...], raw_cells)
-        if any(not isinstance(item, dict) for item in typed_cells):
+        if any(type(item) is not dict for item in typed_cells):
             raise ValueError("invalid execution cell manifest entry")
-        restored.execution_cell_manifest = tuple(
-            cast(dict[str, Any], item) for item in typed_cells
-        )
+        normalized_cells: list[dict[str, Any]] = []
+        seen_cell_actions: set[tuple[str, tuple[str, ...]]] = set()
+        for raw_cell in typed_cells:
+            cell = cast(dict[str, Any], raw_cell)
+            raw_cell_id = cell.get("cell_id")
+            if (
+                type(raw_cell_id) is not str
+                or not raw_cell_id.strip()
+                or raw_cell_id != raw_cell_id.strip()
+            ):
+                raise ValueError("invalid execution cell id in lab snapshot")
+            raw_action_kinds = cell.get("action_kinds")
+            raw_capabilities = cell.get("capabilities")
+            raw_effects = cell.get("effect_classes")
+            raw_trust_levels = cell.get("trust_levels")
+            if any(
+                type(value) not in (list, tuple)
+                for value in (raw_action_kinds, raw_capabilities, raw_effects, raw_trust_levels)
+            ):
+                raise ValueError("invalid execution cell policy sequence in lab snapshot")
+            action_kinds = tuple(cast(list[Any] | tuple[Any, ...], raw_action_kinds))
+            capabilities = tuple(cast(list[Any] | tuple[Any, ...], raw_capabilities))
+            effects = tuple(cast(list[Any] | tuple[Any, ...], raw_effects))
+            trust_levels = tuple(cast(list[Any] | tuple[Any, ...], raw_trust_levels))
+            if (
+                not action_kinds
+                or any(
+                    type(kind) is not str
+                    or not kind.strip()
+                    or kind != kind.strip().lower()
+                    for kind in action_kinds
+                )
+                or any(kind.strip().lower() not in _EXECUTION_CELL_ACTION_KINDS for kind in action_kinds)
+                or len({kind.strip().lower() for kind in action_kinds}) != len(action_kinds)
+                or any(
+                    type(capability) is not str
+                    or not capability.strip()
+                    or capability != capability.strip()
+                    for capability in capabilities
+                )
+                or any(
+                    type(effect) is not str
+                    or not effect.strip()
+                    or effect != effect.strip()
+                    for effect in effects
+                )
+                or not trust_levels
+                or any(type(level) is not str for level in trust_levels)
+                or any(level != level.strip().upper() for level in trust_levels)
+                or any(level.strip().upper() not in {"DEV", "STAGING", "PROD"} for level in trust_levels)
+            ):
+                raise ValueError("invalid execution cell policy metadata in lab snapshot")
+            normalized_actions = tuple(kind.strip().lower() for kind in action_kinds)
+            cell_identity = (raw_cell_id, normalized_actions)
+            if cell_identity in seen_cell_actions:
+                raise ValueError("duplicate execution cell manifest entry in lab snapshot")
+            seen_cell_actions.add(cell_identity)
+            raw_cell_policy_hash = cell.get("trust_policy_hash")
+            if raw_cell_policy_hash is not None and (
+                type(raw_cell_policy_hash) is not str or not _is_digest(raw_cell_policy_hash)
+            ):
+                raise ValueError("invalid execution cell trust policy hash in lab snapshot")
+            normalized_cells.append(dict(cell))
+        restored.execution_cell_manifest = tuple(normalized_cells)
         if restored.trust_policy_hash is not None and any(
             item.get("trust_policy_hash") != restored.trust_policy_hash
             for item in restored.execution_cell_manifest
@@ -6051,8 +6142,10 @@ class LabRun:
             raise ValueError("lab replay snapshot has no archive manifest")
         snapshot_without_archive: dict[str, Any] = dict(typed_payload)
         snapshot_without_archive["replay_archive"] = None
-        expected_hash = str(archive.get("snapshot_hash", ""))
-        if not expected_hash or expected_hash != _hash(snapshot_without_archive):
+        expected_hash = archive.get("snapshot_hash")
+        if type(expected_hash) is not str or not _is_digest(expected_hash):
+            raise ValueError("lab replay snapshot has an invalid archive snapshot hash")
+        if expected_hash != _hash(snapshot_without_archive):
             raise ValueError("lab replay snapshot hash mismatch")
         try:
             native_module = _native_lab_module()
