@@ -2473,6 +2473,97 @@ def test_search_program_executor_runs_typed_research_pipeline_with_spans() -> No
     assert {result["relation"] for result in results} == {"query", "contradiction_search"}
 
 
+@pytest.mark.parametrize(
+    ("field", "value"),
+    (
+        ("uri", 1),
+        ("content", 1),
+        ("content_hash", "a" * 64),
+        ("retrieved_at_ms", "1"),
+        ("trust_tier", True),
+        ("extractor", 1),
+        ("provenance_cluster", 1),
+        ("citation_spans", [{"start": "0", "end": 1, "text_hash": "a" * 64}]),
+        ("snapshot_hash", "not-a-digest"),
+        ("score", "0.8"),
+    ),
+)
+def test_search_provider_candidates_reject_lossy_metadata(
+    field: str, value: object
+) -> None:
+    import asyncio
+
+    async def provider(_query: str, **_: object) -> list[dict[str, object]]:
+        candidate: dict[str, object] = {
+            "uri": "https://allowed.example/paper",
+            "content": "evidence",
+        }
+        candidate[field] = value
+        return [candidate]
+
+    program = SearchProgram.from_mappings(
+        [{"kind": "query", "text": "bounded claim"}],
+        allowed_hosts=("allowed.example",),
+        provider="fixture",
+    )
+    with pytest.raises(ValueError, match=r"candidate metadata|candidate URI|candidate content"):
+        asyncio.run(SearchProgramExecutor(query_provider=provider).execute(program))
+
+
+def test_search_provider_candidates_reject_untyped_entries() -> None:
+    import asyncio
+
+    async def provider(_query: str, **_: object) -> list[object]:
+        return [None]
+
+    program = SearchProgram.from_mappings([{"kind": "query", "text": "bounded claim"}])
+    with pytest.raises(TypeError, match="candidates"):
+        asyncio.run(SearchProgramExecutor(query_provider=provider).execute(program))
+
+
+@pytest.mark.parametrize(
+    "candidate",
+    (
+        {
+            "uri": "https://allowed.example/paper",
+            "url": "https://other.example/paper",
+            "content": "evidence",
+        },
+        {
+            "uri": "https://allowed.example/paper",
+            "content": "evidence",
+            "snippet": "different evidence",
+        },
+        {
+            "uri": "https://allowed.example/paper",
+            "content": "evidence",
+            "source_id": "source-a",
+            "id": "source-b",
+        },
+        {
+            "uri": "https://allowed.example/paper",
+            "content": "evidence",
+            "citation_spans": [{"start": 0, "end": 1, "text_hash": "z" * 64}],
+        },
+    ),
+)
+def test_search_provider_candidates_reject_ambiguous_aliases_and_digests(
+    candidate: dict[str, object],
+) -> None:
+    import asyncio
+
+    async def provider(_query: str, **_: object) -> list[dict[str, object]]:
+        return [candidate]
+
+    program = SearchProgram.from_mappings(
+        [{"kind": "query", "text": "bounded claim"}],
+        allowed_hosts=("allowed.example",),
+        provider="fixture",
+    )
+    with pytest.raises(ValueError, match=r"aliases disagree|metadata"):
+        asyncio.run(SearchProgramExecutor(query_provider=provider).execute(program))
+
+
 def test_search_program_executor_fetches_bounded_https_snapshot(monkeypatch: pytest.MonkeyPatch) -> None:
     import asyncio
 
