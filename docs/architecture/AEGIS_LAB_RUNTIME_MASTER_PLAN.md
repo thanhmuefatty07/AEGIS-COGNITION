@@ -2877,6 +2877,18 @@ clean. This closes local option-boundary coercion only; native single-writer
 coverage across opaque adapters, process descendants and hosted multi-process
 execution remains open under `LAB-AUTH-001`.
 
+**P1 archive/config boundary continuation (2026-09-02):** the replay archive
+entrypoint now rejects non-string directories, boolean/floating/numeric-string
+segment sizes and non-boolean native verifier results instead of allowing
+`str(...)`, `int(...)` or `bool(...)` to rewrite the archive contract. The
+post-completion persistence policy and trust-level override/configuration also
+fail closed on non-boolean/non-string values; malformed policy is recorded as a
+blocker before any compatibility effect is invoked. Focused coverage is **316
+Lab tests** and the combined Python/cross-language gate is **422 tests**;
+targeted Ruff and Pyright remain clean. This is local boundary evidence only;
+hosted authority, process containment, live provider semantics, and signed
+release provenance remain external blockers.
+
 #### M5 — Research, browser và experiment cells
 
 **Entry:** M2–M4 pass cho local cells; capability registry sealed.

@@ -6824,7 +6824,11 @@ class LabRun:
     def archive_to_native(self, directory: str, *, max_events_per_segment: int = 64) -> dict[str, Any]:
         """Commit this validated run to Rust's segmented replay archive."""
 
-        if not directory.strip() or max_events_per_segment < 1:
+        if type(directory) is not str:
+            raise TypeError("native replay archive directory must be a string")
+        if type(max_events_per_segment) is not int or max_events_per_segment < 1:
+            raise ValueError("native replay archive requires a directory and positive segment size")
+        if not directory.strip():
             raise ValueError("native replay archive requires a directory and positive segment size")
         aegis_nerve = _native_lab_module()
         archive = getattr(aegis_nerve, "aegis_lab_archive_events", None)
@@ -6870,7 +6874,7 @@ class LabRun:
             verified = verifier(directory, int(self.mission_id, 16))
         else:
             verified = True
-        if not bool(verified):
+        if type(verified) is not bool or not verified:
             raise RuntimeError("Rust Lab replay archive failed recovery verification")
         snapshot_path = Path(directory) / f"lab-{self.mission_id}.snapshot.json"
         manifest["snapshot_path"] = str(snapshot_path)
@@ -10064,8 +10068,16 @@ class LabApplication:
     async def _run_post_completion_effect(self, run: LabRun, result: Any) -> None:
         """Fence a trusted persistence hook before the dossier becomes terminal."""
 
-        effect_required = bool(self.config.options.get("lab_require_post_completion_effect", False)) or (
-            str(self.config.trust_level).strip().upper() == "PROD"
+        raw_effect_required = self.config.options.get("lab_require_post_completion_effect", False)
+        if type(raw_effect_required) is not bool:
+            run.record_blocker("post_completion_effect_policy_invalid")
+            return
+        raw_trust_level = self.config.trust_level
+        if type(raw_trust_level) is not str:
+            run.record_blocker("trust_level_policy_invalid")
+            return
+        effect_required = raw_effect_required or (
+            raw_trust_level.strip().upper() == "PROD"
         )
         effect = self._resolve_execution_cell(
             run,
@@ -11394,8 +11406,8 @@ class LabApplication:
         if replay_directory is not None:
             try:
                 run.archive_to_native(
-                    str(replay_directory),
-                    max_events_per_segment=int(options.get("lab_replay_segment_size", 64)),
+                    replay_directory,
+                    max_events_per_segment=options.get("lab_replay_segment_size", 64),
                 )
             except (ImportError, OSError, RuntimeError, TypeError, ValueError) as exc:
                 run.record_blocker(f"lab_replay_archive_failed:{type(exc).__name__}")

@@ -1371,6 +1371,48 @@ def test_agent_entrypoints_reject_lossy_lab_and_browser_flags(
         AgentConfig.from_inputs("strict config flags", browser=1)  # type: ignore[arg-type]
 
 
+def test_agent_config_rejects_lossy_trust_level_override(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("AEGIS_API_KEY", "test-key")
+    from aegis_cognition.config import AgentConfig, resolve_trust_level
+
+    with pytest.raises(RuntimeError, match="Invalid trust level"):
+        AgentConfig.from_inputs("strict trust level", trust_level=1)  # type: ignore[arg-type]
+    with pytest.raises(RuntimeError, match="Invalid trust level"):
+        resolve_trust_level({"trust": {"level": 1}})
+
+
+def test_post_completion_effect_policy_rejects_lossy_boolean() -> None:
+    import asyncio
+
+    from aegis_cognition.lab import LabApplication
+
+    calls: list[str] = []
+
+    def effect(*, run: LabRun, result: object) -> None:
+        del run, result
+        calls.append("called")
+
+    app = LabApplication(
+        config=SimpleNamespace(
+            trust_level="DEV",
+            options={"lab_require_post_completion_effect": "false"},
+            max_steps=3,
+        ),
+        gateway_factory=lambda **_: None,
+        telemetry=SimpleNamespace(),
+        correlation=SimpleNamespace(),
+        post_completion_effect=effect,
+    )
+    run = _ready_run()
+    app._prepare_execution_cells(run, app.config.options)
+    asyncio.run(app._run_post_completion_effect(run, SimpleNamespace(output="ok")))
+
+    assert calls == []
+    assert "post_completion_effect_policy_invalid" in run.blockers
+
+
 @pytest.mark.parametrize(
     ("options", "message"),
     (
@@ -2541,6 +2583,43 @@ def test_lab_native_archive_prefers_sealed_manifest_identity_verifier(
     with pytest.raises(RuntimeError, match="recovery verification"):
         run.archive_to_native(str(tmp_path))
     assert captured["expected_manifest_hash"] == bytes([7] * 32)
+
+
+@pytest.mark.parametrize("segment_size", (True, 0, 2.0, "2", None))
+def test_lab_native_archive_rejects_lossy_segment_size_types(
+    tmp_path: Path, segment_size: object
+) -> None:
+    run = _ready_run()
+    with pytest.raises(ValueError, match="positive segment size"):
+        run.archive_to_native(str(tmp_path), max_events_per_segment=segment_size)  # type: ignore[arg-type]
+
+
+def test_lab_native_archive_rejects_non_string_directory() -> None:
+    with pytest.raises(TypeError, match="directory must be a string"):
+        _ready_run().archive_to_native(Path("replay"))  # type: ignore[arg-type]
+
+
+def test_lab_native_archive_rejects_non_boolean_verifier_result(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    run = _ready_run()
+
+    class Native:
+        @staticmethod
+        def aegis_lab_archive_events(
+            events_json: str, directory: str, run_id: int, segment_size: int
+        ) -> str:
+            del events_json, directory, segment_size
+            return json.dumps({"manifest_hash": "cd" * 32, "run_id": run_id})
+
+        @staticmethod
+        def aegis_lab_verify_archive(directory: str, run_id: int) -> int:
+            del directory, run_id
+            return 1
+
+    monkeypatch.setitem(sys.modules, "aegis_nerve", Native())
+    with pytest.raises(RuntimeError, match="recovery verification"):
+        run.archive_to_native(str(tmp_path))
 
 
 def test_lab_recovery_rechecks_persisted_manifest_identity(
