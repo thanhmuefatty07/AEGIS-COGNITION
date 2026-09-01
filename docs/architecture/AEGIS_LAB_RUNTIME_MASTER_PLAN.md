@@ -2685,6 +2685,18 @@ hidden planner/lease ownership, arbitrary adapter effects, process-level
 interruption and hosted multi-process single-writer evidence remain open under
 `LAB-AUTH-001`.
 
+**P3 experiment-receipt continuation (2026-09-02):** experiment execution
+admission and settlement now enforce exact experiment/identity/status/count
+metadata and optional digest types before lookup or normalization. Optional
+execution IDs preserve explicit invalid values for rejection, and supplied
+empty input/policy digests no longer trigger recomputation; timeout and
+idempotency binding remain finite and replay-checked. Negative coverage now
+totals **276 focused Lab tests** and **382 combined Python/cross-language
+tests**; targeted Ruff and Pyright remain clean. This strengthens the local
+experiment authority fence only; scientific solver validation, hidden adapter
+effects, process interruption and hosted writer evidence remain open under
+`LAB-PHYS-004`/`LAB-AUTH-001`.
+
 #### M5 — Research, browser và experiment cells
 
 **Entry:** M2–M4 pass cho local cells; capability registry sealed.
