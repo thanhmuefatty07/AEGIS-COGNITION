@@ -60,8 +60,21 @@ def resolve_api_key(config: Mapping[str, Any]) -> str | None:
 def resolve_trust_level(config: Mapping[str, Any], override: str | None = None) -> str:
     trust = config.get("trust", {})
     configured: object = cast(Mapping[str, object], trust).get("level") if isinstance(trust, Mapping) else None
-    selected: object = override or configured or os.environ.get("AEGIS_TRUST_LEVEL") or "DEV"
-    return str(selected).strip().upper()
+    if override is not None:
+        if type(override) is not str:
+            raise ConfigError.invalid_trust_level(
+                f"non-string override ({type(override).__name__})"
+            )
+        selected = override
+    elif configured is not None:
+        if type(configured) is not str:
+            raise ConfigError.invalid_trust_level(
+                f"non-string configured value ({type(configured).__name__})"
+            )
+        selected = configured
+    else:
+        selected = os.environ.get("AEGIS_TRUST_LEVEL") or "DEV"
+    return selected.strip().upper()
 
 
 @dataclass(frozen=True)
