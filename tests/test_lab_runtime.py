@@ -535,6 +535,31 @@ def test_lab_native_authority_admits_each_event_append(monkeypatch: pytest.Monke
     assert run.verify_event_chain()
 
 
+def test_lab_native_verifiers_reject_non_boolean_results(monkeypatch: pytest.MonkeyPatch) -> None:
+    class NonBooleanEventVerifier:
+        @staticmethod
+        def aegis_lab_verify_event_chain(_events_json: str) -> int:
+            return 1
+
+    monkeypatch.setitem(sys.modules, "aegis_nerve", NonBooleanEventVerifier())
+    with pytest.raises(RuntimeError, match="authority verification failed"):
+        LabRun("non-boolean event verifier", require_native_authority=True)
+
+    class NonBooleanTransitionVerifier:
+        @staticmethod
+        def aegis_lab_verify_event_chain(_events_json: str) -> bool:
+            return True
+
+        @staticmethod
+        def aegis_lab_validate_transition(_current: str, _next: str) -> int:
+            return 1
+
+    monkeypatch.setitem(sys.modules, "aegis_nerve", NonBooleanTransitionVerifier())
+    run = LabRun("non-boolean transition verifier", require_native_authority=True)
+    with pytest.raises(RuntimeError, match="transition validation failed"):
+        run.add_source(SourceRecord("s1", "https://example.test", "content", "snapshot", 1))
+
+
 def test_authority_mode_is_explicit_and_legacy_flag_conflicts_fail_closed(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -2079,6 +2104,18 @@ def test_skill_execution_is_validator_backed_and_replay_bound() -> None:
                 mission_id=run.mission_id,
                 replay_parent_hash=admission.admission_event_hash,
                 input_payload={"query": "rejected"},
+            )
+        )
+    truthy_registry = SkillRegistry()
+    truthy_registry.register(manifest, lambda _result: 1)  # type: ignore[arg-type]
+    with pytest.raises(SkillAdmissionError, match="validator rejected"):
+        asyncio.run(
+            truthy_registry.execute(
+                admission,
+                lambda payload: {"validated": True, "payload": payload},
+                mission_id=run.mission_id,
+                replay_parent_hash=admission.admission_event_hash,
+                input_payload={"query": "truthy"},
             )
         )
 
