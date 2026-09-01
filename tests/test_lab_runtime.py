@@ -2512,6 +2512,42 @@ def test_units_uncertainty_and_clean_replication_are_explicit() -> None:
     assert dossier.manifest["experiment_statistics"]["e1"]["clean_replication_count"] == 1
 
 
+def test_experiment_contract_rejects_duplicate_or_lossy_seed_metadata() -> None:
+    run = _ready_run()
+    with pytest.raises(ValueError, match="unique integer seeds"):
+        run.add_experiment(
+            ExperimentSpec("duplicate", "h1", "paired", ("x",), ("baseline",), (1, 1, 2, 3, 4), 1)
+        )
+    with pytest.raises(ValueError, match="unique integer seeds"):
+        ExperimentSpec(
+            "string-seed",
+            "h1",
+            "paired",
+            ("x",),
+            ("baseline",),
+            (1, "2", 3, 4, 5),  # type: ignore[arg-type]
+            1,
+        ).validate()
+    with pytest.raises(ValueError, match="unique integer seeds"):
+        ExperimentSpec(
+            "boolean-quota",
+            "h1",
+            "paired",
+            ("x",),
+            ("baseline",),
+            (1, 2, 3, 4, 5),
+            True,  # type: ignore[arg-type]
+        ).validate()
+
+
+def test_snapshot_restore_rejects_lossy_experiment_seed_coercion() -> None:
+    run = _ready_run()
+    payload = run.to_payload()
+    payload["experiments"][0]["preregistered_seeds"] = ["1", 2, 3, 4, 5]
+    with pytest.raises(ValueError, match="unique integer seeds"):
+        LabRun.from_payload(payload)
+
+
 def test_simulation_cell_enforces_constraints_and_integrates_with_lab() -> None:
     import asyncio
 
