@@ -2659,6 +2659,19 @@ local browser contract evidence only; DNS rebinding, browser-process/OS
 containment, crash injection and hosted cross-platform continuity remain
 `OPEN_EXTERNAL` under `LAB-BROWSER-002` and `LAB-AUTH-001`.
 
+**P2 reducer-receipt continuation (2026-09-02):** `LabRun` browser
+actor/observer admission and settlement receipts now enforce exact action,
+policy, identity, lease/count, status and optional digest types before event
+append; supplied empty or malformed hashes no longer fall back to recomputed
+values, and an observation identifier cannot be silently discarded when an
+admission is absent. Browser kind/status vocabularies are centralized and the
+policy is revalidated at the reducer boundary. Negative coverage now totals
+**274 focused Lab tests** and **380 combined Python/cross-language tests**;
+targeted Ruff and Pyright remain clean. This closes a local reducer coercion
+gap only; arbitrary adapter effects, DNS rebinding, OS/process containment,
+hosted single-writer authority and cross-platform evidence remain open under
+`LAB-AUTH-001`/`LAB-BROWSER-002`.
+
 #### M5 — Research, browser và experiment cells
 
 **Entry:** M2–M4 pass cho local cells; capability registry sealed.
