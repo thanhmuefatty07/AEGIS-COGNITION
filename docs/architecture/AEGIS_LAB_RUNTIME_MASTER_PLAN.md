@@ -2527,6 +2527,19 @@ these validators run. Regression coverage confirms malformed numerical
 contracts fail closed. This is bounded input/invariant evidence only; it does
 not prove solver convergence, hardware calibration or physical validity.
 
+**P3 runtime-output continuation (2026-09-02):** `SimulationCell` now rejects
+lossy runner observations, convergence evidence, constraint residuals and
+epistemic labels before calculation; ODE integration validates exact numeric
+state/derivative/invariant values, bounded integer steps and method metadata;
+calibration pairs and electrical V/I/reference samples reject string,
+boolean, non-finite or untyped inputs before arithmetic. Undeclared residual
+maps are rejected instead of being silently ignored. Negative coverage now
+totals **266 focused Lab tests** and **372 combined Python/cross-language
+tests**. This closes local numerical ingestion and calculation boundaries only;
+validated solver convergence, sensor calibration, hardware energy witnesses
+and independent physical replication remain `OPEN_EXTERNAL` under
+`LAB-PHYS-004`.
+
 **P1 policy-boundary continuation (2026-09-02):** `LabRun`,
 `LabMissionSpec`, `LabPolicy`, `LabBudget` and `BrowserCellPolicy` now reject
 lossy task, scope, host, quota, policy-flag and budget metadata (including
