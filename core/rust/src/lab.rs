@@ -4328,6 +4328,15 @@ mod tests {
         )
         .unwrap();
         assert!(manifest.is_valid());
+        let manifest_json = serde_json::to_value(&manifest).unwrap();
+        assert_eq!(
+            manifest_json["schema"],
+            crate::replay::RUN_EVENT_SEGMENT_MANIFEST_SCHEMA
+        );
+        assert_eq!(
+            manifest_json["version"],
+            crate::replay::RUN_EVENT_SEGMENT_MANIFEST_VERSION
+        );
         let archived =
             crate::replay::RunEventSegmentArchive::read_ledger_mmap(directory.path(), &manifest)
                 .unwrap();
