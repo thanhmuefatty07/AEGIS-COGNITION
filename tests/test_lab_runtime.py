@@ -6240,6 +6240,60 @@ def test_execution_cell_manifest_round_trips_with_lab_snapshot() -> None:
     assert restored.dossier(finalize=False).manifest["execution_cell_manifest"] == run.execution_cell_manifest
 
 
+@pytest.mark.parametrize(
+    ("field", "value"),
+    (
+        ("manifest_hash", [0] * 31),
+        ("run_id", "1"),
+        ("snapshot_path", 1),
+        ("snapshot_hash", 1),
+    ),
+)
+def test_lab_snapshot_rejects_lossy_replay_archive_metadata(
+    field: str, value: object
+) -> None:
+    run = _ready_run()
+    payload = run.to_payload()
+    payload["replay_archive"] = {
+        "manifest_hash": [0] * 32,
+        "run_id": int(run.mission_id, 16),
+        "snapshot_path": "snapshot.json",
+        "snapshot_hash": "a" * 64,
+    }
+    payload["replay_archive"][field] = value  # type: ignore[index]
+    with pytest.raises(ValueError):
+        LabRun.from_payload(payload)
+
+
+def test_lab_snapshot_rejects_lossy_and_duplicate_execution_cell_metadata() -> None:
+    run = _ready_run()
+    base_cell = {
+        "cell_id": "compute-v1",
+        "action_kinds": ["experiment_action"],
+        "capabilities": ["compute"],
+        "effect_classes": ["compute"],
+        "trust_levels": ["DEV"],
+    }
+    for field, value in (
+        ("action_kinds", "experiment_action"),
+        ("action_kinds", ["Experiment_Action"]),
+        ("capabilities", [1]),
+        ("trust_levels", [1]),
+        ("trust_policy_hash", 1),
+    ):
+        payload = run.to_payload()
+        cell = dict(base_cell)
+        cell[field] = value
+        payload["execution_cell_manifest"] = [cell]
+        with pytest.raises(ValueError):
+            LabRun.from_payload(payload)
+
+    duplicate_payload = run.to_payload()
+    duplicate_payload["execution_cell_manifest"] = [dict(base_cell), dict(base_cell)]
+    with pytest.raises(ValueError, match="duplicate execution cell"):
+        LabRun.from_payload(duplicate_payload)
+
+
 def test_explicit_execution_registry_rejects_legacy_search_fallback(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
