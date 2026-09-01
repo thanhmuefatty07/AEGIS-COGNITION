@@ -68,6 +68,8 @@ class AuthorityMode(StrEnum):
 
 
 def _normalize_lab_trust_level(value: str) -> str:
+    if type(value) is not str:
+        raise ValueError("lab trust level must be a string")
     level = str(value).strip().upper()
     if level not in _LAB_TRUST_LEVELS:
         raise ValueError("lab trust level must be DEV, STAGING, or PROD")
@@ -77,6 +79,10 @@ def _normalize_lab_trust_level(value: str) -> str:
 def _normalize_authority_mode(value: AuthorityMode | str) -> AuthorityMode:
     if isinstance(value, AuthorityMode):
         return value
+    if type(value) is not str:
+        raise ValueError(
+            "lab authority mode must be projection_only, native_admitted, or native_required"
+        )
     normalized = str(value).strip().upper().replace("-", "_")
     try:
         return AuthorityMode[normalized]
@@ -101,7 +107,9 @@ def _browser_policy_matches(value: Any, expected: Mapping[str, Any]) -> bool:
     if isinstance(raw_allowed_hosts, str) or not isinstance(raw_allowed_hosts, (list, tuple)):
         return False
     allowed_hosts = cast(list[Any] | tuple[Any, ...], raw_allowed_hosts)
-    normalized_hosts = tuple(str(host) for host in allowed_hosts)
+    if any(type(host) is not str for host in allowed_hosts):
+        return False
+    normalized_hosts = tuple(host for host in allowed_hosts)
     return (
         normalized_hosts == tuple(cast(tuple[str, ...], expected["allowed_hosts"]))
         and typed_value.get("require_https") == expected["require_https"]
@@ -156,6 +164,17 @@ def _bounded_retry_attempts(value: Any, *, max_steps: int, label: str) -> int:
     if type(value) is not int or value < 1:
         raise ValueError(f"{label} retry policy must be a positive integer")
     return min(value, max_steps)
+
+
+def _strict_string_sequence(value: Any, *, label: str) -> tuple[str, ...]:
+    """Copy a bounded string sequence without normalizing malformed values."""
+
+    if type(value) not in (list, tuple):
+        raise ValueError(f"{label} must be a sequence")
+    typed_value = cast(list[Any] | tuple[Any, ...], value)
+    if any(type(item) is not str for item in typed_value):
+        raise ValueError(f"{label} entries must be strings")
+    return tuple(typed_value)
 
 
 def _is_disallowed_ip_literal(host: str) -> bool:
@@ -2110,7 +2129,30 @@ class SkillAdmission:
         )
 
     def validate_hash(self) -> None:
-        if not self.skill_id.strip() or not self.version.strip() or not self.mission_id.strip():
+        if (
+            type(self.skill_id) is not str
+            or type(self.version) is not str
+            or type(self.manifest_hash) is not str
+            or type(self.mission_id) is not str
+            or type(self.mission_epoch) is not int
+            or type(self.granted_capabilities) not in (list, tuple)
+            or type(self.precondition_results) not in (list, tuple)
+            or type(self.replay_parent_hash) is not str
+            or type(self.admission_hash) is not str
+            or type(self.admission_event_hash) is not str
+            or not self.skill_id.strip()
+            or not self.version.strip()
+            or not self.mission_id.strip()
+            or any(type(capability) is not str or not capability.strip() for capability in self.granted_capabilities)
+            or any(
+                type(pair) not in (list, tuple)
+                or len(pair) != 2
+                or type(pair[0]) is not str
+                or not pair[0].strip()
+                or type(pair[1]) is not bool
+                for pair in self.precondition_results
+            )
+        ):
             raise SkillAdmissionError("skill admission identity is invalid")
         if self.mission_epoch < 0 or not _is_digest(self.manifest_hash):
             raise SkillAdmissionError("skill admission metadata is invalid")
@@ -5590,6 +5632,74 @@ class LabRun:
         if len(raw_tool_executions) != len(set(raw_tool_executions)):
             raise ValueError("duplicate tool execution identity in lab snapshot")
 
+        raw_events = snapshot_records("events")
+        for item in raw_events:
+            if (
+                type(item.get("sequence")) is not int
+                or type(item.get("state_epoch")) is not int
+                or item.get("sequence", 0) < 1
+                or item.get("state_epoch", -1) < 0
+                or type(item.get("kind")) is not str
+                or not item["kind"].strip()
+                or type(item.get("payload_hash")) is not str
+                or type(item.get("previous_event_hash")) is not str
+                or type(item.get("event_hash")) is not str
+                or not _is_digest(item["payload_hash"])
+                or not _is_digest(item["previous_event_hash"])
+                or not _is_digest(item["event_hash"])
+                or type(item.get("payload")) is not dict
+            ):
+                raise ValueError("invalid event metadata in lab snapshot")
+
+        def validate_tool_admission(item: dict[str, Any]) -> None:
+            required_strings = (
+                "admission_id",
+                "execution_id",
+                "tool_name",
+                "effect_class",
+                "actor_role",
+                "expected_observation_schema",
+                "stop_rule",
+                "mission_id",
+                "replay_parent_hash",
+                "input_hash",
+                "policy_hash",
+                "status",
+            )
+            if any(
+                type(item.get(field)) is not str or not item[field].strip()
+                for field in required_strings
+            ):
+                raise ValueError("invalid tool execution admission metadata in lab snapshot")
+            if (
+                item["status"] != "ADMITTED"
+                or item["actor_role"] not in {"actor", "observer"}
+                or item["mission_id"] != restored.mission_id
+                or not _is_digest(item["replay_parent_hash"])
+                or not _is_digest(item["input_hash"])
+                or not _is_digest(item["policy_hash"])
+                or type(item.get("attempt")) is not int
+                or item["attempt"] < 1
+                or type(item.get("lease_id")) is not int
+                or item["lease_id"] < 1
+            ):
+                raise ValueError("invalid tool execution admission metadata in lab snapshot")
+            if "idempotency_key" in item and (
+                type(item["idempotency_key"]) is not str
+                or not _is_digest(item["idempotency_key"])
+            ):
+                raise ValueError("invalid tool execution idempotency metadata in lab snapshot")
+            if "timeout_seconds" in item and (
+                type(item["timeout_seconds"]) not in (int, float)
+                or isinstance(item["timeout_seconds"], bool)
+                or not math.isfinite(float(item["timeout_seconds"]))
+                or float(item["timeout_seconds"]) <= 0
+            ):
+                raise ValueError("invalid tool execution deadline metadata in lab snapshot")
+
+        for item in raw_tool_admissions:
+            validate_tool_admission(item)
+
         def snapshot_string_sequence(item: dict[str, Any], key: str) -> tuple[str, ...]:
             raw_value = item.get(key, ())
             if type(raw_value) not in (list, tuple):
@@ -5598,6 +5708,22 @@ class LabRun:
             if any(type(value) is not str for value in typed_value):
                 raise ValueError(f"invalid {key} in lab snapshot")
             return tuple(typed_value)
+
+        for item in raw_skill_admissions:
+            snapshot_string_sequence(item, "granted_capabilities")
+            raw_pairs = item.get("precondition_results")
+            if type(raw_pairs) not in (list, tuple):
+                raise ValueError("invalid skill precondition metadata in lab snapshot")
+            typed_pairs = cast(list[Any] | tuple[Any, ...], raw_pairs)
+            if any(
+                type(pair) not in (list, tuple)
+                or len(pair) != 2
+                or type(pair[0]) is not str
+                or not pair[0].strip()
+                or type(pair[1]) is not bool
+                for pair in typed_pairs
+            ):
+                raise ValueError("invalid skill precondition metadata in lab snapshot")
 
         restored.sources = {
             record.source_id: record
@@ -5660,8 +5786,8 @@ class LabRun:
             record.observation_id: record
             for record in (
                 ObservationRecord(
-                    observation_id=str(item["observation_id"]),
-                    experiment_id=str(item["experiment_id"]),
+                    observation_id=item["observation_id"],
+                    experiment_id=item["experiment_id"],
                     seed=item["seed"],
                     measurement=item["measurement"],
                     unit=item["unit"],
@@ -5690,36 +5816,35 @@ class LabRun:
             admission.admission_hash: admission
             for admission in (
                 SkillAdmission(
-                    skill_id=str(item["skill_id"]),
-                    version=str(item["version"]),
-                    manifest_hash=str(item["manifest_hash"]),
-                    mission_id=str(item["mission_id"]),
-                    mission_epoch=int(item["mission_epoch"]),
-                    granted_capabilities=tuple(str(value) for value in item["granted_capabilities"]),
+                    skill_id=item["skill_id"],
+                    version=item["version"],
+                    manifest_hash=item["manifest_hash"],
+                    mission_id=item["mission_id"],
+                    mission_epoch=item["mission_epoch"],
+                    granted_capabilities=snapshot_string_sequence(item, "granted_capabilities"),
                     precondition_results=tuple(
-                        (str(pair[0]), bool(pair[1]))
-                        for pair in item["precondition_results"]
+                        (pair[0], pair[1])
+                        for pair in cast(list[Any] | tuple[Any, ...], item["precondition_results"])
                     ),
-                    replay_parent_hash=str(item["replay_parent_hash"]),
-                    admission_hash=str(item["admission_hash"]),
-                    admission_event_hash=str(item.get("admission_event_hash", "")),
+                    replay_parent_hash=item["replay_parent_hash"],
+                    admission_hash=item["admission_hash"],
+                    admission_event_hash=item.get("admission_event_hash", ""),
                 )
                 for item in raw_skill_admissions
             )
         }
         restored.tool_execution_admissions = {
-            str(item["execution_id"]): dict(item) for item in raw_tool_admissions
+            item["execution_id"]: dict(item) for item in raw_tool_admissions
         }
-        restored.tool_executions = {str(item) for item in raw_tool_executions}
-        raw_events = cast(list[dict[str, Any]], list(payload.get("events", ())))
+        restored.tool_executions = set(raw_tool_executions)
         restored.events = [
             LabEvent(
-                sequence=int(item["sequence"]),
-                state_epoch=int(item["state_epoch"]),
-                kind=str(item["kind"]),
-                payload_hash=str(item["payload_hash"]),
-                previous_event_hash=str(item["previous_event_hash"]),
-                event_hash=str(item["event_hash"]),
+                sequence=item["sequence"],
+                state_epoch=item["state_epoch"],
+                kind=item["kind"],
+                payload_hash=item["payload_hash"],
+                previous_event_hash=item["previous_event_hash"],
+                event_hash=item["event_hash"],
                 payload=item.get("payload"),
             )
             for item in raw_events
@@ -5727,7 +5852,12 @@ class LabRun:
         restored._native_finalization_started = any(
             event.kind == "finalization_started" for event in restored.events
         )
-        restored.blockers = [str(item) for item in payload.get("blockers", ())]
+        raw_blockers = payload.get("blockers", ())
+        if type(raw_blockers) not in (list, tuple) or any(
+            type(item) is not str or not item.strip() for item in raw_blockers
+        ):
+            raise ValueError("invalid blockers in lab snapshot")
+        restored.blockers = list(cast(list[str] | tuple[str, ...], raw_blockers))
         restored._event_listeners = []
         raw_security_events = payload.get("security_events", ())
         if not isinstance(raw_security_events, (list, tuple)):
@@ -5741,13 +5871,18 @@ class LabRun:
             raw_security_events_any,
         )
         for item in typed_security_events:
-            if not str(item.get("reason", "")).strip():
+            if (
+                type(item.get("reason")) is not str
+                or type(item.get("artifact_hash", "")) is not str
+                or type(item.get("detail", "")) is not str
+                or not item["reason"].strip()
+            ):
                 raise ValueError("invalid security event in lab snapshot")
             restored.security_events.append(
                 {
-                    "reason": str(item.get("reason", "")),
-                    "artifact_hash": str(item.get("artifact_hash", "")),
-                    "detail": str(item.get("detail", "")),
+                    "reason": item["reason"],
+                    "artifact_hash": item.get("artifact_hash", ""),
+                    "detail": item.get("detail", ""),
                 }
             )
         raw_archive = payload.get("replay_archive")
@@ -5979,7 +6114,10 @@ class LabRun:
             if not isinstance(payload, dict):
                 raise ValueError(f"invalid {label} event payload in lab snapshot")
             typed_payload = cast(dict[str, Any], cast(Any, payload))
-            identity = str(typed_payload.get(identity_key, "")).strip()
+            raw_identity = typed_payload.get(identity_key)
+            if type(raw_identity) is not str:
+                raise ValueError(f"invalid {label} event identity in lab snapshot")
+            identity = raw_identity.strip()
             if not identity:
                 raise ValueError(f"invalid {label} event identity in lab snapshot")
             admission_key = (admission_kind, identity)
@@ -5988,22 +6126,26 @@ class LabRun:
                     raise ValueError(f"{label} settlement references unknown admission in lab snapshot")
                 if admission_key in settled:
                     raise ValueError(f"duplicate {label} settlement in lab snapshot")
-                stored_admission_id = (
-                    identity
-                    if identity_key == "admission_hash"
-                    else str(typed_payload.get("admission_id", ""))
-                )
+                raw_admission_id = typed_payload.get("admission_id")
+                if identity_key == "admission_hash":
+                    stored_admission_id = identity
+                elif type(raw_admission_id) is str:
+                    stored_admission_id = raw_admission_id
+                else:
+                    raise ValueError(f"invalid {label} admission identity in lab snapshot")
                 if stored_admission_id != admissions[admission_key]:
                     raise ValueError(f"{label} settlement admission binding mismatch in lab snapshot")
                 settled.add(admission_key)
                 continue
             if admission_key in admissions:
                 raise ValueError(f"duplicate {label} admission in lab snapshot")
-            stored_admission_id = (
-                identity
-                if identity_key == "admission_hash"
-                else str(typed_payload.get("admission_id", ""))
-            )
+            raw_admission_id = typed_payload.get("admission_id")
+            if identity_key == "admission_hash":
+                stored_admission_id = identity
+            elif type(raw_admission_id) is str:
+                stored_admission_id = raw_admission_id
+            else:
+                raise ValueError(f"invalid {label} admission identity in lab snapshot")
             if not stored_admission_id.strip():
                 raise ValueError(f"invalid {label} admission identity in lab snapshot")
             admissions[admission_key] = stored_admission_id
@@ -6805,7 +6947,7 @@ class Lab:
         from .config import AgentConfig
         from .observability import CorrelationContext
 
-        spec = mission if isinstance(mission, LabMissionSpec) else LabMissionSpec(str(mission))
+        spec = mission if isinstance(mission, LabMissionSpec) else LabMissionSpec(mission)
         spec.validate()
         merged = dict(options)
         merged.update(self.budget.as_options())
@@ -6821,8 +6963,16 @@ class Lab:
         merged["browser_policy"] = browser_policy
         if self.policy.replay_directory is not None:
             merged.setdefault("lab_replay_directory", self.policy.replay_directory)
-        merged.setdefault("non_goals", spec.non_goals)
-        merged.setdefault("scope", spec.scope)
+        if "non_goals" in merged:
+            merged["non_goals"] = _strict_string_sequence(
+                merged["non_goals"], label="lab non-goals"
+            )
+        else:
+            merged["non_goals"] = spec.non_goals
+        if "scope" in merged:
+            merged["scope"] = _strict_string_sequence(merged["scope"], label="lab scope")
+        else:
+            merged["scope"] = spec.scope
         # Authority is owned by the policy object at the mission boundary;
         # compatibility options cannot silently downgrade a production run.
         merged["lab_require_native_authority"] = self.policy.native_authority_required
@@ -6933,7 +7083,7 @@ class LabApplication:
 
         raw_registry = options.get("lab_execution_cells")
         authority_mode = _authority_mode_from_options(
-            options, default_trust_level=str(self.config.trust_level)
+            options, default_trust_level=self.config.trust_level
         )
         native_required = authority_mode is AuthorityMode.NATIVE_REQUIRED
         # Native-required runs cannot use an unregistered compatibility edge
@@ -6948,10 +7098,18 @@ class LabApplication:
                 or options.get("search_as_code")
             )
             if search_runner is None and callable(options.get("search_query_provider")):
+                raw_search_timeout = options.get("search_timeout_seconds", 10.0)
+                raw_search_max_bytes = options.get("search_max_bytes", 8 * 1024 * 1024)
+                if (
+                    not _is_finite_number(raw_search_timeout)
+                    or float(raw_search_timeout) <= 0
+                    or type(raw_search_max_bytes) is not int
+                ):
+                    raise TypeError("search executor metadata types are invalid")
                 search_runner = SearchProgramExecutor(
                     query_provider=options.get("search_query_provider"),
-                    timeout_seconds=float(options.get("search_timeout_seconds", 10.0)),
-                    max_bytes=int(options.get("search_max_bytes", 8 * 1024 * 1024)),
+                    timeout_seconds=raw_search_timeout,
+                    max_bytes=raw_search_max_bytes,
                 )
             if raw_registry is None:
                 candidates: tuple[tuple[str, str, Any, tuple[str, ...], tuple[str, ...]], ...] = (
@@ -7140,13 +7298,14 @@ class LabApplication:
                 run.record_blocker("execution_cell_not_registered:context_retrieval")
             return ""
         query = run.objective
-        try:
-            top_k = int(options.get("top_k", 3))
-            max_chars = int(options.get("lab_context_max_chars", 16_384))
-        except (TypeError, ValueError) as exc:
-            run.record_blocker(f"context_retrieval_policy_invalid:{type(exc).__name__}")
-            return ""
-        if top_k < 1 or max_chars < 1:
+        top_k = options.get("top_k", 3)
+        max_chars = options.get("lab_context_max_chars", 16_384)
+        if (
+            type(top_k) is not int
+            or type(max_chars) is not int
+            or top_k < 1
+            or max_chars < 1
+        ):
             run.record_blocker("context_retrieval_policy_invalid:ValueError")
             return ""
         input_payload = {
@@ -7254,7 +7413,7 @@ class LabApplication:
         if trust_policy_hash is not None and self._factory_accepts_keyword("trust_policy_hash"):
             gateway_options["trust_policy_hash"] = trust_policy_hash
         authority_mode = _authority_mode_from_options(
-            options, default_trust_level=str(self.config.trust_level)
+            options, default_trust_level=self.config.trust_level
         )
         require_native = authority_mode is AuthorityMode.NATIVE_REQUIRED
         if self._factory_accepts_keyword("provider_attempt_hook"):
@@ -7638,16 +7797,24 @@ class LabApplication:
             admission: SkillAdmission | None = None
             input_payload = request.get("input")
             try:
-                skill_id = str(request["skill_id"])
-                version = str(request["version"])
-                capabilities = tuple(str(item) for item in request.get("available_capabilities", ()))
+                skill_id = request["skill_id"]
+                version = request["version"]
+                if type(skill_id) is not str or type(version) is not str:
+                    raise SkillAdmissionError("skill identity and version must be strings")
+                capabilities = _strict_string_sequence(
+                    request.get("available_capabilities", ()),
+                    label="skill capabilities",
+                )
                 preconditions_raw = request.get("preconditions", {})
                 if not isinstance(preconditions_raw, dict):
                     raise SkillAdmissionError("skill preconditions must be a mapping")
-                preconditions = {
-                    str(name): bool(value)
-                    for name, value in cast(dict[Any, Any], preconditions_raw).items()
-                }
+                typed_preconditions = cast(dict[Any, Any], preconditions_raw)
+                if any(
+                    type(name) is not str or type(value) is not bool
+                    for name, value in typed_preconditions.items()
+                ):
+                    raise SkillAdmissionError("skill preconditions must use string/boolean values")
+                preconditions = cast(dict[str, bool], dict(typed_preconditions))
                 configured_executor = request.get("executor")
                 registered_executor = self._resolve_execution_cell(
                     run,
@@ -7747,16 +7914,13 @@ class LabApplication:
             run.record_blocker("tool_retry_policy_invalid")
             return
         raw_timeout = options.get("tool_timeout_seconds", 30.0)
-        if isinstance(raw_timeout, bool):
+        if not _is_finite_number(raw_timeout) or float(raw_timeout) <= 0:
             run.record_blocker("tool_timeout_policy_invalid")
             return
-        try:
-            timeout_seconds = float(raw_timeout)
-        except (TypeError, ValueError):
-            run.record_blocker("tool_timeout_policy_invalid")
-            return
-        if not math.isfinite(timeout_seconds) or timeout_seconds <= 0:
-            run.record_blocker("tool_timeout_policy_invalid")
+        timeout_seconds = float(raw_timeout)
+        allow_external_writes = options.get("lab_allow_external_writes", False)
+        if type(allow_external_writes) is not bool:
+            run.record_blocker("tool_effect_policy_invalid")
             return
         typed_calls = cast(list[Any] | tuple[Any, ...], raw_calls)
         for index, raw_call in enumerate(list(typed_calls)[: run.max_steps], start=1):
@@ -7764,22 +7928,38 @@ class LabApplication:
                 run.record_blocker("tool_call_invalid")
                 continue
             request = cast(dict[str, Any], raw_call)
-            tool_name = str(request.get("tool_name", request.get("name", ""))).strip()
-            call_id = str(request.get("call_id", f"call-{index}")).strip()
-            effect_class = str(request.get("effect_class", "read_only")).strip()
-            actor_role = str(request.get("actor_role", "actor")).strip().lower()
-            expected_schema = str(
-                request.get("expected_observation_schema", "opaque")
-            ).strip()
-            stop_rule = str(request.get("stop_rule", "single_call")).strip()
-            try:
-                lease_id = int(request.get("lease_id", 1))
-            except (TypeError, ValueError):
+            raw_tool_name = request.get("tool_name", request.get("name", ""))
+            raw_call_id = request.get("call_id", f"call-{index}")
+            raw_effect_class = request.get("effect_class", "read_only")
+            raw_actor_role = request.get("actor_role", "actor")
+            raw_expected_schema = request.get("expected_observation_schema", "opaque")
+            raw_stop_rule = request.get("stop_rule", "single_call")
+            lease_id = request.get("lease_id", 1)
+            if any(
+                type(value) is not str
+                for value in (
+                    raw_tool_name,
+                    raw_call_id,
+                    raw_effect_class,
+                    raw_actor_role,
+                    raw_expected_schema,
+                    raw_stop_rule,
+                )
+            ) or type(lease_id) is not int:
+                run.record_blocker("tool_call_invalid")
+                continue
+            tool_name = raw_tool_name.strip()
+            call_id = raw_call_id.strip()
+            effect_class = raw_effect_class.strip()
+            actor_role = raw_actor_role.strip().lower()
+            expected_schema = raw_expected_schema.strip()
+            stop_rule = raw_stop_rule.strip()
+            if lease_id < 1:
                 run.record_blocker("tool_lease_invalid")
                 continue
             if (
                 effect_class not in _CONTROLLER_SAFE_TOOL_EFFECTS
-                and not bool(options.get("lab_allow_external_writes", False))
+                and not allow_external_writes
             ):
                 run.record_blocker("tool_external_effect_not_approved")
                 continue
@@ -7993,7 +8173,11 @@ class LabApplication:
             run.record_blocker("controller_action_plan_exceeds_step_quota")
             return executed_experiment_ids
         for raw_action in actions:
-            kind = str(raw_action.get("kind", "")).strip().lower()
+            raw_kind = raw_action.get("kind", "")
+            if type(raw_kind) is not str:
+                run.record_blocker("controller_action_kind_invalid")
+                continue
+            kind = raw_kind.strip().lower()
             if kind not in _CONTROLLER_ACTION_KINDS:
                 run.record_blocker("controller_action_kind_unsupported")
                 continue
@@ -8005,10 +8189,14 @@ class LabApplication:
                     run.record_blocker("controller_tool_call_invalid")
                     continue
                 request_map = cast(dict[str, Any], request)
-                effect_class = str(request_map.get("effect_class", "read_only")).strip()
+                raw_effect_class = request_map.get("effect_class", "read_only")
+                if type(raw_effect_class) is not str:
+                    run.record_blocker("controller_tool_effect_invalid")
+                    continue
+                effect_class = raw_effect_class.strip()
                 if (
                     effect_class not in _CONTROLLER_SAFE_TOOL_EFFECTS
-                    and not bool(options.get("lab_allow_external_writes", False))
+                    and options.get("lab_allow_external_writes", False) is not True
                 ):
                     run.record_blocker("controller_tool_effect_not_approved")
                     continue
@@ -8020,9 +8208,11 @@ class LabApplication:
                 continue
 
             if kind == "experiment_action":
-                experiment_id = str(
-                    raw_action.get("experiment_id", raw_action.get("id", ""))
-                ).strip()
+                raw_experiment_id = raw_action.get("experiment_id", raw_action.get("id", ""))
+                if type(raw_experiment_id) is not str:
+                    run.record_blocker("controller_experiment_invalid:TypeError")
+                    continue
+                experiment_id = raw_experiment_id.strip()
                 raw_spec = run.experiments.get(experiment_id) if experiment_id else None
                 if raw_spec is None:
                     candidate = raw_action.get("experiment_spec")
@@ -8069,9 +8259,10 @@ class LabApplication:
                     if candidate_simulation is None:
                         candidate_simulation = options.get("simulation_spec")
                     simulation = self._coerce_simulation_spec(candidate_simulation)
-                    experiment_id = str(
-                        raw_action.get("experiment_id", simulation.experiment_id)
-                    ).strip()
+                    raw_experiment_id = raw_action.get("experiment_id", simulation.experiment_id)
+                    if type(raw_experiment_id) is not str:
+                        raise TypeError("controller simulation experiment id must be a string")
+                    experiment_id = raw_experiment_id.strip()
                     if experiment_id != simulation.experiment_id:
                         raise ValueError("controller simulation experiment id does not match spec")
                     experiment = run.experiments.get(experiment_id)
@@ -8125,7 +8316,11 @@ class LabApplication:
                     run.record_blocker("controller_browser_action_requires_bound_session")
                     continue
                 action_map = cast(dict[str, Any], action)
-                action_kind = str(action_map.get("kind", "")).strip().lower()
+                raw_action_kind = action_map.get("kind", "")
+                if type(raw_action_kind) is not str:
+                    run.record_blocker("controller_browser_action_invalid")
+                    continue
+                action_kind = raw_action_kind.strip().lower()
                 action_id = (
                     f"lease-{max(1, browser_cell.lease_id)}-"
                     f"action-{browser_cell.action_count + 1}"
@@ -8226,19 +8421,29 @@ class LabApplication:
                     operations = program_data.get("operations")
                     if not isinstance(operations, (list, tuple)):
                         raise TypeError("controller search program operations must be a sequence")
+                    max_candidates = program_data.get("max_candidates", 20)
+                    provider = program_data.get("provider", "unspecified")
+                    freshness_max_age = program_data.get("freshness_max_age_seconds")
+                    contradiction_clusters = program_data.get(
+                        "min_independent_contradiction_clusters", 0
+                    )
+                    if (
+                        type(max_candidates) is not int
+                        or type(provider) is not str
+                        or (freshness_max_age is not None and type(freshness_max_age) is not int)
+                        or type(contradiction_clusters) is not int
+                    ):
+                        raise TypeError("controller search program metadata types are invalid")
                     program = SearchProgram.from_mappings(
                         tuple(cast(list[dict[str, Any]], operations)),
-                        max_candidates=int(program_data.get("max_candidates", 20)),
-                        allowed_hosts=tuple(str(item) for item in program_data.get("allowed_hosts", ())),
-                        provider=str(program_data.get("provider", "unspecified")),
-                        freshness_max_age_seconds=(
-                            int(program_data["freshness_max_age_seconds"])
-                            if program_data.get("freshness_max_age_seconds") is not None
-                            else None
+                        max_candidates=max_candidates,
+                        allowed_hosts=_strict_string_sequence(
+                            program_data.get("allowed_hosts", ()),
+                            label="controller search program allowlist",
                         ),
-                        min_independent_contradiction_clusters=int(
-                            program_data.get("min_independent_contradiction_clusters", 0)
-                        ),
+                        provider=provider,
+                        freshness_max_age_seconds=freshness_max_age,
+                        min_independent_contradiction_clusters=contradiction_clusters,
                     )
                 else:
                     raise TypeError("controller search program must be a mapping")
@@ -8260,10 +8465,18 @@ class LabApplication:
                 if executor is None:
                     executor = options.get("researcher") or options.get("search_as_code")
                 if executor is None:
+                    raw_search_timeout = options.get("search_timeout_seconds", 10.0)
+                    raw_search_max_bytes = options.get("search_max_bytes", 8 * 1024 * 1024)
+                    if (
+                        not _is_finite_number(raw_search_timeout)
+                        or float(raw_search_timeout) <= 0
+                        or type(raw_search_max_bytes) is not int
+                    ):
+                        raise TypeError("controller search executor metadata types are invalid")
                     executor = SearchProgramExecutor(
                         query_provider=options.get("search_query_provider"),
-                        timeout_seconds=float(options.get("search_timeout_seconds", 10.0)),
-                        max_bytes=int(options.get("search_max_bytes", 8 * 1024 * 1024)),
+                        timeout_seconds=raw_search_timeout,
+                        max_bytes=raw_search_max_bytes,
                     )
                 if not callable(executor):
                     raise TypeError("controller search program executor is missing")
@@ -8348,17 +8561,10 @@ class LabApplication:
             run.record_blocker(f"experiment_retry_policy_invalid:{type(exc).__name__}")
             return
         raw_timeout = options.get("experiment_timeout_seconds", 30.0)
-        if isinstance(raw_timeout, bool):
+        if not _is_finite_number(raw_timeout) or float(raw_timeout) <= 0:
             run.record_blocker("experiment_timeout_policy_invalid")
             return
-        try:
-            timeout_seconds = float(raw_timeout)
-        except (TypeError, ValueError):
-            run.record_blocker("experiment_timeout_policy_invalid")
-            return
-        if not math.isfinite(timeout_seconds) or timeout_seconds <= 0:
-            run.record_blocker("experiment_timeout_policy_invalid")
-            return
+        timeout_seconds = float(raw_timeout)
 
         controller_action_hash = _hash(action) if action is not None else ""
         for attempt in range(1, max_attempts + 1):
@@ -8494,22 +8700,17 @@ class LabApplication:
                 max_steps=run.max_steps,
                 label="simulation",
             )
-            cell_max_steps = int(options.get("simulation_cell_max_steps", 10_000))
+            cell_max_steps = options.get("simulation_cell_max_steps", 10_000)
+            if type(cell_max_steps) is not int or cell_max_steps < 1:
+                raise TypeError("simulation cell step quota must be a positive integer")
         except (TypeError, ValueError, KeyError) as exc:
             run.record_blocker(f"simulation_retry_policy_invalid:{type(exc).__name__}")
             return
         raw_timeout = options.get("simulation_timeout_seconds", 30.0)
-        if isinstance(raw_timeout, bool):
+        if not _is_finite_number(raw_timeout) or float(raw_timeout) <= 0:
             run.record_blocker("simulation_timeout_policy_invalid")
             return
-        try:
-            timeout_seconds = float(raw_timeout)
-        except (TypeError, ValueError):
-            run.record_blocker("simulation_timeout_policy_invalid")
-            return
-        if not math.isfinite(timeout_seconds) or timeout_seconds <= 0:
-            run.record_blocker("simulation_timeout_policy_invalid")
-            return
+        timeout_seconds = float(raw_timeout)
 
         controller_action_hash = _hash(action) if action is not None else ""
         for attempt in range(1, max_attempts + 1):
@@ -8645,14 +8846,9 @@ class LabApplication:
             raise ValueError("gateway retry policy must allow the current attempt")
         max_attempts = min(max_attempts, self.config.max_steps)
         raw_timeout = self.config.options.get("gateway_timeout_seconds", 60.0)
-        if isinstance(raw_timeout, bool):
+        if not _is_finite_number(raw_timeout) or float(raw_timeout) <= 0:
             raise ValueError("gateway timeout policy must be finite and positive")
-        try:
-            timeout_seconds = float(raw_timeout)
-        except (TypeError, ValueError) as exc:
-            raise ValueError("gateway timeout policy must be finite and positive") from exc
-        if not math.isfinite(timeout_seconds) or timeout_seconds <= 0:
-            raise ValueError("gateway timeout policy must be finite and positive")
+        timeout_seconds = float(raw_timeout)
         input_payload = {
             "schema": "aegis-gateway-execution-input-v1",
             "phase": normalized_phase,
@@ -9024,10 +9220,16 @@ class LabApplication:
             if raw is None:
                 continue
             content = raw.get("content", raw.get("body", raw.get("snippet", "")))
-            uri = str(raw.get("uri", raw.get("url", "")))
-            if not uri or not content:
+            uri = raw.get("uri", raw.get("url", ""))
+            if (
+                type(uri) is not str
+                or type(content) is not str
+                or not uri.strip()
+                or not content
+            ):
+                run.record_blocker("invalid_source_record", detail="uri/content type")
                 continue
-            content_text = str(content)
+            content_text = content
             marker = _prompt_injection_marker(content_text)
             digest = _hash(content_text)
             if marker is not None:
@@ -9039,31 +9241,35 @@ class LabApplication:
                 )
                 continue
             supplied_content_hash = raw.get("content_hash")
-            if supplied_content_hash is not None and str(supplied_content_hash) != digest:
+            if supplied_content_hash is not None and (
+                type(supplied_content_hash) is not str or supplied_content_hash != digest
+            ):
                 run.record_blocker("source_content_hash_mismatch")
                 run.record_security_event(
                     "source_content_hash_mismatch",
                     artifact_hash=digest,
-                    detail=str(supplied_content_hash),
+                    detail=(
+                        supplied_content_hash
+                        if type(supplied_content_hash) is str
+                        else type(supplied_content_hash).__name__
+                    ),
                 )
                 continue
             try:
                 run.add_source(
                     SourceRecord(
-                        source_id=str(raw.get("source_id", raw.get("id", f"source-{len(run.sources)+index+1}"))),
-                        uri=uri,
-                        content_hash=str(raw.get("content_hash", digest)),
-                        snapshot_hash=str(raw.get("snapshot_hash", digest)),
-                        retrieved_at_ms=int(raw.get("retrieved_at_ms", time.time() * 1000)),
-                        trust_tier=int(raw.get("trust_tier", 1)),
-                        extractor=str(raw.get("extractor", "search-as-code")),
-                        relation=str(raw.get("relation", "unknown")),
-                        citation_spans=tuple(
-                            cast(dict[str, Any], span)
-                            for span in raw.get("citation_spans", ())
-                            if isinstance(span, dict)
+                        source_id=raw.get(
+                            "source_id", raw.get("id", f"source-{len(run.sources)+index+1}")
                         ),
-                        provenance_cluster=str(raw.get("provenance_cluster", "")),
+                        uri=uri,
+                        content_hash=raw.get("content_hash", digest),
+                        snapshot_hash=raw.get("snapshot_hash", digest),
+                        retrieved_at_ms=raw.get("retrieved_at_ms", int(time.time() * 1000)),
+                        trust_tier=raw.get("trust_tier", 1),
+                        extractor=raw.get("extractor", "search-as-code"),
+                        relation=raw.get("relation", "unknown"),
+                        citation_spans=raw.get("citation_spans", ()),
+                        provenance_cluster=raw.get("provenance_cluster", ""),
                     )
                 )
             except (TypeError, ValueError) as exc:
@@ -9094,31 +9300,41 @@ class LabApplication:
             raise RuntimeError("LabApplication already has an active run")
         self._provider_attempt_receipts = {}
         options = cast(dict[str, Any], self.config.options)
-        token_budget = int(options.get("lab_token_budget", max(1, self.config.max_steps * 1000)))
+        raw_token_budget = options.get("lab_token_budget", max(1, self.config.max_steps * 1000))
+        if type(raw_token_budget) is not int:
+            raise ValueError("lab token budget must be an integer")
+        token_budget = raw_token_budget
         default_finalization = min(max(1, token_budget // 5), max(0, token_budget - 1))
         default_recovery = min(
             max(0, token_budget // 10),
             max(0, token_budget - default_finalization - 1),
         )
+        raw_scope = options.get("scope", ())
+        raw_non_goals = options.get("non_goals", ())
+        scope = _strict_string_sequence(raw_scope, label="lab scope")
+        non_goals = _strict_string_sequence(raw_non_goals, label="lab non-goals")
+        raw_finalization = options.get("lab_finalization_reserve", default_finalization)
+        raw_recovery = options.get("lab_recovery_reserve", default_recovery)
+        if type(raw_finalization) is not int or type(raw_recovery) is not int:
+            raise ValueError("lab budget reserves must be integers")
         authority_mode = _authority_mode_from_options(
-            options, default_trust_level=str(self.config.trust_level)
+            options, default_trust_level=self.config.trust_level
         )
+        raw_trust_policy_hash = options.get("lab_trust_policy_hash")
+        if raw_trust_policy_hash is not None and type(raw_trust_policy_hash) is not str:
+            raise ValueError("lab trust policy hash must be a string or unset")
         run = LabRun(
             self.config.task,
             max_steps=self.config.max_steps,
-            scope=tuple(str(item) for item in options.get("scope", ())),
-            non_goals=tuple(str(item) for item in options.get("non_goals", ())),
+            scope=scope,
+            non_goals=non_goals,
             require_native_authority=authority_mode is AuthorityMode.NATIVE_REQUIRED,
             authority_mode=authority_mode,
-            trust_level=str(self.config.trust_level),
-            trust_policy_hash=(
-                str(options["lab_trust_policy_hash"])
-                if options.get("lab_trust_policy_hash") is not None
-                else None
-            ),
+            trust_level=self.config.trust_level,
+            trust_policy_hash=raw_trust_policy_hash,
             token_budget=token_budget,
-            finalization_reserve=int(options.get("lab_finalization_reserve", default_finalization)),
-            recovery_reserve=int(options.get("lab_recovery_reserve", default_recovery)),
+            finalization_reserve=raw_finalization,
+            recovery_reserve=raw_recovery,
         )
         self._active_run = run
         if self.run_sink is not None:
@@ -9139,8 +9355,8 @@ class LabApplication:
         controller = AdaptiveController(
             max_steps=self.config.max_steps,
             token_budget=token_budget,
-            finalization_reserve=int(options.get("lab_finalization_reserve", default_finalization)),
-            recovery_reserve=int(options.get("lab_recovery_reserve", default_recovery)),
+            finalization_reserve=raw_finalization,
+            recovery_reserve=raw_recovery,
         )
         search = options.get("search_as_code") or options.get("researcher")
         search_program = options.get("search_program")
@@ -9160,19 +9376,29 @@ class LabApplication:
                     program = search_program
                 elif isinstance(search_program, dict):
                     program_data = cast(dict[str, Any], search_program)
+                    max_candidates = program_data.get("max_candidates", 20)
+                    provider = program_data.get("provider", "unspecified")
+                    freshness_max_age = program_data.get("freshness_max_age_seconds")
+                    contradiction_clusters = program_data.get(
+                        "min_independent_contradiction_clusters", 0
+                    )
+                    if (
+                        type(max_candidates) is not int
+                        or type(provider) is not str
+                        or (freshness_max_age is not None and type(freshness_max_age) is not int)
+                        or type(contradiction_clusters) is not int
+                    ):
+                        raise TypeError("search program metadata types are invalid")
                     program = SearchProgram.from_mappings(
                         tuple(cast(list[dict[str, Any]], program_data["operations"])),
-                        max_candidates=int(program_data.get("max_candidates", 20)),
-                        allowed_hosts=tuple(str(item) for item in program_data.get("allowed_hosts", ())),
-                        provider=str(program_data.get("provider", "unspecified")),
-                        freshness_max_age_seconds=(
-                            int(program_data["freshness_max_age_seconds"])
-                            if program_data.get("freshness_max_age_seconds") is not None
-                            else None
+                        max_candidates=max_candidates,
+                        allowed_hosts=_strict_string_sequence(
+                            program_data.get("allowed_hosts", ()),
+                            label="search program allowlist",
                         ),
-                        min_independent_contradiction_clusters=int(
-                            program_data.get("min_independent_contradiction_clusters", 0)
-                        ),
+                        provider=provider,
+                        freshness_max_age_seconds=freshness_max_age,
+                        min_independent_contradiction_clusters=contradiction_clusters,
                     )
                 else:
                     raise TypeError("search_program must be SearchProgram or mapping")
@@ -9181,10 +9407,18 @@ class LabApplication:
                     raise RuntimeError("search program execution cell is not registered")
                 executor = search_executor or options.get("search_program_executor") or search
                 if executor is None and not self._execution_cells_strict:
+                    raw_search_timeout = options.get("search_timeout_seconds", 10.0)
+                    raw_search_max_bytes = options.get("search_max_bytes", 8 * 1024 * 1024)
+                    if (
+                        not _is_finite_number(raw_search_timeout)
+                        or float(raw_search_timeout) <= 0
+                        or type(raw_search_max_bytes) is not int
+                    ):
+                        raise TypeError("search executor metadata types are invalid")
                     executor = SearchProgramExecutor(
                         query_provider=options.get("search_query_provider"),
-                        timeout_seconds=float(options.get("search_timeout_seconds", 10.0)),
-                        max_bytes=int(options.get("search_max_bytes", 8 * 1024 * 1024)),
+                        timeout_seconds=raw_search_timeout,
+                        max_bytes=raw_search_max_bytes,
                     )
                 if not callable(executor):
                     raise TypeError("search program executor is missing")
@@ -9326,11 +9560,11 @@ class LabApplication:
         for raw in options.get("claim_records", options.get("claims", ())) or ():
             try:
                 claim = raw if isinstance(raw, ClaimRecord) else ClaimRecord(
-                    claim_id=str(raw["claim_id"]),
-                    statement=str(raw["statement"]),
-                    source_ids=tuple(str(item) for item in raw["source_ids"]),
-                    confidence_bps=int(raw.get("confidence_bps", 5_000)),
-                    status=str(raw.get("status", "unresolved")),
+                    claim_id=raw["claim_id"],
+                    statement=raw["statement"],
+                    source_ids=raw["source_ids"],
+                    confidence_bps=raw.get("confidence_bps", 5_000),
+                    status=raw.get("status", "unresolved"),
                 )
                 run.add_claim(claim)
             except (KeyError, TypeError, ValueError):
@@ -9339,12 +9573,12 @@ class LabApplication:
         for raw in options.get("hypothesis_records", options.get("hypotheses", ())) or ():
             try:
                 hypothesis = raw if isinstance(raw, HypothesisRecord) else HypothesisRecord(
-                    hypothesis_id=str(raw["hypothesis_id"]),
-                    statement=str(raw["statement"]),
-                    prior_bps=int(raw.get("prior_bps", 5_000)),
-                    falsifiers=tuple(str(item) for item in raw["falsifiers"]),
-                    supporting_claim_ids=tuple(str(item) for item in raw.get("supporting_claim_ids", ())),
-                    contradicting_claim_ids=tuple(str(item) for item in raw.get("contradicting_claim_ids", ())),
+                    hypothesis_id=raw["hypothesis_id"],
+                    statement=raw["statement"],
+                    prior_bps=raw.get("prior_bps", 5_000),
+                    falsifiers=raw["falsifiers"],
+                    supporting_claim_ids=raw.get("supporting_claim_ids", ()),
+                    contradicting_claim_ids=raw.get("contradicting_claim_ids", ()),
                 )
                 run.add_hypothesis(hypothesis)
             except (KeyError, TypeError, ValueError):
@@ -9359,10 +9593,10 @@ class LabApplication:
         if isinstance(raw_policy, dict):
             policy_data = cast(dict[str, Any], raw_policy)
             raw_policy = BrowserCellPolicy(
-                allowed_hosts=tuple(str(host) for host in policy_data.get("allowed_hosts", ())),
-                require_https=bool(policy_data.get("require_https", True)),
-                max_actions=int(policy_data.get("max_actions", 100)),
-                max_observations=int(policy_data.get("max_observations", 1_000)),
+                allowed_hosts=policy_data.get("allowed_hosts", ()),
+                require_https=policy_data.get("require_https", True),
+                max_actions=policy_data.get("max_actions", 100),
+                max_observations=policy_data.get("max_observations", 1_000),
             )
         browser_cell = options.get("browser_cell")
         try:
@@ -9715,10 +9949,12 @@ class LabApplication:
             run.record_blocker("gateway_retry_policy_invalid")
             gateway_max_attempts = 1
         controller_executed_experiment_ids: set[str] = set()
-        iterations = min(
-            self.config.max_steps,
-            max(1, int(options.get("lab_iterations", 3 if self._has_lab_hooks(options) else 1))),
-        )
+        raw_iterations = options.get("lab_iterations", 3 if self._has_lab_hooks(options) else 1)
+        if type(raw_iterations) is not int or raw_iterations < 1:
+            run.record_blocker("lab_iterations_policy_invalid")
+            iterations = 0
+        else:
+            iterations = min(self.config.max_steps, raw_iterations)
         for _ in range(iterations):
             if browser_prompt_injection_detected:
                 # Do not ask the model to continue after untrusted page content
@@ -10141,11 +10377,11 @@ class LabApplication:
             try:
                 run.add_claim(
                     ClaimRecord(
-                        claim_id=str(raw["claim_id"]),
-                        statement=str(raw["statement"]),
-                        source_ids=tuple(str(item) for item in raw["source_ids"]),
-                        confidence_bps=int(raw.get("confidence_bps", 5_000)),
-                        status=str(raw.get("status", "unresolved")),
+                        claim_id=raw["claim_id"],
+                        statement=raw["statement"],
+                        source_ids=raw["source_ids"],
+                        confidence_bps=raw.get("confidence_bps", 5_000),
+                        status=raw.get("status", "unresolved"),
                     )
                 )
             except (KeyError, TypeError, ValueError):
@@ -10157,12 +10393,12 @@ class LabApplication:
             try:
                 run.add_hypothesis(
                     HypothesisRecord(
-                        hypothesis_id=str(raw["hypothesis_id"]),
-                        statement=str(raw["statement"]),
-                        prior_bps=int(raw.get("prior_bps", 5_000)),
-                        falsifiers=tuple(str(item) for item in raw["falsifiers"]),
-                        supporting_claim_ids=tuple(str(item) for item in raw.get("supporting_claim_ids", ())),
-                        contradicting_claim_ids=tuple(str(item) for item in raw.get("contradicting_claim_ids", ())),
+                        hypothesis_id=raw["hypothesis_id"],
+                        statement=raw["statement"],
+                        prior_bps=raw.get("prior_bps", 5_000),
+                        falsifiers=raw["falsifiers"],
+                        supporting_claim_ids=raw.get("supporting_claim_ids", ()),
+                        contradicting_claim_ids=raw.get("contradicting_claim_ids", ()),
                     )
                 )
             except (KeyError, TypeError, ValueError):
@@ -10172,18 +10408,7 @@ class LabApplication:
             raw_experiment = cast(dict[str, Any], raw_experiment)
             try:
                 run.add_experiment(
-                    ExperimentSpec(
-                        experiment_id=str(raw_experiment["experiment_id"]),
-                        hypothesis_id=str(raw_experiment["hypothesis_id"]),
-                        design=str(raw_experiment["design"]),
-                        variables=tuple(str(item) for item in raw_experiment["variables"]),
-                        controls=tuple(str(item) for item in raw_experiment["controls"]),
-                        preregistered_seeds=tuple(int(item) for item in raw_experiment["preregistered_seeds"]),
-                        expected_observations=int(raw_experiment["expected_observations"]),
-                        measurement_unit=str(raw_experiment.get("measurement_unit", "score")),
-                        uncertainty_required=bool(raw_experiment.get("uncertainty_required", False)),
-                        min_clean_replicates=int(raw_experiment.get("min_clean_replicates", 0)),
-                    )
+                    LabApplication._coerce_experiment_spec(raw_experiment)
                 )
             except (KeyError, TypeError, ValueError):
                 run.record_blocker("invalid_controller_experiment")
