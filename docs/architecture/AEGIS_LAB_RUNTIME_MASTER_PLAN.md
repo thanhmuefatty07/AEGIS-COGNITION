@@ -2893,6 +2893,19 @@ targeted Ruff and Pyright remain clean. This is local boundary evidence only;
 hosted authority, process containment, live provider semantics, and signed
 release provenance remain external blockers.
 
+**M7 snapshot/archive identity continuation (2026-09-02):** native replay now
+exposes `aegis_lab_verify_archive_against_events`, which compares every
+persisted snapshot `LabEvent` sequence, event hash and payload hash with the
+sealed `LabEventRecorded` envelopes in the segmented archive. Archive write
+and recovery call this verifier when the extension provides it, while older
+extensions retain the existing manifest verifier as an explicit compatibility
+fallback. A Rust regression proves that a tampered snapshot can recompute a
+locally valid Lab hash chain but is rejected because its event identity no
+longer matches the sealed archive. Python archive/recovery coverage confirms
+the new verifier is called for both write and restore. This closes a local
+snapshot-to-archive binding gap; it does not provide signatures, hosted writer
+authority, cross-platform crash injection, or final-SHA release evidence.
+
 #### M5 — Research, browser và experiment cells
 
 **Entry:** M2–M4 pass cho local cells; capability registry sealed.
