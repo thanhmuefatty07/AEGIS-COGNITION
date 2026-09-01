@@ -3354,12 +3354,15 @@ lossy manifest metadata before accepting a new archive, while snapshot restore
 continues to read pre-marker manifests only when both fields are absent for
 rollback compatibility. Rust round-trip coverage checks the serialized marker;
 Python negative coverage covers missing, partial, future and type-drift
-metadata plus the legacy read path. Focused Lab coverage is **325 tests** and
-the combined Python/cross-language gate is **431 tests**; Rust workspace tests remain
+metadata plus the legacy read path and explicit legacy-verifier dispatch.
+Focused Lab coverage is **326 tests** and the combined Python/cross-language
+gate is **432 tests**; Rust workspace tests remain
 **439 unit + 2 integration**, Ruff, Pyright and Clippy are clean. This closes
-the local manifest-marker ambiguity only; old-format migration fixtures,
-cross-version archive replay, crash injection across supported platforms and
-hosted restore remain NOT VERIFIED, so P1 migration/M7 does not pass.
+the local manifest-marker ambiguity and provides a dedicated
+`aegis_lab_verify_archive_against_legacy_manifest` FFI path; old-format
+migration fixtures, cross-version archive replay, crash injection across
+supported platforms and hosted restore remain NOT VERIFIED, so P1 migration/M7
+does not pass.
 
 Không được gọi toàn hệ thống “production-ready” khi bất kỳ gate bắt buộc nào
 ở trên còn `OPEN_*`, `BLOCKED_*`, `UNKNOWN` hoặc chỉ có fixture/mock evidence.

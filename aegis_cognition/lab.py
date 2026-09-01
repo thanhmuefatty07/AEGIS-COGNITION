@@ -1746,9 +1746,11 @@ def _validate_replay_archive_manifest_metadata(
     future archive look compatible with the current verifier.
     """
 
+    schema_present = "schema" in manifest
+    version_present = "version" in manifest
     raw_schema = manifest.get("schema")
     raw_version = manifest.get("version")
-    if raw_schema is None and raw_version is None:
+    if not schema_present and not version_present:
         if require_current:
             raise ValueError("native replay manifest schema metadata is missing")
         return
@@ -6972,11 +6974,23 @@ class LabRun:
             native_module = _native_lab_module()
         except ImportError:
             native_module = None
+        legacy_manifest = "schema" not in archive and "version" not in archive
+        legacy_verifier = getattr(
+            native_module, "aegis_lab_verify_archive_against_legacy_manifest", None
+        )
         strict_verifier = getattr(
             native_module, "aegis_lab_verify_archive_against_manifest", None
         )
         verifier = getattr(native_module, "aegis_lab_verify_archive", None)
-        if strict_verifier is not None:
+        if legacy_manifest:
+            if legacy_verifier is None:
+                raise ValueError("legacy native lab replay verifier is unavailable")
+            verified = legacy_verifier(
+                str(path.parent),
+                int(run.mission_id, 16),
+                _manifest_hash_bytes(archive),
+            )
+        elif strict_verifier is not None:
             verified = strict_verifier(
                 str(path.parent),
                 int(run.mission_id, 16),
