@@ -2781,6 +2781,18 @@ the callback, opaque SDK/user-runner retries, external-effect reversal,
 process containment and hosted single-writer authority remain open under
 `LAB-AUTH-001`/`LAB-RESEARCH-003`.
 
+**P1/M2 application compatibility continuation (2026-09-02):** the legacy
+RAG callback now validates `top_k` as a positive integer before constructing
+the learning manager, so a numeric string cannot bypass the context-cell
+policy. Completion indexing validates the gateway hot-commit artifact as a
+lowercase canonical digest before deriving the native session identity or
+opening the persistence manager. Negative coverage now totals **292 focused
+Lab tests** and **398 combined Python/cross-language tests**; targeted Ruff
+and Pyright remain clean. This closes two locally observable compatibility
+coercions only; live memory-provider semantics, external write idempotency,
+process interruption and hosted authority remain open under
+`LAB-AUTH-001`/`LAB-RESEARCH-003`.
+
 #### M5 — Research, browser và experiment cells
 
 **Entry:** M2–M4 pass cho local cells; capability registry sealed.
