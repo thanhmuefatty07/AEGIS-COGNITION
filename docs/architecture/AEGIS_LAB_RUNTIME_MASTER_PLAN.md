@@ -2528,13 +2528,23 @@ contracts fail closed. This is bounded input/invariant evidence only; it does
 not prove solver convergence, hardware calibration or physical validity.
 
 **P1 policy-boundary continuation (2026-09-02):** `LabRun`,
-`LabMissionSpec` and `BrowserCellPolicy` now reject lossy task, scope, host,
-quota and budget metadata (including booleans, floats and non-string entries)
-at construction/validation rather than relying on implicit coercion. The
-existing runtime tests remain green and the strict checks preserve the
+`LabMissionSpec`, `LabPolicy`, `LabBudget` and `BrowserCellPolicy` now reject
+lossy task, scope, host, quota, policy-flag and budget metadata (including
+booleans, floats and non-string entries) at construction/validation rather
+than relying on implicit coercion. Regression coverage exercises malformed
+policy and budget fields, and the strict checks preserve the
 mission/controller ownership boundary. This is local input-contract evidence
 only; OS/process containment, hosted single-writer authority and live browser
 security remain open under `LAB-AUTH-001`/`LAB-BROWSER-002`.
+
+**M2 execution-cell boundary continuation (2026-09-02):**
+`ProcessExecutionCell`, `ExecutionCellBinding` and `ExecutionCellRegistry` now
+reject lossy timeout, start-method, identity, capability, effect, trust-level
+and policy-hash metadata before a runner is admitted or resolved. Invalid
+container/entry types fail with typed errors instead of reaching `.strip()` or
+numeric coercion paths; regression coverage includes process-cell and registry
+metadata. This hardens the local registry boundary but does not prove
+descendant cleanup, OS resource enforcement or hosted single-writer authority.
 
 #### M5 — Research, browser và experiment cells
 
