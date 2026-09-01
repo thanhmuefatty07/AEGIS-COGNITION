@@ -799,6 +799,11 @@ def test_lab_external_attempt_budget_is_global_and_replay_bound() -> None:
     restored = LabRun.from_payload(run.to_payload())
     assert restored.external_attempt_budget == 1
     assert restored.external_attempt_count == 1
+    legacy_payload = run.to_payload()
+    legacy_payload.pop("max_external_attempts")
+    legacy_payload.pop("external_attempt_count")
+    legacy_restored = LabRun.from_payload(legacy_payload)
+    assert legacy_restored.external_attempt_count == 1
     tampered = run.to_payload()
     tampered["external_attempt_count"] = 0
     with pytest.raises(ValueError, match="external attempt count"):
