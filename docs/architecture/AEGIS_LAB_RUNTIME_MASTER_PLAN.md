@@ -2501,6 +2501,16 @@ the local retry contract precise but does not establish provider idempotency,
 opaque SDK/user-runner retry absence, external-effect reversal, or a hosted
 global `N_external_max`; M4 remains `OPEN_LOCAL`.
 
+**P3 experiment-contract continuation (2026-09-02):** `ExperimentSpec` now
+validates identity strings, non-empty controls/variables, unique integer
+preregistered seeds, strict boolean uncertainty policy and integer observation
+quotas at admission and snapshot restore. Controller coercion no longer turns
+numeric strings or booleans into scientific parameters silently. Regression
+coverage proves duplicate/lossy seed metadata is rejected. This hardens the
+local preregistration boundary only; solver convergence, calibration, sensor
+uncertainty and independent physical replication remain `OPEN_EXTERNAL` under
+`LAB-PHYS-004`.
+
 #### M5 — Research, browser và experiment cells
 
 **Entry:** M2–M4 pass cho local cells; capability registry sealed.
