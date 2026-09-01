@@ -17,7 +17,8 @@ from __future__ import annotations
 import asyncio
 import os
 from dataclasses import dataclass
-from typing import Generator, Any
+from typing import Any
+from collections.abc import Generator
 
 # ---------------------------------------------------------------------------
 # Configuration
@@ -44,12 +45,12 @@ class NIMConfig:
     # -----------------------------------------------------------------------
 
     @classmethod
-    def from_env(cls) -> "NIMConfig":
+    def from_env(cls) -> NIMConfig:
         """
         Build a NIMConfig from environment variables.
 
         Required env vars:
-            NVIDIA_NIM_API_KEY  – your nvapi-… key
+            NVIDIA_NIM_API_KEY  - your nvapi-… key
 
         Optional env vars (fall back to defaults above):
             NVIDIA_NIM_BASE_URL
@@ -57,7 +58,7 @@ class NIMConfig:
         """
         api_key = os.environ.get("NVIDIA_NIM_API_KEY", "")
         if not api_key:
-            raise EnvironmentError(
+            raise OSError(
                 "NVIDIA_NIM_API_KEY is not set. "
                 "Add it to your .env file or export it before running."
             )
@@ -138,7 +139,7 @@ class NIMClient:
     # -----------------------------------------------------------------------
 
     @classmethod
-    def from_env(cls) -> "NIMClient":
+    def from_env(cls) -> NIMClient:
         """Convenience factory that reads config from environment variables."""
         return cls(NIMConfig.from_env())
 
@@ -196,7 +197,7 @@ class NIMClient:
         *,
         system: str = "You are a helpful AI assistant integrated into AEGIS-COGNITION.",
         history: list[ChatMessage] | None = None,
-    ) -> Generator[str, None, None]:
+    ) -> Generator[str]:
         """
         Stream a chat response token-by-token.
 

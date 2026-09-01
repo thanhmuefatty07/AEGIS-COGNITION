@@ -238,6 +238,44 @@ impl TaskLedger {
         task_id: TaskId,
         status: TaskStatus,
     ) -> Result<(), TaskLedgerError> {
+        self.validate_status_transition(task_id, status)?;
+        self.set_status(task_id, status)
+    }
+
+    /// Complete a task through the same legal state transitions used by the
+    /// runtime. This is useful for replay/import adapters that have a trusted
+    /// completion fact but must not mutate `Pending` directly to `Done`.
+    pub fn complete_task(&mut self, task_id: TaskId) -> Result<(), TaskLedgerError> {
+        loop {
+            let current = self
+                .tasks
+                .get(&task_id)
+                .ok_or(TaskLedgerError::MissingTask(task_id))?
+                .status;
+            let next = match current {
+                TaskStatus::Pending => TaskStatus::Ready,
+                TaskStatus::Ready => TaskStatus::Admitted,
+                TaskStatus::Admitted => TaskStatus::Running,
+                TaskStatus::Running => TaskStatus::Done,
+                TaskStatus::RetryWait => TaskStatus::Ready,
+                TaskStatus::Done => return Ok(()),
+                TaskStatus::Failed
+                | TaskStatus::Cancelled
+                | TaskStatus::TimedOut
+                | TaskStatus::Cancelling
+                | TaskStatus::NeedsReconciliation => {
+                    return Err(TaskLedgerError::InvalidStatusTransition {
+                        task_id,
+                        from: current,
+                        to: TaskStatus::Done,
+                    });
+                }
+            };
+            self.transition_status(task_id, next)?;
+        }
+    }
+
+    fn set_status(&mut self, task_id: TaskId, status: TaskStatus) -> Result<(), TaskLedgerError> {
         {
             let task = self
                 .tasks
@@ -277,7 +315,7 @@ impl TaskLedger {
         status: TaskStatus,
     ) -> Result<(), TaskLedgerError> {
         self.validate_status_transition(task_id, status)?;
-        self.mark_status(task_id, status)
+        self.set_status(task_id, status)
     }
 
     pub fn set_attempt_id(

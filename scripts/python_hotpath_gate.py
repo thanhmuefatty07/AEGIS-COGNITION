@@ -10,9 +10,6 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from core.python.bridge_mmap import MMAP_BRIDGE_HEADER_BYTES, MmapBridgeFrame
-
-
 ARTIFACTS_DIR = ROOT / "artifacts"
 REPORT_PATH = ARTIFACTS_DIR / "python_hotpath_gate_report.json"
 PYTHON_THRESHOLDS_NS = {
@@ -43,6 +40,8 @@ def _pattern_payload(payload_len: int) -> bytes:
 
 
 def _write_synthetic_mmap_frame(path: Path, payload_len: int = 1024 * 1024) -> None:
+    from core.python.bridge_mmap import MMAP_BRIDGE_HEADER_BYTES
+
     payload = _pattern_payload(payload_len)
     header = bytearray(MMAP_BRIDGE_HEADER_BYTES)
     header[0:8] = b"AEGMMAP1"
@@ -57,7 +56,12 @@ def _write_synthetic_mmap_frame(path: Path, payload_len: int = 1024 * 1024) -> N
     path.write_bytes(header + payload)
 
 
-def _measure_payload_view_ns(frame: MmapBridgeFrame, iterations: int, rounds: int) -> float:
+def _measure_payload_view_ns(frame: object, iterations: int, rounds: int) -> float:
+    from core.python.bridge_mmap import MmapBridgeFrame
+
+    if not isinstance(frame, MmapBridgeFrame):
+        raise TypeError("unexpected mmap bridge frame")
+
     samples: list[float] = []
     checksum = 0
     for _ in range(rounds):
@@ -75,6 +79,8 @@ def _measure_payload_view_ns(frame: MmapBridgeFrame, iterations: int, rounds: in
 
 
 def evaluate_python_hotpaths(root: str | Path = ROOT) -> PythonHotPathReport:
+    from core.python.bridge_mmap import MmapBridgeFrame
+
     root_path = Path(root)
     frame_path = root_path / "target" / "aegis-python-hotpath" / "mmap-payload-view.aegmmap"
     _write_synthetic_mmap_frame(frame_path)

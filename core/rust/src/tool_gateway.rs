@@ -3,9 +3,13 @@ use crate::browser_witness::{
     BrowserArtifactReadError, BrowserCollectorEvidenceEnvelope, BrowserCollectorKind,
     BrowserLiveCollectorManifest, BrowserObservationPacket,
 };
-use crate::memory::fold::{CogniFoldStore, MemoryCrystallization};
+use crate::memory::fold::CogniFoldStore;
+// MemoryCrystallization remains the candidate-only compatibility trait; the
+// authoritative path below uses the objective-bound inherent method.
 use crate::memory::frame::SemanticNode;
-use crate::physical::{BacktrackSignal, PhysicalArtifact, PhysicalWatchdog, TrapReason};
+use crate::physical::{
+    BacktrackSignal, ObjectiveValidationReceipt, PhysicalArtifact, PhysicalWatchdog, TrapReason,
+};
 use crate::policy::{
     CapabilityClass, PolicyDecision, PolicyFacts, PolicyProofTrace, StagingEvidenceKind,
     TypedToolIR,
@@ -1089,7 +1093,21 @@ impl ToolExecutionGateway {
         let artifact = artifact_evidence
             .to_physical_artifact()
             .map_err(BacktrackSignal::HardBacktrack)?;
-        let node = store.commit_to_cognifold(session_id, &artifact, watchdog)?;
+        let objective_receipt = ObjectiveValidationReceipt::new(
+            &artifact,
+            proof.compute_hash(),
+            ir.canonical_hash,
+            artifact_evidence.evidence_hash,
+            "tool-execution-replay-validator",
+            1,
+        )
+        .map_err(BacktrackSignal::HardBacktrack)?;
+        let node = store.commit_to_cognifold_with_objective(
+            session_id,
+            &artifact,
+            watchdog,
+            &objective_receipt,
+        )?;
         let memory_len_after_commit = store.len();
         let proof_hash = tool_memory_commit_proof_hash(
             session_id,

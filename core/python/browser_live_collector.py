@@ -4,7 +4,7 @@ from dataclasses import dataclass
 import json
 import os
 from pathlib import Path
-from typing import Mapping
+from collections.abc import Mapping
 
 
 REQUIRED_BROWSER_ARTIFACT_KINDS: tuple[str, ...] = (

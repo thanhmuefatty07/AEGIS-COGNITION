@@ -8,10 +8,6 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from scripts.deployment_manifest import build_deployment_manifest
-from scripts.e2e_release_gate import evaluate_e2e_release_gate
-
-
 ARTIFACTS_DIR = ROOT / "artifacts"
 REPORT_PATH = ARTIFACTS_DIR / "production_readiness_report.json"
 
@@ -215,6 +211,9 @@ def build_production_readiness_report(deployment: object, e2e_release_gate: dict
 
 
 def evaluate_production_readiness(root: str | Path = ROOT) -> dict:
+    from scripts.deployment_manifest import build_deployment_manifest
+    from scripts.e2e_release_gate import evaluate_e2e_release_gate
+
     root_path = Path(root)
     deployment = build_deployment_manifest(root_path)
     e2e_release_gate = evaluate_e2e_release_gate(root_path)

@@ -69,7 +69,7 @@ use aegis_nerve::skill_registry::{
     SkillPackageManifest, SkillRegistry, SkillRegressionCase, SkillRegressionReport,
     SkillUsageStats,
 };
-use aegis_nerve::task_ledger::{TaskCard, TaskLedger, TaskStatus};
+use aegis_nerve::task_ledger::{TaskCard, TaskLedger};
 use aegis_nerve::tool_gateway::{ToolExecutionGateway, evidence_contract_hash};
 use criterion::{BatchSize, Criterion, black_box, criterion_group, criterion_main};
 use std::path::PathBuf;
@@ -3765,9 +3765,7 @@ fn task_ledger_bench_tree(task_count: u128) -> TaskLedger {
             ))
             .expect("bench task");
     }
-    ledger
-        .mark_status(1, TaskStatus::Done)
-        .expect("root task status");
+    ledger.complete_task(1).expect("root task status");
     ledger
 }
 

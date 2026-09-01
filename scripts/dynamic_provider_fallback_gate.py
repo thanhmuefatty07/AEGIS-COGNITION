@@ -274,7 +274,9 @@ def _live_provider_429_http_samples(
         error = ""
         try:
             if requester is None:
-                with urlopen(request, timeout=timeout_seconds) as response:  # noqa: S310 - operator-provided live-soak URL.
+                # This URL is an explicit operator-provided live-soak target;
+                # the gate records the endpoint and never treats it as trusted code.
+                with urlopen(request, timeout=timeout_seconds) as response:
                     body_bytes = response.read(1024 * 1024)
                     status = int(response.status)
                     response_headers = dict(response.headers.items())

@@ -12,11 +12,18 @@ dependencies = [
     "python-dotenv>=1.0.0"
 ]
 
-[project.scripts]
-aegis = "aegis_cli:main"
-
 [tool.setuptools]
 package-dir = {"" = "."}
+py-modules = [
+    "aegis_adapter",
+    "browser_live_collector",
+    "browser_runtime_adapter",
+    "browser_playwright_runtime",
+    "browser_ops_bench",
+    "integration",
+    "orchestrator",
+]
 
 [tool.setuptools.packages.find]
-include = ["*"]
+include = ["aegis", "aegis.*"]
+exclude = ["build*", "*.egg-info*"]

@@ -34,6 +34,7 @@ pub mod harness;
 pub mod hot_engine;
 pub mod integrations;
 pub mod ipc;
+pub mod lab;
 pub mod layout;
 pub mod learning;
 pub mod licensing;

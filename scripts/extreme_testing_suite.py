@@ -14,21 +14,15 @@ Usage:
 
 import argparse
 import hashlib
-import json
 import os
-import shutil
 import signal
 import subprocess
 import sys
-import tempfile
 import time
 import threading
-import struct
 import mmap
 from pathlib import Path
 from datetime import datetime
-from concurrent.futures import ThreadPoolExecutor, as_completed
-from collections import defaultdict
 
 ROOT = Path(__file__).resolve().parents[1]
 ARTIFACTS_DIR = ROOT / "artifacts" / "extreme_testing"
@@ -51,7 +45,7 @@ class MetricsCollector:
         self.start_time = time.perf_counter()
         self.samples = []
 
-    def sample(self, label: str, extra: dict = None):
+    def sample(self, label: str, extra: dict | None = None):
         with self._lock:
             sample = {
                 "elapsed_s": time.perf_counter() - self.start_time,
@@ -98,7 +92,7 @@ class LoadTestRunner:
 
         for p in payloads:
             t0 = time.perf_counter_ns()
-            h = hashlib.blake2b(p, digest_size=32).hexdigest()
+            _ = hashlib.blake2b(p, digest_size=32).hexdigest()
             latencies.append(time.perf_counter_ns() - t0)
 
         elapsed = time.perf_counter() - start
@@ -134,7 +128,7 @@ class LoadTestRunner:
         count = 0
 
         while time.perf_counter() - start < duration_seconds:
-            h = hashlib.blake2b(payload, digest_size=32).hexdigest()
+            _ = hashlib.blake2b(payload, digest_size=32).hexdigest()
             count += 1
 
             if count % 1000 == 0:
@@ -209,10 +203,7 @@ class FuzzingRunner:
         for name, size, modifier in test_cases:
             try:
                 test_file = self.tmpdir / f"fuzz_mmap_{name}.bin"
-                if modifier:
-                    data = modifier(b'')
-                else:
-                    data = os.urandom(max(1, size))
+                data = modifier(b'') if modifier else os.urandom(max(1, size))
 
                 test_file.write_bytes(data)
 
@@ -313,7 +304,7 @@ class FuzzingRunner:
                 with open(test_file, 'rb') as f:
                     m = mmap.mmap(f.fileno(), 0, access=mmap.ACCESS_READ)
                     if len(payload) >= 112:
-                        header = bytes(m[:112])
+                        _ = bytes(m[:112])
                     m.close()
                 findings.append({"case": name, "result": "accepted", "severity": "INFO"})
             except Exception as e:
@@ -373,8 +364,6 @@ class ChaosRunner:
 
     def test_sigkill_during_write(self) -> dict:
         """Spawn a child process writing BLAKE3-chained data, kill it, verify chain."""
-        import psutil
-
         chain_file = self.tmpdir / "chain.bin"
         child_script = self.tmpdir / "chaos_child.py"
         child_script.write_text(f"""
@@ -467,7 +456,7 @@ class SecurityRunner:
 
         # Write sealed data
         seal_file.write_bytes(data)
-        stored_hash = hashlib.blake2b(seal_file.read_bytes(), digest_size=32).hexdigest()
+        _stored_hash = hashlib.blake2b(seal_file.read_bytes(), digest_size=32).hexdigest()
 
         # Tamper: flip 1 bit at offset 2048
         tampered = bytearray(data)
@@ -750,59 +739,6 @@ def generate_report(all_results: dict, total_duration: float) -> str:
 *Constitution: 177/177 suite checks | Benchmark: local threshold assertions only | Production: NOT DEPLOYABLE*
 """
     return report
-
-
-# ═══════════════════════════════════════════════════════════════════
-# MAIN
-# ═══════════════════════════════════════════════════════════════════
-
-def main():
-    parser = argparse.ArgumentParser(description="AEGIS Extreme Testing Suite")
-    parser.add_argument("--phase", choices=["load", "fuzz", "chaos", "security", "all"], default="all")
-    parser.add_argument("--quick", action="store_true", help="Fast mode (fewer iterations)")
-    args = parser.parse_args()
-
-    tmpdir = ARTIFACTS_DIR
-    tmpdir.mkdir(parents=True, exist_ok=True)
-
-    all_results = {}
-    start_time = time.perf_counter()
-
-    print("=" * 60)
-    print("  AEGIS-COGNITION EXTREME TESTING SUITE")
-    print("=" * 60)
-
-    # Phase 2: Load testing
-    if args.phase in ("load", "all"):
-        print("\n--- PHASE 2: Macro Load & Soak ---")
-        n = 1_000 if args.quick else 10_000
-        d = 10 if args.quick else 60
-        load_runner = LoadTestRunner(tmpdir)
-        all_results["load"] = {
-            "backpressure_flood": load_runner.test_backpressure_flood(num_payloads=n),
-            "memory_soak": load_runner.test_memory_soak(duration_seconds=d),
-        }
-
-    # Phase 3: Fuzzing
-    if args.phase in ("fuzz", "all"):
-        print("\n--- PHASE 3: Adversarial Fuzzing ---")
-        fuzz_runner = FuzzingRunner(tmpdir)
-        all_results["fuzz"] = {
-            "fuzz_mmap": fuzz_runner.fuzz_mmap_boundary(num_cases=100 if args.quick else 1000),
-            "fuzz_wasm": fuzz_runner.fuzz_wasm_modules(),
-            "ffi_injection": fuzz_runner.ffi_payload_injection(),
-        }
-        if fuzz_runner.crashes:
-            all_results.setdefault("crashes", []).extend(fuzz_runner.crashes)
-
-    # Phase 4: Chaos
-    if args.phase in ("chaos", "all"):
-        print("\n--- PHASE 4: Chaos Engineering ---")
-        chaos_runner = ChaosRunner(tmpdir)
-        all_results["chaos"] = {
-            "sigkill": chaos_runner.test_sigkill_during_write(),
-            "disk_full": chaos_runner.test_disk_full_simulation(),
-        }
 
 
 # ═══════════════════════════════════════════════════════════════════

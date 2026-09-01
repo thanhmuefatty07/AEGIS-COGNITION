@@ -160,7 +160,7 @@ def _cargo_package(entry: Any) -> CargoPackage | None:
 def _dependency_names(dependencies: Any) -> tuple[str, ...]:
     if not isinstance(dependencies, dict):
         return ()
-    return tuple(sorted(str(name) for name in dependencies.keys()))
+    return tuple(sorted(str(name) for name in dependencies))
 
 
 def _all_dependencies(manifest: dict[str, Any]) -> dict[str, Any]:

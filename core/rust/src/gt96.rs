@@ -8,6 +8,7 @@
 //! capability contracts used at that boundary.
 
 use blake3::Hasher;
+use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet, VecDeque};
 
 use crate::policy::SideEffectClass;
@@ -44,7 +45,7 @@ pub struct AcceptanceCriterion {
     pub status: CriterionStatus,
 }
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Default)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Default, Serialize, Deserialize)]
 pub struct BudgetVector {
     pub tokens: u64,
     pub money_minor_units: u64,
@@ -127,7 +128,7 @@ impl BudgetVector {
     }
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub struct BudgetPolicy {
     pub total: BudgetVector,
     pub finalization_reserve: BudgetVector,
@@ -158,6 +159,10 @@ pub struct GoalContract {
     pub effect_policy: SideEffectClass,
     pub evidence_required: bool,
     pub budget_policy: BudgetPolicy,
+    /// The immutable parent binding for an evolved contract. `None` is only
+    /// valid for the genesis contract (version 1).
+    pub parent_contract_hash: Option<[u8; 32]>,
+    pub evolution_reason: Option<String>,
     pub contract_hash: [u8; 32],
 }
 
@@ -203,6 +208,8 @@ impl GoalContract {
             effect_policy,
             evidence_required,
             budget_policy,
+            parent_contract_hash: None,
+            evolution_reason: None,
             contract_hash: [0; 32],
         };
         contract.contract_hash = contract.compute_hash();
@@ -215,8 +222,27 @@ impl GoalContract {
         objective: impl Into<String>,
         acceptance_criteria: Vec<AcceptanceCriterion>,
     ) -> Result<Self, ContractError> {
+        self.evolve_with_reason(
+            expected_version,
+            objective,
+            acceptance_criteria,
+            "contract-evolution",
+        )
+    }
+
+    pub fn evolve_with_reason(
+        &self,
+        expected_version: u64,
+        objective: impl Into<String>,
+        acceptance_criteria: Vec<AcceptanceCriterion>,
+        reason: impl Into<String>,
+    ) -> Result<Self, ContractError> {
         if expected_version != self.version {
             return Err(ContractError::InvalidVersion);
+        }
+        let reason = reason.into();
+        if reason.trim().is_empty() {
+            return Err(ContractError::EmptyField);
         }
         for existing in &self.acceptance_criteria {
             if !acceptance_criteria
@@ -240,21 +266,31 @@ impl GoalContract {
             .version
             .checked_add(1)
             .ok_or(ContractError::InvalidVersion)?;
+        next.parent_contract_hash = Some(self.contract_hash);
+        next.evolution_reason = Some(reason);
         next.contract_hash = next.compute_hash();
         Ok(next)
     }
 
     fn compute_hash(&self) -> [u8; 32] {
         let mut hasher = Hasher::new();
-        hasher.update(self.schema.as_bytes());
+        hasher.update(b"AEGIS-GT96-GOAL-CONTRACT\0");
+        update_string(&mut hasher, &self.schema);
         update_u64(&mut hasher, self.version);
         update_string(&mut hasher, &self.objective);
+        update_u64(&mut hasher, self.acceptance_criteria.len() as u64);
         for criterion in &self.acceptance_criteria {
             update_string(&mut hasher, &criterion.id);
             update_string(&mut hasher, &criterion.description);
-            hasher.update(&[criterion.status as u8]);
         }
-        for values in [&self.constraints, &self.invariants, &self.non_goals] {
+        for (label, values) in [
+            (b"constraints".as_slice(), &self.constraints),
+            (b"invariants".as_slice(), &self.invariants),
+            (b"non-goals".as_slice(), &self.non_goals),
+        ] {
+            hasher.update(&(label.len() as u64).to_le_bytes());
+            hasher.update(label);
+            update_u64(&mut hasher, values.len() as u64);
             for value in values {
                 update_string(&mut hasher, value);
             }
@@ -263,12 +299,36 @@ impl GoalContract {
         update_budget(&mut hasher, self.budget_policy.total);
         update_budget(&mut hasher, self.budget_policy.finalization_reserve);
         update_budget(&mut hasher, self.budget_policy.recovery_reserve);
+        match self.parent_contract_hash {
+            Some(parent) => {
+                hasher.update(&[1]);
+                hasher.update(&parent);
+                update_string(
+                    &mut hasher,
+                    self.evolution_reason.as_deref().unwrap_or_default(),
+                );
+            }
+            None => {
+                hasher.update(&[0]);
+            }
+        }
         *hasher.finalize().as_bytes()
     }
 
     pub fn is_self_consistent(&self) -> bool {
         self.schema == GT96_CONTRACT_SCHEMA_V1
             && self.version > 0
+            && ((self.version == 1
+                && self.parent_contract_hash.is_none()
+                && self.evolution_reason.is_none())
+                || (self.version > 1
+                    && self
+                        .parent_contract_hash
+                        .is_some_and(|hash| hash != [0; 32])
+                    && self
+                        .evolution_reason
+                        .as_deref()
+                        .is_some_and(|reason| !reason.trim().is_empty())))
             && self.contract_hash == self.compute_hash()
             && self.budget_policy.validate().is_ok()
     }
@@ -281,6 +341,61 @@ pub enum ArtifactValidationState {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
+pub struct ValidatorProof {
+    pub criterion_id: String,
+    pub contract_hash: [u8; 32],
+    pub validator_id: String,
+    pub artifact_content_hash: [u8; 32],
+    pub verdict: bool,
+    pub proof_hash: [u8; 32],
+}
+
+impl ValidatorProof {
+    pub fn new(
+        criterion_id: impl Into<String>,
+        contract_hash: [u8; 32],
+        validator_id: impl Into<String>,
+        artifact_content_hash: [u8; 32],
+        verdict: bool,
+    ) -> Result<Self, ContractError> {
+        let proof = Self {
+            criterion_id: criterion_id.into(),
+            contract_hash,
+            validator_id: validator_id.into(),
+            artifact_content_hash,
+            verdict,
+            proof_hash: [0; 32],
+        };
+        if proof.criterion_id.trim().is_empty()
+            || proof.validator_id.trim().is_empty()
+            || proof.contract_hash == [0; 32]
+            || proof.artifact_content_hash == [0; 32]
+            || !verdict
+        {
+            return Err(ContractError::InvalidEvidence);
+        }
+        let mut proof = proof;
+        proof.proof_hash = proof.compute_hash();
+        Ok(proof)
+    }
+
+    pub fn compute_hash(&self) -> [u8; 32] {
+        let mut hasher = Hasher::new();
+        hasher.update(b"aegis-gt96-validator-proof-v1");
+        update_string(&mut hasher, &self.criterion_id);
+        hasher.update(&self.contract_hash);
+        update_string(&mut hasher, &self.validator_id);
+        hasher.update(&self.artifact_content_hash);
+        hasher.update(&[u8::from(self.verdict)]);
+        *hasher.finalize().as_bytes()
+    }
+
+    pub fn is_valid(&self) -> bool {
+        self.verdict && self.proof_hash != [0; 32] && self.proof_hash == self.compute_hash()
+    }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct ArtifactRef {
     pub producer: String,
     pub commit_sha: [u8; 32],
@@ -289,6 +404,10 @@ pub struct ArtifactRef {
     pub validation_state: ArtifactValidationState,
     pub created_at_ms: u64,
     pub content_hash: [u8; 32],
+    pub criterion_id: Option<String>,
+    pub contract_hash: Option<[u8; 32]>,
+    pub validator_id: Option<String>,
+    pub validation_hash: [u8; 32],
 }
 
 impl ArtifactRef {
@@ -316,10 +435,108 @@ impl ArtifactRef {
             commit_sha,
             schema,
             trust_domain,
-            validation_state: ArtifactValidationState::Validated,
+            // This constructor validates artifact metadata only. A criterion
+            // or contract cannot be marked verified until `validated_for`
+            // or `validated_with_proof` adds an independent, bound validator
+            // proof.  In particular, the public constructor cannot self-claim
+            // authoritative validation by setting the state alone.
+            validation_state: ArtifactValidationState::Unvalidated,
             created_at_ms,
             content_hash: *blake3::hash(content).as_bytes(),
+            criterion_id: None,
+            contract_hash: None,
+            validator_id: None,
+            validation_hash: [0; 32],
         })
+    }
+
+    pub fn validated_for(
+        criterion_id: impl Into<String>,
+        contract: &GoalContract,
+        validator_id: impl Into<String>,
+        producer: impl Into<String>,
+        commit_sha: [u8; 32],
+        schema: impl Into<String>,
+        trust_domain: impl Into<String>,
+        created_at_ms: u64,
+        content: &[u8],
+    ) -> Result<Self, ContractError> {
+        let criterion_id = criterion_id.into();
+        let validator_id = validator_id.into();
+        if criterion_id.trim().is_empty() || validator_id.trim().is_empty() {
+            return Err(ContractError::InvalidEvidence);
+        }
+        if !contract
+            .acceptance_criteria
+            .iter()
+            .any(|criterion| criterion.id == criterion_id)
+        {
+            return Err(ContractError::MissingCriterion);
+        }
+        let artifact = Self::validated(
+            producer,
+            commit_sha,
+            schema,
+            trust_domain,
+            created_at_ms,
+            content,
+        )?;
+        let proof = ValidatorProof::new(
+            criterion_id,
+            contract.contract_hash,
+            validator_id,
+            artifact.content_hash,
+            true,
+        )?;
+        Self::validated_with_proof(artifact, &proof)
+    }
+
+    pub fn validated_with_proof(
+        mut artifact: Self,
+        proof: &ValidatorProof,
+    ) -> Result<Self, ContractError> {
+        if !proof.is_valid() || proof.artifact_content_hash != artifact.content_hash {
+            return Err(ContractError::InvalidEvidence);
+        }
+        artifact.criterion_id = Some(proof.criterion_id.clone());
+        artifact.contract_hash = Some(proof.contract_hash);
+        artifact.validator_id = Some(proof.validator_id.clone());
+        artifact.validation_state = ArtifactValidationState::Validated;
+        artifact.validation_hash = artifact.compute_validation_hash();
+        Ok(artifact)
+    }
+
+    fn compute_validation_hash(&self) -> [u8; 32] {
+        let mut hasher = Hasher::new();
+        hasher.update(b"AEGIS-GT96-ARTIFACT-VALIDATION\0");
+        update_string(&mut hasher, &self.producer);
+        hasher.update(&self.commit_sha);
+        update_string(&mut hasher, &self.schema);
+        update_string(&mut hasher, &self.trust_domain);
+        update_u64(&mut hasher, self.created_at_ms);
+        hasher.update(&self.content_hash);
+        update_string(
+            &mut hasher,
+            self.criterion_id.as_deref().unwrap_or_default(),
+        );
+        if let Some(contract_hash) = self.contract_hash {
+            hasher.update(&[1]);
+            hasher.update(&contract_hash);
+        } else {
+            hasher.update(&[0]);
+        }
+        update_string(
+            &mut hasher,
+            self.validator_id.as_deref().unwrap_or_default(),
+        );
+        *hasher.finalize().as_bytes()
+    }
+
+    fn is_validated_for(&self, criterion_id: &str, contract_hash: [u8; 32]) -> bool {
+        self.is_validated()
+            && self.criterion_id.as_deref() == Some(criterion_id)
+            && self.contract_hash == Some(contract_hash)
+            && self.validation_hash == self.compute_validation_hash()
     }
 
     pub fn is_validated(&self) -> bool {
@@ -329,6 +546,17 @@ impl ArtifactRef {
             && !self.producer.trim().is_empty()
             && !self.schema.trim().is_empty()
             && !self.trust_domain.trim().is_empty()
+            && self
+                .criterion_id
+                .as_deref()
+                .is_some_and(|value| !value.trim().is_empty())
+            && self.contract_hash.is_some_and(|value| value != [0; 32])
+            && self
+                .validator_id
+                .as_deref()
+                .is_some_and(|value| !value.trim().is_empty())
+            && self.validation_hash != [0; 32]
+            && self.validation_hash == self.compute_validation_hash()
     }
 }
 
@@ -384,13 +612,19 @@ impl ProgressLedger {
         criterion_id: &str,
         evidence: ArtifactRef,
     ) -> Result<(), ContractError> {
-        if !evidence.is_validated() {
+        if !evidence.is_validated_for(criterion_id, self.contract_hash) {
             return Err(ContractError::InvalidEvidence);
         }
         let criterion = self
             .criteria
             .get_mut(criterion_id)
             .ok_or(ContractError::MissingCriterion)?;
+        if matches!(
+            criterion.status,
+            CriterionStatus::Verified | CriterionStatus::Invalidated
+        ) {
+            return Err(ContractError::InvalidTransition);
+        }
         criterion.status = CriterionStatus::Verified;
         self.evidence.insert(criterion_id.to_string(), evidence);
         self.state_epoch = self.state_epoch.saturating_add(1);
@@ -431,90 +665,81 @@ impl ProgressLedger {
     }
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub struct BudgetLedger {
     total: BudgetVector,
-    remaining: BudgetVector,
-    finalization_reserve: BudgetVector,
-    recovery_reserve: BudgetVector,
+    exploration_remaining: BudgetVector,
+    finalization_remaining: BudgetVector,
+    recovery_remaining: BudgetVector,
+    exploration_spent: BudgetVector,
     state_epoch: u64,
 }
 
 impl BudgetLedger {
     pub fn new(policy: &BudgetPolicy) -> Result<Self, ContractError> {
         policy.validate()?;
+        let reserved = policy
+            .finalization_reserve
+            .checked_add(policy.recovery_reserve)?;
+        let exploration_remaining = policy.total.checked_sub(reserved)?;
         Ok(Self {
             total: policy.total,
-            remaining: policy.total,
-            finalization_reserve: policy.finalization_reserve,
-            recovery_reserve: policy.recovery_reserve,
+            exploration_remaining,
+            finalization_remaining: policy.finalization_reserve,
+            recovery_remaining: policy.recovery_reserve,
+            exploration_spent: BudgetVector::zero(),
             state_epoch: 0,
         })
     }
 
     pub fn remaining(&self) -> BudgetVector {
-        self.remaining
+        // The pools are disjoint by construction. Their sum is therefore the
+        // only remaining authority; no caller can spend a reserve twice.
+        self.exploration_remaining
+            .checked_add(self.finalization_remaining)
+            .and_then(|value| value.checked_add(self.recovery_remaining))
+            .expect("budget pools cannot overflow while bounded by total")
     }
 
     pub fn finalization_reserve(&self) -> BudgetVector {
-        self.finalization_reserve
+        self.finalization_remaining
     }
 
     pub fn recovery_reserve(&self) -> BudgetVector {
-        self.recovery_reserve
+        self.recovery_remaining
+    }
+
+    pub fn exploration_reserve(&self) -> BudgetVector {
+        self.exploration_remaining
+    }
+
+    pub fn snapshot_valid(&self) -> bool {
+        self.remaining()
+            .checked_add(self.exploration_spent)
+            .is_ok_and(|committed| committed.fits_within(self.total))
     }
 
     pub fn state_epoch(&self) -> u64 {
         self.state_epoch
     }
 
-    fn exploration_available(&self) -> Result<BudgetVector, ContractError> {
-        self.remaining
-            .checked_sub(self.finalization_reserve)?
-            .checked_sub(self.recovery_reserve)
-    }
-
     pub fn consume_exploration(&mut self, spend: BudgetVector) -> Result<(), ContractError> {
-        let available = self.exploration_available()?;
-        if !spend.fits_within(available) {
-            return Err(ContractError::BudgetExceeded);
-        }
-        self.remaining = self.remaining.checked_sub(spend)?;
+        let next_remaining = self.exploration_remaining.checked_sub(spend)?;
+        let next_spent = self.exploration_spent.checked_add(spend)?;
+        self.exploration_remaining = next_remaining;
+        self.exploration_spent = next_spent;
         self.state_epoch = self.state_epoch.saturating_add(1);
         Ok(())
     }
 
     pub fn consume_finalizer(&mut self, spend: BudgetVector) -> Result<(), ContractError> {
-        let available = self.remaining.checked_add(self.finalization_reserve)?;
-        if !spend.fits_within(available) {
-            return Err(ContractError::BudgetExceeded);
-        }
-        let from_remaining = spend;
-        if from_remaining.fits_within(self.remaining) {
-            self.remaining = self.remaining.checked_sub(from_remaining)?;
-        } else {
-            let reserve_use = BudgetVector {
-                tokens: spend.tokens.saturating_sub(self.remaining.tokens),
-                money_minor_units: spend
-                    .money_minor_units
-                    .saturating_sub(self.remaining.money_minor_units),
-                time_ms: spend.time_ms.saturating_sub(self.remaining.time_ms),
-                tool_calls: spend.tool_calls.saturating_sub(self.remaining.tool_calls),
-                api_calls: spend.api_calls.saturating_sub(self.remaining.api_calls),
-                cpu_ms: spend.cpu_ms.saturating_sub(self.remaining.cpu_ms),
-                risk_units: spend.risk_units.saturating_sub(self.remaining.risk_units),
-            };
-            self.remaining = self.remaining.checked_sub(BudgetVector {
-                tokens: spend.tokens - reserve_use.tokens,
-                money_minor_units: spend.money_minor_units - reserve_use.money_minor_units,
-                time_ms: spend.time_ms - reserve_use.time_ms,
-                tool_calls: spend.tool_calls - reserve_use.tool_calls,
-                api_calls: spend.api_calls - reserve_use.api_calls,
-                cpu_ms: spend.cpu_ms - reserve_use.cpu_ms,
-                risk_units: spend.risk_units - reserve_use.risk_units,
-            })?;
-            self.finalization_reserve = self.finalization_reserve.checked_sub(reserve_use)?;
-        }
+        self.finalization_remaining = self.finalization_remaining.checked_sub(spend)?;
+        self.state_epoch = self.state_epoch.saturating_add(1);
+        Ok(())
+    }
+
+    pub fn consume_recovery(&mut self, spend: BudgetVector) -> Result<(), ContractError> {
+        self.recovery_remaining = self.recovery_remaining.checked_sub(spend)?;
         self.state_epoch = self.state_epoch.saturating_add(1);
         Ok(())
     }
@@ -524,23 +749,32 @@ impl BudgetLedger {
     }
 
     pub fn refund(&mut self, value: BudgetVector) -> Result<(), ContractError> {
-        self.remaining = self.remaining.checked_add(value)?;
-        if !self.remaining.fits_within(self.total) {
+        // Legacy refund has no lane argument, so it can only return previously
+        // consumed exploration authority. Validate first so a failed refund is
+        // atomic and cannot corrupt the ledger or epoch.
+        let next_spent = self.exploration_spent.checked_sub(value)?;
+        let next_remaining = self.exploration_remaining.checked_add(value)?;
+        let total_remaining = next_remaining
+            .checked_add(self.finalization_remaining)?
+            .checked_add(self.recovery_remaining)?;
+        if !total_remaining.fits_within(self.total) {
             return Err(ContractError::InvalidBudget);
         }
+        self.exploration_spent = next_spent;
+        self.exploration_remaining = next_remaining;
         self.state_epoch = self.state_epoch.saturating_add(1);
         Ok(())
     }
 }
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub enum FinalizationState {
     Exploring,
     Finalizing,
     Reopened,
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub struct FinalizationBoundary {
     state: FinalizationState,
     generation: u64,
@@ -1020,8 +1254,11 @@ mod tests {
         .unwrap()
     }
 
-    fn evidence() -> ArtifactRef {
-        ArtifactRef::validated(
+    fn evidence(criterion_id: &str) -> ArtifactRef {
+        ArtifactRef::validated_for(
+            criterion_id,
+            &contract(),
+            "gt96-independent-validator",
             "gt96-tests",
             [7; 32],
             "test-report-v1",
@@ -1088,12 +1325,71 @@ mod tests {
         let mut ledger = ProgressLedger::new(&current);
         ledger.mark_in_progress("c1").unwrap();
         assert_eq!(ledger.status("c1"), Some(CriterionStatus::InProgress));
-        ledger.mark_verified("c1", evidence()).unwrap();
-        ledger.mark_verified("c2", evidence()).unwrap();
+        ledger.mark_verified("c1", evidence("c1")).unwrap();
+        ledger.mark_verified("c2", evidence("c2")).unwrap();
         assert!(ledger.is_closed());
         ledger.invalidate("c1").unwrap();
         assert!(!ledger.is_closed());
         assert!(ledger.evidence("c1").is_none());
+    }
+
+    #[test]
+    fn validator_proof_binds_artifact_to_exact_criterion_and_contract() {
+        let current = contract();
+        let artifact = ArtifactRef::validated(
+            "gt96-tests",
+            [7; 32],
+            "test-report-v1",
+            "local",
+            1,
+            b"current evidence",
+        )
+        .unwrap();
+        let proof = ValidatorProof::new(
+            "c1",
+            current.contract_hash,
+            "independent-validator",
+            artifact.content_hash,
+            true,
+        )
+        .unwrap();
+        let bound = ArtifactRef::validated_with_proof(artifact, &proof).unwrap();
+        let mut ledger = ProgressLedger::new(&current);
+        ledger.mark_verified("c1", bound.clone()).unwrap();
+        assert_eq!(
+            ledger.mark_verified("c2", bound),
+            Err(ContractError::InvalidEvidence)
+        );
+    }
+
+    #[test]
+    fn metadata_only_artifact_cannot_self_claim_authoritative_validation() {
+        let artifact = ArtifactRef::validated(
+            "gt96-tests",
+            [7; 32],
+            "test-report-v1",
+            "local",
+            1,
+            b"metadata only",
+        )
+        .unwrap();
+        assert!(!artifact.is_validated());
+        assert_eq!(
+            ResultContract::new(b"result", vec![artifact]),
+            Err(ContractError::InvalidEvidence)
+        );
+
+        let mut forged = ArtifactRef::validated(
+            "gt96-tests",
+            [7; 32],
+            "test-report-v1",
+            "local",
+            1,
+            b"metadata only",
+        )
+        .unwrap();
+        forged.validation_state = ArtifactValidationState::Validated;
+        assert!(!forged.is_validated());
     }
 
     #[test]
@@ -1134,6 +1430,60 @@ mod tests {
                 })
                 .is_ok()
         );
+    }
+
+    #[test]
+    fn finalizer_cannot_borrow_exploration_or_recovery_budget() {
+        let mut ledger = BudgetLedger::new(&policy()).unwrap();
+        ledger
+            .consume_exploration(BudgetVector {
+                tokens: 70,
+                money_minor_units: 7,
+                time_ms: 70,
+                tool_calls: 7,
+                api_calls: 7,
+                cpu_ms: 70,
+                risk_units: 7,
+            })
+            .unwrap();
+        assert_eq!(
+            ledger.consume_finalizer(BudgetVector {
+                tokens: 21,
+                ..BudgetVector::zero()
+            }),
+            Err(ContractError::BudgetExceeded)
+        );
+        assert_eq!(ledger.finalization_reserve().tokens, 20);
+        assert_eq!(ledger.recovery_reserve().tokens, 10);
+        assert_eq!(ledger.remaining().tokens, 30);
+    }
+
+    #[test]
+    fn failed_refund_is_atomic_and_cannot_mint_budget() {
+        let mut ledger = BudgetLedger::new(&policy()).unwrap();
+        let epoch = ledger.state_epoch();
+        assert_eq!(
+            ledger.refund(BudgetVector {
+                tokens: 1,
+                ..BudgetVector::zero()
+            }),
+            Err(ContractError::BudgetExceeded)
+        );
+        assert_eq!(ledger.state_epoch(), epoch);
+        assert_eq!(ledger.remaining().tokens, 100);
+        ledger
+            .consume_exploration(BudgetVector {
+                tokens: 5,
+                ..BudgetVector::zero()
+            })
+            .unwrap();
+        ledger
+            .refund(BudgetVector {
+                tokens: 5,
+                ..BudgetVector::zero()
+            })
+            .unwrap();
+        assert_eq!(ledger.remaining().tokens, 100);
     }
 
     #[test]
@@ -1193,7 +1543,7 @@ mod tests {
 
     #[test]
     fn result_evidence_and_cache_identity_are_separate_and_complete() {
-        let result = ResultContract::new(b"result", vec![evidence()]).unwrap();
+        let result = ResultContract::new(b"result", vec![evidence("c1")]).unwrap();
         assert!(result.is_authoritative());
         let identity = InferenceCacheIdentity {
             model: "model".to_string(),

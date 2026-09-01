@@ -82,8 +82,8 @@ def analyze_compile_errors(logs: str) -> list[str]:
         import aegis_nerve
         return aegis_nerve.aegis_harness_analyze_errors(logs)
     except ImportError:
-        errors = []
-        for line in logs.splitlines():
-            if line.strip().startswith("error[") or line.strip().startswith("error:"):
-                errors.append(line.strip())
-        return errors
+        return [
+            line.strip()
+            for line in logs.splitlines()
+            if line.strip().startswith("error[") or line.strip().startswith("error:")
+        ]

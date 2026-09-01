@@ -1,4 +1,5 @@
 import json
+import re
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -395,6 +396,7 @@ REQUIRED_SYMBOLS = {
             Path("core/python/aegis/contracts.py"),
             Path("core/python/aegis/provider.py"),
             Path("core/python/aegis/evidence.py"),
+            Path("core/python/aegis/trust_policy.py"),
             Path("core/python/browser_runtime_adapter.py"),
         ),
         [
@@ -3681,6 +3683,171 @@ REQUIRED_PYTHON_TESTS = {
 }
 
 
+# These are the small, durable contracts that the architecture freeze names as
+# P0 truth-schema surfaces.  The audit intentionally checks only the shape and
+# ownership markers here; compilation and replay-hash stability remain runtime
+# evidence and must still be supplied by the Rust test/CI gates.
+TRUTH_SCHEMA_CONTRACTS = {
+    Path("schemas/resource-contract-v1.json"): (
+        "https://aegis-cognition.ai/schemas/resource-contract-v1.json",
+        "aegis-resource-contract-v1",
+    ),
+    Path("schemas/lease-token-v1.json"): (
+        "https://aegis-cognition.ai/schemas/lease-token-v1.json",
+        "aegis-resource-lease-token-v1",
+    ),
+    Path("schemas/runtime-telemetry-v1.json"): (
+        "https://aegis-cognition.ai/schemas/runtime-telemetry-v1.json",
+        "aegis-runtime-telemetry-v1",
+    ),
+}
+TRUTH_SCHEMA_SOURCE_MARKERS = {
+    Path("core/rust/src/policy.rs"): ("TypedToolIR", "PolicyProofTrace", "HarnessBenchScorecard"),
+    Path("core/rust/src/replay.rs"): ("RunEvent", "event_hash", "schema_hash"),
+}
+
+# A claim is only a gate failure when it is a high-risk readiness assertion
+# without a nearby qualification.  Ordinary implementation notes are not
+# prohibited; the scanner is deliberately conservative to avoid turning prose
+# style into a false release signal.
+NO_OVERCLAIM_PATTERNS = (
+    "production-ready",
+    "production ready",
+    "fully implemented",
+    "all benchmarks verified",
+    "100% secure",
+    "100% reliable",
+    "100% correct",
+    "cover every scenario",
+    "covers every scenario",
+)
+NO_OVERCLAIM_QUALIFIERS = (
+    "not ",
+    "not-",
+    "pending",
+    "target",
+    "roadmap",
+    "candidate",
+    "historical",
+    "self-reported",
+    "unverified",
+    "not verified",
+    "remains",
+    "requires",
+    "without",
+    "do not",
+    "does not",
+    "cannot",
+    "blocked",
+    "open",
+    "only",
+    "until",
+    "không",
+    "chưa",
+    "chỉ",
+    "mục tiêu",
+    "đang chờ",
+)
+NO_OVERCLAIM_DOCS = (
+    Path("README.md"),
+    Path("PROJECT_OVERVIEW_DETAILED.md"),
+    Path("docs/ARCHITECTURE_FREEZE.md"),
+    Path("docs/architecture/AEGIS_LAB_RUNTIME_MASTER_PLAN.md"),
+    Path("planning pdf/AEGIS-COGNITION_ Agent Harness Continuation Plan.md"),
+)
+REQUIRED_AUDIT_TESTS = {
+    Path("tests/test_constitution_audit_gates.py"): (
+        "test_truth_schema_gate_requires_versioned_ids_and_owner_markers",
+        "test_no_overclaim_gate_accepts_qualified_and_rejects_unqualified_claims",
+        "test_evaluate_constitution_exposes_named_freeze_gates",
+    ),
+}
+
+
+def _truth_schema_gate(root: Path) -> tuple[bool, str]:
+    failures: list[str] = []
+    for relative_path, (expected_id, expected_schema) in TRUTH_SCHEMA_CONTRACTS.items():
+        path = root / relative_path
+        if not path.is_file():
+            failures.append(f"missing {relative_path}")
+            continue
+        try:
+            payload = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError) as exc:
+            failures.append(f"invalid JSON {relative_path}: {exc}")
+            continue
+        if not isinstance(payload, dict):
+            failures.append(f"schema root is not an object: {relative_path}")
+            continue
+        if payload.get("$id") != expected_id:
+            failures.append(f"{relative_path}.$id drift")
+        schema_property = payload.get("properties", {}).get("schema", {})
+        if not isinstance(schema_property, dict) or schema_property.get("const") != expected_schema:
+            failures.append(f"{relative_path}.properties.schema.const drift")
+    for relative_path, markers in TRUTH_SCHEMA_SOURCE_MARKERS.items():
+        text = _read_text(root, relative_path)
+        if text is None:
+            failures.append(f"missing {relative_path}")
+            continue
+        missing = [marker for marker in markers if marker not in text]
+        if missing:
+            failures.append(f"{relative_path} missing markers: {', '.join(missing)}")
+    if failures:
+        return False, "; ".join(failures)
+    return (
+        True,
+        "versioned truth schemas and Rust ownership markers are present; "
+        "compile/replay-hash stability remains runtime evidence",
+    )
+
+
+def _no_overclaim_gate(root: Path) -> tuple[bool, str]:
+    freeze = _read_text(root, Path("docs/ARCHITECTURE_FREEZE.md"))
+    required_freeze_markers = (
+        "DESIGN_FREEZE_INPUT",
+        "does not assert that the checkout already satisfies the target",
+        "surgical-convergence authorization",
+        "BASELINE_PRESENT",
+        "benchmark",
+    )
+    if freeze is None:
+        return False, "missing docs/ARCHITECTURE_FREEZE.md"
+    normalized_freeze = " ".join(freeze.lower().split())
+    missing = [marker for marker in required_freeze_markers if marker.lower() not in normalized_freeze]
+    if missing:
+        return False, f"freeze status disclosure missing: {', '.join(missing)}"
+
+    violations: list[str] = []
+    for relative_path in NO_OVERCLAIM_DOCS:
+        text = _read_text(root, relative_path)
+        if text is None:
+            continue
+        lines = text.splitlines()
+        for line_number, line in enumerate(lines, start=1):
+            matched = [pattern for pattern in NO_OVERCLAIM_PATTERNS if pattern in line.lower()]
+            if not matched:
+                continue
+            # A qualification may wrap onto the preceding Markdown line, but
+            # only within the same sentence.  This prevents the freeze header
+            # from accidentally qualifying an unrelated claim below it.
+            sentence_context = " ".join(lines[max(0, line_number - 2) : line_number + 1])
+            sentences = [part.lower() for part in re.split(r"[.!?](?:\s|$)", sentence_context)]
+            claim_sentences = [
+                sentence
+                for sentence in sentences
+                if any(pattern in sentence for pattern in matched)
+            ]
+            if not any(
+                qualifier in sentence
+                for sentence in claim_sentences
+                for qualifier in NO_OVERCLAIM_QUALIFIERS
+            ):
+                violations.append(f"{relative_path}:{line_number} ({', '.join(matched)})")
+    if violations:
+        return False, "unqualified readiness claims: " + "; ".join(violations[:8])
+    return True, "readiness claims are qualified and freeze status is explicit"
+
+
 def _read_text(root: Path, relative_path: Path) -> str | None:
     path = root / relative_path
     if not path.exists():
@@ -3692,10 +3859,17 @@ def evaluate_constitution(root: str | Path) -> dict:
     root_path = Path(root)
     checks: list[ConstitutionCheck] = []
 
+    truth_schema_ok, truth_schema_detail = _truth_schema_gate(root_path)
+    checks.append(ConstitutionCheck("TruthSchemaGate", truth_schema_ok, truth_schema_detail))
+    no_overclaim_ok, no_overclaim_detail = _no_overclaim_gate(root_path)
+    checks.append(ConstitutionCheck("NoOverclaimGate", no_overclaim_ok, no_overclaim_detail))
+
     for name, (relative_path, needles) in REQUIRED_SYMBOLS.items():
         if isinstance(relative_path, tuple):
             source_texts = [_read_text(root_path, path) for path in relative_path]
-            missing_paths = [str(path) for path, text in zip(relative_path, source_texts) if text is None]
+            missing_paths = [
+                str(path) for path, text in zip(relative_path, source_texts, strict=True) if text is None
+            ]
             text = "\n".join(source for source in source_texts if source is not None)
             if missing_paths:
                 checks.append(ConstitutionCheck(name, False, f"missing {', '.join(missing_paths)}"))
@@ -3758,6 +3932,20 @@ def evaluate_constitution(root: str | Path) -> dict:
                     "ok" if not missing else f"missing tests: {', '.join(missing)}",
                 )
             )
+
+    for relative_path, test_names in REQUIRED_AUDIT_TESTS.items():
+        audit_tests_text = _read_text(root_path, relative_path)
+        if audit_tests_text is None:
+            checks.append(ConstitutionCheck("constitution_gate_tests_present", False, f"missing {relative_path}"))
+            continue
+        missing = [test_name for test_name in test_names if test_name not in audit_tests_text]
+        checks.append(
+            ConstitutionCheck(
+                "constitution_gate_tests_present",
+                not missing,
+                "ok" if not missing else f"missing tests: {', '.join(missing)}",
+            )
+        )
 
     passed = sum(1 for check in checks if check.ok)
     failed = len(checks) - passed
