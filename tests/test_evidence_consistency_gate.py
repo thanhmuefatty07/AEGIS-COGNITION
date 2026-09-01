@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from pathlib import Path
 
 from scripts import evidence_consistency_gate as gate
 from scripts.evidence_consistency_gate import validate_manifest
@@ -63,6 +64,32 @@ def test_manifest_rejects_stale_sha() -> None:
 
 def test_manifest_accepts_matching_sha_without_run_for_local() -> None:
     assert validate_manifest(manifest("a" * 40), "a" * 40, verification_index_text="a" * 40) == []
+
+
+def test_registry_parity_rejects_dropped_and_policy_unknown_ids(monkeypatch, tmp_path: Path) -> None:
+    registry_path = tmp_path / "not_verified_registry.json"
+    policy_path = tmp_path / "deployment_policy.json"
+    registry_path.write_text(
+        json.dumps(
+            {
+                "entries": [
+                    {"id": "NV-001", "title": "one"},
+                    {"id": "NV-002", "title": "two"},
+                ]
+            }
+        ),
+        encoding="utf-8",
+    )
+    policy_path.write_text(
+        json.dumps({"blockers": [{"registry_ids": ["NV-002", "NV-999"]}]}),
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(gate, "NOT_VERIFIED_REGISTRY", registry_path)
+    monkeypatch.setattr(gate, "DEPLOYMENT_POLICY", policy_path)
+    errors = gate.validate_registry_parity({"not_verified_ids": ["NV-001"]})
+    assert any("do not match registry" in error for error in errors)
+    assert any("unknown registry IDs" in error for error in errors)
+    assert any("missing from evidence manifest" in error for error in errors)
 
 
 def test_materializer_binds_retained_suite_artifact(monkeypatch, tmp_path) -> None:
@@ -132,3 +159,91 @@ def test_materializer_binds_retained_suite_artifact(monkeypatch, tmp_path) -> No
     assert materialized["evidence"][0]["status"] == "PROVEN"
     assert materialized["suites"][0]["passed"] == 2
     assert materialized["requirements"][0]["status"] == "PROVEN"
+
+
+def test_materializer_sources_all_blocker_ids_from_registry(monkeypatch, tmp_path: Path) -> None:
+    registry_path = tmp_path / "not_verified_registry.json"
+    registry_path.write_text(
+        json.dumps(
+            {
+                "entries": [
+                    {"id": "NV-001", "title": "one"},
+                    {"id": "NV-019", "title": "nineteen"},
+                ]
+            }
+        ),
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(gate, "NOT_VERIFIED_REGISTRY", registry_path)
+    monkeypatch.setattr(gate, "ROOT", tmp_path)
+    generated = gate.materialize_for_head(
+        {"commit": "CHECKOUT_HEAD", "evidence": [], "suites": []},
+        "a" * 40,
+    )
+    assert generated["not_verified_ids"] == ["NV-001", "NV-019"]
+
+
+def test_checkout_registry_inventory_has_three_way_parity() -> None:
+    manifest = gate.load_manifest(gate.MANIFEST)
+    assert gate.validate_registry_parity(manifest) == []
+
+
+def test_registry_markdown_statuses_cannot_drift_from_machine_registry(monkeypatch, tmp_path: Path) -> None:
+    registry_path = tmp_path / "not_verified_registry.json"
+    policy_path = tmp_path / "deployment_policy.json"
+    markdown_path = tmp_path / "docs" / "architecture" / "NOT_VERIFIED_REGISTRY.md"
+    markdown_path.parent.mkdir(parents=True)
+    registry_path.write_text(
+        json.dumps(
+            {
+                "entries": [
+                    {"id": "NV-001", "title": "one", "status": "NOT VERIFIED"},
+                ]
+            }
+        ),
+        encoding="utf-8",
+    )
+    policy_path.write_text(json.dumps({"blockers": []}), encoding="utf-8")
+    markdown_path.write_text(
+        "| ID | Area | Reason | Risk | Required | Owner | Status |\n"
+        "|---|---|---|---|---|---|---|\n"
+        "| NV-001 | Runtime | reason | risk | closure | owner | PROVEN |\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(gate, "ROOT", tmp_path)
+    monkeypatch.setattr(gate, "NOT_VERIFIED_REGISTRY", registry_path)
+    monkeypatch.setattr(gate, "DEPLOYMENT_POLICY", policy_path)
+    errors = gate.validate_registry_parity({"not_verified_ids": ["NV-001"]})
+    assert any("statuses do not match" in error for error in errors)
+
+
+def test_gt96_traceability_statuses_cannot_drift_from_current_evidence(monkeypatch, tmp_path: Path) -> None:
+    registry_path = tmp_path / "not_verified_registry.json"
+    policy_path = tmp_path / "deployment_policy.json"
+    evidence_path = tmp_path / "docs" / "architecture" / "evidence" / "current.json"
+    blocker_markdown = tmp_path / "docs" / "architecture" / "NOT_VERIFIED_REGISTRY.md"
+    traceability_path = tmp_path / "docs" / "architecture" / "GT96_TRACEABILITY.md"
+    evidence_path.parent.mkdir(parents=True)
+    registry_path.write_text(json.dumps({"entries": [{"id": "NV-001", "status": "NOT VERIFIED"}]}), encoding="utf-8")
+    policy_path.write_text(json.dumps({"blockers": []}), encoding="utf-8")
+    blocker_markdown.write_text(
+        "| ID | Area | Reason | Risk | Required | Owner | Status |\n"
+        "|---|---|---|---|---|---|---|\n"
+        "| NV-001 | Runtime | reason | risk | closure | owner | NOT VERIFIED |\n",
+        encoding="utf-8",
+    )
+    evidence_path.write_text(
+        json.dumps({"requirements": [{"id": "GT96-001", "status": "PROVEN"}]}),
+        encoding="utf-8",
+    )
+    traceability_path.write_text(
+        "| ID | Requirement | Status |\n"
+        "|---|---|---|\n"
+        "| GT96-001 | fixture | IMPLEMENTED / NOT VERIFIED |\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(gate, "ROOT", tmp_path)
+    monkeypatch.setattr(gate, "NOT_VERIFIED_REGISTRY", registry_path)
+    monkeypatch.setattr(gate, "DEPLOYMENT_POLICY", policy_path)
+    errors = gate.validate_registry_parity({"not_verified_ids": ["NV-001"]})
+    assert any("GT96_TRACEABILITY.md statuses do not match" in error for error in errors)

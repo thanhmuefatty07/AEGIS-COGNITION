@@ -56,7 +56,8 @@ checks.append(("worker_machine_id_hash match", isinstance(wmid, str) and wmid ==
 all_ok = True
 for name, ok in checks:
     mark = "OK  " if ok else "FAIL"
-    if not ok: all_ok = False
+    if not ok:
+        all_ok = False
     print(f"  [{mark}] {name}")
 
 print()

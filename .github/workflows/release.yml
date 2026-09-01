@@ -23,6 +23,7 @@ jobs:
         shell: bash
         run: |
           test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          python scripts/document_consistency_gate.py
           python scripts/evidence_consistency_gate.py --generate artifacts/evidence/current.json
       - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
         with:
@@ -34,7 +35,7 @@ jobs:
       - name: Run release-bound test suites
         run: |
           cargo test --workspace --no-default-features
-          uv run --no-project pytest tests core/python/tests.py -q
+          uv run --no-project pytest tests core/python/tests.py -q -W error::DeprecationWarning
       - name: Build versioned wheel
         run: uv build --wheel --out-dir artifacts/wheels
       - name: Install and import the exact release wheel
@@ -46,6 +47,7 @@ jobs:
           mkdir -p artifacts/release-input/wheels
           cp "$wheel" artifacts/release-input/wheels/
           python scripts/release_install_smoke.py --wheel "$wheel" --output artifacts/release-input/install-smoke.json
+          python scripts/release_controller_action_smoke.py --wheel "$wheel" --output artifacts/release-input/controller-action-smoke.json
       - name: Verify release payload and generate SBOM
         run: |
           python -m py_compile scripts/release_evidence.py

@@ -72,6 +72,7 @@ pub enum RunEventKind {
     BrowserOpsBenchVerificationRecorded,
     ClusterCandidateAccepted,
     ShadowSealRecorded,
+    LabEventRecorded,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -179,7 +180,7 @@ pub struct SegmentedArrowAuditStream {
     writer_lock: Option<File>,
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
 pub struct RunEventSegmentEntry {
     pub segment_id: u64,
     pub start_event_id: EventId,
@@ -445,7 +446,7 @@ impl RunEventSegmentCommitProof {
     }
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
 pub struct RunEventSegmentManifest {
     pub run_id: RunId,
     pub entries: Vec<RunEventSegmentEntry>,
@@ -788,7 +789,7 @@ pub struct ReplayChaosBench;
 pub struct ReplayEnduranceBench;
 
 const BINARY_RUN_EVENT_MAGIC: &[u8; 8] = b"AEGRUN06";
-const BINARY_RUN_EVENT_FORMAT_VERSION: u64 = 7;
+const BINARY_RUN_EVENT_FORMAT_VERSION: u64 = 8;
 const BINARY_RUN_EVENT_HEADER_BYTES: usize = 88;
 const BINARY_RUN_EVENT_RECORD_BYTES: usize = 184;
 
@@ -989,6 +990,7 @@ impl RunEventKind {
             21 => Some(Self::BrowserOpsBenchVerificationRecorded),
             22 => Some(Self::ClusterCandidateAccepted),
             23 => Some(Self::ShadowSealRecorded),
+            24 => Some(Self::LabEventRecorded),
             _ => None,
         }
     }
@@ -1427,6 +1429,24 @@ impl RunEvent {
         )
     }
 
+    pub fn lab_event_recorded(
+        event_id: EventId,
+        run_id: RunId,
+        lab_event_hash: [u8; 32],
+        lab_payload_hash: [u8; 32],
+        previous_event_hash: [u8; 32],
+    ) -> Self {
+        Self::new(
+            event_id,
+            run_id,
+            RunEventKind::LabEventRecorded,
+            event_id as SubjectId,
+            lab_event_hash,
+            Some(lab_payload_hash),
+            previous_event_hash,
+        )
+    }
+
     pub fn is_valid(&self) -> bool {
         self.run_id > 0
             && self.event_id > 0
@@ -1456,6 +1476,7 @@ impl RunEvent {
                     | RunEventKind::TaskSelectionProofRecorded
                     | RunEventKind::BrowserObservationPacketRecorded
                     | RunEventKind::GoalIntakeRecorded
+                    | RunEventKind::LabEventRecorded
             ) || self.secondary_hash.is_some())
     }
 
@@ -2119,6 +2140,23 @@ impl RunEventLedger {
             self.last_hash(),
         );
         self.append(event, true, false, false, false, false)
+    }
+
+    pub fn append_lab_event_recorded(
+        &mut self,
+        lab_event: &crate::lab::LabEvent,
+    ) -> Result<&RunEvent, ReplayLedgerError> {
+        if !lab_event.is_valid() {
+            return Err(ReplayLedgerError::InvalidEvent);
+        }
+        let event = RunEvent::lab_event_recorded(
+            self.next_event_id(),
+            self.run_id,
+            lab_event.event_hash,
+            lab_event.payload_hash,
+            self.last_hash(),
+        );
+        self.append(event, false, false, false, false, false)
     }
 
     pub fn verify_hash_chain(&self) -> bool {
@@ -4439,6 +4477,31 @@ impl RunEventSegmentArchive {
         stream.finish()
     }
 
+    /// Persist a complete Lab event chain inside the canonical segmented
+    /// replay archive.  The Lab chain is validated before any file is
+    /// published, so a malformed projection cannot become replay evidence.
+    pub fn write_lab_events(
+        directory: impl AsRef<Path>,
+        max_events_per_segment: usize,
+        run_id: RunId,
+        lab_events: &[crate::lab::LabEvent],
+    ) -> Result<RunEventSegmentManifest, &'static str> {
+        if run_id == 0
+            || max_events_per_segment == 0
+            || lab_events.is_empty()
+            || !crate::lab::verify_event_chain(lab_events)
+        {
+            return Err("invalid lab replay archive config");
+        }
+        let mut ledger = RunEventLedger::new(run_id);
+        for lab_event in lab_events {
+            ledger
+                .append_lab_event_recorded(lab_event)
+                .map_err(|_| "invalid lab replay event")?;
+        }
+        Self::write_ledger(directory, max_events_per_segment, &ledger)
+    }
+
     pub fn prove_segmented_arrow_audit(
         directory: impl AsRef<Path>,
         manifest: &RunEventSegmentManifest,
@@ -6555,6 +6618,7 @@ fn validate_run_event_column_scan_row(
             | RunEventKind::TaskSelectionProofRecorded
             | RunEventKind::BrowserObservationPacketRecorded
             | RunEventKind::GoalIntakeRecorded
+            | RunEventKind::LabEventRecorded
     ) && secondary_hash.is_none()
     {
         return Err("missing mmap arrow run event secondary hash");
@@ -6828,6 +6892,7 @@ fn validate_binary_run_event_record(
             | RunEventKind::TaskSelectionProofRecorded
             | RunEventKind::BrowserObservationPacketRecorded
             | RunEventKind::GoalIntakeRecorded
+            | RunEventKind::LabEventRecorded
     ) && secondary_hash.is_none()
     {
         return Err("missing binary run event secondary hash");
@@ -6997,7 +7062,9 @@ fn binary_run_event_schema_hash() -> [u8; 32] {
           kind14:memory_commit_recorded,kind15:context_pack_candidate_proof_recorded,\
           kind16:task_selection_proof_recorded,kind17:browser_observation_packet_recorded,\
           kind18:goal_intake_recorded,kind19:agentic_evidence_execution_recorded,\
-          kind20:skill_admission_recorded,kind21:browser_ops_bench_verification_recorded",
+          kind20:skill_admission_recorded,kind21:browser_ops_bench_verification_recorded,\
+          kind22:cluster_candidate_accepted,kind23:shadow_seal_recorded,\
+          kind24:lab_event_recorded",
     );
     *hasher.finalize().as_bytes()
 }
@@ -7012,7 +7079,9 @@ fn arrow_run_event_schema_hash() -> [u8; 32] {
           kind14:memory_commit_recorded,kind15:context_pack_candidate_proof_recorded,\
           kind16:task_selection_proof_recorded,kind17:browser_observation_packet_recorded,\
           kind18:goal_intake_recorded,kind19:agentic_evidence_execution_recorded,\
-          kind20:skill_admission_recorded,kind21:browser_ops_bench_verification_recorded",
+          kind20:skill_admission_recorded,kind21:browser_ops_bench_verification_recorded,\
+          kind22:cluster_candidate_accepted,kind23:shadow_seal_recorded,\
+          kind24:lab_event_recorded",
     );
     *hasher.finalize().as_bytes()
 }

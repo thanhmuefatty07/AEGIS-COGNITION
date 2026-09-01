@@ -36,11 +36,15 @@ def smoke(wheel: Path) -> dict[str, object]:
             environment = Path(directory) / "venv"
             venv.EnvBuilder(with_pip=True, clear=True).create(environment)
             python = environment / ("Scripts" if sys.platform == "win32" else "bin") / "python"
+            # Install declared runtime dependencies as a real clean install;
+            # ``--no-deps`` would make the package-import check meaningless
+            # because ``aegis_cognition`` imports its required BLAKE3 boundary.
             install = subprocess.run(
-                [str(python), "-m", "pip", "install", "--no-deps", "--force-reinstall", str(wheel)],
+                [str(python), "-m", "pip", "install", "--force-reinstall", str(wheel)],
                 check=True,
                 capture_output=True,
                 text=True,
+                cwd=directory,
             )
             imported = subprocess.run(
                 [
@@ -51,6 +55,7 @@ def smoke(wheel: Path) -> dict[str, object]:
                 check=True,
                 capture_output=True,
                 text=True,
+                cwd=directory,
             )
             report.update(
                 {

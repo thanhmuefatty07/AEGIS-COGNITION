@@ -285,7 +285,9 @@ def _local_operator_health_probe(root: Path) -> dict[str, Any]:
                 "production_packaging_smoke_gate_report.json",
             ),
         ).handle_get("/health").json()
-    except Exception as exc:  # noqa: BLE001 - evidence gate records the exact failure class.
+    except Exception as exc:
+        # The read-only evidence endpoint must retain the exact failure class
+        # in its bounded report rather than swallowing the probe result.
         return {
             "schema": "aegis-local-operator-health-probe-v1",
             "overall_ok": False,
@@ -323,7 +325,9 @@ def _external_health_probe(external_url: str, requester: Any | None = None) -> d
     try:
         request = Request(health_url, headers={"Accept": "application/json"})
         if requester is None:
-            with urlopen(request, timeout=10) as response:  # noqa: S310 - operator-provided smoke URL.
+            # The endpoint is supplied by the operator; this probe only reads
+            # a bounded health response and records its digest/status.
+            with urlopen(request, timeout=10) as response:
                 body = response.read(1024 * 1024)
                 status = int(response.status)
         else:

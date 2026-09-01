@@ -8,14 +8,23 @@ import hashlib
 import inspect
 import json
 import threading
-from typing import Any, Mapping
+from typing import Any
+from collections.abc import Mapping
 
-from .browser_live_collector import (
-    BrowserLiveCollectorArtifact,
-    BrowserLiveCollectorProducer,
-    BrowserLiveCollectorProducerRun,
-    build_browser_live_collector_artifacts,
-)
+try:
+    from .browser_live_collector import (
+        BrowserLiveCollectorArtifact,
+        BrowserLiveCollectorProducer,
+        BrowserLiveCollectorProducerRun,
+        build_browser_live_collector_artifacts,
+    )
+except ImportError:
+    from browser_live_collector import (
+        BrowserLiveCollectorArtifact,
+        BrowserLiveCollectorProducer,
+        BrowserLiveCollectorProducerRun,
+        build_browser_live_collector_artifacts,
+    )
 
 
 class BrowserRuntimeCaptureError(RuntimeError):
@@ -36,7 +45,7 @@ class BrowserRuntimeCapture:
     after: BrowserRuntimeSnapshot
     producer_run: BrowserLiveCollectorProducerRun
     action_result: Any = field(compare=False)
-    hot_evidence: "HotBrowserEvidenceBatch | None" = None
+    hot_evidence: HotBrowserEvidenceBatch | None = None
 
 
 @dataclass(frozen=True)
@@ -63,7 +72,7 @@ class BrowserRuntimeHotFirstCapture:
     before: BrowserRuntimeSnapshot
     after: BrowserRuntimeSnapshot
     action_result: Any = field(compare=False)
-    hot_evidence: "HotBrowserEvidenceBatch"
+    hot_evidence: HotBrowserEvidenceBatch
     cold_publish: BrowserRuntimeColdPublishHandle
 
 
@@ -354,7 +363,7 @@ def publish_hot_browser_evidence_batch(
         raise ValueError("hot browser batch publisher commit count mismatch")
     commits = tuple(
         _hot_commit_from_record(artifact.kind, artifact.bytes, record)
-        for artifact, record in zip(artifacts, commits_raw)
+        for artifact, record in zip(artifacts, commits_raw, strict=True)
     )
     total_bytes = sum(commit.byte_len for commit in commits)
     declared_total = int(raw.get("total_bytes", total_bytes))
@@ -491,12 +500,12 @@ async def _capture_url(browser_session: Any, page: Any) -> str:
 
 async def _capture_dom(page: Any) -> str:
     if hasattr(page, "content"):
-        content = getattr(page, "content")
+        content = page.content
         dom = await _maybe_await(content() if callable(content) else content)
         if isinstance(dom, str) and dom:
             return dom
     if hasattr(page, "evaluate"):
-        evaluate = getattr(page, "evaluate")
+        evaluate = page.evaluate
         dom = await _maybe_await(evaluate("document.documentElement.outerHTML"))
         if isinstance(dom, str) and dom:
             return dom
@@ -505,7 +514,7 @@ async def _capture_dom(page: Any) -> str:
 
 async def _capture_screenshot(browser_session: Any, page: Any) -> bytes:
     if hasattr(page, "screenshot"):
-        screenshot = getattr(page, "screenshot")
+        screenshot = page.screenshot
         try:
             raw = await _maybe_await(screenshot(full_page=True))
         except TypeError:

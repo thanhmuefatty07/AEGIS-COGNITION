@@ -20,6 +20,7 @@
     {"id": "NV-016", "title": "Real multi-machine TCP cluster soak", "status": "NOT VERIFIED"},
     {"id": "NV-017", "title": "Full QuickJS interpreter cold-start", "status": "NOT VERIFIED"},
     {"id": "NV-018", "title": "Live provider HTTP 429 soak", "status": "NOT VERIFIED"},
-    {"id": "NV-019", "title": "External deployment smoke", "status": "NOT VERIFIED"}
+    {"id": "NV-019", "title": "External deployment smoke", "status": "NOT VERIFIED"},
+    {"id": "NV-020", "title": "Trust-policy owner and cross-cell binding", "status": "LOCAL LAB BINDING PROVEN / GLOBAL NOT VERIFIED"}
   ]
 }
