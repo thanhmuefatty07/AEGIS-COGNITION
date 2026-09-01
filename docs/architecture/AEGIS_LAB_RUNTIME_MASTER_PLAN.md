@@ -2511,6 +2511,14 @@ local preregistration boundary only; solver convergence, calibration, sensor
 uncertainty and independent physical replication remain `OPEN_EXTERNAL` under
 `LAB-PHYS-004`.
 
+**P3 observation-contract continuation (2026-09-02):** `ObservationRecord`
+now rejects lossy seed/measurement/boolean/uncertainty metadata at live
+admission and snapshot restore, and runner ingestion preserves raw values so
+invalid types cannot be normalized into apparently valid measurements.
+Regression coverage exercises each rejected field. This improves local
+epistemic integrity and replay safety; it is not calibration evidence and does
+not close `LAB-PHYS-004`.
+
 #### M5 — Research, browser và experiment cells
 
 **Entry:** M2–M4 pass cho local cells; capability registry sealed.
