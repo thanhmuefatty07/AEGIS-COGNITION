@@ -2828,6 +2828,16 @@ provider-side idempotency/quota truth, process containment, external effect
 reversal and hosted single-writer authority remain open under
 `LAB-AUTH-001`/`LAB-RESEARCH-003`.
 
+**M2 execution-cell identity continuation (2026-09-02):** sealed registry
+lookup now rejects empty or whitespace-padded `cell_id` values instead of
+treating them as an omitted identity. This removes a local fallback ambiguity
+in controller-selected action dispatch while preserving the existing
+operator-injected binding model. Focused coverage remains **301 Lab tests** and
+the combined Python/cross-language gate remains **407 tests**; Ruff and Pyright
+remain clean. This closes only the local cell-identity normalization gap;
+planner-owned leases, opaque adapter effects, process descendants and hosted
+single-writer authority remain open under `LAB-AUTH-001`.
+
 **P0 provenance materialization continuation (2026-09-02):** the evidence
 consistency generator was run against the current checkout and its temporary
 manifest passed with commit `3a26c809e1114b7fcf58cfd291bf01b9f013418c`.
