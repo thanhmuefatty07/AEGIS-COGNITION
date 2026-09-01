@@ -792,6 +792,9 @@ def test_lab_external_attempt_budget_is_global_and_replay_bound() -> None:
     assert sum(event.kind == "tool_execution_admitted" for event in run.events) == 1
     assert run.dossier(finalize=False).manifest["max_external_attempts"] == 1
     assert run.dossier(finalize=False).manifest["external_attempt_count"] == 1
+    run.abort()
+    assert run.state == "aborted"
+    assert run.external_attempt_count == 1
 
     restored = LabRun.from_payload(run.to_payload())
     assert restored.external_attempt_budget == 1
