@@ -2527,6 +2527,15 @@ these validators run. Regression coverage confirms malformed numerical
 contracts fail closed. This is bounded input/invariant evidence only; it does
 not prove solver convergence, hardware calibration or physical validity.
 
+**P1 policy-boundary continuation (2026-09-02):** `LabRun`,
+`LabMissionSpec` and `BrowserCellPolicy` now reject lossy task, scope, host,
+quota and budget metadata (including booleans, floats and non-string entries)
+at construction/validation rather than relying on implicit coercion. The
+existing runtime tests remain green and the strict checks preserve the
+mission/controller ownership boundary. This is local input-contract evidence
+only; OS/process containment, hosted single-writer authority and live browser
+security remain open under `LAB-AUTH-001`/`LAB-BROWSER-002`.
+
 #### M5 — Research, browser và experiment cells
 
 **Entry:** M2–M4 pass cho local cells; capability registry sealed.
