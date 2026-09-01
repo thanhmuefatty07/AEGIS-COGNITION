@@ -347,10 +347,19 @@ class SearchOperation:
 
     @classmethod
     def from_mapping(cls, value: dict[str, Any]) -> SearchOperation:
-        kind = str(value.get("kind", "")).strip().lower()
+        if type(value) is not dict:
+            raise TypeError("search operation must be a mapping")
+        raw_kind = value.get("kind", "")
+        if type(raw_kind) is not str:
+            raise ValueError("search operation kind must be a string")
+        kind = raw_kind.strip().lower()
+        if any(type(key) is not str for key in value if key != "kind"):
+            raise ValueError("search operation argument keys must be strings")
+        if any(type(item) is not str for key, item in value.items() if key != "kind"):
+            raise ValueError("search operation arguments must be strings")
         arguments = tuple(
             sorted(
-                (str(key), str(item))
+                (key, item)
                 for key, item in value.items()
                 if key != "kind"
             )
@@ -360,8 +369,18 @@ class SearchOperation:
         return operation
 
     def validate(self) -> None:
-        if self.kind not in _SEARCH_OPERATION_KINDS:
+        if type(self.kind) is not str or self.kind not in _SEARCH_OPERATION_KINDS:
             raise ValueError(f"unsupported search operation kind: {self.kind}")
+        if type(self.arguments) not in (list, tuple):
+            raise ValueError("search operation arguments must be a sequence")
+        if any(
+            type(argument) not in (list, tuple)
+            or len(argument) != 2
+            or type(argument[0]) is not str
+            or type(argument[1]) is not str
+            for argument in self.arguments
+        ):
+            raise ValueError("search operation arguments must be string pairs")
         keys = [key for key, _ in self.arguments]
         if len(keys) != len(set(keys)):
             raise ValueError("search operation arguments must have unique keys")
@@ -399,6 +418,10 @@ class SearchProgram:
         freshness_max_age_seconds: int | None = None,
         min_independent_contradiction_clusters: int = 0,
     ) -> SearchProgram:
+        if type(operations) not in (list, tuple):
+            raise TypeError("search program operations must be a sequence")
+        if any(type(item) is not dict for item in operations):
+            raise TypeError("search program operations must be mappings")
         program = cls(
             operations=tuple(SearchOperation.from_mapping(item) for item in operations),
             max_candidates=max_candidates,
@@ -411,18 +434,30 @@ class SearchProgram:
         return program
 
     def validate(self) -> None:
+        if type(self.operations) not in (list, tuple):
+            raise ValueError("search program operations must be a sequence")
+        if any(type(operation) is not SearchOperation for operation in self.operations):
+            raise ValueError("search program operations must be typed")
         if not self.operations or len(self.operations) > 64:
             raise ValueError("search program requires 1..64 operations")
-        if self.max_candidates < 1 or self.max_candidates > 10_000:
+        if type(self.max_candidates) is not int or self.max_candidates < 1 or self.max_candidates > 10_000:
             raise ValueError("search program max_candidates must be within [1, 10000]")
-        if not self.provider.strip():
+        if type(self.provider) is not str or not self.provider.strip():
             raise ValueError("search program provider is required")
+        if type(self.freshness_max_age_seconds) not in (int, type(None)):
+            raise ValueError("search program freshness bound must be an integer or unset")
         if self.freshness_max_age_seconds is not None and self.freshness_max_age_seconds < 1:
             raise ValueError("search program freshness bound must be positive")
+        if type(self.min_independent_contradiction_clusters) is not int:
+            raise ValueError("search program contradiction-cluster bound must be an integer")
         if self.min_independent_contradiction_clusters < 0:
             raise ValueError("search program contradiction-cluster bound cannot be negative")
         if self.min_independent_contradiction_clusters > self.max_candidates:
             raise ValueError("search contradiction-cluster bound exceeds candidate quota")
+        if type(self.allowed_hosts) not in (list, tuple):
+            raise ValueError("search program allowlist hosts must be a sequence")
+        if any(type(host) is not str for host in self.allowed_hosts):
+            raise ValueError("search program allowlist hosts must be strings")
         normalized_hosts = tuple(host.strip().lower() for host in self.allowed_hosts)
         if any(
             not host or host != original
@@ -487,11 +522,16 @@ class SearchProgramExecutor:
         max_bytes: int = 8 * 1024 * 1024,
         user_agent: str = "aegis-lab-research/1",
     ) -> None:
-        if timeout_seconds <= 0 or not math.isfinite(timeout_seconds):
+        if (
+            type(timeout_seconds) not in (int, float)
+            or isinstance(timeout_seconds, bool)
+            or timeout_seconds <= 0
+            or not math.isfinite(timeout_seconds)
+        ):
             raise ValueError("search executor timeout must be positive and finite")
-        if max_bytes < 1:
+        if type(max_bytes) is not int or max_bytes < 1:
             raise ValueError("search executor max_bytes must be positive")
-        if not user_agent.strip():
+        if type(user_agent) is not str or not user_agent.strip():
             raise ValueError("search executor user agent must be non-empty")
         self.query_provider = query_provider
         self.timeout_seconds = timeout_seconds
