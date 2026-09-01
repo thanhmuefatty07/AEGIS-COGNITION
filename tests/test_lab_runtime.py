@@ -2548,6 +2548,37 @@ def test_snapshot_restore_rejects_lossy_experiment_seed_coercion() -> None:
         LabRun.from_payload(payload)
 
 
+@pytest.mark.parametrize(
+    "field_value",
+    [
+        ("seed", "1"),
+        ("measurement", "1.0"),
+        ("valid", 1),
+        ("clean", 1),
+        ("uncertainty", "0.1"),
+    ],
+)
+def test_observation_contract_rejects_lossy_metadata(field_value: tuple[str, object]) -> None:
+    field, value = field_value
+    values: dict[str, object] = {
+        "observation_id": "invalid-metadata",
+        "experiment_id": "e1",
+        "seed": 1,
+        "measurement": 1.0,
+        "unit": "score",
+        "raw_artifact_hash": "raw",
+        "environment_hash": "env",
+    }
+    values[field] = value
+    with pytest.raises(ValueError, match="observation"):
+        LabRun.from_payload(
+            {
+                **_ready_run().to_payload(),
+                "observations": [values],
+            }
+        )
+
+
 def test_simulation_cell_enforces_constraints_and_integrates_with_lab() -> None:
     import asyncio
 
