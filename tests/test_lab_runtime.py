@@ -5619,6 +5619,37 @@ def test_execution_cell_registry_enforces_identity_capability_and_effect() -> No
         )
 
 
+def test_execution_cell_mapping_rejects_lossy_metadata() -> None:
+    def runner(*_args: object, **_kwargs: object) -> dict[str, bool]:
+        return {"ok": True}
+
+    from aegis_cognition.lab import LabApplication
+
+    app = LabApplication(
+        config=SimpleNamespace(trust_level="DEV", options={}, max_steps=3),
+        gateway_factory=lambda **_: None,
+        telemetry=SimpleNamespace(),
+        correlation=SimpleNamespace(),
+    )
+    run = _ready_run()
+    app._prepare_execution_cells(
+        run,
+        {
+            "lab_execution_cells": {
+                "fixture": {
+                    "cell_id": 1,
+                    "action_kinds": ("tool_call",),
+                    "runner": runner,
+                    "capabilities": ("read_only",),
+                    "effect_classes": ("read_only",),
+                }
+            }
+        },
+    )
+    assert run.execution_cell_manifest == ()
+    assert "execution_cell_registry_invalid:ValueError" in run.blockers
+
+
 def test_execution_cell_binding_rejects_lossy_metadata() -> None:
     def runner(*_args: object, **_kwargs: object) -> dict[str, bool]:
         return {"ok": True}
