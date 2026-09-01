@@ -1,8 +1,8 @@
 # AEGIS — Final Architecture Design-Closure and Evidence Reconciliation
-WORKTREE_EPOCH: 6e8c4adfdccec80543825a18e3885da36acb62c7574807342ae8ccf4c0d64ec6
-HEAD: f9645caf6d17cee2023d52183990ffcf8317e456
+WORKTREE_EPOCH: acc233b17ccba201ce5069e8fb6eeddbd83cdb539d8168c108517810aaed27d8
+HEAD: b3017abde81973d8a5642c846f2fc3afd87de33f
 STATUS: PARTIAL_LOCAL
-generated_at: 2026-09-01T02:54:46.298383+00:00
+generated_at: 2026-09-01T22:46:47.754016+00:00
 method: aegis-design-closure-reconciliation-v1; direct Git/filesystem/source inspection, prior artifact hash reuse, disposable wheel reconciliation, bounded local probes
 limitations: local evidence is partial; external-only closure is explicit below
 
@@ -15,25 +15,22 @@ limitations: local evidence is partial; external-only closure is explicit below
 - The performance baseline is reused because the equivalent workload was not repeated and no new campaign was authorized; reused measurements are not source-fresh.
 
 ## NEW DESIGN-CRITICAL FACTS
-- Packaging owner is locally reconciled: a fresh dependency-complete combined install has root `aegis-cognition` as the sole `aegis` console owner, while `aegis-cognition-core-python` has no console script. Hosted parity, final-SHA provenance and release attestation remain unknown.
+- Packaging owner migration is `UNKNOWN`: root owns `aegis`, the newly built core bridge wheel has no duplicate console script, and the old combined runtime probe must be recreated after dependency-complete installation.
 - `AuthorityMode` packaged probe is NOT VERIFIED; compatibility and native authority contexts remain labelled by the legacy flag.
  - The current working-tree M4 settlement fence is locally proven by the retained provider-fence packaging record and 255-test regression gate: experiment, research, browser action/observation, skill, and cancellation receipts require exactly one open event-ledger admission; duplicate identities, stale/unknown admissions, and input/policy hash mismatches fail closed without appending another event. This does not prove external provider idempotency or opaque SDK/user-runner retry behavior.
-- Lab-owned gateway, explicit generic-tool, experiment and simulation attempts now require one finite positive deadline (`gateway_timeout_seconds`, `tool_timeout_seconds`, `experiment_timeout_seconds` or `simulation_timeout_seconds`), derive a deterministic 64-hex idempotency key from mission/execution/input/policy identity, and carry both fields through local admission/settlement receipts; a bounded `asyncio.wait_for` timeout settles the execution as `TIMED_OUT`. External effects before timeout, provider idempotency, opaque SDK/user-runner retries and a finite global attempt bound remain NOT VERIFIED.
+- Lab-owned gateway, explicit generic-tool, experiment and simulation attempts now require one finite positive deadline (`gateway_timeout_seconds`, `tool_timeout_seconds`, `experiment_timeout_seconds` or `simulation_timeout_seconds`), derive a deterministic 64-hex idempotency key from mission/execution/input/policy identity, and carry both fields through local admission/settlement receipts; a bounded `asyncio.wait_for` timeout settles the execution as `TIMED_OUT`. A mission-bound finite envelope now also bounds observed Lab-owned effect admissions (`max_external_attempts`, default `8 * (max_steps + 1)^3`) and is replay-bound in Python/Rust snapshots. Physical network/browser requests, provider idempotency, opaque SDK/user-runner retries, and external effect reversal remain NOT VERIFIED.
 - Fresh native-required parent/child replay witness is `PASS_LOCAL_ONLY` (SHA-256 `76650fbea44947f16b305479d58ebd6ed4852224d662295d772cd097aa07057b`): six explicit execution-cell admission lanes are restored in a child process, all six open admissions reconcile to explicit `REJECTED`, `state=blocked`, `open_after=0` and the event-chain verdict remains valid. This is local same-wheel evidence only; it does not prove hidden planners, external effect reversal or hosted authority.
 - Python `LabRun` is mutable and payload-bearing; Rust `LabController` conditionally materializes valid typed records while retaining a separate adapter projection. Opaque compatibility labels and adapter-only fields remain projection-only, so projection admission does not prove a single lossless reducer.
 - Source-level field comparison proves semantic/lossy divergence for Mission, Source, Claim, Hypothesis, Experiment, Observation, Artifact, Event, Replay, ExecutionCell, Trust and Retry.
  - Local trust defaults are inconsistent: Agent/Lab `DEV`; AegisAdapter/evidence and Rust `PROD` when unset.
  - The trust-policy schema and subject digest now have one local Python primitive at `core/python/aegis/trust_policy.py`; compatibility defaults remain contextual (`DEV` for Agent/Lab, `PROD` for standalone evidence) and cross-cell/Rust policy receipts remain open.
-- Local retry bounds exist per layer, but global external-attempt and idempotency bounds are not proven because SDK/user-runner behavior is open.
+- A finite mission-bound envelope now exists for observed Lab-owned effect admissions and is enforced/replayed by Python and Rust; a physical/global external-attempt bound and end-to-end idempotency guarantee remain NOT VERIFIED because provider, SDK, user-runner and descendant behavior is open.
 - `SessionSearchIndex::new(...).unwrap()` is safe for the measured nonzero constant hash and contained by `py_safe`; current `ffi.rs` contains no `Box::leak` in the previously targeted request/error wrappers.
 - No strong delete candidate is proven. `core/rust/src/ffi.rs` is the sole strong split input; no split was performed.
 
 ## PACKAGING TRUTH
-- Package/CLI ownership now has a local source/wheel decision and a dependency-complete fresh combined runtime probe with one root `aegis` console owner; final-SHA provenance, hosted parity and external attestation are still required. State authority, trust owner and retry owner remain open before surgical convergence.
+- Package/CLI ownership has a local source/wheel decision and regression gate, but a dependency-complete fresh combined runtime probe and final-SHA provenance are still required. State authority, trust owner and retry owner remain open before surgical convergence.
 Fresh source/wheel/combined-runtime owner evidence is in `packaging_truth.json`; stale pre-M1 environments are explicitly historical.
-- The documented v63 subject is `V63_ARTIFACT_MISSING`; the current source-bound replacement wheel is independently identified as SHA-256 `8a1c8a74e46f1eff5032829101376d4acba9f01cf0bd4ec0bc3685c4c8141f62` and passed the outside-checkout clean import/native restore probe. A fresh dependency-complete install of this wheel plus core/python wheel also passed with no checkout path on `sys.path`, exactly one root `aegis` console owner, and CLI help exit 0; see `combined_runtime_probe.json`. This remains local evidence, not release-provenance closure.
-- ZIP metadata/RECORD inspection found no hash mismatches: 48 hashed root entries and 32 hashed core entries verified; root `METADATA` is `aegis-cognition==0.1.0`, core is `aegis-cognition-core-python==0.1.0`, and only root declares the `aegis` console script.
-- A separate core-only venv probe imported its public exports, trust/evidence fallback, offline Agent result, browser artifact producer/predicate and bridge batch with no checkout path; it passed with `truth_claim=false`. This is compatibility evidence only and does not prove provider/browser live behavior.
 
 ## NESTED MIRROR TRUTH
 The four tracked files under `core/rust/AEGIS-COGNITION` have history and documentary references, but no nested manifest, Cargo workspace membership, package, script, CI, test, or runtime edge. Canonical twin hashes and references are in `rust_mirror_truth.json`.
@@ -50,7 +47,7 @@ The local probe measured Agent/Lab `DEV`, AegisAdapter/evidence `PROD`, and Rust
 - Cross-cell trust-subject propagation is NOT VERIFIED in the packaged probe.
 
 ## RETRY TRUTH
-The code gives finite local formulas (`P`, `G`, `T`, `E`, `S`), a one-invocation/no-retry `ProcessExecutionCell` bound, and local gateway/tool/experiment/simulation idempotency/deadline contracts, but SDK retries, user runners, external receipt idempotency and timeout commit ambiguity prevent a global bound. See `retry_truth.json`.
+The code gives finite local formulas (`P`, `G`, `T`, `E`, `S`), a one-invocation/no-retry `ProcessExecutionCell` bound, local gateway/tool/experiment/simulation idempotency/deadline contracts, and a mission-bound envelope for observed Lab-owned effect admissions. SDK retries, user runners, physical browser/network subrequests, external receipt idempotency and timeout commit ambiguity still prevent a physical/global bound. See `retry_truth.json`.
 
 ## FFI TRUTH
 Registered surface counts and hazard evidence are source-based. The static-index unwrap has a proved input invariant plus panic-to-PyErr defense; the previously identified wrapper `Box::leak` calls are absent from current source after a bounded safety fix. No long-run allocation campaign or full FFI split was performed.

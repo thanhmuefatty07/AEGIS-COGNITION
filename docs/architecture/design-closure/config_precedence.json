@@ -17,9 +17,9 @@
       "evidence": "aegis_cognition/lab.py LabPolicy.start/_gateway"
     },
     {
-      "boundary": "retry counts",
-      "order": "per-run options override defaults, then cap at max_steps; no provider SDK override known",
-      "evidence": "lab.py gateway/tool/experiment/simulation"
+      "boundary": "retry counts and observed admissions",
+      "order": "per-run options override defaults, then cap at max_steps; LabBudget.max_external_attempts may impose a stricter mission-bound envelope; no provider SDK override known",
+      "evidence": "lab.py gateway/tool/experiment/simulation/LabBudget"
     },
     {
       "boundary": "Rust trust",
@@ -37,8 +37,8 @@
   "limitations": [
     "provider/deployment environment matrix not contacted"
   ],
-  "HEAD": "f9645caf6d17cee2023d52183990ffcf8317e456",
-  "WORKTREE_EPOCH": "6e8c4adfdccec80543825a18e3885da36acb62c7574807342ae8ccf4c0d64ec6",
-  "generated_at": "2026-09-01T02:54:46.298383+00:00",
+  "HEAD": "b3017abde81973d8a5642c846f2fc3afd87de33f",
+  "WORKTREE_EPOCH": "acc233b17ccba201ce5069e8fb6eeddbd83cdb539d8168c108517810aaed27d8",
+  "generated_at": "2026-09-01T22:46:47.754016+00:00",
   "method": "aegis-design-closure-reconciliation-v1; direct Git/filesystem/source inspection, prior artifact hash reuse, disposable wheel reconciliation, bounded local probes"
 }

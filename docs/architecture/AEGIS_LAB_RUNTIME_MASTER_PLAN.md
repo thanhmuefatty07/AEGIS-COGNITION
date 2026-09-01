@@ -3387,6 +3387,21 @@ authority. M4 therefore remains `OPEN_LOCAL`, while the remaining gap is now
 explicitly narrowed to unobservable/external attempts rather than an absent
 runtime admission budget.
 
+**Design-closure regeneration continuation (2026-09-02):** the bounded
+`design_closure_collect.py` audit was rerun against the clean pushed checkout.
+The generated Markdown and 23 JSON views now bind the current `HEAD` and a
+collector-computed `WORKTREE_EPOCH` (the exact values are retained in the
+generated artifacts rather than duplicated in this plan).
+`scripts/document_consistency_gate.py` and JSON parsing pass. The regenerated
+retry view records the new mission-bound observed-admission envelope while
+retaining `NOT VERIFIED` for physical requests, provider/SDK/user-runner
+retries, descendant effects and external idempotency. The collector observed no
+reusable temporary wheel in the current machine, so packaging is reported as
+`UNKNOWN` rather than inheriting a stale probe; this is not release evidence and
+does not lower or raise any external blocker. The evidence-consistency gate
+continues to fail closed on the deliberate `CHECKOUT_HEAD` template and
+`LAB-RELEASE-006` remains `BLOCKED_EXTERNAL`.
+
 Không được gọi toàn hệ thống “production-ready” khi bất kỳ gate bắt buộc nào
 ở trên còn `OPEN_*`, `BLOCKED_*`, `UNKNOWN` hoặc chỉ có fixture/mock evidence.
 

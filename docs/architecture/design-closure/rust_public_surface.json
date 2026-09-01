@@ -964,9 +964,9 @@
     "cfg/macro/trait expansion not exhaustive",
     "no extra tooling installed"
   ],
-  "WORKTREE_EPOCH": "6e8c4adfdccec80543825a18e3885da36acb62c7574807342ae8ccf4c0d64ec6",
-  "HEAD": "f9645caf6d17cee2023d52183990ffcf8317e456",
-  "generated_at": "2026-09-01T02:54:46.298383+00:00",
+  "WORKTREE_EPOCH": "acc233b17ccba201ce5069e8fb6eeddbd83cdb539d8168c108517810aaed27d8",
+  "HEAD": "b3017abde81973d8a5642c846f2fc3afd87de33f",
+  "generated_at": "2026-09-01T22:46:47.754016+00:00",
   "collector_version/method": "aegis-final-design-closure-v1; direct Git/filesystem/AST/Cargo plus bounded disposable-wheel probes",
   "reused_prior_artifact": "C:\\Users\\ADMIN\\AEGIS-COGNITION\\docs\\architecture\\evidence-pack\\final_rust_public_api.json",
   "reused_prior_artifact_sha256": "2e5d1270d9fedc2cb2e308728987897f22c3fa869d6822d2c0acd6810c79c2d9",
@@ -4861,7 +4861,16 @@
     },
     {
       "path": "core/rust/src/ffi.rs",
-      "line": 1331,
+      "line": 1333,
+      "kind": "fn",
+      "name": "aegis_lab_verify_archive_against_legacy_manifest",
+      "exposure_class": "FFI_INTERNAL",
+      "visibility": "pub",
+      "evidence": "source declaration; consumer fan-in is separate graph evidence"
+    },
+    {
+      "path": "core/rust/src/ffi.rs",
+      "line": 1366,
       "kind": "fn",
       "name": "aegis_nerve",
       "exposure_class": "FFI_INTERNAL",
@@ -6832,7 +6841,7 @@
     },
     {
       "path": "core/rust/src/lab.rs",
-      "line": 17,
+      "line": 22,
       "kind": "enum",
       "name": "LabRunState",
       "exposure_class": "CRATE_INTERNAL",
@@ -6841,7 +6850,7 @@
     },
     {
       "path": "core/rust/src/lab.rs",
-      "line": 28,
+      "line": 33,
       "kind": "fn",
       "name": "can_transition_to",
       "exposure_class": "CRATE_INTERNAL",
@@ -6850,7 +6859,7 @@
     },
     {
       "path": "core/rust/src/lab.rs",
-      "line": 50,
+      "line": 55,
       "kind": "enum",
       "name": "LabEventKind",
       "exposure_class": "CRATE_INTERNAL",
@@ -6859,7 +6868,7 @@
     },
     {
       "path": "core/rust/src/lab.rs",
-      "line": 83,
+      "line": 100,
       "kind": "struct",
       "name": "LabMissionSpec",
       "exposure_class": "CRATE_INTERNAL",
@@ -6868,7 +6877,7 @@
     },
     {
       "path": "core/rust/src/lab.rs",
-      "line": 95,
+      "line": 116,
       "kind": "fn",
       "name": "new",
       "exposure_class": "CRATE_INTERNAL",
@@ -6877,7 +6886,7 @@
     },
     {
       "path": "core/rust/src/lab.rs",
-      "line": 118,
+      "line": 140,
       "kind": "fn",
       "name": "validate",
       "exposure_class": "CRATE_INTERNAL",
@@ -6886,7 +6895,7 @@
     },
     {
       "path": "core/rust/src/lab.rs",
-      "line": 132,
+      "line": 155,
       "kind": "fn",
       "name": "mission_hash",
       "exposure_class": "CRATE_INTERNAL",
@@ -6895,7 +6904,7 @@
     },
     {
       "path": "core/rust/src/lab.rs",
-      "line": 138,
+      "line": 161,
       "kind": "struct",
       "name": "SourceRecord",
       "exposure_class": "CRATE_INTERNAL",
@@ -6904,7 +6913,7 @@
     },
     {
       "path": "core/rust/src/lab.rs",
-      "line": 151,
+      "line": 174,
       "kind": "fn",
       "name": "validate",
       "exposure_class": "CRATE_INTERNAL",
@@ -6913,7 +6922,7 @@
     },
     {
       "path": "core/rust/src/lab.rs",
-      "line": 170,
+      "line": 193,
       "kind": "struct",
       "name": "ClaimRecord",
       "exposure_class": "CRATE_INTERNAL",
@@ -6922,7 +6931,7 @@
     },
     {
       "path": "core/rust/src/lab.rs",
-      "line": 179,
+      "line": 202,
       "kind": "enum",
       "name": "ClaimStatus",
       "exposure_class": "CRATE_INTERNAL",
@@ -6931,7 +6940,7 @@
     },
     {
       "path": "core/rust/src/lab.rs",
-      "line": 203,
+      "line": 226,
       "kind": "struct",
       "name": "HypothesisRecord",
       "exposure_class": "CRATE_INTERNAL",
@@ -6940,7 +6949,7 @@
     },
     {
       "path": "core/rust/src/lab.rs",
-      "line": 232,
+      "line": 255,
       "kind": "struct",
       "name": "ExperimentSpec",
       "exposure_class": "CRATE_INTERNAL",
@@ -6949,7 +6958,7 @@
     },
     {
       "path": "core/rust/src/lab.rs",
-      "line": 264,
+      "line": 287,
       "kind": "struct",
       "name": "ObservationRecord",
       "exposure_class": "CRATE_INTERNAL",
@@ -6958,7 +6967,7 @@
     },
     {
       "path": "core/rust/src/lab.rs",
-      "line": 281,
+      "line": 304,
       "kind": "struct",
       "name": "ResearchProgramReceipt",
       "exposure_class": "CRATE_INTERNAL",
@@ -6967,7 +6976,7 @@
     },
     {
       "path": "core/rust/src/lab.rs",
-      "line": 301,
+      "line": 324,
       "kind": "struct",
       "name": "SecurityEventRecord",
       "exposure_class": "CRATE_INTERNAL",
@@ -6976,7 +6985,7 @@
     },
     {
       "path": "core/rust/src/lab.rs",
-      "line": 411,
+      "line": 434,
       "kind": "struct",
       "name": "BenchmarkProtocolV2",
       "exposure_class": "CRATE_INTERNAL",
@@ -6985,7 +6994,7 @@
     },
     {
       "path": "core/rust/src/lab.rs",
-      "line": 426,
+      "line": 449,
       "kind": "enum",
       "name": "BenchmarkDirection",
       "exposure_class": "CRATE_INTERNAL",
@@ -6994,7 +7003,7 @@
     },
     {
       "path": "core/rust/src/lab.rs",
-      "line": 432,
+      "line": 455,
       "kind": "struct",
       "name": "BenchmarkResultV2",
       "exposure_class": "CRATE_INTERNAL",
@@ -7003,7 +7012,7 @@
     },
     {
       "path": "core/rust/src/lab.rs",
-      "line": 450,
+      "line": 473,
       "kind": "fn",
       "name": "validate",
       "exposure_class": "CRATE_INTERNAL",
@@ -7012,7 +7021,7 @@
     },
     {
       "path": "core/rust/src/lab.rs",
-      "line": 475,
+      "line": 498,
       "kind": "fn",
       "name": "protocol_hash",
       "exposure_class": "CRATE_INTERNAL",
@@ -7021,7 +7030,7 @@
     },
     {
       "path": "core/rust/src/lab.rs",
-      "line": 480,
+      "line": 503,
       "kind": "fn",
       "name": "evaluate_benchmark",
       "exposure_class": "CRATE_INTERNAL",
@@ -7030,7 +7039,7 @@
     },
     {
       "path": "core/rust/src/lab.rs",
-      "line": 559,
+      "line": 582,
       "kind": "struct",
       "name": "LabEvent",
       "exposure_class": "CRATE_INTERNAL",
@@ -7039,7 +7048,7 @@
     },
     {
       "path": "core/rust/src/lab.rs",
-      "line": 588,
+      "line": 611,
       "kind": "fn",
       "name": "is_valid",
       "exposure_class": "CRATE_INTERNAL",
@@ -7048,7 +7057,7 @@
     },
     {
       "path": "core/rust/src/lab.rs",
-      "line": 593,
+      "line": 616,
       "kind": "fn",
       "name": "verify_event_chain",
       "exposure_class": "CRATE_INTERNAL",
@@ -7057,7 +7066,7 @@
     },
     {
       "path": "core/rust/src/lab.rs",
-      "line": 630,
+      "line": 653,
       "kind": "struct",
       "name": "LabRunManifest",
       "exposure_class": "CRATE_INTERNAL",
@@ -7066,7 +7075,7 @@
     },
     {
       "path": "core/rust/src/lab.rs",
-      "line": 645,
+      "line": 668,
       "kind": "enum",
       "name": "LabError",
       "exposure_class": "CRATE_INTERNAL",
@@ -7075,7 +7084,7 @@
     },
     {
       "path": "core/rust/src/lab.rs",
-      "line": 657,
+      "line": 680,
       "kind": "struct",
       "name": "LabRuntime",
       "exposure_class": "CRATE_INTERNAL",
@@ -7084,7 +7093,7 @@
     },
     {
       "path": "core/rust/src/lab.rs",
-      "line": 673,
+      "line": 696,
       "kind": "struct",
       "name": "LabController",
       "exposure_class": "CRATE_INTERNAL",
@@ -7093,7 +7102,7 @@
     },
     {
       "path": "core/rust/src/lab.rs",
-      "line": 770,
+      "line": 793,
       "kind": "fn",
       "name": "new",
       "exposure_class": "CRATE_INTERNAL",
@@ -7102,7 +7111,7 @@
     },
     {
       "path": "core/rust/src/lab.rs",
-      "line": 801,
+      "line": 824,
       "kind": "fn",
       "name": "runtime",
       "exposure_class": "CRATE_INTERNAL",
@@ -7111,7 +7120,7 @@
     },
     {
       "path": "core/rust/src/lab.rs",
-      "line": 805,
+      "line": 828,
       "kind": "fn",
       "name": "budget_remaining",
       "exposure_class": "CRATE_INTERNAL",
@@ -7120,7 +7129,7 @@
     },
     {
       "path": "core/rust/src/lab.rs",
-      "line": 809,
+      "line": 832,
       "kind": "fn",
       "name": "finalization_state",
       "exposure_class": "CRATE_INTERNAL",
@@ -7129,7 +7138,7 @@
     },
     {
       "path": "core/rust/src/lab.rs",
-      "line": 813,
+      "line": 836,
       "kind": "fn",
       "name": "steps",
       "exposure_class": "CRATE_INTERNAL",
@@ -7138,7 +7147,7 @@
     },
     {
       "path": "core/rust/src/lab.rs",
-      "line": 817,
+      "line": 871,
       "kind": "fn",
       "name": "snapshot_json",
       "exposure_class": "CRATE_INTERNAL",
@@ -7147,7 +7156,7 @@
     },
     {
       "path": "core/rust/src/lab.rs",
-      "line": 821,
+      "line": 875,
       "kind": "fn",
       "name": "from_snapshot_json",
       "exposure_class": "CRATE_INTERNAL",
@@ -7156,7 +7165,7 @@
     },
     {
       "path": "core/rust/src/lab.rs",
-      "line": 847,
+      "line": 902,
       "kind": "fn",
       "name": "admit_exploration",
       "exposure_class": "CRATE_INTERNAL",
@@ -7165,7 +7174,7 @@
     },
     {
       "path": "core/rust/src/lab.rs",
-      "line": 870,
+      "line": 925,
       "kind": "fn",
       "name": "begin_finalization",
       "exposure_class": "CRATE_INTERNAL",
@@ -7174,7 +7183,7 @@
     },
     {
       "path": "core/rust/src/lab.rs",
-      "line": 877,
+      "line": 932,
       "kind": "fn",
       "name": "reopen_for_critical_gap",
       "exposure_class": "CRATE_INTERNAL",
@@ -7183,7 +7192,7 @@
     },
     {
       "path": "core/rust/src/lab.rs",
-      "line": 889,
+      "line": 944,
       "kind": "fn",
       "name": "admit_projection_exploration",
       "exposure_class": "CRATE_INTERNAL",
@@ -7192,7 +7201,7 @@
     },
     {
       "path": "core/rust/src/lab.rs",
-      "line": 925,
+      "line": 980,
       "kind": "fn",
       "name": "admit_projection_event",
       "exposure_class": "CRATE_INTERNAL",
@@ -7201,7 +7210,7 @@
     },
     {
       "path": "core/rust/src/lab.rs",
-      "line": 997,
+      "line": 1052,
       "kind": "fn",
       "name": "admit_projection_record",
       "exposure_class": "CRATE_INTERNAL",
@@ -7210,7 +7219,7 @@
     },
     {
       "path": "core/rust/src/lab.rs",
-      "line": 2428,
+      "line": 2486,
       "kind": "fn",
       "name": "transition",
       "exposure_class": "CRATE_INTERNAL",
@@ -7219,7 +7228,7 @@
     },
     {
       "path": "core/rust/src/lab.rs",
-      "line": 2432,
+      "line": 2490,
       "kind": "fn",
       "name": "record_source",
       "exposure_class": "CRATE_INTERNAL",
@@ -7228,7 +7237,7 @@
     },
     {
       "path": "core/rust/src/lab.rs",
-      "line": 2436,
+      "line": 2494,
       "kind": "fn",
       "name": "record_claim",
       "exposure_class": "CRATE_INTERNAL",
@@ -7237,7 +7246,7 @@
     },
     {
       "path": "core/rust/src/lab.rs",
-      "line": 2440,
+      "line": 2498,
       "kind": "fn",
       "name": "record_hypothesis",
       "exposure_class": "CRATE_INTERNAL",
@@ -7246,7 +7255,7 @@
     },
     {
       "path": "core/rust/src/lab.rs",
-      "line": 2444,
+      "line": 2502,
       "kind": "fn",
       "name": "schedule_experiment",
       "exposure_class": "CRATE_INTERNAL",
@@ -7255,7 +7264,7 @@
     },
     {
       "path": "core/rust/src/lab.rs",
-      "line": 2448,
+      "line": 2506,
       "kind": "fn",
       "name": "record_observation",
       "exposure_class": "CRATE_INTERNAL",
@@ -7264,99 +7273,9 @@
     },
     {
       "path": "core/rust/src/lab.rs",
-      "line": 2452,
+      "line": 2510,
       "kind": "fn",
       "name": "record_research_program",
-      "exposure_class": "CRATE_INTERNAL",
-      "visibility": "pub",
-      "evidence": "source declaration; consumer fan-in is separate graph evidence"
-    },
-    {
-      "path": "core/rust/src/lab.rs",
-      "line": 2459,
-      "kind": "fn",
-      "name": "record_security_event",
-      "exposure_class": "CRATE_INTERNAL",
-      "visibility": "pub",
-      "evidence": "source declaration; consumer fan-in is separate graph evidence"
-    },
-    {
-      "path": "core/rust/src/lab.rs",
-      "line": 2463,
-      "kind": "fn",
-      "name": "review_and_complete",
-      "exposure_class": "CRATE_INTERNAL",
-      "visibility": "pub",
-      "evidence": "source declaration; consumer fan-in is separate graph evidence"
-    },
-    {
-      "path": "core/rust/src/lab.rs",
-      "line": 2472,
-      "kind": "fn",
-      "name": "new",
-      "exposure_class": "CRATE_INTERNAL",
-      "visibility": "pub",
-      "evidence": "source declaration; consumer fan-in is separate graph evidence"
-    },
-    {
-      "path": "core/rust/src/lab.rs",
-      "line": 2489,
-      "kind": "fn",
-      "name": "mission",
-      "exposure_class": "CRATE_INTERNAL",
-      "visibility": "pub",
-      "evidence": "source declaration; consumer fan-in is separate graph evidence"
-    },
-    {
-      "path": "core/rust/src/lab.rs",
-      "line": 2493,
-      "kind": "fn",
-      "name": "state",
-      "exposure_class": "CRATE_INTERNAL",
-      "visibility": "pub",
-      "evidence": "source declaration; consumer fan-in is separate graph evidence"
-    },
-    {
-      "path": "core/rust/src/lab.rs",
-      "line": 2497,
-      "kind": "fn",
-      "name": "state_epoch",
-      "exposure_class": "CRATE_INTERNAL",
-      "visibility": "pub",
-      "evidence": "source declaration; consumer fan-in is separate graph evidence"
-    },
-    {
-      "path": "core/rust/src/lab.rs",
-      "line": 2501,
-      "kind": "fn",
-      "name": "events",
-      "exposure_class": "CRATE_INTERNAL",
-      "visibility": "pub",
-      "evidence": "source declaration; consumer fan-in is separate graph evidence"
-    },
-    {
-      "path": "core/rust/src/lab.rs",
-      "line": 2505,
-      "kind": "fn",
-      "name": "sources",
-      "exposure_class": "CRATE_INTERNAL",
-      "visibility": "pub",
-      "evidence": "source declaration; consumer fan-in is separate graph evidence"
-    },
-    {
-      "path": "core/rust/src/lab.rs",
-      "line": 2509,
-      "kind": "fn",
-      "name": "claims",
-      "exposure_class": "CRATE_INTERNAL",
-      "visibility": "pub",
-      "evidence": "source declaration; consumer fan-in is separate graph evidence"
-    },
-    {
-      "path": "core/rust/src/lab.rs",
-      "line": 2513,
-      "kind": "fn",
-      "name": "hypotheses",
       "exposure_class": "CRATE_INTERNAL",
       "visibility": "pub",
       "evidence": "source declaration; consumer fan-in is separate graph evidence"
@@ -7365,7 +7284,7 @@
       "path": "core/rust/src/lab.rs",
       "line": 2517,
       "kind": "fn",
-      "name": "experiments",
+      "name": "record_security_event",
       "exposure_class": "CRATE_INTERNAL",
       "visibility": "pub",
       "evidence": "source declaration; consumer fan-in is separate graph evidence"
@@ -7374,6 +7293,96 @@
       "path": "core/rust/src/lab.rs",
       "line": 2521,
       "kind": "fn",
+      "name": "review_and_complete",
+      "exposure_class": "CRATE_INTERNAL",
+      "visibility": "pub",
+      "evidence": "source declaration; consumer fan-in is separate graph evidence"
+    },
+    {
+      "path": "core/rust/src/lab.rs",
+      "line": 2530,
+      "kind": "fn",
+      "name": "new",
+      "exposure_class": "CRATE_INTERNAL",
+      "visibility": "pub",
+      "evidence": "source declaration; consumer fan-in is separate graph evidence"
+    },
+    {
+      "path": "core/rust/src/lab.rs",
+      "line": 2547,
+      "kind": "fn",
+      "name": "mission",
+      "exposure_class": "CRATE_INTERNAL",
+      "visibility": "pub",
+      "evidence": "source declaration; consumer fan-in is separate graph evidence"
+    },
+    {
+      "path": "core/rust/src/lab.rs",
+      "line": 2551,
+      "kind": "fn",
+      "name": "state",
+      "exposure_class": "CRATE_INTERNAL",
+      "visibility": "pub",
+      "evidence": "source declaration; consumer fan-in is separate graph evidence"
+    },
+    {
+      "path": "core/rust/src/lab.rs",
+      "line": 2555,
+      "kind": "fn",
+      "name": "state_epoch",
+      "exposure_class": "CRATE_INTERNAL",
+      "visibility": "pub",
+      "evidence": "source declaration; consumer fan-in is separate graph evidence"
+    },
+    {
+      "path": "core/rust/src/lab.rs",
+      "line": 2559,
+      "kind": "fn",
+      "name": "events",
+      "exposure_class": "CRATE_INTERNAL",
+      "visibility": "pub",
+      "evidence": "source declaration; consumer fan-in is separate graph evidence"
+    },
+    {
+      "path": "core/rust/src/lab.rs",
+      "line": 2563,
+      "kind": "fn",
+      "name": "sources",
+      "exposure_class": "CRATE_INTERNAL",
+      "visibility": "pub",
+      "evidence": "source declaration; consumer fan-in is separate graph evidence"
+    },
+    {
+      "path": "core/rust/src/lab.rs",
+      "line": 2567,
+      "kind": "fn",
+      "name": "claims",
+      "exposure_class": "CRATE_INTERNAL",
+      "visibility": "pub",
+      "evidence": "source declaration; consumer fan-in is separate graph evidence"
+    },
+    {
+      "path": "core/rust/src/lab.rs",
+      "line": 2571,
+      "kind": "fn",
+      "name": "hypotheses",
+      "exposure_class": "CRATE_INTERNAL",
+      "visibility": "pub",
+      "evidence": "source declaration; consumer fan-in is separate graph evidence"
+    },
+    {
+      "path": "core/rust/src/lab.rs",
+      "line": 2575,
+      "kind": "fn",
+      "name": "experiments",
+      "exposure_class": "CRATE_INTERNAL",
+      "visibility": "pub",
+      "evidence": "source declaration; consumer fan-in is separate graph evidence"
+    },
+    {
+      "path": "core/rust/src/lab.rs",
+      "line": 2579,
+      "kind": "fn",
       "name": "observations",
       "exposure_class": "CRATE_INTERNAL",
       "visibility": "pub",
@@ -7381,7 +7390,7 @@
     },
     {
       "path": "core/rust/src/lab.rs",
-      "line": 2525,
+      "line": 2583,
       "kind": "fn",
       "name": "replayable",
       "exposure_class": "CRATE_INTERNAL",
@@ -7390,7 +7399,7 @@
     },
     {
       "path": "core/rust/src/lab.rs",
-      "line": 2529,
+      "line": 2587,
       "kind": "fn",
       "name": "snapshot_json",
       "exposure_class": "CRATE_INTERNAL",
@@ -7399,7 +7408,7 @@
     },
     {
       "path": "core/rust/src/lab.rs",
-      "line": 2533,
+      "line": 2591,
       "kind": "fn",
       "name": "from_snapshot_json",
       "exposure_class": "CRATE_INTERNAL",
@@ -7408,7 +7417,7 @@
     },
     {
       "path": "core/rust/src/lab.rs",
-      "line": 2605,
+      "line": 2663,
       "kind": "fn",
       "name": "transition",
       "exposure_class": "CRATE_INTERNAL",
@@ -7417,7 +7426,7 @@
     },
     {
       "path": "core/rust/src/lab.rs",
-      "line": 2618,
+      "line": 2676,
       "kind": "fn",
       "name": "record_source",
       "exposure_class": "CRATE_INTERNAL",
@@ -7426,7 +7435,7 @@
     },
     {
       "path": "core/rust/src/lab.rs",
-      "line": 2636,
+      "line": 2694,
       "kind": "fn",
       "name": "record_claim",
       "exposure_class": "CRATE_INTERNAL",
@@ -7435,7 +7444,7 @@
     },
     {
       "path": "core/rust/src/lab.rs",
-      "line": 2653,
+      "line": 2711,
       "kind": "fn",
       "name": "record_hypothesis",
       "exposure_class": "CRATE_INTERNAL",
@@ -7444,7 +7453,7 @@
     },
     {
       "path": "core/rust/src/lab.rs",
-      "line": 2674,
+      "line": 2732,
       "kind": "fn",
       "name": "schedule_experiment",
       "exposure_class": "CRATE_INTERNAL",
@@ -7453,7 +7462,7 @@
     },
     {
       "path": "core/rust/src/lab.rs",
-      "line": 2698,
+      "line": 2756,
       "kind": "fn",
       "name": "record_observation",
       "exposure_class": "CRATE_INTERNAL",
@@ -7462,7 +7471,7 @@
     },
     {
       "path": "core/rust/src/lab.rs",
-      "line": 2719,
+      "line": 2777,
       "kind": "fn",
       "name": "record_research_program",
       "exposure_class": "CRATE_INTERNAL",
@@ -7471,7 +7480,7 @@
     },
     {
       "path": "core/rust/src/lab.rs",
-      "line": 2735,
+      "line": 2793,
       "kind": "fn",
       "name": "record_security_event",
       "exposure_class": "CRATE_INTERNAL",
@@ -7480,7 +7489,7 @@
     },
     {
       "path": "core/rust/src/lab.rs",
-      "line": 2755,
+      "line": 2813,
       "kind": "fn",
       "name": "review_and_complete",
       "exposure_class": "CRATE_INTERNAL",
@@ -7489,7 +7498,7 @@
     },
     {
       "path": "core/rust/src/lab.rs",
-      "line": 2790,
+      "line": 2848,
       "kind": "fn",
       "name": "manifest",
       "exposure_class": "CRATE_INTERNAL",
@@ -7498,7 +7507,7 @@
     },
     {
       "path": "core/rust/src/lab.rs",
-      "line": 2859,
+      "line": 2917,
       "kind": "fn",
       "name": "canonical_hash",
       "exposure_class": "CRATE_INTERNAL",
@@ -10864,7 +10873,25 @@
     },
     {
       "path": "core/rust/src/replay.rs",
-      "line": 50,
+      "line": 43,
+      "kind": "const",
+      "name": "RUN_EVENT_SEGMENT_MANIFEST_SCHEMA",
+      "exposure_class": "CRATE_INTERNAL",
+      "visibility": "pub",
+      "evidence": "source declaration; consumer fan-in is separate graph evidence"
+    },
+    {
+      "path": "core/rust/src/replay.rs",
+      "line": 44,
+      "kind": "const",
+      "name": "RUN_EVENT_SEGMENT_MANIFEST_VERSION",
+      "exposure_class": "CRATE_INTERNAL",
+      "visibility": "pub",
+      "evidence": "source declaration; consumer fan-in is separate graph evidence"
+    },
+    {
+      "path": "core/rust/src/replay.rs",
+      "line": 52,
       "kind": "enum",
       "name": "RunEventKind",
       "exposure_class": "CRATE_INTERNAL",
@@ -10873,7 +10900,7 @@
     },
     {
       "path": "core/rust/src/replay.rs",
-      "line": 79,
+      "line": 81,
       "kind": "struct",
       "name": "RunEvent",
       "exposure_class": "CRATE_INTERNAL",
@@ -10882,7 +10909,7 @@
     },
     {
       "path": "core/rust/src/replay.rs",
-      "line": 92,
+      "line": 94,
       "kind": "enum",
       "name": "ToolExecutorKind",
       "exposure_class": "CRATE_INTERNAL",
@@ -10891,7 +10918,7 @@
     },
     {
       "path": "core/rust/src/replay.rs",
-      "line": 102,
+      "line": 104,
       "kind": "enum",
       "name": "ToolExecutionStatus",
       "exposure_class": "CRATE_INTERNAL",
@@ -10900,7 +10927,7 @@
     },
     {
       "path": "core/rust/src/replay.rs",
-      "line": 109,
+      "line": 111,
       "kind": "struct",
       "name": "ToolExecutionEvidence",
       "exposure_class": "CRATE_INTERNAL",
@@ -10909,7 +10936,7 @@
     },
     {
       "path": "core/rust/src/replay.rs",
-      "line": 120,
+      "line": 122,
       "kind": "enum",
       "name": "ReplayLedgerError",
       "exposure_class": "CRATE_INTERNAL",
@@ -10918,7 +10945,7 @@
     },
     {
       "path": "core/rust/src/replay.rs",
-      "line": 131,
+      "line": 133,
       "kind": "struct",
       "name": "RunEventLedger",
       "exposure_class": "CRATE_INTERNAL",
@@ -10927,7 +10954,7 @@
     },
     {
       "path": "core/rust/src/replay.rs",
-      "line": 151,
+      "line": 153,
       "kind": "struct",
       "name": "ArrowRunEventStream",
       "exposure_class": "CRATE_INTERNAL",
@@ -10936,7 +10963,7 @@
     },
     {
       "path": "core/rust/src/replay.rs",
-      "line": 157,
+      "line": 159,
       "kind": "struct",
       "name": "SegmentedArrowAuditStream",
       "exposure_class": "CRATE_INTERNAL",
@@ -10945,7 +10972,7 @@
     },
     {
       "path": "core/rust/src/replay.rs",
-      "line": 184,
+      "line": 186,
       "kind": "struct",
       "name": "RunEventSegmentEntry",
       "exposure_class": "CRATE_INTERNAL",
@@ -10954,7 +10981,7 @@
     },
     {
       "path": "core/rust/src/replay.rs",
-      "line": 450,
+      "line": 452,
       "kind": "struct",
       "name": "RunEventSegmentManifest",
       "exposure_class": "CRATE_INTERNAL",
@@ -10963,7 +10990,7 @@
     },
     {
       "path": "core/rust/src/replay.rs",
-      "line": 457,
+      "line": 484,
       "kind": "struct",
       "name": "SegmentedArrowAuditProof",
       "exposure_class": "CRATE_INTERNAL",
@@ -10972,7 +10999,7 @@
     },
     {
       "path": "core/rust/src/replay.rs",
-      "line": 477,
+      "line": 504,
       "kind": "struct",
       "name": "ReplayDeterminismProof",
       "exposure_class": "CRATE_INTERNAL",
@@ -10981,7 +11008,7 @@
     },
     {
       "path": "core/rust/src/replay.rs",
-      "line": 495,
+      "line": 522,
       "kind": "enum",
       "name": "NextActionKind",
       "exposure_class": "CRATE_INTERNAL",
@@ -10990,7 +11017,7 @@
     },
     {
       "path": "core/rust/src/replay.rs",
-      "line": 503,
+      "line": 530,
       "kind": "struct",
       "name": "RunCheckpoint",
       "exposure_class": "CRATE_INTERNAL",
@@ -10999,7 +11026,7 @@
     },
     {
       "path": "core/rust/src/replay.rs",
-      "line": 516,
+      "line": 543,
       "kind": "struct",
       "name": "NextActionPacket",
       "exposure_class": "CRATE_INTERNAL",
@@ -11008,7 +11035,7 @@
     },
     {
       "path": "core/rust/src/replay.rs",
-      "line": 531,
+      "line": 558,
       "kind": "struct",
       "name": "MemoryCommitHandoffProof",
       "exposure_class": "CRATE_INTERNAL",
@@ -11017,7 +11044,7 @@
     },
     {
       "path": "core/rust/src/replay.rs",
-      "line": 545,
+      "line": 572,
       "kind": "struct",
       "name": "SkillAdmissionHandoffProof",
       "exposure_class": "CRATE_INTERNAL",
@@ -11026,7 +11053,7 @@
     },
     {
       "path": "core/rust/src/replay.rs",
-      "line": 562,
+      "line": 589,
       "kind": "struct",
       "name": "BrowserOpsBenchVerificationHandoffProof",
       "exposure_class": "CRATE_INTERNAL",
@@ -11035,7 +11062,7 @@
     },
     {
       "path": "core/rust/src/replay.rs",
-      "line": 579,
+      "line": 606,
       "kind": "struct",
       "name": "AgenticEvidenceSdkRunHandoffProof",
       "exposure_class": "CRATE_INTERNAL",
@@ -11044,7 +11071,7 @@
     },
     {
       "path": "core/rust/src/replay.rs",
-      "line": 598,
+      "line": 625,
       "kind": "struct",
       "name": "RunEventRecoveryReport",
       "exposure_class": "CRATE_INTERNAL",
@@ -11053,7 +11080,7 @@
     },
     {
       "path": "core/rust/src/replay.rs",
-      "line": 607,
+      "line": 634,
       "kind": "struct",
       "name": "RunEventCompactionReport",
       "exposure_class": "CRATE_INTERNAL",
@@ -11062,7 +11089,7 @@
     },
     {
       "path": "core/rust/src/replay.rs",
-      "line": 627,
+      "line": 654,
       "kind": "struct",
       "name": "ReplayIoEvidence",
       "exposure_class": "CRATE_INTERNAL",
@@ -11071,7 +11098,7 @@
     },
     {
       "path": "core/rust/src/replay.rs",
-      "line": 688,
+      "line": 715,
       "kind": "struct",
       "name": "ReplayChaosCrashPoint",
       "exposure_class": "CRATE_INTERNAL",
@@ -11080,7 +11107,7 @@
     },
     {
       "path": "core/rust/src/replay.rs",
-      "line": 697,
+      "line": 724,
       "kind": "struct",
       "name": "ReplayChaosBenchReport",
       "exposure_class": "CRATE_INTERNAL",
@@ -11089,7 +11116,7 @@
     },
     {
       "path": "core/rust/src/replay.rs",
-      "line": 717,
+      "line": 744,
       "kind": "struct",
       "name": "ReplayEnduranceBenchReport",
       "exposure_class": "CRATE_INTERNAL",
@@ -11098,7 +11125,7 @@
     },
     {
       "path": "core/rust/src/replay.rs",
-      "line": 763,
+      "line": 790,
       "kind": "struct",
       "name": "BinaryRunEventScanReport",
       "exposure_class": "CRATE_INTERNAL",
@@ -11107,7 +11134,7 @@
     },
     {
       "path": "core/rust/src/replay.rs",
-      "line": 771,
+      "line": 798,
       "kind": "struct",
       "name": "BinaryRunEventRecoveryReport",
       "exposure_class": "CRATE_INTERNAL",
@@ -11116,7 +11143,7 @@
     },
     {
       "path": "core/rust/src/replay.rs",
-      "line": 783,
+      "line": 810,
       "kind": "struct",
       "name": "RunEventSegmentArchive",
       "exposure_class": "CRATE_INTERNAL",
@@ -11125,7 +11152,7 @@
     },
     {
       "path": "core/rust/src/replay.rs",
-      "line": 785,
+      "line": 812,
       "kind": "struct",
       "name": "BinaryRunEventSegment",
       "exposure_class": "CRATE_INTERNAL",
@@ -11134,7 +11161,7 @@
     },
     {
       "path": "core/rust/src/replay.rs",
-      "line": 787,
+      "line": 814,
       "kind": "struct",
       "name": "ReplayChaosBench",
       "exposure_class": "CRATE_INTERNAL",
@@ -11143,7 +11170,7 @@
     },
     {
       "path": "core/rust/src/replay.rs",
-      "line": 789,
+      "line": 816,
       "kind": "struct",
       "name": "ReplayEnduranceBench",
       "exposure_class": "CRATE_INTERNAL",
@@ -11152,7 +11179,7 @@
     },
     {
       "path": "core/rust/src/replay.rs",
-      "line": 813,
+      "line": 840,
       "kind": "struct",
       "name": "ReplayArtifactWriteEvidence",
       "exposure_class": "CRATE_INTERNAL",
@@ -11161,18 +11188,9 @@
     },
     {
       "path": "core/rust/src/replay.rs",
-      "line": 878,
+      "line": 905,
       "kind": "fn",
       "name": "is_valid_physical_result",
-      "exposure_class": "CRATE_INTERNAL",
-      "visibility": "pub",
-      "evidence": "source declaration; consumer fan-in is separate graph evidence"
-    },
-    {
-      "path": "core/rust/src/replay.rs",
-      "line": 902,
-      "kind": "fn",
-      "name": "new",
       "exposure_class": "CRATE_INTERNAL",
       "visibility": "pub",
       "evidence": "source declaration; consumer fan-in is separate graph evidence"
@@ -11181,6 +11199,15 @@
       "path": "core/rust/src/replay.rs",
       "line": 929,
       "kind": "fn",
+      "name": "new",
+      "exposure_class": "CRATE_INTERNAL",
+      "visibility": "pub",
+      "evidence": "source declaration; consumer fan-in is separate graph evidence"
+    },
+    {
+      "path": "core/rust/src/replay.rs",
+      "line": 956,
+      "kind": "fn",
       "name": "is_valid",
       "exposure_class": "CRATE_INTERNAL",
       "visibility": "pub",
@@ -11188,7 +11215,7 @@
     },
     {
       "path": "core/rust/src/replay.rs",
-      "line": 946,
+      "line": 973,
       "kind": "fn",
       "name": "completion_binding_hash",
       "exposure_class": "CRATE_INTERNAL",
@@ -11197,7 +11224,7 @@
     },
     {
       "path": "core/rust/src/replay.rs",
-      "line": 955,
+      "line": 982,
       "kind": "fn",
       "name": "binds_policy_and_request",
       "exposure_class": "CRATE_INTERNAL",
@@ -11206,7 +11233,7 @@
     },
     {
       "path": "core/rust/src/replay.rs",
-      "line": 1000,
+      "line": 1027,
       "kind": "fn",
       "name": "goal_intake_recorded",
       "exposure_class": "CRATE_INTERNAL",
@@ -11215,7 +11242,7 @@
     },
     {
       "path": "core/rust/src/replay.rs",
-      "line": 1017,
+      "line": 1044,
       "kind": "fn",
       "name": "context_pack_built",
       "exposure_class": "CRATE_INTERNAL",
@@ -11224,7 +11251,7 @@
     },
     {
       "path": "core/rust/src/replay.rs",
-      "line": 1039,
+      "line": 1066,
       "kind": "fn",
       "name": "llm_response_received",
       "exposure_class": "CRATE_INTERNAL",
@@ -11233,7 +11260,7 @@
     },
     {
       "path": "core/rust/src/replay.rs",
-      "line": 1057,
+      "line": 1084,
       "kind": "fn",
       "name": "budget_admitted_llm_response_received",
       "exposure_class": "CRATE_INTERNAL",
@@ -11242,7 +11269,7 @@
     },
     {
       "path": "core/rust/src/replay.rs",
-      "line": 1080,
+      "line": 1107,
       "kind": "fn",
       "name": "context_pack_candidate_proof_recorded",
       "exposure_class": "CRATE_INTERNAL",
@@ -11251,7 +11278,7 @@
     },
     {
       "path": "core/rust/src/replay.rs",
-      "line": 1097,
+      "line": 1124,
       "kind": "fn",
       "name": "task_selection_proof_recorded",
       "exposure_class": "CRATE_INTERNAL",
@@ -11260,7 +11287,7 @@
     },
     {
       "path": "core/rust/src/replay.rs",
-      "line": 1114,
+      "line": 1141,
       "kind": "fn",
       "name": "browser_observation_packet_recorded",
       "exposure_class": "CRATE_INTERNAL",
@@ -11269,7 +11296,7 @@
     },
     {
       "path": "core/rust/src/replay.rs",
-      "line": 1131,
+      "line": 1158,
       "kind": "fn",
       "name": "tool_call_requested",
       "exposure_class": "CRATE_INTERNAL",
@@ -11278,7 +11305,7 @@
     },
     {
       "path": "core/rust/src/replay.rs",
-      "line": 1149,
+      "line": 1176,
       "kind": "fn",
       "name": "tool_call_completed",
       "exposure_class": "CRATE_INTERNAL",
@@ -11287,7 +11314,7 @@
     },
     {
       "path": "core/rust/src/replay.rs",
-      "line": 1167,
+      "line": 1194,
       "kind": "fn",
       "name": "policy_decision_recorded",
       "exposure_class": "CRATE_INTERNAL",
@@ -11296,7 +11323,7 @@
     },
     {
       "path": "core/rust/src/replay.rs",
-      "line": 1186,
+      "line": 1213,
       "kind": "fn",
       "name": "approval_token_recorded",
       "exposure_class": "CRATE_INTERNAL",
@@ -11305,7 +11332,7 @@
     },
     {
       "path": "core/rust/src/replay.rs",
-      "line": 1209,
+      "line": 1236,
       "kind": "fn",
       "name": "operator_review_artifact_recorded",
       "exposure_class": "CRATE_INTERNAL",
@@ -11314,7 +11341,7 @@
     },
     {
       "path": "core/rust/src/replay.rs",
-      "line": 1228,
+      "line": 1255,
       "kind": "fn",
       "name": "cold_vector_expansion_recorded",
       "exposure_class": "CRATE_INTERNAL",
@@ -11323,7 +11350,7 @@
     },
     {
       "path": "core/rust/src/replay.rs",
-      "line": 1246,
+      "line": 1273,
       "kind": "fn",
       "name": "agentic_evidence_execution_recorded",
       "exposure_class": "CRATE_INTERNAL",
@@ -11332,7 +11359,7 @@
     },
     {
       "path": "core/rust/src/replay.rs",
-      "line": 1264,
+      "line": 1291,
       "kind": "fn",
       "name": "agentic_evidence_sdk_run_recorded",
       "exposure_class": "CRATE_INTERNAL",
@@ -11341,7 +11368,7 @@
     },
     {
       "path": "core/rust/src/replay.rs",
-      "line": 1282,
+      "line": 1309,
       "kind": "fn",
       "name": "skill_admission_recorded",
       "exposure_class": "CRATE_INTERNAL",
@@ -11350,7 +11377,7 @@
     },
     {
       "path": "core/rust/src/replay.rs",
-      "line": 1300,
+      "line": 1327,
       "kind": "fn",
       "name": "browser_ops_bench_verification_recorded",
       "exposure_class": "CRATE_INTERNAL",
@@ -11359,7 +11386,7 @@
     },
     {
       "path": "core/rust/src/replay.rs",
-      "line": 1317,
+      "line": 1344,
       "kind": "fn",
       "name": "cluster_candidate_accepted",
       "exposure_class": "CRATE_INTERNAL",
@@ -11368,7 +11395,7 @@
     },
     {
       "path": "core/rust/src/replay.rs",
-      "line": 1336,
+      "line": 1363,
       "kind": "fn",
       "name": "shadow_seal_recorded",
       "exposure_class": "CRATE_INTERNAL",
@@ -11377,7 +11404,7 @@
     },
     {
       "path": "core/rust/src/replay.rs",
-      "line": 1354,
+      "line": 1381,
       "kind": "fn",
       "name": "circuit_breaker_tripped",
       "exposure_class": "CRATE_INTERNAL",
@@ -11386,7 +11413,7 @@
     },
     {
       "path": "core/rust/src/replay.rs",
-      "line": 1373,
+      "line": 1400,
       "kind": "fn",
       "name": "context_fold_recorded",
       "exposure_class": "CRATE_INTERNAL",
@@ -11395,7 +11422,7 @@
     },
     {
       "path": "core/rust/src/replay.rs",
-      "line": 1391,
+      "line": 1418,
       "kind": "fn",
       "name": "memory_commit_recorded",
       "exposure_class": "CRATE_INTERNAL",
@@ -11404,7 +11431,7 @@
     },
     {
       "path": "core/rust/src/replay.rs",
-      "line": 1414,
+      "line": 1441,
       "kind": "fn",
       "name": "checkpoint_sealed",
       "exposure_class": "CRATE_INTERNAL",
@@ -11413,7 +11440,7 @@
     },
     {
       "path": "core/rust/src/replay.rs",
-      "line": 1432,
+      "line": 1459,
       "kind": "fn",
       "name": "lab_event_recorded",
       "exposure_class": "CRATE_INTERNAL",
@@ -11422,7 +11449,7 @@
     },
     {
       "path": "core/rust/src/replay.rs",
-      "line": 1450,
+      "line": 1477,
       "kind": "fn",
       "name": "is_valid",
       "exposure_class": "CRATE_INTERNAL",
@@ -11431,7 +11458,7 @@
     },
     {
       "path": "core/rust/src/replay.rs",
-      "line": 1483,
+      "line": 1510,
       "kind": "fn",
       "name": "compute_hash",
       "exposure_class": "CRATE_INTERNAL",
@@ -11440,7 +11467,7 @@
     },
     {
       "path": "core/rust/src/replay.rs",
-      "line": 1520,
+      "line": 1547,
       "kind": "fn",
       "name": "new",
       "exposure_class": "CRATE_INTERNAL",
@@ -11449,7 +11476,7 @@
     },
     {
       "path": "core/rust/src/replay.rs",
-      "line": 1542,
+      "line": 1569,
       "kind": "fn",
       "name": "from_events",
       "exposure_class": "CRATE_INTERNAL",
@@ -11458,7 +11485,7 @@
     },
     {
       "path": "core/rust/src/replay.rs",
-      "line": 1722,
+      "line": 1749,
       "kind": "fn",
       "name": "append_context_pack_built",
       "exposure_class": "CRATE_INTERNAL",
@@ -11467,7 +11494,7 @@
     },
     {
       "path": "core/rust/src/replay.rs",
-      "line": 1739,
+      "line": 1766,
       "kind": "fn",
       "name": "append_goal_intake_recorded",
       "exposure_class": "CRATE_INTERNAL",
@@ -11476,7 +11503,7 @@
     },
     {
       "path": "core/rust/src/replay.rs",
-      "line": 1755,
+      "line": 1782,
       "kind": "fn",
       "name": "append_context_pack_candidate_proof_recorded",
       "exposure_class": "CRATE_INTERNAL",
@@ -11485,7 +11512,7 @@
     },
     {
       "path": "core/rust/src/replay.rs",
-      "line": 1771,
+      "line": 1798,
       "kind": "fn",
       "name": "append_task_selection_proof_recorded",
       "exposure_class": "CRATE_INTERNAL",
@@ -11494,7 +11521,7 @@
     },
     {
       "path": "core/rust/src/replay.rs",
-      "line": 1787,
+      "line": 1814,
       "kind": "fn",
       "name": "append_browser_observation_packet_recorded",
       "exposure_class": "CRATE_INTERNAL",
@@ -11503,7 +11530,7 @@
     },
     {
       "path": "core/rust/src/replay.rs",
-      "line": 1803,
+      "line": 1830,
       "kind": "fn",
       "name": "append_llm_response_received",
       "exposure_class": "CRATE_INTERNAL",
@@ -11512,7 +11539,7 @@
     },
     {
       "path": "core/rust/src/replay.rs",
-      "line": 1818,
+      "line": 1845,
       "kind": "fn",
       "name": "append_budget_admitted_llm_response_received",
       "exposure_class": "CRATE_INTERNAL",
@@ -11521,7 +11548,7 @@
     },
     {
       "path": "core/rust/src/replay.rs",
-      "line": 1838,
+      "line": 1865,
       "kind": "fn",
       "name": "append_llm_derived_tool_call_requested",
       "exposure_class": "CRATE_INTERNAL",
@@ -11530,7 +11557,7 @@
     },
     {
       "path": "core/rust/src/replay.rs",
-      "line": 1853,
+      "line": 1880,
       "kind": "fn",
       "name": "append_tool_call_completed",
       "exposure_class": "CRATE_INTERNAL",
@@ -11539,7 +11566,7 @@
     },
     {
       "path": "core/rust/src/replay.rs",
-      "line": 1871,
+      "line": 1898,
       "kind": "fn",
       "name": "append_memory_commit_recorded",
       "exposure_class": "CRATE_INTERNAL",
@@ -11548,7 +11575,7 @@
     },
     {
       "path": "core/rust/src/replay.rs",
-      "line": 1891,
+      "line": 1918,
       "kind": "fn",
       "name": "append_policy_decision_recorded",
       "exposure_class": "CRATE_INTERNAL",
@@ -11557,7 +11584,7 @@
     },
     {
       "path": "core/rust/src/replay.rs",
-      "line": 1908,
+      "line": 1935,
       "kind": "fn",
       "name": "append_policy_decision_recorded_after_browser_observation",
       "exposure_class": "CRATE_INTERNAL",
@@ -11566,7 +11593,7 @@
     },
     {
       "path": "core/rust/src/replay.rs",
-      "line": 1928,
+      "line": 1955,
       "kind": "fn",
       "name": "append_approval_token_recorded",
       "exposure_class": "CRATE_INTERNAL",
@@ -11575,7 +11602,7 @@
     },
     {
       "path": "core/rust/src/replay.rs",
-      "line": 1947,
+      "line": 1974,
       "kind": "fn",
       "name": "append_operator_review_artifact_recorded",
       "exposure_class": "CRATE_INTERNAL",
@@ -11584,7 +11611,7 @@
     },
     {
       "path": "core/rust/src/replay.rs",
-      "line": 1964,
+      "line": 1991,
       "kind": "fn",
       "name": "append_cold_vector_expansion_recorded",
       "exposure_class": "CRATE_INTERNAL",
@@ -11593,7 +11620,7 @@
     },
     {
       "path": "core/rust/src/replay.rs",
-      "line": 1982,
+      "line": 2009,
       "kind": "fn",
       "name": "append_agentic_evidence_execution_recorded",
       "exposure_class": "CRATE_INTERNAL",
@@ -11602,7 +11629,7 @@
     },
     {
       "path": "core/rust/src/replay.rs",
-      "line": 2000,
+      "line": 2027,
       "kind": "fn",
       "name": "append_agentic_evidence_sdk_run_recorded",
       "exposure_class": "CRATE_INTERNAL",
@@ -11611,7 +11638,7 @@
     },
     {
       "path": "core/rust/src/replay.rs",
-      "line": 2019,
+      "line": 2046,
       "kind": "fn",
       "name": "append_skill_admission_recorded",
       "exposure_class": "CRATE_INTERNAL",
@@ -11620,7 +11647,7 @@
     },
     {
       "path": "core/rust/src/replay.rs",
-      "line": 2041,
+      "line": 2068,
       "kind": "fn",
       "name": "append_browser_ops_bench_verification_recorded",
       "exposure_class": "CRATE_INTERNAL",
@@ -11629,7 +11656,7 @@
     },
     {
       "path": "core/rust/src/replay.rs",
-      "line": 2057,
+      "line": 2084,
       "kind": "fn",
       "name": "append_cluster_candidate_accepted",
       "exposure_class": "CRATE_INTERNAL",
@@ -11638,7 +11665,7 @@
     },
     {
       "path": "core/rust/src/replay.rs",
-      "line": 2078,
+      "line": 2105,
       "kind": "fn",
       "name": "append_shadow_seal_recorded",
       "exposure_class": "CRATE_INTERNAL",
@@ -11647,7 +11674,7 @@
     },
     {
       "path": "core/rust/src/replay.rs",
-      "line": 2096,
+      "line": 2123,
       "kind": "fn",
       "name": "append_circuit_breaker_tripped",
       "exposure_class": "CRATE_INTERNAL",
@@ -11656,7 +11683,7 @@
     },
     {
       "path": "core/rust/src/replay.rs",
-      "line": 2113,
+      "line": 2140,
       "kind": "fn",
       "name": "append_context_fold_recorded",
       "exposure_class": "CRATE_INTERNAL",
@@ -11665,7 +11692,7 @@
     },
     {
       "path": "core/rust/src/replay.rs",
-      "line": 2130,
+      "line": 2157,
       "kind": "fn",
       "name": "append_checkpoint_sealed",
       "exposure_class": "CRATE_INTERNAL",
@@ -11674,7 +11701,7 @@
     },
     {
       "path": "core/rust/src/replay.rs",
-      "line": 2145,
+      "line": 2172,
       "kind": "fn",
       "name": "append_lab_event_recorded",
       "exposure_class": "CRATE_INTERNAL",
@@ -11683,7 +11710,7 @@
     },
     {
       "path": "core/rust/src/replay.rs",
-      "line": 2162,
+      "line": 2189,
       "kind": "fn",
       "name": "verify_hash_chain",
       "exposure_class": "CRATE_INTERNAL",
@@ -11692,7 +11719,7 @@
     },
     {
       "path": "core/rust/src/replay.rs",
-      "line": 2173,
+      "line": 2200,
       "kind": "fn",
       "name": "last_hash",
       "exposure_class": "CRATE_INTERNAL",
@@ -11701,7 +11728,7 @@
     },
     {
       "path": "core/rust/src/replay.rs",
-      "line": 2177,
+      "line": 2204,
       "kind": "fn",
       "name": "len",
       "exposure_class": "CRATE_INTERNAL",
@@ -11710,7 +11737,7 @@
     },
     {
       "path": "core/rust/src/replay.rs",
-      "line": 2181,
+      "line": 2208,
       "kind": "fn",
       "name": "is_empty",
       "exposure_class": "CRATE_INTERNAL",
@@ -11719,7 +11746,7 @@
     },
     {
       "path": "core/rust/src/replay.rs",
-      "line": 2185,
+      "line": 2212,
       "kind": "fn",
       "name": "events",
       "exposure_class": "CRATE_INTERNAL",
@@ -11728,7 +11755,7 @@
     },
     {
       "path": "core/rust/src/replay.rs",
-      "line": 2417,
+      "line": 2444,
       "kind": "fn",
       "name": "proves_mmap_materialized_replay",
       "exposure_class": "CRATE_INTERNAL",
@@ -11737,7 +11764,7 @@
     },
     {
       "path": "core/rust/src/replay.rs",
-      "line": 2431,
+      "line": 2458,
       "kind": "fn",
       "name": "create",
       "exposure_class": "CRATE_INTERNAL",
@@ -11746,7 +11773,7 @@
     },
     {
       "path": "core/rust/src/replay.rs",
-      "line": 2461,
+      "line": 2488,
       "kind": "fn",
       "name": "append_event",
       "exposure_class": "CRATE_INTERNAL",
@@ -11755,7 +11782,7 @@
     },
     {
       "path": "core/rust/src/replay.rs",
-      "line": 2465,
+      "line": 2492,
       "kind": "fn",
       "name": "append_events",
       "exposure_class": "CRATE_INTERNAL",
@@ -11764,45 +11791,9 @@
     },
     {
       "path": "core/rust/src/replay.rs",
-      "line": 2535,
+      "line": 2562,
       "kind": "fn",
       "name": "finish",
-      "exposure_class": "CRATE_INTERNAL",
-      "visibility": "pub",
-      "evidence": "source declaration; consumer fan-in is separate graph evidence"
-    },
-    {
-      "path": "core/rust/src/replay.rs",
-      "line": 2548,
-      "kind": "fn",
-      "name": "path",
-      "exposure_class": "CRATE_INTERNAL",
-      "visibility": "pub",
-      "evidence": "source declaration; consumer fan-in is separate graph evidence"
-    },
-    {
-      "path": "core/rust/src/replay.rs",
-      "line": 2552,
-      "kind": "fn",
-      "name": "read_ledger",
-      "exposure_class": "CRATE_INTERNAL",
-      "visibility": "pub",
-      "evidence": "source declaration; consumer fan-in is separate graph evidence"
-    },
-    {
-      "path": "core/rust/src/replay.rs",
-      "line": 2560,
-      "kind": "fn",
-      "name": "read_ledger_mmap",
-      "exposure_class": "CRATE_INTERNAL",
-      "visibility": "pub",
-      "evidence": "source declaration; consumer fan-in is separate graph evidence"
-    },
-    {
-      "path": "core/rust/src/replay.rs",
-      "line": 2568,
-      "kind": "fn",
-      "name": "read_events",
       "exposure_class": "CRATE_INTERNAL",
       "visibility": "pub",
       "evidence": "source declaration; consumer fan-in is separate graph evidence"
@@ -11811,7 +11802,7 @@
       "path": "core/rust/src/replay.rs",
       "line": 2575,
       "kind": "fn",
-      "name": "read_events_mmap",
+      "name": "path",
       "exposure_class": "CRATE_INTERNAL",
       "visibility": "pub",
       "evidence": "source declaration; consumer fan-in is separate graph evidence"
@@ -11820,6 +11811,42 @@
       "path": "core/rust/src/replay.rs",
       "line": 2579,
       "kind": "fn",
+      "name": "read_ledger",
+      "exposure_class": "CRATE_INTERNAL",
+      "visibility": "pub",
+      "evidence": "source declaration; consumer fan-in is separate graph evidence"
+    },
+    {
+      "path": "core/rust/src/replay.rs",
+      "line": 2587,
+      "kind": "fn",
+      "name": "read_ledger_mmap",
+      "exposure_class": "CRATE_INTERNAL",
+      "visibility": "pub",
+      "evidence": "source declaration; consumer fan-in is separate graph evidence"
+    },
+    {
+      "path": "core/rust/src/replay.rs",
+      "line": 2595,
+      "kind": "fn",
+      "name": "read_events",
+      "exposure_class": "CRATE_INTERNAL",
+      "visibility": "pub",
+      "evidence": "source declaration; consumer fan-in is separate graph evidence"
+    },
+    {
+      "path": "core/rust/src/replay.rs",
+      "line": 2602,
+      "kind": "fn",
+      "name": "read_events_mmap",
+      "exposure_class": "CRATE_INTERNAL",
+      "visibility": "pub",
+      "evidence": "source declaration; consumer fan-in is separate graph evidence"
+    },
+    {
+      "path": "core/rust/src/replay.rs",
+      "line": 2606,
+      "kind": "fn",
       "name": "read_events_mmap_with_evidence",
       "exposure_class": "CRATE_INTERNAL",
       "visibility": "pub",
@@ -11827,7 +11854,7 @@
     },
     {
       "path": "core/rust/src/replay.rs",
-      "line": 2765,
+      "line": 2792,
       "kind": "fn",
       "name": "schema_hash",
       "exposure_class": "CRATE_INTERNAL",
@@ -11836,7 +11863,7 @@
     },
     {
       "path": "core/rust/src/replay.rs",
-      "line": 2771,
+      "line": 2798,
       "kind": "fn",
       "name": "create",
       "exposure_class": "CRATE_INTERNAL",
@@ -11845,7 +11872,7 @@
     },
     {
       "path": "core/rust/src/replay.rs",
-      "line": 2833,
+      "line": 2860,
       "kind": "fn",
       "name": "append_event",
       "exposure_class": "CRATE_INTERNAL",
@@ -11854,7 +11881,7 @@
     },
     {
       "path": "core/rust/src/replay.rs",
-      "line": 2837,
+      "line": 2864,
       "kind": "fn",
       "name": "append_events",
       "exposure_class": "CRATE_INTERNAL",
@@ -11863,7 +11890,7 @@
     },
     {
       "path": "core/rust/src/replay.rs",
-      "line": 3033,
+      "line": 3060,
       "kind": "fn",
       "name": "flush",
       "exposure_class": "CRATE_INTERNAL",
@@ -11872,7 +11899,7 @@
     },
     {
       "path": "core/rust/src/replay.rs",
-      "line": 3040,
+      "line": 3067,
       "kind": "fn",
       "name": "finish",
       "exposure_class": "CRATE_INTERNAL",
@@ -11881,7 +11908,7 @@
     },
     {
       "path": "core/rust/src/replay.rs",
-      "line": 3052,
+      "line": 3079,
       "kind": "fn",
       "name": "segment_count",
       "exposure_class": "CRATE_INTERNAL",
@@ -11890,7 +11917,7 @@
     },
     {
       "path": "core/rust/src/replay.rs",
-      "line": 3056,
+      "line": 3083,
       "kind": "fn",
       "name": "pending_event_count",
       "exposure_class": "CRATE_INTERNAL",
@@ -11899,7 +11926,7 @@
     },
     {
       "path": "core/rust/src/replay.rs",
-      "line": 3134,
+      "line": 3161,
       "kind": "fn",
       "name": "header_bytes",
       "exposure_class": "CRATE_INTERNAL",
@@ -11908,7 +11935,7 @@
     },
     {
       "path": "core/rust/src/replay.rs",
-      "line": 3138,
+      "line": 3165,
       "kind": "fn",
       "name": "record_bytes",
       "exposure_class": "CRATE_INTERNAL",
@@ -11917,7 +11944,7 @@
     },
     {
       "path": "core/rust/src/replay.rs",
-      "line": 3142,
+      "line": 3169,
       "kind": "fn",
       "name": "schema_hash",
       "exposure_class": "CRATE_INTERNAL",
@@ -11926,7 +11953,7 @@
     },
     {
       "path": "core/rust/src/replay.rs",
-      "line": 3146,
+      "line": 3173,
       "kind": "fn",
       "name": "write_ledger",
       "exposure_class": "CRATE_INTERNAL",
@@ -11935,7 +11962,7 @@
     },
     {
       "path": "core/rust/src/replay.rs",
-      "line": 3195,
+      "line": 3222,
       "kind": "fn",
       "name": "read_ledger_mmap",
       "exposure_class": "CRATE_INTERNAL",
@@ -11944,7 +11971,7 @@
     },
     {
       "path": "core/rust/src/replay.rs",
-      "line": 3264,
+      "line": 3291,
       "kind": "fn",
       "name": "verify_mmap",
       "exposure_class": "CRATE_INTERNAL",
@@ -11953,7 +11980,7 @@
     },
     {
       "path": "core/rust/src/replay.rs",
-      "line": 3345,
+      "line": 3372,
       "kind": "fn",
       "name": "recover_last_valid_prefix_mmap",
       "exposure_class": "CRATE_INTERNAL",
@@ -11962,7 +11989,7 @@
     },
     {
       "path": "core/rust/src/replay.rs",
-      "line": 3623,
+      "line": 3650,
       "kind": "fn",
       "name": "new",
       "exposure_class": "CRATE_INTERNAL",
@@ -11971,7 +11998,16 @@
     },
     {
       "path": "core/rust/src/replay.rs",
-      "line": 3635,
+      "line": 3662,
+      "kind": "fn",
+      "name": "legacy_manifest_hash",
+      "exposure_class": "CRATE_INTERNAL",
+      "visibility": "pub",
+      "evidence": "source declaration; consumer fan-in is separate graph evidence"
+    },
+    {
+      "path": "core/rust/src/replay.rs",
+      "line": 3666,
       "kind": "fn",
       "name": "is_valid",
       "exposure_class": "CRATE_INTERNAL",
@@ -11980,7 +12016,7 @@
     },
     {
       "path": "core/rust/src/replay.rs",
-      "line": 3669,
+      "line": 3700,
       "kind": "fn",
       "name": "is_valid",
       "exposure_class": "CRATE_INTERNAL",
@@ -11989,7 +12025,7 @@
     },
     {
       "path": "core/rust/src/replay.rs",
-      "line": 3693,
+      "line": 3724,
       "kind": "fn",
       "name": "is_valid",
       "exposure_class": "CRATE_INTERNAL",
@@ -11998,7 +12034,7 @@
     },
     {
       "path": "core/rust/src/replay.rs",
-      "line": 3713,
+      "line": 3744,
       "kind": "fn",
       "name": "new",
       "exposure_class": "CRATE_INTERNAL",
@@ -12007,7 +12043,7 @@
     },
     {
       "path": "core/rust/src/replay.rs",
-      "line": 3746,
+      "line": 3777,
       "kind": "fn",
       "name": "is_valid",
       "exposure_class": "CRATE_INTERNAL",
@@ -12016,7 +12052,7 @@
     },
     {
       "path": "core/rust/src/replay.rs",
-      "line": 3772,
+      "line": 3803,
       "kind": "fn",
       "name": "new",
       "exposure_class": "CRATE_INTERNAL",
@@ -12025,7 +12061,7 @@
     },
     {
       "path": "core/rust/src/replay.rs",
-      "line": 3798,
+      "line": 3829,
       "kind": "fn",
       "name": "new_with_task_selection",
       "exposure_class": "CRATE_INTERNAL",
@@ -12034,7 +12070,7 @@
     },
     {
       "path": "core/rust/src/replay.rs",
-      "line": 3864,
+      "line": 3895,
       "kind": "fn",
       "name": "is_valid",
       "exposure_class": "CRATE_INTERNAL",
@@ -12043,7 +12079,7 @@
     },
     {
       "path": "core/rust/src/replay.rs",
-      "line": 3892,
+      "line": 3923,
       "kind": "fn",
       "name": "is_valid_for_checkpoint",
       "exposure_class": "CRATE_INTERNAL",
@@ -12052,7 +12088,7 @@
     },
     {
       "path": "core/rust/src/replay.rs",
-      "line": 3899,
+      "line": 3930,
       "kind": "fn",
       "name": "is_valid_for_task_selection",
       "exposure_class": "CRATE_INTERNAL",
@@ -12061,7 +12097,7 @@
     },
     {
       "path": "core/rust/src/replay.rs",
-      "line": 3912,
+      "line": 3943,
       "kind": "fn",
       "name": "new",
       "exposure_class": "CRATE_INTERNAL",
@@ -12070,7 +12106,7 @@
     },
     {
       "path": "core/rust/src/replay.rs",
-      "line": 3945,
+      "line": 3976,
       "kind": "fn",
       "name": "is_valid_for",
       "exposure_class": "CRATE_INTERNAL",
@@ -12079,7 +12115,7 @@
     },
     {
       "path": "core/rust/src/replay.rs",
-      "line": 4012,
+      "line": 4043,
       "kind": "fn",
       "name": "new",
       "exposure_class": "CRATE_INTERNAL",
@@ -12088,7 +12124,7 @@
     },
     {
       "path": "core/rust/src/replay.rs",
-      "line": 4061,
+      "line": 4092,
       "kind": "fn",
       "name": "is_valid_for",
       "exposure_class": "CRATE_INTERNAL",
@@ -12097,7 +12133,7 @@
     },
     {
       "path": "core/rust/src/replay.rs",
-      "line": 4146,
+      "line": 4177,
       "kind": "fn",
       "name": "has_valid_activation_fields",
       "exposure_class": "CRATE_INTERNAL",
@@ -12106,7 +12142,7 @@
     },
     {
       "path": "core/rust/src/replay.rs",
-      "line": 4190,
+      "line": 4221,
       "kind": "fn",
       "name": "is_valid",
       "exposure_class": "CRATE_INTERNAL",
@@ -12115,7 +12151,7 @@
     },
     {
       "path": "core/rust/src/replay.rs",
-      "line": 4212,
+      "line": 4243,
       "kind": "fn",
       "name": "new",
       "exposure_class": "CRATE_INTERNAL",
@@ -12124,7 +12160,7 @@
     },
     {
       "path": "core/rust/src/replay.rs",
-      "line": 4250,
+      "line": 4281,
       "kind": "fn",
       "name": "is_valid_for",
       "exposure_class": "CRATE_INTERNAL",
@@ -12133,7 +12169,7 @@
     },
     {
       "path": "core/rust/src/replay.rs",
-      "line": 4323,
+      "line": 4354,
       "kind": "fn",
       "name": "new",
       "exposure_class": "CRATE_INTERNAL",
@@ -12142,7 +12178,7 @@
     },
     {
       "path": "core/rust/src/replay.rs",
-      "line": 4366,
+      "line": 4397,
       "kind": "fn",
       "name": "is_valid_for",
       "exposure_class": "CRATE_INTERNAL",
@@ -12151,7 +12187,7 @@
     },
     {
       "path": "core/rust/src/replay.rs",
-      "line": 4466,
+      "line": 4497,
       "kind": "fn",
       "name": "write_ledger",
       "exposure_class": "CRATE_INTERNAL",
@@ -12160,7 +12196,7 @@
     },
     {
       "path": "core/rust/src/replay.rs",
-      "line": 4483,
+      "line": 4514,
       "kind": "fn",
       "name": "write_lab_events",
       "exposure_class": "CRATE_INTERNAL",
@@ -12169,7 +12205,7 @@
     },
     {
       "path": "core/rust/src/replay.rs",
-      "line": 4505,
+      "line": 4536,
       "kind": "fn",
       "name": "prove_segmented_arrow_audit",
       "exposure_class": "CRATE_INTERNAL",
@@ -12178,7 +12214,7 @@
     },
     {
       "path": "core/rust/src/replay.rs",
-      "line": 4682,
+      "line": 4713,
       "kind": "fn",
       "name": "compact_to_binary_segment_crash_safe",
       "exposure_class": "CRATE_INTERNAL",
@@ -12187,7 +12223,7 @@
     },
     {
       "path": "core/rust/src/replay.rs",
-      "line": 4783,
+      "line": 4814,
       "kind": "fn",
       "name": "prove_replay_determinism",
       "exposure_class": "CRATE_INTERNAL",
@@ -12196,7 +12232,7 @@
     },
     {
       "path": "core/rust/src/replay.rs",
-      "line": 4837,
+      "line": 4868,
       "kind": "fn",
       "name": "seal_memory_commit_handoff",
       "exposure_class": "CRATE_INTERNAL",
@@ -12205,7 +12241,7 @@
     },
     {
       "path": "core/rust/src/replay.rs",
-      "line": 4940,
+      "line": 4971,
       "kind": "fn",
       "name": "seal_skill_admission_handoff",
       "exposure_class": "CRATE_INTERNAL",
@@ -12214,7 +12250,7 @@
     },
     {
       "path": "core/rust/src/replay.rs",
-      "line": 5042,
+      "line": 5073,
       "kind": "fn",
       "name": "seal_browser_ops_bench_verification_handoff",
       "exposure_class": "CRATE_INTERNAL",
@@ -12223,7 +12259,7 @@
     },
     {
       "path": "core/rust/src/replay.rs",
-      "line": 5138,
+      "line": 5169,
       "kind": "fn",
       "name": "seal_agentic_evidence_sdk_run_handoff",
       "exposure_class": "CRATE_INTERNAL",
@@ -12232,7 +12268,7 @@
     },
     {
       "path": "core/rust/src/replay.rs",
-      "line": 5237,
+      "line": 5268,
       "kind": "fn",
       "name": "recover_manifest_from_segments",
       "exposure_class": "CRATE_INTERNAL",
@@ -12241,7 +12277,7 @@
     },
     {
       "path": "core/rust/src/replay.rs",
-      "line": 5392,
+      "line": 5423,
       "kind": "fn",
       "name": "read_ledger",
       "exposure_class": "CRATE_INTERNAL",
@@ -12250,7 +12286,7 @@
     },
     {
       "path": "core/rust/src/replay.rs",
-      "line": 5420,
+      "line": 5451,
       "kind": "fn",
       "name": "read_ledger_mmap",
       "exposure_class": "CRATE_INTERNAL",
@@ -12259,7 +12295,7 @@
     },
     {
       "path": "core/rust/src/replay.rs",
-      "line": 5427,
+      "line": 5458,
       "kind": "fn",
       "name": "read_ledger_mmap_with_evidence",
       "exposure_class": "CRATE_INTERNAL",
@@ -12268,7 +12304,7 @@
     },
     {
       "path": "core/rust/src/replay.rs",
-      "line": 5560,
+      "line": 5591,
       "kind": "fn",
       "name": "recover_last_valid_ledger_mmap",
       "exposure_class": "CRATE_INTERNAL",
@@ -12277,7 +12313,7 @@
     },
     {
       "path": "core/rust/src/replay.rs",
-      "line": 5611,
+      "line": 5642,
       "kind": "fn",
       "name": "segment_path",
       "exposure_class": "CRATE_INTERNAL",
@@ -12286,7 +12322,7 @@
     },
     {
       "path": "core/rust/src/replay.rs",
-      "line": 5615,
+      "line": 5646,
       "kind": "fn",
       "name": "segment_commit_path",
       "exposure_class": "CRATE_INTERNAL",
@@ -12295,7 +12331,7 @@
     },
     {
       "path": "core/rust/src/replay.rs",
-      "line": 5621,
+      "line": 5652,
       "kind": "fn",
       "name": "is_valid_physical_result",
       "exposure_class": "CRATE_INTERNAL",
@@ -12304,7 +12340,7 @@
     },
     {
       "path": "core/rust/src/replay.rs",
-      "line": 5646,
+      "line": 5677,
       "kind": "fn",
       "name": "run_seeded",
       "exposure_class": "CRATE_INTERNAL",
@@ -12313,7 +12349,7 @@
     },
     {
       "path": "core/rust/src/replay.rs",
-      "line": 5673,
+      "line": 5704,
       "kind": "fn",
       "name": "run_event_boundary_sweep",
       "exposure_class": "CRATE_INTERNAL",
@@ -12322,7 +12358,7 @@
     },
     {
       "path": "core/rust/src/replay.rs",
-      "line": 5682,
+      "line": 5713,
       "kind": "fn",
       "name": "run_approval_boundary_sweep",
       "exposure_class": "CRATE_INTERNAL",
@@ -12331,7 +12367,7 @@
     },
     {
       "path": "core/rust/src/replay.rs",
-      "line": 5697,
+      "line": 5728,
       "kind": "fn",
       "name": "write_scorecard_artifact",
       "exposure_class": "CRATE_INTERNAL",
@@ -12340,7 +12376,7 @@
     },
     {
       "path": "core/rust/src/replay.rs",
-      "line": 5705,
+      "line": 5736,
       "kind": "fn",
       "name": "write_scorecard_artifact_with_io_evidence",
       "exposure_class": "CRATE_INTERNAL",
@@ -12349,7 +12385,7 @@
     },
     {
       "path": "core/rust/src/replay.rs",
-      "line": 5928,
+      "line": 5959,
       "kind": "fn",
       "name": "is_valid_physical_result",
       "exposure_class": "CRATE_INTERNAL",
@@ -12358,7 +12394,7 @@
     },
     {
       "path": "core/rust/src/replay.rs",
-      "line": 5980,
+      "line": 6011,
       "kind": "fn",
       "name": "run_accelerated_100h_proof",
       "exposure_class": "CRATE_INTERNAL",
@@ -12367,7 +12403,7 @@
     },
     {
       "path": "core/rust/src/replay.rs",
-      "line": 5986,
+      "line": 6017,
       "kind": "fn",
       "name": "run_accelerated_proof",
       "exposure_class": "CRATE_INTERNAL",
@@ -12376,7 +12412,7 @@
     },
     {
       "path": "core/rust/src/replay.rs",
-      "line": 6162,
+      "line": 6193,
       "kind": "fn",
       "name": "write_report_artifact",
       "exposure_class": "CRATE_INTERNAL",
@@ -12385,7 +12421,7 @@
     },
     {
       "path": "core/rust/src/replay.rs",
-      "line": 7239,
+      "line": 7270,
       "kind": "fn",
       "name": "approval_token_binding_hash",
       "exposure_class": "CRATE_INTERNAL",
@@ -12394,7 +12430,7 @@
     },
     {
       "path": "core/rust/src/replay.rs",
-      "line": 7247,
+      "line": 7278,
       "kind": "fn",
       "name": "browser_observation_packet_replay_binding_hash",
       "exposure_class": "CRATE_INTERNAL",
@@ -12403,7 +12439,7 @@
     },
     {
       "path": "core/rust/src/replay.rs",
-      "line": 7264,
+      "line": 7295,
       "kind": "fn",
       "name": "agentic_evidence_sdk_run_replay_binding_hash",
       "exposure_class": "CRATE_INTERNAL",
@@ -12412,7 +12448,7 @@
     },
     {
       "path": "core/rust/src/replay.rs",
-      "line": 7300,
+      "line": 7331,
       "kind": "fn",
       "name": "llm_budget_admission_replay_binding_hash",
       "exposure_class": "CRATE_INTERNAL",
@@ -12421,7 +12457,7 @@
     },
     {
       "path": "core/rust/src/replay.rs",
-      "line": 7327,
+      "line": 7358,
       "kind": "fn",
       "name": "shadow_seal_replay_binding_hash",
       "exposure_class": "CRATE_INTERNAL",
@@ -12430,7 +12466,7 @@
     },
     {
       "path": "core/rust/src/replay.rs",
-      "line": 7347,
+      "line": 7378,
       "kind": "fn",
       "name": "goal_intake_replay_binding_hash",
       "exposure_class": "CRATE_INTERNAL",
@@ -12439,7 +12475,7 @@
     },
     {
       "path": "core/rust/src/replay.rs",
-      "line": 7360,
+      "line": 7391,
       "kind": "fn",
       "name": "tool_execution_evidence_hash",
       "exposure_class": "CRATE_INTERNAL",
@@ -12448,7 +12484,7 @@
     },
     {
       "path": "core/rust/src/replay.rs",
-      "line": 7379,
+      "line": 7410,
       "kind": "fn",
       "name": "tool_call_completion_binding_hash",
       "exposure_class": "CRATE_INTERNAL",
@@ -12457,7 +12493,7 @@
     },
     {
       "path": "core/rust/src/replay.rs",
-      "line": 7394,
+      "line": 7425,
       "kind": "fn",
       "name": "memory_commit_binding_hash",
       "exposure_class": "CRATE_INTERNAL",
@@ -12466,7 +12502,7 @@
     },
     {
       "path": "core/rust/src/replay.rs",
-      "line": 7408,
+      "line": 7439,
       "kind": "fn",
       "name": "memory_commit_handoff_proof_hash",
       "exposure_class": "CRATE_INTERNAL",
@@ -12475,7 +12511,7 @@
     },
     {
       "path": "core/rust/src/replay.rs",
-      "line": 7434,
+      "line": 7465,
       "kind": "fn",
       "name": "agentic_evidence_sdk_run_handoff_proof_hash",
       "exposure_class": "CRATE_INTERNAL",
@@ -12484,7 +12520,7 @@
     },
     {
       "path": "core/rust/src/replay.rs",
-      "line": 7470,
+      "line": 7501,
       "kind": "fn",
       "name": "skill_admission_handoff_proof_hash",
       "exposure_class": "CRATE_INTERNAL",
@@ -12493,7 +12529,7 @@
     },
     {
       "path": "core/rust/src/replay.rs",
-      "line": 7501,
+      "line": 7532,
       "kind": "fn",
       "name": "skill_activation_hash",
       "exposure_class": "CRATE_INTERNAL",
@@ -12502,7 +12538,7 @@
     },
     {
       "path": "core/rust/src/replay.rs",
-      "line": 7524,
+      "line": 7555,
       "kind": "fn",
       "name": "browser_ops_bench_verification_replay_binding_hash",
       "exposure_class": "CRATE_INTERNAL",
@@ -12511,7 +12547,7 @@
     },
     {
       "path": "core/rust/src/replay.rs",
-      "line": 7539,
+      "line": 7570,
       "kind": "fn",
       "name": "browser_ops_bench_verification_handoff_proof_hash",
       "exposure_class": "CRATE_INTERNAL",
@@ -12520,7 +12556,7 @@
     },
     {
       "path": "core/rust/src/replay.rs",
-      "line": 7590,
+      "line": 7621,
       "kind": "fn",
       "name": "skill_admission_replay_binding_hash",
       "exposure_class": "CRATE_INTERNAL",

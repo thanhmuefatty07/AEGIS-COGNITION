@@ -58,9 +58,9 @@
   "limitations": [
     "nothing deleted"
   ],
-  "WORKTREE_EPOCH": "6e8c4adfdccec80543825a18e3885da36acb62c7574807342ae8ccf4c0d64ec6",
-  "HEAD": "f9645caf6d17cee2023d52183990ffcf8317e456",
-  "generated_at": "2026-09-01T02:54:46.298383+00:00",
+  "WORKTREE_EPOCH": "acc233b17ccba201ce5069e8fb6eeddbd83cdb539d8168c108517810aaed27d8",
+  "HEAD": "b3017abde81973d8a5642c846f2fc3afd87de33f",
+  "generated_at": "2026-09-01T22:46:47.754016+00:00",
   "collector_version/method": "aegis-final-design-closure-v1; direct Git/filesystem/AST/Cargo plus bounded disposable-wheel probes",
   "reused_prior_artifact": "C:\\Users\\ADMIN\\AEGIS-COGNITION\\docs\\architecture\\evidence-pack\\final_delete_candidates.json",
   "reused_prior_artifact_sha256": "819f18cc9c8756df57f1e5776e4437f14e445e18e434f5bc077774e26da79264",
