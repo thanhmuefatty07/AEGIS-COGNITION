@@ -2793,6 +2793,17 @@ coercions only; live memory-provider semantics, external write idempotency,
 process interruption and hosted authority remain open under
 `LAB-AUTH-001`/`LAB-RESEARCH-003`.
 
+**M2 replay-writer boundary continuation (2026-09-02):** `ReplayWriterLease`
+now rejects non-text/non-path-like directory metadata and byte paths instead
+of converting arbitrary values to a filesystem name; `LabApplication` passes
+the validated path through without a `str()` fallback. Regression coverage
+confirms invalid directory inputs fail before directory creation. Negative
+coverage now totals **293 focused Lab tests** and **399 combined
+Python/cross-language tests**; targeted Ruff and Pyright remain clean. This
+hardens local replay-writer input integrity only; stale-process recovery,
+descendant cleanup, cross-platform enforcement and hosted writer evidence
+remain open under `LAB-AUTH-001`/`LAB-OPS-007`.
+
 #### M5 — Research, browser và experiment cells
 
 **Entry:** M2–M4 pass cho local cells; capability registry sealed.

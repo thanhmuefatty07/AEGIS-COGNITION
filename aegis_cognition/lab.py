@@ -7005,8 +7005,17 @@ class ReplayWriterLease:
 
     _LOCK_FILE = ".lab-writer.lock"
 
-    def __init__(self, directory: str | os.PathLike[str]) -> None:
-        normalized = str(directory).strip()
+    def __init__(self, directory: object) -> None:
+        if type(directory) is not str and not hasattr(directory, "__fspath__"):
+            raise TypeError("replay writer directory must be a string or path-like value")
+        raw_directory = (
+            directory
+            if type(directory) is str
+            else os.fspath(cast(os.PathLike[str], directory))
+        )
+        if type(raw_directory) is not str:
+            raise TypeError("replay writer directory must resolve to text")
+        normalized = raw_directory.strip()
         if not normalized:
             raise ValueError("replay writer directory must be non-empty")
         self.directory = Path(normalized)
@@ -9949,7 +9958,7 @@ class LabApplication:
 
         options = cast(dict[str, Any], self.config.options)
         replay_directory = options.get("lab_replay_directory")
-        lease = ReplayWriterLease(str(replay_directory)) if replay_directory is not None else None
+        lease = ReplayWriterLease(replay_directory) if replay_directory is not None else None
         if lease is not None:
             lease.acquire()
         try:
