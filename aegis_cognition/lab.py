@@ -133,6 +133,23 @@ def _trust_policy_hash(trust_level: str) -> str:
     return _canonical_trust_policy_hash(trust_level)
 
 
+def _bounded_retry_attempts(value: Any, *, max_steps: int, label: str) -> int:
+    """Validate and cap a retry count without lossy type coercion.
+
+    Retry policy is part of the execution contract.  Accepting booleans,
+    floats, or numeric strings through ``int(...)`` would make the requested
+    bound differ from the admitted bound and would hide operator mistakes.
+    Values above the mission step quota remain valid but are deterministically
+    capped by that quota, matching the documented finite-bound policy.
+    """
+
+    if type(max_steps) is not int or max_steps < 1:
+        raise ValueError("retry policy max_steps must be a positive integer")
+    if type(value) is not int or value < 1:
+        raise ValueError(f"{label} retry policy must be a positive integer")
+    return min(value, max_steps)
+
+
 def _is_disallowed_ip_literal(host: str) -> bool:
     """Reject address literals that cannot be safe browser egress targets."""
 
@@ -2388,7 +2405,16 @@ class AdaptiveController:
     """Deterministic gap-driven controller with disjoint token reserves."""
 
     def __init__(self, *, max_steps: int, token_budget: int, finalization_reserve: int, recovery_reserve: int) -> None:
-        if max_steps < 1 or token_budget < 1 or finalization_reserve < 0 or recovery_reserve < 0:
+        if (
+            type(max_steps) is not int
+            or type(token_budget) is not int
+            or type(finalization_reserve) is not int
+            or type(recovery_reserve) is not int
+            or max_steps < 1
+            or token_budget < 1
+            or finalization_reserve < 0
+            or recovery_reserve < 0
+        ):
             raise ValueError("adaptive controller bounds must be positive")
         if finalization_reserve + recovery_reserve >= token_budget:
             raise ValueError("adaptive reserves must leave exploration headroom")
@@ -7414,11 +7440,12 @@ class LabApplication:
             run.record_blocker("tool_calls_not_sequence")
             return
         try:
-            max_attempts = min(
-                self.config.max_steps,
-                max(1, int(options.get("tool_max_attempts", 1))),
+            max_attempts = _bounded_retry_attempts(
+                options.get("tool_max_attempts", 1),
+                max_steps=self.config.max_steps,
+                label="tool",
             )
-        except (TypeError, ValueError):
+        except ValueError:
             run.record_blocker("tool_retry_policy_invalid")
             return
         raw_timeout = options.get("tool_timeout_seconds", 30.0)
@@ -8014,7 +8041,11 @@ class LabApplication:
                 requested_attempts = options.get("experiment_max_attempts", 1)
             if requested_attempts is None:
                 raise TypeError("experiment retry count must be an integer")
-            max_attempts = min(run.max_steps, max(1, int(requested_attempts)))
+            max_attempts = _bounded_retry_attempts(
+                requested_attempts,
+                max_steps=run.max_steps,
+                label="experiment",
+            )
         except (TypeError, ValueError, KeyError) as exc:
             run.record_blocker(f"experiment_retry_policy_invalid:{type(exc).__name__}")
             return
@@ -8160,7 +8191,11 @@ class LabApplication:
             )
             if requested_attempts is None:
                 raise TypeError("simulation retry count must be an integer")
-            max_attempts = min(run.max_steps, max(1, int(requested_attempts)))
+            max_attempts = _bounded_retry_attempts(
+                requested_attempts,
+                max_steps=run.max_steps,
+                label="simulation",
+            )
             cell_max_steps = int(options.get("simulation_cell_max_steps", 10_000))
         except (TypeError, ValueError, KeyError) as exc:
             run.record_blocker(f"simulation_retry_policy_invalid:{type(exc).__name__}")
@@ -9373,11 +9408,12 @@ class LabApplication:
         # structured records are admitted only after the reducer validates
         # their provenance and links.
         try:
-            gateway_max_attempts = min(
-                self.config.max_steps,
-                max(1, int(options.get("gateway_max_attempts", 1))),
+            gateway_max_attempts = _bounded_retry_attempts(
+                options.get("gateway_max_attempts", 1),
+                max_steps=self.config.max_steps,
+                label="gateway",
             )
-        except (TypeError, ValueError):
+        except ValueError:
             run.record_blocker("gateway_retry_policy_invalid")
             gateway_max_attempts = 1
         controller_executed_experiment_ids: set[str] = set()
