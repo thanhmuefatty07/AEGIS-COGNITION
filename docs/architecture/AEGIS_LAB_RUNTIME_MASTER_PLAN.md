@@ -2763,6 +2763,24 @@ Pyright remain clean. This strengthens local forensics metadata only; hosted
 telemetry, process interruption and external authority remain open under
 `LAB-AUTH-001`/`LAB-OPS-007`.
 
+**M2/M3 provider-receipt and registry continuation (2026-09-02):** the
+provider-attempt callback now rejects non-mapping payloads, non-string keys,
+lossy phase/call/provider/candidate/deadline/idempotency/task metadata and
+malformed settlement fences before any nested receipt is appended. Native
+route reconciliation now requires a canonical route digest, typed provider
+and throttled-provider sequences, a typed fallback flag, and validates any
+present schema/trust/count/budget fields; native gateway results likewise
+must carry exact provider/trust identities and canonical budget evidence.
+The context-retrieval dispatcher also resolves an explicitly registered
+execution cell even when no legacy compatibility callback is present, so a
+sealed registry cannot be bypassed by an early optional-return path.
+Negative coverage now totals **288 focused Lab tests** and **394 combined
+Python/cross-language tests**; targeted Ruff and Pyright are clean. This is
+local adapter/registry contract evidence only: provider idempotency beyond
+the callback, opaque SDK/user-runner retries, external-effect reversal,
+process containment and hosted single-writer authority remain open under
+`LAB-AUTH-001`/`LAB-RESEARCH-003`.
+
 #### M5 — Research, browser và experiment cells
 
 **Entry:** M2–M4 pass cho local cells; capability registry sealed.
