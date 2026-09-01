@@ -1134,6 +1134,64 @@ def test_native_projection_drift_fails_closed_at_snapshot_boundary(
         run.to_payload()
 
 
+def test_native_projection_rejects_lossy_snapshot_metadata(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    class NativeController:
+        def __init__(self, _mission_json: str) -> None:
+            self.events: list[dict[str, object]] = []
+            self.state = "Planned"
+            self.state_epoch: object = 0
+            self.projection_sources: set[str] = set()
+
+        def admit_event_json(self, event_json: str, _state: str | None = None) -> None:
+            event = json.loads(event_json)
+            self.events.append(event)
+            self.state_epoch = event["state_epoch"]
+            if event["kind"] == "StateChanged" and _state is not None:
+                self.state = _state.title()
+
+        def admit_record_json(
+            self,
+            event_json: str,
+            payload_json: str,
+            _state: str | None = None,
+        ) -> None:
+            event = json.loads(event_json)
+            payload = json.loads(payload_json)
+            self.events.append(event)
+            self.state_epoch = event["state_epoch"]
+            if event["kind"] == "SourceCaptured":
+                self.projection_sources.add(payload["source_id"])
+
+        def snapshot_json(self) -> str:
+            return json.dumps(
+                {
+                    "projection_sources": sorted(self.projection_sources),
+                    "runtime": {
+                        "state": self.state,
+                        "state_epoch": self.state_epoch,
+                        "events": self.events,
+                    },
+                }
+            )
+
+    class Native:
+        LabController = NativeController
+
+        @staticmethod
+        def aegis_lab_validate_transition(_current: str, _next: str) -> bool:
+            return True
+
+    monkeypatch.setitem(sys.modules, "aegis_nerve", Native())
+    run = LabRun("strict native snapshot", require_native_authority=True)
+    run.add_source(SourceRecord("s1", "https://example.test", "content", "snapshot", 1))
+    assert run._native_controller is not None
+    run._native_controller.state_epoch = True
+    with pytest.raises(RuntimeError, match=r"state_epoch.*native=True"):
+        run.to_payload()
+
+
 def test_native_projection_same_id_record_mutation_fails_closed(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
