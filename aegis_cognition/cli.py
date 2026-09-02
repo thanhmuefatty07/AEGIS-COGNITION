@@ -249,7 +249,7 @@ def _prompt(text: str, default: str = "") -> str:
     try:
         result = input(f"{text} [{default}]: ").strip()
         return result or default
-    except EOFError, KeyboardInterrupt:
+    except (EOFError, KeyboardInterrupt):
         print()
         sys.exit(0)
 
