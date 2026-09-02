@@ -160,6 +160,22 @@ def build_preflight(changed_paths: list[str] | tuple[str, ...] = ()) -> dict[str
         affected_claims = {str(claim["id"]) for claim in graph["claims"] if isinstance(claim, dict)}
     claims.update(affected_claims)
     selection = "RUN_ALL_RETAINED" if widened else "RUN_ALL_RETAINED_SHADOW_COMPARISON"
+    retained_item_ids = sorted(str(item["stable_id"]) for item in items)
+    shadow_selection = {
+        "mode": "SHADOW",
+        "authority": "RETAINED_LEGACY_AUTHORITY",
+        "legacy_would_run_item_ids": retained_item_ids,
+        "would_reuse_item_ids": [],
+        "would_skip_item_ids": [],
+        "external_anchor_requests": [],
+        "external_anchor_status": "NOT_EVALUATED_NO_CANDIDATES",
+        "execution": "NOT_EXECUTED",
+        "reason": (
+            "UNKNOWN_OR_UNMAPPED_DEPENDENCY_WIDENS_TO_ALL_RETAINED"
+            if widened
+            else "SHADOW_COMPARISON_RETAINS_LEGACY_AUTHORITY"
+        ),
+    }
     order = [
         {
             "stage": stage,
@@ -194,6 +210,7 @@ def build_preflight(changed_paths: list[str] | tuple[str, ...] = ()) -> dict[str
         "unknown_dependency_policy": "WIDEN_TO_RETAINED_SUITE",
         "plan_widened": widened,
         "legacy_selection": selection,
+        "shadow_selection": shadow_selection,
         "provenance": {
             "source_sha": str(inventory["source_head"]),
             "origin_main_sha": _git_ref("origin/main"),
@@ -259,6 +276,7 @@ def validate_preflight(actual: dict[str, object], expected: dict[str, object]) -
         "unknown_dependency_policy",
         "plan_widened",
         "legacy_selection",
+        "shadow_selection",
         "provenance",
         "evidence_order",
         "external_anchor_policy",
