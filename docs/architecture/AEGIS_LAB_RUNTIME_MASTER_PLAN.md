@@ -3,7 +3,7 @@ document_id: AEGIS-LAB-RUNTIME-MASTER-PLAN
 document_type: canonical_current_implementation_plan
 status: IN_EXECUTION
 authority: derived_from_checkout_and_evidence_manifest
-applies_to_commit: 5629579f6bf2bb993c318cc61907b14f48504872
+applies_to_commit: cdfce8f847a478b268d61db112fcebe34a103bcc
 created_at: 2026-08-26
 last_verified_at: 2026-09-03
 supersedes: browser-native-proposal-and-cumulative-harness-roadmap-as-execution-authority
@@ -169,7 +169,7 @@ hiện tại và không được dùng để chứng minh checkout mới:
   structural/presence checks, không phải proof rằng Lab behavior hoạt động.
 
 Checkout implementation hiện hành cho migration node này là
-`5629579f6bf2bb993c318cc61907b14f48504872` (functional FFI change
+`cdfce8f847a478b268d61db112fcebe34a103bcc` (functional FFI change
 `e0731f698302a0791c70c24d93b696597e04180d` and session-index hardening
 `f95bbcb03c1c8448afbcf392b38dcd964b9a6f3f`), với worktree sạch và
 `origin/main` parity được xác nhận sau push. Regression Python trên CPython
@@ -3208,6 +3208,19 @@ smoke, formatting check and `cargo clippy -- -D warnings` pass. This completes
 the bounded internal family extraction, but M6 is not release-closed: FFI-wide
 lifetime/allocation/soak evidence, cross-process authority and independent
 benchmarking remain unproven, so M6 remains `OPEN_LOCAL`.
+
+**M6 replay-record error propagation continuation (2026-09-03):**
+implementation commit `cdfce8f847a478b268d61db112fcebe34a103bcc` removes the
+remaining production `expect` in `AgenticEvidenceProgramScratch` record
+construction. `AgenticEvidenceProgram::execute` now propagates
+`AgenticEvidenceProgramError` from replay-record validation instead of
+panicking if an internal invariant is ever violated. Public FFI names, JSON
+schemas and successful-path behavior are unchanged. `cargo fmt --all --
+--check`, package `cargo check`/`clippy -D warnings` and the complete
+no-default-features library suite pass **443/443**. This closes one local
+panic-to-error path only; FFI-wide lifetime/allocation/soak, cross-process
+single-writer authority, external containment and independent benchmarking
+remain unproven, so M6 and `LAB-AUTH-001` stay open.
 
 #### M7 — Replay/archive và recovery cutover
 
