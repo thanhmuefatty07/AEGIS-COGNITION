@@ -4906,6 +4906,35 @@ def test_prod_native_lab_uses_strict_edge_registry_by_default() -> None:
     assert app._execution_cells_strict
 
 
+def test_prod_native_lab_rejects_implicit_compatibility_edge_adapters() -> None:
+    """Native authority requires an operator-supplied cell registry."""
+
+    calls: list[str] = []
+
+    def legacy_runner(*_: object, **__: object) -> str:
+        calls.append("called")
+        return "must not run"
+
+    app = LabApplication(
+        config=SimpleNamespace(
+            trust_level="PROD",
+            options={"experiment_runner": legacy_runner},
+            max_steps=1,
+        ),
+        gateway_factory=lambda **_: None,
+        telemetry=SimpleNamespace(),
+        correlation=SimpleNamespace(),
+    )
+    run = LabRun("prod explicit edge registry", trust_level="PROD")
+    app._prepare_execution_cells(run, app.config.options)
+
+    assert app.execution_cells.sealed
+    assert app.execution_cells.manifest() == ()
+    assert calls == []
+    assert "execution_cell_registry_required:native_authority" in run.blockers
+    assert any(event.kind == "execution_cell_manifest_recorded" for event in run.events)
+
+
 def test_lab_application_rejects_concurrent_active_run() -> None:
     import asyncio
 
