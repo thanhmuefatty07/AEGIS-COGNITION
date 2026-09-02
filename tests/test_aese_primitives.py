@@ -162,6 +162,10 @@ def test_cross_hardware_prediction_requires_domain_and_residual_evidence() -> No
     assert result.ood_status == "IN_DOMAIN"
     assert result.estimate == pytest.approx(2.8)
     assert result.prediction_interval is not None
+    assert result.anchor_ids == ("a1", "a2")
+    assert tuple(anchor_id for anchor_id, _hash in result.anchor_evidence_hashes) == ("a1", "a2")
+    reordered = predict_cross_hardware(model, hardware, workload, list(reversed(anchors)))
+    assert reordered.artifact_hash == result.artifact_hash
     ood = predict_cross_hardware(model, HardwareCapabilityVector(logical_cores=32), workload, anchors)
     assert ood.status == "REJECTED_OOD"
     assert ood.ood_status == "OUT_OF_DOMAIN"
@@ -216,6 +220,8 @@ def test_cross_hardware_prediction_does_not_count_out_of_domain_anchors() -> Non
     assert result.ood_status == "UNKNOWN"
     assert result.nearest_anchor_distance == pytest.approx(4.0 / 15.0)
     assert result.failure_reasons == ("no_reconstructible_anchor", "anchor_outside_validated_domain")
+    assert result.anchor_ids == ("a1",)
+    assert tuple(anchor_id for anchor_id, _hash in result.anchor_evidence_hashes) == ("a1",)
 
 
 def test_cross_hardware_prediction_does_not_count_duplicate_anchor_ids() -> None:
@@ -225,6 +231,24 @@ def test_cross_hardware_prediction_does_not_count_duplicate_anchor_ids() -> None
     assert result.ood_status == "UNKNOWN"
     assert result.nearest_anchor_distance == pytest.approx(4.0 / 15.0)
     assert result.failure_reasons == ("no_reconstructible_anchor", "duplicate_anchor_id")
+    assert result.anchor_ids == ("a1",)
+    assert tuple(anchor_id for anchor_id, _hash in result.anchor_evidence_hashes) == ("a1",)
+
+
+def test_cross_hardware_prediction_hash_binds_anchor_observation_values() -> None:
+    model, hardware, workload, anchors = _prediction_fixture()
+    altered = AnchorObservation(
+        "a2",
+        anchors[1].hardware,
+        anchors[1].workload,
+        99.0,
+    )
+    original = predict_cross_hardware(model, hardware, workload, anchors)
+    changed = predict_cross_hardware(model, hardware, workload, [anchors[0], altered])
+    assert original.estimate == changed.estimate
+    assert original.anchor_ids == changed.anchor_ids == ("a1", "a2")
+    assert original.anchor_evidence_hashes != changed.anchor_evidence_hashes
+    assert original.artifact_hash != changed.artifact_hash
 
 
 def test_anchor_planner_prioritizes_mandatory_boundary_and_ood_with_budget() -> None:
