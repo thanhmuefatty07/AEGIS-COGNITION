@@ -3,7 +3,7 @@ document_id: AEGIS-LAB-RUNTIME-MASTER-PLAN
 document_type: canonical_current_implementation_plan
 status: IN_EXECUTION
 authority: derived_from_checkout_and_evidence_manifest
-applies_to_commit: c3e3631f8b43343c2ebee1b1ad723bcd9e36f216
+applies_to_commit: 4cbc5a24c5d2f3f7d1059c8970b212545af98439
 created_at: 2026-08-26
 last_verified_at: 2026-09-03
 supersedes: browser-native-proposal-and-cumulative-harness-roadmap-as-execution-authority
@@ -3155,6 +3155,17 @@ feature-gated `tests::tests::ffi_smoke_checks` remains green. This preserves
 current public symbols but does not establish complete FFI lifetime/allocation
 safety or finish DTO/controller/error-family convergence, so M6 remains
 `OPEN_LOCAL`.
+
+**M6 mmap-bridge family extraction continuation (2026-09-03):**
+implementation commit `4cbc5a24c5d2f3f7d1059c8970b212545af98439` moves the
+five mmap/Wasmtime bridge PyO3 bindings into `core/rust/src/ffi/mmap.rs` and
+re-exports their original names from the façade. The bridge functions retain
+the existing typed path, identity, payload and fuel contracts; no schema or
+consumer changed. `cargo fmt --all -- --check`, package compilation, the
+feature-gated FFI smoke, and the complete **441-test** Rust unit suite pass.
+This is an internal ownership split only; it does not prove OS containment,
+full FFI lifetime/allocation behavior or finish the remaining DTO/controller/
+error-family convergence, so M6 remains `OPEN_LOCAL`.
 
 #### M7 — Replay/archive và recovery cutover
 
