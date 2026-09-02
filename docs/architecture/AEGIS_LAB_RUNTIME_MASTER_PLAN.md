@@ -3,7 +3,7 @@ document_id: AEGIS-LAB-RUNTIME-MASTER-PLAN
 document_type: canonical_current_implementation_plan
 status: IN_EXECUTION
 authority: derived_from_checkout_and_evidence_manifest
-applies_to_commit: 8e2215cac6388cb40a0e6376c6147624b5815331
+applies_to_commit: dc1ca14072bfc363f278bced90558e0d1adf590e
 created_at: 2026-08-26
 last_verified_at: 2026-09-03
 supersedes: browser-native-proposal-and-cumulative-harness-roadmap-as-execution-authority
@@ -169,7 +169,7 @@ hiện tại và không được dùng để chứng minh checkout mới:
   structural/presence checks, không phải proof rằng Lab behavior hoạt động.
 
 Checkout implementation hiện hành cho migration node này là
-`8e2215cac6388cb40a0e6376c6147624b5815331` (functional FFI change
+`dc1ca14072bfc363f278bced90558e0d1adf590e` (functional FFI change
 `e0731f698302a0791c70c24d93b696597e04180d` and session-index hardening
 `f95bbcb03c1c8448afbcf392b38dcd964b9a6f3f`), với worktree sạch và
 `origin/main` parity được xác nhận sau push. Regression Python trên CPython
@@ -4275,6 +4275,15 @@ regressions pass **16/16** after regeneration; the inventory remains **117
 items** with **108** unmapped surfaces requiring conservative widening. This
 closes a metadata-completeness gap only; it does not map every test function,
 prove runner execution, or enable selective testing.
+
+**AESE session-boundary continuation (2026-09-03):** implementation commit
+`dc1ca14072bfc363f278bced90558e0d1adf590e` applies the same canonical-container
+rule to `AdaptiveMeasurementSession.append_warmups` and
+`append_observations`. Hostile or duck-typed sequences are rejected before
+iteration instead of being coerced into session state; two adversarial
+regressions pass, bringing the primitive suite to **39/39**. This is local
+input-boundary evidence only and does not change SHADOW authority, statistical
+calibration, external-anchor status or legacy-runner retention.
 
 Không được gọi toàn hệ thống “production-ready” khi bất kỳ gate bắt buộc nào
 ở trên còn `OPEN_*`, `BLOCKED_*`, `UNKNOWN` hoặc chỉ có fixture/mock evidence.
