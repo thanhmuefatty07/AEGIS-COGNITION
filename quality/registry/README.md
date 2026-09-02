@@ -47,3 +47,19 @@ AESE-2 preflight is advisory and accepts explicit changed paths:
 
 An empty or unmapped change set widens to the retained suite. The preflight
 does not run, skip, promote or delete evidence.
+
+The local AESE-3–7 primitives are exported from `aegis_cognition`:
+
+```python
+from aegis_cognition import (
+    AdaptiveMeasurementSpec,
+    HardwareCapabilityVector,
+    WorkloadSignature,
+    evaluate_adaptive_measurement,
+)
+```
+
+They are pure metadata/evaluation helpers. Hardware fields that are not
+measured remain `UNKNOWN`; simulation remains `SIMULATED`; and prediction is
+refused without in-domain inputs, reconstructible anchors and measured
+residual uncertainty.
