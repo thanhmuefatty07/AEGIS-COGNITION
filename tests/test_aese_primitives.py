@@ -251,6 +251,11 @@ def test_anchor_planner_does_not_hide_unavailable_mandatory_anchor() -> None:
     assert "mandatory_anchor_unavailable" in plan.failure_reasons
 
 
+def test_anchor_candidate_rejects_lossy_availability_flag() -> None:
+    with pytest.raises(ValueError, match="priority flags"):
+        AnchorCandidate("linux", "linux", 1.0, available="false").validate()  # type: ignore[arg-type]
+
+
 def test_coverage_vector_has_independent_dimensions_and_no_aggregate() -> None:
     vector = CoverageVector(contract_coverage="COMPLETE", statistical_precision="NOT_VERIFIED")
     payload = vector.as_dict()
