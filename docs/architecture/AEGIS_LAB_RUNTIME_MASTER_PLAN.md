@@ -3764,7 +3764,7 @@ provides immutable append-only checkpoints and refuses appends after a terminal
 measurement result; `HardwareCapabilityVector.from_runtime_profile` projects
 only fields explicitly reported by the existing runtime profile. Eleven
 focused tests cover these phases and the full local regression suite passes
-with 483 tests. No model fit, physical-power measurement, external anchor,
+with 485 tests. No model fit, physical-power measurement, external anchor,
 independent replication or release promotion is claimed.
 
 **AESE Phase 8 local anchor-planning continuation (2026-09-02):**
@@ -3779,6 +3779,19 @@ hardware-domain, platform-semantic and statistical-precision dimensions
 independently and carries no aggregate percentage. Three additional focused
 tests pass. Anchor availability, high-fidelity execution and all
 cross-platform/release evidence remain external obligations.
+
+**AESE Phase 2 provenance continuation (2026-09-03):** the shadow preflight
+artifact now carries an explicit, non-promotable provenance envelope: checked
+out source SHA, optional `origin/main` SHA, clean/dirty worktree state, epoch,
+inventory and graph input digests, Python/OS runtime identity, validator name,
+and the fixed labels `PLANNING_ONLY`, `LOCAL_CHECKOUT_ONLY` and
+`DISABLED_IN_SHADOW`. The envelope is part of the preflight record and is
+checked by `validate_preflight`; an unavailable remote ref is
+recorded as `NOT_AVAILABLE` rather than inferred. Seven focused preflight tests
+pass, including provenance assertions. This makes the local planning chain
+reconstructible without implying observed benchmark, hosted, signed-release
+or production evidence; selective testing and release promotion remain
+disabled.
 
 **Current local-phase closure record (2026-09-02):** at the bounded closure
 point before this AESE-1 delta, `HEAD == origin/main` at

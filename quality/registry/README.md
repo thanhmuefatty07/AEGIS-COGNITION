@@ -51,6 +51,11 @@ does not run, skip, promote or delete evidence.
 For an exact mapped source path the preflight records the full affected
 `contract → invariant → verification → evidence → claim` closure. Unknown or
 unmapped paths widen that closure to every retained verification reference.
+Every emitted preflight also carries a provenance envelope with the checkout
+SHA, optional remote SHA, worktree epoch/status, inventory/graph digests,
+runtime identity and validator. It is explicitly `PLANNING_ONLY` and
+`DISABLED_IN_SHADOW`; missing remote state is recorded as `NOT_AVAILABLE`, not
+inferred as hosted evidence.
 
 The local AESE-3–7 primitives are exported from `aegis_cognition`:
 

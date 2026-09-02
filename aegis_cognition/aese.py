@@ -913,7 +913,7 @@ def predict_cross_hardware(
     for anchor in anchors:
         try:
             anchor_features = anchor.features()
-        except TypeError, ValueError, AttributeError:
+        except (TypeError, ValueError, AttributeError):
             continue
         if all(name in anchor_features for name in coefficient_names):
             valid_anchors.append((anchor, anchor_features))
