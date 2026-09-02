@@ -104,6 +104,12 @@ def _invalid_string(value: object) -> bool:
     return not isinstance(value, str) or not value.strip()
 
 
+def _string_or_empty(value: object) -> str:
+    """Keep only an exact runtime string for failure payload metadata."""
+
+    return value if type(value) is str else ""
+
+
 def _normal_critical(alpha: float, degrees_of_freedom: int) -> float:
     """Return a conservative Student-t critical approximation.
 
@@ -869,7 +875,7 @@ class AnchorSelectionPlan:
 def _coerce_anchor_sequence(value: object) -> Sequence[AnchorObservation] | None:
     """Return a runtime-checked anchor sequence without coercion."""
 
-    if isinstance(value, (str, bytes, bytearray)) or not isinstance(value, Sequence):
+    if type(value) not in (list, tuple):
         return None
     return cast(Sequence[AnchorObservation], value)
 
@@ -889,7 +895,7 @@ def select_anchor_plan(
         budget = 0.0
     else:
         budget = float(budget_seconds)
-    if isinstance(candidates, (str, bytes, bytearray)) or not isinstance(candidates, Sequence):
+    if type(candidates) not in (list, tuple):
         candidate_values: Sequence[AnchorCandidate] = ()
         reasons.append("candidates_invalid:TypeError")
         input_invalid = True
@@ -1025,25 +1031,27 @@ def predict_cross_hardware(
     """Predict only inside a measured model domain with reconstructible metadata."""
 
     reasons: list[str] = []
-    model_id = getattr(model, "model_id", "")
-    model_version = getattr(model, "model_version", "")
-    metric = getattr(model, "metric", "")
-    if not isinstance(model_id, str):
-        model_id = ""
-    if not isinstance(model_version, str):
-        model_version = ""
-    if not isinstance(metric, str):
-        metric = ""
-    raw_domain: object = getattr(model, "validated_domain", ())
-    validated_domain = (
-        tuple(cast(Sequence[tuple[str, float, float]], raw_domain))
-        if isinstance(raw_domain, (tuple, list))
-        else ()
-    )
+    typed_model = type(model) is AnalyticPredictionModel
+    typed_hardware = type(hardware) is HardwareCapabilityVector
+    typed_workload = type(workload) is WorkloadSignature
+    model_id = _string_or_empty(model.model_id) if typed_model else ""
+    model_version = _string_or_empty(model.model_version) if typed_model else ""
+    metric = _string_or_empty(model.metric) if typed_model else ""
+    raw_domain: object = model.validated_domain if typed_model else ()
+    validated_domain = tuple(cast(Sequence[tuple[str, float, float]], raw_domain)) if typed_model else ()
+    if not typed_model:
+        reasons.append("model_invalid:TypeError")
+    if not typed_hardware:
+        reasons.append("hardware_invalid:TypeError")
+    if not typed_workload:
+        reasons.append("workload_invalid:TypeError")
     try:
-        model.validate()
-        hardware.validate()
-        workload.validate()
+        if typed_model:
+            model.validate()
+        if typed_hardware:
+            hardware.validate()
+        if typed_workload:
+            workload.validate()
     except (TypeError, ValueError, AttributeError, KeyError, IndexError) as exc:
         reasons.append(f"input_invalid:{type(exc).__name__}")
     if reasons:
