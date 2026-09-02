@@ -10737,6 +10737,11 @@ class LabApplication:
             elif effect_required:
                 run.record_blocker("post_completion_effect_missing")
             return
+        raw_timeout = self.config.options.get("post_completion_effect_timeout_seconds", 30.0)
+        if not _is_finite_number(raw_timeout) or float(raw_timeout) <= 0:
+            run.record_blocker("post_completion_effect_timeout_policy_invalid")
+            return
+        timeout_seconds = float(raw_timeout)
         input_payload = {
             "schema": "aegis-post-completion-effect-input-v1",
             "effect": "memory.index_session",
@@ -10748,7 +10753,19 @@ class LabApplication:
             "effect": "memory.index_session",
             "trust_level": self.config.trust_level,
             "failure_mode": "block_dossier",
+            "timeout_seconds": timeout_seconds,
         }
+        execution_id = f"post-completion-{run.mission_id}"
+        idempotency_key = _hash(
+            {
+                "schema": "aegis-post-completion-effect-idempotency-key-v1",
+                "mission_id": run.mission_id,
+                "execution_id": execution_id,
+                "input_hash": _hash(input_payload),
+                "policy_hash": _hash(policy_payload),
+            }
+        )
+        policy_payload["idempotency_key"] = idempotency_key
         try:
             execution_id, admission_id = run.admit_tool_execution(
                 tool_name="memory.index_session",
@@ -10760,13 +10777,18 @@ class LabApplication:
                 stop_rule="single_post_completion_effect",
                 lease_id=max(1, len(run.tool_execution_admissions) + 1),
                 attempt=1,
-                execution_id=f"post-completion-{run.mission_id}",
+                execution_id=execution_id,
+                idempotency_key=idempotency_key,
+                timeout_seconds=timeout_seconds,
             )
         except (RuntimeError, TypeError, ValueError) as exc:
             run.record_blocker(f"post_completion_effect_admission_failed:{type(exc).__name__}")
             return
         try:
-            effect_result = await _call_fenced(effect, run=run, result=result)
+            effect_result = await asyncio.wait_for(
+                _call_fenced(effect, run=run, result=result),
+                timeout=timeout_seconds,
+            )
         except asyncio.CancelledError:
             try:
                 run.record_tool_execution(
@@ -10783,6 +10805,8 @@ class LabApplication:
                     lease_id=max(1, len(run.tool_execution_admissions)),
                     attempt=1,
                     status="CANCELLED",
+                    idempotency_key=idempotency_key,
+                    timeout_seconds=timeout_seconds,
                 )
             except (RuntimeError, TypeError, ValueError) as settlement_exc:
                 run.record_blocker(f"post_completion_effect_settlement_failed:{type(settlement_exc).__name__}")
@@ -10802,7 +10826,9 @@ class LabApplication:
                     stop_rule="single_post_completion_effect",
                     lease_id=max(1, len(run.tool_execution_admissions)),
                     attempt=1,
-                    status="REJECTED",
+                    status="TIMED_OUT" if isinstance(exc, TimeoutError) else "REJECTED",
+                    idempotency_key=idempotency_key,
+                    timeout_seconds=timeout_seconds,
                 )
             except (RuntimeError, TypeError, ValueError) as settlement_exc:
                 run.record_blocker(f"post_completion_effect_settlement_failed:{type(settlement_exc).__name__}")
@@ -10827,6 +10853,8 @@ class LabApplication:
                 lease_id=max(1, len(run.tool_execution_admissions)),
                 attempt=1,
                 status="SUCCESS",
+                idempotency_key=idempotency_key,
+                timeout_seconds=timeout_seconds,
             )
         except (RuntimeError, TypeError, ValueError) as exc:
             run.record_blocker(f"post_completion_effect_settlement_failed:{type(exc).__name__}")
