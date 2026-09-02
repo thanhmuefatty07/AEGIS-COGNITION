@@ -400,6 +400,39 @@ def test_anchor_planner_rejects_custom_candidate_objects() -> None:
     assert plan.failure_reasons == ("candidate_invalid:TypeError",)
 
 
+def test_anchor_planner_clears_selection_when_any_input_is_invalid() -> None:
+    valid = AnchorCandidate("linux", "linux", 1.0)
+
+    invalid_budget = select_anchor_plan([valid], budget_seconds=float("nan"))
+    assert invalid_budget.status == "EXTERNAL_VERIFICATION_BLOCKED"
+    assert invalid_budget.selected_anchor_ids == ()
+    assert invalid_budget.planned_cost_seconds == 0.0
+    assert "budget_invalid" in invalid_budget.failure_reasons
+
+    invalid_candidate = select_anchor_plan(
+        [valid, object()],  # type: ignore[list-item]
+        budget_seconds=10.0,
+    )
+    assert invalid_candidate.status == "EXTERNAL_VERIFICATION_BLOCKED"
+    assert invalid_candidate.selected_anchor_ids == ()
+    assert invalid_candidate.planned_cost_seconds == 0.0
+    assert "candidate_invalid:TypeError" in invalid_candidate.failure_reasons
+
+
+def test_anchor_planner_rejects_planned_cost_overflow() -> None:
+    plan = select_anchor_plan(
+        [
+            AnchorCandidate("a", "linux", 1.7e308, mandatory=True),
+            AnchorCandidate("b", "linux", 1.7e308, mandatory=True),
+        ],
+        budget_seconds=1.0,
+    )
+    assert plan.status == "EXTERNAL_VERIFICATION_BLOCKED"
+    assert plan.selected_anchor_ids == ()
+    assert plan.planned_cost_seconds == 0.0
+    assert "planned_cost_overflow" in plan.failure_reasons
+
+
 def test_anchor_candidate_rejects_lossy_availability_flag() -> None:
     with pytest.raises(ValueError, match="priority flags"):
         AnchorCandidate("linux", "linux", 1.0, available="false").validate()  # type: ignore[arg-type]
