@@ -3,7 +3,7 @@ document_id: AEGIS-LAB-RUNTIME-MASTER-PLAN
 document_type: canonical_current_implementation_plan
 status: IN_EXECUTION
 authority: derived_from_checkout_and_evidence_manifest
-applies_to_commit: dc1ca14072bfc363f278bced90558e0d1adf590e
+applies_to_commit: cad537e42ee3a1a48e07d1d63801076a947812e4
 created_at: 2026-08-26
 last_verified_at: 2026-09-03
 supersedes: browser-native-proposal-and-cumulative-harness-roadmap-as-execution-authority
@@ -4284,6 +4284,20 @@ iteration instead of being coerced into session state; two adversarial
 regressions pass, bringing the primitive suite to **39/39**. This is local
 input-boundary evidence only and does not change SHADOW authority, statistical
 calibration, external-anchor status or legacy-runner retention.
+
+**AESE/Rust startup-boundary continuation (2026-09-03):** implementation commit
+`cad537e42ee3a1a48e07d1d63801076a947812e4` hardens
+`AsyncShadowSealer::start_with_queue_depth` by constructing the Tokio runtime
+before the worker thread is spawned. Runtime construction failure now returns
+the typed `HotEngineError::SealFailed` from `start()` instead of allowing a
+background `expect` to panic after startup reported success. The success path,
+queue semantics, replay contract and public ABI are unchanged. The source-bound
+Rust library suite passes **443/443**; `cargo fmt --all -- --check`,
+`cargo check -p aegis-nerve --no-default-features --lib`, and
+`cargo clippy -p aegis-nerve --no-default-features --lib -- -D warnings` pass.
+This is a local startup-failure containment proof only: it does not prove
+universal process containment, cross-platform runtime behavior, hosted
+verification or release authority.
 
 Không được gọi toàn hệ thống “production-ready” khi bất kỳ gate bắt buộc nào
 ở trên còn `OPEN_*`, `BLOCKED_*`, `UNKNOWN` hoặc chỉ có fixture/mock evidence.
