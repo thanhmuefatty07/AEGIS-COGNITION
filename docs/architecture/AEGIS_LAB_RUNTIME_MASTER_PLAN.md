@@ -3,7 +3,7 @@ document_id: AEGIS-LAB-RUNTIME-MASTER-PLAN
 document_type: canonical_current_implementation_plan
 status: IN_EXECUTION
 authority: derived_from_checkout_and_evidence_manifest
-applies_to_commit: 256a5288bed067a053c4cd6471390ed103de10bd
+applies_to_commit: 69ea62bd52a5e3b36c35630045abd8b3a189f696
 created_at: 2026-08-26
 last_verified_at: 2026-09-03
 supersedes: browser-native-proposal-and-cumulative-harness-roadmap-as-execution-authority
@@ -3132,6 +3132,17 @@ check --features python-extension`, `cargo fmt -- --check` và test
 chưa chứng minh toàn bộ lifetime của FFI, chưa thay thế inventory consumer/API,
 chưa chạy allocation/soak campaign và chưa thực hiện split `ffi.rs`, vì vậy
 M6 vẫn OPEN_LOCAL.
+
+**M6 status-family extraction continuation (2026-09-03):**
+implementation commit `69ea62bd52a5e3b36c35630045abd8b3a189f696` moves the
+15 side-effect-free status, layout and identity PyO3 bindings into
+`core/rust/src/ffi/status.rs`. `ffi.rs` re-exports the original symbols, so
+the module registration and Python-visible ABI/schema names remain unchanged;
+no public consumer was deleted or renamed. `cargo fmt --all -- --check`,
+`cargo check -p aegis-nerve --no-default-features --lib`, and the feature-gated
+`tests::tests::ffi_smoke_checks` pass. This is a bounded internal family split,
+not proof of whole-FFI lifetime safety, allocation/soak behavior, or complete
+controller/DTO/error-family convergence; M6 remains `OPEN_LOCAL`.
 
 #### M7 — Replay/archive và recovery cutover
 
