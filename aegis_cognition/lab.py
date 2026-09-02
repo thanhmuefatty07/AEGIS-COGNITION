@@ -8266,6 +8266,32 @@ class LabApplication:
         # adapter.  DEV/STAGING retain the additive compatibility conversion;
         # an explicitly supplied registry is strict at every trust level.
         self._execution_cells_strict = raw_registry is not None or native_required
+        if raw_registry is None and native_required:
+            # A native-required mission must make its edge ownership explicit.
+            # Auto-converting compatibility options here would make a callable
+            # appear registry-bound without an operator-supplied manifest and
+            # would leave hidden planner/lease ownership ambiguous.  Keep the
+            # empty manifest replayable, then fail the affected lane closed.
+            legacy_edge_keys = (
+                "search_program_executor",
+                "researcher",
+                "search_as_code",
+                "search_query_provider",
+                "browser_runtime_adapter",
+                "experiment_runner",
+                "simulation_runner",
+                "tool_runner",
+                "benchmark_validator",
+                "skill_executor",
+            )
+            if any(key in options for key in legacy_edge_keys):
+                self.execution_cells = ExecutionCellRegistry(
+                    trust_policy_hash=run.trust_policy_hash
+                )
+                run.bind_execution_cell_manifest(self.execution_cells.manifest())
+                self.execution_cells.seal()
+                run.record_blocker("execution_cell_registry_required:native_authority")
+                return
         bindings: list[ExecutionCellBinding] = []
         try:
             search_runner = (
