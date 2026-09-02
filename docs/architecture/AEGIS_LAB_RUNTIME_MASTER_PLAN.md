@@ -3703,10 +3703,10 @@ workflows and 11 workflow jobs; no scope is missing. Every item is
 conservatively `RETAIN_UNCHANGED`, with claim/owner/cost/platform/failure
 mapping left `UNKNOWN`/`NOT_MAPPED`; direct cutover and deletion remain
 prohibited. The generator's `--check` drift gate and four regression tests pass,
-and this closes only Phase 0 discovery. AESE registry wrappers, estimand and
-sequential measurement, affected-closure invalidation, model/OOD validation,
-shadow non-inferiority and cost-savings evidence are not implemented, so the
-directive's later phases remain open and no legacy check is suppressed.
+and this closes only Phase 0 discovery. Phase 0 itself does not prove claim
+coverage, affected-closure completeness, shadow non-inferiority or cost
+savings; later phase artifacts remain advisory and no legacy check is
+suppressed.
 
 **AESE Phase 1 shadow graph continuation (2026-09-02):**
 `scripts/aese_claim_graph.py` now materializes the source-backed GT96
@@ -3759,13 +3759,13 @@ shape is under-specified. `SimulationEvidence` is schema-bound to
 validated domain, at least two reconstructible anchors, and residual evidence
 declared `MEASURED` with at least 30 samples; missing features and out-of-domain
 targets are rejected and carry `OOD_STATUS`, nearest-anchor distance,
-prediction interval and model version metadata. Nine focused tests plus the
 prediction interval and model version metadata. `AdaptiveMeasurementSession`
 provides immutable append-only checkpoints and refuses appends after a terminal
 measurement result; `HardwareCapabilityVector.from_runtime_profile` projects
 only fields explicitly reported by the existing runtime profile. Eleven
-focused tests plus the full local regression suite pass. No model fit, physical-power measurement,
-external anchor, independent replication or release promotion is claimed.
+focused tests cover these phases and the full local regression suite passes
+with 483 tests. No model fit, physical-power measurement, external anchor,
+independent replication or release promotion is claimed.
 
 **AESE Phase 8 local anchor-planning continuation (2026-09-02):**
 `select_anchor_plan` adds a bounded, deterministic high-fidelity anchor planner
