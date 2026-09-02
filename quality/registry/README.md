@@ -14,6 +14,8 @@ skip, promote or delete evidence while `AESE_MODE=SHADOW`.
 The registry is intentionally conservative:
 
 - every discovered item receives exactly one migration disposition;
+- every item exposes directive-standard `current_status`, `risk`, `cost`,
+  `platform`, and `release_critical` metadata; unknown values stay explicit;
 - existing runners remain `RETAIN_UNCHANGED` until shadow evidence proves a
   stronger wrapper or replacement;
 - unmapped claim, owner, cost, platform and failure fields stay `UNKNOWN`;
