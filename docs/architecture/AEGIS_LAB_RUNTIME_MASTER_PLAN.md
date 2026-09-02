@@ -3,7 +3,7 @@ document_id: AEGIS-LAB-RUNTIME-MASTER-PLAN
 document_type: canonical_current_implementation_plan
 status: IN_EXECUTION
 authority: derived_from_checkout_and_evidence_manifest
-applies_to_commit: 8a0786d4ed82bdc9f7666dd9b2439665cdeeab4d
+applies_to_commit: f536de016cf61867faf99eea4be8da84bd03ba27
 created_at: 2026-08-26
 last_verified_at: 2026-09-02
 supersedes: browser-native-proposal-and-cumulative-harness-roadmap-as-execution-authority
@@ -2754,6 +2754,20 @@ malformed prefix as having no work to reconcile. Negative coverage now totals
 targeted Ruff and Pyright remain clean. This strengthens local crash-prefix
 accounting only; non-cooperative process effects and hosted writer/restore
 evidence remain open under `LAB-AUTH-001`/`LAB-OPS-007`.
+
+**M2 lossless recovery-field continuation (2026-09-02):** the recovery
+boundary now validates the complete typed admission payload for every explicit
+execution lane (generic tool, experiment, research program, browser actor,
+browser observer and skill) before reading fields. Legacy tool recovery uses
+the same validator, and reconciliation no longer applies `str()`/`int()` to
+durable metadata; malformed numeric strings, floats, booleans, identities,
+digests, roles, kinds or skill-hash collections are rejected before any
+settlement or state transition. Seven focused regressions cover the lane
+matrix and legacy helper; the Python 3.14 suite passes **363 tests**, with
+targeted Ruff and Pyright clean. This closes a locally reproducible lossy
+recovery path only; process-level interruption, hidden adapter effects,
+external-effect reversal and hosted writer/restore authority remain
+`OPEN_LOCAL`/`OPEN_EXTERNAL` under `LAB-AUTH-001` and `LAB-OPS-007`.
 
 **M2 operator-evidence continuation (2026-09-02):** security-event and
 blocker/resolution APIs now require exact reason/detail strings and reject
