@@ -3,7 +3,7 @@ document_id: AEGIS-LAB-RUNTIME-MASTER-PLAN
 document_type: canonical_current_implementation_plan
 status: IN_EXECUTION
 authority: derived_from_checkout_and_evidence_manifest
-applies_to_commit: 5cdaa7ca57a297ac7d10083d51d2b1ce9efb312e
+applies_to_commit: 8f1043b21abaefb712092971f84a4ff469b5bdfc
 created_at: 2026-08-26
 last_verified_at: 2026-09-03
 supersedes: browser-native-proposal-and-cumulative-harness-roadmap-as-execution-authority
@@ -4377,6 +4377,19 @@ complete Rust library suite remains **445/445** with format/check/clippy gates
 passing. This closes a parser portability boundary only; it does not prove
 crash-prefix recovery under hostile files, cross-platform archive behavior,
 concurrent writers or release authority.
+
+**M7 manifest-count allocation continuation (2026-09-03):** implementation
+commit `8f1043b21abaefb712092971f84a4ff469b5bdfc` removes pre-allocation from
+persisted manifest event counts and replaces remaining `u64` to `usize` casts
+with checked conversions across column scans, deterministic replay, full mmap
+reads, prefix recovery and replay-chaos accounting. Manifest validation now
+rejects counts that cannot fit the target width and fails closed when the
+event-id chain would overflow; a `u64::MAX` declared count is rejected against
+a real one-row archive without a giant allocation or process panic. The new
+regression and complete Rust library suite pass **446/446**, with
+format/check/clippy gates passing. This is resource/parser-boundary hardening;
+it does not prove hostile archive recovery, cross-platform behavior, concurrent
+writer authority or release certification.
 
 Không được gọi toàn hệ thống “production-ready” khi bất kỳ gate bắt buộc nào
 ở trên còn `OPEN_*`, `BLOCKED_*`, `UNKNOWN` hoặc chỉ có fixture/mock evidence.
