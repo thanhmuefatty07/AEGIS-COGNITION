@@ -69,11 +69,7 @@ def _reference_paths(value: str) -> list[str]:
 
 def _verification_symbols(value: str) -> list[str]:
     return sorted(
-        set(
-            symbol
-            for symbol in re.findall(r"`([A-Za-z_][A-Za-z0-9_]*)`", value)
-            if symbol not in {"tests", "test"}
-        )
+        set(symbol for symbol in re.findall(r"`([A-Za-z_][A-Za-z0-9_]*)`", value) if symbol not in {"tests", "test"})
     )
 
 
@@ -86,9 +82,7 @@ def _resolve_verification_paths(value: str, sources: dict[str, str]) -> list[str
 
 
 def _tracked_paths() -> set[str]:
-    output = subprocess.run(
-        ["git", "ls-files", "-z"], cwd=ROOT, check=True, capture_output=True
-    ).stdout
+    output = subprocess.run(["git", "ls-files", "-z"], cwd=ROOT, check=True, capture_output=True).stdout
     return {item.decode("utf-8") for item in output.split(b"\0") if item}
 
 
@@ -100,18 +94,12 @@ def _canonical_source_path(reference: str, tracked: set[str]) -> str | None:
     if rust_candidate in tracked:
         return rust_candidate
     rust_directory = f"core/rust/src/{normalized.rstrip('/')}"
-    if (ROOT / rust_directory).is_dir() and any(
-        path.startswith(f"{rust_directory}/") for path in tracked
-    ):
+    if (ROOT / rust_directory).is_dir() and any(path.startswith(f"{rust_directory}/") for path in tracked):
         return rust_directory
-    basename_matches = sorted(
-        path for path in tracked if Path(path).name == Path(normalized).name
-    )
+    basename_matches = sorted(path for path in tracked if Path(path).name == Path(normalized).name)
     if len(basename_matches) == 1:
         return basename_matches[0]
-    if (ROOT / normalized).is_dir() and any(
-        path.startswith(f"{normalized.rstrip('/')}/") for path in tracked
-    ):
+    if (ROOT / normalized).is_dir() and any(path.startswith(f"{normalized.rstrip('/')}/") for path in tracked):
         return normalized.rstrip("/")
     return None
 
@@ -148,9 +136,7 @@ def _parse_gt96() -> list[dict[str, str]]:
     return rows
 
 
-def _surface_nodes(
-    inventory: dict[str, object], claim_rows: list[dict[str, str]]
-) -> list[dict[str, object]]:
+def _surface_nodes(inventory: dict[str, object], claim_rows: list[dict[str, str]]) -> list[dict[str, object]]:
     raw_items = inventory.get("items")
     if not isinstance(raw_items, list):
         raise ValueError("inventory items must be an array")
@@ -273,7 +259,14 @@ def _claim_nodes(
                 {"from": evidence_id, "to": claim_id, "relation": "SUPPORTS_OR_LEAVES_UNVERIFIED"},
             ]
         )
-    return claims, contracts, invariants, verifications, sorted(code_nodes_by_path.values(), key=lambda node: str(node["id"])), edges
+    return (
+        claims,
+        contracts,
+        invariants,
+        verifications,
+        sorted(code_nodes_by_path.values(), key=lambda node: str(node["id"])),
+        edges,
+    )
 
 
 def _blocker_nodes() -> list[dict[str, object]]:
@@ -311,9 +304,7 @@ def build_graph() -> dict[str, object]:
         if Path(path).suffix.lower() in {".py", ".rs"}
     }
     surfaces = _surface_nodes(inventory, claim_rows)
-    claims, contracts, invariants, verifications, code_nodes, edges = _claim_nodes(
-        claim_rows, tracked, sources
-    )
+    claims, contracts, invariants, verifications, code_nodes, edges = _claim_nodes(claim_rows, tracked, sources)
     blockers = _blocker_nodes()
     for surface in surfaces:
         for claim_id in cast(list[object], surface["claim_refs"]):
@@ -331,9 +322,14 @@ def build_graph() -> dict[str, object]:
                         "relation": "RESOLVES_REFERENCE",
                     }
                 )
-    edges = sorted({(edge["from"], edge["to"], edge["relation"]): edge for edge in edges}.values(), key=lambda edge: (edge["from"], edge["to"], edge["relation"]))
+    edges = sorted(
+        {(edge["from"], edge["to"], edge["relation"]): edge for edge in edges}.values(),
+        key=lambda edge: (edge["from"], edge["to"], edge["relation"]),
+    )
     mapped_surfaces = sum(1 for surface in surfaces if surface["mapping_status"] == "MAPPED_EXACT")
-    unresolved_verifications = sum(1 for verification in verifications if verification["mapping_status"] == "NOT_MAPPED")
+    unresolved_verifications = sum(
+        1 for verification in verifications if verification["mapping_status"] == "NOT_MAPPED"
+    )
     input_material = "\n".join(
         [
             str(inventory["source_tree_sha256"]),
