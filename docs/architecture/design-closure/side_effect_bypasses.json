@@ -38,9 +38,9 @@
       "evidence": "13 sys.path records are direct script bootstrap or legacy metrics"
     }
   ],
-  "HEAD": "acf4e1c6ce29b4f6e7f575b847c8a4de298e68cc",
-  "WORKTREE_EPOCH": "648356574b725f322023b8f37ccc7c5b91daebb01e4d4896d58877eac3165e84",
-  "generated_at": "2026-09-02T00:37:59.689275+00:00",
+  "HEAD": "81115432fca328ba6f7776a6cb3ad6d89a9679a6",
+  "WORKTREE_EPOCH": "b52d900d2568205d3a71d6d03237c3d35d349a5d21b5eebdc696702bc3ddb688",
+  "generated_at": "2026-09-02T00:53:24.439279+00:00",
   "method": "aegis-design-closure-reconciliation-v1; direct Git/filesystem/source inspection, prior artifact hash reuse, disposable wheel reconciliation, bounded local probes",
   "limitations": []
 }
