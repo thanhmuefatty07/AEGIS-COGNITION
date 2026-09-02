@@ -9,6 +9,7 @@ runtime/resource contracts below.
 
 | Contract | Location/owner | Authority | Compatibility rule |
 |---|---|---|---|
+| Source-bound wheel manifest witness | `artifacts/local-runtime/m2-execution-cell-manifest-20260902/native_execution_cell_manifest.json` | Fresh CPython 3.14 process outside checkout imports the current native module, binds `execution_cell_manifest_recorded` at sequence 2/epoch 1, restores the snapshot and rejects top-level tamper | `PASS_LOCAL_CLEAN_WHEEL`; dependency-complete install, hosted/cross-platform authority and signed release provenance remain `NOT VERIFIED` |
 | `aegis-resource-contract-v1` | `schemas/resource-contract-v1.json`, `resource.rs` | Rust resource authority | Reject an unknown schema; additive changes require a new version and fixture |
 | `aegis-resource-lease-token-v1` | `schemas/lease-token-v1.json`, `resource.rs` | Rust lease ledger | Token carries identity/fencing only; it never carries a mutable grant |
 | `aegis-runtime-admission-v1` | `runtime.rs`, `ffi.rs` | Rust runtime authority | Submit/retry/finish must pass attempt and lease fencing |
