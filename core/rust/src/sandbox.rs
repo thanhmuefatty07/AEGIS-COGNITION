@@ -404,9 +404,8 @@ impl WasmtimeSandbox {
         }
 
         let engine = &self.engine;
-        let limits = StoreLimitsBuilder::new()
-            .memory_size(self.config.max_memory_pages as usize * 65536)
-            .build();
+        let memory_bytes = memory_limit_bytes(self.config.max_memory_pages, 65536)?;
+        let limits = StoreLimitsBuilder::new().memory_size(memory_bytes).build();
         let mut store = Store::new(engine, LimiterState { limits });
         store.limiter(|state| &mut state.limits);
 
@@ -487,9 +486,11 @@ impl WasmtimeSandbox {
         let plan = invocation.linear_memory_plan_after_validation(self.config.max_memory_pages)?;
 
         let engine = &self.engine;
-        let limits = StoreLimitsBuilder::new()
-            .memory_size(self.config.max_memory_pages as usize * QUICKJS_LINEAR_MEMORY_PAGE_BYTES)
-            .build();
+        let memory_bytes = memory_limit_bytes(
+            self.config.max_memory_pages,
+            QUICKJS_LINEAR_MEMORY_PAGE_BYTES,
+        )?;
+        let limits = StoreLimitsBuilder::new().memory_size(memory_bytes).build();
         let mut store = Store::new(
             engine,
             QuickJsBridgeState {
@@ -861,6 +862,16 @@ fn epoch_deadline_ticks(timeout_ms: u64) -> u64 {
         .saturating_add(WASMTIME_EPOCH_TICK_MS - 1)
         .saturating_div(WASMTIME_EPOCH_TICK_MS)
         .max(1)
+}
+
+pub(crate) fn memory_limit_bytes(
+    max_memory_pages: u32,
+    page_bytes: usize,
+) -> Result<usize, TrapReason> {
+    usize::try_from(max_memory_pages)
+        .ok()
+        .and_then(|pages| pages.checked_mul(page_bytes))
+        .ok_or(TrapReason::InvariantViolation)
 }
 
 fn quickjs_bridge_linker(engine: &Engine) -> Result<Linker<QuickJsBridgeState>, wasmtime::Error> {

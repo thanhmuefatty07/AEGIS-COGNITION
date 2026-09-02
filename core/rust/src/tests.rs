@@ -3149,6 +3149,17 @@ mod tests {
     }
 
     #[test]
+    fn sandbox_memory_limit_checked_multiplication_rejects_overflow() {
+        use crate::sandbox::memory_limit_bytes;
+
+        assert_eq!(
+            memory_limit_bytes(2, usize::MAX / 2 + 1),
+            Err(TrapReason::InvariantViolation)
+        );
+        assert_eq!(memory_limit_bytes(1, 65536), Ok(65536));
+    }
+
+    #[test]
     fn verification_gauntlet_commits_physical_quorum() {
         let sandbox = DeterministicSandbox::new();
         let proposals = [
