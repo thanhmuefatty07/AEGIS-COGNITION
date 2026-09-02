@@ -397,14 +397,17 @@ impl AsyncShadowSealer {
         let directory = directory.as_ref().to_path_buf();
         std::fs::create_dir_all(&directory).map_err(|_| HotEngineError::SealFailed)?;
         let queue_depth = queue_depth.max(1);
+        // Build the runtime before spawning the worker.  A background
+        // `expect` could otherwise let `start()` return success and panic
+        // later, leaving callers with a dead sealer and no typed failure.
+        let runtime = tokio::runtime::Builder::new_current_thread()
+            .enable_all()
+            .build()
+            .map_err(|_| HotEngineError::SealFailed)?;
         let (sender, receiver) = mpsc::channel(queue_depth);
         let join = std::thread::Builder::new()
             .name("aegis-async-shadow-sealer".to_string())
             .spawn(move || {
-                let runtime = tokio::runtime::Builder::new_current_thread()
-                    .enable_all()
-                    .build()
-                    .expect("shadow sealer tokio runtime");
                 runtime.block_on(shadow_sealer_loop(directory, receiver));
             })
             .map_err(|_| HotEngineError::SealFailed)?;
