@@ -866,8 +866,8 @@
     "future_obligations": 20,
     "invariants": 35,
     "mapped_surfaces": 1,
-    "surfaces": 116,
-    "unmapped_surfaces": 115,
+    "surfaces": 117,
+    "unmapped_surfaces": 116,
     "unmapped_verifications": 59,
     "unresolved_code_references": 0,
     "verifications": 70
@@ -2940,8 +2940,8 @@
   "mode": "SHADOW",
   "phase": "PHASE_1_CLAIM_EVIDENCE_GRAPH",
   "schema": "aese-shadow-claim-evidence-graph-v1",
-  "source_head": "f924d3108f77f781b7b7a6ce7186bc400f764d69",
-  "source_tree_sha256": "5495b426087206de41fba466fe06c38759eda8a0526723f869dbeaf9196d223b",
+  "source_head": "e0731f698302a0791c70c24d93b696597e04180d",
+  "source_tree_sha256": "7dd54e3e0fe98f87d05ff0eb8d18632472e7aaff7bbf50f64bf18e709ba0e570",
   "status": "SHADOW_GRAPH_COMPLETE_MAPPING_AND_SELECTION_DISABLED",
   "surfaces": [
     {
@@ -3480,6 +3480,15 @@
       "kind": "RUST_UNIT_TEST",
       "mapping_status": "NOT_MAPPED",
       "path": "core/rust/src/bridge_mmap.rs",
+      "target": null,
+      "unknown_dependency_policy": "INVALIDATE_CONSERVATIVELY"
+    },
+    {
+      "claim_refs": [],
+      "id": "AESE-RUST_UNIT_TEST-B07735E7D4D5F66B",
+      "kind": "RUST_UNIT_TEST",
+      "mapping_status": "NOT_MAPPED",
+      "path": "core/rust/src/ffi/eac.rs",
       "target": null,
       "unknown_dependency_policy": "INVALIDATE_CONSERVATIVELY"
     },
@@ -4581,6 +4590,6 @@
       "source_id": "GT96-035"
     }
   ],
-  "worktree_epoch": "ece9ca95eb675ca9eb2e706c10c5c0fc2d50c9f4dde3ddeddb99fce22a39072c",
+  "worktree_epoch": "04457596ffb7767d963fdc6fb542d651a2e4bbcb0e989eb011d1fb925d49c111",
   "worktree_status": "DIRTY"
 }
