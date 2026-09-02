@@ -57,9 +57,9 @@
       "future_test": "owner-approved final commit, regenerated manifest and hosted release IDs"
     }
   ],
-  "HEAD": "a7197baf4bab4a01e30dc2909b54c687e950be39",
-  "WORKTREE_EPOCH": "ef1a628e2f39e040b2db00ce682eae4eeddd93054138be5c2ebf62fd367e304d",
-  "generated_at": "2026-09-02T02:56:20.772343+00:00",
+  "HEAD": "c3f2c1f6b5e017d17ecf66704685a875499ad0e9",
+  "WORKTREE_EPOCH": "1ba74310005860e86532c574af481cac89628bbc2a23f84bbf8712e20b4c6bb2",
+  "generated_at": "2026-09-02T03:02:43.765634+00:00",
   "method": "aegis-design-closure-reconciliation-v1; direct Git/filesystem/source inspection, prior artifact hash reuse, disposable wheel reconciliation, bounded local probes",
   "limitations": []
 }

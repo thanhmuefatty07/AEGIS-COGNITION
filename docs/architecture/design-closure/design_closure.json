@@ -3,19 +3,19 @@
   "status": "PARTIAL_LOCAL",
   "epoch_stable": true,
   "epoch_start": {
-    "WORKTREE_EPOCH": "ef1a628e2f39e040b2db00ce682eae4eeddd93054138be5c2ebf62fd367e304d",
-    "HEAD": "a7197baf4bab4a01e30dc2909b54c687e950be39",
-    "tracked_diff_sha256": "f248de7709c77b9ed979d67766615a8e06707629ba962ad00742c7625fb2dc87",
+    "WORKTREE_EPOCH": "1ba74310005860e86532c574af481cac89628bbc2a23f84bbf8712e20b4c6bb2",
+    "HEAD": "c3f2c1f6b5e017d17ecf66704685a875499ad0e9",
+    "tracked_diff_sha256": "45069d7c969a456adbc05ff2f94936dde6983426e3d444cebee9fbb47ac4be20",
     "untracked_architecture_relevant": []
   },
   "epoch_end": {
-    "WORKTREE_EPOCH": "ef1a628e2f39e040b2db00ce682eae4eeddd93054138be5c2ebf62fd367e304d",
-    "HEAD": "a7197baf4bab4a01e30dc2909b54c687e950be39",
-    "tracked_diff_sha256": "f248de7709c77b9ed979d67766615a8e06707629ba962ad00742c7625fb2dc87",
+    "WORKTREE_EPOCH": "1ba74310005860e86532c574af481cac89628bbc2a23f84bbf8712e20b4c6bb2",
+    "HEAD": "c3f2c1f6b5e017d17ecf66704685a875499ad0e9",
+    "tracked_diff_sha256": "45069d7c969a456adbc05ff2f94936dde6983426e3d444cebee9fbb47ac4be20",
     "untracked_architecture_relevant": []
   },
   "collection_state": {
-    "head": "a7197baf4bab4a01e30dc2909b54c687e950be39",
+    "head": "c3f2c1f6b5e017d17ecf66704685a875499ad0e9",
     "branch": "main",
     "origin_main": "origin/main",
     "ahead_behind": "0\t0",
@@ -65,13 +65,13 @@
       "status": "FAIL",
       "decisive_errors": [
         "evidence consistency gate failed: manifest.commit must be a 40-character lowercase git SHA",
-        "evidence consistency gate failed: remediation[P0-PROVENANCE].final_sha=CHECKOUT_HEAD does not match a7197baf4bab4a01e30dc2909b54c687e950be39",
-        "evidence consistency gate failed: remediation[P0-COUNTS].final_sha=CHECKOUT_HEAD does not match a7197baf4bab4a01e30dc2909b54c687e950be39",
-        "evidence consistency gate failed: remediation[P0-SOURCE-OF-TRUTH].final_sha=CHECKOUT_HEAD does not match a7197baf4bab4a01e30dc2909b54c687e950be39",
-        "evidence consistency gate failed: remediation[P0-GT96].final_sha=CHECKOUT_HEAD does not match a7197baf4bab4a01e30dc2909b54c687e950be39",
-        "evidence consistency gate failed: remediation[P0-MEMORY-CLAIMS].final_sha=CHECKOUT_HEAD does not match a7197baf4bab4a01e30dc2909b54c687e950be39",
-        "evidence consistency gate failed: remediation[P0-LABEL-AUDIT].final_sha=CHECKOUT_HEAD does not match a7197baf4bab4a01e30dc2909b54c687e950be39",
-        "evidence consistency gate failed: remediation[P1-LINUX-CGROUP].final_sha=CHECKOUT_HEAD does not match a7197baf4bab4a01e30dc2909b54c687e950be39"
+        "evidence consistency gate failed: remediation[P0-PROVENANCE].final_sha=CHECKOUT_HEAD does not match c3f2c1f6b5e017d17ecf66704685a875499ad0e9",
+        "evidence consistency gate failed: remediation[P0-COUNTS].final_sha=CHECKOUT_HEAD does not match c3f2c1f6b5e017d17ecf66704685a875499ad0e9",
+        "evidence consistency gate failed: remediation[P0-SOURCE-OF-TRUTH].final_sha=CHECKOUT_HEAD does not match c3f2c1f6b5e017d17ecf66704685a875499ad0e9",
+        "evidence consistency gate failed: remediation[P0-GT96].final_sha=CHECKOUT_HEAD does not match c3f2c1f6b5e017d17ecf66704685a875499ad0e9",
+        "evidence consistency gate failed: remediation[P0-MEMORY-CLAIMS].final_sha=CHECKOUT_HEAD does not match c3f2c1f6b5e017d17ecf66704685a875499ad0e9",
+        "evidence consistency gate failed: remediation[P0-LABEL-AUDIT].final_sha=CHECKOUT_HEAD does not match c3f2c1f6b5e017d17ecf66704685a875499ad0e9",
+        "evidence consistency gate failed: remediation[P1-LINUX-CGROUP].final_sha=CHECKOUT_HEAD does not match c3f2c1f6b5e017d17ecf66704685a875499ad0e9"
       ],
       "error_count": 34
     },
@@ -166,8 +166,8 @@
   "limitations": [
     "audit output/cache directories are excluded from epoch hashing to avoid self-reference; their per-file hashes are recorded separately"
   ],
-  "HEAD": "a7197baf4bab4a01e30dc2909b54c687e950be39",
-  "WORKTREE_EPOCH": "ef1a628e2f39e040b2db00ce682eae4eeddd93054138be5c2ebf62fd367e304d",
-  "generated_at": "2026-09-02T02:56:20.772343+00:00",
+  "HEAD": "c3f2c1f6b5e017d17ecf66704685a875499ad0e9",
+  "WORKTREE_EPOCH": "1ba74310005860e86532c574af481cac89628bbc2a23f84bbf8712e20b4c6bb2",
+  "generated_at": "2026-09-02T03:02:43.765634+00:00",
   "method": "aegis-design-closure-reconciliation-v1; direct Git/filesystem/source inspection, prior artifact hash reuse, disposable wheel reconciliation, bounded local probes"
 }

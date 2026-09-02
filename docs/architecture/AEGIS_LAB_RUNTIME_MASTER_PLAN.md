@@ -2816,6 +2816,13 @@ files would require broad mechanical reformatting unrelated to this semantic
 slice. This evidence is local and source-bound; hosted CI, signed release
 attestation and external platform/physical witnesses remain open.
 
+The native workspace was also rechecked with
+`cargo test --workspace --no-default-features --quiet -- --test-threads=1`:
+the 441-test primary target and every emitted integration/doctest target
+completed with zero failures. This is a local Windows/native result only; it
+does not replace hosted multi-platform, fuzz/sanitizer, release-attestation or
+external authority evidence.
+
 **M2 operator-evidence continuation (2026-09-02):** security-event and
 blocker/resolution APIs now require exact reason/detail strings and reject
 non-empty artifact hashes that are not canonical digests before event append.
