@@ -3,7 +3,7 @@ document_id: AEGIS-LAB-RUNTIME-MASTER-PLAN
 document_type: canonical_current_implementation_plan
 status: IN_EXECUTION
 authority: derived_from_checkout_and_evidence_manifest
-applies_to_commit: 5818f6143802ff44465bfc7a86d37fc79a374c2c
+applies_to_commit: ee14f3ceb8d6462b279166dce9400c9a931f2b68
 created_at: 2026-08-26
 last_verified_at: 2026-09-03
 supersedes: browser-native-proposal-and-cumulative-harness-roadmap-as-execution-authority
@@ -3945,6 +3945,23 @@ the in-domain anchors considered. The artifact hash changes when an anchor's
 validated hardware, workload, or observed value changes, while reordering the
 same set remains deterministic. This improves local provenance reconstruction;
 it does not establish model calibration or external evidence quality.
+
+**AESE adaptive-measurement protocol hardening continuation (2026-09-03):**
+implementation commit `ee14f3c` makes `evaluate_adaptive_measurement` fail
+closed when a malformed protocol object or field would otherwise escape during
+stopping-rule arithmetic. Invalid protocols now return the typed
+`INSUFFICIENT_EVIDENCE` status with a protocol failure reason; they can never
+be promoted to `PASS`, while raw observations remain hash-bound and visible.
+Two negative tests cover malformed dataclass fields and a non-dataclass input.
+The focused AESE primitive suite passes **23 tests** and the full
+Python/cross-language regression passes **500 tests** with deprecation warnings
+treated as errors; `compileall` also passes. The installed Ruff is too old to
+parse this repository's `py314` target and Pyright is not installed, so those
+two checks are `NOT VERIFIED` in this environment rather than inferred green.
+This closes an input-integrity gap in the local statistical primitive only; it
+does not establish calibrated stopping error, independent replication,
+autocorrelation validity beyond the declared rule, external anchors, or release
+authority.
 
 **AESE malformed-input fail-closed continuation (2026-09-03):**
 implementation commit `8837d02fb762afea305a64c30e386b043e56ad25` closes a
