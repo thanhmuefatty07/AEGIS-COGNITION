@@ -116,7 +116,14 @@ def build_preflight(changed_paths: list[str] | tuple[str, ...] = ()) -> dict[str
             claims.add(f"AESE-CLAIM-{contract['source_id']}")
     widened = bool(unknown_paths or unmapped_known_paths) or not paths
     edges = [cast(dict[str, object], value) for value in graph["edges"] if isinstance(value, dict)]
-    relation = {(str(edge["from"]), str(edge["relation"])): str(edge["to"]) for edge in edges}
+    # A source node can legitimately have multiple edges of the same
+    # relation (for example one invariant verified by several suites).  Keep
+    # a multimap; collapsing to one target would silently under-approximate
+    # the affected closure and could later permit an unsafe selective skip.
+    relation: dict[tuple[str, str], set[str]] = {}
+    for edge in edges:
+        key = (str(edge["from"]), str(edge["relation"]))
+        relation.setdefault(key, set()).add(str(edge["to"]))
     affected_contracts = {
         str(contract["id"])
         for contract in graph["contracts"]
@@ -127,27 +134,40 @@ def build_preflight(changed_paths: list[str] | tuple[str, ...] = ()) -> dict[str
     affected_invariants = {
         target
         for contract_id in affected_contracts
-        for (source, edge_relation), target in relation.items()
-        if source == contract_id and edge_relation == "GUARDS"
+        for target in relation.get((contract_id, "GUARDS"), set())
     }
     affected_verifications = {
         target
         for invariant_id in affected_invariants
-        for (source, edge_relation), target in relation.items()
-        if source == invariant_id and edge_relation == "VERIFIED_BY_REFERENCE"
+        for target in relation.get((invariant_id, "VERIFIED_BY_REFERENCE"), set())
     }
     affected_evidence = {
         target
         for verification_id in affected_verifications
-        for (source, edge_relation), target in relation.items()
-        if source == verification_id and edge_relation == "MATERIALIZES"
+        for target in relation.get((verification_id, "MATERIALIZES"), set())
     }
     affected_claims = {
         target
         for evidence_id in affected_evidence
-        for (source, edge_relation), target in relation.items()
-        if source == evidence_id and edge_relation == "SUPPORTS_OR_LEAVES_UNVERIFIED"
+        for target in relation.get((evidence_id, "SUPPORTS_OR_LEAVES_UNVERIFIED"), set())
     }
+    # A changed verification surface is a direct seed in the closure.  The
+    # graph records both the exact test/benchmark reference and the claim it
+    # exercises; follow both edges without treating a surface as source code.
+    for surface_id in matched_surfaces:
+        for verification_id in relation.get((surface_id, "RESOLVES_REFERENCE"), set()):
+            affected_verifications.add(verification_id)
+        claims.update(relation.get((surface_id, "IMPLEMENTS_OR_EXERCISES"), set()))
+    affected_evidence.update(
+        target
+        for verification_id in affected_verifications
+        for target in relation.get((verification_id, "MATERIALIZES"), set())
+    )
+    affected_claims.update(
+        target
+        for evidence_id in affected_evidence
+        for target in relation.get((evidence_id, "SUPPORTS_OR_LEAVES_UNVERIFIED"), set())
+    )
     if widened:
         affected_contracts = {str(contract["id"]) for contract in graph["contracts"] if isinstance(contract, dict)}
         affected_invariants = {str(invariant["id"]) for invariant in graph["invariants"] if isinstance(invariant, dict)}

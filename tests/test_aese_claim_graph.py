@@ -14,10 +14,11 @@ def test_shadow_graph_preserves_inventory_and_disables_selection() -> None:
     assert graph["direct_cutover"] == "PROHIBITED"
     assert graph["counts"]["surfaces"] == graph["counts"]["mapped_surfaces"] + graph["counts"]["unmapped_surfaces"]
     assert graph["counts"]["surfaces"] == 117
-    assert graph["counts"]["mapped_surfaces"] == 1
-    assert graph["counts"]["unmapped_verifications"] == 59
-    assert graph["counts"]["claims"] == 35
-    assert graph["counts"]["code_nodes"] == 23
+    assert graph["counts"]["mapped_surfaces"] == 9
+    assert graph["counts"]["unmapped_surfaces"] == 108
+    assert graph["counts"]["unmapped_verifications"] == 69
+    assert graph["counts"]["claims"] == 45
+    assert graph["counts"]["code_nodes"] == 27
     assert graph["counts"]["unresolved_code_references"] == 0
     assert graph["counts"]["future_obligations"] == 20
 

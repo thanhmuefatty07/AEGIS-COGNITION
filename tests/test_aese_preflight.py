@@ -22,6 +22,7 @@ def test_known_code_change_records_affected_claims_without_cutover() -> None:
     assert plan["affected_contract_ids"]
     assert plan["affected_invariant_ids"]
     assert plan["affected_verification_ids"]
+    assert len(plan["affected_verification_ids"]) == 22
     assert plan["affected_evidence_ids"]
     assert plan["direct_cutover"] == "PROHIBITED"
 
@@ -31,7 +32,7 @@ def test_unknown_change_widens_conservatively() -> None:
     assert plan["unknown_paths"] == ["new/unmapped/input.txt"]
     assert plan["plan_widened"] is True
     assert plan["closure_status"] == "WIDENED_ALL_RETAINED"
-    assert len(plan["affected_verification_ids"]) == 70
+    assert len(plan["affected_verification_ids"]) == 90
     assert plan["unknown_dependency_policy"] == "WIDEN_TO_RETAINED_SUITE"
     selection = plan["shadow_selection"]
     assert isinstance(selection, dict)
@@ -44,10 +45,22 @@ def test_unknown_change_widens_conservatively() -> None:
 
 
 def test_known_but_unmapped_surface_also_widens() -> None:
-    plan = build_preflight(["scripts/aese_preflight.py"])
+    plan = build_preflight(["scripts/run_checks.py"])
     assert plan["unknown_paths"] == []
-    assert plan["unmapped_known_paths"] == ["scripts/aese_preflight.py"]
+    assert plan["unmapped_known_paths"] == ["scripts/run_checks.py"]
     assert plan["plan_widened"] is True
+
+
+def test_mapped_test_surface_has_exact_shadow_closure() -> None:
+    plan = build_preflight(["tests/test_aese_primitives.py"])
+
+    assert plan["unknown_paths"] == []
+    assert plan["unmapped_known_paths"] == []
+    assert plan["plan_widened"] is False
+    assert plan["closure_status"] == "EXACT_SOURCE_CLOSURE_SHADOW"
+    assert len(plan["affected_claim_ids"]) == 7
+    assert len(plan["affected_verification_ids"]) == 7
+    assert plan["shadow_selection"]["would_skip_item_ids"] == []
 
 
 def test_dot_github_path_is_not_corrupted_by_normalization() -> None:
