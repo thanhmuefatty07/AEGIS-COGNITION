@@ -3,7 +3,7 @@ document_id: AEGIS-LAB-RUNTIME-MASTER-PLAN
 document_type: canonical_current_implementation_plan
 status: IN_EXECUTION
 authority: derived_from_checkout_and_evidence_manifest
-applies_to_commit: 91e10584a09b791f4fcf6ee9720a354033532faa
+applies_to_commit: 5cdaa7ca57a297ac7d10083d51d2b1ce9efb312e
 created_at: 2026-08-26
 last_verified_at: 2026-09-03
 supersedes: browser-native-proposal-and-cumulative-harness-roadmap-as-execution-authority
@@ -4366,6 +4366,17 @@ complete Rust library suite remains **445/445**, with format/check/clippy gates
 passing. This is binary-parser arithmetic hardening only: it does not prove
 cross-platform archive recovery, memory quotas, process containment or release
 authority.
+
+**M7 binary-replay width-boundary continuation (2026-09-03):** implementation
+commit `5cdaa7ca57a297ac7d10083d51d2b1ce9efb312e` replaces unchecked `u64` to
+`usize` casts in the binary replay segment readers with fallible conversions.
+File length, header size, record size and declared event count now fail closed
+when they exceed the target width; mapped length comparisons also preserve the
+full `u64` value. The existing bad-header/tamper regression passes, and the
+complete Rust library suite remains **445/445** with format/check/clippy gates
+passing. This closes a parser portability boundary only; it does not prove
+crash-prefix recovery under hostile files, cross-platform archive behavior,
+concurrent writers or release authority.
 
 Không được gọi toàn hệ thống “production-ready” khi bất kỳ gate bắt buộc nào
 ở trên còn `OPEN_*`, `BLOCKED_*`, `UNKNOWN` hoặc chỉ có fixture/mock evidence.
