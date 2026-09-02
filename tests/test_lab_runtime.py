@@ -2404,6 +2404,99 @@ def test_lab_recovery_preserves_optional_attempt_metadata() -> None:
     assert restored_legacy.verify_event_chain()
 
 
+@pytest.mark.parametrize(
+    ("lane", "field", "value", "error"),
+    (
+        ("tool_execution_admitted", "attempt", "1", "integer metadata"),
+        ("experiment_execution_admitted", "attempt", 1.0, "integer metadata"),
+        ("research_program_admitted", "operation_count", "2", "integer metadata"),
+        ("browser_action_admitted", "lease_id", "1", "integer metadata"),
+        ("browser_observation_admitted", "observation_count", True, "integer metadata"),
+        ("skill_admission_recorded", "mission_epoch", "0", "epoch metadata"),
+    ),
+)
+def test_lab_recovery_rejects_lossy_admission_fields(
+    lane: str, field: str, value: object, error: str
+) -> None:
+    """Recovery must not coerce malformed durable admission metadata."""
+
+    if lane == "tool_execution_admitted":
+        run = LabRun("reject lossy tool recovery")
+        run.admit_tool_execution(
+            tool_name="provider.primary",
+            input_payload={"task_hash": "a" * 64},
+            policy_payload={"policy": "bounded"},
+            effect_class="model_inference",
+            execution_id="lossy-tool-recovery",
+        )
+    elif lane == "experiment_execution_admitted":
+        run = _ready_run()
+        run.admit_experiment_execution(
+            experiment_id="e1",
+            attempt=1,
+            input_payload={"seed": 1},
+            policy_payload={"cell": "simulation"},
+            execution_id="lossy-experiment-recovery",
+        )
+    elif lane == "research_program_admitted":
+        run = LabRun("reject lossy research recovery")
+        run.admit_research_program(
+            program_hash="a" * 64,
+            operation_count=2,
+            provider="provider.test",
+        )
+    elif lane == "browser_action_admitted":
+        run = LabRun("reject lossy browser action recovery")
+        run.admit_browser_action(
+            action_kind="click",
+            action={"kind": "click", "selector": "#submit"},
+            policy=BrowserCellPolicy(allowed_hosts=("example.test",)),
+            lease_id=1,
+            action_id="lossy-browser-action-recovery",
+        )
+    elif lane == "browser_observation_admitted":
+        run = LabRun("reject lossy browser observation recovery")
+        run.admit_browser_observation(
+            observation_kind="read_url",
+            action={"kind": "read_url"},
+            policy=BrowserCellPolicy(allowed_hosts=("example.test",)),
+            lease_id=1,
+            observation_count=1,
+        )
+    else:
+        run = LabRun("reject lossy skill recovery")
+        registry, manifest = _skill_fixture()
+        run.admit_skill(
+            registry,
+            manifest.skill_id,
+            manifest.version,
+            available_capabilities=("network.read",),
+            preconditions={"budget_available": True, "host_allowlisted": True},
+        )
+
+    event = next(event for event in run.events if event.kind == lane)
+    assert isinstance(event.payload, dict)
+    event.payload[field] = value
+    with pytest.raises(ValueError, match=error):
+        run.unsettled_execution_admissions()
+    assert run.state == "planned" or run.state == "experimenting"
+
+
+def test_lab_legacy_recovery_rejects_lossy_tool_admission_fields() -> None:
+    run = LabRun("reject lossy legacy recovery")
+    execution_id, _ = run.admit_tool_execution(
+        tool_name="provider.primary",
+        input_payload={"task_hash": "a" * 64},
+        policy_payload={"policy": "bounded"},
+        effect_class="model_inference",
+        execution_id="lossy-legacy-tool-recovery",
+    )
+    run.tool_execution_admissions[execution_id]["lease_id"] = "1"
+    with pytest.raises(ValueError, match="integer metadata"):
+        run.reconcile_unsettled_tool_executions(operator_id="operator-1")
+    assert run.unsettled_tool_execution_ids() == (execution_id,)
+
+
 def test_lab_replay_reconciles_open_admissions_across_all_execution_lanes() -> None:
     """Recovery closes every admitted lane without inventing a success."""
 

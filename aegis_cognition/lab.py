@@ -6020,6 +6020,205 @@ class LabRun:
             raise ValueError("event cursor must be non-negative")
         return tuple(event for event in self.events if event.sequence > cursor)
 
+    def _validate_execution_admission_payload(
+        self,
+        admission_kind: str,
+        payload: dict[str, Any],
+    ) -> None:
+        """Validate recovery inputs before any lossy field access.
+
+        Recovery is an ambiguity boundary: admission payloads may be the only
+        durable description left after a crash.  Do not let ``str``/``int``
+        coercion turn a malformed prefix into a seemingly valid settlement.
+        The trust-policy field is an event-envelope concern and is therefore
+        intentionally allowed as an extra key.
+        """
+
+        if type(payload) is not dict or any(type(key) is not str for key in payload):
+            raise ValueError("execution admission payload metadata is invalid")
+
+        def required_strings(*fields: str) -> None:
+            if any(type(payload.get(field)) is not str or not payload[field].strip() for field in fields):
+                raise ValueError("execution admission string metadata is invalid")
+
+        def required_digest(*fields: str) -> None:
+            required_strings(*fields)
+            if any(not _is_digest(cast(str, payload[field])) for field in fields):
+                raise ValueError("execution admission digest metadata is invalid")
+
+        def positive_int(*fields: str) -> None:
+            if any(
+                type(payload.get(field)) is not int or payload[field] < 1
+                for field in fields
+            ):
+                raise ValueError("execution admission integer metadata is invalid")
+
+        def optional_digest(field: str) -> None:
+            if field in payload and (
+                type(payload[field]) is not str or not _is_digest(cast(str, payload[field]))
+            ):
+                raise ValueError("execution admission optional digest metadata is invalid")
+
+        def optional_timeout() -> None:
+            if "timeout_seconds" not in payload:
+                return
+            value = payload["timeout_seconds"]
+            if (
+                type(value) not in (int, float)
+                or isinstance(value, bool)
+                or not math.isfinite(float(value))
+                or float(value) <= 0
+            ):
+                raise ValueError("execution admission deadline metadata is invalid")
+
+        if admission_kind == "tool_execution_admitted":
+            required_strings(
+                "admission_id",
+                "execution_id",
+                "tool_name",
+                "effect_class",
+                "actor_role",
+                "expected_observation_schema",
+                "stop_rule",
+                "mission_id",
+                "replay_parent_hash",
+                "input_hash",
+                "policy_hash",
+                "status",
+            )
+            if payload["status"].upper() != "ADMITTED" or payload["actor_role"] not in {
+                "actor",
+                "observer",
+            }:
+                raise ValueError("execution admission status or role metadata is invalid")
+            if payload["mission_id"] != self.mission_id:
+                raise ValueError("execution admission mission metadata is invalid")
+            required_digest("replay_parent_hash", "input_hash", "policy_hash")
+            positive_int("lease_id", "attempt")
+            optional_digest("idempotency_key")
+            optional_timeout()
+            return
+
+        if admission_kind == "experiment_execution_admitted":
+            required_strings(
+                "admission_id",
+                "execution_id",
+                "experiment_id",
+                "mission_id",
+                "replay_parent_hash",
+                "input_hash",
+                "policy_hash",
+                "status",
+            )
+            if payload["status"].upper() != "ADMITTED" or payload["mission_id"] != self.mission_id:
+                raise ValueError("experiment execution admission metadata is invalid")
+            required_digest("replay_parent_hash", "input_hash", "policy_hash")
+            positive_int("attempt")
+            optional_digest("idempotency_key")
+            optional_timeout()
+            return
+
+        if admission_kind == "research_program_admitted":
+            required_strings("admission_id", "program_hash", "provider", "input_hash", "policy_hash", "status")
+            if payload["status"].upper() != "ADMITTED":
+                raise ValueError("research program admission status metadata is invalid")
+            required_digest("program_hash", "input_hash", "policy_hash")
+            positive_int("operation_count")
+            return
+
+        if admission_kind == "browser_action_admitted":
+            required_strings(
+                "admission_id",
+                "action_id",
+                "actor_role",
+                "action_kind",
+                "input_hash",
+                "policy_hash",
+                "status",
+            )
+            if (
+                payload["status"].upper() != "ADMITTED"
+                or payload["actor_role"] != "actor"
+                or payload["action_kind"].lower() not in _BROWSER_ACTION_KINDS
+            ):
+                raise ValueError("browser action admission metadata is invalid")
+            required_digest("input_hash", "policy_hash")
+            positive_int("lease_id")
+            return
+
+        if admission_kind == "browser_observation_admitted":
+            required_strings(
+                "admission_id",
+                "observation_id",
+                "observer_role",
+                "observation_kind",
+                "input_hash",
+                "policy_hash",
+                "status",
+            )
+            if (
+                payload["status"].upper() != "ADMITTED"
+                or payload["observer_role"] != "observer"
+                or payload["observation_kind"].lower() not in _BROWSER_OBSERVATION_KINDS
+            ):
+                raise ValueError("browser observation admission metadata is invalid")
+            required_digest("input_hash", "policy_hash")
+            positive_int("lease_id", "observation_count")
+            return
+
+        if admission_kind == "skill_admission_recorded":
+            required_strings(
+                "skill_id",
+                "version",
+                "manifest_hash",
+                "mission_id",
+                "replay_parent_hash",
+                "admission_hash",
+            )
+            if payload["mission_id"] != self.mission_id:
+                raise ValueError("skill admission mission metadata is invalid")
+            raw_capabilities = payload.get("granted_capabilities")
+            raw_preconditions = payload.get("precondition_results")
+            if type(raw_capabilities) not in (list, tuple) or type(raw_preconditions) not in (list, tuple):
+                raise ValueError("skill admission collection metadata is invalid")
+            capabilities = cast(list[Any] | tuple[Any, ...], raw_capabilities)
+            preconditions = cast(list[Any] | tuple[Any, ...], raw_preconditions)
+            if any(type(value) is not str or not value.strip() for value in capabilities) or any(
+                type(pair) not in (list, tuple)
+                or len(pair) != 2
+                or type(pair[0]) is not str
+                or not pair[0].strip()
+                or type(pair[1]) is not bool
+                for pair in preconditions
+            ):
+                raise ValueError("skill admission collection metadata is invalid")
+            if type(payload.get("mission_epoch")) is not int or payload["mission_epoch"] < 0:
+                raise ValueError("skill admission epoch metadata is invalid")
+            required_digest("manifest_hash", "replay_parent_hash", "admission_hash")
+            raw_event_hash = payload.get("admission_event_hash", "")
+            if type(raw_event_hash) is not str or raw_event_hash:
+                raise ValueError("skill admission event binding metadata is invalid")
+            try:
+                SkillAdmission(
+                    skill_id=cast(str, payload["skill_id"]),
+                    version=cast(str, payload["version"]),
+                    manifest_hash=cast(str, payload["manifest_hash"]),
+                    mission_id=cast(str, payload["mission_id"]),
+                    mission_epoch=cast(int, payload["mission_epoch"]),
+                    granted_capabilities=tuple(cast(str, value) for value in capabilities),
+                    precondition_results=tuple(
+                        (cast(str, pair[0]), cast(bool, pair[1])) for pair in preconditions
+                    ),
+                    replay_parent_hash=cast(str, payload["replay_parent_hash"]),
+                    admission_hash=cast(str, payload["admission_hash"]),
+                    admission_event_hash="",
+                ).validate_hash()
+            except (SkillAdmissionError, TypeError, ValueError) as exc:
+                raise ValueError("skill admission hash metadata is invalid") from exc
+            return
+
+        raise ValueError(f"unsupported execution admission lane: {admission_kind}")
+
     def unsettled_tool_execution_ids(self) -> tuple[str, ...]:
         """Return side-effect admissions that have no durable settlement.
 
@@ -6078,14 +6277,19 @@ class LabRun:
                     if type(raw_identity) is not str:
                         raise ValueError("execution admission identity metadata is invalid")
                     identity = raw_identity.strip()
+                    if not identity:
+                        raise ValueError("execution admission identity metadata is invalid")
                     raw_status = payload.get("status", "ADMITTED")
                     if type(raw_status) is not str:
                         raise ValueError("execution admission status metadata is invalid")
-                    if identity and (
+                    if (
                         admission_kind == "skill_admission_recorded"
                         or raw_status.upper() == "ADMITTED"
                     ):
+                        self._validate_execution_admission_payload(admission_kind, payload)
                         admissions[(admission_kind, identity)] = dict(payload)
+                    else:
+                        raise ValueError("execution admission status metadata is invalid")
                     break
                 if event.kind == record_kind:
                     raw_identity = payload.get(identity_key, "")
@@ -6142,77 +6346,79 @@ class LabRun:
             try:
                 if admission_kind == "tool_execution_admitted":
                     self.record_tool_execution(
-                        tool_name=str(admission["tool_name"]),
+                        tool_name=cast(str, admission["tool_name"]),
                         execution_id=identity,
-                        admission_id=str(admission["admission_id"]),
+                        admission_id=cast(str, admission["admission_id"]),
                         input_payload={},
                         policy_payload={},
                         result=recovery_result,
-                        effect_class=str(admission["effect_class"]),
-                        actor_role=str(admission["actor_role"]),
-                        expected_observation_schema=str(admission["expected_observation_schema"]),
-                        stop_rule=str(admission["stop_rule"]),
-                        lease_id=int(admission["lease_id"]),
-                        attempt=int(admission["attempt"]),
+                        effect_class=cast(str, admission["effect_class"]),
+                        actor_role=cast(str, admission["actor_role"]),
+                        expected_observation_schema=cast(
+                            str, admission["expected_observation_schema"]
+                        ),
+                        stop_rule=cast(str, admission["stop_rule"]),
+                        lease_id=cast(int, admission["lease_id"]),
+                        attempt=cast(int, admission["attempt"]),
                         status="REJECTED",
-                        input_hash=str(admission["input_hash"]),
-                        policy_hash=str(admission["policy_hash"]),
+                        input_hash=cast(str, admission["input_hash"]),
+                        policy_hash=cast(str, admission["policy_hash"]),
                         idempotency_key=cast(str | None, admission.get("idempotency_key")),
                         timeout_seconds=cast(float | None, admission.get("timeout_seconds")),
                     )
                 elif admission_kind == "experiment_execution_admitted":
                     self.record_experiment_execution(
-                        experiment_id=str(admission["experiment_id"]),
-                        attempt=int(admission["attempt"]),
+                        experiment_id=cast(str, admission["experiment_id"]),
+                        attempt=cast(int, admission["attempt"]),
                         execution_id=identity,
-                        admission_id=str(admission["admission_id"]),
+                        admission_id=cast(str, admission["admission_id"]),
                         input_payload={},
                         policy_payload={},
                         result=recovery_result,
                         observation_count=0,
                         status="REJECTED",
-                        input_hash=str(admission["input_hash"]),
-                        policy_hash=str(admission["policy_hash"]),
+                        input_hash=cast(str, admission["input_hash"]),
+                        policy_hash=cast(str, admission["policy_hash"]),
                         idempotency_key=cast(str | None, admission.get("idempotency_key")),
                         timeout_seconds=cast(float | None, admission.get("timeout_seconds")),
                     )
                 elif admission_kind == "research_program_admitted":
                     self.record_research_program(
-                        program_hash=str(admission["program_hash"]),
-                        operation_count=int(admission["operation_count"]),
+                        program_hash=cast(str, admission["program_hash"]),
+                        operation_count=cast(int, admission["operation_count"]),
                         candidate_count=0,
-                        provider=str(admission["provider"]),
-                        admission_id=str(admission["admission_id"]),
+                        provider=cast(str, admission["provider"]),
+                        admission_id=cast(str, admission["admission_id"]),
                         status="REJECTED",
-                        input_hash=str(admission["input_hash"]),
-                        policy_hash=str(admission["policy_hash"]),
+                        input_hash=cast(str, admission["input_hash"]),
+                        policy_hash=cast(str, admission["policy_hash"]),
                     )
                 elif admission_kind == "browser_action_admitted":
                     self.record_browser_action(
                         action_id=identity,
-                        admission_id=str(admission["admission_id"]),
-                        action_kind=str(admission["action_kind"]),
+                        admission_id=cast(str, admission["admission_id"]),
+                        action_kind=cast(str, admission["action_kind"]),
                         action={},
                         result=recovery_result,
                         policy=BrowserCellPolicy(),
-                        lease_id=int(admission["lease_id"]),
+                        lease_id=cast(int, admission["lease_id"]),
                         status="REJECTED",
-                        input_hash=str(admission["input_hash"]),
-                        policy_hash=str(admission["policy_hash"]),
+                        input_hash=cast(str, admission["input_hash"]),
+                        policy_hash=cast(str, admission["policy_hash"]),
                     )
                 elif admission_kind == "browser_observation_admitted":
                     self.record_browser_observation(
-                        observation_kind=str(admission["observation_kind"]),
+                        observation_kind=cast(str, admission["observation_kind"]),
                         action={},
                         result=recovery_result,
                         policy=BrowserCellPolicy(),
-                        lease_id=int(admission["lease_id"]),
-                        observation_count=int(admission["observation_count"]),
-                        admission_id=str(admission["admission_id"]),
+                        lease_id=cast(int, admission["lease_id"]),
+                        observation_count=cast(int, admission["observation_count"]),
+                        admission_id=cast(str, admission["admission_id"]),
                         observation_id=identity,
                         status="REJECTED",
-                        input_hash=str(admission["input_hash"]),
-                        policy_hash=str(admission["policy_hash"]),
+                        input_hash=cast(str, admission["input_hash"]),
+                        policy_hash=cast(str, admission["policy_hash"]),
                     )
                 elif admission_kind == "skill_admission_recorded":
                     skill_admission = self.skill_admissions.get(identity)
@@ -6308,6 +6514,7 @@ class LabRun:
             self.transition("blocked")
         for execution_id in unsettled:
             admission = self.tool_execution_admissions[execution_id]
+            self._validate_execution_admission_payload("tool_execution_admitted", admission)
             result = {
                 "schema": "aegis-tool-recovery-result-v1",
                 "status": "UNKNOWN_SIDE_EFFECT",
@@ -6315,21 +6522,23 @@ class LabRun:
                 "operator_hash": _hash(normalized_operator),
             }
             self.record_tool_execution(
-                tool_name=str(admission["tool_name"]),
+                tool_name=cast(str, admission["tool_name"]),
                 execution_id=execution_id,
-                admission_id=str(admission["admission_id"]),
+                admission_id=cast(str, admission["admission_id"]),
                 input_payload={},
                 policy_payload={},
                 result=result,
-                effect_class=str(admission["effect_class"]),
-                actor_role=str(admission["actor_role"]),
-                expected_observation_schema=str(admission["expected_observation_schema"]),
-                stop_rule=str(admission["stop_rule"]),
-                lease_id=int(admission["lease_id"]),
-                attempt=int(admission["attempt"]),
+                effect_class=cast(str, admission["effect_class"]),
+                actor_role=cast(str, admission["actor_role"]),
+                expected_observation_schema=cast(
+                    str, admission["expected_observation_schema"]
+                ),
+                stop_rule=cast(str, admission["stop_rule"]),
+                lease_id=cast(int, admission["lease_id"]),
+                attempt=cast(int, admission["attempt"]),
                 status="CANCELLED" if self.state == "aborted" else "REJECTED",
-                input_hash=str(admission["input_hash"]),
-                policy_hash=str(admission["policy_hash"]),
+                input_hash=cast(str, admission["input_hash"]),
+                policy_hash=cast(str, admission["policy_hash"]),
                 idempotency_key=cast(str | None, admission.get("idempotency_key")),
                 timeout_seconds=cast(float | None, admission.get("timeout_seconds")),
             )
@@ -7271,6 +7480,8 @@ class LabRun:
             if not isinstance(payload, dict):
                 raise ValueError(f"invalid {label} event payload in lab snapshot")
             typed_payload = cast(dict[str, Any], cast(Any, payload))
+            if is_admission and admission_kind != "cancellation_admitted":
+                self._validate_execution_admission_payload(admission_kind, typed_payload)
             raw_identity = typed_payload.get(identity_key)
             if type(raw_identity) is not str:
                 raise ValueError(f"invalid {label} event identity in lab snapshot")
