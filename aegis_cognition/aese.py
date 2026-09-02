@@ -1,0 +1,800 @@
+"""Deterministic AESE measurement and model primitives.
+
+The objects in this module are deliberately evidence-conservative.  Adaptive
+measurement never drops malformed observations, hardware/workload vectors keep
+unknown fields explicit, simulation is never labelled as observation, and
+cross-hardware prediction refuses missing or out-of-domain inputs.
+"""
+
+from __future__ import annotations
+
+import hashlib
+import json
+import math
+import statistics
+from dataclasses import asdict, dataclass
+from statistics import NormalDist
+from typing import Final, cast
+from collections.abc import Mapping, Sequence
+
+
+MEASUREMENT_STATUSES: Final[frozenset[str]] = frozenset(
+    {"PASS", "FAIL", "CONTINUE", "UNSTABLE", "CONTAMINATED", "INSUFFICIENT_EVIDENCE"}
+)
+REGIMES: Final[frozenset[str]] = frozenset(
+    {
+        "COMPUTE_BOUND",
+        "MEMORY_BANDWIDTH_BOUND",
+        "MEMORY_CAPACITY_BOUND",
+        "CACHE_BOUND",
+        "STORAGE_BOUND",
+        "DURABILITY_BOUND",
+        "SYNC_BOUND",
+        "NETWORK_BOUND",
+        "MIXED",
+        "UNKNOWN",
+    }
+)
+SIMULATION_CLASSES: Final[frozenset[str]] = frozenset(
+    {
+        "ANALYTIC_MODEL",
+        "ABSTRACT_STATE_SIMULATOR",
+        "FAULT_SIMULATOR",
+        "SYSTEMATIC_CONCURRENCY_EXPLORATION",
+        "FORMAL_PROOF",
+        "EMULATION",
+        "DETAILED_ARCHITECTURE_SIMULATION",
+    }
+)
+_HARDWARE_TEXT_FIELDS: Final[tuple[str, ...]] = (
+    "architecture",
+    "storage_kind",
+    "os_name",
+    "kernel",
+    "virtualization",
+    "pressure",
+)
+_HARDWARE_INT_FIELDS: Final[tuple[str, ...]] = (
+    "physical_cores",
+    "logical_cores",
+    "cache_bytes",
+    "memory_capacity_bytes",
+)
+_HARDWARE_FLOAT_FIELDS: Final[tuple[str, ...]] = (
+    "frequency_hz",
+    "memory_bandwidth_bytes_s",
+    "memory_latency_ns",
+    "fsync_latency_ns",
+    "process_startup_ns",
+    "ffi_latency_ns",
+    "serialization_bytes_s",
+)
+_WORKLOAD_INT_FIELDS: Final[tuple[str, ...]] = ("working_set_bytes",)
+_WORKLOAD_INTENSITY_FIELDS: Final[tuple[str, ...]] = (
+    "compute_intensity",
+    "memory_intensity",
+    "cache_sensitivity",
+    "io_intensity",
+    "durability_intensity",
+    "process_startup_intensity",
+    "serialization_intensity",
+    "ffi_intensity",
+    "parallelism",
+    "contention",
+    "network_intensity",
+    "external_service_dependence",
+)
+_SCHEMA_VERSION: Final[str] = "aegis-aese-primitives-v1"
+
+
+def _is_finite(value: object) -> bool:
+    if type(value) not in (int, float) or isinstance(value, bool):
+        return False
+    return math.isfinite(float(cast(int | float, value)))
+
+
+def _hash(value: object) -> str:
+    encoded = json.dumps(value, sort_keys=True, separators=(",", ":"), default=str).encode("utf-8")
+    return hashlib.sha256(encoded).hexdigest()
+
+
+def _invalid_string(value: object) -> bool:
+    return not isinstance(value, str) or not value.strip()
+
+
+def _normal_critical(alpha: float, degrees_of_freedom: int) -> float:
+    """Return a conservative Student-t critical approximation.
+
+    The Cornish-Fisher expansion is deterministic and avoids adding a numeric
+    dependency to the runtime.  The result is intentionally recorded as an
+    approximate interval method; it is not a substitute for external
+    calibration or independent replication.
+    """
+
+    z = NormalDist().inv_cdf(1.0 - alpha / 2.0)
+    if degrees_of_freedom <= 0:
+        return math.inf
+    inverse = 1.0 / degrees_of_freedom
+    z2 = z * z
+    z3 = z2 * z
+    z5 = z3 * z2
+    z7 = z5 * z2
+    return (
+        z
+        + (z3 + z) * inverse / 4.0
+        + (5.0 * z5 + 16.0 * z3 + 3.0 * z) * inverse**2 / 96.0
+        + (3.0 * z7 + 19.0 * z5 + 17.0 * z3 - 15.0 * z) * inverse**3 / 384.0
+    )
+
+
+def _lag_one(values: Sequence[float]) -> float | None:
+    if len(values) < 3:
+        return None
+    first = values[:-1]
+    second = values[1:]
+    first_mean = statistics.fmean(first)
+    second_mean = statistics.fmean(second)
+    first_dev = [value - first_mean for value in first]
+    second_dev = [value - second_mean for value in second]
+    denominator = math.sqrt(sum(value * value for value in first_dev) * sum(value * value for value in second_dev))
+    if denominator == 0.0:
+        return 0.0
+    return sum(left * right for left, right in zip(first_dev, second_dev, strict=True)) / denominator
+
+
+def _drift_ratio(values: Sequence[float]) -> float | None:
+    if len(values) < 4:
+        return None
+    midpoint = len(values) // 2
+    left = statistics.fmean(values[:midpoint])
+    right = statistics.fmean(values[midpoint:])
+    scale = max(abs(statistics.fmean(values)), 1e-12)
+    return abs(right - left) / scale
+
+
+@dataclass(frozen=True)
+class AdaptiveMeasurementSpec:
+    """Pre-registered stopping rule for one scalar benchmark estimand."""
+
+    metric: str
+    estimand: str = "mean"
+    direction: str = "lower_is_better"
+    alpha: float = 0.05
+    warmup_count: int = 10
+    min_observations: int = 30
+    block_size: int = 1
+    max_observations: int = 300
+    relative_precision: float = 0.05
+    absolute_precision: float | None = None
+    max_lag1_autocorrelation: float = 0.2
+    max_drift_ratio: float = 0.1
+
+    def validate(self) -> None:
+        if _invalid_string(self.metric) or self.estimand != "mean":
+            raise ValueError("AESE currently requires a named mean estimand")
+        if self.direction not in {"higher_is_better", "lower_is_better"}:
+            raise ValueError("measurement direction must be explicit")
+        if not _is_finite(self.alpha) or not 0.0 < float(self.alpha) < 0.5:
+            raise ValueError("measurement alpha must be in (0, 0.5)")
+        if (
+            type(self.warmup_count) is not int
+            or type(self.min_observations) is not int
+            or type(self.block_size) is not int
+            or type(self.max_observations) is not int
+            or self.warmup_count < 0
+            or self.min_observations < 30
+            or self.block_size < 1
+            or self.block_size > self.min_observations // 3
+            or self.max_observations < self.min_observations
+        ):
+            raise ValueError("measurement sample floors or block size are invalid")
+        for name, value in (
+            ("relative_precision", self.relative_precision),
+            ("max_lag1_autocorrelation", self.max_lag1_autocorrelation),
+            ("max_drift_ratio", self.max_drift_ratio),
+        ):
+            if not _is_finite(value) or float(value) <= 0.0 or float(value) >= 1.0:
+                raise ValueError(f"{name} must be finite and in (0, 1)")
+        if self.absolute_precision is not None and (
+            not _is_finite(self.absolute_precision) or float(self.absolute_precision) <= 0.0
+        ):
+            raise ValueError("absolute precision must be finite and positive")
+
+    @property
+    def protocol_hash(self) -> str:
+        self.validate()
+        return _hash({"schema": f"{_SCHEMA_VERSION}-measurement-spec", **asdict(self)})
+
+
+@dataclass(frozen=True)
+class AdaptiveMeasurementResult:
+    protocol_hash: str
+    status: str
+    metric: str
+    estimand: str
+    estimate: float | None
+    ci_low: float | None
+    ci_high: float | None
+    precision_ratio: float | None
+    lag1_autocorrelation: float | None
+    drift_ratio: float | None
+    raw_observation_count: int
+    observation_count: int
+    block_count: int
+    warmup_count: int
+    raw_observation_hash: str
+    contamination_flags: tuple[str, ...]
+    failure_reasons: tuple[str, ...]
+    interval_method: str = "student_t_cornish_fisher_v1"
+    artifact_hash: str = ""
+
+
+def evaluate_adaptive_measurement(
+    spec: AdaptiveMeasurementSpec,
+    observations: Sequence[object],
+    *,
+    warmups: Sequence[object] = (),
+    baseline: float | None = None,
+    contamination_flags: Sequence[object] = (),
+) -> AdaptiveMeasurementResult:
+    """Evaluate one sequential checkpoint without peeking or silent filtering."""
+
+    protocol_hash = _hash({"schema": f"{_SCHEMA_VERSION}-measurement-spec", **asdict(spec)})
+    try:
+        raw_observations = tuple(observations)
+    except TypeError:
+        raw_observations = ()
+    try:
+        raw_warmups = tuple(warmups)
+    except TypeError:
+        raw_warmups = ()
+    reasons: list[str] = []
+    try:
+        raw_flags = tuple(contamination_flags)
+    except TypeError:
+        raw_flags = ()
+    flags = tuple(flag for flag in raw_flags if isinstance(flag, str))
+    try:
+        spec.validate()
+    except (TypeError, ValueError, AttributeError) as exc:
+        reasons.append(f"protocol_invalid:{type(exc).__name__}")
+    if (
+        type(contamination_flags) not in (list, tuple)
+        or len(flags) != len(raw_flags)
+        or any(_invalid_string(flag) for flag in flags)
+    ):
+        reasons.append("contamination_flags_invalid")
+        flags = ()
+    if flags:
+        reasons.append("contamination_detected")
+    finite_warmups = [float(cast(int | float, value)) for value in raw_warmups if _is_finite(value)]
+    finite_observations = [float(cast(int | float, value)) for value in raw_observations if _is_finite(value)]
+    if len(finite_warmups) != len(raw_warmups) or len(finite_observations) != len(raw_observations):
+        reasons.append("non_finite_observation")
+    if len(finite_warmups) < max(0, spec.warmup_count):
+        reasons.append("insufficient_warmups")
+    maximum = spec.max_observations if type(spec.max_observations) is int and spec.max_observations > 0 else 0
+    analyzed = finite_observations[:maximum] if maximum else []
+    if len(finite_observations) > len(analyzed):
+        reasons.append("observation_budget_exceeded")
+    if len(analyzed) < max(0, spec.min_observations):
+        reasons.append("insufficient_observations")
+    block_size = spec.block_size if type(spec.block_size) is int and spec.block_size > 0 else 1
+    complete_count = len(analyzed) - (len(analyzed) % block_size)
+    if complete_count != len(analyzed):
+        reasons.append("incomplete_final_block")
+    values = analyzed[:complete_count]
+    block_means = [statistics.fmean(values[index : index + block_size]) for index in range(0, len(values), block_size)]
+    block_count = len(block_means)
+    lag = _lag_one(block_means)
+    drift = _drift_ratio(block_means)
+    if (
+        lag is not None
+        and _is_finite(spec.max_lag1_autocorrelation)
+        and abs(lag) > float(spec.max_lag1_autocorrelation)
+    ):
+        reasons.append("autocorrelation_exceeds_bound")
+    if drift is not None and _is_finite(spec.max_drift_ratio) and drift > float(spec.max_drift_ratio):
+        reasons.append("drift_exceeds_bound")
+    estimate: float | None = statistics.fmean(block_means) if block_means else None
+    ci_low: float | None = None
+    ci_high: float | None = None
+    precision_ratio: float | None = None
+    if estimate is not None and block_count > 1:
+        standard_error = statistics.stdev(block_means) / math.sqrt(block_count)
+        margin = _normal_critical(float(spec.alpha), block_count - 1) * standard_error
+        ci_low, ci_high = estimate - margin, estimate + margin
+        precision_ratio = margin / max(abs(estimate), 1e-12)
+    elif estimate is not None:
+        ci_low = ci_high = estimate
+        precision_ratio = 0.0
+    if baseline is not None and not _is_finite(baseline):
+        reasons.append("baseline_invalid")
+        baseline = None
+    stable = not any(reason in reasons for reason in ("autocorrelation_exceeds_bound", "drift_exceeds_bound"))
+    floor_met = len(finite_warmups) >= max(0, spec.warmup_count) and len(values) >= max(0, spec.min_observations)
+    precision_met = precision_ratio is not None and precision_ratio <= float(spec.relative_precision)
+    if spec.absolute_precision is not None and ci_low is not None and ci_high is not None:
+        precision_met = precision_met and (ci_high - ci_low) / 2.0 <= float(spec.absolute_precision)
+    if floor_met and not precision_met:
+        reasons.append("precision_not_met")
+    if floor_met and baseline is not None and ci_low is not None and ci_high is not None:
+        if spec.direction == "higher_is_better" and ci_low <= float(baseline):
+            reasons.append("confidence_interval_does_not_clear_baseline")
+        if spec.direction == "lower_is_better" and ci_high >= float(baseline):
+            reasons.append("confidence_interval_does_not_clear_baseline")
+    if "contamination_detected" in reasons or "non_finite_observation" in reasons:
+        status = "CONTAMINATED"
+    elif "autocorrelation_exceeds_bound" in reasons or "drift_exceeds_bound" in reasons:
+        status = "UNSTABLE"
+    elif floor_met and stable and precision_met and "confidence_interval_does_not_clear_baseline" in reasons:
+        status = "FAIL"
+    elif floor_met and stable and precision_met:
+        status = "PASS"
+    elif "protocol_invalid" in " ".join(reasons) or len(finite_observations) >= maximum > 0:
+        status = "INSUFFICIENT_EVIDENCE"
+    else:
+        status = "CONTINUE"
+    raw_hash = _hash({"warmups": raw_warmups, "observations": raw_observations})
+    result_without_hash = {
+        "schema": f"{_SCHEMA_VERSION}-measurement-result",
+        "protocol_hash": protocol_hash,
+        "status": status,
+        "metric": spec.metric,
+        "estimate": estimate,
+        "ci_low": ci_low,
+        "ci_high": ci_high,
+        "precision_ratio": precision_ratio,
+        "lag1_autocorrelation": lag,
+        "drift_ratio": drift,
+        "raw_observation_count": len(raw_observations),
+        "observation_count": len(values),
+        "block_count": block_count,
+        "warmup_count": len(raw_warmups),
+        "raw_observation_hash": raw_hash,
+        "contamination_flags": flags,
+        "failure_reasons": tuple(dict.fromkeys(reasons)),
+    }
+    artifact_hash = _hash(result_without_hash)
+    return AdaptiveMeasurementResult(
+        protocol_hash=protocol_hash,
+        status=status,
+        metric=spec.metric,
+        estimand=spec.estimand,
+        estimate=estimate,
+        ci_low=ci_low,
+        ci_high=ci_high,
+        precision_ratio=precision_ratio,
+        lag1_autocorrelation=lag,
+        drift_ratio=drift,
+        raw_observation_count=len(raw_observations),
+        observation_count=len(values),
+        block_count=block_count,
+        warmup_count=len(raw_warmups),
+        raw_observation_hash=raw_hash,
+        contamination_flags=flags,
+        failure_reasons=tuple(dict.fromkeys(reasons)),
+        artifact_hash=artifact_hash,
+    )
+
+
+@dataclass(frozen=True)
+class HardwareCapabilityVector:
+    """Versioned host capability vector; ``None`` serializes as ``UNKNOWN``."""
+
+    architecture: str | None = None
+    physical_cores: int | None = None
+    logical_cores: int | None = None
+    cache_bytes: int | None = None
+    frequency_hz: float | None = None
+    memory_capacity_bytes: int | None = None
+    memory_bandwidth_bytes_s: float | None = None
+    memory_latency_ns: float | None = None
+    storage_kind: str | None = None
+    fsync_latency_ns: float | None = None
+    process_startup_ns: float | None = None
+    ffi_latency_ns: float | None = None
+    serialization_bytes_s: float | None = None
+    os_name: str | None = None
+    kernel: str | None = None
+    virtualization: str | None = None
+    pressure: str | None = None
+
+    def validate(self) -> None:
+        for name in _HARDWARE_TEXT_FIELDS:
+            value = getattr(self, name)
+            if value is not None and _invalid_string(value):
+                raise ValueError(f"hardware field {name} must be a non-empty string or UNKNOWN")
+        for name in _HARDWARE_INT_FIELDS:
+            value = getattr(self, name)
+            if value is not None and (type(value) is not int or value < 0):
+                raise ValueError(f"hardware field {name} must be a non-negative integer or UNKNOWN")
+        for name in _HARDWARE_FLOAT_FIELDS:
+            value = getattr(self, name)
+            if value is not None and (not _is_finite(value) or float(value) < 0.0):
+                raise ValueError(f"hardware field {name} must be a non-negative finite number or UNKNOWN")
+        if (
+            self.logical_cores is not None
+            and self.physical_cores is not None
+            and self.logical_cores < self.physical_cores
+        ):
+            raise ValueError("logical cores cannot be below physical cores")
+
+    def as_dict(self) -> dict[str, object]:
+        self.validate()
+        return {
+            "schema": f"{_SCHEMA_VERSION}-hardware",
+            "values": {name: "UNKNOWN" if value is None else value for name, value in asdict(self).items()},
+            "unknown_fields": [name for name, value in asdict(self).items() if value is None],
+        }
+
+    @property
+    def vector_hash(self) -> str:
+        return _hash(self.as_dict())
+
+    def numeric_features(self) -> dict[str, float]:
+        self.validate()
+        return {
+            f"hardware.{name}": float(value)
+            for name, value in asdict(self).items()
+            if name not in _HARDWARE_TEXT_FIELDS and value is not None
+        }
+
+    @classmethod
+    def from_mapping(cls, values: Mapping[str, object]) -> HardwareCapabilityVector:
+        allowed = set(_HARDWARE_TEXT_FIELDS) | set(_HARDWARE_INT_FIELDS) | set(_HARDWARE_FLOAT_FIELDS)
+        unknown = set(values) - allowed
+        if unknown:
+            raise ValueError(f"unknown hardware fields: {sorted(unknown)}")
+        vector = cls(
+            architecture=cast(str | None, values.get("architecture")),
+            physical_cores=cast(int | None, values.get("physical_cores")),
+            logical_cores=cast(int | None, values.get("logical_cores")),
+            cache_bytes=cast(int | None, values.get("cache_bytes")),
+            frequency_hz=cast(float | None, values.get("frequency_hz")),
+            memory_capacity_bytes=cast(int | None, values.get("memory_capacity_bytes")),
+            memory_bandwidth_bytes_s=cast(float | None, values.get("memory_bandwidth_bytes_s")),
+            memory_latency_ns=cast(float | None, values.get("memory_latency_ns")),
+            storage_kind=cast(str | None, values.get("storage_kind")),
+            fsync_latency_ns=cast(float | None, values.get("fsync_latency_ns")),
+            process_startup_ns=cast(float | None, values.get("process_startup_ns")),
+            ffi_latency_ns=cast(float | None, values.get("ffi_latency_ns")),
+            serialization_bytes_s=cast(float | None, values.get("serialization_bytes_s")),
+            os_name=cast(str | None, values.get("os_name")),
+            kernel=cast(str | None, values.get("kernel")),
+            virtualization=cast(str | None, values.get("virtualization")),
+            pressure=cast(str | None, values.get("pressure")),
+        )
+        vector.validate()
+        return vector
+
+
+@dataclass(frozen=True)
+class WorkloadSignature:
+    """Normalized workload shape used to select a scaling regime."""
+
+    compute_intensity: float | None = None
+    memory_intensity: float | None = None
+    working_set_bytes: int | None = None
+    cache_sensitivity: float | None = None
+    io_intensity: float | None = None
+    durability_intensity: float | None = None
+    process_startup_intensity: float | None = None
+    serialization_intensity: float | None = None
+    ffi_intensity: float | None = None
+    parallelism: float | None = None
+    contention: float | None = None
+    network_intensity: float | None = None
+    external_service_dependence: float | None = None
+
+    def validate(self) -> None:
+        if self.working_set_bytes is not None and (
+            type(self.working_set_bytes) is not int or self.working_set_bytes < 0
+        ):
+            raise ValueError("working_set_bytes must be a non-negative integer or UNKNOWN")
+        for name in _WORKLOAD_INTENSITY_FIELDS:
+            value = getattr(self, name)
+            if value is not None and (not _is_finite(value) or not 0.0 <= float(value) <= 1.0):
+                raise ValueError(f"workload intensity {name} must be in [0, 1] or UNKNOWN")
+
+    def as_dict(self) -> dict[str, object]:
+        self.validate()
+        values = asdict(self)
+        return {
+            "schema": f"{_SCHEMA_VERSION}-workload",
+            "values": {name: "UNKNOWN" if value is None else value for name, value in values.items()},
+            "regime": self.classify_regime(),
+        }
+
+    @property
+    def signature_hash(self) -> str:
+        return _hash(self.as_dict())
+
+    def numeric_features(self) -> dict[str, float]:
+        self.validate()
+        return {f"workload.{name}": float(value) for name, value in asdict(self).items() if value is not None}
+
+    def classify_regime(self, hardware: HardwareCapabilityVector | None = None) -> str:
+        self.validate()
+        values = asdict(self)
+        known = [value for value in values.values() if value is not None]
+        if len(known) < 2:
+            return "UNKNOWN"
+        if (self.external_service_dependence or 0.0) >= 0.7 or (self.network_intensity or 0.0) >= 0.7:
+            return "NETWORK_BOUND"
+        if (self.durability_intensity or 0.0) >= 0.7 and (self.io_intensity or 0.0) >= 0.4:
+            return "DURABILITY_BOUND"
+        if (self.contention or 0.0) >= 0.7:
+            return "SYNC_BOUND"
+        if (
+            self.working_set_bytes is not None
+            and hardware is not None
+            and hardware.memory_capacity_bytes is not None
+            and self.working_set_bytes > hardware.memory_capacity_bytes
+        ):
+            return "MEMORY_CAPACITY_BOUND"
+        if (self.io_intensity or 0.0) >= 0.7:
+            return "STORAGE_BOUND"
+        if (self.cache_sensitivity or 0.0) >= 0.7:
+            return "CACHE_BOUND"
+        if (self.memory_intensity or 0.0) >= 0.7:
+            return "MEMORY_BANDWIDTH_BOUND"
+        if (self.compute_intensity or 0.0) >= 0.7:
+            return "COMPUTE_BOUND"
+        return "MIXED"
+
+
+@dataclass(frozen=True)
+class SimulationEvidence:
+    """Simulation output whose epistemic class cannot become an observation."""
+
+    simulation_id: str
+    simulation_class: str
+    question: str
+    inputs: tuple[str, ...]
+    outputs: tuple[str, ...]
+    status: str = "SIMULATION_ONLY"
+    evidence_class: str = "SIMULATED"
+
+    def validate(self) -> None:
+        if _invalid_string(self.simulation_id) or self.simulation_class not in SIMULATION_CLASSES:
+            raise ValueError("simulation identity or class is invalid")
+        if (
+            _invalid_string(self.question)
+            or type(self.inputs) not in (tuple, list)
+            or type(self.outputs) not in (tuple, list)
+        ):
+            raise ValueError("simulation question and I/O declarations are required")
+        if any(_invalid_string(value) for value in (*self.inputs, *self.outputs)):
+            raise ValueError("simulation I/O declarations must be non-empty strings")
+        if self.status != "SIMULATION_ONLY" or self.evidence_class != "SIMULATED":
+            raise ValueError("simulation evidence cannot be promoted to observation")
+
+    def as_dict(self) -> dict[str, object]:
+        self.validate()
+        return {"schema": f"{_SCHEMA_VERSION}-simulation", **asdict(self), "claimable_as_observed": False}
+
+
+@dataclass(frozen=True)
+class AnchorObservation:
+    anchor_id: str
+    hardware: HardwareCapabilityVector
+    workload: WorkloadSignature
+    observed_value: float
+
+    def validate(self) -> None:
+        if _invalid_string(self.anchor_id) or not _is_finite(self.observed_value):
+            raise ValueError("anchor identity and observed value are required")
+        self.hardware.validate()
+        self.workload.validate()
+
+    def features(self) -> dict[str, float]:
+        self.validate()
+        return {**self.hardware.numeric_features(), **self.workload.numeric_features()}
+
+
+@dataclass(frozen=True)
+class AnalyticPredictionModel:
+    """Preregistered analytic model with measured residual uncertainty."""
+
+    model_id: str
+    model_version: str
+    metric: str
+    intercept: float
+    coefficients: tuple[tuple[str, float], ...]
+    validated_domain: tuple[tuple[str, float, float], ...]
+    residual_half_width: float | None
+    residual_sample_count: int
+    distance_penalty_per_unit: float = 0.0
+    residual_evidence_class: str = "NOT_VERIFIED"
+
+    def validate(self) -> None:
+        if any(_invalid_string(value) for value in (self.model_id, self.model_version, self.metric)):
+            raise ValueError("prediction model identity is required")
+        if (
+            not _is_finite(self.intercept)
+            or type(self.residual_sample_count) is not int
+            or self.residual_sample_count < 0
+        ):
+            raise ValueError("prediction model numeric metadata is invalid")
+        if self.residual_half_width is not None and (
+            not _is_finite(self.residual_half_width) or float(self.residual_half_width) <= 0.0
+        ):
+            raise ValueError("residual half-width must be finite and positive")
+        if self.residual_evidence_class not in {"MEASURED", "NOT_VERIFIED"}:
+            raise ValueError("residual evidence class is invalid")
+        if not _is_finite(self.distance_penalty_per_unit) or self.distance_penalty_per_unit < 0.0:
+            raise ValueError("distance penalty must be finite and non-negative")
+        coefficient_names = [
+            name for name, value in self.coefficients if not _invalid_string(name) and _is_finite(value)
+        ]
+        if len(coefficient_names) != len(self.coefficients) or len(set(coefficient_names)) != len(coefficient_names):
+            raise ValueError("prediction coefficients must have unique finite names")
+        domains = {name: (lower, upper) for name, lower, upper in self.validated_domain}
+        if (
+            len(domains) != len(self.validated_domain)
+            or set(domains) != set(coefficient_names)
+            or any(not _is_finite(lower) or not _is_finite(upper) or lower > upper for lower, upper in domains.values())
+        ):
+            raise ValueError("validated domain must cover every model feature")
+
+
+@dataclass(frozen=True)
+class PredictionResult:
+    model_id: str
+    model_version: str
+    metric: str
+    status: str
+    estimate: float | None
+    prediction_interval: tuple[float, float] | None
+    validated_domain: tuple[tuple[str, float, float], ...]
+    nearest_anchor_distance: float | None
+    ood_status: str
+    missing_features: tuple[str, ...]
+    failure_reasons: tuple[str, ...]
+    artifact_hash: str
+
+
+def predict_cross_hardware(
+    model: AnalyticPredictionModel,
+    hardware: HardwareCapabilityVector,
+    workload: WorkloadSignature,
+    anchors: Sequence[AnchorObservation],
+) -> PredictionResult:
+    """Predict only inside a measured model domain with reconstructible metadata."""
+
+    reasons: list[str] = []
+    try:
+        model.validate()
+        hardware.validate()
+        workload.validate()
+    except (TypeError, ValueError, AttributeError) as exc:
+        reasons.append(f"input_invalid:{type(exc).__name__}")
+    features = {**hardware.numeric_features(), **workload.numeric_features()}
+    coefficient_names = tuple(name for name, _value in model.coefficients)
+    missing = tuple(sorted(name for name in coefficient_names if name not in features))
+    domains = {name: (lower, upper) for name, lower, upper in model.validated_domain}
+    outside = tuple(
+        sorted(
+            name
+            for name in coefficient_names
+            if name in features and (features[name] < domains[name][0] or features[name] > domains[name][1])
+        )
+    )
+    valid_anchors: list[tuple[AnchorObservation, dict[str, float]]] = []
+    for anchor in anchors:
+        try:
+            anchor_features = anchor.features()
+        except TypeError, ValueError, AttributeError:
+            continue
+        if all(name in anchor_features for name in coefficient_names):
+            valid_anchors.append((anchor, anchor_features))
+    nearest: float | None = None
+    if not missing and valid_anchors:
+        distances: list[float] = []
+        for _anchor, anchor_features in valid_anchors:
+            distance = math.sqrt(
+                sum(
+                    ((features[name] - anchor_features[name]) / max(domains[name][1] - domains[name][0], 1e-12)) ** 2
+                    for name in coefficient_names
+                )
+            )
+            distances.append(distance)
+        nearest = min(distances)
+    if reasons:
+        status = "INSUFFICIENT_EVIDENCE"
+        ood = "UNKNOWN"
+    elif missing:
+        reasons.append("missing_feature")
+        status = "INSUFFICIENT_EVIDENCE"
+        ood = "UNKNOWN"
+    elif outside:
+        reasons.append("target_outside_validated_domain")
+        status = "REJECTED_OOD"
+        ood = "OUT_OF_DOMAIN"
+    elif len(valid_anchors) < 2:
+        reasons.append("no_reconstructible_anchor")
+        status = "INSUFFICIENT_EVIDENCE"
+        ood = "UNKNOWN"
+    elif (
+        model.residual_half_width is None
+        or model.residual_sample_count < 30
+        or model.residual_evidence_class != "MEASURED"
+    ):
+        reasons.append("residual_uncertainty_not_validated")
+        status = "INSUFFICIENT_EVIDENCE"
+        ood = "IN_DOMAIN"
+    else:
+        estimate = model.intercept + sum(coefficient * features[name] for name, coefficient in model.coefficients)
+        assert nearest is not None
+        half_width = float(model.residual_half_width) + float(model.distance_penalty_per_unit) * nearest
+        interval = (estimate - half_width, estimate + half_width)
+        payload = {
+            "schema": f"{_SCHEMA_VERSION}-prediction",
+            "model_id": model.model_id,
+            "model_version": model.model_version,
+            "metric": model.metric,
+            "status": "PREDICTED_IN_DOMAIN",
+            "estimate": estimate,
+            "prediction_interval": interval,
+            "validated_domain": model.validated_domain,
+            "nearest_anchor_distance": nearest,
+            "ood_status": "IN_DOMAIN",
+        }
+        return PredictionResult(
+            model_id=model.model_id,
+            model_version=model.model_version,
+            metric=model.metric,
+            status="PREDICTED_IN_DOMAIN",
+            estimate=estimate,
+            prediction_interval=interval,
+            validated_domain=model.validated_domain,
+            nearest_anchor_distance=nearest,
+            ood_status="IN_DOMAIN",
+            missing_features=(),
+            failure_reasons=(),
+            artifact_hash=_hash(payload),
+        )
+    payload = {
+        "schema": f"{_SCHEMA_VERSION}-prediction",
+        "model_id": model.model_id,
+        "model_version": model.model_version,
+        "metric": model.metric,
+        "status": status,
+        "validated_domain": model.validated_domain,
+        "nearest_anchor_distance": nearest,
+        "ood_status": ood,
+        "missing_features": missing,
+        "failure_reasons": tuple(dict.fromkeys(reasons)),
+    }
+    return PredictionResult(
+        model_id=model.model_id,
+        model_version=model.model_version,
+        metric=model.metric,
+        status=status,
+        estimate=None,
+        prediction_interval=None,
+        validated_domain=model.validated_domain,
+        nearest_anchor_distance=nearest,
+        ood_status=ood,
+        missing_features=missing,
+        failure_reasons=tuple(dict.fromkeys(reasons)),
+        artifact_hash=_hash(payload),
+    )
+
+
+__all__ = [
+    "MEASUREMENT_STATUSES",
+    "REGIMES",
+    "SIMULATION_CLASSES",
+    "AdaptiveMeasurementResult",
+    "AdaptiveMeasurementSpec",
+    "AnalyticPredictionModel",
+    "AnchorObservation",
+    "HardwareCapabilityVector",
+    "PredictionResult",
+    "SimulationEvidence",
+    "WorkloadSignature",
+    "evaluate_adaptive_measurement",
+    "predict_cross_hardware",
+]
