@@ -251,6 +251,58 @@ def test_cross_hardware_prediction_hash_binds_anchor_observation_values() -> Non
     assert original.artifact_hash != changed.artifact_hash
 
 
+def test_cross_hardware_prediction_fails_closed_on_invalid_model_or_hardware() -> None:
+    model, _hardware, workload, anchors = _prediction_fixture()
+    malformed_hardware = HardwareCapabilityVector(logical_cores="8")  # type: ignore[arg-type]
+    result = predict_cross_hardware(model, malformed_hardware, workload, anchors)
+
+    assert result.status == "INSUFFICIENT_EVIDENCE"
+    assert result.ood_status == "UNKNOWN"
+    assert result.estimate is None
+    assert result.failure_reasons == ("input_invalid:ValueError",)
+    assert result.anchor_ids == ()
+
+    malformed_model = AnalyticPredictionModel(
+        model_id="malformed",
+        model_version="1",
+        metric="latency_ms",
+        intercept=0.0,
+        coefficients=(("hardware.logical_cores",),),  # type: ignore[arg-type]
+        validated_domain=(("hardware.logical_cores", 1.0, 16.0),),
+        residual_half_width=1.0,
+        residual_sample_count=30,
+        residual_evidence_class="MEASURED",
+    )
+    malformed_result = predict_cross_hardware(
+        malformed_model,
+        _hardware,
+        workload,
+        anchors,
+    )
+    assert malformed_result.status == "INSUFFICIENT_EVIDENCE"
+    assert malformed_result.failure_reasons == ("input_invalid:ValueError",)
+
+
+def test_cross_hardware_prediction_does_not_silently_drop_invalid_anchor() -> None:
+    model, hardware, workload, anchors = _prediction_fixture()
+    result = predict_cross_hardware(model, hardware, workload, [anchors[0], object(), anchors[1]])  # type: ignore[list-item]
+
+    assert result.status == "INSUFFICIENT_EVIDENCE"
+    assert result.ood_status == "UNKNOWN"
+    assert result.failure_reasons == ("invalid_anchor_observation",)
+    assert result.anchor_ids == ("a1", "a2")
+
+
+def test_cross_hardware_prediction_rejects_non_sequence_anchors() -> None:
+    model, hardware, workload, _anchors = _prediction_fixture()
+    result = predict_cross_hardware(model, hardware, workload, 1)  # type: ignore[arg-type]
+
+    assert result.status == "INSUFFICIENT_EVIDENCE"
+    assert result.ood_status == "UNKNOWN"
+    assert result.failure_reasons == ("anchors_invalid:TypeError",)
+    assert result.anchor_ids == ()
+
+
 def test_anchor_planner_prioritizes_mandatory_boundary_and_ood_with_budget() -> None:
     candidates = [
         AnchorCandidate("periodic", "linux", 3.0, periodic_sentinel_due=True),
