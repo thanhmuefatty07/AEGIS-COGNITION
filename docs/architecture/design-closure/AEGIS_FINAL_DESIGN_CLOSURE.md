@@ -1,8 +1,8 @@
 # AEGIS — Final Architecture Design-Closure and Evidence Reconciliation
-WORKTREE_EPOCH: d00c5b797d8d0334e90a0d348bffa0bb59d8522798958eb4e757514299997ddb
-HEAD: 17779a1517c1b0612d092207ec6334dce8563d44
+WORKTREE_EPOCH: 80ba69c4461b300f5edaa104417a877c20a9298fba89ef23554eca7244bdb21c
+HEAD: ac4787ac529c4f15835207e6293b16701b526158
 STATUS: PARTIAL_LOCAL
-generated_at: 2026-09-02T02:25:54.363387+00:00
+generated_at: 2026-09-02T02:32:52.862602+00:00
 method: aegis-design-closure-reconciliation-v1; direct Git/filesystem/source inspection, prior artifact hash reuse, disposable wheel reconciliation, bounded local probes
 limitations: local evidence is partial; external-only closure is explicit below
 
@@ -23,7 +23,7 @@ limitations: local evidence is partial; external-only closure is explicit below
 - Python `LabRun` is mutable and payload-bearing; Rust `LabController` conditionally materializes valid typed records while retaining a separate adapter projection. Opaque compatibility labels and adapter-only fields remain projection-only, so projection admission does not prove a single lossless reducer.
 - Source-level field comparison proves semantic/lossy divergence for Mission, Source, Claim, Hypothesis, Experiment, Observation, Artifact, Event, Replay, ExecutionCell, Trust and Retry.
  - Local trust defaults are inconsistent: Agent/Lab `DEV`; AegisAdapter/evidence and Rust `PROD` when unset.
- - The trust-policy schema and subject digest now have one local Python primitive at `core/python/aegis/trust_policy.py`; compatibility defaults remain contextual (`DEV` for Agent/Lab, `PROD` for standalone evidence) and cross-cell/Rust policy receipts remain open.
+ - The trust-policy schema and subject digest now have one local Python primitive at `core/python/aegis/trust_policy.py`; compatibility defaults remain contextual (`DEV` for Agent/Lab, `PROD` for standalone evidence), while direct native-capable `LabRun` construction now derives the canonical subject. Cross-cell/Rust policy receipts remain open.
 - A finite mission-bound envelope now exists for observed Lab-owned effect admissions and is enforced/replayed by Python and Rust; a physical/global external-attempt bound and end-to-end idempotency guarantee remain NOT VERIFIED because provider, SDK, user-runner and descendant behavior is open.
 - `SessionSearchIndex::new(...).unwrap()` is safe for the measured nonzero constant hash and contained by `py_safe`; current `ffi.rs` contains no `Box::leak` in the previously targeted request/error wrappers.
 - No strong delete candidate is proven. `core/rust/src/ffi.rs` is the sole strong split input; no split was performed.
@@ -43,7 +43,7 @@ The four tracked files under `core/rust/AEGIS-COGNITION` have history and docume
 Strict Lab provider/search/browser/process paths admit before effect and settle locally. Non-Lab provider calls, compatibility callbacks, benchmark/operator subprocesses, CLI writes and scripts remain independently executable. See `side_effect_chains.json` and `side_effect_bypasses.json`.
 
 ## TRUST TRUTH
-The local probe measured Agent/Lab `DEV`, AegisAdapter/evidence `PROD`, and Rust default `PROD` with no provider call. Validated `AgentConfig` missions now create and propagate a 64-hex policy subject, and the packaged Lab probe binds the same subject to the native mission; direct compatibility defaults remain split. This is a local policy contradiction with bounded mission propagation, not a production-security proof. See `trust_truth.json`.
+The local probe measured Agent/Lab `DEV`, AegisAdapter/evidence `PROD`, and Rust default `PROD` with no provider call. Validated `AgentConfig` missions and native-capable direct `LabRun` construction now create and propagate a 64-hex policy subject, and the packaged Lab probe binds the same subject to the native mission; direct compatibility defaults remain split. This is a local policy contradiction with bounded mission propagation, not a production-security proof. See `trust_truth.json`.
 - Cross-cell trust-subject propagation is NOT VERIFIED in the packaged probe.
 
 ## RETRY TRUTH
@@ -110,4 +110,4 @@ YES
 SAFE_TO_BEGIN_SURGICAL_CONVERGENCE:
 NO
 
-No broad feature, refactor, delete, rename, migration, optimization, uncontrolled crawl, fuzz, soak, stress, provider call, or live browser run was performed. The bounded M2 snapshot guard, six-lane fresh-process replay witness, conditional typed-materialization hardening, local M3 trust-policy hash binding, and targeted FFI wrapper leak safety fix are recorded in the master plan and verified by the local gates above; global trust-owner unification remains open.
+No broad feature, refactor, delete, rename, migration, optimization, uncontrolled crawl, fuzz, soak, stress, provider call, or live browser run was performed. The bounded M2 snapshot guard, six-lane fresh-process replay witness, conditional typed-materialization hardening, local M3 trust-policy hash binding (including native-capable direct `LabRun` construction), and targeted FFI wrapper leak safety fix are recorded in the master plan and verified by the local gates above; global trust-owner unification remains open.

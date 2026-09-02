@@ -67,9 +67,9 @@
     "status": "NOT_VERIFIED"
   },
   "secondary_classifications": [],
-  "HEAD": "17779a1517c1b0612d092207ec6334dce8563d44",
-  "WORKTREE_EPOCH": "d00c5b797d8d0334e90a0d348bffa0bb59d8522798958eb4e757514299997ddb",
-  "generated_at": "2026-09-02T02:25:54.363387+00:00",
+  "HEAD": "ac4787ac529c4f15835207e6293b16701b526158",
+  "WORKTREE_EPOCH": "80ba69c4461b300f5edaa104417a877c20a9298fba89ef23554eca7244bdb21c",
+  "generated_at": "2026-09-02T02:32:52.862602+00:00",
   "method": "aegis-design-closure-reconciliation-v1; direct Git/filesystem/source inspection, prior artifact hash reuse, disposable wheel reconciliation, bounded local probes",
   "limitations": []
 }

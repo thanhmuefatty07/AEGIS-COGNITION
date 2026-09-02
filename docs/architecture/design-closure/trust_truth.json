@@ -53,9 +53,9 @@
   "limitations": [
     "no credentials/provider"
   ],
-  "WORKTREE_EPOCH": "d00c5b797d8d0334e90a0d348bffa0bb59d8522798958eb4e757514299997ddb",
-  "HEAD": "17779a1517c1b0612d092207ec6334dce8563d44",
-  "generated_at": "2026-09-02T02:25:54.363387+00:00",
+  "WORKTREE_EPOCH": "80ba69c4461b300f5edaa104417a877c20a9298fba89ef23554eca7244bdb21c",
+  "HEAD": "ac4787ac529c4f15835207e6293b16701b526158",
+  "generated_at": "2026-09-02T02:32:52.862602+00:00",
   "collector_version/method": "aegis-final-design-closure-v1; direct Git/filesystem/AST/Cargo plus bounded disposable-wheel probes",
   "reused_prior_artifact": "C:\\Users\\ADMIN\\AEGIS-COGNITION\\docs\\architecture\\evidence-pack\\final_trust_policy.json",
   "reused_prior_artifact_sha256": "6493723017232896d5163be2f2bb960cddd6c06e5f9ca637774fc05f9bd09e6c",
@@ -75,8 +75,8 @@
     "AegisAdapter_default": "PROD",
     "evidence.normalize_trust_level(None)": "PROD",
     "rust_TrustLevel_from_env_default": "PROD",
-    "lab_policy_hash_binding": "LabPolicy hash is propagated into Lab options/native mission contract hash; core bridge hash equivalence is tested for DEV/STAGING/PROD; native-required gateway drops/mismatch fail closed",
-    "result": "local defaults are inconsistent across public paths; mission-bound hash propagation is locally proven; no provider call was made"
+    "lab_policy_hash_binding": "LabPolicy hash is propagated into Lab options/native mission contract hash; direct native-capable LabRun construction now derives the same subject; core bridge hash equivalence is tested for DEV/STAGING/PROD; native-required gateway drops/mismatch fail closed",
+    "result": "local defaults are inconsistent across public paths; mission-bound and native-capable LabRun hash propagation is locally proven; no provider call was made"
   },
   "authority_matrix": [
     {
@@ -89,7 +89,7 @@
       "boundary": "LabPolicy/LabRun",
       "default": "DEV",
       "owner": "aegis_cognition.lab",
-      "hash_binding": "Lab facade and Agent(lab=True) bind the mission subject; direct legacy snapshots may be unbound"
+      "hash_binding": "Lab facade, Agent(lab=True) and native-capable direct LabRun construction bind the mission subject; projection-only compatibility may remain unbound"
     },
     {
       "boundary": "AegisAdapter/evidence",
@@ -105,6 +105,6 @@
     }
   ],
   "classification": "LEGACY_DRIFT_WITH_LAB_BOUNDARY",
-  "security_implication": "global default owner and cross-cell receipt propagation remain unproven; local Lab hash mismatch is fail-closed",
+  "security_implication": "global default owner and cross-cell receipt propagation remain unproven; local native-capable LabRun hash binding and mismatch checks are fail-closed",
   "method": "aegis-design-closure-reconciliation-v1; direct Git/filesystem/source inspection, prior artifact hash reuse, disposable wheel reconciliation, bounded local probes"
 }

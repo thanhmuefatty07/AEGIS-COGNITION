@@ -3,7 +3,7 @@ document_id: AEGIS-LAB-RUNTIME-MASTER-PLAN
 document_type: canonical_current_implementation_plan
 status: IN_EXECUTION
 authority: derived_from_checkout_and_evidence_manifest
-applies_to_commit: 17779a1517c1b0612d092207ec6334dce8563d44
+applies_to_commit: ac4787ac529c4f15835207e6293b16701b526158
 created_at: 2026-08-26
 last_verified_at: 2026-09-02
 supersedes: browser-native-proposal-and-cumulative-harness-roadmap-as-execution-authority
@@ -2780,6 +2780,19 @@ cooperative timeout and executor failure, and the Python 3.14 suite passes
 skill admission/settlement gap; synchronous non-cooperative adapters,
 validator isolation, hidden planners and hosted authority remain open under
 `LAB-AUTH-001`.
+
+**M3 native trust-subject continuation (2026-09-02):** direct `LabRun`
+construction now derives and binds the canonical trust-policy subject whenever
+the selected authority mode is `NATIVE_ADMITTED` or `NATIVE_REQUIRED`, even
+when the public `Lab` facade is not used. Projection-only runs retain their
+legacy optional field. Native-mode snapshot restoration likewise derives the
+subject for legacy snapshots that omitted it, so the native mission contract
+cannot silently remain unbound. A regression covers direct construction,
+projection compatibility and legacy native snapshot restoration; the Python
+3.14 suite passes **366 tests**, with targeted Ruff and Pyright clean. This
+closes one local unbound-native-policy path only; DEV/PROD compatibility
+defaults, Rust ownership, cross-cell receipt propagation and hosted policy
+authority remain open under `LAB-AUTH-001`/`LAB-RELEASE-006`.
 
 **M2 operator-evidence continuation (2026-09-02):** security-event and
 blocker/resolution APIs now require exact reason/detail strings and reject
