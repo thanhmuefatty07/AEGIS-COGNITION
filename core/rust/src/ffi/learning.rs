@@ -55,8 +55,12 @@ pub fn aegis_get_learning_stats(
             })
             .unwrap_or(0);
 
-        let final_search_index_count =
-            search_index_count.max(get_session_index().lock().len() as u64);
+        let index = get_session_index().map_err(|error| {
+            pyo3::exceptions::PyRuntimeError::new_err(format!(
+                "Session index init failed: {error:?}"
+            ))
+        })?;
+        let final_search_index_count = search_index_count.max(index.lock().len() as u64);
 
         let stats = serde_json::json!({
             "schema": "aegis-learning-stats-v1",
@@ -127,7 +131,12 @@ pub fn aegis_trigger_memory_nudge(
 #[pyfunction]
 pub fn aegis_index_session(session_id: u128, content: String, timestamp: u64) -> PyResult<String> {
     py_safe(move || {
-        let mut index = get_session_index().lock();
+        let index = get_session_index().map_err(|error| {
+            pyo3::exceptions::PyRuntimeError::new_err(format!(
+                "Session index init failed: {error:?}"
+            ))
+        })?;
+        let mut index = index.lock();
         let mut ledger = get_session_ledger().lock();
         let content_hash = index
             .index_session(session_id, &content, timestamp, &mut ledger, None)
@@ -168,7 +177,13 @@ pub fn aegis_search_past_sessions(query: String, top_k: usize) -> PyResult<Strin
             ));
         }
 
-        let index = get_session_index().lock();
+        let index = get_session_index()
+            .map_err(|error| {
+                pyo3::exceptions::PyRuntimeError::new_err(format!(
+                    "Session index init failed: {error:?}"
+                ))
+            })?
+            .lock();
         let candidates = index.search_sessions(&query, top_k);
 
         let results: Vec<serde_json::Value> = candidates
