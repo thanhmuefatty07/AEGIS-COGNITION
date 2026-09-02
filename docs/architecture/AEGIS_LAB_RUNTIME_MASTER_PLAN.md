@@ -9,7 +9,7 @@ last_verified_at: 2026-09-02
 supersedes: browser-native-proposal-and-cumulative-harness-roadmap-as-execution-authority
 evidence_source: docs/architecture/evidence/current.json
 execution_scope: clean origin/main checkout
-verification_scope: local checkout, origin/main parity, implementation/tests; hosted gates not retained
+verification_scope: local checkout, origin/main parity, implementation/tests; hosted CI observations retained as NOT VERIFIED (no runner-backed gate)
 ---
 
 # AEGIS Lab Runtime — Master Implementation Plan
