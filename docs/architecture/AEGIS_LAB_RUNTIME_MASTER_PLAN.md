@@ -3621,6 +3621,18 @@ application-boundary evidence only: it does not prove external-effect
 reversal, descendant termination or hosted single-writer authority, so
 `LAB-AUTH-001` remains `OPEN_LOCAL`.
 
+**M4 post-completion effect continuation (2026-09-02):** the required
+`memory.index_session` compatibility effect now carries a finite positive
+`post_completion_effect_timeout_seconds` policy (default `30.0`), a
+mission-bound idempotency key, and the same timeout metadata through admission
+and settlement. Cooperative timeout settles `TIMED_OUT` and required policy
+keeps the dossier blocked; cancellation and ordinary failure preserve the
+identity/deadline fields. Regression coverage proves the bounded timeout and
+the complete Python gate is **456 passed** under
+`-W error::DeprecationWarning`, with Ruff and Pyright clean. This is still
+cooperative/local containment: a blocking or external persistence effect may
+outlive the deadline, so M4 and `LAB-AUTH-001` remain open.
+
 **M1 packaging-smoke continuation (2026-09-02):** the bounded
 `scripts/production_packaging_smoke_gate.py` rerun passed all **19/19** local
 checks at the current source, including canonical root `aegis` ownership,
