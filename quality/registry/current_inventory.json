@@ -4468,9 +4468,9 @@
     "workflow_jobs": 11
   },
   "scope_policy": "tracked_files_only; native runners remain authoritative",
-  "source_head": "8aef2ea4c419ae0463334ad9124ed230b7040b31",
+  "source_head": "02e35c192e6142ed5a771d8c5fd0b543522d460f",
   "source_tree_sha256": "e36c0f7f71dc9c73bb906261e0e197fbc17a04c9e1a6de04daffed962f3d8a02",
   "status": "INVENTORY_COMPLETE_DISPOSITIONS_RETAINED_MAPPING_PENDING",
-  "worktree_epoch": "528cb3cb8f4e0125002b75ca8b6d9cf08aff492f6c8201dae53c04fd5d526c31",
+  "worktree_epoch": "ff3dc399fe8521aa61e667a9006328c1b91593c6d42c48e15fad71015aaff84d",
   "worktree_status": "DIRTY"
 }
