@@ -498,6 +498,8 @@ class AegisAgent(AegisAdapter):
     Friendly DX wrapper around AegisAdapter.
     """
     def __init__(self, *args: Any, max_retries: int = 3, **kwargs: Any) -> None:
+        if type(max_retries) is not int or max_retries < 1:
+            raise ValueError("max_retries must be a positive integer")
         super().__init__(*args, **kwargs)
         self.max_retries = max_retries
 
