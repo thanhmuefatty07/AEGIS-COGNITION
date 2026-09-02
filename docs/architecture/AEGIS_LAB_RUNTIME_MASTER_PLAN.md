@@ -3,7 +3,7 @@ document_id: AEGIS-LAB-RUNTIME-MASTER-PLAN
 document_type: canonical_current_implementation_plan
 status: IN_EXECUTION
 authority: derived_from_checkout_and_evidence_manifest
-applies_to_commit: fcbfc3e5522d10963ff0d8a3f18f58655c8973aa
+applies_to_commit: fec53d1bd6bbc4eacaf004f07ed07bb4b1ee7582
 created_at: 2026-08-26
 last_verified_at: 2026-09-03
 supersedes: browser-native-proposal-and-cumulative-harness-roadmap-as-execution-authority
@@ -169,11 +169,11 @@ hiện tại và không được dùng để chứng minh checkout mới:
   structural/presence checks, không phải proof rằng Lab behavior hoạt động.
 
 Checkout implementation hiện hành cho migration node này là
-`fcbfc3e5522d10963ff0d8a3f18f58655c8973aa` (functional FFI change
+`fec53d1bd6bbc4eacaf004f07ed07bb4b1ee7582` (functional FFI change
 `e0731f698302a0791c70c24d93b696597e04180d` and session-index hardening
 `f95bbcb03c1c8448afbcf392b38dcd964b9a6f3f`), với worktree sạch và
 `origin/main` parity được xác nhận sau push. Regression Python trên CPython
-3.11 là **416 passed** với deprecation warnings treated as errors; Rust package
+3.11 là **417 passed** với deprecation warnings treated as errors; Rust package
 lib regression sau FFI hardening là **443 passed**, cùng fmt/check/clippy pass.
 Registry AESE hiện có **117** inventoried items, graph **45 claims / 90
 verification references** và selection ở `SHADOW`/`NOT_EXECUTED`. Các kết quả này
@@ -4127,6 +4127,23 @@ the prior source-bound run because this milestone changed no Rust source.
 This record is local evidence only. No hosted workflow was rerun, no CI result
 is inferred, no benchmark savings are claimed, and all legacy runners remain
 authoritative while unknown dependencies widen conservatively.
+
+**M2 process-containment continuation (2026-09-03):** implementation commit
+`fec53d1bd6bbc4eacaf004f07ed07bb4b1ee7582` hardens the opt-in local
+`ProcessExecutionCell`. POSIX workers enter a private process group and
+timeout/cancellation cleanup terminates that group; Windows uses the scoped
+`taskkill /PID <worker> /T /F` operation when available, with the existing
+direct terminate/kill fallback. A descendant-process regression proves the
+bounded local witness on this Windows checkout; the process cell remains
+opt-in and no host-wide PID is ever targeted. The Lab-runtime suite passes
+**351 tests**, including the new descendant case, and the complete local
+Python count is **417 tests** when combined with the unchanged 50 gate/contract
+and 16 AESE inventory/graph/preflight tests. Inventory and claim graph were
+regenerated from the new test surface and both drift gates pass. This closes
+the observed local descendant-cleanup gap only; arbitrary adapter side
+effects, resource quotas, kernel Job Object/cgroup enforcement, hosted
+multi-process single-writer authority and rollback of already-emitted external
+effects remain unproven under `LAB-AUTH-001`/`LAB-OPS-007`.
 
 **Historical checkout identity for the prior continuation (2026-09-03):**
 `SOURCE_HEAD = 0d1e9c3eb4db86aea0fee40134f5711395e55e27`,
