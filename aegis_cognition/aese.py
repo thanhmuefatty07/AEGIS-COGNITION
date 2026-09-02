@@ -101,7 +101,7 @@ def _hash(value: object) -> str:
 
 
 def _invalid_string(value: object) -> bool:
-    return not isinstance(value, str) or not value.strip()
+    return type(value) is not str or not value.strip()
 
 
 def _string_or_empty(value: object) -> str:
@@ -274,39 +274,43 @@ def evaluate_adaptive_measurement(
 ) -> AdaptiveMeasurementResult:
     """Evaluate one sequential checkpoint without peeking or silent filtering."""
 
-    try:
+    typed_spec = type(spec) is AdaptiveMeasurementSpec
+    if typed_spec:
         protocol_payload: dict[str, object] = {
             "schema": f"{_SCHEMA_VERSION}-measurement-spec",
             **asdict(spec),
         }
-    except (TypeError, ValueError, AttributeError):
+    else:
         protocol_payload = {
             "schema": f"{_SCHEMA_VERSION}-measurement-spec",
             "invalid_spec_type": type(spec).__name__,
         }
     protocol_hash = _hash(protocol_payload)
-    try:
-        raw_observations = tuple(observations)
-    except TypeError:
-        raw_observations = ()
-    try:
-        raw_warmups = tuple(warmups)
-    except TypeError:
-        raw_warmups = ()
+    observations_valid = type(observations) in (list, tuple)
+    warmups_valid = type(warmups) in (list, tuple)
+    flags_valid = type(contamination_flags) in (list, tuple)
+    raw_observations = tuple(observations) if observations_valid else ()
+    raw_warmups = tuple(warmups) if warmups_valid else ()
     reasons: list[str] = []
-    try:
-        raw_flags = tuple(contamination_flags)
-    except TypeError:
-        raw_flags = ()
-    flags = tuple(flag for flag in raw_flags if isinstance(flag, str))
+    raw_flags = tuple(contamination_flags) if flags_valid else ()
+    container_invalid = not observations_valid or not warmups_valid
+    if not observations_valid:
+        reasons.append("observations_invalid")
+    if not warmups_valid:
+        reasons.append("warmups_invalid")
+    if not flags_valid:
+        reasons.append("contamination_flags_invalid")
+    flags = tuple(flag for flag in raw_flags if type(flag) is str)
     protocol_valid = True
     try:
+        if not typed_spec:
+            raise TypeError("measurement spec must use the canonical type")
         spec.validate()
     except (TypeError, ValueError, AttributeError) as exc:
         protocol_valid = False
         reasons.append(f"protocol_invalid:{type(exc).__name__}")
     if (
-        type(contamination_flags) not in (list, tuple)
+        not flags_valid
         or len(flags) != len(raw_flags)
         or any(_invalid_string(flag) for flag in flags)
     ):
@@ -318,68 +322,62 @@ def evaluate_adaptive_measurement(
     finite_observations = [float(cast(int | float, value)) for value in raw_observations if _is_finite(value)]
     if len(finite_warmups) != len(raw_warmups) or len(finite_observations) != len(raw_observations):
         reasons.append("non_finite_observation")
-    metric = spec.metric if isinstance(spec, AdaptiveMeasurementSpec) and isinstance(spec.metric, str) else ""
-    estimand = spec.estimand if isinstance(spec, AdaptiveMeasurementSpec) and isinstance(spec.estimand, str) else ""
+    metric = _string_or_empty(spec.metric) if typed_spec else ""
+    estimand = _string_or_empty(spec.estimand) if typed_spec else ""
     direction = (
         spec.direction
-        if isinstance(spec, AdaptiveMeasurementSpec) and spec.direction in {"higher_is_better", "lower_is_better"}
+        if typed_spec and spec.direction in {"higher_is_better", "lower_is_better"}
         else "lower_is_better"
     )
     alpha = (
         float(spec.alpha)
-        if isinstance(spec, AdaptiveMeasurementSpec) and _is_finite(spec.alpha) and 0.0 < float(spec.alpha) < 0.5
+        if typed_spec and _is_finite(spec.alpha) and 0.0 < float(spec.alpha) < 0.5
         else 0.05
     )
     warmup_count = (
         spec.warmup_count
-        if isinstance(spec, AdaptiveMeasurementSpec) and type(spec.warmup_count) is int and spec.warmup_count >= 0
+        if typed_spec and type(spec.warmup_count) is int and spec.warmup_count >= 0
         else 0
     )
     min_observations = (
         spec.min_observations
-        if isinstance(spec, AdaptiveMeasurementSpec)
-        and type(spec.min_observations) is int
+        if typed_spec and type(spec.min_observations) is int
         and spec.min_observations >= 0
         else 0
     )
     maximum = (
         spec.max_observations
-        if isinstance(spec, AdaptiveMeasurementSpec)
-        and type(spec.max_observations) is int
+        if typed_spec and type(spec.max_observations) is int
         and spec.max_observations > 0
         else 0
     )
     block_size = (
         spec.block_size
-        if isinstance(spec, AdaptiveMeasurementSpec) and type(spec.block_size) is int and spec.block_size > 0
+        if typed_spec and type(spec.block_size) is int and spec.block_size > 0
         else 1
     )
     relative_precision = (
         float(spec.relative_precision)
-        if isinstance(spec, AdaptiveMeasurementSpec)
-        and _is_finite(spec.relative_precision)
+        if typed_spec and _is_finite(spec.relative_precision)
         and 0.0 < float(spec.relative_precision) < 1.0
         else math.inf
     )
     absolute_precision = (
         float(spec.absolute_precision)
-        if isinstance(spec, AdaptiveMeasurementSpec)
-        and spec.absolute_precision is not None
+        if typed_spec and spec.absolute_precision is not None
         and _is_finite(spec.absolute_precision)
         and float(spec.absolute_precision) > 0.0
         else None
     )
     max_lag1_autocorrelation = (
         float(spec.max_lag1_autocorrelation)
-        if isinstance(spec, AdaptiveMeasurementSpec)
-        and _is_finite(spec.max_lag1_autocorrelation)
+        if typed_spec and _is_finite(spec.max_lag1_autocorrelation)
         and 0.0 < float(spec.max_lag1_autocorrelation) < 1.0
         else math.inf
     )
     max_drift_ratio = (
         float(spec.max_drift_ratio)
-        if isinstance(spec, AdaptiveMeasurementSpec)
-        and _is_finite(spec.max_drift_ratio)
+        if typed_spec and _is_finite(spec.max_drift_ratio)
         and 0.0 < float(spec.max_drift_ratio) < 1.0
         else math.inf
     )
@@ -436,7 +434,7 @@ def evaluate_adaptive_measurement(
         status = "CONTAMINATED"
     elif "autocorrelation_exceeds_bound" in reasons or "drift_exceeds_bound" in reasons:
         status = "UNSTABLE"
-    elif not protocol_valid or "contamination_flags_invalid" in reasons:
+    elif not protocol_valid or container_invalid or "contamination_flags_invalid" in reasons:
         status = "INSUFFICIENT_EVIDENCE"
     elif floor_met and stable and precision_met and "confidence_interval_does_not_clear_baseline" in reasons:
         status = "FAIL"
@@ -544,24 +542,29 @@ class HardwareCapabilityVector:
         return _hash(self.as_dict())
 
     @classmethod
-    def from_runtime_profile(cls, profile: Mapping[str, object]) -> HardwareCapabilityVector:
+    def from_runtime_profile(cls, profile: object) -> HardwareCapabilityVector:
         """Project only explicitly reported runtime fields; never infer missing data."""
 
         if not isinstance(profile, Mapping):
             raise ValueError("runtime profile must be a mapping")
+        typed_profile = cast(Mapping[str, object], profile)
 
-        raw_cpu = profile.get("cpu")
-        raw_os = profile.get("os")
+        raw_cpu = typed_profile.get("cpu")
+        raw_os = typed_profile.get("os")
+        if raw_cpu is not None and not isinstance(raw_cpu, Mapping):
+            raise ValueError("runtime profile cpu must be a mapping or UNKNOWN")
+        if raw_os is not None and not isinstance(raw_os, Mapping):
+            raise ValueError("runtime profile os must be a mapping or UNKNOWN")
         cpu: Mapping[str, object] = cast(Mapping[str, object], raw_cpu) if isinstance(raw_cpu, Mapping) else {}
         os_info: Mapping[str, object] = cast(Mapping[str, object], raw_os) if isinstance(raw_os, Mapping) else {}
         raw_architecture = cpu.get("architecture")
-        architecture = raw_architecture if isinstance(raw_architecture, str) else None
+        architecture = raw_architecture if type(raw_architecture) is str else None
         usable = cpu.get("usable_parallelism")
         logical_cores = usable if type(usable) is int and usable >= 1 else None
         backend = os_info.get("backend")
         enforcement = os_info.get("enforcement")
-        os_name = backend if isinstance(backend, str) and backend.strip() else None
-        virtualization = enforcement if isinstance(enforcement, str) and enforcement.strip() else None
+        os_name = backend if type(backend) is str and backend.strip() else None
+        virtualization = enforcement if type(enforcement) is str and enforcement.strip() else None
         vector = cls(
             architecture=architecture,
             logical_cores=logical_cores,
@@ -580,31 +583,32 @@ class HardwareCapabilityVector:
         }
 
     @classmethod
-    def from_mapping(cls, values: Mapping[str, object]) -> HardwareCapabilityVector:
+    def from_mapping(cls, values: object) -> HardwareCapabilityVector:
         if not isinstance(values, Mapping):
             raise ValueError("hardware mapping must be a mapping")
+        typed_values = cast(Mapping[str, object], values)
         allowed = set(_HARDWARE_TEXT_FIELDS) | set(_HARDWARE_INT_FIELDS) | set(_HARDWARE_FLOAT_FIELDS)
-        unknown = set(values) - allowed
+        unknown = set(typed_values) - allowed
         if unknown:
             raise ValueError(f"unknown hardware fields: {sorted(unknown, key=str)}")
         vector = cls(
-            architecture=cast(str | None, values.get("architecture")),
-            physical_cores=cast(int | None, values.get("physical_cores")),
-            logical_cores=cast(int | None, values.get("logical_cores")),
-            cache_bytes=cast(int | None, values.get("cache_bytes")),
-            frequency_hz=cast(float | None, values.get("frequency_hz")),
-            memory_capacity_bytes=cast(int | None, values.get("memory_capacity_bytes")),
-            memory_bandwidth_bytes_s=cast(float | None, values.get("memory_bandwidth_bytes_s")),
-            memory_latency_ns=cast(float | None, values.get("memory_latency_ns")),
-            storage_kind=cast(str | None, values.get("storage_kind")),
-            fsync_latency_ns=cast(float | None, values.get("fsync_latency_ns")),
-            process_startup_ns=cast(float | None, values.get("process_startup_ns")),
-            ffi_latency_ns=cast(float | None, values.get("ffi_latency_ns")),
-            serialization_bytes_s=cast(float | None, values.get("serialization_bytes_s")),
-            os_name=cast(str | None, values.get("os_name")),
-            kernel=cast(str | None, values.get("kernel")),
-            virtualization=cast(str | None, values.get("virtualization")),
-            pressure=cast(str | None, values.get("pressure")),
+            architecture=cast(str | None, typed_values.get("architecture")),
+            physical_cores=cast(int | None, typed_values.get("physical_cores")),
+            logical_cores=cast(int | None, typed_values.get("logical_cores")),
+            cache_bytes=cast(int | None, typed_values.get("cache_bytes")),
+            frequency_hz=cast(float | None, typed_values.get("frequency_hz")),
+            memory_capacity_bytes=cast(int | None, typed_values.get("memory_capacity_bytes")),
+            memory_bandwidth_bytes_s=cast(float | None, typed_values.get("memory_bandwidth_bytes_s")),
+            memory_latency_ns=cast(float | None, typed_values.get("memory_latency_ns")),
+            storage_kind=cast(str | None, typed_values.get("storage_kind")),
+            fsync_latency_ns=cast(float | None, typed_values.get("fsync_latency_ns")),
+            process_startup_ns=cast(float | None, typed_values.get("process_startup_ns")),
+            ffi_latency_ns=cast(float | None, typed_values.get("ffi_latency_ns")),
+            serialization_bytes_s=cast(float | None, typed_values.get("serialization_bytes_s")),
+            os_name=cast(str | None, typed_values.get("os_name")),
+            kernel=cast(str | None, typed_values.get("kernel")),
+            virtualization=cast(str | None, typed_values.get("virtualization")),
+            pressure=cast(str | None, typed_values.get("pressure")),
         )
         vector.validate()
         return vector
@@ -726,6 +730,8 @@ class AnchorObservation:
     def validate(self) -> None:
         if _invalid_string(self.anchor_id) or not _is_finite(self.observed_value):
             raise ValueError("anchor identity and observed value are required")
+        if type(self.hardware) is not HardwareCapabilityVector or type(self.workload) is not WorkloadSignature:
+            raise TypeError("anchor hardware and workload must use canonical vector types")
         self.hardware.validate()
         self.workload.validate()
 
@@ -767,6 +773,12 @@ class AnalyticPredictionModel:
     def validate(self) -> None:
         if any(_invalid_string(value) for value in (self.model_id, self.model_version, self.metric)):
             raise ValueError("prediction model identity is required")
+        if type(self.coefficients) not in (list, tuple) or type(self.validated_domain) not in (list, tuple):
+            raise TypeError("prediction model coefficients and domains must be canonical sequences")
+        if any(type(item) not in (list, tuple) or len(item) != 2 for item in self.coefficients):
+            raise ValueError("prediction model coefficients must be pairs")
+        if any(type(item) not in (list, tuple) or len(item) != 3 for item in self.validated_domain):
+            raise ValueError("prediction model domains must be triples")
         if (
             not _is_finite(self.intercept)
             or type(self.residual_sample_count) is not int
@@ -1038,7 +1050,11 @@ def predict_cross_hardware(
     model_version = _string_or_empty(model.model_version) if typed_model else ""
     metric = _string_or_empty(model.metric) if typed_model else ""
     raw_domain: object = model.validated_domain if typed_model else ()
-    validated_domain = tuple(cast(Sequence[tuple[str, float, float]], raw_domain)) if typed_model else ()
+    validated_domain = (
+        tuple(cast(Sequence[tuple[str, float, float]], raw_domain))
+        if typed_model and type(raw_domain) in (list, tuple)
+        else ()
+    )
     if not typed_model:
         reasons.append("model_invalid:TypeError")
     if not typed_hardware:

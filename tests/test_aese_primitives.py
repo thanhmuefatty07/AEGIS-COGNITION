@@ -82,6 +82,33 @@ def test_adaptive_measurement_non_dataclass_protocol_returns_typed_failure() -> 
     assert any(reason.startswith("protocol_invalid:") for reason in result.failure_reasons)
 
 
+def test_adaptive_measurement_rejects_forged_spec_and_exploding_containers() -> None:
+    spec = AdaptiveMeasurementSpec(metric="latency_ms")
+
+    class SpecLike(AdaptiveMeasurementSpec):
+        def validate(self) -> None:
+            raise RuntimeError("forged spec was invoked")
+
+    class ExplodingSequence:
+        def __iter__(self):
+            raise RuntimeError("container was iterated")
+
+    forged = evaluate_adaptive_measurement(SpecLike(metric=spec.metric), [1.0] * 30)
+    assert forged.status == "INSUFFICIENT_EVIDENCE"
+    assert "protocol_invalid:TypeError" in forged.failure_reasons
+
+    result = evaluate_adaptive_measurement(
+        spec,
+        ExplodingSequence(),  # type: ignore[arg-type]
+        warmups=ExplodingSequence(),  # type: ignore[arg-type]
+        contamination_flags=ExplodingSequence(),  # type: ignore[arg-type]
+    )
+    assert result.status == "INSUFFICIENT_EVIDENCE"
+    assert "observations_invalid" in result.failure_reasons
+    assert "warmups_invalid" in result.failure_reasons
+    assert "contamination_flags_invalid" in result.failure_reasons
+
+
 def test_adaptive_measurement_rejects_malformed_contamination_flags() -> None:
     result = evaluate_adaptive_measurement(
         AdaptiveMeasurementSpec(metric="latency_ms"),
@@ -138,6 +165,13 @@ def test_hardware_vector_mapping_rejects_non_mapping_and_mixed_unknown_keys() ->
 def test_hardware_vector_rejects_non_mapping_runtime_profile() -> None:
     with pytest.raises(ValueError, match="runtime profile must be a mapping"):
         HardwareCapabilityVector.from_runtime_profile(None)  # type: ignore[arg-type]
+
+
+def test_hardware_vector_rejects_malformed_nested_runtime_profiles() -> None:
+    with pytest.raises(ValueError, match="runtime profile cpu"):
+        HardwareCapabilityVector.from_runtime_profile({"cpu": "unknown"})
+    with pytest.raises(ValueError, match="runtime profile os"):
+        HardwareCapabilityVector.from_runtime_profile({"os": []})
 
 
 def test_workload_regime_requires_known_dimensions_and_uses_hardware_capacity() -> None:
@@ -386,6 +420,25 @@ def test_cross_hardware_prediction_rejects_forged_protocol_objects() -> None:
     assert forged_workload.failure_reasons == ("workload_invalid:TypeError",)
 
 
+def test_cross_hardware_prediction_rejects_forged_nested_anchor_vectors() -> None:
+    model, hardware, workload, anchors = _prediction_fixture()
+
+    class HardwareLike(HardwareCapabilityVector):
+        pass
+
+    forged_anchor = AnchorObservation(
+        "forged",
+        HardwareLike(logical_cores=4),
+        workload,
+        2.0,
+    )
+    result = predict_cross_hardware(model, hardware, workload, [forged_anchor, anchors[1]])
+
+    assert result.status == "INSUFFICIENT_EVIDENCE"
+    assert result.failure_reasons == ("invalid_anchor_observation",)
+    assert result.anchor_ids == ("a2",)
+
+
 def test_aese_rejects_custom_sequence_containers_at_trust_boundaries() -> None:
     model, hardware, workload, anchors = _prediction_fixture()
 
@@ -411,6 +464,23 @@ def test_aese_rejects_custom_sequence_containers_at_trust_boundaries() -> None:
     assert result.status == "INSUFFICIENT_EVIDENCE"
     assert result.anchor_ids == ()
     assert result.failure_reasons == ("anchors_invalid:TypeError",)
+
+    malformed_model = AnalyticPredictionModel(
+        model_id=model.model_id,
+        model_version=model.model_version,
+        metric=model.metric,
+        intercept=model.intercept,
+        coefficients=SequenceLike(model.coefficients),  # type: ignore[arg-type]
+        validated_domain=model.validated_domain,
+        residual_half_width=model.residual_half_width,
+        residual_sample_count=model.residual_sample_count,
+        residual_evidence_class=model.residual_evidence_class,
+        distance_penalty_per_unit=model.distance_penalty_per_unit,
+    )
+    malformed_result = predict_cross_hardware(malformed_model, hardware, workload, anchors)
+    assert malformed_result.status == "INSUFFICIENT_EVIDENCE"
+    assert malformed_result.failure_reasons == ("input_invalid:TypeError",)
+    assert malformed_result.validated_domain == model.validated_domain
 
 
 def test_anchor_planner_prioritizes_mandatory_boundary_and_ood_with_budget() -> None:
