@@ -3,7 +3,7 @@ document_id: AEGIS-LAB-RUNTIME-MASTER-PLAN
 document_type: canonical_current_implementation_plan
 status: IN_EXECUTION
 authority: derived_from_checkout_and_evidence_manifest
-applies_to_commit: 2768e87e7280cf2a86252fb1e063ab4763778978
+applies_to_commit: 5818f6143802ff44465bfc7a86d37fc79a374c2c
 created_at: 2026-08-26
 last_verified_at: 2026-09-03
 supersedes: browser-native-proposal-and-cumulative-harness-roadmap-as-execution-authority
@@ -3179,6 +3179,19 @@ only an internal ownership reduction for the resource/runtime family; it does
 not prove cross-process single-writer behavior, FFI-wide lifetime/allocation
 safety, controller/DTO/error-family convergence, or external containment, so
 M6 remains `OPEN_LOCAL`.
+
+**M6 Lab-controller/replay family extraction continuation (2026-09-03):**
+implementation commit `5818f61` moves the `PyLabController` class and eight
+Lab event-chain, snapshot and archive-verification PyO3 bindings into
+`core/rust/src/ffi/lab.rs`, including their state/error conversion helpers.
+The façade re-exports the original class/function names and keeps module
+registration unchanged; JSON schemas, archive hash domains, and fail-closed
+manifest/legacy compatibility behavior are preserved. The complete **441-test**
+Rust unit suite, feature-gated FFI smoke, formatting check and
+`cargo clippy -- -D warnings` pass. This is an internal ownership split only;
+it does not prove archive crash safety beyond existing tests, cross-process
+authority, FFI-wide lifetime/allocation safety, or completion of the remaining
+hot-arena/cache/learning DTO families, so M6 remains `OPEN_LOCAL`.
 
 #### M7 — Replay/archive và recovery cutover
 
