@@ -3,7 +3,7 @@ document_id: AEGIS-LAB-RUNTIME-MASTER-PLAN
 document_type: canonical_current_implementation_plan
 status: IN_EXECUTION
 authority: derived_from_checkout_and_evidence_manifest
-applies_to_commit: fec53d1bd6bbc4eacaf004f07ed07bb4b1ee7582
+applies_to_commit: 8660d56b7ebc56332e679d289a317da8806c8756
 created_at: 2026-08-26
 last_verified_at: 2026-09-03
 supersedes: browser-native-proposal-and-cumulative-harness-roadmap-as-execution-authority
@@ -169,11 +169,11 @@ hiện tại và không được dùng để chứng minh checkout mới:
   structural/presence checks, không phải proof rằng Lab behavior hoạt động.
 
 Checkout implementation hiện hành cho migration node này là
-`fec53d1bd6bbc4eacaf004f07ed07bb4b1ee7582` (functional FFI change
+`8660d56b7ebc56332e679d289a317da8806c8756` (functional FFI change
 `e0731f698302a0791c70c24d93b696597e04180d` and session-index hardening
 `f95bbcb03c1c8448afbcf392b38dcd964b9a6f3f`), với worktree sạch và
 `origin/main` parity được xác nhận sau push. Regression Python trên CPython
-3.11 là **417 passed** với deprecation warnings treated as errors; Rust package
+3.11 là **419 passed** với deprecation warnings treated as errors; Rust package
 lib regression sau FFI hardening là **443 passed**, cùng fmt/check/clippy pass.
 Registry AESE hiện có **117** inventoried items, graph **45 claims / 90
 verification references** và selection ở `SHADOW`/`NOT_EXECUTED`. Các kết quả này
@@ -4144,6 +4144,21 @@ the observed local descendant-cleanup gap only; arbitrary adapter side
 effects, resource quotas, kernel Job Object/cgroup enforcement, hosted
 multi-process single-writer authority and rollback of already-emitted external
 effects remain unproven under `LAB-AUTH-001`/`LAB-OPS-007`.
+
+**AESE anchor-plan fail-closed continuation (2026-09-03):** implementation
+commit `8660d56b7ebc56332e679d289a317da8806c8756` hardens
+`select_anchor_plan`. Invalid budget metadata, a mixed valid/invalid candidate
+container, mandatory-anchor unavailability and planned-cost floating-point
+overflow now invalidate the whole plan as `EXTERNAL_VERIFICATION_BLOCKED` and
+clear `selected_anchor_ids`/planned spend; a seemingly executable subset is
+never exposed after a control-input failure. The planner remains
+`PLANNED_NOT_EXECUTED`, does not contact a runner and preserves all legacy
+tests. Two new adversarial tests pass; the AESE primitive suite is **31
+passed**, and the grouped local Python evidence is **419 tests** total when
+combined with 351 Lab-runtime, 8 inventory/graph and 8 preflight tests. This
+is input-integrity evidence only: it does not establish anchor availability,
+hosted execution, model calibration, external OOD coverage or release
+authority.
 
 **Historical checkout identity for the prior continuation (2026-09-03):**
 `SOURCE_HEAD = 0d1e9c3eb4db86aea0fee40134f5711395e55e27`,
