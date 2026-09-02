@@ -11,12 +11,22 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import platform
 import subprocess
+import sys
 from pathlib import Path
 from typing import Final, cast
 
-from scripts.aese_claim_graph import build_graph
-from scripts.aese_inventory import ROOT, build_inventory
+if __package__:
+    from scripts import aese_claim_graph as _claim_graph
+    from scripts import aese_inventory as _inventory
+else:  # Direct ``python scripts/aese_preflight.py`` invocation from the repo root.
+    import aese_claim_graph as _claim_graph
+    import aese_inventory as _inventory
+
+ROOT = _inventory.ROOT
+build_inventory = _inventory.build_inventory
+build_graph = _claim_graph.build_graph
 
 
 SCHEMA: Final[str] = "aese-shadow-preflight-plan-v1"
@@ -50,6 +60,21 @@ def _git_paths(base: str, target: str) -> list[str]:
         text=True,
     ).stdout
     return sorted({_normalize(path) for path in output.splitlines() if path.strip()})
+
+
+def _git_ref(ref: str) -> str:
+    """Return an optional ref without turning missing remote state into a claim."""
+
+    try:
+        return subprocess.run(
+            ["git", "rev-parse", "--verify", ref],
+            cwd=ROOT,
+            check=True,
+            capture_output=True,
+            text=True,
+        ).stdout.strip()
+    except (OSError, subprocess.CalledProcessError):
+        return "NOT_AVAILABLE"
 
 
 def _digest(*parts: str) -> str:
@@ -169,6 +194,26 @@ def build_preflight(changed_paths: list[str] | tuple[str, ...] = ()) -> dict[str
         "unknown_dependency_policy": "WIDEN_TO_RETAINED_SUITE",
         "plan_widened": widened,
         "legacy_selection": selection,
+        "provenance": {
+            "source_sha": str(inventory["source_head"]),
+            "origin_main_sha": _git_ref("origin/main"),
+            "worktree_status": str(inventory["worktree_status"]),
+            "worktree_epoch": str(inventory["worktree_epoch"]),
+            "inventory_source_tree_sha256": str(inventory["source_tree_sha256"]),
+            "graph_input_sha256": str(graph["source_tree_sha256"]),
+            "environment": {
+                "python": platform.python_version(),
+                "implementation": platform.python_implementation(),
+                "os": platform.system(),
+                "release": platform.release(),
+                "machine": platform.machine(),
+                "executable": sys.executable,
+            },
+            "validator": "scripts/aese_preflight.py",
+            "evidence_class": "PLANNING_ONLY",
+            "claim_scope": "LOCAL_CHECKOUT_ONLY",
+            "promotion": "DISABLED_IN_SHADOW",
+        },
         "evidence_order": order,
         "external_anchor_policy": "REQUEST_ONLY_WHEN_LOCAL_EVIDENCE_IS_INSUFFICIENT",
         "measurement": {
@@ -214,6 +259,7 @@ def validate_preflight(actual: dict[str, object], expected: dict[str, object]) -
         "unknown_dependency_policy",
         "plan_widened",
         "legacy_selection",
+        "provenance",
         "evidence_order",
         "external_anchor_policy",
         "measurement",
