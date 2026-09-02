@@ -502,8 +502,8 @@
   "limitations": [
     "runtime plugin/entry-point discovery outside these records remains not proven"
   ],
-  "HEAD": "f5c6eec863d0e1780e6361ce3001aee2a016104e",
-  "WORKTREE_EPOCH": "52824fef3160488456de26dddccc800f6d7c01b588ed991f2b9474d438475c7a",
-  "generated_at": "2026-09-02T01:22:26.844511+00:00",
+  "HEAD": "6eeb06bc6a405a6e022ab20df2116aeea4d4c82c",
+  "WORKTREE_EPOCH": "f7f7b68d7c1fc0cc3327c47ebedd2bc80c14ca65bcedcbb59b133acfebc9e069",
+  "generated_at": "2026-09-02T01:35:47.689772+00:00",
   "method": "aegis-design-closure-reconciliation-v1; direct Git/filesystem/source inspection, prior artifact hash reuse, disposable wheel reconciliation, bounded local probes"
 }
