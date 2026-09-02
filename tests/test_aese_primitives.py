@@ -6,6 +6,7 @@ import pytest
 
 from aegis_cognition import (
     AdaptiveMeasurementSpec,
+    AdaptiveMeasurementSession,
     AnchorCandidate,
     AnchorObservation,
     AnalyticPredictionModel,
@@ -63,6 +64,30 @@ def test_adaptive_measurement_baseline_failure_is_not_a_pass() -> None:
     result = evaluate_adaptive_measurement(spec, [0.9] * 30, warmups=[0.0] * 10, baseline=0.95)
     assert result.status == "FAIL"
     assert "confidence_interval_does_not_clear_baseline" in result.failure_reasons
+
+
+def test_adaptive_measurement_session_is_append_only_and_stops_at_terminal_status() -> None:
+    spec = AdaptiveMeasurementSpec(metric="latency_ms", warmup_count=2)
+    session = AdaptiveMeasurementSession(spec).append_warmups([0.0, 0.0])
+    session = session.append_observations([10.0] * 10)
+    assert session.checkpoint().status == "CONTINUE"
+    session = session.append_observations([10.0] * 20)
+    assert session.checkpoint().status == "PASS"
+    with pytest.raises(RuntimeError, match="terminal"):
+        session.append_observations([10.0])
+
+
+def test_hardware_vector_runtime_projection_does_not_infer_missing_capabilities() -> None:
+    vector = HardwareCapabilityVector.from_runtime_profile(
+        {
+            "cpu": {"architecture": "x86_64", "usable_parallelism": 8},
+            "os": {"backend": "windows", "enforcement": "job_object"},
+        }
+    )
+    assert vector.architecture == "x86_64"
+    assert vector.logical_cores == 8
+    assert vector.memory_capacity_bytes is None
+    assert vector.as_dict()["values"]["memory_capacity_bytes"] == "UNKNOWN"
 
 
 def test_hardware_vector_preserves_unknowns_and_rejects_impossible_core_counts() -> None:

@@ -19,6 +19,7 @@ __all__ = [
     "DEFAULT_UNIT_REGISTRY",
     "AdaptiveController",
     "AdaptiveMeasurementResult",
+    "AdaptiveMeasurementSession",
     "AdaptiveMeasurementSpec",
     "Agent",
     "AnalyticPredictionModel",
@@ -94,6 +95,7 @@ from .benchmark import (
 from .aese import (
     AdaptiveMeasurementResult,
     AdaptiveMeasurementSpec,
+    AdaptiveMeasurementSession,
     AnchorCandidate,
     AnchorSelectionPlan,
     AnchorObservation,
