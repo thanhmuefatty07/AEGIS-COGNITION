@@ -5673,6 +5673,66 @@ def test_controller_browser_action_uses_launcher_session_across_controller_loop(
     assert calls[0] == 2
 
 
+def test_controller_browser_gateway_fallback_rejects_swallowed_cancellation() -> None:
+    """The compatibility browser gateway cannot turn cancellation into success."""
+
+    import asyncio
+
+    class Session:
+        current_url = "https://allowed.example/start"
+
+    started = asyncio.Event()
+
+    class Gateway:
+        async def capture_browser_action(self, **_: object) -> object:
+            started.set()
+            try:
+                await asyncio.Event().wait()
+            except asyncio.CancelledError:
+                return object()
+            raise AssertionError("browser gateway unexpectedly completed")
+
+    app = LabApplication(
+        config=SimpleNamespace(
+            trust_level="DEV", options={}, max_steps=2, task="browser fallback", llm=None
+        ),
+        gateway_factory=lambda **_: Gateway(),
+        telemetry=SimpleNamespace(),
+        correlation=SimpleNamespace(),
+    )
+    run = LabRun("browser gateway cancellation")
+    app._active_run = run
+    app._prepare_execution_cells(run, {})
+    browser_cell = BrowserCell(BrowserCellPolicy(allowed_hosts=("allowed.example",)))
+    session = Session()
+
+    async def exercise() -> None:
+        await browser_cell.bind(session)
+        task = asyncio.create_task(
+            app._execute_controller_action_plan(
+                run,
+                {
+                    "schema": "aegis-lab-action-plan-v1",
+                    "actions": [{"kind": "browser_action", "action": {"kind": "wait", "milliseconds": 1}}],
+                },
+                {},
+                run_id=run.mission_id,
+                browser_cell=browser_cell,
+                browser_session=session,
+                action_kinds={"browser_action"},
+            )
+        )
+        await asyncio.wait_for(started.wait(), timeout=1.0)
+        task.cancel()
+        with pytest.raises(asyncio.CancelledError):
+            await task
+
+    asyncio.run(exercise())
+    settled = [event for event in run.events if event.kind == "browser_action_recorded"]
+    assert len(settled) == 1
+    assert settled[0].payload["status"] == "CANCELLED"
+
+
 def test_controller_action_plan_executes_preregistered_experiment_cell(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
