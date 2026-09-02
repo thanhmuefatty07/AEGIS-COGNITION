@@ -1,8 +1,8 @@
 # AEGIS — Final Architecture Design-Closure and Evidence Reconciliation
-WORKTREE_EPOCH: 896b4eab12edf1552f10997ce30213d0d26dc37db579cf35440a02d2ddb42d60
-HEAD: 2f29e5c85814f200885c72200d701151bfa6eb37
+WORKTREE_EPOCH: d60eb675bf0942cdb14bc3fc89939864ee97df7d32eebb1a2e62d17a5215bba9
+HEAD: e8fbf0b88c8d68e6bc50e2398ce4dcaff98aeb5e
 STATUS: PARTIAL_LOCAL
-generated_at: 2026-09-02T03:46:41.168901+00:00
+generated_at: 2026-09-02T03:49:13.320882+00:00
 method: aegis-design-closure-reconciliation-v1; direct Git/filesystem/source inspection, prior artifact hash reuse, disposable wheel reconciliation, bounded local probes
 limitations: local evidence is partial; external-only closure is explicit below
 
