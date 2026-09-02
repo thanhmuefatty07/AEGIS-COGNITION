@@ -177,9 +177,7 @@ def build_inventory(root: Path = ROOT) -> dict[str, object]:
         if scoped is None:
             continue
         kind, scope = scoped
-        if kind == "RUST_UNIT_TEST" and not RUST_TEST_RE.search(
-            (ROOT / path).read_text(encoding="utf-8")
-        ):
+        if kind == "RUST_UNIT_TEST" and not RUST_TEST_RE.search((ROOT / path).read_text(encoding="utf-8")):
             continue
         if kind == "SCRIPT_OR_GATE" and Path(path).stem in PYTHON_BENCHMARK_STEMS:
             kind = "PYTHON_BENCHMARK"
@@ -213,8 +211,7 @@ def build_inventory(root: Path = ROOT) -> dict[str, object]:
         disposition = str(entry["migration_disposition"])
         dispositions[disposition] = dispositions.get(disposition, 0) + 1
     source_tree_material = b"".join(
-        f"{path}\0{_sha256_file(ROOT / path)}\n".encode()
-        for path in sorted(selected_paths)
+        f"{path}\0{_sha256_file(ROOT / path)}\n".encode() for path in sorted(selected_paths)
     )
     return {
         "schema": "aese-current-evidence-system-inventory-v1",
