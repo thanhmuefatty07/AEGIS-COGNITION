@@ -3,7 +3,7 @@ document_id: AEGIS-LAB-RUNTIME-MASTER-PLAN
 document_type: canonical_current_implementation_plan
 status: IN_EXECUTION
 authority: derived_from_checkout_and_evidence_manifest
-applies_to_commit: eb852553897e34f6fe0ff4b23d7f0ffbfd800aa8
+applies_to_commit: 8e2215cac6388cb40a0e6376c6147624b5815331
 created_at: 2026-08-26
 last_verified_at: 2026-09-03
 supersedes: browser-native-proposal-and-cumulative-harness-roadmap-as-execution-authority
@@ -169,7 +169,7 @@ hiện tại và không được dùng để chứng minh checkout mới:
   structural/presence checks, không phải proof rằng Lab behavior hoạt động.
 
 Checkout implementation hiện hành cho migration node này là
-`eb852553897e34f6fe0ff4b23d7f0ffbfd800aa8` (functional FFI change
+`8e2215cac6388cb40a0e6376c6147624b5815331` (functional FFI change
 `e0731f698302a0791c70c24d93b696597e04180d` and session-index hardening
 `f95bbcb03c1c8448afbcf392b38dcd964b9a6f3f`), với worktree sạch và
 `origin/main` parity được xác nhận sau push. Regression Python trên CPython
@@ -4262,6 +4262,19 @@ architecture-fitness checks** and **180/180 constitution checks**; no runtime
 claim is inferred from this structural correction. This removes validator
 drift only. Hosted execution, cross-platform containment, model calibration,
 independent replication and release authority remain unresolved.
+
+**AESE Phase 0 inventory-schema continuation (2026-09-03):** implementation
+commit `8e2215cac6388cb40a0e6376c6147624b5815331` makes the directive's
+required per-item metadata explicit in the generated inventory. Every retained
+surface now carries `current_status`, `risk`, `cost`, `platform`, and
+`release_critical`; unknown values remain `UNKNOWN`, while `current_status`
+remains `NOT_VERIFIED` and is explicitly not a test result. The default
+disposition is still `RETAIN_UNCHANGED`, no legacy runner is superseded or
+deleted, and the registry/graph remain `SHADOW`. Inventory, graph and preflight
+regressions pass **16/16** after regeneration; the inventory remains **117
+items** with **108** unmapped surfaces requiring conservative widening. This
+closes a metadata-completeness gap only; it does not map every test function,
+prove runner execution, or enable selective testing.
 
 Không được gọi toàn hệ thống “production-ready” khi bất kỳ gate bắt buộc nào
 ở trên còn `OPEN_*`, `BLOCKED_*`, `UNKNOWN` hoặc chỉ có fixture/mock evidence.
