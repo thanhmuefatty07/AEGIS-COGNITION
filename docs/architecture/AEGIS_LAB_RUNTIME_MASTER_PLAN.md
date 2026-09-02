@@ -3804,6 +3804,21 @@ failed before runner allocation; `RELEASE = NOT_READY` and
 `PRODUCTION_COMPLETE = NO`. This closure record does not promote any local
 result to CI or release evidence.
 
+**AESE current verification snapshot (2026-09-03):** after the provenance
+and direct-entrypoint hardening commit
+`6fbfb1071c8752071912b0d01d1156dd64a6f912`, `HEAD == origin/main` and the
+worktree is clean. The full Python/cross-language regression suite passes
+**485 tests** on CPython 3.11; the AESE inventory, claim-graph and preflight
+focused suite passes **15 tests**; targeted Ruff and Pyright for the changed
+AESE surface pass; architecture fitness, constitution audit (180 checks),
+document consistency and a generated checkout-bound evidence manifest pass
+locally. Rust evidence was not rerun because no Rust source changed and prior
+source-bound evidence remains scoped to its recorded checkout. Hosted CI run
+`33661148485` created 13 jobs, all with zero executed steps, and failed before
+runner allocation; therefore `HOSTED_VERIFICATION = BLOCKED_EXTERNAL`, source
+execution was not performed, and no hosted test result is claimed. Release
+attestation, external anchors and selective-test promotion remain disabled.
+
 Không được gọi toàn hệ thống “production-ready” khi bất kỳ gate bắt buộc nào
 ở trên còn `OPEN_*`, `BLOCKED_*`, `UNKNOWN` hoặc chỉ có fixture/mock evidence.
 
