@@ -869,7 +869,10 @@ fn deduplicate_edges(graph: &mut MemoryGraph) {
         .sort_by_key(|edge| (edge.from_node, edge.to_node, edge.edge_id));
     let mut compacted: Vec<MemoryEdge> = Vec::with_capacity(graph.edges.len());
     for edge in graph.edges.drain(..) {
-        if let Some(existing) = compacted.iter_mut().find(|existing| {
+        // Sorting by the same endpoint pair makes all duplicates adjacent, so
+        // only the last compacted edge can match. This keeps folding linear
+        // after the required sort instead of rescanning all prior edges.
+        if let Some(existing) = compacted.last_mut().filter(|existing| {
             existing.from_node == edge.from_node && existing.to_node == edge.to_node
         }) {
             if edge.weight > existing.weight {
