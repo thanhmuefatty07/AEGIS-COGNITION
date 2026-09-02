@@ -3,7 +3,7 @@ document_id: AEGIS-LAB-RUNTIME-MASTER-PLAN
 document_type: canonical_current_implementation_plan
 status: IN_EXECUTION
 authority: derived_from_checkout_and_evidence_manifest
-applies_to_commit: 7a6e7c5b91e7538f513925944ad85e3ca2b6d29a
+applies_to_commit: 0d1e9c3eb4db86aea0fee40134f5711395e55e27
 created_at: 2026-08-26
 last_verified_at: 2026-09-03
 supersedes: browser-native-proposal-and-cumulative-harness-roadmap-as-execution-authority
@@ -169,9 +169,9 @@ hiện tại và không được dùng để chứng minh checkout mới:
   structural/presence checks, không phải proof rằng Lab behavior hoạt động.
 
 Checkout implementation hiện hành cho migration node này là
-`7a6e7c5b91e7538f513925944ad85e3ca2b6d29a`, với worktree sạch và
+`0d1e9c3eb4db86aea0fee40134f5711395e55e27`, với worktree sạch và
 `origin/main` parity được ghi nhận trong snapshot closure mới nhất. Regression
-Python/cross-language trên CPython 3.11 sau hardening là **488 passed**;
+Python/cross-language trên CPython 3.11 sau hardening là **489 passed**;
 registry AESE vẫn giữ 116 item, graph 35 claim/70 verification reference và
 selection ở `SHADOW`/`NOT_EXECUTED`. Rust evidence không được tái chạy vì node
 này không sửa Rust; artifact Rust trước đó vẫn chỉ là local source-bound.
@@ -3849,8 +3849,8 @@ with fewer than two in-domain, reconstructible anchors remains
 retained instead of treating the out-of-domain record as supporting evidence.
 This closes a local evidence-integrity gap in the prediction primitive only. It
 does not validate a model, add physical-energy measurement, or promote any
-cross-hardware claim. The focused AESE suite passes **17 tests**, and the full
-Python/cross-language regression passes **488 tests** with deprecation warnings
+cross-hardware claim. The focused AESE suite passes **18 tests**, and the full
+Python/cross-language regression passes **489 tests** with deprecation warnings
 treated as errors. Registry/graph counts remain unchanged; shadow selection,
 external anchors, independent replication, and release promotion remain
 disabled.
@@ -3868,12 +3868,18 @@ The planner remains request-only and `PLANNED_NOT_EXECUTED`; this hardening
 protects selection provenance without asserting that any external runner is
 available.
 
+Prediction artifacts now expose the sorted identities and evidence hashes of
+the in-domain anchors considered. The artifact hash changes when an anchor's
+validated hardware, workload, or observed value changes, while reordering the
+same set remains deterministic. This improves local provenance reconstruction;
+it does not establish model calibration or external evidence quality.
+
 **Current checkout identity for this continuation (2026-09-03):**
-`SOURCE_HEAD = 7a6e7c5b91e7538f513925944ad85e3ca2b6d29a`,
+`SOURCE_HEAD = 0d1e9c3eb4db86aea0fee40134f5711395e55e27`,
 `WORKTREE_STATUS = CLEAN`, `WORKTREE_EPOCH =
-f0e0f2176bb6d3e4c063e4dd0884a71fb1f72d9f93901ca0b22d047eaa98d744`, and the
+ddad61ab234932d25c4459a8106140b4c04e688fb3e397d86381c12629bc9301`, and the
 recorded inventory/graph source tree digest is
-`42b8bb86c32a185300db26ed812fe7287a4d64f45e4ebc966003f89579155c94`.
+`7cca1399da41e6cb968e0a9368d0d1882e312eeb327accd997b916d152cbe5ac`.
 `origin/main` was still at the prior documentation closure while this snapshot
 was prepared; parity must be rechecked after the normal single push. These
 identifiers bind the local evidence and are not hosted or signed-release
