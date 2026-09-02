@@ -8,8 +8,8 @@ created_at: 2026-08-26
 last_verified_at: 2026-09-02
 supersedes: browser-native-proposal-and-cumulative-harness-roadmap-as-execution-authority
 evidence_source: docs/architecture/evidence/current.json
-execution_scope: working_tree_uncommitted
-verification_scope: local checkout plus working-tree implementation and tests
+execution_scope: clean origin/main checkout
+verification_scope: local checkout, origin/main parity, implementation/tests; hosted gates not retained
 ---
 
 # AEGIS Lab Runtime — Master Implementation Plan
@@ -2804,6 +2804,17 @@ and mutation rejection; full local regression passes **368 tests**. This closes 
 construction binding gap; adapter/provider receipt authority, cross-cell policy
 ownership and hosted release evidence remain open under
 `LAB-AUTH-001`/`LAB-RELEASE-006`.
+
+**Final local verification continuation (2026-09-02):** after the native
+gateway integrity change, the combined local command
+`python -m pytest tests core/python/tests.py -q -W error::DeprecationWarning`
+passes **453 tests**. The project-pinned Ruff **0.16.3** lint check passes for
+the complete `aegis_cognition` package, and Pyright **1.1.411** reports zero
+errors, warnings or informations; `cargo fmt --all -- --check` also passes.
+Ruff format remains a separate `NOT VERIFIED` gate because four pre-existing
+files would require broad mechanical reformatting unrelated to this semantic
+slice. This evidence is local and source-bound; hosted CI, signed release
+attestation and external platform/physical witnesses remain open.
 
 **M2 operator-evidence continuation (2026-09-02):** security-event and
 blocker/resolution APIs now require exact reason/detail strings and reject
