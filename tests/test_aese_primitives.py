@@ -49,6 +49,21 @@ def test_adaptive_measurement_continues_before_floor_and_stops_at_budget() -> No
     assert "precision_not_met" in exhausted.failure_reasons
 
 
+def test_adaptive_measurement_rejects_over_budget_input_even_when_precision_is_zero() -> None:
+    spec = AdaptiveMeasurementSpec(metric="latency_ms", max_observations=30)
+    result = evaluate_adaptive_measurement(spec, [1.0] * 31, warmups=[0.0] * 10)
+    assert result.status == "INSUFFICIENT_EVIDENCE"
+    assert "observation_budget_exceeded" in result.failure_reasons
+    assert result.interval_method == "student_t_cornish_fisher_bonferroni_peek_v1"
+
+
+def test_adaptive_measurement_does_not_pass_with_a_trailing_partial_block() -> None:
+    spec = AdaptiveMeasurementSpec(metric="latency_ms", block_size=5)
+    result = evaluate_adaptive_measurement(spec, [1.0] * 31, warmups=[0.0] * 10)
+    assert result.status == "CONTINUE"
+    assert "incomplete_final_block" in result.failure_reasons
+
+
 def test_adaptive_measurement_marks_nonfinite_and_drift_without_silent_filtering() -> None:
     spec = AdaptiveMeasurementSpec(metric="throughput", block_size=1)
     contaminated = evaluate_adaptive_measurement(spec, [1.0] * 29 + [math.nan], warmups=[0.0] * 10)
