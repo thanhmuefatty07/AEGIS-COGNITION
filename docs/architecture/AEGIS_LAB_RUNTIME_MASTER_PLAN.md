@@ -3,7 +3,7 @@ document_id: AEGIS-LAB-RUNTIME-MASTER-PLAN
 document_type: canonical_current_implementation_plan
 status: IN_EXECUTION
 authority: derived_from_checkout_and_evidence_manifest
-applies_to_commit: 751aed559ad3f710b6b5aefc845da5cb868e3378
+applies_to_commit: eb852553897e34f6fe0ff4b23d7f0ffbfd800aa8
 created_at: 2026-08-26
 last_verified_at: 2026-09-03
 supersedes: browser-native-proposal-and-cumulative-harness-roadmap-as-execution-authority
@@ -169,11 +169,11 @@ hiện tại và không được dùng để chứng minh checkout mới:
   structural/presence checks, không phải proof rằng Lab behavior hoạt động.
 
 Checkout implementation hiện hành cho migration node này là
-`751aed559ad3f710b6b5aefc845da5cb868e3378` (functional FFI change
+`eb852553897e34f6fe0ff4b23d7f0ffbfd800aa8` (functional FFI change
 `e0731f698302a0791c70c24d93b696597e04180d` and session-index hardening
 `f95bbcb03c1c8448afbcf392b38dcd964b9a6f3f`), với worktree sạch và
 `origin/main` parity được xác nhận sau push. Regression Python trên CPython
-3.11 là **425 passed** với deprecation warnings treated as errors; Rust package
+3.11 là **427 passed** với deprecation warnings treated as errors; Rust package
 lib regression sau FFI hardening là **443 passed**, cùng fmt/check/clippy pass.
 Registry AESE hiện có **117** inventoried items, graph **45 claims / 90
 verification references** và selection ở `SHADOW`/`NOT_EXECUTED`. Các kết quả này
@@ -4232,6 +4232,36 @@ recorded inventory/graph source tree digest is
 was prepared; parity must be rechecked after the normal single push. These
 identifiers bind the local evidence and are not hosted or signed-release
 attestation.
+
+**AESE adaptive stopping validity continuation (2026-09-03):** implementation
+commit `104105632427d3adf259d24aede039e965b2d28a` closes a local fail-open
+boundary in the Phase 3 shadow primitive. An input longer than the declared
+`max_observations` can no longer return `PASS`, even when all retained values
+have zero variance; a trailing partial block also cannot return `PASS` after
+silently dropping its remainder. Sequential checkpoints now use a
+pre-registered Bonferroni alpha allocation over the maximum checkpoint budget,
+and the result records
+`student_t_cornish_fisher_bonferroni_peek_v1`. The async test configuration
+sets `asyncio_default_fixture_loop_scope=function`, so the declared
+deprecation-warning-as-error gate reaches test execution instead of failing
+during pytest configuration. Two adversarial regressions were added. The AESE
+primitive suite passes **38/38**, the full Python suite passes **427/427** with
+`-W error::DeprecationWarning`, `ruff` and strict `pyright` pass for the changed
+Python surface, and inventory/claim-graph drift checks pass after regeneration.
+This is local protocol-integrity evidence only: it does not calibrate the
+interval under arbitrary dependence, prove model accuracy, or enable selective
+testing/promotion; external anchors, hosted verification, independent
+replication and release authority remain unavailable.
+
+**Architecture-validator ownership continuation (2026-09-03):** implementation
+commit `eb852553897e34f6fe0ff4b23d7f0ffbfd800aa8` updates the two structural
+validators to follow the canonical FFI module split (`ffi/compat.rs`,
+`ffi/hot.rs`, and `ffi/runtime.rs`) instead of treating the facade file as the
+implementation owner. The checks remain fail-closed and now pass **23/23
+architecture-fitness checks** and **180/180 constitution checks**; no runtime
+claim is inferred from this structural correction. This removes validator
+drift only. Hosted execution, cross-platform containment, model calibration,
+independent replication and release authority remain unresolved.
 
 Không được gọi toàn hệ thống “production-ready” khi bất kỳ gate bắt buộc nào
 ở trên còn `OPEN_*`, `BLOCKED_*`, `UNKNOWN` hoặc chỉ có fixture/mock evidence.

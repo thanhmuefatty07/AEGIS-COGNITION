@@ -73,6 +73,12 @@ measured remain `UNKNOWN`; simulation remains `SIMULATED`; and prediction is
 refused without in-domain inputs, reconstructible anchors and measured
 residual uncertainty.
 
+Adaptive checkpoints use a pre-registered Bonferroni alpha allocation across
+the declared maximum observation budget. Inputs beyond that budget and
+trailing partial blocks are retained as invalid evidence and cannot produce a
+`PASS`; this is a conservative local stopping rule, not calibration under
+arbitrary dependence.
+
 `select_anchor_plan` only produces a cost-bounded selection record. It never
 contacts Actions or executes an external job. `CoverageVector` keeps each
 coverage dimension separate and never synthesizes an aggregate score.
