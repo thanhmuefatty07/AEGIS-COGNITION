@@ -3,7 +3,7 @@ document_id: AEGIS-LAB-RUNTIME-MASTER-PLAN
 document_type: canonical_current_implementation_plan
 status: IN_EXECUTION
 authority: derived_from_checkout_and_evidence_manifest
-applies_to_commit: cdfce8f847a478b268d61db112fcebe34a103bcc
+applies_to_commit: 751aed559ad3f710b6b5aefc845da5cb868e3378
 created_at: 2026-08-26
 last_verified_at: 2026-09-03
 supersedes: browser-native-proposal-and-cumulative-harness-roadmap-as-execution-authority
@@ -169,11 +169,11 @@ hiện tại và không được dùng để chứng minh checkout mới:
   structural/presence checks, không phải proof rằng Lab behavior hoạt động.
 
 Checkout implementation hiện hành cho migration node này là
-`cdfce8f847a478b268d61db112fcebe34a103bcc` (functional FFI change
+`751aed559ad3f710b6b5aefc845da5cb868e3378` (functional FFI change
 `e0731f698302a0791c70c24d93b696597e04180d` and session-index hardening
 `f95bbcb03c1c8448afbcf392b38dcd964b9a6f3f`), với worktree sạch và
 `origin/main` parity được xác nhận sau push. Regression Python trên CPython
-3.11 là **424 passed** với deprecation warnings treated as errors; Rust package
+3.11 là **425 passed** với deprecation warnings treated as errors; Rust package
 lib regression sau FFI hardening là **443 passed**, cùng fmt/check/clippy pass.
 Registry AESE hiện có **117** inventoried items, graph **45 claims / 90
 verification references** và selection ở `SHADOW`/`NOT_EXECUTED`. Các kết quả này
@@ -3236,6 +3236,17 @@ independent verifier.
 
 **Rollback:** đọc archive cũ ở compatibility mode; không append vào format mới
 không có manifest/version.
+
+**M7 fresh-process snapshot replay continuation (2026-09-03):** test commit
+`751aed559ad3f710b6b5aefc845da5cb868e3378` writes a validated `LabRun`
+projection to a temporary snapshot, starts an independent CPython process, and
+requires `LabRun.from_payload` plus event-chain verification to reproduce the
+same `event_root_hash`. The child has no shared Python object or monkeypatch;
+the bounded test passes with the full Lab-runtime suite at **352/352**. This
+strengthens local restart/replay evidence for the JSON projection only; it does
+not prove native segmented-archive verification, crash-prefix injection,
+concurrent hosted writers, cross-platform recovery, or external side-effect
+reversal, so M7 and `LAB-AUTH-001`/`LAB-OPS-007` remain open.
 
 #### M8 — Benchmark, operations và release closure
 
