@@ -32,7 +32,13 @@ from .browser_playwright_runtime import (
     capture_playwright_action,
 )
 from .browser_ops_bench import BrowserOpsBench, BrowserOpsBenchPredicate, BrowserOpsBenchTask
-from .aegis_adapter import Agent, ProviderRateLimitError, commit_hot_evidence, trust_policy_snapshot
+from .aegis_adapter import (
+    AegisAgent,
+    Agent,
+    ProviderRateLimitError,
+    commit_hot_evidence,
+    trust_policy_snapshot,
+)
 from .orchestrator import build_message, to_zero_copy, validate_runtime_message
 from .integration import build_bridge_message, validate_bridge_batch, validate_bridge_contract, validate_bridge_smoke
 from .preflight import check_build_preflight
@@ -1620,6 +1626,14 @@ def test_aegis_adapter_prod_all_providers_throttled_fails_before_hot_commit():
             provider="openrouter/gpt-4",
             fallback_providers=[("nim/llama-3-70b", throttled)],
         ).run_sync()
+
+
+@pytest.mark.parametrize("max_retries", (True, False, 0, -1, "3", 1.0))
+def test_aegis_agent_rejects_lossy_retry_policy(max_retries: object) -> None:
+    """Compatibility retries must not silently coerce unsafe metadata."""
+
+    with pytest.raises(ValueError, match="max_retries must be a positive integer"):
+        AegisAgent(max_retries=max_retries)  # type: ignore[arg-type]
 
 
 def test_aegis_adapter_dev_browser_action_capture_commits_hot_evidence_before_cold_publish():
