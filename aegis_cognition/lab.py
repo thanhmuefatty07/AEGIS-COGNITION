@@ -8509,14 +8509,18 @@ class LabApplication:
         query = run.objective
         top_k = options.get("top_k", 3)
         max_chars = options.get("lab_context_max_chars", 16_384)
+        raw_timeout = options.get("context_retrieval_timeout_seconds", 10.0)
         if (
             type(top_k) is not int
             or type(max_chars) is not int
             or top_k < 1
             or max_chars < 1
+            or not _is_finite_number(raw_timeout)
+            or float(raw_timeout) <= 0
         ):
             run.record_blocker("context_retrieval_policy_invalid:ValueError")
             return ""
+        timeout_seconds = float(raw_timeout)
         input_payload = {
             "schema": "aegis-context-retrieval-input-v1",
             "query_hash": _hash(query),
@@ -8527,6 +8531,7 @@ class LabApplication:
             "effect_class": "read_only",
             "trust_level": self.config.trust_level,
             "max_chars": max_chars,
+            "timeout_seconds": timeout_seconds,
         }
         lease_id = max(1, len(run.tool_execution_admissions) + 1)
         execution_id = f"context-retrieval-{run.mission_id}"
@@ -8542,6 +8547,7 @@ class LabApplication:
                 lease_id=lease_id,
                 attempt=1,
                 execution_id=execution_id,
+                timeout_seconds=timeout_seconds,
             )
         except (RuntimeError, TypeError, ValueError) as exc:
             run.record_blocker(f"context_retrieval_admission_failed:{type(exc).__name__}")
@@ -8562,10 +8568,14 @@ class LabApplication:
                 lease_id=lease_id,
                 attempt=1,
                 status=status,
+                timeout_seconds=timeout_seconds,
             )
 
         try:
-            raw_context = await _call_fenced(runner, query=query, task=query, run=run)
+            raw_context = await asyncio.wait_for(
+                _call_fenced(runner, query=query, task=query, run=run),
+                timeout=timeout_seconds,
+            )
             if raw_context is None:
                 context = ""
             elif isinstance(raw_context, str):
@@ -8601,7 +8611,10 @@ class LabApplication:
             raise
         except Exception as exc:
             try:
-                await settle("REJECTED", {"error": type(exc).__name__})
+                await settle(
+                    "TIMED_OUT" if isinstance(exc, TimeoutError) else "REJECTED",
+                    {"error": type(exc).__name__},
+                )
             except (RuntimeError, TypeError, ValueError) as settlement_exc:
                 run.record_blocker(
                     f"context_retrieval_settlement_failed:{type(settlement_exc).__name__}"
@@ -9026,11 +9039,17 @@ class LabApplication:
         *,
         task: str,
         run_id: str,
+        timeout_seconds: float = 10.0,
     ) -> list[Any]:
         program.validate()
         if not callable(executor):
             raise TypeError("search program executor must be callable")
-        result = await _call_fenced(executor, program, task=task, run_id=run_id)
+        if not _is_finite_number(timeout_seconds) or float(timeout_seconds) <= 0:
+            raise ValueError("search executor timeout must be finite and positive")
+        result = await asyncio.wait_for(
+            _call_fenced(executor, program, task=task, run_id=run_id),
+            timeout=float(timeout_seconds),
+        )
         if type(result) is dict:
             result_map = cast(dict[str, Any], result)
             has_results = "results" in result_map
@@ -9829,18 +9848,17 @@ class LabApplication:
                     executor = options.get("search_program_executor")
                 if executor is None:
                     executor = options.get("researcher") or options.get("search_as_code")
+                raw_search_timeout = options.get("search_timeout_seconds", 10.0)
+                if not _is_finite_number(raw_search_timeout) or float(raw_search_timeout) <= 0:
+                    raise TypeError("controller search executor timeout must be finite and positive")
+                search_timeout_seconds = float(raw_search_timeout)
                 if executor is None:
-                    raw_search_timeout = options.get("search_timeout_seconds", 10.0)
                     raw_search_max_bytes = options.get("search_max_bytes", 8 * 1024 * 1024)
-                    if (
-                        not _is_finite_number(raw_search_timeout)
-                        or float(raw_search_timeout) <= 0
-                        or type(raw_search_max_bytes) is not int
-                    ):
+                    if type(raw_search_max_bytes) is not int:
                         raise TypeError("controller search executor metadata types are invalid")
                     executor = SearchProgramExecutor(
                         query_provider=options.get("search_query_provider"),
-                        timeout_seconds=raw_search_timeout,
+                        timeout_seconds=search_timeout_seconds,
                         max_bytes=raw_search_max_bytes,
                     )
                 if not callable(executor):
@@ -9859,6 +9877,7 @@ class LabApplication:
                     executor,
                     task=self.config.task,
                     run_id=run_id,
+                    timeout_seconds=search_timeout_seconds,
                 )
             except asyncio.CancelledError:
                 run.record_research_program(
@@ -10843,18 +10862,17 @@ class LabApplication:
                     run.record_blocker("execution_cell_not_registered:search_program")
                     raise RuntimeError("search program execution cell is not registered")
                 executor = search_executor or options.get("search_program_executor") or search
+                raw_search_timeout = options.get("search_timeout_seconds", 10.0)
+                if not _is_finite_number(raw_search_timeout) or float(raw_search_timeout) <= 0:
+                    raise TypeError("search executor timeout must be finite and positive")
+                search_timeout_seconds = float(raw_search_timeout)
                 if executor is None and not self._execution_cells_strict:
-                    raw_search_timeout = options.get("search_timeout_seconds", 10.0)
                     raw_search_max_bytes = options.get("search_max_bytes", 8 * 1024 * 1024)
-                    if (
-                        not _is_finite_number(raw_search_timeout)
-                        or float(raw_search_timeout) <= 0
-                        or type(raw_search_max_bytes) is not int
-                    ):
+                    if type(raw_search_max_bytes) is not int:
                         raise TypeError("search executor metadata types are invalid")
                     executor = SearchProgramExecutor(
                         query_provider=options.get("search_query_provider"),
-                        timeout_seconds=raw_search_timeout,
+                        timeout_seconds=search_timeout_seconds,
                         max_bytes=raw_search_max_bytes,
                     )
                 if not callable(executor):
@@ -10870,6 +10888,7 @@ class LabApplication:
                         executor,
                         task=self.config.task,
                         run_id=run_id,
+                        timeout_seconds=search_timeout_seconds,
                     )
                 except asyncio.CancelledError:
                     try:
