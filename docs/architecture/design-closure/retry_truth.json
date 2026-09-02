@@ -141,8 +141,8 @@
     "no live provider or SDK retry probe",
     "observed Lab-owned admission bound does not measure physical requests or hidden retries"
   ],
-  "HEAD": "9398f2fc87f5e262ac5d6b94112191e453aac83a",
-  "WORKTREE_EPOCH": "4d846dbb4c1c0e9ff4678e1e57ed073c4cfaabb7549c93f8e8db2984ea4ae907",
-  "generated_at": "2026-09-02T03:32:15.711024+00:00",
+  "HEAD": "fee817dc6cbd2e977cf3cd2fc0d591c4a0919b44",
+  "WORKTREE_EPOCH": "a8b46354a208492de802a5575867dcab2cbca580392e8cfa5f2b20ee43b9168d",
+  "generated_at": "2026-09-02T03:41:03.509970+00:00",
   "method": "aegis-design-closure-reconciliation-v1; direct Git/filesystem/source inspection, prior artifact hash reuse, disposable wheel reconciliation, bounded local probes"
 }
