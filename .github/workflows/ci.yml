@@ -3,8 +3,29 @@ name: CI
 "on":
   push:
     branches: [main]
+    # Documentation/evidence-only commits are checked locally; avoid starting
+    # the full matrix when no executable or build input changed.
+    paths-ignore:
+      - "**/*.md"
+      - "docs/**"
+      - "AEGIS-COGNITION/**"
+      - "planning pdf/**"
+      - ".agents/**"
+      - ".cursor/**"
+      - ".serena/**"
+      - "artifacts/**"
   pull_request:
     branches: [main]
+    # Documentation/evidence-only changes do not need the runtime matrix.
+    paths-ignore:
+      - "**/*.md"
+      - "docs/**"
+      - "AEGIS-COGNITION/**"
+      - "planning pdf/**"
+      - ".agents/**"
+      - ".cursor/**"
+      - ".serena/**"
+      - "artifacts/**"
   workflow_dispatch:
 
 permissions:
