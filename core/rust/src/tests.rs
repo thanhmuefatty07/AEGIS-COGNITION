@@ -59,8 +59,8 @@ mod tests {
     };
     use crate::memory::fidelity::{compute_fidelity, decay, reinforce};
     use crate::memory::fold::{
-        CogniFoldEngine, CogniFoldStore, CognitiveFolding, FoldingConfig, MemoryCrystallization,
-        SemanticPointerResolver,
+        CogniFoldEngine, CogniFoldStore, CognitiveFolding, FoldingConfig, GenerationalSlab,
+        MemoryCrystallization, RuntimeLayoutBudget, SemanticPointerResolver,
     };
     use crate::memory::frame::{MemoryEdge, MemoryFrame, MemoryGraph, SemanticPointer};
     use crate::memory::pool::{MemoryPool, PreAllocatedBuffer, SlabMemoryPool};
@@ -2571,6 +2571,33 @@ mod tests {
         assert!(!store.is_empty());
         assert_eq!(store.total_payload_bytes(), 3);
         assert!((store.average_fidelity() - 0.8).abs() < f32::EPSILON);
+    }
+
+    #[test]
+    fn memory_store_rejects_layout_budget_overflow_without_panicking_or_mutating_order() {
+        let budget = RuntimeLayoutBudget::new(1, 4, 64).unwrap();
+        let mut store = CogniFoldStore::new();
+        store.frames = GenerationalSlab::with_layout_budget(budget).unwrap();
+        store
+            .ingest(MemoryFrame {
+                frame_id: 1,
+                session_id: 2,
+                payload: vec![1, 2, 3, 4],
+                fidelity: 0.8,
+            })
+            .unwrap();
+
+        let result = store.ingest(MemoryFrame {
+            frame_id: 2,
+            session_id: 2,
+            payload: vec![5],
+            fidelity: 0.8,
+        });
+
+        assert_eq!(result, Err("runtime layout slot budget exceeded"));
+        assert_eq!(store.len(), 1);
+        assert_eq!(store.order.len(), 1);
+        assert_eq!(store.total_payload_bytes(), 4);
     }
 
     #[test]
