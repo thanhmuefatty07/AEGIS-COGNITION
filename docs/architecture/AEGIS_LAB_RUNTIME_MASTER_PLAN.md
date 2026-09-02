@@ -3,7 +3,7 @@ document_id: AEGIS-LAB-RUNTIME-MASTER-PLAN
 document_type: canonical_current_implementation_plan
 status: IN_EXECUTION
 authority: derived_from_checkout_and_evidence_manifest
-applies_to_commit: 69ea62bd52a5e3b36c35630045abd8b3a189f696
+applies_to_commit: c3e3631f8b43343c2ebee1b1ad723bcd9e36f216
 created_at: 2026-08-26
 last_verified_at: 2026-09-03
 supersedes: browser-native-proposal-and-cumulative-harness-roadmap-as-execution-authority
@@ -3143,6 +3143,18 @@ no public consumer was deleted or renamed. `cargo fmt --all -- --check`,
 `tests::tests::ffi_smoke_checks` pass. This is a bounded internal family split,
 not proof of whole-FFI lifetime safety, allocation/soak behavior, or complete
 controller/DTO/error-family convergence; M6 remains `OPEN_LOCAL`.
+
+**M6 compatibility-family extraction continuation (2026-09-03):**
+implementation commit `c3e3631f8b43343c2ebee1b1ad723bcd9e36f216` moves the
+12 compatibility LLM, harness, physical-metrics, telemetry, trust-label and
+hot-hash PyO3 bindings into `core/rust/src/ffi/compat.rs`. The parent façade
+re-exports the original names and keeps hot-arena/controller bindings in their
+existing owner until their own split is proven. Full Rust unit coverage passes
+**441 tests** after the extraction, including the FFI and LLM contract tests;
+feature-gated `tests::tests::ffi_smoke_checks` remains green. This preserves
+current public symbols but does not establish complete FFI lifetime/allocation
+safety or finish DTO/controller/error-family convergence, so M6 remains
+`OPEN_LOCAL`.
 
 #### M7 — Replay/archive và recovery cutover
 
