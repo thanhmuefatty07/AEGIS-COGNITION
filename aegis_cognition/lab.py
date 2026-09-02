@@ -9681,7 +9681,8 @@ class LabApplication:
                             action=_runtime_browser_action(browser_session, action_map, browser_cell),
                         )
                     else:
-                        capture = await self._gateway(self.config.task).capture_browser_action(
+                        capture = await _call_fenced(
+                            self._gateway(self.config.task).capture_browser_action,
                             browser_session=browser_session,
                             action=_gateway_browser_action(action_map, browser_cell),
                             run_id=int(run_id[:16], 16),
@@ -11155,7 +11156,8 @@ class LabApplication:
                             # is untrusted and must not perform an implicit
                             # side effect before the native receipt exists.
                             gateway = self._gateway(self.config.task)
-                            capture = await gateway.capture_browser_action(
+                            capture = await _call_fenced(
+                                gateway.capture_browser_action,
                                 browser_session=browser_session,
                                 action=_gateway_browser_action(action, browser_cell),
                                 run_id=int(run_id[:16], 16),
