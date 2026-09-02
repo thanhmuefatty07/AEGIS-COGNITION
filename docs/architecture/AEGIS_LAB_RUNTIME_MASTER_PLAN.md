@@ -1765,6 +1765,17 @@ This repeat rules out treating the first result as a transient source-test
 failure; hosted CI remains `NOT VERIFIED` until a runner-backed attempt is
 available.
 
+**Hosted CI post-push confirmation (2026-09-02, final local SHA
+`fee817dc6cbd2e977cf3cd2fc0d591c4a0919b44`):** the push-triggered runs
+`33587436331` (`CI`) and `33587436193` (`aegis-plugins`) reproduced the same
+pre-run failure. CI created all 13 matrix jobs, but every job reported
+`steps=0`, `runner_id=0`, an empty runner name, and `0 ms` billable duration;
+the plugin workflow's single Windows job had the same zero-step signature.
+No source test, wheel build, or release step therefore executed for the final
+SHA. This is retained as additional external-blocker evidence, not as a
+workflow or source failure diagnosis; hosted verification remains
+`NOT VERIFIED`/`BLOCKED_EXTERNAL`.
+
 ### 16.2 Blocker disposition sau vòng thực thi hiện tại
 
 **Execution delta (2026-08-27):** provider fallback attempts, all-lane
