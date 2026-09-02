@@ -3,7 +3,7 @@ document_id: AEGIS-LAB-RUNTIME-MASTER-PLAN
 document_type: canonical_current_implementation_plan
 status: IN_EXECUTION
 authority: derived_from_checkout_and_evidence_manifest
-applies_to_commit: cad537e42ee3a1a48e07d1d63801076a947812e4
+applies_to_commit: 8aef2ea4c419ae0463334ad9124ed230b7040b31
 created_at: 2026-08-26
 last_verified_at: 2026-09-03
 supersedes: browser-native-proposal-and-cumulative-harness-roadmap-as-execution-authority
@@ -4298,6 +4298,17 @@ Rust library suite passes **443/443**; `cargo fmt --all -- --check`,
 This is a local startup-failure containment proof only: it does not prove
 universal process containment, cross-platform runtime behavior, hosted
 verification or release authority.
+
+**Memory budget-boundary continuation (2026-09-03):** implementation commit
+`8aef2ea4c419ae0463334ad9124ed230b7040b31` closes a fail-open path in
+`CogniFoldStore::ingest`. A budgeted `GenerationalSlab` is now accessed through
+`try_insert`; slot/payload exhaustion returns the existing typed error instead
+of panicking through the compatibility `insert` method. The failed admission
+does not append to `order` or alter payload accounting, proven by a regression
+that fills a one-slot/four-byte budget and attempts a second frame. The full
+Rust library suite passes **444/444**, with format, check and clippy warning
+gates passing. This is local resource-boundary evidence only; it does not
+prove global memory enforcement, process containment, or release authority.
 
 Không được gọi toàn hệ thống “production-ready” khi bất kỳ gate bắt buộc nào
 ở trên còn `OPEN_*`, `BLOCKED_*`, `UNKNOWN` hoặc chỉ có fixture/mock evidence.
