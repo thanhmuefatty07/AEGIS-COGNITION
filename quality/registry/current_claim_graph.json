@@ -314,6 +314,96 @@
       "security_relevance": "Prevents semantic substitution",
       "source_id": "GT96-035",
       "status": "IMPLEMENTED / NOT VERIFIED"
+    },
+    {
+      "evidence_class": "NOT VERIFIED",
+      "id": "AESE-CLAIM-AESE-001",
+      "owner": "Python AESE",
+      "requirement": "Adaptive measurement: preregistered stopping and contamination policy",
+      "security_relevance": "Prevents false performance evidence",
+      "source_id": "AESE-001",
+      "status": "IMPLEMENTED / NOT VERIFIED"
+    },
+    {
+      "evidence_class": "NOT VERIFIED",
+      "id": "AESE-CLAIM-AESE-002",
+      "owner": "Python AESE",
+      "requirement": "Hardware capability vector: explicit unknowns without inferred capacity",
+      "security_relevance": "Prevents unsupported hardware claims",
+      "source_id": "AESE-002",
+      "status": "IMPLEMENTED / NOT VERIFIED"
+    },
+    {
+      "evidence_class": "NOT VERIFIED",
+      "id": "AESE-CLAIM-AESE-003",
+      "owner": "Python AESE",
+      "requirement": "Workload signature: regime classification before scaling",
+      "security_relevance": "Prevents misleading extrapolation",
+      "source_id": "AESE-003",
+      "status": "IMPLEMENTED / NOT VERIFIED"
+    },
+    {
+      "evidence_class": "NOT VERIFIED",
+      "id": "AESE-CLAIM-AESE-004",
+      "owner": "Python AESE",
+      "requirement": "Simulation evidence: explicit epistemic separation",
+      "security_relevance": "Prevents simulation-to-reality overclaim",
+      "source_id": "AESE-004",
+      "status": "IMPLEMENTED / NOT VERIFIED"
+    },
+    {
+      "evidence_class": "NOT VERIFIED",
+      "id": "AESE-CLAIM-AESE-005",
+      "owner": "Python AESE",
+      "requirement": "Cross-hardware prediction: validated domain and residual evidence",
+      "security_relevance": "Prevents unsafe extrapolation",
+      "source_id": "AESE-005",
+      "status": "IMPLEMENTED / NOT VERIFIED"
+    },
+    {
+      "evidence_class": "NOT VERIFIED",
+      "id": "AESE-CLAIM-AESE-006",
+      "owner": "Python AESE",
+      "requirement": "External anchor planning: budgeted request without execution",
+      "security_relevance": "Prevents unapproved external effects",
+      "source_id": "AESE-006",
+      "status": "IMPLEMENTED / NOT VERIFIED"
+    },
+    {
+      "evidence_class": "NOT VERIFIED",
+      "id": "AESE-CLAIM-AESE-007",
+      "owner": "Python AESE",
+      "requirement": "Coverage vector: independent dimensions without fake aggregate",
+      "security_relevance": "Prevents misleading completeness claims",
+      "source_id": "AESE-007",
+      "status": "IMPLEMENTED / NOT VERIFIED"
+    },
+    {
+      "evidence_class": "NOT VERIFIED",
+      "id": "AESE-CLAIM-AESE-008",
+      "owner": "Python AESE",
+      "requirement": "Shadow preflight: conservative affected-closure planning",
+      "security_relevance": "Prevents unsafe test skipping",
+      "source_id": "AESE-008",
+      "status": "IMPLEMENTED / NOT VERIFIED"
+    },
+    {
+      "evidence_class": "NOT VERIFIED",
+      "id": "AESE-CLAIM-AESE-009",
+      "owner": "AESE evidence tooling",
+      "requirement": "Phase-0 inventory: complete retained evidence surface enumeration",
+      "security_relevance": "Preserves regression coverage",
+      "source_id": "AESE-009",
+      "status": "IMPLEMENTED / NOT VERIFIED"
+    },
+    {
+      "evidence_class": "NOT VERIFIED",
+      "id": "AESE-CLAIM-AESE-010",
+      "owner": "AESE evidence tooling",
+      "requirement": "Phase-1 claim graph: conservative code-to-evidence relationships",
+      "security_relevance": "Prevents provenance and dependency confusion",
+      "source_id": "AESE-010",
+      "status": "IMPLEMENTED / NOT VERIFIED"
     }
   ],
   "code": [
@@ -329,6 +419,13 @@
       "id": "AESE-CODE-1ACBE80688E0CB89",
       "mapping_status": "MAPPED_EXACT",
       "path": "core/rust/src/telemetry.rs",
+      "tracked": true
+    },
+    {
+      "exists": true,
+      "id": "AESE-CODE-2B63ED08D2F345A1",
+      "mapping_status": "MAPPED_EXACT",
+      "path": "scripts/aese_inventory.py",
       "tracked": true
     },
     {
@@ -417,6 +514,13 @@
     },
     {
       "exists": true,
+      "id": "AESE-CODE-7CB77C78DCDC63EC",
+      "mapping_status": "MAPPED_EXACT",
+      "path": "scripts/aese_preflight.py",
+      "tracked": true
+    },
+    {
+      "exists": true,
       "id": "AESE-CODE-81DB768D65B2B390",
       "mapping_status": "MAPPED_EXACT",
       "path": "core/rust/src/ipc.rs",
@@ -448,6 +552,20 @@
       "id": "AESE-CODE-BBB9F4A7172A89F3",
       "mapping_status": "MAPPED_EXACT",
       "path": "core/rust/src/evidence_index.rs",
+      "tracked": true
+    },
+    {
+      "exists": true,
+      "id": "AESE-CODE-CACC5F6A05F9757D",
+      "mapping_status": "MAPPED_EXACT",
+      "path": "scripts/aese_claim_graph.py",
+      "tracked": true
+    },
+    {
+      "exists": true,
+      "id": "AESE-CODE-EB9784D23EED71F2",
+      "mapping_status": "MAPPED_EXACT",
+      "path": "aegis_cognition/aese.py",
       "tracked": true
     },
     {
@@ -856,24 +974,174 @@
         "core/rust/src/eac/cache/semantic.rs",
         "core/rust/src/gt96.rs"
       ]
+    },
+    {
+      "id": "AESE-CONTRACT-AESE-001",
+      "implementation": "`aegis_cognition/aese.py`; `AdaptiveMeasurementSpec`, `evaluate_adaptive_measurement`, `AdaptiveMeasurementSession`",
+      "mapping_status": "SOURCE_BACKED",
+      "owner": "Python AESE",
+      "source_id": "AESE-001",
+      "source_paths": [
+        "aegis_cognition/aese.py"
+      ]
+    },
+    {
+      "id": "AESE-CONTRACT-AESE-002",
+      "implementation": "`aegis_cognition/aese.py`; `HardwareCapabilityVector`",
+      "mapping_status": "SOURCE_BACKED",
+      "owner": "Python AESE",
+      "source_id": "AESE-002",
+      "source_paths": [
+        "aegis_cognition/aese.py"
+      ]
+    },
+    {
+      "id": "AESE-CONTRACT-AESE-003",
+      "implementation": "`aegis_cognition/aese.py`; `WorkloadSignature`",
+      "mapping_status": "SOURCE_BACKED",
+      "owner": "Python AESE",
+      "source_id": "AESE-003",
+      "source_paths": [
+        "aegis_cognition/aese.py"
+      ]
+    },
+    {
+      "id": "AESE-CONTRACT-AESE-004",
+      "implementation": "`aegis_cognition/aese.py`; `SimulationEvidence`",
+      "mapping_status": "SOURCE_BACKED",
+      "owner": "Python AESE",
+      "source_id": "AESE-004",
+      "source_paths": [
+        "aegis_cognition/aese.py"
+      ]
+    },
+    {
+      "id": "AESE-CONTRACT-AESE-005",
+      "implementation": "`aegis_cognition/aese.py`; `AnalyticPredictionModel`, `predict_cross_hardware`",
+      "mapping_status": "SOURCE_BACKED",
+      "owner": "Python AESE",
+      "source_id": "AESE-005",
+      "source_paths": [
+        "aegis_cognition/aese.py"
+      ]
+    },
+    {
+      "id": "AESE-CONTRACT-AESE-006",
+      "implementation": "`aegis_cognition/aese.py`; `AnchorCandidate`, `select_anchor_plan`",
+      "mapping_status": "SOURCE_BACKED",
+      "owner": "Python AESE",
+      "source_id": "AESE-006",
+      "source_paths": [
+        "aegis_cognition/aese.py"
+      ]
+    },
+    {
+      "id": "AESE-CONTRACT-AESE-007",
+      "implementation": "`aegis_cognition/aese.py`; `CoverageVector`",
+      "mapping_status": "SOURCE_BACKED",
+      "owner": "Python AESE",
+      "source_id": "AESE-007",
+      "source_paths": [
+        "aegis_cognition/aese.py"
+      ]
+    },
+    {
+      "id": "AESE-CONTRACT-AESE-008",
+      "implementation": "`scripts/aese_preflight.py`; `build_preflight`, `validate_preflight`",
+      "mapping_status": "SOURCE_BACKED",
+      "owner": "Python AESE",
+      "source_id": "AESE-008",
+      "source_paths": [
+        "scripts/aese_preflight.py"
+      ]
+    },
+    {
+      "id": "AESE-CONTRACT-AESE-009",
+      "implementation": "`scripts/aese_inventory.py`; `build_inventory`, `validate_inventory`",
+      "mapping_status": "SOURCE_BACKED",
+      "owner": "AESE evidence tooling",
+      "source_id": "AESE-009",
+      "source_paths": [
+        "scripts/aese_inventory.py"
+      ]
+    },
+    {
+      "id": "AESE-CONTRACT-AESE-010",
+      "implementation": "`scripts/aese_claim_graph.py`; `build_graph`, `validate_graph`",
+      "mapping_status": "SOURCE_BACKED",
+      "owner": "AESE evidence tooling",
+      "source_id": "AESE-010",
+      "source_paths": [
+        "scripts/aese_claim_graph.py"
+      ]
     }
   ],
   "counts": {
-    "claims": 35,
-    "code_nodes": 23,
-    "contracts": 35,
-    "edges": 290,
+    "claims": 45,
+    "code_nodes": 27,
+    "contracts": 45,
+    "edges": 387,
     "future_obligations": 20,
-    "invariants": 35,
-    "mapped_surfaces": 1,
+    "invariants": 45,
+    "mapped_surfaces": 9,
     "surfaces": 117,
-    "unmapped_surfaces": 116,
-    "unmapped_verifications": 59,
+    "unmapped_surfaces": 108,
+    "unmapped_verifications": 69,
     "unresolved_code_references": 0,
-    "verifications": 70
+    "verifications": 90
   },
   "direct_cutover": "PROHIBITED",
   "edges": [
+    {
+      "from": "AESE-BENCHMARK-AESE-001",
+      "relation": "MATERIALIZES",
+      "to": "AESE-EVIDENCE-AESE-001"
+    },
+    {
+      "from": "AESE-BENCHMARK-AESE-002",
+      "relation": "MATERIALIZES",
+      "to": "AESE-EVIDENCE-AESE-002"
+    },
+    {
+      "from": "AESE-BENCHMARK-AESE-003",
+      "relation": "MATERIALIZES",
+      "to": "AESE-EVIDENCE-AESE-003"
+    },
+    {
+      "from": "AESE-BENCHMARK-AESE-004",
+      "relation": "MATERIALIZES",
+      "to": "AESE-EVIDENCE-AESE-004"
+    },
+    {
+      "from": "AESE-BENCHMARK-AESE-005",
+      "relation": "MATERIALIZES",
+      "to": "AESE-EVIDENCE-AESE-005"
+    },
+    {
+      "from": "AESE-BENCHMARK-AESE-006",
+      "relation": "MATERIALIZES",
+      "to": "AESE-EVIDENCE-AESE-006"
+    },
+    {
+      "from": "AESE-BENCHMARK-AESE-007",
+      "relation": "MATERIALIZES",
+      "to": "AESE-EVIDENCE-AESE-007"
+    },
+    {
+      "from": "AESE-BENCHMARK-AESE-008",
+      "relation": "MATERIALIZES",
+      "to": "AESE-EVIDENCE-AESE-008"
+    },
+    {
+      "from": "AESE-BENCHMARK-AESE-009",
+      "relation": "MATERIALIZES",
+      "to": "AESE-EVIDENCE-AESE-009"
+    },
+    {
+      "from": "AESE-BENCHMARK-AESE-010",
+      "relation": "MATERIALIZES",
+      "to": "AESE-EVIDENCE-AESE-010"
+    },
     {
       "from": "AESE-BENCHMARK-GT96-001",
       "relation": "MATERIALIZES",
@@ -1063,6 +1331,11 @@
       "from": "AESE-CODE-1ACBE80688E0CB89",
       "relation": "IMPLEMENTS",
       "to": "AESE-CONTRACT-GT96-027"
+    },
+    {
+      "from": "AESE-CODE-2B63ED08D2F345A1",
+      "relation": "IMPLEMENTS",
+      "to": "AESE-CONTRACT-AESE-009"
     },
     {
       "from": "AESE-CODE-2C9D296895749679",
@@ -1270,6 +1543,11 @@
       "to": "AESE-CONTRACT-GT96-031"
     },
     {
+      "from": "AESE-CODE-7CB77C78DCDC63EC",
+      "relation": "IMPLEMENTS",
+      "to": "AESE-CONTRACT-AESE-008"
+    },
+    {
       "from": "AESE-CODE-81DB768D65B2B390",
       "relation": "IMPLEMENTS",
       "to": "AESE-CONTRACT-GT96-024"
@@ -1320,6 +1598,46 @@
       "to": "AESE-CONTRACT-GT96-026"
     },
     {
+      "from": "AESE-CODE-CACC5F6A05F9757D",
+      "relation": "IMPLEMENTS",
+      "to": "AESE-CONTRACT-AESE-010"
+    },
+    {
+      "from": "AESE-CODE-EB9784D23EED71F2",
+      "relation": "IMPLEMENTS",
+      "to": "AESE-CONTRACT-AESE-001"
+    },
+    {
+      "from": "AESE-CODE-EB9784D23EED71F2",
+      "relation": "IMPLEMENTS",
+      "to": "AESE-CONTRACT-AESE-002"
+    },
+    {
+      "from": "AESE-CODE-EB9784D23EED71F2",
+      "relation": "IMPLEMENTS",
+      "to": "AESE-CONTRACT-AESE-003"
+    },
+    {
+      "from": "AESE-CODE-EB9784D23EED71F2",
+      "relation": "IMPLEMENTS",
+      "to": "AESE-CONTRACT-AESE-004"
+    },
+    {
+      "from": "AESE-CODE-EB9784D23EED71F2",
+      "relation": "IMPLEMENTS",
+      "to": "AESE-CONTRACT-AESE-005"
+    },
+    {
+      "from": "AESE-CODE-EB9784D23EED71F2",
+      "relation": "IMPLEMENTS",
+      "to": "AESE-CONTRACT-AESE-006"
+    },
+    {
+      "from": "AESE-CODE-EB9784D23EED71F2",
+      "relation": "IMPLEMENTS",
+      "to": "AESE-CONTRACT-AESE-007"
+    },
+    {
       "from": "AESE-CODE-ED6F3DDD715A2F2E",
       "relation": "IMPLEMENTS",
       "to": "AESE-CONTRACT-GT96-007"
@@ -1358,6 +1676,56 @@
       "from": "AESE-CODE-F79CE87A862756B6",
       "relation": "IMPLEMENTS",
       "to": "AESE-CONTRACT-GT96-028"
+    },
+    {
+      "from": "AESE-CONTRACT-AESE-001",
+      "relation": "GUARDS",
+      "to": "AESE-INVARIANT-AD7742728785E7AB"
+    },
+    {
+      "from": "AESE-CONTRACT-AESE-002",
+      "relation": "GUARDS",
+      "to": "AESE-INVARIANT-1ECC61475819A59E"
+    },
+    {
+      "from": "AESE-CONTRACT-AESE-003",
+      "relation": "GUARDS",
+      "to": "AESE-INVARIANT-176332FD2131257A"
+    },
+    {
+      "from": "AESE-CONTRACT-AESE-004",
+      "relation": "GUARDS",
+      "to": "AESE-INVARIANT-008877E7A668AADE"
+    },
+    {
+      "from": "AESE-CONTRACT-AESE-005",
+      "relation": "GUARDS",
+      "to": "AESE-INVARIANT-E06AD461D3FF0937"
+    },
+    {
+      "from": "AESE-CONTRACT-AESE-006",
+      "relation": "GUARDS",
+      "to": "AESE-INVARIANT-9C97F5B2DDA7C9D4"
+    },
+    {
+      "from": "AESE-CONTRACT-AESE-007",
+      "relation": "GUARDS",
+      "to": "AESE-INVARIANT-CFA933F3442A04DE"
+    },
+    {
+      "from": "AESE-CONTRACT-AESE-008",
+      "relation": "GUARDS",
+      "to": "AESE-INVARIANT-98DB0164C927FE33"
+    },
+    {
+      "from": "AESE-CONTRACT-AESE-009",
+      "relation": "GUARDS",
+      "to": "AESE-INVARIANT-DBC1F82221CA3338"
+    },
+    {
+      "from": "AESE-CONTRACT-AESE-010",
+      "relation": "GUARDS",
+      "to": "AESE-INVARIANT-B09147A155A9467B"
     },
     {
       "from": "AESE-CONTRACT-GT96-001",
@@ -1535,6 +1903,56 @@
       "to": "AESE-INVARIANT-DC2475DCC2BB4CD1"
     },
     {
+      "from": "AESE-EVIDENCE-AESE-001",
+      "relation": "SUPPORTS_OR_LEAVES_UNVERIFIED",
+      "to": "AESE-CLAIM-AESE-001"
+    },
+    {
+      "from": "AESE-EVIDENCE-AESE-002",
+      "relation": "SUPPORTS_OR_LEAVES_UNVERIFIED",
+      "to": "AESE-CLAIM-AESE-002"
+    },
+    {
+      "from": "AESE-EVIDENCE-AESE-003",
+      "relation": "SUPPORTS_OR_LEAVES_UNVERIFIED",
+      "to": "AESE-CLAIM-AESE-003"
+    },
+    {
+      "from": "AESE-EVIDENCE-AESE-004",
+      "relation": "SUPPORTS_OR_LEAVES_UNVERIFIED",
+      "to": "AESE-CLAIM-AESE-004"
+    },
+    {
+      "from": "AESE-EVIDENCE-AESE-005",
+      "relation": "SUPPORTS_OR_LEAVES_UNVERIFIED",
+      "to": "AESE-CLAIM-AESE-005"
+    },
+    {
+      "from": "AESE-EVIDENCE-AESE-006",
+      "relation": "SUPPORTS_OR_LEAVES_UNVERIFIED",
+      "to": "AESE-CLAIM-AESE-006"
+    },
+    {
+      "from": "AESE-EVIDENCE-AESE-007",
+      "relation": "SUPPORTS_OR_LEAVES_UNVERIFIED",
+      "to": "AESE-CLAIM-AESE-007"
+    },
+    {
+      "from": "AESE-EVIDENCE-AESE-008",
+      "relation": "SUPPORTS_OR_LEAVES_UNVERIFIED",
+      "to": "AESE-CLAIM-AESE-008"
+    },
+    {
+      "from": "AESE-EVIDENCE-AESE-009",
+      "relation": "SUPPORTS_OR_LEAVES_UNVERIFIED",
+      "to": "AESE-CLAIM-AESE-009"
+    },
+    {
+      "from": "AESE-EVIDENCE-AESE-010",
+      "relation": "SUPPORTS_OR_LEAVES_UNVERIFIED",
+      "to": "AESE-CLAIM-AESE-010"
+    },
+    {
       "from": "AESE-EVIDENCE-GT96-001",
       "relation": "SUPPORTS_OR_LEAVES_UNVERIFIED",
       "to": "AESE-CLAIM-GT96-001"
@@ -1710,6 +2128,16 @@
       "to": "AESE-CLAIM-GT96-035"
     },
     {
+      "from": "AESE-INVARIANT-008877E7A668AADE",
+      "relation": "VERIFIED_BY_REFERENCE",
+      "to": "AESE-BENCHMARK-AESE-004"
+    },
+    {
+      "from": "AESE-INVARIANT-008877E7A668AADE",
+      "relation": "VERIFIED_BY_REFERENCE",
+      "to": "AESE-TEST_OR_PROOF-AESE-004"
+    },
+    {
       "from": "AESE-INVARIANT-05AD3C6ABD65E26F",
       "relation": "VERIFIED_BY_REFERENCE",
       "to": "AESE-BENCHMARK-GT96-006"
@@ -1740,6 +2168,16 @@
       "to": "AESE-TEST_OR_PROOF-GT96-015"
     },
     {
+      "from": "AESE-INVARIANT-176332FD2131257A",
+      "relation": "VERIFIED_BY_REFERENCE",
+      "to": "AESE-BENCHMARK-AESE-003"
+    },
+    {
+      "from": "AESE-INVARIANT-176332FD2131257A",
+      "relation": "VERIFIED_BY_REFERENCE",
+      "to": "AESE-TEST_OR_PROOF-AESE-003"
+    },
+    {
       "from": "AESE-INVARIANT-1C62EE917BBD117A",
       "relation": "VERIFIED_BY_REFERENCE",
       "to": "AESE-BENCHMARK-GT96-028"
@@ -1748,6 +2186,16 @@
       "from": "AESE-INVARIANT-1C62EE917BBD117A",
       "relation": "VERIFIED_BY_REFERENCE",
       "to": "AESE-TEST_OR_PROOF-GT96-028"
+    },
+    {
+      "from": "AESE-INVARIANT-1ECC61475819A59E",
+      "relation": "VERIFIED_BY_REFERENCE",
+      "to": "AESE-BENCHMARK-AESE-002"
+    },
+    {
+      "from": "AESE-INVARIANT-1ECC61475819A59E",
+      "relation": "VERIFIED_BY_REFERENCE",
+      "to": "AESE-TEST_OR_PROOF-AESE-002"
     },
     {
       "from": "AESE-INVARIANT-2229D5AB611E82F2",
@@ -1900,6 +2348,16 @@
       "to": "AESE-TEST_OR_PROOF-GT96-034"
     },
     {
+      "from": "AESE-INVARIANT-98DB0164C927FE33",
+      "relation": "VERIFIED_BY_REFERENCE",
+      "to": "AESE-BENCHMARK-AESE-008"
+    },
+    {
+      "from": "AESE-INVARIANT-98DB0164C927FE33",
+      "relation": "VERIFIED_BY_REFERENCE",
+      "to": "AESE-TEST_OR_PROOF-AESE-008"
+    },
+    {
       "from": "AESE-INVARIANT-9A6781D76979AD77",
       "relation": "VERIFIED_BY_REFERENCE",
       "to": "AESE-BENCHMARK-GT96-030"
@@ -1908,6 +2366,16 @@
       "from": "AESE-INVARIANT-9A6781D76979AD77",
       "relation": "VERIFIED_BY_REFERENCE",
       "to": "AESE-TEST_OR_PROOF-GT96-030"
+    },
+    {
+      "from": "AESE-INVARIANT-9C97F5B2DDA7C9D4",
+      "relation": "VERIFIED_BY_REFERENCE",
+      "to": "AESE-BENCHMARK-AESE-006"
+    },
+    {
+      "from": "AESE-INVARIANT-9C97F5B2DDA7C9D4",
+      "relation": "VERIFIED_BY_REFERENCE",
+      "to": "AESE-TEST_OR_PROOF-AESE-006"
     },
     {
       "from": "AESE-INVARIANT-9DB5B27A3FDF2592",
@@ -1928,6 +2396,26 @@
       "from": "AESE-INVARIANT-9DEF1F32BEC88091",
       "relation": "VERIFIED_BY_REFERENCE",
       "to": "AESE-TEST_OR_PROOF-GT96-014"
+    },
+    {
+      "from": "AESE-INVARIANT-AD7742728785E7AB",
+      "relation": "VERIFIED_BY_REFERENCE",
+      "to": "AESE-BENCHMARK-AESE-001"
+    },
+    {
+      "from": "AESE-INVARIANT-AD7742728785E7AB",
+      "relation": "VERIFIED_BY_REFERENCE",
+      "to": "AESE-TEST_OR_PROOF-AESE-001"
+    },
+    {
+      "from": "AESE-INVARIANT-B09147A155A9467B",
+      "relation": "VERIFIED_BY_REFERENCE",
+      "to": "AESE-BENCHMARK-AESE-010"
+    },
+    {
+      "from": "AESE-INVARIANT-B09147A155A9467B",
+      "relation": "VERIFIED_BY_REFERENCE",
+      "to": "AESE-TEST_OR_PROOF-AESE-010"
     },
     {
       "from": "AESE-INVARIANT-B3103DD7415CABCF",
@@ -1960,6 +2448,16 @@
       "to": "AESE-TEST_OR_PROOF-GT96-005"
     },
     {
+      "from": "AESE-INVARIANT-CFA933F3442A04DE",
+      "relation": "VERIFIED_BY_REFERENCE",
+      "to": "AESE-BENCHMARK-AESE-007"
+    },
+    {
+      "from": "AESE-INVARIANT-CFA933F3442A04DE",
+      "relation": "VERIFIED_BY_REFERENCE",
+      "to": "AESE-TEST_OR_PROOF-AESE-007"
+    },
+    {
       "from": "AESE-INVARIANT-D3CBD95BA68B2843",
       "relation": "VERIFIED_BY_REFERENCE",
       "to": "AESE-BENCHMARK-GT96-031"
@@ -1968,6 +2466,16 @@
       "from": "AESE-INVARIANT-D3CBD95BA68B2843",
       "relation": "VERIFIED_BY_REFERENCE",
       "to": "AESE-TEST_OR_PROOF-GT96-031"
+    },
+    {
+      "from": "AESE-INVARIANT-DBC1F82221CA3338",
+      "relation": "VERIFIED_BY_REFERENCE",
+      "to": "AESE-BENCHMARK-AESE-009"
+    },
+    {
+      "from": "AESE-INVARIANT-DBC1F82221CA3338",
+      "relation": "VERIFIED_BY_REFERENCE",
+      "to": "AESE-TEST_OR_PROOF-AESE-009"
     },
     {
       "from": "AESE-INVARIANT-DC2475DCC2BB4CD1",
@@ -2020,6 +2528,16 @@
       "to": "AESE-TEST_OR_PROOF-GT96-004"
     },
     {
+      "from": "AESE-INVARIANT-E06AD461D3FF0937",
+      "relation": "VERIFIED_BY_REFERENCE",
+      "to": "AESE-BENCHMARK-AESE-005"
+    },
+    {
+      "from": "AESE-INVARIANT-E06AD461D3FF0937",
+      "relation": "VERIFIED_BY_REFERENCE",
+      "to": "AESE-TEST_OR_PROOF-AESE-005"
+    },
+    {
       "from": "AESE-INVARIANT-E2AC68F309FF18D2",
       "relation": "VERIFIED_BY_REFERENCE",
       "to": "AESE-BENCHMARK-GT96-009"
@@ -2060,6 +2578,111 @@
       "to": "AESE-TEST_OR_PROOF-GT96-003"
     },
     {
+      "from": "AESE-PYTHON_TEST-58D48A170B9DA222",
+      "relation": "IMPLEMENTS_OR_EXERCISES",
+      "to": "AESE-CLAIM-AESE-001"
+    },
+    {
+      "from": "AESE-PYTHON_TEST-58D48A170B9DA222",
+      "relation": "IMPLEMENTS_OR_EXERCISES",
+      "to": "AESE-CLAIM-AESE-002"
+    },
+    {
+      "from": "AESE-PYTHON_TEST-58D48A170B9DA222",
+      "relation": "IMPLEMENTS_OR_EXERCISES",
+      "to": "AESE-CLAIM-AESE-003"
+    },
+    {
+      "from": "AESE-PYTHON_TEST-58D48A170B9DA222",
+      "relation": "IMPLEMENTS_OR_EXERCISES",
+      "to": "AESE-CLAIM-AESE-004"
+    },
+    {
+      "from": "AESE-PYTHON_TEST-58D48A170B9DA222",
+      "relation": "IMPLEMENTS_OR_EXERCISES",
+      "to": "AESE-CLAIM-AESE-005"
+    },
+    {
+      "from": "AESE-PYTHON_TEST-58D48A170B9DA222",
+      "relation": "IMPLEMENTS_OR_EXERCISES",
+      "to": "AESE-CLAIM-AESE-006"
+    },
+    {
+      "from": "AESE-PYTHON_TEST-58D48A170B9DA222",
+      "relation": "IMPLEMENTS_OR_EXERCISES",
+      "to": "AESE-CLAIM-AESE-007"
+    },
+    {
+      "from": "AESE-PYTHON_TEST-58D48A170B9DA222",
+      "relation": "RESOLVES_REFERENCE",
+      "to": "AESE-TEST_OR_PROOF-AESE-001"
+    },
+    {
+      "from": "AESE-PYTHON_TEST-58D48A170B9DA222",
+      "relation": "RESOLVES_REFERENCE",
+      "to": "AESE-TEST_OR_PROOF-AESE-002"
+    },
+    {
+      "from": "AESE-PYTHON_TEST-58D48A170B9DA222",
+      "relation": "RESOLVES_REFERENCE",
+      "to": "AESE-TEST_OR_PROOF-AESE-003"
+    },
+    {
+      "from": "AESE-PYTHON_TEST-58D48A170B9DA222",
+      "relation": "RESOLVES_REFERENCE",
+      "to": "AESE-TEST_OR_PROOF-AESE-004"
+    },
+    {
+      "from": "AESE-PYTHON_TEST-58D48A170B9DA222",
+      "relation": "RESOLVES_REFERENCE",
+      "to": "AESE-TEST_OR_PROOF-AESE-005"
+    },
+    {
+      "from": "AESE-PYTHON_TEST-58D48A170B9DA222",
+      "relation": "RESOLVES_REFERENCE",
+      "to": "AESE-TEST_OR_PROOF-AESE-006"
+    },
+    {
+      "from": "AESE-PYTHON_TEST-58D48A170B9DA222",
+      "relation": "RESOLVES_REFERENCE",
+      "to": "AESE-TEST_OR_PROOF-AESE-007"
+    },
+    {
+      "from": "AESE-PYTHON_TEST-D79D5846F51A8B48",
+      "relation": "IMPLEMENTS_OR_EXERCISES",
+      "to": "AESE-CLAIM-AESE-010"
+    },
+    {
+      "from": "AESE-PYTHON_TEST-D79D5846F51A8B48",
+      "relation": "RESOLVES_REFERENCE",
+      "to": "AESE-TEST_OR_PROOF-AESE-010"
+    },
+    {
+      "from": "AESE-PYTHON_TEST-E1D184588A9806B3",
+      "relation": "IMPLEMENTS_OR_EXERCISES",
+      "to": "AESE-CLAIM-AESE-008"
+    },
+    {
+      "from": "AESE-PYTHON_TEST-E1D184588A9806B3",
+      "relation": "RESOLVES_REFERENCE",
+      "to": "AESE-TEST_OR_PROOF-AESE-008"
+    },
+    {
+      "from": "AESE-PYTHON_TEST-F44FE1653A27637B",
+      "relation": "IMPLEMENTS_OR_EXERCISES",
+      "to": "AESE-CLAIM-AESE-009"
+    },
+    {
+      "from": "AESE-PYTHON_TEST-F44FE1653A27637B",
+      "relation": "RESOLVES_REFERENCE",
+      "to": "AESE-TEST_OR_PROOF-AESE-009"
+    },
+    {
+      "from": "AESE-RUST_UNIT_TEST-6896058315F9E5A4",
+      "relation": "IMPLEMENTS_OR_EXERCISES",
+      "to": "AESE-CLAIM-GT96-035"
+    },
+    {
       "from": "AESE-RUST_UNIT_TEST-6896058315F9E5A4",
       "relation": "RESOLVES_REFERENCE",
       "to": "AESE-TEST_OR_PROOF-GT96-035"
@@ -2087,6 +2710,11 @@
     {
       "from": "AESE-RUST_UNIT_TEST-6E0A9FEABAA1955E",
       "relation": "IMPLEMENTS_OR_EXERCISES",
+      "to": "AESE-CLAIM-GT96-008"
+    },
+    {
+      "from": "AESE-RUST_UNIT_TEST-6E0A9FEABAA1955E",
+      "relation": "IMPLEMENTS_OR_EXERCISES",
       "to": "AESE-CLAIM-GT96-009"
     },
     {
@@ -2097,7 +2725,17 @@
     {
       "from": "AESE-RUST_UNIT_TEST-6E0A9FEABAA1955E",
       "relation": "IMPLEMENTS_OR_EXERCISES",
+      "to": "AESE-CLAIM-GT96-013"
+    },
+    {
+      "from": "AESE-RUST_UNIT_TEST-6E0A9FEABAA1955E",
+      "relation": "IMPLEMENTS_OR_EXERCISES",
       "to": "AESE-CLAIM-GT96-020"
+    },
+    {
+      "from": "AESE-RUST_UNIT_TEST-6E0A9FEABAA1955E",
+      "relation": "IMPLEMENTS_OR_EXERCISES",
+      "to": "AESE-CLAIM-GT96-030"
     },
     {
       "from": "AESE-RUST_UNIT_TEST-6E0A9FEABAA1955E",
@@ -2148,6 +2786,71 @@
       "from": "AESE-RUST_UNIT_TEST-6E0A9FEABAA1955E",
       "relation": "RESOLVES_REFERENCE",
       "to": "AESE-TEST_OR_PROOF-GT96-030"
+    },
+    {
+      "from": "AESE-SCRIPT_OR_GATE-2B63ED08D2F345A1",
+      "relation": "IMPLEMENTS_OR_EXERCISES",
+      "to": "AESE-CLAIM-AESE-009"
+    },
+    {
+      "from": "AESE-SCRIPT_OR_GATE-7CB77C78DCDC63EC",
+      "relation": "IMPLEMENTS_OR_EXERCISES",
+      "to": "AESE-CLAIM-AESE-008"
+    },
+    {
+      "from": "AESE-SCRIPT_OR_GATE-CACC5F6A05F9757D",
+      "relation": "IMPLEMENTS_OR_EXERCISES",
+      "to": "AESE-CLAIM-AESE-010"
+    },
+    {
+      "from": "AESE-TEST_OR_PROOF-AESE-001",
+      "relation": "MATERIALIZES",
+      "to": "AESE-EVIDENCE-AESE-001"
+    },
+    {
+      "from": "AESE-TEST_OR_PROOF-AESE-002",
+      "relation": "MATERIALIZES",
+      "to": "AESE-EVIDENCE-AESE-002"
+    },
+    {
+      "from": "AESE-TEST_OR_PROOF-AESE-003",
+      "relation": "MATERIALIZES",
+      "to": "AESE-EVIDENCE-AESE-003"
+    },
+    {
+      "from": "AESE-TEST_OR_PROOF-AESE-004",
+      "relation": "MATERIALIZES",
+      "to": "AESE-EVIDENCE-AESE-004"
+    },
+    {
+      "from": "AESE-TEST_OR_PROOF-AESE-005",
+      "relation": "MATERIALIZES",
+      "to": "AESE-EVIDENCE-AESE-005"
+    },
+    {
+      "from": "AESE-TEST_OR_PROOF-AESE-006",
+      "relation": "MATERIALIZES",
+      "to": "AESE-EVIDENCE-AESE-006"
+    },
+    {
+      "from": "AESE-TEST_OR_PROOF-AESE-007",
+      "relation": "MATERIALIZES",
+      "to": "AESE-EVIDENCE-AESE-007"
+    },
+    {
+      "from": "AESE-TEST_OR_PROOF-AESE-008",
+      "relation": "MATERIALIZES",
+      "to": "AESE-EVIDENCE-AESE-008"
+    },
+    {
+      "from": "AESE-TEST_OR_PROOF-AESE-009",
+      "relation": "MATERIALIZES",
+      "to": "AESE-EVIDENCE-AESE-009"
+    },
+    {
+      "from": "AESE-TEST_OR_PROOF-AESE-010",
+      "relation": "MATERIALIZES",
+      "to": "AESE-EVIDENCE-AESE-010"
     },
     {
       "from": "AESE-TEST_OR_PROOF-GT96-001",
@@ -2570,6 +3273,76 @@
       "promotion": "DISABLED_IN_SHADOW",
       "source_id": "GT96-035",
       "status": "IMPLEMENTED / NOT VERIFIED"
+    },
+    {
+      "evidence_class": "NOT VERIFIED",
+      "id": "AESE-EVIDENCE-AESE-001",
+      "promotion": "DISABLED_IN_SHADOW",
+      "source_id": "AESE-001",
+      "status": "IMPLEMENTED / NOT VERIFIED"
+    },
+    {
+      "evidence_class": "NOT VERIFIED",
+      "id": "AESE-EVIDENCE-AESE-002",
+      "promotion": "DISABLED_IN_SHADOW",
+      "source_id": "AESE-002",
+      "status": "IMPLEMENTED / NOT VERIFIED"
+    },
+    {
+      "evidence_class": "NOT VERIFIED",
+      "id": "AESE-EVIDENCE-AESE-003",
+      "promotion": "DISABLED_IN_SHADOW",
+      "source_id": "AESE-003",
+      "status": "IMPLEMENTED / NOT VERIFIED"
+    },
+    {
+      "evidence_class": "NOT VERIFIED",
+      "id": "AESE-EVIDENCE-AESE-004",
+      "promotion": "DISABLED_IN_SHADOW",
+      "source_id": "AESE-004",
+      "status": "IMPLEMENTED / NOT VERIFIED"
+    },
+    {
+      "evidence_class": "NOT VERIFIED",
+      "id": "AESE-EVIDENCE-AESE-005",
+      "promotion": "DISABLED_IN_SHADOW",
+      "source_id": "AESE-005",
+      "status": "IMPLEMENTED / NOT VERIFIED"
+    },
+    {
+      "evidence_class": "NOT VERIFIED",
+      "id": "AESE-EVIDENCE-AESE-006",
+      "promotion": "DISABLED_IN_SHADOW",
+      "source_id": "AESE-006",
+      "status": "IMPLEMENTED / NOT VERIFIED"
+    },
+    {
+      "evidence_class": "NOT VERIFIED",
+      "id": "AESE-EVIDENCE-AESE-007",
+      "promotion": "DISABLED_IN_SHADOW",
+      "source_id": "AESE-007",
+      "status": "IMPLEMENTED / NOT VERIFIED"
+    },
+    {
+      "evidence_class": "NOT VERIFIED",
+      "id": "AESE-EVIDENCE-AESE-008",
+      "promotion": "DISABLED_IN_SHADOW",
+      "source_id": "AESE-008",
+      "status": "IMPLEMENTED / NOT VERIFIED"
+    },
+    {
+      "evidence_class": "NOT VERIFIED",
+      "id": "AESE-EVIDENCE-AESE-009",
+      "promotion": "DISABLED_IN_SHADOW",
+      "source_id": "AESE-009",
+      "status": "IMPLEMENTED / NOT VERIFIED"
+    },
+    {
+      "evidence_class": "NOT VERIFIED",
+      "id": "AESE-EVIDENCE-AESE-010",
+      "promotion": "DISABLED_IN_SHADOW",
+      "source_id": "AESE-010",
+      "status": "IMPLEMENTED / NOT VERIFIED"
     }
   ],
   "future_obligations": [
@@ -2929,6 +3702,66 @@
       "id": "AESE-INVARIANT-DC2475DCC2BB4CD1",
       "mapping_status": "SOURCE_BACKED",
       "source_id": "GT96-035"
+    },
+    {
+      "description": "Malformed, non-finite, autocorrelated or drifting data cannot produce PASS; raw observations remain hash-bound",
+      "id": "AESE-INVARIANT-AD7742728785E7AB",
+      "mapping_status": "SOURCE_BACKED",
+      "source_id": "AESE-001"
+    },
+    {
+      "description": "Missing runtime capability stays UNKNOWN and cannot become measured electrical or cross-platform evidence",
+      "id": "AESE-INVARIANT-1ECC61475819A59E",
+      "mapping_status": "SOURCE_BACKED",
+      "source_id": "AESE-002"
+    },
+    {
+      "description": "Under-specified workload is UNKNOWN and no universal scaling factor is applied",
+      "id": "AESE-INVARIANT-176332FD2131257A",
+      "mapping_status": "SOURCE_BACKED",
+      "source_id": "AESE-003"
+    },
+    {
+      "description": "SIMULATED output cannot be relabelled as observed physical evidence",
+      "id": "AESE-INVARIANT-008877E7A668AADE",
+      "mapping_status": "SOURCE_BACKED",
+      "source_id": "AESE-004"
+    },
+    {
+      "description": "Missing features, out-of-domain targets or insufficient in-domain anchors cannot yield a validated prediction",
+      "id": "AESE-INVARIANT-E06AD461D3FF0937",
+      "mapping_status": "SOURCE_BACKED",
+      "source_id": "AESE-005"
+    },
+    {
+      "description": "Planner never invokes a runner; unavailable, malformed or over-budget mandatory evidence blocks conservatively",
+      "id": "AESE-INVARIANT-9C97F5B2DDA7C9D4",
+      "mapping_status": "SOURCE_BACKED",
+      "source_id": "AESE-006"
+    },
+    {
+      "description": "Coverage dimensions remain explicit and no aggregate percentage is inferred",
+      "id": "AESE-INVARIANT-CFA933F3442A04DE",
+      "mapping_status": "SOURCE_BACKED",
+      "source_id": "AESE-007"
+    },
+    {
+      "description": "Unknown or unmapped dependency widens to retained legacy evidence; SHADOW cannot skip, promote or delete",
+      "id": "AESE-INVARIANT-98DB0164C927FE33",
+      "mapping_status": "SOURCE_BACKED",
+      "source_id": "AESE-008"
+    },
+    {
+      "description": "Missing scope or unknown mapping defaults to RETAIN and never authorizes deletion",
+      "id": "AESE-INVARIANT-DBC1F82221CA3338",
+      "mapping_status": "SOURCE_BACKED",
+      "source_id": "AESE-009"
+    },
+    {
+      "description": "Unresolved references remain NOT_MAPPED and invalidate conservatively; graph cannot select or suppress evidence",
+      "id": "AESE-INVARIANT-B09147A155A9467B",
+      "mapping_status": "SOURCE_BACKED",
+      "source_id": "AESE-010"
     }
   ],
   "limitations": [
@@ -2940,8 +3773,8 @@
   "mode": "SHADOW",
   "phase": "PHASE_1_CLAIM_EVIDENCE_GRAPH",
   "schema": "aese-shadow-claim-evidence-graph-v1",
-  "source_head": "1d383a0eaaacf00bb5a2693d5bdc0272fc61e01e",
-  "source_tree_sha256": "ddb7bcf57eb17c8e3b21fc404e72ce8fd18f48ffff98dc14b90b3a6bf1107a6e",
+  "source_head": "fcbfc3e5522d10963ff0d8a3f18f58655c8973aa",
+  "source_tree_sha256": "f3aa3eccd32cfc38187303278e96f624cbec7fafd59b59ec91898678e67a2359",
   "status": "SHADOW_GRAPH_COMPLETE_MAPPING_AND_SELECTION_DISABLED",
   "surfaces": [
     {
@@ -3170,13 +4003,21 @@
       "unknown_dependency_policy": "INVALIDATE_CONSERVATIVELY"
     },
     {
-      "claim_refs": [],
+      "claim_refs": [
+        "AESE-CLAIM-AESE-001",
+        "AESE-CLAIM-AESE-002",
+        "AESE-CLAIM-AESE-003",
+        "AESE-CLAIM-AESE-004",
+        "AESE-CLAIM-AESE-005",
+        "AESE-CLAIM-AESE-006",
+        "AESE-CLAIM-AESE-007"
+      ],
       "id": "AESE-PYTHON_TEST-58D48A170B9DA222",
       "kind": "PYTHON_TEST",
-      "mapping_status": "NOT_MAPPED",
+      "mapping_status": "MAPPED_EXACT",
       "path": "tests/test_aese_primitives.py",
       "target": null,
-      "unknown_dependency_policy": "INVALIDATE_CONSERVATIVELY"
+      "unknown_dependency_policy": null
     },
     {
       "claim_refs": [],
@@ -3215,22 +4056,26 @@
       "unknown_dependency_policy": "INVALIDATE_CONSERVATIVELY"
     },
     {
-      "claim_refs": [],
+      "claim_refs": [
+        "AESE-CLAIM-AESE-010"
+      ],
       "id": "AESE-PYTHON_TEST-D79D5846F51A8B48",
       "kind": "PYTHON_TEST",
-      "mapping_status": "NOT_MAPPED",
+      "mapping_status": "MAPPED_EXACT",
       "path": "tests/test_aese_claim_graph.py",
       "target": null,
-      "unknown_dependency_policy": "INVALIDATE_CONSERVATIVELY"
+      "unknown_dependency_policy": null
     },
     {
-      "claim_refs": [],
+      "claim_refs": [
+        "AESE-CLAIM-AESE-008"
+      ],
       "id": "AESE-PYTHON_TEST-E1D184588A9806B3",
       "kind": "PYTHON_TEST",
-      "mapping_status": "NOT_MAPPED",
+      "mapping_status": "MAPPED_EXACT",
       "path": "tests/test_aese_preflight.py",
       "target": null,
-      "unknown_dependency_policy": "INVALIDATE_CONSERVATIVELY"
+      "unknown_dependency_policy": null
     },
     {
       "claim_refs": [],
@@ -3242,13 +4087,15 @@
       "unknown_dependency_policy": "INVALIDATE_CONSERVATIVELY"
     },
     {
-      "claim_refs": [],
+      "claim_refs": [
+        "AESE-CLAIM-AESE-009"
+      ],
       "id": "AESE-PYTHON_TEST-F44FE1653A27637B",
       "kind": "PYTHON_TEST",
-      "mapping_status": "NOT_MAPPED",
+      "mapping_status": "MAPPED_EXACT",
       "path": "tests/test_aese_inventory.py",
       "target": null,
-      "unknown_dependency_policy": "INVALIDATE_CONSERVATIVELY"
+      "unknown_dependency_policy": null
     },
     {
       "claim_refs": [],
@@ -3404,13 +4251,15 @@
       "unknown_dependency_policy": "INVALIDATE_CONSERVATIVELY"
     },
     {
-      "claim_refs": [],
+      "claim_refs": [
+        "AESE-CLAIM-GT96-035"
+      ],
       "id": "AESE-RUST_UNIT_TEST-6896058315F9E5A4",
       "kind": "RUST_UNIT_TEST",
-      "mapping_status": "NOT_MAPPED",
+      "mapping_status": "MAPPED_EXACT",
       "path": "core/rust/src/eac/cache/semantic.rs",
       "target": null,
-      "unknown_dependency_policy": "INVALIDATE_CONSERVATIVELY"
+      "unknown_dependency_policy": null
     },
     {
       "claim_refs": [
@@ -3418,9 +4267,12 @@
         "AESE-CLAIM-GT96-004",
         "AESE-CLAIM-GT96-005",
         "AESE-CLAIM-GT96-006",
+        "AESE-CLAIM-GT96-008",
         "AESE-CLAIM-GT96-009",
         "AESE-CLAIM-GT96-011",
-        "AESE-CLAIM-GT96-020"
+        "AESE-CLAIM-GT96-013",
+        "AESE-CLAIM-GT96-020",
+        "AESE-CLAIM-GT96-030"
       ],
       "id": "AESE-RUST_UNIT_TEST-6E0A9FEABAA1955E",
       "kind": "RUST_UNIT_TEST",
@@ -3583,13 +4435,15 @@
       "unknown_dependency_policy": "INVALIDATE_CONSERVATIVELY"
     },
     {
-      "claim_refs": [],
+      "claim_refs": [
+        "AESE-CLAIM-AESE-009"
+      ],
       "id": "AESE-SCRIPT_OR_GATE-2B63ED08D2F345A1",
       "kind": "SCRIPT_OR_GATE",
-      "mapping_status": "NOT_MAPPED",
+      "mapping_status": "MAPPED_EXACT",
       "path": "scripts/aese_inventory.py",
       "target": null,
-      "unknown_dependency_policy": "INVALIDATE_CONSERVATIVELY"
+      "unknown_dependency_policy": null
     },
     {
       "claim_refs": [],
@@ -3754,13 +4608,15 @@
       "unknown_dependency_policy": "INVALIDATE_CONSERVATIVELY"
     },
     {
-      "claim_refs": [],
+      "claim_refs": [
+        "AESE-CLAIM-AESE-008"
+      ],
       "id": "AESE-SCRIPT_OR_GATE-7CB77C78DCDC63EC",
       "kind": "SCRIPT_OR_GATE",
-      "mapping_status": "NOT_MAPPED",
+      "mapping_status": "MAPPED_EXACT",
       "path": "scripts/aese_preflight.py",
       "target": null,
-      "unknown_dependency_policy": "INVALIDATE_CONSERVATIVELY"
+      "unknown_dependency_policy": null
     },
     {
       "claim_refs": [],
@@ -3907,13 +4763,15 @@
       "unknown_dependency_policy": "INVALIDATE_CONSERVATIVELY"
     },
     {
-      "claim_refs": [],
+      "claim_refs": [
+        "AESE-CLAIM-AESE-010"
+      ],
       "id": "AESE-SCRIPT_OR_GATE-CACC5F6A05F9757D",
       "kind": "SCRIPT_OR_GATE",
-      "mapping_status": "NOT_MAPPED",
+      "mapping_status": "MAPPED_EXACT",
       "path": "scripts/aese_claim_graph.py",
       "target": null,
-      "unknown_dependency_policy": "INVALIDATE_CONSERVATIVELY"
+      "unknown_dependency_policy": null
     },
     {
       "claim_refs": [],
@@ -4588,8 +5446,188 @@
       "reference": "cache latency",
       "resolved_paths": [],
       "source_id": "GT96-035"
+    },
+    {
+      "id": "AESE-TEST_OR_PROOF-AESE-001",
+      "kind": "TEST_OR_PROOF",
+      "mapping_status": "MAPPED_EXACT",
+      "reference": "`tests/test_aese_primitives.py`",
+      "resolved_paths": [
+        "tests/test_aese_primitives.py"
+      ],
+      "source_id": "AESE-001"
+    },
+    {
+      "id": "AESE-BENCHMARK-AESE-001",
+      "kind": "BENCHMARK",
+      "mapping_status": "NOT_MAPPED",
+      "reference": "adaptive coverage/calibration benchmark pending",
+      "resolved_paths": [],
+      "source_id": "AESE-001"
+    },
+    {
+      "id": "AESE-TEST_OR_PROOF-AESE-002",
+      "kind": "TEST_OR_PROOF",
+      "mapping_status": "MAPPED_EXACT",
+      "reference": "`tests/test_aese_primitives.py`",
+      "resolved_paths": [
+        "tests/test_aese_primitives.py"
+      ],
+      "source_id": "AESE-002"
+    },
+    {
+      "id": "AESE-BENCHMARK-AESE-002",
+      "kind": "BENCHMARK",
+      "mapping_status": "NOT_MAPPED",
+      "reference": "multi-host capability calibration pending",
+      "resolved_paths": [],
+      "source_id": "AESE-002"
+    },
+    {
+      "id": "AESE-TEST_OR_PROOF-AESE-003",
+      "kind": "TEST_OR_PROOF",
+      "mapping_status": "MAPPED_EXACT",
+      "reference": "`tests/test_aese_primitives.py`",
+      "resolved_paths": [
+        "tests/test_aese_primitives.py"
+      ],
+      "source_id": "AESE-003"
+    },
+    {
+      "id": "AESE-BENCHMARK-AESE-003",
+      "kind": "BENCHMARK",
+      "mapping_status": "NOT_MAPPED",
+      "reference": "workload-regime discrimination benchmark pending",
+      "resolved_paths": [],
+      "source_id": "AESE-003"
+    },
+    {
+      "id": "AESE-TEST_OR_PROOF-AESE-004",
+      "kind": "TEST_OR_PROOF",
+      "mapping_status": "MAPPED_EXACT",
+      "reference": "`tests/test_aese_primitives.py`",
+      "resolved_paths": [
+        "tests/test_aese_primitives.py"
+      ],
+      "source_id": "AESE-004"
+    },
+    {
+      "id": "AESE-BENCHMARK-AESE-004",
+      "kind": "BENCHMARK",
+      "mapping_status": "NOT_MAPPED",
+      "reference": "solver discrepancy and convergence campaign pending",
+      "resolved_paths": [],
+      "source_id": "AESE-004"
+    },
+    {
+      "id": "AESE-TEST_OR_PROOF-AESE-005",
+      "kind": "TEST_OR_PROOF",
+      "mapping_status": "MAPPED_EXACT",
+      "reference": "`tests/test_aese_primitives.py`",
+      "resolved_paths": [
+        "tests/test_aese_primitives.py"
+      ],
+      "source_id": "AESE-005"
+    },
+    {
+      "id": "AESE-BENCHMARK-AESE-005",
+      "kind": "BENCHMARK",
+      "mapping_status": "NOT_MAPPED",
+      "reference": "paired cross-host residual validation pending",
+      "resolved_paths": [],
+      "source_id": "AESE-005"
+    },
+    {
+      "id": "AESE-TEST_OR_PROOF-AESE-006",
+      "kind": "TEST_OR_PROOF",
+      "mapping_status": "MAPPED_EXACT",
+      "reference": "`tests/test_aese_primitives.py`",
+      "resolved_paths": [
+        "tests/test_aese_primitives.py"
+      ],
+      "source_id": "AESE-006"
+    },
+    {
+      "id": "AESE-BENCHMARK-AESE-006",
+      "kind": "BENCHMARK",
+      "mapping_status": "NOT_MAPPED",
+      "reference": "hosted-anchor selection efficiency pending",
+      "resolved_paths": [],
+      "source_id": "AESE-006"
+    },
+    {
+      "id": "AESE-TEST_OR_PROOF-AESE-007",
+      "kind": "TEST_OR_PROOF",
+      "mapping_status": "MAPPED_EXACT",
+      "reference": "`tests/test_aese_primitives.py`",
+      "resolved_paths": [
+        "tests/test_aese_primitives.py"
+      ],
+      "source_id": "AESE-007"
+    },
+    {
+      "id": "AESE-BENCHMARK-AESE-007",
+      "kind": "BENCHMARK",
+      "mapping_status": "NOT_MAPPED",
+      "reference": "coverage calibration pending",
+      "resolved_paths": [],
+      "source_id": "AESE-007"
+    },
+    {
+      "id": "AESE-TEST_OR_PROOF-AESE-008",
+      "kind": "TEST_OR_PROOF",
+      "mapping_status": "MAPPED_EXACT",
+      "reference": "`tests/test_aese_preflight.py`",
+      "resolved_paths": [
+        "tests/test_aese_preflight.py"
+      ],
+      "source_id": "AESE-008"
+    },
+    {
+      "id": "AESE-BENCHMARK-AESE-008",
+      "kind": "BENCHMARK",
+      "mapping_status": "NOT_MAPPED",
+      "reference": "paired selection-cost comparison pending",
+      "resolved_paths": [],
+      "source_id": "AESE-008"
+    },
+    {
+      "id": "AESE-TEST_OR_PROOF-AESE-009",
+      "kind": "TEST_OR_PROOF",
+      "mapping_status": "MAPPED_EXACT",
+      "reference": "`tests/test_aese_inventory.py`",
+      "resolved_paths": [
+        "tests/test_aese_inventory.py"
+      ],
+      "source_id": "AESE-009"
+    },
+    {
+      "id": "AESE-BENCHMARK-AESE-009",
+      "kind": "BENCHMARK",
+      "mapping_status": "NOT_MAPPED",
+      "reference": "inventory-generation cost pending",
+      "resolved_paths": [],
+      "source_id": "AESE-009"
+    },
+    {
+      "id": "AESE-TEST_OR_PROOF-AESE-010",
+      "kind": "TEST_OR_PROOF",
+      "mapping_status": "MAPPED_EXACT",
+      "reference": "`tests/test_aese_claim_graph.py`",
+      "resolved_paths": [
+        "tests/test_aese_claim_graph.py"
+      ],
+      "source_id": "AESE-010"
+    },
+    {
+      "id": "AESE-BENCHMARK-AESE-010",
+      "kind": "BENCHMARK",
+      "mapping_status": "NOT_MAPPED",
+      "reference": "graph-build cost pending",
+      "resolved_paths": [],
+      "source_id": "AESE-010"
     }
   ],
-  "worktree_epoch": "964ee2ed75938e82d668d5c4449e6002b6cd2aa5ae51f98b81f3aad16e0c512b",
+  "worktree_epoch": "2742e1364c7a147179526583666c54a522aa0bc9f9dc70a2ef1e5e90b214013d",
   "worktree_status": "DIRTY"
 }
