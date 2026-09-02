@@ -964,9 +964,9 @@
     "cfg/macro/trait expansion not exhaustive",
     "no extra tooling installed"
   ],
-  "WORKTREE_EPOCH": "b52d900d2568205d3a71d6d03237c3d35d349a5d21b5eebdc696702bc3ddb688",
-  "HEAD": "81115432fca328ba6f7776a6cb3ad6d89a9679a6",
-  "generated_at": "2026-09-02T00:53:24.439279+00:00",
+  "WORKTREE_EPOCH": "e5506dcdac56e85b93d3447d440ab80124f28f220c3af070ea4d660ebd48a6a2",
+  "HEAD": "eac7852dd163a315352def42f18b3f4d789f5ca2",
+  "generated_at": "2026-09-02T01:08:25.387755+00:00",
   "collector_version/method": "aegis-final-design-closure-v1; direct Git/filesystem/AST/Cargo plus bounded disposable-wheel probes",
   "reused_prior_artifact": "C:\\Users\\ADMIN\\AEGIS-COGNITION\\docs\\architecture\\evidence-pack\\final_rust_public_api.json",
   "reused_prior_artifact_sha256": "2e5d1270d9fedc2cb2e308728987897f22c3fa869d6822d2c0acd6810c79c2d9",
@@ -15948,6 +15948,348 @@
       "evidence": "source declaration; consumer fan-in is separate graph evidence"
     },
     {
+      "path": "core/rust/src/eac/cache/mod.rs",
+      "line": 1,
+      "kind": "mod",
+      "name": "semantic",
+      "exposure_class": "UNKNOWN",
+      "visibility": "pub",
+      "evidence": "source declaration; consumer fan-in is separate graph evidence"
+    },
+    {
+      "path": "core/rust/src/eac/cache/semantic.rs",
+      "line": 8,
+      "kind": "struct",
+      "name": "CacheRecord",
+      "exposure_class": "UNKNOWN",
+      "visibility": "pub",
+      "evidence": "source declaration; consumer fan-in is separate graph evidence"
+    },
+    {
+      "path": "core/rust/src/eac/cache/semantic.rs",
+      "line": 18,
+      "kind": "struct",
+      "name": "SemanticCache",
+      "exposure_class": "UNKNOWN",
+      "visibility": "pub",
+      "evidence": "source declaration; consumer fan-in is separate graph evidence"
+    },
+    {
+      "path": "core/rust/src/eac/cache/semantic.rs",
+      "line": 43,
+      "kind": "fn",
+      "name": "new",
+      "exposure_class": "UNKNOWN",
+      "visibility": "pub",
+      "evidence": "source declaration; consumer fan-in is separate graph evidence"
+    },
+    {
+      "path": "core/rust/src/eac/cache/semantic.rs",
+      "line": 64,
+      "kind": "fn",
+      "name": "lookup_candidate",
+      "exposure_class": "UNKNOWN",
+      "visibility": "pub",
+      "evidence": "source declaration; consumer fan-in is separate graph evidence"
+    },
+    {
+      "path": "core/rust/src/eac/cache/semantic.rs",
+      "line": 99,
+      "kind": "fn",
+      "name": "lookup",
+      "exposure_class": "UNKNOWN",
+      "visibility": "pub",
+      "evidence": "source declaration; consumer fan-in is separate graph evidence"
+    },
+    {
+      "path": "core/rust/src/eac/cache/semantic.rs",
+      "line": 105,
+      "kind": "fn",
+      "name": "lookup_authoritative",
+      "exposure_class": "UNKNOWN",
+      "visibility": "pub",
+      "evidence": "source declaration; consumer fan-in is separate graph evidence"
+    },
+    {
+      "path": "core/rust/src/eac/cache/semantic.rs",
+      "line": 114,
+      "kind": "fn",
+      "name": "insert",
+      "exposure_class": "UNKNOWN",
+      "visibility": "pub",
+      "evidence": "source declaration; consumer fan-in is separate graph evidence"
+    },
+    {
+      "path": "core/rust/src/eac/cache/semantic.rs",
+      "line": 149,
+      "kind": "fn",
+      "name": "invalidate",
+      "exposure_class": "UNKNOWN",
+      "visibility": "pub",
+      "evidence": "source declaration; consumer fan-in is separate graph evidence"
+    },
+    {
+      "path": "core/rust/src/eac/cache/semantic.rs",
+      "line": 158,
+      "kind": "fn",
+      "name": "size",
+      "exposure_class": "UNKNOWN",
+      "visibility": "pub",
+      "evidence": "source declaration; consumer fan-in is separate graph evidence"
+    },
+    {
+      "path": "core/rust/src/eac/cache/semantic.rs",
+      "line": 166,
+      "kind": "fn",
+      "name": "lookup_with_events",
+      "exposure_class": "UNKNOWN",
+      "visibility": "pub",
+      "evidence": "source declaration; consumer fan-in is separate graph evidence"
+    },
+    {
+      "path": "core/rust/src/eac/cache/semantic.rs",
+      "line": 227,
+      "kind": "fn",
+      "name": "insert_with_events",
+      "exposure_class": "UNKNOWN",
+      "visibility": "pub",
+      "evidence": "source declaration; consumer fan-in is separate graph evidence"
+    },
+    {
+      "path": "core/rust/src/eac/cache/semantic.rs",
+      "line": 241,
+      "kind": "fn",
+      "name": "invalidate_with_events",
+      "exposure_class": "UNKNOWN",
+      "visibility": "pub",
+      "evidence": "source declaration; consumer fan-in is separate graph evidence"
+    },
+    {
+      "path": "core/rust/src/eac/cache/semantic.rs",
+      "line": 251,
+      "kind": "fn",
+      "name": "save_to_file",
+      "exposure_class": "UNKNOWN",
+      "visibility": "pub",
+      "evidence": "source declaration; consumer fan-in is separate graph evidence"
+    },
+    {
+      "path": "core/rust/src/eac/cache/semantic.rs",
+      "line": 282,
+      "kind": "fn",
+      "name": "load_from_file",
+      "exposure_class": "UNKNOWN",
+      "visibility": "pub",
+      "evidence": "source declaration; consumer fan-in is separate graph evidence"
+    },
+    {
+      "path": "core/rust/src/eac/sandbox/batch.rs",
+      "line": 17,
+      "kind": "struct",
+      "name": "ToolCall",
+      "exposure_class": "UNKNOWN",
+      "visibility": "pub",
+      "evidence": "source declaration; consumer fan-in is separate graph evidence"
+    },
+    {
+      "path": "core/rust/src/eac/sandbox/batch.rs",
+      "line": 28,
+      "kind": "struct",
+      "name": "ToolResult",
+      "exposure_class": "UNKNOWN",
+      "visibility": "pub",
+      "evidence": "source declaration; consumer fan-in is separate graph evidence"
+    },
+    {
+      "path": "core/rust/src/eac/sandbox/batch.rs",
+      "line": 41,
+      "kind": "enum",
+      "name": "TransactionPolicy",
+      "exposure_class": "UNKNOWN",
+      "visibility": "pub",
+      "evidence": "source declaration; consumer fan-in is separate graph evidence"
+    },
+    {
+      "path": "core/rust/src/eac/sandbox/batch.rs",
+      "line": 61,
+      "kind": "struct",
+      "name": "BatchExecutor",
+      "exposure_class": "UNKNOWN",
+      "visibility": "pub",
+      "evidence": "source declaration; consumer fan-in is separate graph evidence"
+    },
+    {
+      "path": "core/rust/src/eac/sandbox/batch.rs",
+      "line": 70,
+      "kind": "fn",
+      "name": "execute_batch",
+      "exposure_class": "UNKNOWN",
+      "visibility": "pub",
+      "evidence": "source declaration; consumer fan-in is separate graph evidence"
+    },
+    {
+      "path": "core/rust/src/eac/sandbox/batch.rs",
+      "line": 147,
+      "kind": "fn",
+      "name": "aggregate_results",
+      "exposure_class": "UNKNOWN",
+      "visibility": "pub",
+      "evidence": "source declaration; consumer fan-in is separate graph evidence"
+    },
+    {
+      "path": "core/rust/src/eac/sandbox/mod.rs",
+      "line": 3,
+      "kind": "mod",
+      "name": "batch",
+      "exposure_class": "UNKNOWN",
+      "visibility": "pub",
+      "evidence": "source declaration; consumer fan-in is separate graph evidence"
+    },
+    {
+      "path": "core/rust/src/eac/sandbox/mod.rs",
+      "line": 4,
+      "kind": "mod",
+      "name": "runtime",
+      "exposure_class": "UNKNOWN",
+      "visibility": "pub",
+      "evidence": "source declaration; consumer fan-in is separate graph evidence"
+    },
+    {
+      "path": "core/rust/src/eac/sandbox/runtime.rs",
+      "line": 24,
+      "kind": "enum",
+      "name": "Command",
+      "exposure_class": "UNKNOWN",
+      "visibility": "pub",
+      "evidence": "source declaration; consumer fan-in is separate graph evidence"
+    },
+    {
+      "path": "core/rust/src/eac/sandbox/runtime.rs",
+      "line": 32,
+      "kind": "struct",
+      "name": "SkillBlueprint",
+      "exposure_class": "UNKNOWN",
+      "visibility": "pub",
+      "evidence": "source declaration; consumer fan-in is separate graph evidence"
+    },
+    {
+      "path": "core/rust/src/eac/sandbox/runtime.rs",
+      "line": 39,
+      "kind": "struct",
+      "name": "StepProof",
+      "exposure_class": "UNKNOWN",
+      "visibility": "pub",
+      "evidence": "source declaration; consumer fan-in is separate graph evidence"
+    },
+    {
+      "path": "core/rust/src/eac/sandbox/runtime.rs",
+      "line": 47,
+      "kind": "struct",
+      "name": "ProgramTrace",
+      "exposure_class": "UNKNOWN",
+      "visibility": "pub",
+      "evidence": "source declaration; consumer fan-in is separate graph evidence"
+    },
+    {
+      "path": "core/rust/src/eac/sandbox/runtime.rs",
+      "line": 79,
+      "kind": "fn",
+      "name": "security_scan",
+      "exposure_class": "UNKNOWN",
+      "visibility": "pub",
+      "evidence": "source declaration; consumer fan-in is separate graph evidence"
+    },
+    {
+      "path": "core/rust/src/eac/sandbox/runtime.rs",
+      "line": 116,
+      "kind": "struct",
+      "name": "SandboxRuntime",
+      "exposure_class": "UNKNOWN",
+      "visibility": "pub",
+      "evidence": "source declaration; consumer fan-in is separate graph evidence"
+    },
+    {
+      "path": "core/rust/src/eac/sandbox/runtime.rs",
+      "line": 123,
+      "kind": "fn",
+      "name": "new",
+      "exposure_class": "UNKNOWN",
+      "visibility": "pub",
+      "evidence": "source declaration; consumer fan-in is separate graph evidence"
+    },
+    {
+      "path": "core/rust/src/eac/sandbox/runtime.rs",
+      "line": 140,
+      "kind": "fn",
+      "name": "with_data",
+      "exposure_class": "UNKNOWN",
+      "visibility": "pub",
+      "evidence": "source declaration; consumer fan-in is separate graph evidence"
+    },
+    {
+      "path": "core/rust/src/eac/sandbox/runtime.rs",
+      "line": 152,
+      "kind": "fn",
+      "name": "execute",
+      "exposure_class": "UNKNOWN",
+      "visibility": "pub",
+      "evidence": "source declaration; consumer fan-in is separate graph evidence"
+    },
+    {
+      "path": "core/rust/src/eac/sandbox/runtime.rs",
+      "line": 257,
+      "kind": "struct",
+      "name": "TurnState",
+      "exposure_class": "UNKNOWN",
+      "visibility": "pub",
+      "evidence": "source declaration; consumer fan-in is separate graph evidence"
+    },
+    {
+      "path": "core/rust/src/eac/sandbox/runtime.rs",
+      "line": 274,
+      "kind": "struct",
+      "name": "FilesystemSerde",
+      "exposure_class": "UNKNOWN",
+      "visibility": "pub",
+      "evidence": "source declaration; consumer fan-in is separate graph evidence"
+    },
+    {
+      "path": "core/rust/src/eac/sandbox/runtime.rs",
+      "line": 279,
+      "kind": "fn",
+      "name": "new",
+      "exposure_class": "UNKNOWN",
+      "visibility": "pub",
+      "evidence": "source declaration; consumer fan-in is separate graph evidence"
+    },
+    {
+      "path": "core/rust/src/eac/sandbox/runtime.rs",
+      "line": 300,
+      "kind": "fn",
+      "name": "persist",
+      "exposure_class": "UNKNOWN",
+      "visibility": "pub",
+      "evidence": "source declaration; consumer fan-in is separate graph evidence"
+    },
+    {
+      "path": "core/rust/src/eac/sandbox/runtime.rs",
+      "line": 357,
+      "kind": "fn",
+      "name": "load",
+      "exposure_class": "UNKNOWN",
+      "visibility": "pub",
+      "evidence": "source declaration; consumer fan-in is separate graph evidence"
+    },
+    {
+      "path": "core/rust/src/eac/sandbox/runtime.rs",
+      "line": 391,
+      "kind": "fn",
+      "name": "verify_chain",
+      "exposure_class": "UNKNOWN",
+      "visibility": "pub",
+      "evidence": "source declaration; consumer fan-in is separate graph evidence"
+    },
+    {
       "path": "core/rust/src/learning/mod.rs",
       "line": 32,
       "kind": "enum",
@@ -17532,377 +17874,368 @@
       "evidence": "source declaration; consumer fan-in is separate graph evidence"
     },
     {
-      "path": "core/rust/src/eac/cache/mod.rs",
-      "line": 1,
-      "kind": "mod",
-      "name": "semantic",
-      "exposure_class": "UNKNOWN",
+      "path": "aegis-plugins/aegis-bench/src/lib.rs",
+      "line": 6,
+      "kind": "enum",
+      "name": "BenchError",
+      "exposure_class": "PUBLIC_ACCIDENTAL_SUSPECT",
       "visibility": "pub",
       "evidence": "source declaration; consumer fan-in is separate graph evidence"
     },
     {
-      "path": "core/rust/src/eac/cache/semantic.rs",
-      "line": 8,
+      "path": "aegis-plugins/aegis-bench/src/lib.rs",
+      "line": 14,
       "kind": "struct",
-      "name": "CacheRecord",
-      "exposure_class": "UNKNOWN",
+      "name": "BenchMetric",
+      "exposure_class": "PUBLIC_ACCIDENTAL_SUSPECT",
       "visibility": "pub",
       "evidence": "source declaration; consumer fan-in is separate graph evidence"
     },
     {
-      "path": "core/rust/src/eac/cache/semantic.rs",
+      "path": "aegis-plugins/aegis-bench/src/lib.rs",
+      "line": 21,
+      "kind": "struct",
+      "name": "BenchReport",
+      "exposure_class": "PUBLIC_ACCIDENTAL_SUSPECT",
+      "visibility": "pub",
+      "evidence": "source declaration; consumer fan-in is separate graph evidence"
+    },
+    {
+      "path": "aegis-plugins/aegis-bench/src/lib.rs",
+      "line": 27,
+      "kind": "struct",
+      "name": "PerformanceGates",
+      "exposure_class": "PUBLIC_ACCIDENTAL_SUSPECT",
+      "visibility": "pub",
+      "evidence": "source declaration; consumer fan-in is separate graph evidence"
+    },
+    {
+      "path": "aegis-plugins/aegis-bench/src/lib.rs",
+      "line": 32,
+      "kind": "fn",
+      "name": "passes",
+      "exposure_class": "PUBLIC_ACCIDENTAL_SUSPECT",
+      "visibility": "pub",
+      "evidence": "source declaration; consumer fan-in is separate graph evidence"
+    },
+    {
+      "path": "aegis-plugins/aegis-bench/src/lib.rs",
+      "line": 38,
+      "kind": "fn",
+      "name": "new",
+      "exposure_class": "PUBLIC_ACCIDENTAL_SUSPECT",
+      "visibility": "pub",
+      "evidence": "source declaration; consumer fan-in is separate graph evidence"
+    },
+    {
+      "path": "aegis-plugins/aegis-bench/src/lib.rs",
+      "line": 42,
+      "kind": "fn",
+      "name": "with_gate",
+      "exposure_class": "PUBLIC_ACCIDENTAL_SUSPECT",
+      "visibility": "pub",
+      "evidence": "source declaration; consumer fan-in is separate graph evidence"
+    },
+    {
+      "path": "aegis-plugins/aegis-bench/src/lib.rs",
+      "line": 47,
+      "kind": "fn",
+      "name": "plugin_defaults",
+      "exposure_class": "PUBLIC_ACCIDENTAL_SUSPECT",
+      "visibility": "pub",
+      "evidence": "source declaration; consumer fan-in is separate graph evidence"
+    },
+    {
+      "path": "aegis-plugins/aegis-bench/src/lib.rs",
+      "line": 56,
+      "kind": "fn",
+      "name": "evaluate",
+      "exposure_class": "PUBLIC_ACCIDENTAL_SUSPECT",
+      "visibility": "pub",
+      "evidence": "source declaration; consumer fan-in is separate graph evidence"
+    },
+    {
+      "path": "aegis-plugins/aegis-browser/src/lib.rs",
+      "line": 8,
+      "kind": "enum",
+      "name": "BrowserError",
+      "exposure_class": "PUBLIC_ACCIDENTAL_SUSPECT",
+      "visibility": "pub",
+      "evidence": "source declaration; consumer fan-in is separate graph evidence"
+    },
+    {
+      "path": "aegis-plugins/aegis-browser/src/lib.rs",
       "line": 18,
       "kind": "struct",
-      "name": "SemanticCache",
-      "exposure_class": "UNKNOWN",
+      "name": "BrowserOptions",
+      "exposure_class": "PUBLIC_ACCIDENTAL_SUSPECT",
       "visibility": "pub",
       "evidence": "source declaration; consumer fan-in is separate graph evidence"
     },
     {
-      "path": "core/rust/src/eac/cache/semantic.rs",
-      "line": 43,
-      "kind": "fn",
-      "name": "new",
-      "exposure_class": "UNKNOWN",
+      "path": "aegis-plugins/aegis-browser/src/lib.rs",
+      "line": 29,
+      "kind": "struct",
+      "name": "ProxyConfig",
+      "exposure_class": "PUBLIC_ACCIDENTAL_SUSPECT",
       "visibility": "pub",
       "evidence": "source declaration; consumer fan-in is separate graph evidence"
     },
     {
-      "path": "core/rust/src/eac/cache/semantic.rs",
-      "line": 64,
-      "kind": "fn",
-      "name": "lookup_candidate",
-      "exposure_class": "UNKNOWN",
+      "path": "aegis-plugins/aegis-browser/src/lib.rs",
+      "line": 35,
+      "kind": "enum",
+      "name": "ProxyKind",
+      "exposure_class": "PUBLIC_ACCIDENTAL_SUSPECT",
       "visibility": "pub",
       "evidence": "source declaration; consumer fan-in is separate graph evidence"
     },
     {
-      "path": "core/rust/src/eac/cache/semantic.rs",
-      "line": 99,
-      "kind": "fn",
-      "name": "lookup",
-      "exposure_class": "UNKNOWN",
+      "path": "aegis-plugins/aegis-browser/src/lib.rs",
+      "line": 41,
+      "kind": "struct",
+      "name": "Viewport",
+      "exposure_class": "PUBLIC_ACCIDENTAL_SUSPECT",
       "visibility": "pub",
       "evidence": "source declaration; consumer fan-in is separate graph evidence"
     },
     {
-      "path": "core/rust/src/eac/cache/semantic.rs",
-      "line": 105,
-      "kind": "fn",
-      "name": "lookup_authoritative",
-      "exposure_class": "UNKNOWN",
+      "path": "aegis-plugins/aegis-browser/src/lib.rs",
+      "line": 47,
+      "kind": "enum",
+      "name": "BrowserCommand",
+      "exposure_class": "PUBLIC_ACCIDENTAL_SUSPECT",
       "visibility": "pub",
       "evidence": "source declaration; consumer fan-in is separate graph evidence"
     },
     {
-      "path": "core/rust/src/eac/cache/semantic.rs",
+      "path": "aegis-plugins/aegis-browser/src/lib.rs",
+      "line": 59,
+      "kind": "struct",
+      "name": "BrowserEvent",
+      "exposure_class": "PUBLIC_ACCIDENTAL_SUSPECT",
+      "visibility": "pub",
+      "evidence": "source declaration; consumer fan-in is separate graph evidence"
+    },
+    {
+      "path": "aegis-plugins/aegis-browser/src/lib.rs",
+      "line": 65,
+      "kind": "struct",
+      "name": "StealthProfile",
+      "exposure_class": "PUBLIC_ACCIDENTAL_SUSPECT",
+      "visibility": "pub",
+      "evidence": "source declaration; consumer fan-in is separate graph evidence"
+    },
+    {
+      "path": "aegis-plugins/aegis-browser/src/lib.rs",
+      "line": 72,
+      "kind": "trait",
+      "name": "BrowserDriver",
+      "exposure_class": "PUBLIC_ACCIDENTAL_SUSPECT",
+      "visibility": "pub",
+      "evidence": "source declaration; consumer fan-in is separate graph evidence"
+    },
+    {
+      "path": "aegis-plugins/aegis-browser/src/lib.rs",
+      "line": 76,
+      "kind": "struct",
+      "name": "Browser",
+      "exposure_class": "PUBLIC_ACCIDENTAL_SUSPECT",
+      "visibility": "pub",
+      "evidence": "source declaration; consumer fan-in is separate graph evidence"
+    },
+    {
+      "path": "aegis-plugins/aegis-browser/src/lib.rs",
+      "line": 81,
+      "kind": "struct",
+      "name": "BrowserContext",
+      "exposure_class": "PUBLIC_ACCIDENTAL_SUSPECT",
+      "visibility": "pub",
+      "evidence": "source declaration; consumer fan-in is separate graph evidence"
+    },
+    {
+      "path": "aegis-plugins/aegis-browser/src/lib.rs",
+      "line": 86,
+      "kind": "struct",
+      "name": "Page",
+      "exposure_class": "PUBLIC_ACCIDENTAL_SUSPECT",
+      "visibility": "pub",
+      "evidence": "source declaration; consumer fan-in is separate graph evidence"
+    },
+    {
+      "path": "aegis-plugins/aegis-browser/src/lib.rs",
+      "line": 91,
+      "kind": "struct",
+      "name": "MemoryBrowserDriver",
+      "exposure_class": "PUBLIC_ACCIDENTAL_SUSPECT",
+      "visibility": "pub",
+      "evidence": "source declaration; consumer fan-in is separate graph evidence"
+    },
+    {
+      "path": "aegis-plugins/aegis-browser/src/lib.rs",
       "line": 114,
       "kind": "fn",
-      "name": "insert",
-      "exposure_class": "UNKNOWN",
+      "name": "validate",
+      "exposure_class": "PUBLIC_ACCIDENTAL_SUSPECT",
       "visibility": "pub",
       "evidence": "source declaration; consumer fan-in is separate graph evidence"
     },
     {
-      "path": "core/rust/src/eac/cache/semantic.rs",
-      "line": 149,
+      "path": "aegis-plugins/aegis-browser/src/lib.rs",
+      "line": 132,
       "kind": "fn",
-      "name": "invalidate",
-      "exposure_class": "UNKNOWN",
+      "name": "stealth_profile",
+      "exposure_class": "PUBLIC_ACCIDENTAL_SUSPECT",
       "visibility": "pub",
       "evidence": "source declaration; consumer fan-in is separate graph evidence"
     },
     {
-      "path": "core/rust/src/eac/cache/semantic.rs",
+      "path": "aegis-plugins/aegis-browser/src/lib.rs",
+      "line": 146,
+      "kind": "fn",
+      "name": "hash",
+      "exposure_class": "PUBLIC_ACCIDENTAL_SUSPECT",
+      "visibility": "pub",
+      "evidence": "source declaration; consumer fan-in is separate graph evidence"
+    },
+    {
+      "path": "aegis-plugins/aegis-browser/src/lib.rs",
+      "line": 153,
+      "kind": "fn",
+      "name": "new",
+      "exposure_class": "PUBLIC_ACCIDENTAL_SUSPECT",
+      "visibility": "pub",
+      "evidence": "source declaration; consumer fan-in is separate graph evidence"
+    },
+    {
+      "path": "aegis-plugins/aegis-browser/src/lib.rs",
       "line": 158,
       "kind": "fn",
-      "name": "size",
-      "exposure_class": "UNKNOWN",
-      "visibility": "pub",
-      "evidence": "source declaration; consumer fan-in is separate graph evidence"
-    },
-    {
-      "path": "core/rust/src/eac/cache/semantic.rs",
-      "line": 166,
-      "kind": "fn",
-      "name": "lookup_with_events",
-      "exposure_class": "UNKNOWN",
-      "visibility": "pub",
-      "evidence": "source declaration; consumer fan-in is separate graph evidence"
-    },
-    {
-      "path": "core/rust/src/eac/cache/semantic.rs",
-      "line": 227,
-      "kind": "fn",
-      "name": "insert_with_events",
-      "exposure_class": "UNKNOWN",
-      "visibility": "pub",
-      "evidence": "source declaration; consumer fan-in is separate graph evidence"
-    },
-    {
-      "path": "core/rust/src/eac/cache/semantic.rs",
-      "line": 241,
-      "kind": "fn",
-      "name": "invalidate_with_events",
-      "exposure_class": "UNKNOWN",
-      "visibility": "pub",
-      "evidence": "source declaration; consumer fan-in is separate graph evidence"
-    },
-    {
-      "path": "core/rust/src/eac/cache/semantic.rs",
-      "line": 251,
-      "kind": "fn",
-      "name": "save_to_file",
-      "exposure_class": "UNKNOWN",
-      "visibility": "pub",
-      "evidence": "source declaration; consumer fan-in is separate graph evidence"
-    },
-    {
-      "path": "core/rust/src/eac/cache/semantic.rs",
-      "line": 282,
-      "kind": "fn",
-      "name": "load_from_file",
-      "exposure_class": "UNKNOWN",
-      "visibility": "pub",
-      "evidence": "source declaration; consumer fan-in is separate graph evidence"
-    },
-    {
-      "path": "core/rust/src/eac/sandbox/batch.rs",
-      "line": 17,
-      "kind": "struct",
-      "name": "ToolCall",
-      "exposure_class": "UNKNOWN",
-      "visibility": "pub",
-      "evidence": "source declaration; consumer fan-in is separate graph evidence"
-    },
-    {
-      "path": "core/rust/src/eac/sandbox/batch.rs",
-      "line": 28,
-      "kind": "struct",
-      "name": "ToolResult",
-      "exposure_class": "UNKNOWN",
-      "visibility": "pub",
-      "evidence": "source declaration; consumer fan-in is separate graph evidence"
-    },
-    {
-      "path": "core/rust/src/eac/sandbox/batch.rs",
-      "line": 41,
-      "kind": "enum",
-      "name": "TransactionPolicy",
-      "exposure_class": "UNKNOWN",
-      "visibility": "pub",
-      "evidence": "source declaration; consumer fan-in is separate graph evidence"
-    },
-    {
-      "path": "core/rust/src/eac/sandbox/batch.rs",
-      "line": 61,
-      "kind": "struct",
-      "name": "BatchExecutor",
-      "exposure_class": "UNKNOWN",
-      "visibility": "pub",
-      "evidence": "source declaration; consumer fan-in is separate graph evidence"
-    },
-    {
-      "path": "core/rust/src/eac/sandbox/batch.rs",
-      "line": 70,
-      "kind": "fn",
-      "name": "execute_batch",
-      "exposure_class": "UNKNOWN",
-      "visibility": "pub",
-      "evidence": "source declaration; consumer fan-in is separate graph evidence"
-    },
-    {
-      "path": "core/rust/src/eac/sandbox/batch.rs",
-      "line": 147,
-      "kind": "fn",
-      "name": "aggregate_results",
-      "exposure_class": "UNKNOWN",
-      "visibility": "pub",
-      "evidence": "source declaration; consumer fan-in is separate graph evidence"
-    },
-    {
-      "path": "core/rust/src/eac/sandbox/mod.rs",
-      "line": 3,
-      "kind": "mod",
-      "name": "batch",
-      "exposure_class": "UNKNOWN",
-      "visibility": "pub",
-      "evidence": "source declaration; consumer fan-in is separate graph evidence"
-    },
-    {
-      "path": "core/rust/src/eac/sandbox/mod.rs",
-      "line": 4,
-      "kind": "mod",
-      "name": "runtime",
-      "exposure_class": "UNKNOWN",
-      "visibility": "pub",
-      "evidence": "source declaration; consumer fan-in is separate graph evidence"
-    },
-    {
-      "path": "core/rust/src/eac/sandbox/runtime.rs",
-      "line": 24,
-      "kind": "enum",
-      "name": "Command",
-      "exposure_class": "UNKNOWN",
-      "visibility": "pub",
-      "evidence": "source declaration; consumer fan-in is separate graph evidence"
-    },
-    {
-      "path": "core/rust/src/eac/sandbox/runtime.rs",
-      "line": 32,
-      "kind": "struct",
-      "name": "SkillBlueprint",
-      "exposure_class": "UNKNOWN",
-      "visibility": "pub",
-      "evidence": "source declaration; consumer fan-in is separate graph evidence"
-    },
-    {
-      "path": "core/rust/src/eac/sandbox/runtime.rs",
-      "line": 39,
-      "kind": "struct",
-      "name": "StepProof",
-      "exposure_class": "UNKNOWN",
-      "visibility": "pub",
-      "evidence": "source declaration; consumer fan-in is separate graph evidence"
-    },
-    {
-      "path": "core/rust/src/eac/sandbox/runtime.rs",
-      "line": 47,
-      "kind": "struct",
-      "name": "ProgramTrace",
-      "exposure_class": "UNKNOWN",
-      "visibility": "pub",
-      "evidence": "source declaration; consumer fan-in is separate graph evidence"
-    },
-    {
-      "path": "core/rust/src/eac/sandbox/runtime.rs",
-      "line": 79,
-      "kind": "fn",
-      "name": "security_scan",
-      "exposure_class": "UNKNOWN",
-      "visibility": "pub",
-      "evidence": "source declaration; consumer fan-in is separate graph evidence"
-    },
-    {
-      "path": "core/rust/src/eac/sandbox/runtime.rs",
-      "line": 116,
-      "kind": "struct",
-      "name": "SandboxRuntime",
-      "exposure_class": "UNKNOWN",
-      "visibility": "pub",
-      "evidence": "source declaration; consumer fan-in is separate graph evidence"
-    },
-    {
-      "path": "core/rust/src/eac/sandbox/runtime.rs",
-      "line": 123,
-      "kind": "fn",
-      "name": "new",
-      "exposure_class": "UNKNOWN",
-      "visibility": "pub",
-      "evidence": "source declaration; consumer fan-in is separate graph evidence"
-    },
-    {
-      "path": "core/rust/src/eac/sandbox/runtime.rs",
-      "line": 140,
-      "kind": "fn",
-      "name": "with_data",
-      "exposure_class": "UNKNOWN",
-      "visibility": "pub",
-      "evidence": "source declaration; consumer fan-in is separate graph evidence"
-    },
-    {
-      "path": "core/rust/src/eac/sandbox/runtime.rs",
-      "line": 152,
-      "kind": "fn",
-      "name": "execute",
-      "exposure_class": "UNKNOWN",
-      "visibility": "pub",
-      "evidence": "source declaration; consumer fan-in is separate graph evidence"
-    },
-    {
-      "path": "core/rust/src/eac/sandbox/runtime.rs",
-      "line": 257,
-      "kind": "struct",
-      "name": "TurnState",
-      "exposure_class": "UNKNOWN",
-      "visibility": "pub",
-      "evidence": "source declaration; consumer fan-in is separate graph evidence"
-    },
-    {
-      "path": "core/rust/src/eac/sandbox/runtime.rs",
-      "line": 274,
-      "kind": "struct",
-      "name": "FilesystemSerde",
-      "exposure_class": "UNKNOWN",
-      "visibility": "pub",
-      "evidence": "source declaration; consumer fan-in is separate graph evidence"
-    },
-    {
-      "path": "core/rust/src/eac/sandbox/runtime.rs",
-      "line": 279,
-      "kind": "fn",
-      "name": "new",
-      "exposure_class": "UNKNOWN",
-      "visibility": "pub",
-      "evidence": "source declaration; consumer fan-in is separate graph evidence"
-    },
-    {
-      "path": "core/rust/src/eac/sandbox/runtime.rs",
-      "line": 300,
-      "kind": "fn",
-      "name": "persist",
-      "exposure_class": "UNKNOWN",
-      "visibility": "pub",
-      "evidence": "source declaration; consumer fan-in is separate graph evidence"
-    },
-    {
-      "path": "core/rust/src/eac/sandbox/runtime.rs",
-      "line": 357,
-      "kind": "fn",
-      "name": "load",
-      "exposure_class": "UNKNOWN",
-      "visibility": "pub",
-      "evidence": "source declaration; consumer fan-in is separate graph evidence"
-    },
-    {
-      "path": "core/rust/src/eac/sandbox/runtime.rs",
-      "line": 391,
-      "kind": "fn",
-      "name": "verify_chain",
-      "exposure_class": "UNKNOWN",
-      "visibility": "pub",
-      "evidence": "source declaration; consumer fan-in is separate graph evidence"
-    },
-    {
-      "path": "aegis-plugins/aegis-skills/src/lib.rs",
-      "line": 7,
-      "kind": "enum",
-      "name": "SkillError",
+      "name": "context",
       "exposure_class": "PUBLIC_ACCIDENTAL_SUSPECT",
       "visibility": "pub",
       "evidence": "source declaration; consumer fan-in is separate graph evidence"
     },
     {
-      "path": "aegis-plugins/aegis-skills/src/lib.rs",
-      "line": 17,
-      "kind": "struct",
-      "name": "Skill",
+      "path": "aegis-plugins/aegis-browser/src/lib.rs",
+      "line": 165,
+      "kind": "fn",
+      "name": "options",
       "exposure_class": "PUBLIC_ACCIDENTAL_SUSPECT",
       "visibility": "pub",
       "evidence": "source declaration; consumer fan-in is separate graph evidence"
     },
     {
-      "path": "aegis-plugins/aegis-skills/src/lib.rs",
-      "line": 26,
-      "kind": "struct",
-      "name": "SkillsRegistry",
+      "path": "aegis-plugins/aegis-browser/src/lib.rs",
+      "line": 171,
+      "kind": "fn",
+      "name": "page",
       "exposure_class": "PUBLIC_ACCIDENTAL_SUSPECT",
       "visibility": "pub",
       "evidence": "source declaration; consumer fan-in is separate graph evidence"
     },
     {
-      "path": "aegis-plugins/aegis-skills/src/lib.rs",
-      "line": 31,
+      "path": "aegis-plugins/aegis-browser/src/lib.rs",
+      "line": 175,
+      "kind": "fn",
+      "name": "set_cookie",
+      "exposure_class": "PUBLIC_ACCIDENTAL_SUSPECT",
+      "visibility": "pub",
+      "evidence": "source declaration; consumer fan-in is separate graph evidence"
+    },
+    {
+      "path": "aegis-plugins/aegis-browser/src/lib.rs",
+      "line": 181,
+      "kind": "fn",
+      "name": "navigate",
+      "exposure_class": "PUBLIC_ACCIDENTAL_SUSPECT",
+      "visibility": "pub",
+      "evidence": "source declaration; consumer fan-in is separate graph evidence"
+    },
+    {
+      "path": "aegis-plugins/aegis-browser/src/lib.rs",
+      "line": 191,
+      "kind": "fn",
+      "name": "click",
+      "exposure_class": "PUBLIC_ACCIDENTAL_SUSPECT",
+      "visibility": "pub",
+      "evidence": "source declaration; consumer fan-in is separate graph evidence"
+    },
+    {
+      "path": "aegis-plugins/aegis-browser/src/lib.rs",
+      "line": 197,
+      "kind": "fn",
+      "name": "type_text",
+      "exposure_class": "PUBLIC_ACCIDENTAL_SUSPECT",
+      "visibility": "pub",
+      "evidence": "source declaration; consumer fan-in is separate graph evidence"
+    },
+    {
+      "path": "aegis-plugins/aegis-browser/src/lib.rs",
+      "line": 207,
+      "kind": "fn",
+      "name": "extract_text",
+      "exposure_class": "PUBLIC_ACCIDENTAL_SUSPECT",
+      "visibility": "pub",
+      "evidence": "source declaration; consumer fan-in is separate graph evidence"
+    },
+    {
+      "path": "aegis-plugins/aegis-browser/src/lib.rs",
+      "line": 216,
+      "kind": "fn",
+      "name": "extract_links",
+      "exposure_class": "PUBLIC_ACCIDENTAL_SUSPECT",
+      "visibility": "pub",
+      "evidence": "source declaration; consumer fan-in is separate graph evidence"
+    },
+    {
+      "path": "aegis-plugins/aegis-evidence/src/lib.rs",
+      "line": 6,
+      "kind": "enum",
+      "name": "EvidenceError",
+      "exposure_class": "PUBLIC_ACCIDENTAL_SUSPECT",
+      "visibility": "pub",
+      "evidence": "source declaration; consumer fan-in is separate graph evidence"
+    },
+    {
+      "path": "aegis-plugins/aegis-evidence/src/lib.rs",
+      "line": 16,
+      "kind": "enum",
+      "name": "EvidenceLifecycleState",
+      "exposure_class": "PUBLIC_ACCIDENTAL_SUSPECT",
+      "visibility": "pub",
+      "evidence": "source declaration; consumer fan-in is separate graph evidence"
+    },
+    {
+      "path": "aegis-plugins/aegis-evidence/src/lib.rs",
+      "line": 25,
+      "kind": "struct",
+      "name": "EvidenceBinding",
+      "exposure_class": "PUBLIC_ACCIDENTAL_SUSPECT",
+      "visibility": "pub",
+      "evidence": "source declaration; consumer fan-in is separate graph evidence"
+    },
+    {
+      "path": "aegis-plugins/aegis-evidence/src/lib.rs",
+      "line": 34,
+      "kind": "struct",
+      "name": "AuditRecord",
+      "exposure_class": "PUBLIC_ACCIDENTAL_SUSPECT",
+      "visibility": "pub",
+      "evidence": "source declaration; consumer fan-in is separate graph evidence"
+    },
+    {
+      "path": "aegis-plugins/aegis-evidence/src/lib.rs",
+      "line": 44,
+      "kind": "struct",
+      "name": "EvidenceStore",
+      "exposure_class": "PUBLIC_ACCIDENTAL_SUSPECT",
+      "visibility": "pub",
+      "evidence": "source declaration; consumer fan-in is separate graph evidence"
+    },
+    {
+      "path": "aegis-plugins/aegis-evidence/src/lib.rs",
+      "line": 50,
       "kind": "fn",
       "name": "new",
       "exposure_class": "PUBLIC_ACCIDENTAL_SUSPECT",
@@ -17910,17 +18243,8 @@
       "evidence": "source declaration; consumer fan-in is separate graph evidence"
     },
     {
-      "path": "aegis-plugins/aegis-skills/src/lib.rs",
-      "line": 58,
-      "kind": "fn",
-      "name": "headings",
-      "exposure_class": "PUBLIC_ACCIDENTAL_SUSPECT",
-      "visibility": "pub",
-      "evidence": "source declaration; consumer fan-in is separate graph evidence"
-    },
-    {
-      "path": "aegis-plugins/aegis-skills/src/lib.rs",
-      "line": 67,
+      "path": "aegis-plugins/aegis-evidence/src/lib.rs",
+      "line": 71,
       "kind": "fn",
       "name": "compute_hash",
       "exposure_class": "PUBLIC_ACCIDENTAL_SUSPECT",
@@ -17928,8 +18252,17 @@
       "evidence": "source declaration; consumer fan-in is separate graph evidence"
     },
     {
-      "path": "aegis-plugins/aegis-skills/src/lib.rs",
-      "line": 78,
+      "path": "aegis-plugins/aegis-evidence/src/lib.rs",
+      "line": 81,
+      "kind": "fn",
+      "name": "verify",
+      "exposure_class": "PUBLIC_ACCIDENTAL_SUSPECT",
+      "visibility": "pub",
+      "evidence": "source declaration; consumer fan-in is separate graph evidence"
+    },
+    {
+      "path": "aegis-plugins/aegis-evidence/src/lib.rs",
+      "line": 87,
       "kind": "fn",
       "name": "new",
       "exposure_class": "PUBLIC_ACCIDENTAL_SUSPECT",
@@ -17937,26 +18270,35 @@
       "evidence": "source declaration; consumer fan-in is separate graph evidence"
     },
     {
-      "path": "aegis-plugins/aegis-skills/src/lib.rs",
-      "line": 82,
+      "path": "aegis-plugins/aegis-evidence/src/lib.rs",
+      "line": 106,
       "kind": "fn",
-      "name": "with_builtin_skills",
+      "name": "compute_hash",
       "exposure_class": "PUBLIC_ACCIDENTAL_SUSPECT",
       "visibility": "pub",
       "evidence": "source declaration; consumer fan-in is separate graph evidence"
     },
     {
-      "path": "aegis-plugins/aegis-skills/src/lib.rs",
-      "line": 90,
+      "path": "aegis-plugins/aegis-evidence/src/lib.rs",
+      "line": 119,
       "kind": "fn",
-      "name": "register",
+      "name": "new",
       "exposure_class": "PUBLIC_ACCIDENTAL_SUSPECT",
       "visibility": "pub",
       "evidence": "source declaration; consumer fan-in is separate graph evidence"
     },
     {
-      "path": "aegis-plugins/aegis-skills/src/lib.rs",
-      "line": 98,
+      "path": "aegis-plugins/aegis-evidence/src/lib.rs",
+      "line": 123,
+      "kind": "fn",
+      "name": "bind",
+      "exposure_class": "PUBLIC_ACCIDENTAL_SUSPECT",
+      "visibility": "pub",
+      "evidence": "source declaration; consumer fan-in is separate graph evidence"
+    },
+    {
+      "path": "aegis-plugins/aegis-evidence/src/lib.rs",
+      "line": 133,
       "kind": "fn",
       "name": "get",
       "exposure_class": "PUBLIC_ACCIDENTAL_SUSPECT",
@@ -17964,28 +18306,217 @@
       "evidence": "source declaration; consumer fan-in is separate graph evidence"
     },
     {
-      "path": "aegis-plugins/aegis-skills/src/lib.rs",
-      "line": 102,
+      "path": "aegis-plugins/aegis-evidence/src/lib.rs",
+      "line": 147,
       "kind": "fn",
-      "name": "select_for_task",
+      "name": "audit_trail",
       "exposure_class": "PUBLIC_ACCIDENTAL_SUSPECT",
       "visibility": "pub",
       "evidence": "source declaration; consumer fan-in is separate graph evidence"
     },
     {
-      "path": "aegis-plugins/aegis-skills/src/lib.rs",
-      "line": 132,
+      "path": "aegis-plugins/aegis-evidence/src/lib.rs",
+      "line": 154,
       "kind": "fn",
-      "name": "estimate_tokens",
+      "name": "verify_audit_chain",
       "exposure_class": "PUBLIC_ACCIDENTAL_SUSPECT",
       "visibility": "pub",
       "evidence": "source declaration; consumer fan-in is separate graph evidence"
     },
     {
-      "path": "aegis-plugins/aegis-skills/src/lib.rs",
-      "line": 136,
+      "path": "aegis-plugins/aegis-sandbox/src/lib.rs",
+      "line": 9,
+      "kind": "enum",
+      "name": "SandboxError",
+      "exposure_class": "PUBLIC_ACCIDENTAL_SUSPECT",
+      "visibility": "pub",
+      "evidence": "source declaration; consumer fan-in is separate graph evidence"
+    },
+    {
+      "path": "aegis-plugins/aegis-sandbox/src/lib.rs",
+      "line": 23,
+      "kind": "struct",
+      "name": "ResourceLimits",
+      "exposure_class": "PUBLIC_ACCIDENTAL_SUSPECT",
+      "visibility": "pub",
+      "evidence": "source declaration; consumer fan-in is separate graph evidence"
+    },
+    {
+      "path": "aegis-plugins/aegis-sandbox/src/lib.rs",
+      "line": 30,
+      "kind": "struct",
+      "name": "SandboxPolicy",
+      "exposure_class": "PUBLIC_ACCIDENTAL_SUSPECT",
+      "visibility": "pub",
+      "evidence": "source declaration; consumer fan-in is separate graph evidence"
+    },
+    {
+      "path": "aegis-plugins/aegis-sandbox/src/lib.rs",
+      "line": 37,
+      "kind": "struct",
+      "name": "ExecutionRequest",
+      "exposure_class": "PUBLIC_ACCIDENTAL_SUSPECT",
+      "visibility": "pub",
+      "evidence": "source declaration; consumer fan-in is separate graph evidence"
+    },
+    {
+      "path": "aegis-plugins/aegis-sandbox/src/lib.rs",
+      "line": 43,
+      "kind": "struct",
+      "name": "ExecutionReport",
+      "exposure_class": "PUBLIC_ACCIDENTAL_SUSPECT",
+      "visibility": "pub",
+      "evidence": "source declaration; consumer fan-in is separate graph evidence"
+    },
+    {
+      "path": "aegis-plugins/aegis-sandbox/src/lib.rs",
+      "line": 50,
+      "kind": "trait",
+      "name": "SandboxBackend",
+      "exposure_class": "PUBLIC_ACCIDENTAL_SUSPECT",
+      "visibility": "pub",
+      "evidence": "source declaration; consumer fan-in is separate graph evidence"
+    },
+    {
+      "path": "aegis-plugins/aegis-sandbox/src/lib.rs",
+      "line": 60,
+      "kind": "struct",
+      "name": "PolicyOnlyBackend",
+      "exposure_class": "PUBLIC_ACCIDENTAL_SUSPECT",
+      "visibility": "pub",
+      "evidence": "source declaration; consumer fan-in is separate graph evidence"
+    },
+    {
+      "path": "aegis-plugins/aegis-sandbox/src/lib.rs",
+      "line": 63,
+      "kind": "struct",
+      "name": "SandboxRuntime",
+      "exposure_class": "PUBLIC_ACCIDENTAL_SUSPECT",
+      "visibility": "pub",
+      "evidence": "source declaration; consumer fan-in is separate graph evidence"
+    },
+    {
+      "path": "aegis-plugins/aegis-sandbox/src/lib.rs",
+      "line": 70,
+      "kind": "struct",
+      "name": "SandboxStateStore",
+      "exposure_class": "PUBLIC_ACCIDENTAL_SUSPECT",
+      "visibility": "pub",
+      "evidence": "source declaration; consumer fan-in is separate graph evidence"
+    },
+    {
+      "path": "aegis-plugins/aegis-sandbox/src/lib.rs",
+      "line": 121,
       "kind": "fn",
-      "name": "builtin_skills",
+      "name": "validate_code",
+      "exposure_class": "PUBLIC_ACCIDENTAL_SUSPECT",
+      "visibility": "pub",
+      "evidence": "source declaration; consumer fan-in is separate graph evidence"
+    },
+    {
+      "path": "aegis-plugins/aegis-sandbox/src/lib.rs",
+      "line": 158,
+      "kind": "fn",
+      "name": "new",
+      "exposure_class": "PUBLIC_ACCIDENTAL_SUSPECT",
+      "visibility": "pub",
+      "evidence": "source declaration; consumer fan-in is separate graph evidence"
+    },
+    {
+      "path": "aegis-plugins/aegis-sandbox/src/lib.rs",
+      "line": 166,
+      "kind": "fn",
+      "name": "execute",
+      "exposure_class": "PUBLIC_ACCIDENTAL_SUSPECT",
+      "visibility": "pub",
+      "evidence": "source declaration; consumer fan-in is separate graph evidence"
+    },
+    {
+      "path": "aegis-plugins/aegis-sandbox/src/lib.rs",
+      "line": 172,
+      "kind": "fn",
+      "name": "state",
+      "exposure_class": "PUBLIC_ACCIDENTAL_SUSPECT",
+      "visibility": "pub",
+      "evidence": "source declaration; consumer fan-in is separate graph evidence"
+    },
+    {
+      "path": "aegis-plugins/aegis-sandbox/src/lib.rs",
+      "line": 195,
+      "kind": "fn",
+      "name": "new",
+      "exposure_class": "PUBLIC_ACCIDENTAL_SUSPECT",
+      "visibility": "pub",
+      "evidence": "source declaration; consumer fan-in is separate graph evidence"
+    },
+    {
+      "path": "aegis-plugins/aegis-sandbox/src/lib.rs",
+      "line": 206,
+      "kind": "fn",
+      "name": "compute_hash",
+      "exposure_class": "PUBLIC_ACCIDENTAL_SUSPECT",
+      "visibility": "pub",
+      "evidence": "source declaration; consumer fan-in is separate graph evidence"
+    },
+    {
+      "path": "aegis-plugins/aegis-sandbox/src/lib.rs",
+      "line": 215,
+      "kind": "fn",
+      "name": "is_valid",
+      "exposure_class": "PUBLIC_ACCIDENTAL_SUSPECT",
+      "visibility": "pub",
+      "evidence": "source declaration; consumer fan-in is separate graph evidence"
+    },
+    {
+      "path": "aegis-plugins/aegis-sandbox/src/lib.rs",
+      "line": 221,
+      "kind": "fn",
+      "name": "new",
+      "exposure_class": "PUBLIC_ACCIDENTAL_SUSPECT",
+      "visibility": "pub",
+      "evidence": "source declaration; consumer fan-in is separate graph evidence"
+    },
+    {
+      "path": "aegis-plugins/aegis-sandbox/src/lib.rs",
+      "line": 227,
+      "kind": "fn",
+      "name": "root",
+      "exposure_class": "PUBLIC_ACCIDENTAL_SUSPECT",
+      "visibility": "pub",
+      "evidence": "source declaration; consumer fan-in is separate graph evidence"
+    },
+    {
+      "path": "aegis-plugins/aegis-sandbox/src/lib.rs",
+      "line": 231,
+      "kind": "fn",
+      "name": "save_state",
+      "exposure_class": "PUBLIC_ACCIDENTAL_SUSPECT",
+      "visibility": "pub",
+      "evidence": "source declaration; consumer fan-in is separate graph evidence"
+    },
+    {
+      "path": "aegis-plugins/aegis-sandbox/src/lib.rs",
+      "line": 238,
+      "kind": "fn",
+      "name": "load_state",
+      "exposure_class": "PUBLIC_ACCIDENTAL_SUSPECT",
+      "visibility": "pub",
+      "evidence": "source declaration; consumer fan-in is separate graph evidence"
+    },
+    {
+      "path": "aegis-plugins/aegis-sandbox/src/lib.rs",
+      "line": 244,
+      "kind": "fn",
+      "name": "list_states",
+      "exposure_class": "PUBLIC_ACCIDENTAL_SUSPECT",
+      "visibility": "pub",
+      "evidence": "source declaration; consumer fan-in is separate graph evidence"
+    },
+    {
+      "path": "aegis-plugins/aegis-sandbox/src/lib.rs",
+      "line": 260,
+      "kind": "fn",
+      "name": "cleanup_older_than",
       "exposure_class": "PUBLIC_ACCIDENTAL_SUSPECT",
       "visibility": "pub",
       "evidence": "source declaration; consumer fan-in is separate graph evidence"
@@ -18333,98 +18864,35 @@
       "evidence": "source declaration; consumer fan-in is separate graph evidence"
     },
     {
-      "path": "aegis-plugins/aegis-sandbox/src/lib.rs",
-      "line": 9,
+      "path": "aegis-plugins/aegis-skills/src/lib.rs",
+      "line": 7,
       "kind": "enum",
-      "name": "SandboxError",
+      "name": "SkillError",
       "exposure_class": "PUBLIC_ACCIDENTAL_SUSPECT",
       "visibility": "pub",
       "evidence": "source declaration; consumer fan-in is separate graph evidence"
     },
     {
-      "path": "aegis-plugins/aegis-sandbox/src/lib.rs",
-      "line": 23,
+      "path": "aegis-plugins/aegis-skills/src/lib.rs",
+      "line": 17,
       "kind": "struct",
-      "name": "ResourceLimits",
+      "name": "Skill",
       "exposure_class": "PUBLIC_ACCIDENTAL_SUSPECT",
       "visibility": "pub",
       "evidence": "source declaration; consumer fan-in is separate graph evidence"
     },
     {
-      "path": "aegis-plugins/aegis-sandbox/src/lib.rs",
-      "line": 30,
+      "path": "aegis-plugins/aegis-skills/src/lib.rs",
+      "line": 26,
       "kind": "struct",
-      "name": "SandboxPolicy",
+      "name": "SkillsRegistry",
       "exposure_class": "PUBLIC_ACCIDENTAL_SUSPECT",
       "visibility": "pub",
       "evidence": "source declaration; consumer fan-in is separate graph evidence"
     },
     {
-      "path": "aegis-plugins/aegis-sandbox/src/lib.rs",
-      "line": 37,
-      "kind": "struct",
-      "name": "ExecutionRequest",
-      "exposure_class": "PUBLIC_ACCIDENTAL_SUSPECT",
-      "visibility": "pub",
-      "evidence": "source declaration; consumer fan-in is separate graph evidence"
-    },
-    {
-      "path": "aegis-plugins/aegis-sandbox/src/lib.rs",
-      "line": 43,
-      "kind": "struct",
-      "name": "ExecutionReport",
-      "exposure_class": "PUBLIC_ACCIDENTAL_SUSPECT",
-      "visibility": "pub",
-      "evidence": "source declaration; consumer fan-in is separate graph evidence"
-    },
-    {
-      "path": "aegis-plugins/aegis-sandbox/src/lib.rs",
-      "line": 50,
-      "kind": "trait",
-      "name": "SandboxBackend",
-      "exposure_class": "PUBLIC_ACCIDENTAL_SUSPECT",
-      "visibility": "pub",
-      "evidence": "source declaration; consumer fan-in is separate graph evidence"
-    },
-    {
-      "path": "aegis-plugins/aegis-sandbox/src/lib.rs",
-      "line": 60,
-      "kind": "struct",
-      "name": "PolicyOnlyBackend",
-      "exposure_class": "PUBLIC_ACCIDENTAL_SUSPECT",
-      "visibility": "pub",
-      "evidence": "source declaration; consumer fan-in is separate graph evidence"
-    },
-    {
-      "path": "aegis-plugins/aegis-sandbox/src/lib.rs",
-      "line": 63,
-      "kind": "struct",
-      "name": "SandboxRuntime",
-      "exposure_class": "PUBLIC_ACCIDENTAL_SUSPECT",
-      "visibility": "pub",
-      "evidence": "source declaration; consumer fan-in is separate graph evidence"
-    },
-    {
-      "path": "aegis-plugins/aegis-sandbox/src/lib.rs",
-      "line": 70,
-      "kind": "struct",
-      "name": "SandboxStateStore",
-      "exposure_class": "PUBLIC_ACCIDENTAL_SUSPECT",
-      "visibility": "pub",
-      "evidence": "source declaration; consumer fan-in is separate graph evidence"
-    },
-    {
-      "path": "aegis-plugins/aegis-sandbox/src/lib.rs",
-      "line": 121,
-      "kind": "fn",
-      "name": "validate_code",
-      "exposure_class": "PUBLIC_ACCIDENTAL_SUSPECT",
-      "visibility": "pub",
-      "evidence": "source declaration; consumer fan-in is separate graph evidence"
-    },
-    {
-      "path": "aegis-plugins/aegis-sandbox/src/lib.rs",
-      "line": 158,
+      "path": "aegis-plugins/aegis-skills/src/lib.rs",
+      "line": 31,
       "kind": "fn",
       "name": "new",
       "exposure_class": "PUBLIC_ACCIDENTAL_SUSPECT",
@@ -18432,35 +18900,17 @@
       "evidence": "source declaration; consumer fan-in is separate graph evidence"
     },
     {
-      "path": "aegis-plugins/aegis-sandbox/src/lib.rs",
-      "line": 166,
+      "path": "aegis-plugins/aegis-skills/src/lib.rs",
+      "line": 58,
       "kind": "fn",
-      "name": "execute",
+      "name": "headings",
       "exposure_class": "PUBLIC_ACCIDENTAL_SUSPECT",
       "visibility": "pub",
       "evidence": "source declaration; consumer fan-in is separate graph evidence"
     },
     {
-      "path": "aegis-plugins/aegis-sandbox/src/lib.rs",
-      "line": 172,
-      "kind": "fn",
-      "name": "state",
-      "exposure_class": "PUBLIC_ACCIDENTAL_SUSPECT",
-      "visibility": "pub",
-      "evidence": "source declaration; consumer fan-in is separate graph evidence"
-    },
-    {
-      "path": "aegis-plugins/aegis-sandbox/src/lib.rs",
-      "line": 195,
-      "kind": "fn",
-      "name": "new",
-      "exposure_class": "PUBLIC_ACCIDENTAL_SUSPECT",
-      "visibility": "pub",
-      "evidence": "source declaration; consumer fan-in is separate graph evidence"
-    },
-    {
-      "path": "aegis-plugins/aegis-sandbox/src/lib.rs",
-      "line": 206,
+      "path": "aegis-plugins/aegis-skills/src/lib.rs",
+      "line": 67,
       "kind": "fn",
       "name": "compute_hash",
       "exposure_class": "PUBLIC_ACCIDENTAL_SUSPECT",
@@ -18468,17 +18918,8 @@
       "evidence": "source declaration; consumer fan-in is separate graph evidence"
     },
     {
-      "path": "aegis-plugins/aegis-sandbox/src/lib.rs",
-      "line": 215,
-      "kind": "fn",
-      "name": "is_valid",
-      "exposure_class": "PUBLIC_ACCIDENTAL_SUSPECT",
-      "visibility": "pub",
-      "evidence": "source declaration; consumer fan-in is separate graph evidence"
-    },
-    {
-      "path": "aegis-plugins/aegis-sandbox/src/lib.rs",
-      "line": 221,
+      "path": "aegis-plugins/aegis-skills/src/lib.rs",
+      "line": 78,
       "kind": "fn",
       "name": "new",
       "exposure_class": "PUBLIC_ACCIDENTAL_SUSPECT",
@@ -18486,161 +18927,26 @@
       "evidence": "source declaration; consumer fan-in is separate graph evidence"
     },
     {
-      "path": "aegis-plugins/aegis-sandbox/src/lib.rs",
-      "line": 227,
+      "path": "aegis-plugins/aegis-skills/src/lib.rs",
+      "line": 82,
       "kind": "fn",
-      "name": "root",
+      "name": "with_builtin_skills",
       "exposure_class": "PUBLIC_ACCIDENTAL_SUSPECT",
       "visibility": "pub",
       "evidence": "source declaration; consumer fan-in is separate graph evidence"
     },
     {
-      "path": "aegis-plugins/aegis-sandbox/src/lib.rs",
-      "line": 231,
+      "path": "aegis-plugins/aegis-skills/src/lib.rs",
+      "line": 90,
       "kind": "fn",
-      "name": "save_state",
+      "name": "register",
       "exposure_class": "PUBLIC_ACCIDENTAL_SUSPECT",
       "visibility": "pub",
       "evidence": "source declaration; consumer fan-in is separate graph evidence"
     },
     {
-      "path": "aegis-plugins/aegis-sandbox/src/lib.rs",
-      "line": 238,
-      "kind": "fn",
-      "name": "load_state",
-      "exposure_class": "PUBLIC_ACCIDENTAL_SUSPECT",
-      "visibility": "pub",
-      "evidence": "source declaration; consumer fan-in is separate graph evidence"
-    },
-    {
-      "path": "aegis-plugins/aegis-sandbox/src/lib.rs",
-      "line": 244,
-      "kind": "fn",
-      "name": "list_states",
-      "exposure_class": "PUBLIC_ACCIDENTAL_SUSPECT",
-      "visibility": "pub",
-      "evidence": "source declaration; consumer fan-in is separate graph evidence"
-    },
-    {
-      "path": "aegis-plugins/aegis-sandbox/src/lib.rs",
-      "line": 260,
-      "kind": "fn",
-      "name": "cleanup_older_than",
-      "exposure_class": "PUBLIC_ACCIDENTAL_SUSPECT",
-      "visibility": "pub",
-      "evidence": "source declaration; consumer fan-in is separate graph evidence"
-    },
-    {
-      "path": "aegis-plugins/aegis-evidence/src/lib.rs",
-      "line": 6,
-      "kind": "enum",
-      "name": "EvidenceError",
-      "exposure_class": "PUBLIC_ACCIDENTAL_SUSPECT",
-      "visibility": "pub",
-      "evidence": "source declaration; consumer fan-in is separate graph evidence"
-    },
-    {
-      "path": "aegis-plugins/aegis-evidence/src/lib.rs",
-      "line": 16,
-      "kind": "enum",
-      "name": "EvidenceLifecycleState",
-      "exposure_class": "PUBLIC_ACCIDENTAL_SUSPECT",
-      "visibility": "pub",
-      "evidence": "source declaration; consumer fan-in is separate graph evidence"
-    },
-    {
-      "path": "aegis-plugins/aegis-evidence/src/lib.rs",
-      "line": 25,
-      "kind": "struct",
-      "name": "EvidenceBinding",
-      "exposure_class": "PUBLIC_ACCIDENTAL_SUSPECT",
-      "visibility": "pub",
-      "evidence": "source declaration; consumer fan-in is separate graph evidence"
-    },
-    {
-      "path": "aegis-plugins/aegis-evidence/src/lib.rs",
-      "line": 34,
-      "kind": "struct",
-      "name": "AuditRecord",
-      "exposure_class": "PUBLIC_ACCIDENTAL_SUSPECT",
-      "visibility": "pub",
-      "evidence": "source declaration; consumer fan-in is separate graph evidence"
-    },
-    {
-      "path": "aegis-plugins/aegis-evidence/src/lib.rs",
-      "line": 44,
-      "kind": "struct",
-      "name": "EvidenceStore",
-      "exposure_class": "PUBLIC_ACCIDENTAL_SUSPECT",
-      "visibility": "pub",
-      "evidence": "source declaration; consumer fan-in is separate graph evidence"
-    },
-    {
-      "path": "aegis-plugins/aegis-evidence/src/lib.rs",
-      "line": 50,
-      "kind": "fn",
-      "name": "new",
-      "exposure_class": "PUBLIC_ACCIDENTAL_SUSPECT",
-      "visibility": "pub",
-      "evidence": "source declaration; consumer fan-in is separate graph evidence"
-    },
-    {
-      "path": "aegis-plugins/aegis-evidence/src/lib.rs",
-      "line": 71,
-      "kind": "fn",
-      "name": "compute_hash",
-      "exposure_class": "PUBLIC_ACCIDENTAL_SUSPECT",
-      "visibility": "pub",
-      "evidence": "source declaration; consumer fan-in is separate graph evidence"
-    },
-    {
-      "path": "aegis-plugins/aegis-evidence/src/lib.rs",
-      "line": 81,
-      "kind": "fn",
-      "name": "verify",
-      "exposure_class": "PUBLIC_ACCIDENTAL_SUSPECT",
-      "visibility": "pub",
-      "evidence": "source declaration; consumer fan-in is separate graph evidence"
-    },
-    {
-      "path": "aegis-plugins/aegis-evidence/src/lib.rs",
-      "line": 87,
-      "kind": "fn",
-      "name": "new",
-      "exposure_class": "PUBLIC_ACCIDENTAL_SUSPECT",
-      "visibility": "pub",
-      "evidence": "source declaration; consumer fan-in is separate graph evidence"
-    },
-    {
-      "path": "aegis-plugins/aegis-evidence/src/lib.rs",
-      "line": 106,
-      "kind": "fn",
-      "name": "compute_hash",
-      "exposure_class": "PUBLIC_ACCIDENTAL_SUSPECT",
-      "visibility": "pub",
-      "evidence": "source declaration; consumer fan-in is separate graph evidence"
-    },
-    {
-      "path": "aegis-plugins/aegis-evidence/src/lib.rs",
-      "line": 119,
-      "kind": "fn",
-      "name": "new",
-      "exposure_class": "PUBLIC_ACCIDENTAL_SUSPECT",
-      "visibility": "pub",
-      "evidence": "source declaration; consumer fan-in is separate graph evidence"
-    },
-    {
-      "path": "aegis-plugins/aegis-evidence/src/lib.rs",
-      "line": 123,
-      "kind": "fn",
-      "name": "bind",
-      "exposure_class": "PUBLIC_ACCIDENTAL_SUSPECT",
-      "visibility": "pub",
-      "evidence": "source declaration; consumer fan-in is separate graph evidence"
-    },
-    {
-      "path": "aegis-plugins/aegis-evidence/src/lib.rs",
-      "line": 133,
+      "path": "aegis-plugins/aegis-skills/src/lib.rs",
+      "line": 98,
       "kind": "fn",
       "name": "get",
       "exposure_class": "PUBLIC_ACCIDENTAL_SUSPECT",
@@ -18648,334 +18954,28 @@
       "evidence": "source declaration; consumer fan-in is separate graph evidence"
     },
     {
-      "path": "aegis-plugins/aegis-evidence/src/lib.rs",
-      "line": 147,
+      "path": "aegis-plugins/aegis-skills/src/lib.rs",
+      "line": 102,
       "kind": "fn",
-      "name": "audit_trail",
+      "name": "select_for_task",
       "exposure_class": "PUBLIC_ACCIDENTAL_SUSPECT",
       "visibility": "pub",
       "evidence": "source declaration; consumer fan-in is separate graph evidence"
     },
     {
-      "path": "aegis-plugins/aegis-evidence/src/lib.rs",
-      "line": 154,
-      "kind": "fn",
-      "name": "verify_audit_chain",
-      "exposure_class": "PUBLIC_ACCIDENTAL_SUSPECT",
-      "visibility": "pub",
-      "evidence": "source declaration; consumer fan-in is separate graph evidence"
-    },
-    {
-      "path": "aegis-plugins/aegis-browser/src/lib.rs",
-      "line": 8,
-      "kind": "enum",
-      "name": "BrowserError",
-      "exposure_class": "PUBLIC_ACCIDENTAL_SUSPECT",
-      "visibility": "pub",
-      "evidence": "source declaration; consumer fan-in is separate graph evidence"
-    },
-    {
-      "path": "aegis-plugins/aegis-browser/src/lib.rs",
-      "line": 18,
-      "kind": "struct",
-      "name": "BrowserOptions",
-      "exposure_class": "PUBLIC_ACCIDENTAL_SUSPECT",
-      "visibility": "pub",
-      "evidence": "source declaration; consumer fan-in is separate graph evidence"
-    },
-    {
-      "path": "aegis-plugins/aegis-browser/src/lib.rs",
-      "line": 29,
-      "kind": "struct",
-      "name": "ProxyConfig",
-      "exposure_class": "PUBLIC_ACCIDENTAL_SUSPECT",
-      "visibility": "pub",
-      "evidence": "source declaration; consumer fan-in is separate graph evidence"
-    },
-    {
-      "path": "aegis-plugins/aegis-browser/src/lib.rs",
-      "line": 35,
-      "kind": "enum",
-      "name": "ProxyKind",
-      "exposure_class": "PUBLIC_ACCIDENTAL_SUSPECT",
-      "visibility": "pub",
-      "evidence": "source declaration; consumer fan-in is separate graph evidence"
-    },
-    {
-      "path": "aegis-plugins/aegis-browser/src/lib.rs",
-      "line": 41,
-      "kind": "struct",
-      "name": "Viewport",
-      "exposure_class": "PUBLIC_ACCIDENTAL_SUSPECT",
-      "visibility": "pub",
-      "evidence": "source declaration; consumer fan-in is separate graph evidence"
-    },
-    {
-      "path": "aegis-plugins/aegis-browser/src/lib.rs",
-      "line": 47,
-      "kind": "enum",
-      "name": "BrowserCommand",
-      "exposure_class": "PUBLIC_ACCIDENTAL_SUSPECT",
-      "visibility": "pub",
-      "evidence": "source declaration; consumer fan-in is separate graph evidence"
-    },
-    {
-      "path": "aegis-plugins/aegis-browser/src/lib.rs",
-      "line": 59,
-      "kind": "struct",
-      "name": "BrowserEvent",
-      "exposure_class": "PUBLIC_ACCIDENTAL_SUSPECT",
-      "visibility": "pub",
-      "evidence": "source declaration; consumer fan-in is separate graph evidence"
-    },
-    {
-      "path": "aegis-plugins/aegis-browser/src/lib.rs",
-      "line": 65,
-      "kind": "struct",
-      "name": "StealthProfile",
-      "exposure_class": "PUBLIC_ACCIDENTAL_SUSPECT",
-      "visibility": "pub",
-      "evidence": "source declaration; consumer fan-in is separate graph evidence"
-    },
-    {
-      "path": "aegis-plugins/aegis-browser/src/lib.rs",
-      "line": 72,
-      "kind": "trait",
-      "name": "BrowserDriver",
-      "exposure_class": "PUBLIC_ACCIDENTAL_SUSPECT",
-      "visibility": "pub",
-      "evidence": "source declaration; consumer fan-in is separate graph evidence"
-    },
-    {
-      "path": "aegis-plugins/aegis-browser/src/lib.rs",
-      "line": 76,
-      "kind": "struct",
-      "name": "Browser",
-      "exposure_class": "PUBLIC_ACCIDENTAL_SUSPECT",
-      "visibility": "pub",
-      "evidence": "source declaration; consumer fan-in is separate graph evidence"
-    },
-    {
-      "path": "aegis-plugins/aegis-browser/src/lib.rs",
-      "line": 81,
-      "kind": "struct",
-      "name": "BrowserContext",
-      "exposure_class": "PUBLIC_ACCIDENTAL_SUSPECT",
-      "visibility": "pub",
-      "evidence": "source declaration; consumer fan-in is separate graph evidence"
-    },
-    {
-      "path": "aegis-plugins/aegis-browser/src/lib.rs",
-      "line": 86,
-      "kind": "struct",
-      "name": "Page",
-      "exposure_class": "PUBLIC_ACCIDENTAL_SUSPECT",
-      "visibility": "pub",
-      "evidence": "source declaration; consumer fan-in is separate graph evidence"
-    },
-    {
-      "path": "aegis-plugins/aegis-browser/src/lib.rs",
-      "line": 91,
-      "kind": "struct",
-      "name": "MemoryBrowserDriver",
-      "exposure_class": "PUBLIC_ACCIDENTAL_SUSPECT",
-      "visibility": "pub",
-      "evidence": "source declaration; consumer fan-in is separate graph evidence"
-    },
-    {
-      "path": "aegis-plugins/aegis-browser/src/lib.rs",
-      "line": 114,
-      "kind": "fn",
-      "name": "validate",
-      "exposure_class": "PUBLIC_ACCIDENTAL_SUSPECT",
-      "visibility": "pub",
-      "evidence": "source declaration; consumer fan-in is separate graph evidence"
-    },
-    {
-      "path": "aegis-plugins/aegis-browser/src/lib.rs",
+      "path": "aegis-plugins/aegis-skills/src/lib.rs",
       "line": 132,
       "kind": "fn",
-      "name": "stealth_profile",
+      "name": "estimate_tokens",
       "exposure_class": "PUBLIC_ACCIDENTAL_SUSPECT",
       "visibility": "pub",
       "evidence": "source declaration; consumer fan-in is separate graph evidence"
     },
     {
-      "path": "aegis-plugins/aegis-browser/src/lib.rs",
-      "line": 146,
+      "path": "aegis-plugins/aegis-skills/src/lib.rs",
+      "line": 136,
       "kind": "fn",
-      "name": "hash",
-      "exposure_class": "PUBLIC_ACCIDENTAL_SUSPECT",
-      "visibility": "pub",
-      "evidence": "source declaration; consumer fan-in is separate graph evidence"
-    },
-    {
-      "path": "aegis-plugins/aegis-browser/src/lib.rs",
-      "line": 153,
-      "kind": "fn",
-      "name": "new",
-      "exposure_class": "PUBLIC_ACCIDENTAL_SUSPECT",
-      "visibility": "pub",
-      "evidence": "source declaration; consumer fan-in is separate graph evidence"
-    },
-    {
-      "path": "aegis-plugins/aegis-browser/src/lib.rs",
-      "line": 158,
-      "kind": "fn",
-      "name": "context",
-      "exposure_class": "PUBLIC_ACCIDENTAL_SUSPECT",
-      "visibility": "pub",
-      "evidence": "source declaration; consumer fan-in is separate graph evidence"
-    },
-    {
-      "path": "aegis-plugins/aegis-browser/src/lib.rs",
-      "line": 165,
-      "kind": "fn",
-      "name": "options",
-      "exposure_class": "PUBLIC_ACCIDENTAL_SUSPECT",
-      "visibility": "pub",
-      "evidence": "source declaration; consumer fan-in is separate graph evidence"
-    },
-    {
-      "path": "aegis-plugins/aegis-browser/src/lib.rs",
-      "line": 171,
-      "kind": "fn",
-      "name": "page",
-      "exposure_class": "PUBLIC_ACCIDENTAL_SUSPECT",
-      "visibility": "pub",
-      "evidence": "source declaration; consumer fan-in is separate graph evidence"
-    },
-    {
-      "path": "aegis-plugins/aegis-browser/src/lib.rs",
-      "line": 175,
-      "kind": "fn",
-      "name": "set_cookie",
-      "exposure_class": "PUBLIC_ACCIDENTAL_SUSPECT",
-      "visibility": "pub",
-      "evidence": "source declaration; consumer fan-in is separate graph evidence"
-    },
-    {
-      "path": "aegis-plugins/aegis-browser/src/lib.rs",
-      "line": 181,
-      "kind": "fn",
-      "name": "navigate",
-      "exposure_class": "PUBLIC_ACCIDENTAL_SUSPECT",
-      "visibility": "pub",
-      "evidence": "source declaration; consumer fan-in is separate graph evidence"
-    },
-    {
-      "path": "aegis-plugins/aegis-browser/src/lib.rs",
-      "line": 191,
-      "kind": "fn",
-      "name": "click",
-      "exposure_class": "PUBLIC_ACCIDENTAL_SUSPECT",
-      "visibility": "pub",
-      "evidence": "source declaration; consumer fan-in is separate graph evidence"
-    },
-    {
-      "path": "aegis-plugins/aegis-browser/src/lib.rs",
-      "line": 197,
-      "kind": "fn",
-      "name": "type_text",
-      "exposure_class": "PUBLIC_ACCIDENTAL_SUSPECT",
-      "visibility": "pub",
-      "evidence": "source declaration; consumer fan-in is separate graph evidence"
-    },
-    {
-      "path": "aegis-plugins/aegis-browser/src/lib.rs",
-      "line": 207,
-      "kind": "fn",
-      "name": "extract_text",
-      "exposure_class": "PUBLIC_ACCIDENTAL_SUSPECT",
-      "visibility": "pub",
-      "evidence": "source declaration; consumer fan-in is separate graph evidence"
-    },
-    {
-      "path": "aegis-plugins/aegis-browser/src/lib.rs",
-      "line": 216,
-      "kind": "fn",
-      "name": "extract_links",
-      "exposure_class": "PUBLIC_ACCIDENTAL_SUSPECT",
-      "visibility": "pub",
-      "evidence": "source declaration; consumer fan-in is separate graph evidence"
-    },
-    {
-      "path": "aegis-plugins/aegis-bench/src/lib.rs",
-      "line": 6,
-      "kind": "enum",
-      "name": "BenchError",
-      "exposure_class": "PUBLIC_ACCIDENTAL_SUSPECT",
-      "visibility": "pub",
-      "evidence": "source declaration; consumer fan-in is separate graph evidence"
-    },
-    {
-      "path": "aegis-plugins/aegis-bench/src/lib.rs",
-      "line": 14,
-      "kind": "struct",
-      "name": "BenchMetric",
-      "exposure_class": "PUBLIC_ACCIDENTAL_SUSPECT",
-      "visibility": "pub",
-      "evidence": "source declaration; consumer fan-in is separate graph evidence"
-    },
-    {
-      "path": "aegis-plugins/aegis-bench/src/lib.rs",
-      "line": 21,
-      "kind": "struct",
-      "name": "BenchReport",
-      "exposure_class": "PUBLIC_ACCIDENTAL_SUSPECT",
-      "visibility": "pub",
-      "evidence": "source declaration; consumer fan-in is separate graph evidence"
-    },
-    {
-      "path": "aegis-plugins/aegis-bench/src/lib.rs",
-      "line": 27,
-      "kind": "struct",
-      "name": "PerformanceGates",
-      "exposure_class": "PUBLIC_ACCIDENTAL_SUSPECT",
-      "visibility": "pub",
-      "evidence": "source declaration; consumer fan-in is separate graph evidence"
-    },
-    {
-      "path": "aegis-plugins/aegis-bench/src/lib.rs",
-      "line": 32,
-      "kind": "fn",
-      "name": "passes",
-      "exposure_class": "PUBLIC_ACCIDENTAL_SUSPECT",
-      "visibility": "pub",
-      "evidence": "source declaration; consumer fan-in is separate graph evidence"
-    },
-    {
-      "path": "aegis-plugins/aegis-bench/src/lib.rs",
-      "line": 38,
-      "kind": "fn",
-      "name": "new",
-      "exposure_class": "PUBLIC_ACCIDENTAL_SUSPECT",
-      "visibility": "pub",
-      "evidence": "source declaration; consumer fan-in is separate graph evidence"
-    },
-    {
-      "path": "aegis-plugins/aegis-bench/src/lib.rs",
-      "line": 42,
-      "kind": "fn",
-      "name": "with_gate",
-      "exposure_class": "PUBLIC_ACCIDENTAL_SUSPECT",
-      "visibility": "pub",
-      "evidence": "source declaration; consumer fan-in is separate graph evidence"
-    },
-    {
-      "path": "aegis-plugins/aegis-bench/src/lib.rs",
-      "line": 47,
-      "kind": "fn",
-      "name": "plugin_defaults",
-      "exposure_class": "PUBLIC_ACCIDENTAL_SUSPECT",
-      "visibility": "pub",
-      "evidence": "source declaration; consumer fan-in is separate graph evidence"
-    },
-    {
-      "path": "aegis-plugins/aegis-bench/src/lib.rs",
-      "line": 56,
-      "kind": "fn",
-      "name": "evaluate",
+      "name": "builtin_skills",
       "exposure_class": "PUBLIC_ACCIDENTAL_SUSPECT",
       "visibility": "pub",
       "evidence": "source declaration; consumer fan-in is separate graph evidence"
