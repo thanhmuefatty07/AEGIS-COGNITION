@@ -1757,6 +1757,14 @@ files were intentionally not changed to mask a pre-step infrastructure
 failure. Local verification remains valid only for the local scope recorded
 above.
 
+**Hosted CI rerun confirmation (2026-09-02):** rerunning the failed CI attempt
+with `gh run rerun 33587211175 --failed` produced attempt `2` on the same
+commit. The rerun again ended in `failure` before any step: all 13 jobs had
+`steps=0`, `runner_id=0`, empty runner names, and zero billable milliseconds.
+This repeat rules out treating the first result as a transient source-test
+failure; hosted CI remains `NOT VERIFIED` until a runner-backed attempt is
+available.
+
 ### 16.2 Blocker disposition sau vòng thực thi hiện tại
 
 **Execution delta (2026-08-27):** provider fallback attempts, all-lane
