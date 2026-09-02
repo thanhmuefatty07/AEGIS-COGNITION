@@ -3,7 +3,7 @@ document_id: AEGIS-LAB-RUNTIME-MASTER-PLAN
 document_type: canonical_current_implementation_plan
 status: IN_EXECUTION
 authority: derived_from_checkout_and_evidence_manifest
-applies_to_commit: 2323ccb4b7ccbd708f711628f599571521b26553
+applies_to_commit: 79f635deb7b1c26dcf74eff6f7740fa2eb42a7a3
 created_at: 2026-08-26
 last_verified_at: 2026-09-03
 supersedes: browser-native-proposal-and-cumulative-harness-roadmap-as-execution-authority
@@ -169,9 +169,9 @@ hiện tại và không được dùng để chứng minh checkout mới:
   structural/presence checks, không phải proof rằng Lab behavior hoạt động.
 
 Checkout implementation hiện hành cho migration node này là
-`2323ccb4b7ccbd708f711628f599571521b26553`, với worktree sạch và
+`79f635deb7b1c26dcf74eff6f7740fa2eb42a7a3`, với worktree sạch và
 `origin/main` parity được ghi nhận trong snapshot closure mới nhất. Regression
-Python/cross-language trên CPython 3.11 sau hardening là **486 passed**;
+Python/cross-language trên CPython 3.11 sau hardening là **487 passed**;
 registry AESE vẫn giữ 116 item, graph 35 claim/70 verification reference và
 selection ở `SHADOW`/`NOT_EXECUTED`. Rust evidence không được tái chạy vì node
 này không sửa Rust; artifact Rust trước đó vẫn chỉ là local source-bound.
@@ -3849,18 +3849,25 @@ with fewer than two in-domain, reconstructible anchors remains
 retained instead of treating the out-of-domain record as supporting evidence.
 This closes a local evidence-integrity gap in the prediction primitive only. It
 does not validate a model, add physical-energy measurement, or promote any
-cross-hardware claim. The focused AESE suite passes **15 tests**, and the full
-Python/cross-language regression passes **486 tests** with deprecation warnings
+cross-hardware claim. The focused AESE suite passes **16 tests**, and the full
+Python/cross-language regression passes **487 tests** with deprecation warnings
 treated as errors. Registry/graph counts remain unchanged; shadow selection,
 external anchors, independent replication, and release promotion remain
 disabled.
 
+The same continuation rejects duplicate `anchor_id` values before counting the
+two-anchor minimum. Repeating one observation therefore remains
+`INSUFFICIENT_EVIDENCE` with `duplicate_anchor_id`, rather than manufacturing
+independent replication from a duplicated record. This is a local identity and
+evidence-integrity guard; it is not independent benchmark replication or model
+calibration.
+
 **Current checkout identity for this continuation (2026-09-03):**
-`SOURCE_HEAD = 2323ccb4b7ccbd708f711628f599571521b26553`,
+`SOURCE_HEAD = 79f635deb7b1c26dcf74eff6f7740fa2eb42a7a3`,
 `WORKTREE_STATUS = CLEAN`, `WORKTREE_EPOCH =
-c6b5e1f48b467bea65b561f2620256e8e1e92363310782961cd344a5c2984de3`, and the
+ccfda516cd9e855a84508622063c8da01c2b08fec66dcb802d5cbfa6ed78bd5b`, and the
 recorded inventory/graph source tree digest is
-`46536ada68cfa015b7b4888220b7d354701f97f95f408e2dd2ec2c0a3f1b7157`.
+`11ea0e52e01dd070fc27006563a42114ab43f4441b0b7a1a923f65057a497f32`.
 `origin/main` was still at the prior documentation closure while this snapshot
 was prepared; parity must be rechecked after the normal single push. These
 identifiers bind the local evidence and are not hosted or signed-release
