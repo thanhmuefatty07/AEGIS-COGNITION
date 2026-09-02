@@ -3,7 +3,7 @@ document_id: AEGIS-LAB-RUNTIME-MASTER-PLAN
 document_type: canonical_current_implementation_plan
 status: IN_EXECUTION
 authority: derived_from_checkout_and_evidence_manifest
-applies_to_commit: 86f58b8df19985689b2a7e13be29cb27a9590787
+applies_to_commit: d76d523142ce8f8b726b84c692f3b20a7948ab08
 created_at: 2026-08-26
 last_verified_at: 2026-09-03
 supersedes: browser-native-proposal-and-cumulative-harness-roadmap-as-execution-authority
@@ -4343,6 +4343,18 @@ diagnosis. The focused AESE suite passes **41/41**, the full Python regression
 passes **521/521** with deprecation warnings treated as errors, and changed
 file Ruff/Pyright pass. This protects provenance integrity only; it does not
 validate model calibration, OOD generalization or external anchor execution.
+
+**M2 sandbox memory-bound arithmetic continuation (2026-09-03):** implementation
+commit `d76d523142ce8f8b726b84c692f3b20a7948ab08` removes unchecked page-to-byte
+multiplication from both the Wasmtime and QuickJS bridge store-limit paths.
+`memory_limit_bytes` now uses checked conversion and multiplication, returning
+`TrapReason::InvariantViolation` instead of wrapping on a narrow target or
+accepting an impossible memory limit. A direct overflow regression and a
+valid-page boundary assertion pass; the complete Rust library suite passes
+**445/445**, with `cargo fmt --all -- --check`, package `cargo check`, and
+`cargo clippy -- -D warnings` passing. This is arithmetic/input-boundary
+hardening only: it does not prove OS-enforced quotas, non-cooperative process
+containment, cross-platform execution, or release authority.
 
 Không được gọi toàn hệ thống “production-ready” khi bất kỳ gate bắt buộc nào
 ở trên còn `OPEN_*`, `BLOCKED_*`, `UNKNOWN` hoặc chỉ có fixture/mock evidence.
