@@ -3,7 +3,7 @@ document_id: AEGIS-LAB-RUNTIME-MASTER-PLAN
 document_type: canonical_current_implementation_plan
 status: IN_EXECUTION
 authority: derived_from_checkout_and_evidence_manifest
-applies_to_commit: 2cd3f3b6c8590f05149ded8100dbcf6d92b609f2
+applies_to_commit: acf4e1c6ce29b4f6e7f575b847c8a4de298e68cc
 created_at: 2026-08-26
 last_verified_at: 2026-09-02
 supersedes: browser-native-proposal-and-cumulative-harness-roadmap-as-execution-authority
@@ -2944,6 +2944,18 @@ This is stronger local source-bound evidence than the prior stale-binary
 probe, but the wheel intentionally reused the local dependency site-packages
 without a dependency-complete clean install; cross-platform/hosted authority,
 external effects and signed release provenance remain unverified.
+
+**M2 cancellation-fence continuation (2026-09-02):** both compatibility
+browser-gateway capture paths (controller action plans and explicitly supplied
+browser actions) now invoke the shared `_call_fenced` boundary. A regression
+adapter deliberately swallows `CancelledError`; the Lab still raises
+`CancelledError` and records exactly one `browser_action_recorded` receipt with
+`status=CANCELLED`, so an in-flight browser admission cannot be promoted to
+success by a non-cooperative compatibility gateway. Full Python regression
+passed **350 tests**; targeted Ruff and Pyright passed. This closes a local
+adapter-cancellation bypass only; process/descendant interruption, DNS race,
+external side effects, hosted single-writer authority and signed release
+provenance remain `NOT VERIFIED`.
 
 #### M5 — Research, browser và experiment cells
 
