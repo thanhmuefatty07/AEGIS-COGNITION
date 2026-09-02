@@ -3434,8 +3434,11 @@ fn decode_candidate_state_capsule_payload(
     let cold_vector_replay_record_hash = read_hash(payload, 88)?;
     let agentic_evidence_execution_record_hash = read_hash(payload, 120)?;
     let candidate_count = read_u32(payload, 152)?;
+    let candidate_bytes = (candidate_count as usize)
+        .checked_mul(CANDIDATE_BYTES)
+        .ok_or(CandidateStateCapsuleError::InvalidCapsule)?;
     let expected_len = HEADER_BYTES
-        .checked_add(candidate_count as usize * CANDIDATE_BYTES)
+        .checked_add(candidate_bytes)
         .ok_or(CandidateStateCapsuleError::InvalidCapsule)?;
     if expected_len != payload.len() || candidate_count == 0 {
         return Err(CandidateStateCapsuleError::InvalidCapsule);
