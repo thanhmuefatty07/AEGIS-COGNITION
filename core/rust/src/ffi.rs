@@ -10,6 +10,15 @@ use pyo3::types::PyModule;
 use std::panic::{AssertUnwindSafe, catch_unwind};
 use std::sync::OnceLock;
 
+mod status;
+pub use status::{
+    aegis_can_bridge_python, aegis_cli_schema, aegis_cli_status, aegis_descriptor_valid,
+    aegis_frame_is_valid, aegis_layout_header_bytes, aegis_layout_payload_alignment,
+    aegis_memory_alignment, aegis_message_frame_valid, aegis_nerve_schema_id,
+    aegis_new_message_identity, aegis_release_ready, aegis_status, aegis_validate_layout,
+    aegis_validate_schema, aegis_zero_copy_ready,
+};
+
 static SESSION_INDEX: OnceLock<Mutex<SessionSearchIndex>> = OnceLock::new();
 static SESSION_LEDGER: OnceLock<Mutex<LearningLedger>> = OnceLock::new();
 static AUTHORITATIVE_RUNTIME: OnceLock<Mutex<crate::runtime::AuthoritativeRuntime>> =
@@ -40,50 +49,6 @@ fn py_safe<T>(f: impl FnOnce() -> T) -> PyResult<T> {
     catch_unwind(AssertUnwindSafe(f)).map_err(|_| {
         pyo3::exceptions::PyRuntimeError::new_err("panic prevented across FFI boundary")
     })
-}
-
-#[pyfunction]
-pub fn aegis_status() -> PyResult<&'static str> {
-    py_safe(|| "aegis-nerve-ready")
-}
-
-#[pyfunction]
-pub fn aegis_validate_schema(schema_id: u64, version: u32) -> PyResult<bool> {
-    py_safe(|| schema_id == 0xAE1515 && version == 1)
-}
-
-#[pyfunction]
-pub fn aegis_validate_layout(header_bytes: usize, alignment: usize) -> PyResult<bool> {
-    py_safe(|| header_bytes == 64 && alignment == 64 && alignment.is_power_of_two())
-}
-
-#[pyfunction]
-pub fn aegis_memory_alignment(alignment: usize) -> PyResult<bool> {
-    py_safe(|| alignment == 64)
-}
-
-#[pyfunction]
-pub fn aegis_nerve_schema_id() -> PyResult<u64> {
-    py_safe(|| 0xAE1515)
-}
-
-#[pyfunction]
-pub fn aegis_frame_is_valid(payload_len: usize) -> PyResult<bool> {
-    py_safe(|| payload_len > 0)
-}
-
-#[pyfunction]
-pub fn aegis_message_frame_valid(
-    payload_len: usize,
-    message_id: u128,
-    session_id: u128,
-) -> PyResult<bool> {
-    py_safe(|| payload_len > 0 && message_id > 0 && session_id > 0)
-}
-
-#[pyfunction]
-pub fn aegis_zero_copy_ready(schema_id: u64, version: u32, payload_len: usize) -> PyResult<bool> {
-    py_safe(|| schema_id == 0xAE1515 && version == 1 && payload_len > 0)
 }
 
 #[pyfunction]
@@ -138,50 +103,6 @@ pub fn aegis_execute_mmap_wasm_bridge_frame(
             .map_err(|err| pyo3::exceptions::PyRuntimeError::new_err(format!("{err:?}")))?;
         Ok((result.fuel_consumed, result.artifact.artifact_hash.to_vec()))
     })?
-}
-
-#[pyfunction]
-pub fn aegis_new_message_identity(message_id: u128, session_id: u128) -> PyResult<bool> {
-    py_safe(|| message_id > 0 && session_id > 0)
-}
-
-#[pyfunction]
-pub fn aegis_can_bridge_python(
-    payload_len: usize,
-    message_id: u128,
-    session_id: u128,
-) -> PyResult<bool> {
-    py_safe(|| payload_len > 0 && message_id > 0 && session_id > 0)
-}
-
-#[pyfunction]
-pub fn aegis_layout_header_bytes() -> PyResult<usize> {
-    py_safe(|| 64)
-}
-
-#[pyfunction]
-pub fn aegis_layout_payload_alignment() -> PyResult<usize> {
-    py_safe(|| 64)
-}
-
-#[pyfunction]
-pub fn aegis_descriptor_valid(payload_len: usize) -> PyResult<bool> {
-    py_safe(|| payload_len > 0)
-}
-
-#[pyfunction]
-pub fn aegis_cli_status() -> PyResult<&'static str> {
-    py_safe(|| "aegis-nerve-cli ready")
-}
-
-#[pyfunction]
-pub fn aegis_cli_schema() -> PyResult<&'static str> {
-    py_safe(|| "schema_id=0xAE1515 version=1 alignment=64")
-}
-
-#[pyfunction]
-pub fn aegis_release_ready() -> PyResult<bool> {
-    py_safe(|| true)
 }
 
 /// Return the normalized hardware contract used by the authoritative runtime.
