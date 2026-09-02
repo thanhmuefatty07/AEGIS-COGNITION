@@ -3,7 +3,7 @@ document_id: AEGIS-LAB-RUNTIME-MASTER-PLAN
 document_type: canonical_current_implementation_plan
 status: IN_EXECUTION
 authority: derived_from_checkout_and_evidence_manifest
-applies_to_commit: 5fa910d5cb9a1a0b9f0c343e1faf342f52f5c325
+applies_to_commit: 2cd3f3b6c8590f05149ded8100dbcf6d92b609f2
 created_at: 2026-08-26
 last_verified_at: 2026-09-02
 supersedes: browser-native-proposal-and-cumulative-harness-roadmap-as-execution-authority
@@ -2922,6 +2922,28 @@ atomic rejection; the full native suite is **441 passed** and Python remains
 **349 passed**. This closes the local registry-to-ledger binding gap, but it
 does not prove universal adapter side-effect authority, hosted single-writer
 ownership, process containment or external release provenance.
+
+**M2 source-bound extension continuation (2026-09-02):** a fresh release
+build from the pushed checkout (`2cd3f3b6c8590f05149ded8100dbcf6d92b609f2`)
+was completed with CPython 3.14, `maturin 1.14.1` and `-j 1`. The resulting
+wheel is retained at
+`artifacts/local-runtime/m2-execution-cell-manifest-20260902/wheel/` with
+SHA-256
+`0bf16c02f7dc038211768d6973ac56807244d4515e9bebf750fa65f3de98e21c`; its
+native member is
+`aegis_cognition/aegis_nerve.cp314-win_amd64.pyd` (SHA-256
+`28ce6eeded25ce6974f11a0c21309ba65b0d2b44b787200b269a8df46a537df4`). A
+fresh process outside the checkout imported that member, exposed
+`restore_snapshot_json` and the native verifier, and proved one manifest
+event at sequence 2/epoch 1 plus snapshot restore and top-level tamper
+rejection. The targeted native manifest/rollback selector passed **3 tests**;
+the full `tests` plus `core/python/tests.py` gate through the new wheel passed
+**434 tests** with no checkout path on `sys.path`. The retained witness is
+`artifacts/local-runtime/m2-execution-cell-manifest-20260902/native_execution_cell_manifest.json`.
+This is stronger local source-bound evidence than the prior stale-binary
+probe, but the wheel intentionally reused the local dependency site-packages
+without a dependency-complete clean install; cross-platform/hosted authority,
+external effects and signed release provenance remain unverified.
 
 #### M5 — Research, browser và experiment cells
 
