@@ -257,11 +257,15 @@ class AdaptiveMeasurementSession:
     def append_warmups(self, values: Sequence[object]) -> AdaptiveMeasurementSession:
         if self.checkpoint().status != "CONTINUE" and self.observations:
             raise RuntimeError("measurement session is terminal")
+        if type(values) not in (list, tuple):
+            raise TypeError("measurement warmups must use canonical list or tuple containers")
         return AdaptiveMeasurementSession(self.spec, self.warmups + tuple(values), self.observations)
 
     def append_observations(self, values: Sequence[object]) -> AdaptiveMeasurementSession:
         if self.checkpoint().status != "CONTINUE":
             raise RuntimeError("measurement session is terminal")
+        if type(values) not in (list, tuple):
+            raise TypeError("measurement observations must use canonical list or tuple containers")
         return AdaptiveMeasurementSession(self.spec, self.warmups, self.observations + tuple(values))
 
 
