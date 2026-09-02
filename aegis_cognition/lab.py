@@ -8872,13 +8872,23 @@ class LabApplication:
         active_run = self._active_run
         if require_native:
             if active_run is not None:
-                if type(active_run.trust_policy_hash) is not str:
+                expected_run_hash = _trust_policy_hash(active_run.trust_level)
+                if (
+                    active_run.trust_level != self.config.trust_level
+                    or type(active_run.trust_policy_hash) is not str
+                    or active_run.trust_policy_hash != expected_run_hash
+                ):
                     raise RuntimeError(
-                        "native Lab authority requires an active run trust-policy fence"
+                        "native Lab authority requires a canonical active run trust-policy fence"
                     )
                 trust_policy_hash = active_run.trust_policy_hash
             elif trust_policy_hash is None:
                 trust_policy_hash = _trust_policy_hash(self.config.trust_level)
+            elif (
+                type(trust_policy_hash) is not str
+                or trust_policy_hash != _trust_policy_hash(self.config.trust_level)
+            ):
+                raise ValueError("native Lab trust policy hash does not match trust level")
         if trust_policy_hash is not None and self._factory_accepts_keyword("trust_policy_hash"):
             gateway_options["trust_policy_hash"] = trust_policy_hash
         if require_native:

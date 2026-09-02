@@ -1743,6 +1743,42 @@ def test_native_gateway_derives_trust_subject_when_compatibility_options_omit_it
     assert gateway.provider_attempt_hook is application._provider_attempt_hook_ref
 
 
+def test_native_gateway_rejects_mutated_active_trust_subject() -> None:
+    """A mutable reducer cannot turn a native gateway into a different subject."""
+
+    config = SimpleNamespace(
+        task="reject mutated native gateway trust subject",
+        options={"lab_authority_mode": AuthorityMode.NATIVE_REQUIRED.value},
+        llm=None,
+        max_steps=1,
+        trust_level="STAGING",
+    )
+    factory_called = False
+
+    def gateway_factory(**_: object) -> object:
+        nonlocal factory_called
+        factory_called = True
+        return object()
+
+    application = LabApplication(
+        config=config,
+        gateway_factory=gateway_factory,
+        telemetry=None,
+        correlation=None,
+    )
+    run = LabRun(
+        "reject mutated native gateway trust subject",
+        authority_mode=AuthorityMode.NATIVE_ADMITTED,
+        trust_level="STAGING",
+    )
+    run.trust_policy_hash = "a" * 64
+    application._active_run = run
+
+    with pytest.raises(RuntimeError, match="canonical active run trust-policy fence"):
+        application._gateway("bounded")
+    assert factory_called is False
+
+
 @pytest.mark.parametrize("trust_level", ("DEV", "STAGING", "PROD"))
 def test_lab_trust_policy_hash_matches_core_bridge(trust_level: str) -> None:
     from core.python.aegis.evidence import trust_policy_snapshot
