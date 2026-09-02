@@ -9375,6 +9375,11 @@ class LabApplication:
         if not isinstance(raw_requests, (list, tuple)):
             run.record_blocker("skill_requests_not_sequence")
             return
+        raw_timeout = options.get("skill_timeout_seconds", 30.0)
+        if not _is_finite_number(raw_timeout) or float(raw_timeout) <= 0:
+            run.record_blocker("skill_timeout_policy_invalid")
+            return
+        timeout_seconds = float(raw_timeout)
         requests = cast(list[Any] | tuple[Any, ...], raw_requests)
         for raw in list(requests)[: run.max_steps]:
             if not isinstance(raw, dict):
@@ -9382,7 +9387,66 @@ class LabApplication:
                 continue
             request = cast(dict[str, Any], raw)
             admission: SkillAdmission | None = None
+            settled = False
             input_payload = request.get("input")
+
+            def settle_non_success(
+                admission_to_settle: SkillAdmission | None,
+                input_to_settle: Any,
+                status: str,
+                reason: str,
+            ) -> None:
+                nonlocal settled
+                if admission_to_settle is None or settled:
+                    return
+                try:
+                    manifest = registry.get(
+                        admission_to_settle.skill_id, admission_to_settle.version
+                    )
+                    result = {"error": reason}
+                    input_hash = _hash(input_to_settle)
+                    result_hash = _hash(result)
+                    artifact_hash = _hash(
+                        {
+                            "schema": "aegis-skill-artifact-v1",
+                            "skill_id": manifest.skill_id,
+                            "version": manifest.version,
+                            "result_hash": result_hash,
+                        }
+                    )
+                    replay_parent_hash = admission_to_settle.admission_event_hash
+                    execution_without_hash = {
+                        "schema": "aegis-skill-execution-v1",
+                        "skill_id": manifest.skill_id,
+                        "version": manifest.version,
+                        "admission_hash": admission_to_settle.admission_hash,
+                        "mission_id": run.mission_id,
+                        "replay_parent_hash": replay_parent_hash,
+                        "input_hash": input_hash,
+                        "result_hash": result_hash,
+                        "artifact_hash": artifact_hash,
+                        "validator_version": manifest.validator_version,
+                        "status": status,
+                    }
+                    run.record_skill_execution(
+                        SkillExecutionReceipt(
+                            skill_id=manifest.skill_id,
+                            version=manifest.version,
+                            admission_hash=admission_to_settle.admission_hash,
+                            mission_id=run.mission_id,
+                            replay_parent_hash=replay_parent_hash,
+                            input_hash=input_hash,
+                            result_hash=result_hash,
+                            artifact_hash=artifact_hash,
+                            validator_version=manifest.validator_version,
+                            status=status,
+                            execution_hash=_hash(execution_without_hash),
+                        )
+                    )
+                    settled = True
+                except (KeyError, TypeError, ValueError, RuntimeError, SkillAdmissionError) as exc:
+                    run.record_blocker(f"skill_settlement_failed:{type(exc).__name__}")
+
             try:
                 skill_id = request["skill_id"]
                 version = request["version"]
@@ -9424,62 +9488,23 @@ class LabApplication:
                     available_capabilities=capabilities,
                     preconditions=preconditions,
                 )
-                _, receipt = await registry.execute(
-                    admission,
-                    executor,
-                    mission_id=run.mission_id,
-                    replay_parent_hash=admission.admission_event_hash,
-                    input_payload=input_payload,
+                _, receipt = await asyncio.wait_for(
+                    registry.execute(
+                        admission,
+                        executor,
+                        mission_id=run.mission_id,
+                        replay_parent_hash=admission.admission_event_hash,
+                        input_payload=input_payload,
+                    ),
+                    timeout=timeout_seconds,
                 )
                 run.record_skill_execution(receipt)
+                settled = True
             except asyncio.CancelledError:
-                if admission is not None:
-                    try:
-                        manifest = registry.get(admission.skill_id, admission.version)
-                        cancelled_result = {"error": "CancelledError"}
-                        input_hash = _hash(input_payload)
-                        result_hash = _hash(cancelled_result)
-                        artifact_hash = _hash(
-                            {
-                                "schema": "aegis-skill-artifact-v1",
-                                "skill_id": manifest.skill_id,
-                                "version": manifest.version,
-                                "result_hash": result_hash,
-                            }
-                        )
-                        replay_parent_hash = admission.admission_event_hash
-                        execution_without_hash = {
-                            "schema": "aegis-skill-execution-v1",
-                            "skill_id": manifest.skill_id,
-                            "version": manifest.version,
-                            "admission_hash": admission.admission_hash,
-                            "mission_id": run.mission_id,
-                            "replay_parent_hash": replay_parent_hash,
-                            "input_hash": input_hash,
-                            "result_hash": result_hash,
-                            "artifact_hash": artifact_hash,
-                            "validator_version": manifest.validator_version,
-                            "status": "CANCELLED",
-                        }
-                        run.record_skill_execution(
-                            SkillExecutionReceipt(
-                                skill_id=manifest.skill_id,
-                                version=manifest.version,
-                                admission_hash=admission.admission_hash,
-                                mission_id=run.mission_id,
-                                replay_parent_hash=replay_parent_hash,
-                                input_hash=input_hash,
-                                result_hash=result_hash,
-                                artifact_hash=artifact_hash,
-                                validator_version=manifest.validator_version,
-                                status="CANCELLED",
-                                execution_hash=_hash(execution_without_hash),
-                            )
-                        )
-                    except (KeyError, TypeError, ValueError, RuntimeError) as settlement_exc:
-                        run.record_blocker(f"skill_settlement_failed:{type(settlement_exc).__name__}")
+                settle_non_success(admission, input_payload, "CANCELLED", "CancelledError")
                 raise
-            except (KeyError, TypeError, ValueError, RuntimeError) as exc:
+            except (KeyError, TimeoutError, TypeError, ValueError, RuntimeError) as exc:
+                settle_non_success(admission, input_payload, "REJECTED", type(exc).__name__)
                 run.record_blocker(f"skill_execution_failed:{type(exc).__name__}")
 
     async def _run_tool_calls(self, run: LabRun, options: dict[str, Any]) -> None:
