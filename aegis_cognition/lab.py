@@ -18,7 +18,10 @@ import math
 import multiprocessing
 import os
 import re
+import shutil
+import signal
 import socket
+import subprocess
 import time
 from collections.abc import Callable, Coroutine, Mapping
 from dataclasses import asdict, dataclass, replace
@@ -7800,6 +7803,12 @@ def _process_execution_worker(
 ) -> None:
     """Execute one picklable edge runner outside the Lab event-loop process."""
 
+    # Give the worker its own process group where the platform supports it.
+    # A timeout/cancellation can then contain subprocess descendants without
+    # ever targeting the parent Lab process group.
+    if os.name != "nt" and hasattr(os, "setsid"):
+        with contextlib.suppress(OSError):
+            os.setsid()
     try:
         result = runner(*args, **kwargs)
         if inspect.isawaitable(result):
@@ -7820,9 +7829,10 @@ class ProcessExecutionCell:
 
     This is an opt-in local isolation cell. It bounds wall time and ensures a
     Python adapter that ignores cancellation cannot keep the Lab event loop
-    alive. OS-level resource enforcement, descendant-process cleanup and
-    cross-platform Job Object/cgroup guarantees still require the external
-    platform evidence recorded in the plan.
+    alive. The worker gets a private process group on POSIX and Windows
+    termination uses the scoped ``taskkill /T`` tree operation when available;
+    memory/resource quotas and independent cross-platform Job Object/cgroup
+    evidence still require the external platform evidence recorded in the plan.
     """
 
     def __init__(
@@ -7859,13 +7869,32 @@ class ProcessExecutionCell:
     def _terminate_process(process: Any) -> None:
         if process is None:
             return
+        pid = getattr(process, "pid", None)
         try:
             if process.is_alive():
+                if type(pid) is int and pid > 0 and os.name == "nt":
+                    taskkill = shutil.which("taskkill")
+                    if taskkill is not None:
+                        with contextlib.suppress(OSError, subprocess.TimeoutExpired):
+                            subprocess.run(
+                                [taskkill, "/PID", str(pid), "/T", "/F"],
+                                check=False,
+                                capture_output=True,
+                                timeout=2.0,
+                            )
+                elif type(pid) is int and pid > 0 and hasattr(os, "getpgid"):
+                    with contextlib.suppress(OSError, ProcessLookupError):
+                        if os.getpgid(pid) == pid:
+                            os.killpg(pid, signal.SIGTERM)
                 process.terminate()
                 process.join(timeout=1.0)
-            if process.is_alive() and hasattr(process, "kill"):
-                process.kill()
-                process.join(timeout=1.0)
+                if process.is_alive() and hasattr(process, "kill"):
+                    if type(pid) is int and pid > 0 and os.name != "nt" and hasattr(os, "getpgid"):
+                        with contextlib.suppress(OSError, ProcessLookupError):
+                            if os.getpgid(pid) == pid:
+                                os.killpg(pid, signal.SIGKILL)
+                    process.kill()
+                    process.join(timeout=1.0)
         except (AssertionError, OSError):
             # A process that failed before start or already exited is already
             # fail-closed; cleanup must not mask the original error.
