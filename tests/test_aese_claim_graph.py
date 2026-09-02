@@ -1,6 +1,9 @@
 from __future__ import annotations
 
 import json
+import subprocess
+import sys
+from pathlib import Path
 
 from scripts.aese_claim_graph import DEFAULT_OUTPUT, build_graph, validate_graph
 
@@ -35,3 +38,15 @@ def test_shadow_graph_uses_stable_ids_and_conservative_unknowns() -> None:
 def test_recorded_shadow_graph_has_no_drift() -> None:
     actual = json.loads(DEFAULT_OUTPUT.read_text(encoding="utf-8"))
     assert validate_graph(actual, build_graph()) == []
+
+
+def test_claim_graph_direct_entrypoint_works_like_ci_invocation() -> None:
+    root = Path(__file__).resolve().parents[1]
+    result = subprocess.run(
+        [sys.executable, "scripts/aese_claim_graph.py", "--check"],
+        cwd=root,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert result.returncode == 0, result.stdout + result.stderr
