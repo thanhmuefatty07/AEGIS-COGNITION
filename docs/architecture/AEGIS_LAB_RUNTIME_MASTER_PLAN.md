@@ -3732,6 +3732,13 @@ advisory `SHADOW` data only. Savings, cost, statistical precision, OOD status
 and external-anchor sufficiency remain `NOT_MEASURED`/`NOT_STARTED`, so this
 does not enable selective testing or change release authority.
 
+The Phase 2 output now also materializes the graph affected closure from
+surface through contract, invariant, verification, evidence and claim. An
+exactly mapped source path receives `EXACT_SOURCE_CLOSURE_SHADOW`; an empty,
+unknown or known-but-unmapped path receives `WIDENED_ALL_RETAINED` and marks
+all 70 verification references affected. This is an invalidation witness, not
+permission to skip any retained runner.
+
 **AESE Phase 3–7 local primitive continuation (2026-09-02):**
 `aegis_cognition/aese.py` adds the smallest reusable, side-effect-free
 foundation for adaptive measurement and model metadata. `AdaptiveMeasurementSpec`

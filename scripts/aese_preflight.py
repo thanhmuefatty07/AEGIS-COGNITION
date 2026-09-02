@@ -90,6 +90,50 @@ def build_preflight(changed_paths: list[str] | tuple[str, ...] = ()) -> dict[str
         if isinstance(source_paths, list) and any(str(path) in paths for path in source_paths):
             claims.add(f"AESE-CLAIM-{contract['source_id']}")
     widened = bool(unknown_paths or unmapped_known_paths) or not paths
+    edges = [cast(dict[str, object], value) for value in graph["edges"] if isinstance(value, dict)]
+    relation = {(str(edge["from"]), str(edge["relation"])): str(edge["to"]) for edge in edges}
+    affected_contracts = {
+        str(contract["id"])
+        for contract in graph["contracts"]
+        if isinstance(contract, dict)
+        and isinstance(contract.get("source_paths"), list)
+        and any(str(source_path) in paths for source_path in contract["source_paths"])
+    }
+    affected_invariants = {
+        target
+        for contract_id in affected_contracts
+        for (source, edge_relation), target in relation.items()
+        if source == contract_id and edge_relation == "GUARDS"
+    }
+    affected_verifications = {
+        target
+        for invariant_id in affected_invariants
+        for (source, edge_relation), target in relation.items()
+        if source == invariant_id and edge_relation == "VERIFIED_BY_REFERENCE"
+    }
+    affected_evidence = {
+        target
+        for verification_id in affected_verifications
+        for (source, edge_relation), target in relation.items()
+        if source == verification_id and edge_relation == "MATERIALIZES"
+    }
+    affected_claims = {
+        target
+        for evidence_id in affected_evidence
+        for (source, edge_relation), target in relation.items()
+        if source == evidence_id and edge_relation == "SUPPORTS_OR_LEAVES_UNVERIFIED"
+    }
+    if widened:
+        affected_contracts = {str(contract["id"]) for contract in graph["contracts"] if isinstance(contract, dict)}
+        affected_invariants = {str(invariant["id"]) for invariant in graph["invariants"] if isinstance(invariant, dict)}
+        affected_verifications = {
+            str(verification["id"]) for verification in graph["verifications"] if isinstance(verification, dict)
+        }
+        affected_evidence = {
+            str(evidence["id"]) for evidence in graph["evidence_obligations"] if isinstance(evidence, dict)
+        }
+        affected_claims = {str(claim["id"]) for claim in graph["claims"] if isinstance(claim, dict)}
+    claims.update(affected_claims)
     selection = "RUN_ALL_RETAINED" if widened else "RUN_ALL_RETAINED_SHADOW_COMPARISON"
     order = [
         {
@@ -115,8 +159,13 @@ def build_preflight(changed_paths: list[str] | tuple[str, ...] = ()) -> dict[str
         "matched_surface_ids": matched_surfaces,
         "matched_code_ids": matched_code,
         "affected_claim_ids": sorted(claims),
+        "affected_contract_ids": sorted(affected_contracts),
+        "affected_invariant_ids": sorted(affected_invariants),
+        "affected_verification_ids": sorted(affected_verifications),
+        "affected_evidence_ids": sorted(affected_evidence),
         "unknown_paths": unknown_paths,
         "unmapped_known_paths": unmapped_known_paths,
+        "closure_status": "WIDENED_ALL_RETAINED" if widened else "EXACT_SOURCE_CLOSURE_SHADOW",
         "unknown_dependency_policy": "WIDEN_TO_RETAINED_SUITE",
         "plan_widened": widened,
         "legacy_selection": selection,
@@ -155,8 +204,13 @@ def validate_preflight(actual: dict[str, object], expected: dict[str, object]) -
         "matched_surface_ids",
         "matched_code_ids",
         "affected_claim_ids",
+        "affected_contract_ids",
+        "affected_invariant_ids",
+        "affected_verification_ids",
+        "affected_evidence_ids",
         "unknown_paths",
         "unmapped_known_paths",
+        "closure_status",
         "unknown_dependency_policy",
         "plan_widened",
         "legacy_selection",
