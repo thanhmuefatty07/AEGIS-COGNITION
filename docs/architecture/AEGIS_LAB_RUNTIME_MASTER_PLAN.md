@@ -1778,6 +1778,17 @@ SHA. This is retained as additional external-blocker evidence, not as a
 workflow or source failure diagnosis; hosted verification remains
 `NOT VERIFIED`/`BLOCKED_EXTERNAL`.
 
+**Hosted CI post-fix confirmation (2026-09-02, source SHA
+`e8fbf0b88c8d68e6bc50e2398ce4dcaff98aeb5e`):** the workflows triggered by the
+benchmark-validator receipt fix (`33588332942` `CI` and `33588332930`
+`aegis-plugins`) also completed as failures before runner allocation. The CI
+matrix again had 13/13 jobs with `steps=0`, `runner_id=0`, empty runner names,
+and `0 ms` duration; the plugin workflow's one job had the same signature.
+This confirms that the new source was not exercised by hosted tests; local
+456-test, Ruff, Pyright, architecture-fitness and constitution evidence is
+therefore the only current implementation evidence, while hosted verification
+remains `NOT VERIFIED`/`BLOCKED_EXTERNAL`.
+
 ### 16.2 Blocker disposition sau vòng thực thi hiện tại
 
 **Execution delta (2026-08-27):** provider fallback attempts, all-lane
