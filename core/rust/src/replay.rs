@@ -2625,7 +2625,10 @@ impl ArrowRunEventStream {
         path: impl AsRef<Path>,
         expected_event_count: usize,
     ) -> Result<(Vec<RunEvent>, ReplayIoEvidence, [u8; 32]), &'static str> {
-        let mut events = Vec::with_capacity(expected_event_count);
+        // The expected count may originate in a persisted manifest.  It is a
+        // validation hint, not an allocation authority; reserve only as rows
+        // are decoded so hostile metadata cannot force a giant allocation.
+        let mut events = Vec::new();
         let (evidence, file_hash) = Self::append_events_mmap_with_capacity_evidence_and_file_hash(
             path,
             expected_event_count,
@@ -2637,7 +2640,7 @@ impl ArrowRunEventStream {
 
     fn append_events_mmap_with_capacity_evidence_and_file_hash(
         path: impl AsRef<Path>,
-        expected_event_count: usize,
+        _expected_event_count: usize,
         events: &mut Vec<RunEvent>,
         validate_events: bool,
     ) -> Result<(ReplayIoEvidence, [u8; 32]), &'static str> {
@@ -2659,7 +2662,6 @@ impl ArrowRunEventStream {
         let mut buffer = arrow_buffer_from_mmap(Arc::clone(&mmap))?;
         let mut decoder = trusted_mmap_stream_decoder();
         let segment_start = events.len();
-        events.reserve(expected_event_count);
         while !buffer.is_empty() {
             let before = buffer.len();
             if let Some(batch) = decoder
@@ -2712,7 +2714,8 @@ impl ArrowRunEventStream {
         let mut segment_hasher = run_event_segment_hasher(
             entry.segment_id,
             entry.previous_segment_hash,
-            entry.event_count as usize,
+            usize::try_from(entry.event_count)
+                .map_err(|_| "run event segment count exceeds target width")?,
         );
         let mut event_count = 0usize;
         let mut mmap_buffer_count = 0usize;
@@ -3681,7 +3684,10 @@ impl RunEventSegmentManifest {
                     ([0; 32], 0u64),
                     |(previous_hash, previous_end), (index, entry)| {
                         let expected_segment_id = index as u64 + 1;
-                        let start_ok = index == 0 || entry.start_event_id == previous_end + 1;
+                        let start_ok = index == 0
+                            || previous_end
+                                .checked_add(1)
+                                .is_some_and(|next| entry.start_event_id == next);
                         (entry.segment_id == expected_segment_id
                             && entry.previous_segment_hash == previous_hash
                             && entry.arrow_schema_hash == ArrowRunEventStream::schema_hash()
@@ -3696,6 +3702,7 @@ impl RunEventSegmentManifest {
                             && entry.parent_directory_sync_attempted
                             && entry.start_event_id <= entry.end_event_id
                             && entry.event_count == entry.end_event_id - entry.start_event_id + 1
+                            && usize::try_from(entry.event_count).is_ok()
                             && start_ok)
                             .then_some((entry.segment_hash, entry.end_event_id))
                     },
@@ -4620,11 +4627,14 @@ impl RunEventSegmentArchive {
         if !manifest.is_valid() {
             return Err("invalid segmented arrow column scan manifest");
         }
-        let expected_event_count = manifest.entries.iter().try_fold(0usize, |total, entry| {
-            total
-                .checked_add(entry.event_count as usize)
-                .ok_or("segmented arrow column scan event count overflow")
-        })?;
+        let expected_event_count =
+            manifest.entries.iter().try_fold(0usize, |total, entry| {
+                total
+                    .checked_add(usize::try_from(entry.event_count).map_err(
+                        |_| "segmented arrow column scan event count exceeds target width",
+                    )?)
+                    .ok_or("segmented arrow column scan event count overflow")
+            })?;
         let mut total_arrow_file_bytes = 0u64;
         let mut mmap_buffer_count = 0usize;
         let mut expected_event_id = 1u64;
@@ -4868,7 +4878,10 @@ impl RunEventSegmentArchive {
             Self::verify_segment_commit_sidecars(directory, manifest)?;
         let expected_event_count = manifest.entries.iter().try_fold(0usize, |total, entry| {
             total
-                .checked_add(entry.event_count as usize)
+                .checked_add(
+                    usize::try_from(entry.event_count)
+                        .map_err(|_| "replay determinism event count exceeds target width")?,
+                )
                 .ok_or("replay determinism event count overflow")
         })?;
         let (first_ledger, first_evidence) =
@@ -5517,10 +5530,13 @@ impl RunEventSegmentArchive {
         }
         let total_event_count = manifest.entries.iter().try_fold(0usize, |total, entry| {
             total
-                .checked_add(entry.event_count as usize)
+                .checked_add(
+                    usize::try_from(entry.event_count)
+                        .map_err(|_| "run event count exceeds target width")?,
+                )
                 .ok_or("run event count overflow")
         })?;
-        let mut events = Vec::with_capacity(total_event_count);
+        let mut events = Vec::new();
         let mut segment_count = 0usize;
         let mut mmap_segment_count = 0usize;
         let mut total_file_bytes = 0u64;
@@ -5564,7 +5580,8 @@ impl RunEventSegmentArchive {
             let (evidence, decoded_arrow_file_hash) =
                 ArrowRunEventStream::append_events_mmap_with_capacity_evidence_and_file_hash(
                     &path,
-                    entry.event_count as usize,
+                    usize::try_from(entry.event_count)
+                        .map_err(|_| "run event segment count exceeds target width")?,
                     &mut events,
                     false,
                 )?;
@@ -5604,6 +5621,9 @@ impl RunEventSegmentArchive {
         );
         let ledger = RunEventLedger::from_events(manifest.run_id, events)
             .map_err(|_| "invalid recovered mmap run event segment ledger")?;
+        if ledger.len() != total_event_count {
+            return Err("run event count mismatch");
+        }
         Ok((ledger, evidence))
     }
 
@@ -5652,7 +5672,8 @@ impl RunEventSegmentArchive {
             let segment_events =
                 match ArrowRunEventStream::read_events_mmap_with_capacity_evidence_and_file_hash(
                     &path,
-                    entry.event_count as usize,
+                    usize::try_from(entry.event_count)
+                        .map_err(|_| "run event segment count exceeds target width")?,
                 ) {
                     Ok((segment_events, evidence, arrow_file_hash))
                         if evidence.total_file_bytes == entry.arrow_file_bytes
@@ -5935,8 +5956,14 @@ impl ReplayChaosBench {
                 .entries
                 .iter()
                 .take(persisted_segment_count)
-                .map(|entry| entry.event_count as usize)
-                .sum::<usize>();
+                .try_fold(0usize, |total, entry| {
+                    total
+                        .checked_add(
+                            usize::try_from(entry.event_count)
+                                .map_err(|_| "replay chaos event count exceeds target width")?,
+                        )
+                        .ok_or("replay chaos event count overflow")
+                })?;
             let recovered_event_count = report.ledger.len();
             let prefix_matches =
                 report.ledger.events() == &ledger.events()[..recovered_event_count];
@@ -8416,6 +8443,37 @@ mod replay_internal_tests {
         let header_only = BinaryRunEventSegment::recover_last_valid_prefix_mmap(&path).unwrap();
         assert_eq!(header_only.recovered_event_count, 0);
         let _ = std::fs::remove_file(path);
+    }
+
+    #[test]
+    fn mmap_archive_does_not_allocate_from_untrusted_manifest_event_count() {
+        let directory = std::env::temp_dir().join(format!(
+            "aegis-mmap-manifest-count-{}-{}",
+            std::process::id(),
+            1_u64
+        ));
+        let event = RunEvent::new(
+            1,
+            1,
+            RunEventKind::MissionCompiled,
+            1,
+            [1; 32],
+            None,
+            [0; 32],
+        );
+        let ledger = RunEventLedger::from_events(1, vec![event]).unwrap();
+        let manifest = RunEventSegmentArchive::write_ledger(&directory, 1, &ledger).unwrap();
+        let mut forged_entry = manifest.entries[0].clone();
+        forged_entry.end_event_id = u64::MAX;
+        forged_entry.event_count = u64::MAX;
+        forged_entry.refresh_segment_commit_hash(manifest.run_id);
+        let forged_manifest = RunEventSegmentManifest::new(manifest.run_id, vec![forged_entry]);
+
+        // The declared count is metadata, not an allocation authority.  The
+        // reader must reject the real one-row segment without attempting a
+        // usize::MAX allocation or panicking the process.
+        assert!(RunEventSegmentArchive::read_ledger_mmap(&directory, &forged_manifest).is_err());
+        let _ = std::fs::remove_dir_all(directory);
     }
 }
 
