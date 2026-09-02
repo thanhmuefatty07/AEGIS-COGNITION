@@ -20,9 +20,7 @@ def test_inventory_covers_every_scoped_tracked_file() -> None:
     items = inventory["items"]
     assert isinstance(items, list)
     paths = {str(item["path"]) for item in items}
-    identities = {
-        (str(item["kind"]), str(item["path"]), str(item["target"])) for item in items
-    }
+    identities = {(str(item["kind"]), str(item["path"]), str(item["target"])) for item in items}
     assert inventory["scope_counts"]["inventoried_items"] == len(identities)
     assert inventory["scope_counts"]["workflow_jobs"] == 11
     assert inventory["disposition_counts"] == {"RETAIN_UNCHANGED": len(items)}
@@ -41,7 +39,8 @@ def test_inventory_covers_every_scoped_tracked_file() -> None:
             for path in subprocess.run(
                 ["git", "ls-files"], cwd=ROOT, check=True, capture_output=True, text=True
             ).stdout.splitlines()
-            if (path == prefix or path.startswith(f"{prefix}/")) and Path(path).suffix.lower() in suffixes
+            if (path == prefix or path.startswith(f"{prefix}/"))
+            and Path(path).suffix.lower() in suffixes
             and (prefix != "core/rust/src" or RUST_TEST_RE.search((ROOT / path).read_text(encoding="utf-8")))
         }
         assert expected <= paths
@@ -60,9 +59,7 @@ def test_inventory_assigns_one_safe_disposition_and_no_absolute_path() -> None:
 def test_inventory_stable_ids_are_path_bound() -> None:
     items = build_inventory()["items"]
     assert isinstance(items, list)
-    identities = {
-        (str(item["kind"]), str(item["path"]), str(item["target"])) for item in items
-    }
+    identities = {(str(item["kind"]), str(item["path"]), str(item["target"])) for item in items}
     assert len(identities) == len(items)
     assert len({str(item["stable_id"]) for item in items}) == len(items)
 

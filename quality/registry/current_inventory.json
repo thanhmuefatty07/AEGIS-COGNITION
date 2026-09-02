@@ -2,7 +2,7 @@
   "deletion": "PROHIBITED_UNTIL_SUPERSESSION_PROOF",
   "direct_cutover": "PROHIBITED",
   "disposition_counts": {
-    "RETAIN_UNCHANGED": 113
+    "RETAIN_UNCHANGED": 115
   },
   "items": [
     {
@@ -1751,6 +1751,39 @@
         "UNKNOWN"
       ],
       "stable_id": "AESE-SCRIPT_OR_GATE-2B63ED08D2F345A1",
+      "supersession_rationale": "No stronger replacement evidence is recorded; preserve the existing authoritative path.",
+      "target": null
+    },
+    {
+      "claims_supported": [],
+      "dependencies": [],
+      "determinism": "UNKNOWN",
+      "domain": "UNKNOWN",
+      "evidence_produced": [],
+      "failure_semantics": "UNKNOWN",
+      "hardware_requirement": "UNKNOWN",
+      "inputs": [],
+      "invariants_checked": [],
+      "kind": "SCRIPT_OR_GATE",
+      "known_defects": [],
+      "mapping_status": "NOT_MAPPED",
+      "migration_disposition": "RETAIN_UNCHANGED",
+      "outputs": [],
+      "owner": "UNKNOWN_OWNER",
+      "path": "scripts/aese_preflight.py",
+      "platform_requirement": "UNKNOWN",
+      "release_criticality": "UNKNOWN",
+      "replacement_id": null,
+      "resource_cost": "UNKNOWN",
+      "rollback_path": "Re-run the existing native runner directly.",
+      "runner_backend": "python entrypoint",
+      "runtime_class": "UNKNOWN",
+      "scope": "scripts",
+      "security_criticality": "UNKNOWN",
+      "side_effects": [
+        "UNKNOWN"
+      ],
+      "stable_id": "AESE-SCRIPT_OR_GATE-7CB77C78DCDC63EC",
       "supersession_rationale": "No stronger replacement evidence is recorded; preserve the existing authoritative path.",
       "target": null
     },
@@ -3540,6 +3573,39 @@
       "claims_supported": [],
       "dependencies": [],
       "determinism": "UNKNOWN",
+      "domain": "UNKNOWN",
+      "evidence_produced": [],
+      "failure_semantics": "UNKNOWN",
+      "hardware_requirement": "UNKNOWN",
+      "inputs": [],
+      "invariants_checked": [],
+      "kind": "PYTHON_TEST",
+      "known_defects": [],
+      "mapping_status": "NOT_MAPPED",
+      "migration_disposition": "RETAIN_UNCHANGED",
+      "outputs": [],
+      "owner": "UNKNOWN_OWNER",
+      "path": "tests/test_aese_preflight.py",
+      "platform_requirement": "UNKNOWN",
+      "release_criticality": "UNKNOWN",
+      "replacement_id": null,
+      "resource_cost": "UNKNOWN",
+      "rollback_path": "Re-run the existing native runner directly.",
+      "runner_backend": "pytest",
+      "runtime_class": "UNKNOWN",
+      "scope": "tests",
+      "security_criticality": "UNKNOWN",
+      "side_effects": [
+        "UNKNOWN"
+      ],
+      "stable_id": "AESE-PYTHON_TEST-E1D184588A9806B3",
+      "supersession_rationale": "No stronger replacement evidence is recorded; preserve the existing authoritative path.",
+      "target": null
+    },
+    {
+      "claims_supported": [],
+      "dependencies": [],
+      "determinism": "UNKNOWN",
       "domain": "EVIDENCE",
       "evidence_produced": [],
       "failure_semantics": "UNKNOWN",
@@ -3744,16 +3810,16 @@
   "phase": "PHASE_0_REBIND_REALITY",
   "schema": "aese-current-evidence-system-inventory-v1",
   "scope_counts": {
-    "inventoried_items": 113,
+    "inventoried_items": 115,
     "missing_scopes": 0,
-    "represented_paths": 102,
-    "tracked_files": 580,
+    "represented_paths": 104,
+    "tracked_files": 582,
     "workflow_jobs": 11
   },
   "scope_policy": "tracked_files_only; native runners remain authoritative",
-  "source_head": "640390214d8fe012ba0f027e7a45301a433ca876",
-  "source_tree_sha256": "3a8c060cfbbbdfaa43053f6ec6201127ad77d0b1e667c711cf6906bb7a6d6f1e",
+  "source_head": "693e40f5ce84bb6f8dd99df6b73f28f4f22f65aa",
+  "source_tree_sha256": "598a976c194ae5231c346f596ce21f6a72e2a2f2945ac48340466201b625098b",
   "status": "INVENTORY_COMPLETE_DISPOSITIONS_RETAINED_MAPPING_PENDING",
-  "worktree_epoch": "9fa09b9e6b4e3af48674437176899afdfab6490a2e4367d20d2ec5da69a32798",
+  "worktree_epoch": "42b3c527011e8e937dc5d41e676ab3dc103a38788e534cfeeab92ff0a21fa209",
   "worktree_status": "DIRTY"
 }
