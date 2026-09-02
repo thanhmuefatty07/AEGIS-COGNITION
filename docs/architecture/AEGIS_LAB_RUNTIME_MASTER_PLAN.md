@@ -3,7 +3,7 @@ document_id: AEGIS-LAB-RUNTIME-MASTER-PLAN
 document_type: canonical_current_implementation_plan
 status: IN_EXECUTION
 authority: derived_from_checkout_and_evidence_manifest
-applies_to_commit: 8660d56b7ebc56332e679d289a317da8806c8756
+applies_to_commit: 4dfc15e864f03b26e553ddbd8514ea29477f83a1
 created_at: 2026-08-26
 last_verified_at: 2026-09-03
 supersedes: browser-native-proposal-and-cumulative-harness-roadmap-as-execution-authority
@@ -169,11 +169,11 @@ hiện tại và không được dùng để chứng minh checkout mới:
   structural/presence checks, không phải proof rằng Lab behavior hoạt động.
 
 Checkout implementation hiện hành cho migration node này là
-`8660d56b7ebc56332e679d289a317da8806c8756` (functional FFI change
+`4dfc15e864f03b26e553ddbd8514ea29477f83a1` (functional FFI change
 `e0731f698302a0791c70c24d93b696597e04180d` and session-index hardening
 `f95bbcb03c1c8448afbcf392b38dcd964b9a6f3f`), với worktree sạch và
 `origin/main` parity được xác nhận sau push. Regression Python trên CPython
-3.11 là **419 passed** với deprecation warnings treated as errors; Rust package
+3.11 là **421 passed** với deprecation warnings treated as errors; Rust package
 lib regression sau FFI hardening là **443 passed**, cùng fmt/check/clippy pass.
 Registry AESE hiện có **117** inventoried items, graph **45 claims / 90
 verification references** và selection ở `SHADOW`/`NOT_EXECUTED`. Các kết quả này
@@ -4159,6 +4159,26 @@ combined with 351 Lab-runtime, 8 inventory/graph and 8 preflight tests. This
 is input-integrity evidence only: it does not establish anchor availability,
 hosted execution, model calibration, external OOD coverage or release
 authority.
+
+**AESE forged-protocol/container boundary continuation (2026-09-03):**
+implementation commit `4dfc15e864f03b26e553ddbd8514ea29477f83a1` tightens the
+shadow trust boundary to exact runtime types for prediction inputs and for
+anchor/candidate containers. Duck-typed model, hardware and workload objects
+now return `INSUFFICIENT_EVIDENCE` with typed `*_invalid:TypeError` reasons
+before any identity, feature or execution-relevant property is read; custom
+sequence-like containers are rejected rather than iterated implicitly. The
+string metadata fallback remains sanitized for malformed exact model instances,
+and invalid containers cannot expose a partial anchor plan. Two new adversarial
+test functions cover five rejection cases; an existing malformed-model
+regression now also asserts metadata sanitization. The full local Python
+regression is **421/421 PASS**, and `ruff` passes for both changed files.
+The strict `pyright` run still reports **16 pre-existing** unnecessary-
+`isinstance` diagnostics in unrelated pre-existing branches; no new diagnostic
+was introduced by this continuation. Inventory and claim graph were regenerated
+at source head `4dfc15e...` and both `--check` gates pass. This is local
+input-integrity evidence only: AESE remains `SHADOW`, no selection/promotion is
+enabled, and calibration, external anchors, hosted isolation, independent
+replication and release authority remain unproven.
 
 **Historical checkout identity for the prior continuation (2026-09-03):**
 `SOURCE_HEAD = 0d1e9c3eb4db86aea0fee40134f5711395e55e27`,
