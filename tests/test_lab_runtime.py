@@ -6759,6 +6759,92 @@ def test_lab_application_executes_explicit_skill_requests(monkeypatch: pytest.Mo
     assert any(event["kind"] == "skill_execution_recorded" for event in result.lab_events)
 
 
+def test_lab_skill_request_timeout_settles_rejection() -> None:
+    registry, manifest = _skill_fixture()
+    run = LabRun("bound skill timeout")
+    app = LabApplication(
+        config=SimpleNamespace(max_steps=2, trust_level="DEV", task="bound skill timeout"),
+        gateway_factory=lambda **_: object(),
+        telemetry=None,
+        correlation=None,
+    )
+
+    async def slow_executor(_: object) -> dict[str, object]:
+        await asyncio.sleep(0.05)
+        return {"validated": True}
+
+    asyncio.run(
+        app._run_skill_requests(
+            run,
+            {
+                "skill_registry": registry,
+                "skill_timeout_seconds": 0.001,
+                "skill_requests": [
+                    {
+                        "skill_id": manifest.skill_id,
+                        "version": manifest.version,
+                        "available_capabilities": ["network.read"],
+                        "preconditions": {
+                            "budget_available": True,
+                            "host_allowlisted": True,
+                        },
+                        "input": {"query": "timeout"},
+                        "executor": slow_executor,
+                    }
+                ],
+            },
+        )
+    )
+    settlements = [
+        event for event in run.events if event.kind == "skill_execution_recorded"
+    ]
+    assert [event.payload["status"] for event in settlements] == ["REJECTED"]
+    assert "skill_execution_failed:TimeoutError" in run.blockers
+    assert run.unsettled_execution_admissions() == ()
+
+
+def test_lab_skill_request_failure_settles_rejection() -> None:
+    registry, manifest = _skill_fixture()
+    run = LabRun("settle failed skill")
+    app = LabApplication(
+        config=SimpleNamespace(max_steps=2, trust_level="DEV", task="settle failed skill"),
+        gateway_factory=lambda **_: object(),
+        telemetry=None,
+        correlation=None,
+    )
+
+    def failing_executor(_: object) -> dict[str, object]:
+        raise RuntimeError("provider failure")
+
+    asyncio.run(
+        app._run_skill_requests(
+            run,
+            {
+                "skill_registry": registry,
+                "skill_requests": [
+                    {
+                        "skill_id": manifest.skill_id,
+                        "version": manifest.version,
+                        "available_capabilities": ["network.read"],
+                        "preconditions": {
+                            "budget_available": True,
+                            "host_allowlisted": True,
+                        },
+                        "input": {"query": "failure"},
+                        "executor": failing_executor,
+                    }
+                ],
+            },
+        )
+    )
+    settlements = [
+        event for event in run.events if event.kind == "skill_execution_recorded"
+    ]
+    assert [event.payload["status"] for event in settlements] == ["REJECTED"]
+    assert "skill_execution_failed:RuntimeError" in run.blockers
+    assert run.unsettled_execution_admissions() == ()
+
+
 def test_explicit_execution_registry_rejects_legacy_skill_executor(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
