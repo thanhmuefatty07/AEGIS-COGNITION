@@ -1741,6 +1741,22 @@ longer equals the persisted completion manifest.
 scope hiện tại. Nó không đóng các external blockers trong Section 3/B4 và không
 cho phép claim `production-ready`.
 
+**Hosted CI observation (2026-09-02, commit `b6ac809bf782e34f3e88b9108b509ae1a8536d90`):**
+the push-triggered GitHub Actions runs `33585530719` (`CI`) and `33585530740`
+(`aegis-plugins`) were recorded as `failure` within 3–5 seconds. The CI run
+created 13 matrix jobs; every job had `steps=0`, `runner_id=0`, an empty
+`runner_name`, no check-run output, and `0 ms` billable time. The repository
+Actions API still reports `enabled=true` and `allowed_actions=all`, so this
+observation does not identify a source-level failure or prove that any test
+step executed. A successful historical CI run (`32781549128`, commit
+`0ebef3e382fba167b76674b39c66f6301619087f`) had allocated runner IDs and
+6–18 executed steps, which is the decisive contrast. The hosted gate is
+therefore `NOT VERIFIED`/`BLOCKED_EXTERNAL` pending a runner-backed rerun or
+an owner-side GitHub Actions billing/permission/service diagnosis; workflow
+files were intentionally not changed to mask a pre-step infrastructure
+failure. Local verification remains valid only for the local scope recorded
+above.
+
 ### 16.2 Blocker disposition sau vòng thực thi hiện tại
 
 **Execution delta (2026-08-27):** provider fallback attempts, all-lane
