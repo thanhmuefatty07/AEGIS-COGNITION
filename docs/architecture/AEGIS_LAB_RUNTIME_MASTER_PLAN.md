@@ -3819,6 +3819,19 @@ runner allocation; therefore `HOSTED_VERIFICATION = BLOCKED_EXTERNAL`, source
 execution was not performed, and no hosted test result is claimed. Release
 attestation, external anchors and selective-test promotion remain disabled.
 
+**AESE shadow-selection and Python compatibility continuation (2026-09-03):**
+commit `93f124c2350b897653fdc612d90e4bbd01d7ff7c` makes the Phase 2 plan
+explicit about its hypothetical selection: all **116** retained inventory
+items would run, no item would be reused or skipped, and no external anchor is
+executed when candidates were not supplied. The record is `SHADOW`,
+`RETAINED_LEGACY_AUTHORITY` and `NOT_EXECUTED`, so this is a comparison
+description rather than selective-test permission. A full Python compile pass
+also found and corrected a legacy CLI exception-syntax incompatibility;
+CPython 3.11 CLI import/help smoke and the full **485-test** regression pass.
+The subsequent CI run `33662324679` again created 13 zero-step jobs and failed
+before runner allocation; hosted source execution remains unavailable and no
+CI result is inferred.
+
 Không được gọi toàn hệ thống “production-ready” khi bất kỳ gate bắt buộc nào
 ở trên còn `OPEN_*`, `BLOCKED_*`, `UNKNOWN` hoặc chỉ có fixture/mock evidence.
 
