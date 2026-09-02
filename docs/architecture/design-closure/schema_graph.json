@@ -140,9 +140,9 @@
   "limitations": [
     "no full migration registry"
   ],
-  "WORKTREE_EPOCH": "892c62abf1e7252da3d7b9806953f8b3cea2b5915f1bf458f99d6486d624a657",
-  "HEAD": "396f97b19331607a0fce596b61b3aedb260c446e",
-  "generated_at": "2026-09-02T03:26:22.309279+00:00",
+  "WORKTREE_EPOCH": "dcf7c1f06c7b5bacbe00e7205e2334e61799487beb81aac24f4f30df2ba1eaf8",
+  "HEAD": "e93d1eee327b90e7c72ff85d5c75da4d5dfda5c1",
+  "generated_at": "2026-09-02T03:28:28.738019+00:00",
   "collector_version/method": "aegis-final-design-closure-v1; direct Git/filesystem/AST/Cargo plus bounded disposable-wheel probes",
   "reused_prior_artifact": "C:\\Users\\ADMIN\\AEGIS-COGNITION\\docs\\architecture\\evidence-pack\\final_schema_contracts.json",
   "reused_prior_artifact_sha256": "a8aae486a2316dae6488ff8137076305ac99bd9da95b9fb12ea92b00098e4116",
