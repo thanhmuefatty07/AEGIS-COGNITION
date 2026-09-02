@@ -303,7 +303,7 @@ def test_cross_hardware_prediction_fails_closed_on_invalid_model_or_hardware() -
     assert result.anchor_ids == ()
 
     malformed_model = AnalyticPredictionModel(
-        model_id="malformed",
+        model_id=123,  # type: ignore[arg-type]
         model_version="1",
         metric="latency_ms",
         intercept=0.0,
@@ -320,6 +320,7 @@ def test_cross_hardware_prediction_fails_closed_on_invalid_model_or_hardware() -
         anchors,
     )
     assert malformed_result.status == "INSUFFICIENT_EVIDENCE"
+    assert malformed_result.model_id == ""
     assert malformed_result.failure_reasons == ("input_invalid:ValueError",)
 
 
@@ -355,6 +356,61 @@ def test_cross_hardware_prediction_rejects_custom_anchor_objects() -> None:
     assert result.status == "INSUFFICIENT_EVIDENCE"
     assert result.failure_reasons == ("invalid_anchor_observation",)
     assert result.anchor_ids == ("a2",)
+
+
+def test_cross_hardware_prediction_rejects_forged_protocol_objects() -> None:
+    model, hardware, workload, anchors = _prediction_fixture()
+
+    class ModelLike:
+        model_id = model.model_id
+        model_version = model.model_version
+        metric = model.metric
+        validated_domain = model.validated_domain
+
+    class HardwareLike:
+        pass
+
+    class WorkloadLike:
+        pass
+
+    forged_model = predict_cross_hardware(ModelLike(), hardware, workload, anchors)  # type: ignore[arg-type]
+    assert forged_model.status == "INSUFFICIENT_EVIDENCE"
+    assert forged_model.failure_reasons == ("model_invalid:TypeError",)
+
+    forged_hardware = predict_cross_hardware(model, HardwareLike(), workload, anchors)  # type: ignore[arg-type]
+    assert forged_hardware.status == "INSUFFICIENT_EVIDENCE"
+    assert forged_hardware.failure_reasons == ("hardware_invalid:TypeError",)
+
+    forged_workload = predict_cross_hardware(model, hardware, WorkloadLike(), anchors)  # type: ignore[arg-type]
+    assert forged_workload.status == "INSUFFICIENT_EVIDENCE"
+    assert forged_workload.failure_reasons == ("workload_invalid:TypeError",)
+
+
+def test_aese_rejects_custom_sequence_containers_at_trust_boundaries() -> None:
+    model, hardware, workload, anchors = _prediction_fixture()
+
+    class SequenceLike:
+        def __init__(self, values: object) -> None:
+            self.values = values
+
+        def __iter__(self):
+            return iter(self.values)  # type: ignore[arg-type]
+
+        def __len__(self) -> int:
+            return len(self.values)  # type: ignore[arg-type]
+
+        def __getitem__(self, index: int) -> object:
+            return self.values[index]  # type: ignore[index]
+
+    plan = select_anchor_plan(SequenceLike([]), budget_seconds=10.0)  # type: ignore[arg-type]
+    assert plan.status == "EXTERNAL_VERIFICATION_BLOCKED"
+    assert plan.selected_anchor_ids == ()
+    assert plan.failure_reasons == ("candidates_invalid:TypeError",)
+
+    result = predict_cross_hardware(model, hardware, workload, SequenceLike(anchors))  # type: ignore[arg-type]
+    assert result.status == "INSUFFICIENT_EVIDENCE"
+    assert result.anchor_ids == ()
+    assert result.failure_reasons == ("anchors_invalid:TypeError",)
 
 
 def test_anchor_planner_prioritizes_mandatory_boundary_and_ood_with_budget() -> None:
