@@ -5845,6 +5845,79 @@ def test_controller_browser_gateway_fallback_rejects_swallowed_cancellation() ->
     assert settled[0].payload["status"] == "CANCELLED"
 
 
+def test_controller_browser_cancellation_consumes_actor_quota() -> None:
+    """An admitted cancelled action must not be retried past max_actions."""
+
+    import asyncio
+
+    class Session:
+        current_url = "https://allowed.example/start"
+
+    class Capture:
+        browser_action_result_hash = "capture-hash"
+
+    class Gateway:
+        def __init__(self) -> None:
+            self.calls = 0
+            self.started = asyncio.Event()
+
+        async def capture_browser_action(self, **_: object) -> Capture:
+            self.calls += 1
+            if self.calls == 1:
+                self.started.set()
+                await asyncio.Event().wait()
+            return Capture()
+
+    gateway = Gateway()
+    app = LabApplication(
+        config=SimpleNamespace(
+            trust_level="DEV", options={}, max_steps=2, task="browser quota", llm=None
+        ),
+        gateway_factory=lambda **_: gateway,
+        telemetry=SimpleNamespace(),
+        correlation=SimpleNamespace(),
+    )
+    run = LabRun("browser cancellation quota")
+    app._active_run = run
+    app._prepare_execution_cells(run, {})
+    cell = BrowserCell(BrowserCellPolicy(allowed_hosts=("allowed.example",), max_actions=1))
+    action_plan = {
+        "schema": "aegis-lab-action-plan-v1",
+        "actions": [{"kind": "browser_action", "action": {"kind": "wait", "milliseconds": 1}}],
+    }
+
+    async def exercise() -> None:
+        session = Session()
+        await cell.bind(session)
+        task = asyncio.create_task(
+            app._execute_controller_action_plan(
+                run,
+                action_plan,
+                {},
+                run_id=run.mission_id,
+                browser_cell=cell,
+                browser_session=session,
+                action_kinds={"browser_action"},
+            )
+        )
+        await asyncio.wait_for(gateway.started.wait(), timeout=1.0)
+        task.cancel()
+        with pytest.raises(asyncio.CancelledError):
+            await task
+        assert cell.action_count == 1
+
+        await cell.release()
+        rebound = Session()
+        with pytest.raises(RuntimeError, match="quota"):
+            await cell.bind(rebound)
+
+    asyncio.run(exercise())
+    assert gateway.calls == 1
+    assert [event.payload["status"] for event in run.events if event.kind == "browser_action_recorded"] == [
+        "CANCELLED"
+    ]
+
+
 def test_controller_action_plan_executes_preregistered_experiment_cell(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
