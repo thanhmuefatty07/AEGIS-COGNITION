@@ -3,7 +3,7 @@ document_id: AEGIS-LAB-RUNTIME-MASTER-PLAN
 document_type: canonical_current_implementation_plan
 status: IN_EXECUTION
 authority: derived_from_checkout_and_evidence_manifest
-applies_to_commit: 81115432fca328ba6f7776a6cb3ad6d89a9679a6
+applies_to_commit: eac7852dd163a315352def42f18b3f4d789f5ca2
 created_at: 2026-08-26
 last_verified_at: 2026-09-02
 supersedes: browser-native-proposal-and-cumulative-harness-roadmap-as-execution-authority
@@ -3468,6 +3468,20 @@ reusable temporary wheel in the current machine, so packaging is reported as
 does not lower or raise any external blocker. The evidence-consistency gate
 continues to fail closed on the deliberate `CHECKOUT_HEAD` template and
 `LAB-RELEASE-006` remains `BLOCKED_EXTERNAL`.
+
+**M7 recovery-metadata continuation (2026-09-02):** crash-prefix recovery now
+passes through the exact optional `idempotency_key` and `timeout_seconds`
+retained in modern tool and experiment admissions. The same preservation is
+applied to the legacy `reconcile_unsettled_tool_executions()` helper, so a
+recovered admission is settled as `REJECTED`/`UNKNOWN_SIDE_EFFECT` instead of
+being left open merely because its metadata-bearing settlement contract was
+not replayed. Regression coverage exercises generic recovery, experiment
+recovery and the compatibility helper; the full Python suite is **352 passed**
+under `-W error::DeprecationWarning`, and focused Ruff/Pyright checks are
+clean. This closes a locally observed recovery-contract defect only; it does
+not prove that an external effect was reversed, that an opaque adapter did not
+retry, or that a hosted writer is authoritative. M7 remains `PARTIAL_LOCAL`
+and `LAB-AUTH-001` remains `OPEN_LOCAL`.
 
 Không được gọi toàn hệ thống “production-ready” khi bất kỳ gate bắt buộc nào
 ở trên còn `OPEN_*`, `BLOCKED_*`, `UNKNOWN` hoặc chỉ có fixture/mock evidence.
