@@ -218,6 +218,15 @@ def test_cross_hardware_prediction_does_not_count_out_of_domain_anchors() -> Non
     assert result.failure_reasons == ("no_reconstructible_anchor", "anchor_outside_validated_domain")
 
 
+def test_cross_hardware_prediction_does_not_count_duplicate_anchor_ids() -> None:
+    model, hardware, workload, anchors = _prediction_fixture()
+    result = predict_cross_hardware(model, hardware, workload, [anchors[0], anchors[0]])
+    assert result.status == "INSUFFICIENT_EVIDENCE"
+    assert result.ood_status == "UNKNOWN"
+    assert result.nearest_anchor_distance == pytest.approx(4.0 / 15.0)
+    assert result.failure_reasons == ("no_reconstructible_anchor", "duplicate_anchor_id")
+
+
 def test_anchor_planner_prioritizes_mandatory_boundary_and_ood_with_budget() -> None:
     candidates = [
         AnchorCandidate("periodic", "linux", 3.0, periodic_sentinel_due=True),

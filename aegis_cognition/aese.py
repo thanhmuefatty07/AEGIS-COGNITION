@@ -911,11 +911,17 @@ def predict_cross_hardware(
     )
     valid_anchors: list[tuple[AnchorObservation, dict[str, float]]] = []
     out_of_domain_anchor_count = 0
+    duplicate_anchor_count = 0
+    seen_anchor_ids: set[str] = set()
     for anchor in anchors:
         try:
             anchor_features = anchor.features()
         except (TypeError, ValueError, AttributeError):
             continue
+        if anchor.anchor_id in seen_anchor_ids:
+            duplicate_anchor_count += 1
+            continue
+        seen_anchor_ids.add(anchor.anchor_id)
         if all(name in anchor_features for name in coefficient_names):
             if any(
                 anchor_features[name] < domains[name][0] or anchor_features[name] > domains[name][1]
@@ -951,6 +957,8 @@ def predict_cross_hardware(
         reasons.append("no_reconstructible_anchor")
         if out_of_domain_anchor_count:
             reasons.append("anchor_outside_validated_domain")
+        if duplicate_anchor_count:
+            reasons.append("duplicate_anchor_id")
         status = "INSUFFICIENT_EVIDENCE"
         ood = "UNKNOWN"
     elif (
