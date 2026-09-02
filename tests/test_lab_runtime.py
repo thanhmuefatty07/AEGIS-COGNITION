@@ -8303,6 +8303,8 @@ def test_strict_benchmark_validator_cannot_fall_back_to_legacy_callback() -> Non
         and event.payload["tool_name"] == "benchmark.hidden_validator"
     ]
     assert [event.payload["status"] for event in validator_settlements] == ["REJECTED"]
+    assert len(validator_settlements[0].payload["idempotency_key"]) == 64
+    assert validator_settlements[0].payload["timeout_seconds"] == 5.0
 
 
 def test_execution_cell_manifest_round_trips_with_lab_snapshot() -> None:
