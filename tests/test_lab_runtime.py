@@ -1,10 +1,14 @@
 from __future__ import annotations
 
+import asyncio
+import contextlib
 import json
 import math
 import multiprocessing
-import asyncio
+import os
+import signal
 import socket
+import subprocess
 import sys
 import time
 from dataclasses import replace
@@ -88,6 +92,34 @@ def _skill_fixture() -> tuple[SkillRegistry, SkillManifest]:
 def _non_cooperative_process_task() -> None:
     while True:
         time.sleep(0.01)
+
+
+def _non_cooperative_process_with_descendant(pid_connection: object) -> None:
+    child = subprocess.Popen([sys.executable, "-c", "import time; time.sleep(60)"])
+    pid_connection.send(child.pid)  # type: ignore[attr-defined]
+    while True:
+        time.sleep(0.01)
+
+
+def _pid_exists(pid: int) -> bool:
+    if os.name == "nt":
+        result = subprocess.run(
+            ["tasklist", "/FI", f"PID eq {pid}"],
+            check=False,
+            capture_output=True,
+            text=True,
+        )
+        return any(
+            len(parts) >= 2 and parts[1] == str(pid)
+            for parts in (line.split() for line in result.stdout.splitlines())
+        )
+    try:
+        os.kill(pid, 0)
+    except ProcessLookupError:
+        return False
+    except PermissionError:
+        return True
+    return True
 
 
 def _hold_replay_writer_lease(directory: str, ready: object, release: object) -> None:
@@ -476,6 +508,31 @@ def test_process_execution_cell_terminates_non_cooperative_runner() -> None:
         assert cell.active_pid is None
 
     asyncio.run(exercise())
+
+
+def test_process_execution_cell_terminates_non_cooperative_descendants() -> None:
+    context = multiprocessing.get_context("spawn")
+    parent_connection, child_connection = context.Pipe(duplex=False)
+    cell = ProcessExecutionCell(
+        _non_cooperative_process_with_descendant,
+        timeout_seconds=2.0,
+    )
+    descendant_pid: int | None = None
+    try:
+        with pytest.raises(TimeoutError, match="process execution cell timed out"):
+            asyncio.run(cell(child_connection))
+        assert parent_connection.poll(5)
+        descendant_pid = parent_connection.recv()
+        deadline = time.monotonic() + 5
+        while _pid_exists(descendant_pid) and time.monotonic() < deadline:
+            time.sleep(0.05)
+        assert not _pid_exists(descendant_pid)
+    finally:
+        if descendant_pid is not None and _pid_exists(descendant_pid):
+            with contextlib.suppress(OSError):
+                os.kill(descendant_pid, signal.SIGTERM)
+        parent_connection.close()
+        child_connection.close()
 
 
 def test_process_execution_cell_kills_child_on_task_cancellation() -> None:
