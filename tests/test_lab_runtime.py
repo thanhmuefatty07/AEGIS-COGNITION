@@ -5255,6 +5255,93 @@ def test_lab_application_rejects_concurrent_active_run() -> None:
         asyncio.run(app.run())
 
 
+def test_lab_application_failure_aborts_direct_active_run() -> None:
+    """A direct application caller cannot leave a failed run non-terminal."""
+
+    import asyncio
+
+    from aegis_cognition.lab import LabApplication
+
+    def failing_gateway(**_: object) -> object:
+        raise RuntimeError("gateway construction failed")
+
+    app = LabApplication(
+        config=SimpleNamespace(
+            trust_level="DEV",
+            options={},
+            max_steps=1,
+            task="direct failure fence",
+            llm=None,
+            browser=False,
+        ),
+        gateway_factory=failing_gateway,
+        telemetry=SimpleNamespace(),
+        correlation=SimpleNamespace(),
+    )
+
+    with pytest.raises(RuntimeError, match="gateway construction failed"):
+        asyncio.run(app.run())
+
+    assert app._active_run is not None
+    assert app._active_run.state == "aborted"
+    assert app._active_run.unsettled_execution_admissions() == ()
+    assert any(
+        event.kind == "cancellation_recorded"
+        and event.payload["status"] == "SUCCESS"
+        for event in app._active_run.events
+    )
+
+
+def test_lab_application_cancellation_aborts_direct_active_run() -> None:
+    """Direct task cancellation also closes the run-level cancellation fence."""
+
+    import asyncio
+
+    from aegis_cognition.lab import LabApplication
+
+    class HangingGateway:
+        def __init__(self) -> None:
+            self.started = asyncio.Event()
+            self.release = asyncio.Event()
+
+        async def run(self, _task: str, **_: object) -> object:
+            self.started.set()
+            await self.release.wait()
+            raise AssertionError("gateway unexpectedly completed")
+
+    gateway = HangingGateway()
+    app = LabApplication(
+        config=SimpleNamespace(
+            trust_level="DEV",
+            options={},
+            max_steps=1,
+            task="direct cancellation fence",
+            llm=None,
+            browser=False,
+        ),
+        gateway_factory=lambda **_: gateway,
+        telemetry=SimpleNamespace(),
+        correlation=SimpleNamespace(),
+    )
+
+    async def exercise() -> None:
+        task = asyncio.create_task(app.run())
+        await asyncio.wait_for(gateway.started.wait(), timeout=1.0)
+        task.cancel()
+        with pytest.raises(asyncio.CancelledError):
+            await task
+
+    asyncio.run(exercise())
+    assert app._active_run is not None
+    assert app._active_run.state == "aborted"
+    assert app._active_run.unsettled_execution_admissions() == ()
+    assert [
+        event.payload["status"]
+        for event in app._active_run.events
+        if event.kind == "tool_execution_recorded"
+    ] == ["CANCELLED"]
+
+
 def test_lab_gateway_calls_are_native_admitted_before_synthesis(monkeypatch: pytest.MonkeyPatch) -> None:
     import asyncio
 
