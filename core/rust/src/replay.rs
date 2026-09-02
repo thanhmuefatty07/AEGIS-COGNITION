@@ -3224,10 +3224,12 @@ impl BinaryRunEventSegment {
         expected_payload_hash: [u8; 32],
     ) -> Result<RunEventLedger, &'static str> {
         let file = File::open(path).map_err(|_| "failed to open binary run event segment")?;
-        let file_bytes = file
-            .metadata()
-            .map_err(|_| "failed to stat binary run event segment")?
-            .len() as usize;
+        let file_bytes = usize::try_from(
+            file.metadata()
+                .map_err(|_| "failed to stat binary run event segment")?
+                .len(),
+        )
+        .map_err(|_| "binary run event segment is too large for this target")?;
         // SAFETY: `file` is opened read-only above (File::open defaults). `file_bytes
         // == file.metadata().len()`, so `MmapOptions::new().map(&file)` produces a
         // mapping exactly that size — it cannot extend past EOF. Read-only map
@@ -3249,15 +3251,15 @@ impl BinaryRunEventSegment {
         if format_version != BINARY_RUN_EVENT_FORMAT_VERSION {
             return Err("invalid binary run event format version");
         }
-        let header_bytes = read_u64_le(&mmap, 16)? as usize;
+        let header_bytes = read_usize_le(&mmap, 16)?;
         if header_bytes != BINARY_RUN_EVENT_HEADER_BYTES {
             return Err("invalid binary run event header size");
         }
-        let record_bytes = read_u64_le(&mmap, 24)? as usize;
+        let record_bytes = read_usize_le(&mmap, 24)?;
         if record_bytes != BINARY_RUN_EVENT_RECORD_BYTES {
             return Err("invalid binary run event record size");
         }
-        let event_count = read_u64_le(&mmap, 32)? as usize;
+        let event_count = read_usize_le(&mmap, 32)?;
         let run_id = read_u128_le(&mmap, 40)?;
         if hash_from_slice(&mmap[56..88])? != binary_run_event_schema_hash() {
             return Err("invalid binary run event schema hash");
@@ -3306,7 +3308,10 @@ impl BinaryRunEventSegment {
                 .map(&file)
                 .map_err(|_| "failed to mmap binary run event segment")?
         };
-        if mmap.len() != file_bytes as usize || mmap.len() < BINARY_RUN_EVENT_HEADER_BYTES {
+        if u64::try_from(mmap.len()).map_err(|_| "binary run event length exceeds u64")?
+            != file_bytes
+            || mmap.len() < BINARY_RUN_EVENT_HEADER_BYTES
+        {
             return Err("invalid binary run event segment length");
         }
         if &mmap[0..8] != BINARY_RUN_EVENT_MAGIC {
@@ -3316,15 +3321,15 @@ impl BinaryRunEventSegment {
         if format_version != BINARY_RUN_EVENT_FORMAT_VERSION {
             return Err("invalid binary run event format version");
         }
-        let header_bytes = read_u64_le(&mmap, 16)? as usize;
+        let header_bytes = read_usize_le(&mmap, 16)?;
         if header_bytes != BINARY_RUN_EVENT_HEADER_BYTES {
             return Err("invalid binary run event header size");
         }
-        let record_bytes = read_u64_le(&mmap, 24)? as usize;
+        let record_bytes = read_usize_le(&mmap, 24)?;
         if record_bytes != BINARY_RUN_EVENT_RECORD_BYTES {
             return Err("invalid binary run event record size");
         }
-        let event_count = read_u64_le(&mmap, 32)? as usize;
+        let event_count = read_usize_le(&mmap, 32)?;
         let run_id = read_u128_le(&mmap, 40)?;
         if hash_from_slice(&mmap[56..88])? != binary_run_event_schema_hash() {
             return Err("invalid binary run event schema hash");
@@ -3388,7 +3393,10 @@ impl BinaryRunEventSegment {
                 .map(&file)
                 .map_err(|_| "failed to mmap binary run event segment")?
         };
-        if mmap.len() != file_bytes as usize || mmap.len() < BINARY_RUN_EVENT_HEADER_BYTES {
+        if u64::try_from(mmap.len()).map_err(|_| "binary run event length exceeds u64")?
+            != file_bytes
+            || mmap.len() < BINARY_RUN_EVENT_HEADER_BYTES
+        {
             return Err("invalid binary run event segment length");
         }
         if &mmap[0..8] != BINARY_RUN_EVENT_MAGIC {
@@ -3398,15 +3406,15 @@ impl BinaryRunEventSegment {
         if format_version != BINARY_RUN_EVENT_FORMAT_VERSION {
             return Err("invalid binary run event format version");
         }
-        let header_bytes = read_u64_le(&mmap, 16)? as usize;
+        let header_bytes = read_usize_le(&mmap, 16)?;
         if header_bytes != BINARY_RUN_EVENT_HEADER_BYTES {
             return Err("invalid binary run event header size");
         }
-        let record_bytes = read_u64_le(&mmap, 24)? as usize;
+        let record_bytes = read_usize_le(&mmap, 24)?;
         if record_bytes != BINARY_RUN_EVENT_RECORD_BYTES {
             return Err("invalid binary run event record size");
         }
-        let declared_event_count = read_u64_le(&mmap, 32)? as usize;
+        let declared_event_count = read_usize_le(&mmap, 32)?;
         let run_id = read_u128_le(&mmap, 40)?;
         if hash_from_slice(&mmap[56..88])? != binary_run_event_schema_hash() {
             return Err("invalid binary run event schema hash");
@@ -7280,6 +7288,11 @@ fn read_u64_le(bytes: &[u8], offset: usize) -> Result<u64, &'static str> {
             .try_into()
             .map_err(|_| "invalid binary run event u64")?,
     ))
+}
+
+fn read_usize_le(bytes: &[u8], offset: usize) -> Result<usize, &'static str> {
+    usize::try_from(read_u64_le(bytes, offset)?)
+        .map_err(|_| "binary run event integer exceeds target width")
 }
 
 fn read_u128_le(bytes: &[u8], offset: usize) -> Result<u128, &'static str> {
