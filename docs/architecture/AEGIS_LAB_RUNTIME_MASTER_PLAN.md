@@ -4072,6 +4072,62 @@ prevents under-approximate future selection, but remains `SHADOW`: no test is
 skipped, promoted or deleted, and calibration, external anchors, hosted
 verification and release authority remain unproven.
 
+**AESE milestone closure recorded at source state `8fd3493` (2026-09-03):**
+
+The following envelope was captured immediately after the single push of
+source state `8fd3493`; later documentation-only commits do not rewrite this
+historical evidence record.
+
+```text
+SOURCE_HEAD: 8fd349305f4fb4ddc9ab193e5adbef63bcbf0810
+BRANCH: main
+ORIGIN_MAIN: 8fd349305f4fb4ddc9ab193e5adbef63bcbf0810
+WORKTREE_STATUS: CLEAN
+WORKTREE_EPOCH: 75d238151e635de6492e609449a421e9ae77651035316d2c68855139ea885c59
+
+LOCAL_IMPLEMENTATION: COMPLETE_FOR_CURRENT_SCOPE
+LOCAL_VERIFICATION: PASS_FOR_DECLARED_LOCAL_SCOPE
+HOSTED_VERIFICATION: BLOCKED_EXTERNAL
+RELEASE_STATUS: NOT_READY / BLOCKED_EXTERNAL
+
+CURRENT_PHASE_BLOCKERS: NONE_FOR_LOCAL_AESE_DEVELOPMENT
+PROJECT_WIDE_UNRESOLVED: LAB-AUTH-001 OPEN_LOCAL; LAB-BROWSER-002,
+  LAB-RESEARCH-003, LAB-PHYS-004, LAB-BENCH-005, LAB-OPS-007 OPEN_EXTERNAL;
+  LAB-RELEASE-006 BLOCKED_EXTERNAL
+
+AESE_PHASE: PHASE_0/1/2_SHADOW_CONTINUATION
+AESE_MODE: SHADOW
+EXISTING_TESTS_MAPPED: 9/117 evidence surfaces exact; 108 remain NOT_MAPPED
+EXISTING_TESTS_SUPERSEDED: 0
+EXISTING_TESTS_DELETED: 0
+KNOWN_REGRESSIONS_OLD_SYSTEM_CAUGHT: NOT_MEASURED — no paired campaign
+KNOWN_REGRESSIONS_AESE_CAUGHT: NOT_MEASURED — no paired campaign
+CRITICAL_MISSES: NOT_MEASURED — shadow comparison has not run
+LOCAL_CPU_COST_OLD: NOT_MEASURED
+LOCAL_CPU_COST_NEW: NOT_MEASURED
+WALL_TIME_OLD: NOT_MEASURED — no paired baseline
+WALL_TIME_NEW: NOT_MEASURED — grouped regression timing is not a paired saving claim
+HOSTED_MINUTES_OLD: NOT_MEASURED — hosted jobs had no allocated runner
+HOSTED_MINUTES_NEW: NOT_MEASURED — no hosted execution requested
+MODEL_STATUS: local schemas and fail-closed guards only; calibration NOT_STARTED
+OOD_STATUS: local classification is fail-closed; external domain validation NOT_VERIFIED
+STATISTICAL_VALIDATION: stopping rules implemented; calibrated error/coverage NOT_MEASURED
+
+SAFE_TO_CONTINUE = YES
+SAFE_TO_ENABLE_SELECTIVE_TESTING = NO
+SAFE_TO_DELETE_LEGACY_TESTS = NO
+SAFE_TO_ENABLE_RELEASE_AUTHORITY = NO
+```
+
+The local Python regression is **416/416 PASS** with deprecation warnings
+treated as errors: 350 Lab-runtime tests, 50 gate/contract tests and 16 AESE
+inventory/graph/preflight tests. Inventory, graph, document-consistency and
+diff gates pass; the Rust 443/443 package-library evidence remains valid from
+the prior source-bound run because this milestone changed no Rust source.
+This record is local evidence only. No hosted workflow was rerun, no CI result
+is inferred, no benchmark savings are claimed, and all legacy runners remain
+authoritative while unknown dependencies widen conservatively.
+
 **Historical checkout identity for the prior continuation (2026-09-03):**
 `SOURCE_HEAD = 0d1e9c3eb4db86aea0fee40134f5711395e55e27`,
 `WORKTREE_STATUS = CLEAN`, `WORKTREE_EPOCH =
