@@ -231,6 +231,33 @@ class AdaptiveMeasurementResult:
     artifact_hash: str = ""
 
 
+@dataclass(frozen=True)
+class AdaptiveMeasurementSession:
+    """Append-only checkpoint state for the AESE sequential measurement loop."""
+
+    spec: AdaptiveMeasurementSpec
+    warmups: tuple[object, ...] = ()
+    observations: tuple[object, ...] = ()
+
+    def checkpoint(self, *, baseline: float | None = None) -> AdaptiveMeasurementResult:
+        return evaluate_adaptive_measurement(
+            self.spec,
+            self.observations,
+            warmups=self.warmups,
+            baseline=baseline,
+        )
+
+    def append_warmups(self, values: Sequence[object]) -> AdaptiveMeasurementSession:
+        if self.checkpoint().status != "CONTINUE" and self.observations:
+            raise RuntimeError("measurement session is terminal")
+        return AdaptiveMeasurementSession(self.spec, self.warmups + tuple(values), self.observations)
+
+    def append_observations(self, values: Sequence[object]) -> AdaptiveMeasurementSession:
+        if self.checkpoint().status != "CONTINUE":
+            raise RuntimeError("measurement session is terminal")
+        return AdaptiveMeasurementSession(self.spec, self.warmups, self.observations + tuple(values))
+
+
 def evaluate_adaptive_measurement(
     spec: AdaptiveMeasurementSpec,
     observations: Sequence[object],
@@ -433,6 +460,31 @@ class HardwareCapabilityVector:
     @property
     def vector_hash(self) -> str:
         return _hash(self.as_dict())
+
+    @classmethod
+    def from_runtime_profile(cls, profile: Mapping[str, object]) -> HardwareCapabilityVector:
+        """Project only explicitly reported runtime fields; never infer missing data."""
+
+        raw_cpu = profile.get("cpu")
+        raw_os = profile.get("os")
+        cpu: Mapping[str, object] = cast(Mapping[str, object], raw_cpu) if isinstance(raw_cpu, Mapping) else {}
+        os_info: Mapping[str, object] = cast(Mapping[str, object], raw_os) if isinstance(raw_os, Mapping) else {}
+        raw_architecture = cpu.get("architecture")
+        architecture = raw_architecture if isinstance(raw_architecture, str) else None
+        usable = cpu.get("usable_parallelism")
+        logical_cores = usable if type(usable) is int and usable >= 1 else None
+        backend = os_info.get("backend")
+        enforcement = os_info.get("enforcement")
+        os_name = backend if isinstance(backend, str) and backend.strip() else None
+        virtualization = enforcement if isinstance(enforcement, str) and enforcement.strip() else None
+        vector = cls(
+            architecture=architecture,
+            logical_cores=logical_cores,
+            os_name=os_name,
+            virtualization=virtualization,
+        )
+        vector.validate()
+        return vector
 
     def numeric_features(self) -> dict[str, float]:
         self.validate()
@@ -966,6 +1018,7 @@ __all__ = [
     "REGIMES",
     "SIMULATION_CLASSES",
     "AdaptiveMeasurementResult",
+    "AdaptiveMeasurementSession",
     "AdaptiveMeasurementSpec",
     "AnalyticPredictionModel",
     "AnchorCandidate",
