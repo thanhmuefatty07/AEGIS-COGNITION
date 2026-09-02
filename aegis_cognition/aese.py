@@ -87,6 +87,7 @@ _WORKLOAD_INTENSITY_FIELDS: Final[tuple[str, ...]] = (
     "external_service_dependence",
 )
 _SCHEMA_VERSION: Final[str] = "aegis-aese-primitives-v1"
+_INTERVAL_METHOD: Final[str] = "student_t_cornish_fisher_bonferroni_peek_v1"
 
 
 def _is_finite(value: object) -> bool:
@@ -233,7 +234,7 @@ class AdaptiveMeasurementResult:
     raw_observation_hash: str
     contamination_flags: tuple[str, ...]
     failure_reasons: tuple[str, ...]
-    interval_method: str = "student_t_cornish_fisher_v1"
+    interval_method: str = _INTERVAL_METHOD
     artifact_hash: str = ""
 
 
@@ -272,7 +273,15 @@ def evaluate_adaptive_measurement(
     baseline: float | None = None,
     contamination_flags: Sequence[object] = (),
 ) -> AdaptiveMeasurementResult:
-    """Evaluate one sequential checkpoint without peeking or silent filtering."""
+    """Evaluate one sequential checkpoint with conservative peek control.
+
+    A session may checkpoint at any observation count.  The interval therefore
+    spends the pre-registered alpha budget across the maximum number of
+    possible checkpoints (Bonferroni), rather than treating repeated ordinary
+    confidence intervals as independent evidence.  Non-complete blocks and
+    observations beyond the declared budget remain visible and cannot produce
+    a passing result.
+    """
 
     typed_spec = type(spec) is AdaptiveMeasurementSpec
     if typed_spec:
@@ -409,7 +418,11 @@ def evaluate_adaptive_measurement(
     precision_ratio: float | None = None
     if estimate is not None and block_count > 1:
         standard_error = statistics.stdev(block_means) / math.sqrt(block_count)
-        margin = _normal_critical(alpha, block_count - 1) * standard_error
+        # A caller may inspect a session after every appended observation.  A
+        # deterministic Bonferroni allocation keeps the family-wise error
+        # bound conservative under that allowed stopping rule.
+        checkpoint_alpha = alpha / max(maximum, 1)
+        margin = _normal_critical(checkpoint_alpha, block_count - 1) * standard_error
         ci_low, ci_high = estimate - margin, estimate + margin
         precision_ratio = margin / max(abs(estimate), 1e-12)
     elif estimate is not None:
@@ -434,8 +447,15 @@ def evaluate_adaptive_measurement(
         status = "CONTAMINATED"
     elif "autocorrelation_exceeds_bound" in reasons or "drift_exceeds_bound" in reasons:
         status = "UNSTABLE"
-    elif not protocol_valid or container_invalid or "contamination_flags_invalid" in reasons:
+    elif (
+        not protocol_valid
+        or container_invalid
+        or "contamination_flags_invalid" in reasons
+        or "observation_budget_exceeded" in reasons
+    ):
         status = "INSUFFICIENT_EVIDENCE"
+    elif "incomplete_final_block" in reasons:
+        status = "CONTINUE" if len(finite_observations) < maximum else "INSUFFICIENT_EVIDENCE"
     elif floor_met and stable and precision_met and "confidence_interval_does_not_clear_baseline" in reasons:
         status = "FAIL"
     elif floor_met and stable and precision_met:
