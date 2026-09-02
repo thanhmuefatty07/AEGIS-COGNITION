@@ -785,6 +785,14 @@ class AnchorSelectionPlan:
     artifact_hash: str = ""
 
 
+def _coerce_anchor_sequence(value: object) -> Sequence[AnchorObservation] | None:
+    """Return a runtime-checked anchor sequence without coercion."""
+
+    if isinstance(value, (str, bytes, bytearray)) or not isinstance(value, Sequence):
+        return None
+    return cast(Sequence[AnchorObservation], value)
+
+
 def select_anchor_plan(
     candidates: Sequence[AnchorCandidate],
     *,
@@ -910,12 +918,56 @@ def predict_cross_hardware(
     """Predict only inside a measured model domain with reconstructible metadata."""
 
     reasons: list[str] = []
+    model_id = getattr(model, "model_id", "")
+    model_version = getattr(model, "model_version", "")
+    metric = getattr(model, "metric", "")
+    if not isinstance(model_id, str):
+        model_id = ""
+    if not isinstance(model_version, str):
+        model_version = ""
+    if not isinstance(metric, str):
+        metric = ""
+    raw_domain: object = getattr(model, "validated_domain", ())
+    validated_domain = (
+        tuple(cast(Sequence[tuple[str, float, float]], raw_domain))
+        if isinstance(raw_domain, (tuple, list))
+        else ()
+    )
     try:
         model.validate()
         hardware.validate()
         workload.validate()
-    except (TypeError, ValueError, AttributeError) as exc:
+    except (TypeError, ValueError, AttributeError, KeyError, IndexError) as exc:
         reasons.append(f"input_invalid:{type(exc).__name__}")
+    if reasons:
+        payload = {
+            "schema": f"{_SCHEMA_VERSION}-prediction",
+            "model_id": model_id,
+            "model_version": model_version,
+            "metric": metric,
+            "status": "INSUFFICIENT_EVIDENCE",
+            "validated_domain": validated_domain,
+            "nearest_anchor_distance": None,
+            "ood_status": "UNKNOWN",
+            "missing_features": (),
+            "failure_reasons": tuple(dict.fromkeys(reasons)),
+            "anchor_ids": (),
+            "anchor_evidence_hashes": (),
+        }
+        return PredictionResult(
+            model_id=model_id,
+            model_version=model_version,
+            metric=metric,
+            status="INSUFFICIENT_EVIDENCE",
+            estimate=None,
+            prediction_interval=None,
+            validated_domain=validated_domain,
+            nearest_anchor_distance=None,
+            ood_status="UNKNOWN",
+            missing_features=(),
+            failure_reasons=tuple(dict.fromkeys(reasons)),
+            artifact_hash=_hash(payload),
+        )
     features = {**hardware.numeric_features(), **workload.numeric_features()}
     coefficient_names = tuple(name for name, _value in model.coefficients)
     missing = tuple(sorted(name for name in coefficient_names if name not in features))
@@ -931,10 +983,18 @@ def predict_cross_hardware(
     out_of_domain_anchor_count = 0
     duplicate_anchor_count = 0
     seen_anchor_ids: set[str] = set()
-    for anchor in anchors:
+    raw_anchor_values = _coerce_anchor_sequence(anchors)
+    if raw_anchor_values is None:
+        reasons.append("anchors_invalid:TypeError")
+        anchor_values: Sequence[AnchorObservation] = ()
+    else:
+        anchor_values = raw_anchor_values
+    invalid_anchor_count = 0
+    for anchor in anchor_values:
         try:
             anchor_features = anchor.features()
-        except (TypeError, ValueError, AttributeError):
+        except (TypeError, ValueError, AttributeError, KeyError, IndexError):
+            invalid_anchor_count += 1
             continue
         if anchor.anchor_id in seen_anchor_ids:
             duplicate_anchor_count += 1
@@ -948,6 +1008,8 @@ def predict_cross_hardware(
                 out_of_domain_anchor_count += 1
                 continue
             valid_anchors.append((anchor, anchor_features))
+    if invalid_anchor_count:
+        reasons.append("invalid_anchor_observation")
     anchor_evidence_hashes = tuple(
         sorted((anchor.anchor_id, anchor.evidence_hash) for anchor, _features in valid_anchors)
     )
@@ -1011,13 +1073,13 @@ def predict_cross_hardware(
             "anchor_evidence_hashes": anchor_evidence_hashes,
         }
         return PredictionResult(
-            model_id=model.model_id,
-            model_version=model.model_version,
-            metric=model.metric,
+            model_id=model_id,
+            model_version=model_version,
+            metric=metric,
             status="PREDICTED_IN_DOMAIN",
             estimate=estimate,
             prediction_interval=interval,
-            validated_domain=model.validated_domain,
+            validated_domain=validated_domain,
             nearest_anchor_distance=nearest,
             ood_status="IN_DOMAIN",
             missing_features=(),
@@ -1028,11 +1090,11 @@ def predict_cross_hardware(
         )
     payload = {
         "schema": f"{_SCHEMA_VERSION}-prediction",
-        "model_id": model.model_id,
-        "model_version": model.model_version,
-        "metric": model.metric,
+        "model_id": model_id,
+        "model_version": model_version,
+        "metric": metric,
         "status": status,
-        "validated_domain": model.validated_domain,
+        "validated_domain": validated_domain,
         "nearest_anchor_distance": nearest,
         "ood_status": ood,
         "missing_features": missing,
@@ -1041,13 +1103,13 @@ def predict_cross_hardware(
         "anchor_evidence_hashes": anchor_evidence_hashes,
     }
     return PredictionResult(
-        model_id=model.model_id,
-        model_version=model.model_version,
-        metric=model.metric,
+        model_id=model_id,
+        model_version=model_version,
+        metric=metric,
         status=status,
         estimate=None,
         prediction_interval=None,
-        validated_domain=model.validated_domain,
+        validated_domain=validated_domain,
         nearest_anchor_distance=nearest,
         ood_status=ood,
         missing_features=missing,
