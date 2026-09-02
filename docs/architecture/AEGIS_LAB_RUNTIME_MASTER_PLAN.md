@@ -3,7 +3,7 @@ document_id: AEGIS-LAB-RUNTIME-MASTER-PLAN
 document_type: canonical_current_implementation_plan
 status: IN_EXECUTION
 authority: derived_from_checkout_and_evidence_manifest
-applies_to_commit: 4cbc5a24c5d2f3f7d1059c8970b212545af98439
+applies_to_commit: 2768e87e7280cf2a86252fb1e063ab4763778978
 created_at: 2026-08-26
 last_verified_at: 2026-09-03
 supersedes: browser-native-proposal-and-cumulative-harness-roadmap-as-execution-authority
@@ -3166,6 +3166,19 @@ feature-gated FFI smoke, and the complete **441-test** Rust unit suite pass.
 This is an internal ownership split only; it does not prove OS containment,
 full FFI lifetime/allocation behavior or finish the remaining DTO/controller/
 error-family convergence, so M6 remains `OPEN_LOCAL`.
+
+**M6 resource/runtime family extraction continuation (2026-09-03):**
+implementation commit `2768e87` moves the eight hardware, admission, execution
+lane, process-local runtime and resource-sample PyO3 bindings into
+`core/rust/src/ffi/runtime.rs`. The façade re-exports the same names, preserving
+the Python registration surface, JSON schemas, error mapping and the single
+authoritative runtime lock; no consumer or ABI name changed. `cargo fmt --all
+-- --check`, package compilation, feature-gated `ffi_smoke_checks`, the complete
+**441-test** Rust unit suite and `cargo clippy -- -D warnings` pass. This proves
+only an internal ownership reduction for the resource/runtime family; it does
+not prove cross-process single-writer behavior, FFI-wide lifetime/allocation
+safety, controller/DTO/error-family convergence, or external containment, so
+M6 remains `OPEN_LOCAL`.
 
 #### M7 — Replay/archive và recovery cutover
 
