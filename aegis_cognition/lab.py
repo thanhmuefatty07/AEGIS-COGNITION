@@ -11964,6 +11964,7 @@ class LabApplication:
         if raw_protocol is not None and raw_trials is not None:
             validator_execution_id: str | None = None
             validator_admission_id: str | None = None
+            validator_idempotency_key: str | None = None
             configured_validator = options.get("benchmark_validator")
             validator_runner = (
                 self._resolve_execution_cell(
@@ -11982,12 +11983,16 @@ class LabApplication:
                 "protocol": raw_protocol,
                 "trials": raw_trials,
             }
+            raw_validator_timeout = options.get("benchmark_validator_timeout_seconds", 5.0)
+            validator_timeout_seconds = (
+                float(raw_validator_timeout) if _is_finite_number(raw_validator_timeout) else raw_validator_timeout
+            )
             validator_policy_payload = {
                 "schema": "aegis-benchmark-validator-policy-v1",
                 "mode": "isolated_process"
                 if options.get("benchmark_validator_command") is not None
                 else "in_process_callback",
-                "timeout_seconds": options.get("benchmark_validator_timeout_seconds", 5.0),
+                "timeout_seconds": validator_timeout_seconds,
             }
             validator_requested = (
                 configured_validator is not None
@@ -12008,6 +12013,18 @@ class LabApplication:
                     raise TypeError("benchmark trials must be a list or tuple")
                 if validator_requested:
                     validator_input_payload["trials"] = raw_trials
+                    if not _is_finite_number(raw_validator_timeout) or validator_timeout_seconds <= 0:
+                        raise ValueError("benchmark validator timeout must be finite and positive")
+                    validator_idempotency_key = _hash(
+                        {
+                            "schema": "aegis-benchmark-validator-idempotency-key-v1",
+                            "mission_id": run.mission_id,
+                            "execution_id": "benchmark-validator-1",
+                            "input_hash": _hash(validator_input_payload),
+                            "policy_hash": _hash(validator_policy_payload),
+                        }
+                    )
+                    validator_policy_payload["idempotency_key"] = validator_idempotency_key
                     validator_execution_id, validator_admission_id = run.admit_tool_execution(
                         tool_name="benchmark.hidden_validator",
                         input_payload=validator_input_payload,
@@ -12017,6 +12034,8 @@ class LabApplication:
                         expected_observation_schema="aegis-benchmark-result-v2",
                         stop_rule="single_call",
                         execution_id="benchmark-validator-1",
+                        idempotency_key=validator_idempotency_key,
+                        timeout_seconds=validator_timeout_seconds,
                     )
                 raw_environment = options.get("benchmark_environment")
                 if isinstance(raw_environment, EnvironmentFingerprint):
@@ -12048,7 +12067,7 @@ class LabApplication:
                     environment=environment,
                     validator=validator_for_evaluation,
                     validator_command=options.get("benchmark_validator_command"),
-                    validator_timeout_seconds=options.get("benchmark_validator_timeout_seconds", 5.0),
+                    validator_timeout_seconds=validator_timeout_seconds,
                     validator_max_output_bytes=options.get("benchmark_validator_max_output_bytes", 65_536),
                 )
                 benchmark_payload = asdict(benchmark_result)
@@ -12065,6 +12084,8 @@ class LabApplication:
                         expected_observation_schema="aegis-benchmark-result-v2",
                         stop_rule="single_call",
                         status="SUCCESS" if benchmark_result.status == "PASS" else "REJECTED",
+                        idempotency_key=validator_idempotency_key,
+                        timeout_seconds=validator_timeout_seconds,
                     )
                     validator_execution_id = None
                     validator_admission_id = None
@@ -12092,6 +12113,8 @@ class LabApplication:
                             expected_observation_schema="aegis-benchmark-result-v2",
                             stop_rule="single_call",
                             status="REJECTED",
+                            idempotency_key=validator_idempotency_key,
+                            timeout_seconds=validator_timeout_seconds,
                         )
                 run.record_blocker(f"benchmark_invalid:{type(exc).__name__}")
         # Keep the run non-terminal while the final model call is admitted and
