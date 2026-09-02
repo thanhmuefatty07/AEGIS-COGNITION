@@ -3,7 +3,7 @@ document_id: AEGIS-LAB-RUNTIME-MASTER-PLAN
 document_type: canonical_current_implementation_plan
 status: IN_EXECUTION
 authority: derived_from_checkout_and_evidence_manifest
-applies_to_commit: f5c6eec863d0e1780e6361ce3001aee2a016104e
+applies_to_commit: 6eeb06bc6a405a6e022ab20df2116aeea4d4c82c
 created_at: 2026-08-26
 last_verified_at: 2026-09-02
 supersedes: browser-native-proposal-and-cumulative-harness-roadmap-as-execution-authority
@@ -3496,6 +3496,18 @@ one local quota-accounting defect only; it does not prove browser process/OS
 containment, DNS-rebinding resistance, or hosted cross-domain enforcement.
 `LAB-BROWSER-002` remains `OPEN_EXTERNAL` and `LAB-AUTH-001` remains
 `OPEN_LOCAL`.
+
+**M5 provider-timeout continuation (2026-09-02):** `SearchProgramExecutor`
+now applies its finite `timeout_seconds` to async query-provider calls with
+`asyncio.wait_for`, so a cooperative hanging provider cannot leave a research
+operation pending indefinitely. Regression coverage uses a bounded
+0.01-second hanging provider and expects `TimeoutError`; this is an
+async/cooperative deadline only and does not prove interruption of a blocking
+synchronous provider, arbitrary descendants or hosted-provider behavior. The
+full Python suite is **354 passed** under
+`-W error::DeprecationWarning`; focused Ruff and Pyright checks are clean. Live
+provider semantics remain external, so `LAB-RESEARCH-003` remains
+`OPEN_EXTERNAL`.
 
 Không được gọi toàn hệ thống “production-ready” khi bất kỳ gate bắt buộc nào
 ở trên còn `OPEN_*`, `BLOCKED_*`, `UNKNOWN` hoặc chỉ có fixture/mock evidence.
