@@ -9739,6 +9739,13 @@ class LabApplication:
                     )
                 except asyncio.CancelledError:
                     if admission_id:
+                        if not counted:
+                            # An admitted actor action may have reached the
+                            # external session before cancellation.  Consume
+                            # the quota just as the rejection path does so a
+                            # relaunch cannot turn an unknown side effect into
+                            # an unbounded retry stream.
+                            browser_cell.record()
                         run.record_browser_action(
                             action_id=action_id,
                             admission_id=admission_id,
@@ -11209,6 +11216,10 @@ class LabApplication:
                         )
                     except asyncio.CancelledError:
                         if admission_id:
+                            if not action_counted:
+                                # Cancellation is not evidence that the
+                                # already-admitted actor action had no effect.
+                                browser_cell.record()
                             try:
                                 run.record_browser_action(
                                     action_id=action_id,
