@@ -204,8 +204,8 @@
   "limitations": [
     "no live provider/browser/OS descendant failure induced"
   ],
-  "HEAD": "e8fbf0b88c8d68e6bc50e2398ce4dcaff98aeb5e",
-  "WORKTREE_EPOCH": "d60eb675bf0942cdb14bc3fc89939864ee97df7d32eebb1a2e62d17a5215bba9",
-  "generated_at": "2026-09-02T03:49:13.320882+00:00",
+  "HEAD": "78bdc844285041f86e6769683795d9d8706e3f7e",
+  "WORKTREE_EPOCH": "86a717f3b7c2bb3ae59ec17d59b78d7f6f86de75a97f0c7e451bdd96207a5002",
+  "generated_at": "2026-09-02T03:59:43.968758+00:00",
   "method": "aegis-design-closure-reconciliation-v1; direct Git/filesystem/source inspection, prior artifact hash reuse, disposable wheel reconciliation, bounded local probes"
 }
