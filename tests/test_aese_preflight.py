@@ -14,8 +14,13 @@ def test_empty_preflight_widens_and_never_skips() -> None:
 def test_known_code_change_records_affected_claims_without_cutover() -> None:
     plan = build_preflight(["core/rust/src/gt96.rs"])
     assert plan["plan_widened"] is False
+    assert plan["closure_status"] == "EXACT_SOURCE_CLOSURE_SHADOW"
     assert plan["matched_code_ids"]
     assert plan["affected_claim_ids"]
+    assert plan["affected_contract_ids"]
+    assert plan["affected_invariant_ids"]
+    assert plan["affected_verification_ids"]
+    assert plan["affected_evidence_ids"]
     assert plan["direct_cutover"] == "PROHIBITED"
 
 
@@ -23,6 +28,8 @@ def test_unknown_change_widens_conservatively() -> None:
     plan = build_preflight(["new/unmapped/input.txt"])
     assert plan["unknown_paths"] == ["new/unmapped/input.txt"]
     assert plan["plan_widened"] is True
+    assert plan["closure_status"] == "WIDENED_ALL_RETAINED"
+    assert len(plan["affected_verification_ids"]) == 70
     assert plan["unknown_dependency_policy"] == "WIDEN_TO_RETAINED_SUITE"
 
 

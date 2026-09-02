@@ -48,6 +48,10 @@ AESE-2 preflight is advisory and accepts explicit changed paths:
 An empty or unmapped change set widens to the retained suite. The preflight
 does not run, skip, promote or delete evidence.
 
+For an exact mapped source path the preflight records the full affected
+`contract → invariant → verification → evidence → claim` closure. Unknown or
+unmapped paths widen that closure to every retained verification reference.
+
 The local AESE-3–7 primitives are exported from `aegis_cognition`:
 
 ```python
