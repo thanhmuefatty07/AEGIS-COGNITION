@@ -2,30 +2,26 @@ name: aegis-plugins
 
 "on":
   pull_request:
-    # Keep plugin CI focused on executable/build changes; docs are checked
-    # locally and must not create notification-only runs.
-    paths-ignore:
-      - "**/*.md"
-      - "docs/**"
-      - "AEGIS-COGNITION/**"
-      - "planning pdf/**"
-      - ".agents/**"
-      - ".cursor/**"
-      - ".serena/**"
-      - "artifacts/**"
+    paths:
+      - "aegis-plugins/**"
+      - "core/rust/**"
+      - "Cargo.toml"
+      - "Cargo.lock"
+      - "rust-toolchain.toml"
+      - "deny.toml"
+      - "scripts/rust_toolchain.py"
+      - ".github/workflows/aegis-plugins.yml"
   push:
     branches: [main]
-    # Keep plugin CI focused on executable/build changes; docs are checked
-    # locally and must not create notification-only runs.
-    paths-ignore:
-      - "**/*.md"
-      - "docs/**"
-      - "AEGIS-COGNITION/**"
-      - "planning pdf/**"
-      - ".agents/**"
-      - ".cursor/**"
-      - ".serena/**"
-      - "artifacts/**"
+    paths:
+      - "aegis-plugins/**"
+      - "core/rust/**"
+      - "Cargo.toml"
+      - "Cargo.lock"
+      - "rust-toolchain.toml"
+      - "deny.toml"
+      - "scripts/rust_toolchain.py"
+      - ".github/workflows/aegis-plugins.yml"
   workflow_dispatch:
 
 permissions:
