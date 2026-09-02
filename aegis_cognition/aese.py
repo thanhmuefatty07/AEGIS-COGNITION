@@ -646,6 +646,21 @@ class AnchorObservation:
         self.validate()
         return {**self.hardware.numeric_features(), **self.workload.numeric_features()}
 
+    @property
+    def evidence_hash(self) -> str:
+        """Hash the complete validated anchor, not only its feature projection."""
+
+        self.validate()
+        return _hash(
+            {
+                "schema": f"{_SCHEMA_VERSION}-anchor-observation",
+                "anchor_id": self.anchor_id,
+                "hardware": self.hardware.as_dict(),
+                "workload": self.workload.as_dict(),
+                "observed_value": self.observed_value,
+            }
+        )
+
 
 @dataclass(frozen=True)
 class AnalyticPredictionModel:
@@ -707,6 +722,8 @@ class PredictionResult:
     missing_features: tuple[str, ...]
     failure_reasons: tuple[str, ...]
     artifact_hash: str
+    anchor_ids: tuple[str, ...] = ()
+    anchor_evidence_hashes: tuple[tuple[str, str], ...] = ()
 
 
 @dataclass(frozen=True)
@@ -931,6 +948,10 @@ def predict_cross_hardware(
                 out_of_domain_anchor_count += 1
                 continue
             valid_anchors.append((anchor, anchor_features))
+    anchor_evidence_hashes = tuple(
+        sorted((anchor.anchor_id, anchor.evidence_hash) for anchor, _features in valid_anchors)
+    )
+    anchor_ids = tuple(anchor_id for anchor_id, _evidence_hash in anchor_evidence_hashes)
     nearest: float | None = None
     if not missing and valid_anchors:
         distances: list[float] = []
@@ -986,6 +1007,8 @@ def predict_cross_hardware(
             "validated_domain": model.validated_domain,
             "nearest_anchor_distance": nearest,
             "ood_status": "IN_DOMAIN",
+            "anchor_ids": anchor_ids,
+            "anchor_evidence_hashes": anchor_evidence_hashes,
         }
         return PredictionResult(
             model_id=model.model_id,
@@ -1000,6 +1023,8 @@ def predict_cross_hardware(
             missing_features=(),
             failure_reasons=(),
             artifact_hash=_hash(payload),
+            anchor_ids=anchor_ids,
+            anchor_evidence_hashes=anchor_evidence_hashes,
         )
     payload = {
         "schema": f"{_SCHEMA_VERSION}-prediction",
@@ -1012,6 +1037,8 @@ def predict_cross_hardware(
         "ood_status": ood,
         "missing_features": missing,
         "failure_reasons": tuple(dict.fromkeys(reasons)),
+        "anchor_ids": anchor_ids,
+        "anchor_evidence_hashes": anchor_evidence_hashes,
     }
     return PredictionResult(
         model_id=model.model_id,
@@ -1026,6 +1053,8 @@ def predict_cross_hardware(
         missing_features=missing,
         failure_reasons=tuple(dict.fromkeys(reasons)),
         artifact_hash=_hash(payload),
+        anchor_ids=anchor_ids,
+        anchor_evidence_hashes=anchor_evidence_hashes,
     )
 
 
