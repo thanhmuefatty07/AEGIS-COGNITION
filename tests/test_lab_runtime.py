@@ -2321,6 +2321,89 @@ def test_lab_replay_reconciles_open_tool_admission_without_overclaiming() -> Non
     assert restored.verify_event_chain()
 
 
+def test_lab_recovery_preserves_optional_attempt_metadata() -> None:
+    """Recovery must settle modern admissions with their bound metadata."""
+
+    run = LabRun("recover metadata-bound admission", max_steps=2, token_budget=100)
+    execution_id, _ = run.admit_tool_execution(
+        tool_name="provider.primary",
+        input_payload={"task_hash": "a" * 64},
+        policy_payload={"policy": "bounded"},
+        effect_class="model_inference",
+        expected_observation_schema="aegis-provider-attempt-result-v1",
+        stop_rule="provider_route_controller_step",
+        lease_id=1,
+        attempt=1,
+        execution_id="provider-metadata-1",
+        idempotency_key="b" * 64,
+        timeout_seconds=2.5,
+    )
+    restored = LabRun.from_payload(run.to_payload())
+
+    assert restored.reconcile_unsettled_executions(
+        operator_id="operator-1",
+        reason="worker_crash_after_metadata_admission",
+    ) == (("tool_execution_admitted", execution_id),)
+    assert restored.unsettled_execution_admissions() == ()
+    settlement = [
+        event
+        for event in restored.events
+        if event.kind == "tool_execution_recorded"
+        and event.payload.get("execution_id") == execution_id
+    ]
+    assert len(settlement) == 1
+    assert settlement[0].payload["status"] == "REJECTED"
+    assert settlement[0].payload["idempotency_key"] == "b" * 64
+    assert settlement[0].payload["timeout_seconds"] == 2.5
+    assert restored.verify_event_chain()
+
+    experiment_run = _ready_run()
+    experiment_id, _ = experiment_run.admit_experiment_execution(
+        experiment_id="e1",
+        attempt=1,
+        input_payload={"seed": 1},
+        policy_payload={"cell": "simulation"},
+        execution_id="experiment-metadata-1",
+        idempotency_key="c" * 64,
+        timeout_seconds=3.5,
+    )
+    restored_experiment = LabRun.from_payload(experiment_run.to_payload())
+    assert restored_experiment.reconcile_unsettled_executions(
+        operator_id="operator-1",
+        reason="worker_crash_after_experiment_admission",
+    ) == (("experiment_execution_admitted", experiment_id),)
+    assert restored_experiment.unsettled_execution_admissions() == ()
+    experiment_settlement = [
+        event
+        for event in restored_experiment.events
+        if event.kind == "experiment_execution_recorded"
+        and event.payload.get("execution_id") == experiment_id
+    ]
+    assert len(experiment_settlement) == 1
+    assert experiment_settlement[0].payload["status"] == "REJECTED"
+    assert experiment_settlement[0].payload["idempotency_key"] == "c" * 64
+    assert experiment_settlement[0].payload["timeout_seconds"] == 3.5
+    assert restored_experiment.verify_event_chain()
+
+    legacy_run = LabRun("recover metadata-bound tool", max_steps=2, token_budget=100)
+    legacy_tool_id, _ = legacy_run.admit_tool_execution(
+        tool_name="provider.primary",
+        input_payload={"task_hash": "d" * 64},
+        policy_payload={"policy": "bounded"},
+        effect_class="model_inference",
+        execution_id="provider-metadata-legacy-helper",
+        idempotency_key="e" * 64,
+        timeout_seconds=4.5,
+    )
+    restored_legacy = LabRun.from_payload(legacy_run.to_payload())
+    assert restored_legacy.reconcile_unsettled_tool_executions(
+        operator_id="operator-1",
+        reason="worker_crash_after_legacy_helper_admission",
+    ) == (legacy_tool_id,)
+    assert restored_legacy.unsettled_tool_execution_ids() == ()
+    assert restored_legacy.verify_event_chain()
+
+
 def test_lab_replay_reconciles_open_admissions_across_all_execution_lanes() -> None:
     """Recovery closes every admitted lane without inventing a success."""
 
