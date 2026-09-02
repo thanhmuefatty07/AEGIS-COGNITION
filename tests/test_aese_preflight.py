@@ -33,6 +33,14 @@ def test_unknown_change_widens_conservatively() -> None:
     assert plan["closure_status"] == "WIDENED_ALL_RETAINED"
     assert len(plan["affected_verification_ids"]) == 70
     assert plan["unknown_dependency_policy"] == "WIDEN_TO_RETAINED_SUITE"
+    selection = plan["shadow_selection"]
+    assert isinstance(selection, dict)
+    assert len(selection["legacy_would_run_item_ids"]) == 116
+    assert selection["would_reuse_item_ids"] == []
+    assert selection["would_skip_item_ids"] == []
+    assert selection["external_anchor_requests"] == []
+    assert selection["external_anchor_status"] == "NOT_EVALUATED_NO_CANDIDATES"
+    assert selection["execution"] == "NOT_EXECUTED"
 
 
 def test_known_but_unmapped_surface_also_widens() -> None:
