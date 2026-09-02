@@ -541,6 +541,9 @@ class HardwareCapabilityVector:
     def from_runtime_profile(cls, profile: Mapping[str, object]) -> HardwareCapabilityVector:
         """Project only explicitly reported runtime fields; never infer missing data."""
 
+        if not isinstance(profile, Mapping):
+            raise ValueError("runtime profile must be a mapping")
+
         raw_cpu = profile.get("cpu")
         raw_os = profile.get("os")
         cpu: Mapping[str, object] = cast(Mapping[str, object], raw_cpu) if isinstance(raw_cpu, Mapping) else {}
@@ -891,6 +894,9 @@ def select_anchor_plan(
         candidate_values = candidates
     by_id: dict[str, AnchorCandidate] = {}
     for candidate in candidate_values:
+        if type(candidate) is not AnchorCandidate:
+            reasons.append("candidate_invalid:TypeError")
+            continue
         try:
             candidate.validate()
         except (TypeError, ValueError, AttributeError) as exc:
@@ -931,7 +937,11 @@ def select_anchor_plan(
     if reasons or mandatory_unavailable:
         status = (
             "EXTERNAL_VERIFICATION_BLOCKED"
-            if mandatory_unavailable or any(reason.startswith("candidates_invalid:") for reason in reasons)
+            if mandatory_unavailable
+            or any(
+                reason.startswith("candidates_invalid:") or reason.startswith("candidate_invalid:")
+                for reason in reasons
+            )
             else "INSUFFICIENT_BUDGET"
         )
     elif not selected:
@@ -1078,6 +1088,9 @@ def predict_cross_hardware(
         anchor_values = raw_anchor_values
     invalid_anchor_count = 0
     for anchor in anchor_values:
+        if type(anchor) is not AnchorObservation:
+            invalid_anchor_count += 1
+            continue
         try:
             anchor_features = anchor.features()
         except (TypeError, ValueError, AttributeError, KeyError, IndexError):
