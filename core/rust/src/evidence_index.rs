@@ -1251,7 +1251,7 @@ impl AgenticEvidenceProgram {
         let mut scratch = self.query_scratch();
         let results =
             self.execute_into_scratch(lexical_index, exact_index, bitmap_filter, &mut scratch)?;
-        Ok((results.to_vec(), scratch.execution_record(self)))
+        Ok((results.to_vec(), scratch.execution_record(self)?))
     }
 
     pub fn execute_into_scratch<'a>(
@@ -2459,7 +2459,10 @@ impl AgenticEvidenceProgramScratch {
         self.fuel_used = 0;
     }
 
-    fn execution_record(&self, program: &AgenticEvidenceProgram) -> AgenticEvidenceExecutionRecord {
+    fn execution_record(
+        &self,
+        program: &AgenticEvidenceProgram,
+    ) -> Result<AgenticEvidenceExecutionRecord, AgenticEvidenceProgramError> {
         AgenticEvidenceExecutionRecord::new(
             program.program_hash,
             program.index_epoch_hash,
@@ -2468,7 +2471,6 @@ impl AgenticEvidenceProgramScratch {
             &self.working_candidates,
             &self.trace_hashes,
         )
-        .expect("program execution builds a valid replay record")
     }
 }
 
