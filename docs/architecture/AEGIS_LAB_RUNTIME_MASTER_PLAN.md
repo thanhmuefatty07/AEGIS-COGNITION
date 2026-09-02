@@ -3,7 +3,7 @@ document_id: AEGIS-LAB-RUNTIME-MASTER-PLAN
 document_type: canonical_current_implementation_plan
 status: IN_EXECUTION
 authority: derived_from_checkout_and_evidence_manifest
-applies_to_commit: 6eeb06bc6a405a6e022ab20df2116aeea4d4c82c
+applies_to_commit: 8a0786d4ed82bdc9f7666dd9b2439665cdeeab4d
 created_at: 2026-08-26
 last_verified_at: 2026-09-02
 supersedes: browser-native-proposal-and-cumulative-harness-roadmap-as-execution-authority
@@ -3508,6 +3508,33 @@ full Python suite is **354 passed** under
 `-W error::DeprecationWarning`; focused Ruff and Pyright checks are clean. Live
 provider semantics remain external, so `LAB-RESEARCH-003` remains
 `OPEN_EXTERNAL`.
+
+**M2/M5 adapter-timeout continuation (2026-09-02):** the Lab context-retrieval
+cell and both search-program dispatch lanes now apply one finite
+`context_retrieval_timeout_seconds`/`search_timeout_seconds` deadline to the
+whole cooperative adapter call, including custom async executors that do not
+implement their own timeout. Timeout is carried into admission/policy and
+terminal `TIMED_OUT` settlement for context retrieval; search timeout fails
+closed before candidate ingestion. Regression coverage uses bounded hanging
+async adapters and the full Python suite is **356 passed** under
+`-W error::DeprecationWarning`; focused Ruff and Pyright checks are clean.
+This is cooperative async containment only: a blocking synchronous provider,
+thread that ignores cancellation, descendant process or hosted adapter can
+still outlive the deadline and remains `NOT VERIFIED` under
+`LAB-AUTH-001`/`LAB-RESEARCH-003`.
+
+**M1 packaging-smoke continuation (2026-09-02):** the bounded
+`scripts/production_packaging_smoke_gate.py` rerun passed all **19/19** local
+checks at the current source, including canonical root `aegis` ownership,
+core bridge no-console-script ownership, aligned Python support versions,
+Python smoke, Rust CLI smoke, service-manifest and artifact-write checks.
+Recorded local digests are `package_surface_hash=
+688471a82094396c61970a9e924936b275ddf80da883c06220c029ec53ff26b7` and
+`smoke_evidence_hash=
+09c1064ef896c5b8a52150214b70ba0ca99b177760e66fbc846ef69db6b5046b`.
+This refreshes source-level packaging evidence only; clean dependency-complete
+cross-platform installs, signed final-SHA provenance and external deployment
+remain outside local proof, so `LAB-RELEASE-006`/`LAB-OPS-007` stay open.
 
 Không được gọi toàn hệ thống “production-ready” khi bất kỳ gate bắt buộc nào
 ở trên còn `OPEN_*`, `BLOCKED_*`, `UNKNOWN` hoặc chỉ có fixture/mock evidence.
