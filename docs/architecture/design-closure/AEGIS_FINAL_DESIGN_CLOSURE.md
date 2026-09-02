@@ -1,8 +1,8 @@
 # AEGIS — Final Architecture Design-Closure and Evidence Reconciliation
-WORKTREE_EPOCH: 80ba69c4461b300f5edaa104417a877c20a9298fba89ef23554eca7244bdb21c
-HEAD: ac4787ac529c4f15835207e6293b16701b526158
+WORKTREE_EPOCH: f8c833ae1f3793cd0d1f366c9eb567f55f4e562f8cfc245aba00849d8aada1a6
+HEAD: a6ab0b4608d0ee174c251bc4a7db3b01b61c7ea1
 STATUS: PARTIAL_LOCAL
-generated_at: 2026-09-02T02:32:52.862602+00:00
+generated_at: 2026-09-02T02:46:48.282312+00:00
 method: aegis-design-closure-reconciliation-v1; direct Git/filesystem/source inspection, prior artifact hash reuse, disposable wheel reconciliation, bounded local probes
 limitations: local evidence is partial; external-only closure is explicit below
 
@@ -23,7 +23,7 @@ limitations: local evidence is partial; external-only closure is explicit below
 - Python `LabRun` is mutable and payload-bearing; Rust `LabController` conditionally materializes valid typed records while retaining a separate adapter projection. Opaque compatibility labels and adapter-only fields remain projection-only, so projection admission does not prove a single lossless reducer.
 - Source-level field comparison proves semantic/lossy divergence for Mission, Source, Claim, Hypothesis, Experiment, Observation, Artifact, Event, Replay, ExecutionCell, Trust and Retry.
  - Local trust defaults are inconsistent: Agent/Lab `DEV`; AegisAdapter/evidence and Rust `PROD` when unset.
- - The trust-policy schema and subject digest now have one local Python primitive at `core/python/aegis/trust_policy.py`; compatibility defaults remain contextual (`DEV` for Agent/Lab, `PROD` for standalone evidence), while direct native-capable `LabRun` construction now derives the canonical subject. Cross-cell/Rust policy receipts remain open.
+ - The trust-policy schema and subject digest now have one local Python primitive at `core/python/aegis/trust_policy.py`; compatibility defaults remain contextual (`DEV` for Agent/Lab, `PROD` for standalone evidence), while direct native-capable `LabRun` construction and native-required `LabApplication._gateway` now derive/propagate the canonical subject (active-run hash wins when present). Cross-cell/Rust policy receipts remain open.
 - A finite mission-bound envelope now exists for observed Lab-owned effect admissions and is enforced/replayed by Python and Rust; a physical/global external-attempt bound and end-to-end idempotency guarantee remain NOT VERIFIED because provider, SDK, user-runner and descendant behavior is open.
 - `SessionSearchIndex::new(...).unwrap()` is safe for the measured nonzero constant hash and contained by `py_safe`; current `ffi.rs` contains no `Box::leak` in the previously targeted request/error wrappers.
 - No strong delete candidate is proven. `core/rust/src/ffi.rs` is the sole strong split input; no split was performed.
