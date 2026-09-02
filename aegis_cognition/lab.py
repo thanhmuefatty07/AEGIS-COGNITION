@@ -8860,12 +8860,27 @@ class LabApplication:
             if key in options
         }
         trust_policy_hash = options.get("lab_trust_policy_hash")
-        if trust_policy_hash is not None and self._factory_accepts_keyword("trust_policy_hash"):
-            gateway_options["trust_policy_hash"] = trust_policy_hash
         authority_mode = _authority_mode_from_options(
             options, default_trust_level=self.config.trust_level
         )
         require_native = authority_mode is AuthorityMode.NATIVE_REQUIRED
+        # The active reducer is the authoritative subject for an admitted
+        # native run.  Compatibility callers may invoke ``_gateway`` before
+        # a run exists, so derive the same canonical subject from the config
+        # rather than allowing a missing option to reach the adapter as an
+        # unbound gateway.
+        active_run = self._active_run
+        if require_native:
+            if active_run is not None:
+                if type(active_run.trust_policy_hash) is not str:
+                    raise RuntimeError(
+                        "native Lab authority requires an active run trust-policy fence"
+                    )
+                trust_policy_hash = active_run.trust_policy_hash
+            elif trust_policy_hash is None:
+                trust_policy_hash = _trust_policy_hash(self.config.trust_level)
+        if trust_policy_hash is not None and self._factory_accepts_keyword("trust_policy_hash"):
+            gateway_options["trust_policy_hash"] = trust_policy_hash
         if require_native:
             _validate_native_provider_options(options, llm=self.config.llm)
         if self._factory_accepts_keyword("provider_attempt_hook"):
