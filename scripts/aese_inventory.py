@@ -10,6 +10,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import re
 import subprocess
 from pathlib import Path
 from typing import Final
@@ -32,8 +33,19 @@ SCOPES: Final[tuple[tuple[str, str, tuple[str, ...]], ...]] = (
     ("core/rust/tests", "RUST_INTEGRATION_TEST", (".rs",)),
     ("core/rust/benches", "RUST_BENCHMARK", (".rs",)),
     ("fuzz/fuzz_targets", "FUZZ_TARGET", (".rs",)),
+    ("core/rust/src", "RUST_UNIT_TEST", (".rs",)),
     ("scripts", "SCRIPT_OR_GATE", (".py",)),
     (".github/workflows", "HOSTED_WORKFLOW", (".yml", ".yaml")),
+)
+RUST_TEST_RE: Final[re.Pattern[str]] = re.compile(r"#\[(?:cfg\(test\)|test)\]")
+PYTHON_BENCHMARK_STEMS: Final[frozenset[str]] = frozenset(
+    {
+        "benchmark_gate",
+        "benchmark_preflight",
+        "benchmark_wrapper",
+        "communication_payload_benchmark",
+        "resource_policy_benchmark",
+    }
 )
 
 
@@ -104,6 +116,12 @@ def _runner(kind: str, path: str) -> str:
         return "criterion/cargo bench"
     if kind == "FUZZ_TARGET":
         return "cargo fuzz"
+    if kind == "RUST_UNIT_TEST":
+        return "cargo test"
+    if kind == "PYTHON_BENCHMARK":
+        return "python benchmark entrypoint"
+    if kind == "HOSTED_WORKFLOW_JOB":
+        return "GitHub Actions job"
     if kind == "HOSTED_WORKFLOW":
         return "GitHub Actions"
     if path.endswith("suite_evidence.py"):
@@ -111,12 +129,14 @@ def _runner(kind: str, path: str) -> str:
     return "python entrypoint"
 
 
-def _item(path: str, kind: str, scope: str) -> dict[str, object]:
+def _item(path: str, kind: str, scope: str, target: str | None = None) -> dict[str, object]:
     normalized = path.replace("\\", "/")
-    stable_id = f"AESE-{kind}-{hashlib.sha256(normalized.encode()).hexdigest()[:16].upper()}"
+    locator = normalized if target is None else f"{normalized}#{target}"
+    stable_id = f"AESE-{kind}-{hashlib.sha256(locator.encode()).hexdigest()[:16].upper()}"
     return {
         "stable_id": stable_id,
         "path": normalized,
+        "target": target,
         "kind": kind,
         "scope": scope,
         "runner_backend": _runner(kind, normalized),
@@ -157,8 +177,22 @@ def build_inventory(root: Path = ROOT) -> dict[str, object]:
         if scoped is None:
             continue
         kind, scope = scoped
+        if kind == "RUST_UNIT_TEST" and not RUST_TEST_RE.search(
+            (ROOT / path).read_text(encoding="utf-8")
+        ):
+            continue
+        if kind == "SCRIPT_OR_GATE" and Path(path).stem in PYTHON_BENCHMARK_STEMS:
+            kind = "PYTHON_BENCHMARK"
         selected.append(_item(path, kind, scope))
         selected_paths.add(path)
+        if kind == "HOSTED_WORKFLOW":
+            workflow_text = (ROOT / path).read_text(encoding="utf-8")
+            jobs_section = workflow_text.split("\njobs:\n", 1)
+            jobs_text = jobs_section[1] if len(jobs_section) == 2 else ""
+            selected.extend(
+                _item(path, "HOSTED_WORKFLOW_JOB", scope, match.group(1))
+                for match in re.finditer(r"^  ([A-Za-z0-9_-]+):\s*$", jobs_text, re.MULTILINE)
+            )
 
     head = _run_git("rev-parse", "HEAD").strip()
     diff = subprocess.run(
@@ -179,8 +213,8 @@ def build_inventory(root: Path = ROOT) -> dict[str, object]:
         disposition = str(entry["migration_disposition"])
         dispositions[disposition] = dispositions.get(disposition, 0) + 1
     source_tree_material = b"".join(
-        f"{entry['path']}\0{_sha256_file(ROOT / str(entry['path']))}\n".encode()
-        for entry in sorted(selected, key=lambda value: str(value["path"]))
+        f"{path}\0{_sha256_file(ROOT / path)}\n".encode()
+        for path in sorted(selected_paths)
     )
     return {
         "schema": "aese-current-evidence-system-inventory-v1",
@@ -198,6 +232,7 @@ def build_inventory(root: Path = ROOT) -> dict[str, object]:
             "inventoried_items": len(selected),
             "represented_paths": len(selected_paths),
             "missing_scopes": len(missing),
+            "workflow_jobs": sum(1 for entry in selected if entry["kind"] == "HOSTED_WORKFLOW_JOB"),
         },
         "missing_scopes": missing,
         "disposition_counts": dispositions,
