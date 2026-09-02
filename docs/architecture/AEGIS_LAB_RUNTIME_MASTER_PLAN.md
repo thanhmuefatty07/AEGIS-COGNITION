@@ -3,7 +3,7 @@ document_id: AEGIS-LAB-RUNTIME-MASTER-PLAN
 document_type: canonical_current_implementation_plan
 status: IN_EXECUTION
 authority: derived_from_checkout_and_evidence_manifest
-applies_to_commit: acf4e1c6ce29b4f6e7f575b847c8a4de298e68cc
+applies_to_commit: 81115432fca328ba6f7776a6cb3ad6d89a9679a6
 created_at: 2026-08-26
 last_verified_at: 2026-09-02
 supersedes: browser-native-proposal-and-cumulative-harness-roadmap-as-execution-authority
@@ -3398,16 +3398,19 @@ randomized latency/copy-count distributions, external independent verification,
 or final release provenance. Therefore the replay/recovery gate remains
 `PARTIAL_LOCAL`, M7 is not passed, and no release status changes.
 
-**Repository synchronization continuation (2026-09-02):** all local semantic
-changes in this convergence slice are committed as
-`3318630c067d2f37a4bd770a37ee9d1031ab6649` on `main` and pushed to
-`origin/main`; the working tree is clean and the remote/local revision counts
-are equal. This closes repository synchronization for the current slice only.
-The tracked evidence template still deliberately contains `CHECKOUT_HEAD`,
-and no signer, hosted CI/release/deployment IDs or independent final-SHA
-attestation exist, so `LAB-RELEASE-006` remains `BLOCKED_EXTERNAL` and the
-evidence-consistency template must continue to fail closed rather than be
-edited by hand.
+**Repository synchronization continuation (2026-09-02, latest):** the local
+browser-gateway cancellation hardening is committed in source history after
+the preceding `acf4e1c6ce29b4f6e7f575b847c8a4de298e68cc` fence commit; the
+native-edge registry hardening is committed as
+`81115432fca328ba6f7776a6cb3ad6d89a9679a6`. The
+accompanying plan, contract inventory and regenerated closure views are kept
+in the same pushed `main` line; the final parity check records
+`HEAD == origin/main`, ahead/behind `0/0`, and a clean working tree. This
+closes repository synchronization for the current slice only. The tracked
+evidence template still deliberately contains `CHECKOUT_HEAD`, and no signer,
+hosted CI/release/deployment IDs or independent final-SHA attestation exist,
+so `LAB-RELEASE-006` remains `BLOCKED_EXTERNAL` and the evidence-consistency
+template must continue to fail closed rather than be edited by hand.
 
 **M7 manifest-version continuation (2026-09-02):** the segmented replay
 manifest now serializes the explicit schema marker
@@ -3452,10 +3455,10 @@ explicitly narrowed to unobservable/external attempts rather than an absent
 runtime admission budget.
 
 **Design-closure regeneration continuation (2026-09-02):** the bounded
-`design_closure_collect.py` audit was rerun against the clean pushed checkout.
-The generated Markdown and 23 JSON views now bind the current `HEAD` and a
-collector-computed `WORKTREE_EPOCH` (the exact values are retained in the
-generated artifacts rather than duplicated in this plan).
+`design_closure_collect.py` audit is rerun after each source/documentation
+slice while documentation changes are in the working tree; the generated
+Markdown and 23 JSON views retain the exact source `HEAD` and collector-
+computed `WORKTREE_EPOCH` in the artifacts rather than duplicating them here.
 `scripts/document_consistency_gate.py` and JSON parsing pass. The regenerated
 retry view records the new mission-bound observed-admission envelope while
 retaining `NOT VERIFIED` for physical requests, provider/SDK/user-runner
