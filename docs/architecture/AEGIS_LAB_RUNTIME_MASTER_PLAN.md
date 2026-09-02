@@ -3,7 +3,7 @@ document_id: AEGIS-LAB-RUNTIME-MASTER-PLAN
 document_type: canonical_current_implementation_plan
 status: IN_EXECUTION
 authority: derived_from_checkout_and_evidence_manifest
-applies_to_commit: 0d1e9c3eb4db86aea0fee40134f5711395e55e27
+applies_to_commit: 8837d02fb762afea305a64c30e386b043e56ad25
 created_at: 2026-08-26
 last_verified_at: 2026-09-03
 supersedes: browser-native-proposal-and-cumulative-harness-roadmap-as-execution-authority
@@ -169,7 +169,7 @@ hiện tại và không được dùng để chứng minh checkout mới:
   structural/presence checks, không phải proof rằng Lab behavior hoạt động.
 
 Checkout implementation hiện hành cho migration node này là
-`0d1e9c3eb4db86aea0fee40134f5711395e55e27`, với worktree sạch và
+`8837d02fb762afea305a64c30e386b043e56ad25`, với worktree sạch và
 `origin/main` parity được ghi nhận trong snapshot closure mới nhất. Regression
 Python/cross-language trên CPython 3.11 sau hardening là **489 passed**;
 registry AESE vẫn giữ 116 item, graph 35 claim/70 verification reference và
@@ -3874,7 +3874,22 @@ validated hardware, workload, or observed value changes, while reordering the
 same set remains deterministic. This improves local provenance reconstruction;
 it does not establish model calibration or external evidence quality.
 
-**Current checkout identity for this continuation (2026-09-03):**
+**AESE malformed-input fail-closed continuation (2026-09-03):**
+implementation commit `8837d02fb762afea305a64c30e386b043e56ad25` closes a
+runtime gap in `predict_cross_hardware`: malformed model, target hardware,
+target workload, non-sequence anchor containers, and invalid anchor entries now
+return a typed `INSUFFICIENT_EVIDENCE` result instead of escaping through
+metadata or feature extraction. Invalid anchor records are retained as a
+failure reason, so they cannot be silently discarded to manufacture the
+two-anchor minimum. The guard is covered by focused negative tests for each
+boundary and the existing OOD, duplicate-identity, availability, and
+provenance cases. The AESE primitive plus preflight suite passes **28 tests**
+with deprecation warnings treated as errors; Ruff and Pyright pass for the
+touched files. This is local input-integrity evidence only: it does not prove
+model validity, calibration, physical-energy measurement, external-provider
+freshness, independent replication, or release authority.
+
+**Historical checkout identity for the prior continuation (2026-09-03):**
 `SOURCE_HEAD = 0d1e9c3eb4db86aea0fee40134f5711395e55e27`,
 `WORKTREE_STATUS = CLEAN`, `WORKTREE_EPOCH =
 ddad61ab234932d25c4459a8106140b4c04e688fb3e397d86381c12629bc9301`, and the
