@@ -588,6 +588,16 @@ def test_anchor_planner_rejects_planned_cost_overflow() -> None:
     assert "planned_cost_overflow" in plan.failure_reasons
 
 
+def test_anchor_planner_rejects_duplicate_ids_without_exposing_partial_plan() -> None:
+    candidate = AnchorCandidate("linux", "linux", 1.0)
+    plan = select_anchor_plan([candidate, candidate], budget_seconds=10.0)
+
+    assert plan.status == "EXTERNAL_VERIFICATION_BLOCKED"
+    assert plan.selected_anchor_ids == ()
+    assert plan.planned_cost_seconds == 0.0
+    assert "duplicate_anchor_id" in plan.failure_reasons
+
+
 def test_anchor_candidate_rejects_lossy_availability_flag() -> None:
     with pytest.raises(ValueError, match="priority flags"):
         AnchorCandidate("linux", "linux", 1.0, available="false").validate()  # type: ignore[arg-type]

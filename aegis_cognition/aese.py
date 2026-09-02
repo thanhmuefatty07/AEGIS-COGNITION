@@ -951,6 +951,7 @@ def select_anchor_plan(
             continue
         if candidate.anchor_id in by_id:
             reasons.append("duplicate_anchor_id")
+            input_invalid = True
             continue
         by_id[candidate.anchor_id] = candidate
     ordered = sorted(by_id.values(), key=lambda item: item.priority_key(), reverse=True)
