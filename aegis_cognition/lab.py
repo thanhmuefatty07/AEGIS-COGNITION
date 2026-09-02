@@ -6154,6 +6154,8 @@ class LabRun:
                         status="REJECTED",
                         input_hash=str(admission["input_hash"]),
                         policy_hash=str(admission["policy_hash"]),
+                        idempotency_key=cast(str | None, admission.get("idempotency_key")),
+                        timeout_seconds=cast(float | None, admission.get("timeout_seconds")),
                     )
                 elif admission_kind == "experiment_execution_admitted":
                     self.record_experiment_execution(
@@ -6168,6 +6170,8 @@ class LabRun:
                         status="REJECTED",
                         input_hash=str(admission["input_hash"]),
                         policy_hash=str(admission["policy_hash"]),
+                        idempotency_key=cast(str | None, admission.get("idempotency_key")),
+                        timeout_seconds=cast(float | None, admission.get("timeout_seconds")),
                     )
                 elif admission_kind == "research_program_admitted":
                     self.record_research_program(
@@ -6323,6 +6327,8 @@ class LabRun:
                 status="CANCELLED" if self.state == "aborted" else "REJECTED",
                 input_hash=str(admission["input_hash"]),
                 policy_hash=str(admission["policy_hash"]),
+                idempotency_key=cast(str | None, admission.get("idempotency_key")),
+                timeout_seconds=cast(float | None, admission.get("timeout_seconds")),
             )
         if self.state not in {"blocked", "aborted"}:
             self.transition("blocked")
