@@ -7314,6 +7314,67 @@ def test_lab_context_retrieval_is_admitted_and_hash_bound() -> None:
     assert not run.blockers
 
 
+def test_lab_context_retrieval_timeout_settles_terminal() -> None:
+    import asyncio
+
+    async def retrieve(*, query: str, **_: object) -> str:
+        del query
+        await asyncio.Event().wait()
+        return "unreachable"
+
+    app = LabApplication(
+        config=SimpleNamespace(
+            trust_level="DEV",
+            options={"context_retrieval_timeout_seconds": 0.01},
+            max_steps=3,
+        ),
+        gateway_factory=lambda **_: None,
+        telemetry=SimpleNamespace(),
+        correlation=SimpleNamespace(),
+        context_retriever=retrieve,
+    )
+    run = _ready_run()
+    app._prepare_execution_cells(run, app.config.options)
+
+    assert asyncio.run(app._run_context_retrieval(run, app.config.options)) == ""
+    settled = [
+        event
+        for event in run.events
+        if event.kind == "tool_execution_recorded"
+        and event.payload["tool_name"] == "memory.search_past"
+    ]
+    assert len(settled) == 1
+    assert settled[0].payload["status"] == "TIMED_OUT"
+    assert settled[0].payload["timeout_seconds"] == 0.01
+    assert "context_retrieval_failed:TimeoutError" in run.blockers
+
+
+def test_lab_custom_search_executor_timeout_is_bounded() -> None:
+    import asyncio
+
+    async def execute(_program: SearchProgram, **_: object) -> list[dict[str, object]]:
+        await asyncio.Event().wait()
+        return []
+
+    app = LabApplication(
+        config=SimpleNamespace(trust_level="DEV", options={}, max_steps=3),
+        gateway_factory=lambda **_: None,
+        telemetry=SimpleNamespace(),
+        correlation=SimpleNamespace(),
+    )
+    program = SearchProgram.from_mappings([{"kind": "query", "text": "bounded"}])
+    with pytest.raises(TimeoutError):
+        asyncio.run(
+            app._run_search_program(
+                program,
+                execute,
+                task="bounded",
+                run_id="run-1",
+                timeout_seconds=0.01,
+            )
+        )
+
+
 def test_context_retrieval_uses_registered_execution_cell_without_compat_hook() -> None:
     import asyncio
 
