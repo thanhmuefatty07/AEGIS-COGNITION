@@ -3,7 +3,7 @@ document_id: AEGIS-LAB-RUNTIME-MASTER-PLAN
 document_type: canonical_current_implementation_plan
 status: IN_EXECUTION
 authority: derived_from_checkout_and_evidence_manifest
-applies_to_commit: 3a817268028c62c927ca36d9a17af969bf121ec2
+applies_to_commit: f924d3108f77f781b7b7a6ce7186bc400f764d69
 created_at: 2026-08-26
 last_verified_at: 2026-09-03
 supersedes: browser-native-proposal-and-cumulative-harness-roadmap-as-execution-authority
@@ -3989,6 +3989,25 @@ with deprecation warnings treated as errors; Ruff and Pyright pass for the
 touched files. This is local input-integrity evidence only: it does not prove
 model validity, calibration, physical-energy measurement, external-provider
 freshness, independent replication, or release authority.
+
+**AESE planner and vector boundary hardening continuation (2026-09-03):**
+implementation commit `f924d3108f77f781b7b7a6ce7186bc400f764d69` closes three
+additional local fail-open paths without changing shadow authority. A malformed
+`contamination_flags` container can no longer accompany otherwise precise
+observations to a `PASS`; the result is typed `INSUFFICIENT_EVIDENCE` while the
+computed estimate and raw-observation hash remain visible for diagnosis.
+`HardwareCapabilityVector.from_mapping` now rejects a non-mapping input and
+renders mixed-type unknown keys deterministically instead of leaking an
+ordering `TypeError`. `select_anchor_plan` rejects non-sequence candidate
+containers as `EXTERNAL_VERIFICATION_BLOCKED` and records the exact input
+failure; it never invokes a runner or treats absent candidates as a valid
+empty plan. Three negative tests cover these boundaries. The focused
+AESE/preflight suite passes **33 tests** and the full local Python regression
+passes **412 tests** with deprecation warnings treated as errors. This remains
+local input-integrity evidence: Ruff cannot parse the repository's `py314`
+target in the installed binary, Pyright is unavailable, and no calibration,
+external anchor, cross-platform, hosted, signed-release or selective-test
+promotion claim is made.
 
 **Historical checkout identity for the prior continuation (2026-09-03):**
 `SOURCE_HEAD = 0d1e9c3eb4db86aea0fee40134f5711395e55e27`,
