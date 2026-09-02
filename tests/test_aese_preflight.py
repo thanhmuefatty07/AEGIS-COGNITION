@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import re
+
 from scripts.aese_preflight import build_preflight
 
 
@@ -51,3 +53,18 @@ def test_preflight_digest_is_deterministic() -> None:
     first = build_preflight(["core/rust/src/gt96.rs", "README.md"])
     second = build_preflight(["README.md", "core/rust/src/gt96.rs"])
     assert first == second
+
+
+def test_preflight_provenance_is_explicit_and_non_promotable() -> None:
+    plan = build_preflight(["core/rust/src/gt96.rs"])
+    provenance = plan["provenance"]
+    assert isinstance(provenance, dict)
+    assert re.fullmatch(r"[0-9a-f]{40}", str(provenance["source_sha"]))
+    assert provenance["worktree_status"] in {"CLEAN", "DIRTY"}
+    assert re.fullmatch(r"[0-9a-f]{64}", str(provenance["worktree_epoch"]))
+    assert re.fullmatch(r"[0-9a-f]{64}", str(provenance["inventory_source_tree_sha256"]))
+    assert re.fullmatch(r"[0-9a-f]{64}", str(provenance["graph_input_sha256"]))
+    assert provenance["validator"] == "scripts/aese_preflight.py"
+    assert provenance["evidence_class"] == "PLANNING_ONLY"
+    assert provenance["claim_scope"] == "LOCAL_CHECKOUT_ONLY"
+    assert provenance["promotion"] == "DISABLED_IN_SHADOW"

@@ -16,7 +16,13 @@ import subprocess
 from pathlib import Path
 from typing import Final, cast
 
-from scripts.aese_inventory import ROOT, build_inventory
+if __package__:
+    from scripts import aese_inventory as _inventory
+else:  # Direct ``python scripts/aese_claim_graph.py`` invocation from the repo root.
+    import aese_inventory as _inventory
+
+ROOT = _inventory.ROOT
+build_inventory = _inventory.build_inventory
 
 
 DEFAULT_OUTPUT: Final[Path] = ROOT / "quality" / "registry" / "current_claim_graph.json"
