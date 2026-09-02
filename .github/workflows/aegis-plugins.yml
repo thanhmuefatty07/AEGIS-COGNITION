@@ -2,12 +2,38 @@ name: aegis-plugins
 
 "on":
   pull_request:
+    # Keep plugin CI focused on executable/build changes; docs are checked
+    # locally and must not create notification-only runs.
+    paths-ignore:
+      - "**/*.md"
+      - "docs/**"
+      - "AEGIS-COGNITION/**"
+      - "planning pdf/**"
+      - ".agents/**"
+      - ".cursor/**"
+      - ".serena/**"
+      - "artifacts/**"
   push:
     branches: [main]
+    # Keep plugin CI focused on executable/build changes; docs are checked
+    # locally and must not create notification-only runs.
+    paths-ignore:
+      - "**/*.md"
+      - "docs/**"
+      - "AEGIS-COGNITION/**"
+      - "planning pdf/**"
+      - ".agents/**"
+      - ".cursor/**"
+      - ".serena/**"
+      - "artifacts/**"
   workflow_dispatch:
 
 permissions:
   contents: read
+
+concurrency:
+  group: aegis-plugins-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   windows-workspace:
