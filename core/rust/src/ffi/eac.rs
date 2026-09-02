@@ -70,7 +70,12 @@ pub fn aegis_eac_batch(calls_json: String, policy: String) -> PyResult<String> {
 
         let tx_policy = match policy.as_str() {
             "HaltOnFailure" => crate::eac::sandbox::TransactionPolicy::HaltOnFailure,
-            _ => crate::eac::sandbox::TransactionPolicy::ContinueOnFailure,
+            "ContinueOnFailure" => crate::eac::sandbox::TransactionPolicy::ContinueOnFailure,
+            _ => {
+                return Err(pyo3::exceptions::PyValueError::new_err(
+                    "invalid transaction policy; expected HaltOnFailure or ContinueOnFailure",
+                ));
+            }
         };
 
         // Default mock executor for the FFI layer — in production this would
@@ -91,6 +96,23 @@ pub fn aegis_eac_batch(calls_json: String, policy: String) -> PyResult<String> {
             pyo3::exceptions::PyRuntimeError::new_err(format!("Serialization failed: {}", e))
         })
     })?
+}
+
+#[cfg(test)]
+mod tests {
+    use super::aegis_eac_batch;
+
+    #[test]
+    fn eac_batch_rejects_unknown_transaction_policy() {
+        let result = aegis_eac_batch("[]".to_owned(), "unknown".to_owned());
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn eac_batch_accepts_explicit_transaction_policy() {
+        let result = aegis_eac_batch("[]".to_owned(), "ContinueOnFailure".to_owned());
+        assert_eq!(result.expect("empty batch should serialize"), "[]");
+    }
 }
 
 /// Persist state to the filesystem with BLAKE3 chain integrity.
