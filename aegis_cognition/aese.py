@@ -268,7 +268,17 @@ def evaluate_adaptive_measurement(
 ) -> AdaptiveMeasurementResult:
     """Evaluate one sequential checkpoint without peeking or silent filtering."""
 
-    protocol_hash = _hash({"schema": f"{_SCHEMA_VERSION}-measurement-spec", **asdict(spec)})
+    try:
+        protocol_payload: dict[str, object] = {
+            "schema": f"{_SCHEMA_VERSION}-measurement-spec",
+            **asdict(spec),
+        }
+    except (TypeError, ValueError, AttributeError):
+        protocol_payload = {
+            "schema": f"{_SCHEMA_VERSION}-measurement-spec",
+            "invalid_spec_type": type(spec).__name__,
+        }
+    protocol_hash = _hash(protocol_payload)
     try:
         raw_observations = tuple(observations)
     except TypeError:
@@ -283,9 +293,11 @@ def evaluate_adaptive_measurement(
     except TypeError:
         raw_flags = ()
     flags = tuple(flag for flag in raw_flags if isinstance(flag, str))
+    protocol_valid = True
     try:
         spec.validate()
     except (TypeError, ValueError, AttributeError) as exc:
+        protocol_valid = False
         reasons.append(f"protocol_invalid:{type(exc).__name__}")
     if (
         type(contamination_flags) not in (list, tuple)
@@ -300,15 +312,78 @@ def evaluate_adaptive_measurement(
     finite_observations = [float(cast(int | float, value)) for value in raw_observations if _is_finite(value)]
     if len(finite_warmups) != len(raw_warmups) or len(finite_observations) != len(raw_observations):
         reasons.append("non_finite_observation")
-    if len(finite_warmups) < max(0, spec.warmup_count):
+    metric = spec.metric if isinstance(spec, AdaptiveMeasurementSpec) and isinstance(spec.metric, str) else ""
+    estimand = spec.estimand if isinstance(spec, AdaptiveMeasurementSpec) and isinstance(spec.estimand, str) else ""
+    direction = (
+        spec.direction
+        if isinstance(spec, AdaptiveMeasurementSpec) and spec.direction in {"higher_is_better", "lower_is_better"}
+        else "lower_is_better"
+    )
+    alpha = (
+        float(spec.alpha)
+        if isinstance(spec, AdaptiveMeasurementSpec) and _is_finite(spec.alpha) and 0.0 < float(spec.alpha) < 0.5
+        else 0.05
+    )
+    warmup_count = (
+        spec.warmup_count
+        if isinstance(spec, AdaptiveMeasurementSpec) and type(spec.warmup_count) is int and spec.warmup_count >= 0
+        else 0
+    )
+    min_observations = (
+        spec.min_observations
+        if isinstance(spec, AdaptiveMeasurementSpec)
+        and type(spec.min_observations) is int
+        and spec.min_observations >= 0
+        else 0
+    )
+    maximum = (
+        spec.max_observations
+        if isinstance(spec, AdaptiveMeasurementSpec)
+        and type(spec.max_observations) is int
+        and spec.max_observations > 0
+        else 0
+    )
+    block_size = (
+        spec.block_size
+        if isinstance(spec, AdaptiveMeasurementSpec) and type(spec.block_size) is int and spec.block_size > 0
+        else 1
+    )
+    relative_precision = (
+        float(spec.relative_precision)
+        if isinstance(spec, AdaptiveMeasurementSpec)
+        and _is_finite(spec.relative_precision)
+        and 0.0 < float(spec.relative_precision) < 1.0
+        else math.inf
+    )
+    absolute_precision = (
+        float(spec.absolute_precision)
+        if isinstance(spec, AdaptiveMeasurementSpec)
+        and spec.absolute_precision is not None
+        and _is_finite(spec.absolute_precision)
+        and float(spec.absolute_precision) > 0.0
+        else None
+    )
+    max_lag1_autocorrelation = (
+        float(spec.max_lag1_autocorrelation)
+        if isinstance(spec, AdaptiveMeasurementSpec)
+        and _is_finite(spec.max_lag1_autocorrelation)
+        and 0.0 < float(spec.max_lag1_autocorrelation) < 1.0
+        else math.inf
+    )
+    max_drift_ratio = (
+        float(spec.max_drift_ratio)
+        if isinstance(spec, AdaptiveMeasurementSpec)
+        and _is_finite(spec.max_drift_ratio)
+        and 0.0 < float(spec.max_drift_ratio) < 1.0
+        else math.inf
+    )
+    if len(finite_warmups) < warmup_count:
         reasons.append("insufficient_warmups")
-    maximum = spec.max_observations if type(spec.max_observations) is int and spec.max_observations > 0 else 0
     analyzed = finite_observations[:maximum] if maximum else []
     if len(finite_observations) > len(analyzed):
         reasons.append("observation_budget_exceeded")
-    if len(analyzed) < max(0, spec.min_observations):
+    if len(analyzed) < min_observations:
         reasons.append("insufficient_observations")
-    block_size = spec.block_size if type(spec.block_size) is int and spec.block_size > 0 else 1
     complete_count = len(analyzed) - (len(analyzed) % block_size)
     if complete_count != len(analyzed):
         reasons.append("incomplete_final_block")
@@ -319,11 +394,10 @@ def evaluate_adaptive_measurement(
     drift = _drift_ratio(block_means)
     if (
         lag is not None
-        and _is_finite(spec.max_lag1_autocorrelation)
-        and abs(lag) > float(spec.max_lag1_autocorrelation)
+        and abs(lag) > max_lag1_autocorrelation
     ):
         reasons.append("autocorrelation_exceeds_bound")
-    if drift is not None and _is_finite(spec.max_drift_ratio) and drift > float(spec.max_drift_ratio):
+    if drift is not None and drift > max_drift_ratio:
         reasons.append("drift_exceeds_bound")
     estimate: float | None = statistics.fmean(block_means) if block_means else None
     ci_low: float | None = None
@@ -331,7 +405,7 @@ def evaluate_adaptive_measurement(
     precision_ratio: float | None = None
     if estimate is not None and block_count > 1:
         standard_error = statistics.stdev(block_means) / math.sqrt(block_count)
-        margin = _normal_critical(float(spec.alpha), block_count - 1) * standard_error
+        margin = _normal_critical(alpha, block_count - 1) * standard_error
         ci_low, ci_high = estimate - margin, estimate + margin
         precision_ratio = margin / max(abs(estimate), 1e-12)
     elif estimate is not None:
@@ -341,26 +415,28 @@ def evaluate_adaptive_measurement(
         reasons.append("baseline_invalid")
         baseline = None
     stable = not any(reason in reasons for reason in ("autocorrelation_exceeds_bound", "drift_exceeds_bound"))
-    floor_met = len(finite_warmups) >= max(0, spec.warmup_count) and len(values) >= max(0, spec.min_observations)
-    precision_met = precision_ratio is not None and precision_ratio <= float(spec.relative_precision)
-    if spec.absolute_precision is not None and ci_low is not None and ci_high is not None:
-        precision_met = precision_met and (ci_high - ci_low) / 2.0 <= float(spec.absolute_precision)
+    floor_met = len(finite_warmups) >= warmup_count and len(values) >= min_observations
+    precision_met = precision_ratio is not None and precision_ratio <= relative_precision
+    if absolute_precision is not None and ci_low is not None and ci_high is not None:
+        precision_met = precision_met and (ci_high - ci_low) / 2.0 <= absolute_precision
     if floor_met and not precision_met:
         reasons.append("precision_not_met")
     if floor_met and baseline is not None and ci_low is not None and ci_high is not None:
-        if spec.direction == "higher_is_better" and ci_low <= float(baseline):
+        if direction == "higher_is_better" and ci_low <= float(baseline):
             reasons.append("confidence_interval_does_not_clear_baseline")
-        if spec.direction == "lower_is_better" and ci_high >= float(baseline):
+        if direction == "lower_is_better" and ci_high >= float(baseline):
             reasons.append("confidence_interval_does_not_clear_baseline")
     if "contamination_detected" in reasons or "non_finite_observation" in reasons:
         status = "CONTAMINATED"
     elif "autocorrelation_exceeds_bound" in reasons or "drift_exceeds_bound" in reasons:
         status = "UNSTABLE"
+    elif not protocol_valid:
+        status = "INSUFFICIENT_EVIDENCE"
     elif floor_met and stable and precision_met and "confidence_interval_does_not_clear_baseline" in reasons:
         status = "FAIL"
     elif floor_met and stable and precision_met:
         status = "PASS"
-    elif "protocol_invalid" in " ".join(reasons) or len(finite_observations) >= maximum > 0:
+    elif len(finite_observations) >= maximum > 0:
         status = "INSUFFICIENT_EVIDENCE"
     else:
         status = "CONTINUE"
@@ -369,7 +445,7 @@ def evaluate_adaptive_measurement(
         "schema": f"{_SCHEMA_VERSION}-measurement-result",
         "protocol_hash": protocol_hash,
         "status": status,
-        "metric": spec.metric,
+        "metric": metric,
         "estimate": estimate,
         "ci_low": ci_low,
         "ci_high": ci_high,
@@ -388,8 +464,8 @@ def evaluate_adaptive_measurement(
     return AdaptiveMeasurementResult(
         protocol_hash=protocol_hash,
         status=status,
-        metric=spec.metric,
-        estimand=spec.estimand,
+        metric=metric,
+        estimand=estimand,
         estimate=estimate,
         ci_low=ci_low,
         ci_high=ci_high,

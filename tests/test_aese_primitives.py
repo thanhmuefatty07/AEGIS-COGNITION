@@ -66,6 +66,22 @@ def test_adaptive_measurement_baseline_failure_is_not_a_pass() -> None:
     assert "confidence_interval_does_not_clear_baseline" in result.failure_reasons
 
 
+def test_adaptive_measurement_malformed_protocol_fails_closed_without_raising() -> None:
+    malformed = AdaptiveMeasurementSpec(metric="latency_ms", min_observations="30")  # type: ignore[arg-type]
+    result = evaluate_adaptive_measurement(malformed, [1.0] * 30, warmups=[0.0] * 10)
+    assert result.status == "INSUFFICIENT_EVIDENCE"
+    assert result.metric == "latency_ms"
+    assert any(reason.startswith("protocol_invalid:") for reason in result.failure_reasons)
+
+
+def test_adaptive_measurement_non_dataclass_protocol_returns_typed_failure() -> None:
+    result = evaluate_adaptive_measurement(None, [1.0] * 30)  # type: ignore[arg-type]
+    assert result.status == "INSUFFICIENT_EVIDENCE"
+    assert result.metric == ""
+    assert result.estimate is None
+    assert any(reason.startswith("protocol_invalid:") for reason in result.failure_reasons)
+
+
 def test_adaptive_measurement_session_is_append_only_and_stops_at_terminal_status() -> None:
     spec = AdaptiveMeasurementSpec(metric="latency_ms", warmup_count=2)
     session = AdaptiveMeasurementSession(spec).append_warmups([0.0, 0.0])
