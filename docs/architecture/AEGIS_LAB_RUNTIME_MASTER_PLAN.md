@@ -3690,6 +3690,23 @@ This refreshes source-level packaging evidence only; clean dependency-complete
 cross-platform installs, signed final-SHA provenance and external deployment
 remain outside local proof, so `LAB-RELEASE-006`/`LAB-OPS-007` stay open.
 
+**AESE Phase 0 inventory continuation (2026-09-02):** the attached
+`AEGIS_ADAPTIVE_EVIDENCE_SYSTEM_IMPLEMENTATION_DIRECTIVE.md` was reconciled as
+an implementation directive, not as current status authority; its recorded
+GitHub HEAD is historical and is not substituted for the checkout state. The
+new bounded generator `scripts/aese_inventory.py` emits
+`quality/registry/current_inventory.json` with a source-tree digest and
+provenance. It inventories **76** tracked evidence surfaces: 7 Python test
+files, 1 Rust integration test, 5 Rust benchmarks, 4 fuzz targets, 55 Python
+scripts/gates and 4 hosted workflows; no scope is missing. Every item is
+conservatively `RETAIN_UNCHANGED`, with claim/owner/cost/platform/failure
+mapping left `UNKNOWN`/`NOT_MAPPED`; direct cutover and deletion remain
+prohibited. The generator's `--check` drift gate and four regression tests pass,
+and this closes only Phase 0 discovery. AESE registry wrappers, estimand and
+sequential measurement, affected-closure invalidation, model/OOD validation,
+shadow non-inferiority and cost-savings evidence are not implemented, so the
+directive's later phases remain open and no legacy check is suppressed.
+
 Không được gọi toàn hệ thống “production-ready” khi bất kỳ gate bắt buộc nào
 ở trên còn `OPEN_*`, `BLOCKED_*`, `UNKNOWN` hoặc chỉ có fixture/mock evidence.
 
