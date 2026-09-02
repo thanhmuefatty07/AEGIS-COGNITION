@@ -622,7 +622,7 @@ impl CogniFoldStore {
         if !frame.is_valid() {
             return Err("invalid memory frame");
         }
-        let slot = self.frames.insert(frame);
+        let slot = self.frames.try_insert(frame)?;
         self.order.push(slot);
         Ok(())
     }
