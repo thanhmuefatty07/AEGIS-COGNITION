@@ -1765,8 +1765,10 @@ This repeat rules out treating the first result as a transient source-test
 failure; hosted CI remains `NOT VERIFIED` until a runner-backed attempt is
 available.
 
-**Hosted CI post-push confirmation (2026-09-02, final local SHA
-`fee817dc6cbd2e977cf3cd2fc0d591c4a0919b44`):** the push-triggered runs
+**Hosted CI post-push confirmation (2026-09-02, source SHA observed by the
+push-triggered workflows
+`fee817dc6cbd2e977cf3cd2fc0d591c4a0919b44`; the subsequent documentation-only
+follow-up is `976ceebb2198df289dcf82bc05286ed9fb2249c5`):** the runs
 `33587436331` (`CI`) and `33587436193` (`aegis-plugins`) reproduced the same
 pre-run failure. CI created all 13 matrix jobs, but every job reported
 `steps=0`, `runner_id=0`, an empty runner name, and `0 ms` billable duration;
