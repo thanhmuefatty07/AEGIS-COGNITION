@@ -3,7 +3,7 @@ document_id: AEGIS-LAB-RUNTIME-MASTER-PLAN
 document_type: canonical_current_implementation_plan
 status: IN_EXECUTION
 authority: derived_from_checkout_and_evidence_manifest
-applies_to_commit: 1d383a0eaaacf00bb5a2693d5bdc0272fc61e01e
+applies_to_commit: fcbfc3e5522d10963ff0d8a3f18f58655c8973aa
 created_at: 2026-08-26
 last_verified_at: 2026-09-03
 supersedes: browser-native-proposal-and-cumulative-harness-roadmap-as-execution-authority
@@ -169,14 +169,14 @@ hiện tại và không được dùng để chứng minh checkout mới:
   structural/presence checks, không phải proof rằng Lab behavior hoạt động.
 
 Checkout implementation hiện hành cho migration node này là
-`1d383a0eaaacf00bb5a2693d5bdc0272fc61e01e` (functional FFI change
+`fcbfc3e5522d10963ff0d8a3f18f58655c8973aa` (functional FFI change
 `e0731f698302a0791c70c24d93b696597e04180d` and session-index hardening
 `f95bbcb03c1c8448afbcf392b38dcd964b9a6f3f`), với worktree sạch và
 `origin/main` parity được xác nhận sau push. Regression Python trên CPython
-3.11 là **415 passed** với deprecation warnings treated as errors; Rust package
+3.11 là **416 passed** với deprecation warnings treated as errors; Rust package
 lib regression sau FFI hardening là **443 passed**, cùng fmt/check/clippy pass.
-Registry AESE hiện có **117** inventoried items, graph 35 claim/70
-verification references và selection ở `SHADOW`/`NOT_EXECUTED`. Các kết quả này
+Registry AESE hiện có **117** inventoried items, graph **45 claims / 90
+verification references** và selection ở `SHADOW`/`NOT_EXECUTED`. Các kết quả này
 chỉ là local source-bound evidence; không thay thế hosted, signed-release hay
 external-anchor evidence.
 
@@ -4054,6 +4054,23 @@ passes **415 tests** with deprecation warnings treated as errors. This is local
 input-integrity evidence only: the AESE layer remains `SHADOW`, no selection or
 promotion is enabled, and calibration, external anchors, hosted isolation,
 independent replication, and release authority remain unproven.
+
+**AESE claim-graph and affected-closure continuation (2026-09-03):**
+implementation commit `fcbfc3e5522d10963ff0d8a3f18f58655c8973aa` extends the
+source-backed graph with ten explicit AESE claims (`AESE-001` through
+`AESE-010`) covering adaptive measurement, hardware/workload modeling,
+simulation separation, OOD prediction, anchor planning, coverage, preflight,
+inventory and graph governance. Verification paths now bind explicit AESE test
+files to those claims, increasing the graph to **45 claims, 45 contracts, 45
+invariants and 90 verification references**; **9/117** evidence surfaces are
+mapped exactly and 108 remain unmapped rather than guessed. The preflight
+closure now preserves multiple edges per relation (an invariant may have many
+verification refs) and seeds the closure from changed mapped test surfaces;
+unknown/unmapped paths still widen to all retained evidence. Focused inventory,
+graph and preflight tests pass **16 tests**. This improves traceability and
+prevents under-approximate future selection, but remains `SHADOW`: no test is
+skipped, promoted or deleted, and calibration, external anchors, hosted
+verification and release authority remain unproven.
 
 **Historical checkout identity for the prior continuation (2026-09-03):**
 `SOURCE_HEAD = 0d1e9c3eb4db86aea0fee40134f5711395e55e27`,
