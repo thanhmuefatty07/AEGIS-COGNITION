@@ -338,6 +338,17 @@ def test_cross_hardware_prediction_does_not_count_duplicate_anchor_ids() -> None
     assert tuple(anchor_id for anchor_id, _hash in result.anchor_evidence_hashes) == ("a1",)
 
 
+def test_cross_hardware_prediction_rejects_duplicate_ids_even_with_two_unique_anchors() -> None:
+    model, hardware, workload, anchors = _prediction_fixture()
+    result = predict_cross_hardware(model, hardware, workload, [anchors[0], anchors[0], anchors[1]])
+
+    assert result.status == "INSUFFICIENT_EVIDENCE"
+    assert result.ood_status == "UNKNOWN"
+    assert result.estimate is None
+    assert result.failure_reasons == ("duplicate_anchor_id",)
+    assert result.anchor_ids == ("a1", "a2")
+
+
 def test_cross_hardware_prediction_hash_binds_anchor_observation_values() -> None:
     model, hardware, workload, anchors = _prediction_fixture()
     altered = AnchorObservation(
