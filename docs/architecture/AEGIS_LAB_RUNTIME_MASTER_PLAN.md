@@ -3,7 +3,7 @@ document_id: AEGIS-LAB-RUNTIME-MASTER-PLAN
 document_type: canonical_current_implementation_plan
 status: IN_EXECUTION
 authority: derived_from_checkout_and_evidence_manifest
-applies_to_commit: eac7852dd163a315352def42f18b3f4d789f5ca2
+applies_to_commit: f5c6eec863d0e1780e6361ce3001aee2a016104e
 created_at: 2026-08-26
 last_verified_at: 2026-09-02
 supersedes: browser-native-proposal-and-cumulative-harness-roadmap-as-execution-authority
@@ -3482,6 +3482,20 @@ clean. This closes a locally observed recovery-contract defect only; it does
 not prove that an external effect was reversed, that an opaque adapter did not
 retry, or that a hosted writer is authoritative. M7 remains `PARTIAL_LOCAL`
 and `LAB-AUTH-001` remains `OPEN_LOCAL`.
+
+**M7 browser-quota continuation (2026-09-02):** an actor action admitted before
+an in-flight cancellation now consumes the `BrowserCell` action quota, matching
+the existing rejected-action path. Without this, a cancelled action left
+`action_count` unchanged and a later lease could retry beyond `max_actions`;
+the regression reproduces that boundary and proves relaunch is rejected at
+`max_actions=1`. Both the typed controller action-plan lane and the
+compatibility browser-action lane now apply the same fail-closed accounting.
+The full Python suite is **353 passed** under
+`-W error::DeprecationWarning`; focused Ruff and Pyright are clean. This closes
+one local quota-accounting defect only; it does not prove browser process/OS
+containment, DNS-rebinding resistance, or hosted cross-domain enforcement.
+`LAB-BROWSER-002` remains `OPEN_EXTERNAL` and `LAB-AUTH-001` remains
+`OPEN_LOCAL`.
 
 Không được gọi toàn hệ thống “production-ready” khi bất kỳ gate bắt buộc nào
 ở trên còn `OPEN_*`, `BLOCKED_*`, `UNKNOWN` hoặc chỉ có fixture/mock evidence.
