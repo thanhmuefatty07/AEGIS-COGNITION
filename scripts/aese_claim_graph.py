@@ -31,7 +31,7 @@ NOT_VERIFIED: Final[Path] = ROOT / "docs" / "architecture" / "not_verified_regis
 SCHEMA: Final[str] = "aese-shadow-claim-evidence-graph-v1"
 PHASE: Final[str] = "PHASE_1_CLAIM_EVIDENCE_GRAPH"
 MODE: Final[str] = "SHADOW"
-GT96_RE: Final[re.Pattern[str]] = re.compile(r"^GT96-(\d{3})$")
+TRACEABILITY_RE: Final[re.Pattern[str]] = re.compile(r"^(?:GT96|AESE)-(\d{3})$")
 
 
 def _sha256(value: bytes) -> str:
@@ -113,14 +113,14 @@ def _canonical_source_path(reference: str, tracked: set[str]) -> str | None:
 def _parse_gt96() -> list[dict[str, str]]:
     rows: list[dict[str, str]] = []
     for line in TRACEABILITY.read_text(encoding="utf-8").splitlines():
-        if not line.startswith("| GT96-"):
+        if not line.startswith(("| GT96-", "| AESE-")):
             continue
         cells = _cells(line)
         if len(cells) != 10:
             raise ValueError(f"GT96 row must have 10 cells: {line}")
         identifier = cells[0]
-        if GT96_RE.fullmatch(identifier) is None:
-            raise ValueError(f"invalid GT96 identifier: {identifier}")
+        if TRACEABILITY_RE.fullmatch(identifier) is None:
+            raise ValueError(f"invalid traceability identifier: {identifier}")
         rows.append(
             {
                 "id": identifier,
@@ -142,7 +142,9 @@ def _parse_gt96() -> list[dict[str, str]]:
     return rows
 
 
-def _surface_nodes(inventory: dict[str, object], claim_rows: list[dict[str, str]]) -> list[dict[str, object]]:
+def _surface_nodes(
+    inventory: dict[str, object], claim_rows: list[dict[str, str]], sources: dict[str, str]
+) -> list[dict[str, object]]:
     raw_items = inventory.get("items")
     if not isinstance(raw_items, list):
         raise ValueError("inventory items must be an array")
@@ -152,6 +154,12 @@ def _surface_nodes(inventory: dict[str, object], claim_rows: list[dict[str, str]
         claim_id = f"AESE-CLAIM-{row['id']}"
         for path in _implementation_paths(row["implementation"]):
             paths_to_claims.setdefault(path, set()).add(claim_id)
+        # Verification paths are claim-bearing surfaces too.  Resolve only
+        # explicit repository paths or exact symbols; unresolved prose stays
+        # unmapped so preflight continues to widen conservatively.
+        for field in ("tests", "benchmark"):
+            for path in _resolve_verification_paths(row[field], sources):
+                paths_to_claims.setdefault(path, set()).add(claim_id)
     nodes: list[dict[str, object]] = []
     for item in items:
         path = str(item["path"])
@@ -309,7 +317,7 @@ def build_graph() -> dict[str, object]:
         for path in tracked
         if Path(path).suffix.lower() in {".py", ".rs"}
     }
-    surfaces = _surface_nodes(inventory, claim_rows)
+    surfaces = _surface_nodes(inventory, claim_rows, sources)
     claims, contracts, invariants, verifications, code_nodes, edges = _claim_nodes(claim_rows, tracked, sources)
     blockers = _blocker_nodes()
     for surface in surfaces:
