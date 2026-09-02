@@ -55,19 +55,25 @@ pub use status::{
     aegis_validate_schema, aegis_zero_copy_ready,
 };
 
-static SESSION_INDEX: OnceLock<Mutex<SessionSearchIndex>> = OnceLock::new();
+static SESSION_INDEX: OnceLock<
+    Result<Mutex<SessionSearchIndex>, crate::evidence_index::LexicalIndexError>,
+> = OnceLock::new();
 static SESSION_LEDGER: OnceLock<Mutex<LearningLedger>> = OnceLock::new();
 static AUTHORITATIVE_RUNTIME: OnceLock<Mutex<crate::runtime::AuthoritativeRuntime>> =
     OnceLock::new();
 
-fn get_session_index() -> &'static Mutex<SessionSearchIndex> {
-    SESSION_INDEX.get_or_init(|| {
-        // The lexical index rejects the all-zero genesis epoch.  Derive a
-        // stable non-zero process epoch instead of unwrapping an invalid
-        // value (which would panic on the first completed Agent run).
-        let epoch_hash = *blake3::hash(b"aegis-session-index-epoch-v1").as_bytes();
-        Mutex::new(SessionSearchIndex::new(epoch_hash).unwrap())
-    })
+fn get_session_index()
+-> Result<&'static Mutex<SessionSearchIndex>, crate::evidence_index::LexicalIndexError> {
+    SESSION_INDEX
+        .get_or_init(|| {
+            // The lexical index rejects the all-zero genesis epoch.  Derive a
+            // stable non-zero process epoch instead of unwrapping an invalid
+            // value (which would panic on the first completed Agent run).
+            let epoch_hash = *blake3::hash(b"aegis-session-index-epoch-v1").as_bytes();
+            SessionSearchIndex::new(epoch_hash).map(Mutex::new)
+        })
+        .as_ref()
+        .map_err(|error| *error)
 }
 
 fn get_session_ledger() -> &'static Mutex<LearningLedger> {
