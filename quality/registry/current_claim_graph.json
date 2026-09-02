@@ -866,8 +866,8 @@
     "future_obligations": 20,
     "invariants": 35,
     "mapped_surfaces": 1,
-    "surfaces": 115,
-    "unmapped_surfaces": 114,
+    "surfaces": 116,
+    "unmapped_surfaces": 115,
     "unmapped_verifications": 59,
     "unresolved_code_references": 0,
     "verifications": 70
@@ -2940,8 +2940,8 @@
   "mode": "SHADOW",
   "phase": "PHASE_1_CLAIM_EVIDENCE_GRAPH",
   "schema": "aese-shadow-claim-evidence-graph-v1",
-  "source_head": "693e40f5ce84bb6f8dd99df6b73f28f4f22f65aa",
-  "source_tree_sha256": "4c96fab20b937fbf1840cd168b83443ec1aaeaaf0d69dbeec4cbea43d40d10b9",
+  "source_head": "9167ed5959f685ff6cf176b4eab4e5e7f0f3b346",
+  "source_tree_sha256": "4b8f4dba1028e09fb17e59ce0d8af31516da2bd764e81509df5bb50b8a46449a",
   "status": "SHADOW_GRAPH_COMPLETE_MAPPING_AND_SELECTION_DISABLED",
   "surfaces": [
     {
@@ -3166,6 +3166,15 @@
       "kind": "PYTHON_TEST",
       "mapping_status": "NOT_MAPPED",
       "path": "tests/test_evidence_consistency_gate.py",
+      "target": null,
+      "unknown_dependency_policy": "INVALIDATE_CONSERVATIVELY"
+    },
+    {
+      "claim_refs": [],
+      "id": "AESE-PYTHON_TEST-58D48A170B9DA222",
+      "kind": "PYTHON_TEST",
+      "mapping_status": "NOT_MAPPED",
+      "path": "tests/test_aese_primitives.py",
       "target": null,
       "unknown_dependency_policy": "INVALIDATE_CONSERVATIVELY"
     },
@@ -4572,6 +4581,6 @@
       "source_id": "GT96-035"
     }
   ],
-  "worktree_epoch": "5f274a869cd826ec7f885adb17d3f1d3968a0a3d23790db11a3f1f236ea5ff26",
+  "worktree_epoch": "6e22a7dafad92238c5c6820c4cc9cd4794831dccdb9939b384e8e9006bca5388",
   "worktree_status": "DIRTY"
 }

@@ -3696,7 +3696,7 @@ an implementation directive, not as current status authority; its recorded
 GitHub HEAD is historical and is not substituted for the checkout state. The
 new bounded generator `scripts/aese_inventory.py` emits
 `quality/registry/current_inventory.json` with a source-tree digest and
-provenance. It inventories **115** tracked evidence surfaces: 9 Python test
+provenance. It inventories **116** tracked evidence surfaces: 10 Python test
 files, 24 Rust unit-test files, 1 Rust integration test, 5 Rust benchmarks,
 5 Python benchmarks, 4 fuzz targets, 52 Python scripts/gates, 4 hosted
 workflows and 11 workflow jobs; no scope is missing. Every item is
@@ -3713,7 +3713,7 @@ directive's later phases remain open and no legacy check is suppressed.
 traceability into a deterministic shadow graph with **35 claims, 35 contracts,
 35 invariants, 70 test/benchmark references, 23 resolved code nodes and 20
 future obligations**. The graph is linked to the Phase 0 inventory and the
-canonical not-verified registry; 114 of 115 inventory surfaces remain
+canonical not-verified registry; 115 of 116 inventory surfaces remain
 explicitly `NOT_MAPPED` because the current inventory does not yet prove a
 complete test-to-claim or workflow-job mapping, and 59 of 70 verification
 references remain unresolved until concrete files/jobs are identified. The
@@ -3731,6 +3731,30 @@ release certification. Every stage is marked `may_skip = false`; the output is
 advisory `SHADOW` data only. Savings, cost, statistical precision, OOD status
 and external-anchor sufficiency remain `NOT_MEASURED`/`NOT_STARTED`, so this
 does not enable selective testing or change release authority.
+
+**AESE Phase 3–7 local primitive continuation (2026-09-02):**
+`aegis_cognition/aese.py` adds the smallest reusable, side-effect-free
+foundation for adaptive measurement and model metadata. `AdaptiveMeasurementSpec`
+requires a named mean estimand, warmup/sample/block floors, a bounded maximum,
+and preregistered precision/autocorrelation/drift limits. The evaluator keeps
+malformed observations visible, uses complete blocks and a deterministic
+Student-t Cornish–Fisher interval approximation, and emits only
+`PASS`/`FAIL`/`CONTINUE`/`UNSTABLE`/`CONTAMINATED`/
+`INSUFFICIENT_EVIDENCE`; this is statistical-method implementation evidence,
+not calibrated coverage or a benchmark result. `HardwareCapabilityVector`
+records CPU/cache/memory/storage/process/FFI/serialization/OS/virtualization
+fields with explicit `UNKNOWN` values; it does not infer electrical power or
+cross-platform behavior. `WorkloadSignature` uses bounded intensity fields and
+an explicit deterministic regime classifier, returning `UNKNOWN` when the
+shape is under-specified. `SimulationEvidence` is schema-bound to
+`SIMULATION_ONLY`/`SIMULATED` and cannot be relabelled as observation.
+`AnalyticPredictionModel` and `predict_cross_hardware` require a complete
+validated domain, at least two reconstructible anchors, and residual evidence
+declared `MEASURED` with at least 30 samples; missing features and out-of-domain
+targets are rejected and carry `OOD_STATUS`, nearest-anchor distance,
+prediction interval and model version metadata. Nine focused tests plus the
+full local regression suite pass. No model fit, physical-power measurement,
+external anchor, independent replication or release promotion is claimed.
 
 **Current local-phase closure record (2026-09-02):** at the bounded closure
 point before this AESE-1 delta, `HEAD == origin/main` at
