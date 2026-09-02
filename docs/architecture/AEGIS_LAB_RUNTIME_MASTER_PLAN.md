@@ -3696,9 +3696,9 @@ an implementation directive, not as current status authority; its recorded
 GitHub HEAD is historical and is not substituted for the checkout state. The
 new bounded generator `scripts/aese_inventory.py` emits
 `quality/registry/current_inventory.json` with a source-tree digest and
-provenance. It inventories **113** tracked evidence surfaces: 8 Python test
+provenance. It inventories **115** tracked evidence surfaces: 9 Python test
 files, 24 Rust unit-test files, 1 Rust integration test, 5 Rust benchmarks,
-5 Python benchmarks, 4 fuzz targets, 51 Python scripts/gates, 4 hosted
+5 Python benchmarks, 4 fuzz targets, 52 Python scripts/gates, 4 hosted
 workflows and 11 workflow jobs; no scope is missing. Every item is
 conservatively `RETAIN_UNCHANGED`, with claim/owner/cost/platform/failure
 mapping left `UNKNOWN`/`NOT_MAPPED`; direct cutover and deletion remain
@@ -3713,13 +3713,24 @@ directive's later phases remain open and no legacy check is suppressed.
 traceability into a deterministic shadow graph with **35 claims, 35 contracts,
 35 invariants, 70 test/benchmark references, 23 resolved code nodes and 20
 future obligations**. The graph is linked to the Phase 0 inventory and the
-canonical not-verified registry; 112 of 113 inventory surfaces remain
+canonical not-verified registry; 114 of 115 inventory surfaces remain
 explicitly `NOT_MAPPED` because the current inventory does not yet prove a
 complete test-to-claim or workflow-job mapping, and 59 of 70 verification
 references remain unresolved until concrete files/jobs are identified. The
 graph drift gate is wired into CI and release verification, but selection,
 skipping, promotion and deletion are disabled in `SHADOW`; unknown dependency
 must invalidate conservatively in the later affected-closure phase.
+
+**AESE Phase 2 shadow preflight continuation (2026-09-02):**
+`scripts/aese_preflight.py` now classifies explicit changed paths against the
+inventory and graph, records affected code/claim IDs where the source mapping
+is exact, and widens empty or unmapped input to the retained legacy suite.
+Its fixed evidence order is static metadata, document/architecture, security
+static checks, Python quality, Rust quality, platform anchors, performance and
+release certification. Every stage is marked `may_skip = false`; the output is
+advisory `SHADOW` data only. Savings, cost, statistical precision, OOD status
+and external-anchor sufficiency remain `NOT_MEASURED`/`NOT_STARTED`, so this
+does not enable selective testing or change release authority.
 
 **Current local-phase closure record (2026-09-02):** at the bounded closure
 point before this AESE-1 delta, `HEAD == origin/main` at

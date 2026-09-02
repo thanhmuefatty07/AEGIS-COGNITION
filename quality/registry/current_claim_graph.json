@@ -866,8 +866,8 @@
     "future_obligations": 20,
     "invariants": 35,
     "mapped_surfaces": 1,
-    "surfaces": 113,
-    "unmapped_surfaces": 112,
+    "surfaces": 115,
+    "unmapped_surfaces": 114,
     "unmapped_verifications": 59,
     "unresolved_code_references": 0,
     "verifications": 70
@@ -2940,8 +2940,8 @@
   "mode": "SHADOW",
   "phase": "PHASE_1_CLAIM_EVIDENCE_GRAPH",
   "schema": "aese-shadow-claim-evidence-graph-v1",
-  "source_head": "640390214d8fe012ba0f027e7a45301a433ca876",
-  "source_tree_sha256": "8b7146aeac9c70660ff8624f5453741a7c6459a5bcacfe555972f1b9a0d43105",
+  "source_head": "693e40f5ce84bb6f8dd99df6b73f28f4f22f65aa",
+  "source_tree_sha256": "4c96fab20b937fbf1840cd168b83443ec1aaeaaf0d69dbeec4cbea43d40d10b9",
   "status": "SHADOW_GRAPH_COMPLETE_MAPPING_AND_SELECTION_DISABLED",
   "surfaces": [
     {
@@ -3211,6 +3211,15 @@
       "kind": "PYTHON_TEST",
       "mapping_status": "NOT_MAPPED",
       "path": "tests/test_aese_claim_graph.py",
+      "target": null,
+      "unknown_dependency_policy": "INVALIDATE_CONSERVATIVELY"
+    },
+    {
+      "claim_refs": [],
+      "id": "AESE-PYTHON_TEST-E1D184588A9806B3",
+      "kind": "PYTHON_TEST",
+      "mapping_status": "NOT_MAPPED",
+      "path": "tests/test_aese_preflight.py",
       "target": null,
       "unknown_dependency_policy": "INVALIDATE_CONSERVATIVELY"
     },
@@ -3723,6 +3732,15 @@
       "kind": "SCRIPT_OR_GATE",
       "mapping_status": "NOT_MAPPED",
       "path": "scripts/rust_toolchain.py",
+      "target": null,
+      "unknown_dependency_policy": "INVALIDATE_CONSERVATIVELY"
+    },
+    {
+      "claim_refs": [],
+      "id": "AESE-SCRIPT_OR_GATE-7CB77C78DCDC63EC",
+      "kind": "SCRIPT_OR_GATE",
+      "mapping_status": "NOT_MAPPED",
+      "path": "scripts/aese_preflight.py",
       "target": null,
       "unknown_dependency_policy": "INVALIDATE_CONSERVATIVELY"
     },
@@ -4554,6 +4572,6 @@
       "source_id": "GT96-035"
     }
   ],
-  "worktree_epoch": "06cf11201e1fb54096f1e822ad059f6ac73c6a0141c76600985c582c18be122a",
+  "worktree_epoch": "5f274a869cd826ec7f885adb17d3f1d3968a0a3d23790db11a3f1f236ea5ff26",
   "worktree_status": "DIRTY"
 }

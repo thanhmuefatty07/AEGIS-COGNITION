@@ -10,7 +10,7 @@ def test_shadow_graph_preserves_inventory_and_disables_selection() -> None:
     assert graph["mode"] == "SHADOW"
     assert graph["direct_cutover"] == "PROHIBITED"
     assert graph["counts"]["surfaces"] == graph["counts"]["mapped_surfaces"] + graph["counts"]["unmapped_surfaces"]
-    assert graph["counts"]["surfaces"] == 113
+    assert graph["counts"]["surfaces"] == 115
     assert graph["counts"]["mapped_surfaces"] == 1
     assert graph["counts"]["unmapped_verifications"] == 59
     assert graph["counts"]["claims"] == 35

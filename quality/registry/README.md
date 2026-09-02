@@ -38,3 +38,12 @@ The shadow graph drift check is:
 ```text
 .venv\\Scripts\\python.exe scripts\\aese_claim_graph.py --check
 ```
+
+AESE-2 preflight is advisory and accepts explicit changed paths:
+
+```text
+.venv\\Scripts\\python.exe scripts\\aese_preflight.py --path core/rust/src/gt96.rs
+```
+
+An empty or unmapped change set widens to the retained suite. The preflight
+does not run, skip, promote or delete evidence.
