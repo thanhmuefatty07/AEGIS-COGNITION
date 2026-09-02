@@ -2,7 +2,7 @@
   "deletion": "PROHIBITED_UNTIL_SUPERSESSION_PROOF",
   "direct_cutover": "PROHIBITED",
   "disposition_counts": {
-    "RETAIN_UNCHANGED": 76
+    "RETAIN_UNCHANGED": 113
   },
   "items": [
     {
@@ -35,7 +35,41 @@
         "UNKNOWN"
       ],
       "stable_id": "AESE-HOSTED_WORKFLOW-E74493557E2F0C05",
-      "supersession_rationale": "No stronger replacement evidence is recorded; preserve the existing authoritative path."
+      "supersession_rationale": "No stronger replacement evidence is recorded; preserve the existing authoritative path.",
+      "target": null
+    },
+    {
+      "claims_supported": [],
+      "dependencies": [],
+      "determinism": "UNKNOWN",
+      "domain": "UNKNOWN",
+      "evidence_produced": [],
+      "failure_semantics": "UNKNOWN",
+      "hardware_requirement": "UNKNOWN",
+      "inputs": [],
+      "invariants_checked": [],
+      "kind": "HOSTED_WORKFLOW_JOB",
+      "known_defects": [],
+      "mapping_status": "NOT_MAPPED",
+      "migration_disposition": "RETAIN_UNCHANGED",
+      "outputs": [],
+      "owner": "UNKNOWN_OWNER",
+      "path": ".github/workflows/aegis-plugins.yml",
+      "platform_requirement": "UNKNOWN",
+      "release_criticality": "UNKNOWN",
+      "replacement_id": null,
+      "resource_cost": "UNKNOWN",
+      "rollback_path": "Re-run the existing native runner directly.",
+      "runner_backend": "GitHub Actions job",
+      "runtime_class": "UNKNOWN",
+      "scope": ".github/workflows",
+      "security_criticality": "UNKNOWN",
+      "side_effects": [
+        "UNKNOWN"
+      ],
+      "stable_id": "AESE-HOSTED_WORKFLOW_JOB-FF41024D605E74C3",
+      "supersession_rationale": "No stronger replacement evidence is recorded; preserve the existing authoritative path.",
+      "target": "windows-workspace"
     },
     {
       "claims_supported": [],
@@ -67,7 +101,206 @@
         "UNKNOWN"
       ],
       "stable_id": "AESE-HOSTED_WORKFLOW-B803FCB7F17ED923",
-      "supersession_rationale": "No stronger replacement evidence is recorded; preserve the existing authoritative path."
+      "supersession_rationale": "No stronger replacement evidence is recorded; preserve the existing authoritative path.",
+      "target": null
+    },
+    {
+      "claims_supported": [],
+      "dependencies": [],
+      "determinism": "UNKNOWN",
+      "domain": "UNKNOWN",
+      "evidence_produced": [],
+      "failure_semantics": "UNKNOWN",
+      "hardware_requirement": "UNKNOWN",
+      "inputs": [],
+      "invariants_checked": [],
+      "kind": "HOSTED_WORKFLOW_JOB",
+      "known_defects": [],
+      "mapping_status": "NOT_MAPPED",
+      "migration_disposition": "RETAIN_UNCHANGED",
+      "outputs": [],
+      "owner": "UNKNOWN_OWNER",
+      "path": ".github/workflows/ci.yml",
+      "platform_requirement": "UNKNOWN",
+      "release_criticality": "UNKNOWN",
+      "replacement_id": null,
+      "resource_cost": "UNKNOWN",
+      "rollback_path": "Re-run the existing native runner directly.",
+      "runner_backend": "GitHub Actions job",
+      "runtime_class": "UNKNOWN",
+      "scope": ".github/workflows",
+      "security_criticality": "UNKNOWN",
+      "side_effects": [
+        "UNKNOWN"
+      ],
+      "stable_id": "AESE-HOSTED_WORKFLOW_JOB-907D7B4FEA384338",
+      "supersession_rationale": "No stronger replacement evidence is recorded; preserve the existing authoritative path.",
+      "target": "rust-fast-gate"
+    },
+    {
+      "claims_supported": [],
+      "dependencies": [],
+      "determinism": "UNKNOWN",
+      "domain": "UNKNOWN",
+      "evidence_produced": [],
+      "failure_semantics": "UNKNOWN",
+      "hardware_requirement": "UNKNOWN",
+      "inputs": [],
+      "invariants_checked": [],
+      "kind": "HOSTED_WORKFLOW_JOB",
+      "known_defects": [],
+      "mapping_status": "NOT_MAPPED",
+      "migration_disposition": "RETAIN_UNCHANGED",
+      "outputs": [],
+      "owner": "UNKNOWN_OWNER",
+      "path": ".github/workflows/ci.yml",
+      "platform_requirement": "UNKNOWN",
+      "release_criticality": "UNKNOWN",
+      "replacement_id": null,
+      "resource_cost": "UNKNOWN",
+      "rollback_path": "Re-run the existing native runner directly.",
+      "runner_backend": "GitHub Actions job",
+      "runtime_class": "UNKNOWN",
+      "scope": ".github/workflows",
+      "security_criticality": "UNKNOWN",
+      "side_effects": [
+        "UNKNOWN"
+      ],
+      "stable_id": "AESE-HOSTED_WORKFLOW_JOB-F33099A5B936A446",
+      "supersession_rationale": "No stronger replacement evidence is recorded; preserve the existing authoritative path.",
+      "target": "python-fast-gate"
+    },
+    {
+      "claims_supported": [],
+      "dependencies": [],
+      "determinism": "UNKNOWN",
+      "domain": "UNKNOWN",
+      "evidence_produced": [],
+      "failure_semantics": "UNKNOWN",
+      "hardware_requirement": "UNKNOWN",
+      "inputs": [],
+      "invariants_checked": [],
+      "kind": "HOSTED_WORKFLOW_JOB",
+      "known_defects": [],
+      "mapping_status": "NOT_MAPPED",
+      "migration_disposition": "RETAIN_UNCHANGED",
+      "outputs": [],
+      "owner": "UNKNOWN_OWNER",
+      "path": ".github/workflows/ci.yml",
+      "platform_requirement": "UNKNOWN",
+      "release_criticality": "UNKNOWN",
+      "replacement_id": null,
+      "resource_cost": "UNKNOWN",
+      "rollback_path": "Re-run the existing native runner directly.",
+      "runner_backend": "GitHub Actions job",
+      "runtime_class": "UNKNOWN",
+      "scope": ".github/workflows",
+      "security_criticality": "UNKNOWN",
+      "side_effects": [
+        "UNKNOWN"
+      ],
+      "stable_id": "AESE-HOSTED_WORKFLOW_JOB-1F46A0C198D3ECE0",
+      "supersession_rationale": "No stronger replacement evidence is recorded; preserve the existing authoritative path.",
+      "target": "rust-msrv"
+    },
+    {
+      "claims_supported": [],
+      "dependencies": [],
+      "determinism": "UNKNOWN",
+      "domain": "UNKNOWN",
+      "evidence_produced": [],
+      "failure_semantics": "UNKNOWN",
+      "hardware_requirement": "UNKNOWN",
+      "inputs": [],
+      "invariants_checked": [],
+      "kind": "HOSTED_WORKFLOW_JOB",
+      "known_defects": [],
+      "mapping_status": "NOT_MAPPED",
+      "migration_disposition": "RETAIN_UNCHANGED",
+      "outputs": [],
+      "owner": "UNKNOWN_OWNER",
+      "path": ".github/workflows/ci.yml",
+      "platform_requirement": "UNKNOWN",
+      "release_criticality": "UNKNOWN",
+      "replacement_id": null,
+      "resource_cost": "UNKNOWN",
+      "rollback_path": "Re-run the existing native runner directly.",
+      "runner_backend": "GitHub Actions job",
+      "runtime_class": "UNKNOWN",
+      "scope": ".github/workflows",
+      "security_criticality": "UNKNOWN",
+      "side_effects": [
+        "UNKNOWN"
+      ],
+      "stable_id": "AESE-HOSTED_WORKFLOW_JOB-05A370E07760FA2D",
+      "supersession_rationale": "No stronger replacement evidence is recorded; preserve the existing authoritative path.",
+      "target": "tier1-platform-smoke"
+    },
+    {
+      "claims_supported": [],
+      "dependencies": [],
+      "determinism": "UNKNOWN",
+      "domain": "UNKNOWN",
+      "evidence_produced": [],
+      "failure_semantics": "UNKNOWN",
+      "hardware_requirement": "UNKNOWN",
+      "inputs": [],
+      "invariants_checked": [],
+      "kind": "HOSTED_WORKFLOW_JOB",
+      "known_defects": [],
+      "mapping_status": "NOT_MAPPED",
+      "migration_disposition": "RETAIN_UNCHANGED",
+      "outputs": [],
+      "owner": "UNKNOWN_OWNER",
+      "path": ".github/workflows/ci.yml",
+      "platform_requirement": "UNKNOWN",
+      "release_criticality": "UNKNOWN",
+      "replacement_id": null,
+      "resource_cost": "UNKNOWN",
+      "rollback_path": "Re-run the existing native runner directly.",
+      "runner_backend": "GitHub Actions job",
+      "runtime_class": "UNKNOWN",
+      "scope": ".github/workflows",
+      "security_criticality": "UNKNOWN",
+      "side_effects": [
+        "UNKNOWN"
+      ],
+      "stable_id": "AESE-HOSTED_WORKFLOW_JOB-4297F5A9DAE87FC2",
+      "supersession_rationale": "No stronger replacement evidence is recorded; preserve the existing authoritative path.",
+      "target": "wheel-parity"
+    },
+    {
+      "claims_supported": [],
+      "dependencies": [],
+      "determinism": "UNKNOWN",
+      "domain": "UNKNOWN",
+      "evidence_produced": [],
+      "failure_semantics": "UNKNOWN",
+      "hardware_requirement": "UNKNOWN",
+      "inputs": [],
+      "invariants_checked": [],
+      "kind": "HOSTED_WORKFLOW_JOB",
+      "known_defects": [],
+      "mapping_status": "NOT_MAPPED",
+      "migration_disposition": "RETAIN_UNCHANGED",
+      "outputs": [],
+      "owner": "UNKNOWN_OWNER",
+      "path": ".github/workflows/ci.yml",
+      "platform_requirement": "UNKNOWN",
+      "release_criticality": "UNKNOWN",
+      "replacement_id": null,
+      "resource_cost": "UNKNOWN",
+      "rollback_path": "Re-run the existing native runner directly.",
+      "runner_backend": "GitHub Actions job",
+      "runtime_class": "UNKNOWN",
+      "scope": ".github/workflows",
+      "security_criticality": "UNKNOWN",
+      "side_effects": [
+        "UNKNOWN"
+      ],
+      "stable_id": "AESE-HOSTED_WORKFLOW_JOB-B0F63D21D5F72735",
+      "supersession_rationale": "No stronger replacement evidence is recorded; preserve the existing authoritative path.",
+      "target": "rust-beta-forward-compat"
     },
     {
       "claims_supported": [],
@@ -99,7 +332,107 @@
         "UNKNOWN"
       ],
       "stable_id": "AESE-HOSTED_WORKFLOW-481FBF069280B7D0",
-      "supersession_rationale": "No stronger replacement evidence is recorded; preserve the existing authoritative path."
+      "supersession_rationale": "No stronger replacement evidence is recorded; preserve the existing authoritative path.",
+      "target": null
+    },
+    {
+      "claims_supported": [],
+      "dependencies": [],
+      "determinism": "UNKNOWN",
+      "domain": "UNKNOWN",
+      "evidence_produced": [],
+      "failure_semantics": "UNKNOWN",
+      "hardware_requirement": "UNKNOWN",
+      "inputs": [],
+      "invariants_checked": [],
+      "kind": "HOSTED_WORKFLOW_JOB",
+      "known_defects": [],
+      "mapping_status": "NOT_MAPPED",
+      "migration_disposition": "RETAIN_UNCHANGED",
+      "outputs": [],
+      "owner": "UNKNOWN_OWNER",
+      "path": ".github/workflows/deep.yml",
+      "platform_requirement": "UNKNOWN",
+      "release_criticality": "UNKNOWN",
+      "replacement_id": null,
+      "resource_cost": "UNKNOWN",
+      "rollback_path": "Re-run the existing native runner directly.",
+      "runner_backend": "GitHub Actions job",
+      "runtime_class": "UNKNOWN",
+      "scope": ".github/workflows",
+      "security_criticality": "UNKNOWN",
+      "side_effects": [
+        "UNKNOWN"
+      ],
+      "stable_id": "AESE-HOSTED_WORKFLOW_JOB-C611C411223DEE88",
+      "supersession_rationale": "No stronger replacement evidence is recorded; preserve the existing authoritative path.",
+      "target": "security-and-replay"
+    },
+    {
+      "claims_supported": [],
+      "dependencies": [],
+      "determinism": "UNKNOWN",
+      "domain": "UNKNOWN",
+      "evidence_produced": [],
+      "failure_semantics": "UNKNOWN",
+      "hardware_requirement": "UNKNOWN",
+      "inputs": [],
+      "invariants_checked": [],
+      "kind": "HOSTED_WORKFLOW_JOB",
+      "known_defects": [],
+      "mapping_status": "NOT_MAPPED",
+      "migration_disposition": "RETAIN_UNCHANGED",
+      "outputs": [],
+      "owner": "UNKNOWN_OWNER",
+      "path": ".github/workflows/deep.yml",
+      "platform_requirement": "UNKNOWN",
+      "release_criticality": "UNKNOWN",
+      "replacement_id": null,
+      "resource_cost": "UNKNOWN",
+      "rollback_path": "Re-run the existing native runner directly.",
+      "runner_backend": "GitHub Actions job",
+      "runtime_class": "UNKNOWN",
+      "scope": ".github/workflows",
+      "security_criticality": "UNKNOWN",
+      "side_effects": [
+        "UNKNOWN"
+      ],
+      "stable_id": "AESE-HOSTED_WORKFLOW_JOB-B864A49636644D5C",
+      "supersession_rationale": "No stronger replacement evidence is recorded; preserve the existing authoritative path.",
+      "target": "fuzz-resource-contract"
+    },
+    {
+      "claims_supported": [],
+      "dependencies": [],
+      "determinism": "UNKNOWN",
+      "domain": "UNKNOWN",
+      "evidence_produced": [],
+      "failure_semantics": "UNKNOWN",
+      "hardware_requirement": "UNKNOWN",
+      "inputs": [],
+      "invariants_checked": [],
+      "kind": "HOSTED_WORKFLOW_JOB",
+      "known_defects": [],
+      "mapping_status": "NOT_MAPPED",
+      "migration_disposition": "RETAIN_UNCHANGED",
+      "outputs": [],
+      "owner": "UNKNOWN_OWNER",
+      "path": ".github/workflows/deep.yml",
+      "platform_requirement": "UNKNOWN",
+      "release_criticality": "UNKNOWN",
+      "replacement_id": null,
+      "resource_cost": "UNKNOWN",
+      "rollback_path": "Re-run the existing native runner directly.",
+      "runner_backend": "GitHub Actions job",
+      "runtime_class": "UNKNOWN",
+      "scope": ".github/workflows",
+      "security_criticality": "UNKNOWN",
+      "side_effects": [
+        "UNKNOWN"
+      ],
+      "stable_id": "AESE-HOSTED_WORKFLOW_JOB-9A86E427E026057E",
+      "supersession_rationale": "No stronger replacement evidence is recorded; preserve the existing authoritative path.",
+      "target": "miri-and-sanitizers"
     },
     {
       "claims_supported": [],
@@ -131,7 +464,41 @@
         "UNKNOWN"
       ],
       "stable_id": "AESE-HOSTED_WORKFLOW-87DB21A973EED4FE",
-      "supersession_rationale": "No stronger replacement evidence is recorded; preserve the existing authoritative path."
+      "supersession_rationale": "No stronger replacement evidence is recorded; preserve the existing authoritative path.",
+      "target": null
+    },
+    {
+      "claims_supported": [],
+      "dependencies": [],
+      "determinism": "UNKNOWN",
+      "domain": "RELEASE",
+      "evidence_produced": [],
+      "failure_semantics": "UNKNOWN",
+      "hardware_requirement": "UNKNOWN",
+      "inputs": [],
+      "invariants_checked": [],
+      "kind": "HOSTED_WORKFLOW_JOB",
+      "known_defects": [],
+      "mapping_status": "NOT_MAPPED",
+      "migration_disposition": "RETAIN_UNCHANGED",
+      "outputs": [],
+      "owner": "UNKNOWN_OWNER",
+      "path": ".github/workflows/release.yml",
+      "platform_requirement": "UNKNOWN",
+      "release_criticality": "UNKNOWN",
+      "replacement_id": null,
+      "resource_cost": "UNKNOWN",
+      "rollback_path": "Re-run the existing native runner directly.",
+      "runner_backend": "GitHub Actions job",
+      "runtime_class": "UNKNOWN",
+      "scope": ".github/workflows",
+      "security_criticality": "UNKNOWN",
+      "side_effects": [
+        "UNKNOWN"
+      ],
+      "stable_id": "AESE-HOSTED_WORKFLOW_JOB-16AA7B92C94F22CB",
+      "supersession_rationale": "No stronger replacement evidence is recorded; preserve the existing authoritative path.",
+      "target": "build-and-attest"
     },
     {
       "claims_supported": [],
@@ -163,7 +530,8 @@
         "UNKNOWN"
       ],
       "stable_id": "AESE-RUST_BENCHMARK-56B8EE7D3073C0FD",
-      "supersession_rationale": "No stronger replacement evidence is recorded; preserve the existing authoritative path."
+      "supersession_rationale": "No stronger replacement evidence is recorded; preserve the existing authoritative path.",
+      "target": null
     },
     {
       "claims_supported": [],
@@ -195,7 +563,8 @@
         "UNKNOWN"
       ],
       "stable_id": "AESE-RUST_BENCHMARK-EB9579A3AA32341B",
-      "supersession_rationale": "No stronger replacement evidence is recorded; preserve the existing authoritative path."
+      "supersession_rationale": "No stronger replacement evidence is recorded; preserve the existing authoritative path.",
+      "target": null
     },
     {
       "claims_supported": [],
@@ -227,7 +596,8 @@
         "UNKNOWN"
       ],
       "stable_id": "AESE-RUST_BENCHMARK-16BA24B31D557E5B",
-      "supersession_rationale": "No stronger replacement evidence is recorded; preserve the existing authoritative path."
+      "supersession_rationale": "No stronger replacement evidence is recorded; preserve the existing authoritative path.",
+      "target": null
     },
     {
       "claims_supported": [],
@@ -259,7 +629,8 @@
         "UNKNOWN"
       ],
       "stable_id": "AESE-RUST_BENCHMARK-D6C0F4D92F1AC58D",
-      "supersession_rationale": "No stronger replacement evidence is recorded; preserve the existing authoritative path."
+      "supersession_rationale": "No stronger replacement evidence is recorded; preserve the existing authoritative path.",
+      "target": null
     },
     {
       "claims_supported": [],
@@ -291,7 +662,800 @@
         "UNKNOWN"
       ],
       "stable_id": "AESE-RUST_BENCHMARK-320AA3A9FEA0E3FE",
-      "supersession_rationale": "No stronger replacement evidence is recorded; preserve the existing authoritative path."
+      "supersession_rationale": "No stronger replacement evidence is recorded; preserve the existing authoritative path.",
+      "target": null
+    },
+    {
+      "claims_supported": [],
+      "dependencies": [],
+      "determinism": "UNKNOWN",
+      "domain": "UNKNOWN",
+      "evidence_produced": [],
+      "failure_semantics": "UNKNOWN",
+      "hardware_requirement": "UNKNOWN",
+      "inputs": [],
+      "invariants_checked": [],
+      "kind": "RUST_UNIT_TEST",
+      "known_defects": [],
+      "mapping_status": "NOT_MAPPED",
+      "migration_disposition": "RETAIN_UNCHANGED",
+      "outputs": [],
+      "owner": "UNKNOWN_OWNER",
+      "path": "core/rust/src/bridge_mmap.rs",
+      "platform_requirement": "UNKNOWN",
+      "release_criticality": "UNKNOWN",
+      "replacement_id": null,
+      "resource_cost": "UNKNOWN",
+      "rollback_path": "Re-run the existing native runner directly.",
+      "runner_backend": "cargo test",
+      "runtime_class": "UNKNOWN",
+      "scope": "core/rust/src",
+      "security_criticality": "UNKNOWN",
+      "side_effects": [
+        "UNKNOWN"
+      ],
+      "stable_id": "AESE-RUST_UNIT_TEST-98A3418661C4B3C9",
+      "supersession_rationale": "No stronger replacement evidence is recorded; preserve the existing authoritative path.",
+      "target": null
+    },
+    {
+      "claims_supported": [],
+      "dependencies": [],
+      "determinism": "UNKNOWN",
+      "domain": "UNKNOWN",
+      "evidence_produced": [],
+      "failure_semantics": "UNKNOWN",
+      "hardware_requirement": "UNKNOWN",
+      "inputs": [],
+      "invariants_checked": [],
+      "kind": "RUST_UNIT_TEST",
+      "known_defects": [],
+      "mapping_status": "NOT_MAPPED",
+      "migration_disposition": "RETAIN_UNCHANGED",
+      "outputs": [],
+      "owner": "UNKNOWN_OWNER",
+      "path": "core/rust/src/eac/cache/semantic.rs",
+      "platform_requirement": "UNKNOWN",
+      "release_criticality": "UNKNOWN",
+      "replacement_id": null,
+      "resource_cost": "UNKNOWN",
+      "rollback_path": "Re-run the existing native runner directly.",
+      "runner_backend": "cargo test",
+      "runtime_class": "UNKNOWN",
+      "scope": "core/rust/src",
+      "security_criticality": "UNKNOWN",
+      "side_effects": [
+        "UNKNOWN"
+      ],
+      "stable_id": "AESE-RUST_UNIT_TEST-6896058315F9E5A4",
+      "supersession_rationale": "No stronger replacement evidence is recorded; preserve the existing authoritative path.",
+      "target": null
+    },
+    {
+      "claims_supported": [],
+      "dependencies": [],
+      "determinism": "UNKNOWN",
+      "domain": "UNKNOWN",
+      "evidence_produced": [],
+      "failure_semantics": "UNKNOWN",
+      "hardware_requirement": "UNKNOWN",
+      "inputs": [],
+      "invariants_checked": [],
+      "kind": "RUST_UNIT_TEST",
+      "known_defects": [],
+      "mapping_status": "NOT_MAPPED",
+      "migration_disposition": "RETAIN_UNCHANGED",
+      "outputs": [],
+      "owner": "UNKNOWN_OWNER",
+      "path": "core/rust/src/eac/events.rs",
+      "platform_requirement": "UNKNOWN",
+      "release_criticality": "UNKNOWN",
+      "replacement_id": null,
+      "resource_cost": "UNKNOWN",
+      "rollback_path": "Re-run the existing native runner directly.",
+      "runner_backend": "cargo test",
+      "runtime_class": "UNKNOWN",
+      "scope": "core/rust/src",
+      "security_criticality": "UNKNOWN",
+      "side_effects": [
+        "UNKNOWN"
+      ],
+      "stable_id": "AESE-RUST_UNIT_TEST-D378F0E030D804EB",
+      "supersession_rationale": "No stronger replacement evidence is recorded; preserve the existing authoritative path.",
+      "target": null
+    },
+    {
+      "claims_supported": [],
+      "dependencies": [],
+      "determinism": "UNKNOWN",
+      "domain": "UNKNOWN",
+      "evidence_produced": [],
+      "failure_semantics": "UNKNOWN",
+      "hardware_requirement": "UNKNOWN",
+      "inputs": [],
+      "invariants_checked": [],
+      "kind": "RUST_UNIT_TEST",
+      "known_defects": [],
+      "mapping_status": "NOT_MAPPED",
+      "migration_disposition": "RETAIN_UNCHANGED",
+      "outputs": [],
+      "owner": "UNKNOWN_OWNER",
+      "path": "core/rust/src/eac/sandbox/batch.rs",
+      "platform_requirement": "UNKNOWN",
+      "release_criticality": "UNKNOWN",
+      "replacement_id": null,
+      "resource_cost": "UNKNOWN",
+      "rollback_path": "Re-run the existing native runner directly.",
+      "runner_backend": "cargo test",
+      "runtime_class": "UNKNOWN",
+      "scope": "core/rust/src",
+      "security_criticality": "UNKNOWN",
+      "side_effects": [
+        "UNKNOWN"
+      ],
+      "stable_id": "AESE-RUST_UNIT_TEST-25A082632F2A02C7",
+      "supersession_rationale": "No stronger replacement evidence is recorded; preserve the existing authoritative path.",
+      "target": null
+    },
+    {
+      "claims_supported": [],
+      "dependencies": [],
+      "determinism": "UNKNOWN",
+      "domain": "RUNTIME",
+      "evidence_produced": [],
+      "failure_semantics": "UNKNOWN",
+      "hardware_requirement": "UNKNOWN",
+      "inputs": [],
+      "invariants_checked": [],
+      "kind": "RUST_UNIT_TEST",
+      "known_defects": [],
+      "mapping_status": "NOT_MAPPED",
+      "migration_disposition": "RETAIN_UNCHANGED",
+      "outputs": [],
+      "owner": "UNKNOWN_OWNER",
+      "path": "core/rust/src/eac/sandbox/runtime.rs",
+      "platform_requirement": "UNKNOWN",
+      "release_criticality": "UNKNOWN",
+      "replacement_id": null,
+      "resource_cost": "UNKNOWN",
+      "rollback_path": "Re-run the existing native runner directly.",
+      "runner_backend": "cargo test",
+      "runtime_class": "UNKNOWN",
+      "scope": "core/rust/src",
+      "security_criticality": "UNKNOWN",
+      "side_effects": [
+        "UNKNOWN"
+      ],
+      "stable_id": "AESE-RUST_UNIT_TEST-EB50407EAE4868AB",
+      "supersession_rationale": "No stronger replacement evidence is recorded; preserve the existing authoritative path.",
+      "target": null
+    },
+    {
+      "claims_supported": [],
+      "dependencies": [],
+      "determinism": "UNKNOWN",
+      "domain": "UNKNOWN",
+      "evidence_produced": [],
+      "failure_semantics": "UNKNOWN",
+      "hardware_requirement": "UNKNOWN",
+      "inputs": [],
+      "invariants_checked": [],
+      "kind": "RUST_UNIT_TEST",
+      "known_defects": [],
+      "mapping_status": "NOT_MAPPED",
+      "migration_disposition": "RETAIN_UNCHANGED",
+      "outputs": [],
+      "owner": "UNKNOWN_OWNER",
+      "path": "core/rust/src/execution.rs",
+      "platform_requirement": "UNKNOWN",
+      "release_criticality": "UNKNOWN",
+      "replacement_id": null,
+      "resource_cost": "UNKNOWN",
+      "rollback_path": "Re-run the existing native runner directly.",
+      "runner_backend": "cargo test",
+      "runtime_class": "UNKNOWN",
+      "scope": "core/rust/src",
+      "security_criticality": "UNKNOWN",
+      "side_effects": [
+        "UNKNOWN"
+      ],
+      "stable_id": "AESE-RUST_UNIT_TEST-2C9D296895749679",
+      "supersession_rationale": "No stronger replacement evidence is recorded; preserve the existing authoritative path.",
+      "target": null
+    },
+    {
+      "claims_supported": [],
+      "dependencies": [],
+      "determinism": "UNKNOWN",
+      "domain": "UNKNOWN",
+      "evidence_produced": [],
+      "failure_semantics": "UNKNOWN",
+      "hardware_requirement": "UNKNOWN",
+      "inputs": [],
+      "invariants_checked": [],
+      "kind": "RUST_UNIT_TEST",
+      "known_defects": [],
+      "mapping_status": "NOT_MAPPED",
+      "migration_disposition": "RETAIN_UNCHANGED",
+      "outputs": [],
+      "owner": "UNKNOWN_OWNER",
+      "path": "core/rust/src/gt96.rs",
+      "platform_requirement": "UNKNOWN",
+      "release_criticality": "UNKNOWN",
+      "replacement_id": null,
+      "resource_cost": "UNKNOWN",
+      "rollback_path": "Re-run the existing native runner directly.",
+      "runner_backend": "cargo test",
+      "runtime_class": "UNKNOWN",
+      "scope": "core/rust/src",
+      "security_criticality": "UNKNOWN",
+      "side_effects": [
+        "UNKNOWN"
+      ],
+      "stable_id": "AESE-RUST_UNIT_TEST-6E0A9FEABAA1955E",
+      "supersession_rationale": "No stronger replacement evidence is recorded; preserve the existing authoritative path.",
+      "target": null
+    },
+    {
+      "claims_supported": [],
+      "dependencies": [],
+      "determinism": "UNKNOWN",
+      "domain": "UNKNOWN",
+      "evidence_produced": [],
+      "failure_semantics": "UNKNOWN",
+      "hardware_requirement": "UNKNOWN",
+      "inputs": [],
+      "invariants_checked": [],
+      "kind": "RUST_UNIT_TEST",
+      "known_defects": [],
+      "mapping_status": "NOT_MAPPED",
+      "migration_disposition": "RETAIN_UNCHANGED",
+      "outputs": [],
+      "owner": "UNKNOWN_OWNER",
+      "path": "core/rust/src/hot_engine.rs",
+      "platform_requirement": "UNKNOWN",
+      "release_criticality": "UNKNOWN",
+      "replacement_id": null,
+      "resource_cost": "UNKNOWN",
+      "rollback_path": "Re-run the existing native runner directly.",
+      "runner_backend": "cargo test",
+      "runtime_class": "UNKNOWN",
+      "scope": "core/rust/src",
+      "security_criticality": "UNKNOWN",
+      "side_effects": [
+        "UNKNOWN"
+      ],
+      "stable_id": "AESE-RUST_UNIT_TEST-940C3F295FD42710",
+      "supersession_rationale": "No stronger replacement evidence is recorded; preserve the existing authoritative path.",
+      "target": null
+    },
+    {
+      "claims_supported": [],
+      "dependencies": [],
+      "determinism": "UNKNOWN",
+      "domain": "RUNTIME",
+      "evidence_produced": [],
+      "failure_semantics": "UNKNOWN",
+      "hardware_requirement": "UNKNOWN",
+      "inputs": [],
+      "invariants_checked": [],
+      "kind": "RUST_UNIT_TEST",
+      "known_defects": [],
+      "mapping_status": "NOT_MAPPED",
+      "migration_disposition": "RETAIN_UNCHANGED",
+      "outputs": [],
+      "owner": "UNKNOWN_OWNER",
+      "path": "core/rust/src/lab.rs",
+      "platform_requirement": "UNKNOWN",
+      "release_criticality": "UNKNOWN",
+      "replacement_id": null,
+      "resource_cost": "UNKNOWN",
+      "rollback_path": "Re-run the existing native runner directly.",
+      "runner_backend": "cargo test",
+      "runtime_class": "UNKNOWN",
+      "scope": "core/rust/src",
+      "security_criticality": "UNKNOWN",
+      "side_effects": [
+        "UNKNOWN"
+      ],
+      "stable_id": "AESE-RUST_UNIT_TEST-92EBE7488C4A494F",
+      "supersession_rationale": "No stronger replacement evidence is recorded; preserve the existing authoritative path.",
+      "target": null
+    },
+    {
+      "claims_supported": [],
+      "dependencies": [],
+      "determinism": "UNKNOWN",
+      "domain": "UNKNOWN",
+      "evidence_produced": [],
+      "failure_semantics": "UNKNOWN",
+      "hardware_requirement": "UNKNOWN",
+      "inputs": [],
+      "invariants_checked": [],
+      "kind": "RUST_UNIT_TEST",
+      "known_defects": [],
+      "mapping_status": "NOT_MAPPED",
+      "migration_disposition": "RETAIN_UNCHANGED",
+      "outputs": [],
+      "owner": "UNKNOWN_OWNER",
+      "path": "core/rust/src/learning/mod.rs",
+      "platform_requirement": "UNKNOWN",
+      "release_criticality": "UNKNOWN",
+      "replacement_id": null,
+      "resource_cost": "UNKNOWN",
+      "rollback_path": "Re-run the existing native runner directly.",
+      "runner_backend": "cargo test",
+      "runtime_class": "UNKNOWN",
+      "scope": "core/rust/src",
+      "security_criticality": "UNKNOWN",
+      "side_effects": [
+        "UNKNOWN"
+      ],
+      "stable_id": "AESE-RUST_UNIT_TEST-4FCC4984AF6D2C34",
+      "supersession_rationale": "No stronger replacement evidence is recorded; preserve the existing authoritative path.",
+      "target": null
+    },
+    {
+      "claims_supported": [],
+      "dependencies": [],
+      "determinism": "UNKNOWN",
+      "domain": "UNKNOWN",
+      "evidence_produced": [],
+      "failure_semantics": "UNKNOWN",
+      "hardware_requirement": "UNKNOWN",
+      "inputs": [],
+      "invariants_checked": [],
+      "kind": "RUST_UNIT_TEST",
+      "known_defects": [],
+      "mapping_status": "NOT_MAPPED",
+      "migration_disposition": "RETAIN_UNCHANGED",
+      "outputs": [],
+      "owner": "UNKNOWN_OWNER",
+      "path": "core/rust/src/lib.rs",
+      "platform_requirement": "UNKNOWN",
+      "release_criticality": "UNKNOWN",
+      "replacement_id": null,
+      "resource_cost": "UNKNOWN",
+      "rollback_path": "Re-run the existing native runner directly.",
+      "runner_backend": "cargo test",
+      "runtime_class": "UNKNOWN",
+      "scope": "core/rust/src",
+      "security_criticality": "UNKNOWN",
+      "side_effects": [
+        "UNKNOWN"
+      ],
+      "stable_id": "AESE-RUST_UNIT_TEST-23BC7E3048BB4D91",
+      "supersession_rationale": "No stronger replacement evidence is recorded; preserve the existing authoritative path.",
+      "target": null
+    },
+    {
+      "claims_supported": [],
+      "dependencies": [],
+      "determinism": "UNKNOWN",
+      "domain": "UNKNOWN",
+      "evidence_produced": [],
+      "failure_semantics": "UNKNOWN",
+      "hardware_requirement": "UNKNOWN",
+      "inputs": [],
+      "invariants_checked": [],
+      "kind": "RUST_UNIT_TEST",
+      "known_defects": [],
+      "mapping_status": "NOT_MAPPED",
+      "migration_disposition": "RETAIN_UNCHANGED",
+      "outputs": [],
+      "owner": "UNKNOWN_OWNER",
+      "path": "core/rust/src/licensing.rs",
+      "platform_requirement": "UNKNOWN",
+      "release_criticality": "UNKNOWN",
+      "replacement_id": null,
+      "resource_cost": "UNKNOWN",
+      "rollback_path": "Re-run the existing native runner directly.",
+      "runner_backend": "cargo test",
+      "runtime_class": "UNKNOWN",
+      "scope": "core/rust/src",
+      "security_criticality": "UNKNOWN",
+      "side_effects": [
+        "UNKNOWN"
+      ],
+      "stable_id": "AESE-RUST_UNIT_TEST-06AD9BFDAEC677E0",
+      "supersession_rationale": "No stronger replacement evidence is recorded; preserve the existing authoritative path.",
+      "target": null
+    },
+    {
+      "claims_supported": [],
+      "dependencies": [],
+      "determinism": "UNKNOWN",
+      "domain": "UNKNOWN",
+      "evidence_produced": [],
+      "failure_semantics": "UNKNOWN",
+      "hardware_requirement": "UNKNOWN",
+      "inputs": [],
+      "invariants_checked": [],
+      "kind": "RUST_UNIT_TEST",
+      "known_defects": [],
+      "mapping_status": "NOT_MAPPED",
+      "migration_disposition": "RETAIN_UNCHANGED",
+      "outputs": [],
+      "owner": "UNKNOWN_OWNER",
+      "path": "core/rust/src/memory/nudge.rs",
+      "platform_requirement": "UNKNOWN",
+      "release_criticality": "UNKNOWN",
+      "replacement_id": null,
+      "resource_cost": "UNKNOWN",
+      "rollback_path": "Re-run the existing native runner directly.",
+      "runner_backend": "cargo test",
+      "runtime_class": "UNKNOWN",
+      "scope": "core/rust/src",
+      "security_criticality": "UNKNOWN",
+      "side_effects": [
+        "UNKNOWN"
+      ],
+      "stable_id": "AESE-RUST_UNIT_TEST-8135C64C8D1E687D",
+      "supersession_rationale": "No stronger replacement evidence is recorded; preserve the existing authoritative path.",
+      "target": null
+    },
+    {
+      "claims_supported": [],
+      "dependencies": [],
+      "determinism": "UNKNOWN",
+      "domain": "UNKNOWN",
+      "evidence_produced": [],
+      "failure_semantics": "UNKNOWN",
+      "hardware_requirement": "UNKNOWN",
+      "inputs": [],
+      "invariants_checked": [],
+      "kind": "RUST_UNIT_TEST",
+      "known_defects": [],
+      "mapping_status": "NOT_MAPPED",
+      "migration_disposition": "RETAIN_UNCHANGED",
+      "outputs": [],
+      "owner": "UNKNOWN_OWNER",
+      "path": "core/rust/src/memory/session_search.rs",
+      "platform_requirement": "UNKNOWN",
+      "release_criticality": "UNKNOWN",
+      "replacement_id": null,
+      "resource_cost": "UNKNOWN",
+      "rollback_path": "Re-run the existing native runner directly.",
+      "runner_backend": "cargo test",
+      "runtime_class": "UNKNOWN",
+      "scope": "core/rust/src",
+      "security_criticality": "UNKNOWN",
+      "side_effects": [
+        "UNKNOWN"
+      ],
+      "stable_id": "AESE-RUST_UNIT_TEST-62F71A02E7DAEAF0",
+      "supersession_rationale": "No stronger replacement evidence is recorded; preserve the existing authoritative path.",
+      "target": null
+    },
+    {
+      "claims_supported": [],
+      "dependencies": [],
+      "determinism": "UNKNOWN",
+      "domain": "UNKNOWN",
+      "evidence_produced": [],
+      "failure_semantics": "UNKNOWN",
+      "hardware_requirement": "UNKNOWN",
+      "inputs": [],
+      "invariants_checked": [],
+      "kind": "RUST_UNIT_TEST",
+      "known_defects": [],
+      "mapping_status": "NOT_MAPPED",
+      "migration_disposition": "RETAIN_UNCHANGED",
+      "outputs": [],
+      "owner": "UNKNOWN_OWNER",
+      "path": "core/rust/src/memory/user_model.rs",
+      "platform_requirement": "UNKNOWN",
+      "release_criticality": "UNKNOWN",
+      "replacement_id": null,
+      "resource_cost": "UNKNOWN",
+      "rollback_path": "Re-run the existing native runner directly.",
+      "runner_backend": "cargo test",
+      "runtime_class": "UNKNOWN",
+      "scope": "core/rust/src",
+      "security_criticality": "UNKNOWN",
+      "side_effects": [
+        "UNKNOWN"
+      ],
+      "stable_id": "AESE-RUST_UNIT_TEST-0C9A2F9147ED09FC",
+      "supersession_rationale": "No stronger replacement evidence is recorded; preserve the existing authoritative path.",
+      "target": null
+    },
+    {
+      "claims_supported": [],
+      "dependencies": [],
+      "determinism": "UNKNOWN",
+      "domain": "UNKNOWN",
+      "evidence_produced": [],
+      "failure_semantics": "UNKNOWN",
+      "hardware_requirement": "UNKNOWN",
+      "inputs": [],
+      "invariants_checked": [],
+      "kind": "RUST_UNIT_TEST",
+      "known_defects": [],
+      "mapping_status": "NOT_MAPPED",
+      "migration_disposition": "RETAIN_UNCHANGED",
+      "outputs": [],
+      "owner": "UNKNOWN_OWNER",
+      "path": "core/rust/src/mvcc.rs",
+      "platform_requirement": "UNKNOWN",
+      "release_criticality": "UNKNOWN",
+      "replacement_id": null,
+      "resource_cost": "UNKNOWN",
+      "rollback_path": "Re-run the existing native runner directly.",
+      "runner_backend": "cargo test",
+      "runtime_class": "UNKNOWN",
+      "scope": "core/rust/src",
+      "security_criticality": "UNKNOWN",
+      "side_effects": [
+        "UNKNOWN"
+      ],
+      "stable_id": "AESE-RUST_UNIT_TEST-4126FC7BB01CB145",
+      "supersession_rationale": "No stronger replacement evidence is recorded; preserve the existing authoritative path.",
+      "target": null
+    },
+    {
+      "claims_supported": [],
+      "dependencies": [],
+      "determinism": "UNKNOWN",
+      "domain": "UNKNOWN",
+      "evidence_produced": [],
+      "failure_semantics": "UNKNOWN",
+      "hardware_requirement": "UNKNOWN",
+      "inputs": [],
+      "invariants_checked": [],
+      "kind": "RUST_UNIT_TEST",
+      "known_defects": [],
+      "mapping_status": "NOT_MAPPED",
+      "migration_disposition": "RETAIN_UNCHANGED",
+      "outputs": [],
+      "owner": "UNKNOWN_OWNER",
+      "path": "core/rust/src/physical.rs",
+      "platform_requirement": "UNKNOWN",
+      "release_criticality": "UNKNOWN",
+      "replacement_id": null,
+      "resource_cost": "UNKNOWN",
+      "rollback_path": "Re-run the existing native runner directly.",
+      "runner_backend": "cargo test",
+      "runtime_class": "UNKNOWN",
+      "scope": "core/rust/src",
+      "security_criticality": "UNKNOWN",
+      "side_effects": [
+        "UNKNOWN"
+      ],
+      "stable_id": "AESE-RUST_UNIT_TEST-F78B6AACEB6CDD0A",
+      "supersession_rationale": "No stronger replacement evidence is recorded; preserve the existing authoritative path.",
+      "target": null
+    },
+    {
+      "claims_supported": [],
+      "dependencies": [],
+      "determinism": "UNKNOWN",
+      "domain": "RUNTIME",
+      "evidence_produced": [],
+      "failure_semantics": "UNKNOWN",
+      "hardware_requirement": "UNKNOWN",
+      "inputs": [],
+      "invariants_checked": [],
+      "kind": "RUST_UNIT_TEST",
+      "known_defects": [],
+      "mapping_status": "NOT_MAPPED",
+      "migration_disposition": "RETAIN_UNCHANGED",
+      "outputs": [],
+      "owner": "UNKNOWN_OWNER",
+      "path": "core/rust/src/replay.rs",
+      "platform_requirement": "UNKNOWN",
+      "release_criticality": "UNKNOWN",
+      "replacement_id": null,
+      "resource_cost": "UNKNOWN",
+      "rollback_path": "Re-run the existing native runner directly.",
+      "runner_backend": "cargo test",
+      "runtime_class": "UNKNOWN",
+      "scope": "core/rust/src",
+      "security_criticality": "UNKNOWN",
+      "side_effects": [
+        "UNKNOWN"
+      ],
+      "stable_id": "AESE-RUST_UNIT_TEST-706B6EC4F030313E",
+      "supersession_rationale": "No stronger replacement evidence is recorded; preserve the existing authoritative path.",
+      "target": null
+    },
+    {
+      "claims_supported": [],
+      "dependencies": [],
+      "determinism": "UNKNOWN",
+      "domain": "PERFORMANCE",
+      "evidence_produced": [],
+      "failure_semantics": "UNKNOWN",
+      "hardware_requirement": "UNKNOWN",
+      "inputs": [],
+      "invariants_checked": [],
+      "kind": "RUST_UNIT_TEST",
+      "known_defects": [],
+      "mapping_status": "NOT_MAPPED",
+      "migration_disposition": "RETAIN_UNCHANGED",
+      "outputs": [],
+      "owner": "UNKNOWN_OWNER",
+      "path": "core/rust/src/resource.rs",
+      "platform_requirement": "UNKNOWN",
+      "release_criticality": "UNKNOWN",
+      "replacement_id": null,
+      "resource_cost": "UNKNOWN",
+      "rollback_path": "Re-run the existing native runner directly.",
+      "runner_backend": "cargo test",
+      "runtime_class": "UNKNOWN",
+      "scope": "core/rust/src",
+      "security_criticality": "UNKNOWN",
+      "side_effects": [
+        "UNKNOWN"
+      ],
+      "stable_id": "AESE-RUST_UNIT_TEST-7142417A253B65D2",
+      "supersession_rationale": "No stronger replacement evidence is recorded; preserve the existing authoritative path.",
+      "target": null
+    },
+    {
+      "claims_supported": [],
+      "dependencies": [],
+      "determinism": "UNKNOWN",
+      "domain": "PERFORMANCE",
+      "evidence_produced": [],
+      "failure_semantics": "UNKNOWN",
+      "hardware_requirement": "UNKNOWN",
+      "inputs": [],
+      "invariants_checked": [],
+      "kind": "RUST_UNIT_TEST",
+      "known_defects": [],
+      "mapping_status": "NOT_MAPPED",
+      "migration_disposition": "RETAIN_UNCHANGED",
+      "outputs": [],
+      "owner": "UNKNOWN_OWNER",
+      "path": "core/rust/src/resource_platform.rs",
+      "platform_requirement": "UNKNOWN",
+      "release_criticality": "UNKNOWN",
+      "replacement_id": null,
+      "resource_cost": "UNKNOWN",
+      "rollback_path": "Re-run the existing native runner directly.",
+      "runner_backend": "cargo test",
+      "runtime_class": "UNKNOWN",
+      "scope": "core/rust/src",
+      "security_criticality": "UNKNOWN",
+      "side_effects": [
+        "UNKNOWN"
+      ],
+      "stable_id": "AESE-RUST_UNIT_TEST-382B75CCEC122E20",
+      "supersession_rationale": "No stronger replacement evidence is recorded; preserve the existing authoritative path.",
+      "target": null
+    },
+    {
+      "claims_supported": [],
+      "dependencies": [],
+      "determinism": "UNKNOWN",
+      "domain": "RUNTIME",
+      "evidence_produced": [],
+      "failure_semantics": "UNKNOWN",
+      "hardware_requirement": "UNKNOWN",
+      "inputs": [],
+      "invariants_checked": [],
+      "kind": "RUST_UNIT_TEST",
+      "known_defects": [],
+      "mapping_status": "NOT_MAPPED",
+      "migration_disposition": "RETAIN_UNCHANGED",
+      "outputs": [],
+      "owner": "UNKNOWN_OWNER",
+      "path": "core/rust/src/runtime.rs",
+      "platform_requirement": "UNKNOWN",
+      "release_criticality": "UNKNOWN",
+      "replacement_id": null,
+      "resource_cost": "UNKNOWN",
+      "rollback_path": "Re-run the existing native runner directly.",
+      "runner_backend": "cargo test",
+      "runtime_class": "UNKNOWN",
+      "scope": "core/rust/src",
+      "security_criticality": "UNKNOWN",
+      "side_effects": [
+        "UNKNOWN"
+      ],
+      "stable_id": "AESE-RUST_UNIT_TEST-627B7C3B524D6D59",
+      "supersession_rationale": "No stronger replacement evidence is recorded; preserve the existing authoritative path.",
+      "target": null
+    },
+    {
+      "claims_supported": [],
+      "dependencies": [],
+      "determinism": "UNKNOWN",
+      "domain": "UNKNOWN",
+      "evidence_produced": [],
+      "failure_semantics": "UNKNOWN",
+      "hardware_requirement": "UNKNOWN",
+      "inputs": [],
+      "invariants_checked": [],
+      "kind": "RUST_UNIT_TEST",
+      "known_defects": [],
+      "mapping_status": "NOT_MAPPED",
+      "migration_disposition": "RETAIN_UNCHANGED",
+      "outputs": [],
+      "owner": "UNKNOWN_OWNER",
+      "path": "core/rust/src/sandbox.rs",
+      "platform_requirement": "UNKNOWN",
+      "release_criticality": "UNKNOWN",
+      "replacement_id": null,
+      "resource_cost": "UNKNOWN",
+      "rollback_path": "Re-run the existing native runner directly.",
+      "runner_backend": "cargo test",
+      "runtime_class": "UNKNOWN",
+      "scope": "core/rust/src",
+      "security_criticality": "UNKNOWN",
+      "side_effects": [
+        "UNKNOWN"
+      ],
+      "stable_id": "AESE-RUST_UNIT_TEST-EFB18248756AE77E",
+      "supersession_rationale": "No stronger replacement evidence is recorded; preserve the existing authoritative path.",
+      "target": null
+    },
+    {
+      "claims_supported": [],
+      "dependencies": [],
+      "determinism": "UNKNOWN",
+      "domain": "UNKNOWN",
+      "evidence_produced": [],
+      "failure_semantics": "UNKNOWN",
+      "hardware_requirement": "UNKNOWN",
+      "inputs": [],
+      "invariants_checked": [],
+      "kind": "RUST_UNIT_TEST",
+      "known_defects": [],
+      "mapping_status": "NOT_MAPPED",
+      "migration_disposition": "RETAIN_UNCHANGED",
+      "outputs": [],
+      "owner": "UNKNOWN_OWNER",
+      "path": "core/rust/src/telemetry.rs",
+      "platform_requirement": "UNKNOWN",
+      "release_criticality": "UNKNOWN",
+      "replacement_id": null,
+      "resource_cost": "UNKNOWN",
+      "rollback_path": "Re-run the existing native runner directly.",
+      "runner_backend": "cargo test",
+      "runtime_class": "UNKNOWN",
+      "scope": "core/rust/src",
+      "security_criticality": "UNKNOWN",
+      "side_effects": [
+        "UNKNOWN"
+      ],
+      "stable_id": "AESE-RUST_UNIT_TEST-1ACBE80688E0CB89",
+      "supersession_rationale": "No stronger replacement evidence is recorded; preserve the existing authoritative path.",
+      "target": null
+    },
+    {
+      "claims_supported": [],
+      "dependencies": [],
+      "determinism": "UNKNOWN",
+      "domain": "UNKNOWN",
+      "evidence_produced": [],
+      "failure_semantics": "UNKNOWN",
+      "hardware_requirement": "UNKNOWN",
+      "inputs": [],
+      "invariants_checked": [],
+      "kind": "RUST_UNIT_TEST",
+      "known_defects": [],
+      "mapping_status": "NOT_MAPPED",
+      "migration_disposition": "RETAIN_UNCHANGED",
+      "outputs": [],
+      "owner": "UNKNOWN_OWNER",
+      "path": "core/rust/src/tests.rs",
+      "platform_requirement": "UNKNOWN",
+      "release_criticality": "UNKNOWN",
+      "replacement_id": null,
+      "resource_cost": "UNKNOWN",
+      "rollback_path": "Re-run the existing native runner directly.",
+      "runner_backend": "cargo test",
+      "runtime_class": "UNKNOWN",
+      "scope": "core/rust/src",
+      "security_criticality": "UNKNOWN",
+      "side_effects": [
+        "UNKNOWN"
+      ],
+      "stable_id": "AESE-RUST_UNIT_TEST-BB56D2466AB0351F",
+      "supersession_rationale": "No stronger replacement evidence is recorded; preserve the existing authoritative path.",
+      "target": null
     },
     {
       "claims_supported": [],
@@ -323,7 +1487,8 @@
         "UNKNOWN"
       ],
       "stable_id": "AESE-RUST_INTEGRATION_TEST-896180209AD388CD",
-      "supersession_rationale": "No stronger replacement evidence is recorded; preserve the existing authoritative path."
+      "supersession_rationale": "No stronger replacement evidence is recorded; preserve the existing authoritative path.",
+      "target": null
     },
     {
       "claims_supported": [],
@@ -355,7 +1520,8 @@
         "UNKNOWN"
       ],
       "stable_id": "AESE-FUZZ_TARGET-26E115395EF2C8F9",
-      "supersession_rationale": "No stronger replacement evidence is recorded; preserve the existing authoritative path."
+      "supersession_rationale": "No stronger replacement evidence is recorded; preserve the existing authoritative path.",
+      "target": null
     },
     {
       "claims_supported": [],
@@ -387,7 +1553,8 @@
         "UNKNOWN"
       ],
       "stable_id": "AESE-FUZZ_TARGET-571CC359F5473719",
-      "supersession_rationale": "No stronger replacement evidence is recorded; preserve the existing authoritative path."
+      "supersession_rationale": "No stronger replacement evidence is recorded; preserve the existing authoritative path.",
+      "target": null
     },
     {
       "claims_supported": [],
@@ -419,7 +1586,8 @@
         "UNKNOWN"
       ],
       "stable_id": "AESE-FUZZ_TARGET-849E21CC12DE2882",
-      "supersession_rationale": "No stronger replacement evidence is recorded; preserve the existing authoritative path."
+      "supersession_rationale": "No stronger replacement evidence is recorded; preserve the existing authoritative path.",
+      "target": null
     },
     {
       "claims_supported": [],
@@ -451,7 +1619,8 @@
         "UNKNOWN"
       ],
       "stable_id": "AESE-FUZZ_TARGET-A5DD33377FDD8B01",
-      "supersession_rationale": "No stronger replacement evidence is recorded; preserve the existing authoritative path."
+      "supersession_rationale": "No stronger replacement evidence is recorded; preserve the existing authoritative path.",
+      "target": null
     },
     {
       "claims_supported": [],
@@ -483,7 +1652,8 @@
         "UNKNOWN"
       ],
       "stable_id": "AESE-SCRIPT_OR_GATE-C758B4968E53DC97",
-      "supersession_rationale": "No stronger replacement evidence is recorded; preserve the existing authoritative path."
+      "supersession_rationale": "No stronger replacement evidence is recorded; preserve the existing authoritative path.",
+      "target": null
     },
     {
       "claims_supported": [],
@@ -515,7 +1685,41 @@
         "UNKNOWN"
       ],
       "stable_id": "AESE-SCRIPT_OR_GATE-69E5D8F13CE0D30A",
-      "supersession_rationale": "No stronger replacement evidence is recorded; preserve the existing authoritative path."
+      "supersession_rationale": "No stronger replacement evidence is recorded; preserve the existing authoritative path.",
+      "target": null
+    },
+    {
+      "claims_supported": [],
+      "dependencies": [],
+      "determinism": "UNKNOWN",
+      "domain": "UNKNOWN",
+      "evidence_produced": [],
+      "failure_semantics": "UNKNOWN",
+      "hardware_requirement": "UNKNOWN",
+      "inputs": [],
+      "invariants_checked": [],
+      "kind": "SCRIPT_OR_GATE",
+      "known_defects": [],
+      "mapping_status": "NOT_MAPPED",
+      "migration_disposition": "RETAIN_UNCHANGED",
+      "outputs": [],
+      "owner": "UNKNOWN_OWNER",
+      "path": "scripts/aese_claim_graph.py",
+      "platform_requirement": "UNKNOWN",
+      "release_criticality": "UNKNOWN",
+      "replacement_id": null,
+      "resource_cost": "UNKNOWN",
+      "rollback_path": "Re-run the existing native runner directly.",
+      "runner_backend": "python entrypoint",
+      "runtime_class": "UNKNOWN",
+      "scope": "scripts",
+      "security_criticality": "UNKNOWN",
+      "side_effects": [
+        "UNKNOWN"
+      ],
+      "stable_id": "AESE-SCRIPT_OR_GATE-CACC5F6A05F9757D",
+      "supersession_rationale": "No stronger replacement evidence is recorded; preserve the existing authoritative path.",
+      "target": null
     },
     {
       "claims_supported": [],
@@ -547,7 +1751,8 @@
         "UNKNOWN"
       ],
       "stable_id": "AESE-SCRIPT_OR_GATE-2B63ED08D2F345A1",
-      "supersession_rationale": "No stronger replacement evidence is recorded; preserve the existing authoritative path."
+      "supersession_rationale": "No stronger replacement evidence is recorded; preserve the existing authoritative path.",
+      "target": null
     },
     {
       "claims_supported": [],
@@ -579,7 +1784,8 @@
         "UNKNOWN"
       ],
       "stable_id": "AESE-SCRIPT_OR_GATE-89B834E04514B46F",
-      "supersession_rationale": "No stronger replacement evidence is recorded; preserve the existing authoritative path."
+      "supersession_rationale": "No stronger replacement evidence is recorded; preserve the existing authoritative path.",
+      "target": null
     },
     {
       "claims_supported": [],
@@ -611,7 +1817,8 @@
         "UNKNOWN"
       ],
       "stable_id": "AESE-SCRIPT_OR_GATE-59733FC5B436637F",
-      "supersession_rationale": "No stronger replacement evidence is recorded; preserve the existing authoritative path."
+      "supersession_rationale": "No stronger replacement evidence is recorded; preserve the existing authoritative path.",
+      "target": null
     },
     {
       "claims_supported": [],
@@ -623,7 +1830,7 @@
       "hardware_requirement": "UNKNOWN",
       "inputs": [],
       "invariants_checked": [],
-      "kind": "SCRIPT_OR_GATE",
+      "kind": "PYTHON_BENCHMARK",
       "known_defects": [],
       "mapping_status": "NOT_MAPPED",
       "migration_disposition": "RETAIN_UNCHANGED",
@@ -635,15 +1842,16 @@
       "replacement_id": null,
       "resource_cost": "UNKNOWN",
       "rollback_path": "Re-run the existing native runner directly.",
-      "runner_backend": "python entrypoint",
+      "runner_backend": "python benchmark entrypoint",
       "runtime_class": "UNKNOWN",
       "scope": "scripts",
       "security_criticality": "UNKNOWN",
       "side_effects": [
         "UNKNOWN"
       ],
-      "stable_id": "AESE-SCRIPT_OR_GATE-DA7DC4EE5F9A3219",
-      "supersession_rationale": "No stronger replacement evidence is recorded; preserve the existing authoritative path."
+      "stable_id": "AESE-PYTHON_BENCHMARK-DA7DC4EE5F9A3219",
+      "supersession_rationale": "No stronger replacement evidence is recorded; preserve the existing authoritative path.",
+      "target": null
     },
     {
       "claims_supported": [],
@@ -655,7 +1863,7 @@
       "hardware_requirement": "UNKNOWN",
       "inputs": [],
       "invariants_checked": [],
-      "kind": "SCRIPT_OR_GATE",
+      "kind": "PYTHON_BENCHMARK",
       "known_defects": [],
       "mapping_status": "NOT_MAPPED",
       "migration_disposition": "RETAIN_UNCHANGED",
@@ -667,15 +1875,16 @@
       "replacement_id": null,
       "resource_cost": "UNKNOWN",
       "rollback_path": "Re-run the existing native runner directly.",
-      "runner_backend": "python entrypoint",
+      "runner_backend": "python benchmark entrypoint",
       "runtime_class": "UNKNOWN",
       "scope": "scripts",
       "security_criticality": "UNKNOWN",
       "side_effects": [
         "UNKNOWN"
       ],
-      "stable_id": "AESE-SCRIPT_OR_GATE-DAAA8EB886A2B8E1",
-      "supersession_rationale": "No stronger replacement evidence is recorded; preserve the existing authoritative path."
+      "stable_id": "AESE-PYTHON_BENCHMARK-DAAA8EB886A2B8E1",
+      "supersession_rationale": "No stronger replacement evidence is recorded; preserve the existing authoritative path.",
+      "target": null
     },
     {
       "claims_supported": [],
@@ -687,7 +1896,7 @@
       "hardware_requirement": "UNKNOWN",
       "inputs": [],
       "invariants_checked": [],
-      "kind": "SCRIPT_OR_GATE",
+      "kind": "PYTHON_BENCHMARK",
       "known_defects": [],
       "mapping_status": "NOT_MAPPED",
       "migration_disposition": "RETAIN_UNCHANGED",
@@ -699,15 +1908,16 @@
       "replacement_id": null,
       "resource_cost": "UNKNOWN",
       "rollback_path": "Re-run the existing native runner directly.",
-      "runner_backend": "python entrypoint",
+      "runner_backend": "python benchmark entrypoint",
       "runtime_class": "UNKNOWN",
       "scope": "scripts",
       "security_criticality": "UNKNOWN",
       "side_effects": [
         "UNKNOWN"
       ],
-      "stable_id": "AESE-SCRIPT_OR_GATE-ADB45F89AA5C56C0",
-      "supersession_rationale": "No stronger replacement evidence is recorded; preserve the existing authoritative path."
+      "stable_id": "AESE-PYTHON_BENCHMARK-ADB45F89AA5C56C0",
+      "supersession_rationale": "No stronger replacement evidence is recorded; preserve the existing authoritative path.",
+      "target": null
     },
     {
       "claims_supported": [],
@@ -739,7 +1949,8 @@
         "UNKNOWN"
       ],
       "stable_id": "AESE-SCRIPT_OR_GATE-3DA20698BDA0AFE0",
-      "supersession_rationale": "No stronger replacement evidence is recorded; preserve the existing authoritative path."
+      "supersession_rationale": "No stronger replacement evidence is recorded; preserve the existing authoritative path.",
+      "target": null
     },
     {
       "claims_supported": [],
@@ -751,7 +1962,7 @@
       "hardware_requirement": "UNKNOWN",
       "inputs": [],
       "invariants_checked": [],
-      "kind": "SCRIPT_OR_GATE",
+      "kind": "PYTHON_BENCHMARK",
       "known_defects": [],
       "mapping_status": "NOT_MAPPED",
       "migration_disposition": "RETAIN_UNCHANGED",
@@ -763,15 +1974,16 @@
       "replacement_id": null,
       "resource_cost": "UNKNOWN",
       "rollback_path": "Re-run the existing native runner directly.",
-      "runner_backend": "python entrypoint",
+      "runner_backend": "python benchmark entrypoint",
       "runtime_class": "UNKNOWN",
       "scope": "scripts",
       "security_criticality": "UNKNOWN",
       "side_effects": [
         "UNKNOWN"
       ],
-      "stable_id": "AESE-SCRIPT_OR_GATE-7AC55EA6DC9C796D",
-      "supersession_rationale": "No stronger replacement evidence is recorded; preserve the existing authoritative path."
+      "stable_id": "AESE-PYTHON_BENCHMARK-7AC55EA6DC9C796D",
+      "supersession_rationale": "No stronger replacement evidence is recorded; preserve the existing authoritative path.",
+      "target": null
     },
     {
       "claims_supported": [],
@@ -803,7 +2015,8 @@
         "UNKNOWN"
       ],
       "stable_id": "AESE-SCRIPT_OR_GATE-C55A3E2F42DF2E66",
-      "supersession_rationale": "No stronger replacement evidence is recorded; preserve the existing authoritative path."
+      "supersession_rationale": "No stronger replacement evidence is recorded; preserve the existing authoritative path.",
+      "target": null
     },
     {
       "claims_supported": [],
@@ -835,7 +2048,8 @@
         "UNKNOWN"
       ],
       "stable_id": "AESE-SCRIPT_OR_GATE-76148D210BE92453",
-      "supersession_rationale": "No stronger replacement evidence is recorded; preserve the existing authoritative path."
+      "supersession_rationale": "No stronger replacement evidence is recorded; preserve the existing authoritative path.",
+      "target": null
     },
     {
       "claims_supported": [],
@@ -867,7 +2081,8 @@
         "UNKNOWN"
       ],
       "stable_id": "AESE-SCRIPT_OR_GATE-D8C9E5F1836A961A",
-      "supersession_rationale": "No stronger replacement evidence is recorded; preserve the existing authoritative path."
+      "supersession_rationale": "No stronger replacement evidence is recorded; preserve the existing authoritative path.",
+      "target": null
     },
     {
       "claims_supported": [],
@@ -899,7 +2114,8 @@
         "UNKNOWN"
       ],
       "stable_id": "AESE-SCRIPT_OR_GATE-526FBDFF8E721A83",
-      "supersession_rationale": "No stronger replacement evidence is recorded; preserve the existing authoritative path."
+      "supersession_rationale": "No stronger replacement evidence is recorded; preserve the existing authoritative path.",
+      "target": null
     },
     {
       "claims_supported": [],
@@ -931,7 +2147,8 @@
         "UNKNOWN"
       ],
       "stable_id": "AESE-SCRIPT_OR_GATE-D2EE6FC497302FFE",
-      "supersession_rationale": "No stronger replacement evidence is recorded; preserve the existing authoritative path."
+      "supersession_rationale": "No stronger replacement evidence is recorded; preserve the existing authoritative path.",
+      "target": null
     },
     {
       "claims_supported": [],
@@ -963,7 +2180,8 @@
         "UNKNOWN"
       ],
       "stable_id": "AESE-SCRIPT_OR_GATE-521CE64FE820F115",
-      "supersession_rationale": "No stronger replacement evidence is recorded; preserve the existing authoritative path."
+      "supersession_rationale": "No stronger replacement evidence is recorded; preserve the existing authoritative path.",
+      "target": null
     },
     {
       "claims_supported": [],
@@ -995,7 +2213,8 @@
         "UNKNOWN"
       ],
       "stable_id": "AESE-SCRIPT_OR_GATE-EAD763949D76D450",
-      "supersession_rationale": "No stronger replacement evidence is recorded; preserve the existing authoritative path."
+      "supersession_rationale": "No stronger replacement evidence is recorded; preserve the existing authoritative path.",
+      "target": null
     },
     {
       "claims_supported": [],
@@ -1027,7 +2246,8 @@
         "UNKNOWN"
       ],
       "stable_id": "AESE-SCRIPT_OR_GATE-7CEB4E4C29B7FB6E",
-      "supersession_rationale": "No stronger replacement evidence is recorded; preserve the existing authoritative path."
+      "supersession_rationale": "No stronger replacement evidence is recorded; preserve the existing authoritative path.",
+      "target": null
     },
     {
       "claims_supported": [],
@@ -1059,7 +2279,8 @@
         "UNKNOWN"
       ],
       "stable_id": "AESE-SCRIPT_OR_GATE-F71A5FF033DCDDED",
-      "supersession_rationale": "No stronger replacement evidence is recorded; preserve the existing authoritative path."
+      "supersession_rationale": "No stronger replacement evidence is recorded; preserve the existing authoritative path.",
+      "target": null
     },
     {
       "claims_supported": [],
@@ -1091,7 +2312,8 @@
         "UNKNOWN"
       ],
       "stable_id": "AESE-SCRIPT_OR_GATE-9486938F341FABFA",
-      "supersession_rationale": "No stronger replacement evidence is recorded; preserve the existing authoritative path."
+      "supersession_rationale": "No stronger replacement evidence is recorded; preserve the existing authoritative path.",
+      "target": null
     },
     {
       "claims_supported": [],
@@ -1123,7 +2345,8 @@
         "UNKNOWN"
       ],
       "stable_id": "AESE-SCRIPT_OR_GATE-A252DD72700346F7",
-      "supersession_rationale": "No stronger replacement evidence is recorded; preserve the existing authoritative path."
+      "supersession_rationale": "No stronger replacement evidence is recorded; preserve the existing authoritative path.",
+      "target": null
     },
     {
       "claims_supported": [],
@@ -1155,7 +2378,8 @@
         "UNKNOWN"
       ],
       "stable_id": "AESE-SCRIPT_OR_GATE-42F256E8C83B546F",
-      "supersession_rationale": "No stronger replacement evidence is recorded; preserve the existing authoritative path."
+      "supersession_rationale": "No stronger replacement evidence is recorded; preserve the existing authoritative path.",
+      "target": null
     },
     {
       "claims_supported": [],
@@ -1187,7 +2411,8 @@
         "UNKNOWN"
       ],
       "stable_id": "AESE-SCRIPT_OR_GATE-8CA7D43E006E7E67",
-      "supersession_rationale": "No stronger replacement evidence is recorded; preserve the existing authoritative path."
+      "supersession_rationale": "No stronger replacement evidence is recorded; preserve the existing authoritative path.",
+      "target": null
     },
     {
       "claims_supported": [],
@@ -1219,7 +2444,8 @@
         "UNKNOWN"
       ],
       "stable_id": "AESE-SCRIPT_OR_GATE-D12E68D70CC5EDF5",
-      "supersession_rationale": "No stronger replacement evidence is recorded; preserve the existing authoritative path."
+      "supersession_rationale": "No stronger replacement evidence is recorded; preserve the existing authoritative path.",
+      "target": null
     },
     {
       "claims_supported": [],
@@ -1251,7 +2477,8 @@
         "UNKNOWN"
       ],
       "stable_id": "AESE-SCRIPT_OR_GATE-D221B7F3E670CEAA",
-      "supersession_rationale": "No stronger replacement evidence is recorded; preserve the existing authoritative path."
+      "supersession_rationale": "No stronger replacement evidence is recorded; preserve the existing authoritative path.",
+      "target": null
     },
     {
       "claims_supported": [],
@@ -1283,7 +2510,8 @@
         "UNKNOWN"
       ],
       "stable_id": "AESE-SCRIPT_OR_GATE-AF1C4A9C0ACF7C40",
-      "supersession_rationale": "No stronger replacement evidence is recorded; preserve the existing authoritative path."
+      "supersession_rationale": "No stronger replacement evidence is recorded; preserve the existing authoritative path.",
+      "target": null
     },
     {
       "claims_supported": [],
@@ -1315,7 +2543,8 @@
         "UNKNOWN"
       ],
       "stable_id": "AESE-SCRIPT_OR_GATE-3C51C28EF48E3413",
-      "supersession_rationale": "No stronger replacement evidence is recorded; preserve the existing authoritative path."
+      "supersession_rationale": "No stronger replacement evidence is recorded; preserve the existing authoritative path.",
+      "target": null
     },
     {
       "claims_supported": [],
@@ -1347,7 +2576,8 @@
         "UNKNOWN"
       ],
       "stable_id": "AESE-SCRIPT_OR_GATE-2AD6E9B4F21CBDFE",
-      "supersession_rationale": "No stronger replacement evidence is recorded; preserve the existing authoritative path."
+      "supersession_rationale": "No stronger replacement evidence is recorded; preserve the existing authoritative path.",
+      "target": null
     },
     {
       "claims_supported": [],
@@ -1379,7 +2609,8 @@
         "UNKNOWN"
       ],
       "stable_id": "AESE-SCRIPT_OR_GATE-B05E47CF0E712757",
-      "supersession_rationale": "No stronger replacement evidence is recorded; preserve the existing authoritative path."
+      "supersession_rationale": "No stronger replacement evidence is recorded; preserve the existing authoritative path.",
+      "target": null
     },
     {
       "claims_supported": [],
@@ -1411,7 +2642,8 @@
         "UNKNOWN"
       ],
       "stable_id": "AESE-SCRIPT_OR_GATE-A01FED7B9AF150FD",
-      "supersession_rationale": "No stronger replacement evidence is recorded; preserve the existing authoritative path."
+      "supersession_rationale": "No stronger replacement evidence is recorded; preserve the existing authoritative path.",
+      "target": null
     },
     {
       "claims_supported": [],
@@ -1443,7 +2675,8 @@
         "UNKNOWN"
       ],
       "stable_id": "AESE-SCRIPT_OR_GATE-1CA2D8719B5AFFDA",
-      "supersession_rationale": "No stronger replacement evidence is recorded; preserve the existing authoritative path."
+      "supersession_rationale": "No stronger replacement evidence is recorded; preserve the existing authoritative path.",
+      "target": null
     },
     {
       "claims_supported": [],
@@ -1475,7 +2708,8 @@
         "UNKNOWN"
       ],
       "stable_id": "AESE-SCRIPT_OR_GATE-F4957AEC6076F5C8",
-      "supersession_rationale": "No stronger replacement evidence is recorded; preserve the existing authoritative path."
+      "supersession_rationale": "No stronger replacement evidence is recorded; preserve the existing authoritative path.",
+      "target": null
     },
     {
       "claims_supported": [],
@@ -1507,7 +2741,8 @@
         "UNKNOWN"
       ],
       "stable_id": "AESE-SCRIPT_OR_GATE-2DE64D632EBCBD98",
-      "supersession_rationale": "No stronger replacement evidence is recorded; preserve the existing authoritative path."
+      "supersession_rationale": "No stronger replacement evidence is recorded; preserve the existing authoritative path.",
+      "target": null
     },
     {
       "claims_supported": [],
@@ -1539,7 +2774,8 @@
         "UNKNOWN"
       ],
       "stable_id": "AESE-SCRIPT_OR_GATE-FD4DC115F24E2737",
-      "supersession_rationale": "No stronger replacement evidence is recorded; preserve the existing authoritative path."
+      "supersession_rationale": "No stronger replacement evidence is recorded; preserve the existing authoritative path.",
+      "target": null
     },
     {
       "claims_supported": [],
@@ -1571,7 +2807,8 @@
         "UNKNOWN"
       ],
       "stable_id": "AESE-SCRIPT_OR_GATE-6B9902B786796343",
-      "supersession_rationale": "No stronger replacement evidence is recorded; preserve the existing authoritative path."
+      "supersession_rationale": "No stronger replacement evidence is recorded; preserve the existing authoritative path.",
+      "target": null
     },
     {
       "claims_supported": [],
@@ -1603,7 +2840,8 @@
         "UNKNOWN"
       ],
       "stable_id": "AESE-SCRIPT_OR_GATE-B25F1BADD2B67BBE",
-      "supersession_rationale": "No stronger replacement evidence is recorded; preserve the existing authoritative path."
+      "supersession_rationale": "No stronger replacement evidence is recorded; preserve the existing authoritative path.",
+      "target": null
     },
     {
       "claims_supported": [],
@@ -1635,7 +2873,8 @@
         "UNKNOWN"
       ],
       "stable_id": "AESE-SCRIPT_OR_GATE-86F0635352FF1F36",
-      "supersession_rationale": "No stronger replacement evidence is recorded; preserve the existing authoritative path."
+      "supersession_rationale": "No stronger replacement evidence is recorded; preserve the existing authoritative path.",
+      "target": null
     },
     {
       "claims_supported": [],
@@ -1667,7 +2906,8 @@
         "UNKNOWN"
       ],
       "stable_id": "AESE-SCRIPT_OR_GATE-6A23A2E49524A60A",
-      "supersession_rationale": "No stronger replacement evidence is recorded; preserve the existing authoritative path."
+      "supersession_rationale": "No stronger replacement evidence is recorded; preserve the existing authoritative path.",
+      "target": null
     },
     {
       "claims_supported": [],
@@ -1699,7 +2939,8 @@
         "UNKNOWN"
       ],
       "stable_id": "AESE-SCRIPT_OR_GATE-4A83B7C0E4DAF0C6",
-      "supersession_rationale": "No stronger replacement evidence is recorded; preserve the existing authoritative path."
+      "supersession_rationale": "No stronger replacement evidence is recorded; preserve the existing authoritative path.",
+      "target": null
     },
     {
       "claims_supported": [],
@@ -1731,7 +2972,8 @@
         "UNKNOWN"
       ],
       "stable_id": "AESE-SCRIPT_OR_GATE-0F7930813782918F",
-      "supersession_rationale": "No stronger replacement evidence is recorded; preserve the existing authoritative path."
+      "supersession_rationale": "No stronger replacement evidence is recorded; preserve the existing authoritative path.",
+      "target": null
     },
     {
       "claims_supported": [],
@@ -1763,7 +3005,8 @@
         "UNKNOWN"
       ],
       "stable_id": "AESE-SCRIPT_OR_GATE-918159281814759A",
-      "supersession_rationale": "No stronger replacement evidence is recorded; preserve the existing authoritative path."
+      "supersession_rationale": "No stronger replacement evidence is recorded; preserve the existing authoritative path.",
+      "target": null
     },
     {
       "claims_supported": [],
@@ -1795,7 +3038,8 @@
         "UNKNOWN"
       ],
       "stable_id": "AESE-SCRIPT_OR_GATE-FF1EE659A1612713",
-      "supersession_rationale": "No stronger replacement evidence is recorded; preserve the existing authoritative path."
+      "supersession_rationale": "No stronger replacement evidence is recorded; preserve the existing authoritative path.",
+      "target": null
     },
     {
       "claims_supported": [],
@@ -1827,7 +3071,8 @@
         "UNKNOWN"
       ],
       "stable_id": "AESE-SCRIPT_OR_GATE-B179930A319949B1",
-      "supersession_rationale": "No stronger replacement evidence is recorded; preserve the existing authoritative path."
+      "supersession_rationale": "No stronger replacement evidence is recorded; preserve the existing authoritative path.",
+      "target": null
     },
     {
       "claims_supported": [],
@@ -1839,7 +3084,7 @@
       "hardware_requirement": "UNKNOWN",
       "inputs": [],
       "invariants_checked": [],
-      "kind": "SCRIPT_OR_GATE",
+      "kind": "PYTHON_BENCHMARK",
       "known_defects": [],
       "mapping_status": "NOT_MAPPED",
       "migration_disposition": "RETAIN_UNCHANGED",
@@ -1851,15 +3096,16 @@
       "replacement_id": null,
       "resource_cost": "UNKNOWN",
       "rollback_path": "Re-run the existing native runner directly.",
-      "runner_backend": "python entrypoint",
+      "runner_backend": "python benchmark entrypoint",
       "runtime_class": "UNKNOWN",
       "scope": "scripts",
       "security_criticality": "UNKNOWN",
       "side_effects": [
         "UNKNOWN"
       ],
-      "stable_id": "AESE-SCRIPT_OR_GATE-058179949C4EE7AC",
-      "supersession_rationale": "No stronger replacement evidence is recorded; preserve the existing authoritative path."
+      "stable_id": "AESE-PYTHON_BENCHMARK-058179949C4EE7AC",
+      "supersession_rationale": "No stronger replacement evidence is recorded; preserve the existing authoritative path.",
+      "target": null
     },
     {
       "claims_supported": [],
@@ -1891,7 +3137,8 @@
         "UNKNOWN"
       ],
       "stable_id": "AESE-SCRIPT_OR_GATE-C61A256E619AADC4",
-      "supersession_rationale": "No stronger replacement evidence is recorded; preserve the existing authoritative path."
+      "supersession_rationale": "No stronger replacement evidence is recorded; preserve the existing authoritative path.",
+      "target": null
     },
     {
       "claims_supported": [],
@@ -1923,7 +3170,8 @@
         "UNKNOWN"
       ],
       "stable_id": "AESE-SCRIPT_OR_GATE-7AE7927B69F23D65",
-      "supersession_rationale": "No stronger replacement evidence is recorded; preserve the existing authoritative path."
+      "supersession_rationale": "No stronger replacement evidence is recorded; preserve the existing authoritative path.",
+      "target": null
     },
     {
       "claims_supported": [],
@@ -1955,7 +3203,8 @@
         "UNKNOWN"
       ],
       "stable_id": "AESE-SCRIPT_OR_GATE-8DA14FC12AA842E6",
-      "supersession_rationale": "No stronger replacement evidence is recorded; preserve the existing authoritative path."
+      "supersession_rationale": "No stronger replacement evidence is recorded; preserve the existing authoritative path.",
+      "target": null
     },
     {
       "claims_supported": [],
@@ -1987,7 +3236,8 @@
         "UNKNOWN"
       ],
       "stable_id": "AESE-SCRIPT_OR_GATE-60FD4CE4E914F390",
-      "supersession_rationale": "No stronger replacement evidence is recorded; preserve the existing authoritative path."
+      "supersession_rationale": "No stronger replacement evidence is recorded; preserve the existing authoritative path.",
+      "target": null
     },
     {
       "claims_supported": [],
@@ -2019,7 +3269,8 @@
         "UNKNOWN"
       ],
       "stable_id": "AESE-SCRIPT_OR_GATE-01055752520CFFA7",
-      "supersession_rationale": "No stronger replacement evidence is recorded; preserve the existing authoritative path."
+      "supersession_rationale": "No stronger replacement evidence is recorded; preserve the existing authoritative path.",
+      "target": null
     },
     {
       "claims_supported": [],
@@ -2051,7 +3302,8 @@
         "UNKNOWN"
       ],
       "stable_id": "AESE-SCRIPT_OR_GATE-DCDBAB51D0B44452",
-      "supersession_rationale": "No stronger replacement evidence is recorded; preserve the existing authoritative path."
+      "supersession_rationale": "No stronger replacement evidence is recorded; preserve the existing authoritative path.",
+      "target": null
     },
     {
       "claims_supported": [],
@@ -2083,7 +3335,8 @@
         "UNKNOWN"
       ],
       "stable_id": "AESE-SCRIPT_OR_GATE-665823FFB7A1BC2E",
-      "supersession_rationale": "No stronger replacement evidence is recorded; preserve the existing authoritative path."
+      "supersession_rationale": "No stronger replacement evidence is recorded; preserve the existing authoritative path.",
+      "target": null
     },
     {
       "claims_supported": [],
@@ -2115,7 +3368,8 @@
         "UNKNOWN"
       ],
       "stable_id": "AESE-SCRIPT_OR_GATE-615CB27130ABC689",
-      "supersession_rationale": "No stronger replacement evidence is recorded; preserve the existing authoritative path."
+      "supersession_rationale": "No stronger replacement evidence is recorded; preserve the existing authoritative path.",
+      "target": null
     },
     {
       "claims_supported": [],
@@ -2147,7 +3401,8 @@
         "UNKNOWN"
       ],
       "stable_id": "AESE-SCRIPT_OR_GATE-2974F2FBD2B1A186",
-      "supersession_rationale": "No stronger replacement evidence is recorded; preserve the existing authoritative path."
+      "supersession_rationale": "No stronger replacement evidence is recorded; preserve the existing authoritative path.",
+      "target": null
     },
     {
       "claims_supported": [],
@@ -2179,7 +3434,8 @@
         "UNKNOWN"
       ],
       "stable_id": "AESE-SCRIPT_OR_GATE-61A2C157C5B9ED60",
-      "supersession_rationale": "No stronger replacement evidence is recorded; preserve the existing authoritative path."
+      "supersession_rationale": "No stronger replacement evidence is recorded; preserve the existing authoritative path.",
+      "target": null
     },
     {
       "claims_supported": [],
@@ -2211,7 +3467,41 @@
         "UNKNOWN"
       ],
       "stable_id": "AESE-SCRIPT_OR_GATE-43A7353F29E3A524",
-      "supersession_rationale": "No stronger replacement evidence is recorded; preserve the existing authoritative path."
+      "supersession_rationale": "No stronger replacement evidence is recorded; preserve the existing authoritative path.",
+      "target": null
+    },
+    {
+      "claims_supported": [],
+      "dependencies": [],
+      "determinism": "UNKNOWN",
+      "domain": "UNKNOWN",
+      "evidence_produced": [],
+      "failure_semantics": "UNKNOWN",
+      "hardware_requirement": "UNKNOWN",
+      "inputs": [],
+      "invariants_checked": [],
+      "kind": "PYTHON_TEST",
+      "known_defects": [],
+      "mapping_status": "NOT_MAPPED",
+      "migration_disposition": "RETAIN_UNCHANGED",
+      "outputs": [],
+      "owner": "UNKNOWN_OWNER",
+      "path": "tests/test_aese_claim_graph.py",
+      "platform_requirement": "UNKNOWN",
+      "release_criticality": "UNKNOWN",
+      "replacement_id": null,
+      "resource_cost": "UNKNOWN",
+      "rollback_path": "Re-run the existing native runner directly.",
+      "runner_backend": "pytest",
+      "runtime_class": "UNKNOWN",
+      "scope": "tests",
+      "security_criticality": "UNKNOWN",
+      "side_effects": [
+        "UNKNOWN"
+      ],
+      "stable_id": "AESE-PYTHON_TEST-D79D5846F51A8B48",
+      "supersession_rationale": "No stronger replacement evidence is recorded; preserve the existing authoritative path.",
+      "target": null
     },
     {
       "claims_supported": [],
@@ -2243,7 +3533,8 @@
         "UNKNOWN"
       ],
       "stable_id": "AESE-PYTHON_TEST-F44FE1653A27637B",
-      "supersession_rationale": "No stronger replacement evidence is recorded; preserve the existing authoritative path."
+      "supersession_rationale": "No stronger replacement evidence is recorded; preserve the existing authoritative path.",
+      "target": null
     },
     {
       "claims_supported": [],
@@ -2275,7 +3566,8 @@
         "UNKNOWN"
       ],
       "stable_id": "AESE-PYTHON_TEST-BB462D748FA004AC",
-      "supersession_rationale": "No stronger replacement evidence is recorded; preserve the existing authoritative path."
+      "supersession_rationale": "No stronger replacement evidence is recorded; preserve the existing authoritative path.",
+      "target": null
     },
     {
       "claims_supported": [],
@@ -2307,7 +3599,8 @@
         "UNKNOWN"
       ],
       "stable_id": "AESE-PYTHON_TEST-984710292DB89A59",
-      "supersession_rationale": "No stronger replacement evidence is recorded; preserve the existing authoritative path."
+      "supersession_rationale": "No stronger replacement evidence is recorded; preserve the existing authoritative path.",
+      "target": null
     },
     {
       "claims_supported": [],
@@ -2339,7 +3632,8 @@
         "UNKNOWN"
       ],
       "stable_id": "AESE-PYTHON_TEST-31777D847B63F344",
-      "supersession_rationale": "No stronger replacement evidence is recorded; preserve the existing authoritative path."
+      "supersession_rationale": "No stronger replacement evidence is recorded; preserve the existing authoritative path.",
+      "target": null
     },
     {
       "claims_supported": [],
@@ -2371,7 +3665,8 @@
         "UNKNOWN"
       ],
       "stable_id": "AESE-PYTHON_TEST-655F58B6055A773C",
-      "supersession_rationale": "No stronger replacement evidence is recorded; preserve the existing authoritative path."
+      "supersession_rationale": "No stronger replacement evidence is recorded; preserve the existing authoritative path.",
+      "target": null
     },
     {
       "claims_supported": [],
@@ -2403,7 +3698,8 @@
         "UNKNOWN"
       ],
       "stable_id": "AESE-PYTHON_TEST-67D480DEC30B36C4",
-      "supersession_rationale": "No stronger replacement evidence is recorded; preserve the existing authoritative path."
+      "supersession_rationale": "No stronger replacement evidence is recorded; preserve the existing authoritative path.",
+      "target": null
     },
     {
       "claims_supported": [],
@@ -2435,7 +3731,8 @@
         "UNKNOWN"
       ],
       "stable_id": "AESE-PYTHON_TEST-E30A8415486D502B",
-      "supersession_rationale": "No stronger replacement evidence is recorded; preserve the existing authoritative path."
+      "supersession_rationale": "No stronger replacement evidence is recorded; preserve the existing authoritative path.",
+      "target": null
     }
   ],
   "limitations": [
@@ -2447,15 +3744,16 @@
   "phase": "PHASE_0_REBIND_REALITY",
   "schema": "aese-current-evidence-system-inventory-v1",
   "scope_counts": {
-    "inventoried_items": 76,
+    "inventoried_items": 113,
     "missing_scopes": 0,
-    "represented_paths": 76,
-    "tracked_files": 577
+    "represented_paths": 102,
+    "tracked_files": 580,
+    "workflow_jobs": 11
   },
   "scope_policy": "tracked_files_only; native runners remain authoritative",
-  "source_head": "2b002985fccf9c57a17c57a43abc0b4ae4b4e92b",
-  "source_tree_sha256": "ccf297d0099c6349a336ce8da67022130f4b9d5ed912cf4ab84e3e2f643ec369",
+  "source_head": "640390214d8fe012ba0f027e7a45301a433ca876",
+  "source_tree_sha256": "3a8c060cfbbbdfaa43053f6ec6201127ad77d0b1e667c711cf6906bb7a6d6f1e",
   "status": "INVENTORY_COMPLETE_DISPOSITIONS_RETAINED_MAPPING_PENDING",
-  "worktree_epoch": "c45e24e223bd7b1ba009387e7393f2995e4772e445c07eb6ecdec538d30b3e01",
+  "worktree_epoch": "9fa09b9e6b4e3af48674437176899afdfab6490a2e4367d20d2ec5da69a32798",
   "worktree_status": "DIRTY"
 }
