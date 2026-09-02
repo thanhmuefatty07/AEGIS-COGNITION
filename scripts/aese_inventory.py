@@ -142,6 +142,14 @@ def _item(path: str, kind: str, scope: str, target: str | None = None) -> dict[s
         "runner_backend": _runner(kind, normalized),
         "owner": "UNKNOWN_OWNER",
         "domain": _domain(normalized),
+        # Directive-standard aliases are kept explicit so downstream AESE
+        # consumers do not need to infer them from descriptive fields.  These
+        # values are inventory metadata, never claims that a runner passed.
+        "current_status": "NOT_VERIFIED",
+        "risk": "UNKNOWN",
+        "cost": "UNKNOWN",
+        "platform": "UNKNOWN",
+        "release_critical": "UNKNOWN",
         "claims_supported": [],
         "invariants_checked": [],
         "inputs": [],
