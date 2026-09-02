@@ -3654,6 +3654,18 @@ the complete Python gate is **456 passed** under
 cooperative/local containment: a blocking or external persistence effect may
 outlive the deadline, so M4 and `LAB-AUTH-001` remain open.
 
+**M4/M7 benchmark-validator continuation (2026-09-02):** the Lab-owned
+`benchmark.hidden_validator` lane now derives a mission-bound idempotency key,
+normalizes and validates one finite positive validator deadline, and carries
+both fields through admission, success/rejection settlement, and crash-prefix
+recovery. Previously the deadline was present only inside the policy payload,
+so a recovered validator admission could lose the retry/timeout fence. The
+strict-registry regression now checks the 64-hex key and `5.0`-second default;
+the complete Python gate remains **456 passed**, Ruff and Pyright report no
+findings. This closes the observed local receipt-contract gap only; hidden
+validator secrecy, isolated-process containment, and independent benchmark
+reproduction remain `OPEN_EXTERNAL` under `LAB-BENCH-005`.
+
 **M1 packaging-smoke continuation (2026-09-02):** the bounded
 `scripts/production_packaging_smoke_gate.py` rerun passed all **19/19** local
 checks at the current source, including canonical root `aegis` ownership,
