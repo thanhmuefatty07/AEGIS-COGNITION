@@ -3543,6 +3543,21 @@ def test_search_executor_rejects_lossy_runtime_metadata() -> None:
         SearchProgramExecutor(user_agent=1)  # type: ignore[arg-type]
 
 
+def test_search_executor_bounds_async_query_provider() -> None:
+    """The executor timeout must cover provider queries, not only fetches."""
+
+    import asyncio
+
+    async def provider(_query: str, **_: object) -> list[dict[str, object]]:
+        await asyncio.Event().wait()
+        return []
+
+    program = SearchProgram.from_mappings([{"kind": "query", "text": "bounded"}])
+    executor = SearchProgramExecutor(query_provider=provider, timeout_seconds=0.01)
+    with pytest.raises(TimeoutError):
+        asyncio.run(executor.execute(program))
+
+
 def test_search_program_executor_runs_typed_research_pipeline_with_spans() -> None:
     import asyncio
 

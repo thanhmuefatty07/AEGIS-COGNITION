@@ -896,12 +896,15 @@ class SearchProgramExecutor:
     async def _query(self, text: str, *, task: str, run_id: str, operation: str) -> Any:
         if not callable(self.query_provider):
             raise RuntimeError(f"{operation} requires an explicit query provider adapter")
-        return await _call_fenced(
-            self.query_provider,
-            text,
-            task=task,
-            run_id=run_id,
-            operation=operation,
+        return await asyncio.wait_for(
+            _call_fenced(
+                self.query_provider,
+                text,
+                task=task,
+                run_id=run_id,
+                operation=operation,
+            ),
+            timeout=self.timeout_seconds,
         )
 
     async def _fetch(self, url: str, allowed_hosts: tuple[str, ...]) -> tuple[str, dict[str, str]]:
