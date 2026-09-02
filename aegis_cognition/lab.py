@@ -11017,9 +11017,46 @@ class LabApplication:
             lease.acquire()
         try:
             return await self._run_unleased()
+        except asyncio.CancelledError:
+            self._abort_after_failure("application_cancelled")
+            raise
+        except Exception:
+            self._abort_after_failure("application_failed")
+            raise
         finally:
             if lease is not None:
                 lease.release()
+
+    def _abort_after_failure(self, reason: str) -> None:
+        """Close an active direct application run before propagating failure.
+
+        ``LabSession`` already owns this boundary for session cancellation, but
+        ``AgentApplication`` and direct callers can invoke ``LabApplication``
+        without a session wrapper.  Reconcile first so an admission cannot be
+        mistaken for success, then append the native cancellation fence.  A
+        completed run is left untouched because a post-completion failure is
+        handled by its own required-effect/archive gates.
+        """
+
+        run = self._active_run
+        if run is None or run.state in {"completed", "aborted"}:
+            return
+        try:
+            run.reconcile_unsettled_executions(
+                operator_id="lab-application",
+                reason=reason,
+            )
+        except (RuntimeError, TypeError, ValueError) as exc:
+            with contextlib.suppress(RuntimeError, TypeError, ValueError):
+                run.record_blocker(
+                    f"application_failure_reconciliation_failed:{type(exc).__name__}"
+                )
+        try:
+            if run.state not in {"completed", "aborted"}:
+                run.abort()
+        except (RuntimeError, TypeError, ValueError) as exc:
+            with contextlib.suppress(RuntimeError, TypeError, ValueError):
+                run.record_blocker(f"application_abort_failed:{type(exc).__name__}")
 
     async def _run_unleased(self) -> tuple[Any, LabDossier]:
         active_run = self._active_run
