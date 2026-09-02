@@ -3340,9 +3340,18 @@ class LabRun:
         expected_trust_policy_hash = _trust_policy_hash(self.trust_level)
         if trust_policy_hash is not None and trust_policy_hash != expected_trust_policy_hash:
             raise ValueError("lab trust policy hash does not match trust level")
-        # ``None`` preserves legacy direct LabRun/native snapshots.  The public
-        # Lab facade supplies the hash, making policy binding explicit there.
-        self.trust_policy_hash = trust_policy_hash
+        # Projection-only runs retain the legacy optional field, but every
+        # native-capable run must carry the canonical policy subject even when
+        # called directly rather than through the public Lab facade.
+        self.trust_policy_hash = (
+            trust_policy_hash
+            if trust_policy_hash is not None
+            else (
+                expected_trust_policy_hash
+                if self.authority_mode is not AuthorityMode.PROJECTION_ONLY
+                else None
+            )
+        )
         if token_budget is not None and type(token_budget) is not int:
             raise ValueError("lab token budget must be an integer")
         self.token_budget = token_budget if token_budget is not None else max_steps * 1000
@@ -6718,7 +6727,15 @@ class LabRun:
             or raw_trust_policy_hash != _trust_policy_hash(restored.trust_level)
         ):
             raise ValueError("invalid lab trust policy binding in snapshot")
-        restored.trust_policy_hash = raw_trust_policy_hash
+        restored.trust_policy_hash = (
+            raw_trust_policy_hash
+            if raw_trust_policy_hash is not None
+            else (
+                _trust_policy_hash(restored.trust_level)
+                if restored.authority_mode is not AuthorityMode.PROJECTION_ONLY
+                else None
+            )
+        )
         raw_max_steps = payload.get("max_steps", 0)
         if type(raw_max_steps) is not int:
             raise ValueError("invalid lab snapshot max_steps")

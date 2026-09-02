@@ -1755,6 +1755,40 @@ def test_hash_bound_lab_run_binds_native_mission_and_round_trips(
     assert restored.trust_policy_hash == policy.trust_policy_hash
 
 
+def test_native_lab_run_binds_trust_subject_without_facade(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    class NativeController:
+        def __init__(self, _mission_json: str) -> None:
+            return
+
+        def admit_event_json(self, _event_json: str, _state: str | None = None) -> None:
+            return
+
+    class Native:
+        LabController = NativeController
+
+        @staticmethod
+        def aegis_lab_validate_transition(_current: str, _next: str) -> bool:
+            return True
+
+    monkeypatch.setitem(sys.modules, "aegis_nerve", Native())
+    policy = LabPolicy(trust_level="STAGING")
+    native = LabRun(
+        "direct native trust binding",
+        authority_mode=AuthorityMode.NATIVE_ADMITTED,
+        trust_level="STAGING",
+    )
+    projection = LabRun("direct projection trust compatibility")
+
+    assert native.trust_policy_hash == policy.trust_policy_hash
+    assert projection.trust_policy_hash is None
+    legacy_payload = native.to_payload()
+    legacy_payload.pop("trust_policy_hash")
+    restored = LabRun.from_payload(legacy_payload)
+    assert restored.trust_policy_hash == policy.trust_policy_hash
+
+
 def test_hash_bound_run_events_and_cells_share_one_trust_subject() -> None:
     policy = LabPolicy(trust_level="STAGING")
 
