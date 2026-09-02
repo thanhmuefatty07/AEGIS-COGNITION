@@ -54,6 +54,11 @@ def test_inventory_assigns_one_safe_disposition_and_no_absolute_path() -> None:
         assert item["mapping_status"] == "NOT_MAPPED"
         assert not ntpath.isabs(str(item["path"]))
         assert item["replacement_id"] is None
+        assert item["current_status"] == "NOT_VERIFIED"
+        assert item["risk"] == "UNKNOWN"
+        assert item["cost"] == "UNKNOWN"
+        assert item["platform"] == "UNKNOWN"
+        assert item["release_critical"] == "UNKNOWN"
 
 
 def test_inventory_stable_ids_are_path_bound() -> None:
