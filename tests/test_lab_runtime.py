@@ -7938,6 +7938,47 @@ def test_lab_post_completion_effect_failure_blocks_dossier() -> None:
     assert "post_completion_effect_failed:OSError" in run.blockers
 
 
+def test_lab_post_completion_effect_timeout_is_terminal() -> None:
+    import asyncio
+
+    from aegis_cognition.lab import LabApplication
+
+    async def effect(*, run: LabRun, result: object) -> str:
+        del run, result
+        await asyncio.Event().wait()
+        return "unreachable"
+
+    app = LabApplication(
+        config=SimpleNamespace(
+            trust_level="DEV",
+            options={
+                "lab_require_post_completion_effect": True,
+                "post_completion_effect_timeout_seconds": 0.01,
+            },
+            max_steps=3,
+        ),
+        gateway_factory=lambda **_: None,
+        telemetry=SimpleNamespace(),
+        correlation=SimpleNamespace(),
+        post_completion_effect=effect,
+    )
+    run = _ready_run()
+    app._prepare_execution_cells(run, app.config.options)
+    asyncio.run(app._run_post_completion_effect(run, SimpleNamespace(output="ok")))
+
+    settled = [
+        event
+        for event in run.events
+        if event.kind == "tool_execution_recorded"
+        and event.payload["tool_name"] == "memory.index_session"
+    ]
+    assert len(settled) == 1
+    assert settled[0].payload["status"] == "TIMED_OUT"
+    assert settled[0].payload["timeout_seconds"] == 0.01
+    assert settled[0].payload["idempotency_key"]
+    assert "post_completion_effect_failed:TimeoutError" in run.blockers
+
+
 def test_required_post_completion_effect_missing_fails_closed() -> None:
     import asyncio
 
