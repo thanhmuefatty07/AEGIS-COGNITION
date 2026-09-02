@@ -3,9 +3,9 @@ document_id: AEGIS-LAB-RUNTIME-MASTER-PLAN
 document_type: canonical_current_implementation_plan
 status: IN_EXECUTION
 authority: derived_from_checkout_and_evidence_manifest
-applies_to_commit: a6ab0b4608d0ee174c251bc4a7db3b01b61c7ea1
+applies_to_commit: 2323ccb4b7ccbd708f711628f599571521b26553
 created_at: 2026-08-26
-last_verified_at: 2026-09-02
+last_verified_at: 2026-09-03
 supersedes: browser-native-proposal-and-cumulative-harness-roadmap-as-execution-authority
 evidence_source: docs/architecture/evidence/current.json
 execution_scope: clean origin/main checkout
@@ -158,18 +158,27 @@ toàn workspace, nếu plan không ghi rõ scope mới.
 
 ### 2.1 Evidence hiện có
 
-- HEAD hiện tại: `f9645caf6d17cee2023d52183990ffcf8317e456`.
-- Nhánh local đi trước `origin/main` 10 commit; remote evidence chưa được xác
-  nhận độc lập.
-- `.venv` Python 3.14 chạy 93/93 test pass tại thời điểm lập snapshot ban đầu;
-  kết quả working-tree hiện tại được ghi ở Section 16.
-- Artifact Rust local tại HEAD ghi nhận 440/440 pass tại thời điểm lập snapshot,
-  nhưng scope chỉ là
-  `LOCAL_CHECKOUT_ONLY` và `independent_verification=NOT VERIFIED`.
-- Constitution audit báo 177/177 và architecture fitness 23/23. Đây là
+Các số liệu đầu tiên dưới đây là **historical baseline**, không phải trạng thái
+hiện tại và không được dùng để chứng minh checkout mới:
+
+- Snapshot ban đầu ghi nhận HEAD `f9645caf6d17cee2023d52183990ffcf8317e456`;
+  snapshot đó dùng Python 3.14 và 93/93 test.
+- Artifact Rust ban đầu ghi nhận 440/440 pass; phạm vi khi đó chỉ là
+  `LOCAL_CHECKOUT_ONLY` với `independent_verification=NOT VERIFIED`.
+- Constitution audit ban đầu là 177/177 và architecture fitness 23/23; đây là
   structural/presence checks, không phải proof rằng Lab behavior hoạt động.
-- `current.json` đang để `commit=CHECKOUT_HEAD`, sáu evidence record là
-  `NOT VERIFIED`, 35 requirement là `IMPLEMENTED / NOT VERIFIED`.
+
+Checkout implementation hiện hành cho migration node này là
+`2323ccb4b7ccbd708f711628f599571521b26553`, với worktree sạch và
+`origin/main` parity được ghi nhận trong snapshot closure mới nhất. Regression
+Python/cross-language trên CPython 3.11 sau hardening là **486 passed**;
+registry AESE vẫn giữ 116 item, graph 35 claim/70 verification reference và
+selection ở `SHADOW`/`NOT_EXECUTED`. Rust evidence không được tái chạy vì node
+này không sửa Rust; artifact Rust trước đó vẫn chỉ là local source-bound.
+
+`current.json` vẫn cố ý để `commit=CHECKOUT_HEAD`, sáu evidence record là
+`NOT VERIFIED`, và 35 requirement là `IMPLEMENTED / NOT VERIFIED`; placeholder
+này không được sửa thủ công để tạo release evidence.
 
 ### 2.2 Nền móng có thể tái sử dụng
 
@@ -3831,6 +3840,31 @@ CPython 3.11 CLI import/help smoke and the full **485-test** regression pass.
 The subsequent CI run `33662324679` again created 13 zero-step jobs and failed
 before runner allocation; hosted source execution remains unavailable and no
 CI result is inferred.
+
+**AESE Phase 7 OOD-anchor hardening continuation (2026-09-03):**
+`predict_cross_hardware` now excludes an anchor whenever any feature used by the
+analytic model falls outside the model's declared `validated_domain`. A target
+with fewer than two in-domain, reconstructible anchors remains
+`INSUFFICIENT_EVIDENCE`; an explicit `anchor_outside_validated_domain` reason is
+retained instead of treating the out-of-domain record as supporting evidence.
+This closes a local evidence-integrity gap in the prediction primitive only. It
+does not validate a model, add physical-energy measurement, or promote any
+cross-hardware claim. The focused AESE suite passes **15 tests**, and the full
+Python/cross-language regression passes **486 tests** with deprecation warnings
+treated as errors. Registry/graph counts remain unchanged; shadow selection,
+external anchors, independent replication, and release promotion remain
+disabled.
+
+**Current checkout identity for this continuation (2026-09-03):**
+`SOURCE_HEAD = 2323ccb4b7ccbd708f711628f599571521b26553`,
+`WORKTREE_STATUS = CLEAN`, `WORKTREE_EPOCH =
+c6b5e1f48b467bea65b561f2620256e8e1e92363310782961cd344a5c2984de3`, and the
+recorded inventory/graph source tree digest is
+`46536ada68cfa015b7b4888220b7d354701f97f95f408e2dd2ec2c0a3f1b7157`.
+`origin/main` was still at the prior documentation closure while this snapshot
+was prepared; parity must be rechecked after the normal single push. These
+identifiers bind the local evidence and are not hosted or signed-release
+attestation.
 
 Không được gọi toàn hệ thống “production-ready” khi bất kỳ gate bắt buộc nào
 ở trên còn `OPEN_*`, `BLOCKED_*`, `UNKNOWN` hoặc chỉ có fixture/mock evidence.
