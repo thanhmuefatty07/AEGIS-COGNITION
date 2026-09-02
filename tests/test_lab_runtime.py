@@ -2454,6 +2454,34 @@ def test_lab_snapshot_replays_after_restart_and_rejects_payload_tampering() -> N
         LabRun.from_payload(duplicate)
 
 
+def test_lab_snapshot_replays_in_a_fresh_process(tmp_path: Path) -> None:
+    run = _ready_run()
+    run.add_observation(ObservationRecord("o1", "e1", 1, 0.9, "score", "raw", "env"))
+    snapshot_path = tmp_path / "fresh-process.snapshot.json"
+    snapshot_path.write_text(json.dumps(run.to_payload()), encoding="utf-8")
+    script = """
+import json
+import sys
+from pathlib import Path
+from aegis_cognition.lab import LabRun
+
+payload = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
+restored = LabRun.from_payload(payload)
+assert restored.verify_event_chain()
+print(restored.dossier().manifest["event_root_hash"])
+"""
+    result = subprocess.run(
+        [sys.executable, "-c", script, str(snapshot_path)],
+        cwd=Path(__file__).resolve().parents[1],
+        capture_output=True,
+        text=True,
+        check=False,
+        timeout=10.0,
+    )
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert result.stdout.strip() == run.dossier().manifest["event_root_hash"]
+
+
 def test_lab_replay_reconciles_open_tool_admission_without_overclaiming() -> None:
     """A crash prefix is recoverable only as an explicit blocked outcome."""
 
