@@ -17,7 +17,7 @@
     {"glob": "README.md", "document_type": "repository_index", "authority": "user_docs", "status": "ACTIVE", "id_prefix": "DOC"}
   ],
   "overrides": {
-    "docs/architecture/AEGIS_LAB_RUNTIME_MASTER_PLAN.md": {"document_id": "AEGIS-LAB-RUNTIME-MASTER-PLAN", "document_type": "canonical_current_implementation_plan", "status": "IN_EXECUTION", "authority": "derived_from_checkout_and_evidence_manifest", "applies_to_commit": "ee14f3ceb8d6462b279166dce9400c9a931f2b68"},
+    "docs/architecture/AEGIS_LAB_RUNTIME_MASTER_PLAN.md": {"document_id": "AEGIS-LAB-RUNTIME-MASTER-PLAN", "document_type": "canonical_current_implementation_plan", "status": "IN_EXECUTION", "authority": "derived_from_checkout_and_evidence_manifest", "applies_to_commit": "3a817268028c62c927ca36d9a17af969bf121ec2"},
     "docs/architecture/AEGIS_LAB_STATUS_GENERATED.md": {"document_id": "AEGIS-LAB-STATUS-GENERATED", "status": "GENERATED", "authority": "generated_view"},
     "docs/architecture/NOT_VERIFIED_REGISTRY.md": {"document_id": "AEGIS-NOT-VERIFIED-REGISTRY", "authority": "human_view"},
     "docs/architecture/evidence/current.json": {"document_id": "AEGIS-EVIDENCE-MANIFEST", "document_type": "machine_evidence", "authority": "machine_source", "status": "ACTIVE", "applies_to_commit": "CHECKOUT_HEAD", "last_verified_at": "2026-08-27"},
