@@ -3,7 +3,7 @@ document_id: AEGIS-LAB-RUNTIME-MASTER-PLAN
 document_type: canonical_current_implementation_plan
 status: IN_EXECUTION
 authority: derived_from_checkout_and_evidence_manifest
-applies_to_commit: f924d3108f77f781b7b7a6ce7186bc400f764d69
+applies_to_commit: 2c99a733c1893277e2aa790dbb5b734495f784fb
 created_at: 2026-08-26
 last_verified_at: 2026-09-03
 supersedes: browser-native-proposal-and-cumulative-harness-roadmap-as-execution-authority
@@ -169,12 +169,15 @@ hiện tại và không được dùng để chứng minh checkout mới:
   structural/presence checks, không phải proof rằng Lab behavior hoạt động.
 
 Checkout implementation hiện hành cho migration node này là
-`8837d02fb762afea305a64c30e386b043e56ad25`, với worktree sạch và
-`origin/main` parity được ghi nhận trong snapshot closure mới nhất. Regression
-Python/cross-language trên CPython 3.11 sau hardening là **489 passed**;
-registry AESE vẫn giữ 116 item, graph 35 claim/70 verification reference và
-selection ở `SHADOW`/`NOT_EXECUTED`. Rust evidence không được tái chạy vì node
-này không sửa Rust; artifact Rust trước đó vẫn chỉ là local source-bound.
+`2c99a733c1893277e2aa790dbb5b734495f784fb` (functional FFI change
+`e0731f698302a0791c70c24d93b696597e04180d`), với worktree sạch và
+`origin/main` parity được xác nhận sau push. Regression Python trên CPython
+3.11 là **412 passed** với deprecation warnings treated as errors; Rust package
+lib regression sau FFI hardening là **443 passed**, cùng fmt/check/clippy pass.
+Registry AESE hiện có **117** inventoried items, graph 35 claim/70
+verification references và selection ở `SHADOW`/`NOT_EXECUTED`. Các kết quả này
+chỉ là local source-bound evidence; không thay thế hosted, signed-release hay
+external-anchor evidence.
 
 `current.json` vẫn cố ý để `commit=CHECKOUT_HEAD`, sáu evidence record là
 `NOT VERIFIED`, và 35 requirement là `IMPLEMENTED / NOT VERIFIED`; placeholder
@@ -4008,6 +4011,20 @@ local input-integrity evidence: Ruff cannot parse the repository's `py314`
 target in the installed binary, Pyright is unavailable, and no calibration,
 external anchor, cross-platform, hosted, signed-release or selective-test
 promotion claim is made.
+
+**M6 FFI transaction-policy boundary continuation (2026-09-03):**
+implementation commit `e0731f698302a0791c70c24d93b696597e04180d` closes a
+stringly-typed fail-open path in `core/rust/src/ffi/eac.rs`: `aegis_eac_batch`
+now accepts only the two declared `TransactionPolicy` values,
+`HaltOnFailure` and `ContinueOnFailure`, and returns a typed `PyValueError` for
+any other policy instead of silently selecting `ContinueOnFailure`. Direct Rust
+tests cover both rejection and explicit-policy execution. The complete Rust
+package library suite passes **443 tests** with `cargo fmt --all -- --check`
+and `cargo clippy -- -D warnings`; the inventory consequently records the new
+Rust unit-test surface (**117** items total, **116** unmapped). This is a local
+FFI contract hardening only: it does not prove whole-FFI lifetime/allocation
+safety, hidden adapter effects, cross-process authority, external containment,
+or release certification, so M6 and `LAB-AUTH-001` remain `OPEN_LOCAL`.
 
 **Historical checkout identity for the prior continuation (2026-09-03):**
 `SOURCE_HEAD = 0d1e9c3eb4db86aea0fee40134f5711395e55e27`,
