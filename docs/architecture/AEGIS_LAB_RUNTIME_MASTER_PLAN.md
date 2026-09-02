@@ -3,7 +3,7 @@ document_id: AEGIS-LAB-RUNTIME-MASTER-PLAN
 document_type: canonical_current_implementation_plan
 status: IN_EXECUTION
 authority: derived_from_checkout_and_evidence_manifest
-applies_to_commit: ee14f3ceb8d6462b279166dce9400c9a931f2b68
+applies_to_commit: 3a817268028c62c927ca36d9a17af969bf121ec2
 created_at: 2026-08-26
 last_verified_at: 2026-09-03
 supersedes: browser-native-proposal-and-cumulative-harness-roadmap-as-execution-authority
@@ -3190,8 +3190,20 @@ manifest/legacy compatibility behavior are preserved. The complete **441-test**
 Rust unit suite, feature-gated FFI smoke, formatting check and
 `cargo clippy -- -D warnings` pass. This is an internal ownership split only;
 it does not prove archive crash safety beyond existing tests, cross-process
-authority, FFI-wide lifetime/allocation safety, or completion of the remaining
-hot-arena/cache/learning DTO families, so M6 remains `OPEN_LOCAL`.
+authority or FFI-wide lifetime/allocation safety, so M6 remains `OPEN_LOCAL`.
+
+**M6 remaining-family extraction continuation (2026-09-03):**
+implementation commit `3a81726` moves the two hot-arena bindings, six EaC
+cache/state bindings and four learning/session bindings into
+`core/rust/src/ffi/hot.rs`, `core/rust/src/ffi/eac.rs` and
+`core/rust/src/ffi/learning.rs`. The parent `ffi.rs` now retains shared process
+state, panic boundary, helper ownership and Python module registration while
+re-exporting every original public symbol; no ABI name, JSON schema or legacy
+consumer changed. The complete **441-test** Rust unit suite, feature-gated FFI
+smoke, formatting check and `cargo clippy -- -D warnings` pass. This completes
+the bounded internal family extraction, but M6 is not release-closed: FFI-wide
+lifetime/allocation/soak evidence, cross-process authority and independent
+benchmarking remain unproven, so M6 remains `OPEN_LOCAL`.
 
 #### M7 — Replay/archive và recovery cutover
 
