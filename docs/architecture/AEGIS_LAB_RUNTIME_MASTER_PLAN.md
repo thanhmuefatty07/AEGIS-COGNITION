@@ -3,7 +3,7 @@ document_id: AEGIS-LAB-RUNTIME-MASTER-PLAN
 document_type: canonical_current_implementation_plan
 status: IN_EXECUTION
 authority: derived_from_checkout_and_evidence_manifest
-applies_to_commit: f95bbcb03c1c8448afbcf392b38dcd964b9a6f3f
+applies_to_commit: 1d383a0eaaacf00bb5a2693d5bdc0272fc61e01e
 created_at: 2026-08-26
 last_verified_at: 2026-09-03
 supersedes: browser-native-proposal-and-cumulative-harness-roadmap-as-execution-authority
@@ -169,10 +169,11 @@ hiện tại và không được dùng để chứng minh checkout mới:
   structural/presence checks, không phải proof rằng Lab behavior hoạt động.
 
 Checkout implementation hiện hành cho migration node này là
-`2c99a733c1893277e2aa790dbb5b734495f784fb` (functional FFI change
-`e0731f698302a0791c70c24d93b696597e04180d`), với worktree sạch và
+`1d383a0eaaacf00bb5a2693d5bdc0272fc61e01e` (functional FFI change
+`e0731f698302a0791c70c24d93b696597e04180d` and session-index hardening
+`f95bbcb03c1c8448afbcf392b38dcd964b9a6f3f`), với worktree sạch và
 `origin/main` parity được xác nhận sau push. Regression Python trên CPython
-3.11 là **412 passed** với deprecation warnings treated as errors; Rust package
+3.11 là **415 passed** với deprecation warnings treated as errors; Rust package
 lib regression sau FFI hardening là **443 passed**, cùng fmt/check/clippy pass.
 Registry AESE hiện có **117** inventoried items, graph 35 claim/70
 verification references và selection ở `SHADOW`/`NOT_EXECUTED`. Các kết quả này
@@ -4039,6 +4040,20 @@ tests** (0 failed). This hardens one local panic boundary without changing the
 public Python schema or proving FFI-wide lifetime/allocation, cross-process
 authority, soak, external-containment, or release evidence; M6 and
 `LAB-AUTH-001` remain `OPEN_LOCAL`.
+
+**AESE forged-input boundary continuation (2026-09-03):**
+implementation commit `1d383a0eaaacf00bb5a2693d5bdc0272fc61e01e` closes three
+runtime type-confusion paths in the shadow primitives. Runtime-profile
+projection now rejects non-mappings; cross-hardware prediction rejects
+duck-typed or forged anchor objects before reading identity/features; and
+anchor planning rejects forged candidate objects and classifies any invalid
+candidate as `EXTERNAL_VERIFICATION_BLOCKED` rather than
+`INSUFFICIENT_BUDGET`. Three adversarial regressions cover these paths. The
+focused AESE/preflight suite passes **36 tests** and the full Python regression
+passes **415 tests** with deprecation warnings treated as errors. This is local
+input-integrity evidence only: the AESE layer remains `SHADOW`, no selection or
+promotion is enabled, and calibration, external anchors, hosted isolation,
+independent replication, and release authority remain unproven.
 
 **Historical checkout identity for the prior continuation (2026-09-03):**
 `SOURCE_HEAD = 0d1e9c3eb4db86aea0fee40134f5711395e55e27`,
