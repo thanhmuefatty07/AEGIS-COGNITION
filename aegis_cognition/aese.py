@@ -1204,6 +1204,12 @@ def predict_cross_hardware(
             reasons.append("duplicate_anchor_id")
         status = "INSUFFICIENT_EVIDENCE"
         ood = "UNKNOWN"
+    elif duplicate_anchor_count:
+        # A duplicate identity makes the anchor provenance ambiguous even if
+        # enough distinct observations remain for the numerical model.
+        reasons.append("duplicate_anchor_id")
+        status = "INSUFFICIENT_EVIDENCE"
+        ood = "UNKNOWN"
     elif (
         model.residual_half_width is None
         or model.residual_sample_count < 30
