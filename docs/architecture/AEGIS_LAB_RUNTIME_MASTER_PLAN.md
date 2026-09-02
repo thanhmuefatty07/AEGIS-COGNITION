@@ -3,7 +3,7 @@ document_id: AEGIS-LAB-RUNTIME-MASTER-PLAN
 document_type: canonical_current_implementation_plan
 status: IN_EXECUTION
 authority: derived_from_checkout_and_evidence_manifest
-applies_to_commit: 2c99a733c1893277e2aa790dbb5b734495f784fb
+applies_to_commit: f95bbcb03c1c8448afbcf392b38dcd964b9a6f3f
 created_at: 2026-08-26
 last_verified_at: 2026-09-03
 supersedes: browser-native-proposal-and-cumulative-harness-roadmap-as-execution-authority
@@ -4025,6 +4025,20 @@ Rust unit-test surface (**117** items total, **116** unmapped). This is a local
 FFI contract hardening only: it does not prove whole-FFI lifetime/allocation
 safety, hidden adapter effects, cross-process authority, external containment,
 or release certification, so M6 and `LAB-AUTH-001` remain `OPEN_LOCAL`.
+
+**M6 FFI session-index initialization continuation (2026-09-03):**
+implementation commit `f95bbcb03c1c8448afbcf392b38dcd964b9a6f3f` removes the
+remaining process-initialization `unwrap()` at the Python/Rust session-index
+boundary. `SessionSearchIndex::new` is now retained as a fallible, once-only
+initialization result; all learning FFI callers propagate initialization or
+lock failures as typed `PyRuntimeError` values instead of panicking the native
+process. `cargo fmt --all -- --check`, `cargo check -p aegis-nerve
+--no-default-features --lib`, `cargo clippy -p aegis-nerve --no-default-features
+--lib -- -D warnings`, and the complete package library suite pass **443
+tests** (0 failed). This hardens one local panic boundary without changing the
+public Python schema or proving FFI-wide lifetime/allocation, cross-process
+authority, soak, external-containment, or release evidence; M6 and
+`LAB-AUTH-001` remain `OPEN_LOCAL`.
 
 **Historical checkout identity for the prior continuation (2026-09-03):**
 `SOURCE_HEAD = 0d1e9c3eb4db86aea0fee40134f5711395e55e27`,
