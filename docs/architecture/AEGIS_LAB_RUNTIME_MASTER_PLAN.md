@@ -3,7 +3,7 @@ document_id: AEGIS-LAB-RUNTIME-MASTER-PLAN
 document_type: canonical_current_implementation_plan
 status: IN_EXECUTION
 authority: derived_from_checkout_and_evidence_manifest
-applies_to_commit: ac4787ac529c4f15835207e6293b16701b526158
+applies_to_commit: a6ab0b4608d0ee174c251bc4a7db3b01b61c7ea1
 created_at: 2026-08-26
 last_verified_at: 2026-09-02
 supersedes: browser-native-proposal-and-cumulative-harness-roadmap-as-execution-authority
@@ -2793,6 +2793,17 @@ projection compatibility and legacy native snapshot restoration; the Python
 closes one local unbound-native-policy path only; DEV/PROD compatibility
 defaults, Rust ownership, cross-cell receipt propagation and hosted policy
 authority remain open under `LAB-AUTH-001`/`LAB-RELEASE-006`.
+
+**M3 native gateway propagation continuation (2026-09-02):** a direct
+`LabApplication` native-required gateway now takes the active run's canonical
+trust-policy subject when compatibility options omit it; before a run exists it
+derives the same subject from the validated config trust level. The gateway
+factory handshake and returned-instance check therefore cannot silently create
+an unbound native adapter. Focused regressions cover active-run propagation
+and mutation rejection; full local regression passes **368 tests**. This closes only the local gateway
+construction binding gap; adapter/provider receipt authority, cross-cell policy
+ownership and hosted release evidence remain open under
+`LAB-AUTH-001`/`LAB-RELEASE-006`.
 
 **M2 operator-evidence continuation (2026-09-02):** security-event and
 blocker/resolution APIs now require exact reason/detail strings and reject
