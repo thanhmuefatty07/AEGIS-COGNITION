@@ -4083,9 +4083,9 @@
     "indirect/macro reachability incomplete",
     "no live sink"
   ],
-  "WORKTREE_EPOCH": "2984d4141abcec72bb9508b5fc683cfa8d0dede23a10b5c2eb417fd4d9e352b6",
-  "HEAD": "f536de016cf61867faf99eea4be8da84bd03ba27",
-  "generated_at": "2026-09-02T02:11:06.185381+00:00",
+  "WORKTREE_EPOCH": "d00c5b797d8d0334e90a0d348bffa0bb59d8522798958eb4e757514299997ddb",
+  "HEAD": "17779a1517c1b0612d092207ec6334dce8563d44",
+  "generated_at": "2026-09-02T02:25:54.363387+00:00",
   "collector_version/method": "aegis-final-design-closure-v1; direct Git/filesystem/AST/Cargo plus bounded disposable-wheel probes",
   "reused_prior_artifact": "C:\\Users\\ADMIN\\AEGIS-COGNITION\\docs\\architecture\\evidence-pack\\final_ffi_runtime_map.json",
   "reused_prior_artifact_sha256": "f260dae471fa3ded705c39e19ac0eb3ae5cc33190e918ac396b202327f5576cf",

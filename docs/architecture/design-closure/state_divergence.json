@@ -145,8 +145,8 @@
     "status": "NOT_VERIFIED",
     "reason": "dependency-complete combined venv unavailable"
   },
-  "HEAD": "f536de016cf61867faf99eea4be8da84bd03ba27",
-  "WORKTREE_EPOCH": "2984d4141abcec72bb9508b5fc683cfa8d0dede23a10b5c2eb417fd4d9e352b6",
-  "generated_at": "2026-09-02T02:11:06.185381+00:00",
+  "HEAD": "17779a1517c1b0612d092207ec6334dce8563d44",
+  "WORKTREE_EPOCH": "d00c5b797d8d0334e90a0d348bffa0bb59d8522798958eb4e757514299997ddb",
+  "generated_at": "2026-09-02T02:25:54.363387+00:00",
   "method": "aegis-design-closure-reconciliation-v1; direct Git/filesystem/source inspection, prior artifact hash reuse, disposable wheel reconciliation, bounded local probes"
 }
