@@ -3,7 +3,7 @@ document_id: AEGIS-LAB-RUNTIME-MASTER-PLAN
 document_type: canonical_current_implementation_plan
 status: IN_EXECUTION
 authority: derived_from_checkout_and_evidence_manifest
-applies_to_commit: 02e35c192e6142ed5a771d8c5fd0b543522d460f
+applies_to_commit: 4c0a3a4a045fcfd48144b7f50298b97a07b87620
 created_at: 2026-08-26
 last_verified_at: 2026-09-03
 supersedes: browser-native-proposal-and-cumulative-harness-roadmap-as-execution-authority
@@ -4320,6 +4320,18 @@ worst-case `O(n²)` scan to `O(n)` after the required `O(n log n)` sort. The
 existing duplicate-edge regression and the complete Rust library suite pass
 **444/444**; format/check/clippy gates pass. No runtime speedup is claimed
 without a paired benchmark; this is a source-level complexity proof only.
+
+**AESE anchor-planner duplicate-input continuation (2026-09-03):**
+implementation commit `4c0a3a4a045fcfd48144b7f50298b97a07b87620` closes a
+fail-open planner boundary. Duplicate `anchor_id` candidates now mark the
+input invalid, clear all selected anchors and planned spend, and return
+`EXTERNAL_VERIFICATION_BLOCKED` rather than silently deduplicating into a
+seemingly executable plan. A direct regression covers the duplicate case;
+the AESE primitive suite passes **40/40**, the full Python regression passes
+**520/520** with deprecation warnings treated as errors, and changed-file
+Ruff/Pyright pass. This proves input-integrity behavior only; it does not
+execute hosted anchors, validate model calibration, or authorize selective
+testing.
 
 Không được gọi toàn hệ thống “production-ready” khi bất kỳ gate bắt buộc nào
 ở trên còn `OPEN_*`, `BLOCKED_*`, `UNKNOWN` hoặc chỉ có fixture/mock evidence.
