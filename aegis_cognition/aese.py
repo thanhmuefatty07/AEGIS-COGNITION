@@ -738,6 +738,7 @@ class AnchorCandidate:
             type(self.mandatory) is not bool
             or type(self.changed_platform_boundary) is not bool
             or type(self.periodic_sentinel_due) is not bool
+            or type(self.available) is not bool
         ):
             raise ValueError("anchor priority flags must be boolean")
 
