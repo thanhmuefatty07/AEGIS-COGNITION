@@ -3607,6 +3607,20 @@ thread that ignores cancellation, descendant process or hosted adapter can
 still outlive the deadline and remains `NOT VERIFIED` under
 `LAB-AUTH-001`/`LAB-RESEARCH-003`.
 
+**M2 application-failure continuation (2026-09-02):** direct
+`LabApplication.run()` callers now reconcile any still-open execution
+admissions and append the native cancellation fence before propagating an
+unexpected exception or task cancellation. This closes the compatibility
+boundary that `LabSession` already handled: a gateway-construction or other
+between-lane failure cannot leave a direct application run non-terminal. The
+regressions prove both a failed gateway admission and direct task cancellation
+are settled, the run reaches `aborted`, and no execution admission remains
+open; the complete Python gate is **455 passed** under
+`-W error::DeprecationWarning`, with Ruff and Pyright clean. This is local
+application-boundary evidence only: it does not prove external-effect
+reversal, descendant termination or hosted single-writer authority, so
+`LAB-AUTH-001` remains `OPEN_LOCAL`.
+
 **M1 packaging-smoke continuation (2026-09-02):** the bounded
 `scripts/production_packaging_smoke_gate.py` rerun passed all **19/19** local
 checks at the current source, including canonical root `aegis` ownership,
