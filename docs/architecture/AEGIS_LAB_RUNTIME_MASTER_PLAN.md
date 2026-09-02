@@ -3,7 +3,7 @@ document_id: AEGIS-LAB-RUNTIME-MASTER-PLAN
 document_type: canonical_current_implementation_plan
 status: IN_EXECUTION
 authority: derived_from_checkout_and_evidence_manifest
-applies_to_commit: 4dfc15e864f03b26e553ddbd8514ea29477f83a1
+applies_to_commit: 5629579f6bf2bb993c318cc61907b14f48504872
 created_at: 2026-08-26
 last_verified_at: 2026-09-03
 supersedes: browser-native-proposal-and-cumulative-harness-roadmap-as-execution-authority
@@ -169,11 +169,11 @@ hiện tại và không được dùng để chứng minh checkout mới:
   structural/presence checks, không phải proof rằng Lab behavior hoạt động.
 
 Checkout implementation hiện hành cho migration node này là
-`4dfc15e864f03b26e553ddbd8514ea29477f83a1` (functional FFI change
+`5629579f6bf2bb993c318cc61907b14f48504872` (functional FFI change
 `e0731f698302a0791c70c24d93b696597e04180d` and session-index hardening
 `f95bbcb03c1c8448afbcf392b38dcd964b9a6f3f`), với worktree sạch và
 `origin/main` parity được xác nhận sau push. Regression Python trên CPython
-3.11 là **421 passed** với deprecation warnings treated as errors; Rust package
+3.11 là **424 passed** với deprecation warnings treated as errors; Rust package
 lib regression sau FFI hardening là **443 passed**, cùng fmt/check/clippy pass.
 Registry AESE hiện có **117** inventoried items, graph **45 claims / 90
 verification references** và selection ở `SHADOW`/`NOT_EXECUTED`. Các kết quả này
@@ -4179,6 +4179,24 @@ at source head `4dfc15e...` and both `--check` gates pass. This is local
 input-integrity evidence only: AESE remains `SHADOW`, no selection/promotion is
 enabled, and calibration, external anchors, hosted isolation, independent
 replication and release authority remain unproven.
+
+**AESE measurement/profile boundary continuation (2026-09-03):**
+implementation commit `5629579f6bf2bb993c318cc61907b14f48504872` extends the
+fail-closed rule to adaptive measurement and hardware-profile ingestion.
+Measurement evaluation now accepts only canonical list/tuple containers and
+the exact `AdaptiveMeasurementSpec` type; forged subclasses or containers with
+hostile iteration are rejected before invocation, with explicit invalid-input
+reasons and `INSUFFICIENT_EVIDENCE` status. Runtime profiles reject malformed
+CPU/OS nested values instead of silently projecting them to `UNKNOWN`.
+`AnchorObservation` now rejects subclassed hardware/workload vectors, and
+analytic models reject non-canonical coefficient/domain containers before
+iteration. Three new adversarial tests plus nested-vector/model coverage bring
+the AESE primitive suite to **36 passed**. After regenerating the registries
+from this source head, the full local Python regression is **424/424 PASS**.
+The changed AESE file passes `ruff` and strict `pyright` with **0 errors**.
+This remains local input-integrity evidence only: no adaptive stopping claim,
+hardware calibration, cross-platform measurement, external anchor, hosted
+isolation or release authority is established.
 
 **Historical checkout identity for the prior continuation (2026-09-03):**
 `SOURCE_HEAD = 0d1e9c3eb4db86aea0fee40134f5711395e55e27`,
