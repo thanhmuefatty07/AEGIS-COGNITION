@@ -135,6 +135,11 @@ def test_hardware_vector_mapping_rejects_non_mapping_and_mixed_unknown_keys() ->
         HardwareCapabilityVector.from_mapping({"unknown": 1, 2: "bad"})  # type: ignore[dict-item]
 
 
+def test_hardware_vector_rejects_non_mapping_runtime_profile() -> None:
+    with pytest.raises(ValueError, match="runtime profile must be a mapping"):
+        HardwareCapabilityVector.from_runtime_profile(None)  # type: ignore[arg-type]
+
+
 def test_workload_regime_requires_known_dimensions_and_uses_hardware_capacity() -> None:
     assert WorkloadSignature(compute_intensity=0.9, memory_intensity=0.1).classify_regime() == "COMPUTE_BOUND"
     assert WorkloadSignature(network_intensity=0.9, compute_intensity=0.1).classify_regime() == "NETWORK_BOUND"
@@ -338,6 +343,20 @@ def test_cross_hardware_prediction_rejects_non_sequence_anchors() -> None:
     assert result.anchor_ids == ()
 
 
+def test_cross_hardware_prediction_rejects_custom_anchor_objects() -> None:
+    model, hardware, workload, anchors = _prediction_fixture()
+
+    class AnchorLike:
+        def features(self) -> dict[str, float]:
+            return anchors[0].features()
+
+    result = predict_cross_hardware(model, hardware, workload, [AnchorLike(), anchors[1]])  # type: ignore[list-item]
+
+    assert result.status == "INSUFFICIENT_EVIDENCE"
+    assert result.failure_reasons == ("invalid_anchor_observation",)
+    assert result.anchor_ids == ("a2",)
+
+
 def test_anchor_planner_prioritizes_mandatory_boundary_and_ood_with_budget() -> None:
     candidates = [
         AnchorCandidate("periodic", "linux", 3.0, periodic_sentinel_due=True),
@@ -367,6 +386,18 @@ def test_anchor_planner_fails_closed_on_non_sequence_candidates() -> None:
     assert plan.status == "EXTERNAL_VERIFICATION_BLOCKED"
     assert plan.selected_anchor_ids == ()
     assert "candidates_invalid:TypeError" in plan.failure_reasons
+
+
+def test_anchor_planner_rejects_custom_candidate_objects() -> None:
+    class CandidateLike:
+        def validate(self) -> None:
+            return None
+
+    plan = select_anchor_plan([CandidateLike()], budget_seconds=10.0)  # type: ignore[list-item]
+
+    assert plan.status == "EXTERNAL_VERIFICATION_BLOCKED"
+    assert plan.selected_anchor_ids == ()
+    assert plan.failure_reasons == ("candidate_invalid:TypeError",)
 
 
 def test_anchor_candidate_rejects_lossy_availability_flag() -> None:
