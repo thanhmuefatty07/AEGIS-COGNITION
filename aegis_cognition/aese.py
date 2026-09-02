@@ -430,7 +430,7 @@ def evaluate_adaptive_measurement(
         status = "CONTAMINATED"
     elif "autocorrelation_exceeds_bound" in reasons or "drift_exceeds_bound" in reasons:
         status = "UNSTABLE"
-    elif not protocol_valid:
+    elif not protocol_valid or "contamination_flags_invalid" in reasons:
         status = "INSUFFICIENT_EVIDENCE"
     elif floor_met and stable and precision_met and "confidence_interval_does_not_clear_baseline" in reasons:
         status = "FAIL"
@@ -572,10 +572,12 @@ class HardwareCapabilityVector:
 
     @classmethod
     def from_mapping(cls, values: Mapping[str, object]) -> HardwareCapabilityVector:
+        if not isinstance(values, Mapping):
+            raise ValueError("hardware mapping must be a mapping")
         allowed = set(_HARDWARE_TEXT_FIELDS) | set(_HARDWARE_INT_FIELDS) | set(_HARDWARE_FLOAT_FIELDS)
         unknown = set(values) - allowed
         if unknown:
-            raise ValueError(f"unknown hardware fields: {sorted(unknown)}")
+            raise ValueError(f"unknown hardware fields: {sorted(unknown, key=str)}")
         vector = cls(
             architecture=cast(str | None, values.get("architecture")),
             physical_cores=cast(int | None, values.get("physical_cores")),
@@ -882,8 +884,13 @@ def select_anchor_plan(
         budget = 0.0
     else:
         budget = float(budget_seconds)
+    if isinstance(candidates, (str, bytes, bytearray)) or not isinstance(candidates, Sequence):
+        candidate_values: Sequence[AnchorCandidate] = ()
+        reasons.append("candidates_invalid:TypeError")
+    else:
+        candidate_values = candidates
     by_id: dict[str, AnchorCandidate] = {}
-    for candidate in candidates:
+    for candidate in candidate_values:
         try:
             candidate.validate()
         except (TypeError, ValueError, AttributeError) as exc:
@@ -922,7 +929,11 @@ def select_anchor_plan(
     if mandatory_over_budget:
         reasons.append("mandatory_anchor_budget_exceeded")
     if reasons or mandatory_unavailable:
-        status = "EXTERNAL_VERIFICATION_BLOCKED" if mandatory_unavailable else "INSUFFICIENT_BUDGET"
+        status = (
+            "EXTERNAL_VERIFICATION_BLOCKED"
+            if mandatory_unavailable or any(reason.startswith("candidates_invalid:") for reason in reasons)
+            else "INSUFFICIENT_BUDGET"
+        )
     elif not selected:
         status = "INSUFFICIENT_BUDGET"
         reasons.append("no_anchor_fits_budget")

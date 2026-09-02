@@ -82,6 +82,18 @@ def test_adaptive_measurement_non_dataclass_protocol_returns_typed_failure() -> 
     assert any(reason.startswith("protocol_invalid:") for reason in result.failure_reasons)
 
 
+def test_adaptive_measurement_rejects_malformed_contamination_flags() -> None:
+    result = evaluate_adaptive_measurement(
+        AdaptiveMeasurementSpec(metric="latency_ms"),
+        [1.0] * 30,
+        warmups=[0.0] * 10,
+        contamination_flags="not-a-sequence",  # type: ignore[arg-type]
+    )
+    assert result.status == "INSUFFICIENT_EVIDENCE"
+    assert "contamination_flags_invalid" in result.failure_reasons
+    assert result.estimate == 1.0
+
+
 def test_adaptive_measurement_session_is_append_only_and_stops_at_terminal_status() -> None:
     spec = AdaptiveMeasurementSpec(metric="latency_ms", warmup_count=2)
     session = AdaptiveMeasurementSession(spec).append_warmups([0.0, 0.0])
@@ -114,6 +126,13 @@ def test_hardware_vector_preserves_unknowns_and_rejects_impossible_core_counts()
     assert "hardware.logical_cores" in vector.numeric_features()
     with pytest.raises(ValueError, match="logical cores"):
         HardwareCapabilityVector(physical_cores=8, logical_cores=4).validate()
+
+
+def test_hardware_vector_mapping_rejects_non_mapping_and_mixed_unknown_keys() -> None:
+    with pytest.raises(ValueError, match="must be a mapping"):
+        HardwareCapabilityVector.from_mapping(None)  # type: ignore[arg-type]
+    with pytest.raises(ValueError, match="unknown hardware fields"):
+        HardwareCapabilityVector.from_mapping({"unknown": 1, 2: "bad"})  # type: ignore[dict-item]
 
 
 def test_workload_regime_requires_known_dimensions_and_uses_hardware_capacity() -> None:
@@ -341,6 +360,13 @@ def test_anchor_planner_does_not_hide_unavailable_mandatory_anchor() -> None:
     assert plan.status == "EXTERNAL_VERIFICATION_BLOCKED"
     assert plan.unavailable_anchor_ids == ("linux",)
     assert "mandatory_anchor_unavailable" in plan.failure_reasons
+
+
+def test_anchor_planner_fails_closed_on_non_sequence_candidates() -> None:
+    plan = select_anchor_plan(None, budget_seconds=10.0)  # type: ignore[arg-type]
+    assert plan.status == "EXTERNAL_VERIFICATION_BLOCKED"
+    assert plan.selected_anchor_ids == ()
+    assert "candidates_invalid:TypeError" in plan.failure_reasons
 
 
 def test_anchor_candidate_rejects_lossy_availability_flag() -> None:
