@@ -3760,7 +3760,11 @@ validated domain, at least two reconstructible anchors, and residual evidence
 declared `MEASURED` with at least 30 samples; missing features and out-of-domain
 targets are rejected and carry `OOD_STATUS`, nearest-anchor distance,
 prediction interval and model version metadata. Nine focused tests plus the
-full local regression suite pass. No model fit, physical-power measurement,
+prediction interval and model version metadata. `AdaptiveMeasurementSession`
+provides immutable append-only checkpoints and refuses appends after a terminal
+measurement result; `HardwareCapabilityVector.from_runtime_profile` projects
+only fields explicitly reported by the existing runtime profile. Eleven
+focused tests plus the full local regression suite pass. No model fit, physical-power measurement,
 external anchor, independent replication or release promotion is claimed.
 
 **AESE Phase 8 local anchor-planning continuation (2026-09-02):**
