@@ -3756,6 +3756,19 @@ prediction interval and model version metadata. Nine focused tests plus the
 full local regression suite pass. No model fit, physical-power measurement,
 external anchor, independent replication or release promotion is claimed.
 
+**AESE Phase 8 local anchor-planning continuation (2026-09-02):**
+`select_anchor_plan` adds a bounded, deterministic high-fidelity anchor planner
+without contacting GitHub Actions. It preserves mandatory anchors even when a
+budget is exceeded, reports unavailable mandatory anchors as
+`EXTERNAL_VERIFICATION_BLOCKED`, and ranks optional anchors by declared
+changed-boundary, OOD, periodic-sentinel and uncertainty signals. The plan is
+always `PLANNED_NOT_EXECUTED`; it cannot spend hosted minutes or certify a
+platform. `CoverageVector` reports contract, state, failure-mode, schedule,
+hardware-domain, platform-semantic and statistical-precision dimensions
+independently and carries no aggregate percentage. Three additional focused
+tests pass. Anchor availability, high-fidelity execution and all
+cross-platform/release evidence remain external obligations.
+
 **Current local-phase closure record (2026-09-02):** at the bounded closure
 point before this AESE-1 delta, `HEAD == origin/main` at
 `640390214d8fe012ba0f027e7a45301a433ca876` with a clean worktree and the

@@ -63,3 +63,7 @@ They are pure metadata/evaluation helpers. Hardware fields that are not
 measured remain `UNKNOWN`; simulation remains `SIMULATED`; and prediction is
 refused without in-domain inputs, reconstructible anchors and measured
 residual uncertainty.
+
+`select_anchor_plan` only produces a cost-bounded selection record. It never
+contacts Actions or executes an external job. `CoverageVector` keeps each
+coverage dimension separate and never synthesizes an aggregate score.

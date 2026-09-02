@@ -46,6 +46,8 @@ SIMULATION_CLASSES: Final[frozenset[str]] = frozenset(
         "DETAILED_ARCHITECTURE_SIMULATION",
     }
 )
+ANCHOR_OOD_STATUSES: Final[frozenset[str]] = frozenset({"IN_DOMAIN", "OUT_OF_DOMAIN", "UNKNOWN"})
+COVERAGE_VALUES: Final[frozenset[str]] = frozenset({"UNKNOWN", "NOT_VERIFIED", "PARTIAL", "COMPLETE"})
 _HARDWARE_TEXT_FIELDS: Final[tuple[str, ...]] = (
     "architecture",
     "storage_kind",
@@ -655,6 +657,180 @@ class PredictionResult:
     artifact_hash: str
 
 
+@dataclass(frozen=True)
+class AnchorCandidate:
+    """A possible high-fidelity external anchor; this object never executes it."""
+
+    anchor_id: str
+    platform: str
+    estimated_cost_seconds: float
+    mandatory: bool = False
+    ood_status: str = "UNKNOWN"
+    model_uncertainty: float | None = None
+    changed_platform_boundary: bool = False
+    periodic_sentinel_due: bool = False
+    available: bool = True
+
+    def validate(self) -> None:
+        if _invalid_string(self.anchor_id) or _invalid_string(self.platform):
+            raise ValueError("anchor identity and platform are required")
+        if not _is_finite(self.estimated_cost_seconds) or self.estimated_cost_seconds <= 0.0:
+            raise ValueError("anchor cost must be finite and positive")
+        if self.ood_status not in ANCHOR_OOD_STATUSES:
+            raise ValueError("anchor OOD status is invalid")
+        if self.model_uncertainty is not None and (
+            not _is_finite(self.model_uncertainty) or not 0.0 <= float(self.model_uncertainty) <= 1.0
+        ):
+            raise ValueError("anchor model uncertainty must be in [0, 1] or UNKNOWN")
+        if (
+            type(self.mandatory) is not bool
+            or type(self.changed_platform_boundary) is not bool
+            or type(self.periodic_sentinel_due) is not bool
+        ):
+            raise ValueError("anchor priority flags must be boolean")
+
+    def priority_key(self) -> tuple[int, int, int, int, float, str]:
+        self.validate()
+        return (
+            int(self.mandatory),
+            int(self.changed_platform_boundary),
+            int(self.ood_status == "OUT_OF_DOMAIN"),
+            int(self.periodic_sentinel_due),
+            float(self.model_uncertainty or 0.0),
+            self.anchor_id,
+        )
+
+
+@dataclass(frozen=True)
+class AnchorSelectionPlan:
+    status: str
+    budget_seconds: float
+    selected_anchor_ids: tuple[str, ...]
+    unavailable_anchor_ids: tuple[str, ...]
+    skipped_anchor_ids: tuple[str, ...]
+    planned_cost_seconds: float
+    remaining_budget_seconds: float
+    execution: str = "PLANNED_NOT_EXECUTED"
+    failure_reasons: tuple[str, ...] = ()
+    artifact_hash: str = ""
+
+
+def select_anchor_plan(
+    candidates: Sequence[AnchorCandidate],
+    *,
+    budget_seconds: float,
+) -> AnchorSelectionPlan:
+    """Select external anchors without invoking a hosted runner."""
+
+    reasons: list[str] = []
+    if not _is_finite(budget_seconds) or float(budget_seconds) <= 0.0:
+        reasons.append("budget_invalid")
+        budget = 0.0
+    else:
+        budget = float(budget_seconds)
+    by_id: dict[str, AnchorCandidate] = {}
+    for candidate in candidates:
+        try:
+            candidate.validate()
+        except (TypeError, ValueError, AttributeError) as exc:
+            reasons.append(f"candidate_invalid:{type(exc).__name__}")
+            continue
+        if candidate.anchor_id in by_id:
+            reasons.append("duplicate_anchor_id")
+            continue
+        by_id[candidate.anchor_id] = candidate
+    ordered = sorted(by_id.values(), key=lambda item: item.priority_key(), reverse=True)
+    selected: list[str] = []
+    unavailable: list[str] = []
+    skipped: list[str] = []
+    spent = 0.0
+    mandatory_unavailable = False
+    mandatory_over_budget = False
+    for candidate in ordered:
+        if not candidate.available:
+            unavailable.append(candidate.anchor_id)
+            if candidate.mandatory:
+                mandatory_unavailable = True
+            continue
+        cost = float(candidate.estimated_cost_seconds)
+        if candidate.mandatory:
+            selected.append(candidate.anchor_id)
+            spent += cost
+            if spent > budget:
+                mandatory_over_budget = True
+        elif spent + cost <= budget:
+            selected.append(candidate.anchor_id)
+            spent += cost
+        else:
+            skipped.append(candidate.anchor_id)
+    if mandatory_unavailable:
+        reasons.append("mandatory_anchor_unavailable")
+    if mandatory_over_budget:
+        reasons.append("mandatory_anchor_budget_exceeded")
+    if reasons or mandatory_unavailable:
+        status = "EXTERNAL_VERIFICATION_BLOCKED" if mandatory_unavailable else "INSUFFICIENT_BUDGET"
+    elif not selected:
+        status = "INSUFFICIENT_BUDGET"
+        reasons.append("no_anchor_fits_budget")
+    elif skipped:
+        status = "PARTIAL_PLAN"
+    else:
+        status = "PLAN_READY"
+    payload = {
+        "schema": f"{_SCHEMA_VERSION}-anchor-plan",
+        "status": status,
+        "budget_seconds": budget,
+        "selected_anchor_ids": tuple(selected),
+        "unavailable_anchor_ids": tuple(unavailable),
+        "skipped_anchor_ids": tuple(skipped),
+        "planned_cost_seconds": spent,
+        "remaining_budget_seconds": budget - spent,
+        "execution": "PLANNED_NOT_EXECUTED",
+        "failure_reasons": tuple(dict.fromkeys(reasons)),
+    }
+    return AnchorSelectionPlan(
+        status=status,
+        budget_seconds=budget,
+        selected_anchor_ids=tuple(selected),
+        unavailable_anchor_ids=tuple(unavailable),
+        skipped_anchor_ids=tuple(skipped),
+        planned_cost_seconds=spent,
+        remaining_budget_seconds=budget - spent,
+        failure_reasons=tuple(dict.fromkeys(reasons)),
+        artifact_hash=_hash(payload),
+    )
+
+
+@dataclass(frozen=True)
+class CoverageVector:
+    """Independent coverage dimensions; no aggregate percentage is inferred."""
+
+    contract_coverage: str = "UNKNOWN"
+    state_coverage: str = "UNKNOWN"
+    failure_mode_coverage: str = "UNKNOWN"
+    schedule_coverage: str = "UNKNOWN"
+    hardware_domain_coverage: str = "UNKNOWN"
+    platform_semantic_coverage: str = "UNKNOWN"
+    statistical_precision: str = "UNKNOWN"
+
+    def validate(self) -> None:
+        values = (
+            self.contract_coverage,
+            self.state_coverage,
+            self.failure_mode_coverage,
+            self.schedule_coverage,
+            self.hardware_domain_coverage,
+            self.platform_semantic_coverage,
+            self.statistical_precision,
+        )
+        if any(value not in COVERAGE_VALUES for value in values):
+            raise ValueError("coverage vector contains an invalid status")
+
+    def as_dict(self) -> dict[str, object]:
+        self.validate()
+        return {"schema": f"{_SCHEMA_VERSION}-coverage-vector", **asdict(self), "aggregate": None}
+
+
 def predict_cross_hardware(
     model: AnalyticPredictionModel,
     hardware: HardwareCapabilityVector,
@@ -784,17 +960,23 @@ def predict_cross_hardware(
 
 
 __all__ = [
+    "ANCHOR_OOD_STATUSES",
+    "COVERAGE_VALUES",
     "MEASUREMENT_STATUSES",
     "REGIMES",
     "SIMULATION_CLASSES",
     "AdaptiveMeasurementResult",
     "AdaptiveMeasurementSpec",
     "AnalyticPredictionModel",
+    "AnchorCandidate",
     "AnchorObservation",
+    "AnchorSelectionPlan",
+    "CoverageVector",
     "HardwareCapabilityVector",
     "PredictionResult",
     "SimulationEvidence",
     "WorkloadSignature",
     "evaluate_adaptive_measurement",
     "predict_cross_hardware",
+    "select_anchor_plan",
 ]

@@ -6,13 +6,16 @@ import pytest
 
 from aegis_cognition import (
     AdaptiveMeasurementSpec,
+    AnchorCandidate,
     AnchorObservation,
     AnalyticPredictionModel,
     HardwareCapabilityVector,
     SimulationEvidence,
     WorkloadSignature,
+    CoverageVector,
     evaluate_adaptive_measurement,
     predict_cross_hardware,
+    select_anchor_plan,
 )
 
 
@@ -173,3 +176,37 @@ def test_cross_hardware_prediction_refuses_missing_features() -> None:
     assert result.status == "INSUFFICIENT_EVIDENCE"
     assert result.ood_status == "UNKNOWN"
     assert result.missing_features == ("hardware.memory_capacity_bytes",)
+
+
+def test_anchor_planner_prioritizes_mandatory_boundary_and_ood_with_budget() -> None:
+    candidates = [
+        AnchorCandidate("periodic", "linux", 3.0, periodic_sentinel_due=True),
+        AnchorCandidate("ood", "windows", 2.0, ood_status="OUT_OF_DOMAIN", model_uncertainty=0.2),
+        AnchorCandidate("boundary", "macos", 2.0, changed_platform_boundary=True),
+        AnchorCandidate("mandatory", "linux", 2.0, mandatory=True),
+    ]
+    plan = select_anchor_plan(candidates, budget_seconds=6.0)
+    assert plan.status == "PARTIAL_PLAN"
+    assert plan.selected_anchor_ids == ("mandatory", "boundary", "ood")
+    assert plan.skipped_anchor_ids == ("periodic",)
+    assert plan.execution == "PLANNED_NOT_EXECUTED"
+
+
+def test_anchor_planner_does_not_hide_unavailable_mandatory_anchor() -> None:
+    plan = select_anchor_plan(
+        [AnchorCandidate("linux", "linux", 1.0, mandatory=True, available=False)],
+        budget_seconds=10.0,
+    )
+    assert plan.status == "EXTERNAL_VERIFICATION_BLOCKED"
+    assert plan.unavailable_anchor_ids == ("linux",)
+    assert "mandatory_anchor_unavailable" in plan.failure_reasons
+
+
+def test_coverage_vector_has_independent_dimensions_and_no_aggregate() -> None:
+    vector = CoverageVector(contract_coverage="COMPLETE", statistical_precision="NOT_VERIFIED")
+    payload = vector.as_dict()
+    assert payload["contract_coverage"] == "COMPLETE"
+    assert payload["statistical_precision"] == "NOT_VERIFIED"
+    assert payload["aggregate"] is None
+    with pytest.raises(ValueError, match="coverage vector"):
+        CoverageVector(contract_coverage="99%").validate()
