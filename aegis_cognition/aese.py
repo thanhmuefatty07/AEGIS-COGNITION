@@ -878,29 +878,34 @@ def select_anchor_plan(
     candidates: Sequence[AnchorCandidate],
     *,
     budget_seconds: float,
-) -> AnchorSelectionPlan:
+    ) -> AnchorSelectionPlan:
     """Select external anchors without invoking a hosted runner."""
 
     reasons: list[str] = []
+    input_invalid = False
     if not _is_finite(budget_seconds) or float(budget_seconds) <= 0.0:
         reasons.append("budget_invalid")
+        input_invalid = True
         budget = 0.0
     else:
         budget = float(budget_seconds)
     if isinstance(candidates, (str, bytes, bytearray)) or not isinstance(candidates, Sequence):
         candidate_values: Sequence[AnchorCandidate] = ()
         reasons.append("candidates_invalid:TypeError")
+        input_invalid = True
     else:
         candidate_values = candidates
     by_id: dict[str, AnchorCandidate] = {}
     for candidate in candidate_values:
         if type(candidate) is not AnchorCandidate:
             reasons.append("candidate_invalid:TypeError")
+            input_invalid = True
             continue
         try:
             candidate.validate()
         except (TypeError, ValueError, AttributeError) as exc:
             reasons.append(f"candidate_invalid:{type(exc).__name__}")
+            input_invalid = True
             continue
         if candidate.anchor_id in by_id:
             reasons.append("duplicate_anchor_id")
@@ -920,30 +925,35 @@ def select_anchor_plan(
                 mandatory_unavailable = True
             continue
         cost = float(candidate.estimated_cost_seconds)
+        next_spent = spent + cost
+        if not math.isfinite(next_spent):
+            reasons.append("planned_cost_overflow")
+            input_invalid = True
+            continue
         if candidate.mandatory:
             selected.append(candidate.anchor_id)
-            spent += cost
+            spent = next_spent
             if spent > budget:
                 mandatory_over_budget = True
         elif spent + cost <= budget:
             selected.append(candidate.anchor_id)
-            spent += cost
+            spent = next_spent
         else:
             skipped.append(candidate.anchor_id)
     if mandatory_unavailable:
         reasons.append("mandatory_anchor_unavailable")
+        input_invalid = True
     if mandatory_over_budget:
         reasons.append("mandatory_anchor_budget_exceeded")
-    if reasons or mandatory_unavailable:
-        status = (
-            "EXTERNAL_VERIFICATION_BLOCKED"
-            if mandatory_unavailable
-            or any(
-                reason.startswith("candidates_invalid:") or reason.startswith("candidate_invalid:")
-                for reason in reasons
-            )
-            else "INSUFFICIENT_BUDGET"
-        )
+    if input_invalid:
+        # A blocked plan must not expose a seemingly executable subset. Keep
+        # invalidation visible in the reasons while clearing all planned spend.
+        selected = []
+        spent = 0.0
+    if input_invalid:
+        status = "EXTERNAL_VERIFICATION_BLOCKED"
+    elif mandatory_over_budget:
+        status = "INSUFFICIENT_BUDGET"
     elif not selected:
         status = "INSUFFICIENT_BUDGET"
         reasons.append("no_anchor_fits_budget")
