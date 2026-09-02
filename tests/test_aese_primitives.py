@@ -203,6 +203,21 @@ def test_cross_hardware_prediction_refuses_missing_features() -> None:
     assert result.missing_features == ("hardware.memory_capacity_bytes",)
 
 
+def test_cross_hardware_prediction_does_not_count_out_of_domain_anchors() -> None:
+    model, hardware, workload, anchors = _prediction_fixture()
+    out_of_domain = AnchorObservation(
+        "outside",
+        HardwareCapabilityVector(logical_cores=32),
+        WorkloadSignature(compute_intensity=0.5),
+        4.0,
+    )
+    result = predict_cross_hardware(model, hardware, workload, [anchors[0], out_of_domain])
+    assert result.status == "INSUFFICIENT_EVIDENCE"
+    assert result.ood_status == "UNKNOWN"
+    assert result.nearest_anchor_distance == pytest.approx(4.0 / 15.0)
+    assert result.failure_reasons == ("no_reconstructible_anchor", "anchor_outside_validated_domain")
+
+
 def test_anchor_planner_prioritizes_mandatory_boundary_and_ood_with_budget() -> None:
     candidates = [
         AnchorCandidate("periodic", "linux", 3.0, periodic_sentinel_due=True),
