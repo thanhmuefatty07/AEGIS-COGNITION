@@ -112,7 +112,7 @@ def main() -> int:
                     ("core/rust/src/runtime.rs", "pub fn reap_expired"),
                     ("core/rust/src/execution.rs", "pub fn run_untrusted_process"),
                     ("core/rust/src/execution.rs", "pub trait AcceleratorExecutor"),
-                    ("core/rust/src/ffi.rs", "pub fn aegis_resource_usage_sample"),
+                    ("core/rust/src/ffi/runtime.rs", "pub fn aegis_resource_usage_sample"),
                 )
             ),
             "resource feedback, queued admission, deadlines, process isolation, accelerator seams, and sampling must remain present",
