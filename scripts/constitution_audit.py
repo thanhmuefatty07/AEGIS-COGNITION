@@ -373,7 +373,11 @@ REQUIRED_SYMBOLS = {
         ],
     ),
     "hot_engine_python_ffi": (
-        Path("core/rust/src/ffi.rs"),
+        (
+            Path("core/rust/src/ffi.rs"),
+            Path("core/rust/src/ffi/compat.rs"),
+            Path("core/rust/src/ffi/hot.rs"),
+        ),
         [
             "aegis_trust_level",
             "aegis_hot_hash",
