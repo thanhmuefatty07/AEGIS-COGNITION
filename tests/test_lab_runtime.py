@@ -1700,6 +1700,49 @@ def test_native_required_gateway_rejects_adapter_owned_retry_loop(
         application._gateway("bounded")
 
 
+def test_native_gateway_derives_trust_subject_when_compatibility_options_omit_it() -> None:
+    """A direct native application cannot create an unbound gateway."""
+
+    captured: dict[str, object] = {}
+
+    class Gateway:
+        max_retries = 1
+
+        def __init__(self, **kwargs: object) -> None:
+            captured.update(kwargs)
+            self.provider_attempt_hook = kwargs.get("provider_attempt_hook")
+            self.trust_policy_hash = kwargs.get("trust_policy_hash")
+
+    def gateway_factory(**kwargs: object) -> Gateway:
+        return Gateway(**kwargs)
+
+    config = SimpleNamespace(
+        task="derive native gateway trust subject",
+        options={"lab_authority_mode": AuthorityMode.NATIVE_REQUIRED.value},
+        llm=None,
+        max_steps=1,
+        trust_level="STAGING",
+    )
+    application = LabApplication(
+        config=config,
+        gateway_factory=gateway_factory,
+        telemetry=None,
+        correlation=None,
+    )
+    run = LabRun(
+        "derive native gateway trust subject",
+        authority_mode=AuthorityMode.NATIVE_ADMITTED,
+        trust_level="STAGING",
+    )
+    application._active_run = run
+
+    gateway = application._gateway("bounded")
+
+    assert captured["trust_policy_hash"] == run.trust_policy_hash
+    assert gateway.trust_policy_hash == run.trust_policy_hash
+    assert gateway.provider_attempt_hook is application._provider_attempt_hook_ref
+
+
 @pytest.mark.parametrize("trust_level", ("DEV", "STAGING", "PROD"))
 def test_lab_trust_policy_hash_matches_core_bridge(trust_level: str) -> None:
     from core.python.aegis.evidence import trust_policy_snapshot
