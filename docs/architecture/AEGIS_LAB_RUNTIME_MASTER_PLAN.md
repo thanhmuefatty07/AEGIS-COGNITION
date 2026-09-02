@@ -3,7 +3,7 @@ document_id: AEGIS-LAB-RUNTIME-MASTER-PLAN
 document_type: canonical_current_implementation_plan
 status: IN_EXECUTION
 authority: derived_from_checkout_and_evidence_manifest
-applies_to_commit: 8837d02fb762afea305a64c30e386b043e56ad25
+applies_to_commit: 256a5288bed067a053c4cd6471390ed103de10bd
 created_at: 2026-08-26
 last_verified_at: 2026-09-03
 supersedes: browser-native-proposal-and-cumulative-harness-roadmap-as-execution-authority
@@ -2560,6 +2560,18 @@ cap, while the existing per-lane retry/timeout tests remain green. This makes
 the local retry contract precise but does not establish provider idempotency,
 opaque SDK/user-runner retry absence, external-effect reversal, or a hosted
 global `N_external_max`; M4 remains `OPEN_LOCAL`.
+
+**M4 compatibility-adapter retry metadata continuation (2026-09-03):**
+`core/python.aegis_adapter.AegisAgent` now rejects boolean, numeric-string,
+floating-point, zero and negative `max_retries` values before constructing the
+adapter. The compatibility default remains three retries, while native Lab
+authority still rejects adapter-owned retry loops above one attempt. The
+focused compatibility cases and the complete **91-test** `core/python/tests.py`
+suite pass with deprecation warnings treated as errors. This prevents lossy
+retry-policy metadata from entering the compatibility adapter; it does not
+prove that an underlying SDK or user runner performs no hidden retries,
+provide provider idempotency, reverse an already-triggered external effect, or
+close the finite global-attempt gate, so M4 remains `OPEN_LOCAL`.
 
 **P3 experiment-contract continuation (2026-09-02):** `ExperimentSpec` now
 validates identity strings, non-empty controls/variables, unique integer
