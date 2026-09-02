@@ -124,6 +124,20 @@ def test_adaptive_measurement_rejects_forged_spec_and_exploding_containers() -> 
     assert "contamination_flags_invalid" in result.failure_reasons
 
 
+def test_adaptive_measurement_session_rejects_forged_append_containers() -> None:
+    spec = AdaptiveMeasurementSpec(metric="latency_ms")
+    session = AdaptiveMeasurementSession(spec)
+
+    class ExplodingSequence:
+        def __iter__(self):
+            raise RuntimeError("session container was iterated")
+
+    with pytest.raises(TypeError, match="canonical list or tuple"):
+        session.append_warmups(ExplodingSequence())  # type: ignore[arg-type]
+    with pytest.raises(TypeError, match="canonical list or tuple"):
+        session.append_observations(ExplodingSequence())  # type: ignore[arg-type]
+
+
 def test_adaptive_measurement_rejects_malformed_contamination_flags() -> None:
     result = evaluate_adaptive_measurement(
         AdaptiveMeasurementSpec(metric="latency_ms"),
