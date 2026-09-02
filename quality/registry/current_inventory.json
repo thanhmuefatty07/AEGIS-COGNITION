@@ -2,7 +2,7 @@
   "deletion": "PROHIBITED_UNTIL_SUPERSESSION_PROOF",
   "direct_cutover": "PROHIBITED",
   "disposition_counts": {
-    "RETAIN_UNCHANGED": 116
+    "RETAIN_UNCHANGED": 117
   },
   "items": [
     {
@@ -860,6 +860,39 @@
         "UNKNOWN"
       ],
       "stable_id": "AESE-RUST_UNIT_TEST-2C9D296895749679",
+      "supersession_rationale": "No stronger replacement evidence is recorded; preserve the existing authoritative path.",
+      "target": null
+    },
+    {
+      "claims_supported": [],
+      "dependencies": [],
+      "determinism": "UNKNOWN",
+      "domain": "UNKNOWN",
+      "evidence_produced": [],
+      "failure_semantics": "UNKNOWN",
+      "hardware_requirement": "UNKNOWN",
+      "inputs": [],
+      "invariants_checked": [],
+      "kind": "RUST_UNIT_TEST",
+      "known_defects": [],
+      "mapping_status": "NOT_MAPPED",
+      "migration_disposition": "RETAIN_UNCHANGED",
+      "outputs": [],
+      "owner": "UNKNOWN_OWNER",
+      "path": "core/rust/src/ffi/eac.rs",
+      "platform_requirement": "UNKNOWN",
+      "release_criticality": "UNKNOWN",
+      "replacement_id": null,
+      "resource_cost": "UNKNOWN",
+      "rollback_path": "Re-run the existing native runner directly.",
+      "runner_backend": "cargo test",
+      "runtime_class": "UNKNOWN",
+      "scope": "core/rust/src",
+      "security_criticality": "UNKNOWN",
+      "side_effects": [
+        "UNKNOWN"
+      ],
+      "stable_id": "AESE-RUST_UNIT_TEST-B07735E7D4D5F66B",
       "supersession_rationale": "No stronger replacement evidence is recorded; preserve the existing authoritative path.",
       "target": null
     },
@@ -3843,16 +3876,16 @@
   "phase": "PHASE_0_REBIND_REALITY",
   "schema": "aese-current-evidence-system-inventory-v1",
   "scope_counts": {
-    "inventoried_items": 116,
+    "inventoried_items": 117,
     "missing_scopes": 0,
-    "represented_paths": 105,
+    "represented_paths": 106,
     "tracked_files": 592,
     "workflow_jobs": 11
   },
   "scope_policy": "tracked_files_only; native runners remain authoritative",
-  "source_head": "f924d3108f77f781b7b7a6ce7186bc400f764d69",
-  "source_tree_sha256": "93cb70880bb8bb19f826e8ec4f50c02a46529da1b2ea1ac32718247252f0f0c4",
+  "source_head": "e0731f698302a0791c70c24d93b696597e04180d",
+  "source_tree_sha256": "1c75333274aa4f01870cc7409e2a32b17c8b394562effb50f3c8b678bed7d95d",
   "status": "INVENTORY_COMPLETE_DISPOSITIONS_RETAINED_MAPPING_PENDING",
-  "worktree_epoch": "b0a57b5a13e2751d5eafbfeefbccb4e48255f4eec92459b9c55d0f71a5f46aec",
-  "worktree_status": "DIRTY"
+  "worktree_epoch": "1585829353d240338884198987a8ec32ebacad56fa4ec8adba4c74d3d6d1c66b",
+  "worktree_status": "CLEAN"
 }
