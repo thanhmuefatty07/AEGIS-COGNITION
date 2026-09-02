@@ -3,7 +3,7 @@ document_id: AEGIS-LAB-RUNTIME-MASTER-PLAN
 document_type: canonical_current_implementation_plan
 status: IN_EXECUTION
 authority: derived_from_checkout_and_evidence_manifest
-applies_to_commit: 8aef2ea4c419ae0463334ad9124ed230b7040b31
+applies_to_commit: 02e35c192e6142ed5a771d8c5fd0b543522d460f
 created_at: 2026-08-26
 last_verified_at: 2026-09-03
 supersedes: browser-native-proposal-and-cumulative-harness-roadmap-as-execution-authority
@@ -4309,6 +4309,17 @@ that fills a one-slot/four-byte budget and attempts a second frame. The full
 Rust library suite passes **444/444**, with format, check and clippy warning
 gates passing. This is local resource-boundary evidence only; it does not
 prove global memory enforcement, process containment, or release authority.
+
+**Memory-fold complexity continuation (2026-09-03):** implementation commit
+`02e35c192e6142ed5a771d8c5fd0b543522d460f` removes a statically identified
+quadratic rescan from `deduplicate_edges`. Because the function sorts by
+`(from_node, to_node, edge_id)`, equal endpoint pairs are contiguous; merging
+only with the last compacted edge preserves the existing maximum-weight and
+latest-access selection while reducing the compaction pass from a prior
+worst-case `O(n²)` scan to `O(n)` after the required `O(n log n)` sort. The
+existing duplicate-edge regression and the complete Rust library suite pass
+**444/444**; format/check/clippy gates pass. No runtime speedup is claimed
+without a paired benchmark; this is a source-level complexity proof only.
 
 Không được gọi toàn hệ thống “production-ready” khi bất kỳ gate bắt buộc nào
 ở trên còn `OPEN_*`, `BLOCKED_*`, `UNKNOWN` hoặc chỉ có fixture/mock evidence.
