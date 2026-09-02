@@ -3696,9 +3696,10 @@ an implementation directive, not as current status authority; its recorded
 GitHub HEAD is historical and is not substituted for the checkout state. The
 new bounded generator `scripts/aese_inventory.py` emits
 `quality/registry/current_inventory.json` with a source-tree digest and
-provenance. It inventories **76** tracked evidence surfaces: 7 Python test
-files, 1 Rust integration test, 5 Rust benchmarks, 4 fuzz targets, 55 Python
-scripts/gates and 4 hosted workflows; no scope is missing. Every item is
+provenance. It inventories **113** tracked evidence surfaces: 8 Python test
+files, 24 Rust unit-test files, 1 Rust integration test, 5 Rust benchmarks,
+5 Python benchmarks, 4 fuzz targets, 51 Python scripts/gates, 4 hosted
+workflows and 11 workflow jobs; no scope is missing. Every item is
 conservatively `RETAIN_UNCHANGED`, with claim/owner/cost/platform/failure
 mapping left `UNKNOWN`/`NOT_MAPPED`; direct cutover and deletion remain
 prohibited. The generator's `--check` drift gate and four regression tests pass,
@@ -3706,6 +3707,30 @@ and this closes only Phase 0 discovery. AESE registry wrappers, estimand and
 sequential measurement, affected-closure invalidation, model/OOD validation,
 shadow non-inferiority and cost-savings evidence are not implemented, so the
 directive's later phases remain open and no legacy check is suppressed.
+
+**AESE Phase 1 shadow graph continuation (2026-09-02):**
+`scripts/aese_claim_graph.py` now materializes the source-backed GT96
+traceability into a deterministic shadow graph with **35 claims, 35 contracts,
+35 invariants, 70 test/benchmark references, 23 resolved code nodes and 20
+future obligations**. The graph is linked to the Phase 0 inventory and the
+canonical not-verified registry; 112 of 113 inventory surfaces remain
+explicitly `NOT_MAPPED` because the current inventory does not yet prove a
+complete test-to-claim or workflow-job mapping, and 59 of 70 verification
+references remain unresolved until concrete files/jobs are identified. The
+graph drift gate is wired into CI and release verification, but selection,
+skipping, promotion and deletion are disabled in `SHADOW`; unknown dependency
+must invalidate conservatively in the later affected-closure phase.
+
+**Current local-phase closure record (2026-09-02):** at the bounded closure
+point before this AESE-1 delta, `HEAD == origin/main` at
+`640390214d8fe012ba0f027e7a45301a433ca876` with a clean worktree and the
+retained local verification suite valid. Therefore
+`CURRENT_LOCAL_PHASE = CLOSED`, `DEVELOPMENT_BLOCKED = NO`, and
+`SAFE_TO_BEGIN_AESE = YES`. Hosted execution remains
+`EXTERNAL_VERIFICATION = BLOCKED_EXTERNAL` because both latest workflows
+failed before runner allocation; `RELEASE = NOT_READY` and
+`PRODUCTION_COMPLETE = NO`. This closure record does not promote any local
+result to CI or release evidence.
 
 Không được gọi toàn hệ thống “production-ready” khi bất kỳ gate bắt buộc nào
 ở trên còn `OPEN_*`, `BLOCKED_*`, `UNKNOWN` hoặc chỉ có fixture/mock evidence.
