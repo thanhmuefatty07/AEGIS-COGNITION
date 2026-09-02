@@ -3,7 +3,7 @@ document_id: AEGIS-LAB-RUNTIME-MASTER-PLAN
 document_type: canonical_current_implementation_plan
 status: IN_EXECUTION
 authority: derived_from_checkout_and_evidence_manifest
-applies_to_commit: 4c0a3a4a045fcfd48144b7f50298b97a07b87620
+applies_to_commit: 86f58b8df19985689b2a7e13be29cb27a9590787
 created_at: 2026-08-26
 last_verified_at: 2026-09-03
 supersedes: browser-native-proposal-and-cumulative-harness-roadmap-as-execution-authority
@@ -4332,6 +4332,17 @@ the AESE primitive suite passes **40/40**, the full Python regression passes
 Ruff/Pyright pass. This proves input-integrity behavior only; it does not
 execute hosted anchors, validate model calibration, or authorize selective
 testing.
+
+**AESE prediction-anchor provenance continuation (2026-09-03):**
+implementation commit `86f58b8df19985689b2a7e13be29cb27a9590787` closes the
+corresponding cross-hardware fail-open path. A prediction is now refused when
+duplicate anchor identities appear even if two distinct anchors remain after
+deduplication; the result is `INSUFFICIENT_EVIDENCE` with
+`duplicate_anchor_id`, while unique anchor evidence hashes remain visible for
+diagnosis. The focused AESE suite passes **41/41**, the full Python regression
+passes **521/521** with deprecation warnings treated as errors, and changed
+file Ruff/Pyright pass. This protects provenance integrity only; it does not
+validate model calibration, OOD generalization or external anchor execution.
 
 Không được gọi toàn hệ thống “production-ready” khi bất kỳ gate bắt buộc nào
 ở trên còn `OPEN_*`, `BLOCKED_*`, `UNKNOWN` hoặc chỉ có fixture/mock evidence.
