@@ -3,7 +3,7 @@ document_id: AEGIS-LAB-RUNTIME-MASTER-PLAN
 document_type: canonical_current_implementation_plan
 status: IN_EXECUTION
 authority: derived_from_checkout_and_evidence_manifest
-applies_to_commit: d76d523142ce8f8b726b84c692f3b20a7948ab08
+applies_to_commit: 91e10584a09b791f4fcf6ee9720a354033532faa
 created_at: 2026-08-26
 last_verified_at: 2026-09-03
 supersedes: browser-native-proposal-and-cumulative-harness-roadmap-as-execution-authority
@@ -4355,6 +4355,17 @@ valid-page boundary assertion pass; the complete Rust library suite passes
 `cargo clippy -- -D warnings` passing. This is arithmetic/input-boundary
 hardening only: it does not prove OS-enforced quotas, non-cooperative process
 containment, cross-platform execution, or release authority.
+
+**M2 candidate-capsule parser arithmetic continuation (2026-09-03):**
+implementation commit `91e10584a09b791f4fcf6ee9720a354033532faa` checks the
+`candidate_count * CANDIDATE_BYTES` multiplication before adding the capsule
+header length. A malformed count therefore returns `InvalidCapsule` instead of
+wrapping on a narrow target and reaching an inconsistent length or allocation
+path. The existing canonical capsule round-trip/tamper regression passes; the
+complete Rust library suite remains **445/445**, with format/check/clippy gates
+passing. This is binary-parser arithmetic hardening only: it does not prove
+cross-platform archive recovery, memory quotas, process containment or release
+authority.
 
 Không được gọi toàn hệ thống “production-ready” khi bất kỳ gate bắt buộc nào
 ở trên còn `OPEN_*`, `BLOCKED_*`, `UNKNOWN` hoặc chỉ có fixture/mock evidence.
