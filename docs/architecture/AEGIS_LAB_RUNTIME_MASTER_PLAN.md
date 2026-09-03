@@ -3,7 +3,7 @@ document_id: AEGIS-LAB-RUNTIME-MASTER-PLAN
 document_type: canonical_current_implementation_plan
 status: IN_EXECUTION
 authority: derived_from_checkout_and_evidence_manifest
-applies_to_commit: b37b998d7a85ba41df9d63546b6adcd675479a73
+applies_to_commit: 57cc015183566f9675f6a2fe683b2711beca08d7
 created_at: 2026-08-26
 last_verified_at: 2026-09-03
 supersedes: browser-native-proposal-and-cumulative-harness-roadmap-as-execution-authority
@@ -4453,6 +4453,16 @@ the complete no-default-features Rust library suite passes **447/447** with
 This closes a local FFI arithmetic fail-open path only; it does not prove
 FFI-wide lifetime/allocation/soak safety, cross-process authority, or release
 certification.
+
+**M6 FFI session-count boundary continuation (2026-09-03):** implementation
+commit `57cc015183566f9675f6a2fe683b2711beca08d7` replaces the remaining
+`usize`-to-`u64` cast in the learning/session statistics binding with a
+fallible conversion and typed `PyOverflowError`. Existing learning-stat
+semantics and Python schema remain unchanged; the complete no-default-features
+Rust library suite passes **447/447** with formatting, compilation and
+`clippy -D warnings` gates passing. This closes one local FFI representation
+boundary only; FFI-wide lifetime/allocation/soak safety, cross-process
+authority and release certification remain unproven.
 
 Không được gọi toàn hệ thống “production-ready” khi bất kỳ gate bắt buộc nào
 ở trên còn `OPEN_*`, `BLOCKED_*`, `UNKNOWN` hoặc chỉ có fixture/mock evidence.
