@@ -3,7 +3,7 @@ document_id: AEGIS-LAB-RUNTIME-MASTER-PLAN
 document_type: canonical_current_implementation_plan
 status: IN_EXECUTION
 authority: derived_from_checkout_and_evidence_manifest
-applies_to_commit: 65c8c8a87542dd3663a859e7499bea881b92f729
+applies_to_commit: 8e8d595ca107a943b460ecdca3f36f71c923a44b
 created_at: 2026-08-26
 last_verified_at: 2026-09-03
 supersedes: browser-native-proposal-and-cumulative-harness-roadmap-as-execution-authority
@@ -4577,3 +4577,15 @@ Windows MSVC toolchain reports that the `miri` component is unavailable, and
 `clang` is not installed; no local Miri or AddressSanitizer run was therefore
 attempted or claimed. `NV-013` remains `NOT VERIFIED` and still requires a
 supported hosted memory/undefined-behavior lane with retained logs.
+
+**M6 EaC batch resource-boundary continuation (2026-09-03):**
+implementation commit `8e8d595ca107a943b460ecdca3f36f71c923a44b` bounds the
+legacy `aegis_eac_batch` FFI input to **8 MiB** before JSON parsing and rejects
+more than **64** calls before the parallel executor can create one OS thread
+per call. Valid inputs retain the existing transaction policy, result schema
+and executor behavior. Focused no-default-features FFI regressions pass
+**4/4**; the same feature-enabled FFI filter also passes **4/4** in **44.49 s**;
+the complete no-default-features Rust suite passes **450/450** in **90.05 s**, with format,
+check and clippy gates passing. This closes one concrete FFI resource-exhaustion
+boundary only; it does not prove FFI-wide allocation/soak behavior, process
+containment, cross-platform semantics or release authority.
