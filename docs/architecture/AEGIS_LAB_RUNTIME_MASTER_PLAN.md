@@ -3,7 +3,7 @@ document_id: AEGIS-LAB-RUNTIME-MASTER-PLAN
 document_type: canonical_current_implementation_plan
 status: IN_EXECUTION
 authority: derived_from_checkout_and_evidence_manifest
-applies_to_commit: 62dfddff2f07d57994b1afc17d89aff6d1b1a245
+applies_to_commit: 2778a4fc7fbe5013f4c1600dba39a2d9aa78a4fe
 created_at: 2026-08-26
 last_verified_at: 2026-09-03
 supersedes: browser-native-proposal-and-cumulative-harness-roadmap-as-execution-authority
@@ -4602,3 +4602,15 @@ format, compile and clippy gates passing. This closes one additional FFI input
 allocation boundary only; Python-side string allocation, FFI-wide lifetime/
 soak behavior, process containment, cross-platform semantics and release
 authority remain unproven.
+
+**M7 segmented-writer capacity boundary continuation (2026-09-03):**
+implementation commit `2778a4fc7fbe5013f4c1600dba39a2d9aa78a4fe` adds a
+fail-closed upper bound of **65,536 events per segment** at the
+`SegmentedArrowAuditStream` ownership point, before directory creation or
+`Vec::with_capacity`. A `usize::MAX` adversarial regression is rejected without
+creating the target directory or allocating the pending-event buffer. The
+complete no-default-features Rust library suite passes **452/452** in **79.70
+s**, with format, compile and clippy gates passing. This closes one local
+segmented-writer allocation boundary only; crash-stale-lock recovery,
+cross-process writer authority, hostile archive soak, cross-platform filesystem
+semantics and release certification remain unproven.
