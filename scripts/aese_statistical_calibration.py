@@ -36,6 +36,8 @@ META_NOMINAL_ALPHA: Final[float] = 0.05
 MIN_DECISION_RESOLUTION: Final[float] = 0.50
 SCENARIOS: Final[tuple[str, ...]] = ("null", "improvement", "regression")
 CHECKPOINT_POLICIES: Final[tuple[str, ...]] = ("every_observation", "every_block")
+META_METRICS: Final[tuple[str, ...]] = ("coverage", "false_pass", "false_fail", "decision_resolution")
+PREREGISTERED_LOOK_POINTS: Final[tuple[int, ...]] = (30, 60, 90, 120)
 
 
 @dataclass(frozen=True)
@@ -278,6 +280,62 @@ def _percentile(values: list[int], fraction: float) -> int | None:
     return ordered[rank - 1]
 
 
+def _finite_look_schedule(minimum: int, maximum: int, batch: int) -> tuple[int, ...]:
+    """Return a preregistered schedule with no more than four finite looks."""
+
+    if type(minimum) is not int or type(maximum) is not int or type(batch) is not int:
+        raise ValueError("calibration look schedule values must be integers")
+    if not 1 <= minimum <= maximum <= 5_000 or batch < 1:
+        raise ValueError("calibration look schedule bounds are invalid")
+    if minimum == DEFAULT_MIN_REPLICATES and maximum == DEFAULT_MAX_REPLICATES and batch == DEFAULT_REPLICATE_BATCH:
+        return PREREGISTERED_LOOK_POINTS
+    points = [minimum]
+    while len(points) < 3 and points[-1] + batch < maximum:
+        points.append(points[-1] + batch)
+    if points[-1] != maximum:
+        points.append(maximum)
+    return tuple(sorted(set(points)))
+
+
+def _alpha_allocation(
+    look_points: tuple[int, ...],
+    *,
+    alpha_total: float = META_NOMINAL_ALPHA,
+    metric_names: tuple[str, ...] = META_METRICS,
+    scenario_names: tuple[str, ...] = SCENARIOS,
+) -> dict[str, object]:
+    """Allocate one preregistered alpha budget across finite looks and metrics."""
+
+    if not look_points or len(look_points) > len(PREREGISTERED_LOOK_POINTS):
+        raise ValueError("calibration look count exceeds preregistration")
+    if any(type(point) is not int for point in look_points) or tuple(sorted(set(look_points))) != look_points:
+        raise ValueError("calibration look points must be unique and sorted")
+    if type(alpha_total) not in (int, float) or not 0.0 < float(alpha_total) < 1.0:
+        raise ValueError("calibration alpha_total is invalid")
+    if not metric_names or len(set(metric_names)) != len(metric_names):
+        raise ValueError("calibration metric family is invalid")
+    if not scenario_names or len(set(scenario_names)) != len(scenario_names):
+        raise ValueError("calibration scenario family is invalid")
+    look_count = len(look_points)
+    metric_count = len(metric_names)
+    scenario_count = len(scenario_names)
+    per_look = float(alpha_total) / look_count
+    per_bound = per_look / (metric_count * scenario_count)
+    return {
+        "error_control_scope": "PER_CONFIGURATION_CELL",
+        "look_points": list(look_points),
+        "look_count": look_count,
+        "metric_count": metric_count,
+        "scenario_count": scenario_count,
+        "family_size": look_count * metric_count * scenario_count,
+        "family_unit": "look_metric_scenario_bounds",
+        "alpha_total": float(alpha_total),
+        "alpha_allocation_method": "BONFERRONI_EQUAL_OVER_FINITE_LOOKS_METRICS_SCENARIOS",
+        "look_alpha_allocations": [per_look] * look_count,
+        "per_bound_alpha": per_bound,
+    }
+
+
 def _wilson_bounds(
     successes: int,
     trials: int,
@@ -341,8 +399,10 @@ def _bound_decision(
 ) -> str:
     """Classify a bound without treating an undecidable sample as failure."""
 
-    if relation not in {"minimum", "maximum"} or not 0.0 <= threshold <= 1.0:
-        raise ValueError("calibration threshold relation is invalid")
+    if relation not in {"minimum", "maximum"}:
+        return "INCONCLUSIVE"
+    if not 0.0 <= threshold <= 1.0:
+        raise ValueError("calibration threshold is invalid")
     lower = bounds["lower_bound"]
     upper = bounds["upper_bound"]
     if lower is None or upper is None:
@@ -467,6 +527,11 @@ def _run_trial(
         "early_stop": early_stop,
         "premature_terminal": premature_terminal,
         "budget_exhausted": budget_exhausted,
+        "lag1_autocorrelation": result.lag1_autocorrelation,
+        "drift_ratio": result.drift_ratio,
+        "ci_width": result.ci_high - result.ci_low if has_interval else None,
+        "precision_ratio": result.precision_ratio,
+        "failure_reasons": list(result.failure_reasons),
         "result_artifact_hash": result.artifact_hash,
         "raw_observation_hash": result.raw_observation_hash,
     }
@@ -646,6 +711,9 @@ def run_calibration(
         raise ValueError("calibration checkpoint policies are invalid")
     if len(set(checkpoint_policies)) != len(checkpoint_policies):
         raise ValueError("calibration checkpoint policies must be unique")
+    look_points = _finite_look_schedule(replicates, resolved_max_replicates, resolved_replicate_batch)
+    alpha_allocation = _alpha_allocation(look_points)
+    configuration_cell_count = len(selected_family_names) * len(selected_variant_ids) * len(checkpoint_policies)
 
     source = _source_metadata()
     protocol_payload = {
@@ -659,13 +727,25 @@ def run_calibration(
         "replicates": replicates,
         "maximum_replicates": resolved_max_replicates,
         "replicate_batch": resolved_replicate_batch,
+        "look_points": look_points,
         "meta_nominal_alpha": META_NOMINAL_ALPHA,
+        "alpha_allocation": alpha_allocation,
         "min_decision_resolution": MIN_DECISION_RESOLUTION,
         "criteria": {
             "minimum_replicates_per_cell": replicates,
             "maximum_replicates_per_cell": resolved_max_replicates,
             "replicate_batch": resolved_replicate_batch,
             "meta_nominal_alpha": META_NOMINAL_ALPHA,
+            "error_control_scope": alpha_allocation["error_control_scope"],
+            "family_size": alpha_allocation["family_size"],
+            "family_unit": alpha_allocation["family_unit"],
+            "configuration_cell_count": configuration_cell_count,
+            "look_count": alpha_allocation["look_count"],
+            "metric_count": alpha_allocation["metric_count"],
+            "scenario_count": alpha_allocation["scenario_count"],
+            "alpha_total": alpha_allocation["alpha_total"],
+            "alpha_allocation_method": alpha_allocation["alpha_allocation_method"],
+            "per_bound_alpha": alpha_allocation["per_bound_alpha"],
             "min_decision_resolution": MIN_DECISION_RESOLUTION,
             "coverage_interval": [0.90, 1.0],
             "max_false_pass_rate": 0.05,
@@ -686,11 +766,7 @@ def run_calibration(
                 allocated = 0
                 allocation_batches: list[int] = []
                 allocation_stop_reason = ""
-                while True:
-                    target = min(
-                        resolved_max_replicates,
-                        max(replicates, allocated + resolved_replicate_batch),
-                    )
+                for look_index, target in enumerate(look_points):
                     for scenario_index, scenario in enumerate(SCENARIOS):
                         scenario_trials[scenario].extend(
                             _run_trial(
@@ -712,15 +788,20 @@ def run_calibration(
                     allocated = target
                     allocation_batches.append(allocated)
                     scenario_summaries = {
-                        scenario: _summarize_trials(trials, nominal_alpha=META_NOMINAL_ALPHA)
+                        scenario: _summarize_trials(
+                            trials,
+                            nominal_alpha=float(alpha_allocation["per_bound_alpha"]),
+                        )
                         for scenario, trials in scenario_trials.items()
                     }
-                    if allocated >= resolved_max_replicates:
-                        allocation_stop_reason = "MAXIMUM_REPLICATES_REACHED"
-                        break
                     if _cell_meta_decidable(scenario_summaries):
                         allocation_stop_reason = "META_BOUNDS_DECIDABLE"
                         break
+                    if look_index == len(look_points) - 1:
+                        allocation_stop_reason = "MAXIMUM_REPLICATES_REACHED"
+                        break
+                if not allocation_stop_reason:  # pragma: no cover - schedule always includes maximum.
+                    raise RuntimeError("calibration finite look schedule did not terminate")
                 for scenario in SCENARIOS:
                     all_trials.extend(
                         {
@@ -738,6 +819,9 @@ def run_calibration(
                     "checkpoint_policy": policy,
                     "replicates_allocated": allocated,
                     "allocation_batches": allocation_batches,
+                    "preregistered_look_points": list(look_points),
+                    "look_count": len(look_points),
+                    "per_bound_alpha": alpha_allocation["per_bound_alpha"],
                     "allocation_stop_reason": allocation_stop_reason,
                     "scenarios": scenario_summaries,
                 }
@@ -794,6 +878,9 @@ def run_calibration(
             "maximum_replicates_per_cell": resolved_max_replicates,
             "replicate_batch": resolved_replicate_batch,
             "allocation_policy": "ADAPTIVE_BOUNDS_UNTIL_DECIDABLE",
+            "look_points": list(look_points),
+            "configuration_cell_count": configuration_cell_count,
+            "scenario_cell_count": configuration_cell_count * len(SCENARIOS),
             "families": selected_family_names,
             "scenarios": SCENARIOS,
             "variants": selected_variant_ids,
@@ -801,10 +888,21 @@ def run_calibration(
         },
         "meta_calibration": {
             "method_id": "wilson_score_v1",
-            "nominal_alpha": META_NOMINAL_ALPHA,
+            "nominal_alpha": float(alpha_allocation["per_bound_alpha"]),
             "interval_type": "one_sided",
             "decision_labels": ["VALIDATED", "INVALIDATED", "INCONCLUSIVE"],
             "scenario_expected_decision": {"improvement": "PASS", "null": "NOT_PASS", "regression": "NOT_PASS"},
+            "error_control_scope": alpha_allocation["error_control_scope"],
+            "family_size": alpha_allocation["family_size"],
+            "family_unit": "configuration_cells",
+            "look_count": alpha_allocation["look_count"],
+            "metric_count": alpha_allocation["metric_count"],
+            "scenario_count": alpha_allocation["scenario_count"],
+            "alpha_total": alpha_allocation["alpha_total"],
+            "alpha_allocation_method": alpha_allocation["alpha_allocation_method"],
+            "look_alpha_allocations": alpha_allocation["look_alpha_allocations"],
+            "per_bound_alpha": alpha_allocation["per_bound_alpha"],
+            "preregistered_look_points": list(look_points),
             "metrics": {
                 "coverage": {"threshold": 0.90, "relation": "minimum"},
                 "false_pass": {"threshold": 0.05, "relation": "maximum"},
