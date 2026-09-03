@@ -973,6 +973,60 @@ class HardwareCapabilityVector:
             "unknown_fields": [name for name, value in asdict(self).items() if value is None],
         }
 
+    @classmethod
+    def from_dict(cls, value: object) -> HardwareCapabilityVector:
+        """Rehydrate a capability vector and verify its explicit unknown set."""
+
+        if cls is not HardwareCapabilityVector:
+            raise TypeError("hardware vector must use the canonical type")
+        if type(value) is not dict:
+            raise TypeError("hardware vector must be a canonical dictionary")
+        payload = cast(dict[str, object], value)
+        if set(payload) != {"schema", "values", "unknown_fields"}:
+            raise ValueError("hardware vector schema keys are invalid")
+        if payload["schema"] != f"{_SCHEMA_VERSION}-hardware":
+            raise ValueError("hardware vector schema is invalid")
+        raw_values = payload["values"]
+        raw_unknown = payload["unknown_fields"]
+        if type(raw_values) is not dict or type(raw_unknown) is not list:
+            raise TypeError("hardware vector values and unknown_fields must be canonical containers")
+        values = cast(dict[str, object], raw_values)
+        unknown_fields = cast(list[object], raw_unknown)
+        expected_fields = set(_HARDWARE_TEXT_FIELDS) | set(_HARDWARE_INT_FIELDS) | set(_HARDWARE_FLOAT_FIELDS)
+        if set(values) != expected_fields:
+            raise ValueError("hardware vector value keys are invalid")
+        if any(type(name) is not str or name not in expected_fields for name in unknown_fields):
+            raise ValueError("hardware vector unknown_fields are invalid")
+        computed_unknown = {name for name, item in values.items() if item == "UNKNOWN"}
+        if len(unknown_fields) != len(set(unknown_fields)) or set(unknown_fields) != computed_unknown:
+            raise ValueError("hardware vector unknown_fields do not match values")
+
+        def known(name: str) -> object:
+            item = values[name]
+            return None if item == "UNKNOWN" else item
+
+        vector = cls(
+            architecture=cast(str | None, known("architecture")),
+            physical_cores=cast(int | None, known("physical_cores")),
+            logical_cores=cast(int | None, known("logical_cores")),
+            cache_bytes=cast(int | None, known("cache_bytes")),
+            frequency_hz=cast(float | None, known("frequency_hz")),
+            memory_capacity_bytes=cast(int | None, known("memory_capacity_bytes")),
+            memory_bandwidth_bytes_s=cast(float | None, known("memory_bandwidth_bytes_s")),
+            memory_latency_ns=cast(float | None, known("memory_latency_ns")),
+            storage_kind=cast(str | None, known("storage_kind")),
+            fsync_latency_ns=cast(float | None, known("fsync_latency_ns")),
+            process_startup_ns=cast(float | None, known("process_startup_ns")),
+            ffi_latency_ns=cast(float | None, known("ffi_latency_ns")),
+            serialization_bytes_s=cast(float | None, known("serialization_bytes_s")),
+            os_name=cast(str | None, known("os_name")),
+            kernel=cast(str | None, known("kernel")),
+            virtualization=cast(str | None, known("virtualization")),
+            pressure=cast(str | None, known("pressure")),
+        )
+        vector.validate()
+        return vector
+
     @property
     def vector_hash(self) -> str:
         return _hash(self.as_dict())
@@ -1088,6 +1142,54 @@ class WorkloadSignature:
             "values": {name: "UNKNOWN" if value is None else value for name, value in values.items()},
             "regime": self.classify_regime(),
         }
+
+    @classmethod
+    def from_dict(cls, value: object) -> WorkloadSignature:
+        """Rehydrate a workload signature and verify its derived regime."""
+
+        if cls is not WorkloadSignature:
+            raise TypeError("workload signature must use the canonical type")
+        if type(value) is not dict:
+            raise TypeError("workload signature must be a canonical dictionary")
+        payload = cast(dict[str, object], value)
+        if set(payload) != {"schema", "values", "regime"}:
+            raise ValueError("workload signature schema keys are invalid")
+        if payload["schema"] != f"{_SCHEMA_VERSION}-workload":
+            raise ValueError("workload signature schema is invalid")
+        raw_values = payload["values"]
+        if type(raw_values) is not dict:
+            raise TypeError("workload signature values must be a canonical dictionary")
+        values = cast(dict[str, object], raw_values)
+        expected_fields = set(_WORKLOAD_INT_FIELDS) | set(_WORKLOAD_INTENSITY_FIELDS)
+        if set(values) != expected_fields:
+            raise ValueError("workload signature value keys are invalid")
+        regime = payload["regime"]
+        if type(regime) is not str or regime not in REGIMES:
+            raise ValueError("workload signature regime is invalid")
+
+        def known(name: str) -> object:
+            item = values[name]
+            return None if item == "UNKNOWN" else item
+
+        signature = cls(
+            compute_intensity=cast(float | None, known("compute_intensity")),
+            memory_intensity=cast(float | None, known("memory_intensity")),
+            working_set_bytes=cast(int | None, known("working_set_bytes")),
+            cache_sensitivity=cast(float | None, known("cache_sensitivity")),
+            io_intensity=cast(float | None, known("io_intensity")),
+            durability_intensity=cast(float | None, known("durability_intensity")),
+            process_startup_intensity=cast(float | None, known("process_startup_intensity")),
+            serialization_intensity=cast(float | None, known("serialization_intensity")),
+            ffi_intensity=cast(float | None, known("ffi_intensity")),
+            parallelism=cast(float | None, known("parallelism")),
+            contention=cast(float | None, known("contention")),
+            network_intensity=cast(float | None, known("network_intensity")),
+            external_service_dependence=cast(float | None, known("external_service_dependence")),
+        )
+        signature.validate()
+        if signature.classify_regime() != regime:
+            raise ValueError("workload signature regime does not match values")
+        return signature
 
     @property
     def signature_hash(self) -> str:
