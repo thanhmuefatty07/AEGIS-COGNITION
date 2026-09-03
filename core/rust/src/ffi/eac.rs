@@ -5,6 +5,9 @@
 use super::py_safe;
 use pyo3::prelude::*;
 
+const MAX_EAC_BATCH_JSON_BYTES: usize = 8 * 1024 * 1024;
+const MAX_EAC_BATCH_CALLS: usize = 64;
+
 // ─── EaC PyO3 Bindings ──────────────────────────────────────────────────────
 
 /// Create a new SemanticCache and look up a prompt.
@@ -63,10 +66,20 @@ pub fn aegis_eac_cache_invalidate(
 #[pyfunction]
 pub fn aegis_eac_batch(calls_json: String, policy: String) -> PyResult<String> {
     py_safe(move || {
+        if calls_json.len() > MAX_EAC_BATCH_JSON_BYTES {
+            return Err(pyo3::exceptions::PyValueError::new_err(
+                "calls_json exceeds the bounded EaC batch input size",
+            ));
+        }
         let calls: Vec<crate::eac::sandbox::ToolCall> =
             serde_json::from_str(&calls_json).map_err(|e| {
                 pyo3::exceptions::PyValueError::new_err(format!("Invalid calls JSON: {}", e))
             })?;
+        if calls.len() > MAX_EAC_BATCH_CALLS {
+            return Err(pyo3::exceptions::PyValueError::new_err(
+                "EaC batch exceeds the bounded call count",
+            ));
+        }
 
         let tx_policy = match policy.as_str() {
             "HaltOnFailure" => crate::eac::sandbox::TransactionPolicy::HaltOnFailure,
@@ -112,6 +125,27 @@ mod tests {
     fn eac_batch_accepts_explicit_transaction_policy() {
         let result = aegis_eac_batch("[]".to_owned(), "ContinueOnFailure".to_owned());
         assert_eq!(result.expect("empty batch should serialize"), "[]");
+    }
+
+    #[test]
+    fn eac_batch_rejects_oversized_input_before_json_parse() {
+        let oversized = "x".repeat(super::MAX_EAC_BATCH_JSON_BYTES + 1);
+        let result = aegis_eac_batch(oversized, "ContinueOnFailure".to_owned());
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn eac_batch_rejects_unbounded_parallel_call_count() {
+        let calls: Vec<crate::eac::sandbox::ToolCall> = (0..=super::MAX_EAC_BATCH_CALLS)
+            .map(|call_id| crate::eac::sandbox::ToolCall {
+                call_id: call_id as u32,
+                tool_name: "bounded-test".to_owned(),
+                arguments: serde_json::Value::Null,
+            })
+            .collect();
+        let calls_json = serde_json::to_string(&calls).expect("test calls should serialize");
+        let result = aegis_eac_batch(calls_json, "ContinueOnFailure".to_owned());
+        assert!(result.is_err());
     }
 }
 
