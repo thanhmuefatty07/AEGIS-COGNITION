@@ -3,7 +3,7 @@ document_id: AEGIS-LAB-RUNTIME-MASTER-PLAN
 document_type: canonical_current_implementation_plan
 status: IN_EXECUTION
 authority: derived_from_checkout_and_evidence_manifest
-applies_to_commit: c36467c2dd533d444335d99c5ae47235eaaa7d24
+applies_to_commit: 26c30c261dd224b46924326ea6b7f083655bcbf0
 created_at: 2026-08-26
 last_verified_at: 2026-09-03
 supersedes: browser-native-proposal-and-cumulative-harness-roadmap-as-execution-authority
@@ -4522,3 +4522,15 @@ document consistency gate passes.  This proves deterministic local hashing for m
 inputs only; it does not make malformed data valid, establish independent
 validator provenance, calibrate statistics, enable selective testing or
 provide release authority.
+
+**M2 FFI Wasmtime startup-boundary continuation (2026-09-03):**
+implementation commit `26c30c261dd224b46924326ea6b7f083655bcbf0` adds a
+fallible `WasmtimeSandbox::try_new` constructor and routes the mmap FFI entry
+point through it. Engine or QuickJS-linker setup failures now return a typed
+`PyRuntimeError` instead of panicking after an untrusted FFI call; the legacy
+`new()` API remains available for compatibility callers and delegates to the
+same constructor. A Rust regression checks the typed constructor's valid
+configuration, and the complete no-default-features library suite passes
+**448/448** with format/check/clippy gates passing. This is local FFI startup
+failure containment only; thread/process containment, cross-platform runtime
+semantics, hosted verification and release authority remain unproven.
