@@ -289,7 +289,7 @@ impl WasmtimeSandbox {
         wasm_config.epoch_interruption(true);
         wasm_config.native_unwind_info(true);
         let engine = Engine::new(&wasm_config).map_err(|_| TrapReason::InvariantViolation)?;
-        let epoch_ticker = EpochTicker::new(&engine);
+        let epoch_ticker = EpochTicker::try_new(&engine)?;
         let quickjs_bridge_linker =
             quickjs_bridge_linker(&engine).map_err(|_| TrapReason::InvariantViolation)?;
         Ok(Self {
@@ -315,7 +315,7 @@ impl WasmtimeSandbox {
         wasm_config.epoch_interruption(true);
         wasm_config.native_unwind_info(true);
         let engine = Engine::new(&wasm_config).map_err(|_| TrapReason::InvariantViolation)?;
-        let epoch_ticker = EpochTicker::new(&engine);
+        let epoch_ticker = EpochTicker::try_new(&engine)?;
         Ok(Self {
             config,
             guardrail: FirstOrderGuardrail,
@@ -824,41 +824,48 @@ struct QuickJsBridgeState {
 }
 
 impl EpochTicker {
-    fn new(engine: &Engine) -> Self {
+    fn try_new(engine: &Engine) -> Result<Self, TrapReason> {
         let shutdown = Arc::new((Mutex::new(false), Condvar::new()));
         let thread_shutdown = shutdown.clone();
         let engine = engine.clone();
-        let handle = std::thread::spawn(move || {
-            let (lock, cvar) = &*thread_shutdown;
-            loop {
-                let shutdown_guard = lock.lock().unwrap();
-                let result = cvar
-                    .wait_timeout_while(
+        let handle = std::thread::Builder::new()
+            .name("aegis-wasmtime-epoch".to_owned())
+            .spawn(move || {
+                let (lock, cvar) = &*thread_shutdown;
+                loop {
+                    let shutdown_guard = match lock.lock() {
+                        Ok(guard) => guard,
+                        Err(_) => break,
+                    };
+                    let result = match cvar.wait_timeout_while(
                         shutdown_guard,
                         Duration::from_millis(WASMTIME_EPOCH_TICK_MS),
                         |shutdown| !*shutdown,
-                    )
-                    .unwrap();
-                if *result.0 {
-                    break;
+                    ) {
+                        Ok(result) => result,
+                        Err(_) => break,
+                    };
+                    if *result.0 {
+                        break;
+                    }
+                    engine.increment_epoch();
                 }
-                engine.increment_epoch();
-            }
-        });
-        Self {
+            })
+            .map_err(|_| TrapReason::InvariantViolation)?;
+        Ok(Self {
             shutdown,
             handle: Some(handle),
-        }
+        })
     }
 }
 
 impl Drop for EpochTicker {
     fn drop(&mut self) {
         let (lock, cvar) = &*self.shutdown;
-        let mut shutdown = lock.lock().unwrap();
-        *shutdown = true;
-        cvar.notify_one();
-        drop(shutdown);
+        if let Ok(mut shutdown) = lock.lock() {
+            *shutdown = true;
+            cvar.notify_one();
+        }
         if let Some(handle) = self.handle.take() {
             let _ = handle.join();
         }
