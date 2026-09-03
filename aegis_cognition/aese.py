@@ -278,6 +278,156 @@ class AdaptiveMeasurementResult:
     interval_method: str = _INTERVAL_METHOD
     artifact_hash: str = ""
 
+    def _payload(self) -> dict[str, object]:
+        """Return the legacy hash-bound result payload.
+
+        ``estimand`` and ``interval_method`` are intentionally kept outside
+        this payload for compatibility with artifacts emitted before result
+        rehydration existed.  They remain schema-validated below.
+        """
+
+        return {
+            "schema": f"{_SCHEMA_VERSION}-measurement-result",
+            "protocol_hash": self.protocol_hash,
+            "status": self.status,
+            "metric": self.metric,
+            "estimate": self.estimate,
+            "ci_low": self.ci_low,
+            "ci_high": self.ci_high,
+            "precision_ratio": self.precision_ratio,
+            "lag1_autocorrelation": self.lag1_autocorrelation,
+            "drift_ratio": self.drift_ratio,
+            "raw_observation_count": self.raw_observation_count,
+            "observation_count": self.observation_count,
+            "block_count": self.block_count,
+            "warmup_count": self.warmup_count,
+            "raw_observation_hash": self.raw_observation_hash,
+            "contamination_flags": self.contamination_flags,
+            "failure_reasons": self.failure_reasons,
+        }
+
+    def validate(self) -> None:
+        if type(self) is not AdaptiveMeasurementResult:
+            raise TypeError("measurement result must use the canonical type")
+        for name, value in (
+            ("protocol_hash", self.protocol_hash),
+            ("raw_observation_hash", self.raw_observation_hash),
+            ("artifact_hash", self.artifact_hash),
+        ):
+            if not _is_digest(value, 64):
+                raise ValueError(f"measurement result {name} must be a non-zero SHA-256 digest")
+        if self.status not in MEASUREMENT_STATUSES:
+            raise ValueError("measurement result status is invalid")
+        for name, value in (("metric", self.metric), ("estimand", self.estimand)):
+            if type(value) is not str:
+                raise TypeError(f"measurement result {name} must be a string")
+        if self.interval_method != _INTERVAL_METHOD:
+            raise ValueError("measurement result interval method is invalid")
+        for name, value in (
+            ("estimate", self.estimate),
+            ("ci_low", self.ci_low),
+            ("ci_high", self.ci_high),
+            ("precision_ratio", self.precision_ratio),
+            ("lag1_autocorrelation", self.lag1_autocorrelation),
+            ("drift_ratio", self.drift_ratio),
+        ):
+            if value is not None and not _is_finite(value):
+                raise ValueError(f"measurement result {name} must be finite or null")
+        for name, value in (
+            ("raw_observation_count", self.raw_observation_count),
+            ("observation_count", self.observation_count),
+            ("block_count", self.block_count),
+            ("warmup_count", self.warmup_count),
+        ):
+            if type(value) is not int or value < 0:
+                raise ValueError(f"measurement result {name} must be a non-negative integer")
+        if self.observation_count > self.raw_observation_count:
+            raise ValueError("measurement result observation count exceeds raw count")
+        if self.block_count > self.observation_count:
+            raise ValueError("measurement result block count exceeds observation count")
+        for name, value in (
+            ("contamination_flags", self.contamination_flags),
+            ("failure_reasons", self.failure_reasons),
+        ):
+            if type(value) is not tuple:
+                raise TypeError(f"measurement result {name} must use a canonical tuple")
+            if any(_invalid_string(item) for item in value):
+                raise ValueError(f"measurement result {name} must contain non-empty strings")
+        if self.artifact_hash != _hash(self._payload()):
+            raise ValueError("measurement result artifact hash mismatch")
+
+    def as_dict(self) -> dict[str, object]:
+        self.validate()
+        payload = self._payload()
+        payload["estimand"] = self.estimand
+        payload["interval_method"] = self.interval_method
+        payload["contamination_flags"] = list(self.contamination_flags)
+        payload["failure_reasons"] = list(self.failure_reasons)
+        payload["artifact_hash"] = self.artifact_hash
+        return payload
+
+    @classmethod
+    def from_dict(cls, value: object) -> AdaptiveMeasurementResult:
+        """Rehydrate one result only after validating its bound artifact hash."""
+
+        if cls is not AdaptiveMeasurementResult:
+            raise TypeError("measurement result must use the canonical type")
+        if type(value) is not dict:
+            raise TypeError("measurement result must be a canonical dictionary")
+        payload = cast(dict[str, object], value)
+        expected_keys = {
+            "schema",
+            "protocol_hash",
+            "status",
+            "metric",
+            "estimand",
+            "estimate",
+            "ci_low",
+            "ci_high",
+            "precision_ratio",
+            "lag1_autocorrelation",
+            "drift_ratio",
+            "raw_observation_count",
+            "observation_count",
+            "block_count",
+            "warmup_count",
+            "raw_observation_hash",
+            "contamination_flags",
+            "failure_reasons",
+            "interval_method",
+            "artifact_hash",
+        }
+        if set(payload) != expected_keys:
+            raise ValueError("measurement result schema keys are invalid")
+        if payload["schema"] != f"{_SCHEMA_VERSION}-measurement-result":
+            raise ValueError("measurement result schema is invalid")
+        for name in ("contamination_flags", "failure_reasons"):
+            if type(payload[name]) is not list:
+                raise TypeError(f"measurement result {name} must be a canonical list")
+        result = cls(
+            protocol_hash=payload["protocol_hash"],
+            status=payload["status"],
+            metric=payload["metric"],
+            estimand=payload["estimand"],
+            estimate=payload["estimate"],
+            ci_low=payload["ci_low"],
+            ci_high=payload["ci_high"],
+            precision_ratio=payload["precision_ratio"],
+            lag1_autocorrelation=payload["lag1_autocorrelation"],
+            drift_ratio=payload["drift_ratio"],
+            raw_observation_count=payload["raw_observation_count"],
+            observation_count=payload["observation_count"],
+            block_count=payload["block_count"],
+            warmup_count=payload["warmup_count"],
+            raw_observation_hash=payload["raw_observation_hash"],
+            contamination_flags=tuple(cast(list[object], payload["contamination_flags"])),
+            failure_reasons=tuple(cast(list[object], payload["failure_reasons"])),
+            interval_method=payload["interval_method"],
+            artifact_hash=payload["artifact_hash"],
+        )
+        result.validate()
+        return result
+
 
 @dataclass(frozen=True)
 class AdaptiveMeasurementSession:

@@ -154,6 +154,44 @@ def test_adaptive_measurement_passes_only_after_warmup_and_precision_floor() -> 
     assert result.failure_reasons == ()
 
 
+def test_adaptive_measurement_result_round_trip_rehydrates_hash_bound_evidence() -> None:
+    result = evaluate_adaptive_measurement(
+        AdaptiveMeasurementSpec(metric="latency_ms", warmup_count=2, block_size=5),
+        [10.0] * 30,
+        warmups=[0.0, 0.0],
+    )
+    snapshot = result.as_dict()
+    restored = type(result).from_dict(snapshot)
+
+    assert restored == result
+    assert restored.artifact_hash == result.artifact_hash
+    assert snapshot["contamination_flags"] == []
+    assert snapshot["failure_reasons"] == []
+
+    tampered = {**snapshot, "estimate": 11.0}
+    with pytest.raises(ValueError, match="artifact hash mismatch"):
+        type(result).from_dict(tampered)
+
+
+def test_adaptive_measurement_result_rehydration_rejects_schema_and_forged_types() -> None:
+    result = evaluate_adaptive_measurement(
+        AdaptiveMeasurementSpec(metric="latency_ms"),
+        [10.0] * 30,
+        warmups=[0.0] * 10,
+    )
+    snapshot = result.as_dict()
+    with pytest.raises(ValueError, match="schema keys"):
+        type(result).from_dict({**snapshot, "unexpected": True})
+    with pytest.raises(TypeError, match="canonical list"):
+        type(result).from_dict({**snapshot, "failure_reasons": ()})
+
+    class ForgedResult(type(result)):
+        pass
+
+    with pytest.raises(TypeError, match="canonical type"):
+        ForgedResult.from_dict(snapshot)
+
+
 def test_adaptive_measurement_continues_before_floor_and_stops_at_budget() -> None:
     spec = AdaptiveMeasurementSpec(
         metric="latency_ms",
