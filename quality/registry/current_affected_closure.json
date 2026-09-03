@@ -2,7 +2,7 @@
   "affected_test_paths": [
     "core/rust/src/gt96.rs"
   ],
-  "artifact_hash": "9b02e20f98b45948f8face446f0c858be0baa8d27757082d3a0a43f4dcae1708",
+  "artifact_hash": "67fa1d3ced8aa739f7867ccc184c85bd3c42aa6afdeb193a6a733d741bf1000f",
   "changed_paths": [
     "core/rust/src/gt96.rs"
   ],
@@ -214,13 +214,13 @@
     },
     "evidence_class": "PLANNING_ONLY",
     "inventory_source_tree_sha256": "3db8d365eaeadb2c9d6b9b069a3cd837ab74376e62cb3912e9172291dc12bcfe",
-    "mapping_artifact_hash": "3f4f8e9cc6b1baa0502fc3a1195b31267d15574678cc84630febdcf5c6427ae0",
+    "mapping_artifact_hash": "9c874b9aa41b135f45c4abf67a67633c51e95590a9cdd077a84b46ae2ca62210",
     "origin_main_sha": "7ec43f6188a7a46ad0a24bec199f868d10a36a36",
     "promotion": "DISABLED_IN_SHADOW",
-    "source_sha": "7ec43f6188a7a46ad0a24bec199f868d10a36a36",
+    "source_sha": "38ae70bec66476ea7a3cb1c2a71ddf8e3af6595f",
     "validator": "scripts/aese_affected_closure.py"
   },
-  "reproducible_hash": "285ff80eeeeecfdfc6b7e0844227bd8c4db494b9136c2ce3a031cbbcd54af025",
+  "reproducible_hash": "9362823588749f469a77710b2672897e5f78bff7ba392330af79adc8353fa459",
   "schema": "aese-affected-closure-v1",
   "shadow_selection": {
     "authority": "RETAINED_LEGACY_AUTHORITY",
@@ -231,7 +231,7 @@
     ],
     "would_skip_item_ids": []
   },
-  "source_head": "7ec43f6188a7a46ad0a24bec199f868d10a36a36",
+  "source_head": "38ae70bec66476ea7a3cb1c2a71ddf8e3af6595f",
   "source_tree_sha256": "379f76bf474552c5bb0e324fcda0ade0ab8c253fef8ee210df771740c2c72233",
   "status": "AFFECTED_CLOSURE_PLAN_ONLY_SELECTION_DISABLED",
   "traversed_edges": [
