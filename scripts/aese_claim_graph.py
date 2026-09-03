@@ -42,6 +42,18 @@ def _file_sha256(path: Path) -> str:
     return _sha256(path.read_bytes())
 
 
+def _code_source_material(code_nodes: list[dict[str, object]]) -> str:
+    """Bind the graph input to every resolved implementation source file."""
+
+    material: list[str] = []
+    for node in sorted(code_nodes, key=lambda item: str(item["path"])):
+        path = str(node["path"])
+        source = ROOT / path
+        digest = _file_sha256(source) if source.is_file() else "MISSING"
+        material.append(f"{path}\0{digest}")
+    return "\n".join(material)
+
+
 def _load_json(path: Path) -> dict[str, object]:
     value = json.loads(path.read_text(encoding="utf-8"))
     if not isinstance(value, dict):
@@ -347,6 +359,7 @@ def build_graph() -> dict[str, object]:
     input_material = "\n".join(
         [
             str(inventory["source_tree_sha256"]),
+            _code_source_material(code_nodes),
             _file_sha256(TRACEABILITY),
             _file_sha256(NOT_VERIFIED),
         ]
