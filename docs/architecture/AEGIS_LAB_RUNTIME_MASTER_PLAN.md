@@ -3,7 +3,7 @@ document_id: AEGIS-LAB-RUNTIME-MASTER-PLAN
 document_type: canonical_current_implementation_plan
 status: IN_EXECUTION
 authority: derived_from_checkout_and_evidence_manifest
-applies_to_commit: 1dd0c1aa409184c5cfbb929e9d40e3a471bd16c8
+applies_to_commit: 71081c7ccfa2e22d5c6aa7ba54856f763a04b017
 created_at: 2026-08-26
 last_verified_at: 2026-09-03
 supersedes: browser-native-proposal-and-cumulative-harness-roadmap-as-execution-authority
@@ -4693,3 +4693,17 @@ regeneration. This closes local vector reconstruction only; vector hashes are
 still evidence inputs rather than independent calibration, and external
 anchors, statistical validation, selective promotion and release authority
 remain unproven.
+
+**AESE simulation/anchor/coverage rehydration continuation (2026-09-03):**
+implementation commit `71081c7ccfa2e22d5c6aa7ba54856f763a04b017` adds strict
+rehydration for `SimulationEvidence`, `AnchorObservation` and `CoverageVector`.
+Simulation artifacts retain canonical lists and cannot set
+`claimable_as_observed`; anchors bind nested hardware/workload payloads and an
+evidence hash; coverage payloads reject aggregate scores and validate each
+independent dimension. Unknown keys, forged subclasses, policy mutation,
+derived-regime mismatch and tampered anchor values fail closed. The focused
+AESE primitive suite passes **66/66**, isolated compatible Ruff passes, and the
+inventory, claim-graph and document-consistency gates pass after registry
+regeneration. This closes local reconstruction for these evidence primitives
+only; simulation remains non-observation, anchor availability/calibration,
+selective promotion and release authority remain unproven.
