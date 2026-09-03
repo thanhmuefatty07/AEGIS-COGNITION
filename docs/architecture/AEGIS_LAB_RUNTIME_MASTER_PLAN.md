@@ -3,7 +3,7 @@ document_id: AEGIS-LAB-RUNTIME-MASTER-PLAN
 document_type: canonical_current_implementation_plan
 status: IN_EXECUTION
 authority: derived_from_checkout_and_evidence_manifest
-applies_to_commit: 57cc015183566f9675f6a2fe683b2711beca08d7
+applies_to_commit: c36467c2dd533d444335d99c5ae47235eaaa7d24
 created_at: 2026-08-26
 last_verified_at: 2026-09-03
 supersedes: browser-native-proposal-and-cumulative-harness-roadmap-as-execution-authority
@@ -4505,3 +4505,20 @@ Target design chỉ được coi là đã chuyển thành implementation khi:
 Cho tới khi các điều kiện này đạt, trạng thái đúng là `DESIGN_READY /
 CONVERGENCE_NOT_AUTHORIZED`; không được tự nâng thành `COMPLETE`,
 `PRODUCTION-READY` hoặc “đã cover mọi tình huống”.
+
+**AESE malformed-observation provenance continuation (2026-09-03):**
+implementation commit `c36467c2dd533d444335d99c5ae47235eaaa7d24` removes a
+determinism gap in the retained failure evidence.  AESE no longer hashes an
+unsupported malformed observation through `str(object)`, whose default repr
+may contain a process-local memory address; the hash serializer records a
+stable fully-qualified type marker instead.  Two fresh unsupported instances
+therefore produce the same `raw_observation_hash` while the result remains
+`CONTAMINATED` and cannot be promoted.  The focused AESE suite passes
+**52/52**, changed-file Ruff and strict Pyright pass.  The first full Python
+run had **529 passed with only three expected registry-drift failures** before
+regeneration; after regenerating the inventory/claim graph, the full suite
+passes **532/532**, both source-tree hash/epoch `--check` gates pass, and the
+document consistency gate passes.  This proves deterministic local hashing for malformed
+inputs only; it does not make malformed data valid, establish independent
+validator provenance, calibrate statistics, enable selective testing or
+provide release authority.
