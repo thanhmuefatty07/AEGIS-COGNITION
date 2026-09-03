@@ -116,7 +116,29 @@ def _is_digest(value: object, length: int) -> bool:
 
 
 def _hash(value: object) -> str:
-    encoded = json.dumps(value, sort_keys=True, separators=(",", ":"), default=str).encode("utf-8")
+    """Hash a JSON-compatible value without leaking process-local object reprs.
+
+    AESE deliberately retains malformed observations for diagnosis.  Falling
+    back to ``str(value)`` for those values can include an object address, so
+    the same invalid input produces a different provenance hash in a fresh
+    process.  A type marker preserves deterministic failure evidence without
+    pretending that an unsupported object has a serializable measurement.
+    """
+
+    def stable_default(unsupported: object) -> dict[str, str]:
+        value_type = type(unsupported)
+        return {
+            "__aese_unsupported_type__": (
+                f"{value_type.__module__}.{value_type.__qualname__}"
+            )
+        }
+
+    encoded = json.dumps(
+        value,
+        sort_keys=True,
+        separators=(",", ":"),
+        default=stable_default,
+    ).encode("utf-8")
     return hashlib.sha256(encoded).hexdigest()
 
 
