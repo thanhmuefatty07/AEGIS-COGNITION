@@ -16,8 +16,8 @@ def test_shadow_graph_preserves_inventory_and_disables_selection() -> None:
     assert graph["counts"]["surfaces"] == 117
     assert graph["counts"]["mapped_surfaces"] == 9
     assert graph["counts"]["unmapped_surfaces"] == 108
-    assert graph["counts"]["unmapped_verifications"] == 69
-    assert graph["counts"]["claims"] == 45
+    assert graph["counts"]["unmapped_verifications"] == 70
+    assert graph["counts"]["claims"] == 46
     assert graph["counts"]["code_nodes"] == 27
     assert graph["counts"]["unresolved_code_references"] == 0
     assert graph["counts"]["future_obligations"] == 20

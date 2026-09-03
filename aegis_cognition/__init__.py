@@ -17,6 +17,8 @@ from __future__ import annotations
 __version__ = "0.1.0"
 __all__ = [
     "DEFAULT_UNIT_REGISTRY",
+    "EVIDENCE_CLASSES",
+    "EVIDENCE_STATUSES",
     "AdaptiveController",
     "AdaptiveMeasurementResult",
     "AdaptiveMeasurementSession",
@@ -38,6 +40,8 @@ __all__ = [
     "ElectricalSignalResult",
     "ElectricalSignalSpec",
     "EnvironmentFingerprint",
+    "EvidenceLedger",
+    "EvidenceLedgerEntry",
     "ExecutionCellBinding",
     "ExecutionCellRegistry",
     "HardwareCapabilityVector",
@@ -100,6 +104,10 @@ from .aese import (
     AnchorSelectionPlan,
     AnchorObservation,
     AnalyticPredictionModel,
+    EVIDENCE_CLASSES,
+    EVIDENCE_STATUSES,
+    EvidenceLedger,
+    EvidenceLedgerEntry,
     HardwareCapabilityVector,
     PredictionResult,
     CoverageVector,
