@@ -404,6 +404,15 @@
       "security_relevance": "Prevents provenance and dependency confusion",
       "source_id": "AESE-010",
       "status": "IMPLEMENTED / NOT VERIFIED"
+    },
+    {
+      "evidence_class": "NOT VERIFIED",
+      "id": "AESE-CLAIM-AESE-011",
+      "owner": "Python AESE",
+      "requirement": "Evidence ledger: reconstructible provenance without shadow promotion",
+      "security_relevance": "Prevents unverifiable evidence promotion and provenance gaps",
+      "source_id": "AESE-011",
+      "status": "IMPLEMENTED / NOT VERIFIED"
     }
   ],
   "code": [
@@ -1074,21 +1083,31 @@
       "source_paths": [
         "scripts/aese_claim_graph.py"
       ]
+    },
+    {
+      "id": "AESE-CONTRACT-AESE-011",
+      "implementation": "`aegis_cognition/aese.py`; `EvidenceLedgerEntry`, `EvidenceLedger`",
+      "mapping_status": "SOURCE_BACKED",
+      "owner": "Python AESE",
+      "source_id": "AESE-011",
+      "source_paths": [
+        "aegis_cognition/aese.py"
+      ]
     }
   ],
   "counts": {
-    "claims": 45,
+    "claims": 46,
     "code_nodes": 27,
-    "contracts": 45,
-    "edges": 387,
+    "contracts": 46,
+    "edges": 396,
     "future_obligations": 20,
-    "invariants": 45,
+    "invariants": 46,
     "mapped_surfaces": 9,
     "surfaces": 117,
     "unmapped_surfaces": 108,
-    "unmapped_verifications": 69,
+    "unmapped_verifications": 70,
     "unresolved_code_references": 0,
-    "verifications": 90
+    "verifications": 92
   },
   "direct_cutover": "PROHIBITED",
   "edges": [
@@ -1141,6 +1160,11 @@
       "from": "AESE-BENCHMARK-AESE-010",
       "relation": "MATERIALIZES",
       "to": "AESE-EVIDENCE-AESE-010"
+    },
+    {
+      "from": "AESE-BENCHMARK-AESE-011",
+      "relation": "MATERIALIZES",
+      "to": "AESE-EVIDENCE-AESE-011"
     },
     {
       "from": "AESE-BENCHMARK-GT96-001",
@@ -1638,6 +1662,11 @@
       "to": "AESE-CONTRACT-AESE-007"
     },
     {
+      "from": "AESE-CODE-EB9784D23EED71F2",
+      "relation": "IMPLEMENTS",
+      "to": "AESE-CONTRACT-AESE-011"
+    },
+    {
       "from": "AESE-CODE-ED6F3DDD715A2F2E",
       "relation": "IMPLEMENTS",
       "to": "AESE-CONTRACT-GT96-007"
@@ -1726,6 +1755,11 @@
       "from": "AESE-CONTRACT-AESE-010",
       "relation": "GUARDS",
       "to": "AESE-INVARIANT-B09147A155A9467B"
+    },
+    {
+      "from": "AESE-CONTRACT-AESE-011",
+      "relation": "GUARDS",
+      "to": "AESE-INVARIANT-25F82FFCBC2295AD"
     },
     {
       "from": "AESE-CONTRACT-GT96-001",
@@ -1951,6 +1985,11 @@
       "from": "AESE-EVIDENCE-AESE-010",
       "relation": "SUPPORTS_OR_LEAVES_UNVERIFIED",
       "to": "AESE-CLAIM-AESE-010"
+    },
+    {
+      "from": "AESE-EVIDENCE-AESE-011",
+      "relation": "SUPPORTS_OR_LEAVES_UNVERIFIED",
+      "to": "AESE-CLAIM-AESE-011"
     },
     {
       "from": "AESE-EVIDENCE-GT96-001",
@@ -2206,6 +2245,16 @@
       "from": "AESE-INVARIANT-2229D5AB611E82F2",
       "relation": "VERIFIED_BY_REFERENCE",
       "to": "AESE-TEST_OR_PROOF-GT96-020"
+    },
+    {
+      "from": "AESE-INVARIANT-25F82FFCBC2295AD",
+      "relation": "VERIFIED_BY_REFERENCE",
+      "to": "AESE-BENCHMARK-AESE-011"
+    },
+    {
+      "from": "AESE-INVARIANT-25F82FFCBC2295AD",
+      "relation": "VERIFIED_BY_REFERENCE",
+      "to": "AESE-TEST_OR_PROOF-AESE-011"
     },
     {
       "from": "AESE-INVARIANT-278B5311BBD95817",
@@ -2614,6 +2663,11 @@
     },
     {
       "from": "AESE-PYTHON_TEST-58D48A170B9DA222",
+      "relation": "IMPLEMENTS_OR_EXERCISES",
+      "to": "AESE-CLAIM-AESE-011"
+    },
+    {
+      "from": "AESE-PYTHON_TEST-58D48A170B9DA222",
       "relation": "RESOLVES_REFERENCE",
       "to": "AESE-TEST_OR_PROOF-AESE-001"
     },
@@ -2646,6 +2700,11 @@
       "from": "AESE-PYTHON_TEST-58D48A170B9DA222",
       "relation": "RESOLVES_REFERENCE",
       "to": "AESE-TEST_OR_PROOF-AESE-007"
+    },
+    {
+      "from": "AESE-PYTHON_TEST-58D48A170B9DA222",
+      "relation": "RESOLVES_REFERENCE",
+      "to": "AESE-TEST_OR_PROOF-AESE-011"
     },
     {
       "from": "AESE-PYTHON_TEST-D79D5846F51A8B48",
@@ -2851,6 +2910,11 @@
       "from": "AESE-TEST_OR_PROOF-AESE-010",
       "relation": "MATERIALIZES",
       "to": "AESE-EVIDENCE-AESE-010"
+    },
+    {
+      "from": "AESE-TEST_OR_PROOF-AESE-011",
+      "relation": "MATERIALIZES",
+      "to": "AESE-EVIDENCE-AESE-011"
     },
     {
       "from": "AESE-TEST_OR_PROOF-GT96-001",
@@ -3343,6 +3407,13 @@
       "promotion": "DISABLED_IN_SHADOW",
       "source_id": "AESE-010",
       "status": "IMPLEMENTED / NOT VERIFIED"
+    },
+    {
+      "evidence_class": "NOT VERIFIED",
+      "id": "AESE-EVIDENCE-AESE-011",
+      "promotion": "DISABLED_IN_SHADOW",
+      "source_id": "AESE-011",
+      "status": "IMPLEMENTED / NOT VERIFIED"
     }
   ],
   "future_obligations": [
@@ -3762,6 +3833,12 @@
       "id": "AESE-INVARIANT-B09147A155A9467B",
       "mapping_status": "SOURCE_BACKED",
       "source_id": "AESE-010"
+    },
+    {
+      "description": "Each record binds claim, protocol, observation/proof, source SHA, environment, and validator; append-only ledger remains SHADOW and simulation cannot become observation",
+      "id": "AESE-INVARIANT-25F82FFCBC2295AD",
+      "mapping_status": "SOURCE_BACKED",
+      "source_id": "AESE-011"
     }
   ],
   "limitations": [
@@ -3773,8 +3850,8 @@
   "mode": "SHADOW",
   "phase": "PHASE_1_CLAIM_EVIDENCE_GRAPH",
   "schema": "aese-shadow-claim-evidence-graph-v1",
-  "source_head": "8f1043b21abaefb712092971f84a4ff469b5bdfc",
-  "source_tree_sha256": "50e6ddd2a0997b8496de5ab4a3556c8db187a06cb9a7044a666c771e57912076",
+  "source_head": "5c2b4e5382fe0fdcbc53294e3386daf2f5508cc3",
+  "source_tree_sha256": "11597af987ae6ebdb275f88d42d81a3ce09fa5f09a15b355d046454ecd1b5c13",
   "status": "SHADOW_GRAPH_COMPLETE_MAPPING_AND_SELECTION_DISABLED",
   "surfaces": [
     {
@@ -4010,7 +4087,8 @@
         "AESE-CLAIM-AESE-004",
         "AESE-CLAIM-AESE-005",
         "AESE-CLAIM-AESE-006",
-        "AESE-CLAIM-AESE-007"
+        "AESE-CLAIM-AESE-007",
+        "AESE-CLAIM-AESE-011"
       ],
       "id": "AESE-PYTHON_TEST-58D48A170B9DA222",
       "kind": "PYTHON_TEST",
@@ -5626,8 +5704,26 @@
       "reference": "graph-build cost pending",
       "resolved_paths": [],
       "source_id": "AESE-010"
+    },
+    {
+      "id": "AESE-TEST_OR_PROOF-AESE-011",
+      "kind": "TEST_OR_PROOF",
+      "mapping_status": "MAPPED_EXACT",
+      "reference": "`tests/test_aese_primitives.py`",
+      "resolved_paths": [
+        "tests/test_aese_primitives.py"
+      ],
+      "source_id": "AESE-011"
+    },
+    {
+      "id": "AESE-BENCHMARK-AESE-011",
+      "kind": "BENCHMARK",
+      "mapping_status": "NOT_MAPPED",
+      "reference": "ledger serialization/hash overhead pending",
+      "resolved_paths": [],
+      "source_id": "AESE-011"
     }
   ],
-  "worktree_epoch": "ae70f17062865a284a78e81d0669f5f1244bb94362c63d7f7e4beccb2d7fb955",
+  "worktree_epoch": "1e1988d92d354a1ba7dba0144dc4710374a9fb549fbdda268b1121272386c63f",
   "worktree_status": "DIRTY"
 }
