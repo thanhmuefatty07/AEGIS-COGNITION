@@ -218,6 +218,27 @@ def test_adaptive_measurement_rejects_forged_spec_and_exploding_containers() -> 
     assert "contamination_flags_invalid" in result.failure_reasons
 
 
+def test_adaptive_measurement_hashes_unsupported_observations_deterministically() -> None:
+    class UnsupportedObservation:
+        pass
+
+    spec = AdaptiveMeasurementSpec(metric="latency_ms")
+    first = evaluate_adaptive_measurement(
+        spec,
+        [UnsupportedObservation(), *([1.0] * 29)],
+        warmups=[0.0] * 10,
+    )
+    second = evaluate_adaptive_measurement(
+        spec,
+        [UnsupportedObservation(), *([1.0] * 29)],
+        warmups=[0.0] * 10,
+    )
+
+    assert first.status == second.status == "CONTAMINATED"
+    assert first.raw_observation_hash == second.raw_observation_hash
+    assert "non_finite_observation" in first.failure_reasons
+
+
 def test_adaptive_measurement_session_rejects_forged_append_containers() -> None:
     spec = AdaptiveMeasurementSpec(metric="latency_ms")
     session = AdaptiveMeasurementSession(spec)
