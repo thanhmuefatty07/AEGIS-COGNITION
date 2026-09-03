@@ -1669,7 +1669,8 @@ fn build_quickjs_cold_start_report() -> Result<QuickJsColdStartReport, &'static 
     let mut cold_cache_entries_after_first = 0u32;
 
     for sample in 0..QUICKJS_COLD_START_SAMPLE_COUNT {
-        let sandbox = WasmtimeSandbox::new();
+        let sandbox = WasmtimeSandbox::try_new()
+            .map_err(|_| "failed to create quickjs cold-start sandbox")?;
         if sandbox.cached_quickjs_bridge_pre_count() != 0 {
             return Err("quickjs cold-start cache unexpectedly warm");
         }
@@ -1693,7 +1694,8 @@ fn build_quickjs_cold_start_report() -> Result<QuickJsColdStartReport, &'static 
         cold_hasher.update(&result.artifact.artifact_hash);
     }
 
-    let warm_sandbox = WasmtimeSandbox::new();
+    let warm_sandbox =
+        WasmtimeSandbox::try_new().map_err(|_| "failed to create quickjs warm sandbox")?;
     let warmup = warm_sandbox
         .execute_quickjs_invocation_bridge(&invocation, QUICKJS_COLD_START_FUEL_LIMIT)
         .map_err(|_| "quickjs warmup bridge execution failed")?;
