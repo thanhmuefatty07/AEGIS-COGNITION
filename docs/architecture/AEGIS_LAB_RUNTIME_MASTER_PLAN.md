@@ -3,7 +3,7 @@ document_id: AEGIS-LAB-RUNTIME-MASTER-PLAN
 document_type: canonical_current_implementation_plan
 status: IN_EXECUTION
 authority: derived_from_checkout_and_evidence_manifest
-applies_to_commit: f9947237a6ca3f60404162aa43cacb79d8fae8e7
+applies_to_commit: 24b9834eeab73a908c64f12779bf43da1ed6ae1a
 created_at: 2026-08-26
 last_verified_at: 2026-09-04
 supersedes: browser-native-proposal-and-cumulative-harness-roadmap-as-execution-authority
@@ -4999,7 +4999,7 @@ invariants in the cited paths, not from filenames.
 
 The current mapping report is
 `quality/registry/current_s2_mapping.json`, artifact hash
-`5beb3579a898fccc55e508023a47bb0f452830138cfd976165b3b8b8009dc6fa`, with
+`70a50cb8c2543aab6377c9468427c063af3169e0749f49c5ccf9236849965b7e`, with
 `mapping_status=COMPLETE`, `all_critical_mapped=true`,
 `all_high_selection_relevant_mapped=true`, `no_fake_mapping=true`, and
 `critical_false_negative_status=NOT_EVALUATED_S3`. It verifies 9 critical
@@ -5023,9 +5023,9 @@ Cargo features, entry points, registry generators, validators and workflow
 changes. Unknown paths or dynamic edges widen to all retained inventory
 items; no opaque filename score is used. The current plan artifact is
 `quality/registry/current_affected_closure.json` with reproducible hash
-`0d330952de1637bfaf705fee9dcb7d81f530d0023942aeadcfe9a87bbe04e235` and
+`55f087dfce433d5dd0b71d2e97a27fb15567b718409243e1d2ea474d06f3d947` and
 artifact hash
-`d366df060c936292c600d725b75171268c1e3fc0f1a06aaa30edc32c26dfb9e4`.
+`cbd13a1b85f53cb6586ab252bbc0f424850854646a05cc1a4a148df1f80e4869`.
 The mapped critical audit is `COMPLETE_ZERO` (15 records checked), unknown
 and dynamic dependencies widen to all retained items, and the adversarial
 closure suite passes **14/14**. S3 exit-gate conditions are complete for the
@@ -5042,7 +5042,7 @@ dynamic inputs become `WIDENED_UNKNOWN` with no skip; hosted workflow inputs
 are `EXTERNAL_DEFERRED`. Reuse remains empty until all source/protocol/
 validator/environment/claim-domain digests match. The artifact
 `quality/registry/current_shadow_plan.json` has hash
-`f9843174e1b08aa72ec84ba2bde1c336e46171fd385a0d42965ccbb97bc221e7` and
+`ce905513eb8bc26b377423a0efa3e3ab9c6d237309ad8653aed3ab3cc210f6f9` and
 `critical_false_negative_status=COMPLETE_ZERO`; confusion-matrix status is
 `NOT_MEASURED` until explicit legacy outcomes are supplied. No execution or
 authority change is possible.
@@ -5058,6 +5058,8 @@ cases, all three reached (`critical_defects_caught=3`,
 `3f857eb27ece8cbdc626ccb469cc919d7bde80b5055f0b9df1823a1092e8f477`.
 This is deterministic planning/mutation evidence only; it is not an
 independent production non-inferiority claim.
+The corpus tests pass **5/5**, and the S4–S5 boundary full Python suite
+passes **603/603** with one known pytest configuration warning.
 
 **AESE-S6 cost proof (not complete):**
 `quality/registry/current_cost_measurement.json` records four planner timing
