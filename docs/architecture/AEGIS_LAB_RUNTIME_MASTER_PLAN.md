@@ -3,7 +3,7 @@ document_id: AEGIS-LAB-RUNTIME-MASTER-PLAN
 document_type: canonical_current_implementation_plan
 status: IN_EXECUTION
 authority: derived_from_checkout_and_evidence_manifest
-applies_to_commit: 41fb223f8f1e5a27e30cf39789c5a772bc5e2ceb
+applies_to_commit: 425dff1ce82898cd0ef59a581ad717866fd38c5f
 created_at: 2026-08-26
 last_verified_at: 2026-09-03
 supersedes: browser-native-proposal-and-cumulative-harness-roadmap-as-execution-authority
@@ -4666,3 +4666,16 @@ regression passes **447/447**, and isolated compatible Ruff checks pass for
 the touched graph surface. This closes source-binding drift detection only;
 unmapped surfaces, statistical calibration, external anchors, selective
 testing and release authority remain unproven.
+
+**AESE adaptive-result rehydration continuation (2026-09-03):** implementation
+commit `425dff1ce82898cd0ef59a581ad717866fd38c5f` adds strict
+`AdaptiveMeasurementResult.as_dict`/`from_dict` reconstruction and validation.
+The versioned result schema requires canonical containers, finite statistics,
+monotone observation/block counts, valid digest fields and a matching artifact
+hash; forged result subclasses, unknown keys, non-canonical lists and tampered
+fields fail closed. The focused AESE primitive suite passes **59/59** and the
+full Python regression passes **449/449**; inventory, claim-graph and document
+consistency gates pass after registry regeneration. This closes local adaptive
+result reconstruction only; it does not establish statistical calibration,
+independent validator agreement, external anchors, selective promotion or
+release authority.
