@@ -54,10 +54,10 @@ def _items() -> list[dict[str, object]]:
     return [cast(dict[str, object], value) for value in values if isinstance(value, dict)]
 
 
-def _critical_item_ids(items: list[dict[str, object]]) -> set[str]:
+def _critical_item_ids(items: list[dict[str, object]], mapping_path: Path = _closure.DEFAULT_MAPPING) -> set[str]:
     """Resolve criticality from the evidence-derived S2 mapping, not names."""
 
-    mapping = _closure._load_json(_closure.DEFAULT_MAPPING)
+    mapping = _closure._load_json(mapping_path)
     critical_paths: set[str] = set()
     records = mapping.get("records", [])
     if isinstance(records, list):
@@ -114,16 +114,30 @@ def _confusion_matrix(selected_ids: set[str], legacy_results: dict[str, str] | N
     }
 
 
+def _observed_critical_false_negative_status(
+    legacy_results: dict[str, str] | None, critical_ids: set[str], critical_false_negatives: list[str]
+) -> str:
+    if legacy_results is None:
+        return "NOT_MEASURED"
+    if critical_false_negatives:
+        return "OBSERVED_CRITICAL_FALSE_NEGATIVE"
+    if not critical_ids.issubset(set(legacy_results)):
+        return "NOT_MEASURED_INCOMPLETE"
+    return "OBSERVED_COMPLETE_ZERO"
+
+
 def build_shadow_plan(
-    changed_paths: list[str] | tuple[str, ...] = (), legacy_results: dict[str, str] | None = None
+    changed_paths: list[str] | tuple[str, ...] = (),
+    legacy_results: dict[str, str] | None = None,
+    mapping_path: Path = _closure.DEFAULT_MAPPING,
 ) -> dict[str, object]:
     normalized_paths = sorted({_normalize(path) for path in changed_paths if path.strip()})
-    closure = _closure.build_closure(normalized_paths)
+    closure = _closure.build_closure(normalized_paths, mapping_path)
     items = _items()
     closure_paths = set(cast(list[str], closure["closure_paths"]))
     widened = bool(closure["plan_widened"])
     critical_audit = cast(dict[str, object], closure["critical_audit"])
-    critical_ids = _critical_item_ids(items)
+    critical_ids = _critical_item_ids(items, mapping_path)
     decisions: list[dict[str, object]] = []
     selected_ids: set[str] = set()
     for item in sorted(items, key=lambda value: (str(value["path"]), str(value["stable_id"]))):
@@ -164,6 +178,11 @@ def build_shadow_plan(
         for path in external_paths
     ]
     confusion = _confusion_matrix(selected_ids, legacy_results, critical_ids)
+    critical_false_negatives = cast(list[str], confusion["critical_false_negatives"])
+    observed_status = _observed_critical_false_negative_status(
+        legacy_results, critical_ids, critical_false_negatives
+    )
+    structural_status = str(critical_audit.get("structural_critical_reachability_status", "UNKNOWN"))
     plan: dict[str, object] = {
         "schema": SCHEMA,
         "phase": PHASE,
@@ -175,6 +194,12 @@ def build_shadow_plan(
         "closure_hash": closure["reproducible_hash"],
         "closure_paths": closure["closure_paths"],
         "plan_widened": widened,
+        "unknown_repository_paths": closure["unknown_repository_paths"],
+        "unknown_surface_ids": closure["unknown_surface_ids"],
+        "unknown_surface_paths": closure["unknown_surface_paths"],
+        "changed_unmapped_surface_ids": closure["changed_unmapped_surface_ids"],
+        "changed_unmapped_surface_paths": closure["changed_unmapped_surface_paths"],
+        "path_dependency_states": closure["path_dependency_states"],
         "unknown_dependency_policy": _closure.UNKNOWN_POLICY,
         "decisions": decisions,
         "decision_states": sorted({str(decision["state"]) for decision in decisions}),
@@ -196,12 +221,11 @@ def build_shadow_plan(
             "artifact_age_alone_is_not_sufficient": True,
         },
         "confusion_matrix": confusion,
-        "critical_false_negative_status": (
-            "COMPLETE_ZERO"
-            if not cast(list[object], confusion["critical_false_negatives"])
-            and critical_audit["status"] == "COMPLETE_ZERO"
-            else "CRITICAL_FALSE_NEGATIVE"
-        ),
+        "structural_critical_reachability_status": structural_status,
+        "observed_critical_false_negative_status": observed_status,
+        # Compatibility alias; unlike the historical value it never reports
+        # zero before explicit legacy outcomes exist.
+        "critical_false_negative_status": observed_status,
         "execution": "NOT_EXECUTED",
         "provenance": {
             "source_sha": str(_inventory.build_inventory()["source_head"]),
@@ -247,6 +271,18 @@ def validate_shadow_plan(actual: dict[str, object], expected: dict[str, object])
         errors.append("shadow planner execution is not disabled")
     if any(state not in DECISION_STATES for state in cast(list[str], actual.get("decision_states", []))):
         errors.append("unknown decision state")
+    if actual.get("observed_critical_false_negative_status") == "COMPLETE_ZERO":
+        errors.append("observed false-negative status uses an unscoped zero")
+    if actual.get("observed_critical_false_negative_status") == "NOT_MEASURED" and actual.get("confusion_matrix", {}).get("status") != "NOT_MEASURED":  # type: ignore[union-attr]
+        errors.append("observed status is inconsistent with confusion matrix")
+    if actual.get("structural_critical_reachability_status") != "COMPLETE_ZERO_MAPPED_SCOPE":
+        errors.append("structural critical reachability scope is not complete")
+    if actual.get("changed_unmapped_surface_paths") and actual.get("plan_widened") is not True:
+        errors.append("changed unmapped surfaces must widen")
+    if actual.get("unknown_repository_paths") and actual.get("plan_widened") is not True:
+        errors.append("unknown repository paths must widen")
+    if actual.get("plan_widened") and actual.get("would_skip_item_ids"):
+        errors.append("widened planner cannot skip retained items")
     return sorted(set(errors))
 
 
