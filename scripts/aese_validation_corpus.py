@@ -489,6 +489,7 @@ def build_paired_cost_measurement(
     )
     if measurement_reused and measurement_source_sha:
         result["provenance"]["artifact_source_sha"] = measurement_source_sha  # type: ignore[index]
+        result["provenance"]["reuse_status"] = "REUSED_HISTORICAL_MEASUREMENT"  # type: ignore[index]
     result["artifact_hash"] = _stable_hash({key: value for key, value in result.items() if key != "artifact_hash"})
     return result
 
