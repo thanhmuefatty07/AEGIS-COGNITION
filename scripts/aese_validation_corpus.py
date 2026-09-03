@@ -214,6 +214,56 @@ def build_corpus() -> dict[str, object]:
     return corpus
 
 
+def validate_corpus(actual: dict[str, object], expected: dict[str, object]) -> list[str]:
+    """Validate a retained corpus without rewriting historical provenance.
+
+    The corpus decisions and validator/environment digests must remain stable,
+    while ``artifact_source_sha`` and ``current_head`` intentionally retain the
+    checkout in which the artifact was produced.  A later docs-only commit must
+    therefore not make an otherwise valid historical measurement unverifiable.
+    """
+
+    if type(actual) is not dict or type(expected) is not dict:
+        return ["validation corpora must be canonical dictionaries"]
+    errors: list[str] = []
+    if set(actual) != set(expected):
+        errors.append("root schema keys differ")
+    volatile = {"artifact_hash", "provenance"}
+    for key in expected:
+        if key not in volatile and actual.get(key) != expected.get(key):
+            errors.append(f"{key} differs")
+
+    recorded_hash = actual.get("artifact_hash")
+    if recorded_hash != _stable_hash({key: value for key, value in actual.items() if key != "artifact_hash"}):
+        errors.append("artifact_hash is not self-consistent")
+
+    actual_provenance = actual.get("provenance")
+    expected_provenance = expected.get("provenance")
+    if type(actual_provenance) is not dict or type(expected_provenance) is not dict:
+        errors.append("provenance envelope is missing")
+    else:
+        required = {
+            "artifact_source_sha",
+            "current_head",
+            "relevant_subject_digest",
+            "protocol_hash",
+            "validator_hash",
+            "environment_hash",
+            "reuse_status",
+        }
+        if not required.issubset(actual_provenance):
+            errors.append("provenance envelope is incomplete")
+        for key in ("relevant_subject_digest", "protocol_hash", "validator_hash", "environment_hash", "reuse_status"):
+            if actual_provenance.get(key) != expected_provenance.get(key):
+                errors.append(f"provenance.{key} differs")
+        for key in ("artifact_source_sha", "current_head"):
+            value = actual_provenance.get(key)
+            if not isinstance(value, str) or len(value) != 40 or any(character not in "0123456789abcdef" for character in value):
+                errors.append(f"provenance.{key} is not a commit SHA")
+
+    return sorted(set(errors))
+
+
 def build_cost_measurement(corpus: dict[str, object] | None = None) -> dict[str, object]:
     corpus = build_corpus() if corpus is None else corpus
     cases = cast(list[dict[str, object]], corpus["final_validation_corpus"])
