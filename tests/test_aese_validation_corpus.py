@@ -10,6 +10,7 @@ from scripts.aese_validation_corpus import (
     build_cost_measurement,
     build_corpus,
     build_paired_cost_measurement,
+    validate_corpus,
 )
 
 
@@ -38,7 +39,13 @@ def test_validation_labels_are_explicit_and_ambiguous_is_preserved(corpus: dict[
 
 def test_recorded_corpus_hash_is_reproducible(corpus: dict[str, object]) -> None:
     actual = json.loads(DEFAULT_CORPUS_OUTPUT.read_text(encoding="utf-8"))
-    assert actual == corpus
+    assert validate_corpus(actual, corpus) == []
+
+
+def test_corpus_validator_rejects_stable_decision_drift(corpus: dict[str, object]) -> None:
+    actual = json.loads(DEFAULT_CORPUS_OUTPUT.read_text(encoding="utf-8"))
+    actual["metrics"]["widen_events"] += 1
+    assert "metrics differs" in validate_corpus(actual, corpus)
 
 
 def test_cost_ledger_withholds_net_savings_without_paired_measurement(corpus: dict[str, object]) -> None:
