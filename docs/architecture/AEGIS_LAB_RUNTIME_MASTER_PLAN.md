@@ -3,7 +3,7 @@ document_id: AEGIS-LAB-RUNTIME-MASTER-PLAN
 document_type: canonical_current_implementation_plan
 status: IN_EXECUTION
 authority: derived_from_checkout_and_evidence_manifest
-applies_to_commit: 39b7b38ff169e80920512e12eba30018de50d40d
+applies_to_commit: b37b998d7a85ba41df9d63546b6adcd675479a73
 created_at: 2026-08-26
 last_verified_at: 2026-09-03
 supersedes: browser-native-proposal-and-cumulative-harness-roadmap-as-execution-authority
@@ -4442,6 +4442,17 @@ complete no-default-features Rust library suite passes **447/447**;
 pass. This proves same-host lock exclusivity and normal-drop cleanup only; it
 does not prove crash-stale-lock recovery, hosted multi-process authority,
 cross-platform filesystem semantics or release certification.
+
+**M6 FFI hot-batch arithmetic continuation (2026-09-03):** implementation
+commit `b37b998d7a85ba41df9d63546b6adcd675479a73` replaces unchecked hot-arena
+batch byte summation with `checked_add` and reports a typed `PyOverflowError`
+if the payload count or index cannot be represented by the hash-bound `u64`
+fields. Existing successful batch semantics and JSON schema remain unchanged;
+the complete no-default-features Rust library suite passes **447/447** with
+`cargo fmt --all -- --check`, `cargo check` and `cargo clippy -- -D warnings`.
+This closes a local FFI arithmetic fail-open path only; it does not prove
+FFI-wide lifetime/allocation/soak safety, cross-process authority, or release
+certification.
 
 Không được gọi toàn hệ thống “production-ready” khi bất kỳ gate bắt buộc nào
 ở trên còn `OPEN_*`, `BLOCKED_*`, `UNKNOWN` hoặc chỉ có fixture/mock evidence.
