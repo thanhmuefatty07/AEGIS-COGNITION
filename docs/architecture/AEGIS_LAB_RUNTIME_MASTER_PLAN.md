@@ -3,7 +3,7 @@ document_id: AEGIS-LAB-RUNTIME-MASTER-PLAN
 document_type: canonical_current_implementation_plan
 status: IN_EXECUTION
 authority: derived_from_checkout_and_evidence_manifest
-applies_to_commit: 0e89b4aa7496452c546a9d3269211cce37e57817
+applies_to_commit: 65c8c8a87542dd3663a859e7499bea881b92f729
 created_at: 2026-08-26
 last_verified_at: 2026-09-03
 supersedes: browser-native-proposal-and-cumulative-harness-roadmap-as-execution-authority
@@ -4547,3 +4547,15 @@ unrecoverable mutex unwrap. The no-default-features Rust library suite passes
 only local constructor/thread-startup panic containment; it does not prove
 process-level interruption, cross-platform behavior, failure injection,
 long-run resource safety, hosted verification or release authority.
+
+**M2 CLI benchmark startup continuation (2026-09-03):**
+implementation commit `65c8c8a87542dd3663a859e7499bea881b92f729` routes both
+cold-start and warm-start QuickJS benchmark sandbox construction through
+`WasmtimeSandbox::try_new`, converting runtime/thread setup failure into the
+benchmark's typed error result instead of a compatibility-constructor panic.
+Successful-path sampling, cache assertions and report schema are unchanged.
+The complete no-default-features Rust library suite passes **448/448**
+(57.14 s), with format/check/clippy gates passing. This closes only the local
+CLI benchmark setup boundary; it does not establish benchmark validity,
+cross-platform containment, long-run resource safety, hosted verification or
+release authority.
