@@ -13,6 +13,7 @@ import json
 import math
 import platform
 import sys
+import tempfile
 import time
 from pathlib import Path
 from typing import Final, cast
@@ -97,6 +98,22 @@ FINAL_CASES: Final[tuple[dict[str, object], ...]] = (
         "target_paths": [],
         "mutation": "DYNAMIC_IMPORT_AMBIGUITY",
     },
+    {
+        "case_id": "VAL-KNOWN-UNMAPPED-BAD",
+        "changed_paths": [],
+        "label": "KNOWN_BAD",
+        "critical": True,
+        "target_paths": ["core/rust/src/gt96.rs"],
+        "mutation": "KNOWN_UNMAPPED_SURFACE_MUTATION",
+    },
+    {
+        "case_id": "VAL-PARTIAL-MAPPING-BAD",
+        "changed_paths": [],
+        "label": "KNOWN_BAD",
+        "critical": True,
+        "target_paths": ["core/rust/src/gt96.rs"],
+        "mutation": "PARTIAL_MAPPING_MUTATION",
+    },
 )
 
 
@@ -126,21 +143,98 @@ def _artifact_provenance(subject: object) -> dict[str, object]:
     }
 
 
+def _inventory_path_index() -> dict[str, list[str]]:
+    inventory = json.loads((_planner.ROOT / "quality" / "registry" / "current_inventory.json").read_text(encoding="utf-8"))
+    by_path: dict[str, list[str]] = {}
+    for raw_item in inventory.get("items", []):
+        if isinstance(raw_item, dict) and raw_item.get("stable_id") and raw_item.get("path"):
+            by_path.setdefault(str(raw_item["path"]).replace("\\", "/"), []).append(str(raw_item["stable_id"]))
+    for values in by_path.values():
+        values.sort()
+    return by_path
+
+
+def _unknown_path() -> str:
+    mapping = json.loads((_planner.ROOT / "quality" / "registry" / "current_s2_mapping.json").read_text(encoding="utf-8"))
+    unknown_ids = {str(value) for value in mapping.get("unknown_surface_ids", [])}
+    for path, surface_ids in sorted(_inventory_path_index().items()):
+        if unknown_ids.intersection(surface_ids):
+            return path
+    raise ValueError("validation corpus requires at least one current unmapped inventory path")
+
+
+def _partial_mapping_fixture(directory: Path) -> tuple[Path, str]:
+    mapping_path = _planner.ROOT / "quality" / "registry" / "current_s2_mapping.json"
+    mapping = json.loads(mapping_path.read_text(encoding="utf-8"))
+    by_path = _inventory_path_index()
+    path, surface_ids = next((item for item in sorted(by_path.items()) if len(item[1]) >= 2), ("", []))
+    if not path:
+        raise ValueError("validation corpus requires a multi-surface inventory path")
+    unknown_ids = {str(value) for value in mapping.get("unknown_surface_ids", [])}
+    mapped_surface_id = next((surface_id for surface_id in surface_ids if surface_id in unknown_ids), surface_ids[0])
+    claims = mapping.get("records", [{}])[0].get("claim_ids", [])
+    mapping.setdefault("records", []).append(
+        {
+            "surface_id": mapped_surface_id,
+            "claim_ids": list(claims[:1]) or ["AESE-CLAIM-GT96-005"],
+            "source_subjects": [f"{path}::partial_mapping_source"],
+            "test_subjects": [f"{path}::partial_mapping_test"],
+            "evidence_subjects": ["quality/registry/current_s2_mapping.json"],
+            "risk": "LOW",
+            "security_criticality": "LOW",
+            "release_criticality": "LOW",
+            "selection_relevant": False,
+            "relationship_types": ["DIRECT_CONTRACT"],
+            "unknown_dependency_policy": "WIDEN_CONSERVATIVELY",
+            "rationale": "Deterministic test-only fixture to prove one mapped and one unmapped surface share a path.",
+            "verification_status": "VERIFIED",
+        }
+    )
+    mapping["unknown_surface_ids"] = sorted(unknown_ids - {mapped_surface_id})
+    output = directory / "partial_mapping.json"
+    output.write_text(json.dumps(mapping, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    return output, path
+
+
+def _materialize_cases(cases: tuple[dict[str, object], ...]) -> tuple[dict[str, object], ...]:
+    materialized: list[dict[str, object]] = []
+    unknown_path = _unknown_path()
+    partial_path = next((path for path, ids in sorted(_inventory_path_index().items()) if len(ids) >= 2), None)
+    if partial_path is None:
+        raise ValueError("validation corpus requires a multi-surface inventory path")
+    for case in cases:
+        if case["case_id"] == "VAL-KNOWN-UNMAPPED-BAD":
+            materialized.append({**case, "changed_paths": [unknown_path]})
+        elif case["case_id"] == "VAL-PARTIAL-MAPPING-BAD":
+            materialized.append({**case, "changed_paths": [partial_path]})
+        else:
+            materialized.append(dict(case))
+    return tuple(materialized)
+
+
 def _evaluate_case(case: dict[str, object]) -> dict[str, object]:
     changed = cast(list[str], case["changed_paths"])
-    plan = _planner.build_shadow_plan(changed)
+    if case["mutation"] == "PARTIAL_MAPPING_MUTATION":
+        with tempfile.TemporaryDirectory(prefix="aese-partial-") as temporary:
+            fixture, _ = _partial_mapping_fixture(Path(temporary))
+            plan = _planner.build_shadow_plan(changed, mapping_path=fixture)
+    else:
+        plan = _planner.build_shadow_plan(changed)
     target_paths = set(cast(list[str], case["target_paths"]))
     reached = set(cast(list[str], plan["closure_paths"]))
-    caught = bool(target_paths <= reached) if target_paths else None
+    reached_target = bool(target_paths <= reached) if target_paths else None
     label = str(case["label"])
     return {
         **case,
         "plan_widened": plan["plan_widened"],
         "closure_status": plan["closure_status"],
-        "critical_false_negative_status": plan["critical_false_negative_status"],
+        "structural_critical_reachability_status": plan["structural_critical_reachability_status"],
+        "observed_critical_false_negative_status": plan["observed_critical_false_negative_status"],
+        "path_dependency_states": plan["path_dependency_states"],
+        "changed_unmapped_surface_paths": plan["changed_unmapped_surface_paths"],
         "target_paths_reached": sorted(target_paths & reached),
         "target_paths_missing": sorted(target_paths - reached),
-        "defect_caught": caught if label == "KNOWN_BAD" else None,
+        "planning_target_reached": reached_target if label == "KNOWN_BAD" else None,
         "decision_state_counts": {
             state: sum(1 for decision in cast(list[dict[str, object]], plan["decisions"]) if decision["state"] == state)
             for state in ("WOULD_RUN", "WOULD_REUSE", "WOULD_SKIP", "WIDENED_UNKNOWN")
@@ -162,17 +256,19 @@ def _validate_cases(cases: tuple[dict[str, object], ...], split: str) -> None:
 
 
 def build_corpus() -> dict[str, object]:
-    _validate_cases(DEVELOPMENT_CASES, "development")
-    _validate_cases(FINAL_CASES, "final")
-    development = [_evaluate_case(case) for case in DEVELOPMENT_CASES]
-    final = [_evaluate_case(case) for case in FINAL_CASES]
-    if {str(case["case_id"]) for case in DEVELOPMENT_CASES} & {str(case["case_id"]) for case in FINAL_CASES}:
+    development_cases = _materialize_cases(DEVELOPMENT_CASES)
+    final_cases = _materialize_cases(FINAL_CASES)
+    _validate_cases(development_cases, "development")
+    _validate_cases(final_cases, "final")
+    development = [_evaluate_case(case) for case in development_cases]
+    final = [_evaluate_case(case) for case in final_cases]
+    if {str(case["case_id"]) for case in development_cases} & {str(case["case_id"]) for case in final_cases}:
         raise ValueError("development and final corpus IDs must be disjoint")
     final_known_bad = [case for case in final if case["label"] == "KNOWN_BAD"]
     final_critical = [case for case in final_known_bad if case["critical"] is True]
-    critical_misses = [str(case["case_id"]) for case in final_critical if case["defect_caught"] is not True]
+    critical_misses = [str(case["case_id"]) for case in final_critical if case["planning_target_reached"] is not True]
     noncritical = [case for case in final_known_bad if case["critical"] is not True]
-    noncritical_misses = [str(case["case_id"]) for case in noncritical if case["defect_caught"] is not True]
+    noncritical_misses = [str(case["case_id"]) for case in noncritical if case["planning_target_reached"] is not True]
     false_alarms = [
         str(case["case_id"])
         for case in final
@@ -181,7 +277,7 @@ def build_corpus() -> dict[str, object]:
     corpus: dict[str, object] = {
         "schema": SCHEMA,
         "mode": "SHADOW",
-        "status": "COMPLETE" if not critical_misses else "INSUFFICIENT_EVIDENCE",
+        "status": "LOCAL_SHADOW_VALIDATION_ONLY" if not critical_misses else "INSUFFICIENT_EVIDENCE",
         "development_corpus": development,
         "final_validation_corpus": final,
         "split_policy": {
@@ -191,21 +287,21 @@ def build_corpus() -> dict[str, object]:
             "ambiguous_not_forced_into_good_or_bad": True,
         },
         "metrics": {
-            "critical_defects": len(final_critical),
-            "critical_defects_caught": len(final_critical) - len(critical_misses),
-            "critical_defects_missed": len(critical_misses),
-            "critical_miss_case_ids": critical_misses,
-            "noncritical_defects": len(noncritical),
-            "noncritical_defects_caught": len(noncritical) - len(noncritical_misses),
-            "noncritical_defects_missed": len(noncritical_misses),
-            "noncritical_miss_case_ids": noncritical_misses,
+            "synthetic_critical_planning_targets": len(final_critical),
+            "synthetic_critical_targets_reached": len(final_critical) - len(critical_misses),
+            "synthetic_critical_targets_missed": len(critical_misses),
+            "synthetic_critical_miss_case_ids": critical_misses,
+            "synthetic_noncritical_planning_targets": len(noncritical),
+            "synthetic_noncritical_targets_reached": len(noncritical) - len(noncritical_misses),
+            "synthetic_noncritical_targets_missed": len(noncritical_misses),
+            "synthetic_noncritical_miss_case_ids": noncritical_misses,
             "false_alarm_case_ids": false_alarms,
             "widen_events": sum(1 for case in final if case["plan_widened"] is True),
             "ood_events": sum(1 for case in final if case["label"] == "OOD"),
         },
         "limitations": [
-            "Corpus cases are deterministic planning mutations; no production or external tests are inferred.",
-            "Critical-miss tolerance is zero, while noncritical policy remains explicit and exploratory.",
+            "Corpus cases provide planning reachability evidence, not executed mutation-detection evidence.",
+            "Critical planning-target tolerance is zero, while noncritical policy remains explicit and exploratory.",
             "A larger independently sourced corpus is required before any production non-inferiority claim.",
         ],
     }
@@ -316,6 +412,19 @@ def _summary(samples: list[float]) -> dict[str, object]:
     return result
 
 
+def _saving_summary(samples: list[float]) -> dict[str, object]:
+    ordered = sorted(samples)
+    if not ordered:
+        return {"sample_count": 0, "samples": [], "min_saving": None, "median_saving": None, "max_saving": None}
+    return {
+        "sample_count": len(ordered),
+        "samples": samples,
+        "min_saving": min(ordered),
+        "median_saving": ordered[len(ordered) // 2],
+        "max_saving": max(ordered),
+    }
+
+
 def build_paired_cost_measurement(
     legacy_seconds: list[float],
     selected_seconds: list[float],
@@ -323,6 +432,9 @@ def build_paired_cost_measurement(
     *,
     legacy_test_count: int = 456,
     selected_test_count: int = 14,
+    measurement_reused: bool = False,
+    measurement_source_sha: str | None = None,
+    relevant_subjects_unchanged: bool = False,
 ) -> dict[str, object]:
     """Record paired local timings without implying system-wide savings."""
 
@@ -331,6 +443,13 @@ def build_paired_cost_measurement(
         raise ValueError("paired timing arrays must be non-empty and equal length")
     if any(not isinstance(value, (int, float)) or not math.isfinite(float(value)) or float(value) < 0 for group in samples for value in group):
         raise ValueError("paired timings must be finite non-negative numbers")
+    if measurement_reused and (
+        not measurement_source_sha
+        or len(measurement_source_sha) != 40
+        or any(character not in "0123456789abcdef" for character in measurement_source_sha)
+        or not relevant_subjects_unchanged
+    ):
+        raise ValueError("reused measurements require a valid source SHA and unchanged relevant subjects")
     legacy = [float(value) for value in legacy_seconds]
     selected = [float(value) for value in selected_seconds]
     planner = [float(value) for value in planner_seconds]
@@ -352,10 +471,13 @@ def build_paired_cost_measurement(
         "legacy_wall_time_seconds": _summary(legacy),
         "selected_evidence_wall_time_seconds": _summary(selected),
         "planner_cost_seconds": _summary(planner),
-        "net_saving_seconds": _summary(net),
+        "net_saving_seconds": _saving_summary(net),
         "net_saving_formula": "legacy - (planner + selected_evidence)",
         "sample_pair_count": len(net),
         "savings_claim": "LOCAL_EXPLORATORY_ONLY",
+        "measurement_reused": measurement_reused,
+        "measurement_source_sha": measurement_source_sha,
+        "relevant_subjects_unchanged": relevant_subjects_unchanged,
         "limitations": [
             "Three paired runs cover one Rust library change class and are exploratory, not a system-wide guarantee.",
             "No claim is made for Python, external anchors, cold builds, or other change classes.",
@@ -365,6 +487,8 @@ def build_paired_cost_measurement(
     result["provenance"] = _artifact_provenance(
         {"legacy": legacy, "selected": selected, "planner": planner, "source_change": "core/rust/src/gt96.rs"}
     )
+    if measurement_reused and measurement_source_sha:
+        result["provenance"]["artifact_source_sha"] = measurement_source_sha  # type: ignore[index]
     result["artifact_hash"] = _stable_hash({key: value for key, value in result.items() if key != "artifact_hash"})
     return result
 
@@ -376,6 +500,8 @@ def main() -> int:
     parser.add_argument("--legacy-seconds", help="comma-separated paired legacy timings")
     parser.add_argument("--selected-seconds", help="comma-separated paired selected timings")
     parser.add_argument("--planner-seconds", help="comma-separated paired planner timings")
+    parser.add_argument("--measurement-reused", action="store_true", help="retain an earlier paired measurement")
+    parser.add_argument("--measurement-source-sha", help="source commit that produced a reused measurement")
     args = parser.parse_args()
     corpus = build_corpus()
     if bool(args.legacy_seconds) or bool(args.selected_seconds) or bool(args.planner_seconds):
@@ -384,7 +510,14 @@ def main() -> int:
         def parse(value: str) -> list[float]:
             return [float(part) for part in value.split(",") if part.strip()]
 
-        cost = build_paired_cost_measurement(parse(args.legacy_seconds), parse(args.selected_seconds), parse(args.planner_seconds))
+        cost = build_paired_cost_measurement(
+            parse(args.legacy_seconds),
+            parse(args.selected_seconds),
+            parse(args.planner_seconds),
+            measurement_reused=args.measurement_reused,
+            measurement_source_sha=args.measurement_source_sha,
+            relevant_subjects_unchanged=args.measurement_reused,
+        )
     else:
         cost = build_cost_measurement(corpus)
     corpus_output = args.corpus_output if args.corpus_output.is_absolute() else ROOT / args.corpus_output
@@ -392,7 +525,7 @@ def main() -> int:
     corpus_output.parent.mkdir(parents=True, exist_ok=True)
     corpus_output.write_text(json.dumps(corpus, indent=2, sort_keys=True) + "\n", encoding="utf-8")
     cost_output.write_text(json.dumps(cost, indent=2, sort_keys=True) + "\n", encoding="utf-8")
-    print(json.dumps({"corpus_status": corpus["status"], "critical_misses": corpus["metrics"]["critical_defects_missed"], "cost_status": cost["status"]}, sort_keys=True))
+    print(json.dumps({"corpus_status": corpus["status"], "critical_misses": corpus["metrics"]["synthetic_critical_targets_missed"], "cost_status": cost["status"]}, sort_keys=True))
     return 0
 
 
