@@ -180,8 +180,8 @@ passed** với **3 expected registry-drift failures** trước khi registry đư
 tái tạo, sau đó inventory và claim-graph `--check` đều pass.
 Latest retained Rust no-default-features library evidence là **456/456** với
 fmt/check/clippy pass; Python-only diff này không làm thay đổi Rust surface.
-Registry AESE hiện có **125** inventoried items, graph **46 claims / 92
-verification references**, **116** unmapped surfaces và selection ở
+Registry AESE hiện có **127** inventoried items, graph **46 claims / 92
+verification references**, **118** unmapped surfaces và selection ở
 `SHADOW`/`NOT_EXECUTED`. Các kết quả này chỉ là local source-bound evidence;
 không thay thế hosted, signed-release hay external-anchor evidence.
 
@@ -4904,8 +4904,8 @@ campaign measurements, not production or hardware evidence. No threshold was
 relaxed, no unstable result was relabeled, and no evidence was promoted.
 
 The claim graph generated from the same checkout is
-`SHADOW_GRAPH_PARTIAL_MAPPING_SELECTION_DISABLED`: 125 surfaces, 9 mapped,
-116 unmapped, 46 claims, 92 verifications (70 unmapped), 27 code nodes and
+`SHADOW_GRAPH_PARTIAL_MAPPING_SELECTION_DISABLED`: 127 surfaces, 9 mapped,
+118 unmapped, 46 claims, 92 verifications (70 unmapped), 27 code nodes and
 20 future obligations. This status is now evidence-derived; it is not a
 completion claim. The unknown criticality fields prevent a narrower
 critical-only completion status.
@@ -4999,11 +4999,11 @@ invariants in the cited paths, not from filenames.
 
 The current mapping report is
 `quality/registry/current_s2_mapping.json`, artifact hash
-`f0bef4a3a877a1c02415876223c6bc49ff484c6596f6230f2a157a7b7b28a5cd`, with
+`ec32a3a8d35446a93636ff2318620aa2341940266a4308c3d618ebbfdfe2fc96`, with
 `mapping_status=COMPLETE`, `all_critical_mapped=true`,
 `all_high_selection_relevant_mapped=true`, `no_fake_mapping=true`, and
 `critical_false_negative_status=NOT_EVALUATED_S3`. It verifies 9 critical
-records and 15 high selection-relevant records; **110 of 125 inventory
+records and 15 high selection-relevant records; **112 of 127 inventory
 surfaces remain UNKNOWN** and are explicitly widened rather than guessed.
 The claim graph remains
 `SHADOW_GRAPH_PARTIAL_MAPPING_SELECTION_DISABLED`; this mapping report cannot
@@ -5012,3 +5012,21 @@ the S2-focused closure set passes **18/18**; the post-S2 full Python suite
 passes **576/576** with one known pytest configuration warning. S3 must still
 prove deterministic affected closure and measure known critical false
 negatives.
+
+**AESE-S3 deterministic affected closure (in progress, 2026-09-03):**
+`scripts/aese_affected_closure.py` implements a typed, deterministic
+contract-closure planner over explicit `IMPORT`, `CALL`, `FFI`,
+`SERIALIZATION`, `CONFIG`, `SCHEMA`, `PACKAGE`, `ENTRY_POINT`,
+`CARGO_FEATURE`, `WORKFLOW`, `GENERATOR`, `VALIDATOR`, `CLAIM` and `TEST`
+edges. Mapping-derived edges require concrete source/test subjects; the
+adversarial suite covers Python/Rust re-export paths, FFI, serialization,
+Cargo features, entry points, registry generators, validators and workflow
+changes. Unknown paths or dynamic edges widen to all retained inventory
+items; no opaque filename score is used. The current plan artifact is
+`quality/registry/current_affected_closure.json` with reproducible hash
+`49258494835b407a0cf2a9f7e060d5e3c18718e5bd5c93ccd929250c6e1b50e0` and
+artifact hash
+`f95573891f0b01a88b6fa5c3e805033cda952dd3198a20ddfe45d64c236320b4`.
+The mapped critical audit is `COMPLETE_ZERO` (15 records checked), but S3
+is not yet an exit-gate claim until its registry/test evidence is committed
+and the final milestone checks complete; AESE remains shadow-only.
