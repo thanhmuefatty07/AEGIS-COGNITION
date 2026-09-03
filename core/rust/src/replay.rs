@@ -8475,6 +8475,28 @@ mod replay_internal_tests {
         assert!(RunEventSegmentArchive::read_ledger_mmap(&directory, &forged_manifest).is_err());
         let _ = std::fs::remove_dir_all(directory);
     }
+
+    #[test]
+    fn segmented_writer_lock_rejects_concurrent_writer_and_releases_on_drop() {
+        let directory = std::env::temp_dir().join(format!(
+            "aegis-segmented-writer-lock-{}-{}",
+            std::process::id(),
+            1_u64
+        ));
+        let run_id = 0xAEE6_0200_0000_0001_u128;
+        let writer = SegmentedArrowAuditStream::create(&directory, run_id, 1).unwrap();
+        let concurrent = SegmentedArrowAuditStream::create(&directory, run_id, 1);
+        assert_eq!(
+            concurrent.err(),
+            Some("segmented arrow audit stream already has a writer")
+        );
+
+        drop(writer);
+        let reopened = SegmentedArrowAuditStream::create(&directory, run_id, 1).unwrap();
+        drop(reopened);
+        assert!(!directory.join(format!("run-{run_id}.writer.lock")).exists());
+        let _ = std::fs::remove_dir_all(directory);
+    }
 }
 
 fn blake3_hash_bytes(bytes: &[u8]) -> [u8; 32] {
