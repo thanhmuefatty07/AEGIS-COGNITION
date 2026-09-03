@@ -1,28 +1,81 @@
 {
-  "corpus_artifact_hash": "3f857eb27ece8cbdc626ccb469cc919d7bde80b5055f0b9df1823a1092e8f477",
-  "full_fallback_wall_time_seconds": null,
-  "legacy_wall_time_seconds": null,
+  "artifact_hash": "1db921b0bb70ece53066682e5e10faac1c56b75d67ddd816a50f0140df27c20b",
+  "legacy_wall_time_seconds": {
+    "best": 57.168086,
+    "median": 71.778817,
+    "p95": 98.718078,
+    "sample_count": 3,
+    "samples": [
+      98.718078,
+      57.168086,
+      71.778817
+    ],
+    "worst": 98.718078
+  },
   "limitations": [
-    "Planner timing alone cannot establish net savings.",
-    "No 10x or scalability claim is made; median/p95 require paired measurements."
+    "Three paired runs cover one Rust library change class and are exploratory, not a system-wide guarantee.",
+    "No claim is made for Python, external anchors, cold builds, or other change classes.",
+    "The planner remains shadow-only and cannot skip authoritative tests."
   ],
   "mode": "SHADOW",
   "net_saving_formula": "legacy - (planner + selected_evidence)",
-  "net_saving_seconds": null,
-  "paired_workload": false,
-  "planner_cost_seconds": {
-    "median": 5.984828999997262,
-    "p95": 5.984828999997262,
-    "sample_count": 4,
+  "net_saving_seconds": {
+    "best": 48.786299,
+    "median": 63.632245000000005,
+    "p95": 87.374312,
+    "sample_count": 3,
     "samples": [
-      5.641877300000488,
-      6.683251799997379,
-      5.590497100001812,
-      5.984828999997262
-    ]
+      87.374312,
+      48.786299,
+      63.632245000000005
+    ],
+    "worst": 87.374312
   },
-  "reason": "legacy and selected evidence were not executed as a paired apples-to-apples workload while authority is shadow-only",
+  "paired_workload": true,
+  "planner_cost_seconds": {
+    "best": 6.625486,
+    "median": 6.937248,
+    "p95": 8.139848,
+    "sample_count": 3,
+    "samples": [
+      8.139848,
+      6.937248,
+      6.625486
+    ],
+    "worst": 8.139848
+  },
+  "provenance": {
+    "artifact_source_sha": "f0cf4cb41181764ecf5513d3dc243fa26aaec4e1",
+    "current_head": "f0cf4cb41181764ecf5513d3dc243fa26aaec4e1",
+    "environment_hash": "66acdb4208e1f8390c697fcbfb6d11808150787f3fb4912ddedd42e6e27a8bbc",
+    "protocol_hash": "NOT_APPLICABLE",
+    "relevant_subject_digest": "c9a75bdfdc22dcf5516eb1df69504c1aec997a42cd3d301b9c98226025f6daa8",
+    "reuse_status": "NOT_REUSED",
+    "validator_hash": "8c802a978ec60164b16a61f02379191c938e53e1091661b8ee00315623d18b93"
+  },
+  "sample_pair_count": 3,
+  "savings_claim": "LOCAL_EXPLORATORY_ONLY",
   "schema": "aese-cost-measurement-v1",
-  "selected_evidence_wall_time_seconds": null,
-  "status": "INSUFFICIENT_EVIDENCE"
+  "selected_evidence_wall_time_seconds": {
+    "best": 1.444539,
+    "median": 1.521086,
+    "p95": 3.203918,
+    "sample_count": 3,
+    "samples": [
+      3.203918,
+      1.444539,
+      1.521086
+    ],
+    "worst": 3.203918
+  },
+  "status": "MEASURED_EXPLORATORY_PAIRED",
+  "workload": {
+    "cache_policy": "warm incremental build; commands measured in the same checkout",
+    "legacy_command": "cargo test --manifest-path core/rust/Cargo.toml --lib --no-default-features",
+    "legacy_test_count": 456,
+    "same_environment_class": true,
+    "same_source_change": "core/rust/src/gt96.rs",
+    "selected_command": "cargo test --manifest-path core/rust/Cargo.toml --lib --no-default-features gt96",
+    "selected_test_count": 14
+  }
 }
