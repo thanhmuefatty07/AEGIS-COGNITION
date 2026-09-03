@@ -3,7 +3,7 @@ document_id: AEGIS-LAB-RUNTIME-MASTER-PLAN
 document_type: canonical_current_implementation_plan
 status: IN_EXECUTION
 authority: derived_from_checkout_and_evidence_manifest
-applies_to_commit: 906d057ac90900b5e11e75e622a62c71dd80142b
+applies_to_commit: a1b4007811e6fbaf8019830bbd2897af5bffd006
 created_at: 2026-08-26
 last_verified_at: 2026-09-03
 supersedes: browser-native-proposal-and-cumulative-harness-roadmap-as-execution-authority
@@ -180,10 +180,29 @@ passed** với **3 expected registry-drift failures** trước khi registry đư
 tái tạo, sau đó inventory và claim-graph `--check` đều pass.
 Latest retained Rust no-default-features library evidence là **456/456** với
 fmt/check/clippy pass; Python-only diff này không làm thay đổi Rust surface.
-Registry AESE hiện có **119** inventoried items, graph **46 claims / 92
-verification references**, **110** unmapped surfaces và selection ở
+Registry AESE hiện có **121** inventoried items, graph **46 claims / 92
+verification references**, **112** unmapped surfaces và selection ở
 `SHADOW`/`NOT_EXECUTED`. Các kết quả này chỉ là local source-bound evidence;
 không thay thế hosted, signed-release hay external-anchor evidence.
+
+Tại source head `a1b4007811e6fbaf8019830bbd2897af5bffd006`, milestone
+`AESE-S1` đã thêm calibration harness deterministic vào
+`scripts/aese_statistical_calibration.py`. Campaign mặc định dùng 18 family,
+3 scenario, 3 protocol variant, 2 checkpoint policy, 30 replicate/cell; artifact
+machine-readable tại `artifacts/evidence/aese-statistical-calibration.json`
+ghi nhận **108 cells / 9.720 trials**, `source.worktree_status=CLEAN`, protocol
+hash `c3bce0b345232e3548b1ebf2569f42f3f51b6a4cee4580e405ef813397936a8f`,
+validator `aese-statistical-calibration-v1:aese-statistical-calibration-generator-v1`,
+và artifact hash
+`681f8966f41e38a504021e9b477119f373e1942da5f49d87bfc980ea9c5bed05`.
+Kết quả tổng thể là `INSUFFICIENT_EVIDENCE`: các family candidate chưa đạt
+criteria do stopping rule phát hiện instability ngoài mong đợi; các family
+autocorrelation/trend/change/contamination/outlier vẫn `OUT_OF_DOMAIN`, không
+bị tune để PASS. Contamination detection là **540/1.080 (0,5)** vì burst có
+flag còn rare outlier là latent; unstable detection trên 3.240 trial khai báo
+unstable là **3.211/3.240 (0,991)**. Đây là local synthetic calibration
+evidence, không phải production observation, không promotion và không thay
+đổi legacy authority.
 
 `current.json` vẫn cố ý để `commit=CHECKOUT_HEAD`, sáu evidence record là
 `NOT VERIFIED`, và 35 requirement là `IMPLEMENTED / NOT VERIFIED`; placeholder
@@ -4792,3 +4811,55 @@ changed runtime/test surface passes isolated compatible Ruff. This closes the
 paired observation-side fail-open path only; it does not establish calibrated
 information-gain selection, multi-agent coordination efficiency, or external
 authority.
+
+**AESE-S1 statistical calibration continuation (2026-09-03):** implementation
+commit `a1b4007811e6fbaf8019830bbd2897af5bffd006` adds the deterministic,
+machine-readable shadow calibration harness at
+`scripts/aese_statistical_calibration.py` and an adversarial rounding
+regression for `_lag_one`. The campaign preregisters 18 workload families
+(including IID Gaussian, skewed, mixture, variance, dependence, drift,
+change, contamination and outlier cases), three scenarios, three protocol
+variants with distinct floors/budgets/block sizes/alpha/precision targets, and
+both every-observation and every-block checkpoints. The default campaign
+retains **30 replicates per cell**, yielding **108 cells / 9,720 trials**.
+
+The retained local artifact is
+`artifacts/evidence/aese-statistical-calibration.json` with source SHA
+`a1b4007811e6fbaf8019830bbd2897af5bffd006`, clean-worktree capture,
+protocol hash
+`c3bce0b345232e3548b1ebf2569f42f3f51b6a4cee4580e405ef813397936a8f`,
+validator ID
+`aese-statistical-calibration-v1:aese-statistical-calibration-generator-v1`,
+and artifact hash
+`681f8966f41e38a504021e9b477119f373e1942da5f49d87bfc980ea9c5bed05`.
+The result is `INSUFFICIENT_EVIDENCE`: every candidate family remains
+unvalidated because the preregistered stopping rule produced unexpected
+`UNSTABLE` terminal outcomes; no threshold was relaxed and no candidate was
+promoted. Dependence/trend/change/contamination/outlier families remain
+`OUT_OF_DOMAIN`. The contamination summary is **540/1,080 detected (0.5)**
+because flagged burst contamination is observable while the latent rare
+outlier is intentionally not auto-detected; declared unstable-family
+detection is **3,211/3,240 (0.991)**. Focused AESE/calibration tests pass
+**83/83** and targeted Ruff passes. The `_lag_one` finite-domain clamp only
+prevents rounding-induced invalid evidence; it is not calibration proof.
+
+Current S1 state remains:
+
+```text
+AESE_MODE = SHADOW
+LEGACY_TEST_AUTHORITY = ACTIVE
+SELECTIVE_TEST_AUTHORITY = DISABLED
+EVIDENCE_PROMOTION = DISABLED
+STATISTICAL_PROTOCOL = IMPLEMENTED_BUT_NOT_CALIBRATED
+CALIBRATION_RESULT = INSUFFICIENT_EVIDENCE
+PRODUCT_RUNTIME_REFACTOR = FROZEN
+EXTERNAL_CERTIFICATION = NOT_VERIFIED
+RELEASE = NOT_AUTHORIZED
+```
+
+This milestone does not alter Lab/sandbox/replay/provider/FFI/runtime
+semantics. The calibration artifact is synthetic local evidence; it does not
+measure production observations, prove universal coverage, establish
+independent validator agreement, or authorize selective execution. The next
+narrow milestone is AESE-S2 critical/high-risk claim-to-test-to-source
+mapping, with unknown dependencies widening conservatively.
