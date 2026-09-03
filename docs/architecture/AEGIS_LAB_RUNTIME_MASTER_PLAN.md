@@ -3,7 +3,7 @@ document_id: AEGIS-LAB-RUNTIME-MASTER-PLAN
 document_type: canonical_current_implementation_plan
 status: IN_EXECUTION
 authority: derived_from_checkout_and_evidence_manifest
-applies_to_commit: 41f614f35390a3d90335c289c5d12e3bdd537de0
+applies_to_commit: 09acf304c2093e53ef99e83ae285e302c98916b0
 created_at: 2026-08-26
 last_verified_at: 2026-09-03
 supersedes: browser-native-proposal-and-cumulative-harness-roadmap-as-execution-authority
@@ -169,10 +169,12 @@ hiện tại và không được dùng để chứng minh checkout mới:
   structural/presence checks, không phải proof rằng Lab behavior hoạt động.
 
 Checkout implementation hiện hành cho migration node này là
-`41f614f35390a3d90335c289c5d12e3bdd537de0` (AESE preflight root-schema
-validation; measurement-result semantic validation ở `0f6b1aa…`), với
-worktree sạch và `origin/main` parity được xác nhận sau push.
+`09acf304c2093e53ef99e83ae285e302c98916b0` (terminal-state admission fence
+cho `AdaptiveController`; preflight root-schema validation ở `41f614f…` và
+measurement-result semantic validation ở `0f6b1aa…`), với worktree sạch và
+`origin/main` parity được xác nhận sau push.
 Focused AESE/preflight regression trên CPython 3.11 là **76 + 9 passed**;
+Lab runtime regression cho controller là **353 passed**;
 full Python regression trước migration preflight gần nhất đã chạy **554
 passed** với **3 expected registry-drift failures** trước khi registry được
 tái tạo, sau đó inventory và claim-graph `--check` đều pass.
@@ -4768,3 +4770,15 @@ claim-graph and document-consistency gates remain passing at 119 retained
 items and 110 unmapped surfaces. This closes local preflight schema integrity
 only; it does not execute or promote a plan, prove selective-test
 non-inferiority, or close hosted/release obligations.
+
+**Adaptive controller terminal-state continuation (2026-09-03):** implementation
+commit `09acf304c2093e53ef99e83ae285e302c98916b0` hardens the ownership point
+for exploration admission. `AdaptiveController.next` now requires the
+canonical `LabRun` type and returns no new exploration decision once a run is
+`completed`, `blocked` or `aborted`; reserved/finalization/recovery budgets are
+left untouched in those states. The codebase graph identifies 18 callers of
+this method, and the full Lab runtime regression passes **353/353** (one
+environment warning about an unsupported pytest-asyncio config option).
+This closes a local terminal-state fail-open path only; it does not make the
+Python controller the universal Rust authority, prove process-level
+cancellation, or close hosted single-writer/release obligations.
