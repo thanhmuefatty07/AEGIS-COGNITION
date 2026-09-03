@@ -3455,6 +3455,18 @@ mod tests {
     }
 
     #[test]
+    fn wasmtime_sandbox_try_new_returns_typed_setup_result() {
+        use crate::sandbox::{SandboxBackendKind, WasmExecutionSandbox, WasmtimeSandbox};
+
+        let sandbox = WasmtimeSandbox::try_new().expect("supported Wasmtime setup should succeed");
+        assert_eq!(
+            sandbox.backend_config().backend,
+            SandboxBackendKind::Wasmtime
+        );
+        assert!(sandbox.backend_config().is_hardened());
+    }
+
+    #[test]
     fn wasmtime_sandbox_reuses_preinstantiated_module_without_fuel_leakage() {
         use crate::sandbox::WasmtimeSandbox;
         let sandbox = WasmtimeSandbox::new();

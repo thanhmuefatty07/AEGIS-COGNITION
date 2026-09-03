@@ -277,25 +277,33 @@ impl Default for WasmtimeSandbox {
 
 impl WasmtimeSandbox {
     pub fn new() -> Self {
+        Self::try_new().expect("Failed to create Wasmtime sandbox")
+    }
+
+    /// Construct the Wasmtime backend without panicking on runtime setup
+    /// failures. Compatibility callers may keep using `new`, while FFI and
+    /// other untrusted boundaries can fail closed through this result.
+    pub fn try_new() -> Result<Self, TrapReason> {
         let mut wasm_config = Config::new();
         wasm_config.consume_fuel(true);
         wasm_config.epoch_interruption(true);
         wasm_config.native_unwind_info(true);
-        let engine = Engine::new(&wasm_config).expect("Failed to create Wasmtime engine");
+        let engine = Engine::new(&wasm_config).map_err(|_| TrapReason::InvariantViolation)?;
         let epoch_ticker = EpochTicker::new(&engine);
-        Self {
+        let quickjs_bridge_linker =
+            quickjs_bridge_linker(&engine).map_err(|_| TrapReason::InvariantViolation)?;
+        Ok(Self {
             config: SandboxBackendConfig::wasmtime_hardened(10),
             guardrail: FirstOrderGuardrail,
             timeout_ms: 1000,
             wasm_linker: Linker::new(&engine),
             wasm_pre_cache: RwLock::new(HashMap::new()),
-            quickjs_bridge_linker: quickjs_bridge_linker(&engine)
-                .expect("Failed to create QuickJS bridge linker"),
+            quickjs_bridge_linker,
             quickjs_bridge_pre_cache: RwLock::new(HashMap::new()),
             engine,
             module_cache: RwLock::new(HashMap::new()),
             _epoch_ticker: epoch_ticker,
-        }
+        })
     }
 
     pub fn with_config(config: SandboxBackendConfig) -> Result<Self, TrapReason> {

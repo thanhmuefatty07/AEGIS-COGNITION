@@ -52,7 +52,11 @@ pub fn aegis_execute_mmap_wasm_bridge_frame(
     fuel_limit: u64,
 ) -> PyResult<(u64, Vec<u8>)> {
     py_safe(move || {
-        let sandbox = crate::sandbox::WasmtimeSandbox::new();
+        let sandbox = crate::sandbox::WasmtimeSandbox::try_new().map_err(|error| {
+            pyo3::exceptions::PyRuntimeError::new_err(format!(
+                "Wasmtime sandbox initialization failed: {error:?}"
+            ))
+        })?;
         let result = sandbox
             .execute_mmap_wasm_bridge_frame(std::path::Path::new(&path), fuel_limit)
             .map_err(|err| pyo3::exceptions::PyRuntimeError::new_err(format!("{err:?}")))?;
