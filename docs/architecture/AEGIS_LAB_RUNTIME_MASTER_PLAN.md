@@ -3,7 +3,7 @@ document_id: AEGIS-LAB-RUNTIME-MASTER-PLAN
 document_type: canonical_current_implementation_plan
 status: IN_EXECUTION
 authority: derived_from_checkout_and_evidence_manifest
-applies_to_commit: b6e1acb3784354f2837336a71e4df603f542c238
+applies_to_commit: 5e2b6a2ea8b8bbfb7515371e8eef020235ef6d24
 created_at: 2026-08-26
 last_verified_at: 2026-09-03
 supersedes: browser-native-proposal-and-cumulative-harness-roadmap-as-execution-authority
@@ -4627,3 +4627,16 @@ clippy gates passing. This closes one learning-ledger allocation boundary only;
 Python-side string allocation, unbounded session content, FFI-wide lifetime/
 soak behavior, cross-process authority and release certification remain
 unproven.
+
+**M6 runtime-admission input boundary continuation (2026-09-03):**
+implementation commit `5e2b6a2ea8b8bbfb7515371e8eef020235ef6d24` adds a shared
+**1 MiB** bound for runtime request, dependency-list and lease-token JSON
+inputs, plus a **4,096 dependency-ID** bound before the authoritative runtime
+lock/admission path. Oversized or over-counted inputs return typed
+`PyValueError` values without parsing the request or mutating runtime state.
+The focused no-default-features FFI tests pass **3/3**; the feature-enabled
+filter also passes **3/3** in **44.17 s**; the complete no-default-features Rust
+library suite passes **456/456** in **84.47 s**, with format, compile and clippy
+gates passing. This closes runtime-admission input/resource bounds only;
+Python-side string allocation, cross-process authority, long-run soak and
+release certification remain unproven.
