@@ -3,7 +3,7 @@ document_id: AEGIS-LAB-RUNTIME-MASTER-PLAN
 document_type: canonical_current_implementation_plan
 status: IN_EXECUTION
 authority: derived_from_checkout_and_evidence_manifest
-applies_to_commit: 8f1043b21abaefb712092971f84a4ff469b5bdfc
+applies_to_commit: 5c2b4e5382fe0fdcbc53294e3386daf2f5508cc3
 created_at: 2026-08-26
 last_verified_at: 2026-09-03
 supersedes: browser-native-proposal-and-cumulative-harness-roadmap-as-execution-authority
@@ -4390,6 +4390,20 @@ regression and complete Rust library suite pass **446/446**, with
 format/check/clippy gates passing. This is resource/parser-boundary hardening;
 it does not prove hostile archive recovery, cross-platform behavior, concurrent
 writer authority or release certification.
+
+**AESE provenance-ledger continuation (2026-09-03):** implementation commit
+`5c2b4e5382fe0fdcbc53294e3386daf2f5508cc3` adds immutable
+`EvidenceLedgerEntry`/`EvidenceLedger` primitives. Each entry binds a claim,
+protocol hash, observation/proof hash, source Git SHA, environment hash and
+validator identity; duplicate identities, malformed digests, forged types and
+promotion outside `DISABLED_IN_SHADOW` are rejected. Ledger and entry hashes
+are deterministic and append-only, while `claimable_as_observed` is always
+false so simulation or local evidence cannot silently become real-world
+observation. The focused AESE/graph/preflight suite passes **63/63**, the full
+Python regression passes **521/521**, and Ruff/Pyright pass for the changed
+surface. This establishes a local provenance contract only; it does not prove
+validator independence, calibrated statistics, external anchors, selective
+test non-inferiority or release authority.
 
 Không được gọi toàn hệ thống “production-ready” khi bất kỳ gate bắt buộc nào
 ở trên còn `OPEN_*`, `BLOCKED_*`, `UNKNOWN` hoặc chỉ có fixture/mock evidence.
