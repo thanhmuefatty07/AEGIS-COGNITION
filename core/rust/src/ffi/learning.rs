@@ -60,7 +60,10 @@ pub fn aegis_get_learning_stats(
                 "Session index init failed: {error:?}"
             ))
         })?;
-        let final_search_index_count = search_index_count.max(index.lock().len() as u64);
+        let indexed_session_count = u64::try_from(index.lock().len()).map_err(|_| {
+            pyo3::exceptions::PyOverflowError::new_err("session index count exceeds u64")
+        })?;
+        let final_search_index_count = search_index_count.max(indexed_session_count);
 
         let stats = serde_json::json!({
             "schema": "aegis-learning-stats-v1",
