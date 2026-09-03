@@ -189,7 +189,13 @@ def _lag_one(values: Sequence[float]) -> float | None:
     denominator = math.sqrt(sum(value * value for value in first_dev) * sum(value * value for value in second_dev))
     if denominator == 0.0:
         return 0.0
-    return sum(left * right for left, right in zip(first_dev, second_dev, strict=True)) / denominator
+    correlation = sum(left * right for left, right in zip(first_dev, second_dev, strict=True)) / denominator
+    if not math.isfinite(correlation):
+        return correlation
+    # Rounding can move a mathematically bounded correlation a few ulps
+    # outside [-1, 1].  Preserve non-finite overflow signals, but keep finite
+    # results inside the validator's physical domain.
+    return max(-1.0, min(1.0, correlation))
 
 
 def _drift_ratio(values: Sequence[float]) -> float | None:
@@ -948,7 +954,10 @@ def evaluate_adaptive_measurement(
         status = "CONTAMINATED"
     elif "numeric_overflow" in reasons:
         status = "INSUFFICIENT_EVIDENCE"
-    elif "autocorrelation_exceeds_bound" in reasons or "drift_exceeds_bound" in reasons:
+    elif (
+        floor_met
+        and ("autocorrelation_exceeds_bound" in reasons or "drift_exceeds_bound" in reasons)
+    ):
         status = "UNSTABLE"
     elif (
         not protocol_valid
