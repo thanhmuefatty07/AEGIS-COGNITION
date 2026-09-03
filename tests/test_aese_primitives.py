@@ -21,6 +21,7 @@ from aegis_cognition import (
     predict_cross_hardware,
     select_anchor_plan,
 )
+from aegis_cognition.aese import _lag_one
 
 
 def _evidence_entry(**changes: object) -> EvidenceLedgerEntry:
@@ -289,11 +290,20 @@ def test_adaptive_measurement_does_not_pass_with_a_trailing_partial_block() -> N
 def test_adaptive_measurement_marks_nonfinite_and_drift_without_silent_filtering() -> None:
     spec = AdaptiveMeasurementSpec(metric="throughput", block_size=1)
     contaminated = evaluate_adaptive_measurement(spec, [1.0] * 29 + [math.nan], warmups=[0.0] * 10)
+    before_floor = evaluate_adaptive_measurement(spec, list(range(1, 30)), warmups=[0.0] * 10)
     unstable = evaluate_adaptive_measurement(spec, list(range(1, 31)), warmups=[0.0] * 10)
     assert contaminated.status == "CONTAMINATED"
     assert "non_finite_observation" in contaminated.failure_reasons
+    assert before_floor.status == "CONTINUE"
+    assert "drift_exceeds_bound" in before_floor.failure_reasons
     assert unstable.status == "UNSTABLE"
     assert "drift_exceeds_bound" in unstable.failure_reasons
+
+
+def test_lag_one_rounding_stays_inside_correlation_domain() -> None:
+    correlation = _lag_one([-2e-12, -1e-12, 2e-12])
+    assert correlation is not None
+    assert -1.0 <= correlation <= 1.0
 
 
 def test_adaptive_measurement_fails_closed_on_finite_numeric_overflow() -> None:
