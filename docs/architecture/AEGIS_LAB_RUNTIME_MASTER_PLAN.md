@@ -3,7 +3,7 @@ document_id: AEGIS-LAB-RUNTIME-MASTER-PLAN
 document_type: canonical_current_implementation_plan
 status: IN_EXECUTION
 authority: derived_from_checkout_and_evidence_manifest
-applies_to_commit: 5e2b6a2ea8b8bbfb7515371e8eef020235ef6d24
+applies_to_commit: 7f3d50f54097da03356d15937955a7468d221309
 created_at: 2026-08-26
 last_verified_at: 2026-09-03
 supersedes: browser-native-proposal-and-cumulative-harness-roadmap-as-execution-authority
@@ -4640,3 +4640,17 @@ library suite passes **456/456** in **84.47 s**, with format, compile and clippy
 gates passing. This closes runtime-admission input/resource bounds only;
 Python-side string allocation, cross-process authority, long-run soak and
 release certification remain unproven.
+
+**AESE provenance-ledger rehydration continuation (2026-09-03):**
+implementation commit `7f3d50f54097da03356d15937955a7468d221309` adds strict
+`EvidenceLedgerEntry.from_dict` and `EvidenceLedger.from_dict` reconstruction.
+Round-trip input must match the versioned schema exactly, retain
+`DISABLED_IN_SHADOW`, use canonical types, and verify each entry artifact hash
+before the aggregate ledger hash; tampered fields, promotion flags, unknown
+keys, duplicate identities and forged subclasses fail closed. The focused
+AESE primitive suite passes **57/57** and the full Python regression passes
+**446/446** with deprecation warnings treated as errors; inventory, claim-graph
+and document-consistency gates pass with **119** inventoried items and **0**
+unresolved code references. This closes local provenance reconstruction only;
+validator independence, calibrated statistics, external anchors, selective
+test promotion and release authority remain unproven.
