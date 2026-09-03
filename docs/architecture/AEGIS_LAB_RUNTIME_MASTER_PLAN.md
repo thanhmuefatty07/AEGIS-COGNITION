@@ -3,7 +3,7 @@ document_id: AEGIS-LAB-RUNTIME-MASTER-PLAN
 document_type: canonical_current_implementation_plan
 status: IN_EXECUTION
 authority: derived_from_checkout_and_evidence_manifest
-applies_to_commit: 24b9834eeab73a908c64f12779bf43da1ed6ae1a
+applies_to_commit: 9edf0d75eddc95b06fa824820caf3d00d600b047
 created_at: 2026-08-26
 last_verified_at: 2026-09-04
 supersedes: browser-native-proposal-and-cumulative-harness-roadmap-as-execution-authority
@@ -4999,7 +4999,7 @@ invariants in the cited paths, not from filenames.
 
 The current mapping report is
 `quality/registry/current_s2_mapping.json`, artifact hash
-`70a50cb8c2543aab6377c9468427c063af3169e0749f49c5ccf9236849965b7e`, with
+`fcb153e445e108ad4b411187a0b07fe500a8820ea7b0095c590a9ae0b24b3a00`, with
 `mapping_status=COMPLETE`, `all_critical_mapped=true`,
 `all_high_selection_relevant_mapped=true`, `no_fake_mapping=true`, and
 `critical_false_negative_status=NOT_EVALUATED_S3`. It verifies 9 critical
@@ -5023,9 +5023,9 @@ Cargo features, entry points, registry generators, validators and workflow
 changes. Unknown paths or dynamic edges widen to all retained inventory
 items; no opaque filename score is used. The current plan artifact is
 `quality/registry/current_affected_closure.json` with reproducible hash
-`55f087dfce433d5dd0b71d2e97a27fb15567b718409243e1d2ea474d06f3d947` and
+`1a482f8b28194e27a6590bcb538f873cad9cf40d3a0f0131b5632c911471bfa0` and
 artifact hash
-`cbd13a1b85f53cb6586ab252bbc0f424850854646a05cc1a4a148df1f80e4869`.
+`5ef81782342fbf31de5f17d17644b5198bf80206f64cae409cdfd83ead4f6e18`.
 The mapped critical audit is `COMPLETE_ZERO` (15 records checked), unknown
 and dynamic dependencies widen to all retained items, and the adversarial
 closure suite passes **14/14**. S3 exit-gate conditions are complete for the
@@ -5042,31 +5042,40 @@ dynamic inputs become `WIDENED_UNKNOWN` with no skip; hosted workflow inputs
 are `EXTERNAL_DEFERRED`. Reuse remains empty until all source/protocol/
 validator/environment/claim-domain digests match. The artifact
 `quality/registry/current_shadow_plan.json` has hash
-`ce905513eb8bc26b377423a0efa3e3ab9c6d237309ad8653aed3ab3cc210f6f9` and
+`18f9a1230236073acec740b8d4db5a2ad8a3e72392dd5559858351c987b83e86` and
 `critical_false_negative_status=COMPLETE_ZERO`; confusion-matrix status is
 `NOT_MEASURED` until explicit legacy outcomes are supplied. No execution or
 authority change is possible.
 
-**AESE-S5 held-out validation corpus (2026-09-04):** commit
-`6c3df2ccb4715a5f2e62c5af2b9a651a776a8dba` adds
+**AESE-S5 held-out validation corpus (2026-09-04):** commits
+`6c3df2ccb4715a5f2e62c5af2b9a651a776a8dba` and
+`9edf0d75eddc95b06fa824820caf3d00d600b047` add
 `scripts/aese_validation_corpus.py` with disjoint development and final
 validation cases. Final labels preserve `KNOWN_GOOD`, `KNOWN_BAD`, `OOD` and
 `AMBIGUOUS`; the current held-out set contains three critical synthetic bad
 cases, all three reached (`critical_defects_caught=3`,
 `critical_defects_missed=0`). Artifact
 `quality/registry/current_validation_corpus.json` has hash
-`3f857eb27ece8cbdc626ccb469cc919d7bde80b5055f0b9df1823a1092e8f477`.
+`8e694a08885b0edacbe0d0a20caba394e2b73d9fbcace32712bdf7bb70b7e289`.
 This is deterministic planning/mutation evidence only; it is not an
 independent production non-inferiority claim.
-The corpus tests pass **5/5**, and the S4–S5 boundary full Python suite
-passes **603/603** with one known pytest configuration warning.
+The corpus tests pass **7/7** (including retained-provenance drift checks),
+and the final full Python suite passes **605/605** with one known pytest
+configuration warning. The validator deliberately ignores only checkout-
+volatile `artifact_source_sha`/`current_head`; stable decisions, validator
+and environment digests, and the artifact self-hash remain mandatory.
 
-**AESE-S6 cost proof (not complete):**
-`quality/registry/current_cost_measurement.json` records four planner timing
-samples (median approximately 5.985 seconds) but
-`paired_workload=false`, legacy and selected-evidence wall times are null,
-and `net_saving_seconds=null`. Status is `INSUFFICIENT_EVIDENCE` because the
-same workload has not yet been measured as legacy plus selected evidence;
-planner overhead alone cannot prove savings. This is the remaining local
-phase blocker for the final definition of done, while all authority stays
-shadow/legacy-retained and no 10x claim is made.
+**AESE-S6 paired cost analysis (2026-09-04):** commit
+`4b3bad8f99f51f1b5ee948c6b5fdb9dcbf30a9a3` records three paired warm-cache
+runs in `quality/registry/current_cost_measurement.json` (artifact hash
+`96db92938957290d207ee1d30bc61a2f40a509a4c15c822444e85ea06a93048f`). The
+same Rust library workload measured 456 retained tests versus 14 `gt96`
+tests: legacy median/p95 **71.778817/98.718078 s**, selected
+median/p95 **1.521086/3.203918 s**, planner median/p95
+**6.937248/8.139848 s**, and net-saving samples **87.374312, 48.786299,
+63.632245 s** (median **63.632245 s**, best **48.786299 s**, worst
+**87.374312 s**). Status is `MEASURED_EXPLORATORY_PAIRED` with
+`savings_claim=LOCAL_EXPLORATORY_ONLY`: this closes the local measurement
+gate for one change class, but does not generalize to Python, cold builds,
+other changes or production. AESE remains shadow-only and no 10x claim is
+made.

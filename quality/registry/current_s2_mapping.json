@@ -1,15 +1,15 @@
 {
   "all_critical_mapped": true,
   "all_high_selection_relevant_mapped": true,
-  "artifact_hash": "c7b9119347ee8606193ef72b6dbc7388d4d000f94f2f602f6cf1d8aad547329d",
-  "claim_graph_source_tree_sha256": "3036c159261a91c3dc273d75edb34be1d6ee15c1bff2595534acee0507b0d853",
+  "artifact_hash": "fcb153e445e108ad4b411187a0b07fe500a8820ea7b0095c590a9ae0b24b3a00",
+  "claim_graph_source_tree_sha256": "4cc79e520da363eef7494af1d4268809c7334e373c4acc3d4a29bbf0f8d334a1",
   "claim_graph_status": "SHADOW_GRAPH_PARTIAL_MAPPING_SELECTION_DISABLED",
   "critical_false_negative_status": "NOT_EVALUATED_S3",
   "critical_mapping_count": 9,
-  "current_head": "4b3bad83edc19a3794d6e612981bdda31900343e",
+  "current_head": "9edf0d75eddc95b06fa824820caf3d00d600b047",
   "errors_by_surface": {},
   "high_selection_mapping_count": 15,
-  "inventory_source_tree_sha256": "81e9b59565302c390eb404da3dfa3fb17336d3f3a9ec00c4af7aed832c98edb0",
+  "inventory_source_tree_sha256": "e526580fc0a07c0901d50245aa6365628def0696fefc55c75c23541de4c4ec59",
   "limitations": [
     "Unlisted surfaces remain UNKNOWN; shadow planners must widen conservatively.",
     "Mapping evidence does not authorize test skipping or promotion.",
@@ -555,7 +555,7 @@
   ],
   "schema": "aese-s2-mapping-v1",
   "selection_authority": "DISABLED",
-  "source_head": "4b3bad83edc19a3794d6e612981bdda31900343e",
+  "source_head": "9edf0d75eddc95b06fa824820caf3d00d600b047",
   "unknown_dependency_policy": "WIDEN_CONSERVATIVELY",
   "unknown_surface_count": 116,
   "unknown_surface_ids": [
