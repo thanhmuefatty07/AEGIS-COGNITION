@@ -3,7 +3,7 @@ document_id: AEGIS-LAB-RUNTIME-MASTER-PLAN
 document_type: canonical_current_implementation_plan
 status: IN_EXECUTION
 authority: derived_from_checkout_and_evidence_manifest
-applies_to_commit: 952a5e8be8e6bcfe603f0fd37bdea5e7af651435
+applies_to_commit: f4564601bf853943c2caff5bdf0b6755223dd992
 created_at: 2026-08-26
 last_verified_at: 2026-09-03
 supersedes: browser-native-proposal-and-cumulative-harness-roadmap-as-execution-authority
@@ -4888,8 +4888,9 @@ validator ID
 `aese-statistical-calibration-v1:aese-statistical-calibration-generator-v2`,
 and artifact hash
 `ee46af099fb98d6cf8b9b88fb901f0346584641d7e7d728dc9bbffedc36f742a`.
-The preregistered campaign has 18 families × 3 scenarios × 3 variants × 2
-checkpoint policies = **108 cells** and **21,510 retained trial digests**.
+The preregistered campaign has 18 families × 3 variants × 2 checkpoint
+policies = **108 configuration cells**; each configuration cell contains 3
+scenarios, giving **324 scenario-cells** and **21,510 retained trial digests**.
 Each cell allocated at least 60 and at most 120 replicates (mean
 `66.38888888888889`); 97 cells stopped when bounds became decidable and 11
 reached the maximum. The overall result remains
@@ -4903,8 +4904,8 @@ campaign measurements, not production or hardware evidence. No threshold was
 relaxed, no unstable result was relabeled, and no evidence was promoted.
 
 The claim graph generated from the same checkout is
-`SHADOW_GRAPH_PARTIAL_MAPPING_SELECTION_DISABLED`: 121 surfaces, 9 mapped,
-112 unmapped, 46 claims, 92 verifications (70 unmapped), 27 code nodes and
+`SHADOW_GRAPH_PARTIAL_MAPPING_SELECTION_DISABLED`: 123 surfaces, 9 mapped,
+114 unmapped, 46 claims, 92 verifications (70 unmapped), 27 code nodes and
 20 future obligations. This status is now evidence-derived; it is not a
 completion claim. The unknown criticality fields prevent a narrower
 critical-only completion status.
@@ -4934,6 +4935,53 @@ or modifying unrelated Lab runtime surfaces.
 
 **S1.1 gate decision:** `S1_1_STATUS = INSUFFICIENT_EVIDENCE`;
 `EVIDENCE_PROMOTION = DISABLED`; `SELECTIVE_TEST_AUTHORITY = DISABLED`.
-The next permitted milestone remains AESE-S2 only after this gate is
-reviewed; its first action must be a failure-focused analysis of the unstable
-and unresolved decision cells, not a larger campaign or threshold change.
+The next permitted milestone is AESE-S2 after the S1.1 gate review; no larger
+campaign or threshold change is authorized by this result.
+
+**AESE-S1.1a finite-look and multiplicity closure (2026-09-03):** commit
+`dc162dd5c0b13e5746f769e3ef6144a7e6deca72` closes the fixed-time Wilson peek
+defect without adding a statistics framework. The canonical campaign looks
+are preregistered as `30/60/90/120`; the default harness allocates one
+`alpha_total=0.05` budget per configuration cell by equal Bonferroni control
+over finite looks × 4 metrics × 3 scenarios. The artifact records
+`error_control_scope=PER_CONFIGURATION_CELL`, `family_size=48` bound events,
+`look_count`, `metric_count`, `scenario_count`, `alpha_total`, the allocation
+method, per-look allocations and per-bound alpha. Custom small test campaigns
+use no more than four deterministic looks and record their actual schedule.
+Unknown relation/statistical decisions fail closed as `INCONCLUSIVE`.
+`MIN_DECISION_RESOLUTION=0.50` remains a preregistered policy threshold whose
+purpose is only to prevent always-inconclusive protocols; optimality is
+`NOT_PROVEN` and belongs to S6 trade-off analysis.
+
+S1.1a evidence is implementation/test evidence, not a new calibration PASS:
+the statistical/diagnostic tests pass **12/12**, the affected AESE/registry
+set passes **31/31**, and the full Python suite passes **573/573** (one
+pytest configuration warning). Isolated Ruff passes on the changed Python
+files. The current authority state remains
+`AESE_MODE=SHADOW`, legacy authority active, selection/skipping/promotion
+disabled, and release disabled.
+
+**Failure-focused diagnostic (bounded, no new campaign):**
+`scripts/aese_failure_diagnostic.py` replays only retained seeds from the
+prior S1.1 artifact and writes the ignored artifact
+`artifacts/evidence/aese-failure-diagnostic-s1-1a.json`. Its source artifact
+hash is `681f8966f41e38a504021e9b477119f373e1942da5f49d87bfc980ea9c5bed05`,
+diagnostic hash is
+`ef997fb95e4bef4ba53dc8375bbf59abff2989035022f15a7e9589a67529a995`, and
+reuse status is `RECOMPUTED_FROM_RETAINED_SEEDS`. It covers 162 failed
+in-domain scenario-cells (4,860 replayed trials) and records status, lag-1,
+drift, CI width, precision ratio, decision resolution, observations consumed,
+failure reasons and classified causes. Aggregate statuses are
+`UNSTABLE=4,335`, `FAIL=299`, `PASS=173`, and
+`INSUFFICIENT_EVIDENCE=53`; decision resolution is `472/4,860`, with
+`4,388` inconclusive decisions. The dominant recorded classes are
+`STABILITY_DETECTOR=5,887`, `BASELINE_SEMANTICS=4,247`, and
+`PRECISION_REQUIREMENT=3,420` reason occurrences. This identifies the next
+failure-analysis work; it does not justify changing thresholds or relabeling
+the calibration.
+
+`S1_1A_META_VALIDITY = COMPLETE` for the implementation gate, while
+`S1_1A_CALIBRATION_RESULT = INSUFFICIENT_EVIDENCE`. S2 may proceed logically
+with risk-prioritized mapping, but unknown surfaces must widen conservatively;
+no selector may use this diagnostic or the calibration artifact to skip an
+authoritative test.
