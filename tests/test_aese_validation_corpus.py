@@ -4,7 +4,13 @@ import json
 
 import pytest
 
-from scripts.aese_validation_corpus import DEFAULT_CORPUS_OUTPUT, DEFAULT_COST_OUTPUT, build_cost_measurement, build_corpus
+from scripts.aese_validation_corpus import (
+    DEFAULT_CORPUS_OUTPUT,
+    DEFAULT_COST_OUTPUT,
+    build_cost_measurement,
+    build_corpus,
+    build_paired_cost_measurement,
+)
 
 
 @pytest.fixture(scope="module")
@@ -45,8 +51,24 @@ def test_cost_ledger_withholds_net_savings_without_paired_measurement(corpus: di
     assert cost["planner_cost_seconds"]["sample_count"] == 4
 
 
-def test_recorded_cost_ledger_is_explicitly_non_claimable() -> None:
+def test_recorded_cost_ledger_retains_paired_exploratory_measurement() -> None:
     cost = json.loads(DEFAULT_COST_OUTPUT.read_text(encoding="utf-8"))
-    assert cost["status"] == "INSUFFICIENT_EVIDENCE"
-    assert cost["paired_workload"] is False
-    assert cost["net_saving_seconds"] is None
+    assert cost["status"] == "MEASURED_EXPLORATORY_PAIRED"
+    assert cost["paired_workload"] is True
+    assert cost["sample_pair_count"] == 3
+    assert cost["net_saving_seconds"]["median"] > 0
+    assert cost["savings_claim"] == "LOCAL_EXPLORATORY_ONLY"
+
+
+def test_paired_cost_measurement_computes_net_saving_without_generalizing() -> None:
+    cost = build_paired_cost_measurement(
+        [98.718078, 57.168086, 71.778817],
+        [3.203918, 1.444539, 1.521086],
+        [8.139848, 6.937248, 6.625486],
+    )
+    assert cost["status"] == "MEASURED_EXPLORATORY_PAIRED"
+    assert cost["paired_workload"] is True
+    assert cost["workload"]["legacy_test_count"] == 456
+    assert cost["workload"]["selected_test_count"] == 14
+    assert cost["net_saving_seconds"]["median"] > 0
+    assert cost["savings_claim"] == "LOCAL_EXPLORATORY_ONLY"
