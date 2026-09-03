@@ -4565,6 +4565,8 @@ feature-enabled boundary command
 `cargo test -p aegis-nerve --lib --no-default-features --features
 python-extension ffi_smoke_checks` compiles the extension configuration and
 runs `tests::tests::ffi_smoke_checks` with **1/1** pass (447 tests filtered).
+The same feature-enabled configuration then runs the complete library suite
+with **448/448** pass in **49.60 s**.
 The initial `--exact` probe matched no test and is intentionally not counted
 as evidence. This verifies the current feature-gated smoke path only; it does
 not prove FFI-wide lifetime/allocation/soak safety, cross-platform behavior,
