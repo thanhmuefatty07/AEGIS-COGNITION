@@ -1,0 +1,234 @@
+{
+  "artifact_hash": "3f857eb27ece8cbdc626ccb469cc919d7bde80b5055f0b9df1823a1092e8f477",
+  "development_corpus": [
+    {
+      "case_id": "DEV-GT96-GOOD",
+      "changed_paths": [
+        "core/rust/src/gt96.rs"
+      ],
+      "closure_status": "EXACT_CONTRACT_CLOSURE_SHADOW",
+      "critical": false,
+      "critical_false_negative_status": "COMPLETE_ZERO",
+      "decision_state_counts": {
+        "WIDENED_UNKNOWN": 0,
+        "WOULD_REUSE": 0,
+        "WOULD_RUN": 1,
+        "WOULD_SKIP": 130
+      },
+      "defect_caught": null,
+      "label": "KNOWN_GOOD",
+      "mutation": "NONE",
+      "plan_widened": false,
+      "target_paths": [
+        "core/rust/src/gt96.rs"
+      ],
+      "target_paths_missing": [],
+      "target_paths_reached": [
+        "core/rust/src/gt96.rs"
+      ]
+    },
+    {
+      "case_id": "DEV-UNKNOWN-BAD",
+      "changed_paths": [
+        "plugins/unknown_dynamic_loader.py"
+      ],
+      "closure_status": "WIDENED_ALL_RETAINED",
+      "critical": true,
+      "critical_false_negative_status": "COMPLETE_ZERO",
+      "decision_state_counts": {
+        "WIDENED_UNKNOWN": 131,
+        "WOULD_REUSE": 0,
+        "WOULD_RUN": 0,
+        "WOULD_SKIP": 0
+      },
+      "defect_caught": true,
+      "label": "KNOWN_BAD",
+      "mutation": "UNKNOWN_DEPENDENCY_MUTATION",
+      "plan_widened": true,
+      "target_paths": [
+        "core/rust/src/gt96.rs"
+      ],
+      "target_paths_missing": [],
+      "target_paths_reached": [
+        "core/rust/src/gt96.rs"
+      ]
+    },
+    {
+      "case_id": "DEV-CONFIG-BAD",
+      "changed_paths": [
+        "pyproject.toml"
+      ],
+      "closure_status": "EXACT_CONTRACT_CLOSURE_SHADOW",
+      "critical": true,
+      "critical_false_negative_status": "COMPLETE_ZERO",
+      "decision_state_counts": {
+        "WIDENED_UNKNOWN": 0,
+        "WOULD_REUSE": 0,
+        "WOULD_RUN": 3,
+        "WOULD_SKIP": 128
+      },
+      "defect_caught": true,
+      "label": "KNOWN_BAD",
+      "mutation": "CONFIG_MUTATION",
+      "plan_widened": false,
+      "target_paths": [
+        "tests/test_aese_primitives.py"
+      ],
+      "target_paths_missing": [],
+      "target_paths_reached": [
+        "tests/test_aese_primitives.py"
+      ]
+    },
+    {
+      "case_id": "DEV-OOD-PLUGIN",
+      "changed_paths": [
+        "plugins/never_seen.py"
+      ],
+      "closure_status": "WIDENED_ALL_RETAINED",
+      "critical": false,
+      "critical_false_negative_status": "COMPLETE_ZERO",
+      "decision_state_counts": {
+        "WIDENED_UNKNOWN": 131,
+        "WOULD_REUSE": 0,
+        "WOULD_RUN": 0,
+        "WOULD_SKIP": 0
+      },
+      "defect_caught": null,
+      "label": "OOD",
+      "mutation": "DYNAMIC_PLUGIN_EDGE",
+      "plan_widened": true,
+      "target_paths": [],
+      "target_paths_missing": [],
+      "target_paths_reached": []
+    }
+  ],
+  "final_validation_corpus": [
+    {
+      "case_id": "VAL-REPLAY-BAD",
+      "changed_paths": [
+        "core/rust/src/replay.rs"
+      ],
+      "closure_status": "EXACT_CONTRACT_CLOSURE_SHADOW",
+      "critical": true,
+      "critical_false_negative_status": "COMPLETE_ZERO",
+      "decision_state_counts": {
+        "WIDENED_UNKNOWN": 0,
+        "WOULD_REUSE": 0,
+        "WOULD_RUN": 1,
+        "WOULD_SKIP": 130
+      },
+      "defect_caught": true,
+      "label": "KNOWN_BAD",
+      "mutation": "SERIALIZATION_SCHEMA_MUTATION",
+      "plan_widened": false,
+      "target_paths": [
+        "core/rust/src/replay.rs"
+      ],
+      "target_paths_missing": [],
+      "target_paths_reached": [
+        "core/rust/src/replay.rs"
+      ]
+    },
+    {
+      "case_id": "VAL-FFI-BAD",
+      "changed_paths": [
+        "aegis_cognition/aese.py"
+      ],
+      "closure_status": "EXACT_CONTRACT_CLOSURE_SHADOW",
+      "critical": true,
+      "critical_false_negative_status": "COMPLETE_ZERO",
+      "decision_state_counts": {
+        "WIDENED_UNKNOWN": 0,
+        "WOULD_REUSE": 0,
+        "WOULD_RUN": 3,
+        "WOULD_SKIP": 128
+      },
+      "defect_caught": true,
+      "label": "KNOWN_BAD",
+      "mutation": "CROSS_LANGUAGE_FFI_FIELD_MUTATION",
+      "plan_widened": false,
+      "target_paths": [
+        "core/rust/src/ffi/eac.rs"
+      ],
+      "target_paths_missing": [],
+      "target_paths_reached": [
+        "core/rust/src/ffi/eac.rs"
+      ]
+    },
+    {
+      "case_id": "VAL-WORKFLOW-BAD",
+      "changed_paths": [
+        ".github/workflows/ci.yml"
+      ],
+      "closure_status": "EXACT_CONTRACT_CLOSURE_SHADOW",
+      "critical": true,
+      "critical_false_negative_status": "COMPLETE_ZERO",
+      "decision_state_counts": {
+        "WIDENED_UNKNOWN": 0,
+        "WOULD_REUSE": 0,
+        "WOULD_RUN": 11,
+        "WOULD_SKIP": 120
+      },
+      "defect_caught": true,
+      "label": "KNOWN_BAD",
+      "mutation": "WORKFLOW_MATRIX_MUTATION",
+      "plan_widened": false,
+      "target_paths": [
+        "core/rust/src/gt96.rs"
+      ],
+      "target_paths_missing": [],
+      "target_paths_reached": [
+        "core/rust/src/gt96.rs"
+      ]
+    },
+    {
+      "case_id": "VAL-AMBIGUOUS-DYNAMIC",
+      "changed_paths": [
+        "scripts/e2e_release_gate.py"
+      ],
+      "closure_status": "WIDENED_ALL_RETAINED",
+      "critical": false,
+      "critical_false_negative_status": "COMPLETE_ZERO",
+      "decision_state_counts": {
+        "WIDENED_UNKNOWN": 131,
+        "WOULD_REUSE": 0,
+        "WOULD_RUN": 0,
+        "WOULD_SKIP": 0
+      },
+      "defect_caught": null,
+      "label": "AMBIGUOUS",
+      "mutation": "DYNAMIC_IMPORT_AMBIGUITY",
+      "plan_widened": true,
+      "target_paths": [],
+      "target_paths_missing": [],
+      "target_paths_reached": []
+    }
+  ],
+  "limitations": [
+    "Corpus cases are deterministic planning mutations; no production or external tests are inferred.",
+    "Critical-miss tolerance is zero, while noncritical policy remains explicit and exploratory.",
+    "A larger independently sourced corpus is required before any production non-inferiority claim."
+  ],
+  "metrics": {
+    "critical_defects": 3,
+    "critical_defects_caught": 3,
+    "critical_defects_missed": 0,
+    "critical_miss_case_ids": [],
+    "false_alarm_case_ids": [],
+    "noncritical_defects": 0,
+    "noncritical_defects_caught": 0,
+    "noncritical_defects_missed": 0,
+    "noncritical_miss_case_ids": [],
+    "ood_events": 0,
+    "widen_events": 1
+  },
+  "mode": "SHADOW",
+  "schema": "aese-validation-corpus-v1",
+  "split_policy": {
+    "ambiguous_not_forced_into_good_or_bad": true,
+    "final_corpus_not_used_for_tuning": true,
+    "final_held_out": true,
+    "planner_tuning_uses": "DEVELOPMENT_ONLY"
+  },
+  "status": "COMPLETE"
+}

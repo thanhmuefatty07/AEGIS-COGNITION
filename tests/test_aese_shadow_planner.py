@@ -23,7 +23,7 @@ def test_unknown_closure_widens_every_item_and_has_no_skip() -> None:
     assert plan["plan_widened"] is True
     assert plan["decision_states"] == ["WIDENED_UNKNOWN"]
     assert plan["would_skip_item_ids"] == []
-    assert len(plan["would_run_item_ids"]) == 129
+    assert len(plan["would_run_item_ids"]) == 131
 
 
 def test_external_workflow_anchor_is_deferred_without_authority_change() -> None:

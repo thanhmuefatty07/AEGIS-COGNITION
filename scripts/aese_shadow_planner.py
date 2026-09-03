@@ -173,6 +173,7 @@ def build_shadow_plan(
         "changed_paths": normalized_paths,
         "closure_status": closure["closure_status"],
         "closure_hash": closure["reproducible_hash"],
+        "closure_paths": closure["closure_paths"],
         "plan_widened": widened,
         "unknown_dependency_policy": _closure.UNKNOWN_POLICY,
         "decisions": decisions,

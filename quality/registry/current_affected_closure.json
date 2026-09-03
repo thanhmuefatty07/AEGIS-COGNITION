@@ -2,7 +2,7 @@
   "affected_test_paths": [
     "core/rust/src/gt96.rs"
   ],
-  "artifact_hash": "ba8b764540ccb6e51ed6a3ea3d76e5260a240d86b54bf042008e9a0a555f03e3",
+  "artifact_hash": "5341f5d12642159b0bc138e55b85fa304976c983c01ad593c13e4daa882d67cf",
   "changed_paths": [
     "core/rust/src/gt96.rs"
   ],
@@ -126,6 +126,7 @@
     "scripts/aese_s2_mapping.py",
     "scripts/aese_shadow_planner.py",
     "scripts/aese_statistical_calibration.py",
+    "scripts/aese_validation_corpus.py",
     "scripts/architecture_fitness.py",
     "scripts/attestation_status.py",
     "scripts/benchmark_gate.py",
@@ -187,6 +188,7 @@
     "tests/test_aese_s2_mapping.py",
     "tests/test_aese_shadow_planner.py",
     "tests/test_aese_statistical_calibration.py",
+    "tests/test_aese_validation_corpus.py",
     "tests/test_constitution_audit_gates.py",
     "tests/test_document_consistency_gate.py",
     "tests/test_evidence_consistency_gate.py",
@@ -203,7 +205,7 @@
   "phase": "PHASE_3_DETERMINISTIC_AFFECTED_CLOSURE",
   "plan_widened": false,
   "provenance": {
-    "claim_graph_source_tree_sha256": "ccc0983819d7682ba08cc7f07265ae3fedbf6705d733f6d20a4aaf3f30dfe2be",
+    "claim_graph_source_tree_sha256": "983ec6db477a860b87bf853aa305c25056024e2ce031a8bb579fb1bddf7726c4",
     "claim_scope": "LOCAL_CHECKOUT_ONLY",
     "edge_digest": "2b47a62553191c763ba1542f9191284cc583f47c9ec205130a6d14530c64e65b",
     "environment": {
@@ -215,14 +217,14 @@
       "release": "10"
     },
     "evidence_class": "PLANNING_ONLY",
-    "inventory_source_tree_sha256": "e2ef21bae2bd0c2f60bcfcfae3c88ff371626a68473a105205f336efbc4470b0",
-    "mapping_artifact_hash": "cf562ae9c6f1fb59efa4553dd775396f39f773aa862fa9f208f89f53a92181d7",
+    "inventory_source_tree_sha256": "0247373bb40d284725eb663437b68d31b8677902458c7939050ce024b1ce4568",
+    "mapping_artifact_hash": "d34602ff7fc777da60462722aa9e51cbcbd92e5d07a97391d90e24d1ac319884",
     "origin_main_sha": "ecace057f8ce8cb6e91fbb690a6fcc5a4741ab03",
     "promotion": "DISABLED_IN_SHADOW",
-    "source_sha": "ecace057f8ce8cb6e91fbb690a6fcc5a4741ab03",
+    "source_sha": "92fb1b749b239e1c783211e2b5707589cde199c4",
     "validator": "scripts/aese_affected_closure.py"
   },
-  "reproducible_hash": "c6105ef1cd781a8351122702e1734a7387daafa5498da9833a5ef767812d8608",
+  "reproducible_hash": "3f2dcc11d167bf8b7d00cbe27962f62eef8f5bcf20ae341faf4bd1c7d3c0985d",
   "schema": "aese-affected-closure-v1",
   "shadow_selection": {
     "authority": "RETAINED_LEGACY_AUTHORITY",
@@ -233,8 +235,8 @@
     ],
     "would_skip_item_ids": []
   },
-  "source_head": "ecace057f8ce8cb6e91fbb690a6fcc5a4741ab03",
-  "source_tree_sha256": "ccc0983819d7682ba08cc7f07265ae3fedbf6705d733f6d20a4aaf3f30dfe2be",
+  "source_head": "92fb1b749b239e1c783211e2b5707589cde199c4",
+  "source_tree_sha256": "983ec6db477a860b87bf853aa305c25056024e2ce031a8bb579fb1bddf7726c4",
   "status": "AFFECTED_CLOSURE_PLAN_ONLY_SELECTION_DISABLED",
   "traversed_edges": [
     {
