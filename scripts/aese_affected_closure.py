@@ -201,6 +201,72 @@ def _path_set(inventory: dict[str, object], graph: dict[str, object], edges: lis
     return known, retained
 
 
+def _surface_dependency_snapshot(
+    inventory: dict[str, object], mapping: dict[str, object]
+) -> tuple[dict[str, list[str]], set[str], set[str], list[str]]:
+    """Return path-to-surfaces plus mapped/unknown IDs from the S2 report.
+
+    Inventory membership only establishes that a surface is retained.  A
+    surface is dependency-mapped only when its S2 record is verified; every
+    other inventory ID is conservatively unknown, including stale or omitted
+    entries in the mapping artifact.
+    """
+
+    path_to_ids: dict[str, list[str]] = {}
+    inventory_ids: set[str] = set()
+    for raw_item in inventory.get("items", []):
+        if type(raw_item) is not dict:
+            continue
+        item = cast(dict[str, object], raw_item)
+        surface_id = str(item.get("stable_id", ""))
+        path = _normalize(str(item.get("path", "")))
+        if not surface_id or not path:
+            continue
+        inventory_ids.add(surface_id)
+        path_to_ids.setdefault(path, []).append(surface_id)
+
+    mapped_ids: set[str] = set()
+    records = mapping.get("records", [])
+    if type(records) is list:
+        for raw_record in records:
+            if type(raw_record) is not dict:
+                continue
+            record = cast(dict[str, object], raw_record)
+            surface_id = str(record.get("surface_id", ""))
+            if surface_id in inventory_ids and record.get("verification_status") == "VERIFIED":
+                mapped_ids.add(surface_id)
+
+    declared_unknown = {
+        str(value) for value in mapping.get("unknown_surface_ids", []) if isinstance(value, str)
+    }
+    unknown_ids = (inventory_ids - mapped_ids) | (declared_unknown & inventory_ids)
+    unknown_paths = sorted(path for path, ids in path_to_ids.items() if set(ids) & unknown_ids)
+    for ids in path_to_ids.values():
+        ids.sort()
+    return path_to_ids, mapped_ids, unknown_ids, unknown_paths
+
+
+def _path_dependency_states(
+    paths: list[str],
+    path_to_ids: dict[str, list[str]],
+    unknown_ids: set[str],
+    dynamic_paths: set[str],
+) -> dict[str, str]:
+    states: dict[str, str] = {}
+    for path in paths:
+        if path in dynamic_paths:
+            states[path] = "DYNAMIC"
+            continue
+        surface_ids = set(path_to_ids.get(path, []))
+        if not surface_ids:
+            states[path] = "NOT_IN_INVENTORY"
+        elif surface_ids & unknown_ids:
+            states[path] = "PARTIALLY_MAPPED" if surface_ids - unknown_ids else "UNMAPPED"
+        else:
+            states[path] = "MAPPED"
+    return states
+
+
 def _dynamic_edge_paths(paths: list[str]) -> list[str]:
     dynamic: list[str] = []
     for path in paths:
@@ -244,7 +310,16 @@ def _critical_audit(mapping: dict[str, object], adjacency: dict[str, list[dict[s
     checked: list[str] = []
     false_negatives: list[dict[str, object]] = []
     if type(records) is not list:
-        return {"status": "NOT_EVALUATED_INVALID_MAPPING", "checked_records": [], "false_negatives": []}
+        return {
+            "status": "NOT_EVALUATED_INVALID_MAPPING",
+            "structural_critical_reachability_status": "NOT_EVALUATED_INVALID_MAPPING",
+            "checked_mapping_record_count": 0,
+            "checked_surface_ids": [],
+            "scope": "DECLARED_CRITICAL_HIGH_RECORDS",
+            "unknown_surfaces_excluded_from_structural_audit": True,
+            "unknown_surfaces_fail_closed_by_widen": True,
+            "false_negatives": [],
+        }
     for raw_record in records:
         if type(raw_record) is not dict:
             continue
@@ -265,9 +340,17 @@ def _critical_audit(mapping: dict[str, object], adjacency: dict[str, list[dict[s
         missing = sorted(set(test_paths) - reachable)
         if missing:
             false_negatives.append({"surface_id": surface_id, "missing_test_paths": missing})
+    status = "COMPLETE_ZERO_MAPPED_SCOPE" if not false_negatives else "CRITICAL_FALSE_NEGATIVE_MAPPED_SCOPE"
     return {
-        "status": "COMPLETE_ZERO" if not false_negatives else "CRITICAL_FALSE_NEGATIVE",
-        "checked_records": sorted(checked),
+        # ``status`` remains as a compatibility alias; the scoped field is the
+        # authoritative name and cannot be read as an observed FN result.
+        "status": status,
+        "structural_critical_reachability_status": status,
+        "checked_mapping_record_count": len(checked),
+        "checked_surface_ids": sorted(checked),
+        "scope": "DECLARED_CRITICAL_HIGH_RECORDS",
+        "unknown_surfaces_excluded_from_structural_audit": True,
+        "unknown_surfaces_fail_closed_by_widen": True,
         "false_negatives": false_negatives,
     }
 
@@ -278,12 +361,34 @@ def build_closure(changed_paths: list[str] | tuple[str, ...] = (), mapping_path:
     mapping = _load_json(mapping_path)
     edges = _declared_edges(mapping)
     known_paths, retained_paths = _path_set(inventory, graph, edges)
+    path_to_ids, _mapped_surface_ids, unknown_surface_ids, unknown_surface_paths = _surface_dependency_snapshot(
+        inventory, mapping
+    )
     paths = sorted({_normalize(path) for path in changed_paths if path.strip()})
-    unknown_paths = sorted(path for path in paths if path not in known_paths)
     dynamic_paths = _dynamic_edge_paths(paths)
+    path_dependency_states = _path_dependency_states(
+        paths, path_to_ids, unknown_surface_ids, set(dynamic_paths)
+    )
+    unknown_repository_paths = sorted(path for path in paths if path not in path_to_ids)
+    unknown_paths = unknown_repository_paths
+    changed_unmapped_surface_ids = sorted(
+        surface_id
+        for path in paths
+        if path_dependency_states.get(path) in {"UNMAPPED", "PARTIALLY_MAPPED"}
+        for surface_id in path_to_ids.get(path, [])
+        if surface_id in unknown_surface_ids
+    )
+    changed_unmapped_surface_paths = sorted(
+        path for path, state in path_dependency_states.items() if state in {"UNMAPPED", "PARTIALLY_MAPPED"}
+    )
     adjacency = _adjacency(edges)
     reached_paths, traversed_edges = _reach(paths, adjacency)
-    widened = bool(unknown_paths or dynamic_paths or not paths)
+    widened = bool(
+        unknown_repository_paths
+        or dynamic_paths
+        or changed_unmapped_surface_paths
+        or not paths
+    )
     if widened:
         closure_paths = sorted(retained_paths)
         traversed_edges = []
@@ -308,6 +413,12 @@ def build_closure(changed_paths: list[str] | tuple[str, ...] = (), mapping_path:
         "changed_paths": paths,
         "known_paths": sorted(known_paths),
         "unknown_paths": unknown_paths,
+        "unknown_repository_paths": unknown_repository_paths,
+        "unknown_surface_ids": sorted(unknown_surface_ids),
+        "unknown_surface_paths": unknown_surface_paths,
+        "changed_unmapped_surface_ids": changed_unmapped_surface_ids,
+        "changed_unmapped_surface_paths": changed_unmapped_surface_paths,
+        "path_dependency_states": path_dependency_states,
         "dynamic_edge_paths": dynamic_paths,
         "closure_status": closure_status,
         "unknown_dependency_policy": UNKNOWN_POLICY,
@@ -350,8 +461,8 @@ def build_closure(changed_paths: list[str] | tuple[str, ...] = (), mapping_path:
         },
         "limitations": [
             "This is a deterministic shadow closure; it never controls execution.",
-            "Unknown paths and dynamic edges widen to every retained inventory item.",
-            "Critical false-negative audit covers only explicitly mapped S2 critical records; unknown surfaces remain widened.",
+            "Unknown repository paths, unmapped inventory surfaces and dynamic edges widen to every retained inventory item.",
+            "Structural critical reachability covers only declared mapped records; observed test false negatives are not measured here.",
         ],
     }
     payload["reproducible_hash"] = _stable_hash(
@@ -387,10 +498,17 @@ def validate_closure(actual: dict[str, object], expected: dict[str, object]) -> 
     recomputed_hash = _stable_hash({key: value for key, value in actual.items() if key != "artifact_hash"})
     if recorded_hash != recomputed_hash:
         errors.append("artifact_hash is not self-consistent")
-    if actual.get("critical_audit", {}).get("status") != "COMPLETE_ZERO":  # type: ignore[union-attr]
-        errors.append("critical false-negative audit is not complete")
+    critical_audit = actual.get("critical_audit")
+    if not isinstance(critical_audit, dict):
+        errors.append("structural critical reachability audit is missing")
+    elif critical_audit.get("structural_critical_reachability_status") != "COMPLETE_ZERO_MAPPED_SCOPE":
+        errors.append("structural critical reachability audit is not complete for mapped scope")
     if actual.get("plan_widened") and actual.get("closure_status") != "WIDENED_ALL_RETAINED":
         errors.append("widened plan is not explicitly widened")
+    if actual.get("changed_unmapped_surface_paths") and actual.get("plan_widened") is not True:
+        errors.append("changed unmapped surfaces must widen")
+    if actual.get("unknown_repository_paths") and actual.get("plan_widened") is not True:
+        errors.append("unknown repository paths must widen")
     return sorted(set(errors))
 
 

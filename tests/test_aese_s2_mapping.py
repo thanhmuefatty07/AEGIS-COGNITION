@@ -8,7 +8,11 @@ from scripts.aese_s2_mapping import DEFAULT_INVENTORY, DEFAULT_OUTPUT, DEFAULT_G
 
 def test_s2_mapping_closes_critical_and_high_selection_surfaces() -> None:
     report = build_mapping()
-    assert report["mapping_status"] == "COMPLETE"
+    assert report["mapping_status"] == "S2_FAIL_CLOSED_MAPPING_COMPLETE"
+    assert report["all_declared_critical_mapped"] is True
+    assert report["all_declared_high_selection_relevant_mapped"] is True
+    assert report["critical_mapping_scope"] == "DECLARED_MAPPED_RECORDS_ONLY"
+    assert report["unknown_surfaces_may_contain_unclassified_criticality"] is True
     assert report["all_critical_mapped"] is True
     assert report["all_high_selection_relevant_mapped"] is True
     assert report["no_fake_mapping"] is True
@@ -20,7 +24,7 @@ def test_s2_mapping_closes_critical_and_high_selection_surfaces() -> None:
 def test_recorded_s2_mapping_has_no_content_drift() -> None:
     actual = json.loads(DEFAULT_OUTPUT.read_text(encoding="utf-8"))
     expected = build_mapping()
-    for key in ("schema", "phase", "mode", "selection_authority", "mapping_status", "all_critical_mapped", "all_high_selection_relevant_mapped", "unknown_surface_ids", "records", "errors_by_surface"):
+    for key in ("schema", "phase", "mode", "selection_authority", "mapping_status", "all_declared_critical_mapped", "all_declared_high_selection_relevant_mapped", "unknown_surface_ids", "unknown_surface_paths", "records", "errors_by_surface"):
         assert actual[key] == expected[key]
 
 
