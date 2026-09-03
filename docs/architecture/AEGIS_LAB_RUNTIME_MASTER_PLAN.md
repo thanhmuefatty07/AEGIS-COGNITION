@@ -4571,3 +4571,9 @@ The initial `--exact` probe matched no test and is intentionally not counted
 as evidence. This verifies the current feature-gated smoke path only; it does
 not prove FFI-wide lifetime/allocation/soak safety, cross-platform behavior,
 or release authority.
+
+**NV-013 toolchain-availability classification (2026-09-03):** the current
+Windows MSVC toolchain reports that the `miri` component is unavailable, and
+`clang` is not installed; no local Miri or AddressSanitizer run was therefore
+attempted or claimed. `NV-013` remains `NOT VERIFIED` and still requires a
+supported hosted memory/undefined-behavior lane with retained logs.
