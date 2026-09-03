@@ -3261,6 +3261,10 @@ class AdaptiveController:
         )
 
     def next(self, run: LabRun) -> AdaptiveDecision | None:
+        if type(run) is not LabRun:
+            raise TypeError("adaptive controller requires the canonical LabRun type")
+        if run.state in {"completed", "blocked", "aborted"}:
+            return None
         if self.step >= self.max_steps or self.exploration_remaining <= 0:
             return None
         potential = self.progress_potential(run)

@@ -4878,6 +4878,16 @@ def test_adaptive_controller_plateau_detection_hashes_content_not_only_counts() 
     assert controller.observe(run)
 
 
+def test_adaptive_controller_does_not_admit_terminal_or_forged_runs() -> None:
+    run = LabRun("terminal controller")
+    run.abort()
+    controller = AdaptiveController(max_steps=2, token_budget=100, finalization_reserve=20, recovery_reserve=10)
+
+    assert controller.next(run) is None
+    with pytest.raises(TypeError, match="canonical LabRun"):
+        controller.next(object())  # type: ignore[arg-type]
+
+
 @pytest.mark.parametrize("invalid", (True, False, 1.0, "2", 0, -1, None))
 def test_retry_policy_rejects_lossy_or_non_positive_values(invalid: object) -> None:
     with pytest.raises(ValueError, match="retry policy"):
