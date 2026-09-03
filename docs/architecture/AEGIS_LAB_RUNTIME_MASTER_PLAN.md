@@ -3,7 +3,7 @@ document_id: AEGIS-LAB-RUNTIME-MASTER-PLAN
 document_type: canonical_current_implementation_plan
 status: IN_EXECUTION
 authority: derived_from_checkout_and_evidence_manifest
-applies_to_commit: 0f6b1aaaf684057cbabe5db931bcec7d20b47a7d
+applies_to_commit: 41f614f35390a3d90335c289c5d12e3bdd537de0
 created_at: 2026-08-26
 last_verified_at: 2026-09-03
 supersedes: browser-native-proposal-and-cumulative-harness-roadmap-as-execution-authority
@@ -169,11 +169,13 @@ hiện tại và không được dùng để chứng minh checkout mới:
   structural/presence checks, không phải proof rằng Lab behavior hoạt động.
 
 Checkout implementation hiện hành cho migration node này là
-`0f6b1aaaf684057cbabe5db931bcec7d20b47a7d` (AESE measurement-result semantic
-validation), với worktree sạch và `origin/main` parity được xác nhận sau push.
-Focused AESE regression trên CPython 3.11 là **76 passed**; full Python
-regression chạy **554 passed** với **3 expected registry-drift failures** trước
-khi registry được tái tạo, sau đó inventory và claim-graph `--check` đều pass.
+`41f614f35390a3d90335c289c5d12e3bdd537de0` (AESE preflight root-schema
+validation; measurement-result semantic validation ở `0f6b1aa…`), với
+worktree sạch và `origin/main` parity được xác nhận sau push.
+Focused AESE/preflight regression trên CPython 3.11 là **76 + 9 passed**;
+full Python regression trước migration preflight gần nhất đã chạy **554
+passed** với **3 expected registry-drift failures** trước khi registry được
+tái tạo, sau đó inventory và claim-graph `--check` đều pass.
 Latest retained Rust no-default-features library evidence là **456/456** với
 fmt/check/clippy pass; Python-only diff này không làm thay đổi Rust surface.
 Registry AESE hiện có **119** inventoried items, graph **46 claims / 92
@@ -4754,3 +4756,15 @@ inventory and claim graph were regenerated and both `--check` gates pass with
 of locally reconstructed measurement results only; it does not calibrate
 statistics, provide independent validators, enable selective promotion or
 close external/release obligations.
+
+**AESE preflight schema-boundary continuation (2026-09-03):** implementation
+commit `41f614f35390a3d90335c289c5d12e3bdd537de0` hardens
+`validate_preflight` so an archived shadow plan must be a canonical dictionary
+with the exact root schema; extra fields that could introduce an unapproved
+skip or policy override, and non-dictionary payloads, are rejected before any
+comparison. The focused preflight suite passes **9/9** and isolated compatible
+Ruff passes with the intentional `E721` canonical-type rule. Inventory,
+claim-graph and document-consistency gates remain passing at 119 retained
+items and 110 unmapped surfaces. This closes local preflight schema integrity
+only; it does not execute or promote a plan, prove selective-test
+non-inferiority, or close hosted/release obligations.
