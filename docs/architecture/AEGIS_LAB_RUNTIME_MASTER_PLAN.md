@@ -3,7 +3,7 @@ document_id: AEGIS-LAB-RUNTIME-MASTER-PLAN
 document_type: canonical_current_implementation_plan
 status: IN_EXECUTION
 authority: derived_from_checkout_and_evidence_manifest
-applies_to_commit: 00029d8179d8d5b44e962c5a1ab9b442fc5161e5
+applies_to_commit: 8473b1e511496eb6d8b4078626b182a8d09df47f
 created_at: 2026-08-26
 last_verified_at: 2026-09-03
 supersedes: browser-native-proposal-and-cumulative-harness-roadmap-as-execution-authority
@@ -4417,6 +4417,20 @@ deprecation warnings treated as errors; Ruff and Pyright pass. This closes a
 local numerical-integrity boundary only; it does not calibrate error coverage
 under arbitrary dependence, prove model validity, or enable selective testing
 or release promotion.
+
+**AESE finite-feature/prediction boundary continuation (2026-09-03):**
+implementation commit `8473b1e511496eb6d8b4078626b182a8d09df47f` makes
+`_is_finite` tolerate conversion overflow and rejects integer capability or
+working-set values that cannot become finite numeric features. The
+cross-hardware predictor now refuses a model whose finite inputs produce a
+non-finite estimate, interval, distance or half-width, returning
+`INSUFFICIENT_EVIDENCE` with `numeric_overflow` instead of
+`PREDICTED_IN_DOMAIN`. The focused AESE suite passes **51/51**, the full
+Python regression passes **531/531** with deprecation warnings treated as
+errors, and Ruff/Pyright pass. This closes local numeric-input/output
+integrity only; it does not prove model calibration, OOD domain validity,
+independent replication, physical energy measurement, external anchors or
+release authority.
 
 Không được gọi toàn hệ thống “production-ready” khi bất kỳ gate bắt buộc nào
 ở trên còn `OPEN_*`, `BLOCKED_*`, `UNKNOWN` hoặc chỉ có fixture/mock evidence.
