@@ -539,33 +539,54 @@ def evaluate_adaptive_measurement(
     if complete_count != len(analyzed):
         reasons.append("incomplete_final_block")
     values = analyzed[:complete_count]
-    block_means = [statistics.fmean(values[index : index + block_size]) for index in range(0, len(values), block_size)]
-    block_count = len(block_means)
-    lag = _lag_one(block_means)
-    drift = _drift_ratio(block_means)
-    if (
-        lag is not None
-        and abs(lag) > max_lag1_autocorrelation
-    ):
-        reasons.append("autocorrelation_exceeds_bound")
-    if drift is not None and drift > max_drift_ratio:
-        reasons.append("drift_exceeds_bound")
-    estimate: float | None = statistics.fmean(block_means) if block_means else None
+    block_means: list[float] = []
+    estimate: float | None = None
     ci_low: float | None = None
     ci_high: float | None = None
     precision_ratio: float | None = None
-    if estimate is not None and block_count > 1:
-        standard_error = statistics.stdev(block_means) / math.sqrt(block_count)
-        # A caller may inspect a session after every appended observation.  A
-        # deterministic Bonferroni allocation keeps the family-wise error
-        # bound conservative under that allowed stopping rule.
-        checkpoint_alpha = alpha / max(maximum, 1)
-        margin = _normal_critical(checkpoint_alpha, block_count - 1) * standard_error
-        ci_low, ci_high = estimate - margin, estimate + margin
-        precision_ratio = margin / max(abs(estimate), 1e-12)
-    elif estimate is not None:
-        ci_low = ci_high = estimate
-        precision_ratio = 0.0
+    block_count = 0
+    lag: float | None = None
+    drift: float | None = None
+    try:
+        block_means = [
+            statistics.fmean(values[index : index + block_size])
+            for index in range(0, len(values), block_size)
+        ]
+        block_count = len(block_means)
+        lag = _lag_one(block_means)
+        drift = _drift_ratio(block_means)
+        if lag is not None and abs(lag) > max_lag1_autocorrelation:
+            reasons.append("autocorrelation_exceeds_bound")
+        if drift is not None and drift > max_drift_ratio:
+            reasons.append("drift_exceeds_bound")
+        estimate = statistics.fmean(block_means) if block_means else None
+        if estimate is not None and block_count > 1:
+            standard_error = statistics.stdev(block_means) / math.sqrt(block_count)
+            # A caller may inspect a session after every appended observation.
+            # A deterministic Bonferroni allocation keeps the family-wise error
+            # bound conservative under that allowed stopping rule.
+            checkpoint_alpha = alpha / max(maximum, 1)
+            margin = _normal_critical(checkpoint_alpha, block_count - 1) * standard_error
+            ci_low, ci_high = estimate - margin, estimate + margin
+            precision_ratio = margin / max(abs(estimate), 1e-12)
+        elif estimate is not None:
+            ci_low = ci_high = estimate
+            precision_ratio = 0.0
+        if any(
+            value is not None and not math.isfinite(float(value))
+            for value in (estimate, ci_low, ci_high, precision_ratio, lag, drift)
+        ):
+            raise OverflowError("derived measurement statistic is not finite")
+    except (OverflowError, ValueError, statistics.StatisticsError):
+        reasons.append("numeric_overflow")
+        block_means = []
+        block_count = 0
+        lag = None
+        drift = None
+        estimate = None
+        ci_low = None
+        ci_high = None
+        precision_ratio = None
     if baseline is not None and not _is_finite(baseline):
         reasons.append("baseline_invalid")
         baseline = None
@@ -583,6 +604,8 @@ def evaluate_adaptive_measurement(
             reasons.append("confidence_interval_does_not_clear_baseline")
     if "contamination_detected" in reasons or "non_finite_observation" in reasons:
         status = "CONTAMINATED"
+    elif "numeric_overflow" in reasons:
+        status = "INSUFFICIENT_EVIDENCE"
     elif "autocorrelation_exceeds_bound" in reasons or "drift_exceeds_bound" in reasons:
         status = "UNSTABLE"
     elif (
