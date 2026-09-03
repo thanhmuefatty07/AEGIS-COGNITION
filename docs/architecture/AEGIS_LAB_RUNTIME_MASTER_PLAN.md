@@ -3,7 +3,7 @@ document_id: AEGIS-LAB-RUNTIME-MASTER-PLAN
 document_type: canonical_current_implementation_plan
 status: IN_EXECUTION
 authority: derived_from_checkout_and_evidence_manifest
-applies_to_commit: 5c2b4e5382fe0fdcbc53294e3386daf2f5508cc3
+applies_to_commit: 00029d8179d8d5b44e962c5a1ab9b442fc5161e5
 created_at: 2026-08-26
 last_verified_at: 2026-09-03
 supersedes: browser-native-proposal-and-cumulative-harness-roadmap-as-execution-authority
@@ -4404,6 +4404,19 @@ Python regression passes **521/521**, and Ruff/Pyright pass for the changed
 surface. This establishes a local provenance contract only; it does not prove
 validator independence, calibrated statistics, external anchors, selective
 test non-inferiority or release authority.
+
+**AESE numeric-stability continuation (2026-09-03):** implementation commit
+`00029d8179d8d5b44e962c5a1ab9b442fc5161e5` makes the adaptive measurement
+evaluator fail closed when finite inputs overflow statistical reduction or
+produce non-finite derived values (`estimate`, interval, precision,
+autocorrelation or drift). Raw observations and their hash remain available,
+but the result is `INSUFFICIENT_EVIDENCE` with `numeric_overflow`; no malformed
+numeric result can reach `PASS` or `UNSTABLE` as if it were valid evidence.
+Two adversarial regressions pass, and the full Python suite is **529/529** with
+deprecation warnings treated as errors; Ruff and Pyright pass. This closes a
+local numerical-integrity boundary only; it does not calibrate error coverage
+under arbitrary dependence, prove model validity, or enable selective testing
+or release promotion.
 
 Không được gọi toàn hệ thống “production-ready” khi bất kỳ gate bắt buộc nào
 ở trên còn `OPEN_*`, `BLOCKED_*`, `UNKNOWN` hoặc chỉ có fixture/mock evidence.
