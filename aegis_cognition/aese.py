@@ -1242,7 +1242,11 @@ class SimulationEvidence:
     evidence_class: str = "SIMULATED"
 
     def validate(self) -> None:
-        if _invalid_string(self.simulation_id) or self.simulation_class not in SIMULATION_CLASSES:
+        if (
+            _invalid_string(self.simulation_id)
+            or type(self.simulation_class) is not str
+            or self.simulation_class not in SIMULATION_CLASSES
+        ):
             raise ValueError("simulation identity or class is invalid")
         if (
             _invalid_string(self.question)
@@ -1257,7 +1261,51 @@ class SimulationEvidence:
 
     def as_dict(self) -> dict[str, object]:
         self.validate()
-        return {"schema": f"{_SCHEMA_VERSION}-simulation", **asdict(self), "claimable_as_observed": False}
+        payload = asdict(self)
+        payload["inputs"] = list(self.inputs)
+        payload["outputs"] = list(self.outputs)
+        return {"schema": f"{_SCHEMA_VERSION}-simulation", **payload, "claimable_as_observed": False}
+
+    @classmethod
+    def from_dict(cls, value: object) -> SimulationEvidence:
+        """Rehydrate simulation evidence without permitting observation promotion."""
+
+        if cls is not SimulationEvidence:
+            raise TypeError("simulation evidence must use the canonical type")
+        if type(value) is not dict:
+            raise TypeError("simulation evidence must be a canonical dictionary")
+        payload = cast(dict[str, object], value)
+        expected_keys = {
+            "schema",
+            "simulation_id",
+            "simulation_class",
+            "question",
+            "inputs",
+            "outputs",
+            "status",
+            "evidence_class",
+            "claimable_as_observed",
+        }
+        if set(payload) != expected_keys:
+            raise ValueError("simulation evidence schema keys are invalid")
+        if payload["schema"] != f"{_SCHEMA_VERSION}-simulation":
+            raise ValueError("simulation evidence schema is invalid")
+        if payload["claimable_as_observed"] is not False:
+            raise ValueError("simulation evidence cannot be claimable as observed")
+        for name in ("inputs", "outputs"):
+            if type(payload[name]) is not list:
+                raise TypeError(f"simulation evidence {name} must be a canonical list")
+        evidence = cls(
+            simulation_id=payload["simulation_id"],
+            simulation_class=payload["simulation_class"],
+            question=payload["question"],
+            inputs=tuple(cast(list[object], payload["inputs"])),
+            outputs=tuple(cast(list[object], payload["outputs"])),
+            status=payload["status"],
+            evidence_class=payload["evidence_class"],
+        )
+        evidence.validate()
+        return evidence
 
 
 @dataclass(frozen=True)
@@ -1279,20 +1327,52 @@ class AnchorObservation:
         self.validate()
         return {**self.hardware.numeric_features(), **self.workload.numeric_features()}
 
+    def _payload(self) -> dict[str, object]:
+        return {
+            "schema": f"{_SCHEMA_VERSION}-anchor-observation",
+            "anchor_id": self.anchor_id,
+            "hardware": self.hardware.as_dict(),
+            "workload": self.workload.as_dict(),
+            "observed_value": self.observed_value,
+        }
+
+    def as_dict(self) -> dict[str, object]:
+        self.validate()
+        return {**self._payload(), "evidence_hash": self.evidence_hash}
+
+    @classmethod
+    def from_dict(cls, value: object) -> AnchorObservation:
+        """Rehydrate an anchor and its nested capability/workload evidence."""
+
+        if cls is not AnchorObservation:
+            raise TypeError("anchor observation must use the canonical type")
+        if type(value) is not dict:
+            raise TypeError("anchor observation must be a canonical dictionary")
+        payload = cast(dict[str, object], value)
+        if set(payload) != {"schema", "anchor_id", "hardware", "workload", "observed_value", "evidence_hash"}:
+            raise ValueError("anchor observation schema keys are invalid")
+        if payload["schema"] != f"{_SCHEMA_VERSION}-anchor-observation":
+            raise ValueError("anchor observation schema is invalid")
+        hardware = HardwareCapabilityVector.from_dict(payload["hardware"])
+        workload = WorkloadSignature.from_dict(payload["workload"])
+        observation = cls(
+            anchor_id=payload["anchor_id"],
+            hardware=hardware,
+            workload=workload,
+            observed_value=payload["observed_value"],
+        )
+        observation.validate()
+        evidence_hash = payload["evidence_hash"]
+        if type(evidence_hash) is not str or evidence_hash != observation.evidence_hash:
+            raise ValueError("anchor observation evidence hash mismatch")
+        return observation
+
     @property
     def evidence_hash(self) -> str:
         """Hash the complete validated anchor, not only its feature projection."""
 
         self.validate()
-        return _hash(
-            {
-                "schema": f"{_SCHEMA_VERSION}-anchor-observation",
-                "anchor_id": self.anchor_id,
-                "hardware": self.hardware.as_dict(),
-                "workload": self.workload.as_dict(),
-                "observed_value": self.observed_value,
-            }
-        )
+        return _hash(self._payload())
 
 
 @dataclass(frozen=True)
@@ -1567,12 +1647,50 @@ class CoverageVector:
             self.platform_semantic_coverage,
             self.statistical_precision,
         )
-        if any(value not in COVERAGE_VALUES for value in values):
+        if any(type(value) is not str or value not in COVERAGE_VALUES for value in values):
             raise ValueError("coverage vector contains an invalid status")
 
     def as_dict(self) -> dict[str, object]:
         self.validate()
         return {"schema": f"{_SCHEMA_VERSION}-coverage-vector", **asdict(self), "aggregate": None}
+
+    @classmethod
+    def from_dict(cls, value: object) -> CoverageVector:
+        """Rehydrate independent coverage dimensions without an aggregate score."""
+
+        if cls is not CoverageVector:
+            raise TypeError("coverage vector must use the canonical type")
+        if type(value) is not dict:
+            raise TypeError("coverage vector must be a canonical dictionary")
+        payload = cast(dict[str, object], value)
+        expected_keys = {
+            "schema",
+            "contract_coverage",
+            "state_coverage",
+            "failure_mode_coverage",
+            "schedule_coverage",
+            "hardware_domain_coverage",
+            "platform_semantic_coverage",
+            "statistical_precision",
+            "aggregate",
+        }
+        if set(payload) != expected_keys:
+            raise ValueError("coverage vector schema keys are invalid")
+        if payload["schema"] != f"{_SCHEMA_VERSION}-coverage-vector":
+            raise ValueError("coverage vector schema is invalid")
+        if payload["aggregate"] is not None:
+            raise ValueError("coverage vector cannot contain an aggregate")
+        vector = cls(
+            contract_coverage=payload["contract_coverage"],
+            state_coverage=payload["state_coverage"],
+            failure_mode_coverage=payload["failure_mode_coverage"],
+            schedule_coverage=payload["schedule_coverage"],
+            hardware_domain_coverage=payload["hardware_domain_coverage"],
+            platform_semantic_coverage=payload["platform_semantic_coverage"],
+            statistical_precision=payload["statistical_precision"],
+        )
+        vector.validate()
+        return vector
 
 
 def predict_cross_hardware(
