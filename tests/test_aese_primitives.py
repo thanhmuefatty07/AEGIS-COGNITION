@@ -566,6 +566,42 @@ def _prediction_fixture() -> tuple[
     return model, HardwareCapabilityVector(logical_cores=8), WorkloadSignature(compute_intensity=0.5), anchors
 
 
+def test_prediction_model_round_trip_preserves_domain_and_residual_metadata() -> None:
+    model, _hardware, _workload, _anchors = _prediction_fixture()
+    restored = AnalyticPredictionModel.from_dict(model.as_dict())
+
+    assert restored == model
+    tampered = model.as_dict()
+    coefficients = tampered["coefficients"]
+    assert isinstance(coefficients, list)
+    coefficients[0] = ["hardware.logical_cores", float("nan")]
+    with pytest.raises(ValueError, match="coefficients"):
+        AnalyticPredictionModel.from_dict(tampered)
+
+
+def test_prediction_result_round_trip_rehydrates_success_and_rejects_tamper() -> None:
+    model, hardware, workload, anchors = _prediction_fixture()
+    result = predict_cross_hardware(model, hardware, workload, anchors)
+    restored = type(result).from_dict(result.as_dict())
+
+    assert restored == result
+    assert restored.artifact_hash == result.artifact_hash
+    tampered = {**result.as_dict(), "estimate": 99.0}
+    with pytest.raises(ValueError, match="artifact hash mismatch"):
+        type(result).from_dict(tampered)
+
+
+def test_prediction_result_round_trip_preserves_fail_closed_ood_status() -> None:
+    model, _hardware, workload, anchors = _prediction_fixture()
+    result = predict_cross_hardware(model, HardwareCapabilityVector(logical_cores=32), workload, anchors)
+    restored = type(result).from_dict(result.as_dict())
+
+    assert restored == result
+    assert restored.status == "REJECTED_OOD"
+    with pytest.raises(ValueError, match="non-success"):
+        type(result).from_dict({**result.as_dict(), "estimate": 1.0})
+
+
 def test_cross_hardware_prediction_requires_domain_and_residual_evidence() -> None:
     model, hardware, workload, anchors = _prediction_fixture()
     result = predict_cross_hardware(model, hardware, workload, anchors)
@@ -935,6 +971,37 @@ def test_anchor_planner_rejects_duplicate_ids_without_exposing_partial_plan() ->
     assert plan.selected_anchor_ids == ()
     assert plan.planned_cost_seconds == 0.0
     assert "duplicate_anchor_id" in plan.failure_reasons
+
+
+def test_anchor_plan_round_trip_preserves_non_execution_and_hash_binding() -> None:
+    plan = select_anchor_plan(
+        [
+            AnchorCandidate("mandatory", "linux", 2.0, mandatory=True),
+            AnchorCandidate("ood", "windows", 2.0, ood_status="OUT_OF_DOMAIN"),
+        ],
+        budget_seconds=3.0,
+    )
+    restored = type(plan).from_dict(plan.as_dict())
+
+    assert restored == plan
+    assert restored.execution == "PLANNED_NOT_EXECUTED"
+    tampered = {**plan.as_dict(), "planned_cost_seconds": 0.0}
+    with pytest.raises(ValueError, match="remaining budget"):
+        type(plan).from_dict(tampered)
+
+
+def test_anchor_plan_rehydration_rejects_forged_type_and_identity_overlap() -> None:
+    plan = select_anchor_plan([AnchorCandidate("linux", "linux", 1.0)], budget_seconds=10.0)
+
+    class ForgedPlan(type(plan)):
+        pass
+
+    with pytest.raises(TypeError, match="canonical type"):
+        ForgedPlan.from_dict(plan.as_dict())
+    overlap = plan.as_dict()
+    overlap["unavailable_anchor_ids"] = ["linux"]
+    with pytest.raises(ValueError, match="overlap"):
+        type(plan).from_dict(overlap)
 
 
 def test_anchor_candidate_rejects_lossy_availability_flag() -> None:
