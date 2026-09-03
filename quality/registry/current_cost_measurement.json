@@ -1,5 +1,5 @@
 {
-  "artifact_hash": "1db921b0bb70ece53066682e5e10faac1c56b75d67ddd816a50f0140df27c20b",
+  "artifact_hash": "96db92938957290d207ee1d30bc61a2f40a509a4c15c822444e85ea06a93048f",
   "legacy_wall_time_seconds": {
     "best": 57.168086,
     "median": 71.778817,
@@ -45,8 +45,8 @@
     "worst": 8.139848
   },
   "provenance": {
-    "artifact_source_sha": "f0cf4cb41181764ecf5513d3dc243fa26aaec4e1",
-    "current_head": "f0cf4cb41181764ecf5513d3dc243fa26aaec4e1",
+    "artifact_source_sha": "4b3bad83edc19a3794d6e612981bdda31900343e",
+    "current_head": "4b3bad83edc19a3794d6e612981bdda31900343e",
     "environment_hash": "66acdb4208e1f8390c697fcbfb6d11808150787f3fb4912ddedd42e6e27a8bbc",
     "protocol_hash": "NOT_APPLICABLE",
     "relevant_subject_digest": "c9a75bdfdc22dcf5516eb1df69504c1aec997a42cd3d301b9c98226025f6daa8",
