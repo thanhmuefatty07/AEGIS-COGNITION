@@ -3,7 +3,7 @@ document_id: AEGIS-LAB-RUNTIME-MASTER-PLAN
 document_type: canonical_current_implementation_plan
 status: IN_EXECUTION
 authority: derived_from_checkout_and_evidence_manifest
-applies_to_commit: 634cb0b58e8a657cc0f358c1a82fe26b658f23da
+applies_to_commit: 2aa2c75bb05cacb4e2146a0b69ef48311925c9a6
 created_at: 2026-08-26
 last_verified_at: 2026-09-03
 supersedes: browser-native-proposal-and-cumulative-harness-roadmap-as-execution-authority
@@ -4999,7 +4999,7 @@ invariants in the cited paths, not from filenames.
 
 The current mapping report is
 `quality/registry/current_s2_mapping.json`, artifact hash
-`135e2b651cbb10a2550dba851693b543a051bc9fe230cd4a41e651cc3e190d3e`, with
+`73d8c67e58e61fe1567828751f6ee2e4c2ed859b3a09aad5a9c49349997e9387`, with
 `mapping_status=COMPLETE`, `all_critical_mapped=true`,
 `all_high_selection_relevant_mapped=true`, `no_fake_mapping=true`, and
 `critical_false_negative_status=NOT_EVALUATED_S3`. It verifies 9 critical
@@ -5023,9 +5023,9 @@ Cargo features, entry points, registry generators, validators and workflow
 changes. Unknown paths or dynamic edges widen to all retained inventory
 items; no opaque filename score is used. The current plan artifact is
 `quality/registry/current_affected_closure.json` with reproducible hash
-`b449c88c8749423b4490a06e9e5c0e7736a77770a8c68fd3c403fbfee6087535` and
+`8055ece1ae59a9dff1c1412e999ade768591f224f60dc35a74edc939b30e6dbc` and
 artifact hash
-`3471654ddb4d27edebebf5847f4c5044e10ab39181b620b7d87fc8c023c7f5be`.
+`a01d1f227082bc70aa6247e4e82fb4a799ffb95e27843dbd08422d45968c0320`.
 The mapped critical audit is `COMPLETE_ZERO` (15 records checked), unknown
 and dynamic dependencies widen to all retained items, and the adversarial
 closure suite passes **14/14**. S3 exit-gate conditions are complete for the
