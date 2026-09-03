@@ -46,6 +46,7 @@ const RUN_EVENT_SEGMENT_COMMIT_HASH_OFFSET: usize = 268;
 const RUN_EVENT_SEGMENT_COMMIT_BYTES: usize = RUN_EVENT_SEGMENT_COMMIT_HASH_OFFSET + 32;
 const RUN_EVENT_SEGMENT_CACHE_MAX_ENTRIES: usize = 256;
 const ARROW_STREAM_FILE_EVIDENCE_READ_LIMIT_BYTES: u64 = 256 * 1024;
+const MAX_EVENTS_PER_SEGMENT: usize = 65_536;
 
 #[repr(u8)]
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -2803,7 +2804,10 @@ impl SegmentedArrowAuditStream {
         run_id: RunId,
         max_events_per_segment: usize,
     ) -> Result<Self, &'static str> {
-        if run_id == 0 || max_events_per_segment == 0 {
+        if run_id == 0
+            || max_events_per_segment == 0
+            || max_events_per_segment > MAX_EVENTS_PER_SEGMENT
+        {
             return Err("invalid segmented arrow audit stream config");
         }
         let directory = directory.as_ref().to_path_buf();
@@ -8474,6 +8478,21 @@ mod replay_internal_tests {
         // usize::MAX allocation or panicking the process.
         assert!(RunEventSegmentArchive::read_ledger_mmap(&directory, &forged_manifest).is_err());
         let _ = std::fs::remove_dir_all(directory);
+    }
+
+    #[test]
+    fn segmented_writer_rejects_unbounded_segment_capacity() {
+        let directory = std::env::temp_dir().join(format!(
+            "aegis-segmented-writer-capacity-{}-{}",
+            std::process::id(),
+            1_u64
+        ));
+        let result = SegmentedArrowAuditStream::create(&directory, 1, usize::MAX);
+        assert_eq!(
+            result.err(),
+            Some("invalid segmented arrow audit stream config")
+        );
+        assert!(!directory.exists());
     }
 
     #[test]
