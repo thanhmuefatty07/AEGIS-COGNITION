@@ -1,24 +1,29 @@
 {
-  "artifact_hash": "8e694a08885b0edacbe0d0a20caba394e2b73d9fbcace32712bdf7bb70b7e289",
+  "artifact_hash": "b83db8ab0693829458d9536bbb3c4ffbe51db63cca60cf111729d065d29651e0",
   "development_corpus": [
     {
       "case_id": "DEV-GT96-GOOD",
       "changed_paths": [
         "core/rust/src/gt96.rs"
       ],
+      "changed_unmapped_surface_paths": [],
       "closure_status": "EXACT_CONTRACT_CLOSURE_SHADOW",
       "critical": false,
-      "critical_false_negative_status": "COMPLETE_ZERO",
       "decision_state_counts": {
         "WIDENED_UNKNOWN": 0,
         "WOULD_REUSE": 0,
         "WOULD_RUN": 1,
         "WOULD_SKIP": 130
       },
-      "defect_caught": null,
       "label": "KNOWN_GOOD",
       "mutation": "NONE",
+      "observed_critical_false_negative_status": "NOT_MEASURED",
+      "path_dependency_states": {
+        "core/rust/src/gt96.rs": "MAPPED"
+      },
       "plan_widened": false,
+      "planning_target_reached": null,
+      "structural_critical_reachability_status": "COMPLETE_ZERO_MAPPED_SCOPE",
       "target_paths": [
         "core/rust/src/gt96.rs"
       ],
@@ -32,19 +37,24 @@
       "changed_paths": [
         "plugins/unknown_dynamic_loader.py"
       ],
+      "changed_unmapped_surface_paths": [],
       "closure_status": "WIDENED_ALL_RETAINED",
       "critical": true,
-      "critical_false_negative_status": "COMPLETE_ZERO",
       "decision_state_counts": {
         "WIDENED_UNKNOWN": 131,
         "WOULD_REUSE": 0,
         "WOULD_RUN": 0,
         "WOULD_SKIP": 0
       },
-      "defect_caught": true,
       "label": "KNOWN_BAD",
       "mutation": "UNKNOWN_DEPENDENCY_MUTATION",
+      "observed_critical_false_negative_status": "NOT_MEASURED",
+      "path_dependency_states": {
+        "plugins/unknown_dynamic_loader.py": "NOT_IN_INVENTORY"
+      },
       "plan_widened": true,
+      "planning_target_reached": true,
+      "structural_critical_reachability_status": "COMPLETE_ZERO_MAPPED_SCOPE",
       "target_paths": [
         "core/rust/src/gt96.rs"
       ],
@@ -58,19 +68,24 @@
       "changed_paths": [
         "pyproject.toml"
       ],
-      "closure_status": "EXACT_CONTRACT_CLOSURE_SHADOW",
+      "changed_unmapped_surface_paths": [],
+      "closure_status": "WIDENED_ALL_RETAINED",
       "critical": true,
-      "critical_false_negative_status": "COMPLETE_ZERO",
       "decision_state_counts": {
-        "WIDENED_UNKNOWN": 0,
+        "WIDENED_UNKNOWN": 131,
         "WOULD_REUSE": 0,
-        "WOULD_RUN": 3,
-        "WOULD_SKIP": 128
+        "WOULD_RUN": 0,
+        "WOULD_SKIP": 0
       },
-      "defect_caught": true,
       "label": "KNOWN_BAD",
       "mutation": "CONFIG_MUTATION",
-      "plan_widened": false,
+      "observed_critical_false_negative_status": "NOT_MEASURED",
+      "path_dependency_states": {
+        "pyproject.toml": "NOT_IN_INVENTORY"
+      },
+      "plan_widened": true,
+      "planning_target_reached": true,
+      "structural_critical_reachability_status": "COMPLETE_ZERO_MAPPED_SCOPE",
       "target_paths": [
         "tests/test_aese_primitives.py"
       ],
@@ -84,19 +99,24 @@
       "changed_paths": [
         "plugins/never_seen.py"
       ],
+      "changed_unmapped_surface_paths": [],
       "closure_status": "WIDENED_ALL_RETAINED",
       "critical": false,
-      "critical_false_negative_status": "COMPLETE_ZERO",
       "decision_state_counts": {
         "WIDENED_UNKNOWN": 131,
         "WOULD_REUSE": 0,
         "WOULD_RUN": 0,
         "WOULD_SKIP": 0
       },
-      "defect_caught": null,
       "label": "OOD",
       "mutation": "DYNAMIC_PLUGIN_EDGE",
+      "observed_critical_false_negative_status": "NOT_MEASURED",
+      "path_dependency_states": {
+        "plugins/never_seen.py": "NOT_IN_INVENTORY"
+      },
       "plan_widened": true,
+      "planning_target_reached": null,
+      "structural_critical_reachability_status": "COMPLETE_ZERO_MAPPED_SCOPE",
       "target_paths": [],
       "target_paths_missing": [],
       "target_paths_reached": []
@@ -108,19 +128,24 @@
       "changed_paths": [
         "core/rust/src/replay.rs"
       ],
+      "changed_unmapped_surface_paths": [],
       "closure_status": "EXACT_CONTRACT_CLOSURE_SHADOW",
       "critical": true,
-      "critical_false_negative_status": "COMPLETE_ZERO",
       "decision_state_counts": {
         "WIDENED_UNKNOWN": 0,
         "WOULD_REUSE": 0,
         "WOULD_RUN": 1,
         "WOULD_SKIP": 130
       },
-      "defect_caught": true,
       "label": "KNOWN_BAD",
       "mutation": "SERIALIZATION_SCHEMA_MUTATION",
+      "observed_critical_false_negative_status": "NOT_MEASURED",
+      "path_dependency_states": {
+        "core/rust/src/replay.rs": "MAPPED"
+      },
       "plan_widened": false,
+      "planning_target_reached": true,
+      "structural_critical_reachability_status": "COMPLETE_ZERO_MAPPED_SCOPE",
       "target_paths": [
         "core/rust/src/replay.rs"
       ],
@@ -134,19 +159,24 @@
       "changed_paths": [
         "aegis_cognition/aese.py"
       ],
-      "closure_status": "EXACT_CONTRACT_CLOSURE_SHADOW",
+      "changed_unmapped_surface_paths": [],
+      "closure_status": "WIDENED_ALL_RETAINED",
       "critical": true,
-      "critical_false_negative_status": "COMPLETE_ZERO",
       "decision_state_counts": {
-        "WIDENED_UNKNOWN": 0,
+        "WIDENED_UNKNOWN": 131,
         "WOULD_REUSE": 0,
-        "WOULD_RUN": 3,
-        "WOULD_SKIP": 128
+        "WOULD_RUN": 0,
+        "WOULD_SKIP": 0
       },
-      "defect_caught": true,
       "label": "KNOWN_BAD",
       "mutation": "CROSS_LANGUAGE_FFI_FIELD_MUTATION",
-      "plan_widened": false,
+      "observed_critical_false_negative_status": "NOT_MEASURED",
+      "path_dependency_states": {
+        "aegis_cognition/aese.py": "NOT_IN_INVENTORY"
+      },
+      "plan_widened": true,
+      "planning_target_reached": true,
+      "structural_critical_reachability_status": "COMPLETE_ZERO_MAPPED_SCOPE",
       "target_paths": [
         "core/rust/src/ffi/eac.rs"
       ],
@@ -160,19 +190,26 @@
       "changed_paths": [
         ".github/workflows/ci.yml"
       ],
-      "closure_status": "EXACT_CONTRACT_CLOSURE_SHADOW",
+      "changed_unmapped_surface_paths": [
+        ".github/workflows/ci.yml"
+      ],
+      "closure_status": "WIDENED_ALL_RETAINED",
       "critical": true,
-      "critical_false_negative_status": "COMPLETE_ZERO",
       "decision_state_counts": {
-        "WIDENED_UNKNOWN": 0,
+        "WIDENED_UNKNOWN": 131,
         "WOULD_REUSE": 0,
-        "WOULD_RUN": 11,
-        "WOULD_SKIP": 120
+        "WOULD_RUN": 0,
+        "WOULD_SKIP": 0
       },
-      "defect_caught": true,
       "label": "KNOWN_BAD",
       "mutation": "WORKFLOW_MATRIX_MUTATION",
-      "plan_widened": false,
+      "observed_critical_false_negative_status": "NOT_MEASURED",
+      "path_dependency_states": {
+        ".github/workflows/ci.yml": "UNMAPPED"
+      },
+      "plan_widened": true,
+      "planning_target_reached": true,
+      "structural_critical_reachability_status": "COMPLETE_ZERO_MAPPED_SCOPE",
       "target_paths": [
         "core/rust/src/gt96.rs"
       ],
@@ -186,51 +223,122 @@
       "changed_paths": [
         "scripts/e2e_release_gate.py"
       ],
+      "changed_unmapped_surface_paths": [],
       "closure_status": "WIDENED_ALL_RETAINED",
       "critical": false,
-      "critical_false_negative_status": "COMPLETE_ZERO",
       "decision_state_counts": {
         "WIDENED_UNKNOWN": 131,
         "WOULD_REUSE": 0,
         "WOULD_RUN": 0,
         "WOULD_SKIP": 0
       },
-      "defect_caught": null,
       "label": "AMBIGUOUS",
       "mutation": "DYNAMIC_IMPORT_AMBIGUITY",
+      "observed_critical_false_negative_status": "NOT_MEASURED",
+      "path_dependency_states": {
+        "scripts/e2e_release_gate.py": "DYNAMIC"
+      },
       "plan_widened": true,
+      "planning_target_reached": null,
+      "structural_critical_reachability_status": "COMPLETE_ZERO_MAPPED_SCOPE",
       "target_paths": [],
       "target_paths_missing": [],
       "target_paths_reached": []
+    },
+    {
+      "case_id": "VAL-KNOWN-UNMAPPED-BAD",
+      "changed_paths": [
+        ".github/workflows/aegis-plugins.yml"
+      ],
+      "changed_unmapped_surface_paths": [
+        ".github/workflows/aegis-plugins.yml"
+      ],
+      "closure_status": "WIDENED_ALL_RETAINED",
+      "critical": true,
+      "decision_state_counts": {
+        "WIDENED_UNKNOWN": 131,
+        "WOULD_REUSE": 0,
+        "WOULD_RUN": 0,
+        "WOULD_SKIP": 0
+      },
+      "label": "KNOWN_BAD",
+      "mutation": "KNOWN_UNMAPPED_SURFACE_MUTATION",
+      "observed_critical_false_negative_status": "NOT_MEASURED",
+      "path_dependency_states": {
+        ".github/workflows/aegis-plugins.yml": "UNMAPPED"
+      },
+      "plan_widened": true,
+      "planning_target_reached": true,
+      "structural_critical_reachability_status": "COMPLETE_ZERO_MAPPED_SCOPE",
+      "target_paths": [
+        "core/rust/src/gt96.rs"
+      ],
+      "target_paths_missing": [],
+      "target_paths_reached": [
+        "core/rust/src/gt96.rs"
+      ]
+    },
+    {
+      "case_id": "VAL-PARTIAL-MAPPING-BAD",
+      "changed_paths": [
+        ".github/workflows/aegis-plugins.yml"
+      ],
+      "changed_unmapped_surface_paths": [
+        ".github/workflows/aegis-plugins.yml"
+      ],
+      "closure_status": "WIDENED_ALL_RETAINED",
+      "critical": true,
+      "decision_state_counts": {
+        "WIDENED_UNKNOWN": 131,
+        "WOULD_REUSE": 0,
+        "WOULD_RUN": 0,
+        "WOULD_SKIP": 0
+      },
+      "label": "KNOWN_BAD",
+      "mutation": "PARTIAL_MAPPING_MUTATION",
+      "observed_critical_false_negative_status": "NOT_MEASURED",
+      "path_dependency_states": {
+        ".github/workflows/aegis-plugins.yml": "PARTIALLY_MAPPED"
+      },
+      "plan_widened": true,
+      "planning_target_reached": true,
+      "structural_critical_reachability_status": "COMPLETE_ZERO_MAPPED_SCOPE",
+      "target_paths": [
+        "core/rust/src/gt96.rs"
+      ],
+      "target_paths_missing": [],
+      "target_paths_reached": [
+        "core/rust/src/gt96.rs"
+      ]
     }
   ],
   "limitations": [
-    "Corpus cases are deterministic planning mutations; no production or external tests are inferred.",
-    "Critical-miss tolerance is zero, while noncritical policy remains explicit and exploratory.",
+    "Corpus cases provide planning reachability evidence, not executed mutation-detection evidence.",
+    "Critical planning-target tolerance is zero, while noncritical policy remains explicit and exploratory.",
     "A larger independently sourced corpus is required before any production non-inferiority claim."
   ],
   "metrics": {
-    "critical_defects": 3,
-    "critical_defects_caught": 3,
-    "critical_defects_missed": 0,
-    "critical_miss_case_ids": [],
     "false_alarm_case_ids": [],
-    "noncritical_defects": 0,
-    "noncritical_defects_caught": 0,
-    "noncritical_defects_missed": 0,
-    "noncritical_miss_case_ids": [],
     "ood_events": 0,
-    "widen_events": 1
+    "synthetic_critical_miss_case_ids": [],
+    "synthetic_critical_planning_targets": 5,
+    "synthetic_critical_targets_missed": 0,
+    "synthetic_critical_targets_reached": 5,
+    "synthetic_noncritical_miss_case_ids": [],
+    "synthetic_noncritical_planning_targets": 0,
+    "synthetic_noncritical_targets_missed": 0,
+    "synthetic_noncritical_targets_reached": 0,
+    "widen_events": 5
   },
   "mode": "SHADOW",
   "provenance": {
-    "artifact_source_sha": "9edf0d75eddc95b06fa824820caf3d00d600b047",
-    "current_head": "9edf0d75eddc95b06fa824820caf3d00d600b047",
+    "artifact_source_sha": "14ad392b9ba58285e3875b05bf661c04e79331fc",
+    "current_head": "14ad392b9ba58285e3875b05bf661c04e79331fc",
     "environment_hash": "66acdb4208e1f8390c697fcbfb6d11808150787f3fb4912ddedd42e6e27a8bbc",
     "protocol_hash": "NOT_APPLICABLE",
-    "relevant_subject_digest": "0b99079a52fa2d7074d6c8fb76c0e34877fea8c222d3bc85a652de99050e7a0b",
+    "relevant_subject_digest": "a0021ef8ff479cc2e9b460c2a39db7c52c5815cfb0312cdbd1d50a8c2375ac25",
     "reuse_status": "NOT_REUSED",
-    "validator_hash": "1bf56ff5e5ea16506549ccc46bfa9ab98a9505316cc1c970fbd08095be684b27"
+    "validator_hash": "7e003fb5f7a7a72e65a65a11b8d2ebe1c0b0babf9716e6245cf4b430b05120cd"
   },
   "schema": "aese-validation-corpus-v1",
   "split_policy": {
@@ -239,5 +347,5 @@
     "final_held_out": true,
     "planner_tuning_uses": "DEVELOPMENT_ONLY"
   },
-  "status": "COMPLETE"
+  "status": "LOCAL_SHADOW_VALIDATION_ONLY"
 }
