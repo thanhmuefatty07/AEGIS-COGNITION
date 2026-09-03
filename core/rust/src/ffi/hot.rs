@@ -71,7 +71,14 @@ pub fn aegis_hot_commit_batch(
             Some(value) => parse_trust_level(&value)?,
             None => crate::hot_engine::TrustLevel::from_env(),
         };
-        let total_input_bytes = payloads.iter().map(Vec::len).sum::<usize>();
+        let total_input_bytes = payloads
+            .iter()
+            .try_fold(0usize, |total, payload| total.checked_add(payload.len()))
+            .ok_or_else(|| {
+                pyo3::exceptions::PyOverflowError::new_err(
+                    "aegis_hot_commit_batch payload byte count overflow",
+                )
+            })?;
         let arena = crate::hot_engine::InMemoryEvidenceArena::new(
             trust_level,
             max_live_bytes.unwrap_or(64 * 1024 * 1024),
@@ -79,13 +86,23 @@ pub fn aegis_hot_commit_batch(
         );
         let mut batch_hasher = Hasher::new();
         batch_hasher.update(b"aegis-hot-arena-commit-batch-v1");
-        batch_hasher.update(&(payloads.len() as u64).to_le_bytes());
+        let payload_count = u64::try_from(payloads.len()).map_err(|_| {
+            pyo3::exceptions::PyOverflowError::new_err(
+                "aegis_hot_commit_batch payload count exceeds u64",
+            )
+        })?;
+        batch_hasher.update(&payload_count.to_le_bytes());
         let mut commits = Vec::with_capacity(payloads.len());
         for (index, payload) in payloads.iter().enumerate() {
             let handle = arena
                 .commit(payload)
                 .map_err(|err| pyo3::exceptions::PyRuntimeError::new_err(format!("{err:?}")))?;
-            batch_hasher.update(&(index as u64).to_le_bytes());
+            let index_u64 = u64::try_from(index).map_err(|_| {
+                pyo3::exceptions::PyOverflowError::new_err(
+                    "aegis_hot_commit_batch payload index exceeds u64",
+                )
+            })?;
+            batch_hasher.update(&index_u64.to_le_bytes());
             batch_hasher.update(&handle.slot.to_le_bytes());
             batch_hasher.update(&handle.generation.to_le_bytes());
             batch_hasher.update(&handle.byte_len.to_le_bytes());
