@@ -3,7 +3,7 @@ document_id: AEGIS-LAB-RUNTIME-MASTER-PLAN
 document_type: canonical_current_implementation_plan
 status: IN_EXECUTION
 authority: derived_from_checkout_and_evidence_manifest
-applies_to_commit: 9edf0d75eddc95b06fa824820caf3d00d600b047
+applies_to_commit: 14ad392b9ba58285e3875b05bf661c04e79331fc
 created_at: 2026-08-26
 last_verified_at: 2026-09-04
 supersedes: browser-native-proposal-and-cumulative-harness-roadmap-as-execution-authority
@@ -4999,9 +4999,13 @@ invariants in the cited paths, not from filenames.
 
 The current mapping report is
 `quality/registry/current_s2_mapping.json`, artifact hash
-`fcb153e445e108ad4b411187a0b07fe500a8820ea7b0095c590a9ae0b24b3a00`, with
-`mapping_status=COMPLETE`, `all_critical_mapped=true`,
-`all_high_selection_relevant_mapped=true`, `no_fake_mapping=true`, and
+`3c768b51f8d24ff7693b4c93cbcc39754393418423982f4752312a0a21f788e2`, with
+`mapping_status=S2_FAIL_CLOSED_MAPPING_COMPLETE`,
+`all_declared_critical_mapped=true`,
+`all_declared_high_selection_relevant_mapped=true`,
+`critical_mapping_scope=DECLARED_MAPPED_RECORDS_ONLY`,
+`unknown_surfaces_may_contain_unclassified_criticality=true`,
+`no_fake_mapping=true`, and
 `critical_false_negative_status=NOT_EVALUATED_S3`. It verifies 9 critical
 records and 15 high selection-relevant records; **116 of 131 inventory
 surfaces remain UNKNOWN** and are explicitly widened rather than guessed.
@@ -5023,13 +5027,16 @@ Cargo features, entry points, registry generators, validators and workflow
 changes. Unknown paths or dynamic edges widen to all retained inventory
 items; no opaque filename score is used. The current plan artifact is
 `quality/registry/current_affected_closure.json` with reproducible hash
-`1a482f8b28194e27a6590bcb538f873cad9cf40d3a0f0131b5632c911471bfa0` and
+`0597b3d36188e01cb7dac1d4fc87edd41fbe8aef8d2cd27427dc04240f93e7aa` and
 artifact hash
-`5ef81782342fbf31de5f17d17644b5198bf80206f64cae409cdfd83ead4f6e18`.
-The mapped critical audit is `COMPLETE_ZERO` (15 records checked), unknown
-and dynamic dependencies widen to all retained items, and the adversarial
+`ee9e531f6d4083f7774de93de509e7d1be07f1ee75a5a01037792b8c208c2eb9`.
+The mapped-scope structural critical reachability status is
+`COMPLETE_ZERO_MAPPED_SCOPE` (15 records checked); unknown repository paths,
+unknown inventory surfaces, partial mappings and dynamic dependencies widen
+to all retained items, and the adversarial
 closure suite passes **14/14**. S3 exit-gate conditions are complete for the
-known mapped critical set; this is planning evidence, not permission to skip
+declared mapped critical set; observed test false negatives are not measured,
+and this is planning evidence, not permission to skip
 tests or promote evidence. The S3 boundary full Python suite passes
 **590/590** with the same single pytest configuration warning.
 
@@ -5042,40 +5049,72 @@ dynamic inputs become `WIDENED_UNKNOWN` with no skip; hosted workflow inputs
 are `EXTERNAL_DEFERRED`. Reuse remains empty until all source/protocol/
 validator/environment/claim-domain digests match. The artifact
 `quality/registry/current_shadow_plan.json` has hash
-`18f9a1230236073acec740b8d4db5a2ad8a3e72392dd5559858351c987b83e86` and
-`critical_false_negative_status=COMPLETE_ZERO`; confusion-matrix status is
-`NOT_MEASURED` until explicit legacy outcomes are supplied. No execution or
+`dd07de99bc2f614cbbf9e6fe825ed2f7e407b6b690cc906511def3e397807beb`.
+`structural_critical_reachability_status=COMPLETE_ZERO_MAPPED_SCOPE` and
+`observed_critical_false_negative_status=NOT_MEASURED`; confusion-matrix
+status remains `NOT_MEASURED` until explicit legacy outcomes are supplied.
+Unknown or partial dependency states have no `WOULD_SKIP`; no execution or
 authority change is possible.
 
 **AESE-S5 held-out validation corpus (2026-09-04):** commits
 `6c3df2ccb4715a5f2e62c5af2b9a651a776a8dba` and
-`9edf0d75eddc95b06fa824820caf3d00d600b047` add
+`9edf0d75eddc95b06fa824820caf3d00d600b047` and
+`14ad392b9ba58285e3875b05bf661c04e79331fc` add
 `scripts/aese_validation_corpus.py` with disjoint development and final
 validation cases. Final labels preserve `KNOWN_GOOD`, `KNOWN_BAD`, `OOD` and
-`AMBIGUOUS`; the current held-out set contains three critical synthetic bad
-cases, all three reached (`critical_defects_caught=3`,
-`critical_defects_missed=0`). Artifact
+`AMBIGUOUS`; the held-out set contains five synthetic critical planning
+targets, all five reached (`synthetic_critical_targets_reached=5`,
+`synthetic_critical_targets_missed=0`), including known-unmapped and
+partial-mapping cases. Artifact
 `quality/registry/current_validation_corpus.json` has hash
-`8e694a08885b0edacbe0d0a20caba394e2b73d9fbcace32712bdf7bb70b7e289`.
-This is deterministic planning/mutation evidence only; it is not an
-independent production non-inferiority claim.
-The corpus tests pass **7/7** (including retained-provenance drift checks),
-and the final full Python suite passes **605/605** with one known pytest
-configuration warning. The validator deliberately ignores only checkout-
-volatile `artifact_source_sha`/`current_head`; stable decisions, validator
-and environment digests, and the artifact self-hash remain mandatory.
+`b83db8ab0693829458d9536bbb3c4ffbe51db63cca60cf111729d065d29651e0`.
+Status is `LOCAL_SHADOW_VALIDATION_ONLY`: this is planning reachability
+evidence, not executed mutation-detection or production non-inferiority
+evidence. The corpus tests pass **9/9** (including unknown/partial widening
+and retained-provenance drift checks). The validator deliberately ignores
+only checkout-volatile `artifact_source_sha`/`current_head`; stable decisions,
+validator and environment digests, and the artifact self-hash remain mandatory.
 
 **AESE-S6 paired cost analysis (2026-09-04):** commit
 `4b3bad8f99f51f1b5ee948c6b5fdb9dcbf30a9a3` records three paired warm-cache
 runs in `quality/registry/current_cost_measurement.json` (artifact hash
-`96db92938957290d207ee1d30bc61a2f40a509a4c15c822444e85ea06a93048f`). The
+`2fa9559d52ba42e7c33fb74cac61f147b9af8692dcdbb14e6a3c5adeaf60ee55`). The
 same Rust library workload measured 456 retained tests versus 14 `gt96`
 tests: legacy median/p95 **71.778817/98.718078 s**, selected
 median/p95 **1.521086/3.203918 s**, planner median/p95
 **6.937248/8.139848 s**, and net-saving samples **87.374312, 48.786299,
-63.632245 s** (median **63.632245 s**, best **48.786299 s**, worst
-**87.374312 s**). Status is `MEASURED_EXPLORATORY_PAIRED` with
-`savings_claim=LOCAL_EXPLORATORY_ONLY`: this closes the local measurement
-gate for one change class, but does not generalize to Python, cold builds,
-other changes or production. AESE remains shadow-only and no 10x claim is
-made.
+63.632245 s**. Status is `MEASURED_EXPLORATORY_PAIRED` with
+`savings_claim=LOCAL_EXPLORATORY_ONLY`; the reused artifact records
+`measurement_reused=true`, `measurement_source_sha=4b3bad83edc19a3794d6e612981bdda31900343e`,
+and `relevant_subjects_unchanged=true`. The saving summary is
+`min_saving=48.786299`, `median_saving=63.632245000000005`, and
+`max_saving=87.374312` seconds. This closes the local measurement gate for
+one change class, but does not generalize to Python, cold builds, other
+changes or production. AESE remains shadow-only and no 10x claim is made.
+
+**AESE final local closure (2026-09-04):** the final correction milestone is
+complete for the frozen local AESE scope. `AESE_LOCAL_TASK=COMPLETE` and
+`LOCAL_SCOPE_PROGRESS=100%` are justified by passing implementation,
+mapping, closure, planner, corpus, cost, registry, architecture and
+constitution gates. The decisive safety invariant is enforced:
+inventory-known but dependency-unmapped, partially mapped, dynamic, mixed,
+and unknown repository paths all widen to `WIDENED_ALL_RETAINED` with no
+`WOULD_SKIP`; exact closure is permitted only for fully mapped paths.
+S2 is `S2_FAIL_CLOSED_MAPPING_COMPLETE` for declared mapped records, S3 is
+`COMPLETE_ZERO_MAPPED_SCOPE`, S4 observed false-negative status is
+`NOT_MEASURED` without explicit legacy outcomes, S5 is
+`LOCAL_SHADOW_VALIDATION_ONLY`, and S6 is
+`MEASURED_EXPLORATORY_PAIRED` with a `LOCAL_EXPLORATORY_ONLY` claim.
+Authority remains `AESE_MODE=SHADOW`,
+`LEGACY_TEST_AUTHORITY=ACTIVE`, `SELECTIVE_TEST_AUTHORITY=DISABLED`,
+`TEST_SKIPPING_AUTHORITY=DISABLED`, and `EVIDENCE_PROMOTION=DISABLED`.
+Production non-inferiority, hosted CI, multi-platform behavior, live
+provider/browser behavior, physical hardware generalization, and signed
+release provenance remain `NOT_VERIFIED` future-authority work; they are not
+local-scope blockers. The final local reference run records
+`FULL_PYTHON=615/615` with the one known pytest configuration warning;
+retained Rust evidence is `FULL_RUST=456/456` no-default-features library
+tests from the unchanged S6 source tree. Architecture fitness is `23/23` and
+constitution audit is `180/180`. `S1_1A_CALIBRATION_RESULT=INSUFFICIENT_EVIDENCE` is
+preserved and remains a future cutover constraint, not a reason to reopen
+this local milestone.

@@ -1,5 +1,5 @@
 {
-  "artifact_hash": "96db92938957290d207ee1d30bc61a2f40a509a4c15c822444e85ea06a93048f",
+  "artifact_hash": "2fa9559d52ba42e7c33fb74cac61f147b9af8692dcdbb14e6a3c5adeaf60ee55",
   "legacy_wall_time_seconds": {
     "best": 57.168086,
     "median": 71.778817,
@@ -17,19 +17,20 @@
     "No claim is made for Python, external anchors, cold builds, or other change classes.",
     "The planner remains shadow-only and cannot skip authoritative tests."
   ],
+  "measurement_reused": true,
+  "measurement_source_sha": "4b3bad83edc19a3794d6e612981bdda31900343e",
   "mode": "SHADOW",
   "net_saving_formula": "legacy - (planner + selected_evidence)",
   "net_saving_seconds": {
-    "best": 48.786299,
-    "median": 63.632245000000005,
-    "p95": 87.374312,
+    "max_saving": 87.374312,
+    "median_saving": 63.632245000000005,
+    "min_saving": 48.786299,
     "sample_count": 3,
     "samples": [
       87.374312,
       48.786299,
       63.632245000000005
-    ],
-    "worst": 87.374312
+    ]
   },
   "paired_workload": true,
   "planner_cost_seconds": {
@@ -46,13 +47,14 @@
   },
   "provenance": {
     "artifact_source_sha": "4b3bad83edc19a3794d6e612981bdda31900343e",
-    "current_head": "4b3bad83edc19a3794d6e612981bdda31900343e",
+    "current_head": "14ad392b9ba58285e3875b05bf661c04e79331fc",
     "environment_hash": "66acdb4208e1f8390c697fcbfb6d11808150787f3fb4912ddedd42e6e27a8bbc",
     "protocol_hash": "NOT_APPLICABLE",
     "relevant_subject_digest": "c9a75bdfdc22dcf5516eb1df69504c1aec997a42cd3d301b9c98226025f6daa8",
-    "reuse_status": "NOT_REUSED",
-    "validator_hash": "8c802a978ec60164b16a61f02379191c938e53e1091661b8ee00315623d18b93"
+    "reuse_status": "REUSED_HISTORICAL_MEASUREMENT",
+    "validator_hash": "7e003fb5f7a7a72e65a65a11b8d2ebe1c0b0babf9716e6245cf4b430b05120cd"
   },
+  "relevant_subjects_unchanged": true,
   "sample_pair_count": 3,
   "savings_claim": "LOCAL_EXPLORATORY_ONLY",
   "schema": "aese-cost-measurement-v1",
