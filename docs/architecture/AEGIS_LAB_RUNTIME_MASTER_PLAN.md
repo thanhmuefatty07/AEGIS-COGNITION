@@ -3,7 +3,7 @@ document_id: AEGIS-LAB-RUNTIME-MASTER-PLAN
 document_type: canonical_current_implementation_plan
 status: IN_EXECUTION
 authority: derived_from_checkout_and_evidence_manifest
-applies_to_commit: 09acf304c2093e53ef99e83ae285e302c98916b0
+applies_to_commit: 906d057ac90900b5e11e75e622a62c71dd80142b
 created_at: 2026-08-26
 last_verified_at: 2026-09-03
 supersedes: browser-native-proposal-and-cumulative-harness-roadmap-as-execution-authority
@@ -169,8 +169,8 @@ hiện tại và không được dùng để chứng minh checkout mới:
   structural/presence checks, không phải proof rằng Lab behavior hoạt động.
 
 Checkout implementation hiện hành cho migration node này là
-`09acf304c2093e53ef99e83ae285e302c98916b0` (terminal-state admission fence
-cho `AdaptiveController`; preflight root-schema validation ở `41f614f…` và
+`906d057ac90900b5e11e75e622a62c71dd80142b` (terminal-state admission fence
+cho `AdaptiveController.next` và `.observe`; preflight root-schema validation ở `41f614f…` và
 measurement-result semantic validation ở `0f6b1aa…`), với worktree sạch và
 `origin/main` parity được xác nhận sau push.
 Focused AESE/preflight regression trên CPython 3.11 là **76 + 9 passed**;
@@ -4782,3 +4782,13 @@ environment warning about an unsupported pytest-asyncio config option).
 This closes a local terminal-state fail-open path only; it does not make the
 Python controller the universal Rust authority, prove process-level
 cancellation, or close hosted single-writer/release obligations.
+
+**Adaptive controller observation fence continuation (2026-09-03):** implementation
+commit `906d057ac90900b5e11e75e622a62c71dd80142b` applies the same terminal and
+canonical-type guard to `AdaptiveController.observe`. A terminal run now
+returns `False` instead of updating plateau state, and forged run objects are
+rejected before state inspection. The four controller regressions pass and the
+changed runtime/test surface passes isolated compatible Ruff. This closes the
+paired observation-side fail-open path only; it does not establish calibrated
+information-gain selection, multi-agent coordination efficiency, or external
+authority.
