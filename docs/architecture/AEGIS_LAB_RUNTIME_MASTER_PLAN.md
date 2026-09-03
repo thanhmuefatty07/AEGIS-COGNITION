@@ -3,7 +3,7 @@ document_id: AEGIS-LAB-RUNTIME-MASTER-PLAN
 document_type: canonical_current_implementation_plan
 status: IN_EXECUTION
 authority: derived_from_checkout_and_evidence_manifest
-applies_to_commit: 809c25aa93f4c842abea02b3acfc3d21cee58d46
+applies_to_commit: 358bcf435a53592b04a1837a6e95134b7b26436b
 created_at: 2026-08-26
 last_verified_at: 2026-09-03
 supersedes: browser-native-proposal-and-cumulative-harness-roadmap-as-execution-authority
@@ -4723,3 +4723,16 @@ document-consistency gates pass after registry regeneration. This closes local
 prediction/plan reconstruction only; model calibration, external anchor
 execution, OOD generalization, selective promotion and release authority remain
 unproven.
+
+**AESE protocol/candidate rehydration continuation (2026-09-03):**
+implementation commit `358bcf435a53592b04a1837a6e95134b7b26436b` adds strict
+`AdaptiveMeasurementSpec.from_dict` and `AnchorCandidate.from_dict` support.
+Measurement protocols now round-trip with a matching `protocol_hash`; anchor
+candidate payloads preserve platform, priority, uncertainty and availability
+metadata without executing a runner. Unknown keys, forged subclasses and
+protocol-hash or schema tampering fail closed. The focused AESE primitive suite
+passes **75/75**, full Python regression passes **465/465**, isolated compatible
+Ruff passes, and inventory, claim-graph and document-consistency gates pass
+after registry regeneration. This closes local input-contract reconstruction
+only; statistical calibration, anchor availability, external execution,
+selective promotion and release authority remain unproven.
