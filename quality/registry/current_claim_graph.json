@@ -1103,8 +1103,8 @@
     "future_obligations": 20,
     "invariants": 46,
     "mapped_surfaces": 9,
-    "surfaces": 118,
-    "unmapped_surfaces": 109,
+    "surfaces": 119,
+    "unmapped_surfaces": 110,
     "unmapped_verifications": 70,
     "unresolved_code_references": 0,
     "verifications": 92
@@ -3850,8 +3850,8 @@
   "mode": "SHADOW",
   "phase": "PHASE_1_CLAIM_EVIDENCE_GRAPH",
   "schema": "aese-shadow-claim-evidence-graph-v1",
-  "source_head": "b6e1acb3784354f2837336a71e4df603f542c238",
-  "source_tree_sha256": "b2806840884b5b1ae8d77719f406895ada9eeb3a694d79406f48296ef267bea4",
+  "source_head": "5e2b6a2ea8b8bbfb7515371e8eef020235ef6d24",
+  "source_tree_sha256": "5b79ddfc98bbd178ca64d6cec1e5ecaddc4e37d523a58834304a5624b0f3c073",
   "status": "SHADOW_GRAPH_COMPLETE_MAPPING_AND_SELECTION_DISABLED",
   "surfaces": [
     {
@@ -4289,6 +4289,15 @@
       "kind": "RUST_UNIT_TEST",
       "mapping_status": "NOT_MAPPED",
       "path": "core/rust/src/resource_platform.rs",
+      "target": null,
+      "unknown_dependency_policy": "INVALIDATE_CONSERVATIVELY"
+    },
+    {
+      "claim_refs": [],
+      "id": "AESE-RUST_UNIT_TEST-3850F0947D457EC0",
+      "kind": "RUST_UNIT_TEST",
+      "mapping_status": "NOT_MAPPED",
+      "path": "core/rust/src/ffi/runtime.rs",
       "target": null,
       "unknown_dependency_policy": "INVALIDATE_CONSERVATIVELY"
     },
@@ -5733,6 +5742,6 @@
       "source_id": "AESE-011"
     }
   ],
-  "worktree_epoch": "6b87452f1c9c18ae207bd0432250f45d1eed01d9ba867af566b2e2920be3e96e",
+  "worktree_epoch": "d2d3cef101fe24ceb5d7d3bc1cdeef463429a8e97b4048a2a381aae66eab1ad4",
   "worktree_status": "DIRTY"
 }
