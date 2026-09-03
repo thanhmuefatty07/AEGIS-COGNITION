@@ -154,6 +154,34 @@ def test_adaptive_measurement_passes_only_after_warmup_and_precision_floor() -> 
     assert result.failure_reasons == ()
 
 
+def test_adaptive_measurement_spec_round_trip_binds_protocol_hash() -> None:
+    spec = AdaptiveMeasurementSpec(
+        metric="latency_ms",
+        direction="higher_is_better",
+        warmup_count=4,
+        block_size=5,
+    )
+    restored = AdaptiveMeasurementSpec.from_dict(spec.as_dict())
+
+    assert restored == spec
+    assert restored.protocol_hash == spec.protocol_hash
+    tampered = {**spec.as_dict(), "max_observations": 301}
+    with pytest.raises(ValueError, match="protocol hash mismatch"):
+        AdaptiveMeasurementSpec.from_dict(tampered)
+
+
+def test_adaptive_measurement_spec_rehydration_rejects_forged_type_and_unknown_keys() -> None:
+    spec = AdaptiveMeasurementSpec(metric="latency_ms")
+
+    class ForgedSpec(AdaptiveMeasurementSpec):
+        pass
+
+    with pytest.raises(TypeError, match="canonical type"):
+        ForgedSpec.from_dict(spec.as_dict())
+    with pytest.raises(ValueError, match="schema keys"):
+        AdaptiveMeasurementSpec.from_dict({**spec.as_dict(), "unexpected": True})
+
+
 def test_adaptive_measurement_result_round_trip_rehydrates_hash_bound_evidence() -> None:
     result = evaluate_adaptive_measurement(
         AdaptiveMeasurementSpec(metric="latency_ms", warmup_count=2, block_size=5),
@@ -1007,6 +1035,36 @@ def test_anchor_plan_rehydration_rejects_forged_type_and_identity_overlap() -> N
 def test_anchor_candidate_rejects_lossy_availability_flag() -> None:
     with pytest.raises(ValueError, match="priority flags"):
         AnchorCandidate("linux", "linux", 1.0, available="false").validate()  # type: ignore[arg-type]
+
+
+def test_anchor_candidate_round_trip_preserves_priority_metadata() -> None:
+    candidate = AnchorCandidate(
+        "linux-ood",
+        "linux",
+        12.5,
+        mandatory=True,
+        ood_status="OUT_OF_DOMAIN",
+        model_uncertainty=0.8,
+        changed_platform_boundary=True,
+        periodic_sentinel_due=True,
+        available=False,
+    )
+    restored = AnchorCandidate.from_dict(candidate.as_dict())
+
+    assert restored == candidate
+    assert restored.priority_key() == candidate.priority_key()
+    with pytest.raises(ValueError, match="schema keys"):
+        AnchorCandidate.from_dict({**candidate.as_dict(), "unexpected": True})
+
+
+def test_anchor_candidate_rehydration_rejects_forged_type() -> None:
+    candidate = AnchorCandidate("linux", "linux", 1.0)
+
+    class ForgedCandidate(AnchorCandidate):
+        pass
+
+    with pytest.raises(TypeError, match="canonical type"):
+        ForgedCandidate.from_dict(candidate.as_dict())
 
 
 def test_coverage_vector_has_independent_dimensions_and_no_aggregate() -> None:
