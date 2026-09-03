@@ -3,7 +3,7 @@ document_id: AEGIS-LAB-RUNTIME-MASTER-PLAN
 document_type: canonical_current_implementation_plan
 status: IN_EXECUTION
 authority: derived_from_checkout_and_evidence_manifest
-applies_to_commit: 8e8d595ca107a943b460ecdca3f36f71c923a44b
+applies_to_commit: 62dfddff2f07d57994b1afc17d89aff6d1b1a245
 created_at: 2026-08-26
 last_verified_at: 2026-09-03
 supersedes: browser-native-proposal-and-cumulative-harness-roadmap-as-execution-authority
@@ -4589,3 +4589,16 @@ the complete no-default-features Rust suite passes **450/450** in **90.05 s**, w
 check and clippy gates passing. This closes one concrete FFI resource-exhaustion
 boundary only; it does not prove FFI-wide allocation/soak behavior, process
 containment, cross-platform semantics or release authority.
+
+**M6 EaC state-persistence resource-boundary continuation (2026-09-03):**
+implementation commit `62dfddff2f07d57994b1afc17d89aff6d1b1a245` bounds the
+legacy `aegis_eac_persist_state` `data_json` input to **8 MiB** before JSON
+parsing and returns a typed `PyValueError` when the bound is exceeded. Valid
+state persistence keeps the existing namespace, hash-chain and return-schema
+behavior. The focused no-default-features FFI tests pass **5/5**; the same
+feature-enabled filter passes **5/5** in **47.04 s**; the complete
+no-default-features Rust library suite passes **451/451** in **76.90 s**, with
+format, compile and clippy gates passing. This closes one additional FFI input
+allocation boundary only; Python-side string allocation, FFI-wide lifetime/
+soak behavior, process containment, cross-platform semantics and release
+authority remain unproven.
