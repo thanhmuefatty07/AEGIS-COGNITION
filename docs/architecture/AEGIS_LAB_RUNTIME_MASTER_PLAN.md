@@ -3,7 +3,7 @@ document_id: AEGIS-LAB-RUNTIME-MASTER-PLAN
 document_type: canonical_current_implementation_plan
 status: IN_EXECUTION
 authority: derived_from_checkout_and_evidence_manifest
-applies_to_commit: 2778a4fc7fbe5013f4c1600dba39a2d9aa78a4fe
+applies_to_commit: b6e1acb3784354f2837336a71e4df603f542c238
 created_at: 2026-08-26
 last_verified_at: 2026-09-03
 supersedes: browser-native-proposal-and-cumulative-harness-roadmap-as-execution-authority
@@ -4614,3 +4614,16 @@ s**, with format, compile and clippy gates passing. This closes one local
 segmented-writer allocation boundary only; crash-stale-lock recovery,
 cross-process writer authority, hostile archive soak, cross-platform filesystem
 semantics and release certification remain unproven.
+
+**M6 learning-ledger input boundary continuation (2026-09-03):**
+implementation commit `b6e1acb3784354f2837336a71e4df603f542c238` bounds the
+legacy `aegis_get_learning_stats` `ledger_json` input to **8 MiB** before
+deserialization and returns a typed `PyValueError` when the bound is exceeded.
+The valid statistics schema and live index-count behavior are unchanged. The
+focused no-default-features test passes **1/1**; the same feature-enabled FFI
+test passes **1/1** in **46.81 s**; the complete no-default-features Rust
+library suite passes **453/453** in **79.37 s**, with format, compile and
+clippy gates passing. This closes one learning-ledger allocation boundary only;
+Python-side string allocation, unbounded session content, FFI-wide lifetime/
+soak behavior, cross-process authority and release certification remain
+unproven.
