@@ -491,6 +491,55 @@ def test_simulation_evidence_cannot_be_relabelled_as_observation() -> None:
         ).validate()
 
 
+def test_simulation_evidence_round_trip_preserves_shadow_policy() -> None:
+    simulation = SimulationEvidence(
+        simulation_id="fault-1",
+        simulation_class="FAULT_SIMULATOR",
+        question="Does retry fencing contain duplicates?",
+        inputs=("retry schedule",),
+        outputs=("duplicate count",),
+    )
+    snapshot = simulation.as_dict()
+    restored = SimulationEvidence.from_dict(snapshot)
+
+    assert restored == simulation
+    assert snapshot["inputs"] == ["retry schedule"]
+    assert snapshot["claimable_as_observed"] is False
+    with pytest.raises(ValueError, match="claimable as observed"):
+        SimulationEvidence.from_dict({**snapshot, "claimable_as_observed": True})
+    with pytest.raises(TypeError, match="canonical list"):
+        SimulationEvidence.from_dict({**snapshot, "inputs": ("retry schedule",)})
+
+
+def test_anchor_observation_round_trip_preserves_nested_evidence_hash() -> None:
+    anchor = AnchorObservation(
+        "anchor-1",
+        HardwareCapabilityVector(architecture="x86_64", logical_cores=8),
+        WorkloadSignature(compute_intensity=0.7, memory_intensity=0.3),
+        2.5,
+    )
+    snapshot = anchor.as_dict()
+    restored = AnchorObservation.from_dict(snapshot)
+
+    assert restored == anchor
+    assert restored.evidence_hash == anchor.evidence_hash
+    tampered = {**snapshot, "observed_value": 99.0}
+    with pytest.raises(ValueError, match="anchor observation"):
+        AnchorObservation.from_dict(tampered)
+
+
+def test_anchor_observation_rehydration_rejects_forged_type() -> None:
+    anchor = AnchorObservation(
+        "anchor-1", HardwareCapabilityVector(logical_cores=8), WorkloadSignature(compute_intensity=0.5), 2.5
+    )
+
+    class ForgedAnchor(AnchorObservation):
+        pass
+
+    with pytest.raises(TypeError, match="canonical type"):
+        ForgedAnchor.from_dict(anchor.as_dict())
+
+
 def _prediction_fixture() -> tuple[
     AnalyticPredictionModel, HardwareCapabilityVector, WorkloadSignature, list[AnchorObservation]
 ]:
@@ -901,3 +950,14 @@ def test_coverage_vector_has_independent_dimensions_and_no_aggregate() -> None:
     assert payload["aggregate"] is None
     with pytest.raises(ValueError, match="coverage vector"):
         CoverageVector(contract_coverage="99%").validate()
+
+
+def test_coverage_vector_round_trip_rejects_aggregate_invention() -> None:
+    vector = CoverageVector(contract_coverage="COMPLETE", statistical_precision="NOT_VERIFIED")
+    restored = CoverageVector.from_dict(vector.as_dict())
+
+    assert restored == vector
+    with pytest.raises(ValueError, match="aggregate"):
+        CoverageVector.from_dict({**vector.as_dict(), "aggregate": 1.0})
+    with pytest.raises(ValueError, match="schema keys"):
+        CoverageVector.from_dict({**vector.as_dict(), "unexpected": True})
