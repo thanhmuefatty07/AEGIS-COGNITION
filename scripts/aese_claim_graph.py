@@ -32,6 +32,7 @@ SCHEMA: Final[str] = "aese-shadow-claim-evidence-graph-v1"
 PHASE: Final[str] = "PHASE_1_CLAIM_EVIDENCE_GRAPH"
 MODE: Final[str] = "SHADOW"
 TRACEABILITY_RE: Final[re.Pattern[str]] = re.compile(r"^(?:GT96|AESE)-(\d{3})$")
+_CRITICAL_VALUES: Final[frozenset[str]] = frozenset({"CRITICAL", "HIGH", "CRITICAL_NOW", "RELEASE_CRITICAL"})
 
 
 def _sha256(value: bytes) -> str:
@@ -182,12 +183,48 @@ def _surface_nodes(
                 "path": path,
                 "target": item.get("target"),
                 "kind": str(item["kind"]),
+                "risk": item.get("risk"),
+                "security_criticality": item.get("security_criticality"),
+                "release_criticality": item.get("release_criticality"),
+                "release_critical": item.get("release_critical"),
                 "claim_refs": claim_refs,
                 "mapping_status": "MAPPED_EXACT" if claim_refs else "NOT_MAPPED",
                 "unknown_dependency_policy": "INVALIDATE_CONSERVATIVELY" if not claim_refs else None,
             }
         )
     return sorted(nodes, key=lambda node: str(node["id"]))
+
+
+def _mapping_state(surfaces: list[dict[str, object]]) -> tuple[str, dict[str, object]]:
+    """Derive graph status from mapping facts; unknown criticality is conservative."""
+
+    unmapped_count = sum(1 for surface in surfaces if surface["mapping_status"] != "MAPPED_EXACT")
+    criticality_keys = ("risk", "security_criticality", "release_criticality", "release_critical")
+    criticality_known = all(
+        any(str(surface.get(key, "UNKNOWN")).strip().upper() not in {"", "UNKNOWN", "NONE", "NULL"} for key in criticality_keys)
+        for surface in surfaces
+    )
+    high_risk = [
+        surface
+        for surface in surfaces
+        if any(str(surface.get(key, "")).strip().upper() in _CRITICAL_VALUES for key in criticality_keys)
+    ]
+    critical_high_risk_mapped = criticality_known and all(
+        surface["mapping_status"] == "MAPPED_EXACT" for surface in high_risk
+    )
+    all_surfaces_mapped = unmapped_count == 0
+    if all_surfaces_mapped:
+        status = "SHADOW_GRAPH_MAPPING_COMPLETE_SELECTION_DISABLED"
+    elif critical_high_risk_mapped:
+        status = "SHADOW_GRAPH_CRITICAL_MAPPING_COMPLETE_SELECTION_DISABLED"
+    else:
+        status = "SHADOW_GRAPH_PARTIAL_MAPPING_SELECTION_DISABLED"
+    return status, {
+        "all_surfaces_mapped": all_surfaces_mapped,
+        "critical_high_risk_mapped": critical_high_risk_mapped,
+        "criticality_known": criticality_known,
+        "unmapped_surface_count": unmapped_count,
+    }
 
 
 def _claim_nodes(
@@ -353,6 +390,7 @@ def build_graph() -> dict[str, object]:
         key=lambda edge: (edge["from"], edge["to"], edge["relation"]),
     )
     mapped_surfaces = sum(1 for surface in surfaces if surface["mapping_status"] == "MAPPED_EXACT")
+    status, mapping_condition = _mapping_state(surfaces)
     unresolved_verifications = sum(
         1 for verification in verifications if verification["mapping_status"] == "NOT_MAPPED"
     )
@@ -369,7 +407,8 @@ def build_graph() -> dict[str, object]:
         "schema": SCHEMA,
         "phase": PHASE,
         "mode": MODE,
-        "status": "SHADOW_GRAPH_COMPLETE_MAPPING_AND_SELECTION_DISABLED",
+        "status": status,
+        "mapping_condition": mapping_condition,
         "direct_cutover": "PROHIBITED",
         "source_head": head,
         "source_tree_sha256": _sha256(input_material),
@@ -433,6 +472,7 @@ def validate_graph(actual: dict[str, object], expected: dict[str, object]) -> li
         "phase",
         "mode",
         "status",
+        "mapping_condition",
         "direct_cutover",
         "source_tree_sha256",
         "counts",

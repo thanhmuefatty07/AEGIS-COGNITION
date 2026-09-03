@@ -19,15 +19,21 @@ import subprocess
 import sys
 from dataclasses import dataclass
 from pathlib import Path
+from statistics import NormalDist
 from typing import Final, cast
 
 
 ROOT: Final[Path] = Path(__file__).resolve().parents[1]
 SCHEMA: Final[str] = "aese-statistical-calibration-v1"
-GENERATOR_VERSION: Final[str] = "aese-statistical-calibration-generator-v1"
+GENERATOR_VERSION: Final[str] = "aese-statistical-calibration-generator-v2"
 VALIDATOR_ID: Final[str] = f"{SCHEMA}:{GENERATOR_VERSION}"
 DEFAULT_SEED: Final[int] = 2_026_0903
-DEFAULT_REPLICATES: Final[int] = 30
+DEFAULT_MIN_REPLICATES: Final[int] = 30
+DEFAULT_MAX_REPLICATES: Final[int] = 120
+DEFAULT_REPLICATE_BATCH: Final[int] = 30
+DEFAULT_REPLICATES: Final[int] = DEFAULT_MIN_REPLICATES
+META_NOMINAL_ALPHA: Final[float] = 0.05
+MIN_DECISION_RESOLUTION: Final[float] = 0.50
 SCENARIOS: Final[tuple[str, ...]] = ("null", "improvement", "regression")
 CHECKPOINT_POLICIES: Final[tuple[str, ...]] = ("every_observation", "every_block")
 
@@ -272,6 +278,104 @@ def _percentile(values: list[int], fraction: float) -> int | None:
     return ordered[rank - 1]
 
 
+def _wilson_bounds(
+    successes: int,
+    trials: int,
+    *,
+    nominal_alpha: float = META_NOMINAL_ALPHA,
+    tail: str = "one_sided_upper",
+) -> dict[str, object]:
+    """Return an auditable Wilson score interval for a Bernoulli rate.
+
+    This is an uncertainty estimate for a finite calibration campaign, not a
+    claim that a synthetic generator is representative of production.
+    """
+
+    if type(successes) is not int or type(trials) is not int or not 0 <= successes <= trials:
+        raise ValueError("calibration Bernoulli counts are invalid")
+    if type(nominal_alpha) not in (int, float) or not 0.0 < float(nominal_alpha) < 1.0:
+        raise ValueError("calibration nominal alpha is invalid")
+    if tail not in {"one_sided_lower", "one_sided_upper", "two_sided"}:
+        raise ValueError("calibration Bernoulli tail is invalid")
+    if trials == 0:
+        lower: float | None = None
+        upper: float | None = None
+    else:
+        alpha = float(nominal_alpha)
+        tail_alpha = alpha / 2.0 if tail == "two_sided" else alpha
+        z = NormalDist().inv_cdf(1.0 - tail_alpha)
+        proportion = successes / trials
+        z_squared = z * z
+        denominator = 1.0 + z_squared / trials
+        center = (proportion + z_squared / (2.0 * trials)) / denominator
+        half_width = (
+            z
+            * math.sqrt(
+                proportion * (1.0 - proportion) / trials
+                + z_squared / (4.0 * trials * trials)
+            )
+            / denominator
+        )
+        lower = max(0.0, center - half_width)
+        upper = min(1.0, center + half_width)
+        if successes == 0:
+            lower = 0.0
+        if successes == trials:
+            upper = 1.0
+    return {
+        "method_id": "wilson_score_v1",
+        "nominal_alpha": float(nominal_alpha),
+        "one_sided_or_two_sided": tail,
+        "successes": successes,
+        "trials": trials,
+        "lower_bound": lower,
+        "upper_bound": upper,
+    }
+
+
+def _bound_decision(
+    bounds: dict[str, object],
+    *,
+    threshold: float,
+    relation: str,
+) -> str:
+    """Classify a bound without treating an undecidable sample as failure."""
+
+    if relation not in {"minimum", "maximum"} or not 0.0 <= threshold <= 1.0:
+        raise ValueError("calibration threshold relation is invalid")
+    lower = bounds["lower_bound"]
+    upper = bounds["upper_bound"]
+    if lower is None or upper is None:
+        return "INCONCLUSIVE"
+    if relation == "minimum":
+        if float(lower) >= threshold:
+            return "VALIDATED"
+        if float(upper) < threshold:
+            return "INVALIDATED"
+    else:
+        if float(upper) <= threshold:
+            return "VALIDATED"
+        if float(lower) > threshold:
+            return "INVALIDATED"
+    return "INCONCLUSIVE"
+
+
+def _rate_metric(
+    successes: int,
+    trials: int,
+    *,
+    threshold: float,
+    relation: str,
+    tail: str,
+    nominal_alpha: float = META_NOMINAL_ALPHA,
+) -> dict[str, object]:
+    bounds = _wilson_bounds(successes, trials, nominal_alpha=nominal_alpha, tail=tail)
+    bounds["threshold"] = threshold
+    bounds["threshold_relation"] = relation
+    bounds["decision"] = _bound_decision(bounds, threshold=threshold, relation=relation)
+    return bounds
+
+
 def _run_trial(
     family: FamilyDefinition,
     scenario: str,
@@ -317,6 +421,11 @@ def _run_trial(
         raise RuntimeError("calibration trial produced no checkpoint")
     result.validate()
     relation = "NULL" if scenario == "null" else scenario.upper()
+    expected_decision = "PASS" if scenario == "improvement" else "NOT_PASS"
+    decision = result.status if result.status in {"PASS", "FAIL"} else None
+    correct_decision = (decision == "PASS" and expected_decision == "PASS") or (
+        decision == "FAIL" and expected_decision == "NOT_PASS"
+    )
     has_interval = result.ci_low is not None and result.ci_high is not None
     covered = bool(has_interval and result.ci_low <= true_estimand <= result.ci_high)
     false_pass = result.status == "PASS" and relation != "IMPROVEMENT"
@@ -338,6 +447,11 @@ def _run_trial(
         "seed": seed,
         "scenario": scenario,
         "relation": relation,
+        "expected_decision": expected_decision,
+        "decision": decision,
+        "correct_decision": correct_decision,
+        "wrong_decision": decision is not None and not correct_decision,
+        "inconclusive_decision": decision is None,
         "true_estimand": true_estimand,
         "final_status": result.status,
         "observations_consumed": consumed,
@@ -358,12 +472,56 @@ def _run_trial(
     }
 
 
-def _summarize_trials(trials: list[dict[str, object]]) -> dict[str, object]:
+def _summarize_trials(
+    trials: list[dict[str, object]],
+    *,
+    nominal_alpha: float = META_NOMINAL_ALPHA,
+) -> dict[str, object]:
     if not trials:
         raise ValueError("calibration cell has no trials")
     consumed = [int(trial["observations_consumed"]) for trial in trials]
     eligible = [trial for trial in trials if trial["coverage_eligible"]]
     covered = sum(bool(trial["coverage"]) for trial in eligible)
+    false_pass_count = sum(bool(trial["false_pass"]) for trial in trials)
+    false_fail_count = sum(bool(trial["false_fail"]) for trial in trials)
+    correct_decision_count = sum(bool(trial["correct_decision"]) for trial in trials)
+    wrong_decision_count = sum(bool(trial["wrong_decision"]) for trial in trials)
+    inconclusive_count = sum(bool(trial["inconclusive_decision"]) for trial in trials)
+    decision_resolution_count = correct_decision_count + wrong_decision_count
+    confidence_bounds = {
+        "coverage": _rate_metric(
+            covered,
+            len(eligible),
+            threshold=0.90,
+            relation="minimum",
+            tail="one_sided_lower",
+            nominal_alpha=nominal_alpha,
+        ),
+        "false_pass": _rate_metric(
+            false_pass_count,
+            len(trials),
+            threshold=0.05,
+            relation="maximum",
+            tail="one_sided_upper",
+            nominal_alpha=nominal_alpha,
+        ),
+        "false_fail": _rate_metric(
+            false_fail_count,
+            len(trials),
+            threshold=0.10,
+            relation="maximum",
+            tail="one_sided_upper",
+            nominal_alpha=nominal_alpha,
+        ),
+        "decision_resolution": _rate_metric(
+            decision_resolution_count,
+            len(trials),
+            threshold=MIN_DECISION_RESOLUTION,
+            relation="minimum",
+            tail="one_sided_lower",
+            nominal_alpha=nominal_alpha,
+        ),
+    }
     return {
         "replicates": len(trials),
         "status_counts": {
@@ -372,9 +530,24 @@ def _summarize_trials(trials: list[dict[str, object]]) -> dict[str, object]:
             if any(trial["final_status"] == status for trial in trials)
         },
         "empirical_ci_coverage": covered / len(eligible) if eligible else None,
+        "coverage_success_count": covered,
+        "coverage_trial_count": len(eligible),
         "coverage_denominator": len(eligible),
-        "false_pass_rate": sum(bool(trial["false_pass"]) for trial in trials) / len(trials),
-        "false_fail_rate": sum(bool(trial["false_fail"]) for trial in trials) / len(trials),
+        "false_pass_count": false_pass_count,
+        "false_pass_trial_count": len(trials),
+        "false_pass_rate": false_pass_count / len(trials),
+        "false_fail_count": false_fail_count,
+        "false_fail_trial_count": len(trials),
+        "false_fail_rate": false_fail_count / len(trials),
+        "correct_decision_count": correct_decision_count,
+        "correct_decision_rate": correct_decision_count / len(trials),
+        "wrong_decision_count": wrong_decision_count,
+        "wrong_decision_rate": wrong_decision_count / len(trials),
+        "inconclusive_count": inconclusive_count,
+        "inconclusive_rate": inconclusive_count / len(trials),
+        "decision_resolution_count": decision_resolution_count,
+        "decision_resolution_rate": decision_resolution_count / len(trials),
+        "confidence_bounds": confidence_bounds,
         "early_stop_frequency": sum(bool(trial["early_stop"]) for trial in trials) / len(trials),
         "premature_terminal_frequency": sum(bool(trial["premature_terminal"]) for trial in trials) / len(trials),
         "average_observations_consumed": sum(consumed) / len(consumed),
@@ -389,15 +562,25 @@ def _cell_criteria(summary: dict[str, object], minimum_replicates: int) -> list[
     failures: list[str] = []
     if int(summary["replicates"]) < minimum_replicates:
         failures.append("replicate_count_below_preregistered_minimum")
+    confidence_bounds = cast(dict[str, dict[str, object]], summary["confidence_bounds"])
     coverage = summary["empirical_ci_coverage"]
-    if coverage is None or int(summary["coverage_denominator"]) < minimum_replicates:
+    coverage_metric = confidence_bounds["coverage"]
+    if coverage is None or int(summary["coverage_trial_count"]) < minimum_replicates:
         failures.append("coverage_evidence_insufficient")
-    elif not 0.90 <= float(coverage) <= 1.0:
-        failures.append("empirical_coverage_outside_0.90_to_1.00")
-    if float(summary["false_pass_rate"]) > 0.05:
-        failures.append("false_pass_rate_above_0.05")
-    if float(summary["false_fail_rate"]) > 0.10:
-        failures.append("false_fail_rate_above_0.10")
+    elif coverage_metric["decision"] != "VALIDATED":
+        failures.append(f"coverage_meta_{str(coverage_metric['decision']).lower()}")
+    false_pass_metric = confidence_bounds["false_pass"]
+    if false_pass_metric["decision"] != "VALIDATED":
+        failures.append(f"false_pass_meta_{str(false_pass_metric['decision']).lower()}")
+    false_fail_metric = confidence_bounds["false_fail"]
+    if false_fail_metric["decision"] != "VALIDATED":
+        failures.append(f"false_fail_meta_{str(false_fail_metric['decision']).lower()}")
+    resolution_count = int(summary["decision_resolution_count"])
+    if resolution_count == 0:
+        failures.append("always_inconclusive_protocol")
+    resolution_metric = confidence_bounds["decision_resolution"]
+    if resolution_metric["decision"] != "VALIDATED":
+        failures.append(f"decision_resolution_{str(resolution_metric['decision']).lower()}")
     unstable_count = int(cast(dict[str, int], summary["status_counts"]).get("UNSTABLE", 0))
     if unstable_count:
         failures.append("unexpected_unstable_status")
@@ -406,9 +589,28 @@ def _cell_criteria(summary: dict[str, object], minimum_replicates: int) -> list[
     return failures
 
 
+def _cell_meta_decidable(summaries: dict[str, object]) -> bool:
+    """Return true only when every scenario's preregistered bounds resolve."""
+
+    for scenario in SCENARIOS:
+        summary = summaries.get(scenario)
+        if not isinstance(summary, dict):
+            return False
+        confidence_bounds = summary.get("confidence_bounds")
+        if not isinstance(confidence_bounds, dict):
+            return False
+        for metric_name in ("coverage", "false_pass", "false_fail", "decision_resolution"):
+            metric = confidence_bounds.get(metric_name)
+            if not isinstance(metric, dict) or metric.get("decision") == "INCONCLUSIVE":
+                return False
+    return True
+
+
 def run_calibration(
     *,
     replicates: int = DEFAULT_REPLICATES,
+    max_replicates: int | None = None,
+    replicate_batch: int | None = None,
     campaign_seed: int = DEFAULT_SEED,
     families: tuple[str, ...] | None = None,
     variants: tuple[str, ...] | None = None,
@@ -418,6 +620,16 @@ def run_calibration(
 
     if type(replicates) is not int or not 1 <= replicates <= 5_000:
         raise ValueError("calibration replicates must be an integer in [1, 5000]")
+    resolved_max_replicates = DEFAULT_MAX_REPLICATES if max_replicates is None else max_replicates
+    resolved_replicate_batch = DEFAULT_REPLICATE_BATCH if replicate_batch is None else replicate_batch
+    if type(resolved_max_replicates) is not int or not 1 <= resolved_max_replicates <= 5_000:
+        raise ValueError("calibration max_replicates must be an integer in [1, 5000]")
+    if resolved_max_replicates < replicates:
+        raise ValueError("calibration max_replicates must be >= replicates")
+    if type(resolved_replicate_batch) is not int or not 1 <= resolved_replicate_batch <= 5_000:
+        raise ValueError("calibration replicate_batch must be an integer in [1, 5000]")
+    if resolved_replicate_batch > resolved_max_replicates:
+        raise ValueError("calibration replicate_batch must be <= max_replicates")
     if type(campaign_seed) is not int or campaign_seed < 0:
         raise ValueError("calibration campaign seed must be a non-negative integer")
     selected_family_names = tuple(families or tuple(FAMILY_BY_NAME))
@@ -445,8 +657,16 @@ def run_calibration(
         "variants": [VARIANT_BY_ID[identifier].__dict__ for identifier in selected_variant_ids],
         "checkpoint_policies": checkpoint_policies,
         "replicates": replicates,
+        "maximum_replicates": resolved_max_replicates,
+        "replicate_batch": resolved_replicate_batch,
+        "meta_nominal_alpha": META_NOMINAL_ALPHA,
+        "min_decision_resolution": MIN_DECISION_RESOLUTION,
         "criteria": {
-            "minimum_replicates_per_cell": DEFAULT_REPLICATES,
+            "minimum_replicates_per_cell": replicates,
+            "maximum_replicates_per_cell": resolved_max_replicates,
+            "replicate_batch": resolved_replicate_batch,
+            "meta_nominal_alpha": META_NOMINAL_ALPHA,
+            "min_decision_resolution": MIN_DECISION_RESOLUTION,
             "coverage_interval": [0.90, 1.0],
             "max_false_pass_rate": 0.05,
             "max_false_fail_rate": 0.10,
@@ -461,27 +681,47 @@ def run_calibration(
         for variant_index, variant_id in enumerate(selected_variant_ids):
             variant = VARIANT_BY_ID[variant_id]
             for policy_index, policy in enumerate(checkpoint_policies):
+                scenario_trials: dict[str, list[dict[str, object]]] = {scenario: [] for scenario in SCENARIOS}
                 scenario_summaries: dict[str, object] = {}
-                for scenario_index, scenario in enumerate(SCENARIOS):
-                    trials = [
-                        _run_trial(
-                            family,
-                            scenario,
-                            variant,
-                            policy,
-                            _trial_seed(
-                                campaign_seed,
-                                family_index,
-                                scenario_index,
-                                variant_index,
-                                policy_index,
-                                replicate,
-                            ),
+                allocated = 0
+                allocation_batches: list[int] = []
+                allocation_stop_reason = ""
+                while True:
+                    target = min(
+                        resolved_max_replicates,
+                        max(replicates, allocated + resolved_replicate_batch),
+                    )
+                    for scenario_index, scenario in enumerate(SCENARIOS):
+                        scenario_trials[scenario].extend(
+                            _run_trial(
+                                family,
+                                scenario,
+                                variant,
+                                policy,
+                                _trial_seed(
+                                    campaign_seed,
+                                    family_index,
+                                    scenario_index,
+                                    variant_index,
+                                    policy_index,
+                                    replicate,
+                                ),
+                            )
+                            for replicate in range(allocated, target)
                         )
-                        for replicate in range(replicates)
-                    ]
-                    summary = _summarize_trials(trials)
-                    scenario_summaries[scenario] = summary
+                    allocated = target
+                    allocation_batches.append(allocated)
+                    scenario_summaries = {
+                        scenario: _summarize_trials(trials, nominal_alpha=META_NOMINAL_ALPHA)
+                        for scenario, trials in scenario_trials.items()
+                    }
+                    if allocated >= resolved_max_replicates:
+                        allocation_stop_reason = "MAXIMUM_REPLICATES_REACHED"
+                        break
+                    if _cell_meta_decidable(scenario_summaries):
+                        allocation_stop_reason = "META_BOUNDS_DECIDABLE"
+                        break
+                for scenario in SCENARIOS:
                     all_trials.extend(
                         {
                             "family": family_name,
@@ -489,13 +729,16 @@ def run_calibration(
                             "checkpoint_policy": policy,
                             **trial,
                         }
-                        for trial in trials
+                        for trial in scenario_trials[scenario]
                     )
                 cell = {
                     "family": family_name,
                     "domain_declaration": family.domain,
                     "variant": variant_id,
                     "checkpoint_policy": policy,
+                    "replicates_allocated": allocated,
+                    "allocation_batches": allocation_batches,
+                    "allocation_stop_reason": allocation_stop_reason,
                     "scenarios": scenario_summaries,
                 }
                 cells.append(cell)
@@ -503,7 +746,7 @@ def run_calibration(
                     domain_cell_failures[family_name].extend(
                         f"{variant_id}/{policy}/{scenario}:{failure}"
                         for scenario, summary in scenario_summaries.items()
-                        for failure in _cell_criteria(cast(dict[str, object], summary), DEFAULT_REPLICATES)
+                        for failure in _cell_criteria(cast(dict[str, object], summary), replicates)
                     )
 
     domain_assessments: dict[str, dict[str, object]] = {}
@@ -532,6 +775,11 @@ def run_calibration(
         and all(domain_assessments[name]["assessment"] == "VALIDATED_DOMAIN" for name in candidate_families)
         else "INSUFFICIENT_EVIDENCE"
     )
+    allocated_values = [int(cell["replicates_allocated"]) for cell in cells]
+    stop_reason_counts = {
+        reason: sum(cell["allocation_stop_reason"] == reason for cell in cells)
+        for reason in sorted({str(cell["allocation_stop_reason"]) for cell in cells})
+    }
     artifact_without_hash: dict[str, object] = {
         "schema": SCHEMA,
         "generator_version": GENERATOR_VERSION,
@@ -542,10 +790,37 @@ def run_calibration(
         "campaign": {
             "seed": campaign_seed,
             "replicates_per_cell": replicates,
+            "minimum_replicates_per_cell": replicates,
+            "maximum_replicates_per_cell": resolved_max_replicates,
+            "replicate_batch": resolved_replicate_batch,
+            "allocation_policy": "ADAPTIVE_BOUNDS_UNTIL_DECIDABLE",
             "families": selected_family_names,
             "scenarios": SCENARIOS,
             "variants": selected_variant_ids,
             "checkpoint_policies": checkpoint_policies,
+        },
+        "meta_calibration": {
+            "method_id": "wilson_score_v1",
+            "nominal_alpha": META_NOMINAL_ALPHA,
+            "interval_type": "one_sided",
+            "decision_labels": ["VALIDATED", "INVALIDATED", "INCONCLUSIVE"],
+            "scenario_expected_decision": {"improvement": "PASS", "null": "NOT_PASS", "regression": "NOT_PASS"},
+            "metrics": {
+                "coverage": {"threshold": 0.90, "relation": "minimum"},
+                "false_pass": {"threshold": 0.05, "relation": "maximum"},
+                "false_fail": {"threshold": 0.10, "relation": "maximum"},
+                "decision_resolution": {"threshold": MIN_DECISION_RESOLUTION, "relation": "minimum"},
+            },
+            "minimum_replicates_per_cell": replicates,
+            "maximum_replicates_per_cell": resolved_max_replicates,
+            "replicate_batch": resolved_replicate_batch,
+        },
+        "adaptive_allocation_summary": {
+            "cell_count": len(cells),
+            "minimum_allocated_replicates": min(allocated_values),
+            "maximum_allocated_replicates": max(allocated_values),
+            "average_allocated_replicates": sum(allocated_values) / len(allocated_values),
+            "stop_reason_counts": stop_reason_counts,
         },
         "criteria": protocol_payload["criteria"],
         "domain_assessments": domain_assessments,
@@ -592,6 +867,8 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output", type=Path)
     parser.add_argument("--replicates", type=int, default=DEFAULT_REPLICATES)
+    parser.add_argument("--max-replicates", type=int, default=DEFAULT_MAX_REPLICATES)
+    parser.add_argument("--replicate-batch", type=int, default=DEFAULT_REPLICATE_BATCH)
     parser.add_argument("--seed", type=int, default=DEFAULT_SEED)
     parser.add_argument("--families", nargs="+", choices=tuple(FAMILY_BY_NAME))
     parser.add_argument("--variants", nargs="+", choices=tuple(VARIANT_BY_ID))
@@ -600,6 +877,8 @@ def main() -> int:
     args = parser.parse_args()
     artifact = run_calibration(
         replicates=args.replicates,
+        max_replicates=args.max_replicates,
+        replicate_batch=args.replicate_batch,
         campaign_seed=args.seed,
         families=tuple(args.families) if args.families else None,
         variants=tuple(args.variants) if args.variants else None,
