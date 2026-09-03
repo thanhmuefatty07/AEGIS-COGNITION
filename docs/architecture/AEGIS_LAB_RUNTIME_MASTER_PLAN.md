@@ -3,7 +3,7 @@ document_id: AEGIS-LAB-RUNTIME-MASTER-PLAN
 document_type: canonical_current_implementation_plan
 status: IN_EXECUTION
 authority: derived_from_checkout_and_evidence_manifest
-applies_to_commit: a1b4007811e6fbaf8019830bbd2897af5bffd006
+applies_to_commit: 952a5e8be8e6bcfe603f0fd37bdea5e7af651435
 created_at: 2026-08-26
 last_verified_at: 2026-09-03
 supersedes: browser-native-proposal-and-cumulative-harness-roadmap-as-execution-authority
@@ -4863,3 +4863,77 @@ measure production observations, prove universal coverage, establish
 independent validator agreement, or authorize selective execution. The next
 narrow milestone is AESE-S2 critical/high-risk claim-to-test-to-source
 mapping, with unknown dependencies widening conservatively.
+
+**AESE-S1.1 meta-calibration correctness (2026-09-03):** implementation
+commit `952a5e8be8e6bcfe603f0fd37bdea5e7af651435` closes the acceptance-method
+seam required before any larger calibration campaign. The shadow harness now
+records Bernoulli successes/trials, one-sided Wilson score bounds
+(`wilson_score_v1`, nominal alpha `0.05`), and explicit
+`VALIDATED`/`INVALIDATED`/`INCONCLUSIVE` decisions. Coverage, false-pass,
+false-fail and decision-resolution metrics are retained as counts and rates;
+the scenario semantics are explicit: `improvement` requires `PASS`, while
+`null` and `regression` require `NOT_PASS`. An all-inconclusive protocol is a
+recorded failure and cannot validate. Replicates are allocated in deterministic
+batches until all scenario bounds are decidable or the preregistered maximum
+is reached. Claim-graph status is now derived from mapping facts and unknown
+criticality remains conservative.
+
+The retained local artifact is
+`artifacts/evidence/aese-statistical-calibration-s1-1.json` (ignored and not a
+release artifact), with source SHA
+`952a5e8be8e6bcfe603f0fd37bdea5e7af651435`, `CLEAN` worktree capture,
+protocol hash
+`04ed8d1debe8163d1f3ee74e640279b9e74e5cb3e100a510b1aa8e095f40fba3`,
+validator ID
+`aese-statistical-calibration-v1:aese-statistical-calibration-generator-v2`,
+and artifact hash
+`ee46af099fb98d6cf8b9b88fb901f0346584641d7e7d728dc9bbffedc36f742a`.
+The preregistered campaign has 18 families × 3 scenarios × 3 variants × 2
+checkpoint policies = **108 cells** and **21,510 retained trial digests**.
+Each cell allocated at least 60 and at most 120 replicates (mean
+`66.38888888888889`); 97 cells stopped when bounds became decidable and 11
+reached the maximum. The overall result remains
+`INSUFFICIENT_EVIDENCE`: all nine declared in-domain families remain
+unvalidated, while nine dependence/trend/change/contamination/outlier
+families remain `OUT_OF_DOMAIN`. Declared unstable-family detection is
+`6,779/6,840` (`0.9910818713450292`), and contamination detection is
+`1,620/2,700` (`0.6`); the latter is intentionally limited because latent rare
+outliers have no explicit contamination flag. These are synthetic finite
+campaign measurements, not production or hardware evidence. No threshold was
+relaxed, no unstable result was relabeled, and no evidence was promoted.
+
+The claim graph generated from the same checkout is
+`SHADOW_GRAPH_PARTIAL_MAPPING_SELECTION_DISABLED`: 121 surfaces, 9 mapped,
+112 unmapped, 46 claims, 92 verifications (70 unmapped), 27 code nodes and
+20 future obligations. This status is now evidence-derived; it is not a
+completion claim. The unknown criticality fields prevent a narrower
+critical-only completion status.
+
+S1.1 implementation tests pass **24/24** and the full Python suite passes
+**570/570** (one Python 3.11 warning for the unsupported
+`asyncio_default_fixture_loop_scope` option); targeted isolated Ruff passes.
+Pyright (not installed), repository formatter compatibility with the
+project’s Python-3.14 target, hosted CI, independent validator agreement,
+production representativeness, and release authority remain `NOT VERIFIED`.
+The existing runtime authority state is unchanged:
+`AESE_MODE=SHADOW`, legacy full-suite authority active, selection and
+promotion disabled, runtime refactor frozen, and release unauthorized.
+
+**S1.1 blocker ledger:** the acceptance methodology blocker is closed by the
+implementation and boundary tests, but the calibration gate itself is not
+closed. Unexpected `UNSTABLE` outcomes and decision-resolution failures keep
+candidate families at `INSUFFICIENT_EVIDENCE`; this is a substantive result,
+not a reason to tune thresholds. The remaining blockers are (1) identify and
+either justify or correct the instability behavior within the declared
+protocol, (2) complete the evidence-derived S2 critical/high-risk
+claim-to-source-to-test mapping once S1.1 is accepted, (3) retain unknown
+dependencies as conservative invalidation in S3 affected closure, and (4)
+keep all hosted/release obligations deferred until runner-backed evidence is
+available. No blocker authorizes changing test authority, enabling selection,
+or modifying unrelated Lab runtime surfaces.
+
+**S1.1 gate decision:** `S1_1_STATUS = INSUFFICIENT_EVIDENCE`;
+`EVIDENCE_PROMOTION = DISABLED`; `SELECTIVE_TEST_AUTHORITY = DISABLED`.
+The next permitted milestone remains AESE-S2 only after this gate is
+reviewed; its first action must be a failure-focused analysis of the unstable
+and unresolved decision cells, not a larger campaign or threshold change.
