@@ -14,10 +14,82 @@ from aegis_cognition import (
     SimulationEvidence,
     WorkloadSignature,
     CoverageVector,
+    EvidenceLedger,
+    EvidenceLedgerEntry,
     evaluate_adaptive_measurement,
     predict_cross_hardware,
     select_anchor_plan,
 )
+
+
+def _evidence_entry(**changes: object) -> EvidenceLedgerEntry:
+    payload: dict[str, object] = {
+        "evidence_id": "evidence-1",
+        "claim_id": "AESE-001",
+        "protocol_hash": "a" * 64,
+        "observation_hash": "b" * 64,
+        "source_sha": "c" * 40,
+        "environment_hash": "d" * 64,
+        "validator_id": "validator-v1",
+        "evidence_class": "MEASURED",
+        "status": "LOCAL_PROVEN",
+    }
+    payload.update(changes)
+    return EvidenceLedgerEntry(**payload)  # type: ignore[arg-type]
+
+
+def test_evidence_ledger_binds_provenance_and_stays_in_shadow() -> None:
+    entry = _evidence_entry()
+    entry.validate()
+    ledger = EvidenceLedger().append(entry)
+    artifact = entry.as_dict()
+    snapshot = ledger.as_dict()
+
+    assert artifact["claimable_as_observed"] is False
+    assert artifact["artifact_hash"] == entry.artifact_hash
+    assert snapshot["mode"] == "SHADOW"
+    assert snapshot["promotion"] == "DISABLED_IN_SHADOW"
+    assert snapshot["ledger_hash"] == ledger.ledger_hash
+    assert ledger.entries == (entry,)
+
+
+def test_evidence_ledger_is_append_only_and_rejects_duplicate_identity() -> None:
+    entry = _evidence_entry()
+    ledger = EvidenceLedger().append(entry)
+    with pytest.raises(ValueError, match="duplicate evidence_id"):
+        ledger.append(entry)
+    new_entry = _evidence_entry(evidence_id="evidence-2")
+    second = ledger.append(new_entry)
+    assert ledger.entries == (entry,)
+    assert second.entries == (entry, new_entry)
+    assert second.ledger_hash != ledger.ledger_hash
+
+
+@pytest.mark.parametrize(
+    "changes, message",
+    (
+        ({"source_sha": "0" * 40}, "source_sha"),
+        ({"protocol_hash": "not-a-digest"}, "protocol_hash"),
+        ({"promotion": "ENABLED"}, "promoted"),
+    ),
+)
+def test_evidence_ledger_rejects_unreconstructible_or_promotable_records(
+    changes: dict[str, object], message: str
+) -> None:
+    with pytest.raises((TypeError, ValueError), match=message):
+        _evidence_entry(**changes).validate()
+
+
+def test_evidence_ledger_rejects_forged_entry_type_and_noncanonical_container() -> None:
+    entry = _evidence_entry()
+
+    class ForgedEntry(EvidenceLedgerEntry):
+        pass
+
+    with pytest.raises(TypeError, match="canonical type"):
+        EvidenceLedger().append(ForgedEntry(**entry.__dict__))
+    with pytest.raises(TypeError, match="canonical tuple"):
+        EvidenceLedger([entry]).validate()  # type: ignore[arg-type]
 
 
 def test_adaptive_measurement_passes_only_after_warmup_and_precision_floor() -> None:

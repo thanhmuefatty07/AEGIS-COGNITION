@@ -32,7 +32,7 @@ def test_unknown_change_widens_conservatively() -> None:
     assert plan["unknown_paths"] == ["new/unmapped/input.txt"]
     assert plan["plan_widened"] is True
     assert plan["closure_status"] == "WIDENED_ALL_RETAINED"
-    assert len(plan["affected_verification_ids"]) == 90
+    assert len(plan["affected_verification_ids"]) == 92
     assert plan["unknown_dependency_policy"] == "WIDEN_TO_RETAINED_SUITE"
     selection = plan["shadow_selection"]
     assert isinstance(selection, dict)
@@ -58,8 +58,8 @@ def test_mapped_test_surface_has_exact_shadow_closure() -> None:
     assert plan["unmapped_known_paths"] == []
     assert plan["plan_widened"] is False
     assert plan["closure_status"] == "EXACT_SOURCE_CLOSURE_SHADOW"
-    assert len(plan["affected_claim_ids"]) == 7
-    assert len(plan["affected_verification_ids"]) == 7
+    assert len(plan["affected_claim_ids"]) == 8
+    assert len(plan["affected_verification_ids"]) == 8
     assert plan["shadow_selection"]["would_skip_item_ids"] == []
 
 

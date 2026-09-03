@@ -21,6 +21,12 @@ from collections.abc import Mapping, Sequence
 MEASUREMENT_STATUSES: Final[frozenset[str]] = frozenset(
     {"PASS", "FAIL", "CONTINUE", "UNSTABLE", "CONTAMINATED", "INSUFFICIENT_EVIDENCE"}
 )
+EVIDENCE_CLASSES: Final[frozenset[str]] = frozenset(
+    {"PROVEN", "MEASURED", "SOURCE-BACKED", "INFERRED", "ASSUMED", "UNKNOWN", "SIMULATED"}
+)
+EVIDENCE_STATUSES: Final[frozenset[str]] = frozenset(
+    {"NOT_VERIFIED", "LOCAL_PROVEN", "EXTERNAL_PROVEN", "FAILED", "INSUFFICIENT_EVIDENCE"}
+)
 REGIMES: Final[frozenset[str]] = frozenset(
     {
         "COMPUTE_BOUND",
@@ -94,6 +100,16 @@ def _is_finite(value: object) -> bool:
     if type(value) not in (int, float) or isinstance(value, bool):
         return False
     return math.isfinite(float(cast(int | float, value)))
+
+
+def _is_digest(value: object, length: int) -> bool:
+    return (
+        type(value) is str
+        and len(value) == length
+        and value == value.lower()
+        and all(character in "0123456789abcdef" for character in value)
+        and any(character != "0" for character in value)
+    )
 
 
 def _hash(value: object) -> str:
@@ -267,6 +283,124 @@ class AdaptiveMeasurementSession:
         if type(values) not in (list, tuple):
             raise TypeError("measurement observations must use canonical list or tuple containers")
         return AdaptiveMeasurementSession(self.spec, self.warmups, self.observations + tuple(values))
+
+
+@dataclass(frozen=True)
+class EvidenceLedgerEntry:
+    """Reconstructible provenance for one non-promotable evidence observation."""
+
+    evidence_id: str
+    claim_id: str
+    protocol_hash: str
+    observation_hash: str
+    source_sha: str
+    environment_hash: str
+    validator_id: str
+    evidence_class: str = "UNKNOWN"
+    status: str = "NOT_VERIFIED"
+    claim_scope: str = "LOCAL_CHECKOUT_ONLY"
+    promotion: str = "DISABLED_IN_SHADOW"
+
+    def validate(self) -> None:
+        for name, value in (
+            ("evidence_id", self.evidence_id),
+            ("claim_id", self.claim_id),
+            ("validator_id", self.validator_id),
+        ):
+            if _invalid_string(value):
+                raise ValueError(f"evidence {name} is required")
+        for name, value in (
+            ("protocol_hash", self.protocol_hash),
+            ("observation_hash", self.observation_hash),
+            ("environment_hash", self.environment_hash),
+        ):
+            if not _is_digest(value, 64):
+                raise ValueError(f"evidence {name} must be a non-zero SHA-256 digest")
+        if not _is_digest(self.source_sha, 40):
+            raise ValueError("evidence source_sha must be a non-zero git SHA")
+        if self.evidence_class not in EVIDENCE_CLASSES:
+            raise ValueError("evidence class is invalid")
+        if self.status not in EVIDENCE_STATUSES:
+            raise ValueError("evidence status is invalid")
+        if _invalid_string(self.claim_scope):
+            raise ValueError("evidence claim scope is required")
+        if self.promotion != "DISABLED_IN_SHADOW":
+            raise ValueError("shadow evidence cannot be promoted")
+
+    def _payload(self) -> dict[str, object]:
+        return {
+            "schema": f"{_SCHEMA_VERSION}-evidence-ledger-entry",
+            "evidence_id": self.evidence_id,
+            "claim_id": self.claim_id,
+            "protocol_hash": self.protocol_hash,
+            "observation_hash": self.observation_hash,
+            "source_sha": self.source_sha,
+            "environment_hash": self.environment_hash,
+            "validator_id": self.validator_id,
+            "evidence_class": self.evidence_class,
+            "status": self.status,
+            "claim_scope": self.claim_scope,
+            "promotion": self.promotion,
+            "claimable_as_observed": False,
+        }
+
+    @property
+    def artifact_hash(self) -> str:
+        self.validate()
+        return _hash(self._payload())
+
+    def as_dict(self) -> dict[str, object]:
+        self.validate()
+        return {**self._payload(), "artifact_hash": self.artifact_hash}
+
+
+@dataclass(frozen=True)
+class EvidenceLedger:
+    """Immutable append-only AESE provenance ledger kept in SHADOW mode."""
+
+    entries: tuple[EvidenceLedgerEntry, ...] = ()
+
+    def validate(self) -> None:
+        if type(self.entries) is not tuple:
+            raise TypeError("evidence ledger entries must use a canonical tuple")
+        seen: set[str] = set()
+        for entry in self.entries:
+            if type(entry) is not EvidenceLedgerEntry:
+                raise TypeError("evidence ledger entries must use the canonical type")
+            entry.validate()
+            if entry.evidence_id in seen:
+                raise ValueError("evidence ledger contains duplicate evidence_id")
+            seen.add(entry.evidence_id)
+
+    def append(self, entry: EvidenceLedgerEntry) -> EvidenceLedger:
+        self.validate()
+        if type(entry) is not EvidenceLedgerEntry:
+            raise TypeError("evidence ledger entry must use the canonical type")
+        entry.validate()
+        if any(existing.evidence_id == entry.evidence_id for existing in self.entries):
+            raise ValueError("evidence ledger contains duplicate evidence_id")
+        return EvidenceLedger((*self.entries, entry))
+
+    @property
+    def ledger_hash(self) -> str:
+        self.validate()
+        return _hash(
+            {
+                "schema": f"{_SCHEMA_VERSION}-evidence-ledger",
+                "mode": "SHADOW",
+                "entries": [entry.as_dict() for entry in self.entries],
+            }
+        )
+
+    def as_dict(self) -> dict[str, object]:
+        self.validate()
+        return {
+            "schema": f"{_SCHEMA_VERSION}-evidence-ledger",
+            "mode": "SHADOW",
+            "promotion": "DISABLED_IN_SHADOW",
+            "entries": [entry.as_dict() for entry in self.entries],
+            "ledger_hash": self.ledger_hash,
+        }
 
 
 def evaluate_adaptive_measurement(
@@ -1288,6 +1422,8 @@ def predict_cross_hardware(
 __all__ = [
     "ANCHOR_OOD_STATUSES",
     "COVERAGE_VALUES",
+    "EVIDENCE_CLASSES",
+    "EVIDENCE_STATUSES",
     "MEASUREMENT_STATUSES",
     "REGIMES",
     "SIMULATION_CLASSES",
@@ -1299,6 +1435,8 @@ __all__ = [
     "AnchorObservation",
     "AnchorSelectionPlan",
     "CoverageVector",
+    "EvidenceLedger",
+    "EvidenceLedgerEntry",
     "HardwareCapabilityVector",
     "PredictionResult",
     "SimulationEvidence",
