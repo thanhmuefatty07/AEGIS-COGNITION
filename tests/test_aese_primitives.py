@@ -146,6 +146,28 @@ def test_adaptive_measurement_marks_nonfinite_and_drift_without_silent_filtering
     assert "drift_exceeds_bound" in unstable.failure_reasons
 
 
+def test_adaptive_measurement_fails_closed_on_finite_numeric_overflow() -> None:
+    spec = AdaptiveMeasurementSpec(metric="latency_ms")
+    result = evaluate_adaptive_measurement(spec, [1e308] * 30, warmups=[0.0] * 10)
+    assert result.status == "INSUFFICIENT_EVIDENCE"
+    assert result.estimate is None
+    assert "numeric_overflow" in result.failure_reasons
+    assert result.raw_observation_count == 30
+    assert result.raw_observation_hash
+
+
+def test_adaptive_measurement_fails_closed_on_nonfinite_derived_statistics() -> None:
+    result = evaluate_adaptive_measurement(
+        AdaptiveMeasurementSpec(metric="latency_ms"),
+        [1e308, -1e308] * 15,
+        warmups=[0.0] * 10,
+    )
+    assert result.status == "INSUFFICIENT_EVIDENCE"
+    assert "numeric_overflow" in result.failure_reasons
+    assert result.ci_low is None
+    assert result.ci_high is None
+
+
 def test_adaptive_measurement_baseline_failure_is_not_a_pass() -> None:
     spec = AdaptiveMeasurementSpec(metric="throughput", direction="higher_is_better")
     result = evaluate_adaptive_measurement(spec, [0.9] * 30, warmups=[0.0] * 10, baseline=0.95)
