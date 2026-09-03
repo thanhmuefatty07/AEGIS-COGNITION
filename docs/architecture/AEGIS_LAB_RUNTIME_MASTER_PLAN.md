@@ -4736,3 +4736,20 @@ Ruff passes, and inventory, claim-graph and document-consistency gates pass
 after registry regeneration. This closes local input-contract reconstruction
 only; statistical calibration, anchor availability, external execution,
 selective promotion and release authority remain unproven.
+
+**AESE result-semantic validation continuation (2026-09-03):** implementation
+commit `0f6b1aaaf684057cbabe5db931bcec7d20b47a7d` hardens
+`AdaptiveMeasurementResult.validate` beyond digest integrity. A result cannot
+claim `PASS`, `FAIL` or `UNSTABLE` without a complete finite estimate,
+confidence interval and precision statistic; mixed-null statistics, reversed
+interval bounds, negative precision, invalid autocorrelation/drift ranges,
+inconsistent block/count pairs, contamination attached to a successful status,
+and an `UNSTABLE` status without an explicit instability reason now fail closed.
+Four adversarial regressions pass, bringing the focused AESE suite to **76/76**;
+isolated compatible Ruff passes. The full Python regression reached **554
+passed** with **3 expected registry-drift failures** before regeneration; the
+inventory and claim graph were regenerated and both `--check` gates pass with
+119 retained items and 110 unmapped surfaces. This closes semantic integrity
+of locally reconstructed measurement results only; it does not calibrate
+statistics, provide independent validators, enable selective promotion or
+close external/release obligations.
