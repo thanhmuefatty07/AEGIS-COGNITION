@@ -3,7 +3,7 @@ document_id: AEGIS-LAB-RUNTIME-MASTER-PLAN
 document_type: canonical_current_implementation_plan
 status: IN_EXECUTION
 authority: derived_from_checkout_and_evidence_manifest
-applies_to_commit: 425dff1ce82898cd0ef59a581ad717866fd38c5f
+applies_to_commit: 1dd0c1aa409184c5cfbb929e9d40e3a471bd16c8
 created_at: 2026-08-26
 last_verified_at: 2026-09-03
 supersedes: browser-native-proposal-and-cumulative-harness-roadmap-as-execution-authority
@@ -4679,3 +4679,17 @@ consistency gates pass after registry regeneration. This closes local adaptive
 result reconstruction only; it does not establish statistical calibration,
 independent validator agreement, external anchors, selective promotion or
 release authority.
+
+**AESE hardware/workload rehydration continuation (2026-09-03):** implementation
+commit `1dd0c1aa409184c5cfbb929e9d40e3a471bd16c8` adds strict
+`HardwareCapabilityVector.from_dict` and `WorkloadSignature.from_dict`
+reconstruction. Hardware payloads must preserve the complete field set and
+explicit `UNKNOWN` set; workload payloads must preserve the complete field set
+and derived regime. Non-canonical containers, unknown keys, forged subclasses,
+inconsistent unknown markers and tampered regimes fail closed. The focused AESE
+primitive suite passes **62/62**, isolated compatible Ruff passes, and the
+inventory, claim-graph and document-consistency gates pass after registry
+regeneration. This closes local vector reconstruction only; vector hashes are
+still evidence inputs rather than independent calibration, and external
+anchors, statistical validation, selective promotion and release authority
+remain unproven.
