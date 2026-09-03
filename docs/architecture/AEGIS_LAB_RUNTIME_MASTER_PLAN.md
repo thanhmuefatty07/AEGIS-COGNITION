@@ -169,16 +169,17 @@ hiện tại và không được dùng để chứng minh checkout mới:
   structural/presence checks, không phải proof rằng Lab behavior hoạt động.
 
 Checkout implementation hiện hành cho migration node này là
-`dc1ca14072bfc363f278bced90558e0d1adf590e` (functional FFI change
-`e0731f698302a0791c70c24d93b696597e04180d` and session-index hardening
-`f95bbcb03c1c8448afbcf392b38dcd964b9a6f3f`), với worktree sạch và
-`origin/main` parity được xác nhận sau push. Regression Python trên CPython
-3.11 là **427 passed** với deprecation warnings treated as errors; Rust package
-lib regression sau FFI hardening là **443 passed**, cùng fmt/check/clippy pass.
-Registry AESE hiện có **117** inventoried items, graph **45 claims / 90
-verification references** và selection ở `SHADOW`/`NOT_EXECUTED`. Các kết quả này
-chỉ là local source-bound evidence; không thay thế hosted, signed-release hay
-external-anchor evidence.
+`0f6b1aaaf684057cbabe5db931bcec7d20b47a7d` (AESE measurement-result semantic
+validation), với worktree sạch và `origin/main` parity được xác nhận sau push.
+Focused AESE regression trên CPython 3.11 là **76 passed**; full Python
+regression chạy **554 passed** với **3 expected registry-drift failures** trước
+khi registry được tái tạo, sau đó inventory và claim-graph `--check` đều pass.
+Latest retained Rust no-default-features library evidence là **456/456** với
+fmt/check/clippy pass; Python-only diff này không làm thay đổi Rust surface.
+Registry AESE hiện có **119** inventoried items, graph **46 claims / 92
+verification references**, **110** unmapped surfaces và selection ở
+`SHADOW`/`NOT_EXECUTED`. Các kết quả này chỉ là local source-bound evidence;
+không thay thế hosted, signed-release hay external-anchor evidence.
 
 `current.json` vẫn cố ý để `commit=CHECKOUT_HEAD`, sáu evidence record là
 `NOT VERIFIED`, và 35 requirement là `IMPLEMENTED / NOT VERIFIED`; placeholder
