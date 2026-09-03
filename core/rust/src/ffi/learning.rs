@@ -5,6 +5,8 @@
 use super::{get_session_index, get_session_ledger, hex32, py_safe};
 use pyo3::prelude::*;
 
+const MAX_LEARNING_LEDGER_JSON_BYTES: usize = 8 * 1024 * 1024;
+
 // Learning Loop PyO3 Bindings (Sprint 5 — Python DX Bridge)
 // ─────────────────────────────────────────────────────────────────────────
 
@@ -22,6 +24,11 @@ pub fn aegis_get_learning_stats(
     user_model_count: u64,
 ) -> PyResult<String> {
     py_safe(move || {
+        if ledger_json.len() > MAX_LEARNING_LEDGER_JSON_BYTES {
+            return Err(pyo3::exceptions::PyValueError::new_err(
+                "ledger_json exceeds the bounded learning input size",
+            ));
+        }
         // Parse the ledger to count events by type
         let ledger: serde_json::Value = serde_json::from_str(&ledger_json).map_err(|e| {
             pyo3::exceptions::PyValueError::new_err(format!("Invalid ledger JSON: {}", e))
@@ -78,6 +85,18 @@ pub fn aegis_get_learning_stats(
             pyo3::exceptions::PyRuntimeError::new_err(format!("Serialization failed: {}", e))
         })
     })?
+}
+
+#[cfg(test)]
+mod tests {
+    use super::aegis_get_learning_stats;
+
+    #[test]
+    fn learning_stats_rejects_oversized_ledger_before_json_parse() {
+        let oversized = "x".repeat(super::MAX_LEARNING_LEDGER_JSON_BYTES + 1);
+        let result = aegis_get_learning_stats(oversized, String::new(), 0, 0);
+        assert!(result.is_err());
+    }
 }
 
 /// Trigger a background memory nudge for the given session.
