@@ -3,9 +3,9 @@ document_id: AEGIS-LAB-RUNTIME-MASTER-PLAN
 document_type: canonical_current_implementation_plan
 status: IN_EXECUTION
 authority: derived_from_checkout_and_evidence_manifest
-applies_to_commit: 2aa2c75bb05cacb4e2146a0b69ef48311925c9a6
+applies_to_commit: f9947237a6ca3f60404162aa43cacb79d8fae8e7
 created_at: 2026-08-26
-last_verified_at: 2026-09-03
+last_verified_at: 2026-09-04
 supersedes: browser-native-proposal-and-cumulative-harness-roadmap-as-execution-authority
 evidence_source: docs/architecture/evidence/current.json
 execution_scope: clean origin/main checkout
@@ -180,8 +180,8 @@ passed** với **3 expected registry-drift failures** trước khi registry đư
 tái tạo, sau đó inventory và claim-graph `--check` đều pass.
 Latest retained Rust no-default-features library evidence là **456/456** với
 fmt/check/clippy pass; Python-only diff này không làm thay đổi Rust surface.
-Registry AESE hiện có **127** inventoried items, graph **46 claims / 92
-verification references**, **118** unmapped surfaces và selection ở
+Registry AESE hiện có **131** inventoried items, graph **46 claims / 92
+verification references**, **122** unmapped surfaces và selection ở
 `SHADOW`/`NOT_EXECUTED`. Các kết quả này chỉ là local source-bound evidence;
 không thay thế hosted, signed-release hay external-anchor evidence.
 
@@ -4904,8 +4904,8 @@ campaign measurements, not production or hardware evidence. No threshold was
 relaxed, no unstable result was relabeled, and no evidence was promoted.
 
 The claim graph generated from the same checkout is
-`SHADOW_GRAPH_PARTIAL_MAPPING_SELECTION_DISABLED`: 127 surfaces, 9 mapped,
-118 unmapped, 46 claims, 92 verifications (70 unmapped), 27 code nodes and
+`SHADOW_GRAPH_PARTIAL_MAPPING_SELECTION_DISABLED`: 131 surfaces, 9 mapped,
+122 unmapped, 46 claims, 92 verifications (70 unmapped), 27 code nodes and
 20 future obligations. This status is now evidence-derived; it is not a
 completion claim. The unknown criticality fields prevent a narrower
 critical-only completion status.
@@ -4999,11 +4999,11 @@ invariants in the cited paths, not from filenames.
 
 The current mapping report is
 `quality/registry/current_s2_mapping.json`, artifact hash
-`73d8c67e58e61fe1567828751f6ee2e4c2ed859b3a09aad5a9c49349997e9387`, with
+`5beb3579a898fccc55e508023a47bb0f452830138cfd976165b3b8b8009dc6fa`, with
 `mapping_status=COMPLETE`, `all_critical_mapped=true`,
 `all_high_selection_relevant_mapped=true`, `no_fake_mapping=true`, and
 `critical_false_negative_status=NOT_EVALUATED_S3`. It verifies 9 critical
-records and 15 high selection-relevant records; **112 of 127 inventory
+records and 15 high selection-relevant records; **116 of 131 inventory
 surfaces remain UNKNOWN** and are explicitly widened rather than guessed.
 The claim graph remains
 `SHADOW_GRAPH_PARTIAL_MAPPING_SELECTION_DISABLED`; this mapping report cannot
@@ -5023,12 +5023,48 @@ Cargo features, entry points, registry generators, validators and workflow
 changes. Unknown paths or dynamic edges widen to all retained inventory
 items; no opaque filename score is used. The current plan artifact is
 `quality/registry/current_affected_closure.json` with reproducible hash
-`8055ece1ae59a9dff1c1412e999ade768591f224f60dc35a74edc939b30e6dbc` and
+`0d330952de1637bfaf705fee9dcb7d81f530d0023942aeadcfe9a87bbe04e235` and
 artifact hash
-`a01d1f227082bc70aa6247e4e82fb4a799ffb95e27843dbd08422d45968c0320`.
+`d366df060c936292c600d725b75171268c1e3fc0f1a06aaa30edc32c26dfb9e4`.
 The mapped critical audit is `COMPLETE_ZERO` (15 records checked), unknown
 and dynamic dependencies widen to all retained items, and the adversarial
 closure suite passes **14/14**. S3 exit-gate conditions are complete for the
 known mapped critical set; this is planning evidence, not permission to skip
 tests or promote evidence. The S3 boundary full Python suite passes
 **590/590** with the same single pytest configuration warning.
+
+**AESE-S4 explainable shadow planner (2026-09-04):** commit
+`92fb1b749b239e1c783211e2b5707589cde199c4` adds
+`scripts/aese_shadow_planner.py`. For an exact `gt96` change the recorded
+plan has one `WOULD_RUN` item and 130 `WOULD_SKIP` predictions, each with a
+closure hash, critical-audit status and retained-authority reason. Unknown or
+dynamic inputs become `WIDENED_UNKNOWN` with no skip; hosted workflow inputs
+are `EXTERNAL_DEFERRED`. Reuse remains empty until all source/protocol/
+validator/environment/claim-domain digests match. The artifact
+`quality/registry/current_shadow_plan.json` has hash
+`f9843174e1b08aa72ec84ba2bde1c336e46171fd385a0d42965ccbb97bc221e7` and
+`critical_false_negative_status=COMPLETE_ZERO`; confusion-matrix status is
+`NOT_MEASURED` until explicit legacy outcomes are supplied. No execution or
+authority change is possible.
+
+**AESE-S5 held-out validation corpus (2026-09-04):** commit
+`6c3df2ccb4715a5f2e62c5af2b9a651a776a8dba` adds
+`scripts/aese_validation_corpus.py` with disjoint development and final
+validation cases. Final labels preserve `KNOWN_GOOD`, `KNOWN_BAD`, `OOD` and
+`AMBIGUOUS`; the current held-out set contains three critical synthetic bad
+cases, all three reached (`critical_defects_caught=3`,
+`critical_defects_missed=0`). Artifact
+`quality/registry/current_validation_corpus.json` has hash
+`3f857eb27ece8cbdc626ccb469cc919d7bde80b5055f0b9df1823a1092e8f477`.
+This is deterministic planning/mutation evidence only; it is not an
+independent production non-inferiority claim.
+
+**AESE-S6 cost proof (not complete):**
+`quality/registry/current_cost_measurement.json` records four planner timing
+samples (median approximately 5.985 seconds) but
+`paired_workload=false`, legacy and selected-evidence wall times are null,
+and `net_saving_seconds=null`. Status is `INSUFFICIENT_EVIDENCE` because the
+same workload has not yet been measured as legacy plus selected evidence;
+planner overhead alone cannot prove savings. This is the remaining local
+phase blocker for the final definition of done, while all authority stays
+shadow/legacy-retained and no 10x claim is made.
