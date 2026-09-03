@@ -3,7 +3,7 @@ document_id: AEGIS-LAB-RUNTIME-MASTER-PLAN
 document_type: canonical_current_implementation_plan
 status: IN_EXECUTION
 authority: derived_from_checkout_and_evidence_manifest
-applies_to_commit: 7f3d50f54097da03356d15937955a7468d221309
+applies_to_commit: 41fb223f8f1e5a27e30cf39789c5a772bc5e2ceb
 created_at: 2026-08-26
 last_verified_at: 2026-09-03
 supersedes: browser-native-proposal-and-cumulative-harness-roadmap-as-execution-authority
@@ -4654,3 +4654,15 @@ and document-consistency gates pass with **119** inventoried items and **0**
 unresolved code references. This closes local provenance reconstruction only;
 validator independence, calibrated statistics, external anchors, selective
 test promotion and release authority remain unproven.
+
+**AESE claim-graph source-binding continuation (2026-09-03):** implementation
+commit `41fb223f8f1e5a27e30cf39789c5a772bc5e2ceb` binds the Phase-1 graph
+digest to the content hash of every resolved implementation source node, not
+only to inventory and prose registries. A regression mutating the effective
+`aegis_cognition/aese.py` digest now proves the graph changes and therefore
+cannot silently reuse prior evidence after an implementation change. The
+focused inventory/graph/preflight suite passes **17/17**, the full Python
+regression passes **447/447**, and isolated compatible Ruff checks pass for
+the touched graph surface. This closes source-binding drift detection only;
+unmapped surfaces, statistical calibration, external anchors, selective
+testing and release authority remain unproven.
