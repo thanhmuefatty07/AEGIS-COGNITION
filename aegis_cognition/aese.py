@@ -1390,6 +1390,73 @@ class AnalyticPredictionModel:
     distance_penalty_per_unit: float = 0.0
     residual_evidence_class: str = "NOT_VERIFIED"
 
+    def as_dict(self) -> dict[str, object]:
+        self.validate()
+        payload = asdict(self)
+        payload["coefficients"] = [list(item) for item in self.coefficients]
+        payload["validated_domain"] = [list(item) for item in self.validated_domain]
+        return {"schema": f"{_SCHEMA_VERSION}-prediction-model", **payload}
+
+    @classmethod
+    def from_dict(cls, value: object) -> AnalyticPredictionModel:
+        """Rehydrate a model without inferring residual evidence."""
+
+        if cls is not AnalyticPredictionModel:
+            raise TypeError("prediction model must use the canonical type")
+        if type(value) is not dict:
+            raise TypeError("prediction model must be a canonical dictionary")
+        payload = cast(dict[str, object], value)
+        expected_keys = {
+            "schema",
+            "model_id",
+            "model_version",
+            "metric",
+            "intercept",
+            "coefficients",
+            "validated_domain",
+            "residual_half_width",
+            "residual_sample_count",
+            "distance_penalty_per_unit",
+            "residual_evidence_class",
+        }
+        if set(payload) != expected_keys:
+            raise ValueError("prediction model schema keys are invalid")
+        if payload["schema"] != f"{_SCHEMA_VERSION}-prediction-model":
+            raise ValueError("prediction model schema is invalid")
+        raw_coefficients = payload["coefficients"]
+        raw_domain = payload["validated_domain"]
+        if type(raw_coefficients) is not list or type(raw_domain) is not list:
+            raise TypeError("prediction model coefficients and domains must be canonical lists")
+        coefficients = cast(list[object], raw_coefficients)
+        domain = cast(list[object], raw_domain)
+        if any(type(item) is not list or len(item) != 2 for item in coefficients):
+            raise ValueError("prediction model coefficients must be canonical pairs")
+        if any(type(item) is not list or len(item) != 3 for item in domain):
+            raise ValueError("prediction model domains must be canonical triples")
+        model = cls(
+            model_id=payload["model_id"],
+            model_version=payload["model_version"],
+            metric=payload["metric"],
+            intercept=payload["intercept"],
+            coefficients=tuple(
+                (cast(list[object], item)[0], cast(list[object], item)[1]) for item in coefficients
+            ),
+            validated_domain=tuple(
+                (
+                    cast(list[object], item)[0],
+                    cast(list[object], item)[1],
+                    cast(list[object], item)[2],
+                )
+                for item in domain
+            ),
+            residual_half_width=payload["residual_half_width"],
+            residual_sample_count=payload["residual_sample_count"],
+            distance_penalty_per_unit=payload["distance_penalty_per_unit"],
+            residual_evidence_class=payload["residual_evidence_class"],
+        )
+        model.validate()
+        return model
+
     def validate(self) -> None:
         if any(_invalid_string(value) for value in (self.model_id, self.model_version, self.metric)):
             raise ValueError("prediction model identity is required")
@@ -1443,6 +1510,183 @@ class PredictionResult:
     artifact_hash: str
     anchor_ids: tuple[str, ...] = ()
     anchor_evidence_hashes: tuple[tuple[str, str], ...] = ()
+
+    def _payload(self) -> dict[str, object]:
+        payload: dict[str, object] = {
+            "schema": f"{_SCHEMA_VERSION}-prediction",
+            "model_id": self.model_id,
+            "model_version": self.model_version,
+            "metric": self.metric,
+            "status": self.status,
+            "validated_domain": self.validated_domain,
+            "nearest_anchor_distance": self.nearest_anchor_distance,
+            "ood_status": self.ood_status,
+            "anchor_ids": self.anchor_ids,
+            "anchor_evidence_hashes": self.anchor_evidence_hashes,
+        }
+        if self.status == "PREDICTED_IN_DOMAIN":
+            payload["estimate"] = self.estimate
+            payload["prediction_interval"] = self.prediction_interval
+        else:
+            payload["missing_features"] = self.missing_features
+            payload["failure_reasons"] = self.failure_reasons
+        return payload
+
+    def validate(self) -> None:
+        if type(self) is not PredictionResult:
+            raise TypeError("prediction result must use the canonical type")
+        for name, value in (("model_id", self.model_id), ("model_version", self.model_version), ("metric", self.metric)):
+            if type(value) is not str:
+                raise TypeError(f"prediction result {name} must be a string")
+        if self.status not in {"PREDICTED_IN_DOMAIN", "REJECTED_OOD", "INSUFFICIENT_EVIDENCE"}:
+            raise ValueError("prediction result status is invalid")
+        if self.ood_status not in ANCHOR_OOD_STATUSES:
+            raise ValueError("prediction result OOD status is invalid")
+        if type(self.validated_domain) is not tuple:
+            raise TypeError("prediction result domain must use a canonical tuple")
+        for item in self.validated_domain:
+            if (
+                type(item) is not tuple
+                or len(item) != 3
+                or _invalid_string(item[0])
+                or not _is_finite(item[1])
+                or not _is_finite(item[2])
+                or item[1] > item[2]
+            ):
+                raise ValueError("prediction result validated domain is invalid")
+        if self.nearest_anchor_distance is not None and (
+            not _is_finite(self.nearest_anchor_distance) or float(self.nearest_anchor_distance) < 0.0
+        ):
+            raise ValueError("prediction result nearest anchor distance is invalid")
+        if self.status == "PREDICTED_IN_DOMAIN":
+            if self.estimate is None or not _is_finite(self.estimate):
+                raise ValueError("prediction result estimate is required for an in-domain prediction")
+            if (
+                type(self.prediction_interval) is not tuple
+                or len(self.prediction_interval) != 2
+                or not _is_finite(self.prediction_interval[0])
+                or not _is_finite(self.prediction_interval[1])
+                or self.prediction_interval[0] > self.prediction_interval[1]
+            ):
+                raise ValueError("prediction result interval is invalid")
+            if self.missing_features or self.failure_reasons:
+                raise ValueError("prediction result success cannot contain failure metadata")
+        else:
+            if self.estimate is not None or self.prediction_interval is not None:
+                raise ValueError("prediction result non-success must not contain a prediction")
+        for name, value in (
+            ("missing_features", self.missing_features),
+            ("failure_reasons", self.failure_reasons),
+            ("anchor_ids", self.anchor_ids),
+        ):
+            if type(value) is not tuple or any(_invalid_string(item) for item in value):
+                raise ValueError(f"prediction result {name} must contain non-empty strings")
+            if len(value) != len(set(value)):
+                raise ValueError(f"prediction result {name} contains duplicates")
+        if type(self.anchor_evidence_hashes) is not tuple:
+            raise TypeError("prediction result anchor evidence must use a canonical tuple")
+        for item in self.anchor_evidence_hashes:
+            if (
+                type(item) is not tuple
+                or len(item) != 2
+                or _invalid_string(item[0])
+                or not _is_digest(item[1], 64)
+            ):
+                raise ValueError("prediction result anchor evidence is invalid")
+        evidence_ids = tuple(item[0] for item in self.anchor_evidence_hashes)
+        if len(evidence_ids) != len(set(evidence_ids)) or evidence_ids != self.anchor_ids:
+            raise ValueError("prediction result anchor evidence identities do not match")
+        if not _is_digest(self.artifact_hash, 64):
+            raise ValueError("prediction result artifact_hash must be a non-zero SHA-256 digest")
+        if self.artifact_hash != _hash(self._payload()):
+            raise ValueError("prediction result artifact hash mismatch")
+
+    def as_dict(self) -> dict[str, object]:
+        self.validate()
+        return {
+            "schema": f"{_SCHEMA_VERSION}-prediction",
+            "model_id": self.model_id,
+            "model_version": self.model_version,
+            "metric": self.metric,
+            "status": self.status,
+            "estimate": self.estimate,
+            "prediction_interval": None
+            if self.prediction_interval is None
+            else list(self.prediction_interval),
+            "validated_domain": [list(item) for item in self.validated_domain],
+            "nearest_anchor_distance": self.nearest_anchor_distance,
+            "ood_status": self.ood_status,
+            "missing_features": list(self.missing_features),
+            "failure_reasons": list(self.failure_reasons),
+            "artifact_hash": self.artifact_hash,
+            "anchor_ids": list(self.anchor_ids),
+            "anchor_evidence_hashes": [list(item) for item in self.anchor_evidence_hashes],
+        }
+
+    @classmethod
+    def from_dict(cls, value: object) -> PredictionResult:
+        """Rehydrate a prediction while preserving legacy success/failure hashes."""
+
+        if cls is not PredictionResult:
+            raise TypeError("prediction result must use the canonical type")
+        if type(value) is not dict:
+            raise TypeError("prediction result must be a canonical dictionary")
+        payload = cast(dict[str, object], value)
+        expected_keys = {
+            "schema",
+            "model_id",
+            "model_version",
+            "metric",
+            "status",
+            "estimate",
+            "prediction_interval",
+            "validated_domain",
+            "nearest_anchor_distance",
+            "ood_status",
+            "missing_features",
+            "failure_reasons",
+            "artifact_hash",
+            "anchor_ids",
+            "anchor_evidence_hashes",
+        }
+        if set(payload) != expected_keys:
+            raise ValueError("prediction result schema keys are invalid")
+        if payload["schema"] != f"{_SCHEMA_VERSION}-prediction":
+            raise ValueError("prediction result schema is invalid")
+        for name in ("validated_domain", "missing_features", "failure_reasons", "anchor_ids", "anchor_evidence_hashes"):
+            if type(payload[name]) is not list:
+                raise TypeError(f"prediction result {name} must be a canonical list")
+        raw_interval = payload["prediction_interval"]
+        if raw_interval is not None and (type(raw_interval) is not list or len(raw_interval) != 2):
+            raise TypeError("prediction result interval must be a canonical list or null")
+        raw_domain = cast(list[object], payload["validated_domain"])
+        if any(type(item) is not list or len(item) != 3 for item in raw_domain):
+            raise ValueError("prediction result domain must contain canonical triples")
+        raw_evidence = cast(list[object], payload["anchor_evidence_hashes"])
+        if any(type(item) is not list or len(item) != 2 for item in raw_evidence):
+            raise ValueError("prediction result anchor evidence must contain canonical pairs")
+        result = cls(
+            model_id=payload["model_id"],
+            model_version=payload["model_version"],
+            metric=payload["metric"],
+            status=payload["status"],
+            estimate=payload["estimate"],
+            prediction_interval=None if raw_interval is None else tuple(cast(list[object], raw_interval)),
+            validated_domain=tuple(
+                tuple(cast(list[object], item)) for item in raw_domain
+            ),
+            nearest_anchor_distance=payload["nearest_anchor_distance"],
+            ood_status=payload["ood_status"],
+            missing_features=tuple(cast(list[object], payload["missing_features"])),
+            failure_reasons=tuple(cast(list[object], payload["failure_reasons"])),
+            artifact_hash=payload["artifact_hash"],
+            anchor_ids=tuple(cast(list[object], payload["anchor_ids"])),
+            anchor_evidence_hashes=tuple(
+                tuple(cast(list[object], item)) for item in raw_evidence
+            ),
+        )
+        result.validate()
+        return result
 
 
 @dataclass(frozen=True)
@@ -1502,6 +1746,130 @@ class AnchorSelectionPlan:
     execution: str = "PLANNED_NOT_EXECUTED"
     failure_reasons: tuple[str, ...] = ()
     artifact_hash: str = ""
+
+    def _payload(self) -> dict[str, object]:
+        return {
+            "schema": f"{_SCHEMA_VERSION}-anchor-plan",
+            "status": self.status,
+            "budget_seconds": self.budget_seconds,
+            "selected_anchor_ids": self.selected_anchor_ids,
+            "unavailable_anchor_ids": self.unavailable_anchor_ids,
+            "skipped_anchor_ids": self.skipped_anchor_ids,
+            "planned_cost_seconds": self.planned_cost_seconds,
+            "remaining_budget_seconds": self.remaining_budget_seconds,
+            "execution": self.execution,
+            "failure_reasons": self.failure_reasons,
+        }
+
+    def validate(self) -> None:
+        if type(self) is not AnchorSelectionPlan:
+            raise TypeError("anchor plan must use the canonical type")
+        if self.status not in {"PLAN_READY", "PARTIAL_PLAN", "INSUFFICIENT_BUDGET", "EXTERNAL_VERIFICATION_BLOCKED"}:
+            raise ValueError("anchor plan status is invalid")
+        if self.execution != "PLANNED_NOT_EXECUTED":
+            raise ValueError("anchor plan execution policy is invalid")
+        for name, value in (
+            ("budget_seconds", self.budget_seconds),
+            ("planned_cost_seconds", self.planned_cost_seconds),
+            ("remaining_budget_seconds", self.remaining_budget_seconds),
+        ):
+            if not _is_finite(value):
+                raise ValueError(f"anchor plan {name} must be finite")
+        if self.budget_seconds < 0.0 or self.planned_cost_seconds < 0.0:
+            raise ValueError("anchor plan budget and planned cost must be non-negative")
+        if not math.isclose(
+            self.remaining_budget_seconds,
+            self.budget_seconds - self.planned_cost_seconds,
+            rel_tol=0.0,
+            abs_tol=1e-12,
+        ):
+            raise ValueError("anchor plan remaining budget does not match planned cost")
+        for name, value in (
+            ("selected_anchor_ids", self.selected_anchor_ids),
+            ("unavailable_anchor_ids", self.unavailable_anchor_ids),
+            ("skipped_anchor_ids", self.skipped_anchor_ids),
+            ("failure_reasons", self.failure_reasons),
+        ):
+            if type(value) is not tuple or any(_invalid_string(item) for item in value):
+                raise ValueError(f"anchor plan {name} must contain non-empty strings")
+            if len(value) != len(set(value)):
+                raise ValueError(f"anchor plan {name} contains duplicates")
+        groups = (
+            self.selected_anchor_ids,
+            self.unavailable_anchor_ids,
+            self.skipped_anchor_ids,
+        )
+        if len(set().union(*groups)) != sum(len(group) for group in groups):
+            raise ValueError("anchor plan identity groups overlap")
+        if not _is_digest(self.artifact_hash, 64):
+            raise ValueError("anchor plan artifact_hash must be a non-zero SHA-256 digest")
+        if self.artifact_hash != _hash(self._payload()):
+            raise ValueError("anchor plan artifact hash mismatch")
+
+    def as_dict(self) -> dict[str, object]:
+        self.validate()
+        return {
+            "schema": f"{_SCHEMA_VERSION}-anchor-plan",
+            "status": self.status,
+            "budget_seconds": self.budget_seconds,
+            "selected_anchor_ids": list(self.selected_anchor_ids),
+            "unavailable_anchor_ids": list(self.unavailable_anchor_ids),
+            "skipped_anchor_ids": list(self.skipped_anchor_ids),
+            "planned_cost_seconds": self.planned_cost_seconds,
+            "remaining_budget_seconds": self.remaining_budget_seconds,
+            "execution": self.execution,
+            "failure_reasons": list(self.failure_reasons),
+            "artifact_hash": self.artifact_hash,
+        }
+
+    @classmethod
+    def from_dict(cls, value: object) -> AnchorSelectionPlan:
+        """Rehydrate a non-executing anchor plan and verify its artifact hash."""
+
+        if cls is not AnchorSelectionPlan:
+            raise TypeError("anchor plan must use the canonical type")
+        if type(value) is not dict:
+            raise TypeError("anchor plan must be a canonical dictionary")
+        payload = cast(dict[str, object], value)
+        expected_keys = {
+            "schema",
+            "status",
+            "budget_seconds",
+            "selected_anchor_ids",
+            "unavailable_anchor_ids",
+            "skipped_anchor_ids",
+            "planned_cost_seconds",
+            "remaining_budget_seconds",
+            "execution",
+            "failure_reasons",
+            "artifact_hash",
+        }
+        if set(payload) != expected_keys:
+            raise ValueError("anchor plan schema keys are invalid")
+        if payload["schema"] != f"{_SCHEMA_VERSION}-anchor-plan":
+            raise ValueError("anchor plan schema is invalid")
+        for name in (
+            "selected_anchor_ids",
+            "unavailable_anchor_ids",
+            "skipped_anchor_ids",
+            "failure_reasons",
+        ):
+            if type(payload[name]) is not list:
+                raise TypeError(f"anchor plan {name} must be a canonical list")
+        plan = cls(
+            status=payload["status"],
+            budget_seconds=payload["budget_seconds"],
+            selected_anchor_ids=tuple(cast(list[object], payload["selected_anchor_ids"])),
+            unavailable_anchor_ids=tuple(cast(list[object], payload["unavailable_anchor_ids"])),
+            skipped_anchor_ids=tuple(cast(list[object], payload["skipped_anchor_ids"])),
+            planned_cost_seconds=payload["planned_cost_seconds"],
+            remaining_budget_seconds=payload["remaining_budget_seconds"],
+            execution=payload["execution"],
+            failure_reasons=tuple(cast(list[object], payload["failure_reasons"])),
+            artifact_hash=payload["artifact_hash"],
+        )
+        plan.validate()
+        return plan
 
 
 def _coerce_anchor_sequence(value: object) -> Sequence[AnchorObservation] | None:
@@ -1612,7 +1980,7 @@ def select_anchor_plan(
         "execution": "PLANNED_NOT_EXECUTED",
         "failure_reasons": tuple(dict.fromkeys(reasons)),
     }
-    return AnchorSelectionPlan(
+    plan = AnchorSelectionPlan(
         status=status,
         budget_seconds=budget,
         selected_anchor_ids=tuple(selected),
@@ -1623,6 +1991,8 @@ def select_anchor_plan(
         failure_reasons=tuple(dict.fromkeys(reasons)),
         artifact_hash=_hash(payload),
     )
+    plan.validate()
+    return plan
 
 
 @dataclass(frozen=True)
