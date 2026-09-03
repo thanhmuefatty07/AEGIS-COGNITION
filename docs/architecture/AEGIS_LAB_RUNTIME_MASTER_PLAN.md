@@ -3,7 +3,7 @@ document_id: AEGIS-LAB-RUNTIME-MASTER-PLAN
 document_type: canonical_current_implementation_plan
 status: IN_EXECUTION
 authority: derived_from_checkout_and_evidence_manifest
-applies_to_commit: f4564601bf853943c2caff5bdf0b6755223dd992
+applies_to_commit: 569508a49257448dbfaa41bf8a7477f97f963815
 created_at: 2026-08-26
 last_verified_at: 2026-09-03
 supersedes: browser-native-proposal-and-cumulative-harness-roadmap-as-execution-authority
@@ -180,8 +180,8 @@ passed** với **3 expected registry-drift failures** trước khi registry đư
 tái tạo, sau đó inventory và claim-graph `--check` đều pass.
 Latest retained Rust no-default-features library evidence là **456/456** với
 fmt/check/clippy pass; Python-only diff này không làm thay đổi Rust surface.
-Registry AESE hiện có **121** inventoried items, graph **46 claims / 92
-verification references**, **112** unmapped surfaces và selection ở
+Registry AESE hiện có **125** inventoried items, graph **46 claims / 92
+verification references**, **116** unmapped surfaces và selection ở
 `SHADOW`/`NOT_EXECUTED`. Các kết quả này chỉ là local source-bound evidence;
 không thay thế hosted, signed-release hay external-anchor evidence.
 
@@ -4904,8 +4904,8 @@ campaign measurements, not production or hardware evidence. No threshold was
 relaxed, no unstable result was relabeled, and no evidence was promoted.
 
 The claim graph generated from the same checkout is
-`SHADOW_GRAPH_PARTIAL_MAPPING_SELECTION_DISABLED`: 123 surfaces, 9 mapped,
-114 unmapped, 46 claims, 92 verifications (70 unmapped), 27 code nodes and
+`SHADOW_GRAPH_PARTIAL_MAPPING_SELECTION_DISABLED`: 125 surfaces, 9 mapped,
+116 unmapped, 46 claims, 92 verifications (70 unmapped), 27 code nodes and
 20 future obligations. This status is now evidence-derived; it is not a
 completion claim. The unknown criticality fields prevent a narrower
 critical-only completion status.
@@ -4955,8 +4955,8 @@ purpose is only to prevent always-inconclusive protocols; optimality is
 
 S1.1a evidence is implementation/test evidence, not a new calibration PASS:
 the statistical/diagnostic tests pass **12/12**, the affected AESE/registry
-set passes **31/31**, and the full Python suite passes **573/573** (one
-pytest configuration warning). Isolated Ruff passes on the changed Python
+set passes **31/31**, and the full Python suite at the S1.1a boundary passed
+**573/573** (one pytest configuration warning). Isolated Ruff passes on the changed Python
 files. The current authority state remains
 `AESE_MODE=SHADOW`, legacy authority active, selection/skipping/promotion
 disabled, and release disabled.
@@ -4985,3 +4985,30 @@ the calibration.
 with risk-prioritized mapping, but unknown surfaces must widen conservatively;
 no selector may use this diagnostic or the calibration artifact to skip an
 authoritative test.
+
+**AESE-S2 critical/high-risk mapping (2026-09-03):** commits
+`9e33299e9976a085b521c9621a6c8c8670f74ee8` and
+`569508a49257448dbfaa41bf8a7477f97f963815` add the explicit mapping seed and
+the fail-closed validator `scripts/aese_s2_mapping.py`. Records contain
+surface, claim, source-subject, test-subject and evidence-subject identities,
+risk/criticality fields, relationship types, rationale and conservative
+unknown-dependency policy. Source and test subjects must include a concrete
+symbol and are checked against tracked source text; filename-only mapping is
+rejected. The mapping is evidence-derived from the actual assertions and
+invariants in the cited paths, not from filenames.
+
+The current mapping report is
+`quality/registry/current_s2_mapping.json`, artifact hash
+`f0bef4a3a877a1c02415876223c6bc49ff484c6596f6230f2a157a7b7b28a5cd`, with
+`mapping_status=COMPLETE`, `all_critical_mapped=true`,
+`all_high_selection_relevant_mapped=true`, `no_fake_mapping=true`, and
+`critical_false_negative_status=NOT_EVALUATED_S3`. It verifies 9 critical
+records and 15 high selection-relevant records; **110 of 125 inventory
+surfaces remain UNKNOWN** and are explicitly widened rather than guessed.
+The claim graph remains
+`SHADOW_GRAPH_PARTIAL_MAPPING_SELECTION_DISABLED`; this mapping report cannot
+enable selection, skipping or promotion. S2 mapping tests pass **3/3** and
+the S2-focused closure set passes **18/18**; the post-S2 full Python suite
+passes **576/576** with one known pytest configuration warning. S3 must still
+prove deterministic affected closure and measure known critical false
+negatives.
