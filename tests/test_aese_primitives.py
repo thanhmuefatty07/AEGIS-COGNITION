@@ -390,6 +390,52 @@ def test_hardware_vector_preserves_unknowns_and_rejects_impossible_core_counts()
         HardwareCapabilityVector(physical_cores=8, logical_cores=4).validate()
 
 
+def test_hardware_vector_round_trip_rehydrates_explicit_unknowns() -> None:
+    vector = HardwareCapabilityVector(
+        architecture="x86_64",
+        physical_cores=4,
+        logical_cores=8,
+        memory_latency_ns=120.5,
+    )
+    restored = HardwareCapabilityVector.from_dict(vector.as_dict())
+
+    assert restored == vector
+    assert restored.vector_hash == vector.vector_hash
+    tampered = vector.as_dict()
+    cast_values = tampered["values"]
+    assert isinstance(cast_values, dict)
+    cast_values["logical_cores"] = "UNKNOWN"
+    with pytest.raises(ValueError, match="unknown_fields"):
+        HardwareCapabilityVector.from_dict(tampered)
+
+
+def test_workload_signature_round_trip_rehydrates_and_checks_regime() -> None:
+    signature = WorkloadSignature(
+        compute_intensity=0.8,
+        memory_intensity=0.2,
+        working_set_bytes=1024,
+    )
+    restored = WorkloadSignature.from_dict(signature.as_dict())
+
+    assert restored == signature
+    assert restored.signature_hash == signature.signature_hash
+    tampered = {**signature.as_dict(), "regime": "NETWORK_BOUND"}
+    with pytest.raises(ValueError, match="regime does not match"):
+        WorkloadSignature.from_dict(tampered)
+
+
+def test_vector_rehydration_rejects_forged_types_and_unknown_schema_fields() -> None:
+    vector = HardwareCapabilityVector(logical_cores=8)
+
+    class ForgedVector(HardwareCapabilityVector):
+        pass
+
+    with pytest.raises(TypeError, match="canonical type"):
+        ForgedVector.from_dict(vector.as_dict())
+    with pytest.raises(ValueError, match="schema keys"):
+        HardwareCapabilityVector.from_dict({**vector.as_dict(), "unexpected": True})
+
+
 def test_hardware_vector_mapping_rejects_non_mapping_and_mixed_unknown_keys() -> None:
     with pytest.raises(ValueError, match="must be a mapping"):
         HardwareCapabilityVector.from_mapping(None)  # type: ignore[arg-type]
