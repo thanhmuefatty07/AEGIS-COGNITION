@@ -219,6 +219,61 @@ class AdaptiveMeasurementSpec:
     max_lag1_autocorrelation: float = 0.2
     max_drift_ratio: float = 0.1
 
+    def as_dict(self) -> dict[str, object]:
+        self.validate()
+        payload = {"schema": f"{_SCHEMA_VERSION}-measurement-spec", **asdict(self)}
+        payload["protocol_hash"] = self.protocol_hash
+        return payload
+
+    @classmethod
+    def from_dict(cls, value: object) -> AdaptiveMeasurementSpec:
+        """Rehydrate a preregistered measurement protocol and verify its hash."""
+
+        if cls is not AdaptiveMeasurementSpec:
+            raise TypeError("measurement spec must use the canonical type")
+        if type(value) is not dict:
+            raise TypeError("measurement spec must be a canonical dictionary")
+        payload = cast(dict[str, object], value)
+        expected_keys = {
+            "schema",
+            "metric",
+            "estimand",
+            "direction",
+            "alpha",
+            "warmup_count",
+            "min_observations",
+            "block_size",
+            "max_observations",
+            "relative_precision",
+            "absolute_precision",
+            "max_lag1_autocorrelation",
+            "max_drift_ratio",
+            "protocol_hash",
+        }
+        if set(payload) != expected_keys:
+            raise ValueError("measurement spec schema keys are invalid")
+        if payload["schema"] != f"{_SCHEMA_VERSION}-measurement-spec":
+            raise ValueError("measurement spec schema is invalid")
+        spec = cls(
+            metric=payload["metric"],
+            estimand=payload["estimand"],
+            direction=payload["direction"],
+            alpha=payload["alpha"],
+            warmup_count=payload["warmup_count"],
+            min_observations=payload["min_observations"],
+            block_size=payload["block_size"],
+            max_observations=payload["max_observations"],
+            relative_precision=payload["relative_precision"],
+            absolute_precision=payload["absolute_precision"],
+            max_lag1_autocorrelation=payload["max_lag1_autocorrelation"],
+            max_drift_ratio=payload["max_drift_ratio"],
+        )
+        spec.validate()
+        protocol_hash = payload["protocol_hash"]
+        if type(protocol_hash) is not str or protocol_hash != spec.protocol_hash:
+            raise ValueError("measurement spec protocol hash mismatch")
+        return spec
+
     def validate(self) -> None:
         if _invalid_string(self.metric) or self.estimand != "mean":
             raise ValueError("AESE currently requires a named mean estimand")
@@ -1702,6 +1757,49 @@ class AnchorCandidate:
     changed_platform_boundary: bool = False
     periodic_sentinel_due: bool = False
     available: bool = True
+
+    def as_dict(self) -> dict[str, object]:
+        self.validate()
+        return {"schema": f"{_SCHEMA_VERSION}-anchor-candidate", **asdict(self)}
+
+    @classmethod
+    def from_dict(cls, value: object) -> AnchorCandidate:
+        """Rehydrate an anchor request candidate without executing it."""
+
+        if cls is not AnchorCandidate:
+            raise TypeError("anchor candidate must use the canonical type")
+        if type(value) is not dict:
+            raise TypeError("anchor candidate must be a canonical dictionary")
+        payload = cast(dict[str, object], value)
+        expected_keys = {
+            "schema",
+            "anchor_id",
+            "platform",
+            "estimated_cost_seconds",
+            "mandatory",
+            "ood_status",
+            "model_uncertainty",
+            "changed_platform_boundary",
+            "periodic_sentinel_due",
+            "available",
+        }
+        if set(payload) != expected_keys:
+            raise ValueError("anchor candidate schema keys are invalid")
+        if payload["schema"] != f"{_SCHEMA_VERSION}-anchor-candidate":
+            raise ValueError("anchor candidate schema is invalid")
+        candidate = cls(
+            anchor_id=payload["anchor_id"],
+            platform=payload["platform"],
+            estimated_cost_seconds=payload["estimated_cost_seconds"],
+            mandatory=payload["mandatory"],
+            ood_status=payload["ood_status"],
+            model_uncertainty=payload["model_uncertainty"],
+            changed_platform_boundary=payload["changed_platform_boundary"],
+            periodic_sentinel_due=payload["periodic_sentinel_due"],
+            available=payload["available"],
+        )
+        candidate.validate()
+        return candidate
 
     def validate(self) -> None:
         if _invalid_string(self.anchor_id) or _invalid_string(self.platform):
