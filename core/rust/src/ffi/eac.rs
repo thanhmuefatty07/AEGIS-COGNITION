@@ -7,6 +7,7 @@ use pyo3::prelude::*;
 
 const MAX_EAC_BATCH_JSON_BYTES: usize = 8 * 1024 * 1024;
 const MAX_EAC_BATCH_CALLS: usize = 64;
+const MAX_EAC_STATE_JSON_BYTES: usize = 8 * 1024 * 1024;
 
 // ─── EaC PyO3 Bindings ──────────────────────────────────────────────────────
 
@@ -113,7 +114,7 @@ pub fn aegis_eac_batch(calls_json: String, policy: String) -> PyResult<String> {
 
 #[cfg(test)]
 mod tests {
-    use super::aegis_eac_batch;
+    use super::{aegis_eac_batch, aegis_eac_persist_state};
 
     #[test]
     fn eac_batch_rejects_unknown_transaction_policy() {
@@ -147,6 +148,13 @@ mod tests {
         let result = aegis_eac_batch(calls_json, "ContinueOnFailure".to_owned());
         assert!(result.is_err());
     }
+
+    #[test]
+    fn eac_persist_state_rejects_oversized_input_before_json_parse() {
+        let oversized = "x".repeat(super::MAX_EAC_STATE_JSON_BYTES + 1);
+        let result = aegis_eac_persist_state(String::new(), 0, String::new(), oversized, None);
+        assert!(result.is_err());
+    }
 }
 
 /// Persist state to the filesystem with BLAKE3 chain integrity.
@@ -162,6 +170,11 @@ pub fn aegis_eac_persist_state(
     prev_state_hash: Option<String>,
 ) -> PyResult<String> {
     py_safe(move || {
+        if data_json.len() > MAX_EAC_STATE_JSON_BYTES {
+            return Err(pyo3::exceptions::PyValueError::new_err(
+                "data_json exceeds the bounded EaC state input size",
+            ));
+        }
         let data: std::collections::BTreeMap<String, serde_json::Value> =
             serde_json::from_str(&data_json).map_err(|e| {
                 pyo3::exceptions::PyValueError::new_err(format!("Invalid data JSON: {}", e))
