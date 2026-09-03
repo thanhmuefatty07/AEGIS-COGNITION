@@ -5,6 +5,8 @@ import subprocess
 import sys
 from pathlib import Path
 
+import pytest
+import scripts.aese_claim_graph as claim_graph
 from scripts.aese_claim_graph import DEFAULT_OUTPUT, build_graph, validate_graph
 
 
@@ -34,6 +36,21 @@ def test_shadow_graph_uses_stable_ids_and_conservative_unknowns() -> None:
         for item in surfaces
         if item["mapping_status"] == "NOT_MAPPED"
     )
+
+
+def test_graph_digest_binds_resolved_implementation_source(monkeypatch: pytest.MonkeyPatch) -> None:
+    baseline = build_graph()
+    original_file_sha256 = claim_graph._file_sha256
+
+    def altered_digest(path: Path) -> str:
+        if path.as_posix().endswith("aegis_cognition/aese.py"):
+            return "f" * 64
+        return original_file_sha256(path)
+
+    monkeypatch.setattr(claim_graph, "_file_sha256", altered_digest)
+    altered = build_graph()
+
+    assert altered["source_tree_sha256"] != baseline["source_tree_sha256"]
 
 
 def test_recorded_shadow_graph_has_no_drift() -> None:
