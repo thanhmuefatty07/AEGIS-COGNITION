@@ -1,0 +1,28 @@
+{
+  "corpus_artifact_hash": "3f857eb27ece8cbdc626ccb469cc919d7bde80b5055f0b9df1823a1092e8f477",
+  "full_fallback_wall_time_seconds": null,
+  "legacy_wall_time_seconds": null,
+  "limitations": [
+    "Planner timing alone cannot establish net savings.",
+    "No 10x or scalability claim is made; median/p95 require paired measurements."
+  ],
+  "mode": "SHADOW",
+  "net_saving_formula": "legacy - (planner + selected_evidence)",
+  "net_saving_seconds": null,
+  "paired_workload": false,
+  "planner_cost_seconds": {
+    "median": 5.984828999997262,
+    "p95": 5.984828999997262,
+    "sample_count": 4,
+    "samples": [
+      5.641877300000488,
+      6.683251799997379,
+      5.590497100001812,
+      5.984828999997262
+    ]
+  },
+  "reason": "legacy and selected evidence were not executed as a paired apples-to-apples workload while authority is shadow-only",
+  "schema": "aese-cost-measurement-v1",
+  "selected_evidence_wall_time_seconds": null,
+  "status": "INSUFFICIENT_EVIDENCE"
+}
