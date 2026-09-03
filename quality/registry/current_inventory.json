@@ -2,7 +2,7 @@
   "deletion": "PROHIBITED_UNTIL_SUPERSESSION_PROOF",
   "direct_cutover": "PROHIBITED",
   "disposition_counts": {
-    "RETAIN_UNCHANGED": 121
+    "RETAIN_UNCHANGED": 123
   },
   "items": [
     {
@@ -2092,6 +2092,44 @@
         "UNKNOWN"
       ],
       "stable_id": "AESE-SCRIPT_OR_GATE-CACC5F6A05F9757D",
+      "supersession_rationale": "No stronger replacement evidence is recorded; preserve the existing authoritative path.",
+      "target": null
+    },
+    {
+      "claims_supported": [],
+      "cost": "UNKNOWN",
+      "current_status": "NOT_VERIFIED",
+      "dependencies": [],
+      "determinism": "UNKNOWN",
+      "domain": "UNKNOWN",
+      "evidence_produced": [],
+      "failure_semantics": "UNKNOWN",
+      "hardware_requirement": "UNKNOWN",
+      "inputs": [],
+      "invariants_checked": [],
+      "kind": "SCRIPT_OR_GATE",
+      "known_defects": [],
+      "mapping_status": "NOT_MAPPED",
+      "migration_disposition": "RETAIN_UNCHANGED",
+      "outputs": [],
+      "owner": "UNKNOWN_OWNER",
+      "path": "scripts/aese_failure_diagnostic.py",
+      "platform": "UNKNOWN",
+      "platform_requirement": "UNKNOWN",
+      "release_critical": "UNKNOWN",
+      "release_criticality": "UNKNOWN",
+      "replacement_id": null,
+      "resource_cost": "UNKNOWN",
+      "risk": "UNKNOWN",
+      "rollback_path": "Re-run the existing native runner directly.",
+      "runner_backend": "python entrypoint",
+      "runtime_class": "UNKNOWN",
+      "scope": "scripts",
+      "security_criticality": "UNKNOWN",
+      "side_effects": [
+        "UNKNOWN"
+      ],
+      "stable_id": "AESE-SCRIPT_OR_GATE-CD75F473D2F982DF",
       "supersession_rationale": "No stronger replacement evidence is recorded; preserve the existing authoritative path.",
       "target": null
     },
@@ -4241,6 +4279,44 @@
       "migration_disposition": "RETAIN_UNCHANGED",
       "outputs": [],
       "owner": "UNKNOWN_OWNER",
+      "path": "tests/test_aese_failure_diagnostic.py",
+      "platform": "UNKNOWN",
+      "platform_requirement": "UNKNOWN",
+      "release_critical": "UNKNOWN",
+      "release_criticality": "UNKNOWN",
+      "replacement_id": null,
+      "resource_cost": "UNKNOWN",
+      "risk": "UNKNOWN",
+      "rollback_path": "Re-run the existing native runner directly.",
+      "runner_backend": "pytest",
+      "runtime_class": "UNKNOWN",
+      "scope": "tests",
+      "security_criticality": "UNKNOWN",
+      "side_effects": [
+        "UNKNOWN"
+      ],
+      "stable_id": "AESE-PYTHON_TEST-132068D9A890F856",
+      "supersession_rationale": "No stronger replacement evidence is recorded; preserve the existing authoritative path.",
+      "target": null
+    },
+    {
+      "claims_supported": [],
+      "cost": "UNKNOWN",
+      "current_status": "NOT_VERIFIED",
+      "dependencies": [],
+      "determinism": "UNKNOWN",
+      "domain": "UNKNOWN",
+      "evidence_produced": [],
+      "failure_semantics": "UNKNOWN",
+      "hardware_requirement": "UNKNOWN",
+      "inputs": [],
+      "invariants_checked": [],
+      "kind": "PYTHON_TEST",
+      "known_defects": [],
+      "mapping_status": "NOT_MAPPED",
+      "migration_disposition": "RETAIN_UNCHANGED",
+      "outputs": [],
+      "owner": "UNKNOWN_OWNER",
       "path": "tests/test_aese_inventory.py",
       "platform": "UNKNOWN",
       "platform_requirement": "UNKNOWN",
@@ -4613,16 +4689,16 @@
   "phase": "PHASE_0_REBIND_REALITY",
   "schema": "aese-current-evidence-system-inventory-v1",
   "scope_counts": {
-    "inventoried_items": 121,
+    "inventoried_items": 123,
     "missing_scopes": 0,
-    "represented_paths": 110,
-    "tracked_files": 594,
+    "represented_paths": 112,
+    "tracked_files": 596,
     "workflow_jobs": 11
   },
   "scope_policy": "tracked_files_only; native runners remain authoritative",
-  "source_head": "dc162dd5c0b13e5746f769e3ef6144a7e6deca72",
-  "source_tree_sha256": "07adee772316399a74d8be9f8e9e997ce1de62b5bacb9aac5f82c5f026b18d54",
+  "source_head": "8729959d2b9351c94c1e2b95b5ad0ac6e24713c9",
+  "source_tree_sha256": "9ff535e0aab1f13d30b4180cd94aecb1548a04ea58688c859cea659d98150116",
   "status": "INVENTORY_COMPLETE_DISPOSITIONS_RETAINED_MAPPING_PENDING",
-  "worktree_epoch": "c114d90b9c43cb111acde3f0e23dfceecb201a7e9b06ccc6292846acbb4e325c",
-  "worktree_status": "CLEAN"
+  "worktree_epoch": "04ad460a89621c39becfd50f5b82bc580150249fa215b6bcc958b0e3de6f3cf9",
+  "worktree_status": "DIRTY"
 }
