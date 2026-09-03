@@ -1,12 +1,12 @@
 {
   "all_critical_mapped": true,
   "all_high_selection_relevant_mapped": true,
-  "artifact_hash": "d34602ff7fc777da60462722aa9e51cbcbd92e5d07a97391d90e24d1ac319884",
+  "artifact_hash": "5beb3579a898fccc55e508023a47bb0f452830138cfd976165b3b8b8009dc6fa",
   "claim_graph_source_tree_sha256": "983ec6db477a860b87bf853aa305c25056024e2ce031a8bb579fb1bddf7726c4",
   "claim_graph_status": "SHADOW_GRAPH_PARTIAL_MAPPING_SELECTION_DISABLED",
   "critical_false_negative_status": "NOT_EVALUATED_S3",
   "critical_mapping_count": 9,
-  "current_head": "92fb1b749b239e1c783211e2b5707589cde199c4",
+  "current_head": "6c3df2ccb4715a5f2e62c5af2b9a651a776a8dba",
   "errors_by_surface": {},
   "high_selection_mapping_count": 15,
   "inventory_source_tree_sha256": "0247373bb40d284725eb663437b68d31b8677902458c7939050ce024b1ce4568",
@@ -555,7 +555,7 @@
   ],
   "schema": "aese-s2-mapping-v1",
   "selection_authority": "DISABLED",
-  "source_head": "92fb1b749b239e1c783211e2b5707589cde199c4",
+  "source_head": "6c3df2ccb4715a5f2e62c5af2b9a651a776a8dba",
   "unknown_dependency_policy": "WIDEN_CONSERVATIVELY",
   "unknown_surface_count": 116,
   "unknown_surface_ids": [
