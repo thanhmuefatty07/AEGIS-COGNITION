@@ -4884,8 +4884,11 @@ def test_adaptive_controller_does_not_admit_terminal_or_forged_runs() -> None:
     controller = AdaptiveController(max_steps=2, token_budget=100, finalization_reserve=20, recovery_reserve=10)
 
     assert controller.next(run) is None
+    assert controller.observe(run) is False
     with pytest.raises(TypeError, match="canonical LabRun"):
         controller.next(object())  # type: ignore[arg-type]
+    with pytest.raises(TypeError, match="canonical LabRun"):
+        controller.observe(object())  # type: ignore[arg-type]
 
 
 @pytest.mark.parametrize("invalid", (True, False, 1.0, "2", 0, -1, None))
