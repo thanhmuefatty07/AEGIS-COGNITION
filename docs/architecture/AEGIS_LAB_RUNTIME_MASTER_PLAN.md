@@ -5030,4 +5030,5 @@ The mapped critical audit is `COMPLETE_ZERO` (15 records checked), unknown
 and dynamic dependencies widen to all retained items, and the adversarial
 closure suite passes **14/14**. S3 exit-gate conditions are complete for the
 known mapped critical set; this is planning evidence, not permission to skip
-tests or promote evidence.
+tests or promote evidence. The S3 boundary full Python suite passes
+**590/590** with the same single pytest configuration warning.
