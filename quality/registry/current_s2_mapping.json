@@ -1,0 +1,673 @@
+{
+  "all_critical_mapped": true,
+  "all_high_selection_relevant_mapped": true,
+  "artifact_hash": "f0bef4a3a877a1c02415876223c6bc49ff484c6596f6230f2a157a7b7b28a5cd",
+  "claim_graph_source_tree_sha256": "7e132cd1f38e3101c7308a8526dc1897b78754324fbd227af6a649641dd54965",
+  "claim_graph_status": "SHADOW_GRAPH_PARTIAL_MAPPING_SELECTION_DISABLED",
+  "critical_false_negative_status": "NOT_EVALUATED_S3",
+  "critical_mapping_count": 9,
+  "current_head": "569508a49257448dbfaa41bf8a7477f97f963815",
+  "errors_by_surface": {},
+  "high_selection_mapping_count": 15,
+  "inventory_source_tree_sha256": "6d99c3fa27635d2f689446a8fecff616a35e77ec31a9b98a620bc754b064f74f",
+  "limitations": [
+    "Unlisted surfaces remain UNKNOWN; shadow planners must widen conservatively.",
+    "Mapping evidence does not authorize test skipping or promotion.",
+    "Critical false-negative closure is evaluated in S3, not inferred from S2 mapping completeness."
+  ],
+  "mapping_seed_hash": "4a657cbd6436935e9a27f835366343362566a454f8bb09bf191da0d46c74d05b",
+  "mapping_status": "COMPLETE",
+  "mode": "SHADOW",
+  "no_fake_mapping": true,
+  "phase": "PHASE_2_CRITICAL_HIGH_RISK_MAPPING",
+  "records": [
+    {
+      "claim_ids": [
+        "AESE-CLAIM-GT96-005",
+        "AESE-CLAIM-GT96-008",
+        "AESE-CLAIM-GT96-009",
+        "AESE-CLAIM-GT96-010",
+        "AESE-CLAIM-GT96-011",
+        "AESE-CLAIM-GT96-013",
+        "AESE-CLAIM-GT96-019",
+        "AESE-CLAIM-GT96-020",
+        "AESE-CLAIM-GT96-024",
+        "AESE-CLAIM-GT96-028",
+        "AESE-CLAIM-GT96-029",
+        "AESE-CLAIM-GT96-030"
+      ],
+      "evidence_subjects": [
+        "quality/registry/current_claim_graph.json",
+        "docs/architecture/GT96_TRACEABILITY.md"
+      ],
+      "mapping_status": "MAPPED_MULTI",
+      "rationale": "The source functions and colocated assertions directly enforce budget, effect, evidence, retry, capability and lifecycle invariants; a missing dependency widens to the retained suite.",
+      "relationship_types": [
+        "DIRECT_IMPLEMENTATION",
+        "DIRECT_CONTRACT",
+        "DIRECT_TEST",
+        "META_EVIDENCE"
+      ],
+      "release_criticality": "HIGH",
+      "risk": "CRITICAL",
+      "security_criticality": "CRITICAL",
+      "selection_relevant": true,
+      "source_subjects": [
+        "core/rust/src/gt96.rs::retry_disposition",
+        "core/rust/src/gt96.rs::budget_never_spends_the_finalization_or_recovery_reserve_for_exploration",
+        "core/rust/src/gt96.rs::progress_cannot_be_verified_without_validated_evidence_and_closes_explicitly",
+        "core/rust/src/gt96.rs::result_evidence_and_cache_identity_are_separate_and_complete",
+        "core/rust/src/gt96.rs::finalization_boundary_blocks_exploration_and_allows_explicit_reopen",
+        "core/rust/src/gt96.rs::provider_capabilities_degrade_without_claiming_unsupported_features"
+      ],
+      "surface_id": "AESE-RUST_UNIT_TEST-6E0A9FEABAA1955E",
+      "test_subjects": [
+        "core/rust/src/gt96.rs::retry_disposition_is_bounded_by_effect_semantics",
+        "core/rust/src/gt96.rs::budget_never_spends_the_finalization_or_recovery_reserve_for_exploration",
+        "core/rust/src/gt96.rs::progress_cannot_be_verified_without_validated_evidence_and_closes_explicitly",
+        "core/rust/src/gt96.rs::result_evidence_and_cache_identity_are_separate_and_complete",
+        "core/rust/src/gt96.rs::finalization_boundary_blocks_exploration_and_allows_explicit_reopen",
+        "core/rust/src/gt96.rs::provider_capabilities_degrade_without_claiming_unsupported_features"
+      ],
+      "unknown_dependency_policy": "WIDEN_CONSERVATIVELY",
+      "verification_errors": [],
+      "verification_status": "VERIFIED"
+    },
+    {
+      "claim_ids": [
+        "AESE-CLAIM-GT96-003",
+        "AESE-CLAIM-GT96-004",
+        "AESE-CLAIM-GT96-006",
+        "AESE-CLAIM-GT96-015",
+        "AESE-CLAIM-GT96-016",
+        "AESE-CLAIM-GT96-018",
+        "AESE-CLAIM-GT96-028",
+        "AESE-CLAIM-GT96-030"
+      ],
+      "evidence_subjects": [
+        "quality/registry/current_claim_graph.json",
+        "docs/architecture/GT96_TRACEABILITY.md"
+      ],
+      "mapping_status": "MAPPED_MULTI",
+      "rationale": "The runtime state-machine assertions exercise retry fencing, queue release and lifecycle ownership on actual transitions; filenames alone are not used as evidence.",
+      "relationship_types": [
+        "DIRECT_IMPLEMENTATION",
+        "DIRECT_CONTRACT",
+        "DIRECT_TEST",
+        "TRANSITIVE_DEPENDENCY"
+      ],
+      "release_criticality": "HIGH",
+      "risk": "CRITICAL",
+      "security_criticality": "CRITICAL",
+      "selection_relevant": true,
+      "source_subjects": [
+        "core/rust/src/runtime.rs::state_machine_supports_retry_and_fenced_attempts",
+        "core/rust/src/runtime.rs::queued_task_is_released_and_re_admitted_through_the_ledger"
+      ],
+      "surface_id": "AESE-RUST_UNIT_TEST-627B7C3B524D6D59",
+      "test_subjects": [
+        "core/rust/src/runtime.rs::state_machine_supports_retry_and_fenced_attempts",
+        "core/rust/src/runtime.rs::queued_task_is_released_and_re_admitted_through_the_ledger"
+      ],
+      "unknown_dependency_policy": "WIDEN_CONSERVATIVELY",
+      "verification_errors": [],
+      "verification_status": "VERIFIED"
+    },
+    {
+      "claim_ids": [
+        "AESE-CLAIM-GT96-005",
+        "AESE-CLAIM-GT96-014",
+        "AESE-CLAIM-GT96-016",
+        "AESE-CLAIM-GT96-017",
+        "AESE-CLAIM-GT96-018",
+        "AESE-CLAIM-GT96-029"
+      ],
+      "evidence_subjects": [
+        "quality/registry/current_claim_graph.json",
+        "docs/architecture/GT96_TRACEABILITY.md"
+      ],
+      "mapping_status": "MAPPED_MULTI",
+      "rationale": "The bounded admission test asserts finite capacity and reclamation, which owns the resource-exhaustion and stale-lease safety invariant.",
+      "relationship_types": [
+        "DIRECT_IMPLEMENTATION",
+        "DIRECT_TEST",
+        "VALIDATES"
+      ],
+      "release_criticality": "HIGH",
+      "risk": "CRITICAL",
+      "security_criticality": "CRITICAL",
+      "selection_relevant": true,
+      "source_subjects": [
+        "core/rust/src/resource.rs::admission_is_bounded_and_release_reclaims_capacity"
+      ],
+      "surface_id": "AESE-RUST_UNIT_TEST-7142417A253B65D2",
+      "test_subjects": [
+        "core/rust/src/resource.rs::admission_is_bounded_and_release_reclaims_capacity"
+      ],
+      "unknown_dependency_policy": "WIDEN_CONSERVATIVELY",
+      "verification_errors": [],
+      "verification_status": "VERIFIED"
+    },
+    {
+      "claim_ids": [
+        "AESE-CLAIM-GT96-009",
+        "AESE-CLAIM-GT96-011",
+        "AESE-CLAIM-GT96-026",
+        "AESE-CLAIM-GT96-031",
+        "AESE-CLAIM-GT96-032"
+      ],
+      "evidence_subjects": [
+        "quality/registry/current_claim_graph.json",
+        "docs/architecture/GT96_TRACEABILITY.md"
+      ],
+      "mapping_status": "MAPPED_MULTI",
+      "rationale": "Replay readers and committed-prefix recovery assertions bind serialization, evidence identity and corruption handling; replay integrity is a P0 boundary.",
+      "relationship_types": [
+        "DIRECT_IMPLEMENTATION",
+        "DIRECT_CONTRACT",
+        "DIRECT_TEST",
+        "VALIDATES"
+      ],
+      "release_criticality": "HIGH",
+      "risk": "CRITICAL",
+      "security_criticality": "CRITICAL",
+      "selection_relevant": true,
+      "source_subjects": [
+        "core/rust/src/replay.rs::read_ledger_mmap_with_evidence",
+        "core/rust/src/replay.rs::binary_archive_recovery_preserves_committed_prefix_and_rejects_invalid_header"
+      ],
+      "surface_id": "AESE-RUST_UNIT_TEST-706B6EC4F030313E",
+      "test_subjects": [
+        "core/rust/src/replay.rs::binary_archive_recovery_preserves_committed_prefix_and_rejects_invalid_header"
+      ],
+      "unknown_dependency_policy": "WIDEN_CONSERVATIVELY",
+      "verification_errors": [],
+      "verification_status": "VERIFIED"
+    },
+    {
+      "claim_ids": [
+        "AESE-CLAIM-AESE-001",
+        "AESE-CLAIM-AESE-002",
+        "AESE-CLAIM-AESE-003",
+        "AESE-CLAIM-AESE-004",
+        "AESE-CLAIM-AESE-005",
+        "AESE-CLAIM-AESE-006",
+        "AESE-CLAIM-AESE-007",
+        "AESE-CLAIM-AESE-011"
+      ],
+      "evidence_subjects": [
+        "quality/registry/current_claim_graph.json",
+        "docs/architecture/GT96_TRACEABILITY.md"
+      ],
+      "mapping_status": "MAPPED_MULTI",
+      "rationale": "AESE primitives own fail-closed measurement, simulation separation, domain checks and provenance; the listed tests assert semantic rejection rather than relying on filenames.",
+      "relationship_types": [
+        "DIRECT_IMPLEMENTATION",
+        "DIRECT_CONTRACT",
+        "DIRECT_TEST",
+        "META_EVIDENCE"
+      ],
+      "release_criticality": "NOT_APPLICABLE",
+      "risk": "CRITICAL",
+      "security_criticality": "CRITICAL",
+      "selection_relevant": true,
+      "source_subjects": [
+        "aegis_cognition/aese.py::AdaptiveMeasurementSpec",
+        "aegis_cognition/aese.py::EvidenceLedger",
+        "aegis_cognition/aese.py::SimulationEvidence",
+        "aegis_cognition/aese.py::predict_cross_hardware"
+      ],
+      "surface_id": "AESE-PYTHON_TEST-58D48A170B9DA222",
+      "test_subjects": [
+        "tests/test_aese_primitives.py::test_adaptive_measurement_fails_closed_on_nonfinite_derived_statistics",
+        "tests/test_aese_primitives.py::test_adaptive_measurement_continues_before_floor_and_stops_at_budget",
+        "tests/test_aese_primitives.py::test_simulation_evidence_cannot_be_relabelled_as_observation",
+        "tests/test_aese_primitives.py::test_cross_hardware_prediction_requires_domain_and_residual_evidence",
+        "tests/test_aese_primitives.py::test_evidence_ledger_binds_provenance_and_stays_in_shadow"
+      ],
+      "unknown_dependency_policy": "WIDEN_CONSERVATIVELY",
+      "verification_errors": [],
+      "verification_status": "VERIFIED"
+    },
+    {
+      "claim_ids": [
+        "AESE-CLAIM-AESE-008"
+      ],
+      "evidence_subjects": [
+        "quality/registry/current_inventory.json",
+        "quality/registry/current_claim_graph.json"
+      ],
+      "mapping_status": "MAPPED_EXACT",
+      "rationale": "Preflight is the proposed closure authority; tests prove unknown paths widen and SHADOW never skips or promotes evidence.",
+      "relationship_types": [
+        "DIRECT_IMPLEMENTATION",
+        "DIRECT_TEST",
+        "DIRECT_CONTRACT",
+        "VALIDATES"
+      ],
+      "release_criticality": "NOT_APPLICABLE",
+      "risk": "CRITICAL",
+      "security_criticality": "CRITICAL",
+      "selection_relevant": true,
+      "source_subjects": [
+        "scripts/aese_preflight.py::build_preflight",
+        "scripts/aese_preflight.py::validate_preflight"
+      ],
+      "surface_id": "AESE-SCRIPT_OR_GATE-7CB77C78DCDC63EC",
+      "test_subjects": [
+        "tests/test_aese_preflight.py::test_known_code_change_records_affected_claims_without_cutover",
+        "tests/test_aese_preflight.py::test_unknown_change_widens_conservatively",
+        "tests/test_aese_preflight.py::test_mapped_test_surface_has_exact_shadow_closure"
+      ],
+      "unknown_dependency_policy": "WIDEN_CONSERVATIVELY",
+      "verification_errors": [],
+      "verification_status": "VERIFIED"
+    },
+    {
+      "claim_ids": [
+        "AESE-CLAIM-AESE-008"
+      ],
+      "evidence_subjects": [
+        "quality/registry/current_claim_graph.json"
+      ],
+      "mapping_status": "MAPPED_EXACT",
+      "rationale": "These assertions are the direct negative controls for false-negative closure and non-promotable shadow decisions.",
+      "relationship_types": [
+        "DIRECT_TEST",
+        "VALIDATES",
+        "META_EVIDENCE"
+      ],
+      "release_criticality": "NOT_APPLICABLE",
+      "risk": "CRITICAL",
+      "security_criticality": "CRITICAL",
+      "selection_relevant": true,
+      "source_subjects": [
+        "scripts/aese_preflight.py::build_preflight"
+      ],
+      "surface_id": "AESE-PYTHON_TEST-E1D184588A9806B3",
+      "test_subjects": [
+        "tests/test_aese_preflight.py::test_unknown_change_widens_conservatively",
+        "tests/test_aese_preflight.py::test_known_but_unmapped_surface_also_widens",
+        "tests/test_aese_preflight.py::test_preflight_provenance_is_explicit_and_non_promotable"
+      ],
+      "unknown_dependency_policy": "WIDEN_CONSERVATIVELY",
+      "verification_errors": [],
+      "verification_status": "VERIFIED"
+    },
+    {
+      "claim_ids": [
+        "AESE-CLAIM-AESE-010"
+      ],
+      "evidence_subjects": [
+        "quality/registry/current_claim_graph.json",
+        "docs/architecture/GT96_TRACEABILITY.md"
+      ],
+      "mapping_status": "MAPPED_EXACT",
+      "rationale": "The graph builder resolves actual source and verification references and records NOT_MAPPED; drift tests verify the evidence-derived partial status.",
+      "relationship_types": [
+        "DIRECT_IMPLEMENTATION",
+        "DIRECT_TEST",
+        "DIRECT_CONTRACT",
+        "META_EVIDENCE"
+      ],
+      "release_criticality": "NOT_APPLICABLE",
+      "risk": "HIGH",
+      "security_criticality": "HIGH",
+      "selection_relevant": true,
+      "source_subjects": [
+        "scripts/aese_claim_graph.py::build_graph",
+        "scripts/aese_claim_graph.py::validate_graph"
+      ],
+      "surface_id": "AESE-SCRIPT_OR_GATE-CACC5F6A05F9757D",
+      "test_subjects": [
+        "tests/test_aese_claim_graph.py::test_shadow_graph_uses_stable_ids_and_conservative_unknowns",
+        "tests/test_aese_claim_graph.py::test_recorded_shadow_graph_has_no_drift"
+      ],
+      "unknown_dependency_policy": "WIDEN_CONSERVATIVELY",
+      "verification_errors": [],
+      "verification_status": "VERIFIED"
+    },
+    {
+      "claim_ids": [
+        "AESE-CLAIM-AESE-010"
+      ],
+      "evidence_subjects": [
+        "quality/registry/current_claim_graph.json"
+      ],
+      "mapping_status": "MAPPED_EXACT",
+      "rationale": "The tests bind graph status to mapping conditions and source digests, preventing optimistic completion labels from entering selection logic.",
+      "relationship_types": [
+        "DIRECT_TEST",
+        "VALIDATES",
+        "META_EVIDENCE"
+      ],
+      "release_criticality": "NOT_APPLICABLE",
+      "risk": "HIGH",
+      "security_criticality": "HIGH",
+      "selection_relevant": true,
+      "source_subjects": [
+        "scripts/aese_claim_graph.py::build_graph"
+      ],
+      "surface_id": "AESE-PYTHON_TEST-D79D5846F51A8B48",
+      "test_subjects": [
+        "tests/test_aese_claim_graph.py::test_claim_graph_complete_status_requires_mapping_condition",
+        "tests/test_aese_claim_graph.py::test_graph_digest_binds_resolved_implementation_source"
+      ],
+      "unknown_dependency_policy": "WIDEN_CONSERVATIVELY",
+      "verification_errors": [],
+      "verification_status": "VERIFIED"
+    },
+    {
+      "claim_ids": [
+        "AESE-CLAIM-AESE-009"
+      ],
+      "evidence_subjects": [
+        "quality/registry/current_inventory.json"
+      ],
+      "mapping_status": "MAPPED_EXACT",
+      "rationale": "Inventory generation is the retained-surface source for closure; parity tests prevent silent loss of evidence items or scope.",
+      "relationship_types": [
+        "DIRECT_IMPLEMENTATION",
+        "DIRECT_TEST",
+        "GENERATES",
+        "VALIDATES"
+      ],
+      "release_criticality": "NOT_APPLICABLE",
+      "risk": "HIGH",
+      "security_criticality": "HIGH",
+      "selection_relevant": true,
+      "source_subjects": [
+        "scripts/aese_inventory.py::build_inventory",
+        "scripts/aese_inventory.py::validate_inventory"
+      ],
+      "surface_id": "AESE-SCRIPT_OR_GATE-2B63ED08D2F345A1",
+      "test_subjects": [
+        "tests/test_aese_inventory.py::test_recorded_inventory_has_no_scoped_file_drift",
+        "tests/test_aese_inventory.py::test_inventory_assigns_one_safe_disposition_and_no_absolute_path"
+      ],
+      "unknown_dependency_policy": "WIDEN_CONSERVATIVELY",
+      "verification_errors": [],
+      "verification_status": "VERIFIED"
+    },
+    {
+      "claim_ids": [
+        "AESE-CLAIM-AESE-001"
+      ],
+      "evidence_subjects": [
+        "quality/registry/current_claim_graph.json",
+        "docs/architecture/GT96_TRACEABILITY.md"
+      ],
+      "mapping_status": "MAPPED_EXACT",
+      "rationale": "Calibration controls whether evidence can be trusted; finite-look and fail-closed tests cover optional stopping, multiplicity and boundary semantics.",
+      "relationship_types": [
+        "DIRECT_IMPLEMENTATION",
+        "DIRECT_TEST",
+        "VALIDATES",
+        "META_EVIDENCE"
+      ],
+      "release_criticality": "NOT_APPLICABLE",
+      "risk": "HIGH",
+      "security_criticality": "HIGH",
+      "selection_relevant": true,
+      "source_subjects": [
+        "scripts/aese_statistical_calibration.py::run_calibration",
+        "scripts/aese_statistical_calibration.py::_alpha_allocation"
+      ],
+      "surface_id": "AESE-SCRIPT_OR_GATE-E35A4BAA0F067FCE",
+      "test_subjects": [
+        "tests/test_aese_statistical_calibration.py::test_finite_looks_and_alpha_allocation_are_preregistered",
+        "tests/test_aese_statistical_calibration.py::test_always_inconclusive_protocol_cannot_validate",
+        "tests/test_aese_statistical_calibration.py::test_wilson_bounds_and_decision_labels_cover_boundary_counts"
+      ],
+      "unknown_dependency_policy": "WIDEN_CONSERVATIVELY",
+      "verification_errors": [],
+      "verification_status": "VERIFIED"
+    },
+    {
+      "claim_ids": [
+        "AESE-CLAIM-AESE-011",
+        "AESE-CLAIM-AESE-010"
+      ],
+      "evidence_subjects": [
+        "quality/registry/current_inventory.json",
+        "quality/registry/current_claim_graph.json"
+      ],
+      "mapping_status": "MAPPED_MULTI",
+      "rationale": "Registry and manifest parity is the evidence trust boundary; stale or dropped identities are rejected before any downstream use.",
+      "relationship_types": [
+        "DIRECT_IMPLEMENTATION",
+        "DIRECT_TEST",
+        "VALIDATES",
+        "META_EVIDENCE"
+      ],
+      "release_criticality": "HIGH",
+      "risk": "CRITICAL",
+      "security_criticality": "CRITICAL",
+      "selection_relevant": true,
+      "source_subjects": [
+        "scripts/evidence_consistency_gate.py::validate_manifest",
+        "scripts/evidence_consistency_gate.py::validate_registry_parity"
+      ],
+      "surface_id": "AESE-SCRIPT_OR_GATE-EAD763949D76D450",
+      "test_subjects": [
+        "tests/test_evidence_consistency_gate.py::test_manifest_rejects_stale_sha",
+        "tests/test_evidence_consistency_gate.py::test_registry_parity_rejects_dropped_and_policy_unknown_ids",
+        "tests/test_evidence_consistency_gate.py::test_checkout_registry_inventory_has_three_way_parity"
+      ],
+      "unknown_dependency_policy": "WIDEN_CONSERVATIVELY",
+      "verification_errors": [],
+      "verification_status": "VERIFIED"
+    },
+    {
+      "claim_ids": [
+        "AESE-CLAIM-GT96-010",
+        "AESE-CLAIM-GT96-019"
+      ],
+      "evidence_subjects": [
+        "docs/architecture/GT96_TRACEABILITY.md",
+        "quality/registry/current_inventory.json"
+      ],
+      "mapping_status": "MAPPED_MULTI",
+      "rationale": "Suite evidence parsing preserves runner scope and counts; the direct parser test prevents a summary from masquerading as broader evidence.",
+      "relationship_types": [
+        "DIRECT_IMPLEMENTATION",
+        "DIRECT_TEST",
+        "GENERATES",
+        "META_EVIDENCE"
+      ],
+      "release_criticality": "HIGH",
+      "risk": "HIGH",
+      "security_criticality": "HIGH",
+      "selection_relevant": true,
+      "source_subjects": [
+        "scripts/suite_evidence.py::parse_counts"
+      ],
+      "surface_id": "AESE-SCRIPT_OR_GATE-665823FFB7A1BC2E",
+      "test_subjects": [
+        "tests/test_suite_evidence.py::test_parse_counts_keeps_scope_fields"
+      ],
+      "unknown_dependency_policy": "WIDEN_CONSERVATIVELY",
+      "verification_errors": [],
+      "verification_status": "VERIFIED"
+    },
+    {
+      "claim_ids": [
+        "AESE-CLAIM-AESE-011",
+        "AESE-CLAIM-AESE-010"
+      ],
+      "evidence_subjects": [
+        "quality/registry/current_inventory.json",
+        "quality/registry/current_claim_graph.json"
+      ],
+      "mapping_status": "MAPPED_MULTI",
+      "rationale": "Negative registry tests are the direct evidence that stale hashes, dropped IDs and unknown policy values fail closed.",
+      "relationship_types": [
+        "DIRECT_TEST",
+        "VALIDATES",
+        "META_EVIDENCE"
+      ],
+      "release_criticality": "HIGH",
+      "risk": "CRITICAL",
+      "security_criticality": "CRITICAL",
+      "selection_relevant": true,
+      "source_subjects": [
+        "scripts/evidence_consistency_gate.py::validate_manifest"
+      ],
+      "surface_id": "AESE-PYTHON_TEST-31777D847B63F344",
+      "test_subjects": [
+        "tests/test_evidence_consistency_gate.py::test_manifest_rejects_stale_sha",
+        "tests/test_evidence_consistency_gate.py::test_registry_parity_rejects_dropped_and_policy_unknown_ids"
+      ],
+      "unknown_dependency_policy": "WIDEN_CONSERVATIVELY",
+      "verification_errors": [],
+      "verification_status": "VERIFIED"
+    },
+    {
+      "claim_ids": [
+        "AESE-CLAIM-GT96-010",
+        "AESE-CLAIM-GT96-019"
+      ],
+      "evidence_subjects": [
+        "quality/registry/current_inventory.json"
+      ],
+      "mapping_status": "MAPPED_MULTI",
+      "rationale": "The test checks that evidence scope fields survive parsing, so a count cannot be detached from its authoritative runner context.",
+      "relationship_types": [
+        "DIRECT_TEST",
+        "VALIDATES",
+        "META_EVIDENCE"
+      ],
+      "release_criticality": "HIGH",
+      "risk": "HIGH",
+      "security_criticality": "HIGH",
+      "selection_relevant": true,
+      "source_subjects": [
+        "scripts/suite_evidence.py::parse_counts"
+      ],
+      "surface_id": "AESE-PYTHON_TEST-E30A8415486D502B",
+      "test_subjects": [
+        "tests/test_suite_evidence.py::test_parse_counts_keeps_scope_fields"
+      ],
+      "unknown_dependency_policy": "WIDEN_CONSERVATIVELY",
+      "verification_errors": [],
+      "verification_status": "VERIFIED"
+    }
+  ],
+  "schema": "aese-s2-mapping-v1",
+  "selection_authority": "DISABLED",
+  "source_head": "9e33299e9976a085b521c9621a6c8c8670f74ee8",
+  "unknown_dependency_policy": "WIDEN_CONSERVATIVELY",
+  "unknown_surface_count": 110,
+  "unknown_surface_ids": [
+    "AESE-FUZZ_TARGET-26E115395EF2C8F9",
+    "AESE-FUZZ_TARGET-571CC359F5473719",
+    "AESE-FUZZ_TARGET-849E21CC12DE2882",
+    "AESE-FUZZ_TARGET-A5DD33377FDD8B01",
+    "AESE-HOSTED_WORKFLOW-481FBF069280B7D0",
+    "AESE-HOSTED_WORKFLOW-87DB21A973EED4FE",
+    "AESE-HOSTED_WORKFLOW-B803FCB7F17ED923",
+    "AESE-HOSTED_WORKFLOW-E74493557E2F0C05",
+    "AESE-HOSTED_WORKFLOW_JOB-05A370E07760FA2D",
+    "AESE-HOSTED_WORKFLOW_JOB-16AA7B92C94F22CB",
+    "AESE-HOSTED_WORKFLOW_JOB-1F46A0C198D3ECE0",
+    "AESE-HOSTED_WORKFLOW_JOB-4297F5A9DAE87FC2",
+    "AESE-HOSTED_WORKFLOW_JOB-907D7B4FEA384338",
+    "AESE-HOSTED_WORKFLOW_JOB-9A86E427E026057E",
+    "AESE-HOSTED_WORKFLOW_JOB-B0F63D21D5F72735",
+    "AESE-HOSTED_WORKFLOW_JOB-B864A49636644D5C",
+    "AESE-HOSTED_WORKFLOW_JOB-C611C411223DEE88",
+    "AESE-HOSTED_WORKFLOW_JOB-F33099A5B936A446",
+    "AESE-HOSTED_WORKFLOW_JOB-FF41024D605E74C3",
+    "AESE-PYTHON_BENCHMARK-058179949C4EE7AC",
+    "AESE-PYTHON_BENCHMARK-7AC55EA6DC9C796D",
+    "AESE-PYTHON_BENCHMARK-ADB45F89AA5C56C0",
+    "AESE-PYTHON_BENCHMARK-DA7DC4EE5F9A3219",
+    "AESE-PYTHON_BENCHMARK-DAAA8EB886A2B8E1",
+    "AESE-PYTHON_TEST-132068D9A890F856",
+    "AESE-PYTHON_TEST-51A1BDDF0653E1AF",
+    "AESE-PYTHON_TEST-64CCBA10AA0FB215",
+    "AESE-PYTHON_TEST-655F58B6055A773C",
+    "AESE-PYTHON_TEST-67D480DEC30B36C4",
+    "AESE-PYTHON_TEST-984710292DB89A59",
+    "AESE-PYTHON_TEST-BB462D748FA004AC",
+    "AESE-PYTHON_TEST-F44FE1653A27637B",
+    "AESE-RUST_BENCHMARK-16BA24B31D557E5B",
+    "AESE-RUST_BENCHMARK-320AA3A9FEA0E3FE",
+    "AESE-RUST_BENCHMARK-56B8EE7D3073C0FD",
+    "AESE-RUST_BENCHMARK-D6C0F4D92F1AC58D",
+    "AESE-RUST_BENCHMARK-EB9579A3AA32341B",
+    "AESE-RUST_INTEGRATION_TEST-896180209AD388CD",
+    "AESE-RUST_UNIT_TEST-06AD9BFDAEC677E0",
+    "AESE-RUST_UNIT_TEST-0C9A2F9147ED09FC",
+    "AESE-RUST_UNIT_TEST-1ACBE80688E0CB89",
+    "AESE-RUST_UNIT_TEST-23BC7E3048BB4D91",
+    "AESE-RUST_UNIT_TEST-25A082632F2A02C7",
+    "AESE-RUST_UNIT_TEST-2C9D296895749679",
+    "AESE-RUST_UNIT_TEST-382B75CCEC122E20",
+    "AESE-RUST_UNIT_TEST-3850F0947D457EC0",
+    "AESE-RUST_UNIT_TEST-4126FC7BB01CB145",
+    "AESE-RUST_UNIT_TEST-4FCC4984AF6D2C34",
+    "AESE-RUST_UNIT_TEST-62F71A02E7DAEAF0",
+    "AESE-RUST_UNIT_TEST-6896058315F9E5A4",
+    "AESE-RUST_UNIT_TEST-8135C64C8D1E687D",
+    "AESE-RUST_UNIT_TEST-816051930BE8E9AF",
+    "AESE-RUST_UNIT_TEST-92EBE7488C4A494F",
+    "AESE-RUST_UNIT_TEST-940C3F295FD42710",
+    "AESE-RUST_UNIT_TEST-98A3418661C4B3C9",
+    "AESE-RUST_UNIT_TEST-B07735E7D4D5F66B",
+    "AESE-RUST_UNIT_TEST-BB56D2466AB0351F",
+    "AESE-RUST_UNIT_TEST-D378F0E030D804EB",
+    "AESE-RUST_UNIT_TEST-EB50407EAE4868AB",
+    "AESE-RUST_UNIT_TEST-EFB18248756AE77E",
+    "AESE-RUST_UNIT_TEST-F78B6AACEB6CDD0A",
+    "AESE-SCRIPT_OR_GATE-01055752520CFFA7",
+    "AESE-SCRIPT_OR_GATE-0F7930813782918F",
+    "AESE-SCRIPT_OR_GATE-1CA2D8719B5AFFDA",
+    "AESE-SCRIPT_OR_GATE-2974F2FBD2B1A186",
+    "AESE-SCRIPT_OR_GATE-2AD6E9B4F21CBDFE",
+    "AESE-SCRIPT_OR_GATE-2DE64D632EBCBD98",
+    "AESE-SCRIPT_OR_GATE-3C51C28EF48E3413",
+    "AESE-SCRIPT_OR_GATE-3DA20698BDA0AFE0",
+    "AESE-SCRIPT_OR_GATE-42F256E8C83B546F",
+    "AESE-SCRIPT_OR_GATE-43A7353F29E3A524",
+    "AESE-SCRIPT_OR_GATE-4A83B7C0E4DAF0C6",
+    "AESE-SCRIPT_OR_GATE-521CE64FE820F115",
+    "AESE-SCRIPT_OR_GATE-526FBDFF8E721A83",
+    "AESE-SCRIPT_OR_GATE-59733FC5B436637F",
+    "AESE-SCRIPT_OR_GATE-60FD4CE4E914F390",
+    "AESE-SCRIPT_OR_GATE-615CB27130ABC689",
+    "AESE-SCRIPT_OR_GATE-61A2C157C5B9ED60",
+    "AESE-SCRIPT_OR_GATE-69E5D8F13CE0D30A",
+    "AESE-SCRIPT_OR_GATE-6A23A2E49524A60A",
+    "AESE-SCRIPT_OR_GATE-6B9902B786796343",
+    "AESE-SCRIPT_OR_GATE-76148D210BE92453",
+    "AESE-SCRIPT_OR_GATE-7AE7927B69F23D65",
+    "AESE-SCRIPT_OR_GATE-7CEB4E4C29B7FB6E",
+    "AESE-SCRIPT_OR_GATE-86F0635352FF1F36",
+    "AESE-SCRIPT_OR_GATE-89B834E04514B46F",
+    "AESE-SCRIPT_OR_GATE-8CA7D43E006E7E67",
+    "AESE-SCRIPT_OR_GATE-8DA14FC12AA842E6",
+    "AESE-SCRIPT_OR_GATE-918159281814759A",
+    "AESE-SCRIPT_OR_GATE-9220621BA19E17B1",
+    "AESE-SCRIPT_OR_GATE-9486938F341FABFA",
+    "AESE-SCRIPT_OR_GATE-A01FED7B9AF150FD",
+    "AESE-SCRIPT_OR_GATE-A252DD72700346F7",
+    "AESE-SCRIPT_OR_GATE-AF1C4A9C0ACF7C40",
+    "AESE-SCRIPT_OR_GATE-B05E47CF0E712757",
+    "AESE-SCRIPT_OR_GATE-B179930A319949B1",
+    "AESE-SCRIPT_OR_GATE-B25F1BADD2B67BBE",
+    "AESE-SCRIPT_OR_GATE-C55A3E2F42DF2E66",
+    "AESE-SCRIPT_OR_GATE-C61A256E619AADC4",
+    "AESE-SCRIPT_OR_GATE-C758B4968E53DC97",
+    "AESE-SCRIPT_OR_GATE-CD75F473D2F982DF",
+    "AESE-SCRIPT_OR_GATE-D12E68D70CC5EDF5",
+    "AESE-SCRIPT_OR_GATE-D221B7F3E670CEAA",
+    "AESE-SCRIPT_OR_GATE-D2EE6FC497302FFE",
+    "AESE-SCRIPT_OR_GATE-D8C9E5F1836A961A",
+    "AESE-SCRIPT_OR_GATE-DCDBAB51D0B44452",
+    "AESE-SCRIPT_OR_GATE-F4957AEC6076F5C8",
+    "AESE-SCRIPT_OR_GATE-F71A5FF033DCDDED",
+    "AESE-SCRIPT_OR_GATE-FD4DC115F24E2737",
+    "AESE-SCRIPT_OR_GATE-FF1EE659A1612713"
+  ]
+}
