@@ -92,6 +92,59 @@ def test_evidence_ledger_rejects_forged_entry_type_and_noncanonical_container() 
         EvidenceLedger([entry]).validate()  # type: ignore[arg-type]
 
 
+def test_evidence_ledger_round_trip_rehydrates_only_hash_bound_records() -> None:
+    entry = _evidence_entry()
+    ledger = EvidenceLedger().append(entry)
+
+    restored_entry = EvidenceLedgerEntry.from_dict(entry.as_dict())
+    restored_ledger = EvidenceLedger.from_dict(ledger.as_dict())
+
+    assert restored_entry == entry
+    assert restored_ledger == ledger
+    assert restored_ledger.ledger_hash == ledger.ledger_hash
+
+    entry_payload = {**entry.as_dict(), "claim_id": "AESE-002"}
+    with pytest.raises(ValueError, match="artifact hash mismatch"):
+        EvidenceLedgerEntry.from_dict(entry_payload)
+
+    ledger_payload = ledger.as_dict()
+    ledger_payload["ledger_hash"] = "f" * 64
+    with pytest.raises(ValueError, match="ledger hash mismatch"):
+        EvidenceLedger.from_dict(ledger_payload)
+
+
+@pytest.mark.parametrize(
+    "changes, message",
+    (
+        ({"claimable_as_observed": True}, "claimable"),
+        ({"promotion": "ENABLED"}, "promoted"),
+        ({"unexpected": "field"}, "schema keys"),
+    ),
+)
+def test_evidence_ledger_rehydration_rejects_policy_or_schema_mutation(
+    changes: dict[str, object], message: str
+) -> None:
+    payload = _evidence_entry().as_dict()
+    payload.update(changes)
+    with pytest.raises((TypeError, ValueError), match=message):
+        EvidenceLedgerEntry.from_dict(payload)
+
+
+def test_evidence_ledger_rehydration_rejects_forged_canonical_types() -> None:
+    entry = _evidence_entry()
+
+    class ForgedEntry(EvidenceLedgerEntry):
+        pass
+
+    class ForgedLedger(EvidenceLedger):
+        pass
+
+    with pytest.raises(TypeError, match="canonical type"):
+        ForgedEntry.from_dict(entry.as_dict())
+    with pytest.raises(TypeError, match="canonical type"):
+        ForgedLedger.from_dict(EvidenceLedger().as_dict())
+
+
 def test_adaptive_measurement_passes_only_after_warmup_and_precision_floor() -> None:
     spec = AdaptiveMeasurementSpec(metric="latency_ms", warmup_count=2, min_observations=30, block_size=5)
     result = evaluate_adaptive_measurement(spec, [10.0] * 30, warmups=[0.0, 0.0])

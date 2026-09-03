@@ -378,6 +378,56 @@ class EvidenceLedgerEntry:
         self.validate()
         return {**self._payload(), "artifact_hash": self.artifact_hash}
 
+    @classmethod
+    def from_dict(cls, value: object) -> EvidenceLedgerEntry:
+        """Rehydrate one entry only after validating its bound artifact hash."""
+
+        if cls is not EvidenceLedgerEntry:
+            raise TypeError("evidence ledger entry must use the canonical type")
+        if type(value) is not dict:
+            raise TypeError("evidence ledger entry must be a canonical dictionary")
+        payload = cast(dict[str, object], value)
+        expected_keys = {
+            "schema",
+            "evidence_id",
+            "claim_id",
+            "protocol_hash",
+            "observation_hash",
+            "source_sha",
+            "environment_hash",
+            "validator_id",
+            "evidence_class",
+            "status",
+            "claim_scope",
+            "promotion",
+            "claimable_as_observed",
+            "artifact_hash",
+        }
+        if set(payload) != expected_keys:
+            raise ValueError("evidence ledger entry schema keys are invalid")
+        if payload["schema"] != f"{_SCHEMA_VERSION}-evidence-ledger-entry":
+            raise ValueError("evidence ledger entry schema is invalid")
+        if payload["claimable_as_observed"] is not False:
+            raise ValueError("evidence ledger entry cannot be claimable as observed")
+        entry = cls(
+            evidence_id=payload["evidence_id"],
+            claim_id=payload["claim_id"],
+            protocol_hash=payload["protocol_hash"],
+            observation_hash=payload["observation_hash"],
+            source_sha=payload["source_sha"],
+            environment_hash=payload["environment_hash"],
+            validator_id=payload["validator_id"],
+            evidence_class=payload["evidence_class"],
+            status=payload["status"],
+            claim_scope=payload["claim_scope"],
+            promotion=payload["promotion"],
+        )
+        entry.validate()
+        artifact_hash = payload["artifact_hash"]
+        if type(artifact_hash) is not str or artifact_hash != entry.artifact_hash:
+            raise ValueError("evidence ledger entry artifact hash mismatch")
+        return entry
+
 
 @dataclass(frozen=True)
 class EvidenceLedger:
@@ -426,6 +476,36 @@ class EvidenceLedger:
             "entries": [entry.as_dict() for entry in self.entries],
             "ledger_hash": self.ledger_hash,
         }
+
+    @classmethod
+    def from_dict(cls, value: object) -> EvidenceLedger:
+        """Reconstruct a shadow ledger and verify every nested hash binding."""
+
+        if cls is not EvidenceLedger:
+            raise TypeError("evidence ledger must use the canonical type")
+        if type(value) is not dict:
+            raise TypeError("evidence ledger must be a canonical dictionary")
+        payload = cast(dict[str, object], value)
+        expected_keys = {"schema", "mode", "promotion", "entries", "ledger_hash"}
+        if set(payload) != expected_keys:
+            raise ValueError("evidence ledger schema keys are invalid")
+        if payload["schema"] != f"{_SCHEMA_VERSION}-evidence-ledger":
+            raise ValueError("evidence ledger schema is invalid")
+        if payload["mode"] != "SHADOW" or payload["promotion"] != "DISABLED_IN_SHADOW":
+            raise ValueError("evidence ledger promotion policy is invalid")
+        entries_value = payload["entries"]
+        if type(entries_value) is not list:
+            raise TypeError("evidence ledger entries must be a canonical list")
+        entries = tuple(
+            EvidenceLedgerEntry.from_dict(entry)
+            for entry in cast(list[object], entries_value)
+        )
+        ledger = cls(entries)
+        ledger.validate()
+        ledger_hash = payload["ledger_hash"]
+        if type(ledger_hash) is not str or ledger_hash != ledger.ledger_hash:
+            raise ValueError("evidence ledger hash mismatch")
+        return ledger
 
 
 def evaluate_adaptive_measurement(
