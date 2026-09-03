@@ -3,7 +3,7 @@ document_id: AEGIS-LAB-RUNTIME-MASTER-PLAN
 document_type: canonical_current_implementation_plan
 status: IN_EXECUTION
 authority: derived_from_checkout_and_evidence_manifest
-applies_to_commit: 569508a49257448dbfaa41bf8a7477f97f963815
+applies_to_commit: b480bf54bb84cfdc2a05760d46224338a0ec1db7
 created_at: 2026-08-26
 last_verified_at: 2026-09-03
 supersedes: browser-native-proposal-and-cumulative-harness-roadmap-as-execution-authority
@@ -4999,7 +4999,7 @@ invariants in the cited paths, not from filenames.
 
 The current mapping report is
 `quality/registry/current_s2_mapping.json`, artifact hash
-`ec32a3a8d35446a93636ff2318620aa2341940266a4308c3d618ebbfdfe2fc96`, with
+`9c874b9aa41b135f45c4abf67a67633c51e95590a9cdd077a84b46ae2ca62210`, with
 `mapping_status=COMPLETE`, `all_critical_mapped=true`,
 `all_high_selection_relevant_mapped=true`, `no_fake_mapping=true`, and
 `critical_false_negative_status=NOT_EVALUATED_S3`. It verifies 9 critical
@@ -5009,11 +5009,10 @@ The claim graph remains
 `SHADOW_GRAPH_PARTIAL_MAPPING_SELECTION_DISABLED`; this mapping report cannot
 enable selection, skipping or promotion. S2 mapping tests pass **3/3** and
 the S2-focused closure set passes **18/18**; the post-S2 full Python suite
-passes **576/576** with one known pytest configuration warning. S3 must still
-prove deterministic affected closure and measure known critical false
-negatives.
+passes **576/576** with one known pytest configuration warning. The completed
+S3 closure gate below preserves this authority state.
 
-**AESE-S3 deterministic affected closure (in progress, 2026-09-03):**
+**AESE-S3 deterministic affected closure (2026-09-03):**
 `scripts/aese_affected_closure.py` implements a typed, deterministic
 contract-closure planner over explicit `IMPORT`, `CALL`, `FFI`,
 `SERIALIZATION`, `CONFIG`, `SCHEMA`, `PACKAGE`, `ENTRY_POINT`,
@@ -5024,9 +5023,11 @@ Cargo features, entry points, registry generators, validators and workflow
 changes. Unknown paths or dynamic edges widen to all retained inventory
 items; no opaque filename score is used. The current plan artifact is
 `quality/registry/current_affected_closure.json` with reproducible hash
-`49258494835b407a0cf2a9f7e060d5e3c18718e5bd5c93ccd929250c6e1b50e0` and
+`9362823588749f469a77710b2672897e5f78bff7ba392330af79adc8353fa459` and
 artifact hash
-`f95573891f0b01a88b6fa5c3e805033cda952dd3198a20ddfe45d64c236320b4`.
-The mapped critical audit is `COMPLETE_ZERO` (15 records checked), but S3
-is not yet an exit-gate claim until its registry/test evidence is committed
-and the final milestone checks complete; AESE remains shadow-only.
+`67fa1d3ced8aa739f7867ccc184c85bd3c42aa6afdeb193a6a733d741bf1000f`.
+The mapped critical audit is `COMPLETE_ZERO` (15 records checked), unknown
+and dynamic dependencies widen to all retained items, and the adversarial
+closure suite passes **14/14**. S3 exit-gate conditions are complete for the
+known mapped critical set; this is planning evidence, not permission to skip
+tests or promote evidence.
