@@ -4,8 +4,10 @@ import pytest
 
 from scripts.aese_statistical_calibration import (
     PROTOCOL_VARIANTS,
+    _alpha_allocation,
     _bound_decision,
     _cell_criteria,
+    _finite_look_schedule,
     _summarize_trials,
     _wilson_bounds,
     run_calibration,
@@ -42,6 +44,10 @@ def test_calibration_campaign_is_deterministic_and_shadow_only() -> None:
     assert first["promotion_status"] == "DISABLED_IN_SHADOW"
     assert first["source"]["source_sha"]
     assert first["source"]["worktree_status"] in {"CLEAN", "DIRTY"}
+    assert first["campaign"]["look_points"] == [2]
+    assert first["meta_calibration"]["error_control_scope"] == "PER_CONFIGURATION_CELL"
+    assert first["meta_calibration"]["look_count"] == 1
+    assert first["meta_calibration"]["alpha_total"] == pytest.approx(0.05)
 
 
 def test_calibration_reports_required_metrics_and_declared_domains() -> None:
@@ -97,6 +103,25 @@ def test_wilson_bounds_and_decision_labels_cover_boundary_counts() -> None:
     assert _bound_decision(interval(0.01, 0.05), threshold=0.05, relation="maximum") == "VALIDATED"
     assert _bound_decision(interval(0.06, 0.90), threshold=0.05, relation="maximum") == "INVALIDATED"
     assert _bound_decision({"lower_bound": None, "upper_bound": None}, threshold=0.90, relation="minimum") == "INCONCLUSIVE"
+    assert _bound_decision(interval(0.0, 1.0), threshold=0.90, relation="unknown") == "INCONCLUSIVE"
+
+
+def test_finite_looks_and_alpha_allocation_are_preregistered() -> None:
+    assert _finite_look_schedule(30, 120, 30) == (30, 60, 90, 120)
+    assert _finite_look_schedule(2, 4, 2) == (2, 4)
+    allocation = _alpha_allocation((30, 60, 90, 120))
+    assert allocation["look_count"] == 4
+    assert allocation["metric_count"] == 4
+    assert allocation["scenario_count"] == 3
+    assert allocation["family_size"] == 48
+    assert sum(allocation["look_alpha_allocations"]) == pytest.approx(0.05)
+    assert allocation["per_bound_alpha"] == pytest.approx(0.05 / 48)
+    with pytest.raises(ValueError, match="calibration"):
+        _alpha_allocation((30, 30))
+    with pytest.raises(ValueError, match="calibration"):
+        _alpha_allocation((30, 60, 90, 120, 150))
+    with pytest.raises(ValueError, match="calibration"):
+        _alpha_allocation((30, 60), metric_names=("coverage", "coverage"))
 
 
 def test_always_inconclusive_protocol_cannot_validate() -> None:
@@ -138,6 +163,7 @@ def test_adaptive_replicate_allocation_is_recorded() -> None:
     assert cell["allocation_batches"][0] == 2
     assert cell["allocation_stop_reason"] in {"META_BOUNDS_DECIDABLE", "MAXIMUM_REPLICATES_REACHED"}
     assert artifact["campaign"]["allocation_policy"] == "ADAPTIVE_BOUNDS_UNTIL_DECIDABLE"
+    assert artifact["campaign"]["look_points"] == [2, 4]
 
 
 @pytest.mark.parametrize(
