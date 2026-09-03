@@ -3284,6 +3284,10 @@ class AdaptiveController:
         return AdaptiveDecision(phase, self.step, token_budget, reason, potential)
 
     def observe(self, run: LabRun) -> bool:
+        if type(run) is not LabRun:
+            raise TypeError("adaptive controller requires the canonical LabRun type")
+        if run.state in {"completed", "blocked", "aborted"}:
+            return False
         signature = self._state_signature(run)
         if signature == self._last_signature:
             self._repeated += 1
