@@ -3,7 +3,7 @@ document_id: AEGIS-LAB-RUNTIME-MASTER-PLAN
 document_type: canonical_current_implementation_plan
 status: IN_EXECUTION
 authority: derived_from_checkout_and_evidence_manifest
-applies_to_commit: 8473b1e511496eb6d8b4078626b182a8d09df47f
+applies_to_commit: 39b7b38ff169e80920512e12eba30018de50d40d
 created_at: 2026-08-26
 last_verified_at: 2026-09-03
 supersedes: browser-native-proposal-and-cumulative-harness-roadmap-as-execution-authority
@@ -4431,6 +4431,17 @@ errors, and Ruff/Pyright pass. This closes local numeric-input/output
 integrity only; it does not prove model calibration, OOD domain validity,
 independent replication, physical energy measurement, external anchors or
 release authority.
+
+**M7 segmented-writer exclusivity continuation (2026-09-03):** implementation
+commit `39b7b38ff169e80920512e12eba30018de50d40d` adds a bounded regression
+for `SegmentedArrowAuditStream`: a second writer for the same directory/run is
+rejected by the exclusive lock, the lock is released on `drop`, and a later
+writer can acquire it without leaving the scoped temporary lock file. The
+complete no-default-features Rust library suite passes **447/447**;
+`cargo fmt --all -- --check`, `cargo check` and `cargo clippy -- -D warnings`
+pass. This proves same-host lock exclusivity and normal-drop cleanup only; it
+does not prove crash-stale-lock recovery, hosted multi-process authority,
+cross-platform filesystem semantics or release certification.
 
 Không được gọi toàn hệ thống “production-ready” khi bất kỳ gate bắt buộc nào
 ở trên còn `OPEN_*`, `BLOCKED_*`, `UNKNOWN` hoặc chỉ có fixture/mock evidence.
