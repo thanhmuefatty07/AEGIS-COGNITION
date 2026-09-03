@@ -1,15 +1,15 @@
 {
   "all_critical_mapped": true,
   "all_high_selection_relevant_mapped": true,
-  "artifact_hash": "cf562ae9c6f1fb59efa4553dd775396f39f773aa862fa9f208f89f53a92181d7",
-  "claim_graph_source_tree_sha256": "ccc0983819d7682ba08cc7f07265ae3fedbf6705d733f6d20a4aaf3f30dfe2be",
+  "artifact_hash": "d34602ff7fc777da60462722aa9e51cbcbd92e5d07a97391d90e24d1ac319884",
+  "claim_graph_source_tree_sha256": "983ec6db477a860b87bf853aa305c25056024e2ce031a8bb579fb1bddf7726c4",
   "claim_graph_status": "SHADOW_GRAPH_PARTIAL_MAPPING_SELECTION_DISABLED",
   "critical_false_negative_status": "NOT_EVALUATED_S3",
   "critical_mapping_count": 9,
-  "current_head": "ecace057f8ce8cb6e91fbb690a6fcc5a4741ab03",
+  "current_head": "92fb1b749b239e1c783211e2b5707589cde199c4",
   "errors_by_surface": {},
   "high_selection_mapping_count": 15,
-  "inventory_source_tree_sha256": "e2ef21bae2bd0c2f60bcfcfae3c88ff371626a68473a105205f336efbc4470b0",
+  "inventory_source_tree_sha256": "0247373bb40d284725eb663437b68d31b8677902458c7939050ce024b1ce4568",
   "limitations": [
     "Unlisted surfaces remain UNKNOWN; shadow planners must widen conservatively.",
     "Mapping evidence does not authorize test skipping or promotion.",
@@ -555,9 +555,9 @@
   ],
   "schema": "aese-s2-mapping-v1",
   "selection_authority": "DISABLED",
-  "source_head": "ecace057f8ce8cb6e91fbb690a6fcc5a4741ab03",
+  "source_head": "92fb1b749b239e1c783211e2b5707589cde199c4",
   "unknown_dependency_policy": "WIDEN_CONSERVATIVELY",
-  "unknown_surface_count": 114,
+  "unknown_surface_count": 116,
   "unknown_surface_ids": [
     "AESE-FUZZ_TARGET-26E115395EF2C8F9",
     "AESE-FUZZ_TARGET-571CC359F5473719",
@@ -588,6 +588,7 @@
     "AESE-PYTHON_TEST-64CCBA10AA0FB215",
     "AESE-PYTHON_TEST-655F58B6055A773C",
     "AESE-PYTHON_TEST-67D480DEC30B36C4",
+    "AESE-PYTHON_TEST-946CC0E18A2AF577",
     "AESE-PYTHON_TEST-984710292DB89A59",
     "AESE-PYTHON_TEST-BB462D748FA004AC",
     "AESE-PYTHON_TEST-D360D2BD4D944F44",
@@ -671,6 +672,7 @@
     "AESE-SCRIPT_OR_GATE-EA63DCF58D957DB3",
     "AESE-SCRIPT_OR_GATE-F4957AEC6076F5C8",
     "AESE-SCRIPT_OR_GATE-F71A5FF033DCDDED",
+    "AESE-SCRIPT_OR_GATE-F82E0E9DC4FBA0AB",
     "AESE-SCRIPT_OR_GATE-FD4DC115F24E2737",
     "AESE-SCRIPT_OR_GATE-FF1EE659A1612713"
   ]
