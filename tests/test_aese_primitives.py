@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import math
+from dataclasses import replace
 
 import pytest
 
@@ -218,6 +219,36 @@ def test_adaptive_measurement_result_rehydration_rejects_schema_and_forged_types
 
     with pytest.raises(TypeError, match="canonical type"):
         ForgedResult.from_dict(snapshot)
+
+
+def test_adaptive_measurement_result_rejects_semantically_impossible_statistics() -> None:
+    result = evaluate_adaptive_measurement(
+        AdaptiveMeasurementSpec(metric="latency_ms"),
+        [10.0] * 30,
+        warmups=[0.0] * 10,
+    )
+
+    missing_estimate = {
+        **result.as_dict(),
+        "estimate": None,
+        "ci_low": None,
+        "ci_high": None,
+        "precision_ratio": None,
+    }
+    with pytest.raises(ValueError, match="requires finite statistics"):
+        type(result).from_dict(missing_estimate)
+
+    reversed_interval = {**result.as_dict(), "ci_low": 11.0, "ci_high": 9.0}
+    with pytest.raises(ValueError, match="interval bounds"):
+        type(result).from_dict(reversed_interval)
+
+    negative_precision = {**result.as_dict(), "precision_ratio": -1.0}
+    with pytest.raises(ValueError, match="precision ratio"):
+        type(result).from_dict(negative_precision)
+
+    contaminated_pass = replace(result, contamination_flags=("manual",))
+    with pytest.raises(ValueError, match="cannot contain contamination"):
+        contaminated_pass.validate()
 
 
 def test_adaptive_measurement_continues_before_floor_and_stops_at_budget() -> None:

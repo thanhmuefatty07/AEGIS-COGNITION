@@ -388,6 +388,26 @@ class AdaptiveMeasurementResult:
         ):
             if value is not None and not _is_finite(value):
                 raise ValueError(f"measurement result {name} must be finite or null")
+        statistics_present = tuple(
+            value is not None
+            for value in (self.estimate, self.ci_low, self.ci_high, self.precision_ratio)
+        )
+        if any(statistics_present) and not all(statistics_present):
+            raise ValueError("measurement result statistics must be all present or all null")
+        if all(statistics_present):
+            ci_low = cast(float, self.ci_low)
+            ci_high = cast(float, self.ci_high)
+            precision_ratio = cast(float, self.precision_ratio)
+            if ci_low > ci_high:
+                raise ValueError("measurement result interval bounds are reversed")
+            if precision_ratio < 0.0:
+                raise ValueError("measurement result precision ratio must be non-negative")
+        if self.lag1_autocorrelation is not None and not (
+            -1.0 <= float(self.lag1_autocorrelation) <= 1.0
+        ):
+            raise ValueError("measurement result autocorrelation must be in [-1, 1]")
+        if self.drift_ratio is not None and self.drift_ratio < 0.0:
+            raise ValueError("measurement result drift ratio must be non-negative")
         for name, value in (
             ("raw_observation_count", self.raw_observation_count),
             ("observation_count", self.observation_count),
@@ -400,6 +420,8 @@ class AdaptiveMeasurementResult:
             raise ValueError("measurement result observation count exceeds raw count")
         if self.block_count > self.observation_count:
             raise ValueError("measurement result block count exceeds observation count")
+        if (self.block_count == 0) != (self.observation_count == 0):
+            raise ValueError("measurement result block and observation counts are inconsistent")
         for name, value in (
             ("contamination_flags", self.contamination_flags),
             ("failure_reasons", self.failure_reasons),
@@ -408,6 +430,16 @@ class AdaptiveMeasurementResult:
                 raise TypeError(f"measurement result {name} must use a canonical tuple")
             if any(_invalid_string(item) for item in value):
                 raise ValueError(f"measurement result {name} must contain non-empty strings")
+        if self.status in {"PASS", "FAIL", "UNSTABLE"}:
+            if not all(statistics_present):
+                raise ValueError(f"measurement result {self.status} requires finite statistics")
+            if self.contamination_flags:
+                raise ValueError(f"measurement result {self.status} cannot contain contamination flags")
+        if self.status == "UNSTABLE" and not {
+            "autocorrelation_exceeds_bound",
+            "drift_exceeds_bound",
+        }.intersection(self.failure_reasons):
+            raise ValueError("unstable measurement result must record its instability reason")
         if self.artifact_hash != _hash(self._payload()):
             raise ValueError("measurement result artifact hash mismatch")
 
