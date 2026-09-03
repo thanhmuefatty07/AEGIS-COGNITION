@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import re
 
-from scripts.aese_preflight import build_preflight
+from scripts.aese_preflight import build_preflight, validate_preflight
 
 
 def test_empty_preflight_widens_and_never_skips() -> None:
@@ -89,3 +89,11 @@ def test_preflight_provenance_is_explicit_and_non_promotable() -> None:
     assert provenance["evidence_class"] == "PLANNING_ONLY"
     assert provenance["claim_scope"] == "LOCAL_CHECKOUT_ONLY"
     assert provenance["promotion"] == "DISABLED_IN_SHADOW"
+
+
+def test_preflight_validator_rejects_open_root_schema() -> None:
+    expected = build_preflight(["aegis_cognition/aese.py"])
+    actual = {**expected, "unsafe_skip_item_ids": ["legacy-test"]}
+
+    assert validate_preflight(actual, expected) == ["root schema keys differ"]
+    assert validate_preflight([], expected) == ["preflight plans must be canonical dictionaries"]  # type: ignore[arg-type]
