@@ -274,6 +274,11 @@ def build_preflight(changed_paths: list[str] | tuple[str, ...] = ()) -> dict[str
 
 
 def validate_preflight(actual: dict[str, object], expected: dict[str, object]) -> list[str]:
+    if type(actual) is not dict or type(expected) is not dict:
+        return ["preflight plans must be canonical dictionaries"]
+    errors: list[str] = []
+    if set(actual) != set(expected):
+        errors.append("root schema keys differ")
     keys = (
         "schema",
         "phase",
@@ -304,7 +309,8 @@ def validate_preflight(actual: dict[str, object], expected: dict[str, object]) -
         "input_digest",
         "limitations",
     )
-    return [f"{key} differs" for key in keys if actual.get(key) != expected.get(key)]
+    errors.extend(f"{key} differs" for key in keys if actual.get(key) != expected.get(key))
+    return errors
 
 
 def main() -> int:
