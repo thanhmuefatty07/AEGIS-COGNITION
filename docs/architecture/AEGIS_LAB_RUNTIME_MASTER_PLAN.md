@@ -3,7 +3,7 @@ document_id: AEGIS-LAB-RUNTIME-MASTER-PLAN
 document_type: canonical_current_implementation_plan
 status: IN_EXECUTION
 authority: derived_from_checkout_and_evidence_manifest
-applies_to_commit: 26c30c261dd224b46924326ea6b7f083655bcbf0
+applies_to_commit: 0e89b4aa7496452c546a9d3269211cce37e57817
 created_at: 2026-08-26
 last_verified_at: 2026-09-03
 supersedes: browser-native-proposal-and-cumulative-harness-roadmap-as-execution-authority
@@ -4534,3 +4534,16 @@ configuration, and the complete no-default-features library suite passes
 **448/448** with format/check/clippy gates passing. This is local FFI startup
 failure containment only; thread/process containment, cross-platform runtime
 semantics, hosted verification and release authority remain unproven.
+
+**M2 FFI epoch-ticker startup continuation (2026-09-03):**
+implementation commit `0e89b4aa7496452c546a9d3269211cce37e57817` extends the
+fallible Wasmtime startup boundary through epoch-ticker creation. Both
+`WasmtimeSandbox::try_new` and `with_config` now use `EpochTicker::try_new`;
+thread creation is performed through a named `std::thread::Builder` and maps
+failure to `TrapReason::InvariantViolation`, while worker mutex/condition
+variable failures exit the ticker loop without a panic. `Drop` also avoids an
+unrecoverable mutex unwrap. The no-default-features Rust library suite passes
+**448/448** (45.34 s) with format, check and clippy gates passing. This proves
+only local constructor/thread-startup panic containment; it does not prove
+process-level interruption, cross-platform behavior, failure injection,
+long-run resource safety, hosted verification or release authority.
