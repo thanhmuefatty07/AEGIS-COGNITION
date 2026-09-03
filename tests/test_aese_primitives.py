@@ -285,6 +285,13 @@ def test_hardware_vector_mapping_rejects_non_mapping_and_mixed_unknown_keys() ->
         HardwareCapabilityVector.from_mapping({"unknown": 1, 2: "bad"})  # type: ignore[dict-item]
 
 
+def test_numeric_vectors_reject_integer_values_that_cannot_be_finite_features() -> None:
+    with pytest.raises(ValueError, match="hardware field logical_cores"):
+        HardwareCapabilityVector(logical_cores=10**1000).validate()
+    with pytest.raises(ValueError, match="working_set_bytes"):
+        WorkloadSignature(working_set_bytes=10**1000).validate()
+
+
 def test_hardware_vector_rejects_non_mapping_runtime_profile() -> None:
     with pytest.raises(ValueError, match="runtime profile must be a mapping"):
         HardwareCapabilityVector.from_runtime_profile(None)  # type: ignore[arg-type]
@@ -380,6 +387,26 @@ def test_cross_hardware_prediction_requires_domain_and_residual_evidence() -> No
     insufficient = predict_cross_hardware(unvalidated, hardware, workload, anchors)
     assert insufficient.status == "INSUFFICIENT_EVIDENCE"
     assert insufficient.ood_status == "IN_DOMAIN"
+
+
+def test_cross_hardware_prediction_fails_closed_on_numeric_overflow() -> None:
+    model, hardware, workload, anchors = _prediction_fixture()
+    overflowing = AnalyticPredictionModel(
+        model_id=model.model_id,
+        model_version=model.model_version,
+        metric=model.metric,
+        intercept=model.intercept,
+        coefficients=(("hardware.logical_cores", 1e308), ("workload.compute_intensity", 2.0)),
+        validated_domain=model.validated_domain,
+        residual_half_width=0.1,
+        residual_sample_count=30,
+        residual_evidence_class="MEASURED",
+    )
+    result = predict_cross_hardware(overflowing, hardware, workload, anchors)
+    assert result.status == "INSUFFICIENT_EVIDENCE"
+    assert result.estimate is None
+    assert result.prediction_interval is None
+    assert "numeric_overflow" in result.failure_reasons
 
 
 def test_cross_hardware_prediction_refuses_missing_features() -> None:

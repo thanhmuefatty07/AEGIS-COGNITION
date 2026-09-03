@@ -99,7 +99,10 @@ _INTERVAL_METHOD: Final[str] = "student_t_cornish_fisher_bonferroni_peek_v1"
 def _is_finite(value: object) -> bool:
     if type(value) not in (int, float) or isinstance(value, bool):
         return False
-    return math.isfinite(float(cast(int | float, value)))
+    try:
+        return math.isfinite(float(cast(int | float, value)))
+    except (OverflowError, ValueError):
+        return False
 
 
 def _is_digest(value: object, length: int) -> bool:
@@ -697,7 +700,7 @@ class HardwareCapabilityVector:
                 raise ValueError(f"hardware field {name} must be a non-empty string or UNKNOWN")
         for name in _HARDWARE_INT_FIELDS:
             value = getattr(self, name)
-            if value is not None and (type(value) is not int or value < 0):
+            if value is not None and (type(value) is not int or value < 0 or not _is_finite(value)):
                 raise ValueError(f"hardware field {name} must be a non-negative integer or UNKNOWN")
         for name in _HARDWARE_FLOAT_FIELDS:
             value = getattr(self, name)
@@ -815,7 +818,9 @@ class WorkloadSignature:
 
     def validate(self) -> None:
         if self.working_set_bytes is not None and (
-            type(self.working_set_bytes) is not int or self.working_set_bytes < 0
+            type(self.working_set_bytes) is not int
+            or self.working_set_bytes < 0
+            or not _is_finite(self.working_set_bytes)
         ):
             raise ValueError("working_set_bytes must be a non-negative integer or UNKNOWN")
         for name in _WORKLOAD_INTENSITY_FIELDS:
@@ -1380,36 +1385,44 @@ def predict_cross_hardware(
         assert nearest is not None
         half_width = float(model.residual_half_width) + float(model.distance_penalty_per_unit) * nearest
         interval = (estimate - half_width, estimate + half_width)
-        payload = {
-            "schema": f"{_SCHEMA_VERSION}-prediction",
-            "model_id": model.model_id,
-            "model_version": model.model_version,
-            "metric": model.metric,
-            "status": "PREDICTED_IN_DOMAIN",
-            "estimate": estimate,
-            "prediction_interval": interval,
-            "validated_domain": model.validated_domain,
-            "nearest_anchor_distance": nearest,
-            "ood_status": "IN_DOMAIN",
-            "anchor_ids": anchor_ids,
-            "anchor_evidence_hashes": anchor_evidence_hashes,
-        }
-        return PredictionResult(
-            model_id=model_id,
-            model_version=model_version,
-            metric=metric,
-            status="PREDICTED_IN_DOMAIN",
-            estimate=estimate,
-            prediction_interval=interval,
-            validated_domain=validated_domain,
-            nearest_anchor_distance=nearest,
-            ood_status="IN_DOMAIN",
-            missing_features=(),
-            failure_reasons=(),
-            artifact_hash=_hash(payload),
-            anchor_ids=anchor_ids,
-            anchor_evidence_hashes=anchor_evidence_hashes,
-        )
+        if any(
+            not math.isfinite(float(value))
+            for value in (estimate, interval[0], interval[1], half_width, nearest)
+        ):
+            reasons.append("numeric_overflow")
+            status = "INSUFFICIENT_EVIDENCE"
+            ood = "IN_DOMAIN"
+        else:
+            payload = {
+                "schema": f"{_SCHEMA_VERSION}-prediction",
+                "model_id": model.model_id,
+                "model_version": model.model_version,
+                "metric": model.metric,
+                "status": "PREDICTED_IN_DOMAIN",
+                "estimate": estimate,
+                "prediction_interval": interval,
+                "validated_domain": model.validated_domain,
+                "nearest_anchor_distance": nearest,
+                "ood_status": "IN_DOMAIN",
+                "anchor_ids": anchor_ids,
+                "anchor_evidence_hashes": anchor_evidence_hashes,
+            }
+            return PredictionResult(
+                model_id=model_id,
+                model_version=model_version,
+                metric=metric,
+                status="PREDICTED_IN_DOMAIN",
+                estimate=estimate,
+                prediction_interval=interval,
+                validated_domain=validated_domain,
+                nearest_anchor_distance=nearest,
+                ood_status="IN_DOMAIN",
+                missing_features=(),
+                failure_reasons=(),
+                artifact_hash=_hash(payload),
+                anchor_ids=anchor_ids,
+                anchor_evidence_hashes=anchor_evidence_hashes,
+            )
     payload = {
         "schema": f"{_SCHEMA_VERSION}-prediction",
         "model_id": model_id,
