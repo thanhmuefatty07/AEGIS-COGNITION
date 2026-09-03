@@ -7,6 +7,18 @@ use super::{get_authoritative_runtime, py_safe};
 use crate::resource::ResourceController;
 use pyo3::prelude::*;
 
+const MAX_RUNTIME_INPUT_JSON_BYTES: usize = 1024 * 1024;
+const MAX_RUNTIME_DEPENDENCY_IDS: usize = 4_096;
+
+fn ensure_runtime_json_bound(value: &str, field: &'static str) -> PyResult<()> {
+    if value.len() > MAX_RUNTIME_INPUT_JSON_BYTES {
+        return Err(pyo3::exceptions::PyValueError::new_err(format!(
+            "{field} exceeds the bounded runtime input size",
+        )));
+    }
+    Ok(())
+}
+
 /// Return the normalized hardware contract used by the authoritative runtime.
 #[pyfunction]
 pub fn aegis_hardware_profile() -> PyResult<String> {
@@ -32,6 +44,7 @@ pub fn aegis_resource_admission_preview(
     now_ms: Option<u64>,
 ) -> PyResult<String> {
     py_safe(move || {
+        ensure_runtime_json_bound(&request_json, "request_json")?;
         let request: crate::resource::ResourceRequest = serde_json::from_str(&request_json)
             .map_err(|error| {
                 pyo3::exceptions::PyValueError::new_err(format!(
@@ -73,12 +86,19 @@ pub fn aegis_runtime_submit(
     now_ms: u64,
 ) -> PyResult<String> {
     py_safe(move || {
+        ensure_runtime_json_bound(&dependency_ids_json, "dependency_ids_json")?;
         let dependency_ids: Vec<crate::task_ledger::TaskId> =
             serde_json::from_str(&dependency_ids_json).map_err(|error| {
                 pyo3::exceptions::PyValueError::new_err(format!(
                     "invalid dependency IDs JSON: {error}"
                 ))
             })?;
+        if dependency_ids.len() > MAX_RUNTIME_DEPENDENCY_IDS {
+            return Err(pyo3::exceptions::PyValueError::new_err(
+                "dependency_ids_json exceeds the bounded dependency count",
+            ));
+        }
+        ensure_runtime_json_bound(&request_json, "request_json")?;
         let request: crate::resource::ResourceRequest = serde_json::from_str(&request_json)
             .map_err(|error| {
                 pyo3::exceptions::PyValueError::new_err(format!(
@@ -120,6 +140,7 @@ pub fn aegis_runtime_submit(
 #[pyfunction]
 pub fn aegis_runtime_retry(task_id: u128, request_json: String, now_ms: u64) -> PyResult<String> {
     py_safe(move || {
+        ensure_runtime_json_bound(&request_json, "request_json")?;
         let request: crate::resource::ResourceRequest = serde_json::from_str(&request_json)
             .map_err(|error| {
                 pyo3::exceptions::PyValueError::new_err(format!(
@@ -159,6 +180,7 @@ pub fn aegis_runtime_retry(task_id: u128, request_json: String, now_ms: u64) -> 
 #[pyfunction]
 pub fn aegis_runtime_finish(lease_token_json: String, outcome: String) -> PyResult<bool> {
     py_safe(move || {
+        ensure_runtime_json_bound(&lease_token_json, "lease_token_json")?;
         let token: crate::resource::ResourceLeaseToken = serde_json::from_str(&lease_token_json)
             .map_err(|error| {
                 pyo3::exceptions::PyValueError::new_err(format!(
@@ -199,4 +221,43 @@ pub fn aegis_resource_usage_sample() -> PyResult<String> {
             ))
         })
     })?
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{aegis_resource_admission_preview, aegis_runtime_submit};
+
+    #[test]
+    fn resource_preview_rejects_oversized_request_before_json_parse() {
+        let result = aegis_resource_admission_preview(
+            "x".repeat(super::MAX_RUNTIME_INPUT_JSON_BYTES + 1),
+            None,
+        );
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn runtime_submit_rejects_oversized_dependencies_before_json_parse() {
+        let result = aegis_runtime_submit(
+            1,
+            "x".repeat(super::MAX_RUNTIME_INPUT_JSON_BYTES + 1),
+            "{}".to_owned(),
+            0,
+        );
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn runtime_submit_rejects_unbounded_dependency_count() {
+        let dependency_ids: Vec<u128> =
+            (1..=(super::MAX_RUNTIME_DEPENDENCY_IDS as u128 + 1)).collect();
+        let dependency_ids_json = serde_json::to_string(&dependency_ids).expect("serialize IDs");
+        let request_json = serde_json::to_string(&crate::resource::ResourceRequest::minimal(
+            1,
+            crate::resource::WorkKind::NativeTask,
+        ))
+        .expect("serialize request");
+        let result = aegis_runtime_submit(1, dependency_ids_json, request_json, 0);
+        assert!(result.is_err());
+    }
 }
