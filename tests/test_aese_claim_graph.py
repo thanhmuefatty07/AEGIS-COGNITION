@@ -13,6 +13,13 @@ from scripts.aese_claim_graph import DEFAULT_OUTPUT, build_graph, validate_graph
 def test_shadow_graph_preserves_inventory_and_disables_selection() -> None:
     graph = build_graph()
     assert graph["mode"] == "SHADOW"
+    assert graph["status"] == "SHADOW_GRAPH_PARTIAL_MAPPING_SELECTION_DISABLED"
+    assert graph["mapping_condition"] == {
+        "all_surfaces_mapped": False,
+        "critical_high_risk_mapped": False,
+        "criticality_known": False,
+        "unmapped_surface_count": 112,
+    }
     assert graph["direct_cutover"] == "PROHIBITED"
     assert graph["counts"]["surfaces"] == graph["counts"]["mapped_surfaces"] + graph["counts"]["unmapped_surfaces"]
     assert graph["counts"]["surfaces"] == 121
@@ -23,6 +30,13 @@ def test_shadow_graph_preserves_inventory_and_disables_selection() -> None:
     assert graph["counts"]["code_nodes"] == 27
     assert graph["counts"]["unresolved_code_references"] == 0
     assert graph["counts"]["future_obligations"] == 20
+
+
+def test_claim_graph_complete_status_requires_mapping_condition() -> None:
+    graph = build_graph()
+    if "MAPPING_COMPLETE" in str(graph["status"]):
+        condition = graph["mapping_condition"]
+        assert condition["all_surfaces_mapped"] or condition["critical_high_risk_mapped"]
 
 
 def test_shadow_graph_uses_stable_ids_and_conservative_unknowns() -> None:
