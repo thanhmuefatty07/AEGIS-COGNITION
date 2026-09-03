@@ -3,7 +3,7 @@ document_id: AEGIS-LAB-RUNTIME-MASTER-PLAN
 document_type: canonical_current_implementation_plan
 status: IN_EXECUTION
 authority: derived_from_checkout_and_evidence_manifest
-applies_to_commit: 71081c7ccfa2e22d5c6aa7ba54856f763a04b017
+applies_to_commit: 809c25aa93f4c842abea02b3acfc3d21cee58d46
 created_at: 2026-08-26
 last_verified_at: 2026-09-03
 supersedes: browser-native-proposal-and-cumulative-harness-roadmap-as-execution-authority
@@ -4707,3 +4707,19 @@ inventory, claim-graph and document-consistency gates pass after registry
 regeneration. This closes local reconstruction for these evidence primitives
 only; simulation remains non-observation, anchor availability/calibration,
 selective promotion and release authority remain unproven.
+
+**AESE prediction/anchor-plan rehydration continuation (2026-09-03):**
+implementation commit `809c25aa93f4c842abea02b3acfc3d21cee58d46` adds strict
+serialization and reconstruction for `AnalyticPredictionModel`,
+`PredictionResult` and `AnchorSelectionPlan`. Prediction success/failure/OOD
+payloads retain their legacy hash layouts while validating finite intervals,
+domain triples, anchor identity/hash correspondence and fail-closed status
+metadata. Anchor plans validate budget arithmetic, disjoint identity groups,
+non-execution policy and artifact hashes. Unknown keys, non-canonical nested
+containers, forged subclasses, tampered estimates and overlapping plan groups
+are rejected. The full Python regression passes **461/461**, focused AESE tests
+pass **71/71**, isolated compatible Ruff passes, and inventory, claim-graph and
+document-consistency gates pass after registry regeneration. This closes local
+prediction/plan reconstruction only; model calibration, external anchor
+execution, OOD generalization, selective promotion and release authority remain
+unproven.
