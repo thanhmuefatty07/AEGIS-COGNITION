@@ -375,9 +375,18 @@ def validate_closure(actual: dict[str, object], expected: dict[str, object]) -> 
     errors: list[str] = []
     if set(actual) != set(expected):
         errors.append("root schema keys differ")
+    # A recorded plan is historical evidence.  Checkout commit, environment,
+    # and worktree provenance may legitimately change after a docs-only commit;
+    # stable closure inputs/outputs must not.  Keep the provenance in the
+    # artifact and verify its own content hash independently.
+    volatile = {"artifact_hash", "source_head", "provenance"}
     for key in expected:
-        if key != "artifact_hash" and actual.get(key) != expected.get(key):
+        if key not in volatile and actual.get(key) != expected.get(key):
             errors.append(f"{key} differs")
+    recorded_hash = actual.get("artifact_hash")
+    recomputed_hash = _stable_hash({key: value for key, value in actual.items() if key != "artifact_hash"})
+    if recorded_hash != recomputed_hash:
+        errors.append("artifact_hash is not self-consistent")
     if actual.get("critical_audit", {}).get("status") != "COMPLETE_ZERO":  # type: ignore[union-attr]
         errors.append("critical false-negative audit is not complete")
     if actual.get("plan_widened") and actual.get("closure_status") != "WIDENED_ALL_RETAINED":

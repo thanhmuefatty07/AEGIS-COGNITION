@@ -3856,8 +3856,8 @@
   "mode": "SHADOW",
   "phase": "PHASE_1_CLAIM_EVIDENCE_GRAPH",
   "schema": "aese-shadow-claim-evidence-graph-v1",
-  "source_head": "38ae70bec66476ea7a3cb1c2a71ddf8e3af6595f",
-  "source_tree_sha256": "379f76bf474552c5bb0e324fcda0ade0ab8c253fef8ee210df771740c2c72233",
+  "source_head": "8028a804d46bffd2697d63aa4f0dfd4f6c236ac0",
+  "source_tree_sha256": "ab6e807fd78e3f30d1e861208aeeced6f7fddd3ba327afc86cc3ec6fc1d56897",
   "status": "SHADOW_GRAPH_PARTIAL_MAPPING_SELECTION_DISABLED",
   "surfaces": [
     {
@@ -6328,6 +6328,6 @@
       "source_id": "AESE-011"
     }
   ],
-  "worktree_epoch": "aedc77a2c01fcb02105e641c39d9016be101776a5b9e6de55b107aa58a34cb95",
+  "worktree_epoch": "2002903dfd1919b837df93cad01821e534d014477577544de6a4385c790cade5",
   "worktree_status": "DIRTY"
 }
