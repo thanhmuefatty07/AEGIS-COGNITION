@@ -157,8 +157,18 @@ def build_mapping(
                 "verification_errors": errors,
             }
         )
-    mapped_ids = {str(record.get("surface_id")) for record in records if record.get("surface_id") in inventory_ids}
+    mapped_ids = {
+        str(record.get("surface_id"))
+        for record in records
+        if record.get("surface_id") in inventory_ids and record.get("verification_status") == "VERIFIED"
+    }
     unknown_surface_ids = sorted(inventory_ids - mapped_ids)
+    inventory_paths_by_id = {
+        str(item["stable_id"]): str(item["path"]).replace("\\", "/")
+        for item in inventory_values
+        if isinstance(item, dict) and item.get("stable_id") and item.get("path")
+    }
+    unknown_surface_paths = sorted({inventory_paths_by_id[surface_id] for surface_id in unknown_surface_ids if surface_id in inventory_paths_by_id})
     critical_records = [record for record in records if record.get("risk") == "CRITICAL" or record.get("security_criticality") == "CRITICAL"]
     high_selection_records = [
         record
@@ -179,12 +189,21 @@ def build_mapping(
         "inventory_source_tree_sha256": inventory.get("source_tree_sha256"),
         "claim_graph_source_tree_sha256": graph.get("source_tree_sha256"),
         "mapping_seed_hash": _hash(seed),
-        "mapping_status": "COMPLETE" if critical_complete and high_selection_complete else "INSUFFICIENT_EVIDENCE",
+        "mapping_status": (
+            "S2_FAIL_CLOSED_MAPPING_COMPLETE"
+            if critical_complete and high_selection_complete
+            else "INSUFFICIENT_EVIDENCE"
+        ),
+        "all_declared_critical_mapped": critical_complete,
+        "all_declared_high_selection_relevant_mapped": high_selection_complete,
+        "critical_mapping_scope": "DECLARED_MAPPED_RECORDS_ONLY",
+        "unknown_surfaces_may_contain_unclassified_criticality": True,
         "all_critical_mapped": critical_complete,
         "all_high_selection_relevant_mapped": high_selection_complete,
         "unknown_dependency_policy": "WIDEN_CONSERVATIVELY",
         "unknown_surface_count": len(unknown_surface_ids),
         "unknown_surface_ids": unknown_surface_ids,
+        "unknown_surface_paths": unknown_surface_paths,
         "critical_mapping_count": len(critical_records),
         "high_selection_mapping_count": len(high_selection_records),
         "claim_graph_status": graph.get("status"),
@@ -216,7 +235,7 @@ def main() -> int:
     output.parent.mkdir(parents=True, exist_ok=True)
     output.write_text(json.dumps(report, indent=2, sort_keys=True) + "\n", encoding="utf-8")
     print(json.dumps({"status": report["mapping_status"], "artifact_hash": report["artifact_hash"], "unknown_surface_count": report["unknown_surface_count"]}))
-    return 0 if report["mapping_status"] == "COMPLETE" and report["no_fake_mapping"] else 1
+    return 0 if report["mapping_status"] == "S2_FAIL_CLOSED_MAPPING_COMPLETE" and report["no_fake_mapping"] else 1
 
 
 if __name__ == "__main__":
