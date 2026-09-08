@@ -18,14 +18,14 @@ Zero-Overhead: Nếu một giải pháp tốn thêm 1 chu kỳ CPU hoặc 1 byte
 
 Hardware-Agnostic Adaptation: Code phải tự thích nghi. Sử dụng các kỹ thuật Runtime Detection để điều chỉnh chiến lược theo tài nguyên phần cứng hiện có.
 
-FFI Integrity: Ranh giới giữa Rust và Python 3.13 No-GIL phải là vùng "không sao chép" (Zero-copy). Sử dụng PyCapsule và Apache Arrow làm giao thức mặc định.
+FFI Integrity: Ranh giới giữa Rust và Python 3.14+ phải được kiểm chứng theo từng build; free-threaded CPython (3.14t/3.15t) chỉ là lane thử nghiệm cho tới khi PyO3/dependency parity được chứng minh. Sử dụng PyCapsule và Apache Arrow khi contract yêu cầu, không tự suy ra zero-copy toàn cục.
 
 Byzantine Resilience: Mọi trạng thái hệ thống phải được xác thực qua Giao thức SAC (Self-Anchored Consensus). Không tin tưởng bất kỳ luồng dữ liệu đơn lẻ nào.
 
 3. EXTREME CODING OPTIMIZATION PROTOCOL
 Rust: Ưu tiên Static Dispatch (impl Trait) thay vì Dynamic Dispatch (Box<dyn Trait>). Sử dụng Atomic với Ordering::Relaxed/Acquire/Release một cách chính xác. Căn chỉnh dữ liệu (Memory Alignment) 64-byte để tránh False Sharing.
 
-Python: Tận dụng tối đa Free-threading của bản 3.13. Cấm các thư viện gây nghẽn I/O. Mọi thao tác dữ liệu lớn phải thực hiện qua con trỏ nhị phân từ Rust.
+Python: Tận dụng free-threading của 3.14t/3.15t chỉ khi lane tương ứng pass; không coi free-threading là mặc định. Cấm các thư viện gây nghẽn I/O. Mọi thao tác dữ liệu lớn phải thực hiện qua contract nhị phân từ Rust khi đó là yêu cầu đo được.
 
 Memory: Thực hiện chiến lược CogniFold (5-tier memory). SFoT (State-Fidelity) phải đạt > 99.9%.
 

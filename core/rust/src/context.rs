@@ -253,6 +253,59 @@ impl ContextGovernor {
         self.build_context_pack_from_activated(&activated)
     }
 
+    /// Select already-hydrated nodes without inventing a task node. The
+    /// ordinary graph path remains responsible for task activation; this
+    /// bounded helper lets the provider-neutral hydration seam reuse the same
+    /// deterministic utility, mandatory-node and token-budget rules.
+    pub fn build_hydrated_context_pack(
+        &self,
+        required_node_ids: &[ContextNodeId],
+    ) -> Result<ContextPack, ContextGovernorError> {
+        let required = canonical_ids(required_node_ids);
+        for node_id in &required {
+            if !self.nodes.contains_key(node_id) {
+                return Err(ContextGovernorError::MissingNode(*node_id));
+            }
+        }
+        let activated_ids: Vec<ContextNodeId> = self.nodes.keys().copied().collect();
+        let mut selected = required.clone();
+        let mut token_count = 0u32;
+        for node_id in &required {
+            token_count = token_count
+                .checked_add(self.nodes[node_id].token_cost)
+                .ok_or(ContextGovernorError::TokenBudgetExceeded)?;
+        }
+        if token_count > self.config.token_budget {
+            return Err(ContextGovernorError::TokenBudgetExceeded);
+        }
+        let mut candidates: Vec<&ContextNode> = activated_ids
+            .iter()
+            .filter(|node_id| required.binary_search(node_id).is_err())
+            .filter_map(|node_id| self.nodes.get(node_id))
+            .collect();
+        candidates.sort_by(|left, right| candidate_order(left, right));
+        for candidate in candidates {
+            if token_count.saturating_add(candidate.token_cost) <= self.config.token_budget {
+                token_count += candidate.token_cost;
+                selected.push(candidate.node_id);
+            }
+        }
+        self.local_swap_improve(&required, &activated_ids, &mut selected, &mut token_count);
+        selected.sort_unstable();
+        let utility_score = selected
+            .iter()
+            .map(|node_id| self.nodes[node_id].deterministic_utility())
+            .sum();
+        let digest = context_pack_digest(&selected, token_count, utility_score);
+        Ok(ContextPack {
+            node_ids: selected,
+            token_count,
+            utility_score,
+            digest,
+            activation_node_count: activated_ids.len(),
+        })
+    }
+
     pub fn build_context_fold(
         &self,
         active_task_id: ContextNodeId,

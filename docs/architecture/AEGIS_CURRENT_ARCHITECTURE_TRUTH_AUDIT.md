@@ -1,739 +1,711 @@
-# AEGIS-COGNITION — Forensic Architecture & Codebase Truth Audit
+# AEGIS-COGNITION — Hồ sơ sự thật toàn dự án
 
-**Audit date:** 2026-08-28  
-**Repository:** `C:\Users\ADMIN\AEGIS-COGNITION`  
-**HEAD:** `f9645caf6d17cee2023d52183990ffcf8317e456`  
-**Branch:** `main` (`origin/main`: ahead 10, behind 0)  
-**Audit mode:** read-mostly; no production code, schema, workflow, or generated evidence was changed. The only new file is this audit artifact.  
-**Evidence labels:** `PROVEN`, `MEASURED`, `SOURCE-BACKED`, `INFERRED`, `ASSUMED`, `UNKNOWN`, `NOT VERIFIED`.
+**Document class:** current project truth dossier
 
-## 1. Executive Truth Summary
+**Snapshot date:** 2026-09-04 (Asia/Saigon)
 
-AEGIS is not currently a single, fully authoritative laboratory runtime. It is a large hybrid repository with:
+**Repository:** `C:\Users\ADMIN\AEGIS-COGNITION`
 
-1. a public Python facade (`aegis_cognition`);
-2. a second compatibility Python package and CLI under `core/python`;
-3. a broad Rust crate (`aegis-nerve`) exposed through PyO3 and used for native admission, replay, resource, evidence, and runtime primitives;
-4. a newly added but untracked Lab implementation (`aegis_cognition/lab.py`, `core/rust/src/lab.rs`, Lab tests and plans);
-5. plugins, proof-of-concept crates, scripts, deployment manifests, and several historical plans;
-6. an evidence/registry system that is intentionally fail-closed but is currently invalid for the checkout because its machine manifest still contains the placeholder `CHECKOUT_HEAD` instead of the actual 40-character SHA.
+**Branch:** `main`
 
-The intended direction is a Lab above explicit Execution Cells: research/search-as-code, browser interaction, experiments, unit-aware observations, claims/hypotheses, falsification, benchmarks, replay, and a dossier. The current implementation approximates this design, but authority is split: Python still owns a mutable Lab projection and lifecycle orchestration while Rust `LabController` admits and validates many events. This is a useful safety boundary, not proof that every side effect is controlled by one native authority.
+**HEAD:** `1e77ff9a306d4293d0fe837fc0d1a974aea8d681`
 
-The most decisive blockers are:
+**Upstream at snapshot:** `origin/main` cùng SHA; ahead `0`, behind `0`
 
-- **Current-tree truth is not the committed truth.** There are 58 modified tracked files and 17 untracked files. The principal Lab implementation, Rust Lab controller, Lab tests, and master plan are untracked. HEAD therefore cannot be used as a complete description of the runtime being audited.
-- **Release/provenance evidence is red.** `scripts/evidence_consistency_gate.py` fails because `docs/architecture/evidence/current.json` and remediation records use `CHECKOUT_HEAD`, and suite records do not match `f9645caf6d17cee2023d52183990ffcf8317e456`.
-- **Native authority is not universal.** Explicit cells and many Lab transitions are admitted/settled, but hidden planner/adapter/process side effects, descendants, retry policy across adapters, and hosted multi-process single-writer authority remain outside the demonstrated native proof.
-- **Packaging and import authority are ambiguous.** Root maturin packaging and a separate setuptools package expose overlapping imports and CLIs; editable source import is current local reality, while historical v63 clean-wheel evidence is not present on disk for re-verification.
-- **Research, physics, browser isolation, benchmark generalization, and operations remain bounded/local rather than externally demonstrated.** The plan correctly leaves them open; the repository must not convert those contracts into claims of scientific validity, secure isolation, or production readiness.
+**Committed snapshot baseline:** worktree clean at the recorded HEAD
 
-**Decision:** freeze feature expansion and begin truth/provenance convergence first. Do not begin broad architecture convergence as if the current design were already canonical. Resolve source-of-truth, packaging, authority ownership, and evidence binding before adding more autonomy.
+**Current working tree (2026-09-04):** version-alignment changes are uncommitted; no commit or push was performed. The exact delta is recorded in Section 33.
 
-## 2. Exact Repository State
+**Declared project version:** `0.1.0`
 
-### 2.1 Git and workspace
+**Production readiness:** `NOT VERIFIED`; policy vẫn còn năm production blocker.
 
-| Fact | Observation | Class |
+## 0. Phạm vi, authority và nhãn bằng chứng
+
+Đây là hồ sơ hợp nhất của committed snapshot tại SHA trên và current working-tree delta được ghi rõ ở Section 33. “Toàn bộ” ở đây nghĩa là mọi bề mặt có ý nghĩa để hiểu, build, test, vận hành, đánh giá độ tin cậy và ra quyết định. Tài liệu không sao chép từng byte của lockfile, 610 tracked files hay từng record của registry, vì làm vậy sẽ tạo một nguồn phụ dễ lỗi thời. Các nguồn máy gốc được dẫn ở Section 31.
+
+Các tài liệu/prompt người dùng đính kèm là chỉ thị cho quá trình audit, không phải bằng chứng runtime đã có khả năng tương ứng. Thứ tự authority:
+
+1. source, manifest, schema và workflow đang được Git theo dõi;
+2. registry/evidence máy có provenance, hash và scope rõ;
+3. kết quả lệnh/kiểm thử quan sát trực tiếp;
+4. tài liệu hiện hành;
+5. plan và snapshot lịch sử, chỉ dùng để giải thích ý định.
+
+| Nhãn | Nghĩa |
+|---|---|
+| `PROVEN` | Static guarantee, hash/contract hoặc test quyết định trong scope đã nêu. |
+| `MEASURED` | Đo trực tiếp; chỉ đúng với environment/sample/method đã ghi. |
+| `SOURCE-BACKED` | Được manifest/schema/workflow hoặc nguồn chính thức khai báo. |
+| `INFERRED` | Suy luận từ bằng chứng, chưa có phép thử quyết định. |
+| `ASSUMED` | Giả định làm việc. |
+| `UNKNOWN` | Chưa đủ dữ liệu. |
+| `NOT VERIFIED` | Chưa có evidence đạt chuẩn cho claim/environment/SHA yêu cầu. |
+
+Mã tồn tại không đồng nghĩa đã vận hành ngoài thực tế; local tests không đồng nghĩa production; mô phỏng không đồng nghĩa kết quả vật lý; benchmark một máy không đồng nghĩa nhanh hơn tổng quát; container/Wasm/browser sandbox không phải ranh giới an toàn tuyệt đối.
+
+## 1. Kết luận điều hành
+
+AEGIS-COGNITION là hybrid Python/Rust với hai lối chính:
+
+- facade `aegis_cognition.Agent` cho agent thông thường;
+- Lab runtime cho research/search-as-code, browser observation, tool/skill/process execution, thí nghiệm, mô phỏng, đo tín hiệu điện, evidence ledger, replay và dossier.
+
+Rust cung cấp primitive native cho admission, resource/lease, replay, evidence, GT96, sandbox, IPC, telemetry và một phần authority của Lab qua PyO3. Python vẫn điều phối lifecycle, mutable projection, provider, browser và nhiều side effect. Claim đúng là “authority được phân chia với nhiều native gate”, không phải “Rust kiểm soát tuyệt đối mọi side effect”.
+
+AESE đã hoàn tất mốc local shadow theo hướng fail-closed: inventory, claim graph, mapping, affected closure, shadow plan, validation corpus và paired cost measurement đều tồn tại. Tuy nhiên selection authority vẫn `DISABLED`, selected plan chưa được execute, critical false-negative ngoài synthetic corpus chưa đủ, và production non-inferiority chưa được chứng minh. AESE chưa được thay legacy verification.
+
+Local quality evidence gần nhất:
+
+- focused AESE: `42 passed`;
+- full Python cross-language: `615 passed`, một pytest config warning do global environment drift;
+- default `pytest -q`: `524 passed`;
+- Rust retained no-default-features library: `456 passed`;
+- architecture fitness: `23/23`;
+- constitution audit: `180/180`.
+
+Python inputs không đổi giữa mốc cross-language và snapshot; Rust core vừa được rerun trên stable `1.98.1` sau khi nâng toolchain. Các số này không thay hosted CI, Tier-1 wheel parity, privileged enforcement, fuzz dài, sanitizer, external deployment, live provider, real multi-machine cluster hay signed attestation.
+
+Năm production blockers theo `deployment_policy.json`:
+
+1. external signed attestation (`NV-004`);
+2. real multi-machine TCP cluster soak (`NV-016`);
+3. full QuickJS interpreter cold-start (`NV-017`);
+4. live provider HTTP 429 soak (`NV-018`);
+5. external deployment smoke (`NV-019`).
+
+Kết luận: implementation và local governance rộng, nhưng không được tuyên bố production-ready, scientifically valid tổng quát, secure tuyệt đối, zero-copy toàn cục hay nhanh hơn tổng quát.
+
+## 2. Snapshot Git và quy mô repository
+
+| Thuộc tính | Giá trị | Class |
+|---|---:|---|
+| Remote | `https://github.com/thanhmuefatty07/AEGIS-COGNITION.git` | `PROVEN` |
+| Branch | `main` | `PROVEN` |
+| HEAD/upstream | `1e77ff9a306d4293d0fe837fc0d1a974aea8d681` | `PROVEN` tại snapshot |
+| Commit count | 322 | `PROVEN` tại snapshot |
+| Git tags | không có | `PROVEN` tại snapshot |
+| Tracked files | 610 | `PROVEN` |
+| Loose objects | 3,966; khoảng 39.42 MiB | `MEASURED` |
+| Packed objects | 2,253 trong 1 pack; khoảng 2.23 MiB | `MEASURED` |
+| Garbage objects | 0 | `MEASURED` |
+
+Tracked files theo top-level:
+
+| Khu vực | Files | Khu vực | Files |
+|---|---:|---|---:|
+| `docs` | 171 | `core` | 111 |
+| `.cursor` | 68 | `scripts` | 65 |
+| `.agents` | 51 | `aegis-plugins` | 32 |
+| root | 32 | `aegis_cognition` | 17 |
+| `tests` | 16 | `quality` | 9 |
+| `examples` | 7 | `fuzz` | 7 |
+| `pocs` | 7 | `.github` | 4 |
+| `schemas` | 3 | nested `AEGIS-COGNITION` | 2 |
+| `cluster` | 2 | `.serena` | 2 |
+| `deploy` | 2 | `planning pdf` | 2 |
+
+Tracked files theo extension: Markdown 198, Python 138, JSON 121, Rust 99, TOML 16, `.mdc` 10, `.yml` 7, shell 5, lock 3, text 2; mỗi loại một file gồm `.yaml`, `.ps1`, `.html`, `.cluster`, `.example`, `.dockerignore`, `.cursorrules`, `.python-version`, extensionless; có hai `.gitignore`.
+
+Các hotspot hiện tại, đếm theo newline:
+
+| File | Dòng | Vai trò/risk |
+|---|---:|---|
+| `aegis_cognition/lab.py` | 12,322 | Lab domain/orchestration/cells/replay; cohesion hotspot |
+| `tests/test_lab_runtime.py` | 8,802 | Lab regression/contract concentration |
+| `core/rust/src/lab.rs` | 4,745 | native Lab admission/controller |
+| `aegis_cognition/aese.py` | 2,465 | adaptive measurement/prediction/evidence |
+| `aegis_cognition/benchmark.py` | 613 | benchmark protocol v2 |
+
+Knowledge graph snapshot có 11,449 nodes, 45,333 edges: 2,424 Function, 1,873 Method, 680 Class, 438 File; 15,839 `USAGE`, 10,856 `DEFINES`, 9,711 `CALLS`, 2,790 `WRITES`, 642 `TESTS`, 448 `IMPORTS`. Graph chỉ index format/symbol được hỗ trợ nên không thay con số 610 tracked files.
+
+## 3. Danh tính, version, license và maturity
+
+| Mục | Thực tế |
+|---|---|
+| Python distribution | `aegis-cognition 0.1.0` |
+| Compatibility distribution | `aegis-cognition-core-python 0.1.0` |
+| Rust core | `aegis-nerve 0.1.0` |
+| Plugin/POC crates | đều `0.1.0` |
+| Python `__version__` | `0.1.0` |
+| Classifier | `Development Status :: 4 - Beta` |
+| Declared license | `BUSL-1.1`; `Other/Proprietary License` |
+| Rust publishing | `publish=false` |
+
+Không có Git tag. `CHANGELOG.md` có section `0.1.0` ngày 2026-06-15 nhưng tag tương ứng không tồn tại. README mô tả development/non-production và enterprise production, nhưng không có tracked `LICENSE`, `LICENCE`, `COPYING` hay `NOTICE`. Manifest string không thay văn bản license; đây là legal/packaging gap.
+
+`core/rust/src/licensing.rs` có Ed25519-related logic nhưng vẫn có production-oriented comments/soft-check paths. Không được suy ra commercial enforcement production hoàn chỉnh. Package metadata URLs trỏ `aegis-cognition.ai`, `docs.aegis-cognition.ai` và GitHub org khác remote thực tế; ownership/availability chưa verified.
+
+## 4. Ngôn ngữ, runtime và toolchain
+
+### 4.1 Version khai báo
+
+| Bề mặt | Version/range | Nguồn |
 |---|---|---|
-| HEAD | `f9645caf6d17cee2023d52183990ffcf8317e456` | PROVEN by `git rev-parse HEAD` |
-| Branch | `main`, upstream `origin/main` | PROVEN |
-| Remote | `https://github.com/thanhmuefatty07/AEGIS-COGNITION.git` | PROVEN |
-| Divergence | `HEAD...origin/main = 10 0` | PROVEN |
-| Worktrees | one worktree: `C:\Users\ADMIN\AEGIS-COGNITION` | PROVEN |
-| Submodules | none reported by `git submodule status` | PROVEN |
-| Staged changes | none | PROVEN |
-| Tracked modified files | 58 | PROVEN from porcelain status |
-| Untracked files | 17 | PROVEN from porcelain status |
-| Total porcelain entries | 75 | PROVEN |
-| Diff size | 2,435 insertions, 525 deletions across 58 tracked files | PROVEN; not a quality score |
-| `git diff --check` | no whitespace errors; CRLF warnings only | PROVEN |
+| Python | `>=3.14,<3.16` | hai `pyproject.toml` |
+| Preferred Python | `3.14.7` | `.python-version` |
+| Project/CI uv | exact `0.12.9` | CI/deep/release pins; lock check passed |
+| CI stable | `3.14.7` | CI/release |
+| CI forward | `3.15.0-rc.1` | normal + experimental free-threaded lanes |
+| Ruff target | `py314`, line 120 | root config |
+| Pyright | Python `3.14`, strict | root config |
+| Rust stable toolchain | exact `1.98.1`, rustfmt/clippy, minimal | `rust-toolchain.toml` |
+| Rust MSRV | `1.98.1` / workspace `1.98` | workspace + CI MSRV job |
+| Rust edition/resolver | 2024 / resolver 3 | manifests |
+| Maturin | exact `1.14.1` | build-system |
+| JSON Schema | draft 2020-12 | `schemas` |
+| CI uv | exact `0.12.3` | workflows |
+| nextest/deny/audit | `0.9.143` / `0.20.2` / `0.22.0` | workflows |
 
-The working tree is materially different from HEAD. Important untracked files include:
+Bash, PowerShell, YAML và HTML có mặt nhưng không pin runtime riêng. Không có `package.json`; QuickJS/Wasm là runtime-artifact concern, không phải Node application package.
 
-- `aegis_cognition/lab.py` — 8,596 lines;
-- `core/rust/src/lab.rs` — 3,976 lines;
-- `tests/test_lab_runtime.py` — 4,530 lines;
-- `aegis_cognition/benchmark.py` — 490 lines;
-- `docs/architecture/AEGIS_LAB_RUNTIME_MASTER_PLAN.md` — 1,991 lines;
-- `docs/architecture/document_inventory.json`, `docs/architecture/AEGIS_LAB_STATUS_GENERATED.md`, new ADR/API/tutorial/troubleshooting files, and new scripts.
+### 4.2 Quan sát local
 
-The untracked Lab files are not a minor documentation delta: they define the largest current execution path. Any claim about “the repository at HEAD” that relies on them is false unless the claim explicitly says “working tree”.
+| Công cụ | Version | Đánh giá |
+|---|---:|---|
+| `python` trên PATH | 3.11.9 | ngoài support range |
+| Python launcher default | 3.13 | ngoài support range |
+| `.venv` Python | 3.14.0 | trong range, giữ nguyên làm rollback/compatibility fallback |
+| `.venv-3.14.7` Python | 3.14.7 | môi trường dev mới; dependency sync không cài project để tránh build native nặng |
+| uv-managed Python | 3.14.7 | runtime preferred đã cài; `.python-version` khớp |
+| rustc | `1.98.1`, commit `48a229cea`, LLVM `22.1.8`, `x86_64-pc-windows-msvc` | khớp stable pin; workspace check passed |
+| cargo | `1.98.1` | khớp stable pin; workspace check passed |
+| Git | 2.49.0.windows.1 | local |
+| PATH uv | 0.9.9 | không dùng làm authority; project/CI/release/deep ghim uv 0.12.9 |
+| PATH Maturin | 1.13.3 | không khớp exact build requirement; dev env mới dùng 1.14.1 |
+| PATH Ruff | 0.1.15 | thấp hơn `>=0.3` |
+| PATH Pytest | 9.0.2 | vượt `<9` |
+| PATH Pyright | không tìm thấy ở initial probe | không dùng làm authority |
 
-### 2.2 Top-level shape
+Repository `.venv`: `aegis-cognition 0.1.0`, `blake3 1.0.9`, `fastapi 0.141.1`, `openai 1.109.1`, `python-dotenv 1.2.2`, `PyYAML 6.0.3`, `uvicorn 0.52.3`, `playwright 1.62.0`, `pytest 8.4.2`, `pytest-asyncio 1.4.0`, `ruff 0.16.3`, `pyright 1.1.411`, `maturin 1.14.1`.
 
-The repository contains source, tests, plugins, proof-of-concept crates, deployment material, evidence artifacts, generated/cached directories, and compatibility trees. Relevant directories include `aegis_cognition`, `core`, `aegis-plugins`, `pocs`, `schemas`, `scripts`, `tests`, `docs`, `fuzz`, `deploy`, `cluster`, `examples`, `artifacts`, and `target`. `.venv`, `.mypy_cache`, `.pytest_cache`, `.ruff_cache`, and `target` are ignored; `.serena` is present but untracked and not ignored.
+Global environment từng có OpenAI 2.33.0, pytest 9.0.2, pytest-asyncio 0.21.2, Ruff/Maturin cũ; vì vậy cảnh báo `asyncio_default_fixture_loop_scope` là environment drift. Dùng `.venv` hoặc `uv sync --locked`.
 
-### 2.3 Commit history signal
+## 5. Packaging, dependency và locks
 
-Recent commits are heavily concerned with evidence labels, consistency gates, release blockers, GT96 traceability, and platform lanes (`f9645ca`, `4fbec4b`, `9af7d47`, `e37c50f`, `6dbadea`, `9d2df91`, `96ea33e`, `f3c72a6`, `0d75bac`, `41b8fc9`). This indicates deliberate truth-governance work, but commit history does not prove that the current uncommitted Lab tree has been reviewed or released.
+Root dùng Maturin/PyO3: module `aegis_cognition.aegis_nerve`, manifest `core/rust/Cargo.toml`, feature `python-extension`, Python source root, include `core/python/*.py` và `core/python/aegis/*.py`, CLI `aegis_cognition.cli:main`.
 
-## 3. Source of Truth Matrix
+Python runtime deps: `blake3>=0.4,<2`, `fastapi>=0.110,<1`, `openai>=1.40,<2`, `python-dotenv>=1,<2`, `pyyaml>=6,<7`, `uvicorn[standard]>=0.27,<1`. Browser extra: Playwright `>=1.40,<2`. Dev: Pyright `>=1.1,<2`, pytest `>=8,<9`, pytest-asyncio `>=1,<2`, Ruff `>=0.3,<1`.
 
-| Artifact | Actual role | Authority boundary | Current status |
-|---|---|---|---|
-| Attached `AGENTS.md` | user-supplied engineering constitution/instructions | normative behavior for this audit; not runtime truth | applicable policy |
-| Pasted forensic prompt | user-supplied audit specification | defines required audit sections and read-mostly constraints | applicable request |
-| `docs/ENGINEERING_CONSTITUTION.md` and related constitution docs | repository policy | normative, not evidence of implementation | tracked policy |
-| `docs/architecture/AEGIS_LAB_RUNTIME_MASTER_PLAN.md` | declared canonical Lab plan | describes target/current status; cannot override code or machine evidence | untracked; `IN_EXECUTION`; applies to HEAD plus working tree |
-| `docs/architecture/document_inventory.json` | document authority/index | identifies canonical plan and generated view | untracked; locally consistent by document gate |
-| `docs/architecture/evidence/current.json` | machine-readable current evidence source | should bind requirement → implementation → run → commit → evidence class | tracked modified; invalid current SHA placeholder |
-| `docs/architecture/not_verified_registry.json` | explicit uncertainty/blocker registry | enumerates open platform/release/quality gaps | 20 NV entries; useful but not proof of closure |
-| `docs/architecture/deployment_policy.json` | release policy | says all production blockers must clear | identifies NV-004, NV-016…NV-019 as production blockers |
-| `docs/architecture/AEGIS_LAB_STATUS_GENERATED.md` | generated human view | derivative of registry/policy | generated view present; does not create evidence |
-| Source code (`aegis_cognition`, `core/python`, `core/rust`) | executable implementation truth | highest authority for actual behavior | mixed committed/working-tree state |
-| Tests and retained artifacts | evidence producers | prove only the exact version/scope/run retained | many local tests exist; current retained final-SHA closure absent |
-| CI workflows | intended verification procedure | describe gates, not proof that a run happened now | workflows present; no current hosted run IDs in machine evidence |
-| README/quickstart/historical plans | explanatory or historical | cannot override machine evidence | some wording is broader than current evidence |
+`requirements.txt` chỉ là compatibility export và mâu thuẫn ở pytest-asyncio (`>=0.23,<1` so với root `>=1,<2`). `uv.lock` là authoritative resolution, 116,173 bytes.
 
-**Hierarchy used for this audit:** executable working-tree behavior > current machine evidence (when valid) > committed docs/contract descriptions > historical reports/plans > prose claims. A normative instruction document is not evidence of a runtime property.
+`core/python/pyproject.toml` tạo setuptools distribution riêng, expose adapter/browser/integration/orchestrator modules và package `aegis`. Hai packaging surfaces chồng lấn là architecture debt; cần quyết định root wheel có phải canonical product duy nhất hay core Python package là independent contract.
 
-## 4. Actual Architecture
+Rust workspace có 10 members, bảy default:
 
-### 4.1 Runtime planes actually present
+| Crate | Vai trò | Default |
+|---|---|---|
+| `aegis-nerve` | core/native extension/CLI | có |
+| `aegis-search-sdk` | programmable search | có |
+| `aegis-browser` | browser abstractions | có |
+| `aegis-sandbox` | restricted execution | có |
+| `aegis-skills` | Markdown skill registry | có |
+| `aegis-evidence` | evidence/audit | có |
+| `aegis-bench` | benchmark gates | có |
+| `semantic_cache_poc` | cache POC | không |
+| `tool_batching_poc` | batching POC | không |
+| `code_orchestration_poc` | orchestration POC | không |
+
+Core direct deps: Thiserror 2, Memmap2 0.9, Parking_lot 0.12, Ed25519-dalek 2, PyO3 0.29.2, Arrow 54, FlatBuffers 24.12.23, Syn 2, Proc-macro2 1, Quote 1, Serde/JSON 1, Regex 1.10, Tracing 0.1, Wasmtime exact 47.0.3, WAT 1.251.0, BLAKE3 1.5.0, xxhash-rust 0.8.10, Aho-Corasick 1.1.2, Tokio 1, Rayon 1.12; Windows thêm windows-sys 0.61.2. Dev deps: Tempfile 3, Criterion 0.5, Proptest 1.4.0.
+
+Plugins dùng các tập con trên; Search SDK thêm Reqwest 0.12/Rustls/Futures/URL và link core; Browser/Sandbox có optional PyO3 và Tokio 1.35; Skills dùng Pulldown-CMark 0.11. POCs dùng Serde/JSON, PyO3 hoặc full Tokio tùy POC.
+
+`Cargo.lock` 98,424 bytes; fuzz có lock riêng. `deny.toml` cấm wildcard, cảnh báo duplicate versions, từ chối unknown registry/git và chỉ cho crates.io. Full transitive truth nằm trong lockfiles, không lặp lại ở đây.
+
+## 6. Bản đồ kiến trúc
 
 ```text
-User / CLI / examples / tests
-        |
+User / CLI / Python API
         v
-public aegis_cognition.Agent
-        |
-        v
-AgentApplication
-   |                    \
-   | lab enabled          \ non-lab compatibility path
-   v                       v
-LabApplication          AegisAdapter (core/python)
-   |                       |
-   |                       +--> provider route / fallback / hot evidence
-   |                       +--> LearningManager / compatibility RAG
-   |
-   +--> LabRun (Python mutable projection/reducer)
-   +--> ExecutionCellRegistry (explicit policy/capability/effect checks)
-   +--> PyO3 PyLabController / Rust LabRuntime / GT96 admission
-   +--> search/fetch, Browser/Playwright, skills/tools, experiments/simulation
-   +--> gateway/provider attempts, benchmark validator, memory context/index
-   +--> replay/snapshot/archive/Arrow audit
-
-Rust aegis-nerve crate
-   +--> runtime, resource, execution, sandbox, replay, evidence, GT96,
-       telemetry, IPC/shared memory/mmap, task ledger, tool gateway,
-       FFI/PyO3, LabController, platform adapters
-
-Adjacent surfaces
-   +--> operator HTTP API/server
-   +--> threaded TCP cluster worker
-   +--> Wasmtime sandbox and plugins
-   +--> POC crates (excluded from default members, included by deep workspace)
+Agent + AgentConfig -> AgentApplication
+        | normal                         | Lab-enabled
+        v                                v
+core/python AegisAdapter          LabApplication / LabRun / LabSession
+provider + memory/RAG             mission + policy + budget + state
+                                         |
+                 +-----------------------+----------------------+
+                 v                       v                      v
+          Search-as-code             Browser cell       Tool/skill/process
+                 +-----------------------+----------------------+
+                                         v
+                   Experiment / Simulation / Electrical signal
+                                         v
+                             evidence ledger + admission
+                                         v
+                       PyO3: aegis_cognition.aegis_nerve
+                                         v
+          Rust resource/lease/runtime/replay/GT96/evidence/sandbox/IPC
+                                         v
+                              replay archive + dossier
 ```
 
-### 4.2 Architecture ownership
+Ba plane: control (mission/policy/budget/state/cancellation), execution (provider/search/browser/process/tool/skill/simulation), evidence (typed records/hash/replay/benchmark/dossier). Python gọi nhiều side effect và giữ projection; Rust admission không chứng minh mọi compatibility/adapter/descendant process qua một authority. `NV-020` giữ gap này mở.
 
-- **Python owns user-facing orchestration and a mutable projection.** `aegis_cognition/application.py` routes Lab/non-Lab execution; `aegis_cognition/lab.py` builds state, executes cells, and appends events.
-- **Rust owns native admission primitives and many invariants.** `core/rust/src/lab.rs` defines typed records, event validation, budget/finalization, replay, snapshots, and controller methods; `core/rust/src/ffi.rs` exposes them.
-- **The boundary is admission-oriented, not lifecycle-exclusive.** Python still decides sequencing and invokes side-effecting adapters after admission. That is materially safer than unconstrained execution but not a single reducer/authority proof.
-- **Compatibility paths remain first-class.** `core/python/aegis_adapter.py`, `core/python/aegis/provider.py`, and compatibility imports can bypass portions of the Lab lifecycle when callers do not use `Agent(..., lab=True)` or when native authority is not required.
+## 7. Public Python API, Agent và CLI
 
-### 4.3 Intended versus actual
+`aegis_cognition.__all__` expose Agent, benchmark v2, Lab, search, skills, simulations/electrical signal, AESE hardware/workload/prediction/evidence, runtime helpers và observability. Đây là contract surface lớn.
 
-The master plan intends one native-authoritative LabController above explicit Execution Cells, with research, experiment, benchmark, and dossier semantics. Actual code has most of the named types and gates, but the native controller is used as a projection/admission authority while Python retains lifecycle ownership. The intended “one reducer” property is therefore a target with substantial local evidence, not a proven global invariant.
+`AgentConfig` frozen; task không rỗng, trust thuộc DEV/STAGING/PROD, browser boolean, `max_steps>=1`; mặc định `max_steps=100`, browser/lab false. API key precedence: config `[llm].api_key` → `OPENAI_API_KEY` → `AEGIS_API_KEY`. Trust: explicit → config → `AEGIS_TRUST_LEVEL` → DEV. Lab replay: `AEGIS_LAB_REPLAY_DIR` hoặc `.aegis/lab-replay`. `Agent.run()` từ chối active async loop; dùng `arun()`.
 
-## 5. Actual End-to-End Execution Flows
+Non-Lab memory indexing có degraded telemetry path; Lab post-completion strict hơn. CLI hỗ trợ `init`, `run`, `examples`, `version`, `config show`, `config set`. Hai lỗi/gap:
 
-### 5.1 Public Agent, non-Lab
+- `config set` hiện chỉ in “Set”, không ghi file;
+- `init` có thể lưu API key plaintext vào `~/.aegis/config.toml`, còn `config show` in toàn file, có nguy cơ lộ secret.
 
-1. `aegis_cognition.agent.Agent.run/arun` delegates to `AgentApplication` (`aegis_cognition/agent.py`).
-2. `AgentApplication.arun` emits telemetry and calls `AegisAdapter`/gateway when Lab is disabled (`aegis_cognition/application.py`).
-3. `AegisAdapter.run` may invoke a provider attempt hook, routes candidates through `invoke_with_provider_route`, and records hot evidence (`core/python/aegis_adapter.py`, `core/python/aegis/provider.py`).
-4. Completion may index memory; failures are caught and emitted as failure telemetry.
+CLI quảng bá OpenAI, Anthropic, OpenRouter, Nvidia NIM, Ollama nhưng provider parity chưa được chứng minh. Claim setup “under 2 minutes” là self-report.
 
-**Risk:** `AegisAgent` compatibility retry behavior uses Python exponential sleep/`print` and is not wholly owned by the Rust Lab fence. Retry/idempotency semantics therefore differ by entrypoint.
+## 8. Lab runtime
 
-### 5.2 Public Agent, Lab enabled
+Lab tự bật khi request dùng `lab`, lab mode, `search_as_code`, researcher/search program, experiment/simulation runner, tool runner hoặc tool calls. Các type chính: `AuthorityMode`, `LabPolicy`, `LabBudget`, `LabMissionSpec`, `Lab`, `LabApplication`, `LabSession`, `LabRun`, `LabDossier`, `ExecutionCellRegistry/Binding`, `ProcessExecutionCell`, `ReplayWriterLease`, search program/executor, source/claim/hypothesis/experiment/observation records, browser cell/view, skill manifest/admission/receipt, simulation/calibration/ODE/electrical signal.
 
-1. Agent configuration chooses Lab mode; Lab may set replay directory and native-authority requirement.
-2. `LabApplication.run` acquires an advisory `ReplayWriterLease` when configured and rejects in-process overlap.
-3. `_run_unleased` creates a `LabRun`, prepares an immutable/sealed `ExecutionCellRegistry`, and starts context retrieval, skills/tools, search, browser, experiment, simulation, gateway, benchmark, synthesis, archive, and post-completion cells.
-4. `LabRun._append` hashes events, asks native admission/projection methods, and writes the Python projection/Arrow audit. Native rejection is intended to fail closed and roll back the Python projection.
-5. Search uses bounded query/fetch/citation logic; browser launch/action/observation is admitted before calling a launcher; browser prompt-injection markers can stop the run.
-6. Context retrieval and post-completion memory indexing are represented as typed cells. Benchmark validators can execute in an isolated subprocess with protocol/hash/timeouts.
-7. Synthesis runs through an admitted gateway. Archive verification can block completion on invalid or incomplete replay.
+Lifecycle do Python orchestration, trong khi transition/record admission quan trọng có native validation khi runtime khả dụng. Replay writer lease, event binding, record IDs/hash và final dossier cho forensic trace tốt hơn sandbox thuần. Giới hạn:
 
-**Not proven:** arbitrary adapters cannot create hidden side effects; non-cooperative descendants are terminated; a hosted deployment has a single writer; all retry policies are centrally accounted; a crash prefix fully reveals external effects.
+- không phải mọi repository side effect bắt buộc qua cell registry;
+- native fallback/compat paths tồn tại;
+- `lab.py` 12k+ dòng chứa quá nhiều trách nhiệm;
+- live browser/provider/experiment phụ thuộc credential/environment;
+- Lab có gate không đồng nghĩa hostile-code isolation tuyệt đối.
 
-### 5.3 Direct compatibility and auxiliary flows
+## 9. Research, search-as-code và browser
 
-Scripts, `core/python/aegis_cli.py`, operator API, cluster worker, plugin examples, Rust binary, and POC crates are additional entrypoints. They are not all forced through `AgentApplication` or the Lab controller. “The Agent lifecycle is controlled” must therefore be scoped to a named entrypoint and policy mode.
+Luồng mong đợi: preregister mission/budget → lập typed search program → thu source qua adapter/browser → chuẩn hóa provenance → tạo claim/hypothesis → tìm rival/counterexample → experiment/verification → dossier với uncertainty/gaps.
 
-## 6. Python Import & Packaging Graph
+Browser có optional Playwright, URL/navigation validation, DNS/IP checks chống literal/resolved private targets, capture URL/DOM/screenshot/accessibility/network và prompt-injection marker checks. Chưa chứng minh phòng thủ hoàn chỉnh trước DNS rebinding, proxy, browser exploit, download/file handlers hay mọi redirect chain. Chưa có evidence rằng live web research đầy đủ chạy trên mọi browser/platform/provider.
 
-```text
-root pyproject.toml (maturin)
-  package: aegis_cognition
-  native module: aegis_cognition.aegis_nerve
-  script: aegis=aegis_cognition.cli:main
-  python-source: .; includes core/**/*.py
+## 10. Toán học, vật lý và tín hiệu điện
 
-core/python/pyproject.toml (setuptools)
-  package: aegis-cognition-core-python
-  package-dir: .; includes "*"
-  script: aegis=aegis_cli:main
+Implementation hiện có:
 
-root aegis_cognition
-  -> core.python.aegis_adapter / compatibility modules
-  -> root runtime.py tries aegis_nerve then aegis_cognition.aegis_nerve
+- unit/dimension registry cho current, voltage, power, resistance và đại lượng khác; alias `μ`→`u`, `Ω`→`Ohm`;
+- `PhysicalConstraint` bắt tolerance hữu hạn, không âm;
+- simulation spec kiểm tra convergence/calibration metadata; held-out RMSE phải dưới tolerance khi claim calibration;
+- ODE cell hỗ trợ Euler và classical RK4, coarse step so với hai half-steps, convergence tolerance, invariant callback/drift gate; thiếu tolerance là `NOT_REQUESTED`, không giả pass;
+- output phải có residual cho mọi declared constraint, đúng unit, hữu hạn, trong tolerance;
+- signal spec preregister sample rate/duration/max frequency/anti-alias cutoff/resistance/voltage tolerance/sensor gain-offset/reference;
+- cell kiểm tra Nyquist, sample count, finite values, gain-offset, residual `V-I·R`, `P=V·I`, trapezoidal energy và RMS voltage/current;
+- reference sensor error chỉ có khi reference samples tồn tại.
 
-core/python/aegis/__init__.py
-  -> lazy compatibility exports from aegis_adapter
-```
+Đây là numerical/signal validation framework, không tự là thiết bị đo chuẩn. Accuracy phụ thuộc sensor, ADC, clock, noise/aliasing, units, numerical stiffness và model validity. Euler/RK4 step comparison không chứng minh mọi ODE; residual nhỏ chỉ chứng minh declared model trong tolerance. Chưa có metrology traceability, calibrated hardware, uncertainty budget hay independent replication. “Tối ưu từng tín hiệu điện” chỉ hợp lệ với measurement chain và protocol cụ thể.
 
-### Findings
+## 11. AESE và thống kê
 
-- There are two package/build/CLI surfaces with the same conceptual product name.
-- `Ruff`/`Pyright` root configuration covers `aegis_cognition` but excludes `core/python` and tests; a clean root gate therefore does not mean the compatibility package is equally checked.
-- The current venv has `aegis-cognition 0.1.0` editable from the checkout; imports resolve to `C:\Users\ADMIN\AEGIS-COGNITION\aegis_cognition\__init__.py`. This proves current local source import, not wheel parity.
-- Historical v63 wheel paths named by the plan are absent from `C:\Users\ADMIN\AppData\Local\Temp\aegis-lab-native-wheel-v63`; the claimed package smoke cannot presently be independently replayed from those files.
-- Python 3.14.0 is active in `.venv`; system Python 3.11.9 also sees checkout code. This is a packaging/path ambiguity, not evidence of supported 3.11 behavior.
+`aese.py` có adaptive spec/session/result, block means, standard error/critical margin, baseline-clearing, minimum sample/block, lag-one/drift/stability/precision gates, evidence ledger, hardware capability vector, workload regime, anchors, analytic prediction và out-of-domain refusal. Prediction success yêu cầu input/schema/domain hợp lệ và ít nhất 30 residual samples. Đây là fail-closed logic, không phải calibration proof ngoài domain.
 
-## 7. Rust Crate/Module/Public API Graph
+| Artifact | Status | Sự thật chính |
+|---|---|---|
+| `current_inventory.json` | `INVENTORY_COMPLETE_DISPOSITIONS_RETAINED_MAPPING_PENDING` | 131 surfaces, 120 paths, 610 files, 11 jobs, missing scope 0 |
+| `current_claim_graph.json` | `SHADOW_GRAPH_PARTIAL_MAPPING_SELECTION_DISABLED` | 46 claims, 396 edges, 92 verifications, 122 unmapped surfaces |
+| `current_s2_mapping.json` | `S2_FAIL_CLOSED_MAPPING_COMPLETE` | declared-critical mapping complete; selection disabled |
+| `current_affected_closure.json` | `AFFECTED_CLOSURE_PLAN_ONLY_SELECTION_DISABLED` | plan only; unknown widens to retained suite |
+| `current_shadow_plan.json` | `SHADOW_PLAN_ONLY_SELECTION_DISABLED` | không execute |
+| `current_validation_corpus.json` | `LOCAL_SHADOW_VALIDATION_ONLY` | synthetic planning corpus |
+| `current_cost_measurement.json` | `MEASURED_EXPLORATORY_PAIRED` | ba samples, một Rust GT96 change class |
 
-### 7.1 Workspace
+Inventory: 58 script/gate, 27 Rust unit tests, 16 Python tests, 11 hosted jobs, 5 Python benchmarks, 5 Rust benchmarks, 4 fuzz targets, 4 workflows, 1 Rust integration test. Raw items đều `NOT_VERIFIED`, `NOT_MAPPED`, risk/security `UNKNOWN`, `RETAIN_UNCHANGED`; S2 chỉ enrich subset.
 
-Root `Cargo.toml` declares ten members: `core/rust`, six `aegis-plugins` crates (`search-sdk`, `browser`, `sandbox`, `skills`, `evidence`, `bench`), and three POCs (`semantic_cache_poc`, `tool_batching_poc`, `code_orchestration_poc`). Default members exclude POCs; deep workspace tests include them. Resolver 3 and Rust 2024/rust-version 1.97 are declared.
+Claim graph: 46 claims/code contracts/invariants, 27 code nodes, 396 edges, 20 future obligations, 131 surfaces (9 mapped/122 unmapped), 92 verifications (70 unmapped), 0 unresolved code refs. Component evidence: 10 PROVEN, 1 MEASURED, 3 SOURCE-BACKED, 32 NOT VERIFIED; cả 46 high-level claims vẫn `IMPLEMENTED / NOT VERIFIED`.
 
-### 7.2 Core crate
+S2 có 9 declared-critical và 15 high-selection mapped records; 116 surfaces unknown. Scope chỉ `DECLARED_MAPPED_RECORDS_ONLY`, unknown có thể chứa criticality. S3/S4 chỉ lập plan; mẫu `core/rust/src/gt96.rs` would-run 1, would-skip 130, reuse 0. Đây là prediction, không phải executed safety evidence.
 
-`core/rust/src/lib.rs` publicly declares 43 modules, including `ffi`, `lab`, `gt96`, `replay`, `execution`, `resource`, `resource_platform`, `sandbox`, `telemetry`, `tool_gateway`, `task_ledger`, and compatibility surfaces. The crate has a large crate-wide Clippy allow list, which lowers the signal of aggregate lint cleanliness.
+S5: 4 dev + 6 final cases; 5 synthetic critical targets reached, 0 miss, 5 widen events. Chỉ chứng minh planning reachability, không chứng minh mutation kill/real false-negative/non-inferiority.
 
-Static inventory found approximately 1,838 Rust public declarations and 339 nested Python definitions. These counts are orientation only; public declaration count is not API quality.
+S6, ba paired warm-incremental samples:
 
-### 7.3 Public API shape
+| Metric | Legacy | Selected | Planner |
+|---|---:|---:|---:|
+| Samples (s) | 98.718078; 57.168086; 71.778817 | 3.203918; 1.444539; 1.521086 | 8.139848; 6.937248; 6.625486 |
+| Median | 71.778817 | 1.521086 | 6.937248 |
+| p95 | 98.718078 | 3.203918 | 8.139848 |
 
-The Rust surface includes a `cdylib`, `rlib`, and binary. PyO3 FFI exposes runtime submission/retry/finish, hardware/profile/resource admission, hot commit, learning/session search, archive/verification, and `PyLabController`. The surface is broad enough that “Rust is an internal implementation detail” is inaccurate: it is a public runtime contract for Python and packaging.
+Net savings min/median/max: 48.786299/63.632245/87.374312 s. Chỉ `LOCAL_EXPLORATORY_ONLY`; không claim 10x/global speedup. AESE source head `14ad392b9ba58285e3875b05bf661c04e79331fc`; từ đó đến snapshot chỉ docs/quality registry đổi, Python inputs không đổi.
 
-### 7.4 Native hazards requiring bounded follow-up
+## 12. Rust core và native authority
 
-- `core/rust/src/ffi.rs:18-25` initializes a session index with `SessionSearchIndex::new(epoch_hash).unwrap()`. This is a production initialization unwrap; the surrounding comment does not remove the failure mode.
-- `aegis_llm_request` and `aegis_llm_reject` use `Box::leak` for request/error strings. Unless an intentional bounded arena exists outside the inspected snippet, this is a per-call leak risk.
-- Broad static search found many `.unwrap()`/`.expect()`/`panic!`/`unsafe` occurrences, including tests embedded in production files. The aggregate count is not a production panic proof; no blanket panic-free claim is permitted.
+`aegis-nerve` tạo `cdylib`, `rlib`, binary `aegis-nerve-cli`; default features rỗng, `python-extension` bật PyO3. 43 modules:
 
-## 8. Rust ↔ Python FFI Graph
+`bridge_mmap`, `browser_witness`, `circuit_breaker`, `cli`, `context`, `descriptor`, `distributed`, `eac`, `evidence_index`, `execution`, `ffi`, `goal_intake`, `governance`, `gt96`, `guardrail`, `harness`, `hot_engine`, `integrations`, `ipc`, `lab`, `layout`, `learning`, `licensing`, `llm`, `memory`, `message`, `mvcc`, `orchestrator`, `physical`, `policy`, `replay`, `resource`, `resource_platform`, `runtime`, `sac`, `sandbox`, `schema`, `shm`, `skill_registry`, `speculative`, `task_ledger`, `telemetry`, `tool_gateway`.
 
-```text
-Python AgentApplication / LabApplication / runtime.py
-    -> import aegis_cognition.aegis_nerve (or fallback)
-    -> PyO3 functions in core/rust/src/ffi.rs
-       -> runtime/resource/evidence/replay/learning APIs
-       -> PyLabController (core/rust/src/lab.rs)
-       -> native archive/verify and typed admission
-    <- py_safe panic/error translation
-```
+Native responsibilities: goal intake/typed graph/progress-budget-finalization; resource contracts/admission/lease/deadline/cancel; platform adapters; replay/hash/schema recovery; evidence/hot memory/MVCC; Wasmtime sandbox; IPC/mmap/message; policy/governance/guardrail/tool gateway; LLM capabilities; telemetry; Lab admission; PyO3. `pub mod` không chứng minh production completion; platform/distributed/replay/fuzz/global-trust gaps vẫn mở.
 
-`py_safe` provides a panic-to-Python error boundary, but error translation does not prove that every caller handles every failure correctly. Python fallback in `runtime.py` is explicitly unverified and the fallback is not a scheduler or a substitute for Rust authority.
+## 13. Python ↔ Rust FFI
 
-`PyLabController` is a strong boundary object with epoch, budget, finalization, projection, snapshot, and restore operations. The observed Python path still serializes and drives many transitions; therefore the FFI graph proves the existence of native controls, not exclusive native ownership.
+PyO3 build thành `aegis_cognition.aegis_nerve`; `ffi.rs` registration chia compat, EAC, hot, lab, learning, mmap, runtime, status. Contract risks: exception mapping, buffer/mmap lifetime, GIL/free-threaded behavior, serialization/hash parity, cancellation qua FFI, editable vs wheel import, feature parity và ABI/schema compatibility.
 
-## 9. Authority & State Mutation Graph
+CI định nghĩa wheel/import/smoke và experimental free-threaded lanes, nhưng Tier-1 parity vẫn `NV-008`; macOS wheel được continue-on-error do hosted rustup/cargo-fmt conflict. Matrix definition không phải matrix pass.
 
-| State/effect | Current writer | Native check | Remaining authority gap |
+## 14. Data, schema và persistence
+
+Không có một database duy nhất. State nằm trong BLAKE3/hash-linked replay, Arrow IPC, mmap/shared memory/hot evidence, JSON artifacts, `.aegis/lab-replay`, session/RAG memory, `~/.aegis/config.toml`, và deploy path `/var/lib/aegis`.
+
+| Schema | Nội dung |
+|---|---|
+| `resource-contract-v1.json` | task/attempt/work kind; CPU/memory/accelerator/IO/process/thread/fd; API/token budget; deadline/priority/side-effect class |
+| `lease-token-v1.json` | lease ID/generation/attempt; handle không tự là authority |
+| `runtime-telemetry-v1.json` | timestamp/correlation/kind/outcome/queue/active/limit |
+
+Current-format/prefix recovery có logic/tests, nhưng old/future cross-version fixture matrix chưa đầy đủ (`NV-012`). Local package rollback không thay external persisted-fixture restore (`NV-009`).
+
+## 15. Provider, network và integrations
+
+Provider route có capability/fallback/budget/rate-limit classification. OpenAI là dependency/config rõ nhất; Nvidia NIM có env/client riêng. CLI liệt kê provider khác nhưng parity chưa proven. External surfaces: provider HTTP, Reqwest search, Playwright, distributed TCP, OTLP dự kiến, external deployment/health và GitHub Actions.
+
+Policy cần giữ: timeout/cancel, retry transient có budget, idempotency/effect awareness, không layered blind retries, rate-limit/backoff evidence, SSRF guard, secret redaction, correlation. Live 429 soak (`NV-018`) và OTLP exporter (`NV-006`) chưa verified.
+
+## 16. Security, trust và privacy
+
+Trust levels: DEV/STAGING/PROD. Validated AgentConfig tạo canonical subject; Lab bind subject vào mission/gateway. Direct compatibility defaults còn khác nhau và provider/browser/process/benchmark receipts chưa chứng minh cùng subject xuyên cells; `NV-020` mở.
+
+Controls có trong code/workflow: typed validation, fail-closed schema parsing, BLAKE3/Ed25519 primitives, lease fencing, Wasmtime/sandbox/skill admission, SSRF-oriented checks, injection markers, secret scan, pinned Actions, cargo-deny/audit, non-root/read-only/no-new-privileges/cap-drop containers, evidence không tự nâng status.
+
+Residual risks:
+
+- sandbox/container/browser không tuyệt đối;
+- `.env` có local nhưng ignored; nội dung không được đọc/ghi vào hồ sơ;
+- `.env.example` chỉ placeholder NIM;
+- CLI có thể lưu và in plaintext API key;
+- branch protection, full fuzz, Miri/ASan, signed attestation chưa verified;
+- browser adversarial coverage chưa đủ claim SSRF-proof;
+- thiếu license text;
+- retention/deletion/export cho research/browser artifacts chưa chứng minh đầy đủ.
+
+## 17. Resource, concurrency, cancellation và failure semantics
+
+Resource contract biểu diễn CPU, memory, accelerator, IO, process/thread/fd, API/token budgets, deadline, priority và side-effect class. Runtime có admission, active/queue limits, leases, generation fencing, cancellation/deadline và telemetry. GT96 giữ reserve cho finalization/recovery, no-progress/cycle/finalization boundaries và retry disposition theo effect semantics.
+
+Platform truth:
+
+- Windows Job Object: assignment, containment, active-process, termination và deadline đã local live verified một phần; allocation-pressure kill vẫn tách riêng (`NV-002`).
+- Linux cgroup v2: implementation/probe có, privileged live evidence chưa có (`NV-001`).
+- macOS: cooperative/measurement-only; không claim kernel-equivalent enforcement (`NV-003`).
+- distributed: loopback/container tests không chứng minh multi-machine lease, partition, backpressure hay recovery (`NV-016`).
+
+Các tình huống phải fail closed: duplicate/reordered work, stale lease, timeout ambiguity, cancel sau side effect, retry storm, partial finalization, crash giữa append/commit, queue starvation, resource pressure và descendant process thoát containment.
+
+## 18. Observability và operator API
+
+Rust/Python có structured correlation và telemetry; schema v1 mang mission/task/run/attempt/lease, outcome, queue/active/limit. Communication benchmark thu payload class, latency, throughput, allocation/copy/RSS/CPU ở local scope.
+
+Read-only operator API mặc định `127.0.0.1:8765`:
+
+- `/`, `/health`: health schema có `truth_claim=false`;
+- `/production-closure`: đọc retained production closure artifact và chỉ trả deployable khi artifact hợp lệ.
+
+External OTLP chưa exercise correlation/retry/cancel/failure/finalization/drop (`NV-006`). Dashboard, alert và SLO production chưa proven. Health endpoint không chứng minh provider, replay recovery hoặc external dependencies sẵn sàng.
+
+## 19. Deployment, vận hành và configuration
+
+Root Docker build multi-stage: `rust:bookworm` builder cài pinned toolchain; runtime `python:3.14-slim`. Compose chính dùng non-root user, read-only FS, tmpfs, `no-new-privileges`, `cap_drop: ALL` và bind operator API localhost.
+
+`deploy/docker-compose.yml` có `aegis-core`, `operator-api`, `remote-worker` với ba replica. `deploy/kubernetes.yaml` là Kubernetes deployment/config intent, không phải external evidence.
+
+Cluster dùng `python:3.14-alpine`, TCP 9000 và `NET_ADMIN` cho chaos. Nhiều container trên cùng Docker bridge vẫn là single-host, không phải real multi-machine. Không dùng compose này để đóng `NV-016`.
+
+Environment/config keys được code/script nhận biết; chỉ tên, không ghi value:
+
+- core/provider: `OPENAI_API_KEY`, `AEGIS_API_KEY`, `AEGIS_TRUST_LEVEL`, `AEGIS_LAB_REPLAY_DIR`;
+- NIM: `NVIDIA_NIM_API_KEY`, `NVIDIA_NIM_BASE_URL`, `NVIDIA_NIM_MODEL`;
+- operator/artifact: `AEGIS_OPERATOR_ROOT`, `AEGIS_ARTIFACTS_DIR`, `AEGIS_WORKER_MODE`;
+- cluster: `AEGIS_REAL_MULTI_MACHINE_CLUSTER_ENDPOINTS_JSON`, `AEGIS_REAL_MULTI_MACHINE_CLUSTER_TIMEOUT_SECONDS`, `AEGIS_WORKER_ID`, `AEGIS_WORKER_PORT`, `AEGIS_WORKER_ROLE`;
+- live 429: `AEGIS_LIVE_PROVIDER_429_SOAK_URL`, `AEGIS_LIVE_PROVIDER_429_SOAK_METHOD`, `AEGIS_LIVE_PROVIDER_429_SOAK_HEADERS_JSON`, `AEGIS_LIVE_PROVIDER_429_SOAK_BODY`, `AEGIS_LIVE_PROVIDER_429_SOAK_TIMEOUT_SECONDS`;
+- external: `AEGIS_EXTERNAL_DEPLOYMENT_SMOKE_URL`;
+- QuickJS: `AEGIS_QUICKJS_FULL_INTERPRETER_RUNNER_JSON`;
+- privilege: `AEGIS_RUN_PRIVILEGED_PROBES`;
+- benchmark: `AEGIS_CONTAINER_IMAGE`, `AEGIS_GPU_DRIVER`;
+- provenance: `GITHUB_SHA`, `GITHUB_REF`, `GITHUB_RUN_ID`, `SOURCE_DATE_EPOCH`, `ATTESTATION_OUTCOME`.
+
+Critical config phải fail fast và không log secret. `.gitignore` không thay secret scanning/rotation nếu credential từng bị commit.
+
+## 20. CI/CD và release gates
+
+Có bốn workflows, tổng 11 jobs:
+
+| Workflow | Trigger | Jobs | Giới hạn |
 |---|---|---|---|
-| Lab source/claim/hypothesis/experiment/observation projection | Python `LabRun` dictionaries/lists | hash + projection/event admission | mutable Python state remains a second reducer |
-| Event chain | Python append plus Rust admission/Arrow audit | hash-chain and typed validation | external effects can occur outside event log |
-| Budget/finalization/epoch | Rust `LabController`/`LabRuntime` | native | lifecycle caller still Python |
-| Explicit execution cells | Python registry | identity/capability/effect/trust/seal | unregistered/hidden adapter side effects not impossible |
-| Browser launch/action | Python launcher after typed admission | native event admission | process/OS containment, DNS race, descendants open |
-| Search/fetch | Python `urllib` after admission | URL/address preflight and event | DNS rebinding race and provider semantics open |
-| Provider retry | `provider.py` and `AegisAgent` | hooks when installed | split policies, duplicated retries, non-Lab callers |
-| Context retrieval/index | compatibility memory layer through cells in Lab | typed admission/settlement | persistence correctness/hosted writer open |
-| Replay file | Python writer with `ReplayWriterLease` | local advisory lease + archive verifier | not a hosted/distributed single-writer proof |
-| Operator reads | operator API/server | no Lab mutation authority | host/root configuration can expose artifacts |
+| `CI` | push/PR main, manual | rust fast, Python matrix, MSRV, Tier-1 smoke, wheel parity, Rust beta | free-threaded experimental, macOS wheel và beta có continue-on-error theo scope |
+| `Deep evidence` | manual; thứ Bảy 03:17 UTC | security/replay, fuzz, Miri/sanitizer | không chạy mỗi push; cần retained runner evidence |
+| `Release evidence` | tag `v*.*.*`, manual | build/test/wheel/SBOM/provenance/attestation | attestation step continue-on-error nhưng outcome phải ghi |
+| `aegis-plugins` | path-scoped push/PR, manual | Windows workspace/plugin | không thay Tier-1 parity |
 
-The crucial invariant is not “each event has a valid hash.” It is “no consequential side effect can happen without a valid, unique, policy-authorized admission and an unambiguous settlement.” The first property has meaningful local evidence; the second remains open for arbitrary adapters, processes, descendants, and external services.
+CI dùng concurrency cancellation và action SHA pins. Rust fast gate chạy architecture/document/AESE/secret/evidence gates, fmt, check/test/Clippy, deny và dependency/Wasmtime checks. Python sync lock/extras, Ruff, Pyright strict, Python/cross-language tests, wheel inspection và SBOM. MSRV/stable 1.98.1; Tier-1 gồm Ubuntu/Windows/macOS.
 
-## 10. Side-Effect Graph
+Deep workflow có workspace/nextest, deny/audit, coverage/resource/replay probes, bốn fuzz targets (`resource_contract`, `protocol_frame`, `runtime_ffi_contract`, `archive_prefix`), selected Miri và ASan. Target/workflow tồn tại không đồng nghĩa campaign current-SHA đã pass.
 
-| Side effect | Location | Boundary | Threat/failure note |
+Hosted CI current HEAD vẫn `NOT VERIFIED`. Registry ghi attempt gần đây fail trước runner allocation, zero steps/logs/0 ms; một report từng liên hệ billing/spending nhưng run metadata không chứng minh root cause. Không retry/spam workflow đến khi owner sửa Actions billing/permission/service condition.
+
+## 21. Verification hiện có
+
+| Verification | Kết quả | Scope/giới hạn |
+|---|---:|---|
+| Focused AESE | `42 passed` | local Windows |
+| Full Python cross-language | `615 passed`, 1 config warning | source head `14ad392`; Python inputs không đổi |
+| Default pytest | `524 passed` | `testpaths=["tests"]` |
+| Architecture fitness | `23/23` | local static/contract |
+| Constitution audit | `180/180` | local policy/label |
+| Rust no-default-features lib | `456 passed` | current Rust 1.98.1, `cargo test ... --locked -j 2`, 96.48 s |
+| Python 3.14.7 dev environment | `PASS` | `.venv-3.14.7`, uv 0.12.9, locked dependencies + maturin 1.14.1; project build intentionally omitted for RAM safety |
+| Hosted CI final SHA | `NOT VERIFIED` | chưa có retained runner run |
+| Deep fuzz/Miri/ASan | `NOT VERIFIED` | definition không phải evidence |
+| Tier-1 wheels | `NOT VERIFIED` | chưa đóng matrix current SHA |
+| External deployment/provider/cluster | `NOT VERIFIED` | cần live/external environment |
+
+Không chạy deep/fuzz/Miri/ASan hoặc external probes trên workstation; các suite đó cần workflow và môi trường riêng. Rust core test được chạy giới hạn `-j 2` vì thay đổi compiler/MSRV là contract change; Python runtime source không đổi nên không lặp lại full cross-language suite.
+
+## 22. GT96 traceability
+
+Evidence manifest có 35 rows; tất cả đang `IMPLEMENTED / NOT VERIFIED` trong current manifest vì chưa bind run ID/final SHA:
+
+| IDs | Contract |
+|---|---|
+| 001–002 | goal intake, typed IR |
+| 003 | runtime graph/orphan/transition |
+| 004 | progress ledger/evidence gate |
+| 005 | budget/finalization reserve |
+| 006 | no-progress/cycle/finalization |
+| 007 | orchestrator elimination/replay |
+| 008 | bounded retry theo effects |
+| 009 | result vs artifact/cache identity |
+| 010–011 | evidence policy/index/artifact ref |
+| 012 | forged/stale resource lease |
+| 013 | provider capability degradation |
+| 014 | execution-lane capability |
+| 015–018 | cancel/deadline/admission/queue drain |
+| 019 | sandbox verification gauntlet |
+| 020 | finalization boundary/reserve |
+| 021 | schema round-trip |
+| 022–023 | context/projection/invalidation/memory |
+| 024 | message/IPC/FFI |
+| 025 | cache namespace |
+| 026 | replay/memory rebuild |
+| 027 | telemetry correlation |
+| 028 | retry-storm stress/property |
+| 029 | lease adversarial matrix |
+| 030 | task ledger/runtime graph |
+| 031–032 | migration/crash-prefix |
+| 033 | 64 B–16 MiB IPC benchmark |
+| 034 | provider fallback |
+| 035 | semantic cache cannot become authoritative result |
+
+`NV-011` vẫn `IN PROGRESS`: nhiều direct Rust tests đã có, nhưng full runtime integration và final-SHA manifest binding chưa đóng.
+
+## 23. Evidence và provenance truth
+
+`docs/architecture/evidence/current.json` là fail-closed machine source nhưng hiện là template/staging manifest:
+
+- `commit`/`head_sha` là `CHECKOUT_HEAD`;
+- timestamp `2026-08-25T00:00:00Z`;
+- `LOCAL-RUST-001`, `LOCAL-PYTHON-001`, `CI-001`, `PLUGIN-001`, `DEEP-001`, `REL-001` không có current run/count và là `NOT VERIFIED`;
+- current suites chưa materialize discovered/passed/failed;
+- historical CI/deep/release IDs bind commit `07101ce3...`, chỉ `HISTORICAL`.
+
+Điều này không phủ định local session results; nó nói production manifest chưa bind/attest final SHA. Không sửa placeholder bằng tay rồi gọi là provenance; gate phải materialize từ retained artifacts.
+
+Document authority:
+
+- `document_inventory.json` xác định current/historical docs;
+- Lab master plan là narrative, không override code/registry;
+- `NOT_VERIFIED_REGISTRY.md` là human companion;
+- JSON registry + deployment policy là machine policy;
+- root reports/nested subtree có historical snapshots;
+- file này là hợp nhất để đọc, không tự đóng evidence row.
+
+## 24. Registry `NOT VERIFIED` và cách đóng
+
+| ID | Status | Gap | Closure evidence |
 |---|---|---|---|
-| HTTP/DNS/socket fetch | `aegis_cognition/lab.py`, search/browser adapters | URL preflight, redirect/final-host checks | DNS rebinding race remains possible |
-| Playwright/browser process | `core/python/browser_playwright_runtime.py` | Browser Cell/capability and launcher admission | OS/kernel/job/cgroup and hostile cross-domain corpus unproven |
-| Files/replay/snapshots/artifacts | Lab, replay, memory, scripts | path/config and archive verifier | path/root ownership and crash-prefix external effects need hosted evidence |
-| Subprocess benchmark validator | Lab/benchmark | isolated protocol/hash/timeout | isolation/secrecy outside candidate-controlled infrastructure unproven |
-| Provider/network API | `core/python/aegis/provider.py`, OpenAI integration | candidate route and optional hooks | rate-limit/retry/fallback semantics split |
-| Operator HTTP | `core/python/operator_api_server.py` | localhost default | CLI can bind non-local without auth; configurable root can expose data |
-| Cluster TCP | `cluster/worker_service.py` | threaded listener on `0.0.0.0` | no TLS/auth; test/soak worker, not production authority |
-| Wasmtime | Rust sandbox modules | runtime resource/sandbox checks | hostile-kernel and full adversarial evidence open |
-| mmap/shared memory | Rust memory/shm/bridge modules | native resource policy | platform parity and corruption recovery open |
-| process/thread spawn | Rust execution/platform and Python process cell | timeout/cancellation/Job Object where available | descendants and pressure-kill not fully proven |
+| NV-001 | NOT VERIFIED | Linux cgroup v2 live | privileged child/pressure/deadline/`cgroup.kill` logs |
+| NV-002 | PARTIAL | Windows memory pressure | allocation-pressure observation ngoài containment đã có |
+| NV-003 | NOT VERIFIED | macOS controls | capability report + cooperative cancellation, không claim kernel parity |
+| NV-004 | BLOCKER | signed attestation | signed predicate + final-SHA subject digest |
+| NV-005 | LOCAL ONLY | H0/H1/H2 policy | 3 representative hosts + raw p50/p95/p99/RSS/CPU/queue/reject/cancel/fairness/pressure |
+| NV-006 | NOT VERIFIED | OTLP | real endpoint correlation/retry/cancel/failure/finalization/drop |
+| NV-007 | NOT VERIFIED | full fuzz | seed/corpus/crash/duration/executions; >=10m nightly, >=60m weekly/release khi runner cho phép |
+| NV-008 | NOT VERIFIED | Tier-1 wheels | clean build/install/import/native/runtime/metadata on Linux/Windows/macOS/Python lanes |
+| NV-009 | LOCAL DRILL | external restore | N→N+1→N + persisted fixture restore/replay prefix |
+| NV-010 | NOT VERIFIED | branch protection | owner ruleset + proof direct/stale push bị chặn |
+| NV-011 | IN PROGRESS | GT96 closure | mọi row bind evidence ID/final SHA |
+| NV-012 | NOT VERIFIED | schema migration | old/current/future/add/remove/unknown/truncated/corrupt/partial-tail fixtures |
+| NV-013 | NOT VERIFIED | Miri/ASan | exact scope/toolchain/features/exclusions/logs |
+| NV-014 | LOCAL ONLY | IPC matrix | retained 64 B–16 MiB latency/throughput/allocation/copy/RSS/CPU |
+| NV-015 | NOT VERIFIED | hosted runner | owner-side fix + rerun CI/plugins/deep/release + retained IDs |
+| NV-016 | BLOCKER | real multi-machine | named hosts + RTT/loss/partition/lease/recovery/backpressure/cancel |
+| NV-017 | BLOCKER | full QuickJS | pinned full artifact + semantic corpus/distribution/failures/hash |
+| NV-018 | BLOCKER | live 429 | real/independent endpoint + retry/backoff/idempotency/route/budget |
+| NV-019 | BLOCKER | external deploy | clean target + digest/startup/health/replay/rollback |
+| NV-020 | LOCAL LAB ONLY | global trust binding | approved precedence + same subject hash across every cell/fresh process |
 
-## 11. Canonical Data Model Matrix
+Policy đánh dấu 15 row còn lại non-blocking cho quyết định deployment hẹp; không có nghĩa chúng không quan trọng hay production-ready được proven.
 
-| Concept | Python representation | Rust representation | Current canonical owner | Evidence status |
+## 25. Mâu thuẫn và drift
+
+| Mâu thuẫn | Truth hiện tại | Hệ quả |
+|---|---|---|
+| audit cũ: SHA `f9645...`, 58 modified + 17 untracked | snapshot mới parity/clean trước doc | audit cũ phải thay |
+| requirements pytest-asyncio `<1` | root dev và export `>=1,<2` | đã đồng bộ; không còn active mismatch |
+| pin Python 3.14.7 | `.venv` 3.14.0 giữ lại; `.venv-3.14.7` đã tạo | fallback cũ cố ý giữ, preferred env đã khớp |
+| CI uv 0.12.9 | PATH uv 0.9.9 | PATH cũ không là authority; CI/release/deep dùng pin mới |
+| Maturin exact 1.14.1 | PATH 1.13.3; dev env mới đúng | build phải dùng locked/dev env |
+| README/CONTRIBUTING test counts cũ | retained 456 Rust/615 Python | docs không là evidence |
+| changelog 0.1.0 | không Git tag | release history lệch |
+| BUSL declared | thiếu license text | legal/distribution gap |
+| package URLs khác remote | chưa verified ownership | release identity gap |
+| CLI quảng bá 5 providers | parity chưa proven | overclaim risk |
+| `config set` nói đã set | không ghi file | behavior bug |
+| `config show` in config | có thể lộ key | security bug |
+| compose nói multi-machine | cùng host/bridge | không đóng NV-016 |
+| README timing/performance | không comparator current | self-reported |
+| current evidence `CHECKOUT_HEAD` | HEAD thật `1e77ff9...` | provenance chưa materialize |
+| hai Python distributions | authority chưa thống nhất | import/release ambiguity |
+
+## 26. Technical debt và ưu tiên
+
+1. Production provenance/blockers: NV-004/016/017/018/019.
+2. Secret/config UX: redact, không lưu/in key dễ lộ, hoàn thiện `config set`.
+3. Packaging authority: canonical root wheel và role của core Python distribution.
+4. License/release identity: license text, URLs, tags, changelog.
+5. Lab cohesion: tách `lab.py` chỉ sau characterization tests; không mass-refactor vì thẩm mỹ.
+6. Global authority: same subject/cell policy qua provider/browser/process/benchmark/compat.
+7. AESE calibration: mapping, mutation/incident corpus, representative workloads trước cutover.
+8. Replay evolution: version fixtures, crash prefix, external restore.
+9. Platform enforcement: privileged Linux, Windows pressure, explicit macOS semantics.
+10. Docs drift: README/CONTRIBUTING/CHANGELOG và wording local-vs-proven.
+
+Graph fan-in/test concentration là structural indicator, không phải performance metric. Không tối ưu chỉ vì fan-in lớn.
+
+## 27. Threat/failure model cần giữ
+
+- forged/stale lease hoặc duplicate completion;
+- retry non-idempotent side effect sau ambiguous timeout;
+- child process thoát containment hoặc sống sau cancel;
+- DNS/redirect biến public URL thành private target;
+- prompt injection vượt mission policy;
+- 429 gây retry amplification/spend runaway;
+- đúng hash nhưng sai mission/subject/environment binding;
+- partial replay tail mất committed prefix;
+- old archive vỡ sau schema change;
+- cache candidate thành authoritative result;
+- AESE bỏ security/contract test do unmapped edge;
+- benchmark sai do warm cache/workload khác/bỏ planner cost;
+- model residual pass trong mô hình vật lý sai;
+- sensor/clock sai nhưng output có vẻ chính xác;
+- CLI/log lộ API key;
+- docs được dùng thay signed evidence;
+- single-host containers bị gọi multi-machine proof.
+
+T2/T3 changes phải có direct test/retained evidence cho failure path áp dụng.
+
+## 28. Ma trận hoàn thiện
+
+| Năng lực | Code | Local | External/production | Authority |
 |---|---|---|---|---|
-| Mission | `LabRun` mission fields / plan `LabMissionSpec` | `LabMissionSpec` | split; Rust schema is stronger, Python lifecycle owns construction | NOT VERIFIED as one canonical serializer |
-| Source | Python source dict/events | `SourceRecord` | split projection | local typed admission only |
-| Claim | Python claim dict/events | `ClaimRecord` | split projection | local validation; semantic truth not proven |
-| Hypothesis | Python hypothesis | `HypothesisRecord` | split projection | falsifier linkage bounded |
-| Experiment | Python execution model | `ExperimentSpec` | split | bounded execution/settlement |
-| Observation | Python observation, units/uncertainty fields | `ObservationRecord` | split | unit/uncertainty contracts; calibrated science open |
-| Benchmark | Python `benchmark.py`/validator records | `BenchmarkProtocolV2`, `BenchmarkResultV2` | split protocol with operator-owned validator | local protocol evidence; generalization open |
-| Event | Python event dict/object | `LabEvent` and event kinds | Rust validates; Python appends | native admission not universal side-effect proof |
-| Dossier/archive | Python projection plus replay/archive | Rust archive/verify functions | split | archive verifier local; external restore open |
-| Execution cell | Python `ExecutionCellRegistry` | Rust typed admission receipts | Python registry + Rust receipt | explicit cells covered; hidden side effects open |
-| Trust level | `AgentConfig` defaults `DEV` | core evidence normalizer defaults `PROD` | contradictory defaults | policy ambiguity |
-
-The duplicate model is the main cohesion risk. Serialization, hash binding, and projection checks reduce divergence; they do not remove the cost of maintaining two mutable representations or prove that every future field is delegated consistently.
-
-## 12. Cohesion/Coupling Findings
-
-### 12.1 Strong cohesion islands
-
-- `aegis_cognition` has high graph cohesion (~0.927 in the available graph) and a recognizable application facade.
-- The Lab plan, blocker registry, generated status view, and document gate form a coherent governance island.
-- Rust resource/execution/GT96/replay modules expose deliberate invariant-focused boundaries.
-
-### 12.2 Coupling/debt hotspots
-
-- `scripts` is large and cross-coupled (graph cluster ~570 members); scripts are simultaneously test drivers, evidence producers, release helpers, and report generators.
-- `core/rust/src/cli/mod.rs::run` is a hotspot (complexity 45; cognitive complexity 144; 156 lines in graph).
-- `aegis_cognition/lab.py` is a very large orchestration/reducer module; `_execute_browser_action` is a hotspot (complexity 28).
-- `evidence_consistency_gate.py`, `benchmark.py`, and replay validation are high-branching governance/validation code.
-- Root package, `core/python`, Rust FFI, plugins, POCs, scripts, and examples create multiple entrypoint paths that do not share one ownership boundary.
-- Codebase-memory graph reports `adr_present: false` despite `docs/adr` existing, showing that the graph cannot be treated as complete repository truth.
-
-## 13. Dead/Stale/Duplicate Candidate Inventory
-
-These are candidates for investigation only; no deletion was performed.
-
-| Candidate | Why it is suspicious | Safe disposition now |
-|---|---|---|
-| `core/python` package/CLI alongside root package/CLI | overlapping package names and console script | PRESERVE; map callers, then choose compatibility strategy |
-| `aegis_cognition/lab.py` and `core/rust/src/lab.rs` parallel models | duplicated state/reducer ownership | PRESERVE; make ownership decision before merge/split |
-| Historical plans/reports/plugin READMEs/POCs | document inventory lists historical paths; some say complete | PRESERVE as history; mark non-authoritative |
-| ADR-012 versus ADR-015 | ADR-012 marked superseded compatibility stub | PRESERVE note; do not use as current decision authority |
-| `.serena` | untracked tool metadata | INVESTIGATE ignore/ownership; do not delete automatically |
-| POC crates | deep-only workspace members | PRESERVE if experimental; isolate from production graph |
-| Legacy direct script loaders/import-after-bootstrap patterns | modified to fix Ruff E402 | PRESERVE with direct-entrypoint regression tests |
-| Generated status/evidence views | generated from registry/manifest | regenerate only after source-of-truth decision; never hand-edit |
-| `runtime.py` native fallback | source fallback is explicit but unverified | PRESERVE; label fallback semantics and test scope |
-
-## 14. Dependency Rent Report
-
-### 14.1 Runtime/build inventory
-
-Root runtime includes `blake3`, `fastapi`, `openai`, `python-dotenv`, `pyyaml`, `uvicorn`; extras add Playwright and broader development tooling. Rust includes PyO3, Wasmtime 47.0.3, Arrow 54, memmap2, parking_lot, ed25519-dalek, serde, tokio, rayon, networking/IPC, cryptography, parsing, and Windows platform crates. Six plugins and three POCs add workspace surface.
-
-### 14.2 Rent findings
-
-- PyO3 + maturin is justified by the native authority/resource requirement but creates ABI, wheel, and cross-platform verification obligations.
-- Wasmtime is a significant security/runtime dependency; exact pinning is good, but full hostile-kernel and fuzz evidence remains open.
-- Arrow, mmap/shared-memory, and multiple IPC/network layers increase serialization, platform, and recovery complexity.
-- Playwright is an optional but operationally heavy browser dependency; browser lifecycle and browser binary parity are not proven across all lanes.
-- OpenAI/provider dependencies introduce rate-limit, schema, network, and reproducibility variability.
-- Plugins and POCs are valuable experiments but enlarge the workspace and deep-suite cost; default-member exclusion reduces fast-gate rent while preserving deep coverage.
-- No dependency should be removed solely to reduce counts; first map whether it is on a production path, a test/evidence path, or a POC path.
-
-## 15. Testing Architecture
-
-### 15.1 Test surfaces
-
-- `tests/test_lab_runtime.py`: 116 pytest functions (untracked current Lab regression surface).
-- `tests/test_document_consistency_gate.py`: 3 functions.
-- `tests/test_evidence_consistency_gate.py`: 8 functions.
-- `tests/test_runtime_contracts.py`: 6 functions.
-- `tests/test_suite_evidence.py`: 1 function.
-- `core/python/tests.py`: 83 functions.
-- Rust unit/integration/benchmark/fuzz/Miri/ASan lanes are distributed across source, `tests`, `benches`, and CI workflows.
-
-### 15.2 Local gates observed in this audit
-
-| Gate | Result | Interpretation |
-|---|---|---|
-| `scripts/architecture_fitness.py` | PASS; 23 structural checks | presence/shape/policy checks only; not runtime proof |
-| `scripts/document_consistency_gate.py` | PASS | document inventory/generated-view/link/metadata parity for current checkout |
-| `scripts/evidence_consistency_gate.py` | FAIL | current SHA/provenance mismatch; decisive blocker |
-| historical `pytest tests core/python/tests.py -W error::DeprecationWarning` | 221 passed, recorded by prior project work | historical local evidence; not rerun/retained here as final-SHA artifact |
-
-The plan also records targeted v63 controller/recovery/rollback and warning-free results. Those statements are scoped to a prior Windows/CPython 3.14 working-tree run. The referenced wheel/JSON files are absent now, so their current status is **historical/self-reported local evidence**, not independently reproducible evidence.
-
-### 15.3 Test architecture gaps
-
-- Current graph/test inventory is stale with respect to untracked Lab additions.
-- Deep workflow defines fuzz, Miri, ASan, full-workspace, and soak lanes, but no current hosted run IDs are bound in `current.json`.
-- Tests strongly cover explicit local contracts; they do not prove semantic research quality, hostile browser isolation, hidden scorer secrecy, multi-host writer ownership, or calibrated hardware energy.
-- Embedded Rust tests inflate naive production source scans; test/production separation should be made explicit before using static counts as release criteria.
-
-## 16. Security Architecture
-
-### 16.1 Existing controls
-
-- Native boundary has `py_safe` panic/error handling.
-- Execution cells validate identity, capability, effect, trust, duplicate/late mutation, and sealed manifests.
-- Lab rejects known prompt-injection markers in bounded browser/context paths.
-- Search preflights literal/obfuscated private/loopback/link-local/reserved addresses and checks resolved addresses/final hosts.
-- Replay/event hashes, typed records, archive verification, and crash-prefix rejection provide tamper/ambiguity signals.
-- Secret scanning, dependency gates, Cargo deny/audit, fuzz workflow definitions, and supply-chain scripts exist.
-
-### 16.2 Open security boundaries
-
-- DNS rebinding can race preflight and connection.
-- Browser capability separation is not kernel/process isolation; cross-domain hostile content and browser crash/egress corpus are open.
-- Operator server defaults to localhost but accepts `--host`; no authentication is established for non-local binding. `AEGIS_OPERATOR_ROOT`/`AEGIS_ARTIFACTS_DIR` can redirect reads to a selected filesystem root. This is a potential data-exposure boundary if operationally misconfigured.
-- Cluster worker listens on `0.0.0.0` with plaintext threaded TCP and no demonstrated authentication/TLS; it is suitable only as a test/soak surface until hardened.
-- Provider/API secrets and external data handling need deployment-specific threat modeling; absence of a scan finding is not proof of safe retention.
-- Rust `unsafe`, process, mmap, Wasmtime, and FFI code require targeted adversarial evidence rather than aggregate lint status.
-
-## 17. Replay/Recovery Architecture
-
-### 17.1 Current design
-
-Events carry hashes and typed payload/reference checks. `LabController` supports snapshots/restore, finalization, budget lanes, and projection admission. Python `ReplayWriterLease` serializes configured local writers. Recovery settles open explicit admissions as rejected/unknown-side-effect and blocks the dossier when the prefix cannot prove success. Archive verification rejects incomplete/tampered tails.
-
-### 17.2 What this proves locally
-
-- deterministic rejection of duplicate/invalid typed admissions;
-- mixed-lane crash-prefix reconciliation for explicit admissions in recorded tests;
-- local process contention rejection for the replay writer;
-- rollback/drill behavior in prior local package evidence.
-
-### 17.3 What it does not prove
-
-- an external side effect did not happen just because its log tail is absent;
-- an arbitrary non-cooperative process/descendant stopped;
-- a hosted or multi-machine writer cannot fork/overwrite a run;
-- external backup restore, retention, corruption recovery, or RPO/RTO;
-- deterministic replay of live providers, browsers, DNS, or hardware.
-
-## 18. Concurrency/Resource Architecture
-
-- Rust has explicit resource/execution lanes, budget accounting, platform adapters, thread/process primitives, shared memory and mmap paths.
-- Python has an in-process active-run guard and advisory replay writer lease.
-- Windows Job Object support exists; plan evidence says assignment, active-process quota rejection, deadline cancellation, and termination were observed, but memory-pressure kill was not observed and descendants are not proven.
-- Linux cgroup v2, macOS enforcement, WSL/Hyper-V, hosted multi-machine TCP soak, and cross-host policy freeze remain `NOT VERIFIED`.
-- `cluster/worker_service.py` is a threaded listener, not a consensus or single-writer service. A network listener is not by itself a distributed authority.
-- Retries, cancellation, duplicate delivery, timeout ambiguity, and provider fallback are handled at several layers. A system-wide retry budget/idempotency proof is absent.
-
-## 19. Performance Architecture
-
-### 19.1 Measured
-
-- Repository plan records local Windows sample-size-10 resource/architecture microbenchmarks and bounded electrical energy `1.0 J` with `MEASURED_INPUTS_ONLY`.
-- These are local measurements tied to prior artifacts; current cross-tier and cross-host comparison is not retained in the current manifest.
-
-### 19.2 Inferred
-
-- The architecture can support bounded CPU/Python/I/O/untrusted lanes because corresponding Rust contracts and local tests exist.
-- Python/Rust projection, hashing, Arrow/audit writes, browser/provider waits, and replay I/O add latency and memory cost.
-- Multiple orchestration layers and cross-language serialization are likely hot paths, but no profile here establishes their share of end-to-end latency.
-
-### 19.3 Not verified
-
-- p50/p95/p99 latency, throughput, saturation, queue depth, memory/allocations, browser cold start, provider latency, and cost at target workload;
-- Amdahl-relevant fraction of native versus Python work;
-- thermal/electrical measurements or calibrated hardware energy;
-- solver convergence for PDE/stiff/circuit workloads;
-- benchmark generalization, hidden-score integrity, and independent reproduction.
-
-No claim of faster, cheaper, scalable, zero-copy, energy-optimal, or production-performance superiority is justified by the current evidence.
-
-## 20. Cross-Platform Reality
-
-| Platform/lane | Declared support/evidence | Truth status |
-|---|---|---|
-| Windows CPython 3.14 | active `.venv`; prior local package/controller probes | local evidence, historical artifacts unavailable for replay |
-| Windows Job Objects | adapter and prior live probe | partial; memory-pressure/descendant proof open |
-| Linux | workflow and cgroup adapters/fixtures | live privileged enforcement not verified |
-| macOS | compile/capability workflow and cooperative adapter | hosted runtime/package evidence not verified |
-| WSL2 | attempted by prior work | unavailable: `HYPERV_NOT_INSTALLED` |
-| Python 3.15 RC/free-threaded | CI matrix declared | current hosted result not bound in manifest |
-| Native wheel parity | workflow defined for Ubuntu/Windows/macOS | current clean-wheel artifact absent |
-| Multi-machine TCP | report/probe scripts exist | live soak not verified |
-
-The existence of a workflow lane is a design intent. It is not evidence that the lane passed for the current SHA.
-
-## 21. Architecture Fitness Gaps
-
-### What current checks detect
-
-- module/file presence and canonical boundary declarations;
-- workspace/Rust/PyO3/maturin configuration shape;
-- schema versions, lockfile presence, traceability/document fields;
-- telemetry and secret-scan configuration;
-- selected forbidden-boundary/canonical-owner rules;
-- generated-document parity;
-- machine evidence schema and SHA format (the latter currently catches the blocker).
-
-### What current checks cannot detect
-
-- untracked implementation drift unless the checker explicitly scans it;
-- hidden side effects in arbitrary Python/Rust adapters or subprocess descendants;
-- whether Python and Rust reducers are semantically equivalent for every field/event;
-- DNS rebinding races, hostile browser content, real egress/firewall behavior;
-- live resource enforcement and memory-pressure behavior on each OS;
-- semantic correctness/freshness/contradiction recall of research;
-- scientific calibration, solver convergence, instrument uncertainty, or hardware energy;
-- hidden benchmark scorer secrecy/contamination resistance;
-- hosted single-writer, backup restore, rollback, attestation, or current CI execution.
-
-### Future graph gates (proposal only; not implemented here)
-
-1. fail when a production entrypoint bypasses the canonical Agent/Lab boundary without an explicit compatibility label;
-2. fail when a side-effecting symbol is reachable from a Lab run without an ExecutionCell/admission edge;
-3. fail when a canonical record has multiple mutable writers without an ADR and contract test;
-4. fail when package/CLI ownership is ambiguous or import paths cross an undeclared compatibility boundary;
-5. fail when evidence artifacts are not bound to the exact commit and source manifest;
-6. fail when generated docs are newer/older than their declared source and commit;
-7. fail when deep-only POC/plugin code is accidentally reachable from production default members;
-8. fail when operator/network services are externally bindable without an explicit auth/TLS policy.
-
-## 22. Architecture Debt Ledger
-
-| ID | Severity | Evidence | Root cause | Impact | Likely fix direction | Change risk |
-|---|---|---|---|---|---|---|
-| AD-001 | Critical | `current.json` uses `CHECKOUT_HEAD`; evidence gate fails | evidence generated before final SHA and not regenerated | release/provenance claims cannot be trusted | final-SHA regeneration, immutable artifact binding, hosted IDs | high if hand-edited; low if pipeline-owned |
-| AD-002 | Critical | 58 modified + 17 untracked; Lab core untracked | implementation and plan developed outside commit boundary | HEAD/review/CI cannot describe current runtime | freeze, inventory, commit boundary review | high due large diff |
-| AD-003 | High | Python `LabRun` plus Rust `LabController` | incremental native-admission migration | split authority, semantic drift | choose canonical reducer; compatibility projection only | high |
-| AD-004 | High | root maturin + `core/python` setuptools | historical compatibility retained without one package owner | ambiguous imports, wheel/CLI behavior | explicit package ownership/versioned compatibility | medium/high |
-| AD-005 | High | `AgentConfig` DEV default vs core normalizer PROD | policy defaults evolved in different layers | trust-mode inconsistency | one typed policy source and cross-layer contract test | high security impact |
-| AD-006 | High | operator host option/no auth; `0.0.0.0` worker | test/operator surfaces reused as services | artifact/data exposure, unauthenticated network access | bind-local by default, auth/TLS/allowlist or isolate test service | medium |
-| AD-007 | High | DNS preflight/connection race | URL safety is checked in separate phases | SSRF/private-network bypass possibility | connect-time pinned resolution/egress enforcement | high security impact |
-| AD-008 | High | broad FFI unwrap/leak patterns | legacy/native boundary implementation | panic or unbounded memory growth | targeted production-path audit and bounded ownership | medium/high |
-| AD-009 | High | split provider retries | compatibility route and Lab hooks evolved separately | retry amplification/duplicate effects | one retry/idempotency authority | high behavior change |
-| AD-010 | Medium | graph omits untracked and misses ADRs | index snapshot not current/complete | architecture queries can be stale | re-index under controlled metadata policy | low operational; graph write required |
-| AD-011 | Medium | historical docs say complete/PROVEN while manifest says NOT VERIFIED | historical and current statuses coexist | readers overclaim readiness | status namespaces and generated historical labels | medium docs churn |
-| AD-012 | Medium | huge `lab.py`, scripts, CLI hotspots | orchestration and evidence concerns accumulated | reviewability and change blast radius | split by ownership only after graph/contract map | high refactor risk |
-| AD-013 | Medium | deep POCs/plugins in same workspace | experimentation shares top-level build graph | cost and accidental reachability | explicit experiment boundary and target policy | low/medium |
-| AD-014 | Medium | package artifacts referenced but absent | temp evidence retention is not durable | local proof cannot be re-run | retained immutable artifact store | low/medium |
-| AD-015 | Medium | embedded tests/source static counts | test and production code co-located | noisy risk metrics | parser-aware inventories and explicit test modules | low |
-
-## 23. Contradiction Register
-
-| ID | Contradiction | Resolution for this audit |
-|---|---|---|
-| C-001 | `architecture_fitness.py` and document gate PASS; evidence gate FAIL | structural/document health does not imply provenance health; current release status is red |
-| C-002 | TRACEABILITY rows say `PROVEN`/`LOCALLY PROVEN`; `current.json` says current suites `NOT VERIFIED` | treat row claims as scoped/historical unless exact SHA/artifact is retained |
-| C-003 | plan says v63 wheel/controller/recovery/rollback `PROVEN`; temp files are absent | historical local claim; not current reproducible evidence |
-| C-004 | plan calls Rust native controller authority; Python still owns mutable lifecycle/projection | native admission authority is real but universal lifecycle authority is not proven |
-| C-005 | `AgentConfig` default trust `DEV`; core evidence normalization default `PROD` | unresolved policy ambiguity; fail closed until one source is chosen |
-| C-006 | README says “cryptographically-verified AI agent”; README status also says production not claimed | wording is safe only when scoped to local evidence/hash mechanism; cannot imply full runtime/security verification |
-| C-007 | graph says no ADR present; `docs/adr` exists | graph coverage defect, not repository absence |
-| C-008 | workflow definitions contain extensive gates; no current hosted run IDs in manifest | procedure exists, current execution is not verified |
-
-## 24. Unknown/Not Verified Register
-
-The following are intentionally not promoted to facts:
-
-- current final-SHA full Rust/Python/deep/release suite results;
-- signed release attestation, SBOM/provenance for this working tree, and external deployment smoke;
-- Linux cgroup enforcement, macOS runtime/package parity, Windows memory-pressure kill, and descendant containment;
-- hosted multi-process/multi-machine replay writer authority and TCP soak;
-- DNS rebinding race resistance and real browser egress/firewall/process isolation;
-- semantic research freshness, provider drift, contradiction precision/recall, and independent citation reproduction;
-- PDE/stiff/circuit solver validity, instrument calibration, uncertainty propagation, and hardware energy;
-- hidden benchmark scorer secrecy, contamination resistance, outlier/dispersion behavior, and independent reproduction;
-- external backup restore, RPO/RTO, corruption recovery, and retention/deletion behavior;
-- native fallback equivalence and clean wheel import/runtime for current untracked Lab code;
-- complete graph coverage of untracked/generated/ignored files;
-- production-path absence of all unsafe unwrap/leak/side-effect patterns;
-- one canonical trust policy and one canonical retry/idempotency policy.
-
-## 25. Preserve/Remove/Merge/Split/Investigate Matrix
-
-| Area | Current action | Reason |
-|---|---|---|
-| Lab implementation and tests | PRESERVE | central requested capability; untracked status must be resolved before refactor |
-| Rust LabController | PRESERVE | valuable invariant/admission kernel; ownership boundary still to decide |
-| Python Lab projection | PRESERVE temporarily | compatibility and current lifecycle; convert only with equivalence evidence |
-| Root package | PRESERVE | public facade and maturin owner candidate |
-| `core/python` package | PRESERVE temporarily | callers exist; classify as compatibility before deprecation/removal |
-| Historical plans/reports | PRESERVE, relabel | audit/history value; do not use as current proof |
-| POCs | PRESERVE but isolate | experiment value; avoid default production reachability |
-| `.serena` | INVESTIGATE | untracked metadata/ownership/ignore policy |
-| Operator/cluster test services | INVESTIGATE before exposure | no auth/TLS/hosted authority proof |
-| FFI unwrap/leak paths | INVESTIGATE then minimal fix | possible reliability/resource defect; no blind sweep |
-| Duplicate data models | MERGE only after contract inventory | premature merge risks breaking replay/wheel compatibility |
-| Large Lab/scripts modules | SPLIT only after ownership/graph evidence | size alone is not a sufficient reason |
-| Generated evidence views | REGENERATE from canonical machine source | never hand-edit derived state |
-
-## 26. Candidate Target Architecture (CURRENT → MIGRATION → TARGET)
-
-### CURRENT
-
-Hybrid Python/Rust runtime; Python lifecycle and projection; Rust admission/controller; explicit execution cells plus compatibility/direct paths; two Python packaging surfaces; local replay lease; separate operator/cluster/test services; current evidence manifest invalid for HEAD.
-
-### MIGRATION
-
-1. Freeze feature additions and classify every working-tree file as production, compatibility, experiment, generated, evidence, or historical.
-2. Commit/review the Lab tree as a coherent change or explicitly exclude it; regenerate evidence only from an immutable final SHA.
-3. Choose one package/CLI owner; keep compatibility imports behind a named, versioned boundary.
-4. Define the canonical record/event schema and make Python a projection or Rust the reducer—never two implicit authorities.
-5. Route every consequential side effect through a declared cell/admission contract, or explicitly label and isolate legacy paths.
-6. Unify trust, retry, cancellation, idempotency, and writer-lease policy.
-7. Add graph gates and final-SHA evidence gates; then run platform/security/benchmark/restore experiments.
-
-### TARGET (candidate, not approved)
-
-```text
-One versioned public Python package/CLI
-        |
-        v
-One Lab session protocol + one canonical event/reducer authority
-        |
-        +--> explicit ExecutionCell registry (capability/effect/trust/lease)
-        +--> browser/search/provider/experiment/benchmark cells
-        +--> Rust native policy kernel and resource/process boundary
-        +--> durable replay/archive with hosted single-writer service
-        +--> independent verifier and evidence manifest bound to final SHA
-        +--> operator API authenticated and read-only by default
-        +--> platform adapters with real per-OS evidence
+| Agent facade | có | tests có | chưa full external | Python |
+| Native resource/runtime | có | mạnh local | platform live thiếu | Rust/adapters |
+| Lab lifecycle/evidence | có | coverage lớn | multi-cell live thiếu | split Python/Rust |
+| Search-as-code | có | contracts | research quality chưa calibrated | Python/adapters |
+| Browser | optional Playwright | local/mock | cross-platform/security thiếu | Python cell |
+| Skill/tool/process | có | admission/receipt | descendant/global bind thiếu | registry/native gates |
+| Simulation/ODE | có | numerical tests | domain scientific validity riêng | Python cells |
+| Electrical signal | có | formula/tolerance | calibrated hardware thiếu | Python cell |
+| Benchmark v2 | có | protocol tests | representative cross-hardware thiếu | Python protocol |
+| AESE | có | shadow + 3 pairs | non-inferiority/cutover thiếu | legacy authoritative |
+| Replay/hash | có | tests/drills | migration/restore thiếu | Rust/archive |
+| Distributed | primitives/compose | loopback/single host | real multi-machine thiếu | runtime/worker |
+| Observability | internal/API | local | OTLP/SLO/alerts thiếu | split |
+| CI/CD | workflows | definitions inspected | hosted current SHA thiếu | intended Actions |
+| Release provenance | logic/SBOM | pieces local | signed attestation thiếu | not authoritative |
+| Production deploy | manifests | local artifacts | external smoke thiếu | blocked |
+
+## 29. Trình tự đóng an toàn
+
+1. Sửa CLI secret/config và packaging/license identity bằng diff nhỏ có test.
+2. Giải quyết owner-side GitHub Actions một lần; sau đó chạy một current-final-SHA set, không spam retry.
+3. Materialize evidence manifest từ retained runs, không sửa placeholder thủ công.
+4. Đóng NV-004/017/018/019 trong môi trường đúng.
+5. Chạy NV-016 trên nhiều máy thật.
+6. Hoàn tất Tier-1 wheels, fuzz/sanitizer, migration/restore, platform enforcement.
+7. Đóng NV-020 cross-cell authority.
+8. Mở rộng AESE mapping + mutation/incident corpus + representative workloads.
+9. Chỉ cân nhắc selective cutover khi critical false-negative bound và production non-inferiority đạt policy được phê duyệt.
+10. Sau khi behavior được khóa, tách Lab theo ownership với diff nhỏ.
+
+Không có blocker ngăn maintenance/local shadow measurement. Có blocker thật đối với production declaration, release provenance và AESE authority cutover.
+
+## 30. Lệnh tái lập an toàn
+
+```powershell
+# Nhẹ
+git status --short --branch
+git rev-parse HEAD
+git rev-parse origin/main
+uv sync --locked --all-extras --dev
+.\.venv\Scripts\python.exe scripts\document_consistency_gate.py
+.\.venv\Scripts\python.exe scripts\constitution_audit.py
+.\.venv\Scripts\ruff.exe check aegis_cognition tests scripts
+.\.venv\Scripts\pyright.exe
+
+# Tests
+.\.venv\Scripts\python.exe -m pytest -q
+.\.venv\Scripts\python.exe -m pytest tests core/python/tests.py -q
+
+# Nặng hơn
+cargo fmt --all -- --check
+cargo check --workspace --no-default-features
+cargo test --manifest-path core/rust/Cargo.toml --lib --no-default-features
+
+# Evidence; dùng exact args trong workflow/runbook
+.\.venv\Scripts\python.exe scripts\aese_preflight.py
+.\.venv\Scripts\python.exe scripts\evidence_consistency_gate.py
 ```
 
-This target is intentionally smaller than “make every component distributed.” It preserves Python ergonomics, Rust invariant enforcement, and experiment flexibility while reducing authority ambiguity.
+Deep fuzz, Miri, ASan, privileged probes, multi-machine, live provider và external deployment phải chạy qua đúng workflow/runbook với budget/artifact retention; không chạy ngẫu nhiên trên workstation.
 
-## 27. Alternatives
+## 31. Nguồn sự thật chi tiết
 
-### A. Rust-canonical reducer with Python projection (recommended candidate)
+**Manifest/toolchain:** `pyproject.toml`, `core/python/pyproject.toml`, `requirements.txt`, `uv.lock`, `.python-version`, `Cargo.toml`, `core/rust/Cargo.toml`, `Cargo.lock`, `rust-toolchain.toml`, `deny.toml`, `fuzz/Cargo.toml`, các plugin/POC `Cargo.toml`.
 
-Rust owns event acceptance, state transition, budget, replay, and canonical serialization. Python constructs requests and renders a projection. **Pros:** strongest invariant ownership, deterministic replay, narrower trust boundary. **Cons:** PyO3/schema migration cost, less Python flexibility, large compatibility effort.
+**Runtime:** `aegis_cognition/__init__.py`, `agent.py`, `application.py`, `lab.py`, `aese.py`, `benchmark.py`, `runtime.py`, `observability.py`; `core/python/aegis_adapter.py`, `aegis/provider.py`, `browser_playwright_runtime.py`, `operator_api.py`; `core/rust/src/lib.rs`, `ffi.rs`, `lab.rs`, `gt96.rs`, `runtime.rs`, `resource.rs`, `resource_platform.rs`, `replay.rs`, `sandbox.rs`.
 
-### B. Python-canonical orchestration with Rust policy kernel
+**Contract/evidence:** `schemas/*.json`; bảy `quality/registry/current_*.json`; `docs/architecture/evidence/current.json`; `not_verified_registry.json`; `NOT_VERIFIED_REGISTRY.md`; `deployment_policy.json`; GT96 traceability; `document_inventory.json`; Lab master plan.
 
-Python owns the domain reducer; Rust owns admission/resource/cryptographic primitives. **Pros:** quickest evolution and easier experimentation. **Cons:** harder to prove no hidden side effect or semantic drift; current ambiguity remains unless strict effect routing is enforced.
+**CI/deploy:** bốn `.github/workflows/*.yml`; `deploy/docker-compose.yml`, `deploy/kubernetes.yaml`, `cluster/docker-compose.yml`, `cluster/Dockerfile`.
 
-### C. Actor/service Lab with external durable event store
+## 32. Final truth statement
 
-One Lab actor/service owns each run; browser/worker cells are remote and authenticated; event store provides single-writer and recovery. **Pros:** hosted isolation and multi-machine authority. **Cons:** network partitions, auth, deployment, cost, eventual consistency, and operational burden; unjustified until local canonical ownership and workload need are proven.
+Tại snapshot này, AEGIS-COGNITION là beta hybrid runtime giàu contract và local verification, có Lab framework thực sự cho research/browser/experiment/simulation/evidence thay vì sandbox thuần. Nó có nhiều primitive nghiêm ngặt cho authority, replay, resource, toán-vật lý và adaptive evidence. Tuy nhiên authority vẫn chia Python/Rust, packaging/license/config còn drift, AESE chỉ shadow, evidence manifest chưa bind final SHA, hosted/external/platform proof còn thiếu, và năm production blockers còn mở.
 
-### D. Keep current hybrid and add documentation/gates only
+Claim mạnh nhất được phép: **implementation rộng và local evidence đáng kể đã tồn tại, với fail-closed registries giữ phần chưa biết ở trạng thái chưa xác minh.**
 
-**Pros:** minimal code risk. **Cons:** does not resolve split authority, package ambiguity, or hidden effects; suitable only as a short stabilization phase, not a target architecture.
+Không được claim: **production-ready, secure tuyệt đối, real multi-machine proven, scientifically accurate tổng quát, cross-hardware optimized, AESE non-inferior, full QuickJS validated, live-provider resilient, hoặc release provenance signed.**
 
-**Selection criteria:** correctness/security first; then replayability, compatibility, operational burden, cross-platform feasibility, and reversibility. No alternative is “best” without a workload and evidence; A is the strongest candidate for the stated Lab goal, not a proven final decision.
+## 33. Current working-tree version-alignment delta (2026-09-04)
 
-## 28. Adversarial Critique
+Phần này supersede các giá trị local drift của committed snapshot khi mô tả
+working tree hiện tại. Tất cả thay đổi dưới đây đang **uncommitted**; không có
+commit, push hoặc workflow retry nào được thực hiện.
 
-If the current solution is seriously wrong, the most likely hidden failures are:
+| Hạng mục | Trạng thái hiện tại | Evidence/giới hạn |
+|---|---|---|
+| Python project baseline | `>=3.14,<3.16`; preferred `3.14.7` | `.python-version`, pyproject và CI/release đã cùng policy |
+| Python dev environment | `.venv-3.14.7` dùng CPython `3.14.7`, 40 locked packages và `maturin 1.14.1` | `uv sync --locked --no-install-project --all-extras --dev`; project native build cố ý chưa chạy vì RAM |
+| Existing `.venv` | CPython `3.14.0` giữ nguyên | fallback/rollback an toàn; không xoá hoặc mutate |
+| Rust stable/MSRV | exact `1.98.1`; workspace MSRV `1.98` | rustfmt, check và Rust lib `456 passed` trên local; upstream patch fix được ghi ở ADR-004 |
+| uv | `0.12.9` ghim trong `ci.yml`, `deep.yml`, `release.yml` | `uv lock --check` resolved 42 packages |
+| Python export | `pytest-asyncio>=1,<2` | khớp root `pyproject.toml`; generator cũng đã sửa để không tái sinh range cũ |
+| Editor rules | Python 3.14 baseline; `3.14t/3.15t` chỉ experimental/verified lane | loại bỏ chỉ thị active dựa trên Python 3.13 No-GIL |
+| Historical references | Rust `1.97.1`, Python 3.13 và captured old dependency strings còn trong snapshot/evidence history | cố ý giữ bất biến để không làm sai provenance; không phải active build input; Rust 1.97.1 đã gỡ khỏi máy |
 
-1. an adapter performs an irreversible side effect after a valid-looking admission but outside the registry;
-2. a DNS answer changes between preflight and connect, defeating SSRF checks;
-3. a cancellation is swallowed, a child/descendant survives, or a provider retries after the Lab has aborted;
-4. Python and Rust accept different field defaults or trust/retry semantics;
-5. a stale/historical “PROVEN” document is used to authorize a release despite `current.json` being invalid;
-6. the editable checkout passes while a clean wheel omits an untracked Lab file or resolves a different import;
-7. a benchmark validator leaks corpus/answers or runs in infrastructure controlled by the candidate;
-8. a valid hash chain hides an external effect that happened before a crash or timeout;
-9. operator/cluster listeners are reachable beyond localhost without authentication;
-10. local Windows behavior is generalized to Linux/macOS/hosted deployments;
-11. bounded Euler/RK4/unit contracts are mistaken for calibrated science or hardware energy measurement;
-12. retry layers amplify cost or duplicate non-idempotent provider/tool effects.
+Global Python 3.11/3.13 và các binary PATH cũ **không bị uninstall**. Rust
+1.97.1 đã được gỡ sau khi xác nhận workspace chạy bằng 1.98.1; uv-managed
+Python 3.13.9 và 3.15.0a1 cũng đã gỡ vì không thuộc support range của AEGIS.
+Xoá Python hệ thống hoặc binary PATH mà chưa kiểm tra toàn bộ project khác là
+thao tác destructive ngoài phạm vi repo và có thể phá môi trường máy. `.venv`
+3.14.0 vẫn giữ làm fallback; `.venv-3.14.7` là preferred dev environment.
 
-The repository already documents most of these as blockers. The remaining engineering task is to keep the blockers authoritative, not to rename them “closed” because local fixtures pass.
+Cleanup đã giải phóng xấp xỉ `1.18 GB` theo phép đo trước/sau; stable Rust,
+nightly Rust (deep/fuzz lane), Python 3.14.0/3.14.7 và các package environment
+đang dùng vẫn còn nguyên.
 
-## 29. Recommended Architecture
-
-### FREEZE
-
-- Freeze new autonomy, physics, browser, benchmark, plugin, and distributed-runtime feature work.
-- Freeze claims of production readiness, secure isolation, cross-platform support, scientific validity, energy optimization, or benchmark superiority.
-- Freeze manual edits to generated evidence/status views.
-
-### IMPLEMENT_NEXT
-
-1. Resolve current-tree boundary: inventory and review the 58 modified/17 untracked files; decide which are part of the product.
-2. Repair provenance flow so a final immutable SHA is generated and all current evidence/artifacts reference it; rerun the red evidence gate.
-3. Decide canonical package/CLI ownership and trust-policy ownership.
-4. Produce a contract matrix for every Python/Rust Lab record/event and one explicit reducer authority.
-5. Audit reachable side effects and label every legacy bypass; make external bind/auth policy fail closed.
-
-### EXPERIMENT
-
-- Hostile browser/egress/DNS corpus;
-- process/descendant/memory-pressure and cross-OS resource probes;
-- hidden benchmark/contamination protocol;
-- solver convergence/calibration/hardware energy experiments;
-- restore/rollback/soak/multi-machine writer experiments.
-
-Experiments must produce raw retained artifacts, exact command/toolchain/commit, negative cases, dispersion, and independent verification.
-
-### DEFER
-
-- distributed service/event store;
-- broad module split or rewrite;
-- accelerator/vendor integrations;
-- generic plugin framework expansion;
-- performance micro-optimization before profile/workload evidence.
-
-### REJECT
-
-- claiming universal authority from event hashes alone;
-- treating architecture-fitness/document PASS as runtime/release PASS;
-- hand-replacing `CHECKOUT_HEAD` in evidence JSON;
-- deleting compatibility code before caller/contract migration evidence;
-- using one Windows local run as cross-platform or production proof.
-
-## 30. Proposed Cleanup Sequence (no code changes in this audit)
-
-1. **Truth freeze:** stop feature edits; record the exact worktree state and classify files.
-2. **Authority map:** maintain the source-of-truth matrix and mark historical/current documents.
-3. **Contract closure:** enumerate public package, CLI, FFI, event, replay, trust, retry, and operator contracts.
-4. **Evidence repair:** make manifest generation final-SHA-only; retain raw artifacts; rerun local gates; bind hosted IDs when available.
-5. **Package convergence:** choose root package owner; establish compatibility import/CLI deprecation path.
-6. **Reducer decision:** approve Rust-canonical, Python-canonical, or explicitly bounded hybrid with tests for every projection edge.
-7. **Effect closure:** graph side-effecting calls and route/label all bypasses; secure operator/cluster exposure.
-8. **Platform/security experiments:** run only after the local graph and evidence source are stable.
-9. **Benchmark/science validation:** use independent, blinded, calibrated, reproducible protocols; keep `MEASURED_INPUTS_ONLY` until proven otherwise.
-10. **Targeted simplification:** remove or isolate only proven-dead/duplicate paths; review each deletion against callers, replay, packaging, and rollback.
-11. **Convergence review:** re-run architecture graph, contract tests, security/recovery checks, final diff, and adversarial review.
-
-## 31. STOP/GO Decision
-
-### STOP for architecture convergence as implementation expansion
-
-**STOP** is required for adding more Lab autonomy or broad refactoring because:
-
-- current evidence is invalid for the actual SHA;
-- the main Lab implementation is untracked;
-- authority and package ownership are split;
-- hosted/platform/browser/research/physics/benchmark/recovery evidence remains open.
-
-### GO for a bounded truth-convergence phase
-
-**GO** is safe for a narrowly scoped phase that only inventories/classifies the working tree, establishes canonical ownership, repairs final-SHA evidence generation, and writes contract/graph gates. Such work must preserve behavior and must not silently delete or refactor production code.
-
-## 32. Final Evidence Table
-
-| Claim | Evidence | Class | Scope/limitation |
-|---|---|---|---|
-| HEAD is `f9645ca…` | Git inspection | PROVEN | current checkout only |
-| 58 modified + 17 untracked | Git porcelain | PROVEN | exact current worktree snapshot |
-| Lab implementation is largely untracked | file status and line counts | PROVEN | current checkout |
-| Rust workspace has 10 members | Cargo metadata | PROVEN | default/deep membership distinction applies |
-| Python has two overlapping package surfaces | both `pyproject.toml` files/imports | PROVEN | compatibility intent needs owner decision |
-| Lab has explicit cells/native controller/events | source inspection and targeted tests/plan | PROVEN for code paths | not universal side-effect authority |
-| Native authority controls every side effect | no decisive evidence | NOT VERIFIED | arbitrary adapters/processes/hosted writer open |
-| Architecture fitness checks pass | local script exit 0, 23 checks | PROVEN | structural/presence checks only |
-| Document consistency passes | local gate exit 0 | PROVEN | current checkout; generated view parity |
-| Current evidence/release gate passes | local script exit 1 with SHA mismatch | NOT VERIFIED / FAIL | `CHECKOUT_HEAD` blocker |
-| Historical 221-test warning-free suite passed | prior project record | SOURCE-BACKED HISTORICAL | not rerun/bound to current final artifact here |
-| v63 wheel/controller/recovery/rollback passed | plan records; temp artifacts absent | HISTORICAL LOCAL CLAIM | not independently replayable now |
-| Browser is securely isolated | capability/preflight code | NOT VERIFIED | OS/egress/DNS race/corpus open |
-| Research is semantically reliable | bounded fetch/citation code | NOT VERIFIED | freshness/provider drift/contradiction quality open |
-| Physics/electrical output is calibrated | unit/Euler/RK4/energy contracts | NOT VERIFIED | `MEASURED_INPUTS_ONLY`; no hardware/calibration proof |
-| Benchmark generalizes and is contamination-resistant | local validator protocol | NOT VERIFIED | hidden scorer/independent reproduction open |
-| Cross-platform production readiness | workflows/manifests | NOT VERIFIED | no current hosted final-SHA evidence |
-| Repository graph is complete/current | codebase-memory snapshot | NOT VERIFIED | stale; excludes untracked and misses ADRs |
-| Safe to begin broad architecture convergence | blocker/evidence review | NO | truth/provenance/authority must converge first |
-
-**ARCHITECTURE_TRUTH_AUDIT_STATUS: PARTIAL**
-
-The local truth model is detailed for the inspected production, compatibility, Lab, FFI, evidence, workflow, package, and deployment surfaces. It is `PARTIAL` rather than `COMPLETE` because the working tree contains untracked architecture-critical files, the structural graph is stale/partial, current hosted/final-SHA evidence is absent, and several platform/external proofs cannot be obtained from this checkout alone.
-
-**Missing evidence required to upgrade to COMPLETE:**
-
-1. a reviewed, immutable commit containing the intended Lab implementation and plan;
-2. regenerated `current.json` and all derived views bound to that exact SHA;
-3. retained current Rust/Python/deep/release artifacts and hosted run IDs;
-4. fresh graph/index coverage of the committed tree and generated files;
-5. explicit package/CLI/reducer/trust/retry ownership decisions with contract tests;
-6. platform, browser, research, physics, benchmark, restore, and hosted writer evidence listed in Sections 20–24.
-
-**SAFE_TO_BEGIN_ARCHITECTURE_CONVERGENCE: NO**
+Các gate sau version alignment: `uv lock --check` PASS, architecture fitness
+`23/23`, document consistency PASS, evidence consistency `8 passed`, Rust fmt
+PASS, Rust workspace check PASS và Rust core `456 passed`. Full Python project
+install/wheel trên CPython 3.14.7, hosted CI current SHA, Tier-1 wheel parity,
+deep fuzz/Miri/ASan và external deployment vẫn `NOT VERIFIED`.

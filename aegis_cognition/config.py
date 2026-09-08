@@ -50,6 +50,12 @@ def load_config(path: Path = CONFIG_FILE) -> dict[str, Any]:
 def resolve_api_key(config: Mapping[str, Any]) -> str | None:
     llm = config.get("llm", {})
     configured: object = cast(Mapping[str, object], llm).get("api_key") if isinstance(llm, Mapping) else None
+    provider = cast(Mapping[str, object], llm).get("provider") if isinstance(llm, Mapping) else None
+    # ChatGPT Web is an explicitly local browser bridge.  It has no model API
+    # credential; the sentinel keeps the existing AgentConfig contract intact
+    # without asking users to invent or store a fake secret in config.toml.
+    if isinstance(provider, str) and provider.strip().lower() == "chatgpt-web":
+        return "local-loopback"
     return (
         configured
         if isinstance(configured, str) and configured
@@ -129,7 +135,8 @@ class AgentConfig:
     def validate(self) -> None:
         if type(self.task) is not str or not self.task.strip():
             raise ConfigError.task_missing()
-        if not self.api_key:
+        llm_requires_api_key = getattr(self.llm, "requires_api_key", True)
+        if not self.api_key and llm_requires_api_key is not False:
             raise ConfigError.api_key_missing()
         if type(self.trust_level) is not str or self.trust_level not in VALID_TRUST_LEVELS:
             raise ConfigError.invalid_trust_level(self.trust_level)
