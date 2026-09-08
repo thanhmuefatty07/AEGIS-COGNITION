@@ -63,6 +63,7 @@ xxhash-rust = { version = "0.8.10", features = ["xxh3"] }
 aho-corasick = "1.1.2"
 tokio = { version = "1", features = ["rt", "sync", "fs", "io-util"] }
 rayon = "1.12"
+rusqlite = { version = "0.40.2", features = ["bundled", "backup"] }
 
 [target.'cfg(windows)'.dependencies]
 windows-sys = { version = "0.61.2", features = [

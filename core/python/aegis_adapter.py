@@ -36,6 +36,25 @@ try:
         TrustPolicySnapshot,
     )
     from .aegis.hashing import stable_hash as _stable_hash, stable_u128 as _stable_u128
+    from .aegis.discovery import DiscoveryError, DiscoveryResponse, discover_connection_models
+    from .aegis.desktop_protocol import (
+        DesktopCommandRouter,
+        DesktopProtocolError,
+        DesktopRequest,
+        decode_request,
+        encode_response,
+    )
+    from .aegis.connection_clients import ConnectionClientError, ConnectionResponse, OpenAICompatibleClient
+    from .aegis.conversations import (
+        ConversationCheckpoint,
+        ConversationExecution,
+        ConversationManager,
+        ConversationRecord,
+        ConversationSnapshot,
+        ConversationToolCall,
+        ConversationTurn,
+    )
+    from .aegis.secrets import PlatformSecretStore, SecretStoreError
     from .aegis.evidence import (
         commit_hot_evidence,
         commit_hot_evidence_batch,
@@ -63,6 +82,25 @@ except ImportError:
         TrustPolicySnapshot,
     )
     from aegis.hashing import stable_hash as _stable_hash, stable_u128 as _stable_u128
+    from aegis.discovery import DiscoveryError, DiscoveryResponse, discover_connection_models
+    from aegis.desktop_protocol import (
+        DesktopCommandRouter,
+        DesktopProtocolError,
+        DesktopRequest,
+        decode_request,
+        encode_response,
+    )
+    from aegis.connection_clients import ConnectionClientError, ConnectionResponse, OpenAICompatibleClient
+    from aegis.conversations import (
+        ConversationCheckpoint,
+        ConversationExecution,
+        ConversationManager,
+        ConversationRecord,
+        ConversationSnapshot,
+        ConversationToolCall,
+        ConversationTurn,
+    )
+    from aegis.secrets import PlatformSecretStore, SecretStoreError
     from aegis.evidence import (
         commit_hot_evidence,
         commit_hot_evidence_batch,
@@ -97,6 +135,7 @@ class AegisAdapter:
         correlation: Any = None,
         telemetry: Any = None,
         provider_attempt_hook: Callable[[str, Mapping[str, Any]], Any] | None = None,
+        provider_egress_check: Callable[[str], Any] | None = None,
         **_: Any,
     ) -> None:
         self.task = task
@@ -113,6 +152,7 @@ class AegisAdapter:
         self.correlation = _normalize_correlation(correlation)
         self.telemetry = telemetry
         self.provider_attempt_hook = provider_attempt_hook
+        self.provider_egress_check = provider_egress_check
         self.provider_budgets = _normalize_provider_budgets(
             provider_budgets,
             required_tokens=self.required_tokens,
@@ -143,6 +183,7 @@ class AegisAdapter:
         # unchanged for callers that do not install a fence.
         attempt_hook = kwargs.pop("_provider_attempt_hook", self.provider_attempt_hook)
         attempt_context = kwargs.pop("_provider_attempt_context", None)
+        egress_check = kwargs.pop("_provider_egress_check", self.provider_egress_check)
 
         self._emit("provider", "request_started")
         output, provider, provider_route, provider_budget = await _invoke_with_provider_route(
@@ -155,6 +196,7 @@ class AegisAdapter:
             self.required_tokens,
             attempt_hook=attempt_hook,
             attempt_context=attempt_context,
+            egress_check=egress_check,
             **kwargs,
         )
         self._emit(
@@ -208,7 +250,7 @@ class AegisAdapter:
         raise RuntimeError("invoke cannot be called while an event loop is already running")
 
     async def abatch(self, inputs: Any, **kwargs: Any) -> list[Any]:
-        if isinstance(inputs, (str, bytes)) or not hasattr(inputs, "__iter__"):
+        if isinstance(inputs, str | bytes) or not hasattr(inputs, "__iter__"):
             raise TypeError("Agent.abatch requires an iterable of runnable inputs")
         start = len(self.last_results)
         outputs = [await self.ainvoke(item, **kwargs) for item in inputs]
@@ -486,6 +528,7 @@ def _evidence_payload(
             "provider_budget_hash": provider_budget.budget_evidence_hash,
             "provider_budgeted": provider_budget.budgeted,
             "provider_budget_skipped_count": len(provider_budget.skipped_providers),
+            "provider_egress_denied": provider_route.egress_denied_providers,
         },
         sort_keys=True,
         separators=(",", ":"),
@@ -498,7 +541,7 @@ class AegisAgent(AegisAdapter):
     Friendly DX wrapper around AegisAdapter.
     """
     def __init__(self, *args: Any, max_retries: int = 3, **kwargs: Any) -> None:
-        if type(max_retries) is not int or max_retries < 1:
+        if not isinstance(max_retries, int) or isinstance(max_retries, bool) or max_retries < 1:
             raise ValueError("max_retries must be a positive integer")
         super().__init__(*args, **kwargs)
         self.max_retries = max_retries
@@ -517,9 +560,25 @@ class AegisAgent(AegisAdapter):
 
 
 try:
-    from .aegis.learning import LearningManager, LearningStats, SessionSearchCandidate, SessionSearchResult
+    from .aegis.connections import ConnectionCatalog, ConnectionRecord, EgressGrant, ModelDescriptor
+    from .aegis.learning import (
+        LearningManager,
+        LearningStats,
+        MemoryRecord,
+        SessionSearchCandidate,
+        SessionSearchResult,
+        SessionSourceRecord,
+    )
 except ImportError:
-    from aegis.learning import LearningManager, LearningStats, SessionSearchCandidate, SessionSearchResult
+    from aegis.connections import ConnectionCatalog, ConnectionRecord, EgressGrant, ModelDescriptor
+    from aegis.learning import (
+        LearningManager,
+        LearningStats,
+        MemoryRecord,
+        SessionSearchCandidate,
+        SessionSearchResult,
+        SessionSourceRecord,
+    )
 
 
 __all__ = [
@@ -529,17 +588,43 @@ __all__ = [
     "AegisBrowserHotFirstActionResult",
     "AegisRunResult",
     "Agent",
+    "ConnectionCatalog",
+    "ConnectionClientError",
+    "ConnectionResponse",
+    "ConnectionRecord",
+    "ConversationManager",
+    "ConversationCheckpoint",
+    "ConversationExecution",
+    "ConversationRecord",
+    "ConversationSnapshot",
+    "ConversationToolCall",
+    "ConversationTurn",
+    "DesktopCommandRouter",
+    "DesktopProtocolError",
+    "DesktopRequest",
+    "DiscoveryError",
+    "DiscoveryResponse",
+    "EgressGrant",
     "HotCommitRecord",
     "LearningManager",
     "LearningStats",
+    "MemoryRecord",
+    "ModelDescriptor",
+    "OpenAICompatibleClient",
     "ProviderBudgetEvidence",
     "ProviderBudgetRecord",
     "ProviderRateLimitError",
     "ProviderRouteRecord",
+    "PlatformSecretStore",
     "SessionSearchCandidate",
     "SessionSearchResult",
+    "SessionSourceRecord",
+    "SecretStoreError",
     "TrustPolicySnapshot",
+    "decode_request",
+    "encode_response",
     "commit_hot_evidence",
     "commit_hot_evidence_batch",
+    "discover_connection_models",
     "trust_policy_snapshot",
 ]

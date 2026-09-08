@@ -3,6 +3,7 @@ pub mod fold;
 pub mod frame;
 pub mod nudge;
 pub mod pool;
+pub mod repository;
 pub mod session_search;
 pub mod user_model;
 
@@ -14,3 +15,6 @@ pub use frame::{
     ContextPrefix, MemoryEdge, MemoryFrame, MemoryGraph, SemanticNode, SemanticPointer,
 };
 pub use pool::{PreAllocatedBuffer, SlabMemoryPool};
+pub use repository::{
+    MemoryCaptureOutcome, MemoryRecordView, MemoryRepository, MemoryRepositoryError,
+};

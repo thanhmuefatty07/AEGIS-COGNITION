@@ -143,7 +143,7 @@ KNOWN_EXTERNAL: dict[str, str] = {
     "dotenv":     "python-dotenv>=1.0.0",
     "playwright": "playwright>=1.40",
     "pytest":     "pytest>=8",
-    "pytest_asyncio": "pytest-asyncio>=0.23",
+    "pytest_asyncio": "pytest-asyncio>=1,<2",
     "ruff":       "ruff>=0.3",
 }
 

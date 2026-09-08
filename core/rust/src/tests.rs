@@ -4951,10 +4951,21 @@ mod tests {
         let watchdog = PhysicalWatchdog { epsilon: 0.0 };
 
         let committed = system
-            .commit_nudged_memories(&nudge, &mut cognifold, &watchdog)
+            .commit_nudged_memories_with_ledger(&nudge, &mut cognifold, &watchdog, &mut ledger)
             .unwrap();
         assert_eq!(committed, 2);
         assert_eq!(cognifold.len(), 2);
+
+        let committed_events = ledger
+            .iter()
+            .filter(|event| {
+                matches!(
+                    event.event_type,
+                    crate::learning::LearningEventType::MemoryCommitted { .. }
+                )
+            })
+            .count();
+        assert_eq!(committed_events, 2);
 
         // Now construct a nudge with an "empty" content that PAV will reject
         // (PhysicalArtifact::new rejects empty payloads).

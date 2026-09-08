@@ -42,7 +42,14 @@ pub enum LearningEventType {
         /// BLAKE3(wasi_bytes) of the improved WASM module.
         improvement_hash: [u8; 32],
     },
-    /// One or more declarative memory facts were persisted into CogniFold.
+    /// A candidate memory batch was created and still requires validation and
+    /// an explicit commit before it can become durable memory.
+    MemoryCandidateCreated { candidate_hash: [u8; 32] },
+    /// A memory candidate was durably committed by the owning repository.
+    MemoryCommitted { memory_hash: [u8; 32] },
+    /// Legacy event retained for readers of historical ledgers. New writers
+    /// must use `MemoryCandidateCreated` or `MemoryCommitted` so the event
+    /// meaning matches the actual transition.
     MemoryPersisted {
         /// BLAKE3 over the concatenation of all persisted memory contents.
         memory_hash: [u8; 32],
@@ -76,6 +83,16 @@ impl LearningEventType {
                 let mut h = domain_hasher(b"aegis-learning-event-skill-improved-v1");
                 h.update(&usage_count.to_le_bytes());
                 h.update(&improvement_hash);
+                *h.finalize().as_bytes()
+            }
+            Self::MemoryCandidateCreated { candidate_hash } => {
+                let mut h = domain_hasher(b"aegis-learning-event-memory-candidate-created-v1");
+                h.update(&candidate_hash);
+                *h.finalize().as_bytes()
+            }
+            Self::MemoryCommitted { memory_hash } => {
+                let mut h = domain_hasher(b"aegis-learning-event-memory-committed-v1");
+                h.update(&memory_hash);
                 *h.finalize().as_bytes()
             }
             Self::MemoryPersisted { memory_hash } => {
@@ -136,6 +153,8 @@ impl LearningEvent {
             LearningEventType::SkillImproved {
                 improvement_hash, ..
             } => *improvement_hash,
+            LearningEventType::MemoryCandidateCreated { candidate_hash } => *candidate_hash,
+            LearningEventType::MemoryCommitted { memory_hash } => *memory_hash,
             LearningEventType::MemoryPersisted { memory_hash } => *memory_hash,
             LearningEventType::UserModelUpdated { model_hash } => *model_hash,
             LearningEventType::SessionRecallIndexed { session_hash } => *session_hash,

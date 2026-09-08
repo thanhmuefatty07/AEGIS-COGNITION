@@ -109,6 +109,7 @@ and retain raw output before making performance claims. Current status is
 - [Examples](examples/)
 - [Error Guide](docs/troubleshooting/common-errors.md)
 - [Security Architecture](docs/architecture.md)
+- [Optional ChatGPT Web provider](docs/integrations/chatgpt-web.md)
 - [Architecture traceability](docs/architecture/TRACEABILITY.md)
 - [Current evidence manifest](docs/architecture/evidence/current.json)
 - [NOT VERIFIED registry](docs/architecture/NOT_VERIFIED_REGISTRY.md)
