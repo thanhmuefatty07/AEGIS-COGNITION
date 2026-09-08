@@ -104,7 +104,7 @@ def test_materializer_binds_retained_suite_artifact(monkeypatch, tmp_path) -> No
                 "commit": "a" * 40,
                 "timestamp_utc": "2026-01-01T00:00:00Z",
                 "platform": "Windows",
-                "toolchain": "rustc 1.97.1",
+                "toolchain": "rustc 1.98.1",
                 "discovered": 2,
                 "passed": 2,
                 "failed": 0,

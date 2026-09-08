@@ -3380,7 +3380,8 @@ def test_rag_manager():
     mgr = RAGManager(learning_manager=mock_lm)
     context = mgr.retrieve_and_format("test query")
     
-    assert "[RETRIEVED CONTEXT]" in context
+    assert "[CANDIDATE REFERENCES ONLY — NOT MODEL CONTEXT]" in context
+    assert "[QUALITY GUARANTEES]" not in context
     assert "[RETRIEVAL STRATEGY]" in context
     assert "Nguồn dữ liệu: Past Session Transcripts, Evidence Index, AST Signatures" in context
     assert "aabbcc" in context
@@ -3448,6 +3449,13 @@ def test_learning_manager_bridge_calls():
     mock_bridge.aegis_get_learning_stats.return_value = '{"schema": "aegis-learning-stats-v1", "ledger_events": 5, "improved_skills": 1, "nudged_memories": 2, "indexed_sessions": 3, "user_models": 0}'
     mock_bridge.aegis_search_past_sessions.return_value = '{"schema": "aegis-session-search-result-v1", "query": "test", "top_k": 5, "count": 1, "results": [{"evidence_ref_hash": "aabbcc", "segment_id": 12, "tier": "ColdVectorExpansion", "score": 0.95, "epoch_hash": "eeff"}], "tier": "ColdVectorExpansion", "gate": "CandidateOnly"}'
     mock_bridge.aegis_index_session.return_value = "aabbcc"
+    mock_bridge.aegis_capture_memory.return_value = '{"schema": "aegis-memory-capture-v1", "status": "committed", "memory_id": "0x20", "owner_id": "owner-a", "scope_kind": "USER_PRIVATE", "lifecycle": "CANDIDATE", "validation": "UNREVIEWED", "content_hash": "ccdd"}'
+    mock_bridge.aegis_inspect_memory.return_value = '{"schema": "aegis-memory-record-v1", "found": true, "record": {"memory_id": "0x20", "owner_id": "owner-a", "scope_kind": "USER_PRIVATE", "lifecycle": "CANDIDATE", "validation": "UNREVIEWED", "revision": 1, "observed_at_ms": 170000000, "content_hash": "ccdd", "content": "private fact"}}'
+    mock_bridge.aegis_search_memories.return_value = '{"schema": "aegis-memory-search-result-v1", "query": "private", "top_k": 5, "count": 1, "results": [{"memory_id": "0x20", "owner_id": "owner-a", "scope_kind": "USER_PRIVATE", "lifecycle": "CANDIDATE", "validation": "UNREVIEWED", "revision": 1, "observed_at_ms": 170000000, "content_hash": "ccdd", "content": null}], "gate": "CandidateOnly"}'
+    mock_bridge.aegis_read_session_record_scoped.return_value = '{"session_id": "0x12", "content_hash": "aabbcc", "timestamp": 170000000, "scope_kind": "USER_PRIVATE", "owner_id": "owner-a", "content": "session source"}'
+    mock_bridge.aegis_select_context_items.return_value = '{"schema": "aegis-context-selection-v1", "selected_node_ids": ["0x12"], "token_count": 16, "utility_score": 10, "activation_node_count": 1, "digest": "dd", "backend": "rust-context-governor-v1"}'
+    mock_bridge.aegis_forget_memory.return_value = '{"status": "committed"}'
+    mock_bridge.aegis_validate_memory.return_value = '{"status": "committed", "validation": "ACCEPTED", "revision": 2}'
     
     mgr = LearningManager(rust_bridge=mock_bridge)
     
@@ -3469,4 +3477,55 @@ def test_learning_manager_bridge_calls():
     hash_result = mgr.index_session("0x12", "session transcript", 170000000)
     assert hash_result == "aabbcc"
     mock_bridge.aegis_index_session.assert_called_once_with(18, "session transcript", 170000000)
+
+    captured = mgr.capture_memory(0x20, "private fact", owner_id="owner-a", request_id=21, timestamp=170000001)
+    assert captured["status"] == "committed"
+    inspected = mgr.inspect_memory(0x20, owner_id="owner-a")
+    assert inspected is not None
+    assert inspected.content == "private fact"
+    assert mgr.search_memories("private", owner_id="owner-a")[0].content is None
+    source = mgr.read_session_record_scoped(0x12, owner_id="owner-a")
+    assert source is not None
+    assert source.content == "session source"
+    assert source.content_hash == "aabbcc"
+    selection = mgr.select_context_items([{"session_id": 0x12, "token_cost": 16, "score": 0.5}], 32)
+    assert selection["backend"] == "rust-context-governor-v1"
+    validated = mgr.validate_memory(
+        0x20,
+        "accepted",
+        basis="explicit user statement",
+        owner_id="owner-a",
+        expected_revision=1,
+        request_id=23,
+        timestamp=170000003,
+    )
+    assert validated["validation"] == "ACCEPTED"
+    mock_bridge.aegis_validate_memory.assert_called_once_with(
+        32,
+        "ACCEPTED",
+        "explicit user statement",
+        None,
+        1,
+        23,
+        170000003,
+        "USER_PRIVATE",
+        "owner-a",
+    )
+    mgr.forget_memory(
+        0x20,
+        owner_id="owner-a",
+        subject_id="agent-1",
+        expected_revision=1,
+        request_id=22,
+        timestamp=170000002,
+    )
+    mock_bridge.aegis_forget_memory.assert_called_once_with(
+        32,
+        22,
+        170000002,
+        "USER_PRIVATE",
+        "owner-a",
+        "agent-1",
+        1,
+    )
 

@@ -11,7 +11,7 @@ permissions:
   attestations: write
 
 env:
-  UV_VERSION: 0.12.3
+  UV_VERSION: 0.12.9
 
 jobs:
   build-and-attest:

@@ -101,6 +101,7 @@ class ProviderRouteRecord:
     throttled_provider_count: int
     provider_budget_hash: str
     route_hash: str
+    egress_denied_providers: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)

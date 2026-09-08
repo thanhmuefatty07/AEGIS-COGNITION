@@ -144,7 +144,11 @@ def _scoped_documents(root: Path, inventory: dict[str, Any]) -> tuple[dict[str, 
 
 def _markdown_files(root: Path) -> Iterable[Path]:
     for directory, dirnames, filenames in os.walk(root):
-        dirnames[:] = [name for name in dirnames if name not in SKIP_DIRS]
+        dirnames[:] = [
+            name
+            for name in dirnames
+            if name not in SKIP_DIRS and not name.startswith(".venv-")
+        ]
         for filename in filenames:
             if filename.lower().endswith(".md"):
                 yield Path(directory) / filename
