@@ -5,7 +5,7 @@ from __future__ import annotations
 import asyncio
 import inspect
 import json
-from collections.abc import Callable, Mapping
+from collections.abc import Awaitable, Callable, Mapping
 from typing import Any
 
 from .contracts import (
@@ -91,9 +91,9 @@ def task_from_runnable_input(value: Any, fallback_task: str | None = None) -> st
 
 
 def task_from_messages(messages: Any) -> str:
-    if isinstance(messages, (str, bytes)):
+    if isinstance(messages, str | bytes):
         return task_from_runnable_input(messages)
-    if not isinstance(messages, (list, tuple)) or not messages:
+    if not isinstance(messages, list | tuple) or not messages:
         raise ValueError("Agent.invoke messages input must be a non-empty list")
     last = messages[-1]
     if isinstance(last, Mapping):
@@ -115,7 +115,7 @@ def normalize_provider_budget_record(
         remaining_requests = raw.get("remaining_requests", raw.get("requests", 0))
         remaining_tokens = raw.get("remaining_tokens", raw.get("tokens", 0))
         reset_epoch_ms = raw.get("reset_epoch_ms", 0)
-    elif isinstance(raw, (tuple, list)) and len(raw) in (2, 3):
+    elif isinstance(raw, tuple | list) and len(raw) in (2, 3):
         remaining_requests = raw[0]
         remaining_tokens = raw[1]
         reset_epoch_ms = raw[2] if len(raw) == 3 else 0
@@ -183,6 +183,7 @@ async def invoke_with_provider_route(
     required_tokens: int,
     attempt_hook: Callable[[str, Mapping[str, Any]], Any] | None = None,
     attempt_context: Mapping[str, Any] | None = None,
+    egress_check: Callable[[str], bool | Awaitable[bool]] | None = None,
     **kwargs: Any,
 ) -> tuple[Any, str | None, ProviderRouteRecord, ProviderBudgetEvidence]:
     candidates = [
@@ -193,6 +194,7 @@ async def invoke_with_provider_route(
     attempted: list[str] = []
     throttled: list[str] = []
     skipped: list[str] = []
+    egress_denied: list[str] = []
     last_rate_limit: Exception | None = None
 
     base_context = dict(attempt_context or {})
@@ -202,6 +204,16 @@ async def invoke_with_provider_route(
             budget = budget_lookup.get(selected_name)
             if budget is None or not budget.admitted:
                 skipped.append(selected_name)
+                continue
+        if egress_check is not None:
+            try:
+                allowed = egress_check(selected_name)
+                if inspect.isawaitable(allowed):
+                    allowed = await allowed
+            except Exception:
+                allowed = False
+            if not allowed:
+                egress_denied.append(selected_name)
                 continue
         attempted.append(selected_name)
         attempt_payload: dict[str, Any] = {
@@ -270,6 +282,7 @@ async def invoke_with_provider_route(
             throttled_providers=tuple(throttled),
             fallback_used=index > 0,
             provider_budget_hash=budget_evidence.budget_evidence_hash,
+            egress_denied_providers=tuple(egress_denied),
         )
         return output, selected_name, route, budget_evidence
 
@@ -323,6 +336,7 @@ def provider_route_record(
     throttled_providers: tuple[str, ...],
     fallback_used: bool,
     provider_budget_hash: str,
+    egress_denied_providers: tuple[str, ...] = (),
 ) -> ProviderRouteRecord:
     downgraded_model = fallback_used
     route_hash = stable_hash(
@@ -335,6 +349,7 @@ def provider_route_record(
             "fallback_used": fallback_used,
             "downgraded_model": downgraded_model,
             "provider_budget_hash": provider_budget_hash,
+            "egress_denied_providers": egress_denied_providers,
         }
     )
     return ProviderRouteRecord(
@@ -349,6 +364,7 @@ def provider_route_record(
         throttled_provider_count=len(throttled_providers),
         provider_budget_hash=provider_budget_hash,
         route_hash=route_hash,
+        egress_denied_providers=egress_denied_providers,
     )
 
 

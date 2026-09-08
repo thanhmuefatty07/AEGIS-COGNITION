@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 import asyncio
+import json
 import re
 import time
+import uuid
 from dataclasses import asdict
 from typing import Any
 from collections.abc import Callable
@@ -16,6 +18,11 @@ from .models import RunResult
 from .observability import CorrelationContext, RuntimeTelemetry
 from .prompt import PromptBuilder
 from .rag import RAGManager
+
+try:
+    from core.python.aegis.conversations import ConversationManager
+except ImportError:
+    from aegis.conversations import ConversationManager  # type: ignore[import-not-found]
 
 
 class AgentApplication:
@@ -44,13 +51,40 @@ class AgentApplication:
     def _retrieve_context(self, task: str) -> str:
         options = self.config.options
         raw_top_k = options.get("top_k", 3)
-        if type(raw_top_k) is not int or raw_top_k < 1:
+        if isinstance(raw_top_k, bool) or not isinstance(raw_top_k, int) or raw_top_k < 1:
             raise ValueError("context retrieval top_k must be a positive integer")
         rag_manager = RAGManager(
             top_k=raw_top_k,
             learning_manager=build_learning_manager(),
         )
-        return rag_manager.retrieve_and_format(task)
+        if bool(options.get("hydrate_context", False)):
+            raw_budget = options.get("context_token_budget", 2048)
+            if isinstance(raw_budget, bool) or not isinstance(raw_budget, int) or raw_budget < 1:
+                raise ValueError("context_token_budget must be a positive integer")
+            raw_mandatory = options.get("mandatory_session_ids", ())
+            if not isinstance(raw_mandatory, list | tuple):
+                raise ValueError("mandatory_session_ids must be a list or tuple")
+            compiled = rag_manager.compile_context(
+                task,
+                scope_kind=str(options.get("memory_scope", "USER_PRIVATE")),
+                owner_id=options.get("memory_owner_id"),
+                token_budget=raw_budget,
+                mandatory_session_ids=tuple(int(value) for value in raw_mandatory),
+            )
+            if compiled.status == "compiled":
+                self.telemetry.emit("memory", "context_hydrated", correlation=self.correlation)
+            return compiled.rendered
+        candidates = rag_manager.retrieve_candidates(task)
+        if rag_manager.retrieval_error is not None:
+            self.telemetry.emit("memory", "retrieval_degraded", correlation=self.correlation)
+        if candidates:
+            # The current learning bridge exposes candidate references only.
+            # Do not append hashes/segments to the user task and present them
+            # to a model as if they were hydrated evidence.  Milestone 5 will
+            # replace this observation with the authorized hydration/compiler
+            # pipeline.
+            self.telemetry.emit("memory", "candidate_retrieval_only", correlation=self.correlation)
+        return ""
 
     def _build_system_context(self, task: str) -> str:
         options = self.config.options
@@ -98,11 +132,146 @@ class AgentApplication:
             **gateway_kwargs,
         )
 
+    def _begin_conversation(self, task: str) -> dict[str, Any] | None:
+        """Create the canonical user/assistant execution envelope when opted in."""
+
+        options = self.config.options
+        conversation_id = options.get("conversation_id")
+        if conversation_id is None:
+            return None
+        if not isinstance(conversation_id, str) or not conversation_id.strip():
+            raise ValueError("conversation_id must be a non-empty string")
+        owner_id = options.get("conversation_owner_id", "local-profile")
+        if not isinstance(owner_id, str) or not owner_id.strip():
+            raise ValueError("conversation_owner_id must be a non-empty string")
+        manager = ConversationManager()
+        connection_id = options.get("conversation_connection_id")
+        model_id = options.get("conversation_model_id")
+        try:
+            snapshot = manager.read(conversation_id, owner_id=owner_id)
+        except Exception as error:
+            if "conversation not found" not in str(error).lower():
+                raise
+            if not isinstance(connection_id, str) or not connection_id.strip():
+                raise ValueError("conversation_connection_id is required for a new conversation")
+            if not isinstance(model_id, str) or not model_id.strip():
+                raise ValueError("conversation_model_id is required for a new conversation")
+            title = options.get("conversation_title", task[:120] or "Conversation")
+            if not isinstance(title, str) or not title.strip():
+                raise ValueError("conversation_title must be a non-empty string")
+            record = manager.create(
+                conversation_id,
+                owner_id=owner_id,
+                title=title,
+                connection_id=connection_id,
+                model_id=model_id,
+            )
+            revision = record.revision
+        else:
+            record = snapshot.conversation
+            if record.status != "ACTIVE":
+                raise RuntimeError("conversation is not active")
+            if any(
+                turn.status in {"QUEUED", "RUNNING", "WAITING_APPROVAL"}
+                for turn in snapshot.turns
+            ) or any(call.status in {"REQUESTED", "AMBIGUOUS"} for call in snapshot.tool_calls):
+                raise RuntimeError("conversation has unresolved execution state")
+            connection_id = record.connection_id if connection_id is None else connection_id
+            model_id = record.model_id if model_id is None else model_id
+            if (connection_id, model_id) != (record.connection_id, record.model_id):
+                raise RuntimeError("conversation selection must be changed at a safe switch boundary")
+            revision = record.revision
+        assert isinstance(connection_id, str)
+        assert isinstance(model_id, str)
+        user_turn_id = f"turn-{uuid.uuid4().hex}"
+        user_turn = manager.append_turn(
+            conversation_id,
+            owner_id=owner_id,
+            turn_id=user_turn_id,
+            role="user",
+            content=task,
+            connection_id=connection_id,
+            model_id=model_id,
+            status="COMPLETED",
+            expected_revision=revision,
+        )
+        assistant_turn_id = f"turn-{uuid.uuid4().hex}"
+        assistant_turn = manager.append_turn(
+            conversation_id,
+            owner_id=owner_id,
+            turn_id=assistant_turn_id,
+            role="assistant",
+            content="",
+            connection_id=connection_id,
+            model_id=model_id,
+            status="QUEUED",
+            expected_revision=user_turn.revision,
+        )
+        raw_provider_kind = options.get("conversation_provider_kind", options.get("provider"))
+        provider_kind = raw_provider_kind if isinstance(raw_provider_kind, str) else "unknown"
+        execution = manager.start_execution(
+            conversation_id,
+            owner_id=owner_id,
+            execution_id=f"exec-{uuid.uuid4().hex}",
+            turn_id=assistant_turn.turn_id,
+            provider_kind=provider_kind,
+            connection_id=connection_id,
+            model_id=model_id,
+            expected_revision=assistant_turn.revision,
+        )
+        return {
+            "manager": manager,
+            "conversation_id": conversation_id,
+            "owner_id": owner_id,
+            "turn_id": assistant_turn.turn_id,
+            "execution_id": execution.execution_id,
+            "revision": execution.revision,
+        }
+
+    @staticmethod
+    def _conversation_output(output: Any) -> str:
+        if isinstance(output, str):
+            return output
+        return json.dumps(output, ensure_ascii=False, sort_keys=True, default=str)
+
+    def _finish_conversation(
+        self,
+        run: dict[str, Any] | None,
+        *,
+        output: Any = None,
+        status: str,
+    ) -> None:
+        if run is None:
+            return
+        manager = run["manager"]
+        revision = int(run["revision"])
+        if status == "COMPLETED":
+            content = self._conversation_output(output)
+            if content:
+                turn = manager.append_part(
+                    run["conversation_id"],
+                    owner_id=run["owner_id"],
+                    turn_id=run["turn_id"],
+                    kind="TEXT",
+                    content=content,
+                    expected_revision=revision,
+                )
+                revision = turn.revision
+        manager.finish_execution(
+            run["conversation_id"],
+            owner_id=run["owner_id"],
+            execution_id=run["execution_id"],
+            status=status,
+            expected_revision=revision,
+        )
+
     async def arun(self) -> RunResult:
         started = time.perf_counter()
         with self.telemetry.bind(self.correlation):
             self.telemetry.emit("agent", "run_started", correlation=self.correlation)
+            conversation_run: dict[str, Any] | None = None
             try:
+                conversation_run = self._begin_conversation(self.config.task)
                 if self._lab_enabled():
                     # Lab owns compatibility retrieval as an admitted
                     # read-only execution cell. Prompt construction is pure
@@ -132,6 +301,7 @@ class AgentApplication:
                         post_completion_effect=persist_lab_result,
                     ).run()
                     self.telemetry.emit("lab", "dossier_committed", correlation=self.correlation)
+                    self._finish_conversation(conversation_run, output=lab_result.output, status="COMPLETED")
                     self.telemetry.emit("agent", "run_completed", correlation=self.correlation)
                     return RunResult(
                         task=self.config.task,
@@ -148,6 +318,7 @@ class AgentApplication:
                     formatted_task,
                     system_context=system_context,
                 )
+                self._finish_conversation(conversation_run, output=result.output, status="COMPLETED")
                 self.telemetry.emit("evidence", "commit_completed", correlation=self.correlation)
                 self._index_completed_run(self.config.task, result.output, result)
                 self.telemetry.emit("agent", "run_completed", correlation=self.correlation)
@@ -159,7 +330,14 @@ class AgentApplication:
                     hot_commit=result.hot_commit,
                     correlation=result.correlation or self.correlation.as_mapping(),
                 )
+            except asyncio.CancelledError:
+                if conversation_run is not None:
+                    self._finish_conversation(conversation_run, status="INTERRUPTED")
+                self.telemetry.emit("agent", "run_interrupted", correlation=self.correlation)
+                raise
             except Exception:
+                if conversation_run is not None:
+                    self._finish_conversation(conversation_run, status="FAILED")
                 self.telemetry.emit("agent", "run_failed", correlation=self.correlation)
                 raise
             finally:
@@ -199,7 +377,7 @@ class AgentApplication:
             # digests.  Bind the first 64 digest bits explicitly instead of
             # passing the full digest through its decimal-string parser.
             artifact_hash = result.hot_commit.artifact_hash
-            if type(artifact_hash) is not str or not re.fullmatch(r"[0-9a-f]{64}", artifact_hash):
+            if not isinstance(artifact_hash, str) or not re.fullmatch(r"[0-9a-f]{64}", artifact_hash):
                 raise ValueError("completed result artifact hash must be a canonical digest")
             manager = build_learning_manager()
             session_id = int(artifact_hash[:16], 16)

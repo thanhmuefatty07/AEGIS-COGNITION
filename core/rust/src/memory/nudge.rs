@@ -140,9 +140,8 @@ impl MemoryNudge {
 
 // ── MemoryNudgeSystem ────────────────────────────────────────────────────
 
-/// Background subsystem that periodically scans recent sessions,
-/// extracts candidate facts, validates them through the Physical
-/// Watchdog, and commits survivors to CogniFold.
+/// Background subsystem that periodically scans recent sessions and extracts
+/// candidate facts. Candidates require a separate explicit commit step.
 ///
 /// Every state-mutating action is logged into the `LearningLedger`.
 pub struct MemoryNudgeSystem {
@@ -157,9 +156,8 @@ impl MemoryNudgeSystem {
     }
 
     /// Filter raw candidates by relevance score, build a
-    /// cryptographically-sealed `MemoryNudge`, and record it in the
-    /// learning ledger.  Does NOT commit to CogniFold — that is a
-    /// separate, explicit step (`commit_nudged_memories`).
+    /// cryptographically-sealed `MemoryNudge`, and record candidate creation
+    /// in the learning ledger. This does not claim persistence.
     pub fn periodic_nudge(
         &self,
         nudge_id: u128,
@@ -188,10 +186,11 @@ impl MemoryNudgeSystem {
         let nudge = MemoryNudge::new(nudge_id, session_id, high_relevance, timestamp)
             .ok_or(MemoryError::InvalidCandidate)?;
 
-        // Append to the learning audit trail
+        // Append a candidate-only event. Durable memory is recorded only after
+        // `commit_nudged_memories` succeeds for an individual candidate.
         learning_ledger.append(
-            LearningEventType::MemoryPersisted {
-                memory_hash: nudge.nudge_hash,
+            LearningEventType::MemoryCandidateCreated {
+                candidate_hash: nudge.nudge_hash,
             },
             None,
             timestamp,
@@ -201,16 +200,37 @@ impl MemoryNudgeSystem {
         Ok(nudge)
     }
 
-    /// Commit each candidate in the nudge to CogniFold, after PAV
-    /// validation.  Candidates that fail PAV are silently skipped
-    /// (they do not crash the pipeline).
-    ///
-    /// Returns the count of successfully committed candidates.
+    /// Compatibility commit entrypoint for callers that predate the learning
+    /// ledger binding. New authoritative callers must use
+    /// `commit_nudged_memories_with_ledger` so successful commits are auditable.
+    #[deprecated(note = "use commit_nudged_memories_with_ledger for authoritative commits")]
     pub fn commit_nudged_memories(
         &self,
         nudge: &MemoryNudge,
         cognifold: &mut CogniFoldStore,
         watchdog: &PhysicalWatchdog,
+    ) -> Result<usize, MemoryError> {
+        let mut compatibility_ledger = LearningLedger::new();
+        self.commit_nudged_memories_with_ledger(
+            nudge,
+            cognifold,
+            watchdog,
+            &mut compatibility_ledger,
+        )
+    }
+
+    /// Commit each candidate in the nudge to CogniFold, after PAV validation.
+    /// Candidates that fail validation are skipped and do not emit a commit
+    /// event. The ledger is updated only after the corresponding commit has
+    /// succeeded.
+    ///
+    /// Returns the count of successfully committed candidates.
+    pub fn commit_nudged_memories_with_ledger(
+        &self,
+        nudge: &MemoryNudge,
+        cognifold: &mut CogniFoldStore,
+        watchdog: &PhysicalWatchdog,
+        learning_ledger: &mut LearningLedger,
     ) -> Result<usize, MemoryError> {
         if !nudge.is_valid() {
             return Err(MemoryError::InvalidCandidate);
@@ -237,7 +257,17 @@ impl MemoryNudgeSystem {
 
             // Commit to CogniFold
             match cognifold.commit_to_cognifold(nudge.session_id, &artifact, watchdog) {
-                Ok(_) => committed += 1,
+                Ok(_) => {
+                    learning_ledger.append(
+                        LearningEventType::MemoryCommitted {
+                            memory_hash: candidate.content_hash,
+                        },
+                        None,
+                        now_millis(),
+                        nudge.session_id,
+                    );
+                    committed += 1;
+                }
                 Err(BacktrackSignal::HardBacktrack(_)) => continue,
             }
         }

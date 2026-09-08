@@ -17,10 +17,13 @@ Setup flow (< 2 minutes):
 
 from __future__ import annotations
 
+import json
 import sys
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from pathlib import Path
 from typing import Protocol, cast
+
+from .config import load_config
 
 
 class _Msvcrt(Protocol):
@@ -98,21 +101,37 @@ def _cmd_init() -> None:
     print("    3. OpenRouter")
     print("    4. Nvidia NIM")
     print("    5. Ollama (local)")
+    print("    6. ChatGPT Web (local browser bridge)")
     print()
 
-    choice = _prompt("  Provider [1-5]", "1")
-    provider_map = {"1": "openai", "2": "anthropic", "3": "openrouter", "4": "nvidia", "5": "ollama"}
+    choice = _prompt("  Provider [1-6]", "1")
+    provider_map = {
+        "1": "openai",
+        "2": "anthropic",
+        "3": "openrouter",
+        "4": "nvidia",
+        "5": "ollama",
+        "6": "chatgpt-web",
+    }
     provider = provider_map.get(choice, "openai")
     print(f"  Selected: {provider}")
     print()
 
-    # Step 2: API key
-    api_key = _prompt_secret(f"  [2/3] Enter your {provider} API key")
-    if not api_key:
-        print()
-        print("  Skipping API key — you can set it later with:")
-        print("    export OPENAI_API_KEY='sk-...'")
-        print()
+    # Step 2: API key or local bridge settings
+    api_key = ""
+    base_url = ""
+    model = ""
+    if provider == "chatgpt-web":
+        base_url = _prompt("  [2/3] Local bridge URL", "http://127.0.0.1:17841/v1")
+        model = _prompt("  ChatGPT Web model", "chatgpt-web/high")
+        print("  No API key is stored; sign in through the bridge's own browser window.")
+    else:
+        api_key = _prompt_secret(f"  [2/3] Enter your {provider} API key")
+        if not api_key:
+            print()
+            print("  Skipping API key — you can set it later with:")
+            print("    export OPENAI_API_KEY='sk-...'")
+            print()
 
     # Step 3: Trust level
     print("  [3/3] Choose trust level:")
@@ -128,16 +147,23 @@ def _cmd_init() -> None:
     print()
 
     # Write config
-    config_content = f"""[llm]
-provider = "{provider}"
-api_key = "{api_key}"
-
-[trust]
-level = "{trust_level}"
-
-[browser]
-enabled = true
-"""
+    llm_lines = ["[llm]", f"provider = {json.dumps(provider)}"]
+    if provider == "chatgpt-web":
+        llm_lines.extend([f"base_url = {json.dumps(base_url)}", f"model = {json.dumps(model)}"])
+    else:
+        llm_lines.append(f"api_key = {json.dumps(api_key)}")
+    config_content = "\n".join(
+        [
+            *llm_lines,
+            "",
+            "[trust]",
+            f"level = {json.dumps(trust_level)}",
+            "",
+            "[browser]",
+            "enabled = true",
+            "",
+        ]
+    )
 
     config_path = config_dir / "config.toml"
     config_path.write_text(config_content)
@@ -176,13 +202,30 @@ def _cmd_run(args: list[str]) -> None:
     try:
         from aegis_cognition import Agent
 
-        agent = Agent(task=task)
+        config = load_config(config_path)
+        llm = _build_llm_from_config(config)
+        agent = Agent(task=task, llm=llm)
         result = agent.run()
         print(f"  {result.output}")
         print()
     except Exception as e:
         print(f"  Error: {e}")
         print()
+
+
+def _build_llm_from_config(config: dict[str, object]) -> object | None:
+    """Build only the explicitly selected local provider; leave other providers unchanged."""
+
+    raw_llm = config.get("llm")
+    if not isinstance(raw_llm, Mapping):
+        return None
+    typed_llm = cast(Mapping[str, object], raw_llm)
+    provider = typed_llm.get("provider")
+    if not isinstance(provider, str) or provider.strip().lower() != "chatgpt-web":
+        return None
+    from core.python.chatgpt_web_client import ChatGPTWebClient
+
+    return ChatGPTWebClient.from_mapping(typed_llm)
 
 
 def _cmd_examples() -> None:

@@ -82,3 +82,11 @@ def test_broken_markdown_link_is_rejected(tmp_path: Path) -> None:
     source.write_text("[missing](missing.md)\n", encoding="utf-8")
     assert gate._link_errors(tmp_path) == ["broken link: broken.md -> missing.md"]
 
+
+def test_ephemeral_uv_environment_markdown_is_ignored(tmp_path: Path) -> None:
+    package_docs = tmp_path / ".venv-3.14.7" / "Lib" / "site-packages"
+    package_docs.mkdir(parents=True)
+    (package_docs / "third_party.md").write_text(
+        "[package-local](missing-package-doc.md)\n", encoding="utf-8"
+    )
+    assert gate._link_errors(tmp_path) == []
