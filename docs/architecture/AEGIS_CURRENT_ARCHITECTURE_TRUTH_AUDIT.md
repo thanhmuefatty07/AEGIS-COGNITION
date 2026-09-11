@@ -8,13 +8,15 @@
 
 **Branch:** `codex/aegis-ci-evidence-gates`
 
-**HEAD:** `0dd51ed7a130744a6f7dcd440592026571f7ea52`
+**Parent HEAD at dossier capture:** `f51cedc6089ddd66e454d4a00b3eb4ac1be99b80`
 
-**Upstream at snapshot:** `origin/codex/aegis-ci-evidence-gates` cùng SHA; ahead `0`, behind `0`
+**Upstream at dossier capture:** `origin/codex/aegis-ci-evidence-gates` cùng SHA; ahead `0`, behind `0`
 
-**Committed snapshot baseline:** worktree clean at the recorded HEAD
+**Committed snapshot baseline:** worktree clean at the recorded parent HEAD
 
-**Current working tree (2026-09-11):** runtime, desktop, source-watcher, version-alignment and verification changes are uncommitted; no commit or push was performed. The exact delta is recorded in Section 33.
+**Dossier capture (2026-09-11):** the six-path native FFI/profile-map change set was
+reviewed in a dirty worktree; no commit or push was performed at capture. Local
+artifacts record the dirty-worktree fingerprint; the exact delta is in Section 33.
 
 **Declared project version:** `0.1.0`
 
@@ -64,21 +66,25 @@ AESE đã hoàn tất mốc local shadow theo hướng fail-closed: inventory, c
 Local quality evidence gần nhất:
 
 - AESE registry/drift checks: the current registry-dependent group passes
-  `62 passed` after canonical artifact regeneration;
+  `61 passed` after the profile-map registry regeneration;
 - post-admission AESE repair: exact five registry-drift regressions pass in
   `120.58s`; inventory and claim-graph `--check` both pass after regeneration;
-  ledgers `artifacts/verification/aese-drift-regression-20260910-r8.log`,
+  checkout-bound evidence is
+  `artifacts/suites/aese-drift-after-profile-map-20260911-r4.json`; the older
+  repair ledgers remain historical:
+  `artifacts/verification/aese-drift-regression-20260910-r8.log`,
   `artifacts/verification/aese-inventory-check-r9-20260910.log`, and
   `artifacts/verification/aese-claim-graph-check-r9-20260910.log`;
 - pre-admission full Python baseline: `641 passed, 1 skipped` in `646.68s`, exit
   code 0 under CPython 3.14.7 on Windows with a fixed external pytest base
   directory; ledger `artifacts/verification/full-python-suite-20260910-r9.txt`
   and metadata `artifacts/verification/full-python-suite-20260910-r9.meta.json`;
-- current Rust no-default-features library after the licensing and Lab borrow
-  fixes: `544 passed, 0 failed, 0 ignored` in `126.51s`; evidence is bound to
-  `artifacts/verification/rust-full-no-default-after-lab-borrow-fix-20260911-r1.meta.json`.
-  This is local Windows evidence and does not close hosted, cross-platform or
-  external environment gates;
+- current Rust library: `544 passed, 0 failed, 0 ignored` in the serial direct
+  run; the recorded local artifact is
+  `artifacts/verification/rust-library-resolved-state-path-final-20260911-r1.meta.json`. This is local
+  Windows evidence and does not close hosted, cross-platform or external
+  environment gates. A separate `uv` wrapper attempt failed before test start
+  with `STATUS_DLL_NOT_FOUND` and is not counted as a test result;
 - post-admission full Python attempt: `656 passed, 5 failed, 1 skipped` in
   `1500.79s`, exit code 1; all five failures were AESE generated-registry drift
   and the exact five drift tests pass after regeneration. Ledger
@@ -90,6 +96,11 @@ Local quality evidence gần nhất:
   metadata `artifacts/verification/full-python-suite-20260911-r4.meta.json`.
   This is local Windows/CPython 3.14.7 evidence; it does not close hosted or
   production gates.
+- latest full Python profile-map attempt: `700 passed, 13 failed, 1 skipped`,
+  exit code `1`, at
+  `artifacts/suites/python-full-profile-map-current-20260911-r1.json`.
+  The retained `708/1` result predates this attempt and is not treated as the
+  latest full-suite verdict; a post-AESE-regeneration full rerun is still open.
 - current project-scope Python quality gate: Ruff and strict Pyright both pass
   for `aegis_cognition`, `core/python`, `scripts` and `tests`; the focused
   regression after the export typing compatibility fix and package formatting
@@ -99,10 +110,10 @@ Local quality evidence gần nhất:
   A raw repository-wide Ruff scan still reports 321 findings in auxiliary
   directories/POCs; that scan is retained as `NOT VERIFIED` and is not used to
   claim project-scope quality failure.
-- current Rust `python-extension` feature library, run serially to avoid the
-  earlier resource-sensitive termination: `543 passed, 0 failed, 0 ignored` in
-  `127.53s`. Evidence:
-  `artifacts/verification/rust-python-extension-serial-20260911-r1.meta.json`.
+ - current Rust `python-extension` feature library: `545 passed, 0 failed,
+  0 ignored` in the final-source serial feature run. The recorded local evidence is
+  `artifacts/verification/rust-python-extension-resolved-state-path-final-20260911-r1.meta.json`. This is
+  local Windows evidence only; hosted and cross-platform parity remain open.
 - current Rust workspace compile across core, plugins and POCs with all targets:
   `cargo check --workspace --all-targets` passes in `129s`. Evidence:
   `artifacts/verification/rust-workspace-check-20260911-r1.meta.json`.
@@ -128,15 +139,16 @@ Local quality evidence gần nhất:
   machine had roughly `0.82 GB` free of `4 GB` physical memory at inspection.
 - Rust lint/placement continuation: strict Clippy passes in no-default library
   mode and in the `python-extension` library mode; `cargo fmt --check` also
-  passes. Evidence is bound to
-  `artifacts/verification/rust-clippy-no-default-20260911-r9.meta.json` and
-  `artifacts/verification/rust-clippy-python-extension-20260911-r8.meta.json`.
+  passes. The final profile-repository-cache feature run is bound to
+  `artifacts/verification/rust-clippy-resolved-state-path-20260911-r1.meta.json`;
+  the no-default current-source lane remains recorded at
+  `artifacts/verification/rust-clippy-no-default-20260911-r9.meta.json`.
 - Native GT96 target-evolution continuation: `2/2` focused tests pass. Bound
   targets preserve kind/stable identity/owner and may only narrow roots,
   network or external effects; revision changes remain allowed, and legacy
   unbound targets retain their binding compatibility. Evidence:
   `artifacts/verification/gt96-target-evolution-20260911-r1.meta.json`.
-- Native Lab execution-cell manifest continuation: `19/19` native-focused
+- Native Lab execution-cell manifest continuation: `20/20` native-focused
   tests pass, including matching, mismatched and missing prior manifest
   regressions. Evidence:
   `artifacts/verification/native-lab-binding-focused-20260911-r6.meta.json`.
@@ -148,12 +160,16 @@ Local quality evidence gần nhất:
   canonical full-slice run below.
 - Canonical desktop-first integration across all four current contract groups:
   `462 passed, 0 failed` in `25.48s` under `uv run --locked`; this order keeps
-  the process-global native learning profile isolated before Lab-heavy tests.
+  the desktop profile setup deterministic; the reversed Lab-first order is also
+  covered separately below.
   Evidence: `artifacts/verification/uv-native-contracts-canonical-order-20260911-r1.meta.json`.
-- The reversed explicit order (Lab → Goal → runtime → desktop) is retained as
-  `NOT VERIFIED`: it reached `461` passes then failed at the desktop local
-  provider test with `MEMORY_PERSISTENCE_FAILED`, exposing the expected
-  process-global profile coupling rather than a provider response failure.
+ - The reversed explicit order (Lab → Goal → runtime → desktop) now passes
+  `462/462` against the current profile-keyed native repositories after state-path
+  normalization. Evidence is bound to
+  `artifacts/verification/uv-native-contracts-lab-first-resolved-state-path-final-20260911-r1.meta.json`.
+  The current native binding policy uses per-(resolved state path, profile)
+  registries, permits explicitly isolated paths in one process, and fails closed
+  when one state path is reused by another profile.
 - architecture fitness: `23/23`;
 - constitution audit: `180/180`.
 - focused authority boundary slice: `10/10` (process interruption, replay
@@ -551,7 +567,7 @@ workflow đến khi owner sửa Actions billing/permission/service condition.
 
 | Verification | Kết quả | Scope/giới hạn |
 |---|---:|---|
-| AESE registry/drift checks | `62 passed` after current-source registry regeneration | local Windows; shadow-only; selection authority remains disabled |
+| AESE registry/drift checks | `61 passed; PROVEN local` | Current registry-dependent group at `artifacts/suites/aese-drift-after-profile-map-20260911-r4.json`; local Windows, shadow-only, selection authority remains disabled |
 | Focused Goal/Target–Lab contract slice | `25 passed (historical slice)` | superseded by the current `29` Goal/Target tests and the full Python r4 run; CPython 3.14.7 |
 | Current Lab runtime regression | `355 passed (historical pre-R6)` | CPython 3.14.7; `tests/test_lab_runtime.py`, including exact-key external-effect lease regression and cross-process contention |
 | Current Python Lab regression | `363 passed; PASS_LOCAL` | CPython 3.14.7; current Lab lifecycle, execution-cell manifest/resource-policy binding, recovery and process-cell tests; `artifacts/verification/python-lab-runtime-isolated-20260911-r1.meta.json` |
@@ -559,12 +575,14 @@ workflow đến khi owner sửa Actions billing/permission/service condition.
 | Current Goal/Target contract regression | `29 passed (historical pre-R6)` | CPython 3.14.7; `tests/test_goal_contract.py`; target evolution, semantic descendant read/write-root narrowing, network host, and external-effect lease boundaries, including URI dot-segment and encoded-separator rejection |
 | Current Python GoalContract focused gate | `56 passed; PASS_LOCAL` | CPython 3.14.7; current target binding/evolution, scope narrowing, execution-cell and external-effect contract tests; current uv-locked source collection and canonical integration evidence |
 | Current Python native contract integration | `462 passed; PASS_LOCAL` | Desktop-first order across desktop protocol, GoalContract, Lab runtime and runtime coordination; `uv run --locked`, `25.48s`; `artifacts/verification/uv-native-contracts-canonical-order-20260911-r1.meta.json` |
-| Reversed Lab-first native contract integration | `NOT VERIFIED` | `461` tests passed before `MEMORY_PERSISTENCE_FAILED` at the desktop local-provider test; process-global native profile coupling is retained as a diagnostic limitation, not a pass claim |
+| Current Goal/Target–Lab suite evidence | `419 passed; PROVEN local` | Checkout-bound result at `artifacts/suites/goal-target-lab-contract-current-20260911-r8.json`; CPython 3.14.7, exit code 0, with the dirty-worktree fingerprint recorded at test time. |
+ | Reversed Lab-first native contract integration | `462 passed; PROVEN local` | Lab → Goal → runtime → desktop against the current profile-keyed native repositories after state-path normalization; `artifacts/verification/uv-native-contracts-lab-first-resolved-state-path-final-20260911-r1.meta.json`; same-path/different-profile reuse remains fail-closed. |
 | Current Goal/Target + Lab runtime regression | `384 scoped tests (historical pre-R6)` | CPython 3.14.7; `tests/test_goal_contract.py` (`29 passed`) + `tests/test_lab_runtime.py` (`355 passed`) |
 | Combined contract/release/runtime/Lab regression | `390 passed (historical pre-R6)` | superseded as current-source evidence by the R6 focused regression; CPython 3.14.7 |
 | Pre-admission full Python suite (including AESE) | `641 passed, 1 skipped; PASS_LOCAL baseline` | CPython 3.14.7 Windows, fixed external pytest base directory, `646.68s`, exit code 0; ledger `artifacts/verification/full-python-suite-20260910-r9.txt` and metadata `artifacts/verification/full-python-suite-20260910-r9.meta.json`; this predates cooperative admission |
 | Post-admission full Python attempt | `656 passed, 5 failed, 1 skipped; NOT PASS` | `1500.79s`, exit code 1; all five failures were generated AESE registry drift, then the exact five drift tests passed after registry regeneration; ledger `artifacts/verification/full-python-suite-20260910-r10.txt` and focused repair `artifacts/verification/aese-drift-regression-20260910-r8.log` |
 | Current-source full Python suite | `708 passed, 1 skipped; PASS_LOCAL` | `510.02s`, exit code 0 after package formatting and current-source registry reconciliation; `artifacts/verification/full-python-suite-20260911-r4.txt` + `.meta.json`; local Windows/CPython 3.14.7 |
+| Latest full Python profile-map attempt | `700 passed, 13 failed, 1 skipped; NOT PASS` | Checkout-bound artifact `artifacts/suites/python-full-profile-map-current-20260911-r1.json`; the older `708/1` run is retained as a prior baseline, and a post-AESE-regeneration full rerun is not yet verified |
 | Current project-scope Python quality | `Ruff lint PASS; Ruff format PASS; Pyright PASS; 455 regression tests PASS_LOCAL` | Ruff scope `aegis_cognition core/python scripts tests`; strict Pyright package scope; artifacts `artifacts/verification/python-quality-project-scope-20260911-r3.meta.json` and `artifacts/verification/python-quality-regression-20260911-r2.meta.json`; repository-wide auxiliary Ruff scan remains `NOT VERIFIED` with 321 findings |
 | R6 focused Python regression | `34/34 PASS_LOCAL` | `tests/test_goal_contract.py` + `tests/test_lab_runtime.py` filtered for tool execution, external effects, controller action plans, provider attempts, execution cells and managed-internal memory effects; ledger `artifacts/verification/native-managed-internal-regression-20260910.log` |
 | Cooperative admission Python contract | `18 passed; PASS_LOCAL` | Native-unavailable fail-closed envelope, lease-required admission, exact release forwarding and malformed native response rejection; ledger `artifacts/verification/cooperative-admission-python-contract-20260910-r1.log` |
@@ -576,14 +594,14 @@ workflow đến khi owner sửa Actions billing/permission/service condition.
 | Current focused Rust Lab binding/manifest gate | `20 passed; PASS_LOCAL` | Rust 1.98.1; current execution-cell manifest binding, lineage, target-binding, evidence and external-effect-key tests; `artifacts/verification/native-lab-binding-focused-20260911-r6.meta.json` |
 | Rust no-default-features lib | `526 passed; PASS_LOCAL` | Rust 1.98.1; current-source run in one build worker, `126.67s`; ledger `artifacts/verification/full-rust-lib-20260910-r7.log`; local Windows evidence only |
 | Rust `python-extension` feature lib | `528 passed; PASS_LOCAL` | Rust 1.98.1, one build worker, `98.04s`; ledger `artifacts/verification/rust-python-extension-lib-20260910-r8.log`; local feature coverage only |
-| Current Rust no-default library | `544 passed, 0 failed; PASS_LOCAL` | Latest source snapshot after licensing and Lab borrow fixes; `126.51s`; `artifacts/verification/rust-full-no-default-after-lab-borrow-fix-20260911-r1.meta.json`. Local Windows evidence only. |
-| Current Rust `python-extension` library | `543 passed, 0 failed; PASS_LOCAL` | Latest source snapshot, serial test execution; `127.53s`; `artifacts/verification/rust-python-extension-serial-20260911-r1.meta.json` |
+ | Current Rust no-default library | `544 passed, 0 failed; PROVEN local` | Serial direct run after state-path normalization at `artifacts/verification/rust-library-resolved-state-path-final-20260911-r1.meta.json`; local Windows evidence only. |
+  | Current Rust `python-extension` library | `545 passed, 0 failed; PROVEN local` | Serial final-source run after state-path normalization at `artifacts/verification/rust-python-extension-resolved-state-path-final-20260911-r1.meta.json`; local Windows evidence only. |
 | Rust all-feature library/integration gate | `541 + 2 passed; PASS_LOCAL` | `--all-features --lib --tests`; isolated target `target/rust-all-current-20260911`; `artifacts/verification/rust-lib-integration-all-features-20260911-r1.meta.json` |
 | Rust all-feature benchmark compilation | `PASS_LOCAL` | All benchmark targets compile with `cargo bench --all-features --no-run`; `artifacts/verification/rust-bench-all-features-no-run-20260911-r1.meta.json` |
 | Current extension affected Python slice | `450 passed; PASS_LOCAL` | GoalContract + Lab runtime + runtime coordination against the editable extension rebuilt with project `.venv`; `artifacts/verification/python-current-extension-goal-lab-20260911-r3.meta.json` |
-| Current editable extension rebuild | `PASS_LOCAL / EXACT DEV PIN` | Built from current Rust source with `.venv` Maturin `1.14.1`; release provenance and hosted parity remain unverified; `artifacts/verification/maturin-develop-current-20260911-r4.meta.json` |
+ | Current editable extension rebuild | `PASS_LOCAL / EXACT DEV PIN` | Built from the current Rust source with `.venv` Maturin `1.14.1`, followed by native import smoke; release provenance and hosted parity remain unverified; `artifacts/verification/maturin-develop-resolved-state-path-20260911-r1.meta.json` |
 | Rust strict Clippy (no-default) | `PASS_LOCAL` | `-D warnings`; `artifacts/verification/rust-clippy-no-default-20260911-r9.meta.json` (the same current-source lane also passed `cargo fmt --check`) |
-| Rust strict Clippy (`python-extension`) | `PASS_LOCAL` | `-D warnings`; `artifacts/verification/rust-clippy-python-extension-20260911-r8.meta.json` |
+  | Rust strict Clippy (`python-extension`) | `PASS_LOCAL` | Final-source `-D warnings` run after state-path normalization at `artifacts/verification/rust-clippy-resolved-state-path-20260911-r1.meta.json`; `cargo fmt --check` and feature build/check also pass locally. |
 | Cooperative placement/runtime focused Rust tests | `22 passed; PASS_LOCAL` | `--lib cooperative_`; `artifacts/verification/rust-cooperative-placement-runtime-20260911-r1.meta.json` |
 | Native GT96 target-evolution focused tests | `2 passed; PASS_LOCAL` | Bound identity/authority narrowing and legacy-unbound compatibility; `artifacts/verification/gt96-target-evolution-20260911-r1.meta.json` |
 | Native Lab binding/manifest focused tests | `20 passed; PASS_LOCAL` | Execution-cell manifest must exist before binding and match its digest; `artifacts/verification/native-lab-binding-focused-20260911-r6.meta.json` |

@@ -8,10 +8,11 @@ use crate::memory::session_search::SessionSearchIndex;
 use parking_lot::Mutex;
 use pyo3::prelude::*;
 use pyo3::types::PyModule;
+use std::collections::HashMap;
 use std::fs::{File, OpenOptions};
 use std::panic::{AssertUnwindSafe, catch_unwind};
 use std::path::{Path, PathBuf};
-use std::sync::OnceLock;
+use std::sync::{Arc, OnceLock};
 
 mod compat;
 mod connections;
@@ -91,14 +92,25 @@ pub use status::{
     aegis_validate_schema, aegis_zero_copy_ready,
 };
 
-static SESSION_INDEX: OnceLock<Result<Mutex<SessionSearchIndex>, String>> = OnceLock::new();
-static SESSION_LEDGER: OnceLock<Mutex<LearningLedger>> = OnceLock::new();
-static PROFILE_LOCK: OnceLock<Result<File, String>> = OnceLock::new();
-static MEMORY_REPOSITORY: OnceLock<Result<Mutex<MemoryRepository>, String>> = OnceLock::new();
-static CONNECTION_REPOSITORY: OnceLock<Result<Mutex<ConnectionRepository>, String>> =
+type ProfileKey = (PathBuf, String);
+type SessionIndexResult = Result<Arc<Mutex<SessionSearchIndex>>, String>;
+type SessionIndexMap = HashMap<ProfileKey, SessionIndexResult>;
+type LearningLedgerResult = Arc<Mutex<LearningLedger>>;
+type MemoryRepositoryResult = Result<Arc<Mutex<MemoryRepository>>, String>;
+type ConnectionRepositoryResult = Result<Arc<Mutex<ConnectionRepository>>, String>;
+type ConversationRepositoryResult = Result<Arc<Mutex<ConversationRepository>>, String>;
+
+static SESSION_INDEXES: OnceLock<Mutex<SessionIndexMap>> = OnceLock::new();
+static SESSION_LEDGERS: OnceLock<Mutex<HashMap<ProfileKey, LearningLedgerResult>>> =
     OnceLock::new();
-static CONVERSATION_REPOSITORY: OnceLock<Result<Mutex<ConversationRepository>, String>> =
+static PROFILE_LOCKS: OnceLock<Mutex<HashMap<PathBuf, (String, File)>>> = OnceLock::new();
+static MEMORY_REPOSITORIES: OnceLock<Mutex<HashMap<ProfileKey, MemoryRepositoryResult>>> =
     OnceLock::new();
+static CONNECTION_REPOSITORIES: OnceLock<Mutex<HashMap<ProfileKey, ConnectionRepositoryResult>>> =
+    OnceLock::new();
+static CONVERSATION_REPOSITORIES: OnceLock<
+    Mutex<HashMap<ProfileKey, ConversationRepositoryResult>>,
+> = OnceLock::new();
 static AUTHORITATIVE_RUNTIME: OnceLock<Mutex<crate::runtime::AuthoritativeRuntime>> =
     OnceLock::new();
 
@@ -110,26 +122,43 @@ pub(crate) struct CooperativeAdmissionState {
 static COOPERATIVE_ADMISSION: OnceLock<Mutex<Option<CooperativeAdmissionState>>> = OnceLock::new();
 
 fn session_store_path() -> Result<PathBuf, String> {
-    if let Ok(path) = std::env::var("AEGIS_SESSION_DB_PATH") {
+    let path = if let Ok(path) = std::env::var("AEGIS_SESSION_DB_PATH") {
         let path = PathBuf::from(path);
         if path.as_os_str().is_empty() {
             return Err("AEGIS_SESSION_DB_PATH must not be empty".to_string());
         }
-        return Ok(path);
-    }
-
-    let base = if cfg!(windows) {
-        std::env::var_os("LOCALAPPDATA").map(PathBuf::from)
+        path
     } else {
-        std::env::var_os("XDG_DATA_HOME")
-            .map(PathBuf::from)
-            .or_else(|| {
-                std::env::var_os("HOME")
-                    .map(|home| PathBuf::from(home).join(".local").join("share"))
-            })
-    }
-    .unwrap_or_else(std::env::temp_dir);
-    Ok(base.join("aegis").join("state.db"))
+        let base = if cfg!(windows) {
+            std::env::var_os("LOCALAPPDATA").map(PathBuf::from)
+        } else {
+            std::env::var_os("XDG_DATA_HOME")
+                .map(PathBuf::from)
+                .or_else(|| {
+                    std::env::var_os("HOME")
+                        .map(|home| PathBuf::from(home).join(".local").join("share"))
+                })
+        }
+        .unwrap_or_else(std::env::temp_dir);
+        base.join("aegis").join("state.db")
+    };
+
+    let path = if path.is_absolute() {
+        path
+    } else {
+        std::env::current_dir()
+            .map_err(|error| error.to_string())?
+            .join(path)
+    };
+    let file_name = path
+        .file_name()
+        .ok_or_else(|| "AEGIS_SESSION_DB_PATH must name a state file".to_string())?;
+    let parent = path
+        .parent()
+        .ok_or_else(|| "AEGIS_SESSION_DB_PATH must have a parent directory".to_string())?;
+    std::fs::create_dir_all(parent).map_err(|error| error.to_string())?;
+    let canonical_parent = std::fs::canonicalize(parent).map_err(|error| error.to_string())?;
+    Ok(canonical_parent.join(file_name))
 }
 
 fn session_profile_id() -> String {
@@ -140,97 +169,134 @@ fn session_profile_id() -> String {
 }
 
 fn acquire_profile_lock(path: &Path) -> Result<(), String> {
-    PROFILE_LOCK
-        .get_or_init(|| {
-            let lock_path = path.with_extension("lock");
-            let file = OpenOptions::new()
-                .create(true)
-                .truncate(false)
-                .read(true)
-                .write(true)
-                .open(lock_path)
-                .map_err(|error| error.to_string())?;
-            file.try_lock().map_err(|error| {
-                format!("profile is already owned by another AEGIS process: {error}")
-            })?;
-            Ok(file)
-        })
-        .as_ref()
-        .map(|_| ())
-        .map_err(|error| error.clone())
+    let locks = PROFILE_LOCKS.get_or_init(|| Mutex::new(HashMap::new()));
+    let mut locks = locks.lock();
+    let profile_id = session_profile_id();
+    if let Some((bound_profile, _)) = locks.get(path) {
+        if bound_profile == &profile_id {
+            return Ok(());
+        }
+        return Err(format!(
+            "state path is already bound to profile {bound_profile}"
+        ));
+    }
+    if let Some(parent) = path.parent() {
+        std::fs::create_dir_all(parent).map_err(|error| error.to_string())?;
+    }
+    let lock_path = path.with_extension("lock");
+    let file = OpenOptions::new()
+        .create(true)
+        .truncate(false)
+        .read(true)
+        .write(true)
+        .open(lock_path)
+        .map_err(|error| error.to_string())?;
+    file.try_lock()
+        .map_err(|error| format!("profile is already owned by another AEGIS process: {error}"))?;
+    locks.insert(path.to_path_buf(), (profile_id, file));
+    Ok(())
 }
 
-fn get_session_index() -> Result<&'static Mutex<SessionSearchIndex>, String> {
-    SESSION_INDEX
-        .get_or_init(|| {
-            // The lexical index rejects the all-zero genesis epoch.  Derive a
-            // stable non-zero process epoch instead of unwrapping an invalid
-            // value (which would panic on the first completed Agent run).
-            let epoch_hash = *blake3::hash(b"aegis-session-index-epoch-v1").as_bytes();
-            let path = session_store_path()?;
-            if let Some(parent) = path.parent() {
-                std::fs::create_dir_all(parent).map_err(|error| error.to_string())?;
-            }
-            acquire_profile_lock(&path)?;
-            let profile_id = session_profile_id();
-            SessionSearchIndex::open_scoped(path, epoch_hash, &profile_id)
-                .map(Mutex::new)
-                .map_err(|error| format!("{error:?}"))
-        })
-        .as_ref()
-        .map_err(|error| error.clone())
+fn get_session_index() -> Result<Arc<Mutex<SessionSearchIndex>>, String> {
+    let path = session_store_path()?;
+    let profile_id = session_profile_id();
+    let key = (path.clone(), profile_id.clone());
+    let indexes = SESSION_INDEXES.get_or_init(|| Mutex::new(HashMap::new()));
+    let mut indexes = indexes.lock();
+    if let Some(existing) = indexes.get(&key) {
+        return existing.as_ref().map(Arc::clone).map_err(Clone::clone);
+    }
+    let result = (|| {
+        acquire_profile_lock(&path)?;
+        let epoch_hash = *blake3::hash(b"aegis-session-index-epoch-v1").as_bytes();
+        SessionSearchIndex::open_scoped(path, epoch_hash, &profile_id)
+            .map(|index| Arc::new(Mutex::new(index)))
+            .map_err(|error| format!("{error:?}"))
+    })();
+    let outcome = result.as_ref().map(Arc::clone).map_err(Clone::clone);
+    indexes.insert(key, result);
+    outcome
 }
 
-fn get_session_ledger() -> &'static Mutex<LearningLedger> {
-    SESSION_LEDGER.get_or_init(|| Mutex::new(LearningLedger::new()))
+fn get_session_ledger() -> Result<Arc<Mutex<LearningLedger>>, String> {
+    let key = (session_store_path()?, session_profile_id());
+    let ledgers = SESSION_LEDGERS.get_or_init(|| Mutex::new(HashMap::new()));
+    let mut ledgers = ledgers.lock();
+    if let Some(existing) = ledgers.get(&key) {
+        return Ok(Arc::clone(existing));
+    }
+    let ledger = Arc::new(Mutex::new(LearningLedger::new()));
+    ledgers.insert(key, Arc::clone(&ledger));
+    Ok(ledger)
 }
 
-fn get_memory_repository() -> Result<&'static Mutex<MemoryRepository>, String> {
-    MEMORY_REPOSITORY
-        .get_or_init(|| {
-            let path = session_store_path()?;
-            if let Some(parent) = path.parent() {
-                std::fs::create_dir_all(parent).map_err(|error| error.to_string())?;
-            }
-            acquire_profile_lock(&path)?;
-            MemoryRepository::open(path)
-                .map(Mutex::new)
-                .map_err(|error| format!("{error:?}"))
-        })
-        .as_ref()
-        .map_err(|error| error.clone())
+fn get_memory_repository() -> Result<Arc<Mutex<MemoryRepository>>, String> {
+    let path = session_store_path()?;
+    let profile_id = session_profile_id();
+    let key = (path.clone(), profile_id);
+    acquire_profile_lock(&path)?;
+    let repositories = MEMORY_REPOSITORIES.get_or_init(|| Mutex::new(HashMap::new()));
+    let mut repositories = repositories.lock();
+    if let Some(existing) = repositories.get(&key) {
+        return existing.as_ref().map(Arc::clone).map_err(Clone::clone);
+    }
+    let result = (|| {
+        if let Some(parent) = path.parent() {
+            std::fs::create_dir_all(parent).map_err(|error| error.to_string())?;
+        }
+        MemoryRepository::open(path)
+            .map(|repository| Arc::new(Mutex::new(repository)))
+            .map_err(|error| format!("{error:?}"))
+    })();
+    let outcome = result.as_ref().map(Arc::clone).map_err(Clone::clone);
+    repositories.insert(key, result);
+    outcome
 }
 
-fn get_connection_repository() -> Result<&'static Mutex<ConnectionRepository>, String> {
-    CONNECTION_REPOSITORY
-        .get_or_init(|| {
-            let path = session_store_path()?;
-            if let Some(parent) = path.parent() {
-                std::fs::create_dir_all(parent).map_err(|error| error.to_string())?;
-            }
-            acquire_profile_lock(&path)?;
-            ConnectionRepository::open(path)
-                .map(Mutex::new)
-                .map_err(|error| format!("{error:?}"))
-        })
-        .as_ref()
-        .map_err(|error| error.clone())
+fn get_connection_repository() -> Result<Arc<Mutex<ConnectionRepository>>, String> {
+    let path = session_store_path()?;
+    let profile_id = session_profile_id();
+    let key = (path.clone(), profile_id);
+    acquire_profile_lock(&path)?;
+    let repositories = CONNECTION_REPOSITORIES.get_or_init(|| Mutex::new(HashMap::new()));
+    let mut repositories = repositories.lock();
+    if let Some(existing) = repositories.get(&key) {
+        return existing.as_ref().map(Arc::clone).map_err(Clone::clone);
+    }
+    let result = (|| {
+        if let Some(parent) = path.parent() {
+            std::fs::create_dir_all(parent).map_err(|error| error.to_string())?;
+        }
+        ConnectionRepository::open(path)
+            .map(|repository| Arc::new(Mutex::new(repository)))
+            .map_err(|error| format!("{error:?}"))
+    })();
+    let outcome = result.as_ref().map(Arc::clone).map_err(Clone::clone);
+    repositories.insert(key, result);
+    outcome
 }
 
-fn get_conversation_repository() -> Result<&'static Mutex<ConversationRepository>, String> {
-    CONVERSATION_REPOSITORY
-        .get_or_init(|| {
-            let path = session_store_path()?;
-            if let Some(parent) = path.parent() {
-                std::fs::create_dir_all(parent).map_err(|error| error.to_string())?;
-            }
-            acquire_profile_lock(&path)?;
-            ConversationRepository::open(path)
-                .map(Mutex::new)
-                .map_err(|error| format!("{error:?}"))
-        })
-        .as_ref()
-        .map_err(|error| error.clone())
+fn get_conversation_repository() -> Result<Arc<Mutex<ConversationRepository>>, String> {
+    let path = session_store_path()?;
+    let profile_id = session_profile_id();
+    let key = (path.clone(), profile_id);
+    acquire_profile_lock(&path)?;
+    let repositories = CONVERSATION_REPOSITORIES.get_or_init(|| Mutex::new(HashMap::new()));
+    let mut repositories = repositories.lock();
+    if let Some(existing) = repositories.get(&key) {
+        return existing.as_ref().map(Arc::clone).map_err(Clone::clone);
+    }
+    let result = (|| {
+        if let Some(parent) = path.parent() {
+            std::fs::create_dir_all(parent).map_err(|error| error.to_string())?;
+        }
+        ConversationRepository::open(path)
+            .map(|repository| Arc::new(Mutex::new(repository)))
+            .map_err(|error| format!("{error:?}"))
+    })();
+    let outcome = result.as_ref().map(Arc::clone).map_err(Clone::clone);
+    repositories.insert(key, result);
+    outcome
 }
 
 fn get_authoritative_runtime() -> &'static Mutex<crate::runtime::AuthoritativeRuntime> {
