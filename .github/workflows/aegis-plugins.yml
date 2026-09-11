@@ -34,6 +34,7 @@ concurrency:
 jobs:
   windows-workspace:
     runs-on: windows-latest
+    timeout-minutes: 45
     env:
       RUSTFLAGS: -C debuginfo=0
     steps:
@@ -55,8 +56,13 @@ jobs:
       - name: Test plugins
         env:
           PYO3_PYTHON: python
-        run: cargo test --workspace --no-default-features
+        run: python scripts/suite_evidence.py --name plugins-rust-workspace --output artifacts/suites/plugins-rust-workspace.json --owner-id ci-plugins-rust --gate-id plugins-rust-workspace --attempt-id "${{ github.run_id }}-${{ github.run_attempt }}" --timeout-seconds 1200 -- cargo test --workspace --no-default-features
       - name: Clippy plugins
         env:
           PYO3_PYTHON: python
         run: cargo clippy --workspace --all-targets --no-default-features -- -D warnings
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        if: always()
+        with:
+          name: aegis-plugins-evidence-${{ github.sha }}
+          path: artifacts/suites
