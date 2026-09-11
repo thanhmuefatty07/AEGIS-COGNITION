@@ -13,10 +13,13 @@ from typing import Any
 
 MAX_FRAME_BYTES = 1 * 1024 * 1024
 PROTOCOL_VERSION = 1
+REQUEST_SCHEMA = "aegis-desktop-command-v1"
 ALLOWED_COMMANDS = frozenset(
     {
+        "service.shutdown",
         "workspace.open",
         "workspace.snapshot",
+        "workspace.source_snapshot",
         "connections.list",
         "connections.save",
         "connections.discover",
@@ -93,6 +96,7 @@ def decode_request(frame: bytes | str, *, max_frame_bytes: int = MAX_FRAME_BYTES
     if not isinstance(raw, Mapping):
         raise DesktopProtocolError("INVALID_FRAME", "desktop request must be an object")
     version = raw.get("protocol_version")
+    schema = raw.get("schema")
     request_id = raw.get("request_id")
     command = raw.get("command")
     payload = raw.get("payload")
@@ -102,6 +106,8 @@ def decode_request(frame: bytes | str, *, max_frame_bytes: int = MAX_FRAME_BYTES
         or version != PROTOCOL_VERSION
     ):
         raise DesktopProtocolError("PROTOCOL_VERSION_UNSUPPORTED", "desktop protocol version is unsupported")
+    if schema != REQUEST_SCHEMA:
+        raise DesktopProtocolError("INVALID_SCHEMA", "desktop request schema is unsupported")
     if not isinstance(request_id, str) or not request_id.strip() or len(request_id) > 128:
         raise DesktopProtocolError("INVALID_REQUEST_ID", "request_id must be a bounded non-empty string")
     if not isinstance(command, str) or not command.strip() or len(command) > 128:
@@ -205,11 +211,12 @@ def _reject_non_finite(value: str) -> Any:
 
 __all__ = [
     "ALLOWED_COMMANDS",
+    "MAX_FRAME_BYTES",
+    "PROTOCOL_VERSION",
+    "REQUEST_SCHEMA",
     "DesktopCommandRouter",
     "DesktopProtocolError",
     "DesktopRequest",
-    "MAX_FRAME_BYTES",
-    "PROTOCOL_VERSION",
     "decode_request",
     "encode_response",
 ]

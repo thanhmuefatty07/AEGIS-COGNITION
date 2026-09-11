@@ -1,8 +1,7 @@
 use crate::learning::{LearningEventType, LearningLedger};
 use crate::licensing::{Feature as LicenseFeature, LicenseError, LicenseManager};
 use crate::memory::CogniFoldStore;
-use crate::memory::fold::MemoryCrystallization;
-use crate::physical::{BacktrackSignal, PhysicalArtifact, PhysicalWatchdog};
+use crate::physical::PhysicalWatchdog;
 use blake3::Hasher;
 
 /// Domain-tagged BLAKE3 hasher — matches the hasher pattern used in
@@ -106,7 +105,10 @@ impl MemoryNudge {
         if nudge_id == 0 || session_id == 0 || candidates.is_empty() || timestamp == 0 {
             return None;
         }
-        if candidates.iter().any(|c| !c.is_valid()) {
+        if candidates
+            .iter()
+            .any(|c| !c.is_valid() || c.source_session_id != session_id)
+        {
             return None;
         }
         let candidate_list_hash = candidate_list_domain_hash(&candidates);
@@ -125,7 +127,9 @@ impl MemoryNudge {
         self.nudge_id > 0
             && self.session_id > 0
             && !self.candidates.is_empty()
-            && self.candidates.iter().all(MemoryCandidate::is_valid)
+            && self.candidates.iter().all(|candidate| {
+                candidate.is_valid() && candidate.source_session_id == self.session_id
+            })
             && self.timestamp > 0
             && self.candidate_list_hash == candidate_list_domain_hash(&self.candidates)
             && self.nudge_hash
@@ -186,8 +190,9 @@ impl MemoryNudgeSystem {
         let nudge = MemoryNudge::new(nudge_id, session_id, high_relevance, timestamp)
             .ok_or(MemoryError::InvalidCandidate)?;
 
-        // Append a candidate-only event. Durable memory is recorded only after
-        // `commit_nudged_memories` succeeds for an individual candidate.
+        // Append a candidate-only event. Durable repository state remains
+        // separate; a compatibility projection is recorded only after the
+        // explicit semantic projection step succeeds.
         learning_ledger.append(
             LearningEventType::MemoryCandidateCreated {
                 candidate_hash: nudge.nudge_hash,
@@ -200,29 +205,28 @@ impl MemoryNudgeSystem {
         Ok(nudge)
     }
 
-    /// Compatibility commit entrypoint for callers that predate the learning
-    /// ledger binding. New authoritative callers must use
-    /// `commit_nudged_memories_with_ledger` so successful commits are auditable.
+    /// Compatibility entrypoint for callers that still provide a physical
+    /// watchdog. Semantic candidates no longer pass through that watchdog;
+    /// the parameter remains only for source compatibility.
     #[deprecated(note = "use commit_nudged_memories_with_ledger for authoritative commits")]
     pub fn commit_nudged_memories(
         &self,
         nudge: &MemoryNudge,
         cognifold: &mut CogniFoldStore,
-        watchdog: &PhysicalWatchdog,
+        _watchdog: &PhysicalWatchdog,
     ) -> Result<usize, MemoryError> {
         let mut compatibility_ledger = LearningLedger::new();
-        self.commit_nudged_memories_with_ledger(
+        self.commit_nudged_memories_semantic_with_ledger(
             nudge,
             cognifold,
-            watchdog,
             &mut compatibility_ledger,
         )
     }
 
-    /// Commit each candidate in the nudge to CogniFold, after PAV validation.
-    /// Candidates that fail validation are skipped and do not emit a commit
-    /// event. The ledger is updated only after the corresponding commit has
-    /// succeeded.
+    /// Commit each candidate as semantic memory. No physical AST/fuel/PAV
+    /// sentinel is manufactured for this path. The watchdog parameter is kept
+    /// for compatibility with the pre-separation API and is intentionally
+    /// ignored.
     ///
     /// Returns the count of successfully committed candidates.
     pub fn commit_nudged_memories_with_ledger(
@@ -232,6 +236,17 @@ impl MemoryNudgeSystem {
         watchdog: &PhysicalWatchdog,
         learning_ledger: &mut LearningLedger,
     ) -> Result<usize, MemoryError> {
+        let _ = watchdog;
+        self.commit_nudged_memories_semantic_with_ledger(nudge, cognifold, learning_ledger)
+    }
+
+    /// Canonical semantic-memory commit path for nudge candidates.
+    pub fn commit_nudged_memories_semantic_with_ledger(
+        &self,
+        nudge: &MemoryNudge,
+        cognifold: &mut CogniFoldStore,
+        learning_ledger: &mut LearningLedger,
+    ) -> Result<usize, MemoryError> {
         if !nudge.is_valid() {
             return Err(MemoryError::InvalidCandidate);
         }
@@ -239,27 +254,14 @@ impl MemoryNudgeSystem {
         let mut committed = 0usize;
 
         for candidate in &nudge.candidates {
-            // Build a PhysicalArtifact so the PAV watchdog can inspect it
-            let artifact = match PhysicalArtifact::new(
+            match cognifold.commit_semantic_memory(
+                nudge.session_id,
                 candidate.content.as_bytes(),
-                1,   // ast_fingerprint: non-zero sentinel for memory content
-                100, // fuel_consumed: non-zero sentinel
-                candidate.content.len(),
+                candidate.relevance_score,
             ) {
-                Ok(artifact) => artifact,
-                Err(_) => continue,
-            };
-
-            // PAV gate — non-negotiable
-            if watchdog.accepts(&artifact).is_err() {
-                continue;
-            }
-
-            // Commit to CogniFold
-            match cognifold.commit_to_cognifold(nudge.session_id, &artifact, watchdog) {
                 Ok(_) => {
                     learning_ledger.append(
-                        LearningEventType::MemoryCommitted {
+                        LearningEventType::MemoryProjectionCommitted {
                             memory_hash: candidate.content_hash,
                         },
                         None,
@@ -268,7 +270,7 @@ impl MemoryNudgeSystem {
                     );
                     committed += 1;
                 }
-                Err(BacktrackSignal::HardBacktrack(_)) => continue,
+                Err(_) => continue,
             }
         }
 
@@ -404,5 +406,44 @@ mod tests {
             .unwrap();
 
         assert_ne!(n1.nudge_hash, n2.nudge_hash);
+    }
+
+    #[test]
+    fn nudge_rejects_candidates_from_another_session() {
+        let candidate = valid_candidate("wrong-session", 0.9);
+        assert!(MemoryNudge::new(1, 2, vec![candidate], _ts(0)).is_none());
+    }
+
+    #[test]
+    fn semantic_commit_does_not_require_physical_validation_fields() {
+        let system = MemoryNudgeSystem::new(0.0);
+        let mut ledger = LearningLedger::new();
+        let nudge = system
+            .periodic_nudge(
+                7,
+                42,
+                vec![MemoryCandidate::new("fact-semantic".to_string(), 0.75, 42).unwrap()],
+                &mut ledger,
+                None,
+            )
+            .unwrap();
+        let mut cognifold = CogniFoldStore::new();
+
+        let committed = system
+            .commit_nudged_memories_semantic_with_ledger(&nudge, &mut cognifold, &mut ledger)
+            .unwrap();
+
+        assert_eq!(committed, 1);
+        assert_eq!(cognifold.latest().map(|frame| frame.fidelity), Some(0.75));
+        assert_eq!(
+            ledger
+                .iter()
+                .filter(|event| matches!(
+                    event.event_type,
+                    LearningEventType::MemoryProjectionCommitted { .. }
+                ))
+                .count(),
+            1
+        );
     }
 }

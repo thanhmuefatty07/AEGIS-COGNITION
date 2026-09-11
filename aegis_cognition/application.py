@@ -8,7 +8,7 @@ import re
 import time
 import uuid
 from dataclasses import asdict
-from typing import Any
+from typing import Any, cast
 from collections.abc import Callable
 
 from .config import AgentConfig
@@ -18,6 +18,7 @@ from .models import RunResult
 from .observability import CorrelationContext, RuntimeTelemetry
 from .prompt import PromptBuilder
 from .rag import RAGManager
+from .runtime import coordinated_runtime_task
 
 try:
     from core.python.aegis.conversations import ConversationManager
@@ -64,12 +65,13 @@ class AgentApplication:
             raw_mandatory = options.get("mandatory_session_ids", ())
             if not isinstance(raw_mandatory, list | tuple):
                 raise ValueError("mandatory_session_ids must be a list or tuple")
+            mandatory_values = cast(list[Any] | tuple[Any, ...], raw_mandatory)
             compiled = rag_manager.compile_context(
                 task,
                 scope_kind=str(options.get("memory_scope", "USER_PRIVATE")),
                 owner_id=options.get("memory_owner_id"),
                 token_budget=raw_budget,
-                mandatory_session_ids=tuple(int(value) for value in raw_mandatory),
+                mandatory_session_ids=tuple(int(value) for value in mandatory_values),
             )
             if compiled.status == "compiled":
                 self.telemetry.emit("memory", "context_hydrated", correlation=self.correlation)
@@ -153,12 +155,12 @@ class AgentApplication:
             if "conversation not found" not in str(error).lower():
                 raise
             if not isinstance(connection_id, str) or not connection_id.strip():
-                raise ValueError("conversation_connection_id is required for a new conversation")
+                raise ValueError("conversation_connection_id is required for a new conversation") from None
             if not isinstance(model_id, str) or not model_id.strip():
-                raise ValueError("conversation_model_id is required for a new conversation")
+                raise ValueError("conversation_model_id is required for a new conversation") from None
             title = options.get("conversation_title", task[:120] or "Conversation")
             if not isinstance(title, str) or not title.strip():
-                raise ValueError("conversation_title must be a non-empty string")
+                raise ValueError("conversation_title must be a non-empty string") from None
             record = manager.create(
                 conversation_id,
                 owner_id=owner_id,
@@ -171,10 +173,9 @@ class AgentApplication:
             record = snapshot.conversation
             if record.status != "ACTIVE":
                 raise RuntimeError("conversation is not active")
-            if any(
-                turn.status in {"QUEUED", "RUNNING", "WAITING_APPROVAL"}
-                for turn in snapshot.turns
-            ) or any(call.status in {"REQUESTED", "AMBIGUOUS"} for call in snapshot.tool_calls):
+            if any(turn.status in {"QUEUED", "RUNNING", "WAITING_APPROVAL"} for turn in snapshot.turns) or any(
+                call.status in {"REQUESTED", "AMBIGUOUS"} for call in snapshot.tool_calls
+            ):
                 raise RuntimeError("conversation has unresolved execution state")
             connection_id = record.connection_id if connection_id is None else connection_id
             model_id = record.model_id if model_id is None else model_id
@@ -291,6 +292,38 @@ class AgentApplication:
                             strict=True,
                         )
 
+                    def persist_lab_checkpoint(*, checkpoint: dict[str, Any], run: Any) -> Any:
+                        """Bind Lab progress to the same durable conversation execution."""
+
+                        del run
+                        if conversation_run is None:
+                            raise RuntimeError("Lab checkpoint has no conversation execution")
+                        manager = conversation_run["manager"]
+                        sequence = checkpoint.get("step")
+                        if type(sequence) is not int or sequence < 1:
+                            raise ValueError("Lab checkpoint sequence is invalid")
+                        continuation_json = json.dumps(
+                            checkpoint,
+                            sort_keys=True,
+                            separators=(",", ":"),
+                            ensure_ascii=False,
+                        )
+                        execution = manager.checkpoint_execution(
+                            conversation_run["conversation_id"],
+                            owner_id=conversation_run["owner_id"],
+                            execution_id=conversation_run["execution_id"],
+                            sequence=sequence,
+                            state="LAB_STEP_COMPLETED",
+                            continuation_json=continuation_json,
+                            expected_revision=conversation_run["revision"],
+                        )
+                        conversation_run["revision"] = execution.revision
+                        return {
+                            "status": "COMMITTED",
+                            "sequence": execution.checkpoint_seq,
+                            "revision": execution.revision,
+                        }
+
                     lab_result, dossier = await LabApplication(
                         config=self.config,
                         gateway_factory=self._gateway_factory,
@@ -299,6 +332,7 @@ class AgentApplication:
                         context_retriever=retrieve_lab_context,
                         system_context=system_context,
                         post_completion_effect=persist_lab_result,
+                        checkpoint_effect=(persist_lab_checkpoint if conversation_run is not None else None),
                     ).run()
                     self.telemetry.emit("lab", "dossier_committed", correlation=self.correlation)
                     self._finish_conversation(conversation_run, output=lab_result.output, status="COMPLETED")
@@ -314,10 +348,20 @@ class AgentApplication:
                         lab_events=tuple(asdict(event) for event in dossier.events),
                     )
                 formatted_task, system_context = self.prepare(self.config.task)
-                result = await self._gateway(formatted_task).run(
-                    formatted_task,
-                    system_context=system_context,
-                )
+                runtime_options = self.config.options
+                async with coordinated_runtime_task(
+                    task_id=self.correlation.task_id,
+                    work_kind="Agent",
+                    timeout_seconds=runtime_options.get("runtime_timeout_seconds", 60.0),
+                    memory_bytes=runtime_options.get("runtime_memory_bytes", 64 * 1024 * 1024),
+                    priority="Foreground",
+                    side_effect_class="ExternalSideEffect",
+                    trust_level=self.config.trust_level,
+                ):
+                    result = await self._gateway(formatted_task).run(
+                        formatted_task,
+                        system_context=system_context,
+                    )
                 self._finish_conversation(conversation_run, output=result.output, status="COMPLETED")
                 self.telemetry.emit("evidence", "commit_completed", correlation=self.correlation)
                 self._index_completed_run(self.config.task, result.output, result)

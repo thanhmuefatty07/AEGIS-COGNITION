@@ -8,6 +8,7 @@ __pycache__/
 *.py[cod]
 *$py.class
 *.so
+*.pdb
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/
@@ -15,6 +16,7 @@ __pycache__/
 htmlcov/
 *.egg-info/
 .venv/
+.venv-*/
 venv/
 
 # Rust & Build output
@@ -41,3 +43,8 @@ Thumbs.db
 brain/
 artifacts/
 .aegis/lab-replay/
+desktop/node_modules/
+desktop/dist/
+desktop/.pyinstaller-build/
+desktop/src-tauri/resources/*.exe
+desktop/src-tauri/gen/

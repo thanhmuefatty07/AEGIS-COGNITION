@@ -49,9 +49,7 @@ class Agent:
         # model's execution capabilities.  A source checkout without the
         # compiled authority keeps the legacy no-archive development path;
         # explicitly requesting the archive still fails closed there.
-        if lab and replay_requested is not False and (
-            replay_requested is True or native_runtime_available()
-        ):
+        if lab and replay_requested is not False and (replay_requested is True or native_runtime_available()):
             configured_replay_dir = os.environ.get("AEGIS_LAB_REPLAY_DIR", "").strip()
             kwargs.setdefault(
                 "lab_replay_directory",

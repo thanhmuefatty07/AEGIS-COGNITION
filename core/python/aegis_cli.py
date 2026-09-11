@@ -1,6 +1,8 @@
 import sys
 import os
 import re
+import json
+import tempfile
 from contextlib import suppress
 import yaml
 from pathlib import Path
@@ -76,6 +78,33 @@ def get_aegis_dir() -> Path:
     aegis_dir.mkdir(parents=True, exist_ok=True)
     return aegis_dir
 
+def _atomic_write_text(path: Path, content: str, mode: int | None = None) -> None:
+    """Replace one compatibility config file only after its content is durable."""
+
+    temporary_path: Path | None = None
+    try:
+        with tempfile.NamedTemporaryFile(
+            mode="w",
+            encoding="utf-8",
+            dir=path.parent,
+            prefix=f".{path.name}.",
+            suffix=".tmp",
+            delete=False,
+        ) as handle:
+            temporary_path = Path(handle.name)
+            handle.write(content)
+            handle.flush()
+            os.fsync(handle.fileno())
+        if mode is not None:
+            with suppress(OSError):
+                temporary_path.chmod(mode)
+        os.replace(temporary_path, path)
+        temporary_path = None
+    finally:
+        if temporary_path is not None:
+            with suppress(OSError):
+                temporary_path.unlink()
+
 def save_config(provider: str, api_key: str, trust_level: str, enable_browser: bool):
     aegis_dir = get_aegis_dir()
     config_path = aegis_dir / "config.yaml"
@@ -88,15 +117,10 @@ def save_config(provider: str, api_key: str, trust_level: str, enable_browser: b
             "browser_automation": enable_browser
         }
     }
-    with open(config_path, "w", encoding="utf-8") as f:
-        yaml.dump(config_data, f)
+    _atomic_write_text(config_path, yaml.safe_dump(config_data, sort_keys=True), mode=0o600)
         
     env_var_name = f"{provider.upper()}_API_KEY" if provider != "Local" else "LOCAL_API_URL"
-    with open(env_path, "w", encoding="utf-8") as f:
-        f.write(f'{env_var_name}="{api_key}"\n')
-        
-    with suppress(Exception):
-        env_path.chmod(0o600)
+    _atomic_write_text(env_path, f"{env_var_name}={json.dumps(api_key)}\n", mode=0o600)
 
 def setup_wizard():
     print("Welcome to AEGIS-COGNITION Setup")

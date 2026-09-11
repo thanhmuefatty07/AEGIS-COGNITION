@@ -332,6 +332,9 @@ def suite_artifact_release_eligible(candidate: dict[str, Any]) -> bool:
         and bool(candidate["attempt_id"].strip())
         and isinstance(candidate.get("run_key"), str)
         and bool(SHA256_RE.fullmatch(candidate["run_key"]))
+        and candidate.get("worktree_status") in {"CLEAN", "DIRTY"}
+        and isinstance(candidate.get("worktree_sha256"), str)
+        and bool(SHA256_RE.fullmatch(candidate["worktree_sha256"]))
         and isinstance(candidate.get("combined_output_sha256"), str)
         and bool(SHA256_RE.fullmatch(candidate["combined_output_sha256"]))
     )
@@ -368,6 +371,8 @@ def suite_artifact_ownership_conflicted(
             artifact["timeout_seconds"],
             artifact["timed_out"],
             artifact["termination"],
+            artifact["worktree_status"],
+            artifact["worktree_sha256"],
             artifact.get("stdout_sha256"),
             artifact.get("stderr_sha256"),
             artifact["combined_output_sha256"],
@@ -431,6 +436,8 @@ def materialize_for_head(template: dict[str, Any], expected_head: str) -> dict[s
             if source and not suite_artifact_ownership_conflicted(source, suite_artifacts):
                 for field in (
                     "command",
+                    "worktree_status",
+                    "worktree_sha256",
                     "timestamp_utc",
                     "platform",
                     "toolchain",

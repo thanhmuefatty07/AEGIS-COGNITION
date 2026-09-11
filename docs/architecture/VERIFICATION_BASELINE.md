@@ -19,9 +19,9 @@ when the consistency gate binds it to the checked-out `main` SHA.
 
 The 409, 408, and 418 counts seen in older reports have different workspace
 or checkout scopes. They are never combined into one global current count.
-Every future count must include command, commit, timestamp, platform,
-toolchain, discovered, passed, failed, ignored, and filtered fields in the
-manifest.
+Every future count must include command, commit, dirty-worktree status and
+fingerprint, timestamp, platform, toolchain, discovered, passed, failed,
+ignored, and filtered fields in the manifest.
 
 ## Historical evidence
 

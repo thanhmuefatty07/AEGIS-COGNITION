@@ -8450,6 +8450,93 @@ mod replay_internal_tests {
     }
 
     #[test]
+    fn binary_archive_schema_migration_matrix_is_explicit_and_fail_closed() {
+        let path = std::env::temp_dir().join(format!(
+            "aegis-binary-schema-matrix-{}-{}.bin",
+            std::process::id(),
+            1_u64
+        ));
+        let event = RunEvent::new(
+            1,
+            1,
+            RunEventKind::MissionCompiled,
+            1,
+            [1; 32],
+            None,
+            [0; 32],
+        );
+        let ledger = RunEventLedger::from_events(1, vec![event]).unwrap();
+        let expected_payload_hash = BinaryRunEventSegment::write_ledger(&path, &ledger).unwrap();
+        let valid = std::fs::read(&path).unwrap();
+
+        // Current format is readable and remains the only authoritative format.
+        let current = BinaryRunEventSegment::read_ledger_mmap(&path, expected_payload_hash)
+            .expect("current binary schema must remain readable");
+        assert_eq!(current.events(), ledger.events());
+
+        // Old and future format versions are rejected instead of being guessed.
+        for version in [0_u64, 99_u64] {
+            let mut fixture = valid.clone();
+            fixture[8..16].copy_from_slice(&version.to_le_bytes());
+            std::fs::write(&path, fixture).unwrap();
+            assert!(BinaryRunEventSegment::read_ledger_mmap(&path, expected_payload_hash).is_err());
+            assert!(BinaryRunEventSegment::recover_last_valid_prefix_mmap(&path).is_err());
+        }
+
+        // Additive and removed record layouts are explicit incompatibilities;
+        // accepting either would reinterpret bytes under the wrong schema.
+        for record_bytes in [
+            (BinaryRunEventSegment::record_bytes() + 1) as u64,
+            (BinaryRunEventSegment::record_bytes() - 1) as u64,
+        ] {
+            let mut fixture = valid.clone();
+            fixture[24..32].copy_from_slice(&record_bytes.to_le_bytes());
+            std::fs::write(&path, fixture).unwrap();
+            assert!(BinaryRunEventSegment::read_ledger_mmap(&path, expected_payload_hash).is_err());
+            assert!(BinaryRunEventSegment::recover_last_valid_prefix_mmap(&path).is_err());
+        }
+
+        // Unknown schema identity is not migrated implicitly.
+        let mut unknown_schema = valid.clone();
+        unknown_schema[56] ^= 0xff;
+        std::fs::write(&path, unknown_schema).unwrap();
+        assert!(BinaryRunEventSegment::read_ledger_mmap(&path, expected_payload_hash).is_err());
+        assert!(BinaryRunEventSegment::recover_last_valid_prefix_mmap(&path).is_err());
+
+        // A truncated final record is recoverable only as the committed prefix;
+        // a normal reader still rejects the incomplete archive.
+        let truncated_len =
+            BinaryRunEventSegment::header_bytes() + BinaryRunEventSegment::record_bytes() / 2;
+        std::fs::write(&path, &valid[..truncated_len]).unwrap();
+        assert!(BinaryRunEventSegment::read_ledger_mmap(&path, expected_payload_hash).is_err());
+        let truncated = BinaryRunEventSegment::recover_last_valid_prefix_mmap(&path).unwrap();
+        assert_eq!(truncated.recovered_event_count, 0);
+        assert!(truncated.trailing_partial_bytes > 0);
+
+        // A corrupted committed record stops recovery before that record.
+        let mut corrupt = valid.clone();
+        corrupt[BinaryRunEventSegment::header_bytes() + 5] ^= 0xff;
+        std::fs::write(&path, corrupt).unwrap();
+        let corrupt_report = BinaryRunEventSegment::recover_last_valid_prefix_mmap(&path).unwrap();
+        assert_eq!(corrupt_report.recovered_event_count, 0);
+
+        // A valid prefix followed by a partial tail is retained exactly.
+        let mut partial_tail = valid;
+        partial_tail.extend(std::iter::repeat_n(
+            0xaa,
+            BinaryRunEventSegment::record_bytes() / 2,
+        ));
+        std::fs::write(&path, partial_tail).unwrap();
+        assert!(BinaryRunEventSegment::read_ledger_mmap(&path, expected_payload_hash).is_err());
+        let partial = BinaryRunEventSegment::recover_last_valid_prefix_mmap(&path).unwrap();
+        assert_eq!(partial.recovered_event_count, 1);
+        assert!(partial.trailing_partial_bytes > 0);
+        assert_eq!(partial.ledger.events(), ledger.events());
+
+        let _ = std::fs::remove_file(path);
+    }
+
+    #[test]
     fn mmap_archive_does_not_allocate_from_untrusted_manifest_event_count() {
         let directory = std::env::temp_dir().join(format!(
             "aegis-mmap-manifest-count-{}-{}",

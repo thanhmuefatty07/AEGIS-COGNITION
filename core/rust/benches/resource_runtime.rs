@@ -50,6 +50,7 @@ fn resource_runtime_benchmarks(c: &mut Criterion) {
                     sampled_at_ms: 1,
                     cpu_threads_active: 1,
                     host_memory_bytes: Some(1),
+                    host_memory_available_bytes: Some(1),
                     queue_depth: 1,
                     memory_pressure: true,
                 };

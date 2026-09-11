@@ -325,9 +325,11 @@ def validate_corpus(actual: dict[str, object], expected: dict[str, object]) -> l
     if set(actual) != set(expected):
         errors.append("root schema keys differ")
     volatile = {"artifact_hash", "provenance"}
-    for key in expected:
-        if key not in volatile and actual.get(key) != expected.get(key):
-            errors.append(f"{key} differs")
+    errors.extend(
+        f"{key} differs"
+        for key in expected
+        if key not in volatile and actual.get(key) != expected.get(key)
+    )
 
     recorded_hash = actual.get("artifact_hash")
     if recorded_hash != _stable_hash({key: value for key, value in actual.items() if key != "artifact_hash"}):
@@ -349,9 +351,11 @@ def validate_corpus(actual: dict[str, object], expected: dict[str, object]) -> l
         }
         if not required.issubset(actual_provenance):
             errors.append("provenance envelope is incomplete")
-        for key in ("relevant_subject_digest", "protocol_hash", "validator_hash", "environment_hash", "reuse_status"):
-            if actual_provenance.get(key) != expected_provenance.get(key):
-                errors.append(f"provenance.{key} differs")
+        errors.extend(
+            f"provenance.{key} differs"
+            for key in ("relevant_subject_digest", "protocol_hash", "validator_hash", "environment_hash", "reuse_status")
+            if actual_provenance.get(key) != expected_provenance.get(key)
+        )
         for key in ("artifact_source_sha", "current_head"):
             value = actual_provenance.get(key)
             if not isinstance(value, str) or len(value) != 40 or any(character not in "0123456789abcdef" for character in value):
@@ -395,6 +399,29 @@ def build_cost_measurement(corpus: dict[str, object] | None = None) -> dict[str,
     result["provenance"] = _artifact_provenance({"corpus": corpus.get("artifact_hash"), "planner": planner_seconds})
     result["artifact_hash"] = _stable_hash({key: value for key, value in result.items() if key != "artifact_hash"})
     return result
+
+
+def _load_retained_paired_cost(path: Path) -> dict[str, object] | None:
+    """Keep a valid historical paired ledger when no new timings are supplied."""
+
+    try:
+        raw = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return None
+    if type(raw) is not dict:
+        return None
+    if (
+        raw.get("schema") != COST_SCHEMA
+        or raw.get("status") != "MEASURED_EXPLORATORY_PAIRED"
+        or raw.get("paired_workload") is not True
+        or type(raw.get("sample_pair_count")) is not int
+        or raw.get("sample_pair_count", 0) < 1
+    ):
+        return None
+    recorded_hash = raw.get("artifact_hash")
+    if recorded_hash != _stable_hash({key: value for key, value in raw.items() if key != "artifact_hash"}):
+        return None
+    return cast(dict[str, object], raw)
 
 
 def _summary(samples: list[float]) -> dict[str, object]:
@@ -453,7 +480,10 @@ def build_paired_cost_measurement(
     legacy = [float(value) for value in legacy_seconds]
     selected = [float(value) for value in selected_seconds]
     planner = [float(value) for value in planner_seconds]
-    net = [left - right - overhead for left, right, overhead in zip(legacy, selected, planner)]
+    net = [
+        left - right - overhead
+        for left, right, overhead in zip(legacy, selected, planner, strict=True)
+    ]
     result: dict[str, object] = {
         "schema": COST_SCHEMA,
         "mode": "SHADOW",
@@ -504,6 +534,8 @@ def main() -> int:
     parser.add_argument("--measurement-reused", action="store_true", help="retain an earlier paired measurement")
     parser.add_argument("--measurement-source-sha", help="source commit that produced a reused measurement")
     args = parser.parse_args()
+    corpus_output = args.corpus_output if args.corpus_output.is_absolute() else ROOT / args.corpus_output
+    cost_output = args.cost_output if args.cost_output.is_absolute() else ROOT / args.cost_output
     corpus = build_corpus()
     if bool(args.legacy_seconds) or bool(args.selected_seconds) or bool(args.planner_seconds):
         if not (args.legacy_seconds and args.selected_seconds and args.planner_seconds):
@@ -520,9 +552,7 @@ def main() -> int:
             relevant_subjects_unchanged=args.measurement_reused,
         )
     else:
-        cost = build_cost_measurement(corpus)
-    corpus_output = args.corpus_output if args.corpus_output.is_absolute() else ROOT / args.corpus_output
-    cost_output = args.cost_output if args.cost_output.is_absolute() else ROOT / args.cost_output
+        cost = _load_retained_paired_cost(cost_output) or build_cost_measurement(corpus)
     corpus_output.parent.mkdir(parents=True, exist_ok=True)
     corpus_output.write_text(json.dumps(corpus, indent=2, sort_keys=True) + "\n", encoding="utf-8")
     cost_output.write_text(json.dumps(cost, indent=2, sort_keys=True) + "\n", encoding="utf-8")

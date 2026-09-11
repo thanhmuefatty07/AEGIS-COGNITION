@@ -14,7 +14,7 @@ import math
 import statistics
 from dataclasses import asdict, dataclass
 from statistics import NormalDist
-from typing import Final, cast
+from typing import Any, Final, cast
 from collections.abc import Mapping, Sequence
 
 
@@ -101,7 +101,7 @@ def _is_finite(value: object) -> bool:
         return False
     try:
         return math.isfinite(float(cast(int | float, value)))
-    except (OverflowError, ValueError):
+    except OverflowError, ValueError:
         return False
 
 
@@ -127,11 +127,7 @@ def _hash(value: object) -> str:
 
     def stable_default(unsupported: object) -> dict[str, str]:
         value_type = type(unsupported)
-        return {
-            "__aese_unsupported_type__": (
-                f"{value_type.__module__}.{value_type.__qualname__}"
-            )
-        }
+        return {"__aese_unsupported_type__": (f"{value_type.__module__}.{value_type.__qualname__}")}
 
     encoded = json.dumps(
         value,
@@ -227,7 +223,7 @@ class AdaptiveMeasurementSpec:
 
     def as_dict(self) -> dict[str, object]:
         self.validate()
-        payload = {"schema": f"{_SCHEMA_VERSION}-measurement-spec", **asdict(self)}
+        payload = cast(dict[str, object], {"schema": f"{_SCHEMA_VERSION}-measurement-spec", **asdict(self)})
         payload["protocol_hash"] = self.protocol_hash
         return payload
 
@@ -239,7 +235,9 @@ class AdaptiveMeasurementSpec:
             raise TypeError("measurement spec must use the canonical type")
         if type(value) is not dict:
             raise TypeError("measurement spec must be a canonical dictionary")
-        payload = cast(dict[str, object], value)
+        # JSON payloads are runtime-validated below; Any models the dynamic
+        # field lookup without weakening the dataclass field contracts.
+        payload = cast(dict[str, Any], value)
         expected_keys = {
             "schema",
             "metric",
@@ -395,8 +393,7 @@ class AdaptiveMeasurementResult:
             if value is not None and not _is_finite(value):
                 raise ValueError(f"measurement result {name} must be finite or null")
         statistics_present = tuple(
-            value is not None
-            for value in (self.estimate, self.ci_low, self.ci_high, self.precision_ratio)
+            value is not None for value in (self.estimate, self.ci_low, self.ci_high, self.precision_ratio)
         )
         if any(statistics_present) and not all(statistics_present):
             raise ValueError("measurement result statistics must be all present or all null")
@@ -408,9 +405,7 @@ class AdaptiveMeasurementResult:
                 raise ValueError("measurement result interval bounds are reversed")
             if precision_ratio < 0.0:
                 raise ValueError("measurement result precision ratio must be non-negative")
-        if self.lag1_autocorrelation is not None and not (
-            -1.0 <= float(self.lag1_autocorrelation) <= 1.0
-        ):
+        if self.lag1_autocorrelation is not None and not (-1.0 <= float(self.lag1_autocorrelation) <= 1.0):
             raise ValueError("measurement result autocorrelation must be in [-1, 1]")
         if self.drift_ratio is not None and self.drift_ratio < 0.0:
             raise ValueError("measurement result drift ratio must be non-negative")
@@ -467,7 +462,7 @@ class AdaptiveMeasurementResult:
             raise TypeError("measurement result must use the canonical type")
         if type(value) is not dict:
             raise TypeError("measurement result must be a canonical dictionary")
-        payload = cast(dict[str, object], value)
+        payload = cast(dict[str, Any], value)
         expected_keys = {
             "schema",
             "protocol_hash",
@@ -513,8 +508,8 @@ class AdaptiveMeasurementResult:
             block_count=payload["block_count"],
             warmup_count=payload["warmup_count"],
             raw_observation_hash=payload["raw_observation_hash"],
-            contamination_flags=tuple(cast(list[object], payload["contamination_flags"])),
-            failure_reasons=tuple(cast(list[object], payload["failure_reasons"])),
+            contamination_flags=tuple(cast(list[str], payload["contamination_flags"])),
+            failure_reasons=tuple(cast(list[str], payload["failure_reasons"])),
             interval_method=payload["interval_method"],
             artifact_hash=payload["artifact_hash"],
         )
@@ -629,7 +624,7 @@ class EvidenceLedgerEntry:
             raise TypeError("evidence ledger entry must use the canonical type")
         if type(value) is not dict:
             raise TypeError("evidence ledger entry must be a canonical dictionary")
-        payload = cast(dict[str, object], value)
+        payload = cast(dict[str, Any], value)
         expected_keys = {
             "schema",
             "evidence_id",
@@ -728,7 +723,7 @@ class EvidenceLedger:
             raise TypeError("evidence ledger must use the canonical type")
         if type(value) is not dict:
             raise TypeError("evidence ledger must be a canonical dictionary")
-        payload = cast(dict[str, object], value)
+        payload = cast(dict[str, Any], value)
         expected_keys = {"schema", "mode", "promotion", "entries", "ledger_hash"}
         if set(payload) != expected_keys:
             raise ValueError("evidence ledger schema keys are invalid")
@@ -739,10 +734,7 @@ class EvidenceLedger:
         entries_value = payload["entries"]
         if type(entries_value) is not list:
             raise TypeError("evidence ledger entries must be a canonical list")
-        entries = tuple(
-            EvidenceLedgerEntry.from_dict(entry)
-            for entry in cast(list[object], entries_value)
-        )
+        entries = tuple(EvidenceLedgerEntry.from_dict(entry) for entry in cast(list[object], entries_value))
         ledger = cls(entries)
         ledger.validate()
         ledger_hash = payload["ledger_hash"]
@@ -804,11 +796,7 @@ def evaluate_adaptive_measurement(
     except (TypeError, ValueError, AttributeError) as exc:
         protocol_valid = False
         reasons.append(f"protocol_invalid:{type(exc).__name__}")
-    if (
-        not flags_valid
-        or len(flags) != len(raw_flags)
-        or any(_invalid_string(flag) for flag in flags)
-    ):
+    if not flags_valid or len(flags) != len(raw_flags) or any(_invalid_string(flag) for flag in flags):
         reasons.append("contamination_flags_invalid")
         flags = ()
     if flags:
@@ -824,56 +812,36 @@ def evaluate_adaptive_measurement(
         if typed_spec and spec.direction in {"higher_is_better", "lower_is_better"}
         else "lower_is_better"
     )
-    alpha = (
-        float(spec.alpha)
-        if typed_spec and _is_finite(spec.alpha) and 0.0 < float(spec.alpha) < 0.5
-        else 0.05
-    )
-    warmup_count = (
-        spec.warmup_count
-        if typed_spec and type(spec.warmup_count) is int and spec.warmup_count >= 0
-        else 0
-    )
+    alpha = float(spec.alpha) if typed_spec and _is_finite(spec.alpha) and 0.0 < float(spec.alpha) < 0.5 else 0.05
+    warmup_count = spec.warmup_count if typed_spec and type(spec.warmup_count) is int and spec.warmup_count >= 0 else 0
     min_observations = (
-        spec.min_observations
-        if typed_spec and type(spec.min_observations) is int
-        and spec.min_observations >= 0
-        else 0
+        spec.min_observations if typed_spec and type(spec.min_observations) is int and spec.min_observations >= 0 else 0
     )
     maximum = (
-        spec.max_observations
-        if typed_spec and type(spec.max_observations) is int
-        and spec.max_observations > 0
-        else 0
+        spec.max_observations if typed_spec and type(spec.max_observations) is int and spec.max_observations > 0 else 0
     )
-    block_size = (
-        spec.block_size
-        if typed_spec and type(spec.block_size) is int and spec.block_size > 0
-        else 1
-    )
+    block_size = spec.block_size if typed_spec and type(spec.block_size) is int and spec.block_size > 0 else 1
     relative_precision = (
         float(spec.relative_precision)
-        if typed_spec and _is_finite(spec.relative_precision)
-        and 0.0 < float(spec.relative_precision) < 1.0
+        if typed_spec and _is_finite(spec.relative_precision) and 0.0 < float(spec.relative_precision) < 1.0
         else math.inf
     )
     absolute_precision = (
         float(spec.absolute_precision)
-        if typed_spec and spec.absolute_precision is not None
+        if typed_spec
+        and spec.absolute_precision is not None
         and _is_finite(spec.absolute_precision)
         and float(spec.absolute_precision) > 0.0
         else None
     )
     max_lag1_autocorrelation = (
         float(spec.max_lag1_autocorrelation)
-        if typed_spec and _is_finite(spec.max_lag1_autocorrelation)
-        and 0.0 < float(spec.max_lag1_autocorrelation) < 1.0
+        if typed_spec and _is_finite(spec.max_lag1_autocorrelation) and 0.0 < float(spec.max_lag1_autocorrelation) < 1.0
         else math.inf
     )
     max_drift_ratio = (
         float(spec.max_drift_ratio)
-        if typed_spec and _is_finite(spec.max_drift_ratio)
-        and 0.0 < float(spec.max_drift_ratio) < 1.0
+        if typed_spec and _is_finite(spec.max_drift_ratio) and 0.0 < float(spec.max_drift_ratio) < 1.0
         else math.inf
     )
     if len(finite_warmups) < warmup_count:
@@ -897,8 +865,7 @@ def evaluate_adaptive_measurement(
     drift: float | None = None
     try:
         block_means = [
-            statistics.fmean(values[index : index + block_size])
-            for index in range(0, len(values), block_size)
+            statistics.fmean(values[index : index + block_size]) for index in range(0, len(values), block_size)
         ]
         block_count = len(block_means)
         lag = _lag_one(block_means)
@@ -925,7 +892,7 @@ def evaluate_adaptive_measurement(
             for value in (estimate, ci_low, ci_high, precision_ratio, lag, drift)
         ):
             raise OverflowError("derived measurement statistic is not finite")
-    except (OverflowError, ValueError, statistics.StatisticsError):
+    except OverflowError, ValueError, statistics.StatisticsError:
         reasons.append("numeric_overflow")
         block_means = []
         block_count = 0
@@ -954,10 +921,7 @@ def evaluate_adaptive_measurement(
         status = "CONTAMINATED"
     elif "numeric_overflow" in reasons:
         status = "INSUFFICIENT_EVIDENCE"
-    elif (
-        floor_met
-        and ("autocorrelation_exceeds_bound" in reasons or "drift_exceeds_bound" in reasons)
-    ):
+    elif floor_met and ("autocorrelation_exceeds_bound" in reasons or "drift_exceeds_bound" in reasons):
         status = "UNSTABLE"
     elif (
         not protocol_valid
@@ -1077,7 +1041,7 @@ class HardwareCapabilityVector:
             raise TypeError("hardware vector must use the canonical type")
         if type(value) is not dict:
             raise TypeError("hardware vector must be a canonical dictionary")
-        payload = cast(dict[str, object], value)
+        payload = cast(dict[str, Any], value)
         if set(payload) != {"schema", "values", "unknown_fields"}:
             raise ValueError("hardware vector schema keys are invalid")
         if payload["schema"] != f"{_SCHEMA_VERSION}-hardware":
@@ -1247,7 +1211,7 @@ class WorkloadSignature:
             raise TypeError("workload signature must use the canonical type")
         if type(value) is not dict:
             raise TypeError("workload signature must be a canonical dictionary")
-        payload = cast(dict[str, object], value)
+        payload = cast(dict[str, Any], value)
         if set(payload) != {"schema", "values", "regime"}:
             raise ValueError("workload signature schema keys are invalid")
         if payload["schema"] != f"{_SCHEMA_VERSION}-workload":
@@ -1370,7 +1334,7 @@ class SimulationEvidence:
             raise TypeError("simulation evidence must use the canonical type")
         if type(value) is not dict:
             raise TypeError("simulation evidence must be a canonical dictionary")
-        payload = cast(dict[str, object], value)
+        payload = cast(dict[str, Any], value)
         expected_keys = {
             "schema",
             "simulation_id",
@@ -1395,8 +1359,8 @@ class SimulationEvidence:
             simulation_id=payload["simulation_id"],
             simulation_class=payload["simulation_class"],
             question=payload["question"],
-            inputs=tuple(cast(list[object], payload["inputs"])),
-            outputs=tuple(cast(list[object], payload["outputs"])),
+            inputs=tuple(cast(list[str], payload["inputs"])),
+            outputs=tuple(cast(list[str], payload["outputs"])),
             status=payload["status"],
             evidence_class=payload["evidence_class"],
         )
@@ -1444,7 +1408,7 @@ class AnchorObservation:
             raise TypeError("anchor observation must use the canonical type")
         if type(value) is not dict:
             raise TypeError("anchor observation must be a canonical dictionary")
-        payload = cast(dict[str, object], value)
+        payload = cast(dict[str, Any], value)
         if set(payload) != {"schema", "anchor_id", "hardware", "workload", "observed_value", "evidence_hash"}:
             raise ValueError("anchor observation schema keys are invalid")
         if payload["schema"] != f"{_SCHEMA_VERSION}-anchor-observation":
@@ -1501,7 +1465,7 @@ class AnalyticPredictionModel:
             raise TypeError("prediction model must use the canonical type")
         if type(value) is not dict:
             raise TypeError("prediction model must be a canonical dictionary")
-        payload = cast(dict[str, object], value)
+        payload = cast(dict[str, Any], value)
         expected_keys = {
             "schema",
             "model_id",
@@ -1523,8 +1487,8 @@ class AnalyticPredictionModel:
         raw_domain = payload["validated_domain"]
         if type(raw_coefficients) is not list or type(raw_domain) is not list:
             raise TypeError("prediction model coefficients and domains must be canonical lists")
-        coefficients = cast(list[object], raw_coefficients)
-        domain = cast(list[object], raw_domain)
+        coefficients = cast(list[list[Any]], raw_coefficients)
+        domain = cast(list[list[Any]], raw_domain)
         if any(type(item) is not list or len(item) != 2 for item in coefficients):
             raise ValueError("prediction model coefficients must be canonical pairs")
         if any(type(item) is not list or len(item) != 3 for item in domain):
@@ -1534,14 +1498,12 @@ class AnalyticPredictionModel:
             model_version=payload["model_version"],
             metric=payload["metric"],
             intercept=payload["intercept"],
-            coefficients=tuple(
-                (cast(list[object], item)[0], cast(list[object], item)[1]) for item in coefficients
-            ),
+            coefficients=tuple((cast(str, item[0]), cast(float, item[1])) for item in coefficients),
             validated_domain=tuple(
                 (
-                    cast(list[object], item)[0],
-                    cast(list[object], item)[1],
-                    cast(list[object], item)[2],
+                    cast(str, item[0]),
+                    cast(float, item[1]),
+                    cast(float, item[2]),
                 )
                 for item in domain
             ),
@@ -1631,7 +1593,11 @@ class PredictionResult:
     def validate(self) -> None:
         if type(self) is not PredictionResult:
             raise TypeError("prediction result must use the canonical type")
-        for name, value in (("model_id", self.model_id), ("model_version", self.model_version), ("metric", self.metric)):
+        for name, value in (
+            ("model_id", self.model_id),
+            ("model_version", self.model_version),
+            ("metric", self.metric),
+        ):
             if type(value) is not str:
                 raise TypeError(f"prediction result {name} must be a string")
         if self.status not in {"PREDICTED_IN_DOMAIN", "REJECTED_OOD", "INSUFFICIENT_EVIDENCE"}:
@@ -1682,12 +1648,7 @@ class PredictionResult:
         if type(self.anchor_evidence_hashes) is not tuple:
             raise TypeError("prediction result anchor evidence must use a canonical tuple")
         for item in self.anchor_evidence_hashes:
-            if (
-                type(item) is not tuple
-                or len(item) != 2
-                or _invalid_string(item[0])
-                or not _is_digest(item[1], 64)
-            ):
+            if type(item) is not tuple or len(item) != 2 or _invalid_string(item[0]) or not _is_digest(item[1], 64):
                 raise ValueError("prediction result anchor evidence is invalid")
         evidence_ids = tuple(item[0] for item in self.anchor_evidence_hashes)
         if len(evidence_ids) != len(set(evidence_ids)) or evidence_ids != self.anchor_ids:
@@ -1706,9 +1667,7 @@ class PredictionResult:
             "metric": self.metric,
             "status": self.status,
             "estimate": self.estimate,
-            "prediction_interval": None
-            if self.prediction_interval is None
-            else list(self.prediction_interval),
+            "prediction_interval": None if self.prediction_interval is None else list(self.prediction_interval),
             "validated_domain": [list(item) for item in self.validated_domain],
             "nearest_anchor_distance": self.nearest_anchor_distance,
             "ood_status": self.ood_status,
@@ -1727,7 +1686,7 @@ class PredictionResult:
             raise TypeError("prediction result must use the canonical type")
         if type(value) is not dict:
             raise TypeError("prediction result must be a canonical dictionary")
-        payload = cast(dict[str, object], value)
+        payload = cast(dict[str, Any], value)
         expected_keys = {
             "schema",
             "model_id",
@@ -1753,13 +1712,13 @@ class PredictionResult:
             if type(payload[name]) is not list:
                 raise TypeError(f"prediction result {name} must be a canonical list")
         raw_interval = payload["prediction_interval"]
-        if raw_interval is not None and (type(raw_interval) is not list or len(raw_interval) != 2):
+        if raw_interval is not None and (type(raw_interval) is not list or len(cast(list[Any], raw_interval)) != 2):
             raise TypeError("prediction result interval must be a canonical list or null")
-        raw_domain = cast(list[object], payload["validated_domain"])
-        if any(type(item) is not list or len(item) != 3 for item in raw_domain):
+        raw_domain = cast(list[list[Any]], payload["validated_domain"])
+        if any(type(item) is not list or len(cast(list[Any], item)) != 3 for item in cast(list[object], raw_domain)):
             raise ValueError("prediction result domain must contain canonical triples")
-        raw_evidence = cast(list[object], payload["anchor_evidence_hashes"])
-        if any(type(item) is not list or len(item) != 2 for item in raw_evidence):
+        raw_evidence = cast(list[list[Any]], payload["anchor_evidence_hashes"])
+        if any(type(item) is not list or len(cast(list[Any], item)) != 2 for item in cast(list[object], raw_evidence)):
             raise ValueError("prediction result anchor evidence must contain canonical pairs")
         result = cls(
             model_id=payload["model_id"],
@@ -1767,19 +1726,19 @@ class PredictionResult:
             metric=payload["metric"],
             status=payload["status"],
             estimate=payload["estimate"],
-            prediction_interval=None if raw_interval is None else tuple(cast(list[object], raw_interval)),
+            prediction_interval=(
+                None if raw_interval is None else (cast(float, raw_interval[0]), cast(float, raw_interval[1]))
+            ),
             validated_domain=tuple(
-                tuple(cast(list[object], item)) for item in raw_domain
+                (cast(str, item[0]), cast(float, item[1]), cast(float, item[2])) for item in raw_domain
             ),
             nearest_anchor_distance=payload["nearest_anchor_distance"],
             ood_status=payload["ood_status"],
-            missing_features=tuple(cast(list[object], payload["missing_features"])),
-            failure_reasons=tuple(cast(list[object], payload["failure_reasons"])),
+            missing_features=tuple(cast(list[str], payload["missing_features"])),
+            failure_reasons=tuple(cast(list[str], payload["failure_reasons"])),
             artifact_hash=payload["artifact_hash"],
-            anchor_ids=tuple(cast(list[object], payload["anchor_ids"])),
-            anchor_evidence_hashes=tuple(
-                tuple(cast(list[object], item)) for item in raw_evidence
-            ),
+            anchor_ids=tuple(cast(list[str], payload["anchor_ids"])),
+            anchor_evidence_hashes=tuple((cast(str, item[0]), cast(str, item[1])) for item in raw_evidence),
         )
         result.validate()
         return result
@@ -1811,7 +1770,7 @@ class AnchorCandidate:
             raise TypeError("anchor candidate must use the canonical type")
         if type(value) is not dict:
             raise TypeError("anchor candidate must be a canonical dictionary")
-        payload = cast(dict[str, object], value)
+        payload = cast(dict[str, Any], value)
         expected_keys = {
             "schema",
             "anchor_id",
@@ -1938,7 +1897,7 @@ class AnchorSelectionPlan:
             self.unavailable_anchor_ids,
             self.skipped_anchor_ids,
         )
-        if len(set().union(*groups)) != sum(len(group) for group in groups):
+        if len(set[str]().union(*groups)) != sum(len(group) for group in groups):
             raise ValueError("anchor plan identity groups overlap")
         if not _is_digest(self.artifact_hash, 64):
             raise ValueError("anchor plan artifact_hash must be a non-zero SHA-256 digest")
@@ -1969,7 +1928,7 @@ class AnchorSelectionPlan:
             raise TypeError("anchor plan must use the canonical type")
         if type(value) is not dict:
             raise TypeError("anchor plan must be a canonical dictionary")
-        payload = cast(dict[str, object], value)
+        payload = cast(dict[str, Any], value)
         expected_keys = {
             "schema",
             "status",
@@ -1998,13 +1957,13 @@ class AnchorSelectionPlan:
         plan = cls(
             status=payload["status"],
             budget_seconds=payload["budget_seconds"],
-            selected_anchor_ids=tuple(cast(list[object], payload["selected_anchor_ids"])),
-            unavailable_anchor_ids=tuple(cast(list[object], payload["unavailable_anchor_ids"])),
-            skipped_anchor_ids=tuple(cast(list[object], payload["skipped_anchor_ids"])),
+            selected_anchor_ids=tuple(cast(list[str], payload["selected_anchor_ids"])),
+            unavailable_anchor_ids=tuple(cast(list[str], payload["unavailable_anchor_ids"])),
+            skipped_anchor_ids=tuple(cast(list[str], payload["skipped_anchor_ids"])),
             planned_cost_seconds=payload["planned_cost_seconds"],
             remaining_budget_seconds=payload["remaining_budget_seconds"],
             execution=payload["execution"],
-            failure_reasons=tuple(cast(list[object], payload["failure_reasons"])),
+            failure_reasons=tuple(cast(list[str], payload["failure_reasons"])),
             artifact_hash=payload["artifact_hash"],
         )
         plan.validate()
@@ -2023,7 +1982,7 @@ def select_anchor_plan(
     candidates: Sequence[AnchorCandidate],
     *,
     budget_seconds: float,
-    ) -> AnchorSelectionPlan:
+) -> AnchorSelectionPlan:
     """Select external anchors without invoking a hosted runner."""
 
     reasons: list[str] = []
@@ -2171,7 +2130,7 @@ class CoverageVector:
             raise TypeError("coverage vector must use the canonical type")
         if type(value) is not dict:
             raise TypeError("coverage vector must be a canonical dictionary")
-        payload = cast(dict[str, object], value)
+        payload = cast(dict[str, Any], value)
         expected_keys = {
             "schema",
             "contract_coverage",
@@ -2295,7 +2254,7 @@ def predict_cross_hardware(
             continue
         try:
             anchor_features = anchor.features()
-        except (TypeError, ValueError, AttributeError, KeyError, IndexError):
+        except TypeError, ValueError, AttributeError, KeyError, IndexError:
             invalid_anchor_count += 1
             continue
         if anchor.anchor_id in seen_anchor_ids:
@@ -2366,10 +2325,7 @@ def predict_cross_hardware(
         assert nearest is not None
         half_width = float(model.residual_half_width) + float(model.distance_penalty_per_unit) * nearest
         interval = (estimate - half_width, estimate + half_width)
-        if any(
-            not math.isfinite(float(value))
-            for value in (estimate, interval[0], interval[1], half_width, nearest)
-        ):
+        if any(not math.isfinite(float(value)) for value in (estimate, interval[0], interval[1], half_width, nearest)):
             reasons.append("numeric_overflow")
             status = "INSUFFICIENT_EVIDENCE"
             ood = "IN_DOMAIN"

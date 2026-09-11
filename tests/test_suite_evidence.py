@@ -38,6 +38,21 @@ def test_execution_run_key_is_stable_for_duplicate_detection() -> None:
     assert execution_run_key(**args) != execution_run_key(**other_gate)
 
 
+def test_execution_run_key_separates_dirty_worktree_fingerprints() -> None:
+    args = {
+        "gate_id": "python-cross-language",
+        "commit": "a" * 40,
+        "command": ["uv", "run", "pytest"],
+        "platform_name": "Windows",
+        "toolchain_name": "CPython 3.14.7",
+        "claim_scope": "LOCAL_CHECKOUT_ONLY",
+    }
+    assert execution_run_key(**args, worktree_fingerprint="0" * 64) != execution_run_key(
+        **args,
+        worktree_fingerprint="1" * 64,
+    )
+
+
 def test_exclusive_suite_lock_rejects_a_second_process(tmp_path: Path) -> None:
     lock_path = tmp_path / ".suite-evidence.lock"
     code = (

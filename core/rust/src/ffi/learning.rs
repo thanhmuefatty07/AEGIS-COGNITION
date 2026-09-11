@@ -6,6 +6,7 @@ use super::{
     get_memory_repository, get_session_index, get_session_ledger, hex32, py_safe,
     session_profile_id,
 };
+use crate::memory::repository::DEFAULT_MEMORY_KIND;
 use pyo3::prelude::*;
 use std::path::PathBuf;
 
@@ -46,6 +47,7 @@ fn memory_view_json(view: &crate::memory::repository::MemoryRecordView) -> serde
         "memory_id": format!("0x{:x}", view.memory_id),
         "owner_id": view.owner_id,
         "scope_kind": view.scope_kind,
+        "memory_kind": view.memory_kind,
         "lifecycle": view.lifecycle,
         "validation": view.validation,
         "validation_basis": view.validation_basis,
@@ -58,7 +60,7 @@ fn memory_view_json(view: &crate::memory::repository::MemoryRecordView) -> serde
 }
 
 #[pyfunction]
-#[pyo3(signature = (memory_id, content, timestamp, request_id, scope_kind=None, owner_id=None, subject_id=None))]
+#[pyo3(signature = (memory_id, content, timestamp, request_id, scope_kind=None, owner_id=None, subject_id=None, memory_kind=None))]
 pub fn aegis_capture_memory(
     memory_id: u128,
     content: String,
@@ -67,21 +69,24 @@ pub fn aegis_capture_memory(
     scope_kind: Option<String>,
     owner_id: Option<String>,
     subject_id: Option<String>,
+    memory_kind: Option<String>,
 ) -> PyResult<String> {
     py_safe(move || {
         let owner_id = memory_owner(owner_id)?;
         let scope_kind = memory_scope(scope_kind)?;
         let subject_id = memory_subject(subject_id, &owner_id)?;
+        let memory_kind = memory_kind.unwrap_or_else(|| DEFAULT_MEMORY_KIND.to_string());
         let repository = get_memory_repository().map_err(|error| {
             pyo3::exceptions::PyRuntimeError::new_err(format!(
                 "Memory repository init failed: {error}"
             ))
         })?;
-        let outcome = match repository.lock().capture_as(
+        let outcome = match repository.lock().capture_with_kind_as(
             memory_id,
             &subject_id,
             &owner_id,
             &scope_kind,
+            &memory_kind,
             &content,
             timestamp,
             request_id,
@@ -97,6 +102,7 @@ pub fn aegis_capture_memory(
                     "memory_id": format!("0x{:x}", committed_memory_id),
                     "owner_id": owner_id,
                     "scope_kind": scope_kind,
+                    "memory_kind": memory_kind,
                     "lifecycle": "CANDIDATE",
                     "validation": "UNREVIEWED",
                     "index_pending": true,
@@ -125,6 +131,7 @@ pub fn aegis_capture_memory(
             "memory_id": format!("0x{:x}", memory_id),
             "owner_id": owner_id,
             "scope_kind": scope_kind,
+            "memory_kind": memory_kind,
             "lifecycle": "CANDIDATE",
             "validation": "UNREVIEWED",
             "content_hash": hex32(&outcome.content_hash),
@@ -540,6 +547,11 @@ fn memory_transition(
         let owner_id = memory_owner(owner_id)?;
         let scope_kind = memory_scope(scope_kind)?;
         let subject_id = memory_subject(subject_id, &owner_id)?;
+        if !matches!(operation, "forget" | "restore" | "purge") {
+            return Err(pyo3::exceptions::PyValueError::new_err(
+                "unsupported memory transition operation",
+            ));
+        }
         let repository = get_memory_repository().map_err(|error| {
             pyo3::exceptions::PyRuntimeError::new_err(format!(
                 "Memory repository init failed: {error}"
@@ -573,7 +585,11 @@ fn memory_transition(
                 timestamp,
                 expected_revision,
             ),
-            _ => unreachable!("memory transition operation is fixed by FFI wrappers"),
+            _ => {
+                return Err(pyo3::exceptions::PyValueError::new_err(
+                    "unsupported memory transition operation",
+                ));
+            }
         }
         .map_err(|error| {
             pyo3::exceptions::PyRuntimeError::new_err(format!(
@@ -686,6 +702,28 @@ mod tests {
         let oversized = "x".repeat(super::MAX_LEARNING_LEDGER_JSON_BYTES + 1);
         let result = aegis_get_learning_stats(oversized, String::new(), 0, 0);
         assert!(result.is_err());
+    }
+
+    #[cfg(feature = "python-extension")]
+    #[test]
+    fn memory_transition_rejects_unknown_operation_without_panicking() {
+        pyo3::Python::initialize();
+        let result = super::memory_transition(
+            1,
+            1,
+            1,
+            None,
+            Some("owner".to_string()),
+            None,
+            None,
+            "unknown",
+        );
+        let error = result.expect_err("unknown operations must fail closed");
+        assert!(
+            error
+                .to_string()
+                .contains("unsupported memory transition operation")
+        );
     }
 }
 

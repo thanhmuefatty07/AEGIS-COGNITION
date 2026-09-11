@@ -4,6 +4,8 @@ version = "0.1.0"
 edition = "2024"
 rust-version.workspace = true
 publish = false
+license = "BUSL-1.1"
+repository = "https://github.com/thanhmuefatty07/AEGIS-COGNITION"
 
 [lib]
 name = "aegis_nerve"
@@ -42,6 +44,7 @@ fast-json = []
 [dependencies]
 thiserror = "2"
 memmap2 = "0.9"
+notify = "8.2.0"
 parking_lot = "0.12"
 ed25519-dalek = { version = "2", features = ["rand_core"] }
 pyo3 = { version = "0.29.2", features = ["macros"] }
@@ -64,12 +67,15 @@ aho-corasick = "1.1.2"
 tokio = { version = "1", features = ["rt", "sync", "fs", "io-util"] }
 rayon = "1.12"
 rusqlite = { version = "0.40.2", features = ["bundled", "backup"] }
+libc = "0.2"
 
 [target.'cfg(windows)'.dependencies]
 windows-sys = { version = "0.61.2", features = [
     "Win32_Foundation",
     "Win32_Security",
+    "Win32_Storage_FileSystem",
     "Win32_System_JobObjects",
+    "Win32_System_SystemInformation",
     "Win32_System_Threading",
 ] }
 

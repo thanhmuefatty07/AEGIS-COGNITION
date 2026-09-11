@@ -179,7 +179,7 @@ def _replay_chain_broken() -> str:
     3. A bug in AEGIS itself
 
     If this persists, please file an issue:
-    https://github.com/aegis-cognition/aegis-cognition/issues
+    https://github.com/thanhmuefatty07/AEGIS-COGNITION/issues
 
   Docs: https://docs.aegis-cognition.ai/evidence-chain
 """
@@ -270,7 +270,7 @@ def _rust_unsafe_error(msg: str) -> str:
     {msg[:200]}
 
   Please file an issue with this error message:
-  https://github.com/aegis-cognition/aegis-cognition/issues
+  https://github.com/thanhmuefatty07/AEGIS-COGNITION/issues
 """
 
 
@@ -286,7 +286,7 @@ def _rust_panic(msg: str) -> str:
     {msg[:200]}
 
   Please file an issue:
-  https://github.com/aegis-cognition/aegis-cognition/issues
+  https://github.com/thanhmuefatty07/AEGIS-COGNITION/issues
 """
 
 
@@ -381,7 +381,7 @@ def _generic_error(msg: str, error_type: str) -> str:
 
   Need help?
     Docs:  https://docs.aegis-cognition.ai
-    Issues: https://github.com/aegis-cognition/aegis-cognition/issues
+    Issues: https://github.com/thanhmuefatty07/AEGIS-COGNITION/issues
 
   Quick fix — try the basics:
     1. Check your API key:   aegis config show

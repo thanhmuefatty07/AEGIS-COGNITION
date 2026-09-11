@@ -366,12 +366,17 @@ def evaluate_progress_gate(
             }
         )
     overall_readiness_ppm = 0 if total_weight == 0 else weighted_score // total_weight
+    all_checks_passed = total_weight > 0 and all(
+        check["ok"]
+        for report in domain_reports
+        for check in report["checks"]
+    )
     payload = {
         "suite_name": "AEGIS Progress Gate",
         "schema": "aegis-progress-gate-report-v1",
         "truth_claim": False,
         "verifier": "artifact-weighted-readiness-index",
-        "overall_ok": True,
+        "overall_ok": all_checks_passed,
         "overall_readiness_ppm": overall_readiness_ppm,
         "overall_readiness_percent": round(overall_readiness_ppm / 10_000, 2),
         "domain_count": len(DOMAINS),

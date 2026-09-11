@@ -17,42 +17,43 @@ Setup flow (< 2 minutes):
 
 from __future__ import annotations
 
-import json
 import sys
 from collections.abc import Callable, Mapping
 from pathlib import Path
 from typing import Protocol, cast
 
-from .config import load_config
+from .config import VALID_TRUST_LEVELS, load_config, redact_config, save_config
 
 
 class _Msvcrt(Protocol):
     getch: Callable[[], bytes]
 
 
-def main() -> None:
+def main() -> int:
     """Main CLI entry point."""
     if len(sys.argv) < 2:
         _print_help()
-        return
+        return 0
 
     command = sys.argv[1]
 
     if command == "init":
         _cmd_init()
     elif command == "run":
-        _cmd_run(sys.argv[2:])
+        return _cmd_run(sys.argv[2:])
     elif command == "examples":
         _cmd_examples()
     elif command == "version":
         _cmd_version()
     elif command == "config":
-        _cmd_config(sys.argv[2:])
+        return _cmd_config(sys.argv[2:])
     elif command in ("-h", "--help", "help"):
         _print_help()
     else:
         print(f"Unknown command: {command}")
         print("Run 'aegis --help' for available commands.")
+        return 2
+    return 0
 
 
 def _print_help() -> None:
@@ -146,27 +147,19 @@ def _cmd_init() -> None:
     print(f"  Selected: {trust_level}")
     print()
 
-    # Write config
-    llm_lines = ["[llm]", f"provider = {json.dumps(provider)}"]
-    if provider == "chatgpt-web":
-        llm_lines.extend([f"base_url = {json.dumps(base_url)}", f"model = {json.dumps(model)}"])
-    else:
-        llm_lines.append(f"api_key = {json.dumps(api_key)}")
-    config_content = "\n".join(
-        [
-            *llm_lines,
-            "",
-            "[trust]",
-            f"level = {json.dumps(trust_level)}",
-            "",
-            "[browser]",
-            "enabled = true",
-            "",
-        ]
-    )
-
+    # Write config atomically through the canonical configuration boundary.
     config_path = config_dir / "config.toml"
-    config_path.write_text(config_content)
+    save_config(
+        {
+            "llm": {
+                "provider": provider,
+                **({"base_url": base_url, "model": model} if provider == "chatgpt-web" else {"api_key": api_key}),
+            },
+            "trust": {"level": trust_level},
+            "browser": {"enabled": True},
+        },
+        config_path,
+    )
 
     print("  " + "-" * 40)
     print("  Configuration saved!")
@@ -177,11 +170,11 @@ def _cmd_init() -> None:
     print()
 
 
-def _cmd_run(args: list[str]) -> None:
+def _cmd_run(args: list[str]) -> int:
     """Run an AI agent task."""
     if not args:
         print('Usage: aegis run "task description"')
-        return
+        return 2
 
     task = " ".join(args)
 
@@ -192,7 +185,7 @@ def _cmd_run(args: list[str]) -> None:
         print("  No configuration found.")
         print("  Run 'aegis init' first to set up your API key.")
         print()
-        return
+        return 1
 
     print()
     print(f"  Running: {task}")
@@ -200,7 +193,7 @@ def _cmd_run(args: list[str]) -> None:
     print()
 
     try:
-        from aegis_cognition import Agent
+        from .agent import Agent
 
         config = load_config(config_path)
         llm = _build_llm_from_config(config)
@@ -211,6 +204,8 @@ def _cmd_run(args: list[str]) -> None:
     except Exception as e:
         print(f"  Error: {e}")
         print()
+        return 1
+    return 0
 
 
 def _build_llm_from_config(config: dict[str, object]) -> object | None:
@@ -260,28 +255,72 @@ def _cmd_version() -> None:
     print(f"aegis-cognition v{__version__}")
 
 
-def _cmd_config(args: list[str]) -> None:
+def _cmd_config(args: list[str]) -> int:
     """Show or set configuration."""
     config_path = Path.home() / ".aegis" / "config.toml"
 
     if not args:
         print("Usage: aegis config show | aegis config set <key> <value>")
-        return
+        return 2
 
     subcmd = args[0]
 
     if subcmd == "show":
-        if config_path.exists():
-            print(config_path.read_text())
+        try:
+            config = load_config(config_path)
+        except Exception as error:
+            print(f"Configuration error: {error}")
+            return 1
+        if config:
+            from .config import render_toml
+
+            print(render_toml(redact_config(config)), end="")
         else:
             print("No configuration found. Run 'aegis init' first.")
-    elif subcmd == "set" and len(args) >= 3:
-        key = args[1]
-        value = args[2]
-        print(f"Set {key} = {value}")
-        # Simple implementation: read, modify, write
+        return 0
+    elif subcmd == "set" and len(args) == 3:
+        key, raw_value = args[1], args[2]
+        try:
+            config = load_config(config_path)
+            _set_config_value(config, key, raw_value)
+            save_config(config, config_path)
+        except (OSError, TypeError, ValueError, RuntimeError) as error:
+            print(f"Configuration error: {error}")
+            return 1
+        print(f"Set {key}.")
+        return 0
     else:
-        print(f"Unknown config command: {subcmd}")
+        print("Usage: aegis config show | aegis config set <key> <value>")
+        return 2
+
+
+def _set_config_value(config: dict[str, object], key: str, raw_value: str) -> None:
+    """Validate and set the small, documented CLI configuration surface."""
+
+    section_name, separator, field_name = key.partition(".")
+    allowed: dict[str, tuple[str, ...]] = {
+        "llm": ("provider", "api_key", "base_url", "model"),
+        "trust": ("level",),
+        "browser": ("enabled",),
+    }
+    if not separator or section_name not in allowed or field_name not in allowed[section_name]:
+        raise ValueError(f"unsupported configuration key: {key}")
+    value = raw_value.strip()
+    if not value:
+        raise ValueError(f"configuration value for {key} cannot be empty")
+    if section_name == "trust" and field_name == "level":
+        value = value.upper()
+        if value not in VALID_TRUST_LEVELS:
+            raise ValueError(f"trust level must be one of {', '.join(sorted(VALID_TRUST_LEVELS))}")
+    elif section_name == "browser" and field_name == "enabled":
+        lowered = value.lower()
+        if lowered not in {"true", "false"}:
+            raise ValueError("browser.enabled must be true or false")
+        value = lowered == "true"
+    section = config.setdefault(section_name, {})
+    if not isinstance(section, dict):
+        raise ValueError(f"configuration section {section_name} is not a table")
+    section[field_name] = value
 
 
 # ── Helpers ─────────────────────────────────────────────────────────
@@ -292,7 +331,7 @@ def _prompt(text: str, default: str = "") -> str:
     try:
         result = input(f"{text} [{default}]: ").strip()
         return result or default
-    except (EOFError, KeyboardInterrupt):
+    except EOFError, KeyboardInterrupt:
         print()
         sys.exit(0)
 
@@ -328,4 +367,4 @@ def _prompt_secret(text: str) -> str:
 
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())

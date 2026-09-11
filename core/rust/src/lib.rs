@@ -46,6 +46,7 @@ pub mod message;
 pub mod mvcc;
 pub mod orchestrator;
 pub mod physical;
+pub mod placement;
 pub mod policy;
 pub mod replay;
 pub mod resource;

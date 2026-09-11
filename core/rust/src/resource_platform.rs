@@ -98,6 +98,7 @@ mod linux {
                 sampled_at_ms: now_ms(),
                 cpu_threads_active: 0,
                 host_memory_bytes: memory,
+                host_memory_available_bytes: None,
                 queue_depth: 0,
                 memory_pressure: pressure,
             }
@@ -263,6 +264,7 @@ mod windows {
                 sampled_at_ms: now_ms(),
                 cpu_threads_active: 0,
                 host_memory_bytes: None,
+                host_memory_available_bytes: None,
                 queue_depth: 0,
                 memory_pressure: false,
             }
@@ -332,6 +334,7 @@ mod macos {
                 sampled_at_ms: now_ms(),
                 cpu_threads_active: 0,
                 host_memory_bytes: None,
+                host_memory_available_bytes: None,
                 queue_depth: 0,
                 memory_pressure: false,
             }
