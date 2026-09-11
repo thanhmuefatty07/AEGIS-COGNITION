@@ -24,6 +24,7 @@ target/
 **/target/
 **/target_*/
 **/*target*/
+**/.benchmarks/
 **/build/
 !fuzz/fuzz_targets/
 !fuzz/fuzz_targets/*.rs
