@@ -264,7 +264,8 @@ def test_agent_application_opt_in_records_a_canonical_execution(monkeypatch):
     import aegis_cognition.application as application_module
 
     class FakeManager:
-        calls = []
+        def __init__(self):
+            self.calls = []
 
         def read(self, *_args, **_kwargs):
             raise ValueError("conversation not found")

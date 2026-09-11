@@ -17,7 +17,7 @@ def test_s2_mapping_closes_critical_and_high_selection_surfaces() -> None:
     assert report["all_high_selection_relevant_mapped"] is True
     assert report["no_fake_mapping"] is True
     assert report["unknown_dependency_policy"] == "WIDEN_CONSERVATIVELY"
-    assert report["unknown_surface_count"] == 116
+    assert report["unknown_surface_count"] == 125
     assert report["claim_graph_status"] == "SHADOW_GRAPH_PARTIAL_MAPPING_SELECTION_DISABLED"
 
 

@@ -59,6 +59,50 @@ def _sha256(value: str) -> str:
     return hashlib.sha256(value.encode("utf-8", errors="replace")).hexdigest()
 
 
+def _git_worktree_fingerprint() -> tuple[str, str]:
+    """Fingerprint tracked changes and non-ignored untracked files.
+
+    A commit SHA alone does not identify a dirty checkout.  The fingerprint
+    deliberately excludes ignored files (which may contain local secrets or
+    build output) and fails closed when Git cannot describe the checkout.
+    """
+
+    status = subprocess.run(
+        ["git", "status", "--porcelain=v1", "--untracked-files=all"],
+        capture_output=True,
+        check=False,
+    )
+    diff = subprocess.run(
+        ["git", "diff", "--binary", "--no-ext-diff", "--no-textconv", "HEAD", "--"],
+        capture_output=True,
+        check=False,
+    )
+    untracked = subprocess.run(
+        ["git", "ls-files", "--others", "--exclude-standard", "-z"],
+        capture_output=True,
+        check=False,
+    )
+    if status.returncode != 0 or diff.returncode != 0 or untracked.returncode != 0:
+        raise RuntimeError("unable to fingerprint the Git worktree")
+
+    digest = hashlib.sha256()
+    digest.update(b"aegis-suite-worktree-v1\0")
+    digest.update(status.stdout)
+    digest.update(b"\0tracked-diff\0")
+    digest.update(diff.stdout)
+    paths = sorted(path for path in untracked.stdout.split(b"\0") if path)
+    for raw_path in paths:
+        path = Path(os.fsdecode(raw_path))
+        digest.update(b"\0untracked\0")
+        digest.update(raw_path)
+        digest.update(b"\0")
+        try:
+            digest.update(path.read_bytes())
+        except OSError as exc:
+            raise RuntimeError(f"unable to read untracked worktree file: {path}") from exc
+    return digest.hexdigest(), "DIRTY" if status.stdout else "CLEAN"
+
+
 def execution_run_key(
     *,
     gate_id: str,
@@ -67,6 +111,7 @@ def execution_run_key(
     platform_name: str,
     toolchain_name: str,
     claim_scope: str,
+    worktree_fingerprint: str | None = None,
 ) -> str:
     """Identify duplicate work independently of a human-readable attempt ID."""
     payload = {
@@ -76,6 +121,7 @@ def execution_run_key(
         "platform": platform_name,
         "toolchain": toolchain_name,
         "claim_scope": claim_scope,
+        "worktree_fingerprint": worktree_fingerprint,
     }
     return _sha256(json.dumps(payload, sort_keys=True, separators=(",", ":")))
 
@@ -240,6 +286,7 @@ def main() -> int:
     platform_name = platform.platform()
     toolchain_name = toolchain(command)
     claim_scope = "LOCAL_CHECKOUT_ONLY"
+    worktree_fingerprint, worktree_status = _git_worktree_fingerprint()
     attempt_id = args.attempt_id or os.environ.get("GITHUB_RUN_ID") or "local"
     run_key = execution_run_key(
         gate_id=gate_id,
@@ -248,6 +295,7 @@ def main() -> int:
         platform_name=platform_name,
         toolchain_name=toolchain_name,
         claim_scope=claim_scope,
+        worktree_fingerprint=worktree_fingerprint,
     )
     args.output.parent.mkdir(parents=True, exist_ok=True)
     try:
@@ -265,6 +313,8 @@ def main() -> int:
         "name": args.name,
         "command": shlex.join(command),
         "commit": revision,
+        "worktree_status": worktree_status,
+        "worktree_sha256": worktree_fingerprint,
         "timestamp_utc": finished.replace(microsecond=0).isoformat().replace("+00:00", "Z"),
         "started_at_utc": started.isoformat().replace("+00:00", "Z"),
         "finished_at_utc": finished.isoformat().replace("+00:00", "Z"),

@@ -47,6 +47,9 @@ pub enum LearningEventType {
     MemoryCandidateCreated { candidate_hash: [u8; 32] },
     /// A memory candidate was durably committed by the owning repository.
     MemoryCommitted { memory_hash: [u8; 32] },
+    /// A bounded CogniFold compatibility projection was updated. This is not
+    /// proof that the durable semantic repository accepted the memory.
+    MemoryProjectionCommitted { memory_hash: [u8; 32] },
     /// Legacy event retained for readers of historical ledgers. New writers
     /// must use `MemoryCandidateCreated` or `MemoryCommitted` so the event
     /// meaning matches the actual transition.
@@ -92,6 +95,11 @@ impl LearningEventType {
             }
             Self::MemoryCommitted { memory_hash } => {
                 let mut h = domain_hasher(b"aegis-learning-event-memory-committed-v1");
+                h.update(&memory_hash);
+                *h.finalize().as_bytes()
+            }
+            Self::MemoryProjectionCommitted { memory_hash } => {
+                let mut h = domain_hasher(b"aegis-learning-event-memory-projection-committed-v1");
                 h.update(&memory_hash);
                 *h.finalize().as_bytes()
             }
@@ -155,6 +163,7 @@ impl LearningEvent {
             } => *improvement_hash,
             LearningEventType::MemoryCandidateCreated { candidate_hash } => *candidate_hash,
             LearningEventType::MemoryCommitted { memory_hash } => *memory_hash,
+            LearningEventType::MemoryProjectionCommitted { memory_hash } => *memory_hash,
             LearningEventType::MemoryPersisted { memory_hash } => *memory_hash,
             LearningEventType::UserModelUpdated { model_hash } => *model_hash,
             LearningEventType::SessionRecallIndexed { session_hash } => *session_hash,

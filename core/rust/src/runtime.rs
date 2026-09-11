@@ -4,9 +4,13 @@
 //! attempt, lease and execution-lane state.  A caller receives only an opaque
 //! lease token; all authoritative lease attributes are looked up in Rust.
 
+use std::collections::BTreeMap;
+
 use crate::resource::{
-    AdmissionController, AdmissionDecision, CapacityFeedback, ExecutionLane, ExecutionLaneRegistry,
-    ResourceError, ResourceLeaseToken, ResourceRequest, ResourceUsageSample, WorkKind,
+    AdmissionController, AdmissionDecision, CapacityFeedback, CooperativeAdmissionDecision,
+    CooperativeAdmissionLease, CooperativeAdmissionLedger, CooperativeAdmissionRequest,
+    ExecutionLane, ExecutionLaneRegistry, ResourceError, ResourceLeaseToken, ResourceRequest,
+    ResourceUsageSample, WorkKind,
 };
 use crate::task_ledger::{TaskCard, TaskLedger, TaskLedgerError, TaskStatus};
 
@@ -20,6 +24,7 @@ pub enum RuntimeAdmission {
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct QueuedRuntimeAdmission {
     pub task_id: u128,
+    pub attempt_id: u64,
     pub admission: RuntimeAdmission,
 }
 
@@ -30,6 +35,38 @@ pub enum RuntimeOutcome {
     RetryWait,
     Cancelled,
     TimedOut,
+}
+
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
+pub enum CooperativeRuntimeMode {
+    #[default]
+    Disabled,
+    Shadow,
+    Enforced,
+}
+
+/// The runtime-facing result for a cooperative admission.  The lease token
+/// intentionally hides the aggregate reservation and cannot be constructed
+/// by callers; Rust keeps the authoritative lease for release validation.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum CooperativeRuntimeAdmission {
+    Admitted(Box<CooperativeLeaseToken>),
+    Shadow,
+}
+
+#[derive(Clone, Eq, PartialEq)]
+pub struct CooperativeLeaseToken {
+    lease: CooperativeAdmissionLease,
+}
+
+impl std::fmt::Debug for CooperativeLeaseToken {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        formatter
+            .debug_struct("CooperativeLeaseToken")
+            .field("task_id", &self.lease.task_id)
+            .field("attempt_id", &self.lease.attempt_id)
+            .finish()
+    }
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -48,6 +85,9 @@ pub struct AuthoritativeRuntime {
     pub ledger: TaskLedger,
     pub admission: AdmissionController,
     pub lanes: ExecutionLaneRegistry,
+    pending_admissions: BTreeMap<(u128, u64), RuntimeAdmission>,
+    cooperative_mode: CooperativeRuntimeMode,
+    cooperative_admission: Option<CooperativeAdmissionLedger>,
 }
 
 impl AuthoritativeRuntime {
@@ -56,7 +96,116 @@ impl AuthoritativeRuntime {
             ledger: TaskLedger::new(deadline_horizon_ms),
             admission: AdmissionController::from_hardware(profile),
             lanes: ExecutionLaneRegistry::for_profile(profile),
+            pending_admissions: BTreeMap::new(),
+            cooperative_mode: CooperativeRuntimeMode::Disabled,
+            cooperative_admission: None,
         }
+    }
+
+    pub fn cooperative_mode(&self) -> CooperativeRuntimeMode {
+        self.cooperative_mode
+    }
+
+    /// Configure resource-only cooperative admission from validated platform
+    /// inventory.  The planner ledger is not retained and active leases fence
+    /// reconfiguration so no admitted reservation can disappear underneath a
+    /// running task.
+    pub fn configure_cooperative(
+        &mut self,
+        mode: CooperativeRuntimeMode,
+        capabilities: &[crate::placement::PlacementCapability],
+        paths: &[crate::placement::PlacementTransferPath],
+    ) -> Result<(), RuntimeError> {
+        if self
+            .cooperative_admission
+            .as_ref()
+            .is_some_and(|ledger| ledger.active_leases() != 0)
+        {
+            return Err(RuntimeError::Resource(ResourceError::ResourceUnavailable(
+                "cooperative admission has active leases".to_string(),
+            )));
+        }
+
+        let ledger = match mode {
+            CooperativeRuntimeMode::Disabled => None,
+            CooperativeRuntimeMode::Shadow | CooperativeRuntimeMode::Enforced => Some(
+                CooperativeAdmissionLedger::from_inventory(capabilities, paths)
+                    .map_err(RuntimeError::Resource)?,
+            ),
+        };
+        self.cooperative_mode = mode;
+        self.cooperative_admission = ledger;
+        Ok(())
+    }
+
+    /// Admit a previously planned aggregate reservation without acquiring the
+    /// legacy execution lane.  H1 executor queue slots are the cooperative
+    /// execution gate; adding a second lane gate would double-count capacity.
+    pub fn submit_cooperative(
+        &mut self,
+        request: CooperativeAdmissionRequest,
+        now_ms: u64,
+    ) -> Result<CooperativeRuntimeAdmission, RuntimeError> {
+        let mode = self.cooperative_mode;
+        if mode == CooperativeRuntimeMode::Disabled {
+            return Err(RuntimeError::Resource(ResourceError::ResourceUnavailable(
+                "cooperative admission is disabled".to_string(),
+            )));
+        }
+
+        let ledger = self.cooperative_admission.as_mut().ok_or_else(|| {
+            RuntimeError::Resource(ResourceError::ResourceUnavailable(
+                "cooperative admission inventory is not configured".to_string(),
+            ))
+        })?;
+        if mode == CooperativeRuntimeMode::Shadow {
+            request.validate().map_err(RuntimeError::Resource)?;
+            ledger
+                .ensure_fits(&request.reservation)
+                .map_err(RuntimeError::Resource)?;
+            return Ok(CooperativeRuntimeAdmission::Shadow);
+        }
+
+        let decision = ledger
+            .admit(request, now_ms)
+            .map_err(RuntimeError::Resource)?;
+        let lease = match decision {
+            CooperativeAdmissionDecision::Admitted(lease)
+            | CooperativeAdmissionDecision::AlreadyAdmitted(lease) => lease,
+        };
+        Ok(CooperativeRuntimeAdmission::Admitted(Box::new(
+            CooperativeLeaseToken { lease },
+        )))
+    }
+
+    pub fn finish_cooperative(
+        &mut self,
+        token: CooperativeLeaseToken,
+        outcome: RuntimeOutcome,
+    ) -> Result<(), RuntimeError> {
+        let ledger = self.cooperative_admission.as_mut().ok_or_else(|| {
+            RuntimeError::Resource(ResourceError::ResourceUnavailable(
+                "cooperative admission inventory is not configured".to_string(),
+            ))
+        })?;
+        let release = if outcome == RuntimeOutcome::Cancelled {
+            ledger.cancel(&token.lease)
+        } else {
+            ledger.release(&token.lease)
+        };
+        release.map(|_| ()).map_err(RuntimeError::Resource)
+    }
+
+    pub fn cancel_cooperative(&mut self, token: CooperativeLeaseToken) -> Result<(), RuntimeError> {
+        let ledger = self.cooperative_admission.as_mut().ok_or_else(|| {
+            RuntimeError::Resource(ResourceError::ResourceUnavailable(
+                "cooperative admission inventory is not configured".to_string(),
+            ))
+        })?;
+        ledger
+            .cancel(&token.lease)
+            .map(|_| ())
+            .map_err(RuntimeError::Resource)
     }
 
     pub fn submit(
@@ -204,6 +353,7 @@ impl AuthoritativeRuntime {
                 break;
             };
             let task_id = request.task_id;
+            let attempt_id = request.attempt_id;
             let lane = lane_for_work_kind(request.work_kind);
             if !self.lanes.try_acquire(lane) {
                 let _ = self.admission.enqueue(request, now_ms);
@@ -227,12 +377,17 @@ impl AuthoritativeRuntime {
                     if !matches!(admission, RuntimeAdmission::Admitted(_)) {
                         let _ = self.lanes.release(lane);
                     }
-                    results.push(QueuedRuntimeAdmission { task_id, admission });
+                    results.push(QueuedRuntimeAdmission {
+                        task_id,
+                        attempt_id,
+                        admission,
+                    });
                 }
                 AdmissionDecision::Queued { position, reason } => {
                     let _ = self.lanes.release(lane);
                     results.push(QueuedRuntimeAdmission {
                         task_id,
+                        attempt_id,
                         admission: RuntimeAdmission::Queued { position, reason },
                     });
                     break;
@@ -241,12 +396,68 @@ impl AuthoritativeRuntime {
                     let _ = self.lanes.release(lane);
                     results.push(QueuedRuntimeAdmission {
                         task_id,
+                        attempt_id,
                         admission: RuntimeAdmission::Rejected { reason },
                     });
                 }
             }
         }
         results
+    }
+
+    /// Poll the bounded queue for one task. Other tasks admitted by the same
+    /// drain are retained until their owners poll them, so no lease is lost.
+    pub fn poll_queued(
+        &mut self,
+        task_id: u128,
+        attempt_id: u64,
+        now_ms: u64,
+    ) -> Option<RuntimeAdmission> {
+        let key = (task_id, attempt_id);
+        if let Some(admission) = self.pending_admissions.remove(&key) {
+            return Some(admission);
+        }
+
+        let mut target = None;
+        for result in self.drain_queued(now_ms) {
+            let result_key = (result.task_id, result.attempt_id);
+            if result_key == key && target.is_none() {
+                target = Some(result.admission);
+            } else {
+                self.pending_admissions.insert(result_key, result.admission);
+            }
+        }
+        target
+    }
+
+    /// Cancel a task that is still queued. An admitted result is never
+    /// cancelled through this method; its owner must use the lease token.
+    pub fn cancel_queued(&mut self, task_id: u128, attempt_id: u64) -> Result<bool, RuntimeError> {
+        if matches!(
+            self.pending_admissions.get(&(task_id, attempt_id)),
+            Some(RuntimeAdmission::Admitted(_))
+        ) {
+            return Ok(false);
+        }
+        self.pending_admissions.remove(&(task_id, attempt_id));
+
+        let task = self
+            .ledger
+            .task(task_id)
+            .ok_or(RuntimeError::Task(TaskLedgerError::MissingTask(task_id)))?;
+        if task.attempt_id != attempt_id {
+            return Err(RuntimeError::AttemptMismatch);
+        }
+        if task.status != TaskStatus::Ready {
+            return Ok(false);
+        }
+        if !self.admission.remove_queued(task_id, attempt_id) {
+            return Ok(false);
+        }
+        self.ledger
+            .transition_status(task_id, TaskStatus::Cancelled)
+            .map(|_| true)
+            .map_err(RuntimeError::Task)
     }
 
     /// Release leases that crossed their deadline and preserve the explicit
@@ -394,6 +605,61 @@ fn lane_for_work_kind(kind: WorkKind) -> ExecutionLane {
 mod tests {
     use super::*;
     use crate::resource::{CpuRequest, MemoryRequest, ResourceError, ResourceLeaseToken};
+
+    fn cooperative_inventory() -> Vec<crate::placement::PlacementCapability> {
+        vec![
+            crate::placement::PlacementCapability {
+                id: "cpu-0".to_string(),
+                domain: crate::placement::PlacementDomain::Cpu,
+                usable_bytes: Some(1024),
+                compute_units_per_us: Some(1),
+                bandwidth_bytes_per_s: None,
+                latency_us: Some(1),
+                queue_depth: 0,
+                queue_capacity: Some(2),
+                pressure: false,
+                local_only: true,
+                confidence: crate::placement::PlacementConfidence::Measured,
+                transfer_paths: Vec::new(),
+            },
+            crate::placement::PlacementCapability {
+                id: "ram-0".to_string(),
+                domain: crate::placement::PlacementDomain::HostMemory,
+                usable_bytes: Some(4096),
+                compute_units_per_us: None,
+                bandwidth_bytes_per_s: None,
+                latency_us: Some(1),
+                queue_depth: 0,
+                queue_capacity: Some(2),
+                pressure: false,
+                local_only: true,
+                confidence: crate::placement::PlacementConfidence::Measured,
+                transfer_paths: Vec::new(),
+            },
+        ]
+    }
+
+    fn cooperative_request(
+        task_id: u128,
+        attempt_id: u64,
+        plan_digest: &str,
+    ) -> CooperativeAdmissionRequest {
+        let mut reservation = crate::placement::CooperativeReservation::default();
+        reservation
+            .executor_queue_slots
+            .insert("cpu-0".to_string(), 1);
+        reservation
+            .executor_memory_bytes
+            .insert("cpu-0".to_string(), 128);
+        CooperativeAdmissionRequest {
+            schema: crate::resource::COOPERATIVE_ADMISSION_SCHEMA_V1.to_string(),
+            task_id,
+            attempt_id,
+            plan_digest: plan_digest.to_string(),
+            reservation,
+            spill_paths: BTreeMap::new(),
+        }
+    }
 
     fn runtime() -> AuthoritativeRuntime {
         let profile = crate::resource::HardwareProfile::probe();
@@ -544,6 +810,7 @@ mod tests {
             drained.as_slice(),
             [QueuedRuntimeAdmission {
                 task_id: 2,
+                attempt_id: 1,
                 admission: RuntimeAdmission::Admitted(_),
             }]
         ));
@@ -551,6 +818,97 @@ mod tests {
             runtime.ledger.task(2).map(|task| task.status),
             Some(TaskStatus::Running)
         );
+    }
+
+    #[test]
+    fn queue_poll_preserves_other_admissions_and_retries_pending_work() {
+        let profile = crate::resource::HardwareProfile::probe();
+        let mut runtime = AuthoritativeRuntime::new(60_000, &profile);
+        runtime.admission = crate::resource::AdmissionController::new(
+            crate::resource::GrantedResources {
+                cpu_threads: 1,
+                host_memory_bytes: 1024,
+                accelerator_memory_bytes: 0,
+                io_in_flight: 1,
+                process_limit: 1,
+                thread_limit: 1,
+                fd_limit: 256,
+            },
+            2,
+        );
+        let first = match runtime
+            .submit(TaskCard::new(1, vec![], 0, None, None), request(1, 1), 1)
+            .unwrap()
+        {
+            RuntimeAdmission::Admitted(token) => token,
+            other => panic!("expected first task admission, got {other:?}"),
+        };
+        assert!(matches!(
+            runtime
+                .submit(TaskCard::new(2, vec![], 0, None, None), request(2, 1), 2)
+                .unwrap(),
+            RuntimeAdmission::Queued { .. }
+        ));
+        assert!(matches!(
+            runtime
+                .submit(TaskCard::new(3, vec![], 0, None, None), request(3, 1), 2)
+                .unwrap(),
+            RuntimeAdmission::Queued { .. }
+        ));
+
+        runtime.finish(first, RuntimeOutcome::Done).unwrap();
+        assert!(matches!(
+            runtime.poll_queued(3, 1, 3),
+            Some(RuntimeAdmission::Queued { .. })
+        ));
+        let second = match runtime.poll_queued(2, 1, 3) {
+            Some(RuntimeAdmission::Admitted(token)) => token,
+            other => panic!("expected task 2 admission, got {other:?}"),
+        };
+        runtime.finish(second, RuntimeOutcome::Done).unwrap();
+        assert!(matches!(
+            runtime.poll_queued(3, 1, 4),
+            Some(RuntimeAdmission::Admitted(_))
+        ));
+    }
+
+    #[test]
+    fn queued_cancellation_removes_work_without_a_lease() {
+        let profile = crate::resource::HardwareProfile::probe();
+        let mut runtime = AuthoritativeRuntime::new(60_000, &profile);
+        runtime.admission = crate::resource::AdmissionController::new(
+            crate::resource::GrantedResources {
+                cpu_threads: 1,
+                host_memory_bytes: 1024,
+                accelerator_memory_bytes: 0,
+                io_in_flight: 1,
+                process_limit: 1,
+                thread_limit: 1,
+                fd_limit: 256,
+            },
+            3,
+        );
+        let first = match runtime
+            .submit(TaskCard::new(1, vec![], 0, None, None), request(1, 1), 1)
+            .unwrap()
+        {
+            RuntimeAdmission::Admitted(token) => token,
+            other => panic!("expected first task admission, got {other:?}"),
+        };
+        assert!(matches!(
+            runtime
+                .submit(TaskCard::new(2, vec![], 0, None, None), request(2, 1), 2)
+                .unwrap(),
+            RuntimeAdmission::Queued { .. }
+        ));
+        assert!(runtime.cancel_queued(2, 1).unwrap());
+        assert_eq!(runtime.admission.queued(), 0);
+        assert_eq!(runtime.admission.active_leases(), 1);
+        assert_eq!(
+            runtime.ledger.task(2).map(|task| task.status),
+            Some(TaskStatus::Cancelled)
+        );
+        runtime.finish(first, RuntimeOutcome::Done).unwrap();
     }
 
     #[test]
@@ -582,5 +940,104 @@ mod tests {
         let json = serde_json::to_string(&token).unwrap();
         assert!(!json.contains("granted"));
         assert!(!json.contains("work_kind"));
+    }
+
+    #[test]
+    fn cooperative_disabled_fails_closed() {
+        let mut runtime = runtime();
+        assert_eq!(runtime.cooperative_mode(), CooperativeRuntimeMode::Disabled);
+        assert!(matches!(
+            runtime.submit_cooperative(cooperative_request(1, 1, "plan-a"), 1),
+            Err(RuntimeError::Resource(ResourceError::ResourceUnavailable(
+                _
+            )))
+        ));
+    }
+
+    #[test]
+    fn cooperative_shadow_validates_without_mutating_usage() {
+        let mut runtime = runtime();
+        let capabilities = cooperative_inventory();
+        runtime
+            .configure_cooperative(CooperativeRuntimeMode::Shadow, &capabilities, &[])
+            .unwrap();
+        let before = runtime.cooperative_admission.as_ref().unwrap().clone();
+
+        assert_eq!(
+            runtime.submit_cooperative(cooperative_request(1, 1, "plan-a"), 1),
+            Ok(CooperativeRuntimeAdmission::Shadow)
+        );
+        assert_eq!(runtime.cooperative_admission.as_ref().unwrap(), &before);
+    }
+
+    #[test]
+    fn cooperative_enforced_is_idempotent_and_releases_exactly_once() {
+        let mut runtime = runtime();
+        let capabilities = cooperative_inventory();
+        runtime
+            .configure_cooperative(CooperativeRuntimeMode::Enforced, &capabilities, &[])
+            .unwrap();
+        let request = cooperative_request(1, 1, "plan-a");
+        let token = match runtime.submit_cooperative(request.clone(), 10).unwrap() {
+            CooperativeRuntimeAdmission::Admitted(token) => *token,
+            other => panic!("expected enforced admission, got {other:?}"),
+        };
+        let duplicate = match runtime.submit_cooperative(request, 11).unwrap() {
+            CooperativeRuntimeAdmission::Admitted(token) => *token,
+            other => panic!("expected idempotent admission, got {other:?}"),
+        };
+        assert_eq!(token, duplicate);
+        assert_eq!(
+            runtime
+                .cooperative_admission
+                .as_ref()
+                .unwrap()
+                .active_leases(),
+            1
+        );
+
+        runtime
+            .finish_cooperative(token.clone(), RuntimeOutcome::Done)
+            .unwrap();
+        assert_eq!(
+            runtime
+                .cooperative_admission
+                .as_ref()
+                .unwrap()
+                .active_leases(),
+            0
+        );
+        assert!(matches!(
+            runtime.finish_cooperative(token, RuntimeOutcome::Done),
+            Err(RuntimeError::Resource(ResourceError::UnknownLease(_)))
+        ));
+    }
+
+    #[test]
+    fn cooperative_reconfiguration_is_fenced_by_active_leases() {
+        let mut runtime = runtime();
+        let capabilities = cooperative_inventory();
+        runtime
+            .configure_cooperative(CooperativeRuntimeMode::Enforced, &capabilities, &[])
+            .unwrap();
+        let token = match runtime
+            .submit_cooperative(cooperative_request(1, 1, "plan-a"), 1)
+            .unwrap()
+        {
+            CooperativeRuntimeAdmission::Admitted(token) => *token,
+            other => panic!("expected enforced admission, got {other:?}"),
+        };
+
+        assert!(matches!(
+            runtime.configure_cooperative(CooperativeRuntimeMode::Shadow, &capabilities, &[]),
+            Err(RuntimeError::Resource(ResourceError::ResourceUnavailable(
+                _
+            )))
+        ));
+        assert_eq!(runtime.cooperative_mode(), CooperativeRuntimeMode::Enforced);
+        runtime.cancel_cooperative(token).unwrap();
+        runtime
+            .configure_cooperative(CooperativeRuntimeMode::Shadow, &capabilities, &[])
+            .unwrap();
     }
 }

@@ -6,7 +6,7 @@
 # Usage:
 #   curl -fsSL https://aegis-cognition.ai/install.sh | bash
 #   # or locally:
-#   ./install.sh [--skip-rust] [--skip-browser] [--python 3.14]
+#   ./install.sh [--skip-rust] [--skip-browser] [--python 3.14.7]
 #
 # Honest scope: WRITTEN, NOT YET EXECUTED end-to-end on a Linux/macOS host
 # in this session. See INSTALL_SCRIPTS_REPORT.md for the gate.
@@ -14,16 +14,16 @@
 # Flags:
 #   --skip-rust        skip rustup install + cargo build
 #   --skip-browser     skip `playwright install chromium`
-#   --python VERSION   python version for the venv (default 3.14)
+#   --python VERSION   python version for the venv (default 3.14.7)
 #   --repo URL         git URL to clone (override for forks)
 #   --install-dir DIR  install root (default $HOME/.aegis)
 
 set -euo pipefail
 
-PY_VERSION="${AEGIS_PY_VERSION:-3.14}"
+PY_VERSION="${AEGIS_PY_VERSION:-3.14.7}"
 SKIP_RUST=0
 SKIP_BROWSER=0
-REPO_URL="https://github.com/aegis-cognition/aegis-cognition.git"
+REPO_URL="https://github.com/thanhmuefatty07/AEGIS-COGNITION.git"
 INSTALL_DIR="$HOME/.aegis"
 
 while [[ $# -gt 0 ]]; do
@@ -141,7 +141,7 @@ step "5/5" "Installing Rust toolchain and building core"
 if [[ $SKIP_RUST -eq 0 ]]; then
     if ! command -v cargo >/dev/null 2>&1; then
         curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs \
-            | sh -s -- -y --default-toolchain stable --profile minimal
+            | sh -s -- -y --default-toolchain 1.98.1 --profile minimal
         # shellcheck disable=SC1091
         source "$HOME/.cargo/env"
         ok "rustup installed"
@@ -149,9 +149,16 @@ if [[ $SKIP_RUST -eq 0 ]]; then
         ok "cargo already present: $(cargo --version)"
     fi
 
+    if command -v rustup >/dev/null 2>&1; then
+        rustup toolchain install 1.98.1 --profile minimal --component rustfmt --component clippy
+        ok "Rust toolchain 1.98.1 installed/verified"
+    fi
+
     RUST_DIR="$REPO_DIR/core/rust"
     if [[ -d "$RUST_DIR" ]]; then
-        ( cd "$RUST_DIR" && cargo build --release )
+        ( cd "$REPO_DIR" && rustc --version | grep -Eq '(^| )1\.98\.1( |$)' ) \
+            || { fail "Project requires Rust 1.98.1"; exit 1; }
+        ( cd "$REPO_DIR" && cargo build --release )
         ok "Rust core built (release)"
     else
         warn "core/rust missing at $RUST_DIR — skipping cargo build"

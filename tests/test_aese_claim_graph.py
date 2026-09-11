@@ -7,6 +7,7 @@ from pathlib import Path
 
 import pytest
 import scripts.aese_claim_graph as claim_graph
+from scripts.aese_inventory import build_inventory
 from scripts.aese_claim_graph import DEFAULT_OUTPUT, build_graph, validate_graph
 
 
@@ -18,13 +19,13 @@ def test_shadow_graph_preserves_inventory_and_disables_selection() -> None:
         "all_surfaces_mapped": False,
         "critical_high_risk_mapped": False,
         "criticality_known": False,
-        "unmapped_surface_count": 122,
+        "unmapped_surface_count": 131,
     }
     assert graph["direct_cutover"] == "PROHIBITED"
     assert graph["counts"]["surfaces"] == graph["counts"]["mapped_surfaces"] + graph["counts"]["unmapped_surfaces"]
-    assert graph["counts"]["surfaces"] == 131
+    assert graph["counts"]["surfaces"] == 140
     assert graph["counts"]["mapped_surfaces"] == 9
-    assert graph["counts"]["unmapped_surfaces"] == 122
+    assert graph["counts"]["unmapped_surfaces"] == 131
     assert graph["counts"]["unmapped_verifications"] == 70
     assert graph["counts"]["claims"] == 46
     assert graph["counts"]["code_nodes"] == 27
@@ -65,6 +66,12 @@ def test_graph_digest_binds_resolved_implementation_source(monkeypatch: pytest.M
     altered = build_graph()
 
     assert altered["source_tree_sha256"] != baseline["source_tree_sha256"]
+
+
+def test_precomputed_inventory_preserves_direct_graph_semantics() -> None:
+    precomputed = build_graph(inventory=build_inventory())
+    direct = build_graph()
+    assert precomputed == direct
 
 
 def test_recorded_shadow_graph_has_no_drift() -> None:

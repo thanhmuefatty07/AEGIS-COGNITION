@@ -41,12 +41,13 @@ dev = ["pyright>=1.1,<2", "pytest>=8,<9", "pytest-asyncio>=1,<2", "ruff>=0.3,<1"
 
 [project.scripts]
 aegis = "aegis_cognition.cli:main"
+aegis-desktop = "aegis_cognition.desktop_service:main"
 
 [project.urls]
 Homepage = "https://aegis-cognition.ai"
 Documentation = "https://docs.aegis-cognition.ai"
-Repository = "https://github.com/aegis-cognition/aegis-cognition"
-Issues = "https://github.com/aegis-cognition/aegis-cognition/issues"
+Repository = "https://github.com/thanhmuefatty07/AEGIS-COGNITION"
+Issues = "https://github.com/thanhmuefatty07/AEGIS-COGNITION/issues"
 
 [tool.maturin]
 manifest-path = "core/rust/Cargo.toml"
