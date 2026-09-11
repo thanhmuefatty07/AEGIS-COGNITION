@@ -809,7 +809,12 @@ pub fn aegis_index_session_scoped(
             ))
         })?;
         let mut index = index.lock();
-        let mut ledger = get_session_ledger().lock();
+        let session_ledger = get_session_ledger().map_err(|error| {
+            pyo3::exceptions::PyRuntimeError::new_err(format!(
+                "Session ledger init failed: {error:?}"
+            ))
+        })?;
+        let mut ledger = session_ledger.lock();
         let content_hash = index
             .index_session_durable_scoped(
                 session_id,
@@ -961,13 +966,12 @@ pub fn aegis_search_past_sessions_scoped(
             ));
         }
 
-        let index = get_session_index()
-            .map_err(|error| {
-                pyo3::exceptions::PyRuntimeError::new_err(format!(
-                    "Session index init failed: {error:?}"
-                ))
-            })?
-            .lock();
+        let session_index = get_session_index().map_err(|error| {
+            pyo3::exceptions::PyRuntimeError::new_err(format!(
+                "Session index init failed: {error:?}"
+            ))
+        })?;
+        let index = session_index.lock();
         let owner_id = memory_owner(owner_id)?;
         let scope_kind = memory_scope(Some(scope_kind))?;
         let candidates = index.search_sessions_scoped(&query, top_k, &scope_kind, &owner_id);
