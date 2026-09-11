@@ -314,13 +314,23 @@ and claim-graph `--check` also pass in
 post-regeneration Python sweep is not claimed here; the source-level focused
 gate and the pre-admission full baseline are the applicable evidence.
 
-That historical limitation is superseded by the latest current-source sweep
+The current profile-map regeneration was then checked by the complete AESE
+drift/closure group: `61/61` passed at
+`artifacts/suites/aese-drift-after-profile-map-20260911-r4.json`. This remains
+shadow-only with selection authority disabled and does not convert the retained
+full Python baseline into post-regeneration evidence.
+
+That historical limitation is superseded by the retained current-source sweep
 after package formatting and registry reconciliation: `708 passed, 1 skipped`
 in `510.02s` with exit code `0`, retained at
 `artifacts/verification/full-python-suite-20260911-r4.txt` and
 `artifacts/verification/full-python-suite-20260911-r4.meta.json`. This is local
-Windows/CPython 3.14.7 evidence; hosted CI, Tier-1 parity and external
-environment gates remain separate.
+Windows/CPython 3.14.7 evidence. A later profile-map full-suite attempt recorded
+`700 passed, 13 failed, 1 skipped` at
+`artifacts/suites/python-full-profile-map-current-20260911-r1.json`; until a
+post-AESE-regeneration full rerun is retained, the `708/1` result remains a
+prior local baseline rather than the latest full-suite verdict. Hosted CI,
+Tier-1 parity and external environment gates remain separate.
 
 ### 0.6 Native cooperative placement admission (2026-09-10)
 
@@ -391,7 +401,7 @@ variants without changing admission, release, or cancellation semantics.
 Local evidence: `cargo fmt --all -- --check` passes; strict Clippy passes for
 both no-default and `python-extension` library modes at
 `artifacts/verification/rust-clippy-no-default-20260911-r9.meta.json` and
-`artifacts/verification/rust-clippy-python-extension-20260911-r8.meta.json`.
+`artifacts/verification/rust-clippy-resolved-state-path-20260911-r1.meta.json`.
 The focused cooperative placement/runtime test set passes `22 tests` at
 `artifacts/verification/rust-cooperative-placement-runtime-20260911-r1.meta.json`.
 The native GT96 target-evolution gate also passes `2 tests`: bound targets
@@ -463,7 +473,7 @@ the rebuilt-extension slice is
 The editable extension rebuild was rerun through the project `.venv` with the
 exact pinned Maturin `1.14.1`, rather than the unrelated global `1.13.3`
 binary. Evidence is retained at
-`artifacts/verification/maturin-develop-current-20260911-r4.meta.json`;
+`artifacts/verification/maturin-develop-resolved-state-path-20260911-r1.meta.json`;
 release provenance and hosted parity remain separate gates.
 
 The latest native Lab focused gate passes `20/20` tests, and strict Rust Clippy
@@ -472,7 +482,7 @@ focused ledger is
 `artifacts/verification/native-lab-binding-focused-20260911-r6.meta.json`;
 the lint ledgers are
 `artifacts/verification/rust-clippy-no-default-20260911-r9.meta.json` and
-`artifacts/verification/rust-clippy-python-extension-20260911-r8.meta.json`.
+`artifacts/verification/rust-clippy-resolved-state-path-20260911-r1.meta.json`.
 
 The latest full Rust no-default library run passes `540/540` tests in `75.17s`.
 Evidence is retained at
@@ -527,22 +537,18 @@ isolation proof.
 snapshot restore: a bound target or an acceptance-bearing contract must pass
 `GoalContract.validate_for_admission()`. This closes the restore path that
 previously checked `GoalContract.from_dict()` shape/hash but could bypass the
-stricter target/acceptance admission rule. The retained Python suite record
-reports `419/419` under CPython `3.14.7` at
-`artifacts/suites/goal-target-lab-contract-current-20260911-r2.json`; its
-recorded commit is the earlier `8d15a34`, so it is not treated as a
-cryptographic binding to the later coordination HEAD. A subsequent direct run
-of the same two test files on the current dirty checkout also reported
-`419 passed`, but no new suite artifact is claimed for that run.
+stricter target/acceptance admission rule. The current focused Python
+contract/Lab suite passes `419/419` under CPython `3.14.7` at
+`artifacts/suites/goal-target-lab-contract-current-20260911-r8.json`; the
+artifact records the checkout commit and dirty-worktree fingerprint.
 
 The bounded-wire fence also covers the receipt-side objects before they are
 hashed or admitted: Python `ExecutionBinding`, `GoalVerification` and
-`GoalProgress`, plus native Rust `ProjectionExecutionBinding`. The current
-Python limit gate passes `1/1`, the Rust GoalContract gate passes `5/5`, and
-the native binding regression gate passes `2/2` at
-`artifacts/suites/goal-target-limits-python-20260911-r2.json`,
-`artifacts/suites/goal-target-limits-rust-20260911-r1.json` and
-`artifacts/suites/goal-target-binding-limits-rust-20260911-r1.json`.
+`GoalProgress`, plus native Rust `ProjectionExecutionBinding`. The latest
+focused Python limit gate passes `1/1`; the native Rust GoalContract and
+binding gates pass `5/5` and `2/2`. Their artifacts were generated at
+`4e0f1b8`; a path-scoped diff confirms that later commits through `f51cedc`
+do not modify the contract/runtime files under test.
 
 The suite-evidence path now records a `worktree_status` and a SHA-256
 `worktree_sha256` covering tracked diffs and non-ignored untracked files; the
@@ -557,6 +563,39 @@ the retained artifact is
 This is local Windows evidence. It does not prove lineage against an external
 parent registry, provider/network enforcement, kernel isolation, hosted CI
 parity, cross-platform behavior or production readiness.
+
+### 0.13 Native FFI state-store binding (2026-09-11)
+
+The native FFI repositories are process-lifetime registries keyed by the
+canonical resolved state path and profile ID. Relative and absolute aliases of
+the same state file resolve to one key. A profile reuses its own `Arc`-backed
+repository/index, while different state paths may coexist in one process.
+The same state path cannot be opened under a different profile and fails
+closed. This prevents a second profile from silently reading or writing the
+first profile's memory, connection, conversation or session index while still
+supporting explicitly isolated multi-profile local runs. This is process-local
+state isolation, not a kernel, cross-process or multi-host isolation proof.
+
+The current editable extension was rebuilt with Maturin `1.14.1` on CPython
+`3.14.7`; the rebuild/import evidence is
+`artifacts/verification/maturin-develop-resolved-state-path-20260911-r1.meta.json`.
+The native profile-map smoke records successful isolated memory
+writes for two profiles, successful return to the first profile, and rejection
+of a same-path/different-profile access at
+`artifacts/verification/native-profile-map-resolved-state-path-20260911-r2.meta.json`.
+The current Rust library is `544/544` in the recorded local run at
+`artifacts/verification/rust-library-resolved-state-path-final-20260911-r1.meta.json`; the current
+`python-extension` feature library is `545/545` at
+`artifacts/verification/rust-python-extension-resolved-state-path-final-20260911-r1.meta.json`; and the
+focused native Lab binding gate is `20/20` at
+`artifacts/verification/native-lab-binding-focused-20260911-r6.meta.json`.
+The current reversed Lab-first integration is `462/462` at
+`artifacts/verification/uv-native-contracts-lab-first-resolved-state-path-final-20260911-r1.meta.json`.
+
+This proves local process-level profile separation and same-path fail-closed
+binding, plus the current local Rust/native regression gates. It does not prove
+concurrent stress, kernel isolation, cross-platform behavior, hosted parity or
+production readiness.
 
 ## 1. Quyết định kiến trúc cấp cao
 
