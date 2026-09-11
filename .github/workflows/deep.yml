@@ -8,6 +8,10 @@ name: Deep evidence
 permissions:
   contents: read
 
+concurrency:
+  group: aegis-deep-${{ github.ref }}
+  cancel-in-progress: false
+
 env:
   UV_VERSION: 0.12.9
 
@@ -15,6 +19,7 @@ jobs:
   security-and-replay:
     name: Security, replay, and dependency evidence
     runs-on: ubuntu-latest
+    timeout-minutes: 120
     env:
       RUSTFLAGS: -C debuginfo=0
     steps:
@@ -33,15 +38,15 @@ jobs:
         run: |
           cargo fmt --all -- --check
           cargo clippy --workspace --all-targets --no-default-features -- -D warnings
-      - name: Full workspace tests
-        run: cargo test --workspace --no-default-features
+      - name: Full workspace doctests
+        run: python scripts/suite_evidence.py --name rust-workspace-doctests --output artifacts/suites/rust-workspace-doctests.json --owner-id ci-deep-rust --gate-id rust-workspace-doctests --attempt-id "${{ github.run_id }}-${{ github.run_attempt }}" --timeout-seconds 900 -- cargo test --workspace --no-default-features --doc
       - name: Install deep Rust quality tools
         run: |
           cargo install cargo-nextest --version 0.9.143 --locked
           cargo install cargo-deny --version 0.20.2 --locked
           cargo install cargo-llvm-cov --version 0.9.0 --locked
       - name: Full workspace nextest
-        run: python scripts/suite_evidence.py --name rust-full-workspace --output artifacts/suites/rust-full-workspace.json -- cargo nextest run --workspace --no-default-features
+        run: python scripts/suite_evidence.py --name rust-full-workspace --output artifacts/suites/rust-full-workspace.json --owner-id ci-deep-rust --gate-id rust-full-workspace --attempt-id "${{ github.run_id }}-${{ github.run_attempt }}" --timeout-seconds 1800 -- cargo nextest run --workspace --no-default-features
       - name: Cargo deny policy
         run: cargo deny check advisories bans licenses sources
       - name: Prepare coverage output directory
@@ -84,6 +89,7 @@ jobs:
   fuzz-resource-contract:
     name: Trust-boundary fuzz campaign
     runs-on: ubuntu-latest
+    timeout-minutes: 90
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - uses: dtolnay/rust-toolchain@4360b52568e2003a75bf9bc1d59f33a8e3fc893c # stable
@@ -113,6 +119,7 @@ jobs:
   miri-and-sanitizers:
     name: Miri and sanitizer probes
     runs-on: ubuntu-latest
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - uses: dtolnay/rust-toolchain@4360b52568e2003a75bf9bc1d59f33a8e3fc893c # stable
