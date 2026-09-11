@@ -316,7 +316,7 @@ gate and the pre-admission full baseline are the applicable evidence.
 
 The current profile-map regeneration was then checked by the complete AESE
 drift/closure group: `61/61` passed at
-`artifacts/suites/aese-drift-after-profile-map-20260911-r4.json`. This remains
+`artifacts/suites/aese-drift-after-profile-map-20260911-r6.json`. This remains
 shadow-only with selection authority disabled and does not convert the retained
 full Python baseline into post-regeneration evidence.
 
@@ -567,8 +567,7 @@ parity, cross-platform behavior or production readiness.
 ### 0.13 Native FFI state-store binding (2026-09-11)
 
 The native FFI repositories are process-lifetime registries keyed by the
-canonical resolved state path and profile ID. Relative and absolute aliases of
-the same state file resolve to one key. A profile reuses its own `Arc`-backed
+canonical resolved state path and profile ID. A profile reuses its own `Arc`-backed
 repository/index, while different state paths may coexist in one process.
 The same state path cannot be opened under a different profile and fails
 closed. This prevents a second profile from silently reading or writing the
