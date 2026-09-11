@@ -111,6 +111,16 @@ def test_materializer_binds_retained_suite_artifact(monkeypatch, tmp_path) -> No
                 "ignored": 0,
                 "filtered": 0,
                 "status": "PROVEN",
+                "exit_code": 0,
+                "timed_out": False,
+                "termination": "EXITED",
+                "timeout_seconds": 30,
+                "owner_id": "ci-rust",
+                "gate_id": "rust-full-workspace",
+                "attempt_id": "fixture-1",
+                "run_key": "b" * 64,
+                "release_eligible": True,
+                "combined_output_sha256": "c" * 64,
             }
         ),
         encoding="utf-8",
@@ -158,7 +168,324 @@ def test_materializer_binds_retained_suite_artifact(monkeypatch, tmp_path) -> No
     materialized = gate.materialize_for_head(template, "a" * 40)
     assert materialized["evidence"][0]["status"] == "PROVEN"
     assert materialized["suites"][0]["passed"] == 2
+    assert materialized["suites"][0]["exit_code"] == 0
+    assert materialized["suites"][0]["timeout_seconds"] == 30
+    assert materialized["suites"][0]["timed_out"] is False
+    assert materialized["suites"][0]["termination"] == "EXITED"
     assert materialized["requirements"][0]["status"] == "PROVEN"
+
+
+def test_materializer_rejects_self_contradictory_timeout_evidence(monkeypatch, tmp_path) -> None:
+    suite_dir = tmp_path / "artifacts" / "suites"
+    suite_dir.mkdir(parents=True)
+    (suite_dir / "timed-out.json").write_text(
+        json.dumps(
+            {
+                "schema": "aegis-suite-evidence-v1",
+                "name": "timed-out-final",
+                "commit": "a" * 40,
+                "status": "PROVEN",
+                "exit_code": 0,
+                "failed": 0,
+                "release_eligible": True,
+                "timed_out": True,
+                "termination": "TIMEOUT",
+                "timeout_seconds": 30,
+                "owner_id": "ci-rust",
+                "gate_id": "rust-full-workspace",
+                "attempt_id": "fixture-timeout",
+                "run_key": "b" * 64,
+                "combined_output_sha256": "c" * 64,
+            }
+        ),
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(gate, "ROOT", tmp_path)
+    template = {
+        "commit": "CHECKOUT_HEAD",
+        "evidence": [
+            {
+                "id": "LOCAL-TIMEOUT-001",
+                "kind": "local",
+                "source_artifact": "timed-out",
+                "head_sha": "CHECKOUT_HEAD",
+                "status": "NOT VERIFIED",
+                "evidence_class": "NOT VERIFIED",
+            }
+        ],
+        "suites": [
+            {
+                "name": "timed-out",
+                "command": "old",
+                "commit": "CHECKOUT_HEAD",
+                "timestamp_utc": "old",
+                "platform": "old",
+                "toolchain": "old",
+                "discovered": None,
+                "passed": None,
+                "failed": None,
+                "ignored": None,
+                "filtered": None,
+            }
+        ],
+        "requirements": [],
+    }
+
+    materialized = gate.materialize_for_head(template, "a" * 40)
+    assert materialized["evidence"][0]["status"] == "NOT VERIFIED"
+    assert materialized["suites"][0]["passed"] is None
+
+
+def test_materializer_rejects_boolean_numeric_evidence(monkeypatch, tmp_path) -> None:
+    suite_dir = tmp_path / "artifacts" / "suites"
+    suite_dir.mkdir(parents=True)
+    (suite_dir / "boolean-fields.json").write_text(
+        json.dumps(
+            {
+                "schema": "aegis-suite-evidence-v1",
+                "name": "boolean-fields-final",
+                "commit": "a" * 40,
+                "status": "PROVEN",
+                "exit_code": False,
+                "failed": False,
+                "release_eligible": True,
+                "timed_out": False,
+                "termination": "EXITED",
+                "timeout_seconds": True,
+                "owner_id": "ci-rust",
+                "gate_id": "rust-full-workspace",
+                "attempt_id": "fixture-boolean",
+                "run_key": "b" * 64,
+                "combined_output_sha256": "c" * 64,
+            }
+        ),
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(gate, "ROOT", tmp_path)
+    template = {
+        "commit": "CHECKOUT_HEAD",
+        "evidence": [
+            {
+                "id": "LOCAL-BOOLEAN-001",
+                "kind": "local",
+                "source_artifact": "boolean-fields",
+                "head_sha": "CHECKOUT_HEAD",
+                "status": "NOT VERIFIED",
+                "evidence_class": "NOT VERIFIED",
+            }
+        ],
+        "suites": [
+            {
+                "name": "boolean-fields",
+                "command": "old",
+                "commit": "CHECKOUT_HEAD",
+                "timestamp_utc": "old",
+                "platform": "old",
+                "toolchain": "old",
+                "discovered": None,
+                "passed": None,
+                "failed": None,
+                "ignored": None,
+                "filtered": None,
+            }
+        ],
+        "requirements": [],
+    }
+
+    materialized = gate.materialize_for_head(template, "a" * 40)
+    assert materialized["evidence"][0]["status"] == "NOT VERIFIED"
+    assert materialized["suites"][0]["passed"] is None
+
+
+def test_materializer_rejects_competing_identities_for_one_gate(monkeypatch, tmp_path) -> None:
+    suite_dir = tmp_path / "artifacts" / "suites"
+    suite_dir.mkdir(parents=True)
+    base = {
+        "schema": "aegis-suite-evidence-v1",
+        "commit": "a" * 40,
+        "status": "PROVEN",
+        "exit_code": 0,
+        "failed": 0,
+        "release_eligible": True,
+        "timed_out": False,
+        "termination": "EXITED",
+        "timeout_seconds": 30,
+        "gate_id": "python-cross-language",
+        "combined_output_sha256": "c" * 64,
+    }
+    first = {
+        **base,
+        "name": "python-cross-language",
+        "owner_id": "ci-python",
+        "attempt_id": "attempt-1",
+        "run_key": "b" * 64,
+    }
+    second = {
+        **base,
+        "name": "python-cross-language-final",
+        "owner_id": "ci-python-retry",
+        "attempt_id": "attempt-2",
+        "run_key": "d" * 64,
+    }
+    for name, artifact in (("first.json", first), ("second.json", second)):
+        (suite_dir / name).write_text(json.dumps(artifact), encoding="utf-8")
+
+    monkeypatch.setattr(gate, "ROOT", tmp_path)
+    template = {
+        "commit": "CHECKOUT_HEAD",
+        "evidence": [
+            {
+                "id": "LOCAL-DUPLICATE-001",
+                "kind": "local",
+                "source_artifact": "python-cross-language",
+                "status": "NOT VERIFIED",
+                "evidence_class": "NOT VERIFIED",
+            }
+        ],
+        "suites": [{"name": "python-cross-language", "status": "NOT VERIFIED"}],
+        "requirements": [],
+    }
+
+    materialized = gate.materialize_for_head(template, "a" * 40)
+    assert materialized["evidence"][0]["status"] == "NOT VERIFIED"
+    assert materialized["suites"][0]["status"] == "NOT VERIFIED"
+
+
+def test_materializer_rejects_duplicate_artifact_names(monkeypatch, tmp_path) -> None:
+    suite_dir = tmp_path / "artifacts" / "suites"
+    suite_dir.mkdir(parents=True)
+    base = {
+        "schema": "aegis-suite-evidence-v1",
+        "name": "duplicate-name",
+        "commit": "a" * 40,
+        "status": "PROVEN",
+        "exit_code": 0,
+        "failed": 0,
+        "release_eligible": True,
+        "timed_out": False,
+        "termination": "EXITED",
+        "timeout_seconds": 30,
+        "owner_id": "ci-python",
+        "gate_id": "python-cross-language",
+        "run_key": "b" * 64,
+        "combined_output_sha256": "c" * 64,
+    }
+    for index in (1, 2):
+        (suite_dir / f"duplicate-{index}.json").write_text(
+            json.dumps({**base, "attempt_id": f"attempt-{index}"}),
+            encoding="utf-8",
+        )
+
+    monkeypatch.setattr(gate, "ROOT", tmp_path)
+    template = {
+        "commit": "CHECKOUT_HEAD",
+        "evidence": [
+            {
+                "id": "LOCAL-DUPLICATE-NAME-001",
+                "kind": "local",
+                "source_artifact": "duplicate-name",
+                "status": "NOT VERIFIED",
+                "evidence_class": "NOT VERIFIED",
+            }
+        ],
+        "suites": [{"name": "duplicate-name", "status": "NOT VERIFIED"}],
+        "requirements": [],
+    }
+
+    materialized = gate.materialize_for_head(template, "a" * 40)
+    assert materialized["evidence"][0]["status"] == "NOT VERIFIED"
+    assert materialized["suites"][0]["status"] == "NOT VERIFIED"
+
+
+def test_materializer_rejects_aliases_with_different_result_fingerprints(monkeypatch, tmp_path) -> None:
+    suite_dir = tmp_path / "artifacts" / "suites"
+    suite_dir.mkdir(parents=True)
+    base = {
+        "schema": "aegis-suite-evidence-v1",
+        "commit": "a" * 40,
+        "status": "PROVEN",
+        "exit_code": 0,
+        "failed": 0,
+        "release_eligible": True,
+        "timed_out": False,
+        "termination": "EXITED",
+        "timeout_seconds": 30,
+        "owner_id": "ci-python",
+        "gate_id": "python-cross-language",
+        "attempt_id": "attempt-1",
+        "run_key": "b" * 64,
+        "discovered": 2,
+        "passed": 2,
+        "ignored": 0,
+        "filtered": 0,
+        "stdout_sha256": "d" * 64,
+        "stderr_sha256": "e" * 64,
+        "combined_output_sha256": "f" * 64,
+    }
+    first = {**base, "name": "python-alias"}
+    second = {**base, "name": "python-alias-final", "passed": 1, "combined_output_sha256": "1" * 64}
+    for name, artifact in (("first.json", first), ("second.json", second)):
+        (suite_dir / name).write_text(json.dumps(artifact), encoding="utf-8")
+
+    monkeypatch.setattr(gate, "ROOT", tmp_path)
+    template = {
+        "commit": "CHECKOUT_HEAD",
+        "evidence": [
+            {
+                "id": "LOCAL-ALIAS-DRIFT-001",
+                "kind": "local",
+                "source_artifact": "python-alias",
+                "status": "NOT VERIFIED",
+                "evidence_class": "NOT VERIFIED",
+            }
+        ],
+        "suites": [{"name": "python-alias", "status": "NOT VERIFIED"}],
+        "requirements": [],
+    }
+
+    materialized = gate.materialize_for_head(template, "a" * 40)
+    assert materialized["evidence"][0]["status"] == "NOT VERIFIED"
+    assert materialized["suites"][0]["status"] == "NOT VERIFIED"
+
+
+def test_materializer_does_not_promote_unowned_suite_evidence(monkeypatch, tmp_path) -> None:
+    suite_dir = tmp_path / "artifacts" / "suites"
+    suite_dir.mkdir(parents=True)
+    (suite_dir / "unowned.json").write_text(
+        json.dumps(
+            {
+                "schema": "aegis-suite-evidence-v1",
+                "name": "unowned-final",
+                "commit": "a" * 40,
+                "status": "PROVEN",
+                "exit_code": 0,
+                "failed": 0,
+                "release_eligible": True,
+                "run_key": "b" * 64,
+                "combined_output_sha256": "c" * 64,
+            }
+        ),
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(gate, "ROOT", tmp_path)
+    template = {
+        "commit": "CHECKOUT_HEAD",
+        "evidence": [
+            {
+                "id": "LOCAL-UNOWNED-001",
+                "kind": "local",
+                "source_artifact": "unowned",
+                "status": "NOT VERIFIED",
+                "evidence_class": "NOT VERIFIED",
+            }
+        ],
+        "suites": [{"name": "unowned", "status": "NOT VERIFIED"}],
+        "requirements": [],
+    }
+
+    materialized = gate.materialize_for_head(template, "a" * 40)
+    assert materialized["evidence"][0]["status"] == "NOT VERIFIED"
+    assert materialized["suites"][0]["status"] == "NOT VERIFIED"
 
 
 def test_materializer_sources_all_blocker_ids_from_registry(monkeypatch, tmp_path: Path) -> None:

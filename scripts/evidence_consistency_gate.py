@@ -22,6 +22,7 @@ NOT_VERIFIED_REGISTRY = ROOT / "docs" / "architecture" / "not_verified_registry.
 DEPLOYMENT_POLICY = ROOT / "docs" / "architecture" / "deployment_policy.json"
 REGISTRY_MARKDOWN_RELATIVE = Path("docs") / "architecture" / "NOT_VERIFIED_REGISTRY.md"
 SHA_RE = re.compile(r"^[0-9a-f]{40}$")
+SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
 GT96_ID_RE = re.compile(r"\|\s*(GT96-\d{3})\s*\|")
 NV_ID_RE = re.compile(r"^\|\s*(NV-\d{3})\s*\|", re.MULTILINE)
 CURRENT_STATUSES = {"PROVEN", "MEASURED", "SOURCE-BACKED"}
@@ -297,8 +298,43 @@ def load_suite_artifacts(root: Path, expected_head: str) -> dict[str, dict[str, 
             continue
         name = candidate.get("name")
         if isinstance(name, str) and name:
-            artifacts[name] = candidate
+            if name in artifacts:
+                artifacts[name] = {
+                    "schema": "aegis-suite-evidence-v1",
+                    "name": name,
+                    "_load_conflict": True,
+                }
+            else:
+                artifacts[name] = candidate
     return artifacts
+
+
+def suite_artifact_release_eligible(candidate: dict[str, Any]) -> bool:
+    """Accept suite evidence only when its result and provenance are complete."""
+    return (
+        candidate.get("schema") == "aegis-suite-evidence-v1"
+        and candidate.get("status") == "PROVEN"
+        and candidate.get("release_eligible") is True
+        and type(candidate.get("exit_code")) is int
+        and candidate["exit_code"] == 0
+        and type(candidate.get("failed")) is int
+        and candidate["failed"] == 0
+        and type(candidate.get("timed_out")) is bool
+        and candidate["timed_out"] is False
+        and candidate.get("termination") == "EXITED"
+        and type(candidate.get("timeout_seconds")) is int
+        and candidate["timeout_seconds"] > 0
+        and isinstance(candidate.get("owner_id"), str)
+        and bool(candidate["owner_id"].strip())
+        and isinstance(candidate.get("gate_id"), str)
+        and bool(candidate["gate_id"].strip())
+        and isinstance(candidate.get("attempt_id"), str)
+        and bool(candidate["attempt_id"].strip())
+        and isinstance(candidate.get("run_key"), str)
+        and bool(SHA256_RE.fullmatch(candidate["run_key"]))
+        and isinstance(candidate.get("combined_output_sha256"), str)
+        and bool(SHA256_RE.fullmatch(candidate["combined_output_sha256"]))
+    )
 
 
 def find_suite_artifact(suite_artifacts: dict[str, dict[str, Any]], name: str) -> dict[str, Any] | None:
@@ -308,6 +344,38 @@ def find_suite_artifact(suite_artifacts: dict[str, dict[str, Any]], name: str) -
         if candidate in suite_artifacts:
             return suite_artifacts[candidate]
     return None
+
+
+def suite_artifact_ownership_conflicted(
+    candidate: dict[str, Any], suite_artifacts: dict[str, dict[str, Any]]
+) -> bool:
+    """Reject competing eligible identities for one gate instead of guessing."""
+    if not suite_artifact_release_eligible(candidate):
+        return True
+    gate_id = candidate["gate_id"]
+    signatures = {
+        (
+            artifact["owner_id"],
+            artifact["gate_id"],
+            artifact["attempt_id"],
+            artifact["run_key"],
+            artifact.get("discovered"),
+            artifact.get("passed"),
+            artifact.get("failed"),
+            artifact.get("ignored"),
+            artifact.get("filtered"),
+            artifact["exit_code"],
+            artifact["timeout_seconds"],
+            artifact["timed_out"],
+            artifact["termination"],
+            artifact.get("stdout_sha256"),
+            artifact.get("stderr_sha256"),
+            artifact["combined_output_sha256"],
+        )
+        for artifact in suite_artifacts.values()
+        if suite_artifact_release_eligible(artifact) and artifact["gate_id"] == gate_id
+    }
+    return len(signatures) > 1
 
 
 def materialize_for_head(template: dict[str, Any], expected_head: str) -> dict[str, Any]:
@@ -337,7 +405,7 @@ def materialize_for_head(template: dict[str, Any], expected_head: str) -> dict[s
                 source = (
                     find_suite_artifact(suite_artifacts, source_artifact) if isinstance(source_artifact, str) else None
                 )
-                if source and source.get("status") == "PROVEN" and source.get("failed") == 0:
+                if source and not suite_artifact_ownership_conflicted(source, suite_artifacts):
                     entry["status"] = "PROVEN"
                     entry["evidence_class"] = "PROVEN"
                     entry["claim_scope"] = "LOCAL_CHECKOUT_ONLY"
@@ -360,7 +428,7 @@ def materialize_for_head(template: dict[str, Any], expected_head: str) -> dict[s
             suite["claim_label"] = "LOCAL SUITE NOT VERIFIED"
             suite["independent_verification"] = "NOT VERIFIED"
             source = find_suite_artifact(suite_artifacts, str(suite.get("name", "")))
-            if source:
+            if source and not suite_artifact_ownership_conflicted(source, suite_artifacts):
                 for field in (
                     "command",
                     "timestamp_utc",
@@ -372,6 +440,10 @@ def materialize_for_head(template: dict[str, Any], expected_head: str) -> dict[s
                     "ignored",
                     "filtered",
                     "status",
+                    "exit_code",
+                    "timeout_seconds",
+                    "timed_out",
+                    "termination",
                     "started_at_utc",
                     "finished_at_utc",
                     "duration_seconds",
@@ -382,6 +454,11 @@ def materialize_for_head(template: dict[str, Any], expected_head: str) -> dict[s
                     "stderr_sha256",
                     "combined_output_sha256",
                     "remote_observation",
+                    "owner_id",
+                    "gate_id",
+                    "attempt_id",
+                    "run_key",
+                    "release_eligible",
                 ):
                     if field in source:
                         suite[field] = source[field]
