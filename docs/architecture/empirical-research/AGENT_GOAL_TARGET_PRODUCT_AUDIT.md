@@ -936,8 +936,8 @@ but the evidence boundary remains explicit:
   checkpoint is `544/544` after canonical state-path normalization at
   `artifacts/verification/rust-library-resolved-state-path-final-20260911-r1.meta.json`.
   Native FFI smoke proves two explicitly isolated profiles can use different
-  state stores in one process, relative/absolute aliases resolve to one state
-  key, and same-path/different-profile access fails closed. This is process-local
+  state stores in one process, and same-path/different-profile access fails
+  closed. This is process-local
   isolation evidence, not a multi-machine or stress proof.
 - Suite evidence now includes a dirty-worktree status and a SHA-256 fingerprint
   of tracked diffs plus non-ignored untracked files. This closes an evidence
