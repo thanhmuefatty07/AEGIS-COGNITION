@@ -24,7 +24,7 @@
 15 domains, with `overall_ok=false`; this is a measured local artifact index,
 not a production or release claim. The authoritative report is
 `artifacts/progress_gate_report.json`; the current capture is recorded at
-`artifacts/verification/progress-gate-current-20260911-r10.meta.json`.
+`artifacts/verification/progress-gate-current-20260911-r11.meta.json`.
 
 ## 0. Phạm vi, authority và nhãn bằng chứng
 
