@@ -25,7 +25,7 @@ def test_unknown_closure_widens_every_item_and_has_no_skip() -> None:
     assert plan["plan_widened"] is True
     assert plan["decision_states"] == ["WIDENED_UNKNOWN"]
     assert plan["would_skip_item_ids"] == []
-    assert len(plan["would_run_item_ids"]) == 140
+    assert len(plan["would_run_item_ids"]) == 152
 
 
 def test_known_but_unmapped_inventory_path_widens_every_item() -> None:
@@ -37,14 +37,14 @@ def test_known_but_unmapped_inventory_path_widens_every_item() -> None:
     assert plan["plan_widened"] is True
     assert plan["path_dependency_states"][path] in {"UNMAPPED", "PARTIALLY_MAPPED"}
     assert plan["would_skip_item_ids"] == []
-    assert len(plan["would_run_item_ids"]) == 140
+    assert len(plan["would_run_item_ids"]) == 152
 
 
 def test_mixed_mapped_and_unmapped_changes_select_nothing_to_skip() -> None:
     plan = build_shadow_plan(["core/rust/src/gt96.rs", ".github/workflows/ci.yml"])
     assert plan["plan_widened"] is True
     assert plan["would_skip_item_ids"] == []
-    assert len(plan["would_run_item_ids"]) == 140
+    assert len(plan["would_run_item_ids"]) == 152
 
 
 def test_partial_mapping_path_widens_every_item(tmp_path) -> None:
@@ -72,7 +72,7 @@ def test_partial_mapping_path_widens_every_item(tmp_path) -> None:
     assert plan["path_dependency_states"][path] == "PARTIALLY_MAPPED"
     assert plan["plan_widened"] is True
     assert plan["would_skip_item_ids"] == []
-    assert len(plan["would_run_item_ids"]) == 140
+    assert len(plan["would_run_item_ids"]) == 152
 
 
 def test_external_workflow_anchor_is_deferred_without_authority_change() -> None:

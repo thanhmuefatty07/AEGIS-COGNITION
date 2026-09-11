@@ -930,11 +930,15 @@ but the evidence boundary remains explicit:
   bound-target admission when their shape would be discarded by the host
   matcher.
 - Current local gates include Python wire limits `1/1`, Rust GoalContract
-  limits `5/5`, and native binding limits `2/2`; the retained Rust artifacts
-  are bound to `ed1cbc28e2236aa0c8422d07f93bff55d661d1fa`. The Python full
-  contract/Lab command was directly observed at `419 passed` on CPython
-  `3.14.7`; its older retained suite record is explicitly marked as preceding
-  the later coordination HEAD, not as an independent current-SHA proof.
+  limits `5/5`, native binding limits `2/2`, and the full Python
+  contract/Lab slice `419/419` at the recorded dirty-worktree checkpoint.
+  The focused Rust artifacts are bound to `4e0f1b8`; the current Rust library
+  checkpoint is `544/544` after canonical state-path normalization at
+  `artifacts/verification/rust-library-resolved-state-path-final-20260911-r1.meta.json`.
+  Native FFI smoke proves two explicitly isolated profiles can use different
+  state stores in one process, relative/absolute aliases resolve to one state
+  key, and same-path/different-profile access fails closed. This is process-local
+  isolation evidence, not a multi-machine or stress proof.
 - Suite evidence now includes a dirty-worktree status and a SHA-256 fingerprint
   of tracked diffs plus non-ignored untracked files. This closes an evidence
   provenance gap; it does not turn local tests into hosted, cross-platform,

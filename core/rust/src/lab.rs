@@ -12,7 +12,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use crate::gt96::{BudgetPolicy, ContractError, target_scope_is_ambiguous_uri};
 
 const LAB_SCHEMA: &str = "aegis-lab-runtime-v1";
-const MAX_GOAL_CONTRACT_WIRE_BYTES: usize = 1 * 1024 * 1024;
+const MAX_GOAL_CONTRACT_WIRE_BYTES: usize = 1024 * 1024;
 const MAX_GOAL_CONTRACT_TEXT_BYTES: usize = 64 * 1024;
 const MAX_GOAL_CONTRACT_IDENTIFIER_BYTES: usize = 128;
 const MAX_GOAL_CONTRACT_SCOPE_BYTES: usize = 4096;
@@ -685,7 +685,9 @@ fn is_valid_target_network_entry(value: &str) -> bool {
     let boundary = authority.find(['/', '?', '#']).unwrap_or(authority.len());
     let host = &authority[..boundary];
     let suffix = &authority[boundary..];
-    if host.is_empty() || host.contains([':', '@', '[', ']', '*']) || suffix != "" && suffix != "/"
+    if host.is_empty()
+        || host.contains([':', '@', '[', ']', '*'])
+        || !suffix.is_empty() && suffix != "/"
     {
         return false;
     }
