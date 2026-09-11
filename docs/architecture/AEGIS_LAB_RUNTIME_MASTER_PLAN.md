@@ -3,12 +3,12 @@ document_id: AEGIS-LAB-RUNTIME-MASTER-PLAN
 document_type: canonical_current_implementation_plan
 status: IN_EXECUTION
 authority: derived_from_checkout_and_evidence_manifest
-applies_to_commit: 14ad392b9ba58285e3875b05bf661c04e79331fc
+applies_to_commit: 8d15a34c3e28928aa6ca97a258d17a93bf952169 + WORKTREE_DIRTY (77 paths)
 created_at: 2026-08-26
-last_verified_at: 2026-09-04
+last_verified_at: 2026-09-10
 supersedes: browser-native-proposal-and-cumulative-harness-roadmap-as-execution-authority
-evidence_source: docs/architecture/evidence/current.json
-execution_scope: clean origin/main checkout
+evidence_source: artifacts/local-release-20260910-current-r6-evidence/release-manifest.json + quality/registry/current_*.json
+execution_scope: origin/main HEAD with current local worktree changes; hosted parity remains separate
 verification_scope: local checkout, origin/main parity, implementation/tests; hosted CI observations retained as NOT VERIFIED (no runner-backed gate)
 ---
 
@@ -36,6 +36,527 @@ Mọi claim trong plan phải được phân biệt bằng ba lớp:
 Không dùng các từ `proven`, `production-ready`, `zero-copy`, `bias-free`,
 `absolute`, `fully autonomous` nếu không có evidence class, phạm vi, commit,
 protocol và validator tương ứng.
+
+### 0.1 Historical truth amendment — R3 packaging and verification (2026-09-10)
+
+This dated amendment supersedes the older current-source wording below when it
+conflicts with the latest retained evidence. Historical R2 packaging records and
+the earlier `620 passed, 1 skipped` Python result was observed in a prior
+snapshot, but its former ledger path has since been superseded by the current
+R3 ledger; it is not the current full-suite verdict.
+
+- **R3 package:** the wheel built from the stable source snapshot is
+  `target/wheels-current-source-20260910-r3/aegis_cognition-0.1.0-cp314-cp314-win_amd64.whl`
+  with SHA-256
+  `33c3b2187a8712ea4366385443fa45dc8c04976a5d0cd544812f80e8bfc01461`.
+  The source snapshot hash for `core/rust/src/lab.rs` is
+  `1238fc56ce8ed4100dd50cf299b052a3033eeb4bc63d8e71c8d125c769b96e2e`.
+- **R3 packaged gates (historical source snapshot):** install/import,
+  controller-action and recovery smoke reports are `PROVEN` under local
+  Windows 11 / CPython 3.14.7 in
+  `artifacts/local-release-20260910-current-r3-bundle`. The R3 release manifest
+  and SPDX 2.3 SBOM are `PROVEN` in
+  `artifacts/local-release-20260910-current-r3-evidence`; all four recorded
+  artifact hashes match.
+- **Python full suite:** the current-source run passed `632 passed, 1 skipped,
+  0 failed` in `586.74s` with exit code 0 under CPython 3.14.7. The retained
+  ledger is `artifacts/verification/full-python-suite-20260910-r4.txt`; exact
+  command, environment, source hashes and dirty-worktree caveat are recorded
+  in `artifacts/verification/full-python-suite-20260910-r4-meta.json`. Its
+  basetemp was outside the Git checkout, so the non-Git source-mapper cases
+  were exercised in their intended environment.
+- **Rust full library:** the current-source library run passed `508 passed, 0
+  failed, 0 ignored, 0 filtered` in `86.48s` on Rust 1.98.1. The retained
+  ledger is `artifacts/verification/full-rust-lib-20260910-r3.txt`; this is
+  local Windows evidence and does not close hosted, cross-platform or external
+  environment gates.
+- **Remaining external gates:** hosted CI/current-SHA runner evidence, Tier-1
+  wheel parity, signed attestation, OS-level isolation, real multi-machine
+  execution and production promotion remain `NOT VERIFIED`.
+- **Latest current-source packaging rerun:** the local gate passed `19/19` with
+  `overall_ok=true` in `artifacts/production_packaging_smoke_gate_report.json`.
+  Python smoke, service manifest, artifact write, Rust CLI build and Rust CLI
+  runtime all returned success. This is local packaging evidence only; hosted,
+  signed, cross-platform and external-environment gates remain open.
+- **Additional local boundary evidence (2026-09-10):** the focused authority
+  slice passes `10/10` for `ProcessExecutionCell`, `ReplayWriterLease`, the
+  sealed execution-cell registry, the global external-attempt budget and the
+  native adapter-retry guard. The Goal/Target and progress slice passes
+  `25/25`; the evidence is retained in
+  `artifacts/verification/local-authority-focused-20260910.txt` and
+  `artifacts/verification/goal-target-focused-20260910.txt`. These are local
+  contract tests only; they do not close `LAB-AUTH-001`, hosted writer,
+  provider idempotency, descendant cleanup or cross-platform enforcement.
+- **Goal/Target egress and side-effect coordination (2026-09-10):** the current
+  local regression covers `384` scoped tests (`29` Goal/Target + `355` Lab
+  runtime).
+  Explicit host-based research/browser/generic network reads are narrowed to
+  the Goal target or rejected; exact declared external-effect keys acquire an
+  advisory `ExternalSideEffectLease` for the run. The lease is a local
+  coordination primitive only, not provider, proxy, DNS, kernel, hosted-lock or
+  rollback proof. Evidence is retained at
+  `artifacts/verification/goal-target-lab-regression-20260910.txt`.
+- **Goal/Target root and native-key hardening (2026-09-10):** explicit generic
+  local path fields are checked against read/write roots with boundary-aware
+  lexical matching, semantic descendant narrowing is allowed while sibling root
+  expansion is rejected, literal URI dot segments are normalized for candidates
+  and rejected in roots; bound goal evolution cannot silently unbind its target; and
+  Rust rejects malformed or duplicate `tool_name::effect_class` keys. Current
+  Python evidence is `29` Goal/Target tests and `355` Python Lab runtime tests;
+  the latest native evidence is `18` GT96 tests, `24` native Lab tests and
+  `508` full Rust library tests in `86.48s` at
+  `artifacts/verification/full-rust-lib-20260910-r3.txt`. Symlink/kernel/
+  provider containment remains outside this local boundary.
+
+- **Desktop sidecar refresh (2026-09-10):** the PyInstaller build initially
+  stalled during analysis because importing the desktop service eagerly loaded
+  the complete public package graph. The package initializer now loads public
+  exports lazily, while the frozen sidecar keeps a bounded import boundary;
+  the public `Agent`/`Lab`/`version` API and targeted desktop tests remain
+  unchanged. A fresh CPython 3.14.7 PyInstaller build completed with exit 0
+  and produced `desktop/src-tauri/resources/aegis-desktop-service.exe`
+  (SHA-256
+  `9c0d9be12afcece87788b1614ec1df14a33c7bf914ca07a55ae0bc2fa0c12c7e`).
+  The binary handshake and `service.shutdown` protocol smoke both returned
+  the expected schema/status and exit 0; evidence is retained in
+  `artifacts/verification/desktop-sidecar-build-20260910-r4.txt` and
+  `artifacts/verification/desktop-sidecar-runtime-20260910-r4.txt`.
+  This proves the local Windows sidecar path only; Tauri installer output,
+  cross-platform packaging, signing and hosted release provenance remain
+  separate gates.
+
+- **Latest full-Python verification (2026-09-10):** the complete current-source
+  command finished with `632 passed, 1 skipped in 586.74s` and exit code 0 under
+  CPython 3.14.7 on Windows, using an external basetemp to preserve the
+  non-Git isolation contract. The retained ledger is
+  `artifacts/verification/full-python-suite-20260910-r4.txt` with metadata in
+  `artifacts/verification/full-python-suite-20260910-r4-meta.json`. Hosted CI,
+  Tier-1, OS isolation, multi-machine and production gates remain open.
+
+- **Packaging-smoke reconciliation (2026-09-10):** after the current Rust
+  resource/placement fixes, the local packaging gate passed `19/19` with
+  `overall_ok=true`. The machine-readable report is
+  `artifacts/production_packaging_smoke_gate_report.json`; the captured console
+  ledger is `artifacts/verification/production-packaging-smoke-20260910-r9.log`.
+  The pass covers the local Python smoke, service manifest, artifact write,
+  Rust CLI build and Rust CLI runtime; it does not close hosted, signed,
+  cross-platform or external-environment gates.
+
+### 0.2 Historical truth amendment — R4 current-source package (2026-09-10)
+
+This amendment supersedes the R3 package wording above and every later
+historical sentence that says the current FFI/CLI source has not yet been
+packaged. The R4 artifact was built after the current Rust FFI and CLI source
+changes with pinned Maturin `1.14.1` on local Windows/CPython `3.14.7`.
+
+- **R4 wheel:**
+  `target/wheels-current-source-20260910-r4/aegis_cognition-0.1.0-cp314-cp314-win_amd64.whl`,
+  SHA-256
+  `a61ef9e41e80d16538c217add3aa7db4d15183e34a2a31611d5ee075ef8404de`.
+- **Packaged install/import:** `PROVEN`; pip installation and public `Agent`
+  import returned code `0` in
+  `artifacts/local-release-20260910-current-r4-bundle/release-install-smoke.json`.
+- **Packaged controller-action:** `PROVEN`; Rust-native authority, benchmark
+  `PASS`, zero blockers, replay archive, provider retry fencing and required
+  memory effects are recorded in
+  `artifacts/local-release-20260910-current-r4-bundle/release-controller-action-smoke.json`.
+- **Packaged recovery:** `PROVEN`; five admissions were reconciled, the event
+  chain was valid and `open_after_recovery=0` in
+  `artifacts/local-release-20260910-current-r4-bundle/release-recovery-smoke.json`.
+- **Release evidence:** `PROVEN` for generated hashes in
+  `artifacts/local-release-20260910-current-r4-evidence/release-manifest.json`
+  and `release.sbom.spdx.json`; all four artifact hashes match and the
+  manifest deliberately records `WORKTREE_DIRTY`. An independent byte/hash
+  recheck also passes in
+  `artifacts/verification/release-manifest-r4-independent-20260910.json`.
+  Wheel-content parity for the canonical CLI, native extension and bridge
+  payload passes in
+  `artifacts/verification/release-r4-wheel-content-20260910.json`.
+- **Current authority/replay focused slice:** `37 passed, 318 deselected` in
+  `18.19s` for execution-cell registry/manifest sealing, replay and external
+  effect leases, cross-process writer contention, non-cooperative process and
+  descendant termination, provider retry/cancellation fences and typed
+  controller actions. The retained ledger is
+  `artifacts/verification/authority-replay-focused-20260910.log`.
+
+This closes the local current-source packaging gap for the stated Windows
+environment. It does not prove signed provenance, hosted CI/current-SHA parity,
+Tier-1 wheels, OS/kernel isolation, live provider behavior, multi-machine
+execution, or production promotion; those gates remain `NOT VERIFIED`.
+
+### 0.3 Native external-effect declaration fence (2026-09-10)
+
+Native-required `LabRun` instances now reject every generic tool effect outside
+the local-safe set unless the exact `tool_name::effect_class` is declared by an
+explicit Goal target. The sole managed-internal exception is the exact
+`memory.index_session::memory_write` pair when a replay-bound
+`post_completion_effect` cell is present; this keeps the runtime-owned memory
+index lane working without making durable writes generally local-safe. This
+closes the local bypass where `LabPolicy` approval could otherwise authorize an
+unbound external write. Projection-only and legacy compatibility behavior
+remains unchanged; policy approval is still required by the higher-level `Lab`
+facade.
+
+The GoalContract external-effect slice passes `4/4`; the combined Lab/Goal
+regression for tool execution, external effects, controller actions, provider
+attempt fences, execution cells and managed-internal memory effects passes
+`34/34` in `13.62s`. Ruff and strict
+Pyright both pass. Evidence is retained at
+`artifacts/verification/native-managed-internal-regression-20260910.log`,
+`artifacts/verification/native-managed-internal-ruff-20260910.log` and
+`artifacts/verification/native-managed-internal-pyright-20260910.log`.
+
+This is a local admission fence only. It does not prove that a registered
+adapter has no hidden provider/filesystem/network effects, that an external
+effect is idempotent or reversible, or that hosted processes share one writer;
+`LAB-AUTH-001` remains open.
+
+### 0.4 Latest truth amendment — R6 current-source package (2026-09-10)
+
+R6 supersedes R4 as the current local package because the source now carries
+the managed-internal effect marker and native validation needed by the
+post-completion memory index lane. The build used pinned Maturin `1.14.1`,
+Rust `1.98.1` with one build worker, and local Windows/CPython `3.14.7`.
+The observed command, exit code and wheel hash are retained at
+`artifacts/verification/maturin-current-source-20260910-r6.json`.
+
+- **R6 wheel:**
+  `target/wheels-current-source-20260910-r6/aegis_cognition-0.1.0-cp314-cp314-win_amd64.whl`,
+  SHA-256
+  `610d55b66c427a50b90d41142a00b02ce14fb6d64bf6d8269832c828822e4830`.
+- **Packaged install/import:** `PROVEN`; clean pip install and public `Agent`
+  import returned code `0` in
+  `artifacts/local-release-20260910-current-r6-bundle/install-smoke.json`.
+- **Packaged controller-action:** `PROVEN`; Rust-native authority, benchmark
+  `PASS`, zero blockers, replay archive, provider statuses
+  `REJECTED/SUCCESS/REJECTED/SUCCESS`, and managed memory index `SUCCESS` in
+  `artifacts/local-release-20260910-current-r6-bundle/controller-action-smoke.json`.
+- **Packaged recovery:** `PROVEN`; five admissions were reconciled, the event
+  chain was valid and `open_after_recovery=0` in
+  `artifacts/local-release-20260910-current-r6-bundle/release-recovery-smoke.json`.
+- **Release evidence:** `PROVEN` for generated hashes in
+  `artifacts/local-release-20260910-current-r6-evidence/release-manifest.json`
+  and `release.sbom.spdx.json`; all four artifact hashes match and the
+  manifest records `WORKTREE_DIRTY`. Independent manifest/hash and wheel
+  content checks pass in
+  `artifacts/verification/release-manifest-r6-independent-20260910.json` and
+  `artifacts/verification/release-r6-wheel-content-20260910.json`.
+- **Current Rust library gate:** `526 passed, 0 failed, 0 ignored` in
+  `126.67s` with `--no-default-features`; the retained ledger is
+  `artifacts/verification/full-rust-lib-20260910-r7.log`.
+- **Current full Goal/Lab Python gate:** `387 passed` in `21.23s` across
+  `tests/test_goal_contract.py` and `tests/test_lab_runtime.py`; the retained
+  ledger is `artifacts/verification/goal-lab-full-r6-20260910.log`.
+
+The managed-internal exception is narrow: only the exact
+`memory.index_session::memory_write` pair backed by a replay-bound
+`post_completion_effect` cell may use it. Other non-local tool effects still
+require an explicit Goal target declaration. These are local Windows package
+gates; hosted parity, signed provenance, Tier-1 wheels, OS/provider
+containment, multi-machine execution, and production promotion remain
+`NOT VERIFIED`.
+
+### 0.5 Python verification and AESE reconciliation (2026-09-10)
+
+The last complete Python suite before the cooperative-admission changes was
+rerun after the managed-internal source and AESE artifact regeneration. With a
+fixed external pytest base directory, CPython `3.14.7` on Windows reported
+`641 passed, 1 skipped` in `646.68s` with exit code `0`. The retained ledger and
+run metadata are
+`artifacts/verification/full-python-suite-20260910-r9.txt` and
+`artifacts/verification/full-python-suite-20260910-r9.meta.json`.
+
+An earlier rerun without a fixed base directory produced `582 passed, 60
+errors` because Windows removed the pytest `tmp_path` root (`WinError 3`); that
+run is retained as harness-failure evidence in
+`artifacts/verification/full-python-suite-20260910-r8.txt` and is not a source
+verdict. The two AESE drift failures observed in the first rerun were resolved
+by regenerating `current_affected_closure.json` and `current_shadow_plan.json`;
+their focused gate passes `30/30` in
+`artifacts/verification/aese-drift-regression-20260910-r7.log`.
+
+This is pre-admission local Windows baseline evidence. It does not close hosted CI,
+Tier-1 parity, signed provenance, OS/provider containment, multi-machine
+execution, or production promotion.
+
+The wheel's Rust feature path was also exercised directly with
+`cargo test --features python-extension --lib --no-fail-fast`: `528 passed, 0
+failed, 0 ignored` in `98.04s`, retained at
+`artifacts/verification/rust-python-extension-lib-20260910-r8.log`. The
+no-default current-source library gate is `526 passed, 0 failed, 0 ignored` in
+`126.67s`, retained at `artifacts/verification/full-rust-lib-20260910-r7.log`.
+These are feature-gated local evidence and do not replace the cross-platform
+matrix or hosted release gates.
+
+The earlier r1 Rust/extension numbers and the `424/424` affected Python slice
+are retained as historical evidence for their source snapshot. The latest
+source-locked results are recorded in section 0.11: no-default Rust `540/540`,
+`python-extension` Rust `541/541`, and rebuilt-extension Python `450/450`.
+These remain local source/extension checks only; the editable rebuild reported
+maturin `1.13.3` while the release build requirement remains pinned to
+`1.14.1`, so it is not pinned release evidence.
+
+After the native cooperative-admission source and public Python API were added,
+the full suite was attempted again with the same external-base discipline. The
+run reached `656 passed, 5 failed, 1 skipped` in `1500.79s` and exit code `1`;
+all five failures were recorded AESE registry drift (`source_tree_sha256`,
+closure/claim/inventory/shadow-plan hashes), not product assertions. The
+terminal ledger is retained at
+`artifacts/verification/full-python-suite-20260910-r10.txt` with metadata in
+`artifacts/verification/full-python-suite-20260910-r10.meta.json`.
+
+The four generated registry artifacts were then regenerated in dependency order
+from the current dirty worktree. The exact five drift tests pass in `120.58s`
+at `artifacts/verification/aese-drift-regression-20260910-r8.log`; inventory
+and claim-graph `--check` also pass in
+`artifacts/verification/aese-inventory-check-r9-20260910.log` and
+`artifacts/verification/aese-claim-graph-check-r9-20260910.log`. A new full
+post-regeneration Python sweep is not claimed here; the source-level focused
+gate and the pre-admission full baseline are the applicable evidence.
+
+That historical limitation is superseded by the latest current-source sweep
+after package formatting and registry reconciliation: `708 passed, 1 skipped`
+in `510.02s` with exit code `0`, retained at
+`artifacts/verification/full-python-suite-20260911-r4.txt` and
+`artifacts/verification/full-python-suite-20260911-r4.meta.json`. This is local
+Windows/CPython 3.14.7 evidence; hosted CI, Tier-1 parity and external
+environment gates remain separate.
+
+### 0.6 Native cooperative placement admission (2026-09-10)
+
+Cooperative placement now has a narrow local runtime admission boundary in
+addition to its planner-only preview. The Rust FFI rebuilds the plan from the
+task and sorted capability/path inventory, binds the response to a BLAKE3
+inventory digest, and creates a native lease only for a `READY_ALL_OR_NONE`
+plan whose aggregate reservation fits the observed ledger. Repeating the same
+`(task_id, attempt_id, plan_digest)` is idempotent; a changed plan digest is
+rejected, and release requires the exact lease generation and reservation.
+Python exposes this as `admit_cooperative_placement()` and
+`release_cooperative_placement()`. A missing/older extension returns an
+explicit non-executable, non-authoritative envelope; it never upgrades a
+planner preview into executable work.
+
+The ledger also preserves observed queue usage without inventing storage-byte
+usage when an inventory reports in-flight work but no measured byte counter.
+The focused Python contract gate is `18 passed` at
+`artifacts/verification/cooperative-admission-python-contract-20260910-r1.log`;
+the native idempotency/fencing gate is `1 passed` at
+`artifacts/verification/cooperative-admission-rust-regression-20260910-r1.log`;
+and the packaged wheel admit/idempotent/release smoke is `PROVEN` at
+`artifacts/verification/release-cooperative-admission-smoke-20260910-r3.json`.
+The storage-accounting edge gate is covered by the full Rust logs above.
+
+This boundary is process-local and does not claim durable, multi-process,
+hosted, OS-level, or cross-machine authority. `LAB-AUTH-001` therefore remains
+`OPEN_LOCAL` until the planner/lease closure, hosted single-writer, adapter
+coverage, non-cooperative process containment, and reconciliation evidence are
+closed.
+
+### 0.7 Replay lifecycle completion for terminal prefixes (2026-09-11)
+
+The local replay lifecycle now archives a successful run only after the
+post-completion effect has been admitted and settled. This keeps the durable
+snapshot and native segment manifest bound to the complete terminal event
+prefix, including the managed `memory.index_session` receipt when that lane is
+configured. If the application fails or is cancelled before returning, the
+application reconciles open admissions first and then attempts to archive the
+resulting non-success prefix while the same replay-writer lease is held. An
+archive failure is retained as a blocker and never masks the original failure.
+
+Evidence: `tests/test_lab_runtime.py` is `359 passed` in
+`artifacts/verification/lab-runtime-replay-lifecycle-20260911-r2.log`; the
+focused regression for failure-prefix ordering is separately reproduced as
+`8 passed` in
+`artifacts/verification/lab-runtime-replay-lifecycle-20260911-r1.log`. Ruff
+and strict Pyright pass for the changed Lab/runtime files at
+`artifacts/verification/lab-runtime-replay-ruff-20260910-r1.log` and
+`artifacts/verification/pyright-lab-lifecycle-20260911-r2.log`.
+The latest complete current-source Python suite passes `708 passed, 1 skipped`
+at `artifacts/verification/full-python-suite-20260911-r4.txt`; the same
+post-rebuild affected slice is recorded in section 0.11.
+
+This closes the local ordering and failure-prefix gap only. It does not prove
+that an external provider reversed an effect after timeout, that an arbitrary
+non-cooperative descendant was contained by the OS, or that a hosted writer
+service provides multi-process authority.
+
+### 0.8 Rust placement/runtime lint closure (2026-09-11)
+
+The current Rust placement projection now uses explicit conditional branches
+for CPU, accelerator, storage-byte and in-flight accounting instead of opaque
+`then_some(...).unwrap_or(...)` chains. The cooperative runtime admission enum
+stores its lease token behind `Box`, reducing the size difference between enum
+variants without changing admission, release, or cancellation semantics.
+
+Local evidence: `cargo fmt --all -- --check` passes; strict Clippy passes for
+both no-default and `python-extension` library modes at
+`artifacts/verification/rust-clippy-no-default-20260911-r9.meta.json` and
+`artifacts/verification/rust-clippy-python-extension-20260911-r8.meta.json`.
+The focused cooperative placement/runtime test set passes `22 tests` at
+`artifacts/verification/rust-cooperative-placement-runtime-20260911-r1.meta.json`.
+The native GT96 target-evolution gate also passes `2 tests`: bound targets
+preserve identity/ownership and only narrow authority, while legacy unbound
+targets retain their compatibility behavior. Evidence is retained at
+`artifacts/verification/gt96-target-evolution-20260911-r1.meta.json`.
+This is a local lint/behavior closure only and does not change the remaining
+cross-platform, hosted, external-effect or release evidence status.
+
+The previous shared-target `--all-targets --all-features` Clippy attempt was
+blocked by incomplete metadata. Re-running in an isolated target directory now
+passes with `-D warnings`; evidence is retained at
+`artifacts/verification/rust-clippy-all-targets-features-20260911-r2.meta.json`.
+This closes the local all-target Rust lint gate; cross-platform and hosted
+toolchain parity remain separate.
+
+### 0.9 Runtime FFI boolean/outcome boundary (2026-09-11)
+
+Python runtime wrappers now reject malformed native boolean responses instead
+of coercing arbitrary truthy values. Lease tokens must be non-empty mappings,
+lease outcomes must use the declared runtime outcome vocabulary, and the same
+strict boolean check covers cancellation and cooperative-placement release.
+This keeps a malformed PyO3/compatibility response from being recorded as a
+successful release or cancellation.
+
+Local evidence: `tests/test_runtime_coordination.py` passes `21 tests`, with
+Ruff and strict Pyright both clean for the changed runtime surface. The
+evidence is retained at
+`artifacts/verification/runtime-coordination-strict-bool-20260911-r1.meta.json`,
+`artifacts/verification/runtime-ruff-strict-bool-20260911-r1.meta.json`, and
+`artifacts/verification/runtime-pyright-strict-bool-20260911-r1.meta.json`.
+The corresponding PyO3 runtime FFI test module passes `14 tests` after the
+boxed cooperative lease token ownership fix; evidence is retained at
+`artifacts/verification/ffi-runtime-deterministic-20260911-r1.meta.json`.
+This closes a Python/native response-integrity gap only; it does not establish
+native process isolation, hosted authority or release provenance.
+
+### 0.10 Native execution-cell manifest binding (2026-09-11)
+
+The native Lab projection now treats an execution-cell manifest as a prior
+authority event. When an execution binding carries a manifest digest, the
+controller requires that a matching `ExecutionCellManifestRecorded` event
+already exists in the prefix; missing or mismatched manifest evidence is
+rejected before the binding can be admitted. Bindings that omit the optional
+digest retain the legacy compatibility path.
+
+The focused native Lab gate passes `20 tests`, including matching,
+mismatched and missing-manifest regressions, with strict Clippy still clean in
+both library modes. Evidence is retained at
+`artifacts/verification/native-lab-binding-focused-20260911-r6.meta.json`.
+This closes a local manifest-to-binding integrity gap only; it does not prove
+hosted writer authority, cross-process replay or external deployment safety.
+
+The current Python Lab regression also passes `363 tests` after the manifest,
+resource-policy and lifecycle updates. Evidence is retained at
+`artifacts/verification/python-lab-current-20260911-r5.meta.json`.
+
+### 0.11 Current verification refresh and evidence boundary (2026-09-11)
+
+The current Python contract gates pass `363/363` Lab runtime tests and `54/54`
+GoalContract tests. The rebuilt-extension affected slice passes `450/450`
+across GoalContract, Lab runtime and runtime coordination. These are local
+CPython 3.14.7 evidence retained at
+`artifacts/verification/python-lab-current-20260911-r5.meta.json` and
+`artifacts/verification/python-goal-contract-focused-20260911-r2.meta.json`;
+the rebuilt-extension slice is
+`artifacts/verification/python-current-extension-goal-lab-20260911-r3.meta.json`.
+
+The editable extension rebuild was rerun through the project `.venv` with the
+exact pinned Maturin `1.14.1`, rather than the unrelated global `1.13.3`
+binary. Evidence is retained at
+`artifacts/verification/maturin-develop-current-20260911-r4.meta.json`;
+release provenance and hosted parity remain separate gates.
+
+The latest native Lab focused gate passes `20/20` tests, and strict Rust Clippy
+passes for both no-default and `python-extension` library modes. The native
+focused ledger is
+`artifacts/verification/native-lab-binding-focused-20260911-r6.meta.json`;
+the lint ledgers are
+`artifacts/verification/rust-clippy-no-default-20260911-r9.meta.json` and
+`artifacts/verification/rust-clippy-python-extension-20260911-r8.meta.json`.
+
+The latest full Rust no-default library run passes `540/540` tests in `75.17s`.
+Evidence is retained at
+`artifacts/verification/rust-no-default-lib-20260911-r3.meta.json`. This is
+local Windows evidence; hosted, cross-platform and release-provenance gates
+remain separate.
+
+The matching `python-extension` feature library run passes `541/541` tests in
+`92.22s`, retained at
+`artifacts/verification/rust-python-extension-lib-20260911-r2.meta.json`.
+
+The all-feature library/integration split also passes `541` library tests and
+`2` integration tests at
+`artifacts/verification/rust-lib-integration-all-features-20260911-r1.meta.json`.
+All benchmark targets compile successfully with
+`cargo bench --all-features --no-run`, retained at
+`artifacts/verification/rust-bench-all-features-no-run-20260911-r1.meta.json`.
+The unsplit `cargo test --all-targets` invocation is not treated as a PASS
+because Criterion benchmark binaries reject the test-only arguments; benchmark
+execution remains a separate performance gate.
+
+The AESE registry was regenerated from the current worktree in dependency
+order. Inventory, claim graph, S2 mapping, S3 affected closure, shadow plan,
+and validation-corpus reproducibility checks now pass locally. The registry
+remains shadow-only with selection disabled and does not replace the legacy
+verification path.
+
+The current project-scope Python quality gate also passes: Ruff lint, Ruff
+format and strict Pyright are clean for `aegis_cognition`, `core/python`,
+`scripts` and `tests`. The post-fix Goal/Lab/coordination regression passes
+`455/455`. Evidence is retained at
+`artifacts/verification/python-quality-project-scope-20260911-r3.meta.json`
+and `artifacts/verification/python-quality-regression-20260911-r2.meta.json`.
+A raw repository-wide Ruff scan remains a separate `NOT VERIFIED` hygiene
+item because it includes auxiliary directories and POCs with 321 findings.
+
+The artifact-weighted progress gate currently reports `66.03%` readiness across
+15 domains with `overall_ok=false`. This is a local measured readiness index,
+not a release or production verdict; the retained report is
+`artifacts/verification/progress-gate-current-20260911-r2.json`.
+
+### 0.12 Current Goal/Target admission and restore fence (2026-09-11)
+
+The Goal/Target boundary now rejects oversized or structurally unbounded wire
+payloads before hashing or admission in both Python and Rust. The local
+admission profile bounds wire bytes, text/identifier/scope bytes, sequence
+length, total sequence items, nesting depth and node count. These values are
+deployment-profile defaults, not universal safety thresholds or a host
+isolation proof.
+
+`LabRun` now applies the same explicit-admission rule during construction and
+snapshot restore: a bound target or an acceptance-bearing contract must pass
+`GoalContract.validate_for_admission()`. This closes the restore path that
+previously checked `GoalContract.from_dict()` shape/hash but could bypass the
+stricter target/acceptance admission rule. The retained Python suite record
+reports `419/419` under CPython `3.14.7` at
+`artifacts/suites/goal-target-lab-contract-current-20260911-r2.json`; its
+recorded commit is the earlier `8d15a34`, so it is not treated as a
+cryptographic binding to the later coordination HEAD. A subsequent direct run
+of the same two test files on the current dirty checkout also reported
+`419 passed`, but no new suite artifact is claimed for that run.
+
+The bounded-wire fence also covers the receipt-side objects before they are
+hashed or admitted: Python `ExecutionBinding`, `GoalVerification` and
+`GoalProgress`, plus native Rust `ProjectionExecutionBinding`. The current
+Python limit gate passes `1/1`, the Rust GoalContract gate passes `5/5`, and
+the native binding regression gate passes `2/2` at
+`artifacts/suites/goal-target-limits-python-20260911-r2.json`,
+`artifacts/suites/goal-target-limits-rust-20260911-r1.json` and
+`artifacts/suites/goal-target-binding-limits-rust-20260911-r1.json`.
+
+The suite-evidence path now records a `worktree_status` and a SHA-256
+`worktree_sha256` covering tracked diffs and non-ignored untracked files; the
+release-eligibility gate rejects suite artifacts that omit this fingerprint.
+This prevents a dirty checkout from being represented by its `HEAD` SHA alone.
+The focused evidence-infrastructure regression passes `21/21` tests in
+`tests/test_suite_evidence.py` and `tests/test_evidence_consistency_gate.py`;
+the retained artifact is
+`artifacts/suites/suite-evidence-worktree-fingerprint-20260911-r1.json` with
+`worktree_status=DIRTY` and a recorded worktree fingerprint.
+
+This is local Windows evidence. It does not prove lineage against an external
+parent registry, provider/network enforcement, kernel isolation, hosted CI
+parity, cross-platform behavior or production readiness.
 
 ## 1. Quyết định kiến trúc cấp cao
 
@@ -168,18 +689,23 @@ hiện tại và không được dùng để chứng minh checkout mới:
 - Constitution audit ban đầu là 177/177 và architecture fitness 23/23; đây là
   structural/presence checks, không phải proof rằng Lab behavior hoạt động.
 
-Checkout implementation hiện hành cho migration node này là
-`906d057ac90900b5e11e75e622a62c71dd80142b` (terminal-state admission fence
-cho `AdaptiveController.next` và `.observe`; preflight root-schema validation ở `41f614f…` và
-measurement-result semantic validation ở `0f6b1aa…`), với worktree sạch và
-`origin/main` parity được xác nhận sau push.
-Focused AESE/preflight regression trên CPython 3.11 là **76 + 9 passed**;
-Lab runtime regression cho controller là **353 passed**;
-full Python regression trước migration preflight gần nhất đã chạy **554
-passed** với **3 expected registry-drift failures** trước khi registry được
-tái tạo, sau đó inventory và claim-graph `--check` đều pass.
-Latest retained Rust no-default-features library evidence là **456/456** với
-fmt/check/clippy pass; Python-only diff này không làm thay đổi Rust surface.
+Checkout hiện hành có HEAD và `origin/main` cùng là
+`8d15a34c3e28928aa6ca97a258d17a93bf952169`; worktree có các thay đổi chưa
+commit. CPython `3.14.7`, Rust `1.98.1` và uv `0.12.9` là toolchain hiện tại.
+Focused Goal/Target–Lab gate là **29/29** Goal/Target và **355/355** Lab
+runtime. Full Python suite hiện tại là **632 passed, 1 skipped** trong
+586.74s với output tại
+`artifacts/verification/full-python-suite-20260910-r4.txt`; đây là local
+Windows evidence với basetemp ngoài repository. Mốc `631 passed` là baseline
+lịch sử trước hardening mới.
+Rust no-default-features library run hiện tại là **508/508** trong `86.48s`
+với output tại `artifacts/verification/full-rust-lib-20260910-r3.txt`. Local
+packaging smoke cũng đạt **19/19** trong
+`artifacts/production_packaging_smoke_gate_report.json`. Các kết quả này là
+local Windows evidence; hosted/Tier-1/OS isolation/multi-machine vẫn mở.
+Mốc `584 passed, 1 skipped` là baseline lịch sử trước thay đổi hiện hành.
+Inventory, claim graph,
+mapping, closure và shadow validators hiện đều pass trong scope local.
 Registry AESE hiện có **131** inventoried items, graph **46 claims / 92
 verification references**, **122** unmapped surfaces và selection ở
 `SHADOW`/`NOT_EXECUTED`. Các kết quả này chỉ là local source-bound evidence;
@@ -369,12 +895,29 @@ definition; status thuộc event ledger.
 ordering rule và domain separation. Evolution phải bind
 `parent_contract_hash`, author/reason và effective epoch.
 
-**Working-tree disposition:** `GoalContract` hiện dùng domain-separated hash,
-field/list lengths và parent/evolution binding; unit tests đã phủ hash
-partition và contract evolution. Author/effective-epoch provenance vẫn thiếu
-ở contract này; LabController đã được nối cho các lane local hiện có nhưng
-chưa phải authority hosted duy nhất của toàn bộ Agent lifecycle (xem B0.6 và
-`LAB-AUTH-001`).
+**Working-tree disposition:** Python `GoalContract` và Rust GT96 hiện đều có
+identity/hash domain riêng, target binding, immutable definition/progress split,
+generation CAS, parent contract hash, author và effective epoch; unit tests đã
+phủ hash partition, round-trip, stale evolution và target binding. Python
+`GoalContract` JSON và Rust GT96 internal encoding không phải cùng một protocol;
+cầu nối hiện tại chỉ kiểm tra canonical GoalContract JSON tại native mission
+boundary, không phải một lossless cross-language reducer.
+Explicit contracts flow through `LabRun` snapshots/manifests and canonical JSON
+mission validation. Native per-event goal/target binding is implemented and
+validated by the focused native GoalContract tests (5/5), the current Lab
+runtime regression (355/355), the current full Rust core library suite
+(508/508; output retained at
+`artifacts/verification/full-rust-lib-20260910-r3.txt`),
+Python Goal/Target–Lab regression tests (29/29 + 355/355), the post-edit
+targeted Python set (50/50), and targeted Ruff and strict Pyright. The current
+full Python run is `632 passed, 1 skipped` at
+`artifacts/verification/full-python-suite-20260910-r4.txt` under CPython 3.14.7
+Windows with an external basetemp. The older `631 passed` ledger is historical.
+Đây vẫn chưa phải authority hosted duy nhất của toàn bộ Agent lifecycle (xem
+B0.6 và `LAB-AUTH-001`). Packaged wheel evidence is retained for the earlier
+r3 source snapshot in `target/wheels-current-source-20260910-r3` and
+`artifacts/local-release-20260910-current-r3`; it is not current-source
+release evidence after the latest Goal/Target and Rust edits.
 
 #### B0.5 PAV không phải correctness proof
 
@@ -426,7 +969,10 @@ receipt fields và source→claim→hypothesis→experiment→observation refere
 seed và clean-replication rules trước khi ghi native event; browser action,
 research-program, skill, experiment và generic tool admission/execution
 receipts đều bind lease/actor, policy/input/result hashes, mission/replay parent
-và uniqueness rules. Payload
+và uniqueness rules. Goal/Target metadata hiện được lưu ở mission/context/
+manifest/snapshot; explicit Python execution events carry goal generation,
+contract hash và target digest, và Rust native boundary đối chiếu canonical
+contract shape, hash, generation, budget, target và event binding. Payload
 đã nhận được lưu trong native projection index và được kiểm tra lại khi
 snapshot restore; legacy hash-only admission bị từ chối cho các typed
 side-effect kinds để không tạo đường bypass. Native smoke đã từ chối claim
@@ -1286,6 +1832,12 @@ Prefix ngắn hơn, thiếu segment hoặc tail hỏng vì vậy không thể ti
 run hoàn tất; verifier boolean cũ chỉ còn là compatibility fallback cho adapter
 không có strict surface.
 
+Explicit external-effect keys now also use a local advisory lease per exact
+`tool_name::effect_class` key for the whole Lab run. Missing local lease
+coordination for an explicit external-effect contract fails closed. This reduces
+same-key local concurrency, but does not claim provider-side locking,
+idempotency, rollback, DNS/proxy/kernel containment or hosted authority.
+
 ### P2 — Research Plane
 
 **Deliverables:** search-as-code AST/IR, provider adapters, source snapshot,
@@ -1502,12 +2054,13 @@ dưới đây là thay đổi đã có code/test, nhưng chưa được gọi l�
 | Hạng mục | Implemented change | Verification hiện tại | Trạng thái |
 |---|---|---|---|
 | Budget lanes | `BudgetLedger` tách exploration/finalizer/recovery, refund atomic, recovery API | Rust counterexample + negative tests | LOCAL-PROVEN |
-| Contract/evidence | goal hash có framing/list lengths/parent evolution; evidence bind criterion/contract/validator | Rust GT96 tests | LOCAL-PROVEN |
+| Contract/evidence | goal hash có framing/list lengths/parent evolution; evidence bind criterion/contract/validator; native Lab boundary validates canonical GoalContract shape/hash/target/event binding | Python contract tests + Rust GT96/native Lab tests | LOCAL-PROVEN |
 | PAV semantics | distance watchdog deterministic across process history; `ObjectiveValidationReceipt` tách correctness khỏi PAV | Rust physical tests | LOCAL-PROVEN |
 | Task transitions | `mark_status` validates; `complete_task` đi qua legal states | Rust task-ledger suite | LOCAL-PROVEN |
 | Lab kernel | mission, source, claim, hypothesis, experiment, unit-aware observation, uncertainty/replication gate, typed blocker record/resolve events, experiment/tool execution attempt admission/settlement, cancellation admission/settlement, atomic rollback on native rejection, event hash-chain, replay check; Python appends/transitions are native-admitted when policy requires | Rust lab tests + Python native-authority, blocker-audit, retry/cancellation and rollback tests | LOCAL-PROVEN (implicit tool planner and hosted authority remain open) |
 | Native LabController | Rust `LabController` owns `LabRuntime` + exploration/finalization budget lanes + `FinalizationBoundary`; epoch-bound exploration admission, budget/finalization replay events, bounded snapshot/restore, PyO3 `LabController`, projection-event writer/state sync, typed payload/reference admission, browser/research/skill side-effect receipt admission, experiment and generic tool execution admission/settlement with attempt/lease/effect/role/schema/stop-rule uniqueness, cancellation admission/settlement across abort transition, native projection-payload index, transactional clone-before-commit rejection and fail-closed error surface; Python compatibility dispatcher now resolves all explicit edge runners through `ExecutionCellRegistry`, whose manifest is persisted and hash-bound and the registry is sealed after capture with an immutable lookup snapshot; restored crash prefixes can reconcile every open explicit execution admission as non-success; `_call_fenced` rejects an adapter that swallows cancellation; opt-in `ProcessExecutionCell` terminates its own picklable child on local timeout/cancellation; configured replay directories are serialized by `ReplayWriterLease`; one `LabApplication` cannot overlap active runs in-process; compatibility RAG `memory.search_past`, operator-owned `benchmark_validation` validators and the post-completion `memory.index_session` effect are admitted/settled as typed cells; browser launcher creation is itself admitted as a typed `launch` action before invoking the untrusted launcher and settled on success/rejection/cancellation | Rust controller/projection tests cover generic tool admission/settlement and duplicate rejection, experiment execution binding, duplicate execution/cancellation settlement rejection with unchanged snapshot, cancellation admission→aborted transition→settlement, blocked-state recovery admission and snapshot restore; Python regression covers transient experiment/simulation and generic tool retry as `REJECTED|TIMED_OUT` attempt 1 + `SUCCESS` attempt 2, cooperative and swallowed-cancellation in-flight tool/research cancellation, process-cell timeout/cancellation termination, execution-cell identity/capability/effect/duplicate rejection, strict benchmark-validator fallback rejection and sealed-snapshot mutation resistance, context retrieval admission/hash-only result/prompt-injection rejection and required-cell missing failure, required post-completion effect missing rejection, active-run rejection, replay-writer process contention rejection, literal IPv4/IPv6/decimal-IP unsafe-address rejection, browser prompt-injection rejection with hash-only evidence and controller-stop behavior, hostname-resolution private-address rejection, isolated benchmark validator success/tampered-input/timeout rejection, and mixed-lane crash-prefix recovery after restore; v63 real-wheel smoke imported the packaged wheel outside checkout and executed a bundled typed controller plan containing search, browser, experiment and simulation actions through `rust_native_verified`, with source capture, browser settlement, two distinct observations and no blockers; the same v63 packaged run proves `benchmark_status=PASS`, one successful `benchmark.hidden_validator` settlement, exactly one successful `memory.search_past` context-retrieval receipt and exactly one successful `memory.index_session` receipt; a separate v63 packaged recovery smoke settled five mixed admissions as `REJECTED` with `UNKNOWN_SIDE_EFFECT`; source regression proves gateway retry as `TIMED_OUT` attempt 1 + `SUCCESS` attempt 2, typed controller action plan search/browser/experiment/simulation execution and external-effect rejection; launcher admission precedes launcher invocation and launcher-owned browser session remains bound across the controller loop and is cleaned after it; corrected clean-install remains proven and v62→v63→v62 rollback is locally proven, with v62 retained only as the immediate historical predecessor and v61/v60/v59/v58/v57/v56/v55/v53/v52/v51/v50/v49/v48/v47/v46/v45 and earlier rollback evidence retained as historical evidence | LOCAL-PROVEN (implicit planner/lease for hidden side effects, hosted single-writer service, OS-level process/resource enforcement and cross-platform packaging remain open) |
 | Public Lab facade | `Lab`, `LabMissionSpec`, `LabPolicy`, `LabBudget`, `LabSession` với live evidence stream và operator controls; `Agent(..., lab=True)` compatibility path; typed controller action plan; `ExecutionCellBinding`/`ExecutionCellRegistry` for explicit cell identity/policy; explicit `AuthorityMode` for projection-only, optional native admission and native-required contexts; event-log-driven multi-lane crash reconciliation and cancellation fence; opt-in `ProcessExecutionCell` for killable local adapter execution; `ReplayWriterLease` for configured replay-directory writer serialization; per-application active-run guard; compatibility RAG context retrieval admission | Python Lab tests 138/138 targeted; combined regression count recorded below; event cursor/stream, native-authority admission/fail-closed, typed browser actor/observer/research/electrical rejection, experiment/simulation/generic-tool/gateway retry settlement, typed search/browser/experiment/simulation action execution and rejection, unapproved external-effect rejection, gateway admission and cooperative/swallowed cancellation event tests; registry identity/capability/effect/duplicate/late-mutation and sealed-snapshot mutation rejection plus snapshot manifest round-trip; context retrieval admission/hash-only result/prompt-injection and required-cell missing rejection; required post-completion cell missing rejection; explicit-registry legacy search/browser/skill/benchmark-validator fallback rejection, ambiguous-browser-runner rejection and PROD native strict-edge resolution; PROD Agent native-default rejection; process-cell timeout/cancellation termination; replay-writer process contention rejection; concurrent active-run rejection; mixed-lane recovery after restore and abort-order fail-closed behavior; bundled research→preregistration ordering and Agent compatibility replay-default regressions; initial literal/obfuscated research fetch IP guard, hostname resolution preflight rejection and unsafe provider-candidate rejection; same-ID typed projection mutation fails closed; LabPolicy trust propagation/hash-binding matrix for DEV/STAGING/PROD; hash-bound event envelope and execution-cell registry mismatch rejection; explicit AuthorityMode compatibility/conflict/snapshot coverage | LOCAL-PROVEN |
+| Cooperative placement admission | Native Rust path rebuilds a cooperative plan from task + sorted inventory, binds it to an inventory digest, admits only an aggregate-fit `READY_ALL_OR_NONE` reservation, returns an idempotent lease for the same attempt/digest, and fences exact-generation release; Python wrapper is fail-closed and non-executable when native is absent | Python contract `18 passed`; Rust idempotency/fencing `1 passed`; storage queue usage edge covered by Rust resource test; full current Rust feature/no-default gates above | LOCAL-PROVEN (process-local only; hosted single-writer, durable multi-process state, hidden adapter effects, OS-level containment and route reconciliation remain open) |
 | Skill admission/execution | `SkillManifest`, `SkillRegistry`, capability/precondition admission, validator-backed receipt, mission/replay binding, bounded `skill_requests` timeout, explicit non-success settlement, snapshot persistence | Python skill admission, replay/tamper, timeout/failure settlement and LabApplication integration tests; native smoke reports `rust_native_verified` for admission/execution events | LOCAL-PROVEN (Rust planner/authority and hosted validator isolation remain open) |
 | Research executor | typed search IR + HTTPS bounded fetch + initial literal/obfuscated IP rejection, hostname-resolution preflight and redirect/private-IP guard + render/extract/citation spans + freshness window + independent provenance-cluster quota + cross-check/contradiction adapter + source/snapshot hashes; native program intent admission before provider call and explicit settlement; controller-generated typed search action | deterministic provider/fetch/freshness/cluster/redirect tests plus live `example.com` fetch/extract smoke; current regression proves initial unsafe literal, private DNS and unsafe provider-candidate rejection; v15 wheel verified native research admission/settlement; v19 source regression verifies controller action plan executes a search program without a static hook; live provider credentials, freshness quality and semantic quality remain open | LOCAL-PROVEN (adapter + local egress preflight + live fetch smoke + native pre-admission) |
 | Benchmark V2 | strict protocol, typed raw item/trial/seed records, retained failure/timeout/refusal records, valid-vs-total counts, artifact hash, `EnvironmentFingerprint` binding (object or explicit hash), CI, preregistered seeds, contamination and fail-closed validator rejection; operator-owned isolated validator subprocess and `benchmark_validation` execution cell use versioned JSON, input/protocol/raw-trial hash binding, argv-only execution, timeout and output limit | Python + Rust benchmark tests, including missing-environment, non-numeric, duplicate-identity, retained-failure, isolated-validator success and tampered-input rejection; v63 packaged controller smoke records `benchmark_status=PASS` and one successful `benchmark.hidden_validator` settlement | LOCAL-PROVEN (hosted scorer secrecy and independent reproduction remain open) |
@@ -2112,13 +2665,13 @@ không được hỗ trợ với cấu hình hiện tại).
 Vì vậy không có `VIRTUALIZED-PROVEN` Linux evidence; việc này được giữ là
 `OPEN_EXTERNAL`, không được ghi thành Linux pass.
 
-**Windows resource probe classification:** artifact
-`C:\Users\ADMIN\AppData\Local\Temp\aegis-windows-job-object-v62.json`
-chỉ là `PARTIALLY LIVE VERIFIED`: limits/assignment/active quota/rejection/
+**Windows resource probe classification (2026-09-10):** artifact
+`artifacts/local-runtime/windows-job-object-live-20260910.json` là
+`PARTIALLY LIVE VERIFIED`: limits/assignment/active quota/rejection/
 termination/deadline và configured memory limits là true;
 `memory_pressure_kill_observed` và `memory_pressure_process_terminated_by_job`
-là false. Do đó không được dùng artifact này để claim memory enforcement hoàn
-chỉnh hoặc production isolation.
+là false. Đây là bằng chứng live mới nhất trong checkout; không được dùng nó để
+claim memory enforcement hoàn chỉnh hoặc production isolation.
 
 ### 18.4 Verification ledger thực sự đã chạy
 
@@ -5027,9 +5580,9 @@ Cargo features, entry points, registry generators, validators and workflow
 changes. Unknown paths or dynamic edges widen to all retained inventory
 items; no opaque filename score is used. The current plan artifact is
 `quality/registry/current_affected_closure.json` with reproducible hash
-`0597b3d36188e01cb7dac1d4fc87edd41fbe8aef8d2cd27427dc04240f93e7aa` and
+`e9ed1e0848ae7b88a3a8e97d7c7e10eac21dfef0fac5d8735cb657a56e54060b` and
 artifact hash
-`ee9e531f6d4083f7774de93de509e7d1be07f1ee75a5a01037792b8c208c2eb9`.
+`a276b28ca5ab0d127491d4ccebba6dde8e4fbf65b3f41b1ee58ae0423b0d3fcc`.
 The mapped-scope structural critical reachability status is
 `COMPLETE_ZERO_MAPPED_SCOPE` (15 records checked); unknown repository paths,
 unknown inventory surfaces, partial mappings and dynamic dependencies widen
@@ -5049,7 +5602,7 @@ dynamic inputs become `WIDENED_UNKNOWN` with no skip; hosted workflow inputs
 are `EXTERNAL_DEFERRED`. Reuse remains empty until all source/protocol/
 validator/environment/claim-domain digests match. The artifact
 `quality/registry/current_shadow_plan.json` has hash
-`dd07de99bc2f614cbbf9e6fe825ed2f7e407b6b690cc906511def3e397807beb`.
+`f0a02c4905ea89d07e9f560ac1e06b6cc836179a3aaeced45b752ba642d7f08`.
 `structural_critical_reachability_status=COMPLETE_ZERO_MAPPED_SCOPE` and
 `observed_critical_false_negative_status=NOT_MEASURED`; confusion-matrix
 status remains `NOT_MEASURED` until explicit legacy outcomes are supplied.
@@ -5067,7 +5620,7 @@ targets, all five reached (`synthetic_critical_targets_reached=5`,
 `synthetic_critical_targets_missed=0`), including known-unmapped and
 partial-mapping cases. Artifact
 `quality/registry/current_validation_corpus.json` has hash
-`b83db8ab0693829458d9536bbb3c4ffbe51db63cca60cf111729d065d29651e0`.
+`5437420569a0defcad66b00b8503a94d312b5e21ea7e1afed4f5b90e9bb8dc3c`.
 Status is `LOCAL_SHADOW_VALIDATION_ONLY`: this is planning reachability
 evidence, not executed mutation-detection or production non-inferiority
 evidence. The corpus tests pass **9/9** (including unknown/partial widening
@@ -5118,3 +5671,153 @@ tests from the unchanged S6 source tree. Architecture fitness is `23/23` and
 constitution audit is `180/180`. `S1_1A_CALIBRATION_RESULT=INSUFFICIENT_EVIDENCE` is
 preserved and remains a future cutover constraint, not a reason to reopen
 this local milestone.
+
+**Goal/Target contract hardening continuation (2026-09-10):** the working tree
+now validates the canonical Python GoalContract wire shape at the native Rust
+Lab boundary, including exact fields, target identity/scope, budget parity,
+genesis/evolution rules, parent digest format and per-event goal/target
+binding. Python deserialization uses the same fail-closed structural rules and
+strict Pyright typing. The Python GoalContract JSON and Rust GT96 binary
+primitive remain explicitly separate protocols; neither is presented as a
+lossless cross-language reducer.
+
+Current post-fix Rust evidence is **497/497** with three long-duration tests
+filtered; output retained at
+`artifacts/verification/rust-lib-without-long-tests-20260910.txt`; focused native GoalContract
+wire evidence is **5/5**; focused Python Goal/Target–Lab contract evidence is
+**23/23**, targeted Ruff PASS, strict Pyright **0 errors**, Cargo fmt PASS, architecture fitness **23/23**, document
+consistency PASS, AESE inventory/claim-graph drift checks PASS, and direct
+inventory/claim/closure/shadow/S2 validators pass after regenerating artifacts
+from the latest observed source snapshot. The retained validation corpus and
+paired cost ledger were not overwritten; current corpus reproducibility remains
+`NOT VERIFIED`. The current focused Rust GoalContract gate is **5/5**. The
+current full Python suite is **620 passed, 1 skipped** in **557.96s**, with the
+result retained at `artifacts/verification/full-python-suite-20260910.txt`.
+An earlier full Python attempt emitted
+artifact-drift failures after a generated cost ledger was overwritten and was
+stopped before a complete report; the ledger was restored with its retained
+paired provenance; that earlier interrupted attempt is historical and does not
+override the later clean run.
+Current packaged Goal/Target evidence is bound to the source-locked r2 wheel
+`target/wheels-current-source-20260910-r2/aegis_cognition-0.1.0-cp314-cp314-win_amd64.whl`
+with SHA-256 `16ad346ec0a545f4071cc4552cd9a75f5a85b570a2bfa62b36ec42b2b7f3e4cd`.
+Clean install/import, mixed-admission recovery and controller-action smokes are
+`PROVEN` in `artifacts/local-release-20260910-current-r2`; the r2 four-artifact
+manifest and SPDX 2.3 SBOM are in
+`artifacts/local-release-20260910-current-r2-evidence` and all report hashes
+match the wheel. The manifest deliberately labels the revision `WORKTREE_DIRTY`.
+Signing, hosted parity and promotion remain `NOT VERIFIED`.
+
+**Current-source packaged evidence (2026-09-10):** the locked source snapshot
+produced `target/wheels-current-source-20260910-r2/aegis_cognition-0.1.0-cp314-cp314-win_amd64.whl`
+with SHA-256
+`16ad346ec0a545f4071cc4552cd9a75f5a85b570a2bfa62b36ec42b2b7f3e4cd`.
+The clean install/import, native recovery and controller-action smokes are all
+`PROVEN` in `artifacts/local-release-20260910-current-r2`; all three reports
+bind the same wheel hash. Recovery reconciles five admissions with zero open
+after recovery; controller-action records native authority, benchmark `PASS`,
+replay archive, provider retry fencing, browser/search/experiment/simulation
+actions, and required memory effects with zero blockers. The r2 release
+manifest and SPDX 2.3 SBOM are `PROVEN` in
+`artifacts/local-release-20260910-current-r2-evidence`, covering the wheel and
+all three smoke reports. This is local Windows/CPython 3.14.7 evidence;
+signing, hosted parity, Tier-1 wheels and external promotion remain
+`NOT VERIFIED`.
+
+**Current bounded verification (2026-09-10):** the combined Python
+contract/release/runtime/Lab gate is `390/390` on CPython 3.14.7; current
+native GoalContract tests are `5/5`; strict Pyright
+reports `0 errors, 0 warnings, 0 informations`; targeted Ruff on the changed
+Python files and `cargo fmt --all -- --check` pass. A current-source release
+wheel rebuild with pinned Maturin `1.14.1` completed successfully; the current
+wheel, three packaged smokes, r2 manifest and SBOM are `PROVEN` for this local
+Windows/CPython 3.14.7 snapshot. The current AESE artifacts were
+regenerated and their direct validators returned empty error sets: S2 artifact
+`a583a36fc762a6a09fd192f83c1ad75b45d040115e9674f5cd60aa9582180ae5`, closure
+artifact `fc2738713d034bdd930aa4c74605fc6d8b0321ec7ae55ffc19474b2bb812bae1`,
+and shadow-plan artifact
+`0bdf857b22c1ce8ff1d079fa8581e9e621a6ee3d1ac681e6cdc49e435a755363`.
+
+**Current-source verification supersession (2026-09-10):** the paragraph above
+is retained as a historical bounded snapshot. The later uncontended historical
+run was `620 passed, 1 skipped` in `557.96s`; its former ledger path has since
+been superseded by the R3 ledger, so it is not current full-suite evidence.
+The current focused native Lab gate is `23/23`, and the current
+current no-default-features Rust library gate is `497 passed, 0 failed, 3
+filtered` with output retained at
+`artifacts/verification/rust-lib-without-long-tests-20260910.txt`; the three
+long-duration tests remain pending repeat after the lint fix. The
+focused Python Goal/Target–Lab contract gate is `23 passed`, and the current
+Windows/CPython 3.14.7 r2 wheel plus install, recovery, controller-action,
+manifest and SBOM evidence is bound to SHA-256
+`16ad346ec0a545f4071cc4552cd9a75f5a85b570a2bfa62b36ec42b2b7f3e4cd`.
+These results are local current-source evidence; hosted CI, Tier-1 wheels,
+OS-level isolation, signed external attestation, real multi-machine execution,
+and production promotion remain `NOT VERIFIED`.
+
+**Historical Goal/Target integration snapshot (2026-09-10):** explicit Goal contracts
+now authorize generic external tool effects only through exact
+`tool_name::effect_class` keys declared by `TargetDescriptor`; Python admission
+and native event binding enforce the same rule. `LabPolicy` must still allow
+external writes, and this does not prove provider-side containment or exclusive
+resource leasing. The historical focused Python contract/progress gate was
+`25/25`, focused Lab runtime `353/353`, focused native Lab `24/24`, and full
+Rust `501/501`; the `617 passed, 1 skipped, 5` AESE-drift result and `40/40`
+follow-up are retained only as provenance. The later `631 passed, 1 skipped`
+clean full-suite result is historical; the current local Python gate is the R4
+result recorded in the top amendment.
+
+**Latest Goal/Target hardening update (2026-09-10):** Target read/write roots
+are now consumed by the generic local-tool boundary with lexical,
+segment-aware containment; literal URI dot segments are normalized for candidate
+paths while ambiguous encoded separators/backslashes and dot-segment roots are
+rejected; bound Goal evolution rejects silent target unbinding;
+malformed or duplicate external-effect keys are rejected by both Python and
+Rust target validation. Current local evidence is `29/29` Goal/Target tests,
+`355/355` Lab runtime tests, `15/15` GT96 tests, `24/24` native Lab tests and
+`508/508` full Rust library tests in `86.48s` at
+`artifacts/verification/full-rust-lib-20260910-r3.txt`. This remains
+application/native contract evidence, not symlink/kernel/provider/hosted
+isolation.
+
+**Local FFI and CLI contract continuation (2026-09-10):** the Rust learning
+FFI transition helper now validates its operation discriminator before opening
+the memory repository and maps an unexpected value to a typed `PyValueError`;
+the invalid-operation feature-gated regression passes `1/1` in
+`artifacts/verification/ffi-learning-invalid-operation-20260910.log`. The
+canonical CLI now returns status `0` for successful commands, `2` for usage or
+unknown-command errors and `1` for missing configuration or configuration
+failures. Its direct contract slice passes `5/5` in
+`artifacts/verification/cli-contract-20260910.log`; Ruff and strict Pyright
+for the changed CLI surface pass in
+`artifacts/verification/cli-ruff-20260910.log` and
+`artifacts/verification/cli-pyright-20260910.log`. This improves local error
+observability and FFI panic containment only. It does not close the remaining
+FFI-wide lifetime/soak, hosted authority, provider, cross-platform or release
+provenance gates. R3 package artifacts remain historical; the later R4 wheel
+and packaged smoke evidence in amendment 0.2 contain this current source.
+
+**Compatibility CLI hardening continuation (2026-09-10):** the independent
+`core/python/aegis_cli.py` setup path now writes its legacy YAML and `.env`
+files through durable per-file replacement, applies a user-only mode where the
+platform supports it and quotes the `.env` value safely. The focused
+compatibility regression passes `1/1` in
+`artifacts/verification/legacy-cli-config-20260910.log`; Ruff and Pyright
+pass in `artifacts/verification/legacy-cli-ruff-20260910.log` and
+`artifacts/verification/legacy-cli-pyright-20260910.log`. This preserves the
+legacy format and does not make the compatibility CLI the canonical package
+owner; platform secret-store integration and migration of existing credentials
+remain open. The later R4 wheel above contains the current canonical CLI and
+FFI source.
+
+The post-edit bounded Rust library run passes `506/506` with two explicitly
+filtered long wrapper tests in
+`artifacts/verification/rust-lib-without-long-tests-20260910-r2.log`; the
+previous `508/508` ledger remains valid only for the earlier source snapshot.
+An attempted current-source release rebuild initially failed: the first
+parallel build hit a compiler pipe/Windows resource failure and the bounded
+single-worker retry was also terminated during dependency compilation; the
+raw first failure is retained at
+`artifacts/verification/maturin-current-source-20260910-r4.log`. A later
+uncontended cached single-worker rebuild succeeded; the resulting R4 wheel and
+three packaged-smoke reports are recorded in amendment 0.2 above.

@@ -58,14 +58,16 @@ independent local audits.
 ## Evidence contract
 
 A suite artifact is release-eligible only when it has the checked-out commit,
-non-empty `owner_id` and `gate_id`, `attempt_id`, deterministic 64-character
-`run_key`, zero exit code, zero failures, and valid output digest. Otherwise its
-status is `NOT VERIFIED`. The run key identifies duplicate work; it is not a
-scheduler lock, so the coordinator must still serialize dispatches. The
-`suite_evidence` command additionally takes one local OS-level lock for the
-workspace, preventing concurrent suite commands on the same machine and
-releasing automatically when the process exits; separate CI runners remain
-independent.
+the `worktree_status` and 64-character `worktree_sha256` fingerprint for
+tracked changes plus non-ignored untracked files, non-empty `owner_id` and
+`gate_id`, `attempt_id`, deterministic `run_key`, zero exit code, zero failures,
+and valid output digest. Otherwise its status is `NOT VERIFIED`. The commit
+alone is insufficient for a dirty checkout. The run key identifies duplicate
+work; it is not a scheduler lock, so the coordinator must still serialize
+dispatches. The `suite_evidence` command additionally takes one local OS-level
+lock for the workspace, preventing concurrent suite commands on the same
+machine and releasing automatically when the process exits; separate CI
+runners remain independent.
 
 Reports must state, in order: current gate owner, files changed since the last
 checkpoint, live-process evidence, newest artifact and its status, next bounded

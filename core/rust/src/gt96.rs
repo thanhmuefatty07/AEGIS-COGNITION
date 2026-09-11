@@ -10,6 +10,7 @@
 use blake3::Hasher;
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet, VecDeque};
+use std::path::Path;
 
 use crate::policy::SideEffectClass;
 
@@ -20,6 +21,7 @@ pub enum ContractError {
     EmptyField,
     DuplicateCriterion,
     MissingCriterion,
+    InvalidTargetEvolution,
     InvalidVersion,
     InvalidEvidence,
     EvidenceRequired,
@@ -30,7 +32,7 @@ pub enum ContractError {
     OrphanInstance,
 }
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Serialize, Deserialize)]
 pub enum CriterionStatus {
     Open,
     InProgress,
@@ -38,11 +40,204 @@ pub enum CriterionStatus {
     Invalidated,
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub struct AcceptanceCriterion {
     pub id: String,
     pub description: String,
-    pub status: CriterionStatus,
+}
+
+/// Versioned resources and effect surface that a goal is allowed to inspect
+/// or change.  The descriptor is intentionally separate from the objective:
+/// the same objective may be safe for one revision/root and unsafe for
+/// another.  It is a binding descriptor, not an OS isolation proof.
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+pub struct TargetDescriptor {
+    pub kind: String,
+    pub stable_id: String,
+    pub revision_or_digest: String,
+    pub read_roots: Vec<String>,
+    pub write_roots: Vec<String>,
+    pub network_allowlist: Vec<String>,
+    pub external_side_effects: Vec<String>,
+    pub owner: String,
+}
+
+impl TargetDescriptor {
+    pub fn new(
+        kind: impl Into<String>,
+        stable_id: impl Into<String>,
+        revision_or_digest: impl Into<String>,
+        read_roots: Vec<String>,
+        write_roots: Vec<String>,
+        network_allowlist: Vec<String>,
+        external_side_effects: Vec<String>,
+        owner: impl Into<String>,
+    ) -> Result<Self, ContractError> {
+        let target = Self {
+            kind: kind.into(),
+            stable_id: stable_id.into(),
+            revision_or_digest: revision_or_digest.into(),
+            read_roots,
+            write_roots,
+            network_allowlist,
+            external_side_effects,
+            owner: owner.into(),
+        };
+        target.validate()?;
+        Ok(target)
+    }
+
+    /// Compatibility target for callers that predate explicit target binding.
+    /// It is valid metadata, but its `unbound` revision must not be presented
+    /// as a repository/dataset integrity proof by higher layers.
+    pub fn legacy() -> Self {
+        Self {
+            kind: "legacy".to_string(),
+            stable_id: "unbound".to_string(),
+            revision_or_digest: "unbound".to_string(),
+            read_roots: Vec::new(),
+            write_roots: Vec::new(),
+            network_allowlist: Vec::new(),
+            external_side_effects: Vec::new(),
+            owner: "legacy-constructor".to_string(),
+        }
+    }
+
+    pub fn validate(&self) -> Result<(), ContractError> {
+        if self.kind.trim().is_empty()
+            || self.stable_id.trim().is_empty()
+            || self.revision_or_digest.trim().is_empty()
+            || self.owner.trim().is_empty()
+            || self
+                .read_roots
+                .iter()
+                .chain(self.write_roots.iter())
+                .chain(self.network_allowlist.iter())
+                .chain(self.external_side_effects.iter())
+                .any(|value| value.trim().is_empty() || value != value.trim())
+        {
+            return Err(ContractError::EmptyField);
+        }
+        let has_duplicates = [
+            &self.read_roots,
+            &self.write_roots,
+            &self.network_allowlist,
+            &self.external_side_effects,
+        ]
+        .into_iter()
+        .any(|values| {
+            let mut seen = BTreeSet::new();
+            values.iter().any(|value| !seen.insert(value))
+        });
+        if has_duplicates {
+            return Err(ContractError::EmptyField);
+        }
+        if self
+            .read_roots
+            .iter()
+            .chain(self.write_roots.iter())
+            .any(|value| target_scope_is_ambiguous_uri(value))
+        {
+            return Err(ContractError::EmptyField);
+        }
+        let mut effect_keys = BTreeSet::new();
+        if self.external_side_effects.iter().any(|entry| {
+            let mut components = entry.split("::");
+            let tool_name = components.next().unwrap_or_default();
+            let effect_class = components.next().unwrap_or_default();
+            components.next().is_some()
+                || tool_name.trim().is_empty()
+                || effect_class.trim().is_empty()
+                || tool_name != tool_name.trim()
+                || effect_class != effect_class.trim()
+                || !effect_keys.insert(entry)
+        }) {
+            return Err(ContractError::EmptyField);
+        }
+        Ok(())
+    }
+
+    pub fn is_bound(&self) -> bool {
+        self.stable_id != "unbound" && self.revision_or_digest != "unbound"
+    }
+}
+
+/// Return whether a URI-like target root can be interpreted differently by a
+/// downstream adapter.  The Python contract normalizes literal dot segments
+/// for candidate paths but rejects them in roots; native admission applies the
+/// same conservative root rule without adding a URI parser dependency.
+pub(crate) fn target_scope_is_ambiguous_uri(value: &str) -> bool {
+    let Some((_, authority_and_path)) = value.split_once("://") else {
+        return false;
+    };
+    let path = authority_and_path
+        .find('/')
+        .map(|index| &authority_and_path[index..])
+        .unwrap_or("/");
+    let lower = path.to_ascii_lowercase();
+    path.contains('\\')
+        || path.contains('?')
+        || path.contains('#')
+        || lower.contains("%2e")
+        || lower.contains("%2f")
+        || lower.contains("%5c")
+        || path.split('/').any(|segment| matches!(segment, "." | ".."))
+}
+
+fn target_scope_contains(candidate: &str, parent: &str) -> bool {
+    let parse_uri = |value: &str| {
+        let (scheme, authority_and_path) = value.split_once("://")?;
+        let (authority, path) = authority_and_path
+            .split_once('/')
+            .map_or((authority_and_path, "/"), |(authority, _)| {
+                (authority, &authority_and_path[authority.len()..])
+            });
+        Some((
+            scheme.to_ascii_lowercase(),
+            authority.to_ascii_lowercase(),
+            path.to_string(),
+        ))
+    };
+    match (parse_uri(candidate), parse_uri(parent)) {
+        (
+            Some((candidate_scheme, candidate_authority, candidate_path)),
+            Some((parent_scheme, parent_authority, parent_path)),
+        ) => {
+            if candidate_scheme != parent_scheme || candidate_authority != parent_authority {
+                return false;
+            }
+            candidate_path == parent_path
+                || candidate_path
+                    .strip_prefix(parent_path.trim_end_matches('/'))
+                    .is_some_and(|suffix| suffix.starts_with('/'))
+        }
+        (Some(_), None) | (None, Some(_)) => false,
+        (None, None) => {
+            let candidate_path = Path::new(candidate);
+            let parent_path = Path::new(parent);
+            candidate_path.is_absolute()
+                && parent_path.is_absolute()
+                && candidate_path.strip_prefix(parent_path).is_ok()
+        }
+    }
+}
+
+fn target_values_are_subset(
+    field_name: &str,
+    candidate_values: &[String],
+    parent_values: &[String],
+) -> bool {
+    if matches!(field_name, "read_roots" | "write_roots") {
+        candidate_values.iter().all(|candidate| {
+            parent_values
+                .iter()
+                .any(|parent| target_scope_contains(candidate, parent))
+        })
+    } else {
+        candidate_values
+            .iter()
+            .all(|candidate| parent_values.iter().any(|parent| parent == candidate))
+    }
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Default, Serialize, Deserialize)]
@@ -147,18 +342,21 @@ impl BudgetPolicy {
     }
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub struct GoalContract {
     pub schema: String,
     pub version: u64,
     pub objective: String,
     pub acceptance_criteria: Vec<AcceptanceCriterion>,
+    pub target: TargetDescriptor,
     pub constraints: Vec<String>,
     pub invariants: Vec<String>,
     pub non_goals: Vec<String>,
     pub effect_policy: SideEffectClass,
     pub evidence_required: bool,
     pub budget_policy: BudgetPolicy,
+    pub author_id: String,
+    pub effective_epoch: u64,
     /// The immutable parent binding for an evolved contract. `None` is only
     /// valid for the genesis contract (version 1).
     pub parent_contract_hash: Option<[u8; 32]>,
@@ -178,12 +376,44 @@ impl GoalContract {
         evidence_required: bool,
         budget_policy: BudgetPolicy,
     ) -> Result<Self, ContractError> {
+        Self::new_with_target_metadata(
+            objective,
+            acceptance_criteria,
+            TargetDescriptor::legacy(),
+            constraints,
+            invariants,
+            non_goals,
+            effect_policy,
+            evidence_required,
+            budget_policy,
+            "legacy-constructor",
+            0,
+        )
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    pub fn new_with_target_metadata(
+        objective: impl Into<String>,
+        acceptance_criteria: Vec<AcceptanceCriterion>,
+        target: TargetDescriptor,
+        constraints: Vec<String>,
+        invariants: Vec<String>,
+        non_goals: Vec<String>,
+        effect_policy: SideEffectClass,
+        evidence_required: bool,
+        budget_policy: BudgetPolicy,
+        author_id: impl Into<String>,
+        effective_epoch: u64,
+    ) -> Result<Self, ContractError> {
         let objective = objective.into();
+        let author_id = author_id.into();
+        target.validate()?;
         if objective.trim().is_empty()
             || acceptance_criteria.is_empty()
             || constraints.iter().any(|value| value.trim().is_empty())
             || invariants.iter().any(|value| value.trim().is_empty())
             || non_goals.iter().any(|value| value.trim().is_empty())
+            || author_id.trim().is_empty()
         {
             return Err(ContractError::EmptyField);
         }
@@ -202,12 +432,15 @@ impl GoalContract {
             version: 1,
             objective,
             acceptance_criteria,
+            target,
             constraints,
             invariants,
             non_goals,
             effect_policy,
             evidence_required,
             budget_policy,
+            author_id,
+            effective_epoch,
             parent_contract_hash: None,
             evolution_reason: None,
             contract_hash: [0; 32],
@@ -237,11 +470,33 @@ impl GoalContract {
         acceptance_criteria: Vec<AcceptanceCriterion>,
         reason: impl Into<String>,
     ) -> Result<Self, ContractError> {
+        self.evolve_with_metadata(
+            expected_version,
+            objective,
+            acceptance_criteria,
+            self.target.clone(),
+            self.author_id.clone(),
+            self.effective_epoch.saturating_add(1),
+            reason,
+        )
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    pub fn evolve_with_metadata(
+        &self,
+        expected_version: u64,
+        objective: impl Into<String>,
+        acceptance_criteria: Vec<AcceptanceCriterion>,
+        target: TargetDescriptor,
+        author_id: impl Into<String>,
+        effective_epoch: u64,
+        reason: impl Into<String>,
+    ) -> Result<Self, ContractError> {
         if expected_version != self.version {
             return Err(ContractError::InvalidVersion);
         }
         let reason = reason.into();
-        if reason.trim().is_empty() {
+        if reason.trim().is_empty() || effective_epoch <= self.effective_epoch {
             return Err(ContractError::EmptyField);
         }
         for existing in &self.acceptance_criteria {
@@ -250,6 +505,37 @@ impl GoalContract {
                 .any(|criterion| criterion.id == existing.id)
             {
                 return Err(ContractError::MissingCriterion);
+            }
+        }
+        if self.target.is_bound() {
+            if !target.is_bound()
+                || target.kind != self.target.kind
+                || target.stable_id != self.target.stable_id
+                || target.owner != self.target.owner
+            {
+                return Err(ContractError::InvalidTargetEvolution);
+            }
+            for field_name in [
+                "read_roots",
+                "write_roots",
+                "network_allowlist",
+                "external_side_effects",
+            ] {
+                let (candidate_values, parent_values) = match field_name {
+                    "read_roots" => (&target.read_roots, &self.target.read_roots),
+                    "write_roots" => (&target.write_roots, &self.target.write_roots),
+                    "network_allowlist" => {
+                        (&target.network_allowlist, &self.target.network_allowlist)
+                    }
+                    "external_side_effects" => (
+                        &target.external_side_effects,
+                        &self.target.external_side_effects,
+                    ),
+                    _ => unreachable!("target evolution field is exhaustive"),
+                };
+                if !target_values_are_subset(field_name, candidate_values, parent_values) {
+                    return Err(ContractError::InvalidTargetEvolution);
+                }
             }
         }
         let mut next = Self::new(
@@ -262,6 +548,13 @@ impl GoalContract {
             self.evidence_required,
             self.budget_policy.clone(),
         )?;
+        next.target = target;
+        next.author_id = author_id.into();
+        if next.target.validate().is_err() || next.author_id.trim().is_empty() {
+            return Err(ContractError::EmptyField);
+        }
+        next.effective_epoch = effective_epoch;
+        next.schema = GT96_CONTRACT_SCHEMA_V1.to_string();
         next.version = self
             .version
             .checked_add(1)
@@ -278,6 +571,7 @@ impl GoalContract {
         update_string(&mut hasher, &self.schema);
         update_u64(&mut hasher, self.version);
         update_string(&mut hasher, &self.objective);
+        update_target(&mut hasher, &self.target);
         update_u64(&mut hasher, self.acceptance_criteria.len() as u64);
         for criterion in &self.acceptance_criteria {
             update_string(&mut hasher, &criterion.id);
@@ -299,6 +593,8 @@ impl GoalContract {
         update_budget(&mut hasher, self.budget_policy.total);
         update_budget(&mut hasher, self.budget_policy.finalization_reserve);
         update_budget(&mut hasher, self.budget_policy.recovery_reserve);
+        update_string(&mut hasher, &self.author_id);
+        update_u64(&mut hasher, self.effective_epoch);
         match self.parent_contract_hash {
             Some(parent) => {
                 hasher.update(&[1]);
@@ -330,6 +626,8 @@ impl GoalContract {
                         .as_deref()
                         .is_some_and(|reason| !reason.trim().is_empty())))
             && self.contract_hash == self.compute_hash()
+            && self.target.validate().is_ok()
+            && !self.author_id.trim().is_empty()
             && self.budget_policy.validate().is_ok()
     }
 }
@@ -563,7 +861,7 @@ impl ArtifactRef {
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct ProgressLedger {
     contract_hash: [u8; 32],
-    criteria: BTreeMap<String, AcceptanceCriterion>,
+    criteria: BTreeMap<String, CriterionStatus>,
     evidence: BTreeMap<String, ArtifactRef>,
     state_epoch: u64,
 }
@@ -574,7 +872,7 @@ impl ProgressLedger {
             .acceptance_criteria
             .iter()
             .cloned()
-            .map(|criterion| (criterion.id.clone(), criterion))
+            .map(|criterion| (criterion.id, CriterionStatus::Open))
             .collect();
         Self {
             contract_hash: contract.contract_hash,
@@ -589,9 +887,7 @@ impl ProgressLedger {
     }
 
     pub fn status(&self, criterion_id: &str) -> Option<CriterionStatus> {
-        self.criteria
-            .get(criterion_id)
-            .map(|criterion| criterion.status)
+        self.criteria.get(criterion_id).copied()
     }
 
     pub fn mark_in_progress(&mut self, criterion_id: &str) -> Result<(), ContractError> {
@@ -599,10 +895,10 @@ impl ProgressLedger {
             .criteria
             .get_mut(criterion_id)
             .ok_or(ContractError::MissingCriterion)?;
-        if matches!(criterion.status, CriterionStatus::Verified) {
+        if matches!(*criterion, CriterionStatus::Verified) {
             return Err(ContractError::InvalidTransition);
         }
-        criterion.status = CriterionStatus::InProgress;
+        *criterion = CriterionStatus::InProgress;
         self.state_epoch = self.state_epoch.saturating_add(1);
         Ok(())
     }
@@ -620,12 +916,12 @@ impl ProgressLedger {
             .get_mut(criterion_id)
             .ok_or(ContractError::MissingCriterion)?;
         if matches!(
-            criterion.status,
+            *criterion,
             CriterionStatus::Verified | CriterionStatus::Invalidated
         ) {
             return Err(ContractError::InvalidTransition);
         }
-        criterion.status = CriterionStatus::Verified;
+        *criterion = CriterionStatus::Verified;
         self.evidence.insert(criterion_id.to_string(), evidence);
         self.state_epoch = self.state_epoch.saturating_add(1);
         Ok(())
@@ -636,7 +932,7 @@ impl ProgressLedger {
             .criteria
             .get_mut(criterion_id)
             .ok_or(ContractError::MissingCriterion)?;
-        criterion.status = CriterionStatus::Invalidated;
+        *criterion = CriterionStatus::Invalidated;
         self.evidence.remove(criterion_id);
         self.state_epoch = self.state_epoch.saturating_add(1);
         Ok(())
@@ -650,7 +946,7 @@ impl ProgressLedger {
         let closed = self
             .criteria
             .values()
-            .filter(|criterion| criterion.status == CriterionStatus::Verified)
+            .filter(|criterion| **criterion == CriterionStatus::Verified)
             .count();
         (closed, self.criteria.len())
     }
@@ -1178,6 +1474,31 @@ fn update_string(hasher: &mut Hasher, value: &str) {
     hasher.update(value.as_bytes());
 }
 
+fn update_string_list(hasher: &mut Hasher, label: &[u8], values: &[String]) {
+    hasher.update(&(label.len() as u64).to_le_bytes());
+    hasher.update(label);
+    update_u64(hasher, values.len() as u64);
+    for value in values {
+        update_string(hasher, value);
+    }
+}
+
+fn update_target(hasher: &mut Hasher, target: &TargetDescriptor) {
+    hasher.update(b"AEGIS-GT96-TARGET\0");
+    update_string(hasher, &target.kind);
+    update_string(hasher, &target.stable_id);
+    update_string(hasher, &target.revision_or_digest);
+    update_string_list(hasher, b"read-roots", &target.read_roots);
+    update_string_list(hasher, b"write-roots", &target.write_roots);
+    update_string_list(hasher, b"network-allowlist", &target.network_allowlist);
+    update_string_list(
+        hasher,
+        b"external-side-effects",
+        &target.external_side_effects,
+    );
+    update_string(hasher, &target.owner);
+}
+
 fn update_u64(hasher: &mut Hasher, value: u64) {
     hasher.update(&value.to_le_bytes());
 }
@@ -1236,7 +1557,6 @@ mod tests {
         AcceptanceCriterion {
             id: id.to_string(),
             description: format!("criterion {id}"),
-            status: CriterionStatus::Open,
         }
     }
 
@@ -1317,6 +1637,180 @@ mod tests {
             current.evolve(1, "updated", vec![criterion("c1")]),
             Err(ContractError::MissingCriterion)
         );
+    }
+
+    #[test]
+    fn target_rejects_malformed_or_duplicate_external_effect_keys() {
+        let target = |effects: Vec<String>| {
+            TargetDescriptor::new(
+                "repository",
+                "aegis-cognition",
+                "revision-1",
+                vec!["C:/repo".to_string()],
+                Vec::new(),
+                Vec::new(),
+                effects,
+                "operator",
+            )
+        };
+        assert_eq!(
+            target(vec!["tool::effect::extra".to_string()]),
+            Err(ContractError::EmptyField)
+        );
+        assert_eq!(
+            target(vec!["tool::effect".to_string(), "tool::effect".to_string()]),
+            Err(ContractError::EmptyField)
+        );
+        assert_eq!(
+            target(vec!["tool ::effect".to_string()]),
+            Err(ContractError::EmptyField)
+        );
+        assert_eq!(
+            target(vec!["tool:: effect".to_string()]),
+            Err(ContractError::EmptyField)
+        );
+    }
+
+    #[test]
+    fn target_rejects_duplicate_or_untrimmed_scope_entries() {
+        let target = |read_roots: Vec<String>, network_allowlist: Vec<String>| {
+            TargetDescriptor::new(
+                "repository",
+                "aegis-cognition",
+                "revision-1",
+                read_roots,
+                Vec::new(),
+                network_allowlist,
+                Vec::new(),
+                "operator",
+            )
+        };
+        assert_eq!(
+            target(
+                vec!["C:/repo".to_string(), "C:/repo".to_string()],
+                Vec::new(),
+            ),
+            Err(ContractError::EmptyField)
+        );
+        assert_eq!(
+            target(vec![" C:/repo".to_string()], vec!["pypi.org".to_string()]),
+            Err(ContractError::EmptyField)
+        );
+        assert_eq!(
+            target(vec!["C:/repo".to_string()], vec!["pypi.org ".to_string()]),
+            Err(ContractError::EmptyField)
+        );
+        assert_eq!(
+            target(
+                vec!["fixture://dataset/input/../secret".to_string()],
+                Vec::new(),
+            ),
+            Err(ContractError::EmptyField)
+        );
+    }
+
+    fn bound_target() -> TargetDescriptor {
+        TargetDescriptor::new(
+            "repository",
+            "aegis-cognition",
+            "revision-1",
+            vec!["https://example.test/repository".to_string()],
+            vec!["https://example.test/repository/output".to_string()],
+            vec!["api.example.test".to_string()],
+            vec!["artifact::local_reversible".to_string()],
+            "operator",
+        )
+        .unwrap()
+    }
+
+    #[test]
+    fn bound_target_evolution_only_narrows_authority_and_preserves_identity() {
+        let current = GoalContract::new_with_target_metadata(
+            "close the local remediation",
+            vec![criterion("c1"), criterion("c2")],
+            bound_target(),
+            vec!["constraint".to_string()],
+            vec!["invariant".to_string()],
+            vec!["non-goal".to_string()],
+            SideEffectClass::LocalReversible,
+            true,
+            policy(),
+            "operator",
+            1,
+        )
+        .unwrap();
+
+        let mut narrowed = current.target.clone();
+        narrowed.revision_or_digest = "revision-2".to_string();
+        narrowed.read_roots = vec!["https://example.test/repository/subtree".to_string()];
+        narrowed.write_roots = Vec::new();
+        narrowed.network_allowlist = Vec::new();
+        narrowed.external_side_effects = Vec::new();
+        let next = current
+            .evolve_with_metadata(
+                1,
+                "updated",
+                vec![criterion("c1"), criterion("c2")],
+                narrowed,
+                "operator",
+                2,
+                "narrow scope",
+            )
+            .unwrap();
+        assert_eq!(next.target.revision_or_digest, "revision-2");
+        assert_eq!(next.target.kind, "repository");
+        assert_eq!(next.target.stable_id, "aegis-cognition");
+
+        let mutators: [fn(&mut TargetDescriptor); 5] = [
+            |target: &mut TargetDescriptor| target.stable_id = "other-repository".to_string(),
+            |target: &mut TargetDescriptor| target.owner = "other-operator".to_string(),
+            |target: &mut TargetDescriptor| {
+                target.read_roots = vec!["https://example.test".to_string()]
+            },
+            |target: &mut TargetDescriptor| {
+                target.network_allowlist = vec!["new.example.test".to_string()]
+            },
+            |target: &mut TargetDescriptor| {
+                target.external_side_effects = vec![
+                    "artifact::local_reversible".to_string(),
+                    "shell::external_write".to_string(),
+                ]
+            },
+        ];
+        for mutate in mutators {
+            let mut changed = current.target.clone();
+            mutate(&mut changed);
+            assert_eq!(
+                current.evolve_with_metadata(
+                    1,
+                    "updated",
+                    vec![criterion("c1"), criterion("c2")],
+                    changed,
+                    "operator",
+                    2,
+                    "invalid target change",
+                ),
+                Err(ContractError::InvalidTargetEvolution)
+            );
+        }
+    }
+
+    #[test]
+    fn unbound_target_evolution_preserves_legacy_compatibility() {
+        let current = contract();
+        let next_target = bound_target();
+        let next = current
+            .evolve_with_metadata(
+                1,
+                "bind target",
+                vec![criterion("c1"), criterion("c2")],
+                next_target.clone(),
+                "operator",
+                1,
+                "bind target",
+            )
+            .unwrap();
+        assert_eq!(next.target, next_target);
     }
 
     #[test]

@@ -32,6 +32,7 @@ _SCENARIO = textwrap.dedent(
 
     os.environ["AEGIS_API_KEY"] = "test-key"
     from aegis_cognition.agent import Agent
+    from aegis_cognition.lab import ExecutionCellBinding, SearchProgramExecutor
 
     class Session:
         current_url = "https://allowed.example/start"
@@ -117,11 +118,63 @@ _SCENARIO = textwrap.dedent(
     async def provider(_query, **_):
         return [{"uri": "https://example.test/evidence", "content": "bounded evidence"}]
 
+    def context_retriever(**_):
+        return ""
+
     def experiment_runner(_spec, **_):
         return [{"observation_id": "o-packaged-real", "seed": 1, "measurement": 0.25}]
 
     def simulation_runner(_spec, **_):
         return [{"observation_id": "o-packaged-sim", "seed": 1, "measurement": 0.25}]
+
+    def post_completion_effect(*, result, run):
+        del result, run
+        return {"status": "COMMITTED"}
+
+    execution_cells = {
+        "context-retrieval": ExecutionCellBinding(
+            cell_id="context-retrieval",
+            action_kinds=("context_retrieval",),
+            runner=context_retriever,
+            capabilities=("read_only",),
+            effect_classes=("read_only",),
+        ),
+        "search-program": ExecutionCellBinding(
+            cell_id="search-program",
+            action_kinds=("search_program",),
+            runner=SearchProgramExecutor(query_provider=provider),
+            capabilities=("network_read",),
+            effect_classes=("network_read", "read_only", "compute"),
+        ),
+        "browser-runtime": ExecutionCellBinding(
+            cell_id="browser-runtime",
+            action_kinds=("browser_action",),
+            runner=RuntimeAdapter(),
+            capabilities=("network_read",),
+            effect_classes=("network_read",),
+        ),
+        "python-experiment": ExecutionCellBinding(
+            cell_id="python-experiment",
+            action_kinds=("experiment_action",),
+            runner=experiment_runner,
+            capabilities=("compute",),
+            effect_classes=("compute",),
+        ),
+        "simulation-cell": ExecutionCellBinding(
+            cell_id="simulation-cell",
+            action_kinds=("simulation_action",),
+            runner=simulation_runner,
+            capabilities=("compute",),
+            effect_classes=("compute",),
+        ),
+        "post-completion-effect": ExecutionCellBinding(
+            cell_id="post-completion-effect",
+            action_kinds=("post_completion_effect",),
+            runner=post_completion_effect,
+            capabilities=("memory_write",),
+            effect_classes=("memory_write",),
+        ),
+    }
 
     benchmark_validator_code = (
         "import hashlib,json,sys;"
@@ -144,6 +197,7 @@ _SCENARIO = textwrap.dedent(
         browser_runtime_adapter=RuntimeAdapter(),
         experiment_runner=experiment_runner,
         simulation_runner=simulation_runner,
+        lab_execution_cells=execution_cells,
         provider="primary",
         fallback_providers=(("fallback", Fallback()),),
         lab_require_native_authority=True,

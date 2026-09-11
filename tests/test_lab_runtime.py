@@ -22,6 +22,7 @@ from aegis_cognition.benchmark import (
     EnvironmentFingerprint,
     evaluate_benchmark,
 )
+from aegis_cognition.goal_contract import ExecutionBinding, GoalContractError
 from aegis_cognition.lab import (
     AdaptiveController,
     AuthorityMode,
@@ -30,6 +31,7 @@ from aegis_cognition.lab import (
     ClaimRecord,
     ElectricalSignalCell,
     ElectricalSignalSpec,
+    ExternalSideEffectLease,
     ExecutionCellBinding,
     ExecutionCellRegistry,
     ExperimentSpec,
@@ -69,6 +71,300 @@ def _ready_run() -> LabRun:
     run.add_hypothesis(HypothesisRecord("h1", "the claim holds", 5_000, ("negative result",), ("c1",)))
     run.add_experiment(ExperimentSpec("e1", "h1", "paired", ("x",), ("baseline",), (1, 2, 3, 4, 5), 1))
     return run
+
+
+def _execution_binding_for_run(run: LabRun, **overrides: object) -> ExecutionBinding:
+    fields: dict[str, object] = {
+        "goal_contract_hash": run.goal_contract.contract_hash,
+        "generation": run.goal_contract.generation,
+        "target_digest": run._goal_event_binding()["target_digest"],
+        "plan_digest": "c" * 64,
+        "mission_id": run.mission_id,
+        "task_id": 7,
+        "attempt_id": 1,
+        "owner_id": run.goal_contract.target.owner,
+        "principal_id": "agent-1",
+    }
+    fields.update(overrides)
+    return ExecutionBinding(**fields)
+
+
+def test_lab_execution_binding_is_immutable_across_events_and_restore() -> None:
+    run = LabRun("execution binding event continuity")
+    binding = _execution_binding_for_run(run)
+    run.bind_execution(binding)
+    execution_id, admission_id = run.admit_tool_execution(
+        tool_name="fixture.tool",
+        input_payload={"query": "bounded"},
+        policy_payload={"effect": "read_only"},
+        effect_class="read_only",
+        execution_id="binding-tool-1",
+    )
+    run.record_tool_execution(
+        tool_name="fixture.tool",
+        execution_id=execution_id,
+        admission_id=admission_id,
+        input_payload={"query": "bounded"},
+        policy_payload={"effect": "read_only"},
+        result={"ok": True},
+        effect_class="read_only",
+    )
+
+    goal_events = [
+        event for event in run.events if event.kind in {"tool_execution_admitted", "tool_execution_recorded"}
+    ]
+    assert goal_events
+    assert all(event.payload["execution_binding"] == binding.to_dict() for event in goal_events)
+    payload = run.to_payload()
+    assert payload["execution_binding"] == binding.to_dict()
+    restored = LabRun.from_payload(payload)
+    assert restored.execution_binding == binding
+    assert restored.verify_event_chain()
+
+
+def test_lab_execution_binding_is_bound_to_execution_cell_manifest() -> None:
+    legacy_run = LabRun("execution binding without manifest")
+    with pytest.raises(GoalContractError, match="execution-cell manifest"):
+        legacy_run.bind_execution(
+            _execution_binding_for_run(
+                legacy_run,
+                execution_cell_manifest_hash="a" * 64,
+            )
+        )
+
+    run = LabRun("execution manifest binding")
+    run.bind_execution_cell_manifest(
+        (
+            {
+                "cell_id": "fixture-cell",
+                "action_kinds": ("tool_call",),
+                "capabilities": ("fixture.read",),
+                "effect_classes": ("read_only",),
+                "trust_levels": ("DEV",),
+            },
+        )
+    )
+    manifest_hash = run.events[-1].payload["manifest_hash"]
+    with pytest.raises(GoalContractError, match="execution-cell manifest"):
+        run.bind_execution(_execution_binding_for_run(run))
+
+    binding = _execution_binding_for_run(
+        run,
+        execution_cell_manifest_hash=manifest_hash,
+    )
+    run.bind_execution(binding)
+    execution_id, _ = run.admit_tool_execution(
+        tool_name="fixture.tool",
+        input_payload={"query": "manifest-bound"},
+        policy_payload={"effect": "read_only"},
+        effect_class="read_only",
+        execution_id="manifest-bound-tool",
+    )
+    admission = run.events[-1].payload
+    assert admission["execution_cell_manifest_hash"] == manifest_hash
+    assert admission["execution_binding"]["execution_cell_manifest_hash"] == manifest_hash
+
+    payload = run.to_payload()
+    restored = LabRun.from_payload(payload)
+    assert restored.execution_binding == binding
+    assert restored.execution_cell_manifest == run.execution_cell_manifest
+    assert execution_id in restored.tool_execution_admissions
+
+
+def test_lab_execution_binding_binds_backend_and_resource_policy_identity() -> None:
+    run = LabRun("execution backend identity")
+    descriptor = {
+        "schema": "aegis-execution-cell-resource-policy-v1",
+        "cpu_time_limit_ms": 1000,
+        "memory_bytes": 64 * 1024 * 1024,
+        "process_limit": 1,
+        "thread_limit": 1,
+        "fd_limit": 256,
+        "input_bytes": 1024,
+        "output_bytes": 4096,
+        "timeout_ms": 5000,
+    }
+    run.bind_execution_cell_manifest(
+        (
+            {
+                "cell_id": "fixture-cell",
+                "action_kinds": ("tool_call",),
+                "capabilities": ("fixture.read",),
+                "effect_classes": ("read_only",),
+                "trust_levels": ("DEV",),
+                "backend_kind": "python-local",
+                "resource_policy": descriptor,
+            },
+        )
+    )
+    manifest_hash = run.events[-1].payload["manifest_hash"]
+    binding = _execution_binding_for_run(
+        run,
+        execution_cell_manifest_hash=manifest_hash,
+        execution_cell_id="fixture-cell",
+        execution_action_kind="tool_call",
+        backend_kind="python-local",
+        resource_policy_hash=run.execution_cell_manifest[0]["resource_policy_hash"],
+    )
+    run.bind_execution(binding)
+    restored = LabRun.from_payload(run.to_payload())
+    assert restored.execution_binding == binding
+    assert restored.execution_cell_manifest == run.execution_cell_manifest
+
+
+def test_lab_execution_binding_rejects_ambiguous_selected_cell_identity() -> None:
+    run = LabRun("execution cell selection identity")
+    descriptor = {
+        "schema": "aegis-execution-cell-resource-policy-v1",
+        "cpu_time_limit_ms": 1000,
+        "memory_bytes": 64 * 1024 * 1024,
+        "process_limit": 1,
+        "thread_limit": 1,
+        "fd_limit": 256,
+        "input_bytes": 1024,
+        "output_bytes": 4096,
+        "timeout_ms": 5000,
+    }
+    run.bind_execution_cell_manifest(
+        (
+            {
+                "cell_id": "python-cell",
+                "action_kinds": ("tool_call",),
+                "capabilities": ("fixture.read",),
+                "effect_classes": ("read_only",),
+                "trust_levels": ("DEV",),
+                "backend_kind": "python-local",
+                "resource_policy": descriptor,
+            },
+            {
+                "cell_id": "wasm-cell",
+                "action_kinds": ("experiment_action",),
+                "capabilities": ("fixture.read",),
+                "effect_classes": ("read_only",),
+                "trust_levels": ("DEV",),
+                "backend_kind": "python-local",
+                "resource_policy": descriptor,
+            },
+        )
+    )
+    manifest_hash = run.events[-1].payload["manifest_hash"]
+    resource_policy_hash = run.execution_cell_manifest[0]["resource_policy_hash"]
+    assert resource_policy_hash == (
+        "59f2c4be42130952b57cc505f1762be5d2a3fab8c897e6093a4de12ddd6a4fa4"
+    )
+
+    binding = _execution_binding_for_run(
+        run,
+        execution_cell_manifest_hash=manifest_hash,
+        execution_cell_id="wasm-cell",
+        execution_action_kind="tool_call",
+        backend_kind="python-local",
+        resource_policy_hash=resource_policy_hash,
+    )
+    with pytest.raises(GoalContractError, match="selected execution cell"):
+        run.bind_execution(binding)
+
+    with pytest.raises(ValueError, match="does not match descriptor"):
+        LabRun("resource policy provenance").bind_execution_cell_manifest(
+            (
+                {
+                    "cell_id": "tampered-cell",
+                    "action_kinds": ("tool_call",),
+                    "capabilities": ("fixture.read",),
+                    "effect_classes": ("read_only",),
+                    "trust_levels": ("DEV",),
+                    "backend_kind": "python-local",
+                    "resource_policy": descriptor,
+                    "resource_policy_hash": "b" * 64,
+                },
+            )
+        )
+
+
+def test_native_execution_cell_manifest_rejects_missing_backend_identity() -> None:
+    from aegis_cognition.lab import LabApplication
+
+    def runner(*_args: object, **_kwargs: object) -> dict[str, bool]:
+        return {"ok": True}
+
+    app = LabApplication(
+        config=SimpleNamespace(trust_level="STAGING", options={}, max_steps=1),
+        gateway_factory=lambda **_: None,
+        telemetry=SimpleNamespace(),
+        correlation=SimpleNamespace(),
+    )
+    run = LabRun("native identity required", require_native_authority=True)
+    app._prepare_execution_cells(
+        run,
+        {
+            "lab_execution_cells": {
+                "fixture": {
+                    "cell_id": "fixture-v1",
+                    "action_kinds": ("tool_call",),
+                    "runner": runner,
+                    "capabilities": ("read_only",),
+                    "effect_classes": ("read_only",),
+                }
+            }
+        },
+    )
+    assert app.execution_cells.sealed
+    assert app.execution_cells.manifest() == ()
+    assert "execution_cell_registry_invalid:GoalContractError" in run.blockers
+
+
+def test_lab_execution_binding_rejects_mismatch_rebinding_and_receipt_digests() -> None:
+    run = LabRun("execution binding admission")
+    binding = _execution_binding_for_run(run)
+    run.bind_execution(binding)
+    with pytest.raises(GoalContractError, match="already set"):
+        run.bind_execution(binding)
+
+    unbound = LabRun("execution binding wrong mission")
+    wrong_mission = _execution_binding_for_run(unbound, mission_id="other-mission")
+    with pytest.raises(GoalContractError, match="mission"):
+        unbound.bind_execution(wrong_mission)
+
+    receipt_run = LabRun("execution binding receipts")
+    with pytest.raises(GoalContractError, match="receipt digests"):
+        receipt_run.bind_execution(
+            _execution_binding_for_run(
+                receipt_run,
+                evidence_digest="d" * 64,
+            )
+        )
+
+
+def test_lab_execution_binding_restore_rejects_tampering_and_legacy_payloads() -> None:
+    run = LabRun("execution binding restore")
+    binding = _execution_binding_for_run(run)
+    run.bind_execution(binding)
+    run.admit_tool_execution(
+        tool_name="fixture.tool",
+        input_payload={"query": "bounded"},
+        policy_payload={"effect": "read_only"},
+        effect_class="read_only",
+        execution_id="binding-restore-1",
+    )
+    payload = run.to_payload()
+    tampered = json.loads(json.dumps(payload))
+    tampered["execution_binding"]["plan_digest"] = "f" * 64
+    with pytest.raises(ValueError, match="execution binding"):
+        LabRun.from_payload(tampered)
+
+    tampered_event = json.loads(json.dumps(payload))
+    tampered_event["events"][1]["payload"]["execution_binding"] = {
+        **binding.to_dict(),
+        "plan_digest": "f" * 64,
+    }
+    with pytest.raises(ValueError, match=r"event chain|execution binding"):
+        LabRun.from_payload(tampered_event)
+
+    legacy_run = LabRun("legacy execution binding compatibility")
+    legacy_payload = legacy_run.to_payload()
+    assert "execution_binding" not in legacy_payload
+    restored_legacy = LabRun.from_payload(legacy_payload)
+    assert restored_legacy.execution_binding is None
 
 
 def _skill_fixture() -> tuple[SkillRegistry, SkillManifest]:
@@ -132,6 +428,21 @@ def _hold_replay_writer_lease(directory: str, ready: object, release: object) ->
         lease.release()
 
 
+def _hold_external_side_effect_lease(
+    directory: str,
+    effect_key: str,
+    ready: object,
+    release: object,
+) -> None:
+    lease = ExternalSideEffectLease(directory, effect_key)
+    try:
+        lease.acquire()
+        ready.put(True)  # type: ignore[attr-defined]
+        release.get(timeout=10)  # type: ignore[attr-defined]
+    finally:
+        lease.release()
+
+
 def test_replay_writer_lease_serializes_processes(tmp_path: Path) -> None:
     context = multiprocessing.get_context("spawn")
     ready = context.Queue()
@@ -142,8 +453,56 @@ def test_replay_writer_lease_serializes_processes(tmp_path: Path) -> None:
     )
     process.start()
     try:
-        assert ready.get(timeout=10) is True
+        # Spawn imports this large test module on Windows; allow startup
+        # overhead while keeping the test bounded.
+        assert ready.get(timeout=30) is True
         contender = ReplayWriterLease(str(tmp_path))
+        with pytest.raises(RuntimeError, match="already leased"):
+            contender.acquire()
+        release.put(True)
+        process.join(timeout=10)
+        assert process.exitcode == 0
+        contender.acquire()
+        contender.release()
+    finally:
+        if process.is_alive():
+            process.terminate()
+            process.join(timeout=5)
+
+
+def test_external_side_effect_lease_is_scoped_to_exact_key(tmp_path: Path) -> None:
+    first = ExternalSideEffectLease(str(tmp_path), "search::network_read")
+    same_key = ExternalSideEffectLease(str(tmp_path), "search::network_read")
+    other_key = ExternalSideEffectLease(str(tmp_path), "browser::network_read")
+    first.acquire()
+    try:
+        assert "search::network_read" not in str(first.path)
+        with pytest.raises(RuntimeError, match="already leased"):
+            same_key.acquire()
+        other_key.acquire()
+        other_key.release()
+        first.release()
+        same_key.acquire()
+    finally:
+        same_key.release()
+        other_key.release()
+        first.release()
+
+
+def test_external_side_effect_lease_serializes_same_key_across_processes(
+    tmp_path: Path,
+) -> None:
+    context = multiprocessing.get_context("spawn")
+    ready = context.Queue()
+    release = context.Queue()
+    process = context.Process(
+        target=_hold_external_side_effect_lease,
+        args=(str(tmp_path), "search::network_read", ready, release),
+    )
+    process.start()
+    try:
+        assert ready.get(timeout=30) is True
+        contender = ExternalSideEffectLease(str(tmp_path), "search::network_read")
         with pytest.raises(RuntimeError, match="already leased"):
             contender.acquire()
         release.put(True)
@@ -501,7 +860,7 @@ def test_process_execution_cell_terminates_non_cooperative_runner() -> None:
 
     async def exercise() -> None:
         task = asyncio.create_task(cell())
-        await asyncio.sleep(0.1)
+        await asyncio.sleep(0)
         assert cell.active_pid is not None
         with pytest.raises(TimeoutError, match="process execution cell timed out"):
             await task
@@ -515,7 +874,10 @@ def test_process_execution_cell_terminates_non_cooperative_descendants() -> None
     parent_connection, child_connection = context.Pipe(duplex=False)
     cell = ProcessExecutionCell(
         _non_cooperative_process_with_descendant,
-        timeout_seconds=2.0,
+        # Windows spawn/import overhead can exceed two seconds on a busy
+        # workstation; leave enough time for the worker to publish the
+        # descendant PID before the bounded timeout is exercised.
+        timeout_seconds=10.0,
     )
     descendant_pid: int | None = None
     try:
@@ -542,7 +904,7 @@ def test_process_execution_cell_kills_child_on_task_cancellation() -> None:
 
     async def exercise() -> None:
         task = asyncio.create_task(cell())
-        await asyncio.sleep(0.1)
+        await asyncio.sleep(0)
         assert cell.active_pid is not None
         task.cancel()
         with pytest.raises(asyncio.CancelledError):
@@ -660,6 +1022,17 @@ def test_authority_mode_is_explicit_and_legacy_flag_conflicts_fail_closed(
         )
     assert LabPolicy(trust_level="DEV").authority_mode is AuthorityMode.PROJECTION_ONLY
     assert LabPolicy(trust_level="PROD").authority_mode is AuthorityMode.NATIVE_REQUIRED
+    with pytest.raises(ValueError, match="PROD Lab runs require native authority"):
+        LabRun(
+            "production projection is invalid",
+            trust_level="PROD",
+            authority_mode=AuthorityMode.PROJECTION_ONLY,
+        )
+
+    projection_payload = LabRun("tampered production projection").to_payload()
+    projection_payload["trust_level"] = "PROD"
+    with pytest.raises(ValueError, match="PROD Lab runs require native authority"):
+        LabRun.from_payload(projection_payload)
 
 
 def test_lab_policy_and_budget_reject_lossy_metadata() -> None:
@@ -2523,11 +2896,22 @@ def test_lab_recovery_preserves_optional_attempt_metadata() -> None:
     """Recovery must settle modern admissions with their bound metadata."""
 
     run = LabRun("recover metadata-bound admission", max_steps=2, token_budget=100)
+    run.bind_execution_cell_manifest(
+        [
+            {
+                "cell_id": "post-completion",
+                "action_kinds": ("post_completion_effect",),
+                "capabilities": ("memory_write",),
+                "effect_classes": ("memory_write",),
+                "trust_levels": ("DEV",),
+            }
+        ]
+    )
     execution_id, _ = run.admit_tool_execution(
-        tool_name="provider.primary",
+        tool_name="memory.index_session",
         input_payload={"task_hash": "a" * 64},
         policy_payload={"policy": "bounded"},
-        effect_class="model_inference",
+        effect_class="memory_write",
         expected_observation_schema="aegis-provider-attempt-result-v1",
         stop_rule="provider_route_controller_step",
         lease_id=1,
@@ -2535,6 +2919,7 @@ def test_lab_recovery_preserves_optional_attempt_metadata() -> None:
         execution_id="provider-metadata-1",
         idempotency_key="b" * 64,
         timeout_seconds=2.5,
+        managed_internal=True,
     )
     restored = LabRun.from_payload(run.to_payload())
 
@@ -2553,6 +2938,7 @@ def test_lab_recovery_preserves_optional_attempt_metadata() -> None:
     assert settlement[0].payload["status"] == "REJECTED"
     assert settlement[0].payload["idempotency_key"] == "b" * 64
     assert settlement[0].payload["timeout_seconds"] == 2.5
+    assert settlement[0].payload["managed_internal"] is True
     assert restored.verify_event_chain()
 
     experiment_run = _ready_run()
@@ -5327,7 +5713,11 @@ def test_prod_native_lab_rejects_implicit_compatibility_edge_adapters() -> None:
         telemetry=SimpleNamespace(),
         correlation=SimpleNamespace(),
     )
-    run = LabRun("prod explicit edge registry", trust_level="PROD")
+    run = LabRun(
+        "prod explicit edge registry",
+        trust_level="PROD",
+        authority_mode=AuthorityMode.NATIVE_REQUIRED,
+    )
     app._prepare_execution_cells(run, app.config.options)
 
     assert app.execution_cells.sealed
@@ -6889,7 +7279,7 @@ def test_lab_gateway_deadline_fence_settles_timeout(monkeypatch: pytest.MonkeyPa
             self.trust_policy_hash = trust_policy_hash
 
         async def run(self, _task: str, **_: object) -> SimpleNamespace:
-            await asyncio.sleep(0.05)
+            await asyncio.Event().wait()
             return SimpleNamespace(output={"answer": "late"}, provider="fixture", trust_level="DEV")
 
     def gateway_factory(**kwargs: object) -> Gateway:
@@ -7068,7 +7458,7 @@ def test_lab_skill_request_timeout_settles_rejection() -> None:
     )
 
     async def slow_executor(_: object) -> dict[str, object]:
-        await asyncio.sleep(0.05)
+        await asyncio.Event().wait()
         return {"validated": True}
 
     asyncio.run(
@@ -7225,6 +7615,53 @@ def test_public_lab_session_streams_evidence_and_returns_dossier(
         assert (tmp_path / f"lab-{dossier.mission_id}.snapshot.json").is_file()
     else:
         assert any(item.startswith("lab_replay_archive_failed:") for item in dossier.blockers)
+
+
+def test_lab_failure_prefix_is_archived_after_open_admissions_are_reconciled(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Failure recovery must persist the non-success settlement prefix."""
+
+    run = LabRun("archive failure prefix", max_steps=1)
+    run.admit_tool_execution(
+        tool_name="fixture.external",
+        input_payload={"value": "bounded"},
+        policy_payload={"effect": "read_only"},
+        effect_class="read_only",
+        execution_id="failure-prefix-tool",
+    )
+    app = LabApplication(
+        config=SimpleNamespace(
+            options={"lab_replay_directory": str(tmp_path)},
+            max_steps=1,
+            trust_level="DEV",
+        ),
+        gateway_factory=lambda **_: None,
+        telemetry=SimpleNamespace(),
+        correlation=SimpleNamespace(),
+    )
+    app._active_run = run
+    archived: list[tuple[str, tuple[str, ...]]] = []
+
+    def capture_archive(directory: str, *, max_events_per_segment: int = 64) -> dict[str, object]:
+        del max_events_per_segment
+        archived.append((directory, tuple(event.kind for event in run.events)))
+        return {}
+
+    monkeypatch.setattr(run, "archive_to_native", capture_archive)
+    app._abort_after_failure("test_failure")
+    app._archive_failure_prefix(app.config.options)
+
+    assert run.state == "aborted"
+    assert run.unsettled_execution_admissions() == ()
+    assert archived == [
+        (
+            str(tmp_path),
+            tuple(event.kind for event in run.events),
+        )
+    ]
+    assert "tool_execution_recorded" in archived[0][1]
+    assert archived[0][1][-1] == "cancellation_recorded"
 
 
 def test_agent_lab_compatibility_defaults_to_durable_replay_archive(
@@ -7409,7 +7846,7 @@ def test_lab_generic_tool_deadline_fence_settles_timeout(monkeypatch: pytest.Mon
     monkeypatch.setenv("AEGIS_API_KEY", "test-key")
 
     async def tool_runner(_request: dict[str, object], **_: object) -> dict[str, object]:
-        await asyncio.sleep(0.05)
+        await asyncio.Event().wait()
         return {"value": "late"}
 
     config = SimpleNamespace(
@@ -7469,7 +7906,7 @@ def test_lab_experiment_deadline_fence_settles_timeout(monkeypatch: pytest.Monke
     monkeypatch.setenv("AEGIS_API_KEY", "test-key")
 
     async def experiment_runner(_spec: ExperimentSpec, **_: object) -> list[dict[str, object]]:
-        await asyncio.sleep(0.05)
+        await asyncio.Event().wait()
         return [{"observation_id": "late", "seed": 1, "measurement": 1.0, "unit": "score"}]
 
     spec = ExperimentSpec("e1", "h1", "paired", ("x",), ("baseline",), (1, 2, 3, 4, 5), 1)
@@ -7515,7 +7952,7 @@ def test_lab_simulation_deadline_fence_settles_timeout(monkeypatch: pytest.Monke
     monkeypatch.setenv("AEGIS_API_KEY", "test-key")
 
     async def simulation_runner(_spec: SimulationSpec, **_: object) -> list[dict[str, object]]:
-        await asyncio.sleep(0.05)
+        await asyncio.Event().wait()
         return [{"observation_id": "late", "seed": 1, "measurement": 1.0, "unit": "score"}]
 
     experiment = ExperimentSpec("e1", "h1", "paired", ("x",), ("baseline",), (1, 2, 3, 4, 5), 1)
@@ -8503,6 +8940,7 @@ def test_lab_snapshot_rejects_lossy_and_duplicate_execution_cell_metadata() -> N
         ("capabilities", [1]),
         ("trust_levels", [1]),
         ("trust_policy_hash", 1),
+        ("unknown", True),
     ):
         payload = run.to_payload()
         cell = dict(base_cell)

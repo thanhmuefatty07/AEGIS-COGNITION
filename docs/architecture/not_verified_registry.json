@@ -13,7 +13,7 @@
     {"id": "NV-009", "title": "Restore from external release backup", "status": "PROVEN LOCAL PACKAGE DRILL / RESTORE NOT VERIFIED"},
     {"id": "NV-010", "title": "Branch protection and hosted CI observation", "status": "NOT VERIFIED"},
     {"id": "NV-011", "title": "GT96 requirement closure", "status": "IN PROGRESS"},
-    {"id": "NV-012", "title": "Production migration rehearsal", "status": "NOT VERIFIED"},
+    {"id": "NV-012", "title": "Production migration rehearsal", "status": "IMPLEMENTED / NOT VERIFIED"},
     {"id": "NV-013", "title": "Miri and AddressSanitizer evidence", "status": "NOT VERIFIED"},
     {"id": "NV-014", "title": "Communication exporter", "status": "IMPLEMENTED / MEASURED LOCAL ONLY"},
     {"id": "NV-015", "title": "GitHub hosted-runner evidence for current head", "status": "NOT VERIFIED"},

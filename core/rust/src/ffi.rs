@@ -23,6 +23,7 @@ mod lab;
 mod learning;
 mod mmap;
 mod runtime;
+mod source_watcher;
 mod status;
 pub use compat::{
     aegis_harness_analyze_errors, aegis_harness_generate_skeleton, aegis_hot_hash,
@@ -71,9 +72,16 @@ pub use mmap::{
     aegis_write_mmap_bridge_pattern,
 };
 pub use runtime::{
-    aegis_execution_lanes, aegis_hardware_profile, aegis_resource_admission_preview,
-    aegis_resource_contract_version, aegis_resource_usage_sample, aegis_runtime_finish,
-    aegis_runtime_retry, aegis_runtime_submit,
+    aegis_cooperative_placement_admit, aegis_cooperative_placement_preview,
+    aegis_cooperative_placement_release, aegis_execution_lanes, aegis_hardware_profile,
+    aegis_placement_calibrate, aegis_placement_capabilities, aegis_placement_plan,
+    aegis_resource_admission_preview, aegis_resource_contract_version, aegis_resource_usage_sample,
+    aegis_runtime_cancel, aegis_runtime_cooperative_cancel, aegis_runtime_cooperative_configure,
+    aegis_runtime_cooperative_finish, aegis_runtime_cooperative_submit, aegis_runtime_finish,
+    aegis_runtime_observe_resources, aegis_runtime_poll, aegis_runtime_retry, aegis_runtime_submit,
+};
+pub use source_watcher::{
+    aegis_poll_source_watcher, aegis_start_source_watcher, aegis_stop_source_watcher,
 };
 pub use status::{
     aegis_can_bridge_python, aegis_cli_schema, aegis_cli_status, aegis_descriptor_valid,
@@ -93,6 +101,13 @@ static CONVERSATION_REPOSITORY: OnceLock<Result<Mutex<ConversationRepository>, S
     OnceLock::new();
 static AUTHORITATIVE_RUNTIME: OnceLock<Mutex<crate::runtime::AuthoritativeRuntime>> =
     OnceLock::new();
+
+pub(crate) struct CooperativeAdmissionState {
+    pub inventory_hash: [u8; 32],
+    pub ledger: crate::resource::CooperativeAdmissionLedger,
+}
+
+static COOPERATIVE_ADMISSION: OnceLock<Mutex<Option<CooperativeAdmissionState>>> = OnceLock::new();
 
 fn session_store_path() -> Result<PathBuf, String> {
     if let Ok(path) = std::env::var("AEGIS_SESSION_DB_PATH") {
@@ -225,6 +240,10 @@ fn get_authoritative_runtime() -> &'static Mutex<crate::runtime::AuthoritativeRu
     })
 }
 
+pub(crate) fn get_cooperative_admission() -> &'static Mutex<Option<CooperativeAdmissionState>> {
+    COOPERATIVE_ADMISSION.get_or_init(|| Mutex::new(None))
+}
+
 fn py_safe<T>(f: impl FnOnce() -> T) -> PyResult<T> {
     catch_unwind(AssertUnwindSafe(f)).map_err(|_| {
         pyo3::exceptions::PyRuntimeError::new_err("panic prevented across FFI boundary")
@@ -257,13 +276,26 @@ pub fn aegis_nerve(_py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(aegis_cli_schema, m)?)?;
     m.add_function(wrap_pyfunction!(aegis_release_ready, m)?)?;
     m.add_function(wrap_pyfunction!(aegis_hardware_profile, m)?)?;
+    m.add_function(wrap_pyfunction!(aegis_placement_capabilities, m)?)?;
+    m.add_function(wrap_pyfunction!(aegis_placement_calibrate, m)?)?;
+    m.add_function(wrap_pyfunction!(aegis_placement_plan, m)?)?;
+    m.add_function(wrap_pyfunction!(aegis_cooperative_placement_preview, m)?)?;
+    m.add_function(wrap_pyfunction!(aegis_cooperative_placement_admit, m)?)?;
+    m.add_function(wrap_pyfunction!(aegis_cooperative_placement_release, m)?)?;
+    m.add_function(wrap_pyfunction!(aegis_runtime_cooperative_configure, m)?)?;
+    m.add_function(wrap_pyfunction!(aegis_runtime_cooperative_submit, m)?)?;
+    m.add_function(wrap_pyfunction!(aegis_runtime_cooperative_finish, m)?)?;
+    m.add_function(wrap_pyfunction!(aegis_runtime_cooperative_cancel, m)?)?;
     m.add_function(wrap_pyfunction!(aegis_resource_contract_version, m)?)?;
     m.add_function(wrap_pyfunction!(aegis_resource_admission_preview, m)?)?;
     m.add_function(wrap_pyfunction!(aegis_execution_lanes, m)?)?;
     m.add_function(wrap_pyfunction!(aegis_resource_usage_sample, m)?)?;
+    m.add_function(wrap_pyfunction!(aegis_runtime_observe_resources, m)?)?;
     m.add_function(wrap_pyfunction!(aegis_runtime_submit, m)?)?;
     m.add_function(wrap_pyfunction!(aegis_runtime_retry, m)?)?;
     m.add_function(wrap_pyfunction!(aegis_runtime_finish, m)?)?;
+    m.add_function(wrap_pyfunction!(aegis_runtime_poll, m)?)?;
+    m.add_function(wrap_pyfunction!(aegis_runtime_cancel, m)?)?;
     m.add_function(wrap_pyfunction!(aegis_llm_request, m)?)?;
     m.add_function(wrap_pyfunction!(aegis_llm_route, m)?)?;
     m.add_function(wrap_pyfunction!(aegis_llm_bridge_key, m)?)?;
@@ -275,6 +307,9 @@ pub fn aegis_nerve(_py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(aegis_runtime_telemetry_emit, m)?)?;
     m.add_function(wrap_pyfunction!(aegis_runtime_telemetry_snapshot, m)?)?;
     m.add_function(wrap_pyfunction!(aegis_trust_level, m)?)?;
+    m.add_function(wrap_pyfunction!(aegis_start_source_watcher, m)?)?;
+    m.add_function(wrap_pyfunction!(aegis_poll_source_watcher, m)?)?;
+    m.add_function(wrap_pyfunction!(aegis_stop_source_watcher, m)?)?;
     m.add_function(wrap_pyfunction!(aegis_hot_hash, m)?)?;
     m.add_function(wrap_pyfunction!(aegis_hot_commit, m)?)?;
     m.add_function(wrap_pyfunction!(aegis_hot_commit_batch, m)?)?;

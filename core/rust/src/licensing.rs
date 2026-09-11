@@ -222,7 +222,7 @@ impl LicenseValidator {
             .as_secs();
         let grace_period = 7 * 24 * 60 * 60; // 7 days
 
-        if key.expires_at + grace_period < now {
+        if key.expires_at.saturating_add(grace_period) < now {
             return Ok(LicenseStatus::Expired {
                 tier: key.edition,
                 expired_at: key.expires_at,
@@ -315,7 +315,9 @@ impl LicenseManager {
                     Err(LicenseError::FeatureNotLicensed(feature))
                 }
             }
-            Some(LicenseStatus::Expired { .. }) => Err(LicenseError::Expired { expired_at: 0 }),
+            Some(LicenseStatus::Expired { expired_at, .. }) => Err(LicenseError::Expired {
+                expired_at: *expired_at,
+            }),
             None => {
                 // Community features always available without license
                 if feature.minimum_edition() == Edition::Community {
@@ -512,6 +514,47 @@ mod tests {
 
         // Community features should pass without license
         assert!(manager.check_feature(Feature::LocalReplayLedger).is_ok());
+    }
+
+    #[test]
+    fn test_expired_feature_gate_preserves_expiry_timestamp() {
+        let mut manager = LicenseManager::new();
+        manager.current_license = Some(LicenseStatus::Expired {
+            tier: Edition::Pro,
+            expired_at: 1_725_000_123,
+        });
+
+        assert_eq!(
+            manager.check_feature(Feature::CloudSync),
+            Err(LicenseError::Expired {
+                expired_at: 1_725_000_123,
+            })
+        );
+    }
+
+    #[test]
+    fn test_max_expiry_timestamp_does_not_overflow_grace_period() {
+        let (signing_key, verifying_key) = test_keypair();
+        let validator = LicenseValidator::new(verifying_key.to_bytes()).unwrap();
+        let mut key = LicenseKey {
+            tenant_id: "overflow-boundary".to_string(),
+            edition: Edition::Community,
+            features: vec![Feature::LocalReplayLedger],
+            max_nodes: 1,
+            max_evidence_per_day: 1,
+            issued_at: 1,
+            expires_at: u64::MAX,
+            signature: vec![],
+        };
+
+        sign_license(&mut key, &signing_key);
+        assert!(matches!(
+            validator.validate(&key),
+            Ok(LicenseStatus::Valid {
+                tier: Edition::Community,
+                ..
+            })
+        ));
     }
 
     #[test]

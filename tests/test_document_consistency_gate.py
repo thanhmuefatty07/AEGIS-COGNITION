@@ -90,3 +90,11 @@ def test_ephemeral_uv_environment_markdown_is_ignored(tmp_path: Path) -> None:
         "[package-local](missing-package-doc.md)\n", encoding="utf-8"
     )
     assert gate._link_errors(tmp_path) == []
+
+
+def test_generated_node_modules_markdown_is_ignored(tmp_path: Path) -> None:
+    package_docs = tmp_path / "node_modules" / "third-party"
+    package_docs.mkdir(parents=True)
+    (package_docs / "README.md").write_text("[package-local](missing-package-doc.md)\n", encoding="utf-8")
+
+    assert gate._link_errors(tmp_path) == []

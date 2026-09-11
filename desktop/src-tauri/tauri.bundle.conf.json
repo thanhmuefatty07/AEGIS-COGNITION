@@ -1,0 +1,8 @@
+{
+  "bundle": {
+    "active": true,
+    "targets": "all",
+    "resources": ["resources/aegis-desktop-service.exe"],
+    "icon": ["icons/icon.ico"]
+  }
+}

@@ -12,6 +12,7 @@ from pathlib import Path
 from urllib.request import urlopen
 
 import pytest
+import yaml
 
 from .bridge_mmap import MMAP_BRIDGE_HEADER_BYTES, MmapBridgeFrame, execute_mmap_wasm_bridge_frame
 from .browser_live_collector import (
@@ -39,6 +40,7 @@ from .aegis_adapter import (
     commit_hot_evidence,
     trust_policy_snapshot,
 )
+from .aegis_cli import save_config as save_legacy_cli_config
 from .orchestrator import build_message, to_zero_copy, validate_runtime_message
 from .integration import build_bridge_message, validate_bridge_batch, validate_bridge_contract, validate_bridge_smoke
 from .preflight import check_build_preflight
@@ -62,6 +64,22 @@ from scripts.supply_chain_gate import (
 from scripts.tcp_cluster_soak_gate import evaluate_tcp_cluster_soak_gate, write_real_multi_machine_cluster_soak_capture
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
+
+
+def test_legacy_cli_config_writes_durable_quoted_files(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(Path, "home", classmethod(lambda _cls: tmp_path))
+
+    save_legacy_cli_config("OpenAI", 'secret"value', "PROD", True)
+
+    config_path = tmp_path / ".aegis" / "config.yaml"
+    env_path = tmp_path / ".aegis" / ".env"
+    assert yaml.safe_load(config_path.read_text(encoding="utf-8")) == {
+        "provider": "openai",
+        "trust_level": "PROD",
+        "tools": {"browser_automation": True},
+    }
+    assert env_path.read_text(encoding="utf-8") == 'OPENAI_API_KEY="secret\\\"value"\n'
+    assert not list((tmp_path / ".aegis").glob("*.tmp"))
 
 
 def test_core_bridge_does_not_claim_canonical_aegis_console_script():

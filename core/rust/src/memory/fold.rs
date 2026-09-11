@@ -698,6 +698,53 @@ impl CogniFoldStore {
         let latest = self.latest()?;
         Some((latest.session_id, self.len(), self.average_fidelity()))
     }
+
+    /// Commit a semantic memory representation without routing it through the
+    /// physical artifact/PAV authority path. The durable text remains owned by
+    /// `MemoryRepository`; CogniFold stores only its bounded semantic digest.
+    pub fn commit_semantic_memory(
+        &mut self,
+        session_id: u128,
+        content: &[u8],
+        relevance_score: f32,
+    ) -> Result<SemanticNode, &'static str> {
+        if session_id == 0
+            || content.is_empty()
+            || !relevance_score.is_finite()
+            || !(0.0..=1.0).contains(&relevance_score)
+        {
+            return Err("invalid semantic memory");
+        }
+        let mut hasher = blake3::Hasher::new();
+        hasher.update(b"aegis-semantic-memory-v1");
+        hasher.update(&[0]);
+        hasher.update(&session_id.to_le_bytes());
+        hasher.update(content);
+        let semantic_hash = *hasher.finalize().as_bytes();
+        let node_id = u128::from_be_bytes(semantic_hash[..16].try_into().unwrap());
+        if node_id == 0 {
+            return Err("semantic memory hash produced an invalid node id");
+        }
+        let node = SemanticNode {
+            node_id,
+            session_id,
+            // Historical field name retained for pointer compatibility; this
+            // digest is semantic content identity, never a physical artifact.
+            artifact_hash: semantic_hash,
+            ast_fingerprint: 0,
+            fidelity: relevance_score,
+        };
+        if !node.is_valid() {
+            return Err("invalid semantic memory node");
+        }
+        self.ingest(MemoryFrame {
+            frame_id: node.node_id,
+            session_id,
+            payload: semantic_hash.to_vec(),
+            fidelity: relevance_score,
+        })?;
+        Ok(node)
+    }
 }
 
 impl MemoryCrystallization for CogniFoldStore {

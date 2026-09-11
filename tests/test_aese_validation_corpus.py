@@ -10,6 +10,7 @@ from scripts.aese_validation_corpus import (
     build_cost_measurement,
     build_corpus,
     build_paired_cost_measurement,
+    _load_retained_paired_cost,
     validate_corpus,
 )
 
@@ -43,7 +44,7 @@ def test_final_corpus_covers_unknown_and_partial_mapping_without_skips(corpus: d
         case = cases[case_id]
         assert case["plan_widened"] is True
         assert case["changed_unmapped_surface_paths"]
-        assert case["decision_state_counts"]["WIDENED_UNKNOWN"] == 131
+        assert case["decision_state_counts"]["WIDENED_UNKNOWN"] == 140
         assert case["decision_state_counts"]["WOULD_SKIP"] == 0
     metrics = corpus["metrics"]
     assert metrics["synthetic_critical_planning_targets"] == 5
@@ -79,6 +80,16 @@ def test_recorded_cost_ledger_retains_paired_exploratory_measurement() -> None:
     assert cost["net_saving_seconds"]["median_saving"] > 0
     assert set(cost["net_saving_seconds"]) == {"sample_count", "samples", "min_saving", "median_saving", "max_saving"}
     assert cost["savings_claim"] == "LOCAL_EXPLORATORY_ONLY"
+
+
+def test_retained_cost_loader_rejects_tamper_without_timings(tmp_path) -> None:
+    retained = json.loads(DEFAULT_COST_OUTPUT.read_text(encoding="utf-8"))
+    path = tmp_path / "cost.json"
+    path.write_text(json.dumps(retained), encoding="utf-8")
+    assert _load_retained_paired_cost(path) == retained
+    retained["status"] = "INSUFFICIENT_EVIDENCE"
+    path.write_text(json.dumps(retained), encoding="utf-8")
+    assert _load_retained_paired_cost(path) is None
 
 
 def test_paired_cost_measurement_computes_net_saving_without_generalizing() -> None:

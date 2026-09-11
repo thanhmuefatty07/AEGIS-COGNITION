@@ -25,6 +25,67 @@ The canonical contract, action vocabulary, evidence classes and known limits
 are documented in
 [`AEGIS_LAB_RUNTIME_MASTER_PLAN.md`](../architecture/AEGIS_LAB_RUNTIME_MASTER_PLAN.md).
 
+## Goal and target contracts
+
+Use `GoalContract` when a Lab run needs a durable, machine-checkable definition
+of success. `TargetDescriptor` binds the identity and revision being inspected,
+the read/write roots, network allowlist and declared external effects. The
+contract hash is carried through Lab admissions, replay events, snapshots and
+verification receipts, so a result for another target or generation is rejected.
+
+```python
+from aegis_cognition import GoalContract, TargetDescriptor
+
+contract = GoalContract(
+    goal_id="goal-001",
+    objective="verify the bounded change",
+    target=TargetDescriptor(
+        kind="repository",
+        stable_id="aegis-cognition",
+        revision_or_digest="<operator-supplied-revision>",
+        read_roots=("C:/work/aegis-cognition",),
+        write_roots=("C:/work/aegis-cognition",),
+        owner="operator",
+    ),
+    scope=("read code", "run tests"),
+    non_goals=("publish remotely",),
+    # Add explicit acceptance predicates and a bound policy before admission.
+)
+```
+
+An explicit contract is admitted only after its target, policy digest, required
+acceptance predicates and evidence obligations are bound. Legacy Lab calls still
+produce an unbound draft for compatibility and must not be described as an
+independent verification. A GoalContract is a scope and evidence boundary; it
+does not by itself prove filesystem, network, browser or kernel isolation.
+For generic tool admissions, `external_side_effects` may contain exact
+`tool_name::effect_class` keys. An explicit Goal contract fails closed when an
+external tool does not match one of those keys; native-required runs also fail
+closed when the Goal target is unbound. `LabPolicy` must still allow external
+writes. The runtime-owned `memory.index_session::memory_write` path is a
+separate exception only when its replay-bound `post_completion_effect` cell is
+registered; it does not make arbitrary durable writes local-safe. This is only
+a Lab admission allowlist, not proof of provider-side containment or an
+exclusive resource lease. External adapters remain
+responsible for idempotency, timeout/cancellation, settlement and recovery
+evidence.
+
+For explicit network research, the Goal target is now an upper bound: host-based
+search programs are automatically narrowed to `target.network_allowlist`, and
+an empty or malformed target host list rejects network research. A browser run
+with an explicit Goal must likewise provide a browser host policy contained by
+the target. This is application-level egress narrowing; it is not a DNS-race,
+proxy, kernel firewall, or provider-containment proof.
+
+For generic tool inputs, explicit path fields (`path`, `target_path`,
+`file_path`, `directory`, `read_path`, `write_path` or `paths`) are checked
+against the Goal target as well. Read-like effects require `read_roots`,
+write-like effects require `write_roots`, and `compute` may use either. The
+comparison is lexical and boundary-aware, so `C:/repo-other` does not satisfy
+`C:/repo`; it does not resolve symlinks and therefore remains an application
+check rather than OS-level containment. A malformed path field or an explicit
+path outside the target is rejected before generic tool admission.
+
 ## Lab compatibility and recovery
 
 `Agent(..., lab=True)` uses the same bounded controller lane while preserving
@@ -177,6 +238,16 @@ so a second local process cannot append to the same replay directory until the
 first run releases it; the descriptor-based lock is released by normal process
 exit. This is local writer serialization, not a hosted lock service or proof
 that an external provider effect is reversible.
+
+When an explicit Goal declares `TargetDescriptor.external_side_effects`, the
+Lab also acquires one `ExternalSideEffectLease` per exact
+`tool_name::effect_class` key for the whole run. It uses
+`lab_external_effect_lease_directory`, falling back to `lab_replay_directory`;
+without either directory the explicit external-effect run fails closed. Two
+local processes sharing that directory cannot hold the same key concurrently,
+while different keys remain independently leaseable. This is advisory local
+coordination only: it does not lock a provider, undo a request already sent, or
+create a kernel/network boundary.
 
 Benchmark options may provide `benchmark_validator_command` as an operator-owned
 argv sequence, or a synchronous `benchmark_validator` callback. The callback

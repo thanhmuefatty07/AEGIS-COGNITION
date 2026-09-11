@@ -64,7 +64,7 @@ def _partial_mapping_fixture(tmp_path):
     by_path = defaultdict(list)
     for item in inventory["items"]:
         by_path[item["path"]].append(item["stable_id"])
-    path, surface_ids = next((item for item in sorted(by_path.items()) if len(item[1]) >= 2))
+    path, surface_ids = next(item for item in sorted(by_path.items()) if len(item[1]) >= 2)
     unknown_ids = set(mapping["unknown_surface_ids"])
     mapped_id = next(surface_id for surface_id in surface_ids if surface_id in unknown_ids)
     mapping["records"].append(
@@ -96,6 +96,15 @@ def test_closure_hash_and_order_are_deterministic() -> None:
     second = build_closure(["aegis_cognition/aese.py", "core/rust/src/gt96.rs"])
     assert first == second
     assert len(str(first["reproducible_hash"])) == 64
+
+
+def test_closure_reuses_its_inventory_snapshot(monkeypatch: pytest.MonkeyPatch) -> None:
+    def unexpected_inventory_rebuild() -> dict[str, object]:
+        raise AssertionError("closure must pass its inventory snapshot to build_graph")
+
+    monkeypatch.setattr(closure_module._claim_graph, "build_inventory", unexpected_inventory_rebuild)
+    plan = build_closure(["core/rust/src/gt96.rs"])
+    assert plan["closure_status"] == "EXACT_CONTRACT_CLOSURE_SHADOW"
 
 
 @pytest.mark.parametrize(

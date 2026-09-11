@@ -12,6 +12,16 @@ use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 const MAX_MEMORY_CONTENT_BYTES: usize = 16 * 1024 * 1024;
 const MAX_MEMORY_QUERY_BYTES: usize = 64 * 1024;
+pub const DEFAULT_MEMORY_KIND: &str = "SEMANTIC_FACT";
+
+/// Kinds accepted by the semantic-memory repository. Physical execution
+/// artifacts are intentionally absent: they have a separate authority path.
+pub const MEMORY_KINDS: [&str; 4] = [
+    DEFAULT_MEMORY_KIND,
+    "USER_ASSERTION",
+    "SOURCE_OBSERVED",
+    "EXTERNAL_EVIDENCE",
+];
 
 #[derive(Debug)]
 pub enum MemoryRepositoryError {
@@ -35,6 +45,7 @@ pub struct MemoryRecordView {
     pub memory_id: u128,
     pub owner_id: String,
     pub scope_kind: String,
+    pub memory_kind: String,
     pub lifecycle: String,
     pub validation: String,
     pub validation_basis: Option<String>,
@@ -63,6 +74,10 @@ fn valid_scope(scope_kind: &str) -> bool {
         scope_kind,
         "USER_PRIVATE" | "AGENT_PRIVATE" | "SESSION" | "PROJECT" | "EXTERNAL"
     )
+}
+
+fn valid_memory_kind(memory_kind: &str) -> bool {
+    MEMORY_KINDS.contains(&memory_kind)
 }
 
 fn hash_content(memory_id: u128, owner_id: &str, scope_kind: &str, content: &str) -> [u8; 32] {
@@ -182,6 +197,7 @@ impl MemoryRepository {
                  memory_id TEXT PRIMARY KEY NOT NULL,
                  owner_id TEXT NOT NULL,
                  scope_kind TEXT NOT NULL,
+                 memory_kind TEXT NOT NULL DEFAULT 'SEMANTIC_FACT',
                  content_hash BLOB,
                  content TEXT,
                  lifecycle TEXT NOT NULL,
@@ -244,6 +260,11 @@ impl MemoryRepository {
         )?;
         ensure_column(&connection, "memory_records", "validation_basis TEXT")?;
         ensure_column(&connection, "memory_records", "validation_reason TEXT")?;
+        ensure_column(
+            &connection,
+            "memory_records",
+            "memory_kind TEXT NOT NULL DEFAULT 'SEMANTIC_FACT'",
+        )?;
         let mut repository = Self { connection };
         repository.rebuild_pending_indexes()?;
         Ok(repository)
@@ -626,11 +647,12 @@ impl MemoryRepository {
         observed_at_ms: u64,
         request_id: u128,
     ) -> Result<MemoryCaptureOutcome, MemoryRepositoryError> {
-        self.capture_as(
+        self.capture_with_kind_as(
             memory_id,
             owner_id,
             owner_id,
             scope_kind,
+            DEFAULT_MEMORY_KIND,
             content,
             observed_at_ms,
             request_id,
@@ -647,6 +669,29 @@ impl MemoryRepository {
         observed_at_ms: u64,
         request_id: u128,
     ) -> Result<MemoryCaptureOutcome, MemoryRepositoryError> {
+        self.capture_with_kind_as(
+            memory_id,
+            subject_id,
+            owner_id,
+            scope_kind,
+            DEFAULT_MEMORY_KIND,
+            content,
+            observed_at_ms,
+            request_id,
+        )
+    }
+
+    pub fn capture_with_kind_as(
+        &mut self,
+        memory_id: u128,
+        subject_id: &str,
+        owner_id: &str,
+        scope_kind: &str,
+        memory_kind: &str,
+        content: &str,
+        observed_at_ms: u64,
+        request_id: u128,
+    ) -> Result<MemoryCaptureOutcome, MemoryRepositoryError> {
         self.require_access(subject_id, owner_id, scope_kind, true, observed_at_ms)?;
         if memory_id == 0 || request_id == 0 {
             return Err(MemoryRepositoryError::InvalidInput("ids must be non-zero"));
@@ -658,6 +703,9 @@ impl MemoryRepository {
         }
         if !valid_scope(scope_kind) || scope_kind.len() > 64 {
             return Err(MemoryRepositoryError::InvalidInput("invalid scope_kind"));
+        }
+        if !valid_memory_kind(memory_kind) || memory_kind.len() > 64 {
+            return Err(MemoryRepositoryError::InvalidInput("invalid memory_kind"));
         }
         if content.trim().is_empty()
             || content.len() > MAX_MEMORY_CONTENT_BYTES
@@ -673,17 +721,18 @@ impl MemoryRepository {
         if let Some(existing) = self
             .connection
             .query_row(
-                "SELECT request_hash, content_hash FROM memory_records WHERE request_id = ?1",
+                "SELECT request_hash, content_hash, memory_kind FROM memory_records WHERE request_id = ?1",
                 params![request_id.to_string()],
                 |row| {
                     let request_hash: Vec<u8> = row.get(0)?;
                     let content_hash: Vec<u8> = row.get(1)?;
-                    Ok((request_hash, content_hash))
+                    let memory_kind: String = row.get(2)?;
+                    Ok((request_hash, content_hash, memory_kind))
                 },
             )
             .optional()?
         {
-            if existing.0.as_slice() != request_hash {
+            if existing.0.as_slice() != request_hash || existing.2 != memory_kind {
                 return Err(MemoryRepositoryError::IdempotencyConflict);
             }
             let existing_hash: [u8; 32] = existing
@@ -717,13 +766,14 @@ impl MemoryRepository {
         let transaction = self.connection.transaction()?;
         transaction.execute(
             "INSERT INTO memory_records
-                (memory_id, owner_id, scope_kind, content_hash, content, lifecycle,
+                (memory_id, owner_id, scope_kind, memory_kind, content_hash, content, lifecycle,
                  validation, revision, observed_at_ms, request_id, request_hash)
-             VALUES (?1, ?2, ?3, ?4, ?5, 'CANDIDATE', 'UNREVIEWED', 1, ?6, ?7, ?8)",
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, 'CANDIDATE', 'UNREVIEWED', 1, ?7, ?8, ?9)",
             params![
                 memory_id.to_string(),
                 owner_id,
                 scope_kind,
+                memory_kind,
                 content_hash.as_slice(),
                 content,
                 i64::try_from(observed_at_ms)
@@ -787,29 +837,34 @@ impl MemoryRepository {
         }
         self.connection
             .query_row(
-                "SELECT memory_id, owner_id, scope_kind, lifecycle, validation,
+                "SELECT memory_id, owner_id, scope_kind, memory_kind, lifecycle, validation,
                         validation_basis, validation_reason, revision,
                         observed_at_ms, content_hash, content
-                 FROM memory_records
+                FROM memory_records
                  WHERE memory_id = ?1 AND owner_id = ?2 AND scope_kind = ?3",
                 params![memory_id.to_string(), owner_id, scope_kind],
                 |row| {
+                    let memory_kind: String = row.get(3)?;
+                    if !valid_memory_kind(&memory_kind) {
+                        return Err(rusqlite::Error::InvalidQuery);
+                    }
                     Ok(MemoryRecordView {
                         memory_id: parse_id(row.get(0)?)
                             .map_err(|_| rusqlite::Error::InvalidQuery)?,
                         owner_id: row.get(1)?,
                         scope_kind: row.get(2)?,
-                        lifecycle: row.get(3)?,
-                        validation: row.get(4)?,
-                        validation_basis: row.get(5)?,
-                        validation_reason: row.get(6)?,
-                        revision: parse_u64(row.get(7)?)
+                        memory_kind,
+                        lifecycle: row.get(4)?,
+                        validation: row.get(5)?,
+                        validation_basis: row.get(6)?,
+                        validation_reason: row.get(7)?,
+                        revision: parse_u64(row.get(8)?)
                             .map_err(|_| rusqlite::Error::InvalidQuery)?,
-                        observed_at_ms: parse_u64(row.get(8)?)
+                        observed_at_ms: parse_u64(row.get(9)?)
                             .map_err(|_| rusqlite::Error::InvalidQuery)?,
-                        content_hash: decode_hash(row.get(9)?)
+                        content_hash: decode_hash(row.get(10)?)
                             .map_err(|_| rusqlite::Error::InvalidQuery)?,
-                        content: row.get(10)?,
+                        content: row.get(11)?,
                     })
                 },
             )
@@ -1040,7 +1095,7 @@ impl MemoryRepository {
             return Ok(Vec::new());
         }
         let mut statement = self.connection.prepare(
-            "SELECT r.memory_id, r.owner_id, r.scope_kind, r.lifecycle, r.validation,
+            "SELECT r.memory_id, r.owner_id, r.scope_kind, r.memory_kind, r.lifecycle, r.validation,
                     r.validation_basis, r.validation_reason, r.revision, r.observed_at_ms, r.content_hash
              FROM memory_records_fts f
              JOIN memory_records r ON r.memory_id = f.memory_id
@@ -1065,11 +1120,12 @@ impl MemoryRepository {
                     row.get::<_, String>(2)?,
                     row.get::<_, String>(3)?,
                     row.get::<_, String>(4)?,
-                    row.get::<_, Option<String>>(5)?,
+                    row.get::<_, String>(5)?,
                     row.get::<_, Option<String>>(6)?,
-                    row.get::<_, i64>(7)?,
+                    row.get::<_, Option<String>>(7)?,
                     row.get::<_, i64>(8)?,
-                    row.get::<_, Option<Vec<u8>>>(9)?,
+                    row.get::<_, i64>(9)?,
+                    row.get::<_, Option<Vec<u8>>>(10)?,
                 ))
             },
         )?;
@@ -1078,6 +1134,7 @@ impl MemoryRepository {
                 memory_id,
                 owner_id,
                 scope_kind,
+                memory_kind,
                 lifecycle,
                 validation,
                 validation_basis,
@@ -1090,6 +1147,13 @@ impl MemoryRepository {
                 memory_id: parse_id(memory_id)?,
                 owner_id,
                 scope_kind,
+                memory_kind: if valid_memory_kind(&memory_kind) {
+                    memory_kind
+                } else {
+                    return Err(MemoryRepositoryError::Conflict(
+                        "invalid stored memory kind",
+                    ));
+                },
                 lifecycle,
                 validation,
                 validation_basis,
@@ -1644,6 +1708,44 @@ mod tests {
         assert_eq!(record.content.as_deref(), Some(content));
         assert_eq!(record.lifecycle, "CANDIDATE");
         assert_eq!(record.revision, 1);
+        assert_eq!(record.memory_kind, DEFAULT_MEMORY_KIND);
+    }
+
+    #[test]
+    fn semantic_memory_kind_is_explicit_and_physical_kinds_are_rejected() {
+        let dir = tempdir().unwrap();
+        let path = dir.path().join("state.db");
+        let mut repository = MemoryRepository::open(&path).unwrap();
+        repository
+            .capture_with_kind_as(
+                70,
+                "owner-a",
+                "owner-a",
+                "USER_PRIVATE",
+                "USER_ASSERTION",
+                "user prefers local first",
+                1_700_000_000_000,
+                701,
+            )
+            .unwrap();
+        let record = repository
+            .inspect(70, "owner-a", "USER_PRIVATE")
+            .unwrap()
+            .unwrap();
+        assert_eq!(record.memory_kind, "USER_ASSERTION");
+        assert!(matches!(
+            repository.capture_with_kind_as(
+                71,
+                "owner-a",
+                "owner-a",
+                "USER_PRIVATE",
+                "PHYSICAL_ARTIFACT",
+                "must fail",
+                1_700_000_000_001,
+                702,
+            ),
+            Err(MemoryRepositoryError::InvalidInput("invalid memory_kind"))
+        ));
     }
 
     #[test]

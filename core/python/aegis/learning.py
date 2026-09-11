@@ -122,6 +122,7 @@ class MemoryRecord:
     content: str | None
     validation_basis: str | None = None
     validation_reason: str | None = None
+    memory_kind: str = "SEMANTIC_FACT"
 
     @classmethod
     def from_mapping(cls, data: dict[str, Any]) -> MemoryRecord:
@@ -137,6 +138,7 @@ class MemoryRecord:
             content=(str(data["content"]) if data.get("content") is not None else None),
             validation_basis=(str(data["validation_basis"]) if data.get("validation_basis") else None),
             validation_reason=(str(data["validation_reason"]) if data.get("validation_reason") else None),
+            memory_kind=str(data.get("memory_kind", "SEMANTIC_FACT")),
         )
 
 
@@ -293,6 +295,7 @@ class LearningManager:
         expected_revision: int | None = None,
         timestamp: int | None = None,
         request_id: int | str | None = None,
+        memory_kind: str | None = None,
     ) -> dict[str, Any]:
         if not content or not content.strip():
             raise ValueError("content must be non-empty")
@@ -302,8 +305,19 @@ class LearningManager:
         event_time = int(time.time() * 1000) if timestamp is None else int(timestamp)
         if subject_id is not None and not subject_id.strip():
             raise ValueError("subject_id must be non-empty when provided")
+        if memory_kind is not None and (
+            not isinstance(memory_kind, str) or not memory_kind.strip() or len(memory_kind) > 64
+        ):
+            raise ValueError("memory_kind must be non-empty and bounded when provided")
         args = (mid, content, event_time, rid, scope_kind, owner_id)
-        raw = self._native.aegis_capture_memory(*args, subject_id) if subject_id is not None else self._native.aegis_capture_memory(*args)
+        if memory_kind is None:
+            raw = self._native.aegis_capture_memory(*args, subject_id) if subject_id is not None else self._native.aegis_capture_memory(*args)
+        else:
+            raw = self._native.aegis_capture_memory(
+                *args,
+                subject_id,
+                memory_kind,
+            )
         return json.loads(raw)
 
     def inspect_memory(

@@ -4924,11 +4924,10 @@ mod tests {
     }
 
     #[test]
-    fn test_memory_nudge_pav_rejection() {
+    fn test_memory_nudge_semantic_commit() {
         use crate::learning::LearningLedger;
         use crate::memory::CogniFoldStore;
         use crate::memory::nudge::{MemoryCandidate, MemoryNudgeSystem};
-        use crate::physical::PhysicalWatchdog;
 
         let mut ledger = LearningLedger::new();
         let system = MemoryNudgeSystem::new(0.5);
@@ -4946,12 +4945,10 @@ mod tests {
         assert_eq!(nudge.candidates.len(), 2);
         assert!(nudge.is_valid());
 
-        // Commit with a zero-epsilon watchdog — all artifacts pass PAV.
         let mut cognifold = CogniFoldStore::new();
-        let watchdog = PhysicalWatchdog { epsilon: 0.0 };
 
         let committed = system
-            .commit_nudged_memories_with_ledger(&nudge, &mut cognifold, &watchdog, &mut ledger)
+            .commit_nudged_memories_semantic_with_ledger(&nudge, &mut cognifold, &mut ledger)
             .unwrap();
         assert_eq!(committed, 2);
         assert_eq!(cognifold.len(), 2);
@@ -4961,14 +4958,13 @@ mod tests {
             .filter(|event| {
                 matches!(
                     event.event_type,
-                    crate::learning::LearningEventType::MemoryCommitted { .. }
+                    crate::learning::LearningEventType::MemoryProjectionCommitted { .. }
                 )
             })
             .count();
         assert_eq!(committed_events, 2);
 
-        // Now construct a nudge with an "empty" content that PAV will reject
-        // (PhysicalArtifact::new rejects empty payloads).
+        // Construction still rejects empty semantic candidates.
         let bad_candidate = MemoryCandidate::new("".to_string(), 0.9, 1);
         // Actually, MemoryCandidate::new already rejects empty content,
         // so we validate that the guard is enforced at construction.

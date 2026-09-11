@@ -22,6 +22,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     (a separate `improved_wasm` binding is what the test exercises)
 
 ### Changed
+- **License expiry diagnostics**: `LicenseManager::check_feature` now preserves
+  the actual `expired_at` timestamp instead of returning `0`; a Rust regression
+  test covers the error payload.
+- **License expiry boundary**: expiry grace-period checks now use saturating
+  arithmetic, with a `u64::MAX` regression case preventing overflow.
+- **Native Lab contract tests**: fixed a mutable/immutable borrow overlap in the
+  goal-contract wire fixture so the formatted Rust source recompiles cleanly.
 - **`core/rust/src/skill_registry.rs`**: introduced `SkillImprovementRecordInfo` struct with a
   `record_hash(&self) -> [u8; 32]` method, kept `pub fn skill_improvement_record_hash(...)` as a
   9-arg thin wrapper for backward compatibility. Clears `clippy::too_many_arguments` without

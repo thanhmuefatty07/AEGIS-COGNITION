@@ -32,7 +32,7 @@ def _is_finite_real(value: Any) -> bool:
         return False
     try:
         return math.isfinite(float(value))
-    except (OverflowError, TypeError, ValueError):
+    except OverflowError, TypeError, ValueError:
         return False
 
 
@@ -95,8 +95,7 @@ class BenchmarkProtocolV2:
         ):
             raise ValueError("contamination checks must be declared")
         if self.percentile is not None and (
-            not _is_exact_int(self.percentile)
-            or self.percentile not in {50, 90, 95, 99}
+            not _is_exact_int(self.percentile) or self.percentile not in {50, 90, 95, 99}
         ):
             raise ValueError("only declared percentile metrics are supported")
         if self.percentile == 99 and self.min_trials < 1000:
@@ -547,9 +546,7 @@ def evaluate_benchmark(
     ci_low: float | None = None
     ci_high: float | None = None
     percentile = (
-        protocol.percentile
-        if _is_exact_int(protocol.percentile) and protocol.percentile in {50, 90, 95, 99}
-        else None
+        protocol.percentile if _is_exact_int(protocol.percentile) and protocol.percentile in {50, 90, 95, 99} else None
     )
     if values:
         estimate = (
@@ -571,7 +568,7 @@ def evaluate_benchmark(
     status = "REJECTED" if failures else "PASS"
     try:
         protocol_hash = protocol.protocol_hash
-    except (TypeError, ValueError, AttributeError):
+    except TypeError, ValueError, AttributeError:
         protocol_hash = _digest(protocol)
     raw_trial_hash = _digest(records)
     artifact_hash = _digest(

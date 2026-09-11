@@ -31,21 +31,42 @@ def evaluate_production_packaging_smoke_gate(root: str | Path = ROOT) -> dict[st
         root_path,
         {"PYTHONPATH": str(root_path)},
     )
-    rust_cli_smoke = _run_command(
+    rust_cli_build = _run_command(
         [
             "cargo",
-            "run",
+            "build",
             "--quiet",
+            "--locked",
             "--manifest-path",
             str(root_path / "core" / "rust" / "Cargo.toml"),
             "--bin",
             "aegis-nerve-cli",
-            "--",
         ],
         root_path,
         _cargo_env(),
-        timeout_seconds=240,
+        timeout_seconds=600,
     )
+    rust_cli_path = root_path / "target" / "debug" / (
+        "aegis-nerve-cli.exe" if os.name == "nt" else "aegis-nerve-cli"
+    )
+    if rust_cli_build["returncode"] == 0:
+        rust_cli_smoke = _run_command(
+            [str(rust_cli_path)],
+            root_path,
+            _cargo_env(),
+            timeout_seconds=60,
+        )
+    else:
+        rust_cli_smoke = {
+            "command": [str(rust_cli_path)],
+            "returncode": -1,
+            "stdout_tail": "",
+            "stderr_tail": f"build failed: {rust_cli_build['stderr_tail']}",
+            "command_hash": _stable_hash(
+                {"command": [str(rust_cli_path)], "build": rust_cli_build}
+            ),
+        }
+    rust_cli_smoke["build"] = rust_cli_build
     friendly_gateway = _friendly_gateway_dev_smoke()
     service_manifest = _service_manifest_smoke()
     artifact_write = _artifact_write_smoke(artifacts_dir)
@@ -69,6 +90,8 @@ def evaluate_production_packaging_smoke_gate(root: str | Path = ROOT) -> dict[st
     package_surface_hash = _stable_hash(package_surface)
     smoke_evidence = {
         "python_smoke_returncode": python_smoke["returncode"],
+        "rust_cli_build_returncode": rust_cli_build["returncode"],
+        "rust_cli_build_command_hash": rust_cli_build["command_hash"],
         "rust_cli_returncode": rust_cli_smoke["returncode"],
         "friendly_gateway_hash": friendly_gateway["friendly_gateway_hash"],
         "service_manifest_hash": service_manifest["service_manifest_hash"],
@@ -111,7 +134,12 @@ def evaluate_production_packaging_smoke_gate(root: str | Path = ROOT) -> dict[st
         _check("python_smoke_passed", python_smoke["returncode"] == 0 and _json_stdout_ok(python_smoke, "overall_ok")),
         _check("friendly_gateway_dev_smoke_passed", friendly_gateway["overall_ok"]),
         _check("service_manifest_smoke_passed", service_manifest["overall_ok"]),
-        _check("rust_cli_smoke_passed", rust_cli_smoke["returncode"] == 0 and "aegis-nerve-cli ready" in rust_cli_smoke["stdout_tail"]),
+        _check(
+            "rust_cli_smoke_passed",
+            rust_cli_build["returncode"] == 0
+            and rust_cli_smoke["returncode"] == 0
+            and "aegis-nerve-cli ready" in rust_cli_smoke["stdout_tail"],
+        ),
         _check("artifact_write_smoke_passed", artifact_write["overall_ok"]),
         _check("package_surface_hash_nonzero", _nonzero_hex(package_surface_hash)),
         _check("smoke_evidence_hash_nonzero", _nonzero_hex(smoke_evidence_hash)),
@@ -129,6 +157,7 @@ def evaluate_production_packaging_smoke_gate(root: str | Path = ROOT) -> dict[st
         "smoke_evidence": smoke_evidence,
         "smoke_evidence_hash": smoke_evidence_hash,
         "python_smoke": python_smoke,
+        "rust_cli_build": rust_cli_build,
         "rust_cli_smoke": rust_cli_smoke,
         "friendly_gateway_dev_smoke": friendly_gateway,
         "service_manifest_smoke": service_manifest,

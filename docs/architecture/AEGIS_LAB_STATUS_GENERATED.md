@@ -18,7 +18,7 @@ machine-readable registry remains authoritative.
 | NV-009 | Restore from external release backup | PROVEN LOCAL PACKAGE DRILL / RESTORE NOT VERIFIED | NO | non_blocking_registry_ids |
 | NV-010 | Branch protection and hosted CI observation | NOT VERIFIED | NO | non_blocking_registry_ids |
 | NV-011 | GT96 requirement closure | IN PROGRESS | NO | non_blocking_registry_ids |
-| NV-012 | Production migration rehearsal | NOT VERIFIED | NO | non_blocking_registry_ids |
+| NV-012 | Production migration rehearsal | IMPLEMENTED / NOT VERIFIED | NO | non_blocking_registry_ids |
 | NV-013 | Miri and AddressSanitizer evidence | NOT VERIFIED | NO | non_blocking_registry_ids |
 | NV-014 | Communication exporter | IMPLEMENTED / MEASURED LOCAL ONLY | NO | non_blocking_registry_ids |
 | NV-015 | GitHub hosted-runner evidence for current head | NOT VERIFIED | NO | non_blocking_registry_ids |

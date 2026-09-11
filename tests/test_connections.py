@@ -2,6 +2,8 @@ import asyncio
 import json
 from unittest.mock import MagicMock
 
+import pytest
+
 from core.python.aegis.connections import ConnectionCatalog, ConnectionRecord
 from core.python.aegis.connection_clients import ConnectionClientError, ConnectionResponse, OpenAICompatibleClient
 from core.python.aegis.discovery import DiscoveryError, DiscoveryResponse, discover_connection_models
@@ -210,12 +212,8 @@ def test_platform_secret_store_resolves_only_explicit_scopes():
     assert store.resolve("session:temporary") == "session-secret"
     assert store.resolve("env:AEGIS_TEST_KEY") == "environment-secret"
     for reference in ("keychain:account", "secret-service:account", "unknown:account"):
-        try:
+        with pytest.raises(SecretStoreError):
             store.resolve(reference)
-        except SecretStoreError:
-            pass
-        else:
-            raise AssertionError("unsupported secret backend must fail closed")
 
 
 def test_openai_compatible_client_binds_endpoint_secret_and_model():

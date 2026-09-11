@@ -38,6 +38,20 @@ from blake3 import blake3
 
 from .benchmark import BenchmarkProtocolV2, EnvironmentFingerprint, evaluate_benchmark
 from .config import trust_policy_hash as _canonical_trust_policy_hash
+from .goal_contract import (
+    AcceptancePredicate,
+    EvidencePolicy,
+    ExecutionBinding,
+    GoalBudgetContract,
+    GoalContract,
+    GoalContractError,
+    GoalLifecycle,
+    GoalProgress,
+    GoalVerification,
+    TargetDescriptor,
+    external_side_effect_key,
+    projection_payload_digest,
+)
 
 
 def _hash(value: Any) -> str:
@@ -45,13 +59,82 @@ def _hash(value: Any) -> str:
     return blake2b(payload, digest_size=32).hexdigest()
 
 
+def _signal_process_group(pid: int, signal_number: int) -> None:
+    """Signal a POSIX process group when the current platform exposes it."""
+
+    getpgid = cast(Callable[[int], int] | None, getattr(os, "getpgid", None))
+    killpg = cast(Callable[[int, int], None] | None, getattr(os, "killpg", None))
+    if getpgid is None or killpg is None:
+        return
+    with contextlib.suppress(OSError, ProcessLookupError):
+        if getpgid(pid) == pid:
+            killpg(pid, signal_number)
+
+
 def _is_finite_number(value: Any) -> bool:
     if type(value) not in (int, float) or isinstance(value, bool):
         return False
     try:
         return math.isfinite(float(value))
-    except (OverflowError, TypeError, ValueError):
+    except OverflowError, TypeError, ValueError:
         return False
+
+
+def _network_host_from_payload(value: Any) -> str | None:
+    """Extract one explicit host from a generic network-read input."""
+
+    if not isinstance(value, Mapping):
+        return None
+    typed = cast(Mapping[str, Any], value)
+    for key in ("url", "uri"):
+        raw = typed.get(key)
+        if type(raw) is not str or not raw.strip():
+            continue
+        parsed = urlparse(raw.strip())
+        if parsed.scheme not in {"http", "https"} or not parsed.hostname:
+            return None
+        return parsed.hostname
+    for key in ("host", "hostname"):
+        raw = typed.get(key)
+        if type(raw) is str and raw.strip():
+            return raw.strip()
+    return None
+
+
+_TARGET_PATH_KEYS = (
+    "path",
+    "target_path",
+    "file_path",
+    "filepath",
+    "directory",
+    "read_path",
+    "write_path",
+)
+
+
+def _target_paths_from_payload(value: Any) -> tuple[str, ...]:
+    """Extract explicit local paths from the generic tool payload contract."""
+
+    if not isinstance(value, Mapping):
+        return ()
+    typed = cast(Mapping[str, Any], value)
+    paths: list[str] = []
+    for key in _TARGET_PATH_KEYS:
+        if key not in typed:
+            continue
+        raw = typed[key]
+        if type(raw) is not str or not raw.strip():
+            raise ValueError(f"tool target path field {key} is invalid")
+        paths.append(raw.strip())
+    if "paths" in typed:
+        raw_paths = typed["paths"]
+        if type(raw_paths) not in (list, tuple):
+            raise ValueError("tool target paths must be a sequence")
+        typed_paths = cast(list[Any] | tuple[Any, ...], raw_paths)
+        if any(type(path) is not str or not path.strip() for path in typed_paths):
+            raise ValueError("tool target paths must be non-empty strings")
+        paths.extend(path.strip() for path in typed_paths)
+    return tuple(paths)
 
 
 _LAB_TRUST_LEVELS = frozenset({"DEV", "STAGING", "PROD"})
@@ -84,9 +167,7 @@ def _normalize_authority_mode(value: AuthorityMode | str) -> AuthorityMode:
     if isinstance(value, AuthorityMode):
         return value
     if type(value) is not str:
-        raise ValueError(
-            "lab authority mode must be projection_only, native_admitted, or native_required"
-        )
+        raise ValueError("lab authority mode must be projection_only, native_admitted, or native_required")
     normalized = str(value).strip().upper().replace("-", "_")
     try:
         return AuthorityMode[normalized]
@@ -94,9 +175,14 @@ def _normalize_authority_mode(value: AuthorityMode | str) -> AuthorityMode:
         try:
             return AuthorityMode(str(value).strip().lower())
         except ValueError as exc:
-            raise ValueError(
-                "lab authority mode must be projection_only, native_admitted, or native_required"
-            ) from exc
+            raise ValueError("lab authority mode must be projection_only, native_admitted, or native_required") from exc
+
+
+def _validate_authority_trust_pair(authority_mode: AuthorityMode, trust_level: str) -> None:
+    """Keep production trust from being represented as projection-only."""
+
+    if trust_level == "PROD" and authority_mode is AuthorityMode.PROJECTION_ONLY:
+        raise ValueError("PROD Lab runs require native authority")
 
 
 def _browser_policy_matches(value: Any, expected: Mapping[str, Any]) -> bool:
@@ -122,9 +208,7 @@ def _browser_policy_matches(value: Any, expected: Mapping[str, Any]) -> bool:
     )
 
 
-def _authority_mode_from_options(
-    options: Mapping[str, Any], *, default_trust_level: str
-) -> AuthorityMode:
+def _authority_mode_from_options(options: Mapping[str, Any], *, default_trust_level: str) -> AuthorityMode:
     raw_mode = options.get("lab_authority_mode")
     if raw_mode is not None:
         normalized_mode = _normalize_authority_mode(cast(AuthorityMode | str, raw_mode))
@@ -148,6 +232,19 @@ def _trust_policy_hash(trust_level: str) -> str:
     """Return the canonical mission-bound subject hash."""
 
     return _canonical_trust_policy_hash(trust_level)
+
+
+def _resolve_goal_policy_hash(
+    goal_contract: GoalContract,
+    supplied_policy_hash: str | None,
+) -> str | None:
+    """Use a bound goal policy as the Lab policy unless the caller conflicts."""
+
+    if goal_contract.policy_digest == "unbound":
+        return supplied_policy_hash
+    if supplied_policy_hash is not None and supplied_policy_hash != goal_contract.policy_digest:
+        raise ValueError("lab goal contract policy digest conflicts with Lab policy")
+    return goal_contract.policy_digest
 
 
 def _bounded_retry_attempts(value: Any, *, max_steps: int, label: str) -> int:
@@ -175,6 +272,40 @@ _EXTERNAL_ADMISSION_EVENT_KINDS = frozenset(
         "browser_action_admitted",
         "browser_observation_admitted",
         "skill_admission_recorded",
+    }
+)
+
+_GOAL_BOUND_EVENT_KINDS = frozenset(
+    {
+        "experiment_execution_admitted",
+        "experiment_execution_recorded",
+        "tool_execution_admitted",
+        "tool_execution_recorded",
+        "research_program_admitted",
+        "research_program_executed",
+        "browser_action_admitted",
+        "browser_action_recorded",
+        "browser_observation_admitted",
+        "browser_observation_recorded",
+        "skill_admission_recorded",
+        "skill_execution_recorded",
+        "cancellation_admitted",
+        "cancellation_recorded",
+        "review_recorded",
+    }
+)
+
+_GOAL_EVIDENCE_RECORD_TYPES = frozenset({"source", "claim", "hypothesis", "experiment", "observation"})
+
+_DETERMINISTIC_GOAL_VERIFIER_ID = "aegis.lab.deterministic-v1"
+_DETERMINISTIC_GOAL_EVALUATORS = frozenset(
+    {
+        "aegis.lab.record_exists",
+        "aegis.lab.source_quorum",
+        "aegis.lab.claim_confidence_at_least",
+        "aegis.lab.claim_status_is",
+        "aegis.lab.experiment_complete",
+        "aegis.lab.observation_count_at_least",
     }
 )
 
@@ -220,9 +351,7 @@ def _validate_native_provider_options(options: Mapping[str, Any], *, llm: Any = 
         raise ValueError("native Lab provider required_tokens must be a positive integer")
 
     provider = options.get("provider")
-    if provider is not None and (
-        type(provider) is not str or not provider.strip() or provider != provider.strip()
-    ):
+    if provider is not None and (type(provider) is not str or not provider.strip() or provider != provider.strip()):
         raise ValueError("native Lab provider name must be a non-empty trimmed string")
     if provider is None:
         _validate_native_provider_identity(llm, label="primary")
@@ -238,12 +367,8 @@ def _validate_native_provider_options(options: Mapping[str, Any], *, llm: Any = 
                 if len(typed_item) != 2:
                     raise ValueError("native Lab fallback provider entries must be 2-item pairs")
                 name = typed_item[0]
-                if name is not None and (
-                    type(name) is not str or not name.strip() or name != name.strip()
-                ):
-                    raise ValueError(
-                        "native Lab fallback provider names must be null or non-empty trimmed strings"
-                    )
+                if name is not None and (type(name) is not str or not name.strip() or name != name.strip()):
+                    raise ValueError("native Lab fallback provider names must be null or non-empty trimmed strings")
                 if name is None:
                     _validate_native_provider_identity(typed_item[1], label="fallback")
             else:
@@ -395,10 +520,7 @@ def _validate_native_provider_budget_record(
         if remaining_requests <= 0
         else "remaining_tokens_insufficient"
     )
-    if (
-        value.admitted is not expected_admitted
-        or value.rejection_reason != expected_reason
-    ):
+    if value.admitted is not expected_admitted or value.rejection_reason != expected_reason:
         raise ValueError(f"native Lab {label} provider budget admission is inconsistent")
 
 
@@ -415,7 +537,7 @@ def _is_disallowed_ip_literal(host: str) -> bool:
         # separate DNS/egress enforcement boundary.
         try:
             address = ipaddress.ip_address(socket.inet_ntoa(socket.inet_aton(host)))
-        except (OSError, ValueError):
+        except OSError, ValueError:
             return False
     return any(
         (
@@ -470,13 +592,7 @@ def _rust_canonical_hash(value: Any) -> str:
 def _native_projection_payload_hash(value: Any) -> str:
     """Hash the canonical JSON payload accepted by native projection checks."""
 
-    payload = json.dumps(
-        value,
-        sort_keys=True,
-        separators=(",", ":"),
-        ensure_ascii=False,
-    ).encode("utf-8")
-    return blake3(b"aegis-lab-projection-payload-v1\0" + payload).hexdigest()
+    return projection_payload_digest(value)
 
 
 def _execution_cell_manifest_hash(manifest: Any) -> str:
@@ -529,6 +645,7 @@ _RUST_EVENT_KINDS = {
     "benchmark_evaluated": "BenchmarkEvaluated",
     "controller_step": "ReviewRecorded",
     "synthesis_committed": "ReviewRecorded",
+    "review_recorded": "ReviewRecorded",
     "research_program_admitted": "ResearchProgramAdmitted",
     "research_program_executed": "ResearchProgramExecuted",
     "security_event_recorded": "SecurityEventRecorded",
@@ -544,9 +661,58 @@ _RUST_EVENT_KINDS = {
 }
 
 _EXECUTION_CELL_MANIFEST_SCHEMA = "aegis-execution-cell-manifest-v1"
+_EXECUTION_CELL_RESOURCE_POLICY_SCHEMA = "aegis-execution-cell-resource-policy-v1"
+_EXECUTION_CELL_RESOURCE_POLICY_FIELDS = (
+    "cpu_time_limit_ms",
+    "memory_bytes",
+    "process_limit",
+    "thread_limit",
+    "fd_limit",
+    "input_bytes",
+    "output_bytes",
+    "timeout_ms",
+)
 
 _REPLAY_ARCHIVE_MANIFEST_SCHEMA = "aegis-run-event-segment-manifest-v1"
 _REPLAY_ARCHIVE_MANIFEST_VERSION = 1
+
+
+def _canonical_execution_cell_resource_policy(value: Any) -> dict[str, Any]:
+    """Normalize the bounded resource descriptor used by cell identity.
+
+    The descriptor is intentionally small and JSON-only.  A caller may not
+    provide an opaque digest as a substitute for the limits that the digest
+    is meant to identify.
+    """
+
+    if not isinstance(value, Mapping):
+        raise ValueError("execution cell resource policy must be a mapping")
+    typed = cast(Mapping[str, Any], value)
+    expected_keys = {"schema", *_EXECUTION_CELL_RESOURCE_POLICY_FIELDS}
+    if set(typed) != expected_keys:
+        raise ValueError("execution cell resource policy has missing or unknown fields")
+    if typed.get("schema") != _EXECUTION_CELL_RESOURCE_POLICY_SCHEMA:
+        raise ValueError("execution cell resource policy schema is invalid")
+    result: dict[str, Any] = {"schema": _EXECUTION_CELL_RESOURCE_POLICY_SCHEMA}
+    nonnegative_fields = {
+        "cpu_time_limit_ms",
+        "input_bytes",
+        "output_bytes",
+    }
+    for field_name in _EXECUTION_CELL_RESOURCE_POLICY_FIELDS:
+        raw_value = typed.get(field_name)
+        if type(raw_value) is not int or raw_value < 0:
+            raise ValueError("execution cell resource policy limits must be integers")
+        if field_name not in nonnegative_fields and raw_value < 1:
+            raise ValueError("execution cell resource policy positive limits are invalid")
+        result[field_name] = raw_value
+    return result
+
+
+def _execution_cell_resource_policy_hash(value: Any) -> str:
+    """Derive the resource identity from its canonical descriptor."""
+
+    return _native_projection_payload_hash(_canonical_execution_cell_resource_policy(value))
 
 
 _SEARCH_OPERATION_KINDS = frozenset(
@@ -576,10 +742,12 @@ _EXECUTION_CELL_ACTION_KINDS = _CONTROLLER_ACTION_KINDS | frozenset(
         "skill_execution",
         "post_completion_effect",
         "context_retrieval",
+        "progress_checkpoint",
         "benchmark_validation",
     }
 )
 _CONTROLLER_SAFE_TOOL_EFFECTS = frozenset({"read_only", "network_read", "compute", "model_inference"})
+_LOCAL_TOOL_EFFECTS = _CONTROLLER_SAFE_TOOL_EFFECTS | frozenset({"local_reversible"})
 _PROMPT_INJECTION_MARKERS = (
     "ignore previous instructions",
     "ignore all previous instructions",
@@ -589,9 +757,7 @@ _PROMPT_INJECTION_MARKERS = (
     "exfiltrate credentials",
     "developer message above",
 )
-_EPISTEMIC_STATUSES = frozenset(
-    {"OBSERVED", "DERIVED", "INFERRED", "SIMULATED", "UNKNOWN", "REJECTED"}
-)
+_EPISTEMIC_STATUSES = frozenset({"OBSERVED", "DERIVED", "INFERRED", "SIMULATED", "UNKNOWN", "REJECTED"})
 
 
 @dataclass(frozen=True)
@@ -613,13 +779,7 @@ class SearchOperation:
             raise ValueError("search operation argument keys must be strings")
         if any(type(item) is not str for key, item in value.items() if key != "kind"):
             raise ValueError("search operation arguments must be strings")
-        arguments = tuple(
-            sorted(
-                (key, item)
-                for key, item in value.items()
-                if key != "kind"
-            )
-        )
+        arguments = tuple(sorted((key, item) for key, item in value.items() if key != "kind"))
         operation = cls(kind=kind, arguments=arguments)
         operation.validate()
         return operation
@@ -641,7 +801,10 @@ class SearchOperation:
         if len(keys) != len(set(keys)):
             raise ValueError("search operation arguments must have unique keys")
         argument_map = dict(self.arguments)
-        if self.kind in {"query", "cross_check", "contradiction_search", "rank"} and not argument_map.get("text", "").strip():
+        if (
+            self.kind in {"query", "cross_check", "contradiction_search", "rank"}
+            and not argument_map.get("text", "").strip()
+        ):
             raise ValueError(f"{self.kind} operation requires non-empty text")
         if self.kind == "fetch":
             target = argument_map.get("url", "")
@@ -716,8 +879,7 @@ class SearchProgram:
             raise ValueError("search program allowlist hosts must be strings")
         normalized_hosts = tuple(host.strip().lower() for host in self.allowed_hosts)
         if any(
-            not host or host != original
-            for host, original in zip(normalized_hosts, self.allowed_hosts, strict=True)
+            not host or host != original for host, original in zip(normalized_hosts, self.allowed_hosts, strict=True)
         ):
             raise ValueError("search program allowlist hosts must be lowercase and trimmed")
         for operation in self.operations:
@@ -856,12 +1018,14 @@ class SearchProgramExecutor:
                     if text:
                         enriched = dict(candidate)
                         enriched["extracted_text"] = text
-                        enriched["citation_spans"] = ({
-                            "selector": selector,
-                            "start": 0,
-                            "end": len(text),
-                            "text_hash": _hash(text),
-                        },)
+                        enriched["citation_spans"] = (
+                            {
+                                "selector": selector,
+                                "start": 0,
+                                "end": len(text),
+                                "text_hash": _hash(text),
+                            },
+                        )
                         extracted.append(enriched)
                 candidates = extracted
                 trace_item["candidate_count"] = len(candidates)
@@ -942,8 +1106,7 @@ class SearchProgramExecutor:
                     raise ValueError("research response exceeds byte quota")
                 charset = response.headers.get_content_charset() or "utf-8"
                 return payload.decode(charset, errors="replace"), {
-                    str(key).lower(): str(value)
-                    for key, value in response.headers.items()
+                    str(key).lower(): str(value) for key, value in response.headers.items()
                 }
 
         return await asyncio.to_thread(read_response)
@@ -989,9 +1152,7 @@ class SearchProgramExecutor:
             uri = raw_uri
             content = raw_content
             content_hash = mapping.get("content_hash", _hash(content))
-            snapshot_hash = mapping.get(
-                "snapshot_hash", _hash({"uri": uri, "content": content})
-            )
+            snapshot_hash = mapping.get("snapshot_hash", _hash({"uri": uri, "content": content}))
             retrieved_at_ms = mapping.get("retrieved_at_ms", int(time.time() * 1000))
             trust_tier = mapping.get("trust_tier", 1)
             extractor = mapping.get("extractor", "search-program-provider")
@@ -1017,10 +1178,7 @@ class SearchProgramExecutor:
                 or type(citation_spans) not in (list, tuple)
                 or any(not _valid_citation_span(span) for span in citation_spans)
                 or (source_id is not None and (type(source_id) is not str or not source_id.strip()))
-                or (
-                    score is not None
-                    and not _is_finite_number(score)
-                )
+                or (score is not None and not _is_finite_number(score))
             ):
                 raise ValueError("query provider candidate metadata is invalid")
             normalized = {
@@ -1095,9 +1253,7 @@ class SearchProgramExecutor:
                 raise ValueError("provider candidate is outside the freshness window")
 
     @staticmethod
-    def _enforce_independent_contradictions(
-        candidates: list[dict[str, Any]], program: SearchProgram
-    ) -> None:
+    def _enforce_independent_contradictions(candidates: list[dict[str, Any]], program: SearchProgram) -> None:
         required = program.min_independent_contradiction_clusters
         if required == 0:
             return
@@ -1442,11 +1598,7 @@ def calibrate_simulation(
     ):
         raise ValueError("calibration requires non-empty train/holdout pairs and finite tolerance")
     for pair in (*train_pairs, *holdout_pairs):
-        if (
-            type(pair) not in (list, tuple)
-            or len(pair) != 2
-            or any(not _is_finite_number(value) for value in pair)
-        ):
+        if type(pair) not in (list, tuple) or len(pair) != 2 or any(not _is_finite_number(value) for value in pair):
             raise ValueError("calibration pairs must contain finite numeric values")
     errors = [simulated - observed for simulated, observed in holdout_pairs]
     rmse = math.sqrt(sum(error * error for error in errors) / len(errors))
@@ -1511,9 +1663,7 @@ class SimulationCell:
         ):
             raise ValueError("ODE convergence tolerance must be finite and non-negative")
         if invariant_tolerance is not None and (
-            invariant is None
-            or not _is_finite_number(invariant_tolerance)
-            or invariant_tolerance < 0
+            invariant is None or not _is_finite_number(invariant_tolerance) or invariant_tolerance < 0
         ):
             raise ValueError("ODE invariant tolerance requires a finite invariant callback")
         if type(initial_state) not in (list, tuple) or not initial_state:
@@ -1555,8 +1705,7 @@ class SimulationCell:
             k3 = evaluate(time_value + delta / 2, add_scaled(candidate, delta / 2, k2))
             k4 = evaluate(time_value + delta, add_scaled(candidate, delta, k3))
             combined = tuple(
-                candidate[index]
-                + delta * (k1[index] + 2 * k2[index] + 2 * k3[index] + k4[index]) / 6
+                candidate[index] + delta * (k1[index] + 2 * k2[index] + 2 * k3[index] + k4[index]) / 6
                 for index in range(dimension)
             )
             if any(not math.isfinite(value) for value in combined):
@@ -1618,14 +1767,10 @@ class SimulationCell:
             times=tuple(times),
             states=tuple(states),
             max_local_error=max_local_error,
-            convergence_status=(
-                "PASS" if convergence_tolerance is not None else "NOT_REQUESTED"
-            ),
+            convergence_status=("PASS" if convergence_tolerance is not None else "NOT_REQUESTED"),
             invariant_initial=invariant_initial,
             max_invariant_drift=max_invariant_drift,
-            invariant_status=(
-                "PASS" if invariant_tolerance is not None else "NOT_REQUESTED"
-            ),
+            invariant_status=("PASS" if invariant_tolerance is not None else "NOT_REQUESTED"),
         )
 
     async def run(self, spec: SimulationSpec, runner: Any) -> list[dict[str, Any]]:
@@ -1662,10 +1807,7 @@ class SimulationCell:
             if spec.convergence_tolerance is not None:
                 convergence_error = raw_map.get("convergence_error")
                 convergence_steps = raw_map.get("convergence_steps")
-                if (
-                    not _is_finite_number(convergence_error)
-                    or type(convergence_steps) is not int
-                ):
+                if not _is_finite_number(convergence_error) or type(convergence_steps) is not int:
                     raise ValueError("simulation convergence evidence is missing")
                 convergence_error = float(cast(float, convergence_error))
                 if (
@@ -1695,9 +1837,7 @@ class SimulationCell:
                     if type(supplied_unit) is not str or not supplied_unit.strip():
                         raise ValueError(f"simulation constraint unit is invalid: {name}")
                     try:
-                        residual = DEFAULT_UNIT_REGISTRY.convert(
-                            residual, supplied_unit, constraint.unit
-                        )
+                        residual = DEFAULT_UNIT_REGISTRY.convert(residual, supplied_unit, constraint.unit)
                     except ValueError as exc:
                         raise ValueError(f"simulation constraint unit mismatch: {name}") from exc
                     if not math.isfinite(residual) or abs(residual) > constraint.tolerance:
@@ -1776,9 +1916,7 @@ def _manifest_hash_bytes(manifest: Mapping[str, Any]) -> bytes:
     return bytes(typed_hash)
 
 
-def _validate_replay_archive_manifest_metadata(
-    manifest: Mapping[str, Any], *, require_current: bool
-) -> None:
+def _validate_replay_archive_manifest_metadata(manifest: Mapping[str, Any], *, require_current: bool) -> None:
     """Validate the additive archive schema marker without rewriting legacy data.
 
     A pre-marker snapshot may still be read for rollback/diagnosis when both
@@ -2038,8 +2176,7 @@ class ElectricalSignalCell:
             ("reference current", reference_current_samples),
         ):
             if samples is not None and (
-                type(samples) not in (list, tuple)
-                or any(not _is_finite_number(value) for value in samples)
+                type(samples) not in (list, tuple) or any(not _is_finite_number(value) for value in samples)
             ):
                 raise ValueError(f"{name} samples must be finite numeric sequences")
         if len(voltage_samples) != expected_samples or len(current_samples) != expected_samples:
@@ -2050,12 +2187,10 @@ class ElectricalSignalCell:
             raise ValueError("reference current sample count does not match the contract")
 
         voltage = tuple(
-            (float(value) - spec.voltage_sensor_offset_v) / spec.voltage_sensor_gain
-            for value in voltage_samples
+            (float(value) - spec.voltage_sensor_offset_v) / spec.voltage_sensor_gain for value in voltage_samples
         )
         current = tuple(
-            (float(value) - spec.current_sensor_offset_a) / spec.current_sensor_gain
-            for value in current_samples
+            (float(value) - spec.current_sensor_offset_a) / spec.current_sensor_gain for value in current_samples
         )
         if any(not math.isfinite(value) for value in (*voltage, *current)):
             raise ValueError("electrical samples must be finite")
@@ -2069,27 +2204,18 @@ class ElectricalSignalCell:
             if reference_current_samples is not None
             else None
         )
-        if (
-            reference_voltage is not None
-            and any(not math.isfinite(value) for value in reference_voltage)
-        ) or (
-            reference_current is not None
-            and any(not math.isfinite(value) for value in reference_current)
+        if (reference_voltage is not None and any(not math.isfinite(value) for value in reference_voltage)) or (
+            reference_current is not None and any(not math.isfinite(value) for value in reference_current)
         ):
             raise ValueError("reference electrical samples must be finite")
         dt = 1.0 / spec.sample_rate_hz
         times = tuple(index * dt for index in range(expected_samples))
         power = tuple(v * i for v, i in zip(voltage, current, strict=True))
-        ohms_residual = tuple(
-            v - i * spec.resistance_ohm for v, i in zip(voltage, current, strict=True)
-        )
+        ohms_residual = tuple(v - i * spec.resistance_ohm for v, i in zip(voltage, current, strict=True))
         max_residual = max(abs(value) for value in ohms_residual)
         if max_residual > spec.voltage_tolerance_v:
             raise ValueError("Ohm/Kirchhoff residual exceeds declared tolerance")
-        energy = sum(
-            (power[index - 1] + power[index]) * dt / 2.0
-            for index in range(1, expected_samples)
-        )
+        energy = sum((power[index - 1] + power[index]) * dt / 2.0 for index in range(1, expected_samples))
         if not math.isfinite(energy):
             raise ValueError("electrical energy integral is non-finite")
         voltage_error = (
@@ -2121,16 +2247,8 @@ class ElectricalSignalCell:
             max_ohms_residual_v=max_residual,
             max_voltage_sensor_error_v=voltage_error,
             max_current_sensor_error_a=current_error,
-            nyquist_status=(
-                "PASS_DECLARED_BAND"
-                if spec.max_expected_frequency_hz > 0
-                else "NOT_DECLARED"
-            ),
-            sensor_calibration_status=(
-                "DECLARED"
-                if spec.sensor_calibration_hash
-                else "NOT_DECLARED"
-            ),
+            nyquist_status=("PASS_DECLARED_BAND" if spec.max_expected_frequency_hz > 0 else "NOT_DECLARED"),
+            sensor_calibration_status=("DECLARED" if spec.sensor_calibration_hash else "NOT_DECLARED"),
             energy_status="NUMERICAL_TRAPEZOID_FROM_V_I_SAMPLES",
             epistemic_status="MEASURED_INPUTS_ONLY",
         )
@@ -2173,12 +2291,7 @@ class SourceRecord:
         ):
             raise ValueError("source identity, provenance and citation metadata are invalid")
         parsed_uri = urlparse(self.uri)
-        if (
-            parsed_uri.scheme != "https"
-            or not parsed_uri.hostname
-            or parsed_uri.username
-            or parsed_uri.password
-        ):
+        if parsed_uri.scheme != "https" or not parsed_uri.hostname or parsed_uri.username or parsed_uri.password:
             raise ValueError("source URI must be a credential-free HTTPS URL")
 
 
@@ -2276,9 +2389,7 @@ class ExperimentSpec:
             or self.min_clean_replicates < 0
             or self.min_clean_replicates > self.expected_observations
         ):
-            raise ValueError(
-                "experiment requires unique integer seeds, controls and a positive observation quota"
-            )
+            raise ValueError("experiment requires unique integer seeds, controls and a positive observation quota")
 
 
 @dataclass(frozen=True)
@@ -2363,6 +2474,7 @@ class LabDossier:
     scope: tuple[str, ...] = ()
     non_goals: tuple[str, ...] = ()
     skill_admissions: tuple[SkillAdmission, ...] = ()
+    goal_contract: dict[str, Any] | None = None
 
 
 @dataclass(frozen=True)
@@ -2390,10 +2502,7 @@ class BrowserCellPolicy:
             or self.max_actions < 1
             or self.max_observations < 1
             or any(
-                type(host) is not str
-                or not host.strip()
-                or host != host.strip().lower()
-                for host in self.allowed_hosts
+                type(host) is not str or not host.strip() or host != host.strip().lower() for host in self.allowed_hosts
             )
         ):
             raise ValueError("browser policy requires positive quotas and valid hosts")
@@ -2441,9 +2550,7 @@ class BrowserObserverView:
         await _call(method, milliseconds)
 
 
-_SKILL_RISK_CLASSES = frozenset(
-    {"read", "compute", "network_read", "external_write", "destructive"}
-)
+_SKILL_RISK_CLASSES = frozenset({"read", "compute", "network_read", "external_write", "destructive"})
 _SKILL_STATUSES = frozenset({"SUCCESS", "REJECTED", "CANCELLED"})
 
 
@@ -2857,9 +2964,7 @@ class BrowserCell:
         # Observer reads remain subject to the same HTTPS/host boundary as
         # actor actions, but consume only the independent observation quota.
         self.validate_url(await self._url(self._session))
-        result = await _execute_browser_action(
-            self.observer_view(), action, self, role="observer"
-        )
+        result = await _execute_browser_action(self.observer_view(), action, self, role="observer")
         self.observation_count += 1
         return result
 
@@ -3016,10 +3121,14 @@ async def _execute_browser_action(
             signature = inspect.signature(action)
             accepts_argument = any(
                 parameter.kind
-                in {inspect.Parameter.POSITIONAL_ONLY, inspect.Parameter.POSITIONAL_OR_KEYWORD, inspect.Parameter.VAR_POSITIONAL}
+                in {
+                    inspect.Parameter.POSITIONAL_ONLY,
+                    inspect.Parameter.POSITIONAL_OR_KEYWORD,
+                    inspect.Parameter.VAR_POSITIONAL,
+                }
                 for parameter in signature.parameters.values()
             )
-        except (TypeError, ValueError):
+        except TypeError, ValueError:
             accepts_argument = True
         return await _call(action, browser_session) if accepts_argument else await _call(action)
     if type(action) is not dict:
@@ -3094,9 +3203,7 @@ async def _execute_browser_action(
     raise ValueError(f"unsupported browser action kind: {kind}")
 
 
-def _runtime_browser_action(
-    browser_session: Any, action: Any, cell: BrowserCell
-) -> Callable[[], Any]:
+def _runtime_browser_action(browser_session: Any, action: Any, cell: BrowserCell) -> Callable[[], Any]:
     async def invoke() -> Any:
         return await _execute_browser_action(browser_session, action, cell)
 
@@ -3160,8 +3267,7 @@ class AdaptiveController:
                 uncertainty_gaps += sum(
                     1
                     for observation in run.observations.values()
-                    if observation.experiment_id == experiment.experiment_id
-                    and observation.uncertainty is None
+                    if observation.experiment_id == experiment.experiment_id and observation.uncertainty is None
                 )
         return (
             int(not bool(run.sources)),
@@ -3315,6 +3421,7 @@ class LabRun:
         external_attempt_budget: int | None = None,
         scope: tuple[str, ...] = (),
         non_goals: tuple[str, ...] = (),
+        goal_contract: GoalContract | None = None,
         require_native_authority: bool = False,
         authority_mode: AuthorityMode | str | None = None,
         trust_level: str = "DEV",
@@ -3337,9 +3444,7 @@ class LabRun:
         self.non_goals = tuple(non_goals)
         if authority_mode is None:
             normalized_authority_mode = (
-                AuthorityMode.NATIVE_REQUIRED
-                if require_native_authority
-                else AuthorityMode.PROJECTION_ONLY
+                AuthorityMode.NATIVE_REQUIRED if require_native_authority else AuthorityMode.PROJECTION_ONLY
             )
         else:
             normalized_authority_mode = _normalize_authority_mode(authority_mode)
@@ -3348,6 +3453,7 @@ class LabRun:
         self.authority_mode = normalized_authority_mode
         self.require_native_authority = self.authority_mode is AuthorityMode.NATIVE_REQUIRED
         self.trust_level = _normalize_lab_trust_level(trust_level)
+        _validate_authority_trust_pair(self.authority_mode, self.trust_level)
         expected_trust_policy_hash = _trust_policy_hash(self.trust_level)
         if trust_policy_hash is not None and trust_policy_hash != expected_trust_policy_hash:
             raise ValueError("lab trust policy hash does not match trust level")
@@ -3357,11 +3463,7 @@ class LabRun:
         self.trust_policy_hash = (
             trust_policy_hash
             if trust_policy_hash is not None
-            else (
-                expected_trust_policy_hash
-                if self.authority_mode is not AuthorityMode.PROJECTION_ONLY
-                else None
-            )
+            else (expected_trust_policy_hash if self.authority_mode is not AuthorityMode.PROJECTION_ONLY else None)
         )
         if token_budget is not None and type(token_budget) is not int:
             raise ValueError("lab token budget must be an integer")
@@ -3411,6 +3513,8 @@ class LabRun:
             else _default_external_attempt_budget(max_steps)
         )
         self.external_attempt_count = 0
+        if goal_contract is not None and type(goal_contract) is not GoalContract:
+            raise TypeError("lab goal contract must be GoalContract or unset")
         self.state = "planned"
         self.state_epoch = 0
         self.sources: dict[str, SourceRecord] = {}
@@ -3431,6 +3535,50 @@ class LabRun:
         self._native_mission: dict[str, Any] | None = None
         self._native_mission_hash: str | None = None
         self._native_finalization_started = False
+        if goal_contract is None:
+            goal_contract = GoalContract(
+                goal_id=self.mission_id,
+                objective=task,
+                target=TargetDescriptor(),
+                scope=self.scope,
+                non_goals=self.non_goals,
+                policy_digest=self.trust_policy_hash or "unbound",
+                budget=GoalBudgetContract.from_lab_budget(
+                    token_limit=self.token_budget,
+                    attempt_limit=self.external_attempt_budget,
+                    finalization_reserve=self.finalization_reserve,
+                    recovery_reserve=self.recovery_reserve,
+                ),
+                author_id="lab-compatibility",
+            )
+        else:
+            if goal_contract.objective != task:
+                raise ValueError("lab goal contract objective must match the mission task")
+            if tuple(goal_contract.scope) != tuple(sorted(self.scope)):
+                raise ValueError("lab goal contract scope must match the mission scope")
+            if tuple(goal_contract.non_goals) != tuple(sorted(self.non_goals)):
+                raise ValueError("lab goal contract non-goals must match the mission non-goals")
+            expected_budget = GoalBudgetContract.from_lab_budget(
+                token_limit=self.token_budget,
+                attempt_limit=self.external_attempt_budget,
+                finalization_reserve=self.finalization_reserve,
+                recovery_reserve=self.recovery_reserve,
+            )
+            if goal_contract.budget != expected_budget:
+                raise ValueError("lab goal contract budget must match the admitted Lab budget")
+            if goal_contract.policy_digest != "unbound" and goal_contract.policy_digest != (
+                self.trust_policy_hash or "unbound"
+            ):
+                raise ValueError("lab goal contract policy digest does not match Lab policy")
+            if goal_contract.has_explicit_acceptance or goal_contract.target.is_bound:
+                goal_contract.validate_for_admission()
+                unsupported_record_types = set(goal_contract.evidence_policy.required_record_types).difference(
+                    _GOAL_EVIDENCE_RECORD_TYPES
+                )
+                if unsupported_record_types:
+                    raise GoalContractError("goal evidence policy contains unsupported record types")
+        self.goal_contract = goal_contract
+        self.execution_binding: ExecutionBinding | None = None
         self._initialize_native_controller(task)
         self._append(
             "mission_created",
@@ -3439,6 +3587,9 @@ class LabRun:
                 "objective": task,
                 "scope": self.scope,
                 "non_goals": self.non_goals,
+                "goal_id": self.goal_contract.goal_id,
+                "goal_generation": self.goal_contract.generation,
+                "goal_contract_hash": self.goal_contract.contract_hash,
             },
         )
 
@@ -3464,23 +3615,7 @@ class LabRun:
         if not callable(controller_type):
             return
 
-        contract_hash = bytes.fromhex(
-            _hash(
-                {
-                    "objective": task,
-                    "scope": self.scope,
-                    "non_goals": self.non_goals,
-                    **(
-                        {
-                            "trust_level": self.trust_level,
-                            "trust_policy_hash": self.trust_policy_hash,
-                        }
-                        if self.trust_policy_hash is not None
-                        else {}
-                    ),
-                }
-            )
-        )
+        contract_hash = bytes.fromhex(self.goal_contract.contract_hash)
 
         def budget_vector(tokens: int) -> dict[str, int]:
             return {
@@ -3508,10 +3643,10 @@ class LabRun:
             "max_external_attempts": self.external_attempt_budget,
             "schema": "aegis-lab-runtime-v1",
         }
+        if self.goal_contract.has_explicit_acceptance:
+            mission["goal_contract_json"] = self.goal_contract.canonical_json()
         try:
-            self._native_controller = controller_type(
-                json.dumps(mission, separators=(",", ":"), ensure_ascii=False)
-            )
+            self._native_controller = controller_type(json.dumps(mission, separators=(",", ":"), ensure_ascii=False))
         except Exception as exc:
             if self.require_native_authority:
                 raise RuntimeError("native Lab controller initialization failed") from exc
@@ -3716,6 +3851,32 @@ class LabRun:
                 raise ValueError(f"{label} admission identity metadata is invalid")
             if event_identity.strip() == normalized_identity:
                 raise ValueError(f"{label} identity is duplicated")
+
+    def _is_registered_managed_internal_effect(self, tool_name: str, effect_class: str) -> bool:
+        """Recognize the one Lab-owned durable effect behind its sealed cell.
+
+        ``memory_write`` is durable, so it must not become local-safe merely
+        because a caller uses that label.  The post-completion hook is the
+        only managed internal effect: its exact tool/effect pair must also be
+        present in the replay-bound execution-cell manifest.
+        """
+
+        if tool_name != "memory.index_session" or effect_class != "memory_write":
+            return False
+        for item in self.execution_cell_manifest:
+            action_kinds = item.get("action_kinds", ())
+            capabilities = item.get("capabilities", ())
+            effects = item.get("effect_classes", ())
+            if (
+                isinstance(action_kinds, (list, tuple))
+                and "post_completion_effect" in action_kinds
+                and isinstance(capabilities, (list, tuple))
+                and "memory_write" in capabilities
+                and isinstance(effects, (list, tuple))
+                and "memory_write" in effects
+            ):
+                return True
+        return False
 
     def admit_skill(
         self,
@@ -4030,6 +4191,7 @@ class LabRun:
         execution_id: str | None = None,
         idempotency_key: str | None = None,
         timeout_seconds: float | None = None,
+        managed_internal: bool = False,
     ) -> tuple[str, str]:
         """Admit one generic tool side effect before invoking its adapter.
 
@@ -4052,6 +4214,7 @@ class LabRun:
             or (idempotency_key is not None and type(idempotency_key) is not str)
             or (timeout_seconds is not None and type(timeout_seconds) not in (int, float))
             or isinstance(timeout_seconds, bool)
+            or type(managed_internal) is not bool
         ):
             raise ValueError("tool execution admission contract is invalid")
         normalized_tool = tool_name.strip()
@@ -4086,6 +4249,53 @@ class LabRun:
             )
         ):
             raise ValueError("tool execution admission contract is invalid")
+        if managed_internal and not self._is_registered_managed_internal_effect(normalized_tool, normalized_effect):
+            raise GoalContractError("managed internal tool effect is not registered")
+        manifest_hash = self._execution_cell_manifest_hash()
+        if (
+            self._requires_execution_cell_identity()
+            and self.goal_contract.has_explicit_acceptance
+            and (
+                manifest_hash is None
+                or self.execution_binding is None
+                or self.execution_binding.execution_cell_manifest_hash != manifest_hash
+                or self.execution_binding.execution_cell_id is None
+                or self.execution_binding.execution_action_kind is None
+                or self.execution_binding.backend_kind is None
+                or self.execution_binding.resource_policy_hash is None
+                or any(item.get("resource_policy") is None for item in self.execution_cell_manifest)
+                or not self._manifest_has_execution_identity(self.execution_binding)
+            )
+        ):
+            raise GoalContractError(
+                "authoritative goal execution requires matching execution-cell and backend identity"
+            )
+        if normalized_effect not in _LOCAL_TOOL_EFFECTS and not managed_internal:
+            external_key = external_side_effect_key(normalized_tool, normalized_effect)
+            # A native-required run cannot let an unbound compatibility goal
+            # authorize an external side effect.  The target declaration is
+            # the only replay-bound ownership record available before the
+            # adapter is invoked; policy approval alone is insufficient.
+            if self.require_native_authority and (
+                not self.goal_contract.has_explicit_acceptance
+                or external_key not in self.goal_contract.target.external_side_effects
+            ):
+                raise GoalContractError("native tool external effect requires an explicit goal target declaration")
+            if (
+                self.goal_contract.has_explicit_acceptance
+                and external_key not in self.goal_contract.target.external_side_effects
+            ):
+                raise GoalContractError("tool external effect is not declared by the goal target")
+        try:
+            target_paths = _target_paths_from_payload(input_payload)
+        except ValueError as exc:
+            raise GoalContractError("tool target path payload is invalid") from exc
+        if (
+            self.goal_contract.has_explicit_acceptance
+            and target_paths
+            and any(not self.goal_contract.target.allows_path(path, normalized_effect) for path in target_paths)
+        ):
+            raise GoalContractError("tool target path is not allowlisted")
         ordinal = sum(event.kind == "tool_execution_admitted" for event in self.events) + 1
         normalized_execution_id = (
             f"tool-{normalized_tool}-{attempt}-{ordinal}" if execution_id is None else execution_id
@@ -4110,6 +4320,7 @@ class LabRun:
             "input_hash": _hash(input_payload),
             "policy_hash": _hash(policy_payload),
             "status": "ADMITTED",
+            "managed_internal": managed_internal,
         }
         if isinstance(raw_idempotency_key, str):
             payload["idempotency_key"] = raw_idempotency_key
@@ -4149,6 +4360,7 @@ class LabRun:
         policy_hash: str | None = None,
         idempotency_key: str | None = None,
         timeout_seconds: float | None = None,
+        managed_internal: bool = False,
     ) -> None:
         """Settle one admitted generic tool invocation exactly once.
 
@@ -4174,6 +4386,7 @@ class LabRun:
             or (idempotency_key is not None and type(idempotency_key) is not str)
             or (timeout_seconds is not None and type(timeout_seconds) not in (int, float))
             or isinstance(timeout_seconds, bool)
+            or type(managed_internal) is not bool
         ):
             raise ValueError("tool execution settlement contract is invalid")
         normalized_status = status.strip().upper()
@@ -4201,6 +4414,7 @@ class LabRun:
             "stop_rule": stop_rule.strip(),
             "input_hash": normalized_input_hash,
             "policy_hash": normalized_policy_hash,
+            "managed_internal": managed_internal,
         }
         raw_idempotency_key: object = idempotency_key
         raw_timeout_seconds: object = timeout_seconds
@@ -4364,11 +4578,7 @@ class LabRun:
 
         if self.state in {"completed", "aborted"}:
             raise ValueError(f"cannot admit research program in state {self.state}")
-        if (
-            type(program_hash) is not str
-            or type(operation_count) is not int
-            or type(provider) is not str
-        ):
+        if type(program_hash) is not str or type(operation_count) is not int or type(provider) is not str:
             raise ValueError("research program admission contract is invalid")
         if not _is_digest(program_hash) or operation_count < 1 or not provider.strip():
             raise ValueError("invalid research program admission")
@@ -4431,12 +4641,7 @@ class LabRun:
             or (policy_hash is not None and type(policy_hash) is not str)
         ):
             raise ValueError("research program settlement contract is invalid")
-        if (
-            not _is_digest(program_hash)
-            or operation_count < 1
-            or candidate_count < 0
-            or not provider.strip()
-        ):
+        if not _is_digest(program_hash) or operation_count < 1 or candidate_count < 0 or not provider.strip():
             raise ValueError("invalid research program receipt")
         normalized_status = status.strip().upper()
         if normalized_status not in {"SUCCESS", "REJECTED", "CANCELLED"}:
@@ -4447,13 +4652,17 @@ class LabRun:
                 operation_count=operation_count,
                 provider=provider,
             )
-        normalized_input_hash = _hash(
-            {
-                "schema": "aegis-research-program-input-v1",
-                "program_hash": program_hash,
-                "provider": provider,
-            }
-        ) if input_hash is None else input_hash
+        normalized_input_hash = (
+            _hash(
+                {
+                    "schema": "aegis-research-program-input-v1",
+                    "program_hash": program_hash,
+                    "provider": provider,
+                }
+            )
+            if input_hash is None
+            else input_hash
+        )
         result_hash = _hash(
             {
                 "schema": "aegis-research-program-result-v1",
@@ -4462,9 +4671,7 @@ class LabRun:
             }
         )
         normalized_policy_hash = (
-            _hash({"schema": "aegis-research-program-policy-v1"})
-            if policy_hash is None
-            else policy_hash
+            _hash({"schema": "aegis-research-program-policy-v1"}) if policy_hash is None else policy_hash
         )
         if not _is_digest(normalized_input_hash) or not _is_digest(normalized_policy_hash):
             raise ValueError("research program settlement hashes are invalid")
@@ -4547,9 +4754,7 @@ class LabRun:
                 "actor_role": "actor",
                 "action_kind": normalized_kind,
                 "input_hash": _hash(action),
-                "policy_hash": _hash(
-                    {"schema": "aegis-browser-cell-policy-v1", **asdict(policy)}
-                ),
+                "policy_hash": _hash({"schema": "aegis-browser-cell-policy-v1", **asdict(policy)}),
                 "status": "ADMITTED",
             },
             rollback_snapshot=snapshot,
@@ -4597,9 +4802,9 @@ class LabRun:
         if lease_id < 1 or not action_id.strip() or not admission_id.strip():
             raise ValueError("browser action settlement identity is invalid")
         normalized_input_hash = _hash(action) if input_hash is None else input_hash
-        normalized_policy_hash = _hash(
-            {"schema": "aegis-browser-cell-policy-v1", **asdict(policy)}
-        ) if policy_hash is None else policy_hash
+        normalized_policy_hash = (
+            _hash({"schema": "aegis-browser-cell-policy-v1", **asdict(policy)}) if policy_hash is None else policy_hash
+        )
         if not _is_digest(normalized_input_hash) or not _is_digest(normalized_policy_hash):
             raise ValueError("browser action settlement hashes are invalid")
         self._require_open_admission(
@@ -4692,9 +4897,7 @@ class LabRun:
                 "observation_kind": normalized_kind,
                 "observation_count": observation_count,
                 "input_hash": _hash(action),
-                "policy_hash": _hash(
-                    {"schema": "aegis-browser-cell-policy-v1", **asdict(policy)}
-                ),
+                "policy_hash": _hash({"schema": "aegis-browser-cell-policy-v1", **asdict(policy)}),
                 "status": "ADMITTED",
             },
             rollback_snapshot=snapshot,
@@ -4756,9 +4959,9 @@ class LabRun:
         if not observation_id or not admission_id.strip():
             raise ValueError("browser observation settlement identity is invalid")
         normalized_input_hash = _hash(action) if input_hash is None else input_hash
-        normalized_policy_hash = _hash(
-            {"schema": "aegis-browser-cell-policy-v1", **asdict(policy)}
-        ) if policy_hash is None else policy_hash
+        normalized_policy_hash = (
+            _hash({"schema": "aegis-browser-cell-policy-v1", **asdict(policy)}) if policy_hash is None else policy_hash
+        )
         if not _is_digest(normalized_input_hash) or not _is_digest(normalized_policy_hash):
             raise ValueError("browser observation settlement hashes are invalid")
         self._require_open_admission(
@@ -4862,6 +5065,371 @@ class LabRun:
             event_state_epoch=self.state_epoch + 1,
         )
 
+    def _goal_verification_from_events(self) -> GoalVerification | None:
+        """Recover the single verifier receipt from the append-only event log."""
+
+        verification: GoalVerification | None = None
+        for event in self.events:
+            if event.kind != "review_recorded":
+                continue
+            payload = event.payload
+            if not isinstance(payload, dict):
+                continue
+            typed_payload = cast(dict[str, Any], payload)
+            if typed_payload.get("record_type") != "goal_verification":
+                continue
+            self._validate_goal_event_binding(typed_payload)
+            raw_verification = typed_payload.get("verification")
+            if not isinstance(raw_verification, dict):
+                raise ValueError("goal verification event is missing its receipt")
+            try:
+                candidate = GoalVerification.from_dict(cast(dict[str, Any], raw_verification))
+                candidate.validate_against(self.goal_contract)
+                self._validate_goal_verification_evidence(candidate)
+            except (GoalContractError, TypeError, ValueError) as exc:
+                raise ValueError("invalid goal verification event") from exc
+            if verification is not None:
+                raise ValueError("goal verification is recorded more than once")
+            verification = candidate
+        return verification
+
+    def goal_progress_snapshot(self) -> GoalProgress:
+        """Project LabRun lifecycle and any verifier receipt into GoalProgress.
+
+        ``LabRun.state`` remains the compatibility reducer's source of truth.
+        A verdict is visible only when an independent, contract-bound receipt
+        has been appended to the event log after execution completed.
+        """
+
+        verification = self._goal_verification_from_events()
+        if verification is not None and self.state != "completed":
+            raise ValueError("goal verification requires a completed LabRun")
+        progress = GoalProgress.from_contract(self.goal_contract)
+        if self.state == "planned":
+            return progress
+        progress = progress.transition(
+            expected_generation=self.goal_contract.generation,
+            next_lifecycle=GoalLifecycle.ADMITTED,
+        )
+        if self.state == "aborted":
+            return progress.transition(
+                expected_generation=self.goal_contract.generation,
+                next_lifecycle=GoalLifecycle.CANCELLED,
+            )
+        progress = progress.transition(
+            expected_generation=self.goal_contract.generation,
+            next_lifecycle=GoalLifecycle.ACTIVE,
+        )
+        if self.state == "blocked":
+            return progress.transition(
+                expected_generation=self.goal_contract.generation,
+                next_lifecycle=GoalLifecycle.BLOCKED,
+            )
+        if self.state == "completed":
+            progress = progress.transition(
+                expected_generation=self.goal_contract.generation,
+                next_lifecycle=GoalLifecycle.SETTLED,
+            )
+            if verification is not None:
+                return progress.settle(
+                    expected_generation=self.goal_contract.generation,
+                    verification=verification,
+                    contract=self.goal_contract,
+                )
+            return progress
+        if self.state in {"researching", "experimenting", "reviewing"}:
+            return progress
+        raise ValueError(f"cannot project unknown LabRun state: {self.state}")
+
+    def record_goal_verification(self, verification: GoalVerification) -> GoalProgress:
+        """Append one independent verifier receipt after Lab execution completes."""
+
+        if not self.goal_contract.has_explicit_acceptance:
+            raise GoalContractError("goal verification requires an explicit acceptance contract")
+        if self.state != "completed":
+            raise GoalContractError("goal verification requires a completed LabRun")
+        if type(verification) is not GoalVerification:
+            raise TypeError("goal verification must be GoalVerification")
+        verification.validate_against(self.goal_contract)
+        self._validate_goal_verification_evidence(verification)
+        if self._goal_verification_from_events() is not None:
+            raise GoalContractError("goal verification is already recorded")
+        snapshot = self._projection_snapshot()
+        self._append(
+            "review_recorded",
+            {
+                "record_type": "goal_verification",
+                "verification": verification.to_dict(),
+            },
+            rollback_snapshot=snapshot,
+            event_state_epoch=self.state_epoch + 1,
+        )
+        return self.goal_progress_snapshot()
+
+    def evaluate_goal_verification(self) -> GoalVerification:
+        """Evaluate only the Lab-owned deterministic predicate vocabulary.
+
+        A goal may name an external evaluator, but this method never imports or
+        executes evaluator code from the contract.  It is therefore suitable
+        for deterministic local checks only.  It deliberately emits a
+        non-independent receipt; contracts requiring an independent verifier
+        must still provide an external, typed receipt.
+        """
+
+        if not self.goal_contract.has_explicit_acceptance:
+            raise GoalContractError("automatic goal evaluation requires explicit acceptance")
+        if self.state != "completed":
+            raise GoalContractError("automatic goal evaluation requires a completed LabRun")
+        if self.goal_contract.evidence_policy.require_independent_verifier:
+            raise GoalContractError("automatic Lab evaluation cannot satisfy an independent-verifier policy")
+        results: list[tuple[str, bool]] = []
+        evidence_refs: set[str] = set(self.sources)
+        for predicate in self.goal_contract.acceptance:
+            result, predicate_refs = self._evaluate_goal_predicate(predicate)
+            results.append((predicate.predicate_id, result))
+            evidence_refs.update(predicate.evidence_refs)
+            evidence_refs.update(predicate_refs)
+        verification = GoalVerification(
+            contract_hash=self.goal_contract.contract_hash,
+            generation=self.goal_contract.generation,
+            verifier_id=_DETERMINISTIC_GOAL_VERIFIER_ID,
+            independent=False,
+            predicate_results=tuple(results),
+            evidence_refs=tuple(sorted(evidence_refs)),
+            evidence_complete=False,
+        )
+        verification.validate_against(self.goal_contract)
+        complete = replace(verification, evidence_complete=True)
+        try:
+            complete.validate_against(self.goal_contract)
+            self._validate_goal_verification_evidence(complete)
+        except GoalContractError:
+            return verification
+        return complete
+
+    def _evaluate_goal_predicate(self, predicate: AcceptancePredicate) -> tuple[bool, tuple[str, ...]]:
+        """Run one allowlisted evaluator without dynamic code execution."""
+
+        if predicate.evaluator not in _DETERMINISTIC_GOAL_EVALUATORS:
+            raise GoalContractError(f"unsupported deterministic Lab evaluator: {predicate.evaluator}")
+        inputs = predicate.inputs
+        if predicate.evaluator == "aegis.lab.record_exists":
+            if len(inputs) != 2 or inputs[0] not in _GOAL_EVIDENCE_RECORD_TYPES:
+                raise GoalContractError("record_exists evaluator requires record type and record id")
+            records = {
+                "source": self.sources,
+                "claim": self.claims,
+                "hypothesis": self.hypotheses,
+                "experiment": self.experiments,
+                "observation": self.observations,
+            }[inputs[0]]
+            if type(predicate.expected_result) is not bool:
+                raise GoalContractError("record_exists expected_result must be boolean")
+            exists = inputs[1] in records
+            return exists is predicate.expected_result, (inputs[1],) if exists else ()
+
+        if predicate.evaluator == "aegis.lab.source_quorum":
+            if inputs:
+                raise GoalContractError("source_quorum evaluator does not accept inputs")
+            if type(predicate.expected_result) is not int or predicate.expected_result < 1:
+                raise GoalContractError("source_quorum expected_result must be a positive integer")
+            return len(self.sources) >= predicate.expected_result, tuple(self.sources)
+
+        if len(inputs) != 1:
+            raise GoalContractError(f"{predicate.evaluator} evaluator requires one record id")
+        record_id = inputs[0]
+        if predicate.evaluator == "aegis.lab.claim_confidence_at_least":
+            claim = self.claims.get(record_id)
+            if claim is None or type(predicate.expected_result) is not int:
+                raise GoalContractError("claim_confidence_at_least requires a known claim and integer threshold")
+            if not 0 <= predicate.expected_result <= 10_000:
+                raise GoalContractError("claim confidence threshold is out of range")
+            return claim.confidence_bps >= predicate.expected_result, (record_id, *claim.source_ids)
+
+        if predicate.evaluator == "aegis.lab.claim_status_is":
+            claim = self.claims.get(record_id)
+            if claim is None or type(predicate.expected_result) is not str:
+                raise GoalContractError("claim_status_is requires a known claim and string status")
+            return claim.status == predicate.expected_result, (record_id, *claim.source_ids)
+
+        if predicate.evaluator == "aegis.lab.observation_count_at_least":
+            experiment = self.experiments.get(record_id)
+            if experiment is None or type(predicate.expected_result) is not int:
+                raise GoalContractError("observation_count_at_least requires a known experiment and integer threshold")
+            observations = tuple(
+                observation.observation_id
+                for observation in self.observations.values()
+                if observation.experiment_id == record_id
+            )
+            return len(observations) >= predicate.expected_result, (record_id, *observations)
+
+        experiment = self.experiments.get(record_id)
+        if experiment is None or type(predicate.expected_result) is not bool:
+            raise GoalContractError("experiment_complete requires a known experiment and boolean expectation")
+        observations = tuple(
+            observation for observation in self.observations.values() if observation.experiment_id == record_id
+        )
+        complete = len(observations) >= experiment.expected_observations and all(
+            observation.valid for observation in observations
+        )
+        return complete is predicate.expected_result, (
+            record_id,
+            *(observation.observation_id for observation in observations),
+        )
+
+    def _validate_goal_verification_evidence(self, verification: GoalVerification) -> None:
+        """Require complete receipts to point at evidence retained by this Lab."""
+
+        if not verification.evidence_complete:
+            return
+        record_counts = {
+            "source": len(self.sources),
+            "claim": len(self.claims),
+            "hypothesis": len(self.hypotheses),
+            "experiment": len(self.experiments),
+            "observation": len(self.observations),
+        }
+        if any(
+            record_counts[record_type] == 0 for record_type in self.goal_contract.evidence_policy.required_record_types
+        ):
+            raise GoalContractError("goal verification is missing a required record type")
+        known_record_ids = (
+            set(self.sources) | set(self.claims) | set(self.hypotheses) | set(self.experiments) | set(self.observations)
+        )
+        known_source_ids = set(self.sources)
+        required_refs = {
+            evidence_ref
+            for predicate in self.goal_contract.acceptance
+            if predicate.required
+            for evidence_ref in predicate.evidence_refs
+        }
+        if not required_refs.issubset(verification.evidence_refs):
+            raise GoalContractError("goal verification omits required evidence references")
+        missing_from_lab = required_refs.difference(known_record_ids)
+        if missing_from_lab:
+            raise GoalContractError("goal verification references evidence absent from the Lab")
+        if (
+            len(known_source_ids.intersection(verification.evidence_refs))
+            < self.goal_contract.evidence_policy.minimum_sources
+        ):
+            raise GoalContractError("goal verification does not meet the minimum source count")
+
+    def _goal_event_binding(self) -> dict[str, Any]:
+        binding: dict[str, Any] = {
+            "goal_id": self.goal_contract.goal_id,
+            "goal_generation": self.goal_contract.generation,
+            "goal_contract_hash": self.goal_contract.contract_hash,
+            "target_digest": self.goal_contract.target.canonical_digest(),
+        }
+        manifest_hash = self._execution_cell_manifest_hash()
+        if manifest_hash is not None:
+            binding["execution_cell_manifest_hash"] = manifest_hash
+        if self.execution_binding is not None:
+            binding["execution_binding"] = self.execution_binding.to_dict()
+        return binding
+
+    def _execution_cell_manifest_hash(self) -> str | None:
+        if not self.execution_cell_manifest:
+            return None
+        return _execution_cell_manifest_hash([dict(item) for item in self.execution_cell_manifest])
+
+    def _requires_execution_cell_identity(self) -> bool:
+        """Return whether this run may claim an authoritative cell identity."""
+
+        return self.require_native_authority or self.trust_level == "PROD"
+
+    def _manifest_has_execution_identity(self, binding: ExecutionBinding) -> bool:
+        if binding.backend_kind is None or binding.resource_policy_hash is None:
+            return False
+        matches: list[dict[str, Any]] = []
+        for item in self.execution_cell_manifest:
+            if item.get("backend_kind") != binding.backend_kind:
+                continue
+            if item.get("resource_policy_hash") != binding.resource_policy_hash:
+                continue
+            if item.get("resource_policy") is None:
+                continue
+            try:
+                if _execution_cell_resource_policy_hash(item["resource_policy"]) != binding.resource_policy_hash:
+                    continue
+            except ValueError:
+                continue
+            if binding.execution_cell_id is not None and item.get("cell_id") != binding.execution_cell_id:
+                continue
+            if binding.execution_action_kind is not None and binding.execution_action_kind not in item.get(
+                "action_kinds", ()
+            ):
+                continue
+            matches.append(item)
+        return len(matches) == 1
+
+    def bind_execution(self, binding: ExecutionBinding) -> None:
+        """Bind one immutable plan/attempt identity before goal-bound events.
+
+        The binding's plan and principal values are preserved exactly.  This
+        layer does not interpret ``plan_digest`` or authenticate either owner
+        metadata field; authorization remains an admission-boundary concern.
+        """
+
+        if type(binding) is not ExecutionBinding:
+            raise TypeError("lab execution binding must be ExecutionBinding")
+        if self.execution_binding is not None:
+            raise GoalContractError("Lab execution binding is already set")
+        if any(event.kind in _GOAL_BOUND_EVENT_KINDS for event in self.events):
+            raise GoalContractError("Lab execution binding must be set before the first goal-bound event")
+        binding.validate_against(self.goal_contract)
+        if binding.mission_id != self.mission_id:
+            raise GoalContractError("Lab execution binding mission does not match LabRun")
+        expected_target_digest = self.goal_contract.target.canonical_digest()
+        if binding.target_digest != expected_target_digest:
+            raise GoalContractError("Lab execution binding target digest does not match LabRun")
+        expected_manifest_hash = self._execution_cell_manifest_hash()
+        if binding.execution_cell_manifest_hash != expected_manifest_hash:
+            raise GoalContractError("execution binding execution-cell manifest does not match LabRun")
+        if (binding.execution_cell_id is None) != (binding.execution_action_kind is None):
+            raise GoalContractError("execution binding selected execution cell identity is incomplete")
+        if binding.backend_kind is not None and not self._manifest_has_execution_identity(binding):
+            raise GoalContractError("execution binding selected execution cell identity does not match LabRun manifest")
+        if self._requires_execution_cell_identity() and self.goal_contract.has_explicit_acceptance:
+            if (
+                not self.execution_cell_manifest
+                or binding.execution_cell_id is None
+                or binding.execution_action_kind is None
+                or binding.backend_kind is None
+                or binding.resource_policy_hash is None
+                or any(
+                    item.get("backend_kind") is None or item.get("resource_policy_hash") is None
+                    for item in self.execution_cell_manifest
+                )
+            ):
+                raise GoalContractError(
+                    "authoritative goal execution requires selected cell and resource policy identity"
+                )
+            if not self._manifest_has_execution_identity(binding):
+                raise GoalContractError("authoritative execution binding lacks a unique matching cell identity")
+        if binding.evidence_digest is not None or binding.completion_digest is not None:
+            raise GoalContractError("Lab execution binding receipt digests are not supported by this integration")
+        self.execution_binding = binding
+
+    def _validate_goal_event_binding(self, payload: Mapping[str, Any]) -> None:
+        expected = self._goal_event_binding()
+        if any(payload.get(key) != value for key, value in expected.items()):
+            raise ValueError("execution event goal/target binding is invalid")
+        if "execution_cell_manifest_hash" not in expected and ("execution_cell_manifest_hash" in payload):
+            raise ValueError("execution event contains an unexpected cell manifest binding")
+        raw_execution_binding = payload.get("execution_binding")
+        if self.execution_binding is None:
+            if raw_execution_binding is not None:
+                raise ValueError("execution event contains an unexpected execution binding")
+            return
+        try:
+            parsed_binding = ExecutionBinding.from_dict(raw_execution_binding)
+            parsed_binding.validate_against(self.goal_contract)
+        except (GoalContractError, TypeError, ValueError) as exc:
+            raise ValueError("execution event contains an invalid execution binding") from exc
+        if parsed_binding != self.execution_binding:
+            raise ValueError("execution event execution binding does not match LabRun")
+
     def _append(
         self,
         kind: str,
@@ -4883,9 +5451,17 @@ class LabRun:
             if existing_trust_hash is not None and existing_trust_hash != self.trust_policy_hash:
                 raise ValueError("event trust policy hash does not match Lab policy")
             payload = {**typed_payload, "trust_policy_hash": self.trust_policy_hash}
-        canonical_payload = json.loads(
-            json.dumps(payload, sort_keys=True, separators=(",", ":"), default=str)
-        )
+        if kind in _GOAL_BOUND_EVENT_KINDS and isinstance(payload, Mapping):
+            typed_payload = cast(Mapping[str, Any], payload)
+            binding = self._goal_event_binding()
+            if self.execution_binding is None and "execution_binding" in typed_payload:
+                raise ValueError("event contains an unexpected execution binding")
+            for key, value in binding.items():
+                existing = typed_payload.get(key)
+                if existing is not None and existing != value:
+                    raise ValueError("event goal/target binding does not match Lab contract")
+            payload = {**typed_payload, **binding}
+        canonical_payload = json.loads(json.dumps(payload, sort_keys=True, separators=(",", ":"), default=str))
         if kind == "mission_created" and self._native_mission_hash is not None:
             payload_hash = self._native_mission_hash
         elif kind == "budget_admitted":
@@ -4896,9 +5472,7 @@ class LabRun:
             payload_hash = _hash(canonical_payload)
         previous = self.events[-1].event_hash if self.events else "0" * 64
         sequence = len(self.events) + 1
-        candidate_state_epoch = (
-            self.state_epoch if event_state_epoch is None else event_state_epoch
-        )
+        candidate_state_epoch = self.state_epoch if event_state_epoch is None else event_state_epoch
         event_hash = _rust_event_hash(
             sequence,
             candidate_state_epoch,
@@ -5101,10 +5675,40 @@ class LabRun:
                 if type(raw_values) not in (list, tuple):
                     raise ValueError("execution cell manifest policy fields must be sequences")
                 normalized[key] = tuple(cast(list[Any] | tuple[Any, ...], raw_values))
+            backend_kind = normalized.get("backend_kind")
+            resource_policy = normalized.get("resource_policy")
+            resource_policy_hash = normalized.get("resource_policy_hash")
+            if backend_kind is not None and (
+                type(backend_kind) is not str or not backend_kind.strip() or backend_kind != backend_kind.strip()
+            ):
+                raise ValueError("execution cell backend kind is invalid")
+            if resource_policy_hash is not None and (
+                type(resource_policy_hash) is not str or not _is_digest(resource_policy_hash)
+            ):
+                raise ValueError("execution cell resource policy hash is invalid")
+            if backend_kind is None and (resource_policy is not None or resource_policy_hash is not None):
+                raise ValueError("execution cell resource identity requires a backend kind")
+            if backend_kind is not None:
+                if resource_policy is None:
+                    raise ValueError("execution cell backend identity requires a resource policy descriptor")
+                canonical_policy = _canonical_execution_cell_resource_policy(resource_policy)
+                derived_policy_hash = _execution_cell_resource_policy_hash(canonical_policy)
+                if resource_policy_hash is not None and resource_policy_hash != derived_policy_hash:
+                    raise ValueError("execution cell resource policy hash does not match descriptor")
+                normalized["backend_kind"] = backend_kind.lower()
+                normalized["resource_policy"] = canonical_policy
+                normalized["resource_policy_hash"] = derived_policy_hash
+                resource_policy_hash = derived_policy_hash
+            if self._requires_execution_cell_identity() and (backend_kind is None or resource_policy_hash is None):
+                raise GoalContractError("authoritative goal execution requires backend and resource policy identity")
             normalized_manifest.append(normalized)
 
         manifest_value = [dict(item) for item in normalized_manifest]
         manifest_hash = _execution_cell_manifest_hash(manifest_value)
+        if self.execution_binding is not None and (
+            self.execution_binding.execution_cell_manifest_hash != manifest_hash
+        ):
+            raise GoalContractError("execution-cell manifest does not match the existing execution binding")
         payload = {
             "schema": _EXECUTION_CELL_MANIFEST_SCHEMA,
             "cell_count": len(manifest_value),
@@ -5157,10 +5761,7 @@ class LabRun:
                     event.state_epoch - 1,
                     json.dumps(spend, separators=(",", ":")),
                 )
-            elif (
-                event.kind != "mission_created"
-                and callable(record_admitter)
-            ):
+            elif event.kind != "mission_created" and callable(record_admitter):
                 payload_json = json.dumps(
                     event.payload,
                     sort_keys=True,
@@ -5281,7 +5882,7 @@ class LabRun:
         request_id, admission_id = self.admit_cancellation(reason="abort")
         try:
             self.transition("aborted")
-        except (RuntimeError, TypeError, ValueError):
+        except RuntimeError, TypeError, ValueError:
             # The failed transition is itself a replay-visible cancellation
             # settlement; the run remains in its previous non-terminal state.
             self.record_cancellation(
@@ -5335,10 +5936,7 @@ class LabRun:
             claim.validate()
         except ValueError as exc:
             raise ValueError("claim must cite known sources and have bounded confidence") from exc
-        if (
-            any(source_id not in self.sources for source_id in claim.source_ids)
-            or claim.claim_id in self.claims
-        ):
+        if any(source_id not in self.sources for source_id in claim.source_ids) or claim.claim_id in self.claims:
             raise ValueError("claim must cite known sources and have bounded confidence")
         snapshot = self._projection_snapshot()
 
@@ -5363,7 +5961,10 @@ class LabRun:
         except ValueError as exc:
             raise ValueError("hypothesis must include falsifiers and known claim links") from exc
         if (
-            any(claim_id not in self.claims for claim_id in (*hypothesis.supporting_claim_ids, *hypothesis.contradicting_claim_ids))
+            any(
+                claim_id not in self.claims
+                for claim_id in (*hypothesis.supporting_claim_ids, *hypothesis.contradicting_claim_ids)
+            )
             or hypothesis.hypothesis_id in self.hypotheses
         ):
             raise ValueError("hypothesis must include falsifiers and known claim links")
@@ -5407,10 +6008,7 @@ class LabRun:
             raise ValueError(f"cannot add observation in state {self.state}")
         observation.validate()
         experiment = self.experiments.get(observation.experiment_id)
-        if (
-            experiment is None
-            or observation.observation_id in self.observations
-        ):
+        if experiment is None or observation.observation_id in self.observations:
             raise ValueError("invalid observation or unknown experiment")
         try:
             if not DEFAULT_UNIT_REGISTRY.compatible(observation.unit, experiment.measurement_unit):
@@ -5478,17 +6076,17 @@ class LabRun:
         admission that was actually appended to the event ledger.
         """
 
+        derived_event_fields = frozenset({"trust_policy_hash", *self._goal_event_binding()})
+
         def canonical(value: Any) -> Any:
             try:
-                normalized: Any = json.loads(
-                    json.dumps(value, sort_keys=True, separators=(",", ":"))
-                )
+                normalized: Any = json.loads(json.dumps(value, sort_keys=True, separators=(",", ":")))
             except (TypeError, ValueError, OverflowError) as exc:
-                raise RuntimeError(
-                    "native projection diverged: admission is not canonical JSON"
-                ) from exc
+                raise RuntimeError("native projection diverged: admission is not canonical JSON") from exc
             if isinstance(normalized, dict):
-                cast(dict[Any, Any], normalized).pop("trust_policy_hash", None)
+                typed_normalized = cast(dict[Any, Any], normalized)
+                for field in derived_event_fields:
+                    typed_normalized.pop(field, None)
             return cast(Any, normalized)
 
         def event_admissions(
@@ -5500,18 +6098,12 @@ class LabRun:
                 if event.kind != kind:
                     continue
                 payload = event.payload
-                if type(payload) is not dict or any(
-                    type(key) is not str for key in cast(dict[Any, Any], payload)
-                ):
-                    raise RuntimeError(
-                        f"native projection diverged: event_{event.sequence}=invalid_admission_payload"
-                    )
+                if type(payload) is not dict or any(type(key) is not str for key in cast(dict[Any, Any], payload)):
+                    raise RuntimeError(f"native projection diverged: event_{event.sequence}=invalid_admission_payload")
                 typed_payload = cast(dict[str, Any], payload)
                 identity = typed_payload.get(identity_key)
                 if type(identity) is not str or not identity.strip():
-                    raise RuntimeError(
-                        f"native projection diverged: event_{event.sequence}=invalid_admission_identity"
-                    )
+                    raise RuntimeError(f"native projection diverged: event_{event.sequence}=invalid_admission_identity")
                 if identity in result:
                     raise RuntimeError(
                         f"native projection diverged: event_{event.sequence}=duplicate_admission_identity"
@@ -5527,9 +6119,7 @@ class LabRun:
                 raise RuntimeError("native projection diverged: tool_execution_admissions=invalid")
             _, event_payload = tool_events[execution_id]
             if canonical(admission) != canonical(event_payload):
-                raise RuntimeError(
-                    f"native projection diverged: tool_execution_admission:{execution_id}=different"
-                )
+                raise RuntimeError(f"native projection diverged: tool_execution_admission:{execution_id}=different")
 
         skill_events = event_admissions("skill_admission_recorded", "admission_hash")
         if set(self.skill_admissions) != set(skill_events):
@@ -5540,15 +6130,11 @@ class LabRun:
             event, event_payload = skill_events[admission_hash]
             raw_event_binding = event_payload.get("admission_event_hash", "")
             if type(raw_event_binding) is not str or raw_event_binding:
-                raise RuntimeError(
-                    f"native projection diverged: event_{event.sequence}=skill_event_binding"
-                )
+                raise RuntimeError(f"native projection diverged: event_{event.sequence}=skill_event_binding")
             expected = dict(event_payload)
             expected["admission_event_hash"] = event.event_hash
             if canonical(asdict(admission)) != canonical(expected):
-                raise RuntimeError(
-                    f"native projection diverged: skill_admission:{admission_hash}=different"
-                )
+                raise RuntimeError(f"native projection diverged: skill_admission:{admission_hash}=different")
 
         tool_settlement_events = event_admissions("tool_execution_recorded", "execution_id")
         if self.tool_executions != set(tool_settlement_events):
@@ -5561,13 +6147,9 @@ class LabRun:
 
         def canonical(value: Any) -> Any:
             try:
-                normalized: Any = json.loads(
-                    json.dumps(value, sort_keys=True, separators=(",", ":"))
-                )
+                normalized: Any = json.loads(json.dumps(value, sort_keys=True, separators=(",", ":")))
             except (TypeError, ValueError, OverflowError) as exc:
-                raise RuntimeError(
-                    "native projection diverged: record is not canonical JSON"
-                ) from exc
+                raise RuntimeError("native projection diverged: record is not canonical JSON") from exc
             if isinstance(normalized, dict):
                 cast(dict[Any, Any], normalized).pop("trust_policy_hash", None)
             return cast(Any, normalized)
@@ -5607,9 +6189,7 @@ class LabRun:
                 try:
                     current[record_id] = canonical(asdict(record))
                 except (TypeError, ValueError, AttributeError) as exc:
-                    raise RuntimeError(
-                        f"native projection diverged: {kind}:{record_id}=invalid"
-                    ) from exc
+                    raise RuntimeError(f"native projection diverged: {kind}:{record_id}=invalid") from exc
             record_ids: set[str] = set(admitted.keys()) | set(current.keys())
             mismatches.extend(
                 f"{kind}:{record_id}=different"
@@ -5620,9 +6200,7 @@ class LabRun:
                 # Continue collecting the other record classes only when the
                 # current class is clean; one bounded detail is sufficient for
                 # the operator while preserving deterministic failure.
-                raise RuntimeError(
-                    "native projection diverged: " + mismatches[0]
-                )
+                raise RuntimeError("native projection diverged: " + mismatches[0])
 
     def _assert_projection_operator_consistency(self) -> None:
         """Bind blocker/security projections to their append events."""
@@ -5635,39 +6213,25 @@ class LabRun:
                 if type(raw_payload) is not dict or any(
                     type(key) is not str for key in cast(dict[Any, Any], raw_payload)
                 ):
-                    raise RuntimeError(
-                        f"native projection diverged: event_{event.sequence}=blocker_metadata"
-                    )
+                    raise RuntimeError(f"native projection diverged: event_{event.sequence}=blocker_metadata")
                 payload = cast(dict[str, Any], raw_payload)
                 if type(payload.get("reason")) is not str or type(payload.get("detail", "")) is not str:
-                    raise RuntimeError(
-                        f"native projection diverged: event_{event.sequence}=blocker_metadata"
-                    )
+                    raise RuntimeError(f"native projection diverged: event_{event.sequence}=blocker_metadata")
                 reason = cast(str, payload["reason"])
                 if not reason.strip():
-                    raise RuntimeError(
-                        f"native projection diverged: event_{event.sequence}=blocker_identity"
-                    )
+                    raise RuntimeError(f"native projection diverged: event_{event.sequence}=blocker_identity")
                 if event.kind == "blocker_recorded":
                     if reason in blockers:
-                        raise RuntimeError(
-                            f"native projection diverged: event_{event.sequence}=duplicate_blocker"
-                        )
+                        raise RuntimeError(f"native projection diverged: event_{event.sequence}=duplicate_blocker")
                     blockers.append(reason)
                 else:
                     if reason not in blockers:
-                        raise RuntimeError(
-                            f"native projection diverged: event_{event.sequence}=unknown_blocker"
-                        )
+                        raise RuntimeError(f"native projection diverged: event_{event.sequence}=unknown_blocker")
                     blockers.remove(reason)
             elif event.kind == "security_event_recorded":
                 payload = event.payload
-                if type(payload) is not dict or any(
-                    type(key) is not str for key in cast(dict[Any, Any], payload)
-                ):
-                    raise RuntimeError(
-                        f"native projection diverged: event_{event.sequence}=security_metadata"
-                    )
+                if type(payload) is not dict or any(type(key) is not str for key in cast(dict[Any, Any], payload)):
+                    raise RuntimeError(f"native projection diverged: event_{event.sequence}=security_metadata")
                 typed_payload = cast(dict[str, Any], payload)
                 if (
                     type(typed_payload.get("reason")) is not str
@@ -5679,9 +6243,7 @@ class LabRun:
                         and not _is_digest(cast(str, typed_payload["artifact_hash"]))
                     )
                 ):
-                    raise RuntimeError(
-                        f"native projection diverged: event_{event.sequence}=security_metadata"
-                    )
+                    raise RuntimeError(f"native projection diverged: event_{event.sequence}=security_metadata")
                 security_events.append(
                     {
                         "reason": cast(str, typed_payload["reason"]),
@@ -5697,11 +6259,7 @@ class LabRun:
     def _assert_execution_cell_manifest_consistency(self) -> None:
         """Keep the mutable manifest projection bound to one immutable event."""
 
-        manifest_events = [
-            event
-            for event in self.events
-            if event.kind == "execution_cell_manifest_recorded"
-        ]
+        manifest_events = [event for event in self.events if event.kind == "execution_cell_manifest_recorded"]
         if len(manifest_events) > 1:
             raise RuntimeError("native projection diverged: execution_cell_manifest=duplicate")
         if not manifest_events:
@@ -5751,20 +6309,14 @@ class LabRun:
             event_payload = event.payload
             if not isinstance(event_payload, dict):
                 if self.trust_policy_hash is not None:
-                    raise RuntimeError(
-                        f"native projection diverged: event_{event.sequence}=trust_policy_mismatch"
-                    )
+                    raise RuntimeError(f"native projection diverged: event_{event.sequence}=trust_policy_mismatch")
                 continue
             raw_event_trust_hash = cast(dict[str, Any], event_payload).get("trust_policy_hash")
             if self.trust_policy_hash is None:
                 if raw_event_trust_hash is not None:
-                    raise RuntimeError(
-                        f"native projection diverged: event_{event.sequence}=unexpected_trust_policy"
-                    )
+                    raise RuntimeError(f"native projection diverged: event_{event.sequence}=unexpected_trust_policy")
             elif raw_event_trust_hash != self.trust_policy_hash:
-                raise RuntimeError(
-                    f"native projection diverged: event_{event.sequence}=trust_policy_mismatch"
-                )
+                raise RuntimeError(f"native projection diverged: event_{event.sequence}=trust_policy_mismatch")
         snapshot_reader = getattr(native_controller, "snapshot_json", None)
         if native_controller is None or not callable(snapshot_reader):
             return
@@ -5786,9 +6338,7 @@ class LabRun:
         if isinstance(native_events, list):
             native_event_list = cast(list[Any], native_events)
             if len(native_event_list) != len(self.events):
-                mismatches.append(
-                    f"event_count python={len(self.events)} native={len(native_event_list)}"
-                )
+                mismatches.append(f"event_count python={len(self.events)} native={len(native_event_list)}")
             else:
                 for expected, actual in zip(self.events, native_event_list, strict=True):
                     if not isinstance(actual, dict):
@@ -5816,12 +6366,8 @@ class LabRun:
             if native_state and native_state != self.state:
                 mismatches.append(f"state python={self.state} native={native_state}")
         native_epoch = runtime.get("state_epoch")
-        if native_epoch is not None and (
-            type(native_epoch) is not int or native_epoch != self.state_epoch
-        ):
-            mismatches.append(
-                f"state_epoch python={self.state_epoch} native={native_epoch}"
-            )
+        if native_epoch is not None and (type(native_epoch) is not int or native_epoch != self.state_epoch):
+            mismatches.append(f"state_epoch python={self.state_epoch} native={native_epoch}")
 
         def native_ids(field: str) -> set[str] | None:
             value = snapshot_map.get(field)
@@ -5850,9 +6396,7 @@ class LabRun:
         for field, expected in expected_ids.items():
             actual = native_ids(field)
             if actual is not None and actual != expected:
-                mismatches.append(
-                    f"{field} python={sorted(expected)!r} native={sorted(actual)!r}"
-                )
+                mismatches.append(f"{field} python={sorted(expected)!r} native={sorted(actual)!r}")
 
         actual_payloads = snapshot_map.get("projection_payloads")
         if isinstance(actual_payloads, dict) and actual_payloads:
@@ -5900,13 +6444,10 @@ class LabRun:
             derived_blockers.append("experiment_not_preregistered")
         for experiment in self.experiments.values():
             observed = sum(
-                observation.experiment_id == experiment.experiment_id
-                for observation in self.observations.values()
+                observation.experiment_id == experiment.experiment_id for observation in self.observations.values()
             )
             if observed < experiment.expected_observations:
-                derived_blockers.append(
-                    f"experiment_observation_quota_missing:{experiment.experiment_id}"
-                )
+                derived_blockers.append(f"experiment_observation_quota_missing:{experiment.experiment_id}")
             clean_replicates = sum(
                 observation.experiment_id == experiment.experiment_id
                 and observation.replication_of is not None
@@ -5914,12 +6455,9 @@ class LabRun:
                 for observation in self.observations.values()
             )
             if clean_replicates < experiment.min_clean_replicates:
-                derived_blockers.append(
-                    f"clean_replication_quota_missing:{experiment.experiment_id}"
-                )
+                derived_blockers.append(f"clean_replication_quota_missing:{experiment.experiment_id}")
             if experiment.uncertainty_required and any(
-                observation.experiment_id == experiment.experiment_id
-                and observation.uncertainty is None
+                observation.experiment_id == experiment.experiment_id and observation.uncertainty is None
                 for observation in self.observations.values()
             ):
                 derived_blockers.append(f"uncertainty_missing:{experiment.experiment_id}")
@@ -5938,6 +6476,12 @@ class LabRun:
                 self.transition("completed")
         manifest_base: dict[str, Any] = {
             "mission_id": self.mission_id,
+            "goal_id": self.goal_contract.goal_id,
+            "goal_generation": self.goal_contract.generation,
+            "goal_contract_hash": self.goal_contract.contract_hash,
+            "goal_contract": self.goal_contract.to_dict(),
+            "target_digest": self.goal_contract.target.canonical_digest(),
+            "goal_progress": self.goal_progress_snapshot().to_dict(),
             "authority_mode": self.authority_mode.value,
             "trust_level": self.trust_level,
             "trust_policy_hash": self.trust_policy_hash,
@@ -5948,11 +6492,9 @@ class LabRun:
             "event_count": len(self.events),
             "event_root_hash": self.events[-1].event_hash if self.events else "0" * 64,
             "source_count": len(self.sources),
-            "provenance_cluster_count": len({
-                source.provenance_cluster
-                for source in self.sources.values()
-                if source.provenance_cluster.strip()
-            }),
+            "provenance_cluster_count": len(
+                {source.provenance_cluster for source in self.sources.values() if source.provenance_cluster.strip()}
+            ),
             "claim_count": len(self.claims),
             "hypothesis_count": len(self.hypotheses),
             "experiment_count": len(self.experiments),
@@ -5995,6 +6537,7 @@ class LabRun:
             scope=self.scope,
             non_goals=self.non_goals,
             skill_admissions=tuple(self.skill_admissions.values()),
+            goal_contract=self.goal_contract.to_dict(),
         )
 
     def verify_event_chain(self) -> bool:
@@ -6040,6 +6583,170 @@ class LabRun:
             raise ValueError("event cursor must be non-negative")
         return tuple(event for event in self.events if event.sequence > cursor)
 
+    def controller_context(self, *, max_chars: int = 16_384) -> dict[str, Any]:
+        """Return a bounded, replay-bound evidence state for the next step.
+
+        The controller previously received only collection counts. Counts are
+        insufficient for a long mission: the model cannot see which claim was
+        already tested, which falsifier remains open, or which observation was
+        rejected. This projection exposes bounded metadata and explicit
+        epistemic status; it never promotes a model output to truth.
+        """
+
+        if type(max_chars) is not int or max_chars < 1_024:
+            raise ValueError("lab controller context bound must be at least 1024 characters")
+
+        def clipped(value: Any, limit: int = 192) -> str:
+            text = str(value)
+            return text if len(text) <= limit else f"{text[: limit - 1]}…"
+
+        def bounded_ids(values: tuple[str, ...], limit: int = 4) -> tuple[str, ...]:
+            return tuple(clipped(value, 96) for value in values[:limit])
+
+        def bounded_values(values: Any, limit: int = 4) -> tuple[Any, ...]:
+            """Keep both the initial evidence and the current frontier visible."""
+
+            ordered = tuple(values)
+            if len(ordered) <= limit:
+                return ordered
+            head = limit // 2
+            return ordered[:head] + ordered[-(limit - head) :]
+
+        sources = [
+            {
+                "source_id": clipped(source.source_id, 96),
+                "uri": clipped(source.uri, 192),
+                "content_hash": clipped(source.content_hash, 96),
+                "snapshot_hash": clipped(source.snapshot_hash, 96),
+                "trust_tier": source.trust_tier,
+                "relation": clipped(source.relation),
+                "provenance_cluster": clipped(source.provenance_cluster),
+            }
+            for source in bounded_values(self.sources.values())
+        ]
+        claims = [
+            {
+                "claim_id": clipped(claim.claim_id, 96),
+                "statement": clipped(claim.statement, 256),
+                "source_ids": bounded_ids(claim.source_ids),
+                "confidence_bps": claim.confidence_bps,
+                "status": clipped(claim.status, 32),
+            }
+            for claim in bounded_values(self.claims.values())
+        ]
+        hypotheses = [
+            {
+                "hypothesis_id": clipped(hypothesis.hypothesis_id, 96),
+                "statement": clipped(hypothesis.statement, 256),
+                "prior_bps": hypothesis.prior_bps,
+                "falsifiers": tuple(clipped(item) for item in hypothesis.falsifiers[:3]),
+                "supporting_claim_ids": bounded_ids(hypothesis.supporting_claim_ids),
+                "contradicting_claim_ids": bounded_ids(hypothesis.contradicting_claim_ids),
+            }
+            for hypothesis in bounded_values(self.hypotheses.values())
+        ]
+        experiments = [
+            {
+                "experiment_id": clipped(experiment.experiment_id, 96),
+                "hypothesis_id": clipped(experiment.hypothesis_id, 96),
+                "design": clipped(experiment.design, 256),
+                "variables": tuple(clipped(item) for item in experiment.variables[:3]),
+                "controls": tuple(clipped(item) for item in experiment.controls[:3]),
+                "preregistered_seeds": experiment.preregistered_seeds[:5],
+                "expected_observations": experiment.expected_observations,
+                "measurement_unit": clipped(experiment.measurement_unit, 64),
+                "uncertainty_required": experiment.uncertainty_required,
+                "min_clean_replicates": experiment.min_clean_replicates,
+                "observed_count": sum(
+                    observation.experiment_id == experiment.experiment_id for observation in self.observations.values()
+                ),
+            }
+            for experiment in bounded_values(self.experiments.values())
+        ]
+        observations = [
+            {
+                "observation_id": clipped(observation.observation_id, 96),
+                "experiment_id": clipped(observation.experiment_id, 96),
+                "seed": observation.seed,
+                "measurement": observation.measurement,
+                "unit": clipped(observation.unit, 64),
+                "raw_artifact_hash": clipped(observation.raw_artifact_hash, 96),
+                "environment_hash": clipped(observation.environment_hash, 96),
+                "valid": observation.valid,
+                "uncertainty": observation.uncertainty,
+                "replication_of": clipped(observation.replication_of, 96)
+                if observation.replication_of is not None
+                else None,
+                "clean": observation.clean,
+                "epistemic_status": clipped(observation.epistemic_status, 32),
+            }
+            for observation in bounded_values(self.observations.values())
+        ]
+        payload: dict[str, Any] = {
+            "schema": "aegis-lab-controller-context-v1",
+            "mission_id": self.mission_id,
+            "objective": clipped(self.objective, 512),
+            "scope": tuple(clipped(item) for item in self.scope[:8]),
+            "non_goals": tuple(clipped(item) for item in self.non_goals[:8]),
+            "goal_contract": {
+                "goal_id": clipped(self.goal_contract.goal_id, 96),
+                "generation": self.goal_contract.generation,
+                "contract_hash": self.goal_contract.contract_hash,
+                "policy_digest": clipped(self.goal_contract.policy_digest, 96),
+                "acceptance": tuple(
+                    {
+                        "predicate_id": clipped(predicate.predicate_id, 96),
+                        "description": clipped(predicate.description, 256),
+                        "evaluator": clipped(predicate.evaluator, 96),
+                        "required": predicate.required,
+                        "evidence_refs": bounded_ids(predicate.evidence_refs),
+                    }
+                    for predicate in self.goal_contract.acceptance[:8]
+                ),
+                "target": {
+                    "kind": clipped(self.goal_contract.target.kind, 64),
+                    "stable_id": clipped(self.goal_contract.target.stable_id, 128),
+                    "revision_or_digest": clipped(self.goal_contract.target.revision_or_digest, 128),
+                    "read_roots": bounded_ids(self.goal_contract.target.read_roots),
+                    "write_roots": bounded_ids(self.goal_contract.target.write_roots),
+                    "network_allowlist": bounded_ids(self.goal_contract.target.network_allowlist),
+                    "external_side_effects": bounded_ids(self.goal_contract.target.external_side_effects),
+                    "owner": clipped(self.goal_contract.target.owner, 96),
+                },
+            },
+            "goal_progress": self.goal_progress_snapshot().to_dict(),
+            "target_digest": self.goal_contract.target.canonical_digest(),
+            "state": self.state,
+            "state_epoch": self.state_epoch,
+            "event_cursor": self.event_cursor(),
+            "event_root_hash": self.events[-1].event_hash if self.events else "0" * 64,
+            "progress_potential": AdaptiveController.progress_potential(self),
+            "counts": {
+                "sources": len(self.sources),
+                "claims": len(self.claims),
+                "hypotheses": len(self.hypotheses),
+                "experiments": len(self.experiments),
+                "observations": len(self.observations),
+                "tool_executions": len(self.tool_executions),
+            },
+            "sources": sources,
+            "claims": claims,
+            "hypotheses": hypotheses,
+            "experiments": experiments,
+            "observations": observations,
+            "blockers": tuple(clipped(item) for item in self.blockers[:12]),
+            "security_event_count": len(self.security_events),
+            "record_limits": {
+                "per_collection": 4,
+                "blockers": 12,
+                "max_chars": max_chars,
+            },
+        }
+        encoded = json.dumps(payload, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+        if len(encoded) > max_chars:
+            raise ValueError("lab controller context exceeds its configured character bound")
+        return payload
+
     def _validate_execution_admission_payload(
         self,
         admission_kind: str,
@@ -6067,16 +6774,11 @@ class LabRun:
                 raise ValueError("execution admission digest metadata is invalid")
 
         def positive_int(*fields: str) -> None:
-            if any(
-                type(payload.get(field)) is not int or payload[field] < 1
-                for field in fields
-            ):
+            if any(type(payload.get(field)) is not int or payload[field] < 1 for field in fields):
                 raise ValueError("execution admission integer metadata is invalid")
 
         def optional_digest(field: str) -> None:
-            if field in payload and (
-                type(payload[field]) is not str or not _is_digest(cast(str, payload[field]))
-            ):
+            if field in payload and (type(payload[field]) is not str or not _is_digest(cast(str, payload[field]))):
                 raise ValueError("execution admission optional digest metadata is invalid")
 
         def optional_timeout() -> None:
@@ -6226,9 +6928,7 @@ class LabRun:
                     mission_id=cast(str, payload["mission_id"]),
                     mission_epoch=cast(int, payload["mission_epoch"]),
                     granted_capabilities=tuple(cast(str, value) for value in capabilities),
-                    precondition_results=tuple(
-                        (cast(str, pair[0]), cast(bool, pair[1])) for pair in preconditions
-                    ),
+                    precondition_results=tuple((cast(str, pair[0]), cast(bool, pair[1])) for pair in preconditions),
                     replay_parent_hash=cast(str, payload["replay_parent_hash"]),
                     admission_hash=cast(str, payload["admission_hash"]),
                     admission_event_hash="",
@@ -6302,10 +7002,7 @@ class LabRun:
                     raw_status = payload.get("status", "ADMITTED")
                     if type(raw_status) is not str:
                         raise ValueError("execution admission status metadata is invalid")
-                    if (
-                        admission_kind == "skill_admission_recorded"
-                        or raw_status.upper() == "ADMITTED"
-                    ):
+                    if admission_kind == "skill_admission_recorded" or raw_status.upper() == "ADMITTED":
                         self._validate_execution_admission_payload(admission_kind, payload)
                         admissions[(admission_kind, identity)] = dict(payload)
                     else:
@@ -6374,9 +7071,7 @@ class LabRun:
                         result=recovery_result,
                         effect_class=cast(str, admission["effect_class"]),
                         actor_role=cast(str, admission["actor_role"]),
-                        expected_observation_schema=cast(
-                            str, admission["expected_observation_schema"]
-                        ),
+                        expected_observation_schema=cast(str, admission["expected_observation_schema"]),
                         stop_rule=cast(str, admission["stop_rule"]),
                         lease_id=cast(int, admission["lease_id"]),
                         attempt=cast(int, admission["attempt"]),
@@ -6385,6 +7080,7 @@ class LabRun:
                         policy_hash=cast(str, admission["policy_hash"]),
                         idempotency_key=cast(str | None, admission.get("idempotency_key")),
                         timeout_seconds=cast(float | None, admission.get("timeout_seconds")),
+                        managed_internal=cast(bool, admission["managed_internal"]),
                     )
                 elif admission_kind == "experiment_execution_admitted":
                     self.record_experiment_execution(
@@ -6550,9 +7246,7 @@ class LabRun:
                 result=result,
                 effect_class=cast(str, admission["effect_class"]),
                 actor_role=cast(str, admission["actor_role"]),
-                expected_observation_schema=cast(
-                    str, admission["expected_observation_schema"]
-                ),
+                expected_observation_schema=cast(str, admission["expected_observation_schema"]),
                 stop_rule=cast(str, admission["stop_rule"]),
                 lease_id=cast(int, admission["lease_id"]),
                 attempt=cast(int, admission["attempt"]),
@@ -6604,9 +7298,7 @@ class LabRun:
                 ci95_high = None
                 interval_status = "INSUFFICIENT_REPLICATION"
             reported_uncertainties = [
-                observation.uncertainty
-                for observation in observations
-                if observation.uncertainty is not None
+                observation.uncertainty for observation in observations if observation.uncertainty is not None
             ]
             statistics[experiment.experiment_id] = {
                 "unit": experiment.measurement_unit,
@@ -6618,14 +7310,10 @@ class LabRun:
                 "interval_status": interval_status,
                 "reported_uncertainty_count": len(reported_uncertainties),
                 "clean_replication_count": sum(
-                    observation.replication_of is not None and observation.clean
-                    for observation in observations
+                    observation.replication_of is not None and observation.clean for observation in observations
                 ),
                 "epistemic_status_counts": {
-                    status: sum(
-                        observation.epistemic_status.upper() == status
-                        for observation in observations
-                    )
+                    status: sum(observation.epistemic_status.upper() == status for observation in observations)
                     for status in sorted(_EPISTEMIC_STATUSES)
                     if any(observation.epistemic_status.upper() == status for observation in observations)
                 },
@@ -6637,7 +7325,7 @@ class LabRun:
 
         self._assert_native_projection_consistency()
 
-        return {
+        payload = {
             "schema": "aegis-lab-run-v1",
             "mission_id": self.mission_id,
             "objective": self.objective,
@@ -6653,6 +7341,8 @@ class LabRun:
             "token_budget": self.token_budget,
             "finalization_reserve": self.finalization_reserve,
             "recovery_reserve": self.recovery_reserve,
+            "goal_contract": self.goal_contract.to_dict(),
+            "goal_progress": self.goal_progress_snapshot().to_dict(),
             "state": self.state,
             "state_epoch": self.state_epoch,
             "sources": [asdict(item) for item in self.sources.values()],
@@ -6669,6 +7359,9 @@ class LabRun:
             "replay_archive": self.replay_archive,
             "execution_cell_manifest": self.execution_cell_manifest,
         }
+        if self.execution_binding is not None:
+            payload["execution_binding"] = self.execution_binding.to_dict()
+        return payload
 
     @classmethod
     def from_payload(cls, payload: dict[str, Any]) -> LabRun:
@@ -6685,7 +7378,8 @@ class LabRun:
             or type(state) is not str
             or not objective.strip()
             or not mission_id.strip()
-            or state not in {
+            or state
+            not in {
                 "planned",
                 "researching",
                 "experimenting",
@@ -6717,14 +7411,10 @@ class LabRun:
         raw_authority_mode = payload.get("authority_mode")
         if raw_authority_mode is None:
             restored.authority_mode = (
-                AuthorityMode.NATIVE_REQUIRED
-                if raw_require_native
-                else AuthorityMode.PROJECTION_ONLY
+                AuthorityMode.NATIVE_REQUIRED if raw_require_native else AuthorityMode.PROJECTION_ONLY
             )
         else:
-            restored.authority_mode = _normalize_authority_mode(
-                cast(AuthorityMode | str, raw_authority_mode)
-            )
+            restored.authority_mode = _normalize_authority_mode(cast(AuthorityMode | str, raw_authority_mode))
             if raw_require_native and restored.authority_mode is not AuthorityMode.NATIVE_REQUIRED:
                 raise ValueError("legacy native-authority flag conflicts with Lab authority mode")
         restored.require_native_authority = restored.authority_mode is AuthorityMode.NATIVE_REQUIRED
@@ -6732,6 +7422,7 @@ class LabRun:
         if type(raw_trust_level) is not str:
             raise ValueError("invalid lab trust level in snapshot")
         restored.trust_level = _normalize_lab_trust_level(raw_trust_level)
+        _validate_authority_trust_pair(restored.authority_mode, restored.trust_level)
         raw_trust_policy_hash = payload.get("trust_policy_hash")
         if raw_trust_policy_hash is not None and (
             not isinstance(raw_trust_policy_hash, str)
@@ -6757,10 +7448,7 @@ class LabRun:
             "max_external_attempts",
             _default_external_attempt_budget(restored.max_steps),
         )
-        if (
-            type(raw_external_attempt_budget) is not int
-            or raw_external_attempt_budget < 1
-        ):
+        if type(raw_external_attempt_budget) is not int or raw_external_attempt_budget < 1:
             raise ValueError("invalid lab snapshot external attempt budget")
         restored.external_attempt_budget = raw_external_attempt_budget
         has_external_attempt_count = "external_attempt_count" in payload
@@ -6776,9 +7464,7 @@ class LabRun:
         if type(raw_token_budget) is not int:
             raise ValueError("invalid lab snapshot token budget")
         restored.token_budget = raw_token_budget
-        default_finalization = min(
-            max(1, restored.token_budget // 5), max(0, restored.token_budget - 1)
-        )
+        default_finalization = min(max(1, restored.token_budget // 5), max(0, restored.token_budget - 1))
         raw_finalization = payload.get("finalization_reserve", default_finalization)
         if type(raw_finalization) is not int:
             raise ValueError("invalid lab snapshot finalization reserve")
@@ -6798,7 +7484,88 @@ class LabRun:
             or restored.finalization_reserve + restored.recovery_reserve >= restored.token_budget
         ):
             raise ValueError("invalid lab snapshot budget")
+        raw_goal_contract = payload.get("goal_contract")
+        if "max_external_attempts" not in payload and isinstance(raw_goal_contract, dict):
+            typed_goal_contract = cast(dict[str, Any], raw_goal_contract)
+            raw_contract_budget = typed_goal_contract.get("budget")
+            if isinstance(raw_contract_budget, dict):
+                typed_contract_budget = cast(dict[str, Any], raw_contract_budget)
+                legacy_attempt_limit = typed_contract_budget.get("attempt_limit")
+                if type(legacy_attempt_limit) is int and legacy_attempt_limit >= 1:
+                    # A snapshot that predates the explicit run counter may
+                    # still carry the newer contract. Preserve its admitted
+                    # attempt ceiling before reconstructing the derived count.
+                    restored.external_attempt_budget = legacy_attempt_limit
+        if raw_goal_contract is None:
+            restored.goal_contract = GoalContract(
+                goal_id=restored.mission_id,
+                objective=restored.objective,
+                target=TargetDescriptor(),
+                scope=restored.scope,
+                non_goals=restored.non_goals,
+                policy_digest=restored.trust_policy_hash or "unbound",
+                budget=GoalBudgetContract.from_lab_budget(
+                    token_limit=restored.token_budget,
+                    attempt_limit=restored.external_attempt_budget,
+                    finalization_reserve=restored.finalization_reserve,
+                    recovery_reserve=restored.recovery_reserve,
+                ),
+                author_id="lab-compatibility",
+                created_at_ms=0,
+            )
+        else:
+            if not isinstance(raw_goal_contract, dict):
+                raise ValueError("invalid goal contract in lab snapshot")
+            restored.goal_contract = GoalContract.from_dict(cast(dict[str, Any], raw_goal_contract))
+            if restored.goal_contract.objective != restored.objective:
+                raise ValueError("goal contract objective mismatch in lab snapshot")
+            if restored.goal_contract.scope != tuple(sorted(restored.scope)):
+                raise ValueError("goal contract scope mismatch in lab snapshot")
+            if restored.goal_contract.non_goals != tuple(sorted(restored.non_goals)):
+                raise ValueError("goal contract non-goals mismatch in lab snapshot")
+            expected_budget = GoalBudgetContract.from_lab_budget(
+                token_limit=restored.token_budget,
+                attempt_limit=restored.external_attempt_budget,
+                finalization_reserve=restored.finalization_reserve,
+                recovery_reserve=restored.recovery_reserve,
+            )
+            if restored.goal_contract.budget != expected_budget:
+                raise ValueError("goal contract budget mismatch in lab snapshot")
+            if restored.goal_contract.policy_digest != "unbound" and restored.goal_contract.policy_digest != (
+                restored.trust_policy_hash or "unbound"
+            ):
+                raise ValueError("goal contract policy mismatch in lab snapshot")
+            if restored.goal_contract.has_explicit_acceptance or restored.goal_contract.target.is_bound:
+                try:
+                    restored.goal_contract.validate_for_admission()
+                except (GoalContractError, TypeError, ValueError) as exc:
+                    raise ValueError("goal contract admission failed in lab snapshot") from exc
+                unsupported_record_types = set(
+                    restored.goal_contract.evidence_policy.required_record_types
+                ).difference(_GOAL_EVIDENCE_RECORD_TYPES)
+                if unsupported_record_types:
+                    raise ValueError("goal evidence policy contains unsupported record types")
+        raw_execution_binding = payload.get("execution_binding")
+        if raw_execution_binding is None:
+            restored.execution_binding = None
+        else:
+            try:
+                restored.execution_binding = ExecutionBinding.from_dict(raw_execution_binding)
+                restored.execution_binding.validate_against(restored.goal_contract)
+            except (GoalContractError, TypeError, ValueError) as exc:
+                raise ValueError("invalid execution binding in lab snapshot") from exc
+            if restored.execution_binding.mission_id != restored.mission_id:
+                raise ValueError("execution binding mission mismatch in lab snapshot")
+            expected_target_digest = restored.goal_contract.target.canonical_digest()
+            if restored.execution_binding.target_digest != expected_target_digest:
+                raise ValueError("execution binding target mismatch in lab snapshot")
+            if (
+                restored.execution_binding.evidence_digest is not None
+                or restored.execution_binding.completion_digest is not None
+            ):
+                raise ValueError("execution binding receipt digests are unsupported in Lab snapshot")
         restored.state = state
+        raw_goal_progress = payload.get("goal_progress")
         raw_state_epoch = payload.get("state_epoch", 0)
         if type(raw_state_epoch) is not int or raw_state_epoch < 0:
             raise ValueError("invalid lab snapshot state epoch")
@@ -6808,6 +7575,7 @@ class LabRun:
         restored._native_mission_hash = None
         restored._native_finalization_started = False
         restored._initialize_native_controller(objective)
+
         def snapshot_records(name: str) -> list[dict[str, Any]]:
             raw_value = payload.get(name, ())
             if type(raw_value) not in (list, tuple):
@@ -6888,10 +7656,7 @@ class LabRun:
                 "policy_hash",
                 "status",
             )
-            if any(
-                type(item.get(field)) is not str or not item[field].strip()
-                for field in required_strings
-            ):
+            if any(type(item.get(field)) is not str or not item[field].strip() for field in required_strings):
                 raise ValueError("invalid tool execution admission metadata in lab snapshot")
             if (
                 item["status"] != "ADMITTED"
@@ -6907,8 +7672,7 @@ class LabRun:
             ):
                 raise ValueError("invalid tool execution admission metadata in lab snapshot")
             if "idempotency_key" in item and (
-                type(item["idempotency_key"]) is not str
-                or not _is_digest(item["idempotency_key"])
+                type(item["idempotency_key"]) is not str or not _is_digest(item["idempotency_key"])
             ):
                 raise ValueError("invalid tool execution idempotency metadata in lab snapshot")
             if "timeout_seconds" in item and (
@@ -6947,13 +7711,7 @@ class LabRun:
             ):
                 raise ValueError("invalid skill precondition metadata in lab snapshot")
 
-        restored.sources = {
-            record.source_id: record
-            for record in (
-                SourceRecord(**item)
-                for item in raw_sources
-            )
-        }
+        restored.sources = {record.source_id: record for record in (SourceRecord(**item) for item in raw_sources)}
         restored.claims = {
             record.claim_id: record
             for record in (
@@ -7016,16 +7774,8 @@ class LabRun:
                     raw_artifact_hash=item["raw_artifact_hash"],
                     environment_hash=item["environment_hash"],
                     valid=item.get("valid", True),
-                    uncertainty=(
-                        item["uncertainty"]
-                        if item.get("uncertainty") is not None
-                        else None
-                    ),
-                    replication_of=(
-                        item["replication_of"]
-                        if item.get("replication_of") is not None
-                        else None
-                    ),
+                    uncertainty=(item["uncertainty"] if item.get("uncertainty") is not None else None),
+                    replication_of=(item["replication_of"] if item.get("replication_of") is not None else None),
                     operator_id=item.get("operator_id", ""),
                     clean=item.get("clean", True),
                     epistemic_status=item.get("epistemic_status", "OBSERVED"),
@@ -7045,8 +7795,7 @@ class LabRun:
                     mission_epoch=item["mission_epoch"],
                     granted_capabilities=snapshot_string_sequence(item, "granted_capabilities"),
                     precondition_results=tuple(
-                        (pair[0], pair[1])
-                        for pair in cast(list[Any] | tuple[Any, ...], item["precondition_results"])
+                        (pair[0], pair[1]) for pair in cast(list[Any] | tuple[Any, ...], item["precondition_results"])
                     ),
                     replay_parent_hash=item["replay_parent_hash"],
                     admission_hash=item["admission_hash"],
@@ -7055,9 +7804,7 @@ class LabRun:
                 for item in raw_skill_admissions
             )
         }
-        restored.tool_execution_admissions = {
-            item["execution_id"]: dict(item) for item in raw_tool_admissions
-        }
+        restored.tool_execution_admissions = {item["execution_id"]: dict(item) for item in raw_tool_admissions}
         restored.tool_executions = set(raw_tool_executions)
         restored.events = [
             LabEvent(
@@ -7083,9 +7830,7 @@ class LabRun:
             if observed_external_attempt_count > restored.external_attempt_budget:
                 raise ValueError("legacy lab snapshot exceeds external attempt budget")
             restored.external_attempt_count = observed_external_attempt_count
-        restored._native_finalization_started = any(
-            event.kind == "finalization_started" for event in restored.events
-        )
+        restored._native_finalization_started = any(event.kind == "finalization_started" for event in restored.events)
         raw_blockers = payload.get("blockers", ())
         if type(raw_blockers) not in (list, tuple) or any(
             type(item) is not str or not item.strip() for item in raw_blockers
@@ -7135,8 +7880,7 @@ class LabRun:
             if type(raw_manifest_hash) is list:
                 typed_manifest_hash = cast(list[Any], raw_manifest_hash)
                 valid_byte_manifest = len(typed_manifest_hash) == 32 and all(
-                    type(value) is int and 0 <= value <= 255
-                    for value in typed_manifest_hash
+                    type(value) is int and 0 <= value <= 255 for value in typed_manifest_hash
                 )
             else:
                 valid_byte_manifest = False
@@ -7152,8 +7896,7 @@ class LabRun:
             if type(archive_map.get("snapshot_path")) is not str or not archive_map["snapshot_path"].strip():
                 raise ValueError("invalid replay archive snapshot path in lab snapshot")
             if "snapshot_hash" in archive_map and (
-                type(archive_map["snapshot_hash"]) is not str
-                or not _is_digest(archive_map["snapshot_hash"])
+                type(archive_map["snapshot_hash"]) is not str or not _is_digest(archive_map["snapshot_hash"])
             ):
                 raise ValueError("invalid replay archive snapshot hash in lab snapshot")
             restored.replay_archive = dict(archive_map)
@@ -7165,14 +7908,25 @@ class LabRun:
             raise ValueError("invalid execution cell manifest entry")
         normalized_cells: list[dict[str, Any]] = []
         seen_cell_actions: set[tuple[str, tuple[str, ...]]] = set()
+        allowed_cell_keys = frozenset(
+            {
+                "cell_id",
+                "action_kinds",
+                "capabilities",
+                "effect_classes",
+                "trust_levels",
+                "trust_policy_hash",
+                "backend_kind",
+                "resource_policy",
+                "resource_policy_hash",
+            }
+        )
         for raw_cell in typed_cells:
             cell = cast(dict[str, Any], raw_cell)
+            if any(type(key) is not str for key in cell) or not set(cell).issubset(allowed_cell_keys):
+                raise ValueError("unknown execution cell manifest field in lab snapshot")
             raw_cell_id = cell.get("cell_id")
-            if (
-                type(raw_cell_id) is not str
-                or not raw_cell_id.strip()
-                or raw_cell_id != raw_cell_id.strip()
-            ):
+            if type(raw_cell_id) is not str or not raw_cell_id.strip() or raw_cell_id != raw_cell_id.strip():
                 raise ValueError("invalid execution cell id in lab snapshot")
             raw_action_kinds = cell.get("action_kinds")
             raw_capabilities = cell.get("capabilities")
@@ -7190,25 +7944,15 @@ class LabRun:
             if (
                 not action_kinds
                 or any(
-                    type(kind) is not str
-                    or not kind.strip()
-                    or kind != kind.strip().lower()
-                    for kind in action_kinds
+                    type(kind) is not str or not kind.strip() or kind != kind.strip().lower() for kind in action_kinds
                 )
                 or any(kind.strip().lower() not in _EXECUTION_CELL_ACTION_KINDS for kind in action_kinds)
                 or len({kind.strip().lower() for kind in action_kinds}) != len(action_kinds)
                 or any(
-                    type(capability) is not str
-                    or not capability.strip()
-                    or capability != capability.strip()
+                    type(capability) is not str or not capability.strip() or capability != capability.strip()
                     for capability in capabilities
                 )
-                or any(
-                    type(effect) is not str
-                    or not effect.strip()
-                    or effect != effect.strip()
-                    for effect in effects
-                )
+                or any(type(effect) is not str or not effect.strip() or effect != effect.strip() for effect in effects)
                 or not trust_levels
                 or any(type(level) is not str for level in trust_levels)
                 or any(level != level.strip().upper() for level in trust_levels)
@@ -7225,11 +7969,55 @@ class LabRun:
                 type(raw_cell_policy_hash) is not str or not _is_digest(raw_cell_policy_hash)
             ):
                 raise ValueError("invalid execution cell trust policy hash in lab snapshot")
-            normalized_cells.append(dict(cell))
+            raw_backend_kind = cell.get("backend_kind")
+            raw_resource_policy = cell.get("resource_policy")
+            raw_resource_policy_hash = cell.get("resource_policy_hash")
+            if raw_backend_kind is not None and (
+                type(raw_backend_kind) is not str
+                or not raw_backend_kind.strip()
+                or raw_backend_kind != raw_backend_kind.strip().lower()
+            ):
+                raise ValueError("invalid execution cell backend identity in lab snapshot")
+            if raw_resource_policy_hash is not None and (
+                type(raw_resource_policy_hash) is not str or not _is_digest(raw_resource_policy_hash)
+            ):
+                raise ValueError("invalid execution cell resource policy identity in lab snapshot")
+            if raw_backend_kind is None and (raw_resource_policy is not None or raw_resource_policy_hash is not None):
+                raise ValueError("incomplete execution cell resource identity in lab snapshot")
+            normalized_cell = dict(cell)
+            if raw_backend_kind is not None:
+                if raw_resource_policy is None:
+                    raise ValueError("execution cell resource policy descriptor is missing in lab snapshot")
+                canonical_policy = _canonical_execution_cell_resource_policy(raw_resource_policy)
+                derived_policy_hash = _execution_cell_resource_policy_hash(canonical_policy)
+                if raw_resource_policy_hash != derived_policy_hash:
+                    raise ValueError("execution cell resource policy hash does not match descriptor in lab snapshot")
+                normalized_cell["resource_policy"] = canonical_policy
+                normalized_cell["resource_policy_hash"] = derived_policy_hash
+            normalized_cells.append(normalized_cell)
         restored.execution_cell_manifest = tuple(normalized_cells)
+        restored_manifest_hash = restored._execution_cell_manifest_hash()
+        if restored.execution_binding is not None and (
+            restored.execution_binding.execution_cell_manifest_hash != restored_manifest_hash
+        ):
+            raise ValueError("execution binding manifest mismatch in lab snapshot")
+        if (
+            restored.execution_binding is not None
+            and restored.execution_binding.backend_kind is not None
+            and not restored._manifest_has_execution_identity(restored.execution_binding)
+        ):
+            raise ValueError("execution binding backend identity mismatch in lab snapshot")
+        if restored._requires_execution_cell_identity() and (
+            any(
+                item.get("backend_kind") is None
+                or item.get("resource_policy_hash") is None
+                or item.get("resource_policy") is None
+                for item in restored.execution_cell_manifest
+            )
+        ):
+            raise ValueError("authoritative snapshot lacks execution cell identity")
         if restored.trust_policy_hash is not None and any(
-            item.get("trust_policy_hash") != restored.trust_policy_hash
-            for item in restored.execution_cell_manifest
+            item.get("trust_policy_hash") != restored.trust_policy_hash for item in restored.execution_cell_manifest
         ):
             raise ValueError("invalid execution cell trust policy binding in snapshot")
         if not restored.verify_event_chain():
@@ -7249,6 +8037,18 @@ class LabRun:
             raise ValueError("lab snapshot mission event is not bound to identity")
         restored._validate_snapshot_records()
         restored._validate_execution_event_semantics()
+        if raw_goal_progress is not None:
+            if not isinstance(raw_goal_progress, dict):
+                raise ValueError("invalid goal progress in lab snapshot")
+            try:
+                restored_progress = GoalProgress.from_dict(
+                    cast(dict[str, Any], raw_goal_progress),
+                    contract=restored.goal_contract,
+                )
+            except (GoalContractError, TypeError, ValueError) as exc:
+                raise ValueError("invalid goal progress in lab snapshot") from exc
+            if restored_progress != restored.goal_progress_snapshot():
+                raise ValueError("goal progress does not match LabRun state in snapshot")
         native_event_admitter = getattr(restored._native_controller, "admit_event_json", None)
         if callable(native_event_admitter):
             try:
@@ -7291,14 +8091,11 @@ class LabRun:
             if len(observations) < experiment.expected_observations:
                 return False
             clean_replicates = sum(
-                observation.replication_of is not None and observation.clean
-                for observation in observations
+                observation.replication_of is not None and observation.clean for observation in observations
             )
             if clean_replicates < experiment.min_clean_replicates:
                 return False
-            if experiment.uncertainty_required and any(
-                observation.uncertainty is None for observation in observations
-            ):
+            if experiment.uncertainty_required and any(observation.uncertainty is None for observation in observations):
                 return False
         return True
 
@@ -7349,9 +8146,7 @@ class LabRun:
             raise RuntimeError("Rust Lab replay archive returned an invalid manifest identity")
         if not manifest.get("manifest_hash"):
             raise RuntimeError("Rust Lab replay archive returned an invalid manifest")
-        strict_verifier = getattr(
-            aegis_nerve, "aegis_lab_verify_archive_against_manifest", None
-        )
+        strict_verifier = getattr(aegis_nerve, "aegis_lab_verify_archive_against_manifest", None)
         verifier = getattr(aegis_nerve, "aegis_lab_verify_archive", None)
         if strict_verifier is not None:
             verified = strict_verifier(
@@ -7365,9 +8160,7 @@ class LabRun:
             verified = True
         if type(verified) is not bool or not verified:
             raise RuntimeError("Rust Lab replay archive failed recovery verification")
-        event_verifier = getattr(
-            aegis_nerve, "aegis_lab_verify_archive_against_events", None
-        )
+        event_verifier = getattr(aegis_nerve, "aegis_lab_verify_archive_against_events", None)
         if callable(event_verifier):
             try:
                 events_verified = event_verifier(
@@ -7376,13 +8169,9 @@ class LabRun:
                     self._native_event_wire(tuple(self.events)),
                 )
             except Exception as exc:
-                raise RuntimeError(
-                    "Rust Lab replay archive event identity verification failed"
-                ) from exc
+                raise RuntimeError("Rust Lab replay archive event identity verification failed") from exc
             if type(events_verified) is not bool or not events_verified:
-                raise RuntimeError(
-                    "Rust Lab replay archive event identity verification failed"
-                )
+                raise RuntimeError("Rust Lab replay archive event identity verification failed")
         snapshot_path = Path(directory) / f"lab-{self.mission_id}.snapshot.json"
         manifest["snapshot_path"] = str(snapshot_path)
         self.replay_archive = manifest
@@ -7423,12 +8212,8 @@ class LabRun:
         except ImportError:
             native_module = None
         legacy_manifest = "schema" not in archive and "version" not in archive
-        legacy_verifier = getattr(
-            native_module, "aegis_lab_verify_archive_against_legacy_manifest", None
-        )
-        strict_verifier = getattr(
-            native_module, "aegis_lab_verify_archive_against_manifest", None
-        )
+        legacy_verifier = getattr(native_module, "aegis_lab_verify_archive_against_legacy_manifest", None)
+        strict_verifier = getattr(native_module, "aegis_lab_verify_archive_against_manifest", None)
         verifier = getattr(native_module, "aegis_lab_verify_archive", None)
         if legacy_manifest:
             if legacy_verifier is None:
@@ -7450,9 +8235,7 @@ class LabRun:
             verified = True
         if type(verified) is not bool or not verified:
             raise ValueError("native lab replay archive recovery failed")
-        event_verifier = getattr(
-            native_module, "aegis_lab_verify_archive_against_events", None
-        )
+        event_verifier = getattr(native_module, "aegis_lab_verify_archive_against_events", None)
         if callable(event_verifier):
             try:
                 events_verified = event_verifier(
@@ -7461,13 +8244,9 @@ class LabRun:
                     run._native_event_wire(tuple(run.events)),
                 )
             except Exception as exc:
-                raise ValueError(
-                    "native lab replay archive event identity verification failed"
-                ) from exc
+                raise ValueError("native lab replay archive event identity verification failed") from exc
             if type(events_verified) is not bool or not events_verified:
-                raise ValueError(
-                    "native lab replay archive event identity verification failed"
-                )
+                raise ValueError("native lab replay archive event identity verification failed")
         return run
 
     def _validate_execution_event_semantics(self) -> None:
@@ -7508,6 +8287,10 @@ class LabRun:
             if not isinstance(payload, dict):
                 raise ValueError(f"invalid {label} event payload in lab snapshot")
             typed_payload = cast(dict[str, Any], cast(Any, payload))
+            if (
+                self.goal_contract.has_explicit_acceptance or self.execution_binding is not None
+            ) and event.kind in _GOAL_BOUND_EVENT_KINDS:
+                self._validate_goal_event_binding(typed_payload)
             if is_admission and admission_kind != "cancellation_admitted":
                 self._validate_execution_admission_payload(admission_kind, typed_payload)
             raw_identity = typed_payload.get(identity_key)
@@ -7582,7 +8365,10 @@ class LabRun:
                 not hypothesis.hypothesis_id.strip()
                 or not hypothesis.statement.strip()
                 or not hypothesis.falsifiers
-                or any(claim_id not in self.claims for claim_id in (*hypothesis.supporting_claim_ids, *hypothesis.contradicting_claim_ids))
+                or any(
+                    claim_id not in self.claims
+                    for claim_id in (*hypothesis.supporting_claim_ids, *hypothesis.contradicting_claim_ids)
+                )
                 or not 0 <= hypothesis.prior_bps <= 10_000
             ):
                 raise ValueError("invalid hypothesis in lab snapshot")
@@ -7593,9 +8379,7 @@ class LabRun:
             DEFAULT_UNIT_REGISTRY.signature(experiment.measurement_unit)
         for observation in self.observations.values():
             observation.validate()
-            if (
-                observation.experiment_id not in self.experiments
-            ):
+            if observation.experiment_id not in self.experiments:
                 raise ValueError("invalid observation in lab snapshot")
             experiment = self.experiments[observation.experiment_id]
             if not DEFAULT_UNIT_REGISTRY.compatible(observation.unit, experiment.measurement_unit):
@@ -7623,6 +8407,22 @@ class LabRun:
                 raise ValueError("invalid skill admission in lab snapshot") from exc
             if admission.mission_id != self.mission_id:
                 raise ValueError("skill admission mission mismatch in lab snapshot")
+        goal_verification_events: list[LabEvent] = []
+        for event in self.events:
+            event_payload: Any = event.payload
+            if event.kind != "review_recorded" or not isinstance(event_payload, dict):
+                continue
+            typed_event_payload: dict[str, Any] = cast(dict[str, Any], event_payload)
+            if typed_event_payload.get("record_type") == "goal_verification":
+                goal_verification_events.append(event)
+        if goal_verification_events:
+            if not self.goal_contract.has_explicit_acceptance:
+                raise ValueError("goal verification event requires an explicit acceptance contract")
+            if self.state != "completed" or len(goal_verification_events) != 1:
+                raise ValueError("goal verification event is not uniquely bound to completion")
+            # Re-parse the nested receipt during restore instead of trusting
+            # the already-derived GoalProgress snapshot.
+            self._goal_verification_from_events()
 
     def _event_chain_authority(self) -> str:
         """Report native verification without making it a hidden dependency."""
@@ -7699,7 +8499,9 @@ class LabPolicy:
         if any(type(host) is not str for host in self.allowed_hosts):
             raise ValueError("lab policy hosts must be strings")
         normalized_hosts = tuple(host.strip().lower() for host in self.allowed_hosts)
-        if any(not host or host != original for host, original in zip(normalized_hosts, self.allowed_hosts, strict=True)):
+        if any(
+            not host or host != original for host, original in zip(normalized_hosts, self.allowed_hosts, strict=True)
+        ):
             raise ValueError("lab policy hosts must be lowercase and trimmed")
         if self.replay_directory is not None and not self.replay_directory.strip():
             raise ValueError("lab policy replay directory must be non-empty")
@@ -7722,11 +8524,7 @@ class LabPolicy:
     def authority_mode(self) -> AuthorityMode:
         """Expose the effective authority mode instead of an implicit bool."""
 
-        return (
-            AuthorityMode.NATIVE_REQUIRED
-            if self.native_authority_required
-            else AuthorityMode.PROJECTION_ONLY
-        )
+        return AuthorityMode.NATIVE_REQUIRED if self.native_authority_required else AuthorityMode.PROJECTION_ONLY
 
     @property
     def trust_policy_hash(self) -> str:
@@ -7751,8 +8549,7 @@ class LabBudget:
         if self.max_steps < 1 or self.token_budget < 1:
             raise ValueError("lab budget bounds must be positive")
         if self.max_external_attempts is not None and (
-            type(self.max_external_attempts) is not int
-            or self.max_external_attempts < 1
+            type(self.max_external_attempts) is not int or self.max_external_attempts < 1
         ):
             raise ValueError("lab external attempt budget must be positive or unset")
         if self.finalization_reserve is not None and type(self.finalization_reserve) is not int:
@@ -7793,6 +8590,7 @@ class LabMissionSpec:
     objective: str
     scope: tuple[str, ...] = ()
     non_goals: tuple[str, ...] = ()
+    goal_contract: GoalContract | None = None
 
     def validate(self) -> None:
         if type(self.objective) is not str or not self.objective.strip():
@@ -7801,6 +8599,53 @@ class LabMissionSpec:
             raise ValueError("lab mission scope and non-goals must be sequences")
         if any(type(item) is not str or not item.strip() for item in (*self.scope, *self.non_goals)):
             raise ValueError("lab mission scope and non-goals must be non-empty strings")
+        if self.goal_contract is not None:
+            if type(self.goal_contract) is not GoalContract:
+                raise TypeError("lab mission goal_contract must be GoalContract or unset")
+            if self.goal_contract.objective != self.objective:
+                raise ValueError("lab mission goal contract objective must match objective")
+            if self.goal_contract.scope != tuple(sorted(self.scope)):
+                raise ValueError("lab mission goal contract scope must match scope")
+            if self.goal_contract.non_goals != tuple(sorted(self.non_goals)):
+                raise ValueError("lab mission goal contract non-goals must match non-goals")
+
+    def to_goal_contract(
+        self,
+        *,
+        policy_digest: str = "unbound",
+        budget: GoalBudgetContract | None = None,
+    ) -> GoalContract:
+        """Return the explicit contract or a clearly marked legacy draft.
+
+        A mission created with only the historical ``objective/scope`` fields
+        remains executable for compatibility, but its unbound target and empty
+        acceptance list prevent it from being mistaken for an independently
+        verified goal.
+        """
+
+        self.validate()
+        if self.goal_contract is not None:
+            return self.goal_contract
+        effective_budget = budget or GoalBudgetContract(token_limit=1, attempt_limit=1)
+        goal_id = _hash(
+            {
+                "schema": GoalContract.SCHEMA,
+                "objective": self.objective,
+                "scope": tuple(sorted(self.scope)),
+                "non_goals": tuple(sorted(self.non_goals)),
+            }
+        )[:32]
+        return GoalContract(
+            goal_id=goal_id,
+            objective=self.objective,
+            target=TargetDescriptor(),
+            scope=self.scope,
+            non_goals=self.non_goals,
+            policy_digest=policy_digest,
+            budget=effective_budget,
+            author_id="lab-legacy-mission",
+            created_at_ms=0,
+        )
 
 
 def _process_execution_worker(
@@ -7890,20 +8735,16 @@ class ProcessExecutionCell:
                                 capture_output=True,
                                 timeout=2.0,
                             )
-                elif type(pid) is int and pid > 0 and hasattr(os, "getpgid"):
-                    with contextlib.suppress(OSError, ProcessLookupError):
-                        if os.getpgid(pid) == pid:
-                            os.killpg(pid, signal.SIGTERM)
+                elif type(pid) is int and pid > 0 and os.name != "nt":
+                    _signal_process_group(pid, signal.SIGTERM)
                 process.terminate()
                 process.join(timeout=1.0)
                 if process.is_alive() and hasattr(process, "kill"):
-                    if type(pid) is int and pid > 0 and os.name != "nt" and hasattr(os, "getpgid"):
-                        with contextlib.suppress(OSError, ProcessLookupError):
-                            if os.getpgid(pid) == pid:
-                                os.killpg(pid, signal.SIGKILL)
+                    if type(pid) is int and pid > 0 and os.name != "nt":
+                        _signal_process_group(pid, signal.SIGKILL)
                     process.kill()
                     process.join(timeout=1.0)
-        except (AssertionError, OSError):
+        except AssertionError, OSError:
             # A process that failed before start or already exited is already
             # fail-closed; cleanup must not mask the original error.
             return
@@ -7935,9 +8776,7 @@ class ProcessExecutionCell:
                     if message and message[0] == "SUCCESS":
                         return message[1]
                     if len(message) >= 3 and message[0] == "ERROR":
-                        raise RuntimeError(
-                            f"process execution runner failed: {message[1]}: {message[2]}"
-                        )
+                        raise RuntimeError(f"process execution runner failed: {message[1]}: {message[2]}")
                     raise RuntimeError("process execution runner returned an invalid message")
                 if not process.is_alive():
                     process.join()
@@ -7977,11 +8816,7 @@ class ReplayWriterLease:
     def __init__(self, directory: object) -> None:
         if type(directory) is not str and not hasattr(directory, "__fspath__"):
             raise TypeError("replay writer directory must be a string or path-like value")
-        raw_directory = (
-            directory
-            if type(directory) is str
-            else os.fspath(cast(os.PathLike[str], directory))
-        )
+        raw_directory = directory if type(directory) is str else os.fspath(cast(os.PathLike[str], directory))
         if type(raw_directory) is not str:
             raise TypeError("replay writer directory must resolve to text")
         normalized = raw_directory.strip()
@@ -8035,7 +8870,7 @@ class ReplayWriterLease:
                 import fcntl
 
                 fcntl.flock(handle.fileno(), fcntl.LOCK_UN)
-        except (ImportError, OSError, ValueError):
+        except ImportError, OSError, ValueError:
             # Closing the descriptor is still sufficient for the OS to release
             # the advisory lock; cleanup must not mask the original run result.
             pass
@@ -8049,6 +8884,28 @@ class ReplayWriterLease:
 
     def __exit__(self, *_: Any) -> None:
         self.release()
+
+
+class ExternalSideEffectLease(ReplayWriterLease):
+    """Local advisory lease for one exact Goal external-effect key.
+
+    The key is hashed into the lock filename so the provider identifier is not
+    exposed in the filesystem name.  This coordinates processes that share the
+    same lease directory; it is not a provider-side lock or a kernel boundary.
+    """
+
+    def __init__(self, directory: object, effect_key: object) -> None:
+        if type(effect_key) is not str or not effect_key.strip():
+            raise ValueError("external effect lease key must be non-empty text")
+        super().__init__(directory)
+        digest = _hash(
+            {
+                "schema": "aegis-external-side-effect-lease-v1",
+                "effect_key": effect_key.strip(),
+            }
+        )
+        self.effect_key = effect_key.strip()
+        self.path = self.directory / f".lab-effect-{digest}.lock"
 
 
 @dataclass(frozen=True)
@@ -8073,6 +8930,9 @@ class ExecutionCellBinding:
     )
     trust_levels: tuple[str, ...] = ("DEV", "STAGING", "PROD")
     trust_policy_hash: str | None = None
+    backend_kind: str | None = None
+    resource_policy: Mapping[str, Any] | None = None
+    resource_policy_hash: str | None = None
 
     def validate(self) -> None:
         if type(self.cell_id) is not str or not self.cell_id.strip():
@@ -8114,6 +8974,24 @@ class ExecutionCellBinding:
             raise ValueError("execution cell trust policy hash must be a string or unset")
         if self.trust_policy_hash is not None and not _is_digest(self.trust_policy_hash):
             raise ValueError("execution cell trust policy hash is invalid")
+        if type(self.backend_kind) not in (str, type(None)):
+            raise ValueError("execution cell backend kind must be a string or unset")
+        if self.backend_kind is not None and (
+            not self.backend_kind.strip() or self.backend_kind != self.backend_kind.strip()
+        ):
+            raise ValueError("execution cell backend kind must be non-empty and trimmed")
+        if type(self.resource_policy_hash) not in (str, type(None)):
+            raise ValueError("execution cell resource policy hash must be a string or unset")
+        if self.resource_policy_hash is not None and not _is_digest(self.resource_policy_hash):
+            raise ValueError("execution cell resource policy hash is invalid")
+        if self.backend_kind is None and (self.resource_policy is not None or self.resource_policy_hash is not None):
+            raise ValueError("execution cell resource identity requires a backend kind")
+        if self.backend_kind is not None and self.resource_policy is None:
+            raise ValueError("execution cell backend identity requires a resource policy descriptor")
+        if self.resource_policy is not None:
+            derived_hash = _execution_cell_resource_policy_hash(self.resource_policy)
+            if self.resource_policy_hash is not None and self.resource_policy_hash != derived_hash:
+                raise ValueError("execution cell resource policy hash does not match descriptor")
 
 
 class ExecutionCellRegistry:
@@ -8159,6 +9037,17 @@ class ExecutionCellRegistry:
             effect_classes=tuple(effect.strip() for effect in binding.effect_classes),
             trust_levels=tuple(level.strip().upper() for level in binding.trust_levels),
             trust_policy_hash=binding.trust_policy_hash or self._trust_policy_hash,
+            backend_kind=(binding.backend_kind.strip().lower() if binding.backend_kind is not None else None),
+            resource_policy=(
+                _canonical_execution_cell_resource_policy(binding.resource_policy)
+                if binding.resource_policy is not None
+                else None
+            ),
+            resource_policy_hash=(
+                _execution_cell_resource_policy_hash(binding.resource_policy)
+                if binding.resource_policy is not None
+                else None
+            ),
         )
         for kind in normalized_binding.action_kinds:
             normalized_kind = kind.strip().lower()
@@ -8194,9 +9083,7 @@ class ExecutionCellRegistry:
             raise ValueError("execution cell trust level must be a non-empty string")
         if type(cell_id) not in (str, type(None)):
             raise ValueError("execution cell id must be a string or unset")
-        if cell_id is not None and (
-            not cell_id.strip() or cell_id != cell_id.strip()
-        ):
+        if cell_id is not None and (not cell_id.strip() or cell_id != cell_id.strip()):
             raise ValueError("execution cell id must be a non-empty trimmed string")
         if type(capability) not in (str, type(None)):
             raise ValueError("execution cell capability must be a string or unset")
@@ -8228,10 +9115,7 @@ class ExecutionCellRegistry:
         """Return bounded metadata suitable for a replay/policy hash."""
 
         bindings = self._sealed_bindings if self._sealed_bindings is not None else self._bindings
-        unique_bindings = {
-            (binding.cell_id, tuple(binding.action_kinds)): binding
-            for binding in bindings.values()
-        }
+        unique_bindings = {(binding.cell_id, tuple(binding.action_kinds)): binding for binding in bindings.values()}
         return tuple(
             {
                 "cell_id": binding.cell_id,
@@ -8239,9 +9123,14 @@ class ExecutionCellRegistry:
                 "capabilities": tuple(binding.capabilities),
                 "effect_classes": tuple(binding.effect_classes),
                 "trust_levels": tuple(binding.trust_levels),
+                **({"trust_policy_hash": binding.trust_policy_hash} if binding.trust_policy_hash is not None else {}),
                 **(
-                    {"trust_policy_hash": binding.trust_policy_hash}
-                    if binding.trust_policy_hash is not None
+                    {
+                        "backend_kind": binding.backend_kind,
+                        "resource_policy": dict(cast(Mapping[str, Any], binding.resource_policy)),
+                        "resource_policy_hash": binding.resource_policy_hash,
+                    }
+                    if binding.backend_kind is not None
                     else {}
                 ),
             }
@@ -8399,21 +9288,21 @@ class Lab:
         merged = dict(options)
         merged.update(self.budget.as_options())
         merged["lab"] = True
-        browser_policy = asdict(BrowserCellPolicy(
-            allowed_hosts=self.policy.allowed_hosts,
-            require_https=self.policy.require_https,
-            max_actions=self.policy.max_browser_actions,
-            max_observations=max(1, self.policy.max_browser_actions * 10),
-        ))
+        browser_policy = asdict(
+            BrowserCellPolicy(
+                allowed_hosts=self.policy.allowed_hosts,
+                require_https=self.policy.require_https,
+                max_actions=self.policy.max_browser_actions,
+                max_observations=max(1, self.policy.max_browser_actions * 10),
+            )
+        )
         if "browser_policy" in merged and not _browser_policy_matches(merged["browser_policy"], browser_policy):
             raise ValueError("LabPolicy owns browser_policy; conflicting compatibility options are rejected")
         merged["browser_policy"] = browser_policy
         if self.policy.replay_directory is not None:
             merged.setdefault("lab_replay_directory", self.policy.replay_directory)
         if "non_goals" in merged:
-            merged["non_goals"] = _strict_string_sequence(
-                merged["non_goals"], label="lab non-goals"
-            )
+            merged["non_goals"] = _strict_string_sequence(merged["non_goals"], label="lab non-goals")
         else:
             merged["non_goals"] = spec.non_goals
         if "scope" in merged:
@@ -8431,10 +9320,22 @@ class Lab:
             type(merged["lab_allow_external_writes"]) is not bool
             or merged["lab_allow_external_writes"] != self.policy.allow_external_writes
         ):
-            raise ValueError(
-                "LabPolicy owns lab_allow_external_writes; conflicting compatibility options are rejected"
-            )
+            raise ValueError("LabPolicy owns lab_allow_external_writes; conflicting compatibility options are rejected")
         merged["lab_allow_external_writes"] = self.policy.allow_external_writes
+        goal_budget = GoalBudgetContract.from_lab_budget(
+            token_limit=cast(int, merged["lab_token_budget"]),
+            attempt_limit=cast(
+                int,
+                merged.get("lab_max_external_attempts", _default_external_attempt_budget(self.budget.max_steps)),
+            ),
+            finalization_reserve=cast(int, merged["lab_finalization_reserve"]),
+            recovery_reserve=cast(int, merged["lab_recovery_reserve"]),
+        )
+        merged["lab_goal_contract"] = spec.to_goal_contract(
+            policy_digest=self.policy.trust_policy_hash,
+            budget=goal_budget,
+        )
+        merged["lab_goal_contract_explicit"] = spec.goal_contract is not None
         if self.policy.replay_archive:
             default_replay_directory = self.policy.replay_directory or os.environ.get(
                 "AEGIS_LAB_REPLAY_DIR",
@@ -8483,6 +9384,7 @@ class LabApplication:
         context_retriever: Callable[..., Any] | None = None,
         system_context: str | None = None,
         post_completion_effect: Callable[..., Any] | None = None,
+        checkpoint_effect: Callable[..., Any] | None = None,
     ) -> None:
         self.config = config
         self.gateway_factory = gateway_factory
@@ -8516,6 +9418,7 @@ class LabApplication:
         # rather than merely accepting and discarding an unknown keyword.
         self._provider_attempt_hook_ref = self._provider_attempt_hook
         self.execution_cells = ExecutionCellRegistry()
+        self.checkpoint_effect = checkpoint_effect
         # ``None`` means legacy options are converted into trusted default
         # bindings. Supplying an explicit registry is an authority decision:
         # a missing lane must fail closed instead of falling back to a raw
@@ -8532,9 +9435,7 @@ class LabApplication:
         """
 
         raw_registry = options.get("lab_execution_cells")
-        authority_mode = _authority_mode_from_options(
-            options, default_trust_level=self.config.trust_level
-        )
+        authority_mode = _authority_mode_from_options(options, default_trust_level=self.config.trust_level)
         native_required = authority_mode is AuthorityMode.NATIVE_REQUIRED
         # Native-required runs cannot use an unregistered compatibility edge
         # adapter.  DEV/STAGING retain the additive compatibility conversion;
@@ -8557,11 +9458,10 @@ class LabApplication:
                 "tool_runner",
                 "benchmark_validator",
                 "skill_executor",
+                "lab_checkpoint_effect",
             )
             if any(key in options for key in legacy_edge_keys):
-                self.execution_cells = ExecutionCellRegistry(
-                    trust_policy_hash=run.trust_policy_hash
-                )
+                self.execution_cells = ExecutionCellRegistry(trust_policy_hash=run.trust_policy_hash)
                 run.bind_execution_cell_manifest(self.execution_cells.manifest())
                 self.execution_cells.seal()
                 run.record_blocker("execution_cell_registry_required:native_authority")
@@ -8569,9 +9469,7 @@ class LabApplication:
         bindings: list[ExecutionCellBinding] = []
         try:
             search_runner = (
-                options.get("search_program_executor")
-                or options.get("researcher")
-                or options.get("search_as_code")
+                options.get("search_program_executor") or options.get("researcher") or options.get("search_as_code")
             )
             if search_runner is None and callable(options.get("search_query_provider")):
                 raw_search_timeout = options.get("search_timeout_seconds", 10.0)
@@ -8652,11 +9550,16 @@ class LabApplication:
                         ("memory_write",),
                         ("memory_write",),
                     ),
+                    (
+                        "progress-checkpoint",
+                        "progress_checkpoint",
+                        self.checkpoint_effect or options.get("lab_checkpoint_effect"),
+                        ("state_write",),
+                        ("state_write",),
+                    ),
                 )
                 for cell_id, action_kind, runner, capabilities, effects in candidates:
-                    if callable(runner) or (
-                        action_kind == "browser_action" and hasattr(runner, "capture_action")
-                    ):
+                    if callable(runner) or (action_kind == "browser_action" and hasattr(runner, "capture_action")):
                         bindings.append(
                             ExecutionCellBinding(
                                 cell_id=cell_id,
@@ -8687,13 +9590,13 @@ class LabApplication:
                         "capabilities",
                         ("compute", "network_read", "model_inference", "read_only"),
                     )
-                    raw_effects = binding_map.get(
-                        "effect_classes", tuple(_CONTROLLER_SAFE_TOOL_EFFECTS)
-                    )
-                    raw_trust_levels = binding_map.get(
-                        "trust_levels", ("DEV", "STAGING", "PROD")
-                    )
-                    if not isinstance(raw_capabilities, (list, tuple)) or not isinstance(raw_effects, (list, tuple)) or not isinstance(raw_trust_levels, (list, tuple)):
+                    raw_effects = binding_map.get("effect_classes", tuple(_CONTROLLER_SAFE_TOOL_EFFECTS))
+                    raw_trust_levels = binding_map.get("trust_levels", ("DEV", "STAGING", "PROD"))
+                    if (
+                        not isinstance(raw_capabilities, (list, tuple))
+                        or not isinstance(raw_effects, (list, tuple))
+                        or not isinstance(raw_trust_levels, (list, tuple))
+                    ):
                         raise TypeError("lab execution cell policy fields must be sequences")
                     typed_capabilities = cast(list[Any] | tuple[Any, ...], raw_capabilities)
                     typed_effects = cast(list[Any] | tuple[Any, ...], raw_effects)
@@ -8706,6 +9609,9 @@ class LabApplication:
                             capabilities=cast(tuple[str, ...], tuple(typed_capabilities)),
                             effect_classes=cast(tuple[str, ...], tuple(typed_effects)),
                             trust_levels=cast(tuple[str, ...], tuple(typed_trust_levels)),
+                            backend_kind=cast(str | None, binding_map.get("backend_kind")),
+                            resource_policy=cast(Mapping[str, Any] | None, binding_map.get("resource_policy")),
+                            resource_policy_hash=cast(str | None, binding_map.get("resource_policy_hash")),
                         )
                     )
             elif isinstance(raw_registry, (list, tuple)):
@@ -8716,9 +9622,7 @@ class LabApplication:
                     bindings.append(raw_binding)
             else:
                 raise TypeError("lab_execution_cells must be a mapping or sequence")
-            self.execution_cells = ExecutionCellRegistry(
-                tuple(bindings), trust_policy_hash=run.trust_policy_hash
-            )
+            self.execution_cells = ExecutionCellRegistry(tuple(bindings), trust_policy_hash=run.trust_policy_hash)
             run.bind_execution_cell_manifest(self.execution_cells.manifest())
             self.execution_cells.seal()
         except (TypeError, ValueError) as exc:
@@ -8726,6 +9630,65 @@ class LabApplication:
             self.execution_cells.seal()
             run.bind_execution_cell_manifest(())
             run.record_blocker(f"execution_cell_registry_invalid:{type(exc).__name__}")
+
+    @staticmethod
+    def _bind_search_program_to_goal_target(
+        run: LabRun,
+        program: SearchProgram,
+    ) -> SearchProgram:
+        """Narrow research egress to the explicit Goal target.
+
+        A search program's own allowlist is an adapter request. An explicit
+        Goal target is the upper bound. Binding an empty program allowlist to
+        the target avoids interpreting omission as unrestricted network access.
+        """
+
+        if not run.goal_contract.has_explicit_acceptance:
+            return program
+        network_operations = {
+            "query",
+            "cross_check",
+            "contradiction_search",
+            "fetch",
+            "render",
+        }
+        if not any(operation.kind in network_operations for operation in program.operations):
+            return program
+        target_hosts = run.goal_contract.target.network_hosts()
+        if not target_hosts:
+            raise GoalContractError("explicit goal target does not authorize a usable network host")
+        requested_hosts = tuple(program.allowed_hosts)
+        if any(not run.goal_contract.target.allows_network_host(host) for host in requested_hosts):
+            raise GoalContractError("search program host is outside the goal target")
+        bound_program = replace(program, allowed_hosts=requested_hosts or target_hosts)
+        bound_program.validate()
+        return bound_program
+
+    @staticmethod
+    def _validate_browser_target_policy(
+        run: LabRun,
+        options: dict[str, Any],
+        *,
+        enabled: bool,
+    ) -> None:
+        """Require browser policy hosts to be a subset of the Goal target."""
+
+        if not enabled or not run.goal_contract.has_explicit_acceptance:
+            return
+        raw_policy = options.get("browser_policy")
+        if not isinstance(raw_policy, Mapping):
+            raise GoalContractError("explicit goal browser policy is missing")
+        typed_policy = cast(Mapping[str, Any], raw_policy)
+        raw_hosts = typed_policy.get("allowed_hosts", ())
+        if type(raw_hosts) not in (list, tuple):
+            raise GoalContractError("explicit goal browser policy hosts are invalid")
+        hosts = tuple(cast(list[Any] | tuple[Any, ...], raw_hosts))
+        if not hosts or any(type(host) is not str or not host.strip() for host in hosts):
+            raise GoalContractError("explicit goal browser target requires an explicit host allowlist")
+        if not run.goal_contract.target.network_hosts():
+            raise GoalContractError("explicit goal target does not authorize browser network access")
+        if any(not run.goal_contract.target.allows_network_host(host) for host in hosts):
+            raise GoalContractError("browser policy host is outside the goal target")
 
     def _resolve_execution_cell(
         self,
@@ -8881,9 +9844,7 @@ class LabApplication:
                     {"error": type(exc).__name__},
                 )
             except (RuntimeError, TypeError, ValueError) as settlement_exc:
-                run.record_blocker(
-                    f"context_retrieval_settlement_failed:{type(settlement_exc).__name__}"
-                )
+                run.record_blocker(f"context_retrieval_settlement_failed:{type(settlement_exc).__name__}")
             run.record_blocker(f"context_retrieval_failed:{type(exc).__name__}")
             return ""
 
@@ -8897,9 +9858,7 @@ class LabApplication:
             if key in options
         }
         trust_policy_hash = options.get("lab_trust_policy_hash")
-        authority_mode = _authority_mode_from_options(
-            options, default_trust_level=self.config.trust_level
-        )
+        authority_mode = _authority_mode_from_options(options, default_trust_level=self.config.trust_level)
         require_native = authority_mode is AuthorityMode.NATIVE_REQUIRED
         # The active reducer is the authoritative subject for an admitted
         # native run.  Compatibility callers may invoke ``_gateway`` before
@@ -8915,16 +9874,11 @@ class LabApplication:
                     or type(active_run.trust_policy_hash) is not str
                     or active_run.trust_policy_hash != expected_run_hash
                 ):
-                    raise RuntimeError(
-                        "native Lab authority requires a canonical active run trust-policy fence"
-                    )
+                    raise RuntimeError("native Lab authority requires a canonical active run trust-policy fence")
                 trust_policy_hash = active_run.trust_policy_hash
             elif trust_policy_hash is None:
                 trust_policy_hash = _trust_policy_hash(self.config.trust_level)
-            elif (
-                type(trust_policy_hash) is not str
-                or trust_policy_hash != _trust_policy_hash(self.config.trust_level)
-            ):
+            elif type(trust_policy_hash) is not str or trust_policy_hash != _trust_policy_hash(self.config.trust_level):
                 raise ValueError("native Lab trust policy hash does not match trust level")
         if trust_policy_hash is not None and self._factory_accepts_keyword("trust_policy_hash"):
             gateway_options["trust_policy_hash"] = trust_policy_hash
@@ -8944,14 +9898,19 @@ class LabApplication:
             telemetry=self.telemetry,
             **gateway_options,
         )
-        if require_native and getattr(gateway_instance, "provider_attempt_hook", None) is not self._provider_attempt_hook_ref:
+        if (
+            require_native
+            and getattr(gateway_instance, "provider_attempt_hook", None) is not self._provider_attempt_hook_ref
+        ):
             # A permissive ``**kwargs`` compatibility factory may accept the
             # hook but drop it.  Native-required mode must reject that
             # ambiguity before any model/provider side effect can occur.
             raise RuntimeError("native Lab authority requires the gateway to install its provider-attempt fence")
-        if trust_policy_hash is not None and require_native and getattr(
-            gateway_instance, "trust_policy_hash", None
-        ) != trust_policy_hash:
+        if (
+            trust_policy_hash is not None
+            and require_native
+            and getattr(gateway_instance, "trust_policy_hash", None) != trust_policy_hash
+        ):
             raise RuntimeError("native Lab authority requires a matching gateway trust-policy hash")
         # Native-required Lab retries are owned by the enclosing execution
         # cell.  A compatibility gateway that exposes its own multi-attempt
@@ -8973,14 +9932,13 @@ class LabApplication:
 
         try:
             signature = inspect.signature(self.gateway_factory)
-        except (TypeError, ValueError):
+        except TypeError, ValueError:
             # A callable implemented in an extension may not expose a
             # signature; passing the keyword lets it fail closed at the
             # factory boundary instead of silently dropping the fence.
             return True
         return keyword in signature.parameters or any(
-            parameter.kind is inspect.Parameter.VAR_KEYWORD
-            for parameter in signature.parameters.values()
+            parameter.kind is inspect.Parameter.VAR_KEYWORD for parameter in signature.parameters.values()
         )
 
     def _provider_attempt_hook(self, event: str, payload: Any) -> Any:
@@ -9046,10 +10004,7 @@ class LabApplication:
             or gateway_attempt < 1
             or (
                 gateway_max_attempts is not None
-                and (
-                    type(gateway_max_attempts) is not int
-                    or gateway_max_attempts < gateway_attempt
-                )
+                and (type(gateway_max_attempts) is not int or gateway_max_attempts < gateway_attempt)
             )
             or isinstance(timeout_seconds, bool)
             or not isinstance(timeout_seconds, (int, float))
@@ -9083,23 +10038,22 @@ class LabApplication:
             "timeout_seconds": float(timeout_seconds),
             "idempotency_key": idempotency_key,
             "configured_provider": str(self.config.options.get("provider", "")),
-            "configured_fallback_providers_hash": _hash(
-                self.config.options.get("fallback_providers", ())
-            ),
-            "configured_provider_budgets_hash": _hash(
-                self.config.options.get("provider_budgets", ())
-            ),
+            "configured_fallback_providers_hash": _hash(self.config.options.get("fallback_providers", ())),
+            "configured_provider_budgets_hash": _hash(self.config.options.get("provider_budgets", ())),
         }
-        execution_id = "provider-attempt-" + _hash(
-            {
-                "mission_id": run.mission_id,
-                "phase": phase,
-                "call_id": call_id,
-                "provider": provider,
-                "gateway_attempt": gateway_attempt,
-                "candidate_index": candidate_index,
-            }
-        )[:48]
+        execution_id = (
+            "provider-attempt-"
+            + _hash(
+                {
+                    "mission_id": run.mission_id,
+                    "phase": phase,
+                    "call_id": call_id,
+                    "provider": provider,
+                    "gateway_attempt": gateway_attempt,
+                    "candidate_index": candidate_index,
+                }
+            )[:48]
+        )
         lease_id = max(1, len(run.tool_execution_admissions) + 1)
         execution_id, admission_id = run.admit_tool_execution(
             tool_name=f"provider.{provider}",
@@ -9226,9 +10180,7 @@ class LabApplication:
             raw_call_id,
             raw_gateway_attempt,
         )
-        self._provider_attempt_receipts.setdefault(key, []).append(
-            (raw_provider, status)
-        )
+        self._provider_attempt_receipts.setdefault(key, []).append((raw_provider, status))
 
     def _assert_provider_attempt_fence(
         self,
@@ -9262,9 +10214,7 @@ class LabApplication:
             raise RuntimeError("native Lab authority requires typed provider attempts")
         typed_attempted = cast(list[Any] | tuple[Any, ...], raw_attempted)
         if any(
-            type(provider) is not str
-            or not provider.strip()
-            or provider != provider.strip()
+            type(provider) is not str or not provider.strip() or provider != provider.strip()
             for provider in typed_attempted
         ):
             raise RuntimeError("native Lab authority requires canonical provider names")
@@ -9284,9 +10234,7 @@ class LabApplication:
             raise RuntimeError("native Lab authority requires typed throttled providers")
         typed_throttled = cast(list[Any] | tuple[Any, ...], raw_throttled)
         if any(
-            type(provider) is not str
-            or not provider.strip()
-            or provider != provider.strip()
+            type(provider) is not str or not provider.strip() or provider != provider.strip()
             for provider in typed_throttled
         ):
             raise RuntimeError("native Lab authority requires canonical throttled providers")
@@ -9312,9 +10260,7 @@ class LabApplication:
             elif type(value) is not str or value != expected:
                 raise RuntimeError(f"native Lab authority provider route {field} is invalid")
 
-        observed = tuple(
-            self._provider_attempt_receipts.get((phase, call_id, gateway_attempt), ())
-        )
+        observed = tuple(self._provider_attempt_receipts.get((phase, call_id, gateway_attempt), ()))
         if tuple(provider for provider, _ in observed) != attempted:
             raise RuntimeError("native Lab authority provider-attempt receipts are incomplete")
         if any(status not in {"SUCCESS", "REJECTED", "TIMED_OUT", "CANCELLED"} for _, status in observed):
@@ -9427,9 +10373,7 @@ class LabApplication:
             seeds=tuple(item for item in typed_seeds),
             max_steps=payload.get("max_steps", 10_000),
             constraints=tuple(constraints),
-            discrepancy_model=payload.get(
-                "discrepancy_model", "y_real = y_sim + delta(x) + epsilon"
-            ),
+            discrepancy_model=payload.get("discrepancy_model", "y_real = y_sim + delta(x) + epsilon"),
             calibration_hash=payload.get("calibration_hash", ""),
             calibration_observations=payload.get("calibration_observations", 0),
             calibration_rmse=optional_float("calibration_rmse"),
@@ -9479,9 +10423,7 @@ class LabApplication:
                 if admission_to_settle is None or settled:
                     return
                 try:
-                    manifest = registry.get(
-                        admission_to_settle.skill_id, admission_to_settle.version
-                    )
+                    manifest = registry.get(admission_to_settle.skill_id, admission_to_settle.version)
                     result = {"error": reason}
                     input_hash = _hash(input_to_settle)
                     result_hash = _hash(result)
@@ -9539,10 +10481,7 @@ class LabApplication:
                 if not isinstance(preconditions_raw, dict):
                     raise SkillAdmissionError("skill preconditions must be a mapping")
                 typed_preconditions = cast(dict[Any, Any], preconditions_raw)
-                if any(
-                    type(name) is not str or type(value) is not bool
-                    for name, value in typed_preconditions.items()
-                ):
+                if any(type(name) is not str or type(value) is not bool for name, value in typed_preconditions.items()):
                     raise SkillAdmissionError("skill preconditions must use string/boolean values")
                 preconditions = cast(dict[str, bool], dict(typed_preconditions))
                 configured_executor = request.get("executor")
@@ -9626,17 +10565,20 @@ class LabApplication:
             raw_expected_schema = request.get("expected_observation_schema", "opaque")
             raw_stop_rule = request.get("stop_rule", "single_call")
             lease_id = request.get("lease_id", 1)
-            if any(
-                type(value) is not str
-                for value in (
-                    raw_tool_name,
-                    raw_call_id,
-                    raw_effect_class,
-                    raw_actor_role,
-                    raw_expected_schema,
-                    raw_stop_rule,
+            if (
+                any(
+                    type(value) is not str
+                    for value in (
+                        raw_tool_name,
+                        raw_call_id,
+                        raw_effect_class,
+                        raw_actor_role,
+                        raw_expected_schema,
+                        raw_stop_rule,
+                    )
                 )
-            ) or type(lease_id) is not int:
+                or type(lease_id) is not int
+            ):
                 run.record_blocker("tool_call_invalid")
                 continue
             tool_name = raw_tool_name.strip()
@@ -9648,10 +10590,7 @@ class LabApplication:
             if lease_id < 1:
                 run.record_blocker("tool_lease_invalid")
                 continue
-            if (
-                effect_class not in _CONTROLLER_SAFE_TOOL_EFFECTS
-                and not allow_external_writes
-            ):
+            if effect_class not in _CONTROLLER_SAFE_TOOL_EFFECTS and not allow_external_writes:
                 run.record_blocker("tool_external_effect_not_approved")
                 continue
             runner = self._resolve_execution_cell(
@@ -9680,6 +10619,23 @@ class LabApplication:
                     "actor_role": actor_role,
                 },
             )
+            if run.goal_contract.has_explicit_acceptance and effect_class == "network_read":
+                network_host = _network_host_from_payload(input_payload)
+                if not run.goal_contract.target.allows_network_host(network_host or ""):
+                    run.record_blocker("tool_network_target_not_allowlisted")
+                    continue
+            try:
+                target_paths = _target_paths_from_payload(input_payload)
+            except ValueError:
+                run.record_blocker("tool_target_path_invalid")
+                continue
+            if (
+                run.goal_contract.has_explicit_acceptance
+                and target_paths
+                and any(not run.goal_contract.target.allows_path(path, effect_class) for path in target_paths)
+            ):
+                run.record_blocker("tool_target_path_not_allowlisted")
+                continue
             idempotency_key_base = _hash(
                 {
                     "schema": "aegis-tool-idempotency-key-v1",
@@ -10012,10 +10968,7 @@ class LabApplication:
                     run.record_blocker("controller_browser_action_invalid")
                     continue
                 action_kind = raw_action_kind.strip().lower()
-                action_id = (
-                    f"lease-{max(1, browser_cell.lease_id)}-"
-                    f"action-{browser_cell.action_count + 1}"
-                )
+                action_id = f"lease-{max(1, browser_cell.lease_id)}-action-{browser_cell.action_count + 1}"
                 admission_id = ""
                 counted = False
                 try:
@@ -10063,17 +11016,11 @@ class LabApplication:
                         admission_id=admission_id,
                         action_kind=action_kind,
                         action=action_map,
-                        result={
-                            "capture_result_hash": str(
-                                getattr(capture, "browser_action_result_hash", "")
-                            )
-                        },
+                        result={"capture_result_hash": str(getattr(capture, "browser_action_result_hash", ""))},
                         policy=browser_cell.policy,
                         lease_id=max(1, browser_cell.lease_id),
                     )
-                    run.resolve_blocker(
-                        "browser_session_or_actions_missing", detail="controller_action_plan"
-                    )
+                    run.resolve_blocker("browser_session_or_actions_missing", detail="controller_action_plan")
                 except asyncio.CancelledError:
                     if admission_id:
                         if not counted:
@@ -10123,9 +11070,7 @@ class LabApplication:
                     max_candidates = program_data.get("max_candidates", 20)
                     provider = program_data.get("provider", "unspecified")
                     freshness_max_age = program_data.get("freshness_max_age_seconds")
-                    contradiction_clusters = program_data.get(
-                        "min_independent_contradiction_clusters", 0
-                    )
+                    contradiction_clusters = program_data.get("min_independent_contradiction_clusters", 0)
                     if (
                         type(max_candidates) is not int
                         or type(provider) is not str
@@ -10146,6 +11091,7 @@ class LabApplication:
                     )
                 else:
                     raise TypeError("controller search program must be a mapping")
+                program = self._bind_search_program_to_goal_target(run, program)
                 executor = self._resolve_execution_cell(
                     run,
                     action_kind="search_program",
@@ -10562,12 +11508,8 @@ class LabApplication:
             "max_steps": self.config.max_steps,
             "timeout_seconds": timeout_seconds,
             "configured_provider": str(self.config.options.get("provider", "")),
-            "configured_fallback_providers_hash": _hash(
-                self.config.options.get("fallback_providers", ())
-            ),
-            "configured_provider_budgets_hash": _hash(
-                self.config.options.get("provider_budgets", ())
-            ),
+            "configured_fallback_providers_hash": _hash(self.config.options.get("fallback_providers", ())),
+            "configured_provider_budgets_hash": _hash(self.config.options.get("provider_budgets", ())),
         }
         execution_id = f"gateway-{normalized_phase}-{normalized_call_id}-attempt-{attempt}"
         idempotency_key = _hash(
@@ -10725,9 +11667,7 @@ class LabApplication:
                 }
             )
         if budget is not None:
-            result_payload["provider_budget_evidence_hash"] = str(
-                getattr(budget, "budget_evidence_hash", "")
-            )
+            result_payload["provider_budget_evidence_hash"] = str(getattr(budget, "budget_evidence_hash", ""))
         run.record_tool_execution(
             tool_name=f"gateway.{normalized_phase}",
             execution_id=execution_id,
@@ -10747,6 +11687,177 @@ class LabApplication:
         )
         return result
 
+    async def _run_progress_checkpoint(
+        self,
+        run: LabRun,
+        options: dict[str, Any],
+        *,
+        decision: AdaptiveDecision,
+    ) -> bool:
+        """Persist one resumable progress boundary after a controller step.
+
+        The callback receives a continuation packet, while the Lab ledger only
+        stores its digest and the settlement outcome. This keeps the event
+        chain bounded and makes a failed persistence boundary visible instead
+        of allowing the run to continue as if recovery were guaranteed.
+        """
+
+        effect = self._resolve_execution_cell(
+            run,
+            action_kind="progress_checkpoint",
+            options=options,
+            capability="state_write",
+            effect_class="state_write",
+        )
+        if effect is None:
+            return True
+        if not callable(effect):
+            run.record_blocker("progress_checkpoint_runner_invalid")
+            return False
+        raw_timeout = options.get("lab_checkpoint_timeout_seconds", 10.0)
+        if not _is_finite_number(raw_timeout) or float(raw_timeout) <= 0:
+            run.record_blocker("progress_checkpoint_timeout_policy_invalid")
+            return False
+        try:
+            max_chars = options.get("lab_progress_context_max_chars", 16_384)
+            progress_context = run.controller_context(max_chars=max_chars)
+        except (TypeError, ValueError) as exc:
+            run.record_blocker(f"progress_checkpoint_context_invalid:{type(exc).__name__}")
+            return False
+        checkpoint = {
+            "schema": "aegis-lab-continuation-v1",
+            "mission_id": run.mission_id,
+            "step": decision.step,
+            "phase": decision.phase,
+            "next_step": decision.step + 1,
+            "state": run.state,
+            "state_epoch": run.state_epoch,
+            "event_cursor": run.event_cursor(),
+            "event_root_hash": run.events[-1].event_hash if run.events else "0" * 64,
+            "progress_context": progress_context,
+        }
+        continuation_hash = _hash(checkpoint)
+        input_payload = {
+            "schema": "aegis-lab-progress-checkpoint-input-v1",
+            "mission_id": run.mission_id,
+            "step": decision.step,
+            "state_epoch": run.state_epoch,
+            "event_cursor": run.event_cursor(),
+            "event_root_hash": checkpoint["event_root_hash"],
+            "continuation_hash": continuation_hash,
+        }
+        timeout_seconds = float(raw_timeout)
+        policy_payload = {
+            "schema": "aegis-lab-progress-checkpoint-policy-v1",
+            "effect": "state_write",
+            "trust_level": self.config.trust_level,
+            "failure_mode": "block_run",
+            "timeout_seconds": timeout_seconds,
+        }
+        execution_id = f"progress-checkpoint-{run.mission_id}-{decision.step}"
+        idempotency_key = _hash(
+            {
+                "schema": "aegis-lab-progress-checkpoint-idempotency-key-v1",
+                "execution_id": execution_id,
+                "input_hash": _hash(input_payload),
+                "policy_hash": _hash(policy_payload),
+            }
+        )
+        policy_payload["idempotency_key"] = idempotency_key
+        try:
+            execution_id, admission_id = run.admit_tool_execution(
+                tool_name="lab.progress_checkpoint",
+                input_payload=input_payload,
+                policy_payload=policy_payload,
+                effect_class="state_write",
+                actor_role="actor",
+                expected_observation_schema="aegis-lab-progress-checkpoint-result-v1",
+                stop_rule="single_progress_checkpoint",
+                lease_id=max(1, len(run.tool_execution_admissions) + 1),
+                attempt=1,
+                execution_id=execution_id,
+                idempotency_key=idempotency_key,
+                timeout_seconds=timeout_seconds,
+            )
+        except (RuntimeError, TypeError, ValueError) as exc:
+            run.record_blocker(f"progress_checkpoint_admission_failed:{type(exc).__name__}")
+            return False
+        try:
+            effect_result = await asyncio.wait_for(
+                _call_fenced(effect, run=run, checkpoint=checkpoint),
+                timeout=timeout_seconds,
+            )
+        except asyncio.CancelledError:
+            with contextlib.suppress(RuntimeError, TypeError, ValueError):
+                run.record_tool_execution(
+                    tool_name="lab.progress_checkpoint",
+                    execution_id=execution_id,
+                    admission_id=admission_id,
+                    input_payload=input_payload,
+                    policy_payload=policy_payload,
+                    result={"error": "CancelledError", "continuation_hash": continuation_hash},
+                    effect_class="state_write",
+                    actor_role="actor",
+                    expected_observation_schema="aegis-lab-progress-checkpoint-result-v1",
+                    stop_rule="single_progress_checkpoint",
+                    lease_id=max(1, len(run.tool_execution_admissions)),
+                    attempt=1,
+                    status="CANCELLED",
+                    idempotency_key=idempotency_key,
+                    timeout_seconds=timeout_seconds,
+                )
+            raise
+        except Exception as exc:
+            with contextlib.suppress(RuntimeError, TypeError, ValueError):
+                run.record_tool_execution(
+                    tool_name="lab.progress_checkpoint",
+                    execution_id=execution_id,
+                    admission_id=admission_id,
+                    input_payload=input_payload,
+                    policy_payload=policy_payload,
+                    result={
+                        "error": type(exc).__name__,
+                        "continuation_hash": continuation_hash,
+                    },
+                    effect_class="state_write",
+                    actor_role="actor",
+                    expected_observation_schema="aegis-lab-progress-checkpoint-result-v1",
+                    stop_rule="single_progress_checkpoint",
+                    lease_id=max(1, len(run.tool_execution_admissions)),
+                    attempt=1,
+                    status="TIMED_OUT" if isinstance(exc, TimeoutError) else "REJECTED",
+                    idempotency_key=idempotency_key,
+                    timeout_seconds=timeout_seconds,
+                )
+            run.record_blocker(f"progress_checkpoint_failed:{type(exc).__name__}")
+            return False
+        try:
+            run.record_tool_execution(
+                tool_name="lab.progress_checkpoint",
+                execution_id=execution_id,
+                admission_id=admission_id,
+                input_payload=input_payload,
+                policy_payload=policy_payload,
+                result={
+                    "schema": "aegis-lab-progress-checkpoint-result-v1",
+                    "continuation_hash": continuation_hash,
+                    "result_hash": _hash(effect_result),
+                },
+                effect_class="state_write",
+                actor_role="actor",
+                expected_observation_schema="aegis-lab-progress-checkpoint-result-v1",
+                stop_rule="single_progress_checkpoint",
+                lease_id=max(1, len(run.tool_execution_admissions)),
+                attempt=1,
+                status="SUCCESS",
+                idempotency_key=idempotency_key,
+                timeout_seconds=timeout_seconds,
+            )
+        except (RuntimeError, TypeError, ValueError) as exc:
+            run.record_blocker(f"progress_checkpoint_settlement_failed:{type(exc).__name__}")
+            return False
+        return True
+
     async def _run_post_completion_effect(self, run: LabRun, result: Any) -> None:
         """Fence a trusted persistence hook before the dossier becomes terminal."""
 
@@ -10758,9 +11869,7 @@ class LabApplication:
         if type(raw_trust_level) is not str:
             run.record_blocker("trust_level_policy_invalid")
             return
-        effect_required = raw_effect_required or (
-            raw_trust_level.strip().upper() == "PROD"
-        )
+        effect_required = raw_effect_required or (raw_trust_level.strip().upper() == "PROD")
         effect = self._resolve_execution_cell(
             run,
             action_kind="post_completion_effect",
@@ -10817,6 +11926,7 @@ class LabApplication:
                 execution_id=execution_id,
                 idempotency_key=idempotency_key,
                 timeout_seconds=timeout_seconds,
+                managed_internal=True,
             )
         except (RuntimeError, TypeError, ValueError) as exc:
             run.record_blocker(f"post_completion_effect_admission_failed:{type(exc).__name__}")
@@ -10844,6 +11954,7 @@ class LabApplication:
                     status="CANCELLED",
                     idempotency_key=idempotency_key,
                     timeout_seconds=timeout_seconds,
+                    managed_internal=True,
                 )
             except (RuntimeError, TypeError, ValueError) as settlement_exc:
                 run.record_blocker(f"post_completion_effect_settlement_failed:{type(settlement_exc).__name__}")
@@ -10866,6 +11977,7 @@ class LabApplication:
                     status="TIMED_OUT" if isinstance(exc, TimeoutError) else "REJECTED",
                     idempotency_key=idempotency_key,
                     timeout_seconds=timeout_seconds,
+                    managed_internal=True,
                 )
             except (RuntimeError, TypeError, ValueError) as settlement_exc:
                 run.record_blocker(f"post_completion_effect_settlement_failed:{type(settlement_exc).__name__}")
@@ -10892,6 +12004,7 @@ class LabApplication:
                 status="SUCCESS",
                 idempotency_key=idempotency_key,
                 timeout_seconds=timeout_seconds,
+                managed_internal=True,
             )
         except (RuntimeError, TypeError, ValueError) as exc:
             run.record_blocker(f"post_completion_effect_settlement_failed:{type(exc).__name__}")
@@ -10917,7 +12030,7 @@ class LabApplication:
             raw_map = cast(dict[str, Any], raw)
             run.add_observation(
                 ObservationRecord(
-                    observation_id=raw_map.get("observation_id", f"observation-{index+1}"),
+                    observation_id=raw_map.get("observation_id", f"observation-{index + 1}"),
                     experiment_id=spec.experiment_id,
                     seed=raw_map.get("seed", spec.preregistered_seeds[index % len(spec.preregistered_seeds)]),
                     measurement=raw_map["measurement"],
@@ -10925,16 +12038,8 @@ class LabApplication:
                     raw_artifact_hash=raw_map.get("raw_artifact_hash", _hash(raw_map)),
                     environment_hash=raw_map.get("environment_hash", _hash({"run_id": run_id})),
                     valid=raw_map.get("valid", True),
-                    uncertainty=(
-                        raw_map["uncertainty"]
-                        if raw_map.get("uncertainty") is not None
-                        else None
-                    ),
-                    replication_of=(
-                        raw_map["replication_of"]
-                        if raw_map.get("replication_of") is not None
-                        else None
-                    ),
+                    uncertainty=(raw_map["uncertainty"] if raw_map.get("uncertainty") is not None else None),
+                    replication_of=(raw_map["replication_of"] if raw_map.get("replication_of") is not None else None),
                     operator_id=raw_map.get("operator_id", ""),
                     clean=raw_map.get("clean", True),
                     epistemic_status=raw_map.get("epistemic_status", "OBSERVED"),
@@ -10981,12 +12086,7 @@ class LabApplication:
                 continue
             content = content_values[0] if content_values else ""
             uri = uri_values[0] if uri_values else ""
-            if (
-                type(uri) is not str
-                or type(content) is not str
-                or not uri.strip()
-                or not content
-            ):
+            if type(uri) is not str or type(content) is not str or not uri.strip() or not content:
                 run.record_blocker("invalid_source_record", detail="uri/content type")
                 continue
             content_text = content
@@ -11008,11 +12108,8 @@ class LabApplication:
             relation = raw.get("relation", "unknown")
             provenance_cluster = raw.get("provenance_cluster", "")
             citation_spans = raw.get("citation_spans", ())
-            source_id = source_id_values[0] if source_id_values else f"source-{len(run.sources)+index+1}"
-            if (
-                type(supplied_content_hash) is not str
-                or supplied_content_hash != digest
-            ):
+            source_id = source_id_values[0] if source_id_values else f"source-{len(run.sources) + index + 1}"
+            if type(supplied_content_hash) is not str or supplied_content_hash != digest:
                 run.record_blocker("source_content_hash_mismatch")
                 run.record_security_event(
                     "source_content_hash_mismatch",
@@ -11078,10 +12175,15 @@ class LabApplication:
         options = cast(dict[str, Any], self.config.options)
         replay_directory = options.get("lab_replay_directory")
         lease = ReplayWriterLease(replay_directory) if replay_directory is not None else None
+        effect_leases: list[ExternalSideEffectLease] = []
+        completed = False
         if lease is not None:
             lease.acquire()
         try:
-            return await self._run_unleased()
+            effect_leases = self._acquire_goal_effect_leases(options)
+            result = await self._run_unleased()
+            completed = True
+            return result
         except asyncio.CancelledError:
             self._abort_after_failure("application_cancelled")
             raise
@@ -11089,8 +12191,70 @@ class LabApplication:
             self._abort_after_failure("application_failed")
             raise
         finally:
+            if not completed:
+                self._archive_failure_prefix(options)
+            for effect_lease in reversed(effect_leases):
+                effect_lease.release()
             if lease is not None:
                 lease.release()
+
+    def _archive_failure_prefix(self, options: dict[str, Any]) -> None:
+        """Persist a reconciled failure prefix while the replay lease is held.
+
+        A failed or cancelled application still has useful recovery evidence:
+        admissions are reconciled as non-success and the event chain can be
+        inspected in a fresh process.  Archive errors are retained as blockers
+        when the reducer still accepts events; they must never mask the original
+        application exception or cancellation.
+        """
+
+        run = self._active_run
+        replay_directory = options.get("lab_replay_directory")
+        if run is None or replay_directory is None:
+            return
+        try:
+            run.archive_to_native(
+                replay_directory,
+                max_events_per_segment=options.get("lab_replay_segment_size", 64),
+            )
+        except (ImportError, OSError, RuntimeError, TypeError, ValueError) as exc:
+            with contextlib.suppress(RuntimeError, TypeError, ValueError):
+                run.record_blocker(f"lab_replay_failure_archive_failed:{type(exc).__name__}")
+
+    @staticmethod
+    def _acquire_goal_effect_leases(
+        options: dict[str, Any],
+    ) -> list[ExternalSideEffectLease]:
+        """Acquire local advisory leases for an explicit Goal effect surface.
+
+        This coordinates Lab processes that share a lease directory. It is
+        deliberately fail-closed when an explicit external effect has no local
+        coordination directory; the lease is not provider or kernel isolation.
+        """
+
+        raw_contract = options.get("lab_goal_contract")
+        if not isinstance(raw_contract, GoalContract) or not raw_contract.has_explicit_acceptance:
+            return []
+        effect_keys = tuple(sorted(set(raw_contract.target.external_side_effects)))
+        if not effect_keys:
+            return []
+        lease_directory = options.get(
+            "lab_external_effect_lease_directory",
+            options.get("lab_replay_directory"),
+        )
+        if lease_directory is None:
+            raise GoalContractError("explicit external effects require a local effect lease directory")
+        leases: list[ExternalSideEffectLease] = []
+        try:
+            for effect_key in effect_keys:
+                lease = ExternalSideEffectLease(lease_directory, effect_key)
+                lease.acquire()
+                leases.append(lease)
+        except Exception:
+            for lease in reversed(leases):
+                lease.release()
+            raise
+        return leases
 
     def _abort_after_failure(self, reason: str) -> None:
         """Close an active direct application run before propagating failure.
@@ -11113,9 +12277,7 @@ class LabApplication:
             )
         except (RuntimeError, TypeError, ValueError) as exc:
             with contextlib.suppress(RuntimeError, TypeError, ValueError):
-                run.record_blocker(
-                    f"application_failure_reconciliation_failed:{type(exc).__name__}"
-                )
+                run.record_blocker(f"application_failure_reconciliation_failed:{type(exc).__name__}")
         try:
             if run.state not in {"completed", "aborted"}:
                 run.abort()
@@ -11129,13 +12291,22 @@ class LabApplication:
             raise RuntimeError("LabApplication already has an active run")
         self._provider_attempt_receipts = {}
         options = cast(dict[str, Any], self.config.options)
-        raw_token_budget = options.get("lab_token_budget", max(1, self.config.max_steps * 1000))
+        raw_goal_contract = options.get("lab_goal_contract")
+        if raw_goal_contract is not None and type(raw_goal_contract) is not GoalContract:
+            raise TypeError("lab_goal_contract must be GoalContract")
+        contract_budget = raw_goal_contract.budget if isinstance(raw_goal_contract, GoalContract) else None
+        raw_token_budget = options.get(
+            "lab_token_budget",
+            contract_budget.token_limit if contract_budget is not None else max(1, self.config.max_steps * 1000),
+        )
         if type(raw_token_budget) is not int:
             raise ValueError("lab token budget must be an integer")
         token_budget = raw_token_budget
         raw_external_attempt_budget = options.get(
             "lab_max_external_attempts",
-            _default_external_attempt_budget(self.config.max_steps),
+            contract_budget.attempt_limit
+            if contract_budget is not None
+            else _default_external_attempt_budget(self.config.max_steps),
         )
         if type(raw_external_attempt_budget) is not int or raw_external_attempt_budget < 1:
             raise ValueError("lab external attempt budget must be a positive integer")
@@ -11144,26 +12315,60 @@ class LabApplication:
             max(0, token_budget // 10),
             max(0, token_budget - default_finalization - 1),
         )
-        raw_scope = options.get("scope", ())
-        raw_non_goals = options.get("non_goals", ())
+        raw_scope = options.get("scope", raw_goal_contract.scope if isinstance(raw_goal_contract, GoalContract) else ())
+        raw_non_goals = options.get(
+            "non_goals",
+            raw_goal_contract.non_goals if isinstance(raw_goal_contract, GoalContract) else (),
+        )
         scope = _strict_string_sequence(raw_scope, label="lab scope")
         non_goals = _strict_string_sequence(raw_non_goals, label="lab non-goals")
-        raw_finalization = options.get("lab_finalization_reserve", default_finalization)
-        raw_recovery = options.get("lab_recovery_reserve", default_recovery)
+        contract_finalization_default = (
+            contract_budget.reserved_tokens // 2 if contract_budget is not None else default_finalization
+        )
+        contract_recovery_default = (
+            contract_budget.reserved_tokens - contract_finalization_default
+            if contract_budget is not None
+            else default_recovery
+        )
+        raw_finalization = options.get("lab_finalization_reserve", contract_finalization_default)
+        raw_recovery = options.get("lab_recovery_reserve", contract_recovery_default)
         if type(raw_finalization) is not int or type(raw_recovery) is not int:
             raise ValueError("lab budget reserves must be integers")
-        authority_mode = _authority_mode_from_options(
-            options, default_trust_level=self.config.trust_level
-        )
+        authority_mode = _authority_mode_from_options(options, default_trust_level=self.config.trust_level)
         raw_trust_policy_hash = options.get("lab_trust_policy_hash")
         if raw_trust_policy_hash is not None and type(raw_trust_policy_hash) is not str:
             raise ValueError("lab trust policy hash must be a string or unset")
+        if raw_goal_contract is None:
+            raw_goal_contract = LabMissionSpec(
+                self.config.task,
+                scope=scope,
+                non_goals=non_goals,
+            ).to_goal_contract(
+                policy_digest=raw_trust_policy_hash or "unbound",
+                budget=GoalBudgetContract.from_lab_budget(
+                    token_limit=token_budget,
+                    attempt_limit=raw_external_attempt_budget,
+                    finalization_reserve=raw_finalization,
+                    recovery_reserve=raw_recovery,
+                ),
+            )
+        else:
+            raw_trust_policy_hash = _resolve_goal_policy_hash(
+                raw_goal_contract,
+                raw_trust_policy_hash,
+            )
+        explicit_goal_contract = bool(options.get("lab_goal_contract_explicit", "lab_goal_contract" in options))
+        if type(options.get("lab_goal_contract_explicit", explicit_goal_contract)) is not bool:
+            raise TypeError("lab_goal_contract_explicit must be boolean")
+        if explicit_goal_contract:
+            raw_goal_contract.validate_for_admission()
         run = LabRun(
             self.config.task,
             max_steps=self.config.max_steps,
             external_attempt_budget=raw_external_attempt_budget,
             scope=scope,
             non_goals=non_goals,
+            goal_contract=raw_goal_contract,
             require_native_authority=authority_mode is AuthorityMode.NATIVE_REQUIRED,
             authority_mode=authority_mode,
             trust_level=self.config.trust_level,
@@ -11177,6 +12382,11 @@ class LabApplication:
             self.run_sink(run)
         if self.event_sink is not None:
             run.subscribe(self.event_sink)
+        self._validate_browser_target_policy(
+            run,
+            options,
+            enabled=bool(getattr(self.config, "browser", False)),
+        )
         self._prepare_execution_cells(run, options)
         retrieved_context = await self._run_context_retrieval(run, options)
         context_block = (
@@ -11215,9 +12425,7 @@ class LabApplication:
                     max_candidates = program_data.get("max_candidates", 20)
                     provider = program_data.get("provider", "unspecified")
                     freshness_max_age = program_data.get("freshness_max_age_seconds")
-                    contradiction_clusters = program_data.get(
-                        "min_independent_contradiction_clusters", 0
-                    )
+                    contradiction_clusters = program_data.get("min_independent_contradiction_clusters", 0)
                     if (
                         type(max_candidates) is not int
                         or type(provider) is not str
@@ -11238,6 +12446,7 @@ class LabApplication:
                     )
                 else:
                     raise TypeError("search_program must be SearchProgram or mapping")
+                program = self._bind_search_program_to_goal_target(run, program)
                 if search_executor is None and self._execution_cells_strict:
                     run.record_blocker("execution_cell_not_registered:search_program")
                     raise RuntimeError("search program execution cell is not registered")
@@ -11284,7 +12493,7 @@ class LabApplication:
                     except (RuntimeError, TypeError, ValueError) as settlement_exc:
                         run.record_blocker(f"research_admission_settlement_failed:{type(settlement_exc).__name__}")
                     raise
-                except (OSError, TimeoutError, RuntimeError, TypeError, ValueError):
+                except OSError, TimeoutError, RuntimeError, TypeError, ValueError:
                     run.record_research_program(
                         program_hash=program.program_hash,
                         operation_count=len(program.operations),
@@ -11316,7 +12525,7 @@ class LabApplication:
                             admission_id=research_admission_id,
                             status="REJECTED",
                         )
-                    except (RuntimeError, TypeError, ValueError):
+                    except RuntimeError, TypeError, ValueError:
                         run.record_blocker("research_admission_settlement_failed")
                 run.record_blocker(f"search_program_invalid:{type(exc).__name__}")
                 search = None
@@ -11355,7 +12564,7 @@ class LabApplication:
                         except (RuntimeError, TypeError, ValueError) as settlement_exc:
                             run.record_blocker(f"research_admission_settlement_failed:{type(settlement_exc).__name__}")
                         raise
-                    except (OSError, TimeoutError, RuntimeError, TypeError, ValueError):
+                    except OSError, TimeoutError, RuntimeError, TypeError, ValueError:
                         run.record_research_program(
                             program_hash=research_program_hash,
                             operation_count=1,
@@ -11385,7 +12594,7 @@ class LabApplication:
                                 admission_id=research_admission_id,
                                 status="REJECTED",
                             )
-                        except (RuntimeError, TypeError, ValueError):
+                        except RuntimeError, TypeError, ValueError:
                             run.record_blocker("research_admission_settlement_failed")
                     run.record_blocker(f"search_failed:{type(exc).__name__}")
                     break
@@ -11395,29 +12604,37 @@ class LabApplication:
 
         for raw in options.get("claim_records", options.get("claims", ())) or ():
             try:
-                claim = raw if isinstance(raw, ClaimRecord) else ClaimRecord(
-                    claim_id=raw["claim_id"],
-                    statement=raw["statement"],
-                    source_ids=raw["source_ids"],
-                    confidence_bps=raw.get("confidence_bps", 5_000),
-                    status=raw.get("status", "unresolved"),
+                claim = (
+                    raw
+                    if isinstance(raw, ClaimRecord)
+                    else ClaimRecord(
+                        claim_id=raw["claim_id"],
+                        statement=raw["statement"],
+                        source_ids=raw["source_ids"],
+                        confidence_bps=raw.get("confidence_bps", 5_000),
+                        status=raw.get("status", "unresolved"),
+                    )
                 )
                 run.add_claim(claim)
-            except (KeyError, TypeError, ValueError):
+            except KeyError, TypeError, ValueError:
                 run.record_blocker("invalid_claim_record")
 
         for raw in options.get("hypothesis_records", options.get("hypotheses", ())) or ():
             try:
-                hypothesis = raw if isinstance(raw, HypothesisRecord) else HypothesisRecord(
-                    hypothesis_id=raw["hypothesis_id"],
-                    statement=raw["statement"],
-                    prior_bps=raw.get("prior_bps", 5_000),
-                    falsifiers=raw["falsifiers"],
-                    supporting_claim_ids=raw.get("supporting_claim_ids", ()),
-                    contradicting_claim_ids=raw.get("contradicting_claim_ids", ()),
+                hypothesis = (
+                    raw
+                    if isinstance(raw, HypothesisRecord)
+                    else HypothesisRecord(
+                        hypothesis_id=raw["hypothesis_id"],
+                        statement=raw["statement"],
+                        prior_bps=raw.get("prior_bps", 5_000),
+                        falsifiers=raw["falsifiers"],
+                        supporting_claim_ids=raw.get("supporting_claim_ids", ()),
+                        contradicting_claim_ids=raw.get("contradicting_claim_ids", ()),
+                    )
                 )
                 run.add_hypothesis(hypothesis)
-            except (KeyError, TypeError, ValueError):
+            except KeyError, TypeError, ValueError:
                 run.record_blocker("invalid_hypothesis_record")
 
         browser_session = options.get("browser_session")
@@ -11454,10 +12671,7 @@ class LabApplication:
                 # launcher, so no launcher can create a process before the
                 # native receipt exists.
                 browser_launch_lease_id = max(1, browser_cell.lease_id + 1)
-                browser_launch_action_id = (
-                    f"lease-{browser_launch_lease_id}-launch-"
-                    f"{browser_cell.action_count + 1}"
-                )
+                browser_launch_action_id = f"lease-{browser_launch_lease_id}-launch-{browser_cell.action_count + 1}"
                 browser_launch_admission_id = run.admit_browser_action(
                     action_kind="launch",
                     action=browser_launch_action,
@@ -11493,9 +12707,7 @@ class LabApplication:
                         )
                         browser_launch_settled = True
                     except (RuntimeError, TypeError, ValueError) as settlement_exc:
-                        run.record_blocker(
-                            f"browser_launch_settlement_failed:{type(settlement_exc).__name__}"
-                        )
+                        run.record_blocker(f"browser_launch_settlement_failed:{type(settlement_exc).__name__}")
                 raise
             except (RuntimeError, TypeError, ValueError) as exc:
                 if browser_launch_admission_id and not browser_launch_settled:
@@ -11512,9 +12724,7 @@ class LabApplication:
                         )
                         browser_launch_settled = True
                     except (RuntimeError, TypeError, ValueError) as settlement_exc:
-                        run.record_blocker(
-                            f"browser_launch_settlement_failed:{type(settlement_exc).__name__}"
-                        )
+                        run.record_blocker(f"browser_launch_settlement_failed:{type(settlement_exc).__name__}")
                 run.record_blocker(f"browser_cell_launch_blocked:{type(exc).__name__}")
         if browser_cell is not None and browser_session is not None and browser_cell.session is None:
             try:
@@ -11568,10 +12778,7 @@ class LabApplication:
                         await browser_cell.admit(browser_session)
                         action_map = cast(dict[str, Any], action)
                         action_kind = str(action_map.get("kind", "")).strip().lower()
-                        action_id = (
-                            f"lease-{max(1, browser_cell.lease_id)}-"
-                            f"action-{browser_cell.action_count + 1}"
-                        )
+                        action_id = f"lease-{max(1, browser_cell.lease_id)}-action-{browser_cell.action_count + 1}"
                         admission_id = run.admit_browser_action(
                             action_kind=action_kind,
                             action=action,
@@ -11634,9 +12841,7 @@ class LabApplication:
                                     status="CANCELLED",
                                 )
                             except (RuntimeError, TypeError, ValueError) as settlement_exc:
-                                run.record_blocker(
-                                    f"browser_action_settlement_failed:{type(settlement_exc).__name__}"
-                                )
+                                run.record_blocker(f"browser_action_settlement_failed:{type(settlement_exc).__name__}")
                         await release_owned_browser_session()
                         raise
                     except (OSError, TimeoutError, RuntimeError, TypeError, ValueError) as exc:
@@ -11655,9 +12860,7 @@ class LabApplication:
                                     status="REJECTED",
                                 )
                             except (RuntimeError, TypeError, ValueError) as settlement_exc:
-                                run.record_blocker(
-                                    f"browser_action_settlement_failed:{type(settlement_exc).__name__}"
-                                )
+                                run.record_blocker(f"browser_action_settlement_failed:{type(settlement_exc).__name__}")
                         run.record_blocker(f"browser_cell_blocked:{type(exc).__name__}")
                         break
             finally:
@@ -11825,6 +13028,13 @@ class LabApplication:
                 "blockers": list(dict.fromkeys(run.blockers)),
                 "execution_cells": run.execution_cell_manifest,
             }
+            try:
+                context["evidence_state"] = run.controller_context(
+                    max_chars=options.get("lab_progress_context_max_chars", 16_384)
+                )
+            except (TypeError, ValueError) as exc:
+                run.record_blocker(f"controller_context_invalid:{type(exc).__name__}")
+                break
             step_task = (
                 f"{self.config.task}\n\nAEGIS LAB CONTROLLER STEP {decision.step}/{iterations}\n"
                 f"{json.dumps(context, sort_keys=True)}\n"
@@ -11900,6 +13110,12 @@ class LabApplication:
                 if not controller.observe(run):
                     run.record_blocker("adaptive_no_progress_detected")
                     break
+                if not await self._run_progress_checkpoint(
+                    run,
+                    options,
+                    decision=decision,
+                ):
+                    break
             except asyncio.CancelledError:
                 await release_owned_browser_session()
                 raise
@@ -11921,10 +13137,7 @@ class LabApplication:
             raw_spec = options.get("experiment_spec")
             if raw_spec is None and run.experiments:
                 raw_spec = run.experiments[next(reversed(run.experiments))]
-            if (
-                isinstance(raw_spec, ExperimentSpec)
-                and raw_spec.experiment_id in controller_executed_experiment_ids
-            ):
+            if isinstance(raw_spec, ExperimentSpec) and raw_spec.experiment_id in controller_executed_experiment_ids:
                 # A controller-selected action already consumed this trusted
                 # cell.  Do not silently execute the compatibility lane a
                 # second time after the controller loop.
@@ -12032,12 +13245,9 @@ class LabApplication:
                 "timeout_seconds": validator_timeout_seconds,
             }
             validator_requested = (
-                configured_validator is not None
-                or options.get("benchmark_validator_command") is not None
+                configured_validator is not None or options.get("benchmark_validator_command") is not None
             )
-            validator_for_evaluation = (
-                validator_runner if validator_runner is not None else configured_validator
-            )
+            validator_for_evaluation = validator_runner if validator_runner is not None else configured_validator
             if configured_validator is not None and validator_runner is None and self._execution_cells_strict:
                 # Keep the admission/settlement receipt, but make the actual
                 # evaluation fail closed without invoking an unregistered
@@ -12045,7 +13255,11 @@ class LabApplication:
                 run.record_blocker("execution_cell_not_registered:benchmark_validation")
                 validator_for_evaluation = _missing_benchmark_validator
             try:
-                protocol = raw_protocol if isinstance(raw_protocol, BenchmarkProtocolV2) else BenchmarkProtocolV2(**raw_protocol)
+                protocol = (
+                    raw_protocol
+                    if isinstance(raw_protocol, BenchmarkProtocolV2)
+                    else BenchmarkProtocolV2(**raw_protocol)
+                )
                 if type(raw_trials) not in (list, tuple):
                     raise TypeError("benchmark trials must be a list or tuple")
                 if validator_requested:
@@ -12184,9 +13398,13 @@ class LabApplication:
             rollback_snapshot=event_snapshot,
             event_state_epoch=run.state_epoch + 1,
         )
+        await self._run_post_completion_effect(run, result)
         replay_directory = options.get("lab_replay_directory")
         if replay_directory is not None:
             try:
+                # The post-completion effect is itself an admitted/settled
+                # execution.  Archive only after it so a durable snapshot can
+                # be replayed through the complete terminal event prefix.
                 run.archive_to_native(
                     replay_directory,
                     max_events_per_segment=options.get("lab_replay_segment_size", 64),
@@ -12195,26 +13413,30 @@ class LabApplication:
                 run.record_blocker(f"lab_replay_archive_failed:{type(exc).__name__}")
                 if run.state == "completed":
                     run.transition("blocked")
-        await self._run_post_completion_effect(run, result)
         dossier = run.dossier(benchmark=benchmark_payload)
         return result, dossier
 
     @staticmethod
     def _has_lab_hooks(options: dict[str, Any]) -> bool:
-        return any(
-            callable(options.get(name))
-            for name in (
-                "search_as_code",
-                "researcher",
-                "experiment_runner",
-                "simulation_runner",
-                "search_query_provider",
-                "tool_runner",
-                "browser_launcher",
+        return (
+            any(
+                callable(options.get(name))
+                for name in (
+                    "search_as_code",
+                    "researcher",
+                    "experiment_runner",
+                    "simulation_runner",
+                    "search_query_provider",
+                    "tool_runner",
+                    "browser_launcher",
+                )
             )
-        ) or bool(options.get("browser_actions")) or options.get("search_program") is not None or bool(
-            options.get("skill_requests")
-        ) or bool(options.get("tool_calls")) or options.get("browser_session") is not None
+            or bool(options.get("browser_actions"))
+            or options.get("search_program") is not None
+            or bool(options.get("skill_requests"))
+            or bool(options.get("tool_calls"))
+            or options.get("browser_session") is not None
+        )
 
     @staticmethod
     def _ingest_structured_step(run: LabRun, output: Any) -> None:
@@ -12227,13 +13449,10 @@ class LabApplication:
         # before this reducer runs, but an action-only lane has not captured a
         # source yet.  Enter the research phase explicitly so structured
         # records are not rejected solely because of response ordering.
-        if run.state == "planned" and any(
-            payload.get(name)
-            for name in ("claims", "hypotheses", "experiment_spec")
-        ):
+        if run.state == "planned" and any(payload.get(name) for name in ("claims", "hypotheses", "experiment_spec")):
             try:
                 run.transition("researching")
-            except (RuntimeError, TypeError, ValueError):
+            except RuntimeError, TypeError, ValueError:
                 run.record_blocker("controller_structured_phase_transition_failed")
                 return
         for raw in payload.get("claims", ()) or ():
@@ -12250,7 +13469,7 @@ class LabApplication:
                         status=raw.get("status", "unresolved"),
                     )
                 )
-            except (KeyError, TypeError, ValueError):
+            except KeyError, TypeError, ValueError:
                 run.record_blocker("invalid_controller_claim")
         for raw in payload.get("hypotheses", ()) or ():
             if not isinstance(raw, dict):
@@ -12267,21 +13486,20 @@ class LabApplication:
                         contradicting_claim_ids=raw.get("contradicting_claim_ids", ()),
                     )
                 )
-            except (KeyError, TypeError, ValueError):
+            except KeyError, TypeError, ValueError:
                 run.record_blocker("invalid_controller_hypothesis")
         raw_experiment = payload.get("experiment_spec")
         if isinstance(raw_experiment, dict):
             raw_experiment = cast(dict[str, Any], raw_experiment)
             try:
-                run.add_experiment(
-                    LabApplication._coerce_experiment_spec(raw_experiment)
-                )
-            except (KeyError, TypeError, ValueError):
+                run.add_experiment(LabApplication._coerce_experiment_spec(raw_experiment))
+            except KeyError, TypeError, ValueError:
                 run.record_blocker("invalid_controller_experiment")
 
 
 __all__ = [
     "DEFAULT_UNIT_REGISTRY",
+    "AcceptancePredicate",
     "AdaptiveController",
     "AdaptiveDecision",
     "AuthorityMode",
@@ -12293,7 +13511,10 @@ __all__ = [
     "ElectricalSignalCell",
     "ElectricalSignalResult",
     "ElectricalSignalSpec",
+    "EvidencePolicy",
     "ExperimentSpec",
+    "GoalBudgetContract",
+    "GoalContract",
     "HypothesisRecord",
     "Lab",
     "LabApplication",
