@@ -6,11 +6,11 @@
 
 **Repository:** `C:\Users\ADMIN\AEGIS-COGNITION`
 
-**Branch:** `main`
+**Branch:** `codex/aegis-ci-evidence-gates`
 
-**HEAD:** `8d15a34c3e28928aa6ca97a258d17a93bf952169`
+**HEAD:** `0dd51ed7a130744a6f7dcd440592026571f7ea52`
 
-**Upstream at snapshot:** `origin/main` cùng SHA; ahead `0`, behind `0`
+**Upstream at snapshot:** `origin/codex/aegis-ci-evidence-gates` cùng SHA; ahead `0`, behind `0`
 
 **Committed snapshot baseline:** worktree clean at the recorded HEAD
 
