@@ -116,8 +116,9 @@ and retain raw output before making performance claims. Current status is
 
 ## Requirements
 
-- Python 3.14.x (production default) or 3.15.x (forward-compatibility lane)
-- Rust toolchain (auto-downloaded for pre-built binaries)
+- CPython 3.14.7 (production/local baseline); CPython 3.15.0-rc.1 is a
+  separate forward-compatibility lane used by CI
+- Rust toolchain 1.98.1 (pinned by `rust-toolchain.toml`)
 - LLM API key (OpenAI, Anthropic, OpenRouter, or Nvidia NIM)
 - Optional: Playwright (for browser automation)
 
@@ -137,4 +138,4 @@ See business model in `core/rust/AEGIS-COGNITION/COMMERCIAL_CLOSURE_REPORT.md`.
 ---
 
 Built with Rust + Python + BLAKE3 + Arrow IPC + Wasmtime.  
-[Website](https://aegis-cognition.ai) · [Docs](https://docs.aegis-cognition.ai) · [GitHub](https://github.com/aegis-cognition/aegis-cognition)
+[Website](https://aegis-cognition.ai) · [Docs](https://docs.aegis-cognition.ai) · [GitHub](https://github.com/thanhmuefatty07/AEGIS-COGNITION)

@@ -262,9 +262,11 @@ def validate_shadow_plan(actual: dict[str, object], expected: dict[str, object])
     errors: list[str] = []
     if set(actual) != set(expected):
         errors.append("root schema keys differ")
-    for key in expected:
-        if key not in {"artifact_hash", "provenance"} and actual.get(key) != expected.get(key):
-            errors.append(f"{key} differs")
+    errors.extend(
+        f"{key} differs"
+        for key in expected
+        if key not in {"artifact_hash", "provenance"} and actual.get(key) != expected.get(key)
+    )
     if actual.get("artifact_hash") != _stable_hash({key: value for key, value in actual.items() if key != "artifact_hash"}):
         errors.append("artifact_hash is not self-consistent")
     if actual.get("execution") != "NOT_EXECUTED":

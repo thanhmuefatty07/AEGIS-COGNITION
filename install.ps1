@@ -14,8 +14,8 @@
 param(
     [switch]$SkipRust,        # skip Rust toolchain + cargo build
     [switch]$SkipBrowser,     # skip playwright install (saves ~150MB)
-    [string]$PythonVersion = "3.14",
-    [string]$RepoUrl = "https://github.com/aegis-cognition/aegis-cognition.git",
+    [string]$PythonVersion = "3.14.7",
+    [string]$RepoUrl = "https://github.com/thanhmuefatty07/AEGIS-COGNITION.git",
     [string]$InstallRoot = "$env:LOCALAPPDATA\aegis"
 )
 
@@ -163,7 +163,7 @@ if (-not $SkipRust) {
     if (-not (Get-Command cargo -ErrorAction SilentlyContinue)) {
         $ru = Join-Path $env:TEMP "rustup-init.exe"
         Invoke-WebRequest -Uri "https://win.rustup.rs" -OutFile $ru
-        & $ru -y --default-toolchain stable --profile minimal
+        & $ru -y --default-toolchain 1.98.1 --profile minimal
         Remove-Item $ru
         $env:PATH = "$env:USERPROFILE\.cargo\bin;$env:PATH"
         Ok "Rust installed via rustup"
@@ -171,9 +171,18 @@ if (-not $SkipRust) {
         Ok "cargo already present: $(cargo --version)"
     }
 
+    if (Get-Command rustup -ErrorAction SilentlyContinue) {
+        rustup toolchain install 1.98.1 --profile minimal --component rustfmt --component clippy | Out-Null
+        Ok "Rust toolchain 1.98.1 installed/verified"
+    }
+
     $rustDir = Join-Path $repoDir "core\rust"
     if (Test-Path $rustDir) {
-        Push-Location $rustDir
+        Push-Location $repoDir
+        $rustVersion = (& rustc --version)
+        if ($rustVersion -notmatch "\b1\.98\.1\b") {
+            throw "Project requires Rust 1.98.1; observed: $rustVersion"
+        }
         cargo build --release | Out-Null
         Pop-Location
         Ok "Rust core built (release)"

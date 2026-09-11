@@ -102,9 +102,11 @@ def _record_errors(
         errors.append("claim_ids_missing")
     else:
         errors.extend(f"claim_id_not_in_graph:{claim_id}" for claim_id in raw_claim_ids if claim_id not in claim_ids)
-    for field in ("risk", "security_criticality", "release_criticality"):
-        if record.get(field) not in ALLOWED_CRITICALITY:
-            errors.append(f"invalid_{field}")
+    errors.extend(
+        f"invalid_{field}"
+        for field in ("risk", "security_criticality", "release_criticality")
+        if record.get(field) not in ALLOWED_CRITICALITY
+    )
     if not isinstance(record.get("selection_relevant"), bool):
         errors.append("selection_relevant_missing")
     relationships = record.get("relationship_types")

@@ -9,9 +9,17 @@ use blake3::Hasher;
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet};
 
-use crate::gt96::{BudgetPolicy, ContractError};
+use crate::gt96::{BudgetPolicy, ContractError, target_scope_is_ambiguous_uri};
 
 const LAB_SCHEMA: &str = "aegis-lab-runtime-v1";
+const MAX_GOAL_CONTRACT_WIRE_BYTES: usize = 1 * 1024 * 1024;
+const MAX_GOAL_CONTRACT_TEXT_BYTES: usize = 64 * 1024;
+const MAX_GOAL_CONTRACT_IDENTIFIER_BYTES: usize = 128;
+const MAX_GOAL_CONTRACT_SCOPE_BYTES: usize = 4096;
+const MAX_GOAL_CONTRACT_SEQUENCE_ITEMS: usize = 256;
+const MAX_GOAL_CONTRACT_TOTAL_SEQUENCE_ITEMS: usize = 2048;
+const MAX_GOAL_CONTRACT_DEPTH: usize = 8;
+const MAX_GOAL_CONTRACT_NODES: usize = 4096;
 
 fn default_external_attempt_budget(max_steps: u32) -> u64 {
     let n = u64::from(max_steps).saturating_add(1);
@@ -97,6 +105,27 @@ fn is_external_admission_kind(kind: LabEventKind) -> bool {
     )
 }
 
+fn is_goal_bound_event_kind(kind: LabEventKind) -> bool {
+    matches!(
+        kind,
+        LabEventKind::ExperimentExecutionAdmitted
+            | LabEventKind::ExperimentExecutionRecorded
+            | LabEventKind::ToolExecutionAdmitted
+            | LabEventKind::ToolExecutionRecorded
+            | LabEventKind::ResearchProgramAdmitted
+            | LabEventKind::ResearchProgramExecuted
+            | LabEventKind::BrowserActionAdmitted
+            | LabEventKind::BrowserActionRecorded
+            | LabEventKind::BrowserObservationAdmitted
+            | LabEventKind::BrowserObservationRecorded
+            | LabEventKind::SkillAdmissionRecorded
+            | LabEventKind::SkillExecutionRecorded
+            | LabEventKind::CancellationAdmitted
+            | LabEventKind::CancellationRecorded
+            | LabEventKind::ReviewRecorded
+    )
+}
+
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub struct LabMissionSpec {
     pub mission_id: String,
@@ -111,6 +140,11 @@ pub struct LabMissionSpec {
     #[serde(default)]
     pub max_external_attempts: Option<u64>,
     pub schema: String,
+    /// Canonical JSON for an explicit Goal/Target contract.  The field is
+    /// optional for legacy missions; when present, the native boundary
+    /// validates its identity and digest before admitting the run.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub goal_contract_json: Option<String>,
 }
 
 impl LabMissionSpec {
@@ -133,6 +167,7 @@ impl LabMissionSpec {
             max_steps,
             max_external_attempts: Some(default_external_attempt_budget(max_steps)),
             schema: LAB_SCHEMA.to_string(),
+            goal_contract_json: None,
         };
         mission.validate()?;
         Ok(mission)
@@ -150,12 +185,840 @@ impl LabMissionSpec {
             return Err(LabError::InvalidMission);
         }
         self.budget_policy.validate().map_err(LabError::Contract)?;
+        if let Some(contract_json) = &self.goal_contract_json {
+            validate_goal_contract_json(contract_json, self)?;
+        }
         Ok(())
     }
 
     pub fn mission_hash(&self) -> [u8; 32] {
         canonical_hash(self)
     }
+}
+
+fn has_exact_json_keys(
+    object: &serde_json::Map<String, serde_json::Value>,
+    expected: &[&str],
+) -> bool {
+    object.len() == expected.len()
+        && expected.iter().all(|field| object.contains_key(*field))
+        && object.keys().all(|key| expected.contains(&key.as_str()))
+}
+
+fn canonical_json_value(value: &serde_json::Value) -> serde_json::Value {
+    match value {
+        serde_json::Value::Object(object) => {
+            let sorted: BTreeMap<String, serde_json::Value> = object
+                .iter()
+                .map(|(key, value)| (key.clone(), canonical_json_value(value)))
+                .collect();
+            serde_json::Value::Object(sorted.into_iter().collect())
+        }
+        serde_json::Value::Array(values) => {
+            serde_json::Value::Array(values.iter().map(canonical_json_value).collect())
+        }
+        _ => value.clone(),
+    }
+}
+
+fn goal_contract_string_limit(parent_key: Option<&str>) -> usize {
+    match parent_key {
+        Some("read_roots" | "write_roots" | "network_allowlist" | "scope" | "non_goals") => {
+            MAX_GOAL_CONTRACT_SCOPE_BYTES
+        }
+        Some(
+            "schema"
+            | "goal_id"
+            | "kind"
+            | "stable_id"
+            | "revision_or_digest"
+            | "owner"
+            | "policy_digest"
+            | "predicate_id"
+            | "evaluator"
+            | "severity"
+            | "inputs"
+            | "evidence_refs"
+            | "reproducibility_requirements"
+            | "required_record_types"
+            | "trusted_verifier_ids"
+            | "parent_goal_id"
+            | "parent_contract_hash"
+            | "author_id"
+            | "external_side_effects"
+            | "mission_id"
+            | "owner_id"
+            | "principal_id"
+            | "execution_cell_id"
+            | "execution_action_kind"
+            | "backend_kind",
+        ) => MAX_GOAL_CONTRACT_IDENTIFIER_BYTES,
+        _ => MAX_GOAL_CONTRACT_TEXT_BYTES,
+    }
+}
+
+fn validate_goal_contract_limits(value: &serde_json::Value) -> Result<(), LabError> {
+    let mut stack: Vec<(&serde_json::Value, usize, Option<&str>)> = vec![(value, 0, None)];
+    let mut total_sequence_items = 0_usize;
+    let mut total_nodes = 0_usize;
+    while let Some((current, depth, parent_key)) = stack.pop() {
+        total_nodes = total_nodes.saturating_add(1);
+        if total_nodes > MAX_GOAL_CONTRACT_NODES || depth > MAX_GOAL_CONTRACT_DEPTH {
+            return Err(LabError::InvalidMission);
+        }
+        match current {
+            serde_json::Value::Object(object) => {
+                for (key, child) in object {
+                    if key.len() > MAX_GOAL_CONTRACT_IDENTIFIER_BYTES {
+                        return Err(LabError::InvalidMission);
+                    }
+                    stack.push((child, depth.saturating_add(1), Some(key.as_str())));
+                }
+            }
+            serde_json::Value::Array(values) => {
+                if values.len() > MAX_GOAL_CONTRACT_SEQUENCE_ITEMS {
+                    return Err(LabError::InvalidMission);
+                }
+                total_sequence_items = total_sequence_items.saturating_add(values.len());
+                if total_sequence_items > MAX_GOAL_CONTRACT_TOTAL_SEQUENCE_ITEMS {
+                    return Err(LabError::InvalidMission);
+                }
+                for child in values {
+                    stack.push((child, depth.saturating_add(1), parent_key));
+                }
+            }
+            serde_json::Value::String(text) => {
+                if text.len() > goal_contract_string_limit(parent_key) {
+                    return Err(LabError::InvalidMission);
+                }
+            }
+            serde_json::Value::Null | serde_json::Value::Bool(_) | serde_json::Value::Number(_) => {
+            }
+        }
+    }
+    Ok(())
+}
+
+fn validate_goal_contract_json(
+    contract_json: &str,
+    mission: &LabMissionSpec,
+) -> Result<(), LabError> {
+    if contract_json.len() > MAX_GOAL_CONTRACT_WIRE_BYTES {
+        return Err(LabError::InvalidMission);
+    }
+    let value: serde_json::Value =
+        serde_json::from_str(contract_json).map_err(|_| LabError::InvalidMission)?;
+    validate_goal_contract_limits(&value)?;
+    let Some(object) = value.as_object() else {
+        return Err(LabError::InvalidMission);
+    };
+    if !has_exact_json_keys(
+        object,
+        &[
+            "schema",
+            "goal_id",
+            "generation",
+            "objective",
+            "acceptance",
+            "target",
+            "scope",
+            "non_goals",
+            "policy_digest",
+            "budget",
+            "evidence_policy",
+            "parent_goal_id",
+            "parent_contract_hash",
+            "author_id",
+            "effective_epoch",
+            "evolution_reason",
+            "created_at_ms",
+            "contract_hash",
+        ],
+    ) {
+        return Err(LabError::InvalidMission);
+    }
+    validate_goal_contract_shape(object, mission)?;
+    if object.get("schema").and_then(serde_json::Value::as_str) != Some("aegis-goal-contract-v1")
+        || object.get("objective").and_then(serde_json::Value::as_str)
+            != Some(mission.objective.as_str())
+        || object
+            .get("goal_id")
+            .and_then(serde_json::Value::as_str)
+            .is_none()
+        || object
+            .get("policy_digest")
+            .and_then(serde_json::Value::as_str)
+            .is_none()
+        || object
+            .get("policy_digest")
+            .and_then(serde_json::Value::as_str)
+            .is_none_or(|value| value == "unbound" || !is_hex_digest(value))
+    {
+        return Err(LabError::InvalidMission);
+    }
+    let Some(target) = object.get("target").and_then(serde_json::Value::as_object) else {
+        return Err(LabError::InvalidMission);
+    };
+    if !has_exact_json_keys(
+        target,
+        &[
+            "kind",
+            "stable_id",
+            "revision_or_digest",
+            "read_roots",
+            "write_roots",
+            "network_allowlist",
+            "external_side_effects",
+            "owner",
+        ],
+    ) {
+        return Err(LabError::InvalidMission);
+    }
+    if target
+        .get("stable_id")
+        .and_then(serde_json::Value::as_str)
+        .is_none_or(|value| value.trim().is_empty() || value == "unbound")
+        || target
+            .get("revision_or_digest")
+            .and_then(serde_json::Value::as_str)
+            .is_none_or(|value| value.trim().is_empty() || value == "unbound")
+    {
+        return Err(LabError::InvalidMission);
+    }
+    let Some(acceptance) = object
+        .get("acceptance")
+        .and_then(serde_json::Value::as_array)
+    else {
+        return Err(LabError::InvalidMission);
+    };
+    let evidence_policy = object
+        .get("evidence_policy")
+        .and_then(serde_json::Value::as_object)
+        .ok_or(LabError::InvalidMission)?;
+    if !has_exact_json_keys(
+        evidence_policy,
+        &[
+            "required_record_types",
+            "minimum_sources",
+            "require_independent_verifier",
+            "trusted_verifier_ids",
+        ],
+    ) {
+        return Err(LabError::InvalidMission);
+    }
+    let require_independent_verifier = evidence_policy
+        .get("require_independent_verifier")
+        .and_then(serde_json::Value::as_bool)
+        .ok_or(LabError::InvalidMission)?;
+    let trusted_verifier_ids = evidence_policy
+        .get("trusted_verifier_ids")
+        .and_then(serde_json::Value::as_array)
+        .ok_or(LabError::InvalidMission)?;
+    if require_independent_verifier
+        && (trusted_verifier_ids.is_empty()
+            || trusted_verifier_ids
+                .iter()
+                .any(|value| value.as_str().is_none_or(|item| item.trim().is_empty())))
+    {
+        return Err(LabError::InvalidMission);
+    }
+    if evidence_policy
+        .get("minimum_sources")
+        .and_then(serde_json::Value::as_u64)
+        .is_none()
+        || evidence_policy
+            .get("required_record_types")
+            .and_then(serde_json::Value::as_array)
+            .is_none()
+    {
+        return Err(LabError::InvalidMission);
+    }
+    let mut predicate_ids = BTreeSet::new();
+    let mut required_predicates = 0_u64;
+    for criterion in acceptance {
+        let Some(criterion) = criterion.as_object() else {
+            return Err(LabError::InvalidMission);
+        };
+        if !has_exact_json_keys(
+            criterion,
+            &[
+                "predicate_id",
+                "description",
+                "evaluator",
+                "inputs",
+                "expected_result",
+                "severity",
+                "evidence_refs",
+                "reproducibility_requirements",
+            ],
+        ) {
+            return Err(LabError::InvalidMission);
+        }
+        let predicate_id = criterion
+            .get("predicate_id")
+            .and_then(serde_json::Value::as_str)
+            .filter(|value| !value.trim().is_empty())
+            .ok_or(LabError::InvalidMission)?;
+        if !predicate_ids.insert(predicate_id.to_string())
+            || criterion
+                .get("description")
+                .and_then(serde_json::Value::as_str)
+                .is_none_or(|value| value.trim().is_empty())
+            || criterion
+                .get("evaluator")
+                .and_then(serde_json::Value::as_str)
+                .is_none_or(|value| value.trim().is_empty())
+        {
+            return Err(LabError::InvalidMission);
+        }
+        let severity = criterion
+            .get("severity")
+            .and_then(serde_json::Value::as_str)
+            .ok_or(LabError::InvalidMission)?;
+        let evidence_refs = criterion
+            .get("evidence_refs")
+            .and_then(serde_json::Value::as_array)
+            .ok_or(LabError::InvalidMission)?;
+        if evidence_refs
+            .iter()
+            .any(|value| value.as_str().is_none_or(|item| item.trim().is_empty()))
+        {
+            return Err(LabError::InvalidMission);
+        }
+        match severity {
+            "required" => {
+                required_predicates = required_predicates.saturating_add(1);
+                if require_independent_verifier && evidence_refs.is_empty() {
+                    return Err(LabError::InvalidMission);
+                }
+            }
+            "advisory" => {}
+            _ => return Err(LabError::InvalidMission),
+        }
+    }
+    if acceptance.is_empty() || required_predicates == 0 {
+        return Err(LabError::InvalidMission);
+    }
+    let budget = object
+        .get("budget")
+        .and_then(serde_json::Value::as_object)
+        .ok_or(LabError::InvalidMission)?;
+    if !has_exact_json_keys(
+        budget,
+        &[
+            "token_limit",
+            "attempt_limit",
+            "wall_time_limit_ms",
+            "cost_limit_minor_units",
+            "cpu_time_limit_ms",
+            "reserved_tokens",
+        ],
+    ) {
+        return Err(LabError::InvalidMission);
+    }
+    let token_limit = budget
+        .get("token_limit")
+        .and_then(serde_json::Value::as_u64)
+        .ok_or(LabError::InvalidMission)?;
+    let attempt_limit = budget
+        .get("attempt_limit")
+        .and_then(serde_json::Value::as_u64)
+        .ok_or(LabError::InvalidMission)?;
+    let reserved_tokens = budget
+        .get("reserved_tokens")
+        .and_then(serde_json::Value::as_u64)
+        .ok_or(LabError::InvalidMission)?;
+    let expected_reserved_tokens = mission
+        .budget_policy
+        .finalization_reserve
+        .tokens
+        .saturating_add(mission.budget_policy.recovery_reserve.tokens);
+    if token_limit != mission.budget_policy.total.tokens
+        || reserved_tokens != expected_reserved_tokens
+        || mission
+            .max_external_attempts
+            .is_some_and(|expected| attempt_limit != expected)
+        || reserved_tokens >= token_limit
+    {
+        return Err(LabError::InvalidMission);
+    }
+    let generation = object
+        .get("generation")
+        .and_then(serde_json::Value::as_u64)
+        .ok_or(LabError::InvalidMission)?;
+    let _effective_epoch = object
+        .get("effective_epoch")
+        .and_then(serde_json::Value::as_u64)
+        .ok_or(LabError::InvalidMission)?;
+    let parent_goal_id = object
+        .get("parent_goal_id")
+        .ok_or(LabError::InvalidMission)?;
+    let parent_contract_hash = object
+        .get("parent_contract_hash")
+        .ok_or(LabError::InvalidMission)?;
+    let evolution_reason = object
+        .get("evolution_reason")
+        .ok_or(LabError::InvalidMission)?;
+    for value in [parent_goal_id, parent_contract_hash, evolution_reason] {
+        if !value.is_null()
+            && value
+                .as_str()
+                .is_none_or(|item| item.trim().is_empty() || item != item.trim())
+        {
+            return Err(LabError::InvalidMission);
+        }
+    }
+    let has_parent =
+        !parent_goal_id.is_null() || !parent_contract_hash.is_null() || !evolution_reason.is_null();
+    let parent_is_complete = parent_goal_id
+        .as_str()
+        .is_some_and(|value| !value.trim().is_empty())
+        && parent_contract_hash.as_str().is_some_and(is_hex_digest)
+        && evolution_reason
+            .as_str()
+            .is_some_and(|value| !value.trim().is_empty());
+    if generation == 0
+        || object
+            .get("author_id")
+            .and_then(serde_json::Value::as_str)
+            .is_none_or(|value| value.trim().is_empty())
+        || (has_parent && !parent_is_complete)
+        || (generation > 1 && !has_parent)
+    {
+        return Err(LabError::InvalidMission);
+    }
+    let Some(contract_hash) = object
+        .get("contract_hash")
+        .and_then(serde_json::Value::as_str)
+    else {
+        return Err(LabError::InvalidMission);
+    };
+    let Some(contract_hash_bytes) = decode_hex_digest(contract_hash) else {
+        return Err(LabError::InvalidMission);
+    };
+    if contract_hash_bytes != mission.contract_hash {
+        return Err(LabError::InvalidMission);
+    }
+    let mut definition = object.clone();
+    definition.remove("contract_hash");
+    let encoded = serde_json::to_vec(&canonical_json_value(&serde_json::Value::Object(
+        definition,
+    )))
+    .map_err(|_| LabError::InvalidMission)?;
+    let mut hasher = Hasher::new();
+    hasher.update(b"aegis-goal-contract-canonical-v1\0");
+    hasher.update(&encoded);
+    if hasher.finalize().as_bytes() != &mission.contract_hash {
+        return Err(LabError::InvalidMission);
+    }
+    Ok(())
+}
+
+fn goal_required_string<'a>(
+    object: &'a serde_json::Map<String, serde_json::Value>,
+    key: &str,
+) -> Result<&'a str, LabError> {
+    let value = object
+        .get(key)
+        .and_then(serde_json::Value::as_str)
+        .ok_or(LabError::InvalidMission)?;
+    if value.trim().is_empty() || value != value.trim() {
+        return Err(LabError::InvalidMission);
+    }
+    Ok(value)
+}
+
+fn goal_string_array(
+    object: &serde_json::Map<String, serde_json::Value>,
+    key: &str,
+) -> Result<Vec<String>, LabError> {
+    let values = object
+        .get(key)
+        .and_then(serde_json::Value::as_array)
+        .ok_or(LabError::InvalidMission)?;
+    let mut result = Vec::with_capacity(values.len());
+    for value in values {
+        let item = value.as_str().ok_or(LabError::InvalidMission)?;
+        if item.trim().is_empty() || item != item.trim() {
+            return Err(LabError::InvalidMission);
+        }
+        result.push(item.to_string());
+    }
+    if result.windows(2).any(|window| window[0] >= window[1]) {
+        return Err(LabError::InvalidMission);
+    }
+    Ok(result)
+}
+
+fn is_canonical_external_side_effect_key(value: &str) -> bool {
+    let Some((tool_name, effect_class)) = value.split_once("::") else {
+        return false;
+    };
+    !tool_name.is_empty()
+        && !effect_class.is_empty()
+        && !effect_class.contains("::")
+        && tool_name == tool_name.trim()
+        && effect_class == effect_class.trim()
+}
+
+fn is_valid_target_network_entry(value: &str) -> bool {
+    if value.is_empty()
+        || value.trim() != value
+        || value
+            .chars()
+            .any(|character| character.is_whitespace() || character.is_control())
+        || value.starts_with("//")
+    {
+        return false;
+    }
+
+    let lower = value.to_ascii_lowercase();
+    let authority = if lower.starts_with("https://") {
+        &value[8..]
+    } else if lower.starts_with("http://") {
+        &value[7..]
+    } else if value.contains("://") {
+        return false;
+    } else {
+        value
+    };
+    let boundary = authority.find(['/', '?', '#']).unwrap_or(authority.len());
+    let host = &authority[..boundary];
+    let suffix = &authority[boundary..];
+    if host.is_empty() || host.contains([':', '@', '[', ']', '*']) || suffix != "" && suffix != "/"
+    {
+        return false;
+    }
+    true
+}
+
+fn goal_optional_nonnegative_u64(
+    object: &serde_json::Map<String, serde_json::Value>,
+    key: &str,
+) -> Result<(), LabError> {
+    match object.get(key) {
+        Some(serde_json::Value::Null) => Ok(()),
+        Some(value) if value.as_u64().is_some() => Ok(()),
+        _ => Err(LabError::InvalidMission),
+    }
+}
+
+fn goal_exact_keys(
+    object: &serde_json::Map<String, serde_json::Value>,
+    allowed: &[&str],
+) -> Result<(), LabError> {
+    if object
+        .keys()
+        .any(|key| !allowed.iter().any(|allowed_key| *allowed_key == key))
+        || allowed.iter().any(|key| !object.contains_key(*key))
+    {
+        return Err(LabError::InvalidMission);
+    }
+    Ok(())
+}
+
+fn validate_goal_contract_shape(
+    object: &serde_json::Map<String, serde_json::Value>,
+    mission: &LabMissionSpec,
+) -> Result<(), LabError> {
+    goal_exact_keys(
+        object,
+        &[
+            "schema",
+            "goal_id",
+            "generation",
+            "objective",
+            "acceptance",
+            "target",
+            "scope",
+            "non_goals",
+            "policy_digest",
+            "budget",
+            "evidence_policy",
+            "parent_goal_id",
+            "parent_contract_hash",
+            "author_id",
+            "effective_epoch",
+            "evolution_reason",
+            "created_at_ms",
+            "contract_hash",
+        ],
+    )?;
+    if object.get("schema").and_then(serde_json::Value::as_str) != Some("aegis-goal-contract-v1")
+        || object.get("objective").and_then(serde_json::Value::as_str)
+            != Some(mission.objective.as_str())
+    {
+        return Err(LabError::InvalidMission);
+    }
+    let goal_id = goal_required_string(object, "goal_id")?;
+    let policy_digest = goal_required_string(object, "policy_digest")?;
+    if policy_digest == "unbound" {
+        return Err(LabError::InvalidMission);
+    }
+    let _ = goal_required_string(object, "objective")?;
+    let _ = goal_required_string(object, "author_id")?;
+    if object
+        .get("generation")
+        .and_then(serde_json::Value::as_u64)
+        .is_none_or(|generation| generation == 0)
+        || object
+            .get("effective_epoch")
+            .and_then(serde_json::Value::as_u64)
+            .is_none()
+        || object
+            .get("created_at_ms")
+            .and_then(serde_json::Value::as_u64)
+            .is_none()
+    {
+        return Err(LabError::InvalidMission);
+    }
+
+    let scope = goal_string_array(object, "scope")?;
+    let non_goals = goal_string_array(object, "non_goals")?;
+    let _ = (scope, non_goals, goal_id);
+
+    let target = object
+        .get("target")
+        .and_then(serde_json::Value::as_object)
+        .ok_or(LabError::InvalidMission)?;
+    goal_exact_keys(
+        target,
+        &[
+            "kind",
+            "stable_id",
+            "revision_or_digest",
+            "read_roots",
+            "write_roots",
+            "network_allowlist",
+            "external_side_effects",
+            "owner",
+        ],
+    )?;
+    for key in ["kind", "stable_id", "revision_or_digest", "owner"] {
+        let value = goal_required_string(target, key)?;
+        if (key == "stable_id" || key == "revision_or_digest") && value == "unbound" {
+            return Err(LabError::InvalidMission);
+        }
+    }
+    for key in [
+        "read_roots",
+        "write_roots",
+        "network_allowlist",
+        "external_side_effects",
+    ] {
+        let values = goal_string_array(target, key)?;
+        if key == "external_side_effects"
+            && values
+                .iter()
+                .any(|value| !is_canonical_external_side_effect_key(value))
+        {
+            return Err(LabError::InvalidMission);
+        }
+        if key == "network_allowlist"
+            && values
+                .iter()
+                .any(|value| !is_valid_target_network_entry(value))
+        {
+            return Err(LabError::InvalidMission);
+        }
+        if matches!(key, "read_roots" | "write_roots")
+            && values
+                .iter()
+                .any(|value| target_scope_is_ambiguous_uri(value))
+        {
+            return Err(LabError::InvalidMission);
+        }
+    }
+
+    let acceptance = object
+        .get("acceptance")
+        .and_then(serde_json::Value::as_array)
+        .ok_or(LabError::InvalidMission)?;
+    if acceptance.is_empty() {
+        return Err(LabError::InvalidMission);
+    }
+    let mut previous_id: Option<&str> = None;
+    let mut required_count = 0_u64;
+    for raw in acceptance {
+        let criterion = raw.as_object().ok_or(LabError::InvalidMission)?;
+        goal_exact_keys(
+            criterion,
+            &[
+                "predicate_id",
+                "description",
+                "evaluator",
+                "inputs",
+                "expected_result",
+                "severity",
+                "evidence_refs",
+                "reproducibility_requirements",
+            ],
+        )?;
+        let predicate_id = goal_required_string(criterion, "predicate_id")?;
+        if previous_id.is_some_and(|previous| previous >= predicate_id) {
+            return Err(LabError::InvalidMission);
+        }
+        previous_id = Some(predicate_id);
+        let _ = goal_required_string(criterion, "description")?;
+        let _ = goal_required_string(criterion, "evaluator")?;
+        let _ = goal_string_array(criterion, "inputs")?;
+        let _ = goal_string_array(criterion, "evidence_refs")?;
+        let _ = goal_string_array(criterion, "reproducibility_requirements")?;
+        let expected = criterion
+            .get("expected_result")
+            .ok_or(LabError::InvalidMission)?;
+        if !(expected.is_null()
+            || expected.is_string()
+            || expected.is_boolean()
+            || expected.is_number())
+        {
+            return Err(LabError::InvalidMission);
+        }
+        match goal_required_string(criterion, "severity")? {
+            "required" => {
+                required_count = required_count.saturating_add(1);
+                if criterion
+                    .get("evidence_refs")
+                    .and_then(serde_json::Value::as_array)
+                    .is_some_and(Vec::is_empty)
+                    && object
+                        .get("evidence_policy")
+                        .and_then(serde_json::Value::as_object)
+                        .and_then(|policy| policy.get("require_independent_verifier"))
+                        .and_then(serde_json::Value::as_bool)
+                        == Some(true)
+                {
+                    return Err(LabError::InvalidMission);
+                }
+            }
+            "advisory" => {}
+            _ => return Err(LabError::InvalidMission),
+        }
+    }
+    if required_count == 0 {
+        return Err(LabError::InvalidMission);
+    }
+
+    let budget = object
+        .get("budget")
+        .and_then(serde_json::Value::as_object)
+        .ok_or(LabError::InvalidMission)?;
+    goal_exact_keys(
+        budget,
+        &[
+            "token_limit",
+            "attempt_limit",
+            "wall_time_limit_ms",
+            "cost_limit_minor_units",
+            "cpu_time_limit_ms",
+            "reserved_tokens",
+        ],
+    )?;
+    let token_limit = budget
+        .get("token_limit")
+        .and_then(serde_json::Value::as_u64)
+        .filter(|value| *value > 0)
+        .ok_or(LabError::InvalidMission)?;
+    let attempt_limit = budget
+        .get("attempt_limit")
+        .and_then(serde_json::Value::as_u64)
+        .filter(|value| *value > 0)
+        .ok_or(LabError::InvalidMission)?;
+    let reserved_tokens = budget
+        .get("reserved_tokens")
+        .and_then(serde_json::Value::as_u64)
+        .filter(|value| *value < token_limit)
+        .ok_or(LabError::InvalidMission)?;
+    for key in [
+        "wall_time_limit_ms",
+        "cost_limit_minor_units",
+        "cpu_time_limit_ms",
+    ] {
+        goal_optional_nonnegative_u64(budget, key)?;
+    }
+    let expected_reserved_tokens = mission
+        .budget_policy
+        .finalization_reserve
+        .tokens
+        .saturating_add(mission.budget_policy.recovery_reserve.tokens);
+    if token_limit != mission.budget_policy.total.tokens
+        || reserved_tokens != expected_reserved_tokens
+        || mission
+            .max_external_attempts
+            .is_some_and(|expected| attempt_limit != expected)
+    {
+        return Err(LabError::InvalidMission);
+    }
+
+    let evidence_policy = object
+        .get("evidence_policy")
+        .and_then(serde_json::Value::as_object)
+        .ok_or(LabError::InvalidMission)?;
+    goal_exact_keys(
+        evidence_policy,
+        &[
+            "required_record_types",
+            "minimum_sources",
+            "require_independent_verifier",
+            "trusted_verifier_ids",
+        ],
+    )?;
+    let required_record_types = goal_string_array(evidence_policy, "required_record_types")?;
+    if required_record_types.iter().any(|record_type| {
+        !matches!(
+            record_type.as_str(),
+            "source" | "claim" | "hypothesis" | "experiment" | "observation"
+        )
+    }) {
+        return Err(LabError::InvalidMission);
+    }
+    let trusted_verifier_ids = goal_string_array(evidence_policy, "trusted_verifier_ids")?;
+    if evidence_policy
+        .get("minimum_sources")
+        .and_then(serde_json::Value::as_u64)
+        .is_none()
+        || evidence_policy
+            .get("require_independent_verifier")
+            .and_then(serde_json::Value::as_bool)
+            .is_none()
+        || (evidence_policy
+            .get("require_independent_verifier")
+            .and_then(serde_json::Value::as_bool)
+            .unwrap_or(false)
+            && trusted_verifier_ids.is_empty())
+    {
+        return Err(LabError::InvalidMission);
+    }
+
+    let generation = object
+        .get("generation")
+        .and_then(serde_json::Value::as_u64)
+        .ok_or(LabError::InvalidMission)?;
+    let parent_goal_id = object
+        .get("parent_goal_id")
+        .ok_or(LabError::InvalidMission)?;
+    let parent_contract_hash = object
+        .get("parent_contract_hash")
+        .ok_or(LabError::InvalidMission)?;
+    let evolution_reason = object
+        .get("evolution_reason")
+        .ok_or(LabError::InvalidMission)?;
+    let has_parent =
+        !parent_goal_id.is_null() || !parent_contract_hash.is_null() || !evolution_reason.is_null();
+    if has_parent {
+        let parent_goal = goal_required_string(object, "parent_goal_id")?;
+        let parent_hash = goal_required_string(object, "parent_contract_hash")?;
+        if !is_hex_digest(parent_hash)
+            || !goal_required_string(object, "evolution_reason").is_ok()
+            || parent_goal.is_empty()
+        {
+            return Err(LabError::InvalidMission);
+        }
+    }
+    if generation > 1 && !has_parent {
+        return Err(LabError::InvalidMission);
+    }
+    Ok(())
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
@@ -742,6 +1605,11 @@ pub struct LabController {
     projection_research_programs: BTreeSet<String>,
     #[serde(default)]
     projection_research_program_admissions: BTreeMap<String, String>,
+    /// Optional execution binding established by the first goal-bound event.
+    /// Missing means an unbound legacy/compatibility run; it is intentionally
+    /// not an authorization or signature field.
+    #[serde(default)]
+    projection_execution_binding: Option<ProjectionExecutionBinding>,
     #[serde(default)]
     projection_payloads: BTreeMap<u64, serde_json::Value>,
 }
@@ -781,6 +1649,257 @@ struct ProjectionToolExecutionAdmission {
     stop_rule: String,
     input_hash: String,
     policy_hash: String,
+    #[serde(default)]
+    managed_internal: bool,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+struct ProjectionExecutionBinding {
+    goal_contract_hash: String,
+    generation: u64,
+    target_digest: String,
+    plan_digest: String,
+    mission_id: String,
+    task_id: u64,
+    attempt_id: u64,
+    owner_id: String,
+    principal_id: String,
+    evidence_digest: Option<String>,
+    completion_digest: Option<String>,
+    #[serde(default)]
+    execution_cell_manifest_hash: Option<String>,
+    #[serde(default)]
+    execution_cell_id: Option<String>,
+    #[serde(default)]
+    execution_action_kind: Option<String>,
+    #[serde(default)]
+    backend_kind: Option<String>,
+    #[serde(default)]
+    resource_policy_hash: Option<String>,
+    binding_hash: String,
+}
+
+impl ProjectionExecutionBinding {
+    const SCHEMA: &'static str = "aegis-execution-binding-v1";
+
+    fn unsigned_value(&self) -> serde_json::Value {
+        let mut value = serde_json::json!({
+            "schema": Self::SCHEMA,
+            "goal_contract_hash": self.goal_contract_hash,
+            "generation": self.generation,
+            "target_digest": self.target_digest,
+            "plan_digest": self.plan_digest,
+            "mission_id": self.mission_id,
+            "task_id": self.task_id,
+            "attempt_id": self.attempt_id,
+            "owner_id": self.owner_id,
+            "principal_id": self.principal_id,
+            "evidence_digest": self.evidence_digest,
+            "completion_digest": self.completion_digest,
+        });
+        if let Some(manifest_hash) = &self.execution_cell_manifest_hash {
+            value["execution_cell_manifest_hash"] = serde_json::json!(manifest_hash);
+        }
+        if let Some(cell_id) = &self.execution_cell_id {
+            value["execution_cell_id"] = serde_json::json!(cell_id);
+            value["execution_action_kind"] = serde_json::json!(self.execution_action_kind);
+        }
+        if let Some(backend_kind) = &self.backend_kind {
+            value["backend_kind"] = serde_json::json!(backend_kind);
+            value["resource_policy_hash"] = serde_json::json!(self.resource_policy_hash);
+        }
+        value
+    }
+
+    fn validate_wire(value: &serde_json::Value) -> Result<Self, LabError> {
+        validate_goal_contract_limits(value).map_err(|_| LabError::InvalidRecord)?;
+        let object = value.as_object().ok_or(LabError::InvalidRecord)?;
+        let legacy_keys = [
+            "schema",
+            "goal_contract_hash",
+            "generation",
+            "target_digest",
+            "plan_digest",
+            "mission_id",
+            "task_id",
+            "attempt_id",
+            "owner_id",
+            "principal_id",
+            "evidence_digest",
+            "completion_digest",
+            "binding_hash",
+        ];
+        let manifest_keys = [
+            "schema",
+            "goal_contract_hash",
+            "generation",
+            "target_digest",
+            "plan_digest",
+            "mission_id",
+            "task_id",
+            "attempt_id",
+            "owner_id",
+            "principal_id",
+            "evidence_digest",
+            "completion_digest",
+            "execution_cell_manifest_hash",
+            "binding_hash",
+        ];
+        let identity_keys = [
+            "schema",
+            "goal_contract_hash",
+            "generation",
+            "target_digest",
+            "plan_digest",
+            "mission_id",
+            "task_id",
+            "attempt_id",
+            "owner_id",
+            "principal_id",
+            "evidence_digest",
+            "completion_digest",
+            "execution_cell_manifest_hash",
+            "backend_kind",
+            "resource_policy_hash",
+            "binding_hash",
+        ];
+        let selected_identity_keys = [
+            "schema",
+            "goal_contract_hash",
+            "generation",
+            "target_digest",
+            "plan_digest",
+            "mission_id",
+            "task_id",
+            "attempt_id",
+            "owner_id",
+            "principal_id",
+            "evidence_digest",
+            "completion_digest",
+            "execution_cell_manifest_hash",
+            "execution_cell_id",
+            "execution_action_kind",
+            "backend_kind",
+            "resource_policy_hash",
+            "binding_hash",
+        ];
+        if !(has_exact_json_keys(object, &legacy_keys)
+            || has_exact_json_keys(object, &manifest_keys)
+            || has_exact_json_keys(object, &identity_keys)
+            || has_exact_json_keys(object, &selected_identity_keys))
+            || object.get("schema").and_then(serde_json::Value::as_str) != Some(Self::SCHEMA)
+        {
+            return Err(LabError::InvalidRecord);
+        }
+
+        let digest = |key: &str| {
+            object
+                .get(key)
+                .and_then(serde_json::Value::as_str)
+                .filter(|value| is_hex_digest(value))
+                .map(str::to_string)
+                .ok_or(LabError::InvalidRecord)
+        };
+        let text = |key: &str| goal_required_string(object, key).map(str::to_string);
+        let positive = |key: &str| {
+            object
+                .get(key)
+                .and_then(serde_json::Value::as_u64)
+                .filter(|value| *value > 0)
+                .ok_or(LabError::InvalidRecord)
+        };
+        let optional_digest = |key: &str| match object.get(key) {
+            Some(serde_json::Value::Null) => Ok(None),
+            Some(value) => value
+                .as_str()
+                .filter(|value| is_hex_digest(value))
+                .map(|value| Some(value.to_string()))
+                .ok_or(LabError::InvalidRecord),
+            None => Err(LabError::InvalidRecord),
+        };
+        let optional_manifest_digest = match object.get("execution_cell_manifest_hash") {
+            None | Some(serde_json::Value::Null) => Ok(None),
+            Some(value) => value
+                .as_str()
+                .filter(|value| is_hex_digest(value))
+                .map(|value| Some(value.to_string()))
+                .ok_or(LabError::InvalidRecord),
+        };
+        let optional_execution_cell_id = match object.get("execution_cell_id") {
+            None => Ok(None),
+            Some(value) => value
+                .as_str()
+                .filter(|item| !item.trim().is_empty() && *item == item.trim())
+                .map(|value| Some(value.to_string()))
+                .ok_or(LabError::InvalidRecord),
+        };
+        let optional_execution_action_kind = match object.get("execution_action_kind") {
+            None => Ok(None),
+            Some(value) => value
+                .as_str()
+                .filter(|item| !item.trim().is_empty() && *item == item.trim())
+                .map(|value| Some(value.to_ascii_lowercase()))
+                .ok_or(LabError::InvalidRecord),
+        };
+        let optional_backend_kind = match object.get("backend_kind") {
+            None => Ok(None),
+            Some(value) => value
+                .as_str()
+                .filter(|value| !value.trim().is_empty() && *value == value.trim())
+                .map(|value| Some(value.to_ascii_lowercase()))
+                .ok_or(LabError::InvalidRecord),
+        };
+        let optional_resource_policy_hash = match object.get("resource_policy_hash") {
+            None | Some(serde_json::Value::Null) => Ok(None),
+            Some(value) => value
+                .as_str()
+                .filter(|value| is_hex_digest(value))
+                .map(|value| Some(value.to_string()))
+                .ok_or(LabError::InvalidRecord),
+        };
+
+        let binding = Self {
+            goal_contract_hash: digest("goal_contract_hash")?,
+            generation: positive("generation")?,
+            target_digest: digest("target_digest")?,
+            plan_digest: digest("plan_digest")?,
+            mission_id: text("mission_id")?,
+            task_id: positive("task_id")?,
+            attempt_id: positive("attempt_id")?,
+            owner_id: text("owner_id")?,
+            principal_id: text("principal_id")?,
+            evidence_digest: optional_digest("evidence_digest")?,
+            completion_digest: optional_digest("completion_digest")?,
+            execution_cell_manifest_hash: optional_manifest_digest?,
+            execution_cell_id: optional_execution_cell_id?,
+            execution_action_kind: optional_execution_action_kind?,
+            backend_kind: optional_backend_kind?,
+            resource_policy_hash: optional_resource_policy_hash?,
+            binding_hash: digest("binding_hash")?,
+        };
+        if (binding.backend_kind.is_some()) != (binding.resource_policy_hash.is_some())
+            || (binding.backend_kind.is_some() && binding.execution_cell_manifest_hash.is_none())
+            || (binding.execution_cell_id.is_some()) != (binding.execution_action_kind.is_some())
+            || (binding.execution_cell_id.is_some() && binding.backend_kind.is_none())
+            || ((binding.execution_cell_id.is_some() || binding.backend_kind.is_some())
+                && binding.execution_cell_manifest_hash.is_none())
+        {
+            return Err(LabError::InvalidRecord);
+        }
+        if binding.binding_hash != execution_binding_digest(&binding.unsigned_value()) {
+            return Err(LabError::InvalidRecord);
+        }
+        Ok(binding)
+    }
+}
+
+fn execution_binding_digest(value: &serde_json::Value) -> String {
+    let encoded = serde_json::to_vec(&canonical_json_value(value))
+        .expect("execution binding values are serializable");
+    let mut hasher = Hasher::new();
+    hasher.update(b"aegis-execution-binding-canonical-v1\0");
+    hasher.update(&encoded);
+    digest_hex(*hasher.finalize().as_bytes())
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
@@ -818,6 +1937,7 @@ impl LabController {
             projection_skill_executions: BTreeSet::new(),
             projection_research_programs: BTreeSet::new(),
             projection_research_program_admissions: BTreeMap::new(),
+            projection_execution_binding: None,
             projection_payloads: BTreeMap::new(),
         })
     }
@@ -1087,7 +2207,16 @@ impl LabController {
             return Err(LabError::InvalidTransition);
         }
         self.validate_projection_payload(event.kind, &payload)?;
-        self.validate_projection_binding(&event, &payload)?;
+        let execution_binding = self.validate_projection_binding(&event, &payload)?;
+        if let Some(binding) = execution_binding {
+            if let Some(existing) = &self.projection_execution_binding {
+                if existing != &binding {
+                    return Err(LabError::InvalidRecord);
+                }
+            } else {
+                self.projection_execution_binding = Some(binding);
+            }
+        }
         self.sync_projection_record_to_runtime(event.kind, &payload)?;
         if event.kind == LabEventKind::StateChanged {
             let Some(next_state) = projection_state else {
@@ -1132,9 +2261,9 @@ impl LabController {
             if !is_hex_digest(raw) {
                 return Err(LabError::InvalidRecord);
             }
-            let bytes = raw
-                .as_bytes()
-                .chunks_exact(2)
+            let (pairs, _) = raw.as_bytes().as_chunks::<2>();
+            let bytes = pairs
+                .iter()
                 .map(|pair| {
                     let nibble = |byte: u8| match byte {
                         b'0'..=b'9' => Some(byte - b'0'),
@@ -1508,6 +2637,22 @@ impl LabController {
                 let mut identities = BTreeSet::new();
                 for entry in manifest {
                     let cell = entry.as_object().ok_or(LabError::InvalidRecord)?;
+                    if cell.keys().any(|key| {
+                        !matches!(
+                            key.as_str(),
+                            "cell_id"
+                                | "action_kinds"
+                                | "capabilities"
+                                | "effect_classes"
+                                | "trust_levels"
+                                | "trust_policy_hash"
+                                | "backend_kind"
+                                | "resource_policy"
+                                | "resource_policy_hash"
+                        )
+                    }) {
+                        return Err(LabError::InvalidRecord);
+                    }
                     let cell_id = cell
                         .get("cell_id")
                         .and_then(serde_json::Value::as_str)
@@ -1528,6 +2673,7 @@ impl LabController {
                                 | "benchmark_validation"
                                 | "skill_execution"
                                 | "post_completion_effect"
+                                | "progress_checkpoint"
                         )
                     }) {
                         return Err(LabError::InvalidRecord);
@@ -1539,6 +2685,47 @@ impl LabController {
                         .get("trust_policy_hash")
                         .is_some_and(|value| value.as_str().is_none_or(|item| !is_hex_digest(item)))
                     {
+                        return Err(LabError::InvalidRecord);
+                    }
+                    let backend_kind = cell
+                        .get("backend_kind")
+                        .map(|value| {
+                            value
+                                .as_str()
+                                .filter(|item| {
+                                    !item.trim().is_empty()
+                                        && *item == item.trim()
+                                        && *item == item.to_ascii_lowercase()
+                                })
+                                .ok_or(LabError::InvalidRecord)
+                        })
+                        .transpose()?;
+                    let resource_policy_hash = cell
+                        .get("resource_policy_hash")
+                        .map(|value| {
+                            value
+                                .as_str()
+                                .filter(|item| is_hex_digest(item))
+                                .ok_or(LabError::InvalidRecord)
+                        })
+                        .transpose()?;
+                    let resource_policy = cell.get("resource_policy");
+                    if backend_kind.is_none()
+                        && (resource_policy.is_some() || resource_policy_hash.is_some())
+                    {
+                        return Err(LabError::InvalidRecord);
+                    }
+                    if backend_kind.is_some() && resource_policy.is_none() {
+                        return Err(LabError::InvalidRecord);
+                    }
+                    if let (Some(policy), Some(policy_hash)) =
+                        (resource_policy, resource_policy_hash)
+                    {
+                        if execution_cell_resource_policy_hash(policy)? != policy_hash {
+                            return Err(LabError::InvalidRecord);
+                        }
+                    }
+                    if backend_kind.is_some() != resource_policy_hash.is_some() {
                         return Err(LabError::InvalidRecord);
                     }
                     if !identities.insert((cell_id.to_string(), action_kinds)) {
@@ -1749,6 +2936,10 @@ impl LabController {
                     .ok_or(LabError::InvalidRecord)?;
                 let input_hash = non_empty("input_hash")?;
                 let policy_hash = non_empty("policy_hash")?;
+                let managed_internal = match object.get("managed_internal") {
+                    None => false,
+                    Some(value) => value.as_bool().ok_or(LabError::InvalidRecord)?,
+                };
                 if !is_hex_digest(&input_hash)
                     || !is_hex_digest(&policy_hash)
                     || !matches!(actor_role.as_str(), "actor" | "observer")
@@ -1779,6 +2970,7 @@ impl LabController {
                         stop_rule,
                         input_hash,
                         policy_hash,
+                        managed_internal,
                     },
                 );
             }
@@ -1803,6 +2995,10 @@ impl LabController {
                 let input_hash = non_empty("input_hash")?;
                 let result_hash = non_empty("result_hash")?;
                 let policy_hash = non_empty("policy_hash")?;
+                let managed_internal = match object.get("managed_internal") {
+                    None => false,
+                    Some(value) => value.as_bool().ok_or(LabError::InvalidRecord)?,
+                };
                 let status = object
                     .get("status")
                     .and_then(serde_json::Value::as_str)
@@ -1829,6 +3025,7 @@ impl LabController {
                     || admission.stop_rule != stop_rule
                     || admission.input_hash != input_hash
                     || admission.policy_hash != policy_hash
+                    || admission.managed_internal != managed_internal
                     || !self.projection_tool_executions.insert(execution_id)
                 {
                     return Err(LabError::InvalidRecord);
@@ -2288,6 +3485,96 @@ impl LabController {
                     return Err(LabError::InvalidRecord);
                 }
             }
+            LabEventKind::ReviewRecorded => {
+                if object
+                    .get("record_type")
+                    .and_then(serde_json::Value::as_str)
+                    == Some("goal_verification")
+                {
+                    let verification = object
+                        .get("verification")
+                        .and_then(serde_json::Value::as_object)
+                        .ok_or(LabError::InvalidRecord)?;
+                    if !has_exact_json_keys(
+                        verification,
+                        &[
+                            "schema",
+                            "contract_hash",
+                            "generation",
+                            "verifier_id",
+                            "independent",
+                            "predicate_results",
+                            "evidence_refs",
+                            "evidence_complete",
+                            "verification_hash",
+                        ],
+                    ) || verification
+                        .get("schema")
+                        .and_then(serde_json::Value::as_str)
+                        != Some("aegis-goal-verification-v1")
+                        || verification
+                            .get("contract_hash")
+                            .and_then(serde_json::Value::as_str)
+                            .is_none_or(|value| !is_hex_digest(value))
+                        || verification
+                            .get("generation")
+                            .and_then(serde_json::Value::as_u64)
+                            == Some(0)
+                        || verification
+                            .get("verifier_id")
+                            .and_then(serde_json::Value::as_str)
+                            .is_none_or(|value| value.trim().is_empty())
+                        || verification
+                            .get("independent")
+                            .and_then(serde_json::Value::as_bool)
+                            .is_none()
+                        || verification
+                            .get("evidence_complete")
+                            .and_then(serde_json::Value::as_bool)
+                            .is_none()
+                        || verification
+                            .get("verification_hash")
+                            .and_then(serde_json::Value::as_str)
+                            .is_none_or(|value| !is_hex_digest(value))
+                    {
+                        return Err(LabError::InvalidRecord);
+                    }
+                    let predicate_results = verification
+                        .get("predicate_results")
+                        .and_then(serde_json::Value::as_array)
+                        .ok_or(LabError::InvalidRecord)?;
+                    if predicate_results.iter().any(|item| {
+                        let Some(pair) = item.as_array() else {
+                            return true;
+                        };
+                        pair.len() != 2
+                            || pair[0].as_str().is_none_or(|value| value.trim().is_empty())
+                            || pair[1].as_bool().is_none()
+                    }) {
+                        return Err(LabError::InvalidRecord);
+                    }
+                    let evidence_refs = verification
+                        .get("evidence_refs")
+                        .and_then(serde_json::Value::as_array)
+                        .ok_or(LabError::InvalidRecord)?;
+                    if evidence_refs
+                        .iter()
+                        .any(|item| item.as_str().is_none_or(|value| value.trim().is_empty()))
+                    {
+                        return Err(LabError::InvalidRecord);
+                    }
+                    let supplied_hash = verification
+                        .get("verification_hash")
+                        .and_then(serde_json::Value::as_str)
+                        .ok_or(LabError::InvalidRecord)?;
+                    let mut unsigned = verification.clone();
+                    unsigned.remove("verification_hash");
+                    if supplied_hash != digest_hex(goal_verification_hash(&unsigned)) {
+                        return Err(LabError::InvalidRecord);
+                    }
+                    self.validate_goal_verification_contract(verification)?;
+                }
+            }
             LabEventKind::SecurityEventRecorded
             | LabEventKind::BlockerRecorded
             | LabEventKind::BlockerResolved
@@ -2303,12 +3590,208 @@ impl LabController {
         Ok(())
     }
 
+    fn validate_goal_verification_contract(
+        &self,
+        verification: &serde_json::Map<String, serde_json::Value>,
+    ) -> Result<(), LabError> {
+        let Some(contract_json) = &self.runtime.mission().goal_contract_json else {
+            return Err(LabError::InvalidRecord);
+        };
+        let contract: serde_json::Value =
+            serde_json::from_str(contract_json).map_err(|_| LabError::InvalidRecord)?;
+        let contract_object = contract.as_object().ok_or(LabError::InvalidRecord)?;
+        let contract_hash = contract_object
+            .get("contract_hash")
+            .and_then(serde_json::Value::as_str)
+            .ok_or(LabError::InvalidRecord)?;
+        let generation = contract_object
+            .get("generation")
+            .and_then(serde_json::Value::as_u64)
+            .ok_or(LabError::InvalidRecord)?;
+        if verification
+            .get("contract_hash")
+            .and_then(serde_json::Value::as_str)
+            != Some(contract_hash)
+            || verification
+                .get("generation")
+                .and_then(serde_json::Value::as_u64)
+                != Some(generation)
+        {
+            return Err(LabError::InvalidRecord);
+        }
+
+        let policy = contract_object
+            .get("evidence_policy")
+            .and_then(serde_json::Value::as_object)
+            .ok_or(LabError::InvalidRecord)?;
+        let require_independent = policy
+            .get("require_independent_verifier")
+            .and_then(serde_json::Value::as_bool)
+            .ok_or(LabError::InvalidRecord)?;
+        let required_record_types = goal_string_array(policy, "required_record_types")?;
+        let trusted_verifiers = goal_string_array(policy, "trusted_verifier_ids")?;
+        let verifier_id = verification
+            .get("verifier_id")
+            .and_then(serde_json::Value::as_str)
+            .ok_or(LabError::InvalidRecord)?;
+        let independent = verification
+            .get("independent")
+            .and_then(serde_json::Value::as_bool)
+            .ok_or(LabError::InvalidRecord)?;
+        let author_id = contract_object
+            .get("author_id")
+            .and_then(serde_json::Value::as_str)
+            .ok_or(LabError::InvalidRecord)?;
+        if verifier_id == author_id
+            || (require_independent
+                && (!independent || !trusted_verifiers.iter().any(|id| id == verifier_id)))
+        {
+            return Err(LabError::InvalidRecord);
+        }
+
+        let acceptance = contract_object
+            .get("acceptance")
+            .and_then(serde_json::Value::as_array)
+            .ok_or(LabError::InvalidRecord)?;
+        let mut known_predicates = BTreeSet::new();
+        let mut predicate_evidence: BTreeMap<String, BTreeSet<String>> = BTreeMap::new();
+        let mut required_predicates = BTreeSet::new();
+        let mut required_evidence = BTreeSet::new();
+        for raw_predicate in acceptance {
+            let predicate = raw_predicate.as_object().ok_or(LabError::InvalidRecord)?;
+            let predicate_id = goal_required_string(predicate, "predicate_id")?;
+            let severity = goal_required_string(predicate, "severity")?;
+            let evidence_refs = goal_string_array(predicate, "evidence_refs")?;
+            if !known_predicates.insert(predicate_id.to_string()) {
+                return Err(LabError::InvalidRecord);
+            }
+            let predicate_evidence_set = evidence_refs.into_iter().collect::<BTreeSet<_>>();
+            if severity == "required" {
+                required_predicates.insert(predicate_id.to_string());
+                required_evidence.extend(predicate_evidence_set.iter().cloned());
+            }
+            predicate_evidence.insert(predicate_id.to_string(), predicate_evidence_set);
+        }
+        let results = verification
+            .get("predicate_results")
+            .and_then(serde_json::Value::as_array)
+            .ok_or(LabError::InvalidRecord)?;
+        let mut result_ids = BTreeSet::new();
+        for raw_result in results {
+            let pair = raw_result.as_array().ok_or(LabError::InvalidRecord)?;
+            if pair.len() != 2 || pair[1].as_bool().is_none() {
+                return Err(LabError::InvalidRecord);
+            }
+            let predicate_id = pair[0]
+                .as_str()
+                .filter(|value| !value.trim().is_empty())
+                .ok_or(LabError::InvalidRecord)?;
+            if !known_predicates.contains(predicate_id)
+                || !result_ids.insert(predicate_id.to_string())
+            {
+                return Err(LabError::InvalidRecord);
+            }
+        }
+        let evidence_refs = verification
+            .get("evidence_refs")
+            .and_then(serde_json::Value::as_array)
+            .ok_or(LabError::InvalidRecord)?;
+        let mut evidence_ids = BTreeSet::new();
+        for raw_ref in evidence_refs {
+            let evidence_id = raw_ref
+                .as_str()
+                .filter(|value| !value.trim().is_empty())
+                .ok_or(LabError::InvalidRecord)?;
+            if !evidence_ids.insert(evidence_id.to_string()) {
+                return Err(LabError::InvalidRecord);
+            }
+        }
+        let evidence_complete = verification
+            .get("evidence_complete")
+            .and_then(serde_json::Value::as_bool)
+            .ok_or(LabError::InvalidRecord)?;
+        if evidence_complete {
+            for record_type in &required_record_types {
+                let present = match record_type.as_str() {
+                    "source" => {
+                        !self.projection_sources.is_empty() || !self.runtime.sources.is_empty()
+                    }
+                    "claim" => {
+                        !self.projection_claims.is_empty() || !self.runtime.claims.is_empty()
+                    }
+                    "hypothesis" => {
+                        !self.projection_hypotheses.is_empty()
+                            || !self.runtime.hypotheses.is_empty()
+                    }
+                    "experiment" => {
+                        !self.projection_experiments.is_empty()
+                            || !self.runtime.experiments.is_empty()
+                    }
+                    "observation" => {
+                        !self.projection_observations.is_empty()
+                            || !self.runtime.observations.is_empty()
+                    }
+                    _ => false,
+                };
+                if !present {
+                    return Err(LabError::InvalidRecord);
+                }
+            }
+            if !required_predicates.is_subset(&result_ids)
+                || !required_evidence.is_subset(&evidence_ids)
+            {
+                return Err(LabError::InvalidRecord);
+            }
+            if result_ids.iter().any(|predicate_id| {
+                predicate_evidence
+                    .get(predicate_id)
+                    .is_some_and(|refs| !refs.is_subset(&evidence_ids))
+            }) {
+                return Err(LabError::InvalidRecord);
+            }
+            let evidence_is_retained = |evidence_id: &str| {
+                self.projection_sources.contains(evidence_id)
+                    || self.runtime.sources.contains_key(evidence_id)
+                    || self.projection_claims.contains(evidence_id)
+                    || self.runtime.claims.contains_key(evidence_id)
+                    || self.projection_hypotheses.contains(evidence_id)
+                    || self.runtime.hypotheses.contains_key(evidence_id)
+                    || self.projection_experiments.contains_key(evidence_id)
+                    || self.runtime.experiments.contains_key(evidence_id)
+                    || self.projection_observations.contains_key(evidence_id)
+                    || self.runtime.observations.contains_key(evidence_id)
+            };
+            if required_evidence
+                .iter()
+                .any(|evidence_id| !evidence_is_retained(evidence_id))
+            {
+                return Err(LabError::InvalidRecord);
+            }
+            let minimum_sources = policy
+                .get("minimum_sources")
+                .and_then(serde_json::Value::as_u64)
+                .ok_or(LabError::InvalidRecord)?;
+            let retained_count = evidence_ids
+                .iter()
+                .filter(|evidence_id| {
+                    self.projection_sources.contains(*evidence_id)
+                        || self.runtime.sources.contains_key(*evidence_id)
+                })
+                .count() as u64;
+            if retained_count < minimum_sources {
+                return Err(LabError::InvalidRecord);
+            }
+        }
+        Ok(())
+    }
+
     fn validate_projection_binding(
         &self,
         event: &LabEvent,
         payload: &serde_json::Value,
-    ) -> Result<(), LabError> {
+    ) -> Result<Option<ProjectionExecutionBinding>, LabError> {
         let object = payload.as_object().ok_or(LabError::InvalidRecord)?;
+        let execution_binding = self.validate_goal_event_binding(event.kind, object)?;
         let parent_hex = digest_hex(event.previous_event_hash);
         match event.kind {
             LabEventKind::ExecutionCellManifestRecorded => {
@@ -2398,7 +3881,304 @@ impl LabController {
             }
             _ => {}
         }
-        Ok(())
+        Ok(execution_binding)
+    }
+
+    fn projection_execution_cell_manifest_hash(&self) -> Result<Option<String>, LabError> {
+        let mut manifest_hash: Option<String> = None;
+        for event in self
+            .runtime
+            .events
+            .iter()
+            .filter(|event| event.kind == LabEventKind::ExecutionCellManifestRecorded)
+        {
+            let payload = self
+                .projection_payloads
+                .get(&event.sequence)
+                .ok_or(LabError::InvalidRecord)?;
+            let hash = payload
+                .as_object()
+                .and_then(|object| object.get("manifest_hash"))
+                .and_then(serde_json::Value::as_str)
+                .filter(|value| is_hex_digest(value))
+                .ok_or(LabError::InvalidRecord)?
+                .to_string();
+            if manifest_hash.replace(hash).is_some() {
+                return Err(LabError::InvalidRecord);
+            }
+        }
+        Ok(manifest_hash)
+    }
+
+    fn projection_execution_cell_identity_matches(
+        &self,
+        execution_cell_id: Option<&str>,
+        execution_action_kind: Option<&str>,
+        backend_kind: &str,
+        resource_policy_hash: &str,
+    ) -> Result<bool, LabError> {
+        for event in self
+            .runtime
+            .events
+            .iter()
+            .filter(|event| event.kind == LabEventKind::ExecutionCellManifestRecorded)
+        {
+            let payload = self
+                .projection_payloads
+                .get(&event.sequence)
+                .ok_or(LabError::InvalidRecord)?;
+            let Some(manifest) = payload
+                .as_object()
+                .and_then(|object| object.get("manifest"))
+                .and_then(serde_json::Value::as_array)
+            else {
+                return Err(LabError::InvalidRecord);
+            };
+            let matches = manifest
+                .iter()
+                .filter(|entry| {
+                    let Some(cell) = entry.as_object() else {
+                        return false;
+                    };
+                    let selected_matches = execution_cell_id.is_none_or(|cell_id| {
+                        cell.get("cell_id").and_then(serde_json::Value::as_str) == Some(cell_id)
+                    }) && execution_action_kind.is_none_or(|action_kind| {
+                        cell.get("action_kinds")
+                            .and_then(serde_json::Value::as_array)
+                            .is_some_and(|kinds| {
+                                kinds.iter().any(|kind| kind.as_str() == Some(action_kind))
+                            })
+                    });
+                    selected_matches
+                        && cell.get("backend_kind").and_then(serde_json::Value::as_str)
+                            == Some(backend_kind)
+                        && cell
+                            .get("resource_policy_hash")
+                            .and_then(serde_json::Value::as_str)
+                            == Some(resource_policy_hash)
+                        && cell.get("resource_policy").is_some_and(|policy| {
+                            execution_cell_resource_policy_hash(policy).ok().as_deref()
+                                == Some(resource_policy_hash)
+                        })
+                })
+                .count();
+            if matches == 1 {
+                return Ok(true);
+            }
+            if matches > 1 {
+                return Err(LabError::InvalidRecord);
+            }
+        }
+        Ok(false)
+    }
+
+    fn validate_goal_event_binding(
+        &self,
+        kind: LabEventKind,
+        payload: &serde_json::Map<String, serde_json::Value>,
+    ) -> Result<Option<ProjectionExecutionBinding>, LabError> {
+        if !is_goal_bound_event_kind(kind) {
+            return Ok(None);
+        }
+        let Some(contract_json) = &self.runtime.mission().goal_contract_json else {
+            // Legacy missions predate goal bindings and remain readable. New
+            // explicit contracts are validated strictly below.
+            if payload.contains_key("execution_binding") {
+                return Err(LabError::InvalidRecord);
+            }
+            return Ok(None);
+        };
+        let contract: serde_json::Value =
+            serde_json::from_str(contract_json).map_err(|_| LabError::InvalidRecord)?;
+        let contract_object = contract.as_object().ok_or(LabError::InvalidRecord)?;
+        let goal_id = contract_object
+            .get("goal_id")
+            .and_then(serde_json::Value::as_str)
+            .ok_or(LabError::InvalidRecord)?;
+        let generation = contract_object
+            .get("generation")
+            .and_then(serde_json::Value::as_u64)
+            .ok_or(LabError::InvalidRecord)?;
+        let contract_hash = contract_object
+            .get("contract_hash")
+            .and_then(serde_json::Value::as_str)
+            .ok_or(LabError::InvalidRecord)?;
+        let target = contract_object
+            .get("target")
+            .ok_or(LabError::InvalidRecord)?;
+        let target_digest = digest_hex(projection_payload_hash(target));
+        let manifest_hash = self.projection_execution_cell_manifest_hash()?;
+        match (&manifest_hash, payload.get("execution_cell_manifest_hash")) {
+            (Some(expected), Some(actual)) if actual.as_str() == Some(expected.as_str()) => {}
+            (None, None) => {}
+            _ => return Err(LabError::InvalidRecord),
+        }
+        if payload.get("goal_id").and_then(serde_json::Value::as_str) != Some(goal_id)
+            || payload
+                .get("goal_generation")
+                .and_then(serde_json::Value::as_u64)
+                != Some(generation)
+            || payload
+                .get("goal_contract_hash")
+                .and_then(serde_json::Value::as_str)
+                != Some(contract_hash)
+            || payload
+                .get("target_digest")
+                .and_then(serde_json::Value::as_str)
+                != Some(target_digest.as_str())
+        {
+            return Err(LabError::InvalidRecord);
+        }
+
+        let execution_binding = if let Some(raw_binding) = payload.get("execution_binding") {
+            let binding = ProjectionExecutionBinding::validate_wire(raw_binding)?;
+            let owner = target
+                .as_object()
+                .and_then(|target| target.get("owner"))
+                .and_then(serde_json::Value::as_str)
+                .filter(|value| !value.trim().is_empty())
+                .ok_or(LabError::InvalidRecord)?;
+            if binding.goal_contract_hash != contract_hash
+                || binding.generation != generation
+                || binding.mission_id != self.runtime.mission().mission_id
+                || binding.target_digest != target_digest
+                || binding.owner_id != owner
+                || binding.execution_cell_manifest_hash.as_deref() != manifest_hash.as_deref()
+                || binding.evidence_digest.is_some()
+                || binding.completion_digest.is_some()
+            {
+                return Err(LabError::InvalidRecord);
+            }
+            if let (Some(backend_kind), Some(resource_policy_hash)) = (
+                binding.backend_kind.as_deref(),
+                binding.resource_policy_hash.as_deref(),
+            ) {
+                if binding.execution_cell_id.is_none() || binding.execution_action_kind.is_none() {
+                    return Err(LabError::InvalidRecord);
+                }
+                if !self.projection_execution_cell_identity_matches(
+                    binding.execution_cell_id.as_deref(),
+                    binding.execution_action_kind.as_deref(),
+                    backend_kind,
+                    resource_policy_hash,
+                )? {
+                    return Err(LabError::InvalidRecord);
+                }
+            }
+            if self.projection_execution_binding.is_none()
+                && self.runtime.events.iter().any(|event| {
+                    is_goal_bound_event_kind(event.kind)
+                        && self
+                            .projection_payloads
+                            .get(&event.sequence)
+                            .is_some_and(|prior| {
+                                !prior
+                                    .as_object()
+                                    .is_some_and(|object| object.contains_key("execution_binding"))
+                            })
+                })
+            {
+                return Err(LabError::InvalidRecord);
+            }
+            if self
+                .projection_execution_binding
+                .as_ref()
+                .is_some_and(|existing| existing != &binding)
+            {
+                return Err(LabError::InvalidRecord);
+            }
+            Some(binding)
+        } else {
+            if self.projection_execution_binding.is_some() {
+                return Err(LabError::InvalidRecord);
+            }
+            None
+        };
+        if matches!(
+            kind,
+            LabEventKind::ToolExecutionAdmitted | LabEventKind::ToolExecutionRecorded
+        ) {
+            if let (Some(tool_name), Some(effect_class)) = (
+                payload.get("tool_name").and_then(serde_json::Value::as_str),
+                payload
+                    .get("effect_class")
+                    .and_then(serde_json::Value::as_str),
+            ) {
+                let managed_internal = payload
+                    .get("managed_internal")
+                    .and_then(serde_json::Value::as_bool)
+                    .unwrap_or(false);
+                let local_effect = matches!(
+                    effect_class,
+                    "read_only"
+                        | "network_read"
+                        | "compute"
+                        | "model_inference"
+                        | "local_reversible"
+                );
+                if !local_effect
+                    && !(managed_internal
+                        && tool_name == "memory.index_session"
+                        && effect_class == "memory_write"
+                        && self.managed_internal_effect_registered())
+                {
+                    let expected_key = format!("{tool_name}::{effect_class}");
+                    let declared = target
+                        .get("external_side_effects")
+                        .and_then(serde_json::Value::as_array)
+                        .is_some_and(|keys| {
+                            keys.iter()
+                                .any(|key| key.as_str() == Some(expected_key.as_str()))
+                        });
+                    if !declared {
+                        return Err(LabError::InvalidRecord);
+                    }
+                }
+            }
+        }
+        Ok(execution_binding)
+    }
+
+    fn managed_internal_effect_registered(&self) -> bool {
+        self.projection_payloads.values().any(|payload| {
+            payload.get("schema").and_then(serde_json::Value::as_str)
+                == Some("aegis-execution-cell-manifest-v1")
+                && payload
+                    .get("manifest")
+                    .and_then(serde_json::Value::as_array)
+                    .is_some_and(|manifest| {
+                        manifest.iter().any(|entry| {
+                            let Some(cell) = entry.as_object() else {
+                                return false;
+                            };
+                            let has_post_completion_action = cell
+                                .get("action_kinds")
+                                .and_then(serde_json::Value::as_array)
+                                .is_some_and(|kinds| {
+                                    kinds
+                                        .iter()
+                                        .any(|kind| kind.as_str() == Some("post_completion_effect"))
+                                });
+                            let has_memory_capability = cell
+                                .get("capabilities")
+                                .and_then(serde_json::Value::as_array)
+                                .is_some_and(|capabilities| {
+                                    capabilities.iter().any(|capability| {
+                                        capability.as_str() == Some("memory_write")
+                                    })
+                                });
+                            let has_memory_effect = cell
+                                .get("effect_classes")
+                                .and_then(serde_json::Value::as_array)
+                                .is_some_and(|effects| {
+                                    effects
+                                        .iter()
+                                        .any(|effect| effect.as_str() == Some("memory_write"))
+                                });
+                            has_post_completion_action && has_memory_capability && has_memory_effect
+                        })
+                    })
+        })
     }
 
     fn validate_projection_snapshot(&self) -> Result<(), LabError> {
@@ -2560,7 +4340,34 @@ impl LabController {
             };
             let mut candidate = self.clone();
             candidate.validate_projection_payload(event.kind, payload)?;
-            candidate.validate_projection_binding(event, payload)?;
+            let _ = candidate.validate_projection_binding(event, payload)?;
+        }
+        let mut snapshot_binding: Option<ProjectionExecutionBinding> = None;
+        for event in self
+            .runtime
+            .events
+            .iter()
+            .filter(|event| is_goal_bound_event_kind(event.kind))
+        {
+            let Some(payload) = self.projection_payloads.get(&event.sequence) else {
+                return Err(LabError::InvalidEvent);
+            };
+            let object = payload.as_object().ok_or(LabError::InvalidEvent)?;
+            let parsed = self
+                .validate_goal_event_binding(event.kind, object)
+                .map_err(|_| LabError::InvalidEvent)?;
+            if let Some(binding) = parsed {
+                if snapshot_binding
+                    .as_ref()
+                    .is_some_and(|existing| existing != &binding)
+                {
+                    return Err(LabError::InvalidEvent);
+                }
+                snapshot_binding = Some(binding);
+            }
+        }
+        if snapshot_binding != self.projection_execution_binding {
+            return Err(LabError::InvalidEvent);
         }
         if self
             .projection_research_programs
@@ -3049,9 +4856,52 @@ pub fn canonical_hash<T: Serialize>(value: &T) -> [u8; 32] {
 /// adapters may carry additional presentation fields, but they cannot alter
 /// the exact bytes the native validator admitted.
 fn projection_payload_hash(value: &serde_json::Value) -> [u8; 32] {
-    let encoded = serde_json::to_vec(value).expect("JSON projection payloads are serializable");
+    let encoded = serde_json::to_vec(&canonical_json_value(value))
+        .expect("JSON projection payloads are serializable");
     let mut hasher = Hasher::new();
     hasher.update(b"aegis-lab-projection-payload-v1\0");
+    hasher.update(&encoded);
+    *hasher.finalize().as_bytes()
+}
+
+fn execution_cell_resource_policy_hash(value: &serde_json::Value) -> Result<String, LabError> {
+    let object = value.as_object().ok_or(LabError::InvalidRecord)?;
+    let keys = [
+        "schema",
+        "cpu_time_limit_ms",
+        "memory_bytes",
+        "process_limit",
+        "thread_limit",
+        "fd_limit",
+        "input_bytes",
+        "output_bytes",
+        "timeout_ms",
+    ];
+    if !has_exact_json_keys(object, &keys)
+        || object.get("schema").and_then(serde_json::Value::as_str)
+            != Some("aegis-execution-cell-resource-policy-v1")
+    {
+        return Err(LabError::InvalidRecord);
+    }
+    for key in keys.iter().skip(1) {
+        let value = object
+            .get(*key)
+            .and_then(serde_json::Value::as_u64)
+            .ok_or(LabError::InvalidRecord)?;
+        if !matches!(*key, "cpu_time_limit_ms" | "input_bytes" | "output_bytes") && value == 0 {
+            return Err(LabError::InvalidRecord);
+        }
+    }
+    Ok(digest_hex(projection_payload_hash(value)))
+}
+
+fn goal_verification_hash(value: &serde_json::Map<String, serde_json::Value>) -> [u8; 32] {
+    let encoded = serde_json::to_vec(&canonical_json_value(&serde_json::Value::Object(
+        value.clone(),
+    )))
+    .expect("goal verification payloads are serializable");
+    let mut hasher = Hasher::new();
+    hasher.update(b"aegis-goal-contract-canonical-v1\0");
     hasher.update(&encoded);
     *hasher.finalize().as_bytes()
 }
@@ -3061,6 +4911,19 @@ fn is_hex_digest(value: &str) -> bool {
         && value
             .bytes()
             .all(|byte| byte.is_ascii_digit() || (b'a'..=b'f').contains(&byte))
+}
+
+fn decode_hex_digest(value: &str) -> Option<[u8; 32]> {
+    if !is_hex_digest(value) {
+        return None;
+    }
+    let mut decoded = [0_u8; 32];
+    for (index, chunk) in value.as_bytes().as_chunks::<2>().0.iter().enumerate() {
+        let high = (chunk[0] as char).to_digit(16)? as u8;
+        let low = (chunk[1] as char).to_digit(16)? as u8;
+        decoded[index] = (high << 4) | low;
+    }
+    Some(decoded)
 }
 
 fn digest_hex(value: [u8; 32]) -> String {
@@ -3114,6 +4977,857 @@ mod tests {
             extractor: "test".to_string(),
             provenance_cluster: "fixture-cluster".to_string(),
         }
+    }
+
+    fn explicit_goal_contract_json() -> (String, [u8; 32]) {
+        let mut definition = serde_json::json!({
+            "acceptance": [{
+                "description": "the report contains a reproducible result",
+                "evaluator": "aegis.test.reproducibility",
+                "evidence_refs": ["source-1"],
+                "expected_result": true,
+                "inputs": ["report"],
+                "predicate_id": "reproducible-result",
+                "reproducibility_requirements": ["same-inputs"],
+                "severity": "required"
+            }],
+            "author_id": "test-author",
+            "budget": {
+                "attempt_limit": 20,
+                "cpu_time_limit_ms": null,
+                "cost_limit_minor_units": null,
+                "reserved_tokens": 30,
+                "token_limit": 100,
+                "wall_time_limit_ms": null
+            },
+            "created_at_ms": 1,
+            "effective_epoch": 1,
+            "evidence_policy": {
+                "minimum_sources": 1,
+                "required_record_types": ["source"],
+                "require_independent_verifier": true,
+                "trusted_verifier_ids": ["independent-verifier"]
+            },
+            "evolution_reason": null,
+            "generation": 1,
+            "goal_id": "goal-1",
+            "non_goals": [],
+            "objective": "test a hypothesis",
+            "parent_contract_hash": null,
+            "parent_goal_id": null,
+             "policy_digest": "a".repeat(64),
+            "scope": ["local deterministic fixture"],
+            "schema": "aegis-goal-contract-v1",
+            "target": {
+                "external_side_effects": [],
+                "kind": "fixture",
+                "network_allowlist": [],
+                "owner": "test-author",
+                "read_roots": ["fixture://input"],
+                "revision_or_digest": "revision-1",
+                "stable_id": "fixture-1",
+                "write_roots": []
+            }
+        });
+        let encoded = serde_json::to_vec(&canonical_json_value(&definition)).unwrap();
+        let mut hasher = Hasher::new();
+        hasher.update(b"aegis-goal-contract-canonical-v1\0");
+        hasher.update(&encoded);
+        let digest = *hasher.finalize().as_bytes();
+        let digest_hex: String = digest.iter().map(|byte| format!("{byte:02x}")).collect();
+        definition
+            .as_object_mut()
+            .unwrap()
+            .insert("contract_hash".to_string(), serde_json::json!(digest_hex));
+        (serde_json::to_string(&definition).unwrap(), digest)
+    }
+
+    fn explicit_execution_binding(contract_json: &str, mission_id: &str) -> serde_json::Value {
+        let contract: serde_json::Value = serde_json::from_str(contract_json).unwrap();
+        let mut binding = serde_json::json!({
+            "schema": "aegis-execution-binding-v1",
+            "goal_contract_hash": contract["contract_hash"].clone(),
+            "generation": contract["generation"].clone(),
+            "target_digest": digest_hex(projection_payload_hash(&contract["target"])),
+            "plan_digest": "c".repeat(64),
+            "mission_id": mission_id,
+            "task_id": 1,
+            "attempt_id": 1,
+            "owner_id": contract["target"]["owner"].clone(),
+            "principal_id": "fixture-agent",
+            "evidence_digest": serde_json::Value::Null,
+            "completion_digest": serde_json::Value::Null,
+        });
+        let binding_hash = execution_binding_digest(&binding);
+        binding
+            .as_object_mut()
+            .unwrap()
+            .insert("binding_hash".to_string(), serde_json::json!(binding_hash));
+        binding
+    }
+
+    #[test]
+    fn native_goal_contract_wire_accepts_bound_hashed_definition() {
+        let (contract_json, contract_hash) = explicit_goal_contract_json();
+        let mut mission = mission();
+        mission.max_external_attempts = Some(20);
+        mission.contract_hash = contract_hash;
+        mission.goal_contract_json = Some(contract_json);
+        assert!(mission.validate().is_ok());
+    }
+
+    #[test]
+    fn native_goal_contract_rejects_unbounded_wire_shapes() {
+        let (contract_json, _) = explicit_goal_contract_json();
+        let mission_for = |mut definition: serde_json::Value| {
+            definition.as_object_mut().unwrap().remove("contract_hash");
+            let encoded = serde_json::to_vec(&canonical_json_value(&definition)).unwrap();
+            let mut hasher = Hasher::new();
+            hasher.update(b"aegis-goal-contract-canonical-v1\0");
+            hasher.update(&encoded);
+            let contract_hash = *hasher.finalize().as_bytes();
+            definition.as_object_mut().unwrap().insert(
+                "contract_hash".to_string(),
+                serde_json::json!(digest_hex(contract_hash)),
+            );
+
+            let mut mission = mission();
+            mission.objective = definition["objective"].as_str().unwrap().to_string();
+            mission.max_external_attempts = Some(20);
+            mission.contract_hash = contract_hash;
+            mission.goal_contract_json = Some(serde_json::to_string(&definition).unwrap());
+            mission
+        };
+
+        let mut exact_text: serde_json::Value = serde_json::from_str(&contract_json).unwrap();
+        exact_text["objective"] = serde_json::json!("x".repeat(MAX_GOAL_CONTRACT_TEXT_BYTES));
+        assert!(mission_for(exact_text).validate().is_ok());
+
+        let mut oversized_text: serde_json::Value = serde_json::from_str(&contract_json).unwrap();
+        oversized_text["objective"] =
+            serde_json::json!("x".repeat(MAX_GOAL_CONTRACT_TEXT_BYTES + 1));
+        assert!(mission_for(oversized_text).validate().is_err());
+
+        let mut oversized_sequence: serde_json::Value =
+            serde_json::from_str(&contract_json).unwrap();
+        oversized_sequence["scope"] = serde_json::Value::Array(
+            (0..=MAX_GOAL_CONTRACT_SEQUENCE_ITEMS)
+                .map(|index| serde_json::json!(format!("scope-{index:03}")))
+                .collect(),
+        );
+        assert!(mission_for(oversized_sequence).validate().is_err());
+    }
+
+    #[test]
+    fn native_goal_contract_wire_accepts_child_lineage_and_rejects_partial_lineage() {
+        let (parent_json, parent_hash) = explicit_goal_contract_json();
+        let mut child: serde_json::Value = serde_json::from_str(&parent_json).unwrap();
+        child["goal_id"] = serde_json::json!("child-goal-1");
+        child["parent_goal_id"] = serde_json::json!("goal-1");
+        child["parent_contract_hash"] = serde_json::json!(digest_hex(parent_hash));
+        child["evolution_reason"] = serde_json::json!("delegate bounded evidence check");
+        let child_object = child.as_object_mut().unwrap();
+        child_object.remove("contract_hash");
+        let encoded = serde_json::to_vec(&canonical_json_value(&serde_json::Value::Object(
+            child_object.clone(),
+        )))
+        .unwrap();
+        let mut hasher = Hasher::new();
+        hasher.update(b"aegis-goal-contract-canonical-v1\0");
+        hasher.update(&encoded);
+        let child_hash = *hasher.finalize().as_bytes();
+        child_object.insert(
+            "contract_hash".to_string(),
+            serde_json::json!(digest_hex(child_hash)),
+        );
+
+        let mut child_mission = mission();
+        child_mission.max_external_attempts = Some(20);
+        child_mission.contract_hash = child_hash;
+        child_mission.goal_contract_json = Some(serde_json::to_string(&child).unwrap());
+        assert!(child_mission.validate().is_ok());
+
+        child["evolution_reason"] = serde_json::Value::Null;
+        let mut partial_lineage = mission();
+        partial_lineage.max_external_attempts = Some(20);
+        partial_lineage.contract_hash = child_hash;
+        partial_lineage.goal_contract_json = Some(serde_json::to_string(&child).unwrap());
+        assert!(partial_lineage.validate().is_err());
+    }
+
+    #[test]
+    fn native_goal_contract_wire_rejects_target_tampering() {
+        let (contract_json, contract_hash) = explicit_goal_contract_json();
+        let mut tampered: serde_json::Value = serde_json::from_str(&contract_json).unwrap();
+        tampered["target"]["stable_id"] = serde_json::json!("different-fixture");
+        let mut tampered_mission = mission();
+        tampered_mission.max_external_attempts = Some(20);
+        tampered_mission.contract_hash = contract_hash;
+        tampered_mission.goal_contract_json = Some(serde_json::to_string(&tampered).unwrap());
+        assert!(tampered_mission.validate().is_err());
+
+        let mut unsupported: serde_json::Value = serde_json::from_str(&contract_json).unwrap();
+        unsupported["evidence_policy"]["required_record_types"] =
+            serde_json::json!(["unsupported"]);
+        let mut unsupported_mission = mission();
+        unsupported_mission.max_external_attempts = Some(20);
+        unsupported_mission.contract_hash = contract_hash;
+        unsupported_mission.goal_contract_json = Some(serde_json::to_string(&unsupported).unwrap());
+        assert!(unsupported_mission.validate().is_err());
+
+        let mut ambiguous_uri: serde_json::Value = serde_json::from_str(&contract_json).unwrap();
+        ambiguous_uri["target"]["read_roots"] = serde_json::json!(["fixture://input/../secret"]);
+        ambiguous_uri
+            .as_object_mut()
+            .unwrap()
+            .remove("contract_hash");
+        let encoded = serde_json::to_vec(&canonical_json_value(&ambiguous_uri)).unwrap();
+        let mut hasher = Hasher::new();
+        hasher.update(b"aegis-goal-contract-canonical-v1\0");
+        hasher.update(&encoded);
+        let ambiguous_hash = *hasher.finalize().as_bytes();
+        ambiguous_uri.as_object_mut().unwrap().insert(
+            "contract_hash".to_string(),
+            serde_json::json!(digest_hex(ambiguous_hash)),
+        );
+        let mut ambiguous_mission = mission();
+        ambiguous_mission.max_external_attempts = Some(20);
+        ambiguous_mission.contract_hash = ambiguous_hash;
+        ambiguous_mission.goal_contract_json = Some(serde_json::to_string(&ambiguous_uri).unwrap());
+        assert!(ambiguous_mission.validate().is_err());
+    }
+
+    #[test]
+    fn native_goal_contract_rejects_noncanonical_external_effect_keys() {
+        let (contract_json, _) = explicit_goal_contract_json();
+        let mut malformed: serde_json::Value = serde_json::from_str(&contract_json).unwrap();
+        malformed["target"]["external_side_effects"] =
+            serde_json::json!(["fixture.write::external_write::extra"]);
+        let object = malformed.as_object_mut().unwrap();
+        object.remove("contract_hash");
+        let encoded = serde_json::to_vec(&canonical_json_value(&serde_json::Value::Object(
+            object.clone(),
+        )))
+        .unwrap();
+        let mut hasher = Hasher::new();
+        hasher.update(b"aegis-goal-contract-canonical-v1\0");
+        hasher.update(&encoded);
+        let contract_hash = *hasher.finalize().as_bytes();
+        object.insert(
+            "contract_hash".to_string(),
+            serde_json::json!(digest_hex(contract_hash)),
+        );
+
+        let mut malformed_mission = mission();
+        malformed_mission.max_external_attempts = Some(20);
+        malformed_mission.contract_hash = contract_hash;
+        malformed_mission.goal_contract_json = Some(serde_json::to_string(&malformed).unwrap());
+        assert!(malformed_mission.validate().is_err());
+
+        for entry in [
+            "https://user:p@pypi.org",
+            "https://pypi.org/path",
+            "https://pypi.org?query=1",
+            "https://*.pypi.org",
+            "pypi.org/path",
+        ] {
+            let mut malformed: serde_json::Value = serde_json::from_str(&contract_json).unwrap();
+            malformed["target"]["network_allowlist"] = serde_json::json!([entry]);
+            let object = malformed.as_object_mut().unwrap();
+            object.remove("contract_hash");
+            let encoded = serde_json::to_vec(&canonical_json_value(&serde_json::Value::Object(
+                object.clone(),
+            )))
+            .unwrap();
+            let mut hasher = Hasher::new();
+            hasher.update(b"aegis-goal-contract-canonical-v1\0");
+            hasher.update(&encoded);
+            let contract_hash = *hasher.finalize().as_bytes();
+            object.insert(
+                "contract_hash".to_string(),
+                serde_json::json!(digest_hex(contract_hash)),
+            );
+
+            let mut malformed_mission = mission();
+            malformed_mission.max_external_attempts = Some(20);
+            malformed_mission.contract_hash = contract_hash;
+            malformed_mission.goal_contract_json = Some(serde_json::to_string(&malformed).unwrap());
+            assert!(
+                malformed_mission.validate().is_err(),
+                "entry {entry} must fail closed"
+            );
+        }
+    }
+
+    #[test]
+    fn native_goal_event_binding_rejects_stale_generation() {
+        let (contract_json, contract_hash) = explicit_goal_contract_json();
+        let mut mission = mission();
+        mission.max_external_attempts = Some(20);
+        mission.contract_hash = contract_hash;
+        mission.goal_contract_json = Some(contract_json.clone());
+        let controller = LabController::new(mission).unwrap();
+        let contract: serde_json::Value = serde_json::from_str(&contract_json).unwrap();
+        let target_digest = digest_hex(projection_payload_hash(&contract["target"]));
+        assert_eq!(
+            target_digest,
+            "126fb47163792f9cf0c6ffd0daf18247294283c23d5a74fc3f35fa2046860494"
+        );
+        let mut payload = serde_json::json!({
+            "goal_id": "goal-1",
+            "goal_generation": 1,
+            "goal_contract_hash": digest_hex(contract_hash),
+            "target_digest": target_digest
+        });
+        assert!(
+            controller
+                .validate_goal_event_binding(
+                    LabEventKind::ToolExecutionAdmitted,
+                    payload.as_object().unwrap()
+                )
+                .is_ok()
+        );
+        payload["goal_generation"] = serde_json::json!(2);
+        assert!(
+            controller
+                .validate_goal_event_binding(
+                    LabEventKind::ToolExecutionAdmitted,
+                    payload.as_object().unwrap()
+                )
+                .is_err()
+        );
+    }
+
+    #[test]
+    fn native_execution_binding_requires_a_prior_matching_manifest() {
+        let (contract_json, contract_hash) = explicit_goal_contract_json();
+        let mut explicit_mission = mission();
+        explicit_mission.max_external_attempts = Some(20);
+        explicit_mission.contract_hash = contract_hash;
+        explicit_mission.goal_contract_json = Some(contract_json.clone());
+        let mut controller = LabController::new(explicit_mission).unwrap();
+        let resource_policy = serde_json::json!({
+            "schema": "aegis-execution-cell-resource-policy-v1",
+            "cpu_time_limit_ms": 1000,
+            "memory_bytes": 64 * 1024 * 1024,
+            "process_limit": 1,
+            "thread_limit": 1,
+            "fd_limit": 256,
+            "input_bytes": 1024,
+            "output_bytes": 4096,
+            "timeout_ms": 5000
+        });
+        let resource_policy_hash = execution_cell_resource_policy_hash(&resource_policy).unwrap();
+        assert_eq!(
+            resource_policy_hash,
+            "59f2c4be42130952b57cc505f1762be5d2a3fab8c897e6093a4de12ddd6a4fa4"
+        );
+        let manifest = serde_json::json!([{
+            "cell_id": "progress-checkpoint",
+            "action_kinds": ["progress_checkpoint"],
+            "capabilities": ["state_write"],
+            "effect_classes": ["state_write"],
+            "trust_levels": ["DEV"],
+            "backend_kind": "python-local",
+            "resource_policy": resource_policy,
+            "resource_policy_hash": resource_policy_hash
+        }]);
+        let manifest_hash = digest_hex(projection_payload_hash(&manifest));
+        let manifest_payload = serde_json::json!({
+            "schema": "aegis-execution-cell-manifest-v1",
+            "cell_count": 1,
+            "manifest": manifest,
+            "manifest_hash": manifest_hash
+        });
+        let manifest_json = serde_json::to_string(&manifest_payload).unwrap();
+        let manifest_event = LabEvent::new(
+            2,
+            1,
+            LabEventKind::ExecutionCellManifestRecorded,
+            projection_payload_hash(&manifest_payload),
+            controller.runtime().events()[0].event_hash,
+        );
+        controller
+            .admit_projection_record(manifest_event, &manifest_json, None)
+            .unwrap();
+
+        let contract: serde_json::Value = serde_json::from_str(&contract_json).unwrap();
+        let mut binding = explicit_execution_binding(&contract_json, "mission-1");
+        binding["execution_cell_manifest_hash"] = serde_json::json!(manifest_hash);
+        binding["execution_cell_id"] = serde_json::json!("progress-checkpoint");
+        binding["execution_action_kind"] = serde_json::json!("progress_checkpoint");
+        binding["backend_kind"] = serde_json::json!("python-local");
+        binding["resource_policy_hash"] = serde_json::json!(resource_policy_hash);
+        let mut unsigned = binding.clone();
+        unsigned.as_object_mut().unwrap().remove("binding_hash");
+        binding["binding_hash"] = serde_json::json!(execution_binding_digest(&unsigned));
+        let mut payload = serde_json::json!({
+            "goal_id": contract["goal_id"],
+            "goal_generation": contract["generation"],
+            "goal_contract_hash": contract["contract_hash"],
+            "target_digest": digest_hex(projection_payload_hash(&contract["target"])),
+            "execution_cell_manifest_hash": manifest_hash,
+            "execution_binding": binding
+        });
+        assert!(
+            controller
+                .validate_goal_event_binding(
+                    LabEventKind::ToolExecutionAdmitted,
+                    payload.as_object().unwrap(),
+                )
+                .is_ok()
+        );
+
+        payload["execution_binding"]["execution_action_kind"] = serde_json::json!("tool_call");
+        let mut selection_changed = payload["execution_binding"].clone();
+        selection_changed
+            .as_object_mut()
+            .unwrap()
+            .remove("binding_hash");
+        payload["execution_binding"]["binding_hash"] =
+            serde_json::json!(execution_binding_digest(&selection_changed));
+        assert!(
+            controller
+                .validate_goal_event_binding(
+                    LabEventKind::ToolExecutionAdmitted,
+                    payload.as_object().unwrap(),
+                )
+                .is_err()
+        );
+        payload["execution_binding"]["execution_action_kind"] =
+            serde_json::json!("progress_checkpoint");
+        let mut restored_selection = payload["execution_binding"].clone();
+        restored_selection
+            .as_object_mut()
+            .unwrap()
+            .remove("binding_hash");
+        payload["execution_binding"]["binding_hash"] =
+            serde_json::json!(execution_binding_digest(&restored_selection));
+
+        payload["execution_binding"]["resource_policy_hash"] = serde_json::json!("c".repeat(64));
+        let mut identity_changed = payload["execution_binding"].clone();
+        identity_changed
+            .as_object_mut()
+            .unwrap()
+            .remove("binding_hash");
+        payload["execution_binding"]["binding_hash"] =
+            serde_json::json!(execution_binding_digest(&identity_changed));
+        assert!(
+            controller
+                .validate_goal_event_binding(
+                    LabEventKind::ToolExecutionAdmitted,
+                    payload.as_object().unwrap(),
+                )
+                .is_err()
+        );
+        payload["execution_binding"]["resource_policy_hash"] =
+            serde_json::json!(resource_policy_hash);
+        let mut restored_identity = payload["execution_binding"].clone();
+        restored_identity
+            .as_object_mut()
+            .unwrap()
+            .remove("binding_hash");
+        payload["execution_binding"]["binding_hash"] =
+            serde_json::json!(execution_binding_digest(&restored_identity));
+
+        payload["execution_binding"]["execution_cell_manifest_hash"] =
+            serde_json::json!("f".repeat(64));
+        let mut changed = payload["execution_binding"].clone();
+        changed.as_object_mut().unwrap().remove("binding_hash");
+        payload["execution_binding"]["binding_hash"] =
+            serde_json::json!(execution_binding_digest(&changed));
+        assert!(
+            controller
+                .validate_goal_event_binding(
+                    LabEventKind::ToolExecutionAdmitted,
+                    payload.as_object().unwrap(),
+                )
+                .is_err()
+        );
+
+        payload["execution_binding"]["mission_id"] =
+            serde_json::json!("m".repeat(MAX_GOAL_CONTRACT_IDENTIFIER_BYTES + 1));
+        assert!(
+            controller
+                .validate_goal_event_binding(
+                    LabEventKind::ToolExecutionAdmitted,
+                    payload.as_object().unwrap(),
+                )
+                .is_err()
+        );
+
+        let mut missing_manifest = LabController::new({
+            let mut missing = mission();
+            missing.max_external_attempts = Some(20);
+            missing.contract_hash = contract_hash;
+            missing.goal_contract_json = Some(contract_json);
+            missing
+        })
+        .unwrap();
+        let _ = &mut missing_manifest;
+        assert!(
+            missing_manifest
+                .validate_goal_event_binding(
+                    LabEventKind::ToolExecutionAdmitted,
+                    payload.as_object().unwrap(),
+                )
+                .is_err()
+        );
+    }
+
+    #[test]
+    fn native_execution_binding_is_strict_immutable_and_snapshot_bound() {
+        let (contract_json, contract_hash) = explicit_goal_contract_json();
+        let mut mission = mission();
+        mission.max_external_attempts = Some(20);
+        mission.contract_hash = contract_hash;
+        mission.goal_contract_json = Some(contract_json.clone());
+        let binding = explicit_execution_binding(&contract_json, "mission-1");
+        let contract_hash_hex = digest_hex(contract_hash);
+        let contract: serde_json::Value = serde_json::from_str(&contract_json).unwrap();
+        let target_digest = digest_hex(projection_payload_hash(&contract["target"]));
+
+        let tool_payload = |binding: Option<serde_json::Value>,
+                            execution_id: &str,
+                            admission_id: &str,
+                            parent: [u8; 32],
+                            status: &str|
+         -> serde_json::Value {
+            let mut payload = serde_json::json!({
+                "admission_id": admission_id,
+                "execution_id": execution_id,
+                "tool_name": "fixture.lookup",
+                "attempt": 1,
+                "lease_id": 1,
+                "effect_class": "read_only",
+                "actor_role": "actor",
+                "expected_observation_schema": "fixture.v1",
+                "stop_rule": "single_call",
+                "mission_id": "mission-1",
+                "replay_parent_hash": digest_hex(parent),
+                "input_hash": "a".repeat(64),
+                "policy_hash": "b".repeat(64),
+                "status": status
+            });
+            payload["goal_id"] = serde_json::json!("goal-1");
+            payload["goal_generation"] = serde_json::json!(1);
+            payload["goal_contract_hash"] = serde_json::json!(contract_hash_hex);
+            payload["target_digest"] = serde_json::json!(target_digest);
+            if let Some(binding) = binding {
+                payload["execution_binding"] = binding;
+            }
+            if status == "SUCCESS" {
+                payload["result_hash"] = serde_json::json!("c".repeat(64));
+            }
+            payload
+        };
+        let admit = |controller: &mut LabController,
+                     sequence: u64,
+                     epoch: u64,
+                     kind: LabEventKind,
+                     payload: serde_json::Value|
+         -> Result<(), LabError> {
+            let payload_json = serde_json::to_string(&payload).unwrap();
+            let previous = controller.runtime().events().last().unwrap().event_hash;
+            let event = LabEvent::new(
+                sequence,
+                epoch,
+                kind,
+                projection_payload_hash(&payload),
+                previous,
+            );
+            controller.admit_projection_record(event, &payload_json, None)
+        };
+
+        let mut controller = LabController::new(mission.clone()).unwrap();
+        let first_parent = controller.runtime().events()[0].event_hash;
+        let first_payload = tool_payload(
+            Some(binding.clone()),
+            "tool-1",
+            "tool-1-admission",
+            first_parent,
+            "ADMITTED",
+        );
+        admit(
+            &mut controller,
+            2,
+            1,
+            LabEventKind::ToolExecutionAdmitted,
+            first_payload,
+        )
+        .unwrap();
+        assert_eq!(
+            controller
+                .projection_execution_binding
+                .as_ref()
+                .unwrap()
+                .binding_hash,
+            binding["binding_hash"].as_str().unwrap()
+        );
+
+        let second_parent = controller.runtime().events().last().unwrap().event_hash;
+        let second_payload = tool_payload(
+            Some(binding.clone()),
+            "tool-1",
+            "tool-1-admission",
+            second_parent,
+            "SUCCESS",
+        );
+        admit(
+            &mut controller,
+            3,
+            2,
+            LabEventKind::ToolExecutionRecorded,
+            second_payload,
+        )
+        .unwrap();
+        let before_rejected = controller.snapshot_json().unwrap();
+
+        let mut changed_binding = binding.clone();
+        changed_binding["plan_digest"] = serde_json::json!("f".repeat(64));
+        let changed_hash = execution_binding_digest(&{
+            let mut unsigned = changed_binding.clone();
+            unsigned.as_object_mut().unwrap().remove("binding_hash");
+            unsigned
+        });
+        changed_binding["binding_hash"] = serde_json::json!(changed_hash);
+        let changed_parent = controller.runtime().events().last().unwrap().event_hash;
+        let changed_payload = tool_payload(
+            Some(changed_binding),
+            "tool-2",
+            "tool-2-admission",
+            changed_parent,
+            "ADMITTED",
+        );
+        let changed = admit(
+            &mut controller,
+            4,
+            3,
+            LabEventKind::ToolExecutionAdmitted,
+            changed_payload,
+        );
+        assert_eq!(changed, Err(LabError::InvalidRecord));
+        assert_eq!(controller.snapshot_json().unwrap(), before_rejected);
+
+        let mut tampered_snapshot: serde_json::Value =
+            serde_json::from_str(&before_rejected).unwrap();
+        tampered_snapshot["projection_payloads"]["2"]["execution_binding"]["plan_digest"] =
+            serde_json::json!("f".repeat(64));
+        assert!(
+            LabController::from_snapshot_json(&serde_json::to_string(&tampered_snapshot).unwrap())
+                .is_err()
+        );
+        let restored = LabController::from_snapshot_json(&before_rejected).unwrap();
+        assert_eq!(
+            restored.projection_execution_binding,
+            controller.projection_execution_binding
+        );
+
+        let mut late_binding_controller = LabController::new(mission).unwrap();
+        let first_parent = late_binding_controller.runtime().events()[0].event_hash;
+        admit(
+            &mut late_binding_controller,
+            2,
+            1,
+            LabEventKind::ToolExecutionAdmitted,
+            tool_payload(None, "late-1", "late-1-admission", first_parent, "ADMITTED"),
+        )
+        .unwrap();
+        let late_parent = late_binding_controller
+            .runtime()
+            .events()
+            .last()
+            .unwrap()
+            .event_hash;
+        let late_payload = tool_payload(
+            Some(binding),
+            "late-2",
+            "late-2-admission",
+            late_parent,
+            "ADMITTED",
+        );
+        let late = admit(
+            &mut late_binding_controller,
+            3,
+            2,
+            LabEventKind::ToolExecutionAdmitted,
+            late_payload,
+        );
+        assert_eq!(late, Err(LabError::InvalidRecord));
+    }
+
+    #[test]
+    fn native_goal_target_allowlists_generic_external_effect_keys() {
+        let (parent_json, _) = explicit_goal_contract_json();
+        let mut definition: serde_json::Value = serde_json::from_str(&parent_json).unwrap();
+        definition["target"]["external_side_effects"] =
+            serde_json::json!(["fixture.write::external_write"]);
+        definition.as_object_mut().unwrap().remove("contract_hash");
+        let encoded = serde_json::to_vec(&canonical_json_value(&definition)).unwrap();
+        let mut hasher = Hasher::new();
+        hasher.update(b"aegis-goal-contract-canonical-v1\0");
+        hasher.update(&encoded);
+        let contract_hash = *hasher.finalize().as_bytes();
+        let contract_hash_hex: String = contract_hash
+            .iter()
+            .map(|byte| format!("{byte:02x}"))
+            .collect();
+        definition.as_object_mut().unwrap().insert(
+            "contract_hash".to_string(),
+            serde_json::json!(contract_hash_hex),
+        );
+
+        let contract_json = serde_json::to_string(&definition).unwrap();
+        let mut mission = mission();
+        mission.max_external_attempts = Some(20);
+        mission.contract_hash = contract_hash;
+        mission.goal_contract_json = Some(contract_json);
+        let controller = LabController::new(mission).unwrap();
+        let target_digest = digest_hex(projection_payload_hash(&definition["target"]));
+        let payload = serde_json::json!({
+            "goal_id": "goal-1",
+            "goal_generation": 1,
+            "goal_contract_hash": contract_hash_hex,
+            "target_digest": target_digest,
+            "tool_name": "fixture.write",
+            "effect_class": "external_write"
+        });
+        assert!(
+            controller
+                .validate_goal_event_binding(
+                    LabEventKind::ToolExecutionAdmitted,
+                    payload.as_object().unwrap()
+                )
+                .is_ok()
+        );
+
+        let mut rejected = payload;
+        rejected["tool_name"] = serde_json::json!("fixture.other_write");
+        assert!(
+            controller
+                .validate_goal_event_binding(
+                    LabEventKind::ToolExecutionAdmitted,
+                    rejected.as_object().unwrap()
+                )
+                .is_err()
+        );
+    }
+
+    #[test]
+    fn native_goal_verification_record_requires_typed_receipt() {
+        let (contract_json, contract_hash) = explicit_goal_contract_json();
+        let mut configured_mission = mission();
+        configured_mission.max_external_attempts = Some(20);
+        configured_mission.contract_hash = contract_hash;
+        configured_mission.goal_contract_json = Some(contract_json.clone());
+        let mut controller = LabController::new(configured_mission).unwrap();
+        let contract: serde_json::Value = serde_json::from_str(&contract_json).unwrap();
+        let target_digest = digest_hex(projection_payload_hash(&contract["target"]));
+        assert_eq!(
+            digest_hex(contract_hash),
+            "7c11c990dc9671b4ff16cd039c4885cd68e81ab017bc0999067211daf55cee9f"
+        );
+        let mut verification = serde_json::json!({
+            "schema": "aegis-goal-verification-v1",
+            "contract_hash": digest_hex(contract_hash),
+            "generation": 1,
+            "verifier_id": "independent-verifier",
+            "independent": true,
+            "predicate_results": [["reproducible-result", true]],
+            "evidence_refs": ["source-1"],
+            "evidence_complete": true
+        });
+        let verification_hash = goal_verification_hash(verification.as_object().unwrap());
+        assert_eq!(
+            digest_hex(verification_hash),
+            "43f965d51e2d05394e33b2ca5f13488087d98c008adcf7cedf8dc4f000000c09"
+        );
+        verification["verification_hash"] = serde_json::json!(digest_hex(verification_hash));
+        controller.projection_sources.insert("source-1".to_string());
+        let payload = serde_json::json!({
+            "record_type": "goal_verification",
+            "goal_id": "goal-1",
+            "goal_generation": 1,
+            "goal_contract_hash": digest_hex(contract_hash),
+            "target_digest": target_digest,
+            "verification": verification
+        });
+        assert!(
+            controller
+                .validate_projection_payload(LabEventKind::ReviewRecorded, &payload)
+                .is_ok()
+        );
+        let mut untrusted = payload.clone();
+        untrusted["verification"]["verifier_id"] = serde_json::json!("untrusted-verifier");
+        let untrusted_hash = goal_verification_hash(untrusted["verification"].as_object().unwrap());
+        untrusted["verification"]["verification_hash"] =
+            serde_json::json!(digest_hex(untrusted_hash));
+        assert!(
+            controller
+                .validate_projection_payload(LabEventKind::ReviewRecorded, &untrusted)
+                .is_err()
+        );
+        let mut malformed = payload;
+        malformed["verification"]["evidence_refs"] = serde_json::json!([1]);
+        assert!(
+            controller
+                .validate_projection_payload(LabEventKind::ReviewRecorded, &malformed)
+                .is_err()
+        );
+    }
+
+    #[test]
+    fn native_goal_verification_accepts_retained_non_source_evidence() {
+        let (contract_json, _) = explicit_goal_contract_json();
+        let mut contract: serde_json::Value = serde_json::from_str(&contract_json).unwrap();
+        contract["acceptance"][0]["evidence_refs"] = serde_json::json!(["claim-1"]);
+        let definition = contract.as_object_mut().unwrap();
+        definition.remove("contract_hash");
+        let encoded = serde_json::to_vec(&canonical_json_value(&serde_json::Value::Object(
+            definition.clone(),
+        )))
+        .unwrap();
+        let mut hasher = Hasher::new();
+        hasher.update(b"aegis-goal-contract-canonical-v1\0");
+        hasher.update(&encoded);
+        let contract_hash = *hasher.finalize().as_bytes();
+        definition.insert(
+            "contract_hash".to_string(),
+            serde_json::json!(digest_hex(contract_hash)),
+        );
+        let mut mission = mission();
+        mission.max_external_attempts = Some(20);
+        mission.contract_hash = contract_hash;
+        mission.goal_contract_json = Some(serde_json::to_string(&contract).unwrap());
+        let mut controller = LabController::new(mission).unwrap();
+        controller.projection_sources.insert("source-1".to_string());
+        controller.projection_claims.insert("claim-1".to_string());
+        let target_digest = digest_hex(projection_payload_hash(&contract["target"]));
+        let mut verification = serde_json::json!({
+            "schema": "aegis-goal-verification-v1",
+            "contract_hash": digest_hex(contract_hash),
+            "generation": 1,
+            "verifier_id": "independent-verifier",
+            "independent": true,
+            "predicate_results": [["reproducible-result", true]],
+            "evidence_refs": ["claim-1", "source-1"],
+            "evidence_complete": true
+        });
+        let verification_hash = goal_verification_hash(verification.as_object().unwrap());
+        verification["verification_hash"] = serde_json::json!(digest_hex(verification_hash));
+        let payload = serde_json::json!({
+            "record_type": "goal_verification",
+            "goal_id": "goal-1",
+            "goal_generation": 1,
+            "goal_contract_hash": digest_hex(contract_hash),
+            "target_digest": target_digest,
+            "verification": verification
+        });
+        assert!(
+            controller
+                .validate_projection_payload(LabEventKind::ReviewRecorded, &payload)
+                .is_ok()
+        );
     }
 
     #[test]
@@ -3268,10 +5982,16 @@ mod tests {
     #[test]
     fn native_projection_record_binds_execution_cell_manifest() {
         let mut controller = LabController::new(mission()).unwrap();
-        let manifest = serde_json::json!([]);
+        let manifest = serde_json::json!([{
+            "cell_id": "progress-checkpoint",
+            "action_kinds": ["progress_checkpoint"],
+            "capabilities": ["state_write"],
+            "effect_classes": ["state_write"],
+            "trust_levels": ["DEV"]
+        }]);
         let payload = serde_json::json!({
             "schema": "aegis-execution-cell-manifest-v1",
-            "cell_count": 0,
+            "cell_count": 1,
             "manifest": manifest.clone(),
             "manifest_hash": digest_hex(projection_payload_hash(&manifest)),
         });
@@ -3289,6 +6009,38 @@ mod tests {
         assert_eq!(controller.runtime().events().len(), 2);
         let snapshot = controller.snapshot_json().unwrap();
         assert!(LabController::from_snapshot_json(&snapshot).is_ok());
+
+        let unknown_manifest = serde_json::json!([{
+            "cell_id": "progress-checkpoint",
+            "action_kinds": ["progress_checkpoint"],
+            "capabilities": ["state_write"],
+            "effect_classes": ["state_write"],
+            "trust_levels": ["DEV"],
+            "unknown": true
+        }]);
+        let unknown_payload = serde_json::json!({
+            "schema": "aegis-execution-cell-manifest-v1",
+            "cell_count": 1,
+            "manifest": unknown_manifest.clone(),
+            "manifest_hash": digest_hex(projection_payload_hash(&unknown_manifest)),
+        });
+        let mut unknown_controller = LabController::new(mission()).unwrap();
+        let unknown_event = LabEvent::new(
+            2,
+            1,
+            LabEventKind::ExecutionCellManifestRecorded,
+            projection_payload_hash(&unknown_payload),
+            unknown_controller.runtime().events()[0].event_hash,
+        );
+        assert_eq!(
+            unknown_controller.admit_projection_record(
+                unknown_event,
+                &serde_json::to_string(&unknown_payload).unwrap(),
+                None,
+            ),
+            Err(LabError::InvalidRecord)
+        );
+        assert_eq!(unknown_controller.runtime().events().len(), 1);
 
         let mut tampered_controller = LabController::new(mission()).unwrap();
         let tampered_payload = serde_json::json!({

@@ -119,6 +119,8 @@ def test_materializer_binds_retained_suite_artifact(monkeypatch, tmp_path) -> No
                 "gate_id": "rust-full-workspace",
                 "attempt_id": "fixture-1",
                 "run_key": "b" * 64,
+                "worktree_status": "CLEAN",
+                "worktree_sha256": "d" * 64,
                 "release_eligible": True,
                 "combined_output_sha256": "c" * 64,
             }

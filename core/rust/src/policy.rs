@@ -1,5 +1,5 @@
 use blake3::Hasher;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
 pub type ToolId = u128;
 pub type OperationId = u128;
@@ -21,7 +21,7 @@ pub enum CapabilityClass {
     FinancialLegal,
 }
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub enum SideEffectClass {
     None,
     LocalReversible,

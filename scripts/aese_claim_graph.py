@@ -357,8 +357,8 @@ def _blocker_nodes() -> list[dict[str, object]]:
     return sorted(nodes, key=lambda node: str(node["id"]))
 
 
-def build_graph() -> dict[str, object]:
-    inventory = build_inventory()
+def build_graph(inventory: dict[str, object] | None = None) -> dict[str, object]:
+    inventory = build_inventory() if inventory is None else inventory
     claim_rows = _parse_gt96()
     tracked = _tracked_paths()
     sources = {

@@ -357,7 +357,7 @@ def _critical_audit(mapping: dict[str, object], adjacency: dict[str, list[dict[s
 
 def build_closure(changed_paths: list[str] | tuple[str, ...] = (), mapping_path: Path = DEFAULT_MAPPING) -> dict[str, object]:
     inventory = _inventory.build_inventory()
-    graph = _claim_graph.build_graph()
+    graph = _claim_graph.build_graph(inventory=inventory)
     mapping = _load_json(mapping_path)
     edges = _declared_edges(mapping)
     known_paths, retained_paths = _path_set(inventory, graph, edges)
@@ -491,9 +491,11 @@ def validate_closure(actual: dict[str, object], expected: dict[str, object]) -> 
     # stable closure inputs/outputs must not.  Keep the provenance in the
     # artifact and verify its own content hash independently.
     volatile = {"artifact_hash", "source_head", "provenance"}
-    for key in expected:
-        if key not in volatile and actual.get(key) != expected.get(key):
-            errors.append(f"{key} differs")
+    errors.extend(
+        f"{key} differs"
+        for key in expected
+        if key not in volatile and actual.get(key) != expected.get(key)
+    )
     recorded_hash = actual.get("artifact_hash")
     recomputed_hash = _stable_hash({key: value for key, value in actual.items() if key != "artifact_hash"})
     if recorded_hash != recomputed_hash:

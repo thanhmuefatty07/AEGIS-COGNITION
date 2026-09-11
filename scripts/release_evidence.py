@@ -26,10 +26,18 @@ def sha256(path: Path) -> str:
 
 
 def git_revision(root: Path) -> str:
-    declared = os.environ.get("GITHUB_SHA", "").strip()
-    if declared:
-        return declared
     try:
+        status = subprocess.check_output(
+            ["git", "status", "--porcelain=v1", "--untracked-files=all"],
+            cwd=root,
+            text=True,
+            stderr=subprocess.DEVNULL,
+        ).strip()
+        if status:
+            return "WORKTREE_DIRTY"
+        declared = os.environ.get("GITHUB_SHA", "").strip()
+        if declared:
+            return declared
         return subprocess.check_output(
             ["git", "rev-parse", "HEAD"], cwd=root, text=True, stderr=subprocess.DEVNULL
         ).strip()
@@ -82,7 +90,10 @@ def build_evidence(root: Path, artifacts: Path, output: Path) -> None:
         "ref": os.environ.get("GITHUB_REF", "local"),
         "run_id": os.environ.get("GITHUB_RUN_ID", "local"),
         "artifacts": entries,
-        "verification": "PROVEN for generated hashes; external signature/promotion remains separate",
+        "verification": (
+            "PROVEN for generated hashes; revision is WORKTREE_DIRTY when source changes are uncommitted; "
+            "external signature/promotion remains separate"
+        ),
     }
     (output / "release-manifest.json").write_text(
         json.dumps(manifest, indent=2, sort_keys=True) + "\n", encoding="utf-8"
