@@ -36,7 +36,7 @@ def test_unknown_change_widens_conservatively() -> None:
     assert plan["unknown_dependency_policy"] == "WIDEN_TO_RETAINED_SUITE"
     selection = plan["shadow_selection"]
     assert isinstance(selection, dict)
-    assert len(selection["legacy_would_run_item_ids"]) == 151
+    assert len(selection["legacy_would_run_item_ids"]) == 153
     assert selection["would_reuse_item_ids"] == []
     assert selection["would_skip_item_ids"] == []
     assert selection["external_anchor_requests"] == []

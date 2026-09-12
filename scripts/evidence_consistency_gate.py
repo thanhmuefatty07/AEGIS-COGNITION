@@ -440,6 +440,7 @@ def materialize_for_head(template: dict[str, Any], expected_head: str) -> dict[s
                     "worktree_sha256",
                     "timestamp_utc",
                     "platform",
+                    "platform_id",
                     "toolchain",
                     "discovered",
                     "passed",
