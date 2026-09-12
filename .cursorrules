@@ -10,7 +10,13 @@ The canonical repository copy is `docs/ENGINEERING_CONSTITUTION.md`; keep it ali
 with the canonical local source file named `Ultimate Software Engineering Constitution
 — Maximum-Rigor Prompt.md`.
 
-Always apply `SYSTEM_PROMPT.md` when creating or modifying AEGIS plugins, tools, skills, or actions.
+Always apply `docs/archive/reports/system-prompt.md` when creating or modifying AEGIS plugins, tools, skills, or actions.
+
+Keep explicit test scratch directories inside `.local/tmp/<unique-run-id>`.
+Never create AEGIS test directories directly under the user's home directory.
+Do not share pytest basetemp directories across concurrent runs; pytest can remove
+their contents. Caches and quarantine belong in `.local/`, which is excluded from
+Git and Docker. Historical reports and source snapshots belong in `docs/archive/`.
 
 For plugin work, the default stance is zero trust:
 

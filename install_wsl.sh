@@ -8,7 +8,7 @@
 #   ./install_wsl.sh
 #
 # Honest scope: WRITTEN, NOT YET EXECUTED end-to-end in a WSL2 instance
-# in this session. See INSTALL_SCRIPTS_REPORT.md.
+# in this session. See docs/archive/reports/install-scripts.md.
 
 set -euo pipefail
 

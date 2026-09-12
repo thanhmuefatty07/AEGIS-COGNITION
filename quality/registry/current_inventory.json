@@ -5794,13 +5794,13 @@
     "inventoried_items": 152,
     "missing_scopes": 0,
     "represented_paths": 141,
-    "tracked_files": 674,
+    "tracked_files": 624,
     "workflow_jobs": 11
   },
   "scope_policy": "tracked_files_only; native runners remain authoritative",
-  "source_head": "2275e9c7f9b3ff9c6f9684ccc5b530eb30328088",
-  "source_tree_sha256": "2f57daf0fa8f7c3b7cdb8c3f13fe2c671dab81ff184e8e844918a3d4da224589",
+  "source_head": "903920b2e7e002f2ea32679fe549427ea17f251c",
+  "source_tree_sha256": "4eec14195ec5375e6cc6e4b815b299c542ee22716ae01994d6bece79e0dad1dd",
   "status": "INVENTORY_COMPLETE_DISPOSITIONS_RETAINED_MAPPING_PENDING",
-  "worktree_epoch": "1a7fa37afb4c743a54618fe044ff27a16054389c3ab4fddec2ff170be5bb6a83",
+  "worktree_epoch": "043256fbf07b0b83685e26c3e4eaabb53c3159ec3f87f3dff2eba3429bdb3c3c",
   "worktree_status": "DIRTY"
 }

@@ -7,9 +7,10 @@ AEGIS-COGNITION is a research project — contributions are accepted via the
 
 1. **Measure before change.** Run `cargo test --lib` and capture before/after
    for any refactor that touches `core/`, `bench/`, or `~`-tier hot paths.
-2. **Tests are sacred.** All 381 Rust lib tests + 83 Python tests must keep
-   passing. A change that breaks a single test is not a contribution — it's a
-   regression report.
+2. **Tests are sacred.** Every currently supported Rust and Python test must
+   keep passing. A change that breaks a single test is not a contribution —
+   it is a regression report. Use the current checkout-bound evidence for
+   suite counts; historical counts in archived reports are not a gate.
 3. **Cryptographic invariants stay tight.** Do not weaken hash bindings,
    trust-level gates, or replay determinism without an explicit audit report.
 4. **No behavior changes in cleanup commits.** Cleanup = code hygiene, doc sync,
@@ -20,13 +21,14 @@ AEGIS-COGNITION is a research project — contributions are accepted via the
 
 1. Pick an issue or open one describing the gap precisely with file:line
    evidence. Audit prompts with unverified "CRITICAL" claims get bounced.
-2. Write a plan under `.hermes/plans/` (see `plan` skill).
+2. Write an implementation plan under `docs/architecture/` when the change
+   affects architecture, contracts, or release evidence.
 3. Implement with the smallest possible diff.
 4. Run:
    ```
-   cargo test --lib --release
+   cargo test --locked --manifest-path core/rust/Cargo.toml --lib
    cargo clippy --all-targets --all-features -- -W unused_imports -W dead_code
-   pytest core/python/tests.py -v
+   uv run --locked pytest -q
    ```
 5. Append an entry to `CHANGELOG.md` under `[Unreleased]`.
 

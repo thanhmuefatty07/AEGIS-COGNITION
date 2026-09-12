@@ -8,7 +8,7 @@
 #   .\install.ps1
 #
 # Honest scope: this script is WRITTEN but NOT YET EXECUTED end-to-end on a
-# Windows host in this session. See INSTALL_SCRIPTS_REPORT.md for the gate.
+# Windows host in this session. See docs/archive/reports/install-scripts.md for the gate.
 
 [CmdletBinding()]
 param(
