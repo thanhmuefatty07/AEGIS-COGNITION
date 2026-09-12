@@ -20,7 +20,7 @@ You are working in `AEGIS-COGNITION` — a hybrid Rust+Python AI agent framework
 
 - **Native (Rust) over Python**: when a hot path needs to be fast, push it to Rust via FFI; don't optimize the Python side. Ponytail's "native over deps" maps to "Rust over Python loop" here.
 - **Existing plugins first**: `aegis-plugins/` ships dozens. Don't write a new plugin before checking if one already covers the case.
-- **`.agents/rules/` over inline guidance**: ship a rule, don't hardcode behavior into the agent.
+- **`.cursor/rules/` over inline guidance**: ship a project rule, don't hardcode behavior into the agent.
 - **No new Cargo dep** if `std`, `tokio`, `serde`, or `anyhow` already cover it. The lockfile is curated.
 - **No new Python dep** if `asyncio`, `typing`, `dataclasses`, `pathlib`, `subprocess` cover it.
 
@@ -34,7 +34,7 @@ You are working in `AEGIS-COGNITION` — a hybrid Rust+Python AI agent framework
 
 ## When editing
 
-1. Read `PROJECT_OVERVIEW_DETAILED.md` (~106k bytes — only the section you need) and `EXTREME_AUDIT_REPORT.md` for known anti-patterns.
+1. Read `docs/archive/reports/project-overview.md` (~106k bytes — only the section you need) and `docs/archive/reports/extreme-audit.md` for known anti-patterns.
 2. The 7 rules in `.cursor/rules/` (project.mdc, style.mdc, planning-architecture.mdc, etc.) are authoritative. They take precedence over this skill.
 3. Run `cargo build --release` + `pytest tests/` before claiming done.
 4. If you touch FFI: run the rust-ffi-auditor agent afterwards.

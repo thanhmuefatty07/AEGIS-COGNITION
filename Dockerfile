@@ -20,7 +20,7 @@ ENV AEGIS_TRUST_LEVEL=PROD \
 WORKDIR /opt/aegis
 RUN groupadd --system aegis && useradd --system --gid aegis --home-dir /opt/aegis aegis
 
-COPY pyproject.toml PROJECT_OVERVIEW_DETAILED.md .env.example ./
+COPY pyproject.toml .env.example ./
 COPY core/python core/python
 COPY scripts scripts
 COPY --from=rust-builder /src/target/release/aegis-nerve-cli /usr/local/bin/aegis-nerve-cli

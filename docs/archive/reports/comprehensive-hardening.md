@@ -2,7 +2,7 @@
 
 **Date:** 2026-06-16
 **Scope:** Verification pass against `DEEP_CODE_AUDIT_REPORT.md` (2026-06-14),
-`EXTREME_AUDIT_REPORT.md` (2026-06-15), and `artifacts/audit_2026_06_15/`
+`docs/archive/reports/extreme-audit.md` (2026-06-15), and `artifacts/audit_2026_06_15/`
 **Tests at session start:** 381/381 Rust lib PASS (~55s)
 **Tests at session end:** 381/381 Rust lib PASS (~49s)
 **Status:** REAL ISSUES FIXED + DOWN-SCOPED ITEMS DOCUMENTED WITH REASONS
@@ -230,7 +230,7 @@ No Critical/High Python findings. Medium/Low findings are deliberate design deci
 | `core/rust/src/skill_registry.rs` | Added `SkillImprovementRecordInfo` struct + thin wrapper preserving the public `skill_improvement_record_hash` 9-arg signature | Cleared too_many_arguments lint |
 | `artifacts/hardening/*.txt`, `*.json`, `*.md` | Re-generated (cargo audit, bandit, mypy, ruff, geiger) | Fresh 2026-06-16 timestamps |
 | `artifacts/hardening/bench_*_full.txt` | Re-ran benchmarks with full extraction | New this-session bench evidence |
-| `COMPREHENSIVE_HARDENING_REPORT.md` | New file (this document) | Honest audit-grounded hardening record |
+| `docs/archive/reports/comprehensive-hardening.md` | New file (this document) | Honest audit-grounded hardening record |
 | `CHANGELOG.md` | Added Unreleased entries for this session | See Phase 5 update |
 
 ---

@@ -4,7 +4,7 @@ Create or update an AEGIS NERVE-HARNESS plugin capsule under the zero-trust prot
 
 ## Steps
 
-1. Read `SYSTEM_PROMPT.md` and the current Rust core contracts.
+1. Read `docs/archive/reports/system-prompt.md` and the current Rust core contracts.
 2. Classify the requested plugin as R0-R4.
 3. Declare least-privilege host capabilities and side effects.
 4. Define typed input/output structs and the `TypedToolIR` binding.

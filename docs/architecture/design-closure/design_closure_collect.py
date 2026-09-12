@@ -288,7 +288,7 @@ def native_projection_probe(combined):
     return {"status":"PASS" if c==0 else "FAIL","python":str(py),"exit":c,"result":parsed,"stderr":e[-3000:],"network":"NOT_USED","scope":"one local source admission; bounded fresh-process snapshot replay; no provider/browser/process effect"}
 
 def nested_mirror():
-    root=ROOT/"core/rust/AEGIS-COGNITION"; rows=[]
+    root=ROOT/"docs/archive/legacy"; rows=[]
     nested_manifest=root/"Cargo.toml"
     nested_manifests=sorted(root.rglob("Cargo.toml")) if root.exists() else []
     metadata={"status":"NOT_VERIFIED"}; workspace_root="NOT_VERIFIED"; workspace_members=[]; default_members=[]
@@ -307,7 +307,7 @@ def nested_mirror():
     def mirror_references(path, rel):
         refs=[]
         for d,ds,fs in os.walk(ROOT):
-            ds[:]=[x for x in ds if x not in {".git",".venv","target",".mypy_cache",".pytest_cache",".ruff_cache",".serena","artifacts",".agents",".cursor",".sixth","brain","planning pdf","docs/architecture/evidence-pack","docs/architecture/design-closure"}]
+            ds[:]=[x for x in ds if x not in {".git",".local",".venv","target",".mypy_cache",".pytest_cache",".ruff_cache",".serena","artifacts",".agents",".cursor",".sixth","brain","planning pdf","docs/architecture/evidence-pack","docs/architecture/design-closure"}]
             for fn in fs:
                 q=Path(d)/fn
                 if q==path or q.suffix.lower() not in {".py",".rs",".toml",".md",".yml",".yaml",".json",".html"}: continue
@@ -326,7 +326,7 @@ def nested_mirror():
         twin=canonical.get(p.name) if p.name in canonical else None
         identical=bool(twin and twin["sha256"]==sha(p))
         classification="ACTIVE_HISTORY" if hist.splitlines() or refs else "UNKNOWN"
-        rows.append({"path":rp,"tracked":tc==0,"git_status":s.strip(),"history":hist.splitlines()[:10],"content_sha256":sha(p),"references_by_basename_or_exact_path":refs[:50],"reference_categories":{"production_source":[x for x in refs if (x.startswith(("core/","aegis_cognition/","aegis-plugins/")) and not x.startswith("core/rust/AEGIS-COGNITION/"))],"docs_history":[x for x in refs if x.startswith("docs/") or x.endswith(".md")],"tooling":[x for x in refs if x.startswith("scripts/")]},"cargo_reachable":False,"package_reachable":False,"script_reachable":False,"ci_reachable":False,"test_reachable":False,"documentation_reachable":bool(refs),"tool_workspace":False,"nested_cargo_manifest":False,"workspace_member":False,"canonical_twin":twin,"canonical_content_identical":identical,"generated":False,"classification":classification})
+        rows.append({"path":rp,"tracked":tc==0,"git_status":s.strip(),"history":hist.splitlines()[:10],"content_sha256":sha(p),"references_by_basename_or_exact_path":refs[:50],"reference_categories":{"production_source":[x for x in refs if (x.startswith(("core/","aegis_cognition/","aegis-plugins/")) and not x.startswith("docs/archive/legacy/"))],"docs_history":[x for x in refs if x.startswith("docs/") or x.endswith(".md")],"tooling":[x for x in refs if x.startswith("scripts/")]},"cargo_reachable":False,"package_reachable":False,"script_reachable":False,"ci_reachable":False,"test_reachable":False,"documentation_reachable":bool(refs),"tool_workspace":False,"nested_cargo_manifest":False,"workspace_member":False,"canonical_twin":twin,"canonical_content_identical":identical,"generated":False,"classification":classification})
     return {"schema":"aegis-design-rust-mirror-truth-v1","status":"INSPECTED","root":str(root.relative_to(ROOT)).replace("\\","/"),"files":rows,"nested_manifest_exists":nested_manifest.is_file(),"nested_manifests":[str(x.relative_to(ROOT)).replace("\\","/") for x in nested_manifests],"cargo_workspace":{"metadata_status":metadata.get("status","PASS" if mc==0 else "FAIL"),"workspace_root":workspace_root,"default_members":default_members,"member_manifest_paths":workspace_members,"mirror_is_member":False,"canonical_manifest":"core/rust/Cargo.toml"},"canonical_twins":canonical,"subtree_classification":"ACTIVE_HISTORY_NOT_EXECUTABLE","deletion_effect":{"cargo_build":"NO","cargo_test":"NO","python_build":"NO","wheel":"NO","runtime":"NO","scripts":"NO direct execution edge","CI":"NO direct execution edge","documentation":"POSSIBLE reference/history loss","developer_tooling":"NO direct execution edge"},"limitations":["the nested subtree has no Cargo.toml and is not in cargo metadata workspace members; textual references are historical/documentary, not execution proof"]}
 
 def reuse_prior(name):
@@ -755,7 +755,7 @@ limitations: local evidence is partial; external-only closure is explicit below
 {package_reconciled}
 - The prior lexical side-effect graph mixed strict Lab fencing with compatibility/operator paths; this pack separates those paths and names bypass conditions.
 - The prior count of 93 PyO3 candidates is not the registered API count; source registration is measured separately (59 `#[pyfunction]`, 59 wrappers, one `#[pymethods]` block).
-- The nested `core/rust/AEGIS-COGNITION` subtree is tracked history with no nested Cargo manifest and no workspace-member edge; it is not a build/runtime mirror.
+- Historical snapshots are retained in `docs/archive/legacy`, outside the Cargo workspace and current runtime.
 - The performance baseline is reused because the equivalent workload was not repeated and no new campaign was authorized; reused measurements are not source-fresh.
 
 ## NEW DESIGN-CRITICAL FACTS
@@ -777,7 +777,7 @@ limitations: local evidence is partial; external-only closure is explicit below
 Fresh source/wheel/combined-runtime owner evidence is in `packaging_truth.json`; stale pre-M1 environments are explicitly historical.
 
 ## NESTED MIRROR TRUTH
-The four tracked files under `core/rust/AEGIS-COGNITION` have history and documentary references, but no nested manifest, Cargo workspace membership, package, script, CI, test, or runtime edge. Canonical twin hashes and references are in `rust_mirror_truth.json`.
+Historical files under `docs/archive/legacy` were relocated from nested project trees. Per-file history and documentary references, canonical twin hashes, and workspace membership checks are recorded in `rust_mirror_truth.json`.
 
 ## AUTHORITY TRUTH
 {authority_summary}

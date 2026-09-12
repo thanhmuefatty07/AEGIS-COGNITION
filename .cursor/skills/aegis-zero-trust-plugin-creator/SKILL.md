@@ -22,7 +22,7 @@ Create plugin capsules that are deterministic, sandboxed, policy-gated, and evid
 
 ## Workflow
 
-- Read `SYSTEM_PROMPT.md`.
+- Read `docs/archive/reports/system-prompt.md`.
 - Read current Rust contracts before adding schema:
   - `core/rust/src/policy.rs`
   - `core/rust/src/physical.rs`

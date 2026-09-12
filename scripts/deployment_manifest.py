@@ -565,7 +565,7 @@ def build_deployment_manifest(root: str | Path) -> DeploymentManifest:
         (root_path / "Cargo.toml").exists()
         and (root_path / "core" / "rust" / "Cargo.toml").exists()
     )
-    docs_ready = (root_path / "PROJECT_OVERVIEW_DETAILED.md").exists()
+    docs_ready = (root_path / "docs/archive/reports/project-overview.md").exists()
     artifacts_dir_ready = artifacts_dir.is_dir()
 
     artifact_hashes = {

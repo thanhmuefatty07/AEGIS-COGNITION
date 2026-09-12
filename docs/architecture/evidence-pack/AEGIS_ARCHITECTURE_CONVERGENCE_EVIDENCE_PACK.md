@@ -145,8 +145,7 @@ Highest fan-out:
 `cargo metadata --no-deps` status: **PROVEN**. Workspace packages, dependencies, features, targets, modules, visibility, public declarations, and target limitations are in `architecture_rust_module_graph.json`.
 
 High-coupling Rust modules (source scan):
-- `core/rust/AEGIS-COGNITION/core/rust/src/licensing.rs` `aegis-nerve::AEGIS-COGNITION::core::rust::src::licensing` fan_in=0 fan_out=0 pub=0 responsibility=module-local responsibility; inspect source
-- `core/rust/AEGIS-COGNITION/core/rust/src/rbac.rs` `aegis-nerve::AEGIS-COGNITION::core::rust::src::rbac` fan_in=0 fan_out=0 pub=22 responsibility=module-local responsibility; inspect source
+- `docs/archive/legacy/rust/rbac.rs` `aegis-nerve::AEGIS-COGNITION::core::rust::src::rbac` fan_in=0 fan_out=0 pub=22 responsibility=module-local responsibility; inspect source
 - `core/rust/benches/architecture_performance.rs` `aegis-nerve::benches::architecture_performance` fan_in=0 fan_out=0 pub=0 responsibility=module-local responsibility; inspect source
 - `core/rust/benches/nerve_bench.rs` `aegis-nerve::benches::nerve_bench` fan_in=0 fan_out=0 pub=0 responsibility=module-local responsibility; inspect source
 - `core/rust/benches/resource_runtime.rs` `aegis-nerve::benches::resource_runtime` fan_in=0 fan_out=0 pub=0 responsibility=resource admission/platform
@@ -163,7 +162,10 @@ High-coupling Rust modules (source scan):
 
 The graph does not claim macro-expanded, trait-dispatch, generated, or rust-analyzer-complete edges. `pub mod` and `pub use` are recorded conservatively; accidental-public status requires API review.
 
-The current tree also contains a nested, non-workspace mirror at `core/rust/AEGIS-COGNITION/` (two Rust files plus a website). It is not represented as a Cargo workspace member in the root metadata. Its ownership is therefore `UNKNOWN`/historical-or-experimental until explicitly classified; it must not be silently treated as production Rust.
+The repository retains a historical, non-workspace source snapshot under
+`docs/archive/legacy/` (one Rust module plus a website). It is not represented
+as a Cargo workspace member in the root metadata and must not be silently
+treated as production Rust.
 
 ## 4. Production reachability graph
 
@@ -496,8 +498,8 @@ Fresh policy scan found `1492` records and `480` default/fallback candidates.
 - `aegis_cognition/runtime.py:45` `"source": "python-fallback",`
 - `aegis_cognition/runtime.py:61` `"os": {"backend": "python-fallback", "enforcement": "unsupported"},`
 - `aegis_cognition/runtime.py:76` `"""Return Rust lane limits, or a conservative unverified fallback."""`
-- `AEGIS_DX_RESEARCH_REPORT.md:13` `- **Fallback**: If the terminal is not interactive (`sys.stdin.isatty() == False`), silently fall back to `getpass.getpass()`.`
-- `AEGIS_DX_RESEARCH_REPORT.md:46` `- **Rate Limit Handling**: Utilize the `aegis_adapter.py` token bucket and `ProviderRateLimitError` to automatically trigger the fallback chain.`
+- `docs/archive/reports/dx-research.md:13` `- **Fallback**: If the terminal is not interactive (`sys.stdin.isatty() == False`), silently fall back to `getpass.getpass()`.`
+- `docs/archive/reports/dx-research.md:46` `- **Rate Limit Handling**: Utilize the `aegis_adapter.py` token bucket and `ProviderRateLimitError` to automatically trigger the fallback chain.`
 - `core/python/aegis/contracts.py:99` `fallback_used: bool`
 - `core/python/aegis/evidence.py:27` `physical_witness_required = level == "PROD"`
 - `core/python/aegis/evidence.py:28` `fail_closed = level == "PROD"`

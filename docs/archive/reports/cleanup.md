@@ -1,12 +1,16 @@
-# AEGIS-COGNITION Project Cleanup Report
+# AEGIS-COGNITION Project Cleanup Report (Historical Snapshot)
+
+> Archived historical record from 2026-06-15. The observations and test
+> results below describe that session only; they do not establish current
+> implementation status, release readiness, or production approval.
 
 **Date:** 2026-06-15
 **Session:** hybrid-approach, cleanup pass
-**Author:** Cleanup agent (Hermes)
+**Author:** Repository cleanup session
 
 ## Executive Summary
 
-Across the 6-phase roadmap in the cleanup prompt, real yield was concentrated in **Phase 1 (Code Rot Removal)**, **Phase 2 (Documentation Consolidation) — partial**, and **Phase 5 (CI/CD — file only)**. Phases 3, 4, and 6 were either already-validated earlier in the audit cycle (production blockers 5/5 cleared, 381/381 tests passing) or were theatrical given the actual scope of files in the tree. All Rust lib tests still pass 381/381 after the changes.
+Across the 6-phase roadmap in the cleanup prompt, real yield was concentrated in **Phase 1 (Code Rot Removal)**, **Phase 2 (Documentation Consolidation) — partial**, and **Phase 5 (CI/CD — file only)**. Phases 3, 4, and 6 were either reported as validated earlier in that audit cycle or were considered out of scope for the files examined. The production-blocker and test statements in this document are historical session claims and require fresh verification before reuse.
 
 ## Phase 1: Code Rot Removal
 
@@ -97,22 +101,23 @@ Moved to `artifacts/archive/2026_06_15_pre_cleanup/`:
 ### README.md fixes (Phase 2B bonus): 2
 
 The README badge links both `LICENSE` and `COMMERCIAL_CLOSURE_REPORT.md` (top-level) — neither file
-exists at the linked path. Fixed to point at the actual file `core/rust/AEGIS-COGNITION/COMMERCIAL_CLOSURE_REPORT.md`
+exists at the linked path. Fixed to point at the actual file `docs/archive/legacy/commercial-closure.md`
 (verified to exist).
 
 ### Skipped (out of scope for "scattered reports" premise)
 
 - 1,494 vendor .md under `artifacts/research/hermes-agent/website/` — read-only reference
 - 30+ `.agents/*.md` — Hermes internal session documents, not project documentation
-- `SYSTEM_PROMPT.md`, `ORIGINAL_REQUEST.md` — project artifacts, intentionally kept at root
+- `docs/archive/reports/system-prompt.md`, `docs/archive/reports/original-request.md` — project artifacts retained in the historical archive
 
 ## Phase 3: Architecture Validation — VERIFIED, NO CHANGES
 
 - 37 top-level `pub mod` declarations in `lib.rs`, all sub-module `.rs` files transitively reachable.
 - `cargo check --all-targets --all-features` → finished in 19s, 0 errors. ✅
 - Orthogonal 3-pillar architecture (Hot Engine / Cold Ledger / Friendly Gateway) already documented
-  in `PROJECT_OVERVIEW_DETAILED.md`.
-- Production blockers 5/5 cleared (per `core/rust/AEGIS-COGNITION/COMMERCIAL_CLOSURE_REPORT.md`).
+  in `docs/archive/reports/project-overview.md`.
+- A historical commercial-closure report existed, but its blocker statements were
+  not treated as current release evidence.
 
 ## Phase 4: Performance Validation — VERIFIED BY TEST INVARIANCE
 
@@ -134,7 +139,7 @@ Created: `.github/workflows/ci.yml` (Ubuntu, top-level) with:
 **Did not create:**
 - `.pre-commit-config.yaml` — the existing `scripts/run_checks.py` already provides local gating,
   and pre-commit on Windows is brittle (the prompt's template assumes Linux).
-- Generic release-checklist doc — `core/rust/AEGIS-COGNITION/COMMERCIAL_CLOSURE_REPORT.md` already
+- Generic release-checklist doc — `docs/archive/legacy/commercial-closure.md` already
   serves this purpose with a far more rigorous 5-blocker checklist.
 
 ## Phase 6: Final Verification — PASS
@@ -176,5 +181,5 @@ later phases (documentation merge of 50+ files, perf re-bench, hand-rolled relea
 were either already done earlier in the project's audit cycle or were theatrical for the current
 state of the repo (1,500 of 1,577 .md files are a vendor reference dump, not scattered docs).
 
-**Status:** ready for the next, more substantive cleanup cycle (probably: rustfmt pass + work down
-`memory/` module to split `mod.rs` once it crosses ~600 lines).
+**Status:** historical snapshot only. Any next cleanup cycle must start from the
+current checkout and its current evidence gates.

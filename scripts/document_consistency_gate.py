@@ -24,7 +24,7 @@ REQUIRED_METADATA = {
     "applies_to_commit",
     "last_verified_at",
 }
-SKIP_DIRS = {".git", ".serena", ".venv", "target", "artifacts", "node_modules", "__pycache__"}
+SKIP_DIRS = {".git", ".local", ".serena", ".venv", "target", "artifacts", "node_modules", "__pycache__"}
 SKIP_SCHEMES = ("http://", "https://", "mailto:", "file:")
 
 

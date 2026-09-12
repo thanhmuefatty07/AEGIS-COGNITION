@@ -315,22 +315,20 @@ post-regeneration Python sweep is not claimed here; the source-level focused
 gate and the pre-admission full baseline are the applicable evidence.
 
 The current profile-map regeneration was then checked by the complete AESE
-drift/closure group: `61/61` passed at
+drift/closure group: `64/64` passed at
 `artifacts/suites/aese-drift-after-profile-map-20260911-r6.json`. This remains
 shadow-only with selection authority disabled and does not convert the retained
 full Python baseline into post-regeneration evidence.
 
-That historical limitation is superseded by the retained current-source sweep
-after package formatting and registry reconciliation: `708 passed, 1 skipped`
-in `510.02s` with exit code `0`, retained at
-`artifacts/verification/full-python-suite-20260911-r4.txt` and
-`artifacts/verification/full-python-suite-20260911-r4.meta.json`. This is local
-Windows/CPython 3.14.7 evidence. A later profile-map full-suite attempt recorded
-`700 passed, 13 failed, 1 skipped` at
-`artifacts/suites/python-full-profile-map-current-20260911-r1.json`; until a
-post-AESE-regeneration full rerun is retained, the `708/1` result remains a
-prior local baseline rather than the latest full-suite verdict. Hosted CI,
-Tier-1 parity and external environment gates remain separate.
+That historical limitation is superseded by the current direct full-suite
+sweep: `713 passed, 1 skipped` in `512.22s` with exit code `0` from
+`uv run --locked pytest -q`. The capture and metadata are retained at
+`artifacts/verification/full-python-current-direct-20260912-r1.log` and
+`artifacts/verification/full-python-current-direct-20260912-r1.meta.json`.
+This is local Windows/CPython 3.14.7 evidence from a dirty checkout. The prior
+`708/1` run and the later `700 passed, 13 failed, 1 skipped` profile-map
+attempt remain historical records; hosted CI, Tier-1 parity and external
+environment gates remain separate.
 
 ### 0.6 Native cooperative placement admission (2026-09-10)
 
@@ -381,9 +379,15 @@ focused regression for failure-prefix ordering is separately reproduced as
 and strict Pyright pass for the changed Lab/runtime files at
 `artifacts/verification/lab-runtime-replay-ruff-20260910-r1.log` and
 `artifacts/verification/pyright-lab-lifecycle-20260911-r2.log`.
-The latest complete current-source Python suite passes `708 passed, 1 skipped`
-at `artifacts/verification/full-python-suite-20260911-r4.txt`; the same
-post-rebuild affected slice is recorded in section 0.11.
+The latest complete current-source Python suite passes `713 passed, 1 skipped`
+in `512.22s` with exit code `0` from `uv run --locked pytest -q`. The direct
+capture is retained at
+`artifacts/verification/full-python-current-direct-20260912-r1.log` with
+metadata in
+`artifacts/verification/full-python-current-direct-20260912-r1.meta.json`.
+The run used the current dirty Windows/CPython 3.14.7 checkout; it is local
+source evidence and does not establish clean-commit, hosted, or cross-platform
+parity. The same post-rebuild affected slice is recorded in section 0.11.
 
 This closes the local ordering and failure-prefix gap only. It does not prove
 that an external provider reversed an effect after timeout, that an arbitrary
@@ -727,25 +731,21 @@ hiện tại và không được dùng để chứng minh checkout mới:
 - Constitution audit ban đầu là 177/177 và architecture fitness 23/23; đây là
   structural/presence checks, không phải proof rằng Lab behavior hoạt động.
 
-Checkout hiện hành có HEAD và `origin/main` cùng là
-`8d15a34c3e28928aa6ca97a258d17a93bf952169`; worktree có các thay đổi chưa
-commit. CPython `3.14.7`, Rust `1.98.1` và uv `0.12.9` là toolchain hiện tại.
-Focused Goal/Target–Lab gate là **29/29** Goal/Target và **355/355** Lab
-runtime. Full Python suite hiện tại là **632 passed, 1 skipped** trong
-586.74s với output tại
-`artifacts/verification/full-python-suite-20260910-r4.txt`; đây là local
-Windows evidence với basetemp ngoài repository. Mốc `631 passed` là baseline
-lịch sử trước hardening mới.
-Rust no-default-features library run hiện tại là **508/508** trong `86.48s`
-với output tại `artifacts/verification/full-rust-lib-20260910-r3.txt`. Local
-packaging smoke cũng đạt **19/19** trong
-`artifacts/production_packaging_smoke_gate_report.json`. Các kết quả này là
-local Windows evidence; hosted/Tier-1/OS isolation/multi-machine vẫn mở.
-Mốc `584 passed, 1 skipped` là baseline lịch sử trước thay đổi hiện hành.
+Checkout hiện hành có HEAD `903920b2e7e002f2ea32679fe549427ea17f251c`; ref
+`origin/main` trong local cache là `8d15a34c3e28928aa6ca97a258d17a93bf952169`.
+Worktree có thay đổi chưa commit do archive relocation, generator fix và
+registry regeneration. CPython `3.14.7`, Rust `1.98.1` và uv `0.12.9` là
+toolchain hiện tại. Goal/Target–Lab gate hiện tại là **419/419**; current
+unpartitioned Python suite là **713 passed, 1 skipped** in `512.22s` (direct
+capture `artifacts/verification/full-python-current-direct-20260912-r1.log`);
+Python regression partition là **649 passed, 1 skipped** và AESE là **64/64**. Rust
+no-default-features là **544/544**, còn `python-extension` là **545/545**.
+Các kết quả này là local Windows evidence; hosted/Tier-1/OS
+isolation/multi-machine vẫn mở.
 Inventory, claim graph,
 mapping, closure và shadow validators hiện đều pass trong scope local.
-Registry AESE hiện có **131** inventoried items, graph **46 claims / 92
-verification references**, **122** unmapped surfaces và selection ở
+Registry AESE hiện có **152** inventoried items, graph **46 claims / 92
+verification references**, **143** unmapped surfaces và selection ở
 `SHADOW`/`NOT_EXECUTED`. Các kết quả này chỉ là local source-bound evidence;
 không thay thế hosted, signed-release hay external-anchor evidence.
 
@@ -825,7 +825,7 @@ tranh nhau:
 | Normative constitution | `docs/ENGINEERING_CONSTITUTION.md` | quy tắc kỹ thuật/gate | authority; không tự thay yêu cầu người dùng |
 | Machine evidence | `docs/architecture/evidence/current.json`, `docs/architecture/not_verified_registry.json`, `docs/architecture/deployment_policy.json` | trạng thái kiểm chứng/release | machine source of truth; không sửa tay để “đóng” blocker |
 | Architecture/ADR | `docs/adr/*.md`, `docs/architecture/*.md` | hợp đồng và quyết định thành phần | tham chiếu theo scope, không phải Lab status |
-| Historical plans | `planning pdf/AEGIS-COGNITION_ Agent Harness Continuation Plan.md`, `planning pdf/AEGIS-COGNITION_ Kiến trúc AI Tối ưu.md`, `IMPLEMENTATION_SPEC.md`, `PROJECT_OVERVIEW_DETAILED.md` | không có quyền current status | giữ lịch sử; bị plan này supersede khi nói về Lab |
+| Historical plans | `planning pdf/AEGIS-COGNITION_ Agent Harness Continuation Plan.md`, `planning pdf/AEGIS-COGNITION_ Kiến trúc AI Tối ưu.md`, `docs/archive/reports/implementation-spec.md`, `docs/archive/reports/project-overview.md` | không có quyền current status | giữ lịch sử; bị plan này supersede khi nói về Lab |
 | Historical reports/proposals | `docs/BROWSER_NATIVE_AGENT_ARCHITECTURE.md`, `*_REPORT.md`, `docs/CLUSTER_SOAK_REPORT.md` | không có quyền promotion | chỉ dùng làm provenance/evidence candidate |
 | User attachment | `C:\Users\ADMIN\Downloads\Ultimate Software Engineering Constitution — Maximum-Rigor Prompt.md` | không có quyền repo/runtime | normalized-content duplicate của constitution repo; coi là reference, không là override |
 

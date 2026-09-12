@@ -247,17 +247,10 @@ def main() -> int:
         ),
         check(
             "legacy_subtree_is_reference_only",
-            all(
-                path.relative_to(ROOT / "AEGIS-COGNITION").as_posix()
-                in {
-                    "DX_TRANSFORMATION_REPORT.md",
-                    "LEGACY_OWNERSHIP.md",
-                    "artifacts/extreme_testing/EXTREME_TESTING_CHAOS_REPORT.md",
-                }
-                for path in (ROOT / "AEGIS-COGNITION").rglob("*")
-                if path.is_file()
-            ),
-            "nested AEGIS-COGNITION must not contain executable implementation copies",
+            not (ROOT / "AEGIS-COGNITION").exists()
+            and not (ROOT / "core/rust/AEGIS-COGNITION").exists()
+            and (ROOT / "docs/archive/legacy/ownership.md").is_file(),
+            "historical copies belong in docs/archive/legacy; nested project trees must stay absent",
         ),
     ]
 

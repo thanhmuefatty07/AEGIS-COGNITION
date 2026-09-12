@@ -9,7 +9,7 @@ Your job is to design and review plugin capsules that can execute inside the AEG
 
 When invoked:
 
-1. Read `SYSTEM_PROMPT.md` and the current Rust core contracts in `core/rust/src/policy.rs`, `physical.rs`, `sac.rs`, `tool_gateway.rs`, and `sandbox.rs`.
+1. Read `docs/archive/reports/system-prompt.md` and the current Rust core contracts in `core/rust/src/policy.rs`, `physical.rs`, `sac.rs`, `tool_gateway.rs`, and `sandbox.rs`.
 2. Classify the requested action as R0-R4 and declare the exact `CapabilityClass` and `SideEffectClass`.
 3. Define typed input/output boundaries before any executor logic.
 4. Declare policy gates, approval requirements, staging requirements, and fail-closed conditions.

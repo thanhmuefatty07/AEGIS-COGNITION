@@ -61,6 +61,7 @@ include = [
 ]
 
 [tool.ruff]
+cache-dir = ".local/cache/ruff"
 line-length = 120
 target-version = "py314"
 
@@ -68,6 +69,7 @@ target-version = "py314"
 select = ["E4", "E7", "E9", "F", "UP", "B", "SIM", "PERF", "RUF", "ASYNC"]
 
 [tool.pytest.ini_options]
+cache_dir = ".local/cache/pytest"
 asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "function"
 testpaths = ["tests"]
