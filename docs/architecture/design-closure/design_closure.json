@@ -3,25 +3,1176 @@
   "status": "PARTIAL_LOCAL",
   "epoch_stable": true,
   "epoch_start": {
-    "WORKTREE_EPOCH": "86a717f3b7c2bb3ae59ec17d59b78d7f6f86de75a97f0c7e451bdd96207a5002",
-    "HEAD": "78bdc844285041f86e6769683795d9d8706e3f7e",
-    "tracked_diff_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "WORKTREE_EPOCH": "f510bd257dda8df093ba61c3a03bc5693e9a0f65a31094c0b737905b3ee9d499",
+    "HEAD": "06e2a00e6d18a1fb1ca0edf125aae596ecc6068c",
+    "tracked_diff_sha256": "4d24e011aa899ec057d40842534310fb4249cf2b12784a5697215cda659e7bc6",
     "untracked_architecture_relevant": []
   },
   "epoch_end": {
-    "WORKTREE_EPOCH": "86a717f3b7c2bb3ae59ec17d59b78d7f6f86de75a97f0c7e451bdd96207a5002",
-    "HEAD": "78bdc844285041f86e6769683795d9d8706e3f7e",
-    "tracked_diff_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "WORKTREE_EPOCH": "f510bd257dda8df093ba61c3a03bc5693e9a0f65a31094c0b737905b3ee9d499",
+    "HEAD": "06e2a00e6d18a1fb1ca0edf125aae596ecc6068c",
+    "tracked_diff_sha256": "4d24e011aa899ec057d40842534310fb4249cf2b12784a5697215cda659e7bc6",
     "untracked_architecture_relevant": []
   },
   "collection_state": {
-    "head": "78bdc844285041f86e6769683795d9d8706e3f7e",
-    "branch": "main",
+    "head": "06e2a00e6d18a1fb1ca0edf125aae596ecc6068c",
+    "branch": "codex/aegis-ci-evidence-gates",
     "origin_main": "origin/main",
-    "ahead_behind": "0\t0",
-    "entries": [],
-    "staged": [],
-    "modified": [],
+    "ahead_behind": "9\t0",
+    "entries": [
+      {
+        "status": " M",
+        "path": ".dockerignore"
+      },
+      {
+        "status": " M",
+        "path": ".github/workflows/ci.yml"
+      },
+      {
+        "status": " M",
+        "path": ".gitignore"
+      },
+      {
+        "status": "R ",
+        "path": ".cursor/agents/aegis-checkpoint-warden.md -> .local/agent-config/cursor/agents/aegis-checkpoint-warden.md"
+      },
+      {
+        "status": "R ",
+        "path": ".cursor/agents/aegis-decision-oracle.md -> .local/agent-config/cursor/agents/aegis-decision-oracle.md"
+      },
+      {
+        "status": "R ",
+        "path": ".cursor/agents/aegis-memory-curator.md -> .local/agent-config/cursor/agents/aegis-memory-curator.md"
+      },
+      {
+        "status": "R ",
+        "path": ".cursor/agents/aegis-nerve-architect.md -> .local/agent-config/cursor/agents/aegis-nerve-architect.md"
+      },
+      {
+        "status": "R ",
+        "path": ".cursor/agents/aegis-path-prioritizer.md -> .local/agent-config/cursor/agents/aegis-path-prioritizer.md"
+      },
+      {
+        "status": "R ",
+        "path": ".cursor/agents/aegis-planning-guardian.md -> .local/agent-config/cursor/agents/aegis-planning-guardian.md"
+      },
+      {
+        "status": "R ",
+        "path": ".cursor/agents/aegis-rust-architect.md -> .local/agent-config/cursor/agents/aegis-rust-architect.md"
+      },
+      {
+        "status": "R ",
+        "path": ".cursor/agents/aegis-rust-benchmark-harness.md -> .local/agent-config/cursor/agents/aegis-rust-benchmark-harness.md"
+      },
+      {
+        "status": "R ",
+        "path": ".cursor/agents/aegis-rust-ffi-auditor.md -> .local/agent-config/cursor/agents/aegis-rust-ffi-auditor.md"
+      },
+      {
+        "status": "R ",
+        "path": ".cursor/agents/aegis-rust-schema-keeper.md -> .local/agent-config/cursor/agents/aegis-rust-schema-keeper.md"
+      },
+      {
+        "status": "R ",
+        "path": ".cursor/agents/aegis-rust-security-auditor.md -> .local/agent-config/cursor/agents/aegis-rust-security-auditor.md"
+      },
+      {
+        "status": "R ",
+        "path": ".cursor/agents/aegis-sac-sentinel.md -> .local/agent-config/cursor/agents/aegis-sac-sentinel.md"
+      },
+      {
+        "status": "R ",
+        "path": ".cursor/agents/aegis-speculative-orchestrator.md -> .local/agent-config/cursor/agents/aegis-speculative-orchestrator.md"
+      },
+      {
+        "status": "R ",
+        "path": ".cursor/agents/aegis-vibecoding-conductor.md -> .local/agent-config/cursor/agents/aegis-vibecoding-conductor.md"
+      },
+      {
+        "status": "R ",
+        "path": ".cursor/agents/aegis-zero-trust-plugin-architect.md -> .local/agent-config/cursor/agents/aegis-zero-trust-plugin-architect.md"
+      },
+      {
+        "status": "R ",
+        "path": ".cursor/commands/aegis-audit.md -> .local/agent-config/cursor/commands/aegis-audit.md"
+      },
+      {
+        "status": "R ",
+        "path": ".cursor/commands/aegis-build.md -> .local/agent-config/cursor/commands/aegis-build.md"
+      },
+      {
+        "status": "R ",
+        "path": ".cursor/commands/aegis-checkpoint.md -> .local/agent-config/cursor/commands/aegis-checkpoint.md"
+      },
+      {
+        "status": "R ",
+        "path": ".cursor/commands/aegis-consensus.md -> .local/agent-config/cursor/commands/aegis-consensus.md"
+      },
+      {
+        "status": "R ",
+        "path": ".cursor/commands/aegis-crystallize.md -> .local/agent-config/cursor/commands/aegis-crystallize.md"
+      },
+      {
+        "status": "R ",
+        "path": ".cursor/commands/aegis-decide.md -> .local/agent-config/cursor/commands/aegis-decide.md"
+      },
+      {
+        "status": "R ",
+        "path": ".cursor/commands/aegis-init.md -> .local/agent-config/cursor/commands/aegis-init.md"
+      },
+      {
+        "status": "R ",
+        "path": ".cursor/commands/aegis-path-check.md -> .local/agent-config/cursor/commands/aegis-path-check.md"
+      },
+      {
+        "status": "R ",
+        "path": ".cursor/commands/aegis-perf-check.md -> .local/agent-config/cursor/commands/aegis-perf-check.md"
+      },
+      {
+        "status": "R ",
+        "path": ".cursor/commands/aegis-plan-check.md -> .local/agent-config/cursor/commands/aegis-plan-check.md"
+      },
+      {
+        "status": "R ",
+        "path": ".cursor/commands/aegis-plugin-create.md -> .local/agent-config/cursor/commands/aegis-plugin-create.md"
+      },
+      {
+        "status": "R ",
+        "path": ".cursor/commands/aegis-regression-check.md -> .local/agent-config/cursor/commands/aegis-regression-check.md"
+      },
+      {
+        "status": "R ",
+        "path": ".cursor/commands/aegis-resume.md -> .local/agent-config/cursor/commands/aegis-resume.md"
+      },
+      {
+        "status": "R ",
+        "path": ".cursor/commands/aegis-speculate.md -> .local/agent-config/cursor/commands/aegis-speculate.md"
+      },
+      {
+        "status": "R ",
+        "path": ".cursor/commands/aegis-verify.md -> .local/agent-config/cursor/commands/aegis-verify.md"
+      },
+      {
+        "status": "R ",
+        "path": ".cursor/commands/aegis-vibecode.md -> .local/agent-config/cursor/commands/aegis-vibecode.md"
+      },
+      {
+        "status": "R ",
+        "path": ".cursor/rules/aegis-cognition-stack.mdc -> .local/agent-config/cursor/rules/aegis-cognition-stack.mdc"
+      },
+      {
+        "status": "R ",
+        "path": ".cursor/rules/aegis-performance-checkpoint.mdc -> .local/agent-config/cursor/rules/aegis-performance-checkpoint.mdc"
+      },
+      {
+        "status": "R ",
+        "path": ".cursor/rules/aegis-zero-trust-plugin-creator.mdc -> .local/agent-config/cursor/rules/aegis-zero-trust-plugin-creator.mdc"
+      },
+      {
+        "status": "R ",
+        "path": ".cursor/rules/defect-remediation.mdc -> .local/agent-config/cursor/rules/defect-remediation.mdc"
+      },
+      {
+        "status": "R ",
+        "path": ".cursor/rules/planning-architecture.mdc -> .local/agent-config/cursor/rules/planning-architecture.mdc"
+      },
+      {
+        "status": "R ",
+        "path": ".cursor/rules/ponytail.mdc -> .local/agent-config/cursor/rules/ponytail.mdc"
+      },
+      {
+        "status": "R ",
+        "path": ".cursor/rules/project.mdc -> .local/agent-config/cursor/rules/project.mdc"
+      },
+      {
+        "status": "R ",
+        "path": ".cursor/rules/style.mdc -> .local/agent-config/cursor/rules/style.mdc"
+      },
+      {
+        "status": "R ",
+        "path": ".cursor/rules/tool-maximization.mdc -> .local/agent-config/cursor/rules/tool-maximization.mdc"
+      },
+      {
+        "status": "R ",
+        "path": ".cursor/rules/vibecoding.mdc -> .local/agent-config/cursor/rules/vibecoding.mdc"
+      },
+      {
+        "status": "R ",
+        "path": ".cursor/skills/aegis-architecture/SKILL.md -> .local/agent-config/cursor/skills/aegis-architecture/SKILL.md"
+      },
+      {
+        "status": "R ",
+        "path": ".cursor/skills/aegis-checkpoint-supervisor/SKILL.md -> .local/agent-config/cursor/skills/aegis-checkpoint-supervisor/SKILL.md"
+      },
+      {
+        "status": "R ",
+        "path": ".cursor/skills/aegis-codegen-command/SKILL.md -> .local/agent-config/cursor/skills/aegis-codegen-command/SKILL.md"
+      },
+      {
+        "status": "R ",
+        "path": ".cursor/skills/aegis-cognifold/SKILL.md -> .local/agent-config/cursor/skills/aegis-cognifold/SKILL.md"
+      },
+      {
+        "status": "R ",
+        "path": ".cursor/skills/aegis-crystallization/SKILL.md -> .local/agent-config/cursor/skills/aegis-crystallization/SKILL.md"
+      },
+      {
+        "status": "R ",
+        "path": ".cursor/skills/aegis-decision-oracle/SKILL.md -> .local/agent-config/cursor/skills/aegis-decision-oracle/SKILL.md"
+      },
+      {
+        "status": "R ",
+        "path": ".cursor/skills/aegis-failure-provenance/SKILL.md -> .local/agent-config/cursor/skills/aegis-failure-provenance/SKILL.md"
+      },
+      {
+        "status": "R ",
+        "path": ".cursor/skills/aegis-implementation-guardian/SKILL.md -> .local/agent-config/cursor/skills/aegis-implementation-guardian/SKILL.md"
+      },
+      {
+        "status": "R ",
+        "path": ".cursor/skills/aegis-invariant-registry/SKILL.md -> .local/agent-config/cursor/skills/aegis-invariant-registry/SKILL.md"
+      },
+      {
+        "status": "R ",
+        "path": ".cursor/skills/aegis-long-horizon-orchestrator/SKILL.md -> .local/agent-config/cursor/skills/aegis-long-horizon-orchestrator/SKILL.md"
+      },
+      {
+        "status": "R ",
+        "path": ".cursor/skills/aegis-nerve/SKILL.md -> .local/agent-config/cursor/skills/aegis-nerve/SKILL.md"
+      },
+      {
+        "status": "R ",
+        "path": ".cursor/skills/aegis-next-best-action/SKILL.md -> .local/agent-config/cursor/skills/aegis-next-best-action/SKILL.md"
+      },
+      {
+        "status": "R ",
+        "path": ".cursor/skills/aegis-optimal/SKILL.md -> .local/agent-config/cursor/skills/aegis-optimal/SKILL.md"
+      },
+      {
+        "status": "R ",
+        "path": ".cursor/skills/aegis-optimization/SKILL.md -> .local/agent-config/cursor/skills/aegis-optimization/SKILL.md"
+      },
+      {
+        "status": "R ",
+        "path": ".cursor/skills/aegis-path-prioritizer/SKILL.md -> .local/agent-config/cursor/skills/aegis-path-prioritizer/SKILL.md"
+      },
+      {
+        "status": "R ",
+        "path": ".cursor/skills/aegis-performance-compiler/SKILL.md -> .local/agent-config/cursor/skills/aegis-performance-compiler/SKILL.md"
+      },
+      {
+        "status": "R ",
+        "path": ".cursor/skills/aegis-planning-alignment/SKILL.md -> .local/agent-config/cursor/skills/aegis-planning-alignment/SKILL.md"
+      },
+      {
+        "status": "R ",
+        "path": ".cursor/skills/aegis-proof-checker/SKILL.md -> .local/agent-config/cursor/skills/aegis-proof-checker/SKILL.md"
+      },
+      {
+        "status": "R ",
+        "path": ".cursor/skills/aegis-regression-sentinel/SKILL.md -> .local/agent-config/cursor/skills/aegis-regression-sentinel/SKILL.md"
+      },
+      {
+        "status": "R ",
+        "path": ".cursor/skills/aegis-rust-benchmark/SKILL.md -> .local/agent-config/cursor/skills/aegis-rust-benchmark/SKILL.md"
+      },
+      {
+        "status": "R ",
+        "path": ".cursor/skills/aegis-rust-ffi/SKILL.md -> .local/agent-config/cursor/skills/aegis-rust-ffi/SKILL.md"
+      },
+      {
+        "status": "R ",
+        "path": ".cursor/skills/aegis-rust-schema/SKILL.md -> .local/agent-config/cursor/skills/aegis-rust-schema/SKILL.md"
+      },
+      {
+        "status": "R ",
+        "path": ".cursor/skills/aegis-rust-security-audit/SKILL.md -> .local/agent-config/cursor/skills/aegis-rust-security-audit/SKILL.md"
+      },
+      {
+        "status": "R ",
+        "path": ".cursor/skills/aegis-sac/SKILL.md -> .local/agent-config/cursor/skills/aegis-sac/SKILL.md"
+      },
+      {
+        "status": "R ",
+        "path": ".cursor/skills/aegis-speculative-decoding/SKILL.md -> .local/agent-config/cursor/skills/aegis-speculative-decoding/SKILL.md"
+      },
+      {
+        "status": "R ",
+        "path": ".cursor/skills/aegis-vibecoding-conductor/SKILL.md -> .local/agent-config/cursor/skills/aegis-vibecoding-conductor/SKILL.md"
+      },
+      {
+        "status": "R ",
+        "path": ".cursor/skills/aegis-zero-trust-plugin-creator/SKILL.md -> .local/agent-config/cursor/skills/aegis-zero-trust-plugin-creator/SKILL.md"
+      },
+      {
+        "status": "R ",
+        "path": ".cursorrules -> .local/agent-config/cursorrules"
+      },
+      {
+        "status": "R ",
+        "path": ".serena/.gitignore -> .local/agent-state/serena/.gitignore"
+      },
+      {
+        "status": "R ",
+        "path": ".serena/project.yml -> .local/agent-state/serena/project.yml"
+      },
+      {
+        "status": " M",
+        "path": "core/python/tests.py"
+      },
+      {
+        "status": " M",
+        "path": "docs/README.md"
+      },
+      {
+        "status": " M",
+        "path": "docs/architecture/AEGIS_CURRENT_ARCHITECTURE_TRUTH_AUDIT.md"
+      },
+      {
+        "status": " M",
+        "path": "docs/architecture/AEGIS_LAB_RUNTIME_MASTER_PLAN.md"
+      },
+      {
+        "status": "R ",
+        "path": "docs/ARCHITECTURE_FREEZE.md -> docs/architecture/ARCHITECTURE_FREEZE.md"
+      },
+      {
+        "status": " M",
+        "path": "docs/architecture/README.md"
+      },
+      {
+        "status": " M",
+        "path": "docs/architecture/document_inventory.json"
+      },
+      {
+        "status": " M",
+        "path": "docs/archive/README.md"
+      },
+      {
+        "status": "R ",
+        "path": "\"planning pdf/AEGIS-COGNITION_ Agent Harness Continuation Plan.md\" -> docs/archive/planning/agent-harness-continuation-plan.md"
+      },
+      {
+        "status": "R ",
+        "path": "\"planning pdf/AEGIS-COGNITION_ Ki/341/272/277n tr/303/272c AI T/341/273/221i /306/260u.md\" -> docs/archive/planning/architecture-optimization.md"
+      },
+      {
+        "status": "R ",
+        "path": "docs/BROWSER_NATIVE_AGENT_ARCHITECTURE.md -> docs/archive/reports/browser-native-architecture.md"
+      },
+      {
+        "status": "R ",
+        "path": "docs/CLUSTER_SOAK_REPORT.md -> docs/archive/reports/cluster-soak.md"
+      },
+      {
+        "status": "R ",
+        "path": "docs/aegis_plugins_integration.md -> docs/integrations/aegis-plugins.md"
+      },
+      {
+        "status": " M",
+        "path": "quality/registry/current_affected_closure.json"
+      },
+      {
+        "status": " M",
+        "path": "quality/registry/current_claim_graph.json"
+      },
+      {
+        "status": " M",
+        "path": "quality/registry/current_inventory.json"
+      },
+      {
+        "status": " M",
+        "path": "quality/registry/current_s2_mapping.json"
+      },
+      {
+        "status": " M",
+        "path": "quality/registry/current_shadow_plan.json"
+      },
+      {
+        "status": " M",
+        "path": "quality/registry/current_validation_corpus.json"
+      },
+      {
+        "status": " M",
+        "path": "scripts/_audit_regen_requirements.py"
+      },
+      {
+        "status": " D",
+        "path": "scripts/_debug_probe.py"
+      },
+      {
+        "status": " M",
+        "path": "scripts/constitution_audit.py"
+      },
+      {
+        "status": " M",
+        "path": "scripts/document_consistency_gate.py"
+      },
+      {
+        "status": "R ",
+        "path": "scripts/hermes_baseline_gate.py -> scripts/research/comparators/external/fts5_baseline_gate.py"
+      },
+      {
+        "status": "R ",
+        "path": "scripts/hermes_persistence_baseline_gate.py -> scripts/research/comparators/external/persistence_write_baseline_gate.py"
+      },
+      {
+        "status": "R ",
+        "path": "scripts/hermes_rpc_baseline_gate.py -> scripts/research/comparators/external/rpc_context_baseline_gate.py"
+      },
+      {
+        "status": "R ",
+        "path": "scripts/hermes_session_recovery_baseline_gate.py -> scripts/research/comparators/external/session_recovery_baseline_gate.py"
+      },
+      {
+        "status": " M",
+        "path": "scripts/run_checks.py"
+      },
+      {
+        "status": " M",
+        "path": "tests/test_constitution_audit_gates.py"
+      }
+    ],
+    "staged": [
+      {
+        "status": "R ",
+        "path": ".cursor/agents/aegis-checkpoint-warden.md -> .local/agent-config/cursor/agents/aegis-checkpoint-warden.md"
+      },
+      {
+        "status": "R ",
+        "path": ".cursor/agents/aegis-decision-oracle.md -> .local/agent-config/cursor/agents/aegis-decision-oracle.md"
+      },
+      {
+        "status": "R ",
+        "path": ".cursor/agents/aegis-memory-curator.md -> .local/agent-config/cursor/agents/aegis-memory-curator.md"
+      },
+      {
+        "status": "R ",
+        "path": ".cursor/agents/aegis-nerve-architect.md -> .local/agent-config/cursor/agents/aegis-nerve-architect.md"
+      },
+      {
+        "status": "R ",
+        "path": ".cursor/agents/aegis-path-prioritizer.md -> .local/agent-config/cursor/agents/aegis-path-prioritizer.md"
+      },
+      {
+        "status": "R ",
+        "path": ".cursor/agents/aegis-planning-guardian.md -> .local/agent-config/cursor/agents/aegis-planning-guardian.md"
+      },
+      {
+        "status": "R ",
+        "path": ".cursor/agents/aegis-rust-architect.md -> .local/agent-config/cursor/agents/aegis-rust-architect.md"
+      },
+      {
+        "status": "R ",
+        "path": ".cursor/agents/aegis-rust-benchmark-harness.md -> .local/agent-config/cursor/agents/aegis-rust-benchmark-harness.md"
+      },
+      {
+        "status": "R ",
+        "path": ".cursor/agents/aegis-rust-ffi-auditor.md -> .local/agent-config/cursor/agents/aegis-rust-ffi-auditor.md"
+      },
+      {
+        "status": "R ",
+        "path": ".cursor/agents/aegis-rust-schema-keeper.md -> .local/agent-config/cursor/agents/aegis-rust-schema-keeper.md"
+      },
+      {
+        "status": "R ",
+        "path": ".cursor/agents/aegis-rust-security-auditor.md -> .local/agent-config/cursor/agents/aegis-rust-security-auditor.md"
+      },
+      {
+        "status": "R ",
+        "path": ".cursor/agents/aegis-sac-sentinel.md -> .local/agent-config/cursor/agents/aegis-sac-sentinel.md"
+      },
+      {
+        "status": "R ",
+        "path": ".cursor/agents/aegis-speculative-orchestrator.md -> .local/agent-config/cursor/agents/aegis-speculative-orchestrator.md"
+      },
+      {
+        "status": "R ",
+        "path": ".cursor/agents/aegis-vibecoding-conductor.md -> .local/agent-config/cursor/agents/aegis-vibecoding-conductor.md"
+      },
+      {
+        "status": "R ",
+        "path": ".cursor/agents/aegis-zero-trust-plugin-architect.md -> .local/agent-config/cursor/agents/aegis-zero-trust-plugin-architect.md"
+      },
+      {
+        "status": "R ",
+        "path": ".cursor/commands/aegis-audit.md -> .local/agent-config/cursor/commands/aegis-audit.md"
+      },
+      {
+        "status": "R ",
+        "path": ".cursor/commands/aegis-build.md -> .local/agent-config/cursor/commands/aegis-build.md"
+      },
+      {
+        "status": "R ",
+        "path": ".cursor/commands/aegis-checkpoint.md -> .local/agent-config/cursor/commands/aegis-checkpoint.md"
+      },
+      {
+        "status": "R ",
+        "path": ".cursor/commands/aegis-consensus.md -> .local/agent-config/cursor/commands/aegis-consensus.md"
+      },
+      {
+        "status": "R ",
+        "path": ".cursor/commands/aegis-crystallize.md -> .local/agent-config/cursor/commands/aegis-crystallize.md"
+      },
+      {
+        "status": "R ",
+        "path": ".cursor/commands/aegis-decide.md -> .local/agent-config/cursor/commands/aegis-decide.md"
+      },
+      {
+        "status": "R ",
+        "path": ".cursor/commands/aegis-init.md -> .local/agent-config/cursor/commands/aegis-init.md"
+      },
+      {
+        "status": "R ",
+        "path": ".cursor/commands/aegis-path-check.md -> .local/agent-config/cursor/commands/aegis-path-check.md"
+      },
+      {
+        "status": "R ",
+        "path": ".cursor/commands/aegis-perf-check.md -> .local/agent-config/cursor/commands/aegis-perf-check.md"
+      },
+      {
+        "status": "R ",
+        "path": ".cursor/commands/aegis-plan-check.md -> .local/agent-config/cursor/commands/aegis-plan-check.md"
+      },
+      {
+        "status": "R ",
+        "path": ".cursor/commands/aegis-plugin-create.md -> .local/agent-config/cursor/commands/aegis-plugin-create.md"
+      },
+      {
+        "status": "R ",
+        "path": ".cursor/commands/aegis-regression-check.md -> .local/agent-config/cursor/commands/aegis-regression-check.md"
+      },
+      {
+        "status": "R ",
+        "path": ".cursor/commands/aegis-resume.md -> .local/agent-config/cursor/commands/aegis-resume.md"
+      },
+      {
+        "status": "R ",
+        "path": ".cursor/commands/aegis-speculate.md -> .local/agent-config/cursor/commands/aegis-speculate.md"
+      },
+      {
+        "status": "R ",
+        "path": ".cursor/commands/aegis-verify.md -> .local/agent-config/cursor/commands/aegis-verify.md"
+      },
+      {
+        "status": "R ",
+        "path": ".cursor/commands/aegis-vibecode.md -> .local/agent-config/cursor/commands/aegis-vibecode.md"
+      },
+      {
+        "status": "R ",
+        "path": ".cursor/rules/aegis-cognition-stack.mdc -> .local/agent-config/cursor/rules/aegis-cognition-stack.mdc"
+      },
+      {
+        "status": "R ",
+        "path": ".cursor/rules/aegis-performance-checkpoint.mdc -> .local/agent-config/cursor/rules/aegis-performance-checkpoint.mdc"
+      },
+      {
+        "status": "R ",
+        "path": ".cursor/rules/aegis-zero-trust-plugin-creator.mdc -> .local/agent-config/cursor/rules/aegis-zero-trust-plugin-creator.mdc"
+      },
+      {
+        "status": "R ",
+        "path": ".cursor/rules/defect-remediation.mdc -> .local/agent-config/cursor/rules/defect-remediation.mdc"
+      },
+      {
+        "status": "R ",
+        "path": ".cursor/rules/planning-architecture.mdc -> .local/agent-config/cursor/rules/planning-architecture.mdc"
+      },
+      {
+        "status": "R ",
+        "path": ".cursor/rules/ponytail.mdc -> .local/agent-config/cursor/rules/ponytail.mdc"
+      },
+      {
+        "status": "R ",
+        "path": ".cursor/rules/project.mdc -> .local/agent-config/cursor/rules/project.mdc"
+      },
+      {
+        "status": "R ",
+        "path": ".cursor/rules/style.mdc -> .local/agent-config/cursor/rules/style.mdc"
+      },
+      {
+        "status": "R ",
+        "path": ".cursor/rules/tool-maximization.mdc -> .local/agent-config/cursor/rules/tool-maximization.mdc"
+      },
+      {
+        "status": "R ",
+        "path": ".cursor/rules/vibecoding.mdc -> .local/agent-config/cursor/rules/vibecoding.mdc"
+      },
+      {
+        "status": "R ",
+        "path": ".cursor/skills/aegis-architecture/SKILL.md -> .local/agent-config/cursor/skills/aegis-architecture/SKILL.md"
+      },
+      {
+        "status": "R ",
+        "path": ".cursor/skills/aegis-checkpoint-supervisor/SKILL.md -> .local/agent-config/cursor/skills/aegis-checkpoint-supervisor/SKILL.md"
+      },
+      {
+        "status": "R ",
+        "path": ".cursor/skills/aegis-codegen-command/SKILL.md -> .local/agent-config/cursor/skills/aegis-codegen-command/SKILL.md"
+      },
+      {
+        "status": "R ",
+        "path": ".cursor/skills/aegis-cognifold/SKILL.md -> .local/agent-config/cursor/skills/aegis-cognifold/SKILL.md"
+      },
+      {
+        "status": "R ",
+        "path": ".cursor/skills/aegis-crystallization/SKILL.md -> .local/agent-config/cursor/skills/aegis-crystallization/SKILL.md"
+      },
+      {
+        "status": "R ",
+        "path": ".cursor/skills/aegis-decision-oracle/SKILL.md -> .local/agent-config/cursor/skills/aegis-decision-oracle/SKILL.md"
+      },
+      {
+        "status": "R ",
+        "path": ".cursor/skills/aegis-failure-provenance/SKILL.md -> .local/agent-config/cursor/skills/aegis-failure-provenance/SKILL.md"
+      },
+      {
+        "status": "R ",
+        "path": ".cursor/skills/aegis-implementation-guardian/SKILL.md -> .local/agent-config/cursor/skills/aegis-implementation-guardian/SKILL.md"
+      },
+      {
+        "status": "R ",
+        "path": ".cursor/skills/aegis-invariant-registry/SKILL.md -> .local/agent-config/cursor/skills/aegis-invariant-registry/SKILL.md"
+      },
+      {
+        "status": "R ",
+        "path": ".cursor/skills/aegis-long-horizon-orchestrator/SKILL.md -> .local/agent-config/cursor/skills/aegis-long-horizon-orchestrator/SKILL.md"
+      },
+      {
+        "status": "R ",
+        "path": ".cursor/skills/aegis-nerve/SKILL.md -> .local/agent-config/cursor/skills/aegis-nerve/SKILL.md"
+      },
+      {
+        "status": "R ",
+        "path": ".cursor/skills/aegis-next-best-action/SKILL.md -> .local/agent-config/cursor/skills/aegis-next-best-action/SKILL.md"
+      },
+      {
+        "status": "R ",
+        "path": ".cursor/skills/aegis-optimal/SKILL.md -> .local/agent-config/cursor/skills/aegis-optimal/SKILL.md"
+      },
+      {
+        "status": "R ",
+        "path": ".cursor/skills/aegis-optimization/SKILL.md -> .local/agent-config/cursor/skills/aegis-optimization/SKILL.md"
+      },
+      {
+        "status": "R ",
+        "path": ".cursor/skills/aegis-path-prioritizer/SKILL.md -> .local/agent-config/cursor/skills/aegis-path-prioritizer/SKILL.md"
+      },
+      {
+        "status": "R ",
+        "path": ".cursor/skills/aegis-performance-compiler/SKILL.md -> .local/agent-config/cursor/skills/aegis-performance-compiler/SKILL.md"
+      },
+      {
+        "status": "R ",
+        "path": ".cursor/skills/aegis-planning-alignment/SKILL.md -> .local/agent-config/cursor/skills/aegis-planning-alignment/SKILL.md"
+      },
+      {
+        "status": "R ",
+        "path": ".cursor/skills/aegis-proof-checker/SKILL.md -> .local/agent-config/cursor/skills/aegis-proof-checker/SKILL.md"
+      },
+      {
+        "status": "R ",
+        "path": ".cursor/skills/aegis-regression-sentinel/SKILL.md -> .local/agent-config/cursor/skills/aegis-regression-sentinel/SKILL.md"
+      },
+      {
+        "status": "R ",
+        "path": ".cursor/skills/aegis-rust-benchmark/SKILL.md -> .local/agent-config/cursor/skills/aegis-rust-benchmark/SKILL.md"
+      },
+      {
+        "status": "R ",
+        "path": ".cursor/skills/aegis-rust-ffi/SKILL.md -> .local/agent-config/cursor/skills/aegis-rust-ffi/SKILL.md"
+      },
+      {
+        "status": "R ",
+        "path": ".cursor/skills/aegis-rust-schema/SKILL.md -> .local/agent-config/cursor/skills/aegis-rust-schema/SKILL.md"
+      },
+      {
+        "status": "R ",
+        "path": ".cursor/skills/aegis-rust-security-audit/SKILL.md -> .local/agent-config/cursor/skills/aegis-rust-security-audit/SKILL.md"
+      },
+      {
+        "status": "R ",
+        "path": ".cursor/skills/aegis-sac/SKILL.md -> .local/agent-config/cursor/skills/aegis-sac/SKILL.md"
+      },
+      {
+        "status": "R ",
+        "path": ".cursor/skills/aegis-speculative-decoding/SKILL.md -> .local/agent-config/cursor/skills/aegis-speculative-decoding/SKILL.md"
+      },
+      {
+        "status": "R ",
+        "path": ".cursor/skills/aegis-vibecoding-conductor/SKILL.md -> .local/agent-config/cursor/skills/aegis-vibecoding-conductor/SKILL.md"
+      },
+      {
+        "status": "R ",
+        "path": ".cursor/skills/aegis-zero-trust-plugin-creator/SKILL.md -> .local/agent-config/cursor/skills/aegis-zero-trust-plugin-creator/SKILL.md"
+      },
+      {
+        "status": "R ",
+        "path": ".cursorrules -> .local/agent-config/cursorrules"
+      },
+      {
+        "status": "R ",
+        "path": ".serena/.gitignore -> .local/agent-state/serena/.gitignore"
+      },
+      {
+        "status": "R ",
+        "path": ".serena/project.yml -> .local/agent-state/serena/project.yml"
+      },
+      {
+        "status": "R ",
+        "path": "docs/ARCHITECTURE_FREEZE.md -> docs/architecture/ARCHITECTURE_FREEZE.md"
+      },
+      {
+        "status": "R ",
+        "path": "\"planning pdf/AEGIS-COGNITION_ Agent Harness Continuation Plan.md\" -> docs/archive/planning/agent-harness-continuation-plan.md"
+      },
+      {
+        "status": "R ",
+        "path": "\"planning pdf/AEGIS-COGNITION_ Ki/341/272/277n tr/303/272c AI T/341/273/221i /306/260u.md\" -> docs/archive/planning/architecture-optimization.md"
+      },
+      {
+        "status": "R ",
+        "path": "docs/BROWSER_NATIVE_AGENT_ARCHITECTURE.md -> docs/archive/reports/browser-native-architecture.md"
+      },
+      {
+        "status": "R ",
+        "path": "docs/CLUSTER_SOAK_REPORT.md -> docs/archive/reports/cluster-soak.md"
+      },
+      {
+        "status": "R ",
+        "path": "docs/aegis_plugins_integration.md -> docs/integrations/aegis-plugins.md"
+      },
+      {
+        "status": "R ",
+        "path": "scripts/hermes_baseline_gate.py -> scripts/research/comparators/external/fts5_baseline_gate.py"
+      },
+      {
+        "status": "R ",
+        "path": "scripts/hermes_persistence_baseline_gate.py -> scripts/research/comparators/external/persistence_write_baseline_gate.py"
+      },
+      {
+        "status": "R ",
+        "path": "scripts/hermes_rpc_baseline_gate.py -> scripts/research/comparators/external/rpc_context_baseline_gate.py"
+      },
+      {
+        "status": "R ",
+        "path": "scripts/hermes_session_recovery_baseline_gate.py -> scripts/research/comparators/external/session_recovery_baseline_gate.py"
+      }
+    ],
+    "modified": [
+      {
+        "status": " M",
+        "path": ".dockerignore"
+      },
+      {
+        "status": " M",
+        "path": ".github/workflows/ci.yml"
+      },
+      {
+        "status": " M",
+        "path": ".gitignore"
+      },
+      {
+        "status": "R ",
+        "path": ".cursor/agents/aegis-checkpoint-warden.md -> .local/agent-config/cursor/agents/aegis-checkpoint-warden.md"
+      },
+      {
+        "status": "R ",
+        "path": ".cursor/agents/aegis-decision-oracle.md -> .local/agent-config/cursor/agents/aegis-decision-oracle.md"
+      },
+      {
+        "status": "R ",
+        "path": ".cursor/agents/aegis-memory-curator.md -> .local/agent-config/cursor/agents/aegis-memory-curator.md"
+      },
+      {
+        "status": "R ",
+        "path": ".cursor/agents/aegis-nerve-architect.md -> .local/agent-config/cursor/agents/aegis-nerve-architect.md"
+      },
+      {
+        "status": "R ",
+        "path": ".cursor/agents/aegis-path-prioritizer.md -> .local/agent-config/cursor/agents/aegis-path-prioritizer.md"
+      },
+      {
+        "status": "R ",
+        "path": ".cursor/agents/aegis-planning-guardian.md -> .local/agent-config/cursor/agents/aegis-planning-guardian.md"
+      },
+      {
+        "status": "R ",
+        "path": ".cursor/agents/aegis-rust-architect.md -> .local/agent-config/cursor/agents/aegis-rust-architect.md"
+      },
+      {
+        "status": "R ",
+        "path": ".cursor/agents/aegis-rust-benchmark-harness.md -> .local/agent-config/cursor/agents/aegis-rust-benchmark-harness.md"
+      },
+      {
+        "status": "R ",
+        "path": ".cursor/agents/aegis-rust-ffi-auditor.md -> .local/agent-config/cursor/agents/aegis-rust-ffi-auditor.md"
+      },
+      {
+        "status": "R ",
+        "path": ".cursor/agents/aegis-rust-schema-keeper.md -> .local/agent-config/cursor/agents/aegis-rust-schema-keeper.md"
+      },
+      {
+        "status": "R ",
+        "path": ".cursor/agents/aegis-rust-security-auditor.md -> .local/agent-config/cursor/agents/aegis-rust-security-auditor.md"
+      },
+      {
+        "status": "R ",
+        "path": ".cursor/agents/aegis-sac-sentinel.md -> .local/agent-config/cursor/agents/aegis-sac-sentinel.md"
+      },
+      {
+        "status": "R ",
+        "path": ".cursor/agents/aegis-speculative-orchestrator.md -> .local/agent-config/cursor/agents/aegis-speculative-orchestrator.md"
+      },
+      {
+        "status": "R ",
+        "path": ".cursor/agents/aegis-vibecoding-conductor.md -> .local/agent-config/cursor/agents/aegis-vibecoding-conductor.md"
+      },
+      {
+        "status": "R ",
+        "path": ".cursor/agents/aegis-zero-trust-plugin-architect.md -> .local/agent-config/cursor/agents/aegis-zero-trust-plugin-architect.md"
+      },
+      {
+        "status": "R ",
+        "path": ".cursor/commands/aegis-audit.md -> .local/agent-config/cursor/commands/aegis-audit.md"
+      },
+      {
+        "status": "R ",
+        "path": ".cursor/commands/aegis-build.md -> .local/agent-config/cursor/commands/aegis-build.md"
+      },
+      {
+        "status": "R ",
+        "path": ".cursor/commands/aegis-checkpoint.md -> .local/agent-config/cursor/commands/aegis-checkpoint.md"
+      },
+      {
+        "status": "R ",
+        "path": ".cursor/commands/aegis-consensus.md -> .local/agent-config/cursor/commands/aegis-consensus.md"
+      },
+      {
+        "status": "R ",
+        "path": ".cursor/commands/aegis-crystallize.md -> .local/agent-config/cursor/commands/aegis-crystallize.md"
+      },
+      {
+        "status": "R ",
+        "path": ".cursor/commands/aegis-decide.md -> .local/agent-config/cursor/commands/aegis-decide.md"
+      },
+      {
+        "status": "R ",
+        "path": ".cursor/commands/aegis-init.md -> .local/agent-config/cursor/commands/aegis-init.md"
+      },
+      {
+        "status": "R ",
+        "path": ".cursor/commands/aegis-path-check.md -> .local/agent-config/cursor/commands/aegis-path-check.md"
+      },
+      {
+        "status": "R ",
+        "path": ".cursor/commands/aegis-perf-check.md -> .local/agent-config/cursor/commands/aegis-perf-check.md"
+      },
+      {
+        "status": "R ",
+        "path": ".cursor/commands/aegis-plan-check.md -> .local/agent-config/cursor/commands/aegis-plan-check.md"
+      },
+      {
+        "status": "R ",
+        "path": ".cursor/commands/aegis-plugin-create.md -> .local/agent-config/cursor/commands/aegis-plugin-create.md"
+      },
+      {
+        "status": "R ",
+        "path": ".cursor/commands/aegis-regression-check.md -> .local/agent-config/cursor/commands/aegis-regression-check.md"
+      },
+      {
+        "status": "R ",
+        "path": ".cursor/commands/aegis-resume.md -> .local/agent-config/cursor/commands/aegis-resume.md"
+      },
+      {
+        "status": "R ",
+        "path": ".cursor/commands/aegis-speculate.md -> .local/agent-config/cursor/commands/aegis-speculate.md"
+      },
+      {
+        "status": "R ",
+        "path": ".cursor/commands/aegis-verify.md -> .local/agent-config/cursor/commands/aegis-verify.md"
+      },
+      {
+        "status": "R ",
+        "path": ".cursor/commands/aegis-vibecode.md -> .local/agent-config/cursor/commands/aegis-vibecode.md"
+      },
+      {
+        "status": "R ",
+        "path": ".cursor/rules/aegis-cognition-stack.mdc -> .local/agent-config/cursor/rules/aegis-cognition-stack.mdc"
+      },
+      {
+        "status": "R ",
+        "path": ".cursor/rules/aegis-performance-checkpoint.mdc -> .local/agent-config/cursor/rules/aegis-performance-checkpoint.mdc"
+      },
+      {
+        "status": "R ",
+        "path": ".cursor/rules/aegis-zero-trust-plugin-creator.mdc -> .local/agent-config/cursor/rules/aegis-zero-trust-plugin-creator.mdc"
+      },
+      {
+        "status": "R ",
+        "path": ".cursor/rules/defect-remediation.mdc -> .local/agent-config/cursor/rules/defect-remediation.mdc"
+      },
+      {
+        "status": "R ",
+        "path": ".cursor/rules/planning-architecture.mdc -> .local/agent-config/cursor/rules/planning-architecture.mdc"
+      },
+      {
+        "status": "R ",
+        "path": ".cursor/rules/ponytail.mdc -> .local/agent-config/cursor/rules/ponytail.mdc"
+      },
+      {
+        "status": "R ",
+        "path": ".cursor/rules/project.mdc -> .local/agent-config/cursor/rules/project.mdc"
+      },
+      {
+        "status": "R ",
+        "path": ".cursor/rules/style.mdc -> .local/agent-config/cursor/rules/style.mdc"
+      },
+      {
+        "status": "R ",
+        "path": ".cursor/rules/tool-maximization.mdc -> .local/agent-config/cursor/rules/tool-maximization.mdc"
+      },
+      {
+        "status": "R ",
+        "path": ".cursor/rules/vibecoding.mdc -> .local/agent-config/cursor/rules/vibecoding.mdc"
+      },
+      {
+        "status": "R ",
+        "path": ".cursor/skills/aegis-architecture/SKILL.md -> .local/agent-config/cursor/skills/aegis-architecture/SKILL.md"
+      },
+      {
+        "status": "R ",
+        "path": ".cursor/skills/aegis-checkpoint-supervisor/SKILL.md -> .local/agent-config/cursor/skills/aegis-checkpoint-supervisor/SKILL.md"
+      },
+      {
+        "status": "R ",
+        "path": ".cursor/skills/aegis-codegen-command/SKILL.md -> .local/agent-config/cursor/skills/aegis-codegen-command/SKILL.md"
+      },
+      {
+        "status": "R ",
+        "path": ".cursor/skills/aegis-cognifold/SKILL.md -> .local/agent-config/cursor/skills/aegis-cognifold/SKILL.md"
+      },
+      {
+        "status": "R ",
+        "path": ".cursor/skills/aegis-crystallization/SKILL.md -> .local/agent-config/cursor/skills/aegis-crystallization/SKILL.md"
+      },
+      {
+        "status": "R ",
+        "path": ".cursor/skills/aegis-decision-oracle/SKILL.md -> .local/agent-config/cursor/skills/aegis-decision-oracle/SKILL.md"
+      },
+      {
+        "status": "R ",
+        "path": ".cursor/skills/aegis-failure-provenance/SKILL.md -> .local/agent-config/cursor/skills/aegis-failure-provenance/SKILL.md"
+      },
+      {
+        "status": "R ",
+        "path": ".cursor/skills/aegis-implementation-guardian/SKILL.md -> .local/agent-config/cursor/skills/aegis-implementation-guardian/SKILL.md"
+      },
+      {
+        "status": "R ",
+        "path": ".cursor/skills/aegis-invariant-registry/SKILL.md -> .local/agent-config/cursor/skills/aegis-invariant-registry/SKILL.md"
+      },
+      {
+        "status": "R ",
+        "path": ".cursor/skills/aegis-long-horizon-orchestrator/SKILL.md -> .local/agent-config/cursor/skills/aegis-long-horizon-orchestrator/SKILL.md"
+      },
+      {
+        "status": "R ",
+        "path": ".cursor/skills/aegis-nerve/SKILL.md -> .local/agent-config/cursor/skills/aegis-nerve/SKILL.md"
+      },
+      {
+        "status": "R ",
+        "path": ".cursor/skills/aegis-next-best-action/SKILL.md -> .local/agent-config/cursor/skills/aegis-next-best-action/SKILL.md"
+      },
+      {
+        "status": "R ",
+        "path": ".cursor/skills/aegis-optimal/SKILL.md -> .local/agent-config/cursor/skills/aegis-optimal/SKILL.md"
+      },
+      {
+        "status": "R ",
+        "path": ".cursor/skills/aegis-optimization/SKILL.md -> .local/agent-config/cursor/skills/aegis-optimization/SKILL.md"
+      },
+      {
+        "status": "R ",
+        "path": ".cursor/skills/aegis-path-prioritizer/SKILL.md -> .local/agent-config/cursor/skills/aegis-path-prioritizer/SKILL.md"
+      },
+      {
+        "status": "R ",
+        "path": ".cursor/skills/aegis-performance-compiler/SKILL.md -> .local/agent-config/cursor/skills/aegis-performance-compiler/SKILL.md"
+      },
+      {
+        "status": "R ",
+        "path": ".cursor/skills/aegis-planning-alignment/SKILL.md -> .local/agent-config/cursor/skills/aegis-planning-alignment/SKILL.md"
+      },
+      {
+        "status": "R ",
+        "path": ".cursor/skills/aegis-proof-checker/SKILL.md -> .local/agent-config/cursor/skills/aegis-proof-checker/SKILL.md"
+      },
+      {
+        "status": "R ",
+        "path": ".cursor/skills/aegis-regression-sentinel/SKILL.md -> .local/agent-config/cursor/skills/aegis-regression-sentinel/SKILL.md"
+      },
+      {
+        "status": "R ",
+        "path": ".cursor/skills/aegis-rust-benchmark/SKILL.md -> .local/agent-config/cursor/skills/aegis-rust-benchmark/SKILL.md"
+      },
+      {
+        "status": "R ",
+        "path": ".cursor/skills/aegis-rust-ffi/SKILL.md -> .local/agent-config/cursor/skills/aegis-rust-ffi/SKILL.md"
+      },
+      {
+        "status": "R ",
+        "path": ".cursor/skills/aegis-rust-schema/SKILL.md -> .local/agent-config/cursor/skills/aegis-rust-schema/SKILL.md"
+      },
+      {
+        "status": "R ",
+        "path": ".cursor/skills/aegis-rust-security-audit/SKILL.md -> .local/agent-config/cursor/skills/aegis-rust-security-audit/SKILL.md"
+      },
+      {
+        "status": "R ",
+        "path": ".cursor/skills/aegis-sac/SKILL.md -> .local/agent-config/cursor/skills/aegis-sac/SKILL.md"
+      },
+      {
+        "status": "R ",
+        "path": ".cursor/skills/aegis-speculative-decoding/SKILL.md -> .local/agent-config/cursor/skills/aegis-speculative-decoding/SKILL.md"
+      },
+      {
+        "status": "R ",
+        "path": ".cursor/skills/aegis-vibecoding-conductor/SKILL.md -> .local/agent-config/cursor/skills/aegis-vibecoding-conductor/SKILL.md"
+      },
+      {
+        "status": "R ",
+        "path": ".cursor/skills/aegis-zero-trust-plugin-creator/SKILL.md -> .local/agent-config/cursor/skills/aegis-zero-trust-plugin-creator/SKILL.md"
+      },
+      {
+        "status": "R ",
+        "path": ".cursorrules -> .local/agent-config/cursorrules"
+      },
+      {
+        "status": "R ",
+        "path": ".serena/.gitignore -> .local/agent-state/serena/.gitignore"
+      },
+      {
+        "status": "R ",
+        "path": ".serena/project.yml -> .local/agent-state/serena/project.yml"
+      },
+      {
+        "status": " M",
+        "path": "core/python/tests.py"
+      },
+      {
+        "status": " M",
+        "path": "docs/README.md"
+      },
+      {
+        "status": " M",
+        "path": "docs/architecture/AEGIS_CURRENT_ARCHITECTURE_TRUTH_AUDIT.md"
+      },
+      {
+        "status": " M",
+        "path": "docs/architecture/AEGIS_LAB_RUNTIME_MASTER_PLAN.md"
+      },
+      {
+        "status": "R ",
+        "path": "docs/ARCHITECTURE_FREEZE.md -> docs/architecture/ARCHITECTURE_FREEZE.md"
+      },
+      {
+        "status": " M",
+        "path": "docs/architecture/README.md"
+      },
+      {
+        "status": " M",
+        "path": "docs/architecture/document_inventory.json"
+      },
+      {
+        "status": " M",
+        "path": "docs/archive/README.md"
+      },
+      {
+        "status": "R ",
+        "path": "\"planning pdf/AEGIS-COGNITION_ Agent Harness Continuation Plan.md\" -> docs/archive/planning/agent-harness-continuation-plan.md"
+      },
+      {
+        "status": "R ",
+        "path": "\"planning pdf/AEGIS-COGNITION_ Ki/341/272/277n tr/303/272c AI T/341/273/221i /306/260u.md\" -> docs/archive/planning/architecture-optimization.md"
+      },
+      {
+        "status": "R ",
+        "path": "docs/BROWSER_NATIVE_AGENT_ARCHITECTURE.md -> docs/archive/reports/browser-native-architecture.md"
+      },
+      {
+        "status": "R ",
+        "path": "docs/CLUSTER_SOAK_REPORT.md -> docs/archive/reports/cluster-soak.md"
+      },
+      {
+        "status": "R ",
+        "path": "docs/aegis_plugins_integration.md -> docs/integrations/aegis-plugins.md"
+      },
+      {
+        "status": " M",
+        "path": "quality/registry/current_affected_closure.json"
+      },
+      {
+        "status": " M",
+        "path": "quality/registry/current_claim_graph.json"
+      },
+      {
+        "status": " M",
+        "path": "quality/registry/current_inventory.json"
+      },
+      {
+        "status": " M",
+        "path": "quality/registry/current_s2_mapping.json"
+      },
+      {
+        "status": " M",
+        "path": "quality/registry/current_shadow_plan.json"
+      },
+      {
+        "status": " M",
+        "path": "quality/registry/current_validation_corpus.json"
+      },
+      {
+        "status": " M",
+        "path": "scripts/_audit_regen_requirements.py"
+      },
+      {
+        "status": " D",
+        "path": "scripts/_debug_probe.py"
+      },
+      {
+        "status": " M",
+        "path": "scripts/constitution_audit.py"
+      },
+      {
+        "status": " M",
+        "path": "scripts/document_consistency_gate.py"
+      },
+      {
+        "status": "R ",
+        "path": "scripts/hermes_baseline_gate.py -> scripts/research/comparators/external/fts5_baseline_gate.py"
+      },
+      {
+        "status": "R ",
+        "path": "scripts/hermes_persistence_baseline_gate.py -> scripts/research/comparators/external/persistence_write_baseline_gate.py"
+      },
+      {
+        "status": "R ",
+        "path": "scripts/hermes_rpc_baseline_gate.py -> scripts/research/comparators/external/rpc_context_baseline_gate.py"
+      },
+      {
+        "status": "R ",
+        "path": "scripts/hermes_session_recovery_baseline_gate.py -> scripts/research/comparators/external/session_recovery_baseline_gate.py"
+      },
+      {
+        "status": " M",
+        "path": "scripts/run_checks.py"
+      },
+      {
+        "status": " M",
+        "path": "tests/test_constitution_audit_gates.py"
+      }
+    ],
     "untracked": [],
     "stderr": ""
   },
@@ -55,30 +1206,19 @@
       "status": "FAIL",
       "decisive_errors": [
         "evidence consistency gate failed: manifest.commit must be a 40-character lowercase git SHA",
-        "evidence consistency gate failed: remediation[P0-PROVENANCE].final_sha=CHECKOUT_HEAD does not match 78bdc844285041f86e6769683795d9d8706e3f7e",
-        "evidence consistency gate failed: remediation[P0-COUNTS].final_sha=CHECKOUT_HEAD does not match 78bdc844285041f86e6769683795d9d8706e3f7e",
-        "evidence consistency gate failed: remediation[P0-SOURCE-OF-TRUTH].final_sha=CHECKOUT_HEAD does not match 78bdc844285041f86e6769683795d9d8706e3f7e",
-        "evidence consistency gate failed: remediation[P0-GT96].final_sha=CHECKOUT_HEAD does not match 78bdc844285041f86e6769683795d9d8706e3f7e",
-        "evidence consistency gate failed: remediation[P0-MEMORY-CLAIMS].final_sha=CHECKOUT_HEAD does not match 78bdc844285041f86e6769683795d9d8706e3f7e",
-        "evidence consistency gate failed: remediation[P0-LABEL-AUDIT].final_sha=CHECKOUT_HEAD does not match 78bdc844285041f86e6769683795d9d8706e3f7e",
-        "evidence consistency gate failed: remediation[P1-LINUX-CGROUP].final_sha=CHECKOUT_HEAD does not match 78bdc844285041f86e6769683795d9d8706e3f7e"
+        "evidence consistency gate failed: remediation[P0-PROVENANCE].final_sha=CHECKOUT_HEAD does not match 06e2a00e6d18a1fb1ca0edf125aae596ecc6068c",
+        "evidence consistency gate failed: remediation[P0-COUNTS].final_sha=CHECKOUT_HEAD does not match 06e2a00e6d18a1fb1ca0edf125aae596ecc6068c",
+        "evidence consistency gate failed: remediation[P0-SOURCE-OF-TRUTH].final_sha=CHECKOUT_HEAD does not match 06e2a00e6d18a1fb1ca0edf125aae596ecc6068c",
+        "evidence consistency gate failed: remediation[P0-GT96].final_sha=CHECKOUT_HEAD does not match 06e2a00e6d18a1fb1ca0edf125aae596ecc6068c",
+        "evidence consistency gate failed: remediation[P0-MEMORY-CLAIMS].final_sha=CHECKOUT_HEAD does not match 06e2a00e6d18a1fb1ca0edf125aae596ecc6068c",
+        "evidence consistency gate failed: remediation[P0-LABEL-AUDIT].final_sha=CHECKOUT_HEAD does not match 06e2a00e6d18a1fb1ca0edf125aae596ecc6068c",
+        "evidence consistency gate failed: remediation[P1-LINUX-CGROUP].final_sha=CHECKOUT_HEAD does not match 06e2a00e6d18a1fb1ca0edf125aae596ecc6068c"
       ],
       "error_count": 34
     },
     "m2_fresh_process_replay": {
-      "status": "PASS_LOCAL_ONLY",
-      "path": "C:\\Users\\ADMIN\\AEGIS-COGNITION\\artifacts\\local-runtime\\m2-all-lane-fresh-replay-20260901\\m2_all_lane_fresh_replay.json",
-      "sha256": "76650fbea44947f16b305479d58ebd6ed4852224d662295d772cd097aa07057b",
-      "checks": {
-        "schema": true,
-        "status": true,
-        "lanes": true,
-        "parent_valid": true,
-        "child_valid": true,
-        "recovery_complete": true,
-        "non_success": true
-      },
-      "recorded_source_epoch": "b4f5b77e125fd1b902547916bb7384d5d69d9216a04c5aad31ab82cdf24e6b6f"
+      "status": "NOT_VERIFIED",
+      "path": "C:\\Users\\ADMIN\\AEGIS-COGNITION\\artifacts\\local-runtime\\m2-all-lane-fresh-replay-20260901\\m2_all_lane_fresh_replay.json"
     },
     "document_consistency_gate": "PASS (run separately after collection)",
     "collector_py_compile": "PASS"
@@ -156,8 +1296,8 @@
   "limitations": [
     "audit output/cache directories are excluded from epoch hashing to avoid self-reference; their per-file hashes are recorded separately"
   ],
-  "HEAD": "78bdc844285041f86e6769683795d9d8706e3f7e",
-  "WORKTREE_EPOCH": "86a717f3b7c2bb3ae59ec17d59b78d7f6f86de75a97f0c7e451bdd96207a5002",
-  "generated_at": "2026-09-02T03:59:43.968758+00:00",
+  "HEAD": "06e2a00e6d18a1fb1ca0edf125aae596ecc6068c",
+  "WORKTREE_EPOCH": "f510bd257dda8df093ba61c3a03bc5693e9a0f65a31094c0b737905b3ee9d499",
+  "generated_at": "2026-09-12T11:39:55.757574+00:00",
   "method": "aegis-design-closure-reconciliation-v1; direct Git/filesystem/source inspection, prior artifact hash reuse, disposable wheel reconciliation, bounded local probes"
 }

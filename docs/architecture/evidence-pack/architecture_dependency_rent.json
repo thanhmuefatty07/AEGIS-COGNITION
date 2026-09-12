@@ -2,13 +2,42 @@
   "schema": "aegis-architecture-dependency-rent-v1",
   "python": [
     {
+      "name": "aegis_adapter",
+      "used_by": [
+        "aegis_cognition/infrastructure.py",
+        "aegis_cognition/rag.py",
+        "core/python/__init__.py",
+        "core/python/aegis/__init__.py",
+        "core/python/aegis_cli.py",
+        "core/python/build/lib/aegis/__init__.py",
+        "core/python/tests.py",
+        "docs/architecture/design-closure/design_closure_collect.py",
+        "docs/architecture/evidence-pack/collect.py",
+        "docs/architecture/evidence-pack/final_closure_collect.py",
+        "scripts/_audit_regen_requirements.py",
+        "scripts/architecture_fitness.py",
+        "scripts/constitution_audit.py",
+        "scripts/production_packaging_smoke_gate.py",
+        "tests/test_connections.py",
+        "tests/test_lab_runtime.py"
+      ],
+      "usage_hits": 30,
+      "role": "production/test/build/unknown",
+      "duplicate_capability": "unknown",
+      "feature_flags": "unknown",
+      "runtime_relevance": "unknown"
+    },
+    {
       "name": "blake3",
       "used_by": [
         "aegis_cognition/errors.py",
+        "aegis_cognition/goal_contract.py",
         "aegis_cognition/lab.py",
         "aegis_cognition/prompt.py",
         "core/python/operator_api.py",
         "core/python/tests.py",
+        "docs/architecture/design-closure/design_closure_collect.py",
+        "docs/architecture/empirical-research/collect.py",
         "docs/architecture/evidence-pack/collect.py",
         "scripts/_audit_regen_requirements.py",
         "scripts/benchmark_gate.py",
@@ -16,19 +45,98 @@
         "scripts/dependency_audit_gate.py",
         "scripts/extreme_testing_suite.py",
         "scripts/governance_gate.py",
-        "scripts/hermes_baseline_gate.py",
-        "scripts/hermes_persistence_baseline_gate.py",
-        "scripts/hermes_rpc_baseline_gate.py",
-        "scripts/hermes_session_recovery_baseline_gate.py",
         "scripts/release_install_smoke.py",
+        "scripts/research/comparators/external/fts5_baseline_gate.py",
+        "scripts/research/comparators/external/persistence_write_baseline_gate.py",
+        "scripts/research/comparators/external/rpc_context_baseline_gate.py",
+        "scripts/research/comparators/external/session_recovery_baseline_gate.py",
         "scripts/run_checks.py",
         "scripts/sota_baseline_gate.py"
       ],
-      "usage_hits": 46,
+      "usage_hits": 54,
       "role": "production/test/build/unknown",
       "duplicate_capability": "unknown",
       "feature_flags": "unknown",
       "runtime_relevance": "high"
+    },
+    {
+      "name": "browser_live_collector",
+      "used_by": [
+        "core/python/aegis_adapter.py",
+        "core/python/browser_ops_bench.py",
+        "core/python/browser_playwright_runtime.py",
+        "core/python/browser_runtime_adapter.py",
+        "core/python/build/lib/aegis_adapter.py",
+        "core/python/build/lib/browser_ops_bench.py",
+        "core/python/build/lib/browser_playwright_runtime.py",
+        "core/python/build/lib/browser_runtime_adapter.py",
+        "core/python/tests.py",
+        "docs/architecture/design-closure/design_closure_collect.py",
+        "scripts/_audit_regen_requirements.py",
+        "scripts/constitution_audit.py",
+        "scripts/production_packaging_smoke_gate.py"
+      ],
+      "usage_hits": 23,
+      "role": "production/test/build/unknown",
+      "duplicate_capability": "unknown",
+      "feature_flags": "unknown",
+      "runtime_relevance": "unknown"
+    },
+    {
+      "name": "browser_ops_bench",
+      "used_by": [
+        "core/python/tests.py",
+        "docs/architecture/design-closure/design_closure_collect.py",
+        "docs/architecture/evidence-pack/final_closure_collect.py",
+        "scripts/_audit_regen_requirements.py",
+        "scripts/constitution_audit.py"
+      ],
+      "usage_hits": 6,
+      "role": "production/test/build/unknown",
+      "duplicate_capability": "unknown",
+      "feature_flags": "unknown",
+      "runtime_relevance": "unknown"
+    },
+    {
+      "name": "browser_playwright_runtime",
+      "used_by": [
+        "core/python/tests.py",
+        "docs/architecture/design-closure/design_closure_collect.py",
+        "docs/architecture/evidence-pack/final_closure_collect.py",
+        "scripts/_audit_regen_requirements.py",
+        "scripts/constitution_audit.py",
+        "tests/test_lab_runtime.py"
+      ],
+      "usage_hits": 10,
+      "role": "production/test/build/unknown",
+      "duplicate_capability": "unknown",
+      "feature_flags": "unknown",
+      "runtime_relevance": "unknown"
+    },
+    {
+      "name": "browser_runtime_adapter",
+      "used_by": [
+        "aegis_cognition/lab.py",
+        "core/python/aegis_adapter.py",
+        "core/python/browser_ops_bench.py",
+        "core/python/browser_playwright_runtime.py",
+        "core/python/build/lib/aegis_adapter.py",
+        "core/python/build/lib/browser_ops_bench.py",
+        "core/python/build/lib/browser_playwright_runtime.py",
+        "core/python/tests.py",
+        "docs/architecture/design-closure/design_closure_collect.py",
+        "docs/architecture/evidence-pack/final_closure_collect.py",
+        "scripts/_audit_regen_requirements.py",
+        "scripts/constitution_audit.py",
+        "scripts/production_packaging_smoke_gate.py",
+        "scripts/release_controller_action_smoke.py",
+        "tests/test_lab_runtime.py"
+      ],
+      "usage_hits": 33,
+      "role": "production/test/build/unknown",
+      "duplicate_capability": "unknown",
+      "feature_flags": "unknown",
+      "runtime_relevance": "unknown"
     },
     {
       "name": "fastapi",
@@ -44,21 +152,68 @@
       "runtime_relevance": "high"
     },
     {
+      "name": "integration",
+      "used_by": [
+        "aegis_cognition/lab.py",
+        "core/python/__init__.py",
+        "core/python/bridge.py",
+        "core/python/preflight.py",
+        "core/python/service.py",
+        "core/python/tests.py",
+        "docs/architecture/design-closure/design_closure_collect.py",
+        "docs/architecture/empirical-research/collect.py",
+        "scripts/_audit_regen_requirements.py",
+        "scripts/extreme_testing_suite.py",
+        "tests/test_lab_runtime.py"
+      ],
+      "usage_hits": 13,
+      "role": "production/test/build/unknown",
+      "duplicate_capability": "unknown",
+      "feature_flags": "unknown",
+      "runtime_relevance": "unknown"
+    },
+    {
       "name": "openai",
       "used_by": [
         "aegis_cognition/cli.py",
+        "aegis_cognition/desktop_service.py",
         "aegis_cognition/errors.py",
+        "core/python/aegis/connection_clients.py",
         "core/python/aegis_cli.py",
+        "core/python/chatgpt_web_client.py",
         "core/python/nim_client.py",
         "core/python/tests.py",
         "docs/architecture/evidence-pack/collect.py",
-        "scripts/_audit_regen_requirements.py"
+        "scripts/_audit_regen_requirements.py",
+        "tests/test_connections.py",
+        "tests/test_desktop_protocol.py"
       ],
-      "usage_hits": 19,
+      "usage_hits": 38,
       "role": "production/test/build/unknown",
       "duplicate_capability": "unknown",
       "feature_flags": "unknown",
       "runtime_relevance": "high"
+    },
+    {
+      "name": "orchestrator",
+      "used_by": [
+        "cluster/worker_service.py",
+        "core/python/__init__.py",
+        "core/python/bridge.py",
+        "core/python/build/lib/integration.py",
+        "core/python/integration.py",
+        "core/python/service.py",
+        "core/python/tests.py",
+        "docs/architecture/design-closure/design_closure_collect.py",
+        "scripts/_audit_regen_requirements.py",
+        "scripts/constitution_audit.py",
+        "scripts/provider_route_gate.py"
+      ],
+      "usage_hits": 28,
+      "role": "production/test/build/unknown",
+      "duplicate_capability": "unknown",
+      "feature_flags": "unknown",
+      "runtime_relevance": "unknown"
     },
     {
       "name": "python-dotenv",
@@ -510,11 +665,24 @@
       "runtime_relevance": "unknown"
     },
     {
+      "name": "notify",
+      "manifest": "core/rust/Cargo.toml",
+      "used_by": [
+        "core/rust/src/ffi/source_watcher.rs"
+      ],
+      "usage_hits": 4,
+      "role": "production/test/build/POC/unknown",
+      "feature_flags": "line-level Cargo feature declaration",
+      "runtime_relevance": "unknown"
+    },
+    {
       "name": "parking_lot",
       "manifest": "core/rust/Cargo.toml",
       "used_by": [
         "core/rust/src/eac/events.rs",
         "core/rust/src/ffi.rs",
+        "core/rust/src/ffi/runtime.rs",
+        "core/rust/src/ffi/source_watcher.rs",
         "core/rust/src/hot_engine.rs",
         "core/rust/src/mvcc.rs",
         "core/rust/src/physical.rs",
@@ -522,7 +690,7 @@
         "core/rust/src/sandbox.rs",
         "core/rust/src/telemetry.rs"
       ],
-      "usage_hits": 11,
+      "usage_hits": 14,
       "role": "production/test/build/POC/unknown",
       "feature_flags": "line-level Cargo feature declaration",
       "runtime_relevance": "unknown"
@@ -543,10 +711,22 @@
       "manifest": "core/rust/Cargo.toml",
       "used_by": [
         "core/rust/src/ffi.rs",
+        "core/rust/src/ffi/compat.rs",
+        "core/rust/src/ffi/connections.rs",
+        "core/rust/src/ffi/context.rs",
+        "core/rust/src/ffi/conversations.rs",
+        "core/rust/src/ffi/eac.rs",
+        "core/rust/src/ffi/hot.rs",
+        "core/rust/src/ffi/lab.rs",
+        "core/rust/src/ffi/learning.rs",
+        "core/rust/src/ffi/mmap.rs",
+        "core/rust/src/ffi/runtime.rs",
+        "core/rust/src/ffi/source_watcher.rs",
+        "core/rust/src/ffi/status.rs",
         "core/rust/src/governance.rs",
         "core/rust/src/tests.rs"
       ],
-      "usage_hits": 88,
+      "usage_hits": 329,
       "role": "production/test/build/POC/unknown",
       "feature_flags": "line-level Cargo feature declaration",
       "runtime_relevance": "unknown"
@@ -564,7 +744,7 @@
         "core/rust/src/replay.rs",
         "core/rust/src/tests.rs"
       ],
-      "usage_hits": 215,
+      "usage_hits": 218,
       "role": "production/test/build/POC/unknown",
       "feature_flags": "line-level Cargo feature declaration",
       "runtime_relevance": "unknown"
@@ -632,24 +812,26 @@
       "name": "serde",
       "manifest": "core/rust/Cargo.toml",
       "used_by": [
-        "core/rust/AEGIS-COGNITION/core/rust/src/rbac.rs",
         "core/rust/src/browser_witness.rs",
         "core/rust/src/cli/mod.rs",
         "core/rust/src/eac/cache/semantic.rs",
         "core/rust/src/eac/events.rs",
         "core/rust/src/eac/sandbox/batch.rs",
         "core/rust/src/eac/sandbox/runtime.rs",
-        "core/rust/src/ffi.rs",
+        "core/rust/src/ffi/eac.rs",
+        "core/rust/src/ffi/lab.rs",
+        "core/rust/src/ffi/source_watcher.rs",
         "core/rust/src/gt96.rs",
         "core/rust/src/lab.rs",
         "core/rust/src/licensing.rs",
         "core/rust/src/physical.rs",
+        "core/rust/src/placement.rs",
         "core/rust/src/policy.rs",
         "core/rust/src/replay.rs",
         "core/rust/src/resource.rs",
         "core/rust/src/telemetry.rs"
       ],
-      "usage_hits": 60,
+      "usage_hits": 76,
       "role": "production/test/build/POC/unknown",
       "feature_flags": "line-level Cargo feature declaration",
       "runtime_relevance": "unknown"
@@ -661,10 +843,20 @@
         "core/rust/benches/architecture_performance.rs",
         "core/rust/src/browser_witness.rs",
         "core/rust/src/cli/mod.rs",
+        "core/rust/src/connections.rs",
+        "core/rust/src/conversations.rs",
         "core/rust/src/eac/cache/semantic.rs",
         "core/rust/src/eac/sandbox/batch.rs",
         "core/rust/src/eac/sandbox/runtime.rs",
-        "core/rust/src/ffi.rs",
+        "core/rust/src/ffi/connections.rs",
+        "core/rust/src/ffi/context.rs",
+        "core/rust/src/ffi/conversations.rs",
+        "core/rust/src/ffi/eac.rs",
+        "core/rust/src/ffi/hot.rs",
+        "core/rust/src/ffi/lab.rs",
+        "core/rust/src/ffi/learning.rs",
+        "core/rust/src/ffi/runtime.rs",
+        "core/rust/src/ffi/source_watcher.rs",
         "core/rust/src/lab.rs",
         "core/rust/src/llm.rs",
         "core/rust/src/physical.rs",
@@ -674,7 +866,7 @@
         "core/rust/src/tests.rs",
         "core/rust/tests/resource_contract_matrix.rs"
       ],
-      "usage_hits": 267,
+      "usage_hits": 717,
       "role": "production/test/build/POC/unknown",
       "feature_flags": "line-level Cargo feature declaration",
       "runtime_relevance": "unknown"
@@ -724,6 +916,7 @@
         "core/rust/benches/nerve_bench.rs",
         "core/rust/benches/skill_improvement.rs",
         "core/rust/src/cli/mod.rs",
+        "core/rust/src/ffi/mmap.rs",
         "core/rust/src/governance.rs",
         "core/rust/src/replay.rs",
         "core/rust/src/sandbox.rs",
@@ -731,7 +924,7 @@
         "core/rust/src/tests.rs",
         "core/rust/src/tool_gateway.rs"
       ],
-      "usage_hits": 49,
+      "usage_hits": 55,
       "role": "production/test/build/POC/unknown",
       "feature_flags": "line-level Cargo feature declaration",
       "runtime_relevance": "unknown"
@@ -760,12 +953,17 @@
         "core/rust/src/circuit_breaker.rs",
         "core/rust/src/cli/mod.rs",
         "core/rust/src/context.rs",
+        "core/rust/src/conversations.rs",
         "core/rust/src/distributed.rs",
         "core/rust/src/eac/cache/semantic.rs",
         "core/rust/src/eac/events.rs",
         "core/rust/src/eac/sandbox/runtime.rs",
         "core/rust/src/evidence_index.rs",
         "core/rust/src/ffi.rs",
+        "core/rust/src/ffi/eac.rs",
+        "core/rust/src/ffi/hot.rs",
+        "core/rust/src/ffi/runtime.rs",
+        "core/rust/src/ffi/source_watcher.rs",
         "core/rust/src/goal_intake.rs",
         "core/rust/src/governance.rs",
         "core/rust/src/gt96.rs",
@@ -774,7 +972,9 @@
         "core/rust/src/learning/mod.rs",
         "core/rust/src/licensing.rs",
         "core/rust/src/llm.rs",
+        "core/rust/src/memory/fold.rs",
         "core/rust/src/memory/nudge.rs",
+        "core/rust/src/memory/repository.rs",
         "core/rust/src/memory/session_search.rs",
         "core/rust/src/memory/user_model.rs",
         "core/rust/src/orchestrator.rs",
@@ -786,7 +986,7 @@
         "core/rust/src/tests.rs",
         "core/rust/src/tool_gateway.rs"
       ],
-      "usage_hits": 125,
+      "usage_hits": 135,
       "role": "production/test/build/POC/unknown",
       "feature_flags": "line-level Cargo feature declaration",
       "runtime_relevance": "unknown"
@@ -822,7 +1022,7 @@
         "core/rust/src/execution.rs",
         "core/rust/src/hot_engine.rs"
       ],
-      "usage_hits": 9,
+      "usage_hits": 8,
       "role": "production/test/build/POC/unknown",
       "feature_flags": "line-level Cargo feature declaration",
       "runtime_relevance": "unknown"
@@ -834,6 +1034,62 @@
         "core/rust/src/execution.rs"
       ],
       "usage_hits": 2,
+      "role": "production/test/build/POC/unknown",
+      "feature_flags": "line-level Cargo feature declaration",
+      "runtime_relevance": "unknown"
+    },
+    {
+      "name": "rusqlite",
+      "manifest": "core/rust/Cargo.toml",
+      "used_by": [
+        "core/rust/src/connections.rs",
+        "core/rust/src/conversations.rs",
+        "core/rust/src/memory/repository.rs",
+        "core/rust/src/memory/session_search.rs"
+      ],
+      "usage_hits": 37,
+      "role": "production/test/build/POC/unknown",
+      "feature_flags": "line-level Cargo feature declaration",
+      "runtime_relevance": "unknown"
+    },
+    {
+      "name": "libc",
+      "manifest": "core/rust/Cargo.toml",
+      "used_by": [
+        "core/rust/src/resource.rs"
+      ],
+      "usage_hits": 2,
+      "role": "production/test/build/POC/unknown",
+      "feature_flags": "line-level Cargo feature declaration",
+      "runtime_relevance": "unknown"
+    },
+    {
+      "name": "serde",
+      "manifest": "desktop/src-tauri/Cargo.toml",
+      "used_by": [],
+      "usage_hits": 0,
+      "role": "production/test/build/POC/unknown",
+      "feature_flags": "line-level Cargo feature declaration",
+      "runtime_relevance": "unknown"
+    },
+    {
+      "name": "serde_json",
+      "manifest": "desktop/src-tauri/Cargo.toml",
+      "used_by": [
+        "desktop/src-tauri/src/main.rs"
+      ],
+      "usage_hits": 5,
+      "role": "production/test/build/POC/unknown",
+      "feature_flags": "line-level Cargo feature declaration",
+      "runtime_relevance": "unknown"
+    },
+    {
+      "name": "tauri",
+      "manifest": "desktop/src-tauri/Cargo.toml",
+      "used_by": [
+        "desktop/src-tauri/src/main.rs"
+      ],
+      "usage_hits": 5,
       "role": "production/test/build/POC/unknown",
       "feature_flags": "line-level Cargo feature declaration",
       "runtime_relevance": "unknown"

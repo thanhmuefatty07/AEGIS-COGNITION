@@ -1,7 +1,7 @@
 # AEGIS architecture
 
 This directory records the implementation baseline for the modular-monolith
-architecture described in `AEGIS_ARCHITECTURE_VERSION_MASTER_PLAN_2026-08-13.md`.
+architecture described in `AEGIS_LAB_RUNTIME_MASTER_PLAN.md`.
 
 The current runtime direction is intentionally conservative:
 
@@ -52,3 +52,16 @@ entry point is [`VERIFICATION_INDEX.md`](VERIFICATION_INDEX.md); its
 machine-readable template is [`evidence/current.json`](evidence/current.json),
 and unresolved closure work is retained in
 [`NOT_VERIFIED_REGISTRY.md`](NOT_VERIFIED_REGISTRY.md).
+
+## Generated evidence directories
+
+- [`evidence-pack/`](evidence-pack/): regenerated machine-grounded architecture
+  inputs; use `collect.py` as its source of truth.
+- [`design-closure/`](design-closure/): regenerated reconciliation and closure
+  outputs; use `design_closure_collect.py` as its source of truth.
+- [`empirical-research/`](empirical-research/): retained empirical research
+  records and bounded comparisons.
+
+These directories are evidence outputs, not hand-maintained implementation
+authority. A historical path or label inside a retained snapshot is provenance
+unless the current verification index explicitly promotes it.

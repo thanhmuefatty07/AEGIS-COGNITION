@@ -1,8 +1,8 @@
 # AEGIS — Final Architecture Design-Closure and Evidence Reconciliation
-WORKTREE_EPOCH: 86a717f3b7c2bb3ae59ec17d59b78d7f6f86de75a97f0c7e451bdd96207a5002
-HEAD: 78bdc844285041f86e6769683795d9d8706e3f7e
+WORKTREE_EPOCH: f510bd257dda8df093ba61c3a03bc5693e9a0f65a31094c0b737905b3ee9d499
+HEAD: 06e2a00e6d18a1fb1ca0edf125aae596ecc6068c
 STATUS: PARTIAL_LOCAL
-generated_at: 2026-09-02T03:59:43.968758+00:00
+generated_at: 2026-09-12T11:39:55.757574+00:00
 method: aegis-design-closure-reconciliation-v1; direct Git/filesystem/source inspection, prior artifact hash reuse, disposable wheel reconciliation, bounded local probes
 limitations: local evidence is partial; external-only closure is explicit below
 
@@ -11,15 +11,15 @@ limitations: local evidence is partial; external-only closure is explicit below
 - Root wheel clean import/native/CLI evidence is separate from the core bridge. The current core-owner wheel has no `aegis` console script, but the retained combined venv is a pre-M1 probe and still reports the old collision; a fresh dependency-complete combined runtime probe remains required.
 - The prior lexical side-effect graph mixed strict Lab fencing with compatibility/operator paths; this pack separates those paths and names bypass conditions.
 - The prior count of 93 PyO3 candidates is not the registered API count; source registration is measured separately (59 `#[pyfunction]`, 59 wrappers, one `#[pymethods]` block).
-- The nested `core/rust/AEGIS-COGNITION` subtree is tracked history with no nested Cargo manifest and no workspace-member edge; it is not a build/runtime mirror.
+- Historical snapshots are retained in `docs/archive/legacy`, outside the Cargo workspace and current runtime.
 - The performance baseline is reused because the equivalent workload was not repeated and no new campaign was authorized; reused measurements are not source-fresh.
 
 ## NEW DESIGN-CRITICAL FACTS
 - Packaging owner migration is `UNKNOWN`: root owns `aegis`, the newly built core bridge wheel has no duplicate console script, and the old combined runtime probe must be recreated after dependency-complete installation.
 - `AuthorityMode` packaged probe is NOT VERIFIED; compatibility and native authority contexts remain labelled by the legacy flag.
- - The current working-tree M4 settlement fence is locally proven by the retained provider-fence packaging record and 255-test regression gate: experiment, research, browser action/observation, skill, and cancellation receipts require exactly one open event-ledger admission; duplicate identities, stale/unknown admissions, and input/policy hash mismatches fail closed without appending another event. This does not prove external provider idempotency or opaque SDK/user-runner retry behavior.
+ - The current working-tree M4 settlement fence is locally proven by the retained provider-fence packaging record and NOT RECORDED-test regression gate: experiment, research, browser action/observation, skill, and cancellation receipts require exactly one open event-ledger admission; duplicate identities, stale/unknown admissions, and input/policy hash mismatches fail closed without appending another event. This does not prove external provider idempotency or opaque SDK/user-runner retry behavior.
 - Lab-owned gateway, explicit generic-tool, experiment and simulation attempts now require one finite positive deadline (`gateway_timeout_seconds`, `tool_timeout_seconds`, `experiment_timeout_seconds` or `simulation_timeout_seconds`), derive a deterministic 64-hex idempotency key from mission/execution/input/policy identity, and carry both fields through local admission/settlement receipts; a bounded `asyncio.wait_for` timeout settles the execution as `TIMED_OUT`. The required post-completion `memory.index_session` effect now has the same finite timeout/idempotency fence. Explicit `skill_requests` likewise require a finite positive timeout and settle admitted failures/timeouts as hash-bound `REJECTED` receipts. A mission-bound finite envelope now also bounds observed Lab-owned effect admissions (`max_external_attempts`, default `8 * (max_steps + 1)^3`) and is replay-bound in Python/Rust snapshots. Physical network/browser requests, provider idempotency, opaque SDK/user-runner retries, and external effect reversal remain NOT VERIFIED.
-- Fresh native-required parent/child replay witness is `PASS_LOCAL_ONLY` (SHA-256 `76650fbea44947f16b305479d58ebd6ed4852224d662295d772cd097aa07057b`): six explicit execution-cell admission lanes are restored in a child process, all six open admissions reconcile to explicit `REJECTED`, `state=blocked`, `open_after=0` and the event-chain verdict remains valid. This is local same-wheel evidence only; it does not prove hidden planners, external effect reversal or hosted authority.
+- The six-lane fresh-process replay witness is NOT VERIFIED; no claim is made beyond the other local snapshot tests.
 - Python `LabRun` is mutable and payload-bearing; Rust `LabController` conditionally materializes valid typed records while retaining a separate adapter projection. Opaque compatibility labels and adapter-only fields remain projection-only, so projection admission does not prove a single lossless reducer.
 - Source-level field comparison proves semantic/lossy divergence for Mission, Source, Claim, Hypothesis, Experiment, Observation, Artifact, Event, Replay, ExecutionCell, Trust and Retry.
  - Local trust defaults are inconsistent: Agent/Lab `DEV`; AegisAdapter/evidence and Rust `PROD` when unset.
@@ -33,7 +33,7 @@ limitations: local evidence is partial; external-only closure is explicit below
 Fresh source/wheel/combined-runtime owner evidence is in `packaging_truth.json`; stale pre-M1 environments are explicitly historical.
 
 ## NESTED MIRROR TRUTH
-The four tracked files under `core/rust/AEGIS-COGNITION` have history and documentary references, but no nested manifest, Cargo workspace membership, package, script, CI, test, or runtime edge. Canonical twin hashes and references are in `rust_mirror_truth.json`.
+Historical files under `docs/archive/legacy` were relocated from nested project trees. Per-file history and documentary references, canonical twin hashes, and workspace membership checks are recorded in `rust_mirror_truth.json`.
 
 ## AUTHORITY TRUTH
 - The native/Python authority probe is NOT VERIFIED; the current code still has separate typed and projection representations and no lossless cross-language reducer is proven. See `state_divergence.json` and `schema_graph.json`.
@@ -101,7 +101,7 @@ Linux/macOS/Windows native enforcement; hosted queue/lease/telemetry/restore; mu
 - artifacts/local-runtime/fresh-typed-chain-20260831/typed_chain_replay.json
 - artifacts/local-runtime/replay-chaos-20260831/replay_chaos_scorecard.json
 - artifacts/local-runtime/m2-all-lane-fresh-replay-20260901/m2_all_lane_fresh_replay.json
-- artifacts/local-runtime/provider-fence-settlement-20260901/provider_fence_settlement_packaging.json
+- artifacts/local-runtime/provider-fence-20260831/provider_fence_packaging.json
 
 DESIGN_EVIDENCE_STATUS:
 PARTIAL_LOCAL

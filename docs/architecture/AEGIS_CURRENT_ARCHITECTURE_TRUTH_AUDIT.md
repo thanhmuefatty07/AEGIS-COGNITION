@@ -232,7 +232,7 @@ Tracked files theo top-level:
 | `pocs` | 7 | `.github` | 4 |
 | `schemas` | 3 | nested `AEGIS-COGNITION` | 2 |
 | `cluster` | 2 | `.serena` | 2 |
-| `deploy` | 2 | `planning pdf` | 2 |
+| `deploy` | 2 | `docs/archive/planning` | 2 |
 
 Tracked files theo extension: Markdown 198, Python 138, JSON 121, Rust 99, TOML 16, `.mdc` 10, `.yml` 7, shell 5, lock 3, text 2; mỗi loại một file gồm `.yaml`, `.ps1`, `.html`, `.cluster`, `.example`, `.dockerignore`, `.cursorrules`, `.python-version`, extensionless; có hai `.gitignore`.
 

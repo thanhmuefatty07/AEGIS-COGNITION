@@ -4083,21 +4083,21 @@
     "indirect/macro reachability incomplete",
     "no live sink"
   ],
-  "WORKTREE_EPOCH": "86a717f3b7c2bb3ae59ec17d59b78d7f6f86de75a97f0c7e451bdd96207a5002",
-  "HEAD": "78bdc844285041f86e6769683795d9d8706e3f7e",
-  "generated_at": "2026-09-02T03:59:43.968758+00:00",
+  "WORKTREE_EPOCH": "f510bd257dda8df093ba61c3a03bc5693e9a0f65a31094c0b737905b3ee9d499",
+  "HEAD": "06e2a00e6d18a1fb1ca0edf125aae596ecc6068c",
+  "generated_at": "2026-09-12T11:39:55.757574+00:00",
   "collector_version/method": "aegis-final-design-closure-v1; direct Git/filesystem/AST/Cargo plus bounded disposable-wheel probes",
   "reused_prior_artifact": "C:\\Users\\ADMIN\\AEGIS-COGNITION\\docs\\architecture\\evidence-pack\\final_ffi_runtime_map.json",
   "reused_prior_artifact_sha256": "f260dae471fa3ded705c39e19ac0eb3ae5cc33190e918ac396b202327f5576cf",
   "source_epoch_note": "prior bounded workload/artifact reused; equivalent workload was not repeated in this reconciliation, so reused measurements are not source-fresh",
   "registration_summary": {
-    "pyfunction_attributes": 61,
-    "wrap_pyfunction_calls": 61,
-    "pymethods_blocks": 1,
-    "registered_module_functions": 61,
-    "pub_fn_declarations": 62,
+    "pyfunction_attributes": 0,
+    "wrap_pyfunction_calls": 116,
+    "pymethods_blocks": 0,
+    "registered_module_functions": 116,
+    "pub_fn_declarations": 1,
     "source": "core/rust/src/ffi.rs",
-    "interpretation": "61 registered module functions plus 1 pymethods class block(s); pub fn count includes helpers and is not API count"
+    "interpretation": "116 registered module functions plus 0 pymethods class block(s); pub fn count includes helpers and is not API count"
   },
   "ffi_file_families": [
     {

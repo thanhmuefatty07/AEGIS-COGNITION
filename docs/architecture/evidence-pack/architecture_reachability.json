@@ -25,15 +25,50 @@
     "PLUGIN": [],
     "TEST_ONLY": [
       "core.python.tests",
+      "tests.test_aese_affected_closure",
+      "tests.test_aese_claim_graph",
+      "tests.test_aese_failure_diagnostic",
+      "tests.test_aese_inventory",
+      "tests.test_aese_preflight",
+      "tests.test_aese_primitives",
+      "tests.test_aese_s2_mapping",
+      "tests.test_aese_shadow_planner",
+      "tests.test_aese_statistical_calibration",
+      "tests.test_aese_validation_corpus",
+      "tests.test_chatgpt_web_client",
+      "tests.test_ci_suite_evidence_contract",
+      "tests.test_cli",
+      "tests.test_code_intelligence",
+      "tests.test_connections",
+      "tests.test_constitution_audit_gates",
+      "tests.test_context_compiler",
+      "tests.test_conversations",
+      "tests.test_cooperative_resource_benchmark",
+      "tests.test_desktop_protocol",
       "tests.test_document_consistency_gate",
       "tests.test_evidence_consistency_gate",
+      "tests.test_goal_contract",
+      "tests.test_hardware_profile_report",
+      "tests.test_lab_progress_context",
       "tests.test_lab_runtime",
+      "tests.test_progress_gate",
+      "tests.test_rag_semantics",
+      "tests.test_release_evidence",
       "tests.test_runtime_contracts",
+      "tests.test_runtime_coordination",
       "tests.test_suite_evidence"
     ],
     "SCRIPT_ONLY": [
       "scripts._audit_regen_requirements",
-      "scripts._debug_probe",
+      "scripts.aese_affected_closure",
+      "scripts.aese_claim_graph",
+      "scripts.aese_failure_diagnostic",
+      "scripts.aese_inventory",
+      "scripts.aese_preflight",
+      "scripts.aese_s2_mapping",
+      "scripts.aese_shadow_planner",
+      "scripts.aese_statistical_calibration",
+      "scripts.aese_validation_corpus",
       "scripts.architecture_fitness",
       "scripts.attestation_status",
       "scripts.benchmark_gate",
@@ -42,6 +77,7 @@
       "scripts.cluster_loopback_gate",
       "scripts.communication_payload_benchmark",
       "scripts.constitution_audit",
+      "scripts.cooperative_resource_benchmark",
       "scripts.dependency_audit_gate",
       "scripts.deployment_manifest",
       "scripts.document_consistency_gate",
@@ -52,10 +88,6 @@
       "scripts.extreme_testing_suite",
       "scripts.governance_gate",
       "scripts.hardware_profile_report",
-      "scripts.hermes_baseline_gate",
-      "scripts.hermes_persistence_baseline_gate",
-      "scripts.hermes_rpc_baseline_gate",
-      "scripts.hermes_session_recovery_baseline_gate",
       "scripts.hot_browser_shadow_gate",
       "scripts.linux_cgroup_live_probe",
       "scripts.local_git_backup",
@@ -74,6 +106,10 @@
       "scripts.release_install_smoke",
       "scripts.release_recovery_smoke",
       "scripts.release_rollback_drill",
+      "scripts.research.comparators.external.fts5_baseline_gate",
+      "scripts.research.comparators.external.persistence_write_baseline_gate",
+      "scripts.research.comparators.external.rpc_context_baseline_gate",
+      "scripts.research.comparators.external.session_recovery_baseline_gate",
       "scripts.resource_policy_benchmark",
       "scripts.run_checks",
       "scripts.rust_toolchain",
@@ -102,7 +138,7 @@
         "PUBLIC_API",
         "TEST_ONLY"
       ],
-      "dynamic_reference": false,
+      "dynamic_reference": true,
       "packaging_reference": true,
       "test_reference": false,
       "ci_reference": true,
@@ -110,9 +146,35 @@
       "delete_confidence_class": "ACTIVE"
     },
     {
+      "path": "aegis_cognition/_public_exports.py",
+      "module": "aegis_cognition._public_exports",
+      "reachable_from": [],
+      "dynamic_reference": false,
+      "packaging_reference": true,
+      "test_reference": false,
+      "ci_reference": false,
+      "doc_schema_reference": false,
+      "delete_confidence_class": "UNKNOWN"
+    },
+    {
+      "path": "aegis_cognition/aese.py",
+      "module": "aegis_cognition.aese",
+      "reachable_from": [
+        "SCRIPT_ONLY",
+        "TEST_ONLY"
+      ],
+      "dynamic_reference": false,
+      "packaging_reference": true,
+      "test_reference": false,
+      "ci_reference": false,
+      "doc_schema_reference": true,
+      "delete_confidence_class": "ACTIVE"
+    },
+    {
       "path": "aegis_cognition/agent.py",
       "module": "aegis_cognition.agent",
       "reachable_from": [
+        "CLI",
         "LAB",
         "PUBLIC_API",
         "TEST_ONLY"
@@ -128,6 +190,7 @@
       "path": "aegis_cognition/application.py",
       "module": "aegis_cognition.application",
       "reachable_from": [
+        "CLI",
         "LAB",
         "PUBLIC_API",
         "TEST_ONLY"
@@ -143,6 +206,7 @@
       "path": "aegis_cognition/benchmark.py",
       "module": "aegis_cognition.benchmark",
       "reachable_from": [
+        "CLI",
         "LAB",
         "PUBLIC_API",
         "TEST_ONLY"
@@ -172,8 +236,22 @@
       "path": "aegis_cognition/config.py",
       "module": "aegis_cognition.config",
       "reachable_from": [
+        "CLI",
         "LAB",
         "PUBLIC_API",
+        "TEST_ONLY"
+      ],
+      "dynamic_reference": false,
+      "packaging_reference": true,
+      "test_reference": false,
+      "ci_reference": false,
+      "doc_schema_reference": true,
+      "delete_confidence_class": "ACTIVE"
+    },
+    {
+      "path": "aegis_cognition/desktop_service.py",
+      "module": "aegis_cognition.desktop_service",
+      "reachable_from": [
         "TEST_ONLY"
       ],
       "dynamic_reference": false,
@@ -198,6 +276,23 @@
       "path": "aegis_cognition/errors.py",
       "module": "aegis_cognition.errors",
       "reachable_from": [
+        "CLI",
+        "LAB",
+        "PUBLIC_API",
+        "TEST_ONLY"
+      ],
+      "dynamic_reference": false,
+      "packaging_reference": true,
+      "test_reference": false,
+      "ci_reference": false,
+      "doc_schema_reference": true,
+      "delete_confidence_class": "ACTIVE"
+    },
+    {
+      "path": "aegis_cognition/goal_contract.py",
+      "module": "aegis_cognition.goal_contract",
+      "reachable_from": [
+        "CLI",
         "LAB",
         "PUBLIC_API",
         "TEST_ONLY"
@@ -213,6 +308,7 @@
       "path": "aegis_cognition/infrastructure.py",
       "module": "aegis_cognition.infrastructure",
       "reachable_from": [
+        "CLI",
         "LAB",
         "PUBLIC_API",
         "TEST_ONLY"
@@ -228,6 +324,7 @@
       "path": "aegis_cognition/lab.py",
       "module": "aegis_cognition.lab",
       "reachable_from": [
+        "CLI",
         "LAB",
         "PUBLIC_API",
         "TEST_ONLY"
@@ -243,6 +340,7 @@
       "path": "aegis_cognition/metrics.py",
       "module": "aegis_cognition.metrics",
       "reachable_from": [
+        "CLI",
         "LAB",
         "PUBLIC_API",
         "TEST_ONLY"
@@ -258,6 +356,7 @@
       "path": "aegis_cognition/models.py",
       "module": "aegis_cognition.models",
       "reachable_from": [
+        "CLI",
         "LAB",
         "PUBLIC_API",
         "TEST_ONLY"
@@ -266,13 +365,14 @@
       "packaging_reference": true,
       "test_reference": false,
       "ci_reference": false,
-      "doc_schema_reference": false,
+      "doc_schema_reference": true,
       "delete_confidence_class": "ACTIVE"
     },
     {
       "path": "aegis_cognition/observability.py",
       "module": "aegis_cognition.observability",
       "reachable_from": [
+        "CLI",
         "LAB",
         "PUBLIC_API",
         "TEST_ONLY"
@@ -288,6 +388,7 @@
       "path": "aegis_cognition/prompt.py",
       "module": "aegis_cognition.prompt",
       "reachable_from": [
+        "CLI",
         "LAB",
         "PUBLIC_API",
         "TEST_ONLY"
@@ -296,13 +397,14 @@
       "packaging_reference": true,
       "test_reference": false,
       "ci_reference": false,
-      "doc_schema_reference": false,
+      "doc_schema_reference": true,
       "delete_confidence_class": "ACTIVE"
     },
     {
       "path": "aegis_cognition/rag.py",
       "module": "aegis_cognition.rag",
       "reachable_from": [
+        "CLI",
         "LAB",
         "PUBLIC_API",
         "TEST_ONLY"
@@ -318,6 +420,7 @@
       "path": "aegis_cognition/runtime.py",
       "module": "aegis_cognition.runtime",
       "reachable_from": [
+        "CLI",
         "FFI",
         "LAB",
         "PUBLIC_API",
@@ -381,9 +484,73 @@
       "delete_confidence_class": "UNKNOWN"
     },
     {
+      "path": "core/python/aegis/code_intelligence.py",
+      "module": "core.python.aegis.code_intelligence",
+      "reachable_from": [
+        "TEST_ONLY"
+      ],
+      "dynamic_reference": false,
+      "packaging_reference": true,
+      "test_reference": false,
+      "ci_reference": false,
+      "doc_schema_reference": false,
+      "delete_confidence_class": "ACTIVE"
+    },
+    {
+      "path": "core/python/aegis/connection_clients.py",
+      "module": "core.python.aegis.connection_clients",
+      "reachable_from": [
+        "CLI",
+        "FFI",
+        "LAB",
+        "PUBLIC_API",
+        "TEST_ONLY"
+      ],
+      "dynamic_reference": false,
+      "packaging_reference": true,
+      "test_reference": false,
+      "ci_reference": false,
+      "doc_schema_reference": false,
+      "delete_confidence_class": "ACTIVE"
+    },
+    {
+      "path": "core/python/aegis/connections.py",
+      "module": "core.python.aegis.connections",
+      "reachable_from": [
+        "CLI",
+        "FFI",
+        "LAB",
+        "PUBLIC_API",
+        "TEST_ONLY"
+      ],
+      "dynamic_reference": false,
+      "packaging_reference": true,
+      "test_reference": false,
+      "ci_reference": false,
+      "doc_schema_reference": false,
+      "delete_confidence_class": "ACTIVE"
+    },
+    {
+      "path": "core/python/aegis/context_compiler.py",
+      "module": "core.python.aegis.context_compiler",
+      "reachable_from": [
+        "CLI",
+        "LAB",
+        "PUBLIC_API",
+        "TEST_ONLY"
+      ],
+      "dynamic_reference": false,
+      "packaging_reference": true,
+      "test_reference": false,
+      "ci_reference": false,
+      "doc_schema_reference": false,
+      "delete_confidence_class": "ACTIVE"
+    },
+    {
       "path": "core/python/aegis/contracts.py",
       "module": "core.python.aegis.contracts",
       "reachable_from": [
+        "CLI",
         "FFI",
         "LAB",
         "PUBLIC_API",
@@ -397,9 +564,10 @@
       "delete_confidence_class": "ACTIVE"
     },
     {
-      "path": "core/python/aegis/evidence.py",
-      "module": "core.python.aegis.evidence",
+      "path": "core/python/aegis/conversations.py",
+      "module": "core.python.aegis.conversations",
       "reachable_from": [
+        "CLI",
         "FFI",
         "LAB",
         "PUBLIC_API",
@@ -410,12 +578,64 @@
       "test_reference": false,
       "ci_reference": false,
       "doc_schema_reference": false,
+      "delete_confidence_class": "ACTIVE"
+    },
+    {
+      "path": "core/python/aegis/desktop_protocol.py",
+      "module": "core.python.aegis.desktop_protocol",
+      "reachable_from": [
+        "CLI",
+        "FFI",
+        "LAB",
+        "PUBLIC_API",
+        "TEST_ONLY"
+      ],
+      "dynamic_reference": false,
+      "packaging_reference": true,
+      "test_reference": false,
+      "ci_reference": false,
+      "doc_schema_reference": false,
+      "delete_confidence_class": "ACTIVE"
+    },
+    {
+      "path": "core/python/aegis/discovery.py",
+      "module": "core.python.aegis.discovery",
+      "reachable_from": [
+        "CLI",
+        "FFI",
+        "LAB",
+        "PUBLIC_API",
+        "TEST_ONLY"
+      ],
+      "dynamic_reference": false,
+      "packaging_reference": true,
+      "test_reference": false,
+      "ci_reference": false,
+      "doc_schema_reference": false,
+      "delete_confidence_class": "ACTIVE"
+    },
+    {
+      "path": "core/python/aegis/evidence.py",
+      "module": "core.python.aegis.evidence",
+      "reachable_from": [
+        "CLI",
+        "FFI",
+        "LAB",
+        "PUBLIC_API",
+        "TEST_ONLY"
+      ],
+      "dynamic_reference": false,
+      "packaging_reference": true,
+      "test_reference": false,
+      "ci_reference": false,
+      "doc_schema_reference": true,
       "delete_confidence_class": "ACTIVE"
     },
     {
       "path": "core/python/aegis/hashing.py",
       "module": "core.python.aegis.hashing",
       "reachable_from": [
+        "CLI",
         "FFI",
         "LAB",
         "PUBLIC_API",
@@ -425,13 +645,14 @@
       "packaging_reference": true,
       "test_reference": false,
       "ci_reference": false,
-      "doc_schema_reference": false,
+      "doc_schema_reference": true,
       "delete_confidence_class": "ACTIVE"
     },
     {
       "path": "core/python/aegis/learning.py",
       "module": "core.python.aegis.learning",
       "reachable_from": [
+        "CLI",
         "FFI",
         "LAB",
         "PUBLIC_API",
@@ -448,6 +669,41 @@
       "path": "core/python/aegis/native.py",
       "module": "core.python.aegis.native",
       "reachable_from": [
+        "CLI",
+        "FFI",
+        "LAB",
+        "PUBLIC_API",
+        "TEST_ONLY"
+      ],
+      "dynamic_reference": false,
+      "packaging_reference": true,
+      "test_reference": false,
+      "ci_reference": false,
+      "doc_schema_reference": true,
+      "delete_confidence_class": "ACTIVE"
+    },
+    {
+      "path": "core/python/aegis/provider.py",
+      "module": "core.python.aegis.provider",
+      "reachable_from": [
+        "CLI",
+        "FFI",
+        "LAB",
+        "PUBLIC_API",
+        "TEST_ONLY"
+      ],
+      "dynamic_reference": false,
+      "packaging_reference": true,
+      "test_reference": false,
+      "ci_reference": false,
+      "doc_schema_reference": true,
+      "delete_confidence_class": "ACTIVE"
+    },
+    {
+      "path": "core/python/aegis/secrets.py",
+      "module": "core.python.aegis.secrets",
+      "reachable_from": [
+        "CLI",
         "FFI",
         "LAB",
         "PUBLIC_API",
@@ -461,9 +717,10 @@
       "delete_confidence_class": "ACTIVE"
     },
     {
-      "path": "core/python/aegis/provider.py",
-      "module": "core.python.aegis.provider",
+      "path": "core/python/aegis/trust_policy.py",
+      "module": "core.python.aegis.trust_policy",
       "reachable_from": [
+        "CLI",
         "FFI",
         "LAB",
         "PUBLIC_API",
@@ -480,6 +737,7 @@
       "path": "core/python/aegis_adapter.py",
       "module": "core.python.aegis_adapter",
       "reachable_from": [
+        "CLI",
         "FFI",
         "LAB",
         "PUBLIC_API",
@@ -496,7 +754,8 @@
       "path": "core/python/aegis_cli.py",
       "module": "core.python.aegis_cli",
       "reachable_from": [
-        "CLI"
+        "CLI",
+        "TEST_ONLY"
       ],
       "dynamic_reference": false,
       "packaging_reference": true,
@@ -515,7 +774,7 @@
       "packaging_reference": true,
       "test_reference": false,
       "ci_reference": false,
-      "doc_schema_reference": false,
+      "doc_schema_reference": true,
       "delete_confidence_class": "ACTIVE"
     },
     {
@@ -530,13 +789,14 @@
       "packaging_reference": true,
       "test_reference": false,
       "ci_reference": false,
-      "doc_schema_reference": false,
+      "doc_schema_reference": true,
       "delete_confidence_class": "ACTIVE"
     },
     {
       "path": "core/python/browser_live_collector.py",
       "module": "core.python.browser_live_collector",
       "reachable_from": [
+        "CLI",
         "FFI",
         "LAB",
         "PUBLIC_API",
@@ -546,7 +806,7 @@
       "packaging_reference": true,
       "test_reference": false,
       "ci_reference": false,
-      "doc_schema_reference": false,
+      "doc_schema_reference": true,
       "delete_confidence_class": "ACTIVE"
     },
     {
@@ -559,7 +819,7 @@
       "packaging_reference": true,
       "test_reference": false,
       "ci_reference": false,
-      "doc_schema_reference": false,
+      "doc_schema_reference": true,
       "delete_confidence_class": "ACTIVE"
     },
     {
@@ -579,6 +839,7 @@
       "path": "core/python/browser_runtime_adapter.py",
       "module": "core.python.browser_runtime_adapter",
       "reachable_from": [
+        "CLI",
         "FFI",
         "LAB",
         "PUBLIC_API",
@@ -588,7 +849,187 @@
       "packaging_reference": true,
       "test_reference": false,
       "ci_reference": false,
+      "doc_schema_reference": true,
+      "delete_confidence_class": "ACTIVE"
+    },
+    {
+      "path": "core/python/build/lib/aegis/__init__.py",
+      "module": "core.python.build.lib.aegis",
+      "reachable_from": [],
+      "dynamic_reference": false,
+      "packaging_reference": true,
+      "test_reference": false,
+      "ci_reference": false,
       "doc_schema_reference": false,
+      "delete_confidence_class": "UNKNOWN"
+    },
+    {
+      "path": "core/python/build/lib/aegis/contracts.py",
+      "module": "core.python.build.lib.aegis.contracts",
+      "reachable_from": [],
+      "dynamic_reference": false,
+      "packaging_reference": true,
+      "test_reference": false,
+      "ci_reference": false,
+      "doc_schema_reference": false,
+      "delete_confidence_class": "UNKNOWN"
+    },
+    {
+      "path": "core/python/build/lib/aegis/evidence.py",
+      "module": "core.python.build.lib.aegis.evidence",
+      "reachable_from": [],
+      "dynamic_reference": false,
+      "packaging_reference": true,
+      "test_reference": false,
+      "ci_reference": false,
+      "doc_schema_reference": false,
+      "delete_confidence_class": "UNKNOWN"
+    },
+    {
+      "path": "core/python/build/lib/aegis/hashing.py",
+      "module": "core.python.build.lib.aegis.hashing",
+      "reachable_from": [],
+      "dynamic_reference": false,
+      "packaging_reference": true,
+      "test_reference": false,
+      "ci_reference": false,
+      "doc_schema_reference": false,
+      "delete_confidence_class": "UNKNOWN"
+    },
+    {
+      "path": "core/python/build/lib/aegis/learning.py",
+      "module": "core.python.build.lib.aegis.learning",
+      "reachable_from": [],
+      "dynamic_reference": false,
+      "packaging_reference": true,
+      "test_reference": false,
+      "ci_reference": false,
+      "doc_schema_reference": false,
+      "delete_confidence_class": "UNKNOWN"
+    },
+    {
+      "path": "core/python/build/lib/aegis/native.py",
+      "module": "core.python.build.lib.aegis.native",
+      "reachable_from": [],
+      "dynamic_reference": false,
+      "packaging_reference": true,
+      "test_reference": false,
+      "ci_reference": false,
+      "doc_schema_reference": false,
+      "delete_confidence_class": "UNKNOWN"
+    },
+    {
+      "path": "core/python/build/lib/aegis/provider.py",
+      "module": "core.python.build.lib.aegis.provider",
+      "reachable_from": [],
+      "dynamic_reference": false,
+      "packaging_reference": true,
+      "test_reference": false,
+      "ci_reference": false,
+      "doc_schema_reference": false,
+      "delete_confidence_class": "UNKNOWN"
+    },
+    {
+      "path": "core/python/build/lib/aegis/trust_policy.py",
+      "module": "core.python.build.lib.aegis.trust_policy",
+      "reachable_from": [],
+      "dynamic_reference": false,
+      "packaging_reference": true,
+      "test_reference": false,
+      "ci_reference": false,
+      "doc_schema_reference": false,
+      "delete_confidence_class": "UNKNOWN"
+    },
+    {
+      "path": "core/python/build/lib/aegis_adapter.py",
+      "module": "core.python.build.lib.aegis_adapter",
+      "reachable_from": [],
+      "dynamic_reference": false,
+      "packaging_reference": true,
+      "test_reference": false,
+      "ci_reference": false,
+      "doc_schema_reference": false,
+      "delete_confidence_class": "UNKNOWN"
+    },
+    {
+      "path": "core/python/build/lib/browser_live_collector.py",
+      "module": "core.python.build.lib.browser_live_collector",
+      "reachable_from": [],
+      "dynamic_reference": false,
+      "packaging_reference": true,
+      "test_reference": false,
+      "ci_reference": false,
+      "doc_schema_reference": false,
+      "delete_confidence_class": "UNKNOWN"
+    },
+    {
+      "path": "core/python/build/lib/browser_ops_bench.py",
+      "module": "core.python.build.lib.browser_ops_bench",
+      "reachable_from": [],
+      "dynamic_reference": false,
+      "packaging_reference": true,
+      "test_reference": false,
+      "ci_reference": false,
+      "doc_schema_reference": false,
+      "delete_confidence_class": "UNKNOWN"
+    },
+    {
+      "path": "core/python/build/lib/browser_playwright_runtime.py",
+      "module": "core.python.build.lib.browser_playwright_runtime",
+      "reachable_from": [],
+      "dynamic_reference": false,
+      "packaging_reference": true,
+      "test_reference": false,
+      "ci_reference": false,
+      "doc_schema_reference": false,
+      "delete_confidence_class": "UNKNOWN"
+    },
+    {
+      "path": "core/python/build/lib/browser_runtime_adapter.py",
+      "module": "core.python.build.lib.browser_runtime_adapter",
+      "reachable_from": [],
+      "dynamic_reference": false,
+      "packaging_reference": true,
+      "test_reference": false,
+      "ci_reference": false,
+      "doc_schema_reference": false,
+      "delete_confidence_class": "UNKNOWN"
+    },
+    {
+      "path": "core/python/build/lib/integration.py",
+      "module": "core.python.build.lib.integration",
+      "reachable_from": [],
+      "dynamic_reference": false,
+      "packaging_reference": true,
+      "test_reference": false,
+      "ci_reference": false,
+      "doc_schema_reference": false,
+      "delete_confidence_class": "UNKNOWN"
+    },
+    {
+      "path": "core/python/build/lib/orchestrator.py",
+      "module": "core.python.build.lib.orchestrator",
+      "reachable_from": [],
+      "dynamic_reference": false,
+      "packaging_reference": true,
+      "test_reference": false,
+      "ci_reference": false,
+      "doc_schema_reference": false,
+      "delete_confidence_class": "UNKNOWN"
+    },
+    {
+      "path": "core/python/chatgpt_web_client.py",
+      "module": "core.python.chatgpt_web_client",
+      "reachable_from": [
+        "CLI",
+        "PUBLIC_API",
+        "TEST_ONLY"
+      ],
+      "dynamic_reference": false,
+      "packaging_reference": true,
+      "test_reference": false,
+      "ci_reference": false,
+      "doc_schema_reference": true,
       "delete_confidence_class": "ACTIVE"
     },
     {
@@ -614,7 +1055,7 @@
       "packaging_reference": true,
       "test_reference": false,
       "ci_reference": false,
-      "doc_schema_reference": false,
+      "doc_schema_reference": true,
       "delete_confidence_class": "ACTIVE"
     },
     {
@@ -628,7 +1069,7 @@
       "packaging_reference": true,
       "test_reference": false,
       "ci_reference": false,
-      "doc_schema_reference": false,
+      "doc_schema_reference": true,
       "delete_confidence_class": "ACTIVE"
     },
     {
@@ -650,7 +1091,7 @@
       "packaging_reference": true,
       "test_reference": false,
       "ci_reference": false,
-      "doc_schema_reference": true,
+      "doc_schema_reference": false,
       "delete_confidence_class": "UNKNOWN"
     },
     {
@@ -663,7 +1104,7 @@
       "packaging_reference": true,
       "test_reference": false,
       "ci_reference": false,
-      "doc_schema_reference": false,
+      "doc_schema_reference": true,
       "delete_confidence_class": "ACTIVE"
     },
     {
@@ -693,6 +1134,17 @@
       "delete_confidence_class": "ACTIVE"
     },
     {
+      "path": "core/python/setup.py",
+      "module": "core.python.setup",
+      "reachable_from": [],
+      "dynamic_reference": false,
+      "packaging_reference": true,
+      "test_reference": false,
+      "ci_reference": false,
+      "doc_schema_reference": true,
+      "delete_confidence_class": "UNKNOWN"
+    },
+    {
       "path": "core/python/tests.py",
       "module": "core.python.tests",
       "reachable_from": [
@@ -713,7 +1165,7 @@
       "packaging_reference": false,
       "test_reference": false,
       "ci_reference": false,
-      "doc_schema_reference": false,
+      "doc_schema_reference": true,
       "delete_confidence_class": "UNKNOWN"
     },
     {
@@ -724,7 +1176,7 @@
       "packaging_reference": false,
       "test_reference": false,
       "ci_reference": false,
-      "doc_schema_reference": false,
+      "doc_schema_reference": true,
       "delete_confidence_class": "UNKNOWN"
     },
     {
@@ -746,7 +1198,7 @@
       "packaging_reference": false,
       "test_reference": false,
       "ci_reference": false,
-      "doc_schema_reference": false,
+      "doc_schema_reference": true,
       "delete_confidence_class": "UNKNOWN"
     },
     {
@@ -757,7 +1209,7 @@
       "packaging_reference": false,
       "test_reference": false,
       "ci_reference": false,
-      "doc_schema_reference": false,
+      "doc_schema_reference": true,
       "delete_confidence_class": "UNKNOWN"
     },
     {
@@ -768,7 +1220,7 @@
       "packaging_reference": false,
       "test_reference": false,
       "ci_reference": false,
-      "doc_schema_reference": false,
+      "doc_schema_reference": true,
       "delete_confidence_class": "UNKNOWN"
     },
     {
@@ -779,7 +1231,7 @@
       "packaging_reference": false,
       "test_reference": false,
       "ci_reference": false,
-      "doc_schema_reference": false,
+      "doc_schema_reference": true,
       "delete_confidence_class": "UNKNOWN"
     },
     {
@@ -805,16 +1257,129 @@
       "packaging_reference": true,
       "test_reference": false,
       "ci_reference": false,
-      "doc_schema_reference": false,
+      "doc_schema_reference": true,
       "delete_confidence_class": "ACTIVE"
     },
     {
-      "path": "scripts/_debug_probe.py",
-      "module": "scripts._debug_probe",
+      "path": "scripts/aese_affected_closure.py",
+      "module": "scripts.aese_affected_closure",
       "reachable_from": [
-        "SCRIPT_ONLY"
+        "SCRIPT_ONLY",
+        "TEST_ONLY"
+      ],
+      "dynamic_reference": false,
+      "packaging_reference": true,
+      "test_reference": false,
+      "ci_reference": false,
+      "doc_schema_reference": true,
+      "delete_confidence_class": "ACTIVE"
+    },
+    {
+      "path": "scripts/aese_claim_graph.py",
+      "module": "scripts.aese_claim_graph",
+      "reachable_from": [
+        "SCRIPT_ONLY",
+        "TEST_ONLY"
+      ],
+      "dynamic_reference": false,
+      "packaging_reference": true,
+      "test_reference": false,
+      "ci_reference": true,
+      "doc_schema_reference": true,
+      "delete_confidence_class": "ACTIVE"
+    },
+    {
+      "path": "scripts/aese_failure_diagnostic.py",
+      "module": "scripts.aese_failure_diagnostic",
+      "reachable_from": [
+        "SCRIPT_ONLY",
+        "TEST_ONLY"
       ],
       "dynamic_reference": true,
+      "packaging_reference": true,
+      "test_reference": false,
+      "ci_reference": false,
+      "doc_schema_reference": true,
+      "delete_confidence_class": "ACTIVE"
+    },
+    {
+      "path": "scripts/aese_inventory.py",
+      "module": "scripts.aese_inventory",
+      "reachable_from": [
+        "SCRIPT_ONLY",
+        "TEST_ONLY"
+      ],
+      "dynamic_reference": false,
+      "packaging_reference": true,
+      "test_reference": false,
+      "ci_reference": true,
+      "doc_schema_reference": true,
+      "delete_confidence_class": "ACTIVE"
+    },
+    {
+      "path": "scripts/aese_preflight.py",
+      "module": "scripts.aese_preflight",
+      "reachable_from": [
+        "SCRIPT_ONLY",
+        "TEST_ONLY"
+      ],
+      "dynamic_reference": false,
+      "packaging_reference": true,
+      "test_reference": false,
+      "ci_reference": false,
+      "doc_schema_reference": true,
+      "delete_confidence_class": "ACTIVE"
+    },
+    {
+      "path": "scripts/aese_s2_mapping.py",
+      "module": "scripts.aese_s2_mapping",
+      "reachable_from": [
+        "SCRIPT_ONLY",
+        "TEST_ONLY"
+      ],
+      "dynamic_reference": false,
+      "packaging_reference": true,
+      "test_reference": false,
+      "ci_reference": false,
+      "doc_schema_reference": true,
+      "delete_confidence_class": "ACTIVE"
+    },
+    {
+      "path": "scripts/aese_shadow_planner.py",
+      "module": "scripts.aese_shadow_planner",
+      "reachable_from": [
+        "SCRIPT_ONLY",
+        "TEST_ONLY"
+      ],
+      "dynamic_reference": false,
+      "packaging_reference": true,
+      "test_reference": false,
+      "ci_reference": false,
+      "doc_schema_reference": true,
+      "delete_confidence_class": "ACTIVE"
+    },
+    {
+      "path": "scripts/aese_statistical_calibration.py",
+      "module": "scripts.aese_statistical_calibration",
+      "reachable_from": [
+        "SCRIPT_ONLY",
+        "TEST_ONLY"
+      ],
+      "dynamic_reference": true,
+      "packaging_reference": true,
+      "test_reference": false,
+      "ci_reference": false,
+      "doc_schema_reference": true,
+      "delete_confidence_class": "ACTIVE"
+    },
+    {
+      "path": "scripts/aese_validation_corpus.py",
+      "module": "scripts.aese_validation_corpus",
+      "reachable_from": [
+        "SCRIPT_ONLY",
+        "TEST_ONLY"
+      ],
+      "dynamic_reference": false,
       "packaging_reference": true,
       "test_reference": false,
       "ci_reference": false,
@@ -929,6 +1494,20 @@
       "delete_confidence_class": "ACTIVE"
     },
     {
+      "path": "scripts/cooperative_resource_benchmark.py",
+      "module": "scripts.cooperative_resource_benchmark",
+      "reachable_from": [
+        "SCRIPT_ONLY",
+        "TEST_ONLY"
+      ],
+      "dynamic_reference": false,
+      "packaging_reference": true,
+      "test_reference": false,
+      "ci_reference": false,
+      "doc_schema_reference": false,
+      "delete_confidence_class": "ACTIVE"
+    },
+    {
       "path": "scripts/dependency_audit_gate.py",
       "module": "scripts.dependency_audit_gate",
       "reachable_from": [
@@ -953,7 +1532,7 @@
       "packaging_reference": true,
       "test_reference": false,
       "ci_reference": false,
-      "doc_schema_reference": false,
+      "doc_schema_reference": true,
       "delete_confidence_class": "ACTIVE"
     },
     {
@@ -994,7 +1573,7 @@
       "packaging_reference": true,
       "test_reference": false,
       "ci_reference": false,
-      "doc_schema_reference": false,
+      "doc_schema_reference": true,
       "delete_confidence_class": "ACTIVE"
     },
     {
@@ -1035,7 +1614,7 @@
       "packaging_reference": true,
       "test_reference": false,
       "ci_reference": false,
-      "doc_schema_reference": false,
+      "doc_schema_reference": true,
       "delete_confidence_class": "ACTIVE"
     },
     {
@@ -1049,7 +1628,7 @@
       "packaging_reference": true,
       "test_reference": false,
       "ci_reference": false,
-      "doc_schema_reference": false,
+      "doc_schema_reference": true,
       "delete_confidence_class": "ACTIVE"
     },
     {
@@ -1063,62 +1642,6 @@
       "test_reference": false,
       "ci_reference": true,
       "doc_schema_reference": true,
-      "delete_confidence_class": "ACTIVE"
-    },
-    {
-      "path": "scripts/hermes_baseline_gate.py",
-      "module": "scripts.hermes_baseline_gate",
-      "reachable_from": [
-        "SCRIPT_ONLY",
-        "TEST_ONLY"
-      ],
-      "dynamic_reference": false,
-      "packaging_reference": true,
-      "test_reference": false,
-      "ci_reference": false,
-      "doc_schema_reference": false,
-      "delete_confidence_class": "ACTIVE"
-    },
-    {
-      "path": "scripts/hermes_persistence_baseline_gate.py",
-      "module": "scripts.hermes_persistence_baseline_gate",
-      "reachable_from": [
-        "SCRIPT_ONLY",
-        "TEST_ONLY"
-      ],
-      "dynamic_reference": false,
-      "packaging_reference": true,
-      "test_reference": false,
-      "ci_reference": false,
-      "doc_schema_reference": false,
-      "delete_confidence_class": "ACTIVE"
-    },
-    {
-      "path": "scripts/hermes_rpc_baseline_gate.py",
-      "module": "scripts.hermes_rpc_baseline_gate",
-      "reachable_from": [
-        "SCRIPT_ONLY",
-        "TEST_ONLY"
-      ],
-      "dynamic_reference": true,
-      "packaging_reference": true,
-      "test_reference": false,
-      "ci_reference": false,
-      "doc_schema_reference": false,
-      "delete_confidence_class": "ACTIVE"
-    },
-    {
-      "path": "scripts/hermes_session_recovery_baseline_gate.py",
-      "module": "scripts.hermes_session_recovery_baseline_gate",
-      "reachable_from": [
-        "SCRIPT_ONLY",
-        "TEST_ONLY"
-      ],
-      "dynamic_reference": false,
-      "packaging_reference": true,
-      "test_reference": false,
-      "ci_reference": false,
-      "doc_schema_reference": false,
       "delete_confidence_class": "ACTIVE"
     },
     {
@@ -1184,7 +1707,7 @@
       "packaging_reference": true,
       "test_reference": false,
       "ci_reference": false,
-      "doc_schema_reference": false,
+      "doc_schema_reference": true,
       "delete_confidence_class": "ACTIVE"
     },
     {
@@ -1211,7 +1734,7 @@
       "packaging_reference": true,
       "test_reference": false,
       "ci_reference": false,
-      "doc_schema_reference": false,
+      "doc_schema_reference": true,
       "delete_confidence_class": "ACTIVE"
     },
     {
@@ -1225,7 +1748,7 @@
       "packaging_reference": true,
       "test_reference": false,
       "ci_reference": false,
-      "doc_schema_reference": false,
+      "doc_schema_reference": true,
       "delete_confidence_class": "ACTIVE"
     },
     {
@@ -1239,7 +1762,7 @@
       "packaging_reference": true,
       "test_reference": false,
       "ci_reference": false,
-      "doc_schema_reference": false,
+      "doc_schema_reference": true,
       "delete_confidence_class": "ACTIVE"
     },
     {
@@ -1253,7 +1776,7 @@
       "packaging_reference": true,
       "test_reference": false,
       "ci_reference": false,
-      "doc_schema_reference": false,
+      "doc_schema_reference": true,
       "delete_confidence_class": "ACTIVE"
     },
     {
@@ -1267,7 +1790,7 @@
       "packaging_reference": true,
       "test_reference": false,
       "ci_reference": false,
-      "doc_schema_reference": false,
+      "doc_schema_reference": true,
       "delete_confidence_class": "ACTIVE"
     },
     {
@@ -1281,7 +1804,7 @@
       "packaging_reference": true,
       "test_reference": false,
       "ci_reference": false,
-      "doc_schema_reference": false,
+      "doc_schema_reference": true,
       "delete_confidence_class": "ACTIVE"
     },
     {
@@ -1334,7 +1857,7 @@
       "packaging_reference": true,
       "test_reference": false,
       "ci_reference": true,
-      "doc_schema_reference": false,
+      "doc_schema_reference": true,
       "delete_confidence_class": "ACTIVE"
     },
     {
@@ -1355,6 +1878,62 @@
       "module": "scripts.release_rollback_drill",
       "reachable_from": [
         "SCRIPT_ONLY"
+      ],
+      "dynamic_reference": false,
+      "packaging_reference": true,
+      "test_reference": false,
+      "ci_reference": false,
+      "doc_schema_reference": true,
+      "delete_confidence_class": "ACTIVE"
+    },
+    {
+      "path": "scripts/research/comparators/external/fts5_baseline_gate.py",
+      "module": "scripts.research.comparators.external.fts5_baseline_gate",
+      "reachable_from": [
+        "SCRIPT_ONLY",
+        "TEST_ONLY"
+      ],
+      "dynamic_reference": false,
+      "packaging_reference": true,
+      "test_reference": false,
+      "ci_reference": false,
+      "doc_schema_reference": false,
+      "delete_confidence_class": "ACTIVE"
+    },
+    {
+      "path": "scripts/research/comparators/external/persistence_write_baseline_gate.py",
+      "module": "scripts.research.comparators.external.persistence_write_baseline_gate",
+      "reachable_from": [
+        "SCRIPT_ONLY",
+        "TEST_ONLY"
+      ],
+      "dynamic_reference": false,
+      "packaging_reference": true,
+      "test_reference": false,
+      "ci_reference": false,
+      "doc_schema_reference": false,
+      "delete_confidence_class": "ACTIVE"
+    },
+    {
+      "path": "scripts/research/comparators/external/rpc_context_baseline_gate.py",
+      "module": "scripts.research.comparators.external.rpc_context_baseline_gate",
+      "reachable_from": [
+        "SCRIPT_ONLY",
+        "TEST_ONLY"
+      ],
+      "dynamic_reference": true,
+      "packaging_reference": true,
+      "test_reference": false,
+      "ci_reference": false,
+      "doc_schema_reference": false,
+      "delete_confidence_class": "ACTIVE"
+    },
+    {
+      "path": "scripts/research/comparators/external/session_recovery_baseline_gate.py",
+      "module": "scripts.research.comparators.external.session_recovery_baseline_gate",
+      "reachable_from": [
+        "SCRIPT_ONLY",
+        "TEST_ONLY"
       ],
       "dynamic_reference": false,
       "packaging_reference": true,
@@ -1387,7 +1966,7 @@
       "packaging_reference": true,
       "test_reference": false,
       "ci_reference": false,
-      "doc_schema_reference": false,
+      "doc_schema_reference": true,
       "delete_confidence_class": "ACTIVE"
     },
     {
@@ -1440,7 +2019,7 @@
       "packaging_reference": true,
       "test_reference": false,
       "ci_reference": false,
-      "doc_schema_reference": false,
+      "doc_schema_reference": true,
       "delete_confidence_class": "ACTIVE"
     },
     {
@@ -1454,7 +2033,7 @@
       "packaging_reference": true,
       "test_reference": false,
       "ci_reference": false,
-      "doc_schema_reference": false,
+      "doc_schema_reference": true,
       "delete_confidence_class": "ACTIVE"
     },
     {
@@ -1526,6 +2105,266 @@
       "delete_confidence_class": "ACTIVE"
     },
     {
+      "path": "tests/test_aese_affected_closure.py",
+      "module": "tests.test_aese_affected_closure",
+      "reachable_from": [
+        "TEST_ONLY"
+      ],
+      "dynamic_reference": false,
+      "packaging_reference": true,
+      "test_reference": true,
+      "ci_reference": false,
+      "doc_schema_reference": false,
+      "delete_confidence_class": "ACTIVE"
+    },
+    {
+      "path": "tests/test_aese_claim_graph.py",
+      "module": "tests.test_aese_claim_graph",
+      "reachable_from": [
+        "TEST_ONLY"
+      ],
+      "dynamic_reference": false,
+      "packaging_reference": true,
+      "test_reference": true,
+      "ci_reference": false,
+      "doc_schema_reference": true,
+      "delete_confidence_class": "ACTIVE"
+    },
+    {
+      "path": "tests/test_aese_failure_diagnostic.py",
+      "module": "tests.test_aese_failure_diagnostic",
+      "reachable_from": [
+        "TEST_ONLY"
+      ],
+      "dynamic_reference": false,
+      "packaging_reference": true,
+      "test_reference": true,
+      "ci_reference": false,
+      "doc_schema_reference": false,
+      "delete_confidence_class": "ACTIVE"
+    },
+    {
+      "path": "tests/test_aese_inventory.py",
+      "module": "tests.test_aese_inventory",
+      "reachable_from": [
+        "TEST_ONLY"
+      ],
+      "dynamic_reference": false,
+      "packaging_reference": true,
+      "test_reference": true,
+      "ci_reference": false,
+      "doc_schema_reference": true,
+      "delete_confidence_class": "ACTIVE"
+    },
+    {
+      "path": "tests/test_aese_preflight.py",
+      "module": "tests.test_aese_preflight",
+      "reachable_from": [
+        "TEST_ONLY"
+      ],
+      "dynamic_reference": false,
+      "packaging_reference": true,
+      "test_reference": true,
+      "ci_reference": false,
+      "doc_schema_reference": true,
+      "delete_confidence_class": "ACTIVE"
+    },
+    {
+      "path": "tests/test_aese_primitives.py",
+      "module": "tests.test_aese_primitives",
+      "reachable_from": [
+        "TEST_ONLY"
+      ],
+      "dynamic_reference": false,
+      "packaging_reference": true,
+      "test_reference": true,
+      "ci_reference": false,
+      "doc_schema_reference": true,
+      "delete_confidence_class": "ACTIVE"
+    },
+    {
+      "path": "tests/test_aese_s2_mapping.py",
+      "module": "tests.test_aese_s2_mapping",
+      "reachable_from": [
+        "TEST_ONLY"
+      ],
+      "dynamic_reference": false,
+      "packaging_reference": true,
+      "test_reference": true,
+      "ci_reference": false,
+      "doc_schema_reference": false,
+      "delete_confidence_class": "ACTIVE"
+    },
+    {
+      "path": "tests/test_aese_shadow_planner.py",
+      "module": "tests.test_aese_shadow_planner",
+      "reachable_from": [
+        "TEST_ONLY"
+      ],
+      "dynamic_reference": false,
+      "packaging_reference": true,
+      "test_reference": true,
+      "ci_reference": false,
+      "doc_schema_reference": false,
+      "delete_confidence_class": "ACTIVE"
+    },
+    {
+      "path": "tests/test_aese_statistical_calibration.py",
+      "module": "tests.test_aese_statistical_calibration",
+      "reachable_from": [
+        "TEST_ONLY"
+      ],
+      "dynamic_reference": false,
+      "packaging_reference": true,
+      "test_reference": true,
+      "ci_reference": false,
+      "doc_schema_reference": false,
+      "delete_confidence_class": "ACTIVE"
+    },
+    {
+      "path": "tests/test_aese_validation_corpus.py",
+      "module": "tests.test_aese_validation_corpus",
+      "reachable_from": [
+        "TEST_ONLY"
+      ],
+      "dynamic_reference": false,
+      "packaging_reference": true,
+      "test_reference": true,
+      "ci_reference": false,
+      "doc_schema_reference": false,
+      "delete_confidence_class": "ACTIVE"
+    },
+    {
+      "path": "tests/test_chatgpt_web_client.py",
+      "module": "tests.test_chatgpt_web_client",
+      "reachable_from": [
+        "TEST_ONLY"
+      ],
+      "dynamic_reference": false,
+      "packaging_reference": true,
+      "test_reference": true,
+      "ci_reference": false,
+      "doc_schema_reference": false,
+      "delete_confidence_class": "ACTIVE"
+    },
+    {
+      "path": "tests/test_ci_suite_evidence_contract.py",
+      "module": "tests.test_ci_suite_evidence_contract",
+      "reachable_from": [
+        "TEST_ONLY"
+      ],
+      "dynamic_reference": false,
+      "packaging_reference": true,
+      "test_reference": true,
+      "ci_reference": false,
+      "doc_schema_reference": false,
+      "delete_confidence_class": "ACTIVE"
+    },
+    {
+      "path": "tests/test_cli.py",
+      "module": "tests.test_cli",
+      "reachable_from": [
+        "TEST_ONLY"
+      ],
+      "dynamic_reference": false,
+      "packaging_reference": true,
+      "test_reference": true,
+      "ci_reference": false,
+      "doc_schema_reference": false,
+      "delete_confidence_class": "ACTIVE"
+    },
+    {
+      "path": "tests/test_code_intelligence.py",
+      "module": "tests.test_code_intelligence",
+      "reachable_from": [
+        "TEST_ONLY"
+      ],
+      "dynamic_reference": false,
+      "packaging_reference": true,
+      "test_reference": true,
+      "ci_reference": false,
+      "doc_schema_reference": false,
+      "delete_confidence_class": "ACTIVE"
+    },
+    {
+      "path": "tests/test_connections.py",
+      "module": "tests.test_connections",
+      "reachable_from": [
+        "TEST_ONLY"
+      ],
+      "dynamic_reference": false,
+      "packaging_reference": true,
+      "test_reference": true,
+      "ci_reference": false,
+      "doc_schema_reference": false,
+      "delete_confidence_class": "ACTIVE"
+    },
+    {
+      "path": "tests/test_constitution_audit_gates.py",
+      "module": "tests.test_constitution_audit_gates",
+      "reachable_from": [
+        "TEST_ONLY"
+      ],
+      "dynamic_reference": false,
+      "packaging_reference": true,
+      "test_reference": true,
+      "ci_reference": false,
+      "doc_schema_reference": false,
+      "delete_confidence_class": "ACTIVE"
+    },
+    {
+      "path": "tests/test_context_compiler.py",
+      "module": "tests.test_context_compiler",
+      "reachable_from": [
+        "TEST_ONLY"
+      ],
+      "dynamic_reference": false,
+      "packaging_reference": true,
+      "test_reference": true,
+      "ci_reference": false,
+      "doc_schema_reference": false,
+      "delete_confidence_class": "ACTIVE"
+    },
+    {
+      "path": "tests/test_conversations.py",
+      "module": "tests.test_conversations",
+      "reachable_from": [
+        "TEST_ONLY"
+      ],
+      "dynamic_reference": false,
+      "packaging_reference": true,
+      "test_reference": true,
+      "ci_reference": false,
+      "doc_schema_reference": false,
+      "delete_confidence_class": "ACTIVE"
+    },
+    {
+      "path": "tests/test_cooperative_resource_benchmark.py",
+      "module": "tests.test_cooperative_resource_benchmark",
+      "reachable_from": [
+        "TEST_ONLY"
+      ],
+      "dynamic_reference": false,
+      "packaging_reference": true,
+      "test_reference": true,
+      "ci_reference": false,
+      "doc_schema_reference": false,
+      "delete_confidence_class": "ACTIVE"
+    },
+    {
+      "path": "tests/test_desktop_protocol.py",
+      "module": "tests.test_desktop_protocol",
+      "reachable_from": [
+        "TEST_ONLY"
+      ],
+      "dynamic_reference": false,
+      "packaging_reference": true,
+      "test_reference": true,
+      "ci_reference": false,
+      "doc_schema_reference": false,
+      "delete_confidence_class": "ACTIVE"
+    },
+    {
       "path": "tests/test_document_consistency_gate.py",
       "module": "tests.test_document_consistency_gate",
       "reachable_from": [
@@ -1552,6 +2391,45 @@
       "delete_confidence_class": "ACTIVE"
     },
     {
+      "path": "tests/test_goal_contract.py",
+      "module": "tests.test_goal_contract",
+      "reachable_from": [
+        "TEST_ONLY"
+      ],
+      "dynamic_reference": false,
+      "packaging_reference": true,
+      "test_reference": true,
+      "ci_reference": false,
+      "doc_schema_reference": true,
+      "delete_confidence_class": "ACTIVE"
+    },
+    {
+      "path": "tests/test_hardware_profile_report.py",
+      "module": "tests.test_hardware_profile_report",
+      "reachable_from": [
+        "TEST_ONLY"
+      ],
+      "dynamic_reference": false,
+      "packaging_reference": true,
+      "test_reference": true,
+      "ci_reference": false,
+      "doc_schema_reference": false,
+      "delete_confidence_class": "ACTIVE"
+    },
+    {
+      "path": "tests/test_lab_progress_context.py",
+      "module": "tests.test_lab_progress_context",
+      "reachable_from": [
+        "TEST_ONLY"
+      ],
+      "dynamic_reference": false,
+      "packaging_reference": true,
+      "test_reference": true,
+      "ci_reference": false,
+      "doc_schema_reference": true,
+      "delete_confidence_class": "ACTIVE"
+    },
+    {
       "path": "tests/test_lab_runtime.py",
       "module": "tests.test_lab_runtime",
       "reachable_from": [
@@ -1565,8 +2443,60 @@
       "delete_confidence_class": "ACTIVE"
     },
     {
+      "path": "tests/test_progress_gate.py",
+      "module": "tests.test_progress_gate",
+      "reachable_from": [
+        "TEST_ONLY"
+      ],
+      "dynamic_reference": false,
+      "packaging_reference": true,
+      "test_reference": true,
+      "ci_reference": false,
+      "doc_schema_reference": false,
+      "delete_confidence_class": "ACTIVE"
+    },
+    {
+      "path": "tests/test_rag_semantics.py",
+      "module": "tests.test_rag_semantics",
+      "reachable_from": [
+        "TEST_ONLY"
+      ],
+      "dynamic_reference": false,
+      "packaging_reference": true,
+      "test_reference": true,
+      "ci_reference": false,
+      "doc_schema_reference": false,
+      "delete_confidence_class": "ACTIVE"
+    },
+    {
+      "path": "tests/test_release_evidence.py",
+      "module": "tests.test_release_evidence",
+      "reachable_from": [
+        "TEST_ONLY"
+      ],
+      "dynamic_reference": false,
+      "packaging_reference": true,
+      "test_reference": true,
+      "ci_reference": false,
+      "doc_schema_reference": false,
+      "delete_confidence_class": "ACTIVE"
+    },
+    {
       "path": "tests/test_runtime_contracts.py",
       "module": "tests.test_runtime_contracts",
+      "reachable_from": [
+        "TEST_ONLY"
+      ],
+      "dynamic_reference": false,
+      "packaging_reference": true,
+      "test_reference": true,
+      "ci_reference": false,
+      "doc_schema_reference": true,
+      "delete_confidence_class": "ACTIVE"
+    },
+    {
+      "path": "tests/test_runtime_coordination.py",
+      "module": "tests.test_runtime_coordination",
       "reachable_from": [
         "TEST_ONLY"
       ],
@@ -1598,24 +2528,19 @@
   "collection_state_before_generation": {
     "command_exit": 0,
     "stderr": "",
-    "head": "f9645caf6d17cee2023d52183990ffcf8317e456",
-    "branch": "main",
+    "head": "06e2a00e6d18a1fb1ca0edf125aae596ecc6068c",
+    "branch": "codex/aegis-ci-evidence-gates",
     "origin_main": "origin/main",
-    "ahead_behind": "10\t0",
+    "ahead_behind": "9\t0",
     "entries": [
       {
         "status": " M",
+        "path": ".dockerignore",
+        "category": "UNKNOWN"
+      },
+      {
+        "status": " M",
         "path": ".github/workflows/ci.yml",
-        "category": "UNKNOWN"
-      },
-      {
-        "status": " M",
-        "path": ".github/workflows/deep.yml",
-        "category": "UNKNOWN"
-      },
-      {
-        "status": " M",
-        "path": ".github/workflows/release.yml",
         "category": "UNKNOWN"
       },
       {
@@ -1624,84 +2549,359 @@
         "category": "UNKNOWN"
       },
       {
-        "status": " M",
-        "path": "aegis_cognition/__init__.py",
-        "category": "PRODUCT"
+        "status": "R ",
+        "path": ".local/agent-config/cursor/agents/aegis-checkpoint-warden.md",
+        "category": "DOCUMENTATION"
       },
       {
-        "status": " M",
-        "path": "aegis_cognition/agent.py",
-        "category": "PRODUCT"
+        "status": "R ",
+        "path": ".local/agent-config/cursor/agents/aegis-decision-oracle.md",
+        "category": "DOCUMENTATION"
       },
       {
-        "status": " M",
-        "path": "aegis_cognition/application.py",
-        "category": "PRODUCT"
+        "status": "R ",
+        "path": ".local/agent-config/cursor/agents/aegis-memory-curator.md",
+        "category": "DOCUMENTATION"
       },
       {
-        "status": " M",
-        "path": "aegis_cognition/models.py",
-        "category": "PRODUCT"
+        "status": "R ",
+        "path": ".local/agent-config/cursor/agents/aegis-nerve-architect.md",
+        "category": "DOCUMENTATION"
       },
       {
-        "status": " M",
-        "path": "core/python/aegis/provider.py",
-        "category": "COMPATIBILITY"
+        "status": "R ",
+        "path": ".local/agent-config/cursor/agents/aegis-path-prioritizer.md",
+        "category": "DOCUMENTATION"
       },
       {
-        "status": " M",
-        "path": "core/python/aegis_adapter.py",
-        "category": "COMPATIBILITY"
+        "status": "R ",
+        "path": ".local/agent-config/cursor/agents/aegis-planning-guardian.md",
+        "category": "DOCUMENTATION"
       },
       {
-        "status": " M",
-        "path": "core/python/aegis_cli.py",
-        "category": "COMPATIBILITY"
+        "status": "R ",
+        "path": ".local/agent-config/cursor/agents/aegis-rust-architect.md",
+        "category": "DOCUMENTATION"
       },
       {
-        "status": " M",
-        "path": "core/python/bridge.py",
-        "category": "COMPATIBILITY"
+        "status": "R ",
+        "path": ".local/agent-config/cursor/agents/aegis-rust-benchmark-harness.md",
+        "category": "DOCUMENTATION"
       },
       {
-        "status": " M",
-        "path": "core/python/bridge_mmap.py",
-        "category": "COMPATIBILITY"
+        "status": "R ",
+        "path": ".local/agent-config/cursor/agents/aegis-rust-ffi-auditor.md",
+        "category": "DOCUMENTATION"
       },
       {
-        "status": " M",
-        "path": "core/python/browser_live_collector.py",
-        "category": "COMPATIBILITY"
+        "status": "R ",
+        "path": ".local/agent-config/cursor/agents/aegis-rust-schema-keeper.md",
+        "category": "DOCUMENTATION"
       },
       {
-        "status": " M",
-        "path": "core/python/browser_ops_bench.py",
-        "category": "COMPATIBILITY"
+        "status": "R ",
+        "path": ".local/agent-config/cursor/agents/aegis-rust-security-auditor.md",
+        "category": "DOCUMENTATION"
       },
       {
-        "status": " M",
-        "path": "core/python/browser_playwright_runtime.py",
-        "category": "COMPATIBILITY"
+        "status": "R ",
+        "path": ".local/agent-config/cursor/agents/aegis-sac-sentinel.md",
+        "category": "DOCUMENTATION"
       },
       {
-        "status": " M",
-        "path": "core/python/browser_runtime_adapter.py",
-        "category": "COMPATIBILITY"
+        "status": "R ",
+        "path": ".local/agent-config/cursor/agents/aegis-speculative-orchestrator.md",
+        "category": "DOCUMENTATION"
       },
       {
-        "status": " M",
-        "path": "core/python/nim_client.py",
-        "category": "COMPATIBILITY"
+        "status": "R ",
+        "path": ".local/agent-config/cursor/agents/aegis-vibecoding-conductor.md",
+        "category": "DOCUMENTATION"
       },
       {
-        "status": " M",
-        "path": "core/python/operator_api.py",
-        "category": "COMPATIBILITY"
+        "status": "R ",
+        "path": ".local/agent-config/cursor/agents/aegis-zero-trust-plugin-architect.md",
+        "category": "DOCUMENTATION"
       },
       {
-        "status": " M",
-        "path": "core/python/orchestrator.py",
-        "category": "COMPATIBILITY"
+        "status": "R ",
+        "path": ".local/agent-config/cursor/commands/aegis-audit.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/commands/aegis-build.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/commands/aegis-checkpoint.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/commands/aegis-consensus.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/commands/aegis-crystallize.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/commands/aegis-decide.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/commands/aegis-init.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/commands/aegis-path-check.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/commands/aegis-perf-check.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/commands/aegis-plan-check.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/commands/aegis-plugin-create.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/commands/aegis-regression-check.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/commands/aegis-resume.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/commands/aegis-speculate.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/commands/aegis-verify.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/commands/aegis-vibecode.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/rules/aegis-cognition-stack.mdc",
+        "category": "UNKNOWN"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/rules/aegis-performance-checkpoint.mdc",
+        "category": "UNKNOWN"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/rules/aegis-zero-trust-plugin-creator.mdc",
+        "category": "UNKNOWN"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/rules/defect-remediation.mdc",
+        "category": "UNKNOWN"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/rules/planning-architecture.mdc",
+        "category": "UNKNOWN"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/rules/ponytail.mdc",
+        "category": "UNKNOWN"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/rules/project.mdc",
+        "category": "UNKNOWN"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/rules/style.mdc",
+        "category": "UNKNOWN"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/rules/tool-maximization.mdc",
+        "category": "UNKNOWN"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/rules/vibecoding.mdc",
+        "category": "UNKNOWN"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/skills/aegis-architecture/SKILL.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/skills/aegis-checkpoint-supervisor/SKILL.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/skills/aegis-codegen-command/SKILL.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/skills/aegis-cognifold/SKILL.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/skills/aegis-crystallization/SKILL.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/skills/aegis-decision-oracle/SKILL.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/skills/aegis-failure-provenance/SKILL.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/skills/aegis-implementation-guardian/SKILL.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/skills/aegis-invariant-registry/SKILL.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/skills/aegis-long-horizon-orchestrator/SKILL.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/skills/aegis-nerve/SKILL.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/skills/aegis-next-best-action/SKILL.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/skills/aegis-optimal/SKILL.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/skills/aegis-optimization/SKILL.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/skills/aegis-path-prioritizer/SKILL.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/skills/aegis-performance-compiler/SKILL.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/skills/aegis-planning-alignment/SKILL.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/skills/aegis-proof-checker/SKILL.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/skills/aegis-regression-sentinel/SKILL.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/skills/aegis-rust-benchmark/SKILL.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/skills/aegis-rust-ffi/SKILL.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/skills/aegis-rust-schema/SKILL.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/skills/aegis-rust-security-audit/SKILL.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/skills/aegis-sac/SKILL.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/skills/aegis-speculative-decoding/SKILL.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/skills/aegis-vibecoding-conductor/SKILL.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/skills/aegis-zero-trust-plugin-creator/SKILL.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursorrules",
+        "category": "UNKNOWN"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-state/serena/.gitignore",
+        "category": "UNKNOWN"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-state/serena/project.yml",
+        "category": "UNKNOWN"
       },
       {
         "status": " M",
@@ -1710,87 +2910,207 @@
       },
       {
         "status": " M",
-        "path": "core/rust/benches/nerve_bench.rs",
-        "category": "PRODUCT"
-      },
-      {
-        "status": " M",
-        "path": "core/rust/src/ffi.rs",
-        "category": "PRODUCT"
-      },
-      {
-        "status": " M",
-        "path": "core/rust/src/gt96.rs",
-        "category": "PRODUCT"
-      },
-      {
-        "status": " M",
-        "path": "core/rust/src/lib.rs",
-        "category": "PRODUCT"
-      },
-      {
-        "status": " M",
-        "path": "core/rust/src/memory/fold.rs",
-        "category": "PRODUCT"
-      },
-      {
-        "status": " M",
-        "path": "core/rust/src/physical.rs",
-        "category": "PRODUCT"
-      },
-      {
-        "status": " M",
-        "path": "core/rust/src/replay.rs",
-        "category": "PRODUCT"
-      },
-      {
-        "status": " M",
-        "path": "core/rust/src/task_ledger.rs",
-        "category": "PRODUCT"
-      },
-      {
-        "status": " M",
-        "path": "core/rust/src/tests.rs",
-        "category": "PRODUCT"
-      },
-      {
-        "status": " M",
-        "path": "core/rust/src/tool_gateway.rs",
-        "category": "PRODUCT"
-      },
-      {
-        "status": " M",
-        "path": "docs/adr/ADR-012-portability.md",
+        "path": "docs/README.md",
         "category": "DOCUMENTATION"
       },
       {
         "status": " M",
-        "path": "docs/architecture/CONTRACT_INVENTORY.md",
+        "path": "docs/architecture/AEGIS_CURRENT_ARCHITECTURE_TRUTH_AUDIT.md",
         "category": "DOCUMENTATION"
       },
       {
         "status": " M",
-        "path": "docs/architecture/GT96_TRACEABILITY.md",
+        "path": "docs/architecture/AEGIS_LAB_RUNTIME_MASTER_PLAN.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": "docs/architecture/ARCHITECTURE_FREEZE.md",
         "category": "DOCUMENTATION"
       },
       {
         "status": " M",
-        "path": "docs/architecture/NOT_VERIFIED_REGISTRY.md",
+        "path": "docs/architecture/README.md",
         "category": "DOCUMENTATION"
       },
       {
         "status": " M",
-        "path": "docs/architecture/deployment_policy.json",
+        "path": "docs/architecture/design-closure/AEGIS_FINAL_DESIGN_CLOSURE.md",
         "category": "DOCUMENTATION"
       },
       {
         "status": " M",
-        "path": "docs/architecture/evidence/current.json",
+        "path": "docs/architecture/design-closure/artifact_retention.json",
         "category": "DOCUMENTATION"
       },
       {
         "status": " M",
-        "path": "pyproject.toml",
+        "path": "docs/architecture/design-closure/cohesion_candidates.json",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": " M",
+        "path": "docs/architecture/design-closure/config_precedence.json",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": " M",
+        "path": "docs/architecture/design-closure/data_movement.json",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": " M",
+        "path": "docs/architecture/design-closure/delete_candidates.json",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": " M",
+        "path": "docs/architecture/design-closure/design_closure.json",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": " M",
+        "path": "docs/architecture/design-closure/dynamic_reachability.json",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": " M",
+        "path": "docs/architecture/design-closure/entrypoint_truth.json",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": " M",
+        "path": "docs/architecture/design-closure/error_semantics.json",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": " M",
+        "path": "docs/architecture/design-closure/external_boundary.json",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": " M",
+        "path": "docs/architecture/design-closure/ffi_actual_surface.json",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": " M",
+        "path": "docs/architecture/design-closure/invariant_matrix.json",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": " M",
+        "path": "docs/architecture/design-closure/packaging_truth.json",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": " M",
+        "path": "docs/architecture/design-closure/performance_baseline.json",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": " M",
+        "path": "docs/architecture/design-closure/retry_truth.json",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": " M",
+        "path": "docs/architecture/design-closure/rust_mirror_truth.json",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": " M",
+        "path": "docs/architecture/design-closure/rust_public_surface.json",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": " M",
+        "path": "docs/architecture/design-closure/schema_graph.json",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": " M",
+        "path": "docs/architecture/design-closure/side_effect_bypasses.json",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": " M",
+        "path": "docs/architecture/design-closure/side_effect_chains.json",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": " M",
+        "path": "docs/architecture/design-closure/state_divergence.json",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": " M",
+        "path": "docs/architecture/design-closure/trust_truth.json",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": " M",
+        "path": "docs/architecture/document_inventory.json",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": " M",
+        "path": "docs/archive/README.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": "docs/archive/planning/agent-harness-continuation-plan.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": "docs/archive/planning/architecture-optimization.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": "docs/archive/reports/browser-native-architecture.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": "docs/archive/reports/cluster-soak.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": "docs/integrations/aegis-plugins.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": " M",
+        "path": "quality/registry/current_affected_closure.json",
+        "category": "UNKNOWN"
+      },
+      {
+        "status": " M",
+        "path": "quality/registry/current_claim_graph.json",
+        "category": "UNKNOWN"
+      },
+      {
+        "status": " M",
+        "path": "quality/registry/current_inventory.json",
+        "category": "UNKNOWN"
+      },
+      {
+        "status": " M",
+        "path": "quality/registry/current_s2_mapping.json",
+        "category": "UNKNOWN"
+      },
+      {
+        "status": " M",
+        "path": "quality/registry/current_shadow_plan.json",
+        "category": "UNKNOWN"
+      },
+      {
+        "status": " M",
+        "path": "quality/registry/current_validation_corpus.json",
         "category": "UNKNOWN"
       },
       {
@@ -1799,7 +3119,7 @@
         "category": "SCRIPT"
       },
       {
-        "status": " M",
+        "status": " D",
         "path": "scripts/_debug_probe.py",
         "category": "SCRIPT"
       },
@@ -1810,57 +3130,27 @@
       },
       {
         "status": " M",
-        "path": "scripts/dynamic_provider_fallback_gate.py",
+        "path": "scripts/document_consistency_gate.py",
         "category": "SCRIPT"
       },
       {
-        "status": " M",
-        "path": "scripts/e2e_release_gate.py",
+        "status": "R ",
+        "path": "scripts/research/comparators/external/fts5_baseline_gate.py",
         "category": "SCRIPT"
       },
       {
-        "status": " M",
-        "path": "scripts/evidence_consistency_gate.py",
+        "status": "R ",
+        "path": "scripts/research/comparators/external/persistence_write_baseline_gate.py",
         "category": "SCRIPT"
       },
       {
-        "status": " M",
-        "path": "scripts/external_deployment_smoke_gate.py",
+        "status": "R ",
+        "path": "scripts/research/comparators/external/rpc_context_baseline_gate.py",
         "category": "SCRIPT"
       },
       {
-        "status": " M",
-        "path": "scripts/extreme_testing_suite.py",
-        "category": "SCRIPT"
-      },
-      {
-        "status": " M",
-        "path": "scripts/hermes_rpc_baseline_gate.py",
-        "category": "SCRIPT"
-      },
-      {
-        "status": " M",
-        "path": "scripts/production_closure.py",
-        "category": "SCRIPT"
-      },
-      {
-        "status": " M",
-        "path": "scripts/production_readiness.py",
-        "category": "SCRIPT"
-      },
-      {
-        "status": " M",
-        "path": "scripts/python_hotpath_gate.py",
-        "category": "SCRIPT"
-      },
-      {
-        "status": " M",
-        "path": "scripts/release_install_smoke.py",
-        "category": "SCRIPT"
-      },
-      {
-        "status": " M",
-        "path": "scripts/release_rollback_drill.py",
+        "status": "R ",
+        "path": "scripts/research/comparators/external/session_recovery_baseline_gate.py",
         "category": "SCRIPT"
       },
       {
@@ -1870,139 +3160,19 @@
       },
       {
         "status": " M",
-        "path": "scripts/smoke_check.py",
-        "category": "SCRIPT"
-      },
-      {
-        "status": " M",
-        "path": "scripts/sota_baseline_gate.py",
-        "category": "SCRIPT"
-      },
-      {
-        "status": " M",
-        "path": "scripts/supply_chain_gate.py",
-        "category": "SCRIPT"
-      },
-      {
-        "status": " M",
-        "path": "tests/test_evidence_consistency_gate.py",
-        "category": "TEST"
-      },
-      {
-        "status": " M",
-        "path": "uv.lock",
-        "category": "UNKNOWN"
-      },
-      {
-        "status": "??",
-        "path": ".serena/",
-        "category": "UNKNOWN"
-      },
-      {
-        "status": "??",
-        "path": "aegis_cognition/benchmark.py",
-        "category": "PRODUCT"
-      },
-      {
-        "status": "??",
-        "path": "aegis_cognition/lab.py",
-        "category": "LAB"
-      },
-      {
-        "status": "??",
-        "path": "core/rust/src/lab.rs",
-        "category": "LAB"
-      },
-      {
-        "status": "??",
-        "path": "docs/adr/ADR-015-portability.md",
-        "category": "DOCUMENTATION"
-      },
-      {
-        "status": "??",
-        "path": "docs/api/",
-        "category": "DOCUMENTATION"
-      },
-      {
-        "status": "??",
-        "path": "docs/architecture.md",
-        "category": "DOCUMENTATION"
-      },
-      {
-        "status": "??",
-        "path": "docs/architecture/AEGIS_CURRENT_ARCHITECTURE_TRUTH_AUDIT.md",
-        "category": "DOCUMENTATION"
-      },
-      {
-        "status": "??",
-        "path": "docs/architecture/AEGIS_LAB_RUNTIME_MASTER_PLAN.md",
-        "category": "DOCUMENTATION"
-      },
-      {
-        "status": "??",
-        "path": "docs/architecture/AEGIS_LAB_STATUS_GENERATED.md",
-        "category": "DOCUMENTATION"
-      },
-      {
-        "status": "??",
-        "path": "docs/architecture/document_inventory.json",
-        "category": "DOCUMENTATION"
-      },
-      {
-        "status": "??",
-        "path": "docs/architecture/evidence-pack/",
-        "category": "GENERATED"
-      },
-      {
-        "status": "??",
-        "path": "docs/troubleshooting/",
-        "category": "DOCUMENTATION"
-      },
-      {
-        "status": "??",
-        "path": "docs/tutorials/",
-        "category": "DOCUMENTATION"
-      },
-      {
-        "status": "??",
-        "path": "scripts/document_consistency_gate.py",
-        "category": "SCRIPT"
-      },
-      {
-        "status": "??",
-        "path": "scripts/release_controller_action_smoke.py",
-        "category": "SCRIPT"
-      },
-      {
-        "status": "??",
-        "path": "scripts/release_recovery_smoke.py",
-        "category": "SCRIPT"
-      },
-      {
-        "status": "??",
-        "path": "tests/test_document_consistency_gate.py",
-        "category": "TEST"
-      },
-      {
-        "status": "??",
-        "path": "tests/test_lab_runtime.py",
+        "path": "tests/test_constitution_audit_gates.py",
         "category": "TEST"
       }
     ],
     "tracked_modified": [
       {
         "status": " M",
+        "path": ".dockerignore",
+        "category": "UNKNOWN"
+      },
+      {
+        "status": " M",
         "path": ".github/workflows/ci.yml",
-        "category": "UNKNOWN"
-      },
-      {
-        "status": " M",
-        "path": ".github/workflows/deep.yml",
-        "category": "UNKNOWN"
-      },
-      {
-        "status": " M",
-        "path": ".github/workflows/release.yml",
         "category": "UNKNOWN"
       },
       {
@@ -2011,84 +3181,359 @@
         "category": "UNKNOWN"
       },
       {
-        "status": " M",
-        "path": "aegis_cognition/__init__.py",
-        "category": "PRODUCT"
+        "status": "R ",
+        "path": ".local/agent-config/cursor/agents/aegis-checkpoint-warden.md",
+        "category": "DOCUMENTATION"
       },
       {
-        "status": " M",
-        "path": "aegis_cognition/agent.py",
-        "category": "PRODUCT"
+        "status": "R ",
+        "path": ".local/agent-config/cursor/agents/aegis-decision-oracle.md",
+        "category": "DOCUMENTATION"
       },
       {
-        "status": " M",
-        "path": "aegis_cognition/application.py",
-        "category": "PRODUCT"
+        "status": "R ",
+        "path": ".local/agent-config/cursor/agents/aegis-memory-curator.md",
+        "category": "DOCUMENTATION"
       },
       {
-        "status": " M",
-        "path": "aegis_cognition/models.py",
-        "category": "PRODUCT"
+        "status": "R ",
+        "path": ".local/agent-config/cursor/agents/aegis-nerve-architect.md",
+        "category": "DOCUMENTATION"
       },
       {
-        "status": " M",
-        "path": "core/python/aegis/provider.py",
-        "category": "COMPATIBILITY"
+        "status": "R ",
+        "path": ".local/agent-config/cursor/agents/aegis-path-prioritizer.md",
+        "category": "DOCUMENTATION"
       },
       {
-        "status": " M",
-        "path": "core/python/aegis_adapter.py",
-        "category": "COMPATIBILITY"
+        "status": "R ",
+        "path": ".local/agent-config/cursor/agents/aegis-planning-guardian.md",
+        "category": "DOCUMENTATION"
       },
       {
-        "status": " M",
-        "path": "core/python/aegis_cli.py",
-        "category": "COMPATIBILITY"
+        "status": "R ",
+        "path": ".local/agent-config/cursor/agents/aegis-rust-architect.md",
+        "category": "DOCUMENTATION"
       },
       {
-        "status": " M",
-        "path": "core/python/bridge.py",
-        "category": "COMPATIBILITY"
+        "status": "R ",
+        "path": ".local/agent-config/cursor/agents/aegis-rust-benchmark-harness.md",
+        "category": "DOCUMENTATION"
       },
       {
-        "status": " M",
-        "path": "core/python/bridge_mmap.py",
-        "category": "COMPATIBILITY"
+        "status": "R ",
+        "path": ".local/agent-config/cursor/agents/aegis-rust-ffi-auditor.md",
+        "category": "DOCUMENTATION"
       },
       {
-        "status": " M",
-        "path": "core/python/browser_live_collector.py",
-        "category": "COMPATIBILITY"
+        "status": "R ",
+        "path": ".local/agent-config/cursor/agents/aegis-rust-schema-keeper.md",
+        "category": "DOCUMENTATION"
       },
       {
-        "status": " M",
-        "path": "core/python/browser_ops_bench.py",
-        "category": "COMPATIBILITY"
+        "status": "R ",
+        "path": ".local/agent-config/cursor/agents/aegis-rust-security-auditor.md",
+        "category": "DOCUMENTATION"
       },
       {
-        "status": " M",
-        "path": "core/python/browser_playwright_runtime.py",
-        "category": "COMPATIBILITY"
+        "status": "R ",
+        "path": ".local/agent-config/cursor/agents/aegis-sac-sentinel.md",
+        "category": "DOCUMENTATION"
       },
       {
-        "status": " M",
-        "path": "core/python/browser_runtime_adapter.py",
-        "category": "COMPATIBILITY"
+        "status": "R ",
+        "path": ".local/agent-config/cursor/agents/aegis-speculative-orchestrator.md",
+        "category": "DOCUMENTATION"
       },
       {
-        "status": " M",
-        "path": "core/python/nim_client.py",
-        "category": "COMPATIBILITY"
+        "status": "R ",
+        "path": ".local/agent-config/cursor/agents/aegis-vibecoding-conductor.md",
+        "category": "DOCUMENTATION"
       },
       {
-        "status": " M",
-        "path": "core/python/operator_api.py",
-        "category": "COMPATIBILITY"
+        "status": "R ",
+        "path": ".local/agent-config/cursor/agents/aegis-zero-trust-plugin-architect.md",
+        "category": "DOCUMENTATION"
       },
       {
-        "status": " M",
-        "path": "core/python/orchestrator.py",
-        "category": "COMPATIBILITY"
+        "status": "R ",
+        "path": ".local/agent-config/cursor/commands/aegis-audit.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/commands/aegis-build.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/commands/aegis-checkpoint.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/commands/aegis-consensus.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/commands/aegis-crystallize.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/commands/aegis-decide.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/commands/aegis-init.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/commands/aegis-path-check.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/commands/aegis-perf-check.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/commands/aegis-plan-check.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/commands/aegis-plugin-create.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/commands/aegis-regression-check.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/commands/aegis-resume.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/commands/aegis-speculate.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/commands/aegis-verify.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/commands/aegis-vibecode.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/rules/aegis-cognition-stack.mdc",
+        "category": "UNKNOWN"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/rules/aegis-performance-checkpoint.mdc",
+        "category": "UNKNOWN"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/rules/aegis-zero-trust-plugin-creator.mdc",
+        "category": "UNKNOWN"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/rules/defect-remediation.mdc",
+        "category": "UNKNOWN"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/rules/planning-architecture.mdc",
+        "category": "UNKNOWN"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/rules/ponytail.mdc",
+        "category": "UNKNOWN"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/rules/project.mdc",
+        "category": "UNKNOWN"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/rules/style.mdc",
+        "category": "UNKNOWN"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/rules/tool-maximization.mdc",
+        "category": "UNKNOWN"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/rules/vibecoding.mdc",
+        "category": "UNKNOWN"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/skills/aegis-architecture/SKILL.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/skills/aegis-checkpoint-supervisor/SKILL.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/skills/aegis-codegen-command/SKILL.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/skills/aegis-cognifold/SKILL.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/skills/aegis-crystallization/SKILL.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/skills/aegis-decision-oracle/SKILL.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/skills/aegis-failure-provenance/SKILL.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/skills/aegis-implementation-guardian/SKILL.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/skills/aegis-invariant-registry/SKILL.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/skills/aegis-long-horizon-orchestrator/SKILL.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/skills/aegis-nerve/SKILL.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/skills/aegis-next-best-action/SKILL.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/skills/aegis-optimal/SKILL.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/skills/aegis-optimization/SKILL.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/skills/aegis-path-prioritizer/SKILL.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/skills/aegis-performance-compiler/SKILL.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/skills/aegis-planning-alignment/SKILL.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/skills/aegis-proof-checker/SKILL.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/skills/aegis-regression-sentinel/SKILL.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/skills/aegis-rust-benchmark/SKILL.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/skills/aegis-rust-ffi/SKILL.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/skills/aegis-rust-schema/SKILL.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/skills/aegis-rust-security-audit/SKILL.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/skills/aegis-sac/SKILL.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/skills/aegis-speculative-decoding/SKILL.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/skills/aegis-vibecoding-conductor/SKILL.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/skills/aegis-zero-trust-plugin-creator/SKILL.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursorrules",
+        "category": "UNKNOWN"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-state/serena/.gitignore",
+        "category": "UNKNOWN"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-state/serena/project.yml",
+        "category": "UNKNOWN"
       },
       {
         "status": " M",
@@ -2097,87 +3542,207 @@
       },
       {
         "status": " M",
-        "path": "core/rust/benches/nerve_bench.rs",
-        "category": "PRODUCT"
-      },
-      {
-        "status": " M",
-        "path": "core/rust/src/ffi.rs",
-        "category": "PRODUCT"
-      },
-      {
-        "status": " M",
-        "path": "core/rust/src/gt96.rs",
-        "category": "PRODUCT"
-      },
-      {
-        "status": " M",
-        "path": "core/rust/src/lib.rs",
-        "category": "PRODUCT"
-      },
-      {
-        "status": " M",
-        "path": "core/rust/src/memory/fold.rs",
-        "category": "PRODUCT"
-      },
-      {
-        "status": " M",
-        "path": "core/rust/src/physical.rs",
-        "category": "PRODUCT"
-      },
-      {
-        "status": " M",
-        "path": "core/rust/src/replay.rs",
-        "category": "PRODUCT"
-      },
-      {
-        "status": " M",
-        "path": "core/rust/src/task_ledger.rs",
-        "category": "PRODUCT"
-      },
-      {
-        "status": " M",
-        "path": "core/rust/src/tests.rs",
-        "category": "PRODUCT"
-      },
-      {
-        "status": " M",
-        "path": "core/rust/src/tool_gateway.rs",
-        "category": "PRODUCT"
-      },
-      {
-        "status": " M",
-        "path": "docs/adr/ADR-012-portability.md",
+        "path": "docs/README.md",
         "category": "DOCUMENTATION"
       },
       {
         "status": " M",
-        "path": "docs/architecture/CONTRACT_INVENTORY.md",
+        "path": "docs/architecture/AEGIS_CURRENT_ARCHITECTURE_TRUTH_AUDIT.md",
         "category": "DOCUMENTATION"
       },
       {
         "status": " M",
-        "path": "docs/architecture/GT96_TRACEABILITY.md",
+        "path": "docs/architecture/AEGIS_LAB_RUNTIME_MASTER_PLAN.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": "docs/architecture/ARCHITECTURE_FREEZE.md",
         "category": "DOCUMENTATION"
       },
       {
         "status": " M",
-        "path": "docs/architecture/NOT_VERIFIED_REGISTRY.md",
+        "path": "docs/architecture/README.md",
         "category": "DOCUMENTATION"
       },
       {
         "status": " M",
-        "path": "docs/architecture/deployment_policy.json",
+        "path": "docs/architecture/design-closure/AEGIS_FINAL_DESIGN_CLOSURE.md",
         "category": "DOCUMENTATION"
       },
       {
         "status": " M",
-        "path": "docs/architecture/evidence/current.json",
+        "path": "docs/architecture/design-closure/artifact_retention.json",
         "category": "DOCUMENTATION"
       },
       {
         "status": " M",
-        "path": "pyproject.toml",
+        "path": "docs/architecture/design-closure/cohesion_candidates.json",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": " M",
+        "path": "docs/architecture/design-closure/config_precedence.json",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": " M",
+        "path": "docs/architecture/design-closure/data_movement.json",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": " M",
+        "path": "docs/architecture/design-closure/delete_candidates.json",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": " M",
+        "path": "docs/architecture/design-closure/design_closure.json",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": " M",
+        "path": "docs/architecture/design-closure/dynamic_reachability.json",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": " M",
+        "path": "docs/architecture/design-closure/entrypoint_truth.json",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": " M",
+        "path": "docs/architecture/design-closure/error_semantics.json",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": " M",
+        "path": "docs/architecture/design-closure/external_boundary.json",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": " M",
+        "path": "docs/architecture/design-closure/ffi_actual_surface.json",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": " M",
+        "path": "docs/architecture/design-closure/invariant_matrix.json",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": " M",
+        "path": "docs/architecture/design-closure/packaging_truth.json",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": " M",
+        "path": "docs/architecture/design-closure/performance_baseline.json",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": " M",
+        "path": "docs/architecture/design-closure/retry_truth.json",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": " M",
+        "path": "docs/architecture/design-closure/rust_mirror_truth.json",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": " M",
+        "path": "docs/architecture/design-closure/rust_public_surface.json",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": " M",
+        "path": "docs/architecture/design-closure/schema_graph.json",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": " M",
+        "path": "docs/architecture/design-closure/side_effect_bypasses.json",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": " M",
+        "path": "docs/architecture/design-closure/side_effect_chains.json",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": " M",
+        "path": "docs/architecture/design-closure/state_divergence.json",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": " M",
+        "path": "docs/architecture/design-closure/trust_truth.json",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": " M",
+        "path": "docs/architecture/document_inventory.json",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": " M",
+        "path": "docs/archive/README.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": "docs/archive/planning/agent-harness-continuation-plan.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": "docs/archive/planning/architecture-optimization.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": "docs/archive/reports/browser-native-architecture.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": "docs/archive/reports/cluster-soak.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": "docs/integrations/aegis-plugins.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": " M",
+        "path": "quality/registry/current_affected_closure.json",
+        "category": "UNKNOWN"
+      },
+      {
+        "status": " M",
+        "path": "quality/registry/current_claim_graph.json",
+        "category": "UNKNOWN"
+      },
+      {
+        "status": " M",
+        "path": "quality/registry/current_inventory.json",
+        "category": "UNKNOWN"
+      },
+      {
+        "status": " M",
+        "path": "quality/registry/current_s2_mapping.json",
+        "category": "UNKNOWN"
+      },
+      {
+        "status": " M",
+        "path": "quality/registry/current_shadow_plan.json",
+        "category": "UNKNOWN"
+      },
+      {
+        "status": " M",
+        "path": "quality/registry/current_validation_corpus.json",
         "category": "UNKNOWN"
       },
       {
@@ -2186,7 +3751,7 @@
         "category": "SCRIPT"
       },
       {
-        "status": " M",
+        "status": " D",
         "path": "scripts/_debug_probe.py",
         "category": "SCRIPT"
       },
@@ -2197,57 +3762,27 @@
       },
       {
         "status": " M",
-        "path": "scripts/dynamic_provider_fallback_gate.py",
+        "path": "scripts/document_consistency_gate.py",
         "category": "SCRIPT"
       },
       {
-        "status": " M",
-        "path": "scripts/e2e_release_gate.py",
+        "status": "R ",
+        "path": "scripts/research/comparators/external/fts5_baseline_gate.py",
         "category": "SCRIPT"
       },
       {
-        "status": " M",
-        "path": "scripts/evidence_consistency_gate.py",
+        "status": "R ",
+        "path": "scripts/research/comparators/external/persistence_write_baseline_gate.py",
         "category": "SCRIPT"
       },
       {
-        "status": " M",
-        "path": "scripts/external_deployment_smoke_gate.py",
+        "status": "R ",
+        "path": "scripts/research/comparators/external/rpc_context_baseline_gate.py",
         "category": "SCRIPT"
       },
       {
-        "status": " M",
-        "path": "scripts/extreme_testing_suite.py",
-        "category": "SCRIPT"
-      },
-      {
-        "status": " M",
-        "path": "scripts/hermes_rpc_baseline_gate.py",
-        "category": "SCRIPT"
-      },
-      {
-        "status": " M",
-        "path": "scripts/production_closure.py",
-        "category": "SCRIPT"
-      },
-      {
-        "status": " M",
-        "path": "scripts/production_readiness.py",
-        "category": "SCRIPT"
-      },
-      {
-        "status": " M",
-        "path": "scripts/python_hotpath_gate.py",
-        "category": "SCRIPT"
-      },
-      {
-        "status": " M",
-        "path": "scripts/release_install_smoke.py",
-        "category": "SCRIPT"
-      },
-      {
-        "status": " M",
-        "path": "scripts/release_rollback_drill.py",
+        "status": "R ",
+        "path": "scripts/research/comparators/external/session_recovery_baseline_gate.py",
         "category": "SCRIPT"
       },
       {
@@ -2257,151 +3792,436 @@
       },
       {
         "status": " M",
-        "path": "scripts/smoke_check.py",
-        "category": "SCRIPT"
-      },
-      {
-        "status": " M",
-        "path": "scripts/sota_baseline_gate.py",
-        "category": "SCRIPT"
-      },
-      {
-        "status": " M",
-        "path": "scripts/supply_chain_gate.py",
-        "category": "SCRIPT"
-      },
-      {
-        "status": " M",
-        "path": "tests/test_evidence_consistency_gate.py",
-        "category": "TEST"
-      },
-      {
-        "status": " M",
-        "path": "uv.lock",
-        "category": "UNKNOWN"
-      }
-    ],
-    "staged": [],
-    "untracked": [
-      {
-        "status": "??",
-        "path": ".serena/",
-        "category": "UNKNOWN"
-      },
-      {
-        "status": "??",
-        "path": "aegis_cognition/benchmark.py",
-        "category": "PRODUCT"
-      },
-      {
-        "status": "??",
-        "path": "aegis_cognition/lab.py",
-        "category": "LAB"
-      },
-      {
-        "status": "??",
-        "path": "core/rust/src/lab.rs",
-        "category": "LAB"
-      },
-      {
-        "status": "??",
-        "path": "docs/adr/ADR-015-portability.md",
-        "category": "DOCUMENTATION"
-      },
-      {
-        "status": "??",
-        "path": "docs/api/",
-        "category": "DOCUMENTATION"
-      },
-      {
-        "status": "??",
-        "path": "docs/architecture.md",
-        "category": "DOCUMENTATION"
-      },
-      {
-        "status": "??",
-        "path": "docs/architecture/AEGIS_CURRENT_ARCHITECTURE_TRUTH_AUDIT.md",
-        "category": "DOCUMENTATION"
-      },
-      {
-        "status": "??",
-        "path": "docs/architecture/AEGIS_LAB_RUNTIME_MASTER_PLAN.md",
-        "category": "DOCUMENTATION"
-      },
-      {
-        "status": "??",
-        "path": "docs/architecture/AEGIS_LAB_STATUS_GENERATED.md",
-        "category": "DOCUMENTATION"
-      },
-      {
-        "status": "??",
-        "path": "docs/architecture/document_inventory.json",
-        "category": "DOCUMENTATION"
-      },
-      {
-        "status": "??",
-        "path": "docs/architecture/evidence-pack/",
-        "category": "GENERATED"
-      },
-      {
-        "status": "??",
-        "path": "docs/troubleshooting/",
-        "category": "DOCUMENTATION"
-      },
-      {
-        "status": "??",
-        "path": "docs/tutorials/",
-        "category": "DOCUMENTATION"
-      },
-      {
-        "status": "??",
-        "path": "scripts/document_consistency_gate.py",
-        "category": "SCRIPT"
-      },
-      {
-        "status": "??",
-        "path": "scripts/release_controller_action_smoke.py",
-        "category": "SCRIPT"
-      },
-      {
-        "status": "??",
-        "path": "scripts/release_recovery_smoke.py",
-        "category": "SCRIPT"
-      },
-      {
-        "status": "??",
-        "path": "tests/test_document_consistency_gate.py",
-        "category": "TEST"
-      },
-      {
-        "status": "??",
-        "path": "tests/test_lab_runtime.py",
+        "path": "tests/test_constitution_audit_gates.py",
         "category": "TEST"
       }
     ],
-    "total_entries": 77
+    "staged": [
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/agents/aegis-checkpoint-warden.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/agents/aegis-decision-oracle.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/agents/aegis-memory-curator.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/agents/aegis-nerve-architect.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/agents/aegis-path-prioritizer.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/agents/aegis-planning-guardian.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/agents/aegis-rust-architect.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/agents/aegis-rust-benchmark-harness.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/agents/aegis-rust-ffi-auditor.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/agents/aegis-rust-schema-keeper.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/agents/aegis-rust-security-auditor.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/agents/aegis-sac-sentinel.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/agents/aegis-speculative-orchestrator.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/agents/aegis-vibecoding-conductor.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/agents/aegis-zero-trust-plugin-architect.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/commands/aegis-audit.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/commands/aegis-build.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/commands/aegis-checkpoint.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/commands/aegis-consensus.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/commands/aegis-crystallize.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/commands/aegis-decide.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/commands/aegis-init.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/commands/aegis-path-check.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/commands/aegis-perf-check.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/commands/aegis-plan-check.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/commands/aegis-plugin-create.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/commands/aegis-regression-check.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/commands/aegis-resume.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/commands/aegis-speculate.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/commands/aegis-verify.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/commands/aegis-vibecode.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/rules/aegis-cognition-stack.mdc",
+        "category": "UNKNOWN"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/rules/aegis-performance-checkpoint.mdc",
+        "category": "UNKNOWN"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/rules/aegis-zero-trust-plugin-creator.mdc",
+        "category": "UNKNOWN"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/rules/defect-remediation.mdc",
+        "category": "UNKNOWN"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/rules/planning-architecture.mdc",
+        "category": "UNKNOWN"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/rules/ponytail.mdc",
+        "category": "UNKNOWN"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/rules/project.mdc",
+        "category": "UNKNOWN"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/rules/style.mdc",
+        "category": "UNKNOWN"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/rules/tool-maximization.mdc",
+        "category": "UNKNOWN"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/rules/vibecoding.mdc",
+        "category": "UNKNOWN"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/skills/aegis-architecture/SKILL.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/skills/aegis-checkpoint-supervisor/SKILL.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/skills/aegis-codegen-command/SKILL.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/skills/aegis-cognifold/SKILL.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/skills/aegis-crystallization/SKILL.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/skills/aegis-decision-oracle/SKILL.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/skills/aegis-failure-provenance/SKILL.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/skills/aegis-implementation-guardian/SKILL.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/skills/aegis-invariant-registry/SKILL.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/skills/aegis-long-horizon-orchestrator/SKILL.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/skills/aegis-nerve/SKILL.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/skills/aegis-next-best-action/SKILL.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/skills/aegis-optimal/SKILL.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/skills/aegis-optimization/SKILL.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/skills/aegis-path-prioritizer/SKILL.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/skills/aegis-performance-compiler/SKILL.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/skills/aegis-planning-alignment/SKILL.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/skills/aegis-proof-checker/SKILL.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/skills/aegis-regression-sentinel/SKILL.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/skills/aegis-rust-benchmark/SKILL.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/skills/aegis-rust-ffi/SKILL.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/skills/aegis-rust-schema/SKILL.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/skills/aegis-rust-security-audit/SKILL.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/skills/aegis-sac/SKILL.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/skills/aegis-speculative-decoding/SKILL.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/skills/aegis-vibecoding-conductor/SKILL.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/skills/aegis-zero-trust-plugin-creator/SKILL.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursorrules",
+        "category": "UNKNOWN"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-state/serena/.gitignore",
+        "category": "UNKNOWN"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-state/serena/project.yml",
+        "category": "UNKNOWN"
+      },
+      {
+        "status": "R ",
+        "path": "docs/architecture/ARCHITECTURE_FREEZE.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": "docs/archive/planning/agent-harness-continuation-plan.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": "docs/archive/planning/architecture-optimization.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": "docs/archive/reports/browser-native-architecture.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": "docs/archive/reports/cluster-soak.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": "docs/integrations/aegis-plugins.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": "scripts/research/comparators/external/fts5_baseline_gate.py",
+        "category": "SCRIPT"
+      },
+      {
+        "status": "R ",
+        "path": "scripts/research/comparators/external/persistence_write_baseline_gate.py",
+        "category": "SCRIPT"
+      },
+      {
+        "status": "R ",
+        "path": "scripts/research/comparators/external/rpc_context_baseline_gate.py",
+        "category": "SCRIPT"
+      },
+      {
+        "status": "R ",
+        "path": "scripts/research/comparators/external/session_recovery_baseline_gate.py",
+        "category": "SCRIPT"
+      }
+    ],
+    "untracked": [],
+    "total_entries": 126
   },
   "collection_state_after_generation": {
     "command_exit": 0,
     "stderr": "",
-    "head": "f9645caf6d17cee2023d52183990ffcf8317e456",
-    "branch": "main",
+    "head": "06e2a00e6d18a1fb1ca0edf125aae596ecc6068c",
+    "branch": "codex/aegis-ci-evidence-gates",
     "origin_main": "origin/main",
-    "ahead_behind": "10\t0",
+    "ahead_behind": "9\t0",
     "entries": [
       {
         "status": " M",
+        "path": ".dockerignore",
+        "category": "UNKNOWN"
+      },
+      {
+        "status": " M",
         "path": ".github/workflows/ci.yml",
-        "category": "UNKNOWN"
-      },
-      {
-        "status": " M",
-        "path": ".github/workflows/deep.yml",
-        "category": "UNKNOWN"
-      },
-      {
-        "status": " M",
-        "path": ".github/workflows/release.yml",
         "category": "UNKNOWN"
       },
       {
@@ -2410,84 +4230,359 @@
         "category": "UNKNOWN"
       },
       {
-        "status": " M",
-        "path": "aegis_cognition/__init__.py",
-        "category": "PRODUCT"
+        "status": "R ",
+        "path": ".local/agent-config/cursor/agents/aegis-checkpoint-warden.md",
+        "category": "DOCUMENTATION"
       },
       {
-        "status": " M",
-        "path": "aegis_cognition/agent.py",
-        "category": "PRODUCT"
+        "status": "R ",
+        "path": ".local/agent-config/cursor/agents/aegis-decision-oracle.md",
+        "category": "DOCUMENTATION"
       },
       {
-        "status": " M",
-        "path": "aegis_cognition/application.py",
-        "category": "PRODUCT"
+        "status": "R ",
+        "path": ".local/agent-config/cursor/agents/aegis-memory-curator.md",
+        "category": "DOCUMENTATION"
       },
       {
-        "status": " M",
-        "path": "aegis_cognition/models.py",
-        "category": "PRODUCT"
+        "status": "R ",
+        "path": ".local/agent-config/cursor/agents/aegis-nerve-architect.md",
+        "category": "DOCUMENTATION"
       },
       {
-        "status": " M",
-        "path": "core/python/aegis/provider.py",
-        "category": "COMPATIBILITY"
+        "status": "R ",
+        "path": ".local/agent-config/cursor/agents/aegis-path-prioritizer.md",
+        "category": "DOCUMENTATION"
       },
       {
-        "status": " M",
-        "path": "core/python/aegis_adapter.py",
-        "category": "COMPATIBILITY"
+        "status": "R ",
+        "path": ".local/agent-config/cursor/agents/aegis-planning-guardian.md",
+        "category": "DOCUMENTATION"
       },
       {
-        "status": " M",
-        "path": "core/python/aegis_cli.py",
-        "category": "COMPATIBILITY"
+        "status": "R ",
+        "path": ".local/agent-config/cursor/agents/aegis-rust-architect.md",
+        "category": "DOCUMENTATION"
       },
       {
-        "status": " M",
-        "path": "core/python/bridge.py",
-        "category": "COMPATIBILITY"
+        "status": "R ",
+        "path": ".local/agent-config/cursor/agents/aegis-rust-benchmark-harness.md",
+        "category": "DOCUMENTATION"
       },
       {
-        "status": " M",
-        "path": "core/python/bridge_mmap.py",
-        "category": "COMPATIBILITY"
+        "status": "R ",
+        "path": ".local/agent-config/cursor/agents/aegis-rust-ffi-auditor.md",
+        "category": "DOCUMENTATION"
       },
       {
-        "status": " M",
-        "path": "core/python/browser_live_collector.py",
-        "category": "COMPATIBILITY"
+        "status": "R ",
+        "path": ".local/agent-config/cursor/agents/aegis-rust-schema-keeper.md",
+        "category": "DOCUMENTATION"
       },
       {
-        "status": " M",
-        "path": "core/python/browser_ops_bench.py",
-        "category": "COMPATIBILITY"
+        "status": "R ",
+        "path": ".local/agent-config/cursor/agents/aegis-rust-security-auditor.md",
+        "category": "DOCUMENTATION"
       },
       {
-        "status": " M",
-        "path": "core/python/browser_playwright_runtime.py",
-        "category": "COMPATIBILITY"
+        "status": "R ",
+        "path": ".local/agent-config/cursor/agents/aegis-sac-sentinel.md",
+        "category": "DOCUMENTATION"
       },
       {
-        "status": " M",
-        "path": "core/python/browser_runtime_adapter.py",
-        "category": "COMPATIBILITY"
+        "status": "R ",
+        "path": ".local/agent-config/cursor/agents/aegis-speculative-orchestrator.md",
+        "category": "DOCUMENTATION"
       },
       {
-        "status": " M",
-        "path": "core/python/nim_client.py",
-        "category": "COMPATIBILITY"
+        "status": "R ",
+        "path": ".local/agent-config/cursor/agents/aegis-vibecoding-conductor.md",
+        "category": "DOCUMENTATION"
       },
       {
-        "status": " M",
-        "path": "core/python/operator_api.py",
-        "category": "COMPATIBILITY"
+        "status": "R ",
+        "path": ".local/agent-config/cursor/agents/aegis-zero-trust-plugin-architect.md",
+        "category": "DOCUMENTATION"
       },
       {
-        "status": " M",
-        "path": "core/python/orchestrator.py",
-        "category": "COMPATIBILITY"
+        "status": "R ",
+        "path": ".local/agent-config/cursor/commands/aegis-audit.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/commands/aegis-build.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/commands/aegis-checkpoint.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/commands/aegis-consensus.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/commands/aegis-crystallize.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/commands/aegis-decide.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/commands/aegis-init.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/commands/aegis-path-check.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/commands/aegis-perf-check.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/commands/aegis-plan-check.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/commands/aegis-plugin-create.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/commands/aegis-regression-check.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/commands/aegis-resume.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/commands/aegis-speculate.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/commands/aegis-verify.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/commands/aegis-vibecode.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/rules/aegis-cognition-stack.mdc",
+        "category": "UNKNOWN"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/rules/aegis-performance-checkpoint.mdc",
+        "category": "UNKNOWN"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/rules/aegis-zero-trust-plugin-creator.mdc",
+        "category": "UNKNOWN"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/rules/defect-remediation.mdc",
+        "category": "UNKNOWN"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/rules/planning-architecture.mdc",
+        "category": "UNKNOWN"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/rules/ponytail.mdc",
+        "category": "UNKNOWN"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/rules/project.mdc",
+        "category": "UNKNOWN"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/rules/style.mdc",
+        "category": "UNKNOWN"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/rules/tool-maximization.mdc",
+        "category": "UNKNOWN"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/rules/vibecoding.mdc",
+        "category": "UNKNOWN"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/skills/aegis-architecture/SKILL.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/skills/aegis-checkpoint-supervisor/SKILL.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/skills/aegis-codegen-command/SKILL.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/skills/aegis-cognifold/SKILL.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/skills/aegis-crystallization/SKILL.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/skills/aegis-decision-oracle/SKILL.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/skills/aegis-failure-provenance/SKILL.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/skills/aegis-implementation-guardian/SKILL.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/skills/aegis-invariant-registry/SKILL.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/skills/aegis-long-horizon-orchestrator/SKILL.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/skills/aegis-nerve/SKILL.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/skills/aegis-next-best-action/SKILL.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/skills/aegis-optimal/SKILL.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/skills/aegis-optimization/SKILL.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/skills/aegis-path-prioritizer/SKILL.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/skills/aegis-performance-compiler/SKILL.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/skills/aegis-planning-alignment/SKILL.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/skills/aegis-proof-checker/SKILL.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/skills/aegis-regression-sentinel/SKILL.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/skills/aegis-rust-benchmark/SKILL.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/skills/aegis-rust-ffi/SKILL.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/skills/aegis-rust-schema/SKILL.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/skills/aegis-rust-security-audit/SKILL.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/skills/aegis-sac/SKILL.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/skills/aegis-speculative-decoding/SKILL.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/skills/aegis-vibecoding-conductor/SKILL.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/skills/aegis-zero-trust-plugin-creator/SKILL.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursorrules",
+        "category": "UNKNOWN"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-state/serena/.gitignore",
+        "category": "UNKNOWN"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-state/serena/project.yml",
+        "category": "UNKNOWN"
       },
       {
         "status": " M",
@@ -2496,87 +4591,272 @@
       },
       {
         "status": " M",
-        "path": "core/rust/benches/nerve_bench.rs",
-        "category": "PRODUCT"
-      },
-      {
-        "status": " M",
-        "path": "core/rust/src/ffi.rs",
-        "category": "PRODUCT"
-      },
-      {
-        "status": " M",
-        "path": "core/rust/src/gt96.rs",
-        "category": "PRODUCT"
-      },
-      {
-        "status": " M",
-        "path": "core/rust/src/lib.rs",
-        "category": "PRODUCT"
-      },
-      {
-        "status": " M",
-        "path": "core/rust/src/memory/fold.rs",
-        "category": "PRODUCT"
-      },
-      {
-        "status": " M",
-        "path": "core/rust/src/physical.rs",
-        "category": "PRODUCT"
-      },
-      {
-        "status": " M",
-        "path": "core/rust/src/replay.rs",
-        "category": "PRODUCT"
-      },
-      {
-        "status": " M",
-        "path": "core/rust/src/task_ledger.rs",
-        "category": "PRODUCT"
-      },
-      {
-        "status": " M",
-        "path": "core/rust/src/tests.rs",
-        "category": "PRODUCT"
-      },
-      {
-        "status": " M",
-        "path": "core/rust/src/tool_gateway.rs",
-        "category": "PRODUCT"
-      },
-      {
-        "status": " M",
-        "path": "docs/adr/ADR-012-portability.md",
+        "path": "docs/README.md",
         "category": "DOCUMENTATION"
       },
       {
         "status": " M",
-        "path": "docs/architecture/CONTRACT_INVENTORY.md",
+        "path": "docs/architecture/AEGIS_CURRENT_ARCHITECTURE_TRUTH_AUDIT.md",
         "category": "DOCUMENTATION"
       },
       {
         "status": " M",
-        "path": "docs/architecture/GT96_TRACEABILITY.md",
+        "path": "docs/architecture/AEGIS_LAB_RUNTIME_MASTER_PLAN.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": "docs/architecture/ARCHITECTURE_FREEZE.md",
         "category": "DOCUMENTATION"
       },
       {
         "status": " M",
-        "path": "docs/architecture/NOT_VERIFIED_REGISTRY.md",
+        "path": "docs/architecture/README.md",
         "category": "DOCUMENTATION"
       },
       {
         "status": " M",
-        "path": "docs/architecture/deployment_policy.json",
+        "path": "docs/architecture/design-closure/AEGIS_FINAL_DESIGN_CLOSURE.md",
         "category": "DOCUMENTATION"
       },
       {
         "status": " M",
-        "path": "docs/architecture/evidence/current.json",
+        "path": "docs/architecture/design-closure/artifact_retention.json",
         "category": "DOCUMENTATION"
       },
       {
         "status": " M",
-        "path": "pyproject.toml",
+        "path": "docs/architecture/design-closure/cohesion_candidates.json",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": " M",
+        "path": "docs/architecture/design-closure/config_precedence.json",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": " M",
+        "path": "docs/architecture/design-closure/data_movement.json",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": " M",
+        "path": "docs/architecture/design-closure/delete_candidates.json",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": " M",
+        "path": "docs/architecture/design-closure/design_closure.json",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": " M",
+        "path": "docs/architecture/design-closure/dynamic_reachability.json",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": " M",
+        "path": "docs/architecture/design-closure/entrypoint_truth.json",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": " M",
+        "path": "docs/architecture/design-closure/error_semantics.json",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": " M",
+        "path": "docs/architecture/design-closure/external_boundary.json",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": " M",
+        "path": "docs/architecture/design-closure/ffi_actual_surface.json",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": " M",
+        "path": "docs/architecture/design-closure/invariant_matrix.json",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": " M",
+        "path": "docs/architecture/design-closure/packaging_truth.json",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": " M",
+        "path": "docs/architecture/design-closure/performance_baseline.json",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": " M",
+        "path": "docs/architecture/design-closure/retry_truth.json",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": " M",
+        "path": "docs/architecture/design-closure/rust_mirror_truth.json",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": " M",
+        "path": "docs/architecture/design-closure/rust_public_surface.json",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": " M",
+        "path": "docs/architecture/design-closure/schema_graph.json",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": " M",
+        "path": "docs/architecture/design-closure/side_effect_bypasses.json",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": " M",
+        "path": "docs/architecture/design-closure/side_effect_chains.json",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": " M",
+        "path": "docs/architecture/design-closure/state_divergence.json",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": " M",
+        "path": "docs/architecture/design-closure/trust_truth.json",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": " M",
+        "path": "docs/architecture/document_inventory.json",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": " M",
+        "path": "docs/architecture/evidence-pack/architecture_concurrency.json",
+        "category": "GENERATED"
+      },
+      {
+        "status": " M",
+        "path": "docs/architecture/evidence-pack/architecture_dependency_rent.json",
+        "category": "GENERATED"
+      },
+      {
+        "status": " M",
+        "path": "docs/architecture/evidence-pack/architecture_duplicate_candidates.json",
+        "category": "GENERATED"
+      },
+      {
+        "status": " M",
+        "path": "docs/architecture/evidence-pack/architecture_error_model.json",
+        "category": "GENERATED"
+      },
+      {
+        "status": " M",
+        "path": "docs/architecture/evidence-pack/architecture_ffi_inventory.json",
+        "category": "GENERATED"
+      },
+      {
+        "status": " M",
+        "path": "docs/architecture/evidence-pack/architecture_performance.json",
+        "category": "GENERATED"
+      },
+      {
+        "status": " M",
+        "path": "docs/architecture/evidence-pack/architecture_public_api.json",
+        "category": "GENERATED"
+      },
+      {
+        "status": " M",
+        "path": "docs/architecture/evidence-pack/architecture_python_import_graph.json",
+        "category": "GENERATED"
+      },
+      {
+        "status": " M",
+        "path": "docs/architecture/evidence-pack/architecture_reachability.json",
+        "category": "GENERATED"
+      },
+      {
+        "status": " M",
+        "path": "docs/architecture/evidence-pack/architecture_retry_graph.json",
+        "category": "GENERATED"
+      },
+      {
+        "status": " M",
+        "path": "docs/architecture/evidence-pack/architecture_rust_module_graph.json",
+        "category": "GENERATED"
+      },
+      {
+        "status": " M",
+        "path": "docs/architecture/evidence-pack/architecture_side_effect_graph.json",
+        "category": "GENERATED"
+      },
+      {
+        "status": " M",
+        "path": "docs/architecture/evidence-pack/architecture_trust_policy.json",
+        "category": "GENERATED"
+      },
+      {
+        "status": " M",
+        "path": "docs/archive/README.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": "docs/archive/planning/agent-harness-continuation-plan.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": "docs/archive/planning/architecture-optimization.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": "docs/archive/reports/browser-native-architecture.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": "docs/archive/reports/cluster-soak.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": "docs/integrations/aegis-plugins.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": " M",
+        "path": "quality/registry/current_affected_closure.json",
+        "category": "UNKNOWN"
+      },
+      {
+        "status": " M",
+        "path": "quality/registry/current_claim_graph.json",
+        "category": "UNKNOWN"
+      },
+      {
+        "status": " M",
+        "path": "quality/registry/current_inventory.json",
+        "category": "UNKNOWN"
+      },
+      {
+        "status": " M",
+        "path": "quality/registry/current_s2_mapping.json",
+        "category": "UNKNOWN"
+      },
+      {
+        "status": " M",
+        "path": "quality/registry/current_shadow_plan.json",
+        "category": "UNKNOWN"
+      },
+      {
+        "status": " M",
+        "path": "quality/registry/current_validation_corpus.json",
         "category": "UNKNOWN"
       },
       {
@@ -2585,7 +4865,7 @@
         "category": "SCRIPT"
       },
       {
-        "status": " M",
+        "status": " D",
         "path": "scripts/_debug_probe.py",
         "category": "SCRIPT"
       },
@@ -2596,57 +4876,27 @@
       },
       {
         "status": " M",
-        "path": "scripts/dynamic_provider_fallback_gate.py",
+        "path": "scripts/document_consistency_gate.py",
         "category": "SCRIPT"
       },
       {
-        "status": " M",
-        "path": "scripts/e2e_release_gate.py",
+        "status": "R ",
+        "path": "scripts/research/comparators/external/fts5_baseline_gate.py",
         "category": "SCRIPT"
       },
       {
-        "status": " M",
-        "path": "scripts/evidence_consistency_gate.py",
+        "status": "R ",
+        "path": "scripts/research/comparators/external/persistence_write_baseline_gate.py",
         "category": "SCRIPT"
       },
       {
-        "status": " M",
-        "path": "scripts/external_deployment_smoke_gate.py",
+        "status": "R ",
+        "path": "scripts/research/comparators/external/rpc_context_baseline_gate.py",
         "category": "SCRIPT"
       },
       {
-        "status": " M",
-        "path": "scripts/extreme_testing_suite.py",
-        "category": "SCRIPT"
-      },
-      {
-        "status": " M",
-        "path": "scripts/hermes_rpc_baseline_gate.py",
-        "category": "SCRIPT"
-      },
-      {
-        "status": " M",
-        "path": "scripts/production_closure.py",
-        "category": "SCRIPT"
-      },
-      {
-        "status": " M",
-        "path": "scripts/production_readiness.py",
-        "category": "SCRIPT"
-      },
-      {
-        "status": " M",
-        "path": "scripts/python_hotpath_gate.py",
-        "category": "SCRIPT"
-      },
-      {
-        "status": " M",
-        "path": "scripts/release_install_smoke.py",
-        "category": "SCRIPT"
-      },
-      {
-        "status": " M",
-        "path": "scripts/release_rollback_drill.py",
+        "status": "R ",
+        "path": "scripts/research/comparators/external/session_recovery_baseline_gate.py",
         "category": "SCRIPT"
       },
       {
@@ -2656,139 +4906,19 @@
       },
       {
         "status": " M",
-        "path": "scripts/smoke_check.py",
-        "category": "SCRIPT"
-      },
-      {
-        "status": " M",
-        "path": "scripts/sota_baseline_gate.py",
-        "category": "SCRIPT"
-      },
-      {
-        "status": " M",
-        "path": "scripts/supply_chain_gate.py",
-        "category": "SCRIPT"
-      },
-      {
-        "status": " M",
-        "path": "tests/test_evidence_consistency_gate.py",
-        "category": "TEST"
-      },
-      {
-        "status": " M",
-        "path": "uv.lock",
-        "category": "UNKNOWN"
-      },
-      {
-        "status": "??",
-        "path": ".serena/",
-        "category": "UNKNOWN"
-      },
-      {
-        "status": "??",
-        "path": "aegis_cognition/benchmark.py",
-        "category": "PRODUCT"
-      },
-      {
-        "status": "??",
-        "path": "aegis_cognition/lab.py",
-        "category": "LAB"
-      },
-      {
-        "status": "??",
-        "path": "core/rust/src/lab.rs",
-        "category": "LAB"
-      },
-      {
-        "status": "??",
-        "path": "docs/adr/ADR-015-portability.md",
-        "category": "DOCUMENTATION"
-      },
-      {
-        "status": "??",
-        "path": "docs/api/",
-        "category": "DOCUMENTATION"
-      },
-      {
-        "status": "??",
-        "path": "docs/architecture.md",
-        "category": "DOCUMENTATION"
-      },
-      {
-        "status": "??",
-        "path": "docs/architecture/AEGIS_CURRENT_ARCHITECTURE_TRUTH_AUDIT.md",
-        "category": "DOCUMENTATION"
-      },
-      {
-        "status": "??",
-        "path": "docs/architecture/AEGIS_LAB_RUNTIME_MASTER_PLAN.md",
-        "category": "DOCUMENTATION"
-      },
-      {
-        "status": "??",
-        "path": "docs/architecture/AEGIS_LAB_STATUS_GENERATED.md",
-        "category": "DOCUMENTATION"
-      },
-      {
-        "status": "??",
-        "path": "docs/architecture/document_inventory.json",
-        "category": "DOCUMENTATION"
-      },
-      {
-        "status": "??",
-        "path": "docs/architecture/evidence-pack/",
-        "category": "GENERATED"
-      },
-      {
-        "status": "??",
-        "path": "docs/troubleshooting/",
-        "category": "DOCUMENTATION"
-      },
-      {
-        "status": "??",
-        "path": "docs/tutorials/",
-        "category": "DOCUMENTATION"
-      },
-      {
-        "status": "??",
-        "path": "scripts/document_consistency_gate.py",
-        "category": "SCRIPT"
-      },
-      {
-        "status": "??",
-        "path": "scripts/release_controller_action_smoke.py",
-        "category": "SCRIPT"
-      },
-      {
-        "status": "??",
-        "path": "scripts/release_recovery_smoke.py",
-        "category": "SCRIPT"
-      },
-      {
-        "status": "??",
-        "path": "tests/test_document_consistency_gate.py",
-        "category": "TEST"
-      },
-      {
-        "status": "??",
-        "path": "tests/test_lab_runtime.py",
+        "path": "tests/test_constitution_audit_gates.py",
         "category": "TEST"
       }
     ],
     "tracked_modified": [
       {
         "status": " M",
+        "path": ".dockerignore",
+        "category": "UNKNOWN"
+      },
+      {
+        "status": " M",
         "path": ".github/workflows/ci.yml",
-        "category": "UNKNOWN"
-      },
-      {
-        "status": " M",
-        "path": ".github/workflows/deep.yml",
-        "category": "UNKNOWN"
-      },
-      {
-        "status": " M",
-        "path": ".github/workflows/release.yml",
         "category": "UNKNOWN"
       },
       {
@@ -2797,84 +4927,359 @@
         "category": "UNKNOWN"
       },
       {
-        "status": " M",
-        "path": "aegis_cognition/__init__.py",
-        "category": "PRODUCT"
+        "status": "R ",
+        "path": ".local/agent-config/cursor/agents/aegis-checkpoint-warden.md",
+        "category": "DOCUMENTATION"
       },
       {
-        "status": " M",
-        "path": "aegis_cognition/agent.py",
-        "category": "PRODUCT"
+        "status": "R ",
+        "path": ".local/agent-config/cursor/agents/aegis-decision-oracle.md",
+        "category": "DOCUMENTATION"
       },
       {
-        "status": " M",
-        "path": "aegis_cognition/application.py",
-        "category": "PRODUCT"
+        "status": "R ",
+        "path": ".local/agent-config/cursor/agents/aegis-memory-curator.md",
+        "category": "DOCUMENTATION"
       },
       {
-        "status": " M",
-        "path": "aegis_cognition/models.py",
-        "category": "PRODUCT"
+        "status": "R ",
+        "path": ".local/agent-config/cursor/agents/aegis-nerve-architect.md",
+        "category": "DOCUMENTATION"
       },
       {
-        "status": " M",
-        "path": "core/python/aegis/provider.py",
-        "category": "COMPATIBILITY"
+        "status": "R ",
+        "path": ".local/agent-config/cursor/agents/aegis-path-prioritizer.md",
+        "category": "DOCUMENTATION"
       },
       {
-        "status": " M",
-        "path": "core/python/aegis_adapter.py",
-        "category": "COMPATIBILITY"
+        "status": "R ",
+        "path": ".local/agent-config/cursor/agents/aegis-planning-guardian.md",
+        "category": "DOCUMENTATION"
       },
       {
-        "status": " M",
-        "path": "core/python/aegis_cli.py",
-        "category": "COMPATIBILITY"
+        "status": "R ",
+        "path": ".local/agent-config/cursor/agents/aegis-rust-architect.md",
+        "category": "DOCUMENTATION"
       },
       {
-        "status": " M",
-        "path": "core/python/bridge.py",
-        "category": "COMPATIBILITY"
+        "status": "R ",
+        "path": ".local/agent-config/cursor/agents/aegis-rust-benchmark-harness.md",
+        "category": "DOCUMENTATION"
       },
       {
-        "status": " M",
-        "path": "core/python/bridge_mmap.py",
-        "category": "COMPATIBILITY"
+        "status": "R ",
+        "path": ".local/agent-config/cursor/agents/aegis-rust-ffi-auditor.md",
+        "category": "DOCUMENTATION"
       },
       {
-        "status": " M",
-        "path": "core/python/browser_live_collector.py",
-        "category": "COMPATIBILITY"
+        "status": "R ",
+        "path": ".local/agent-config/cursor/agents/aegis-rust-schema-keeper.md",
+        "category": "DOCUMENTATION"
       },
       {
-        "status": " M",
-        "path": "core/python/browser_ops_bench.py",
-        "category": "COMPATIBILITY"
+        "status": "R ",
+        "path": ".local/agent-config/cursor/agents/aegis-rust-security-auditor.md",
+        "category": "DOCUMENTATION"
       },
       {
-        "status": " M",
-        "path": "core/python/browser_playwright_runtime.py",
-        "category": "COMPATIBILITY"
+        "status": "R ",
+        "path": ".local/agent-config/cursor/agents/aegis-sac-sentinel.md",
+        "category": "DOCUMENTATION"
       },
       {
-        "status": " M",
-        "path": "core/python/browser_runtime_adapter.py",
-        "category": "COMPATIBILITY"
+        "status": "R ",
+        "path": ".local/agent-config/cursor/agents/aegis-speculative-orchestrator.md",
+        "category": "DOCUMENTATION"
       },
       {
-        "status": " M",
-        "path": "core/python/nim_client.py",
-        "category": "COMPATIBILITY"
+        "status": "R ",
+        "path": ".local/agent-config/cursor/agents/aegis-vibecoding-conductor.md",
+        "category": "DOCUMENTATION"
       },
       {
-        "status": " M",
-        "path": "core/python/operator_api.py",
-        "category": "COMPATIBILITY"
+        "status": "R ",
+        "path": ".local/agent-config/cursor/agents/aegis-zero-trust-plugin-architect.md",
+        "category": "DOCUMENTATION"
       },
       {
-        "status": " M",
-        "path": "core/python/orchestrator.py",
-        "category": "COMPATIBILITY"
+        "status": "R ",
+        "path": ".local/agent-config/cursor/commands/aegis-audit.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/commands/aegis-build.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/commands/aegis-checkpoint.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/commands/aegis-consensus.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/commands/aegis-crystallize.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/commands/aegis-decide.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/commands/aegis-init.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/commands/aegis-path-check.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/commands/aegis-perf-check.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/commands/aegis-plan-check.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/commands/aegis-plugin-create.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/commands/aegis-regression-check.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/commands/aegis-resume.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/commands/aegis-speculate.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/commands/aegis-verify.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/commands/aegis-vibecode.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/rules/aegis-cognition-stack.mdc",
+        "category": "UNKNOWN"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/rules/aegis-performance-checkpoint.mdc",
+        "category": "UNKNOWN"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/rules/aegis-zero-trust-plugin-creator.mdc",
+        "category": "UNKNOWN"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/rules/defect-remediation.mdc",
+        "category": "UNKNOWN"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/rules/planning-architecture.mdc",
+        "category": "UNKNOWN"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/rules/ponytail.mdc",
+        "category": "UNKNOWN"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/rules/project.mdc",
+        "category": "UNKNOWN"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/rules/style.mdc",
+        "category": "UNKNOWN"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/rules/tool-maximization.mdc",
+        "category": "UNKNOWN"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/rules/vibecoding.mdc",
+        "category": "UNKNOWN"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/skills/aegis-architecture/SKILL.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/skills/aegis-checkpoint-supervisor/SKILL.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/skills/aegis-codegen-command/SKILL.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/skills/aegis-cognifold/SKILL.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/skills/aegis-crystallization/SKILL.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/skills/aegis-decision-oracle/SKILL.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/skills/aegis-failure-provenance/SKILL.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/skills/aegis-implementation-guardian/SKILL.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/skills/aegis-invariant-registry/SKILL.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/skills/aegis-long-horizon-orchestrator/SKILL.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/skills/aegis-nerve/SKILL.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/skills/aegis-next-best-action/SKILL.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/skills/aegis-optimal/SKILL.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/skills/aegis-optimization/SKILL.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/skills/aegis-path-prioritizer/SKILL.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/skills/aegis-performance-compiler/SKILL.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/skills/aegis-planning-alignment/SKILL.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/skills/aegis-proof-checker/SKILL.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/skills/aegis-regression-sentinel/SKILL.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/skills/aegis-rust-benchmark/SKILL.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/skills/aegis-rust-ffi/SKILL.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/skills/aegis-rust-schema/SKILL.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/skills/aegis-rust-security-audit/SKILL.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/skills/aegis-sac/SKILL.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/skills/aegis-speculative-decoding/SKILL.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/skills/aegis-vibecoding-conductor/SKILL.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/skills/aegis-zero-trust-plugin-creator/SKILL.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursorrules",
+        "category": "UNKNOWN"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-state/serena/.gitignore",
+        "category": "UNKNOWN"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-state/serena/project.yml",
+        "category": "UNKNOWN"
       },
       {
         "status": " M",
@@ -2883,87 +5288,272 @@
       },
       {
         "status": " M",
-        "path": "core/rust/benches/nerve_bench.rs",
-        "category": "PRODUCT"
-      },
-      {
-        "status": " M",
-        "path": "core/rust/src/ffi.rs",
-        "category": "PRODUCT"
-      },
-      {
-        "status": " M",
-        "path": "core/rust/src/gt96.rs",
-        "category": "PRODUCT"
-      },
-      {
-        "status": " M",
-        "path": "core/rust/src/lib.rs",
-        "category": "PRODUCT"
-      },
-      {
-        "status": " M",
-        "path": "core/rust/src/memory/fold.rs",
-        "category": "PRODUCT"
-      },
-      {
-        "status": " M",
-        "path": "core/rust/src/physical.rs",
-        "category": "PRODUCT"
-      },
-      {
-        "status": " M",
-        "path": "core/rust/src/replay.rs",
-        "category": "PRODUCT"
-      },
-      {
-        "status": " M",
-        "path": "core/rust/src/task_ledger.rs",
-        "category": "PRODUCT"
-      },
-      {
-        "status": " M",
-        "path": "core/rust/src/tests.rs",
-        "category": "PRODUCT"
-      },
-      {
-        "status": " M",
-        "path": "core/rust/src/tool_gateway.rs",
-        "category": "PRODUCT"
-      },
-      {
-        "status": " M",
-        "path": "docs/adr/ADR-012-portability.md",
+        "path": "docs/README.md",
         "category": "DOCUMENTATION"
       },
       {
         "status": " M",
-        "path": "docs/architecture/CONTRACT_INVENTORY.md",
+        "path": "docs/architecture/AEGIS_CURRENT_ARCHITECTURE_TRUTH_AUDIT.md",
         "category": "DOCUMENTATION"
       },
       {
         "status": " M",
-        "path": "docs/architecture/GT96_TRACEABILITY.md",
+        "path": "docs/architecture/AEGIS_LAB_RUNTIME_MASTER_PLAN.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": "docs/architecture/ARCHITECTURE_FREEZE.md",
         "category": "DOCUMENTATION"
       },
       {
         "status": " M",
-        "path": "docs/architecture/NOT_VERIFIED_REGISTRY.md",
+        "path": "docs/architecture/README.md",
         "category": "DOCUMENTATION"
       },
       {
         "status": " M",
-        "path": "docs/architecture/deployment_policy.json",
+        "path": "docs/architecture/design-closure/AEGIS_FINAL_DESIGN_CLOSURE.md",
         "category": "DOCUMENTATION"
       },
       {
         "status": " M",
-        "path": "docs/architecture/evidence/current.json",
+        "path": "docs/architecture/design-closure/artifact_retention.json",
         "category": "DOCUMENTATION"
       },
       {
         "status": " M",
-        "path": "pyproject.toml",
+        "path": "docs/architecture/design-closure/cohesion_candidates.json",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": " M",
+        "path": "docs/architecture/design-closure/config_precedence.json",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": " M",
+        "path": "docs/architecture/design-closure/data_movement.json",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": " M",
+        "path": "docs/architecture/design-closure/delete_candidates.json",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": " M",
+        "path": "docs/architecture/design-closure/design_closure.json",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": " M",
+        "path": "docs/architecture/design-closure/dynamic_reachability.json",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": " M",
+        "path": "docs/architecture/design-closure/entrypoint_truth.json",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": " M",
+        "path": "docs/architecture/design-closure/error_semantics.json",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": " M",
+        "path": "docs/architecture/design-closure/external_boundary.json",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": " M",
+        "path": "docs/architecture/design-closure/ffi_actual_surface.json",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": " M",
+        "path": "docs/architecture/design-closure/invariant_matrix.json",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": " M",
+        "path": "docs/architecture/design-closure/packaging_truth.json",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": " M",
+        "path": "docs/architecture/design-closure/performance_baseline.json",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": " M",
+        "path": "docs/architecture/design-closure/retry_truth.json",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": " M",
+        "path": "docs/architecture/design-closure/rust_mirror_truth.json",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": " M",
+        "path": "docs/architecture/design-closure/rust_public_surface.json",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": " M",
+        "path": "docs/architecture/design-closure/schema_graph.json",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": " M",
+        "path": "docs/architecture/design-closure/side_effect_bypasses.json",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": " M",
+        "path": "docs/architecture/design-closure/side_effect_chains.json",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": " M",
+        "path": "docs/architecture/design-closure/state_divergence.json",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": " M",
+        "path": "docs/architecture/design-closure/trust_truth.json",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": " M",
+        "path": "docs/architecture/document_inventory.json",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": " M",
+        "path": "docs/architecture/evidence-pack/architecture_concurrency.json",
+        "category": "GENERATED"
+      },
+      {
+        "status": " M",
+        "path": "docs/architecture/evidence-pack/architecture_dependency_rent.json",
+        "category": "GENERATED"
+      },
+      {
+        "status": " M",
+        "path": "docs/architecture/evidence-pack/architecture_duplicate_candidates.json",
+        "category": "GENERATED"
+      },
+      {
+        "status": " M",
+        "path": "docs/architecture/evidence-pack/architecture_error_model.json",
+        "category": "GENERATED"
+      },
+      {
+        "status": " M",
+        "path": "docs/architecture/evidence-pack/architecture_ffi_inventory.json",
+        "category": "GENERATED"
+      },
+      {
+        "status": " M",
+        "path": "docs/architecture/evidence-pack/architecture_performance.json",
+        "category": "GENERATED"
+      },
+      {
+        "status": " M",
+        "path": "docs/architecture/evidence-pack/architecture_public_api.json",
+        "category": "GENERATED"
+      },
+      {
+        "status": " M",
+        "path": "docs/architecture/evidence-pack/architecture_python_import_graph.json",
+        "category": "GENERATED"
+      },
+      {
+        "status": " M",
+        "path": "docs/architecture/evidence-pack/architecture_reachability.json",
+        "category": "GENERATED"
+      },
+      {
+        "status": " M",
+        "path": "docs/architecture/evidence-pack/architecture_retry_graph.json",
+        "category": "GENERATED"
+      },
+      {
+        "status": " M",
+        "path": "docs/architecture/evidence-pack/architecture_rust_module_graph.json",
+        "category": "GENERATED"
+      },
+      {
+        "status": " M",
+        "path": "docs/architecture/evidence-pack/architecture_side_effect_graph.json",
+        "category": "GENERATED"
+      },
+      {
+        "status": " M",
+        "path": "docs/architecture/evidence-pack/architecture_trust_policy.json",
+        "category": "GENERATED"
+      },
+      {
+        "status": " M",
+        "path": "docs/archive/README.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": "docs/archive/planning/agent-harness-continuation-plan.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": "docs/archive/planning/architecture-optimization.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": "docs/archive/reports/browser-native-architecture.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": "docs/archive/reports/cluster-soak.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": "docs/integrations/aegis-plugins.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": " M",
+        "path": "quality/registry/current_affected_closure.json",
+        "category": "UNKNOWN"
+      },
+      {
+        "status": " M",
+        "path": "quality/registry/current_claim_graph.json",
+        "category": "UNKNOWN"
+      },
+      {
+        "status": " M",
+        "path": "quality/registry/current_inventory.json",
+        "category": "UNKNOWN"
+      },
+      {
+        "status": " M",
+        "path": "quality/registry/current_s2_mapping.json",
+        "category": "UNKNOWN"
+      },
+      {
+        "status": " M",
+        "path": "quality/registry/current_shadow_plan.json",
+        "category": "UNKNOWN"
+      },
+      {
+        "status": " M",
+        "path": "quality/registry/current_validation_corpus.json",
         "category": "UNKNOWN"
       },
       {
@@ -2972,7 +5562,7 @@
         "category": "SCRIPT"
       },
       {
-        "status": " M",
+        "status": " D",
         "path": "scripts/_debug_probe.py",
         "category": "SCRIPT"
       },
@@ -2983,57 +5573,27 @@
       },
       {
         "status": " M",
-        "path": "scripts/dynamic_provider_fallback_gate.py",
+        "path": "scripts/document_consistency_gate.py",
         "category": "SCRIPT"
       },
       {
-        "status": " M",
-        "path": "scripts/e2e_release_gate.py",
+        "status": "R ",
+        "path": "scripts/research/comparators/external/fts5_baseline_gate.py",
         "category": "SCRIPT"
       },
       {
-        "status": " M",
-        "path": "scripts/evidence_consistency_gate.py",
+        "status": "R ",
+        "path": "scripts/research/comparators/external/persistence_write_baseline_gate.py",
         "category": "SCRIPT"
       },
       {
-        "status": " M",
-        "path": "scripts/external_deployment_smoke_gate.py",
+        "status": "R ",
+        "path": "scripts/research/comparators/external/rpc_context_baseline_gate.py",
         "category": "SCRIPT"
       },
       {
-        "status": " M",
-        "path": "scripts/extreme_testing_suite.py",
-        "category": "SCRIPT"
-      },
-      {
-        "status": " M",
-        "path": "scripts/hermes_rpc_baseline_gate.py",
-        "category": "SCRIPT"
-      },
-      {
-        "status": " M",
-        "path": "scripts/production_closure.py",
-        "category": "SCRIPT"
-      },
-      {
-        "status": " M",
-        "path": "scripts/production_readiness.py",
-        "category": "SCRIPT"
-      },
-      {
-        "status": " M",
-        "path": "scripts/python_hotpath_gate.py",
-        "category": "SCRIPT"
-      },
-      {
-        "status": " M",
-        "path": "scripts/release_install_smoke.py",
-        "category": "SCRIPT"
-      },
-      {
-        "status": " M",
-        "path": "scripts/release_rollback_drill.py",
+        "status": "R ",
+        "path": "scripts/research/comparators/external/session_recovery_baseline_gate.py",
         "category": "SCRIPT"
       },
       {
@@ -3043,128 +5603,418 @@
       },
       {
         "status": " M",
-        "path": "scripts/smoke_check.py",
-        "category": "SCRIPT"
-      },
-      {
-        "status": " M",
-        "path": "scripts/sota_baseline_gate.py",
-        "category": "SCRIPT"
-      },
-      {
-        "status": " M",
-        "path": "scripts/supply_chain_gate.py",
-        "category": "SCRIPT"
-      },
-      {
-        "status": " M",
-        "path": "tests/test_evidence_consistency_gate.py",
-        "category": "TEST"
-      },
-      {
-        "status": " M",
-        "path": "uv.lock",
-        "category": "UNKNOWN"
-      }
-    ],
-    "staged": [],
-    "untracked": [
-      {
-        "status": "??",
-        "path": ".serena/",
-        "category": "UNKNOWN"
-      },
-      {
-        "status": "??",
-        "path": "aegis_cognition/benchmark.py",
-        "category": "PRODUCT"
-      },
-      {
-        "status": "??",
-        "path": "aegis_cognition/lab.py",
-        "category": "LAB"
-      },
-      {
-        "status": "??",
-        "path": "core/rust/src/lab.rs",
-        "category": "LAB"
-      },
-      {
-        "status": "??",
-        "path": "docs/adr/ADR-015-portability.md",
-        "category": "DOCUMENTATION"
-      },
-      {
-        "status": "??",
-        "path": "docs/api/",
-        "category": "DOCUMENTATION"
-      },
-      {
-        "status": "??",
-        "path": "docs/architecture.md",
-        "category": "DOCUMENTATION"
-      },
-      {
-        "status": "??",
-        "path": "docs/architecture/AEGIS_CURRENT_ARCHITECTURE_TRUTH_AUDIT.md",
-        "category": "DOCUMENTATION"
-      },
-      {
-        "status": "??",
-        "path": "docs/architecture/AEGIS_LAB_RUNTIME_MASTER_PLAN.md",
-        "category": "DOCUMENTATION"
-      },
-      {
-        "status": "??",
-        "path": "docs/architecture/AEGIS_LAB_STATUS_GENERATED.md",
-        "category": "DOCUMENTATION"
-      },
-      {
-        "status": "??",
-        "path": "docs/architecture/document_inventory.json",
-        "category": "DOCUMENTATION"
-      },
-      {
-        "status": "??",
-        "path": "docs/architecture/evidence-pack/",
-        "category": "GENERATED"
-      },
-      {
-        "status": "??",
-        "path": "docs/troubleshooting/",
-        "category": "DOCUMENTATION"
-      },
-      {
-        "status": "??",
-        "path": "docs/tutorials/",
-        "category": "DOCUMENTATION"
-      },
-      {
-        "status": "??",
-        "path": "scripts/document_consistency_gate.py",
-        "category": "SCRIPT"
-      },
-      {
-        "status": "??",
-        "path": "scripts/release_controller_action_smoke.py",
-        "category": "SCRIPT"
-      },
-      {
-        "status": "??",
-        "path": "scripts/release_recovery_smoke.py",
-        "category": "SCRIPT"
-      },
-      {
-        "status": "??",
-        "path": "tests/test_document_consistency_gate.py",
-        "category": "TEST"
-      },
-      {
-        "status": "??",
-        "path": "tests/test_lab_runtime.py",
+        "path": "tests/test_constitution_audit_gates.py",
         "category": "TEST"
       }
     ],
-    "total_entries": 77
+    "staged": [
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/agents/aegis-checkpoint-warden.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/agents/aegis-decision-oracle.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/agents/aegis-memory-curator.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/agents/aegis-nerve-architect.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/agents/aegis-path-prioritizer.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/agents/aegis-planning-guardian.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/agents/aegis-rust-architect.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/agents/aegis-rust-benchmark-harness.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/agents/aegis-rust-ffi-auditor.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/agents/aegis-rust-schema-keeper.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/agents/aegis-rust-security-auditor.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/agents/aegis-sac-sentinel.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/agents/aegis-speculative-orchestrator.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/agents/aegis-vibecoding-conductor.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/agents/aegis-zero-trust-plugin-architect.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/commands/aegis-audit.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/commands/aegis-build.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/commands/aegis-checkpoint.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/commands/aegis-consensus.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/commands/aegis-crystallize.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/commands/aegis-decide.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/commands/aegis-init.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/commands/aegis-path-check.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/commands/aegis-perf-check.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/commands/aegis-plan-check.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/commands/aegis-plugin-create.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/commands/aegis-regression-check.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/commands/aegis-resume.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/commands/aegis-speculate.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/commands/aegis-verify.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/commands/aegis-vibecode.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/rules/aegis-cognition-stack.mdc",
+        "category": "UNKNOWN"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/rules/aegis-performance-checkpoint.mdc",
+        "category": "UNKNOWN"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/rules/aegis-zero-trust-plugin-creator.mdc",
+        "category": "UNKNOWN"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/rules/defect-remediation.mdc",
+        "category": "UNKNOWN"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/rules/planning-architecture.mdc",
+        "category": "UNKNOWN"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/rules/ponytail.mdc",
+        "category": "UNKNOWN"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/rules/project.mdc",
+        "category": "UNKNOWN"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/rules/style.mdc",
+        "category": "UNKNOWN"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/rules/tool-maximization.mdc",
+        "category": "UNKNOWN"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/rules/vibecoding.mdc",
+        "category": "UNKNOWN"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/skills/aegis-architecture/SKILL.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/skills/aegis-checkpoint-supervisor/SKILL.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/skills/aegis-codegen-command/SKILL.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/skills/aegis-cognifold/SKILL.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/skills/aegis-crystallization/SKILL.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/skills/aegis-decision-oracle/SKILL.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/skills/aegis-failure-provenance/SKILL.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/skills/aegis-implementation-guardian/SKILL.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/skills/aegis-invariant-registry/SKILL.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/skills/aegis-long-horizon-orchestrator/SKILL.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/skills/aegis-nerve/SKILL.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/skills/aegis-next-best-action/SKILL.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/skills/aegis-optimal/SKILL.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/skills/aegis-optimization/SKILL.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/skills/aegis-path-prioritizer/SKILL.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/skills/aegis-performance-compiler/SKILL.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/skills/aegis-planning-alignment/SKILL.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/skills/aegis-proof-checker/SKILL.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/skills/aegis-regression-sentinel/SKILL.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/skills/aegis-rust-benchmark/SKILL.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/skills/aegis-rust-ffi/SKILL.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/skills/aegis-rust-schema/SKILL.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/skills/aegis-rust-security-audit/SKILL.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/skills/aegis-sac/SKILL.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/skills/aegis-speculative-decoding/SKILL.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/skills/aegis-vibecoding-conductor/SKILL.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursor/skills/aegis-zero-trust-plugin-creator/SKILL.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-config/cursorrules",
+        "category": "UNKNOWN"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-state/serena/.gitignore",
+        "category": "UNKNOWN"
+      },
+      {
+        "status": "R ",
+        "path": ".local/agent-state/serena/project.yml",
+        "category": "UNKNOWN"
+      },
+      {
+        "status": "R ",
+        "path": "docs/architecture/ARCHITECTURE_FREEZE.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": "docs/archive/planning/agent-harness-continuation-plan.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": "docs/archive/planning/architecture-optimization.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": "docs/archive/reports/browser-native-architecture.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": "docs/archive/reports/cluster-soak.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": "docs/integrations/aegis-plugins.md",
+        "category": "DOCUMENTATION"
+      },
+      {
+        "status": "R ",
+        "path": "scripts/research/comparators/external/fts5_baseline_gate.py",
+        "category": "SCRIPT"
+      },
+      {
+        "status": "R ",
+        "path": "scripts/research/comparators/external/persistence_write_baseline_gate.py",
+        "category": "SCRIPT"
+      },
+      {
+        "status": "R ",
+        "path": "scripts/research/comparators/external/rpc_context_baseline_gate.py",
+        "category": "SCRIPT"
+      },
+      {
+        "status": "R ",
+        "path": "scripts/research/comparators/external/session_recovery_baseline_gate.py",
+        "category": "SCRIPT"
+      }
+    ],
+    "untracked": [],
+    "total_entries": 139
   }
 }

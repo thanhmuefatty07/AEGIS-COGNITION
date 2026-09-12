@@ -126,10 +126,22 @@
             "req": "^24.12.23"
           },
           {
+            "name": "libc",
+            "kind": null,
+            "optional": false,
+            "req": "^0.2"
+          },
+          {
             "name": "memmap2",
             "kind": null,
             "optional": false,
             "req": "^0.9"
+          },
+          {
+            "name": "notify",
+            "kind": null,
+            "optional": false,
+            "req": "^8.2.0"
           },
           {
             "name": "parking_lot",
@@ -166,6 +178,12 @@
             "kind": null,
             "optional": false,
             "req": "^1.10"
+          },
+          {
+            "name": "rusqlite",
+            "kind": null,
+            "optional": false,
+            "req": "^0.40.2"
           },
           {
             "name": "serde",
@@ -806,50 +824,6 @@
     ]
   },
   "modules": {
-    "aegis-nerve::AEGIS-COGNITION::core::rust::src::licensing": {
-      "module": "aegis-nerve::AEGIS-COGNITION::core::rust::src::licensing",
-      "package": "aegis-nerve",
-      "path": "core/rust/AEGIS-COGNITION/core/rust/src/licensing.rs",
-      "visibility": "private_or_no_pub_decl",
-      "imports": [],
-      "public_declarations": 0,
-      "declarations": 0,
-      "child_modules": [],
-      "cfg_test_present": false,
-      "unsafe_hits": 0,
-      "test_marker_count": 0,
-      "resolved_imports": [],
-      "fan_out": 0,
-      "fan_in": 0,
-      "primary_responsibility": "module-local responsibility; inspect source"
-    },
-    "aegis-nerve::AEGIS-COGNITION::core::rust::src::rbac": {
-      "module": "aegis-nerve::AEGIS-COGNITION::core::rust::src::rbac",
-      "package": "aegis-nerve",
-      "path": "core/rust/AEGIS-COGNITION/core/rust/src/rbac.rs",
-      "visibility": "public_file_or_decl",
-      "imports": [
-        "serde",
-        "std",
-        "super"
-      ],
-      "public_declarations": 22,
-      "declarations": 35,
-      "child_modules": [
-        {
-          "name": "tests",
-          "public": false,
-          "line": 379
-        }
-      ],
-      "cfg_test_present": true,
-      "unsafe_hits": 0,
-      "test_marker_count": 4,
-      "resolved_imports": [],
-      "fan_out": 0,
-      "fan_in": 0,
-      "primary_responsibility": "module-local responsibility; inspect source"
-    },
     "aegis-nerve::benches::architecture_performance": {
       "module": "aegis-nerve::benches::architecture_performance",
       "package": "aegis-nerve",
@@ -1045,6 +1019,34 @@
       "fan_in": 0,
       "primary_responsibility": "CLI"
     },
+    "aegis-nerve::src::connections": {
+      "module": "aegis-nerve::src::connections",
+      "package": "aegis-nerve",
+      "path": "core/rust/src/connections.rs",
+      "visibility": "public_file_or_decl",
+      "imports": [
+        "rusqlite",
+        "std",
+        "super",
+        "tempfile"
+      ],
+      "public_declarations": 16,
+      "declarations": 49,
+      "child_modules": [
+        {
+          "name": "tests",
+          "public": false,
+          "line": 874
+        }
+      ],
+      "cfg_test_present": true,
+      "unsafe_hits": 0,
+      "test_marker_count": 3,
+      "resolved_imports": [],
+      "fan_out": 0,
+      "fan_in": 0,
+      "primary_responsibility": "module-local responsibility; inspect source"
+    },
     "aegis-nerve::src::context": {
       "module": "aegis-nerve::src::context",
       "package": "aegis-nerve",
@@ -1055,12 +1057,40 @@
         "crate",
         "std"
       ],
-      "public_declarations": 40,
-      "declarations": 70,
+      "public_declarations": 41,
+      "declarations": 71,
       "child_modules": [],
       "cfg_test_present": false,
       "unsafe_hits": 0,
       "test_marker_count": 0,
+      "resolved_imports": [],
+      "fan_out": 0,
+      "fan_in": 0,
+      "primary_responsibility": "module-local responsibility; inspect source"
+    },
+    "aegis-nerve::src::conversations": {
+      "module": "aegis-nerve::src::conversations",
+      "package": "aegis-nerve",
+      "path": "core/rust/src/conversations.rs",
+      "visibility": "public_file_or_decl",
+      "imports": [
+        "rusqlite",
+        "std",
+        "super",
+        "tempfile"
+      ],
+      "public_declarations": 23,
+      "declarations": 67,
+      "child_modules": [
+        {
+          "name": "tests",
+          "public": false,
+          "line": 1846
+        }
+      ],
+      "cfg_test_present": true,
+      "unsafe_hits": 0,
+      "test_marker_count": 5,
       "resolved_imports": [],
       "fan_out": 0,
       "fan_in": 0,
@@ -1356,21 +1386,363 @@
       "fan_in": 0,
       "primary_responsibility": "execution lanes/processes"
     },
+    "aegis-nerve::src::ffi::compat": {
+      "module": "aegis-nerve::src::ffi::compat",
+      "package": "aegis-nerve",
+      "path": "core/rust/src/ffi/compat.rs",
+      "visibility": "public_file_or_decl",
+      "imports": [
+        "crate",
+        "pyo3",
+        "super"
+      ],
+      "public_declarations": 12,
+      "declarations": 12,
+      "child_modules": [],
+      "cfg_test_present": false,
+      "unsafe_hits": 0,
+      "test_marker_count": 0,
+      "resolved_imports": [],
+      "fan_out": 0,
+      "fan_in": 0,
+      "primary_responsibility": "PyO3/native boundary"
+    },
+    "aegis-nerve::src::ffi::connections": {
+      "module": "aegis-nerve::src::ffi::connections",
+      "package": "aegis-nerve",
+      "path": "core/rust/src/ffi/connections.rs",
+      "visibility": "public_file_or_decl",
+      "imports": [
+        "pyo3",
+        "super"
+      ],
+      "public_declarations": 8,
+      "declarations": 11,
+      "child_modules": [],
+      "cfg_test_present": false,
+      "unsafe_hits": 0,
+      "test_marker_count": 0,
+      "resolved_imports": [],
+      "fan_out": 0,
+      "fan_in": 0,
+      "primary_responsibility": "PyO3/native boundary"
+    },
+    "aegis-nerve::src::ffi::context": {
+      "module": "aegis-nerve::src::ffi::context",
+      "package": "aegis-nerve",
+      "path": "core/rust/src/ffi/context.rs",
+      "visibility": "public_file_or_decl",
+      "imports": [
+        "crate",
+        "pyo3",
+        "super"
+      ],
+      "public_declarations": 1,
+      "declarations": 3,
+      "child_modules": [],
+      "cfg_test_present": false,
+      "unsafe_hits": 0,
+      "test_marker_count": 0,
+      "resolved_imports": [],
+      "fan_out": 0,
+      "fan_in": 0,
+      "primary_responsibility": "PyO3/native boundary"
+    },
+    "aegis-nerve::src::ffi::conversations": {
+      "module": "aegis-nerve::src::ffi::conversations",
+      "package": "aegis-nerve",
+      "path": "core/rust/src/ffi/conversations.rs",
+      "visibility": "public_file_or_decl",
+      "imports": [
+        "pyo3",
+        "super"
+      ],
+      "public_declarations": 14,
+      "declarations": 21,
+      "child_modules": [],
+      "cfg_test_present": false,
+      "unsafe_hits": 0,
+      "test_marker_count": 0,
+      "resolved_imports": [],
+      "fan_out": 0,
+      "fan_in": 0,
+      "primary_responsibility": "PyO3/native boundary"
+    },
+    "aegis-nerve::src::ffi::eac": {
+      "module": "aegis-nerve::src::ffi::eac",
+      "package": "aegis-nerve",
+      "path": "core/rust/src/ffi/eac.rs",
+      "visibility": "public_file_or_decl",
+      "imports": [
+        "pyo3",
+        "super"
+      ],
+      "public_declarations": 6,
+      "declarations": 15,
+      "child_modules": [
+        {
+          "name": "tests",
+          "public": false,
+          "line": 116
+        }
+      ],
+      "cfg_test_present": true,
+      "unsafe_hits": 0,
+      "test_marker_count": 5,
+      "resolved_imports": [],
+      "fan_out": 0,
+      "fan_in": 0,
+      "primary_responsibility": "PyO3/native boundary"
+    },
+    "aegis-nerve::src::ffi::hot": {
+      "module": "aegis-nerve::src::ffi::hot",
+      "package": "aegis-nerve",
+      "path": "core/rust/src/ffi/hot.rs",
+      "visibility": "public_file_or_decl",
+      "imports": [
+        "blake3",
+        "pyo3",
+        "super"
+      ],
+      "public_declarations": 2,
+      "declarations": 2,
+      "child_modules": [],
+      "cfg_test_present": false,
+      "unsafe_hits": 0,
+      "test_marker_count": 0,
+      "resolved_imports": [],
+      "fan_out": 0,
+      "fan_in": 0,
+      "primary_responsibility": "PyO3/native boundary"
+    },
+    "aegis-nerve::src::ffi::lab": {
+      "module": "aegis-nerve::src::ffi::lab",
+      "package": "aegis-nerve",
+      "path": "core/rust/src/ffi/lab.rs",
+      "visibility": "public_file_or_decl",
+      "imports": [
+        "pyo3",
+        "super"
+      ],
+      "public_declarations": 9,
+      "declarations": 36,
+      "child_modules": [],
+      "cfg_test_present": false,
+      "unsafe_hits": 0,
+      "test_marker_count": 0,
+      "resolved_imports": [],
+      "fan_out": 0,
+      "fan_in": 0,
+      "primary_responsibility": "PyO3/native boundary"
+    },
+    "aegis-nerve::src::ffi::learning": {
+      "module": "aegis-nerve::src::ffi::learning",
+      "package": "aegis-nerve",
+      "path": "core/rust/src/ffi/learning.rs",
+      "visibility": "public_file_or_decl",
+      "imports": [
+        "crate",
+        "pyo3",
+        "std",
+        "super"
+      ],
+      "public_declarations": 20,
+      "declarations": 30,
+      "child_modules": [
+        {
+          "name": "tests",
+          "public": false,
+          "line": 697
+        }
+      ],
+      "cfg_test_present": true,
+      "unsafe_hits": 0,
+      "test_marker_count": 2,
+      "resolved_imports": [],
+      "fan_out": 0,
+      "fan_in": 0,
+      "primary_responsibility": "PyO3/native boundary"
+    },
+    "aegis-nerve::src::ffi::mmap": {
+      "module": "aegis-nerve::src::ffi::mmap",
+      "package": "aegis-nerve",
+      "path": "core/rust/src/ffi/mmap.rs",
+      "visibility": "public_file_or_decl",
+      "imports": [
+        "pyo3",
+        "super"
+      ],
+      "public_declarations": 5,
+      "declarations": 5,
+      "child_modules": [],
+      "cfg_test_present": false,
+      "unsafe_hits": 0,
+      "test_marker_count": 0,
+      "resolved_imports": [],
+      "fan_out": 0,
+      "fan_in": 0,
+      "primary_responsibility": "PyO3/native boundary"
+    },
+    "aegis-nerve::src::ffi::runtime": {
+      "module": "aegis-nerve::src::ffi::runtime",
+      "package": "aegis-nerve",
+      "path": "core/rust/src/ffi/runtime.rs",
+      "visibility": "public_file_or_decl",
+      "imports": [
+        "crate",
+        "parking_lot",
+        "pyo3",
+        "std",
+        "super",
+        "the"
+      ],
+      "public_declarations": 21,
+      "declarations": 67,
+      "child_modules": [
+        {
+          "name": "tests",
+          "public": false,
+          "line": 931
+        }
+      ],
+      "cfg_test_present": true,
+      "unsafe_hits": 0,
+      "test_marker_count": 14,
+      "resolved_imports": [],
+      "fan_out": 0,
+      "fan_in": 0,
+      "primary_responsibility": "PyO3/native boundary"
+    },
+    "aegis-nerve::src::ffi::source_watcher": {
+      "module": "aegis-nerve::src::ffi::source_watcher",
+      "package": "aegis-nerve",
+      "path": "core/rust/src/ffi/source_watcher.rs",
+      "visibility": "public_file_or_decl",
+      "imports": [
+        "notify",
+        "parking_lot",
+        "pyo3",
+        "serde",
+        "std"
+      ],
+      "public_declarations": 3,
+      "declarations": 17,
+      "child_modules": [],
+      "cfg_test_present": false,
+      "unsafe_hits": 0,
+      "test_marker_count": 0,
+      "resolved_imports": [],
+      "fan_out": 0,
+      "fan_in": 0,
+      "primary_responsibility": "PyO3/native boundary"
+    },
+    "aegis-nerve::src::ffi::status": {
+      "module": "aegis-nerve::src::ffi::status",
+      "package": "aegis-nerve",
+      "path": "core/rust/src/ffi/status.rs",
+      "visibility": "public_file_or_decl",
+      "imports": [
+        "pyo3",
+        "super"
+      ],
+      "public_declarations": 16,
+      "declarations": 19,
+      "child_modules": [],
+      "cfg_test_present": false,
+      "unsafe_hits": 0,
+      "test_marker_count": 0,
+      "resolved_imports": [],
+      "fan_out": 0,
+      "fan_in": 0,
+      "primary_responsibility": "PyO3/native boundary"
+    },
     "aegis-nerve::src::ffi": {
       "module": "aegis-nerve::src::ffi",
       "package": "aegis-nerve",
       "path": "core/rust/src/ffi.rs",
       "visibility": "public_file_or_decl",
       "imports": [
-        "blake3",
+        "compat",
+        "connections",
+        "context",
+        "conversations",
         "crate",
+        "eac",
+        "hot",
+        "lab",
+        "learning",
+        "mmap",
         "parking_lot",
         "pyo3",
+        "runtime",
+        "source_watcher",
+        "status",
         "std"
       ],
-      "public_declarations": 61,
-      "declarations": 109,
-      "child_modules": [],
+      "public_declarations": 15,
+      "declarations": 49,
+      "child_modules": [
+        {
+          "name": "compat",
+          "public": false,
+          "line": 17
+        },
+        {
+          "name": "connections",
+          "public": false,
+          "line": 18
+        },
+        {
+          "name": "context",
+          "public": false,
+          "line": 19
+        },
+        {
+          "name": "conversations",
+          "public": false,
+          "line": 20
+        },
+        {
+          "name": "eac",
+          "public": false,
+          "line": 21
+        },
+        {
+          "name": "hot",
+          "public": false,
+          "line": 22
+        },
+        {
+          "name": "lab",
+          "public": false,
+          "line": 23
+        },
+        {
+          "name": "learning",
+          "public": false,
+          "line": 24
+        },
+        {
+          "name": "mmap",
+          "public": false,
+          "line": 25
+        },
+        {
+          "name": "runtime",
+          "public": false,
+          "line": 26
+        },
+        {
+          "name": "source_watcher",
+          "public": false,
+          "line": 27
+        },
+        {
+          "name": "status",
+          "public": false,
+          "line": 28
+        }
+      ],
       "cfg_test_present": false,
       "unsafe_hits": 0,
       "test_marker_count": 0,
@@ -1430,18 +1802,18 @@
         "std",
         "super"
       ],
-      "public_declarations": 88,
-      "declarations": 148,
+      "public_declarations": 96,
+      "declarations": 175,
       "child_modules": [
         {
           "name": "tests",
           "public": false,
-          "line": 1200
+          "line": 1521
         }
       ],
       "cfg_test_present": true,
-      "unsafe_hits": 0,
-      "test_marker_count": 14,
+      "unsafe_hits": 1,
+      "test_marker_count": 18,
       "resolved_imports": [],
       "fan_out": 0,
       "fan_in": 0,
@@ -1564,17 +1936,17 @@
         "super"
       ],
       "public_declarations": 75,
-      "declarations": 138,
+      "declarations": 198,
       "child_modules": [
         {
           "name": "tests",
           "public": false,
-          "line": 2674
+          "line": 4941
         }
       ],
       "cfg_test_present": true,
       "unsafe_hits": 0,
-      "test_marker_count": 13,
+      "test_marker_count": 28,
       "resolved_imports": [],
       "fan_out": 0,
       "fan_in": 0,
@@ -1614,7 +1986,7 @@
         {
           "name": "tests",
           "public": false,
-          "line": 256
+          "line": 284
         }
       ],
       "cfg_test_present": true,
@@ -1633,8 +2005,8 @@
       "imports": [
         "cli"
       ],
-      "public_declarations": 45,
-      "declarations": 45,
+      "public_declarations": 48,
+      "declarations": 48,
       "child_modules": [
         {
           "name": "bridge_mmap",
@@ -1657,204 +2029,219 @@
           "line": 21
         },
         {
-          "name": "context",
+          "name": "connections",
           "public": true,
           "line": 22
         },
         {
-          "name": "descriptor",
+          "name": "context",
           "public": true,
           "line": 23
         },
         {
-          "name": "distributed",
+          "name": "conversations",
           "public": true,
           "line": 24
         },
         {
-          "name": "eac",
+          "name": "descriptor",
           "public": true,
           "line": 25
         },
         {
-          "name": "evidence_index",
+          "name": "distributed",
           "public": true,
           "line": 26
         },
         {
-          "name": "execution",
+          "name": "eac",
           "public": true,
           "line": 27
         },
         {
-          "name": "ffi",
+          "name": "evidence_index",
           "public": true,
           "line": 28
         },
         {
-          "name": "goal_intake",
+          "name": "execution",
           "public": true,
           "line": 29
         },
         {
-          "name": "governance",
+          "name": "ffi",
           "public": true,
           "line": 30
         },
         {
-          "name": "gt96",
+          "name": "goal_intake",
           "public": true,
           "line": 31
         },
         {
-          "name": "guardrail",
+          "name": "governance",
           "public": true,
           "line": 32
         },
         {
-          "name": "harness",
+          "name": "gt96",
           "public": true,
           "line": 33
         },
         {
-          "name": "hot_engine",
+          "name": "guardrail",
           "public": true,
           "line": 34
         },
         {
-          "name": "integrations",
+          "name": "harness",
           "public": true,
           "line": 35
         },
         {
-          "name": "ipc",
+          "name": "hot_engine",
           "public": true,
           "line": 36
         },
         {
-          "name": "lab",
+          "name": "integrations",
           "public": true,
           "line": 37
         },
         {
-          "name": "layout",
+          "name": "ipc",
           "public": true,
           "line": 38
         },
         {
-          "name": "learning",
+          "name": "lab",
           "public": true,
           "line": 39
         },
         {
-          "name": "licensing",
+          "name": "layout",
           "public": true,
           "line": 40
         },
         {
-          "name": "llm",
+          "name": "learning",
           "public": true,
           "line": 41
         },
         {
-          "name": "memory",
+          "name": "licensing",
           "public": true,
           "line": 42
         },
         {
-          "name": "message",
+          "name": "llm",
           "public": true,
           "line": 43
         },
         {
-          "name": "mvcc",
+          "name": "memory",
           "public": true,
           "line": 44
         },
         {
-          "name": "orchestrator",
+          "name": "message",
           "public": true,
           "line": 45
         },
         {
-          "name": "physical",
+          "name": "mvcc",
           "public": true,
           "line": 46
         },
         {
-          "name": "policy",
+          "name": "orchestrator",
           "public": true,
           "line": 47
         },
         {
-          "name": "replay",
+          "name": "physical",
           "public": true,
           "line": 48
         },
         {
-          "name": "resource",
+          "name": "placement",
           "public": true,
           "line": 49
         },
         {
-          "name": "resource_platform",
+          "name": "policy",
           "public": true,
           "line": 50
         },
         {
-          "name": "runtime",
+          "name": "replay",
           "public": true,
           "line": 51
         },
         {
-          "name": "sac",
+          "name": "resource",
           "public": true,
           "line": 52
         },
         {
-          "name": "sandbox",
+          "name": "resource_platform",
           "public": true,
           "line": 53
         },
         {
-          "name": "schema",
+          "name": "runtime",
           "public": true,
           "line": 54
         },
         {
-          "name": "shm",
+          "name": "sac",
           "public": true,
           "line": 55
         },
         {
-          "name": "skill_registry",
+          "name": "sandbox",
           "public": true,
           "line": 56
         },
         {
-          "name": "speculative",
+          "name": "schema",
           "public": true,
           "line": 57
         },
         {
-          "name": "task_ledger",
+          "name": "shm",
           "public": true,
           "line": 58
         },
         {
-          "name": "telemetry",
+          "name": "skill_registry",
           "public": true,
           "line": 59
         },
         {
-          "name": "tool_gateway",
+          "name": "speculative",
           "public": true,
           "line": 60
         },
         {
+          "name": "task_ledger",
+          "public": true,
+          "line": 61
+        },
+        {
+          "name": "telemetry",
+          "public": true,
+          "line": 62
+        },
+        {
+          "name": "tool_gateway",
+          "public": true,
+          "line": 63
+        },
+        {
           "name": "tests",
           "public": false,
-          "line": 63
+          "line": 66
         }
       ],
       "cfg_test_present": true,
@@ -1880,17 +2267,17 @@
         "the"
       ],
       "public_declarations": 25,
-      "declarations": 37,
+      "declarations": 39,
       "child_modules": [
         {
           "name": "tests",
           "public": false,
-          "line": 455
+          "line": 457
         }
       ],
       "cfg_test_present": true,
       "unsafe_hits": 0,
-      "test_marker_count": 3,
+      "test_marker_count": 5,
       "resolved_imports": [],
       "fan_out": 0,
       "fan_in": 0,
@@ -1960,8 +2347,8 @@
         "super",
         "try_update"
       ],
-      "public_declarations": 58,
-      "declarations": 116,
+      "public_declarations": 59,
+      "declarations": 118,
       "child_modules": [],
       "cfg_test_present": false,
       "unsafe_hits": 0,
@@ -1996,10 +2383,11 @@
       "imports": [
         "fold",
         "frame",
-        "pool"
+        "pool",
+        "repository"
       ],
-      "public_declarations": 10,
-      "declarations": 7,
+      "public_declarations": 12,
+      "declarations": 8,
       "child_modules": [
         {
           "name": "fidelity",
@@ -2027,14 +2415,19 @@
           "line": 5
         },
         {
-          "name": "session_search",
+          "name": "repository",
           "public": true,
           "line": 6
         },
         {
-          "name": "user_model",
+          "name": "session_search",
           "public": true,
           "line": 7
+        },
+        {
+          "name": "user_model",
+          "public": true,
+          "line": 8
         }
       ],
       "cfg_test_present": false,
@@ -2052,26 +2445,27 @@
       "visibility": "public_file_or_decl",
       "imports": [
         "blake3",
+        "commit_nudged_memories_with_ledger",
         "crate",
         "super"
       ],
-      "public_declarations": 11,
-      "declarations": 31,
+      "public_declarations": 13,
+      "declarations": 35,
       "child_modules": [
         {
           "name": "tests",
           "public": false,
-          "line": 284
+          "line": 316
         },
         {
           "name": "tests",
           "public": false,
-          "line": 287
+          "line": 319
         }
       ],
       "cfg_test_present": true,
       "unsafe_hits": 0,
-      "test_marker_count": 8,
+      "test_marker_count": 10,
       "resolved_imports": [],
       "fan_out": 0,
       "fan_in": 0,
@@ -2107,6 +2501,35 @@
       "fan_in": 0,
       "primary_responsibility": "memory/storage"
     },
+    "aegis-nerve::src::memory::repository": {
+      "module": "aegis-nerve::src::memory::repository",
+      "package": "aegis-nerve",
+      "path": "core/rust/src/memory/repository.rs",
+      "visibility": "public_file_or_decl",
+      "imports": [
+        "blake3",
+        "rusqlite",
+        "std",
+        "super",
+        "tempfile"
+      ],
+      "public_declarations": 32,
+      "declarations": 71,
+      "child_modules": [
+        {
+          "name": "tests",
+          "public": false,
+          "line": 1680
+        }
+      ],
+      "cfg_test_present": true,
+      "unsafe_hits": 0,
+      "test_marker_count": 10,
+      "resolved_imports": [],
+      "fan_out": 0,
+      "fan_in": 0,
+      "primary_responsibility": "memory/storage"
+    },
     "aegis-nerve::src::memory::session_search": {
       "module": "aegis-nerve::src::memory::session_search",
       "package": "aegis-nerve",
@@ -2115,27 +2538,24 @@
       "imports": [
         "blake3",
         "crate",
+        "rusqlite",
         "session_id",
         "std",
-        "super"
+        "super",
+        "tempfile"
       ],
-      "public_declarations": 9,
-      "declarations": 22,
+      "public_declarations": 22,
+      "declarations": 45,
       "child_modules": [
         {
           "name": "tests",
           "public": false,
-          "line": 200
-        },
-        {
-          "name": "tests",
-          "public": false,
-          "line": 202
+          "line": 682
         }
       ],
       "cfg_test_present": true,
       "unsafe_hits": 0,
-      "test_marker_count": 5,
+      "test_marker_count": 8,
       "resolved_imports": [],
       "fan_out": 0,
       "fan_in": 0,
@@ -2262,6 +2682,33 @@
       "fan_in": 0,
       "primary_responsibility": "module-local responsibility; inspect source"
     },
+    "aegis-nerve::src::placement": {
+      "module": "aegis-nerve::src::placement",
+      "package": "aegis-nerve",
+      "path": "core/rust/src/placement.rs",
+      "visibility": "public_file_or_decl",
+      "imports": [
+        "serde",
+        "std",
+        "super"
+      ],
+      "public_declarations": 52,
+      "declarations": 123,
+      "child_modules": [
+        {
+          "name": "tests",
+          "public": false,
+          "line": 2275
+        }
+      ],
+      "cfg_test_present": true,
+      "unsafe_hits": 0,
+      "test_marker_count": 17,
+      "resolved_imports": [],
+      "fan_out": 0,
+      "fan_in": 0,
+      "primary_responsibility": "module-local responsibility; inspect source"
+    },
     "aegis-nerve::src::policy": {
       "module": "aegis-nerve::src::policy",
       "package": "aegis-nerve",
@@ -2299,18 +2746,18 @@
         "std",
         "super"
       ],
-      "public_declarations": 188,
-      "declarations": 531,
+      "public_declarations": 192,
+      "declarations": 550,
       "child_modules": [
         {
           "name": "replay_internal_tests",
           "public": false,
-          "line": 8085
+          "line": 8213
         }
       ],
       "cfg_test_present": true,
       "unsafe_hits": 9,
-      "test_marker_count": 5,
+      "test_marker_count": 9,
       "resolved_imports": [],
       "fan_out": 0,
       "fan_in": 0,
@@ -2324,20 +2771,21 @@
       "imports": [
         "serde",
         "std",
-        "super"
+        "super",
+        "windows_sys"
       ],
-      "public_declarations": 79,
-      "declarations": 130,
+      "public_declarations": 111,
+      "declarations": 220,
       "child_modules": [
         {
           "name": "tests",
           "public": false,
-          "line": 1268
+          "line": 2540
         }
       ],
       "cfg_test_present": true,
-      "unsafe_hits": 1,
-      "test_marker_count": 11,
+      "unsafe_hits": 4,
+      "test_marker_count": 26,
       "resolved_imports": [],
       "fan_out": 0,
       "fan_in": 0,
@@ -2369,17 +2817,17 @@
         {
           "name": "windows",
           "public": false,
-          "line": 160
+          "line": 161
         },
         {
           "name": "macos",
           "public": false,
-          "line": 312
+          "line": 314
         },
         {
           "name": "tests",
           "public": false,
-          "line": 358
+          "line": 361
         }
       ],
       "cfg_test_present": false,
@@ -2397,20 +2845,22 @@
       "visibility": "public_file_or_decl",
       "imports": [
         "crate",
-        "super"
+        "std",
+        "super",
+        "the"
       ],
-      "public_declarations": 12,
-      "declarations": 29,
+      "public_declarations": 22,
+      "declarations": 49,
       "child_modules": [
         {
           "name": "tests",
           "public": false,
-          "line": 394
+          "line": 605
         }
       ],
       "cfg_test_present": true,
       "unsafe_hits": 0,
-      "test_marker_count": 7,
+      "test_marker_count": 13,
       "resolved_imports": [],
       "fan_out": 0,
       "fan_in": 0,
@@ -2446,8 +2896,8 @@
         "std",
         "wasmtime"
       ],
-      "public_declarations": 45,
-      "declarations": 88,
+      "public_declarations": 47,
+      "declarations": 90,
       "child_modules": [],
       "cfg_test_present": true,
       "unsafe_hits": 0,
@@ -2668,7 +3118,7 @@
         "std"
       ],
       "public_declarations": 0,
-      "declarations": 385,
+      "declarations": 388,
       "child_modules": [
         {
           "name": "tests",
@@ -2678,7 +3128,7 @@
       ],
       "cfg_test_present": true,
       "unsafe_hits": 1,
-      "test_marker_count": 311,
+      "test_marker_count": 314,
       "resolved_imports": [],
       "fan_out": 0,
       "fan_in": 0,
@@ -3144,6 +3594,6 @@
       "primary_responsibility": "module-local responsibility; inspect source"
     }
   },
-  "edge_count": 64,
+  "edge_count": 82,
   "conceptual_cycle_note": "crate/super imports are conservatively recorded; macro-generated and re-export edges need rust-analyzer for complete resolution"
 }

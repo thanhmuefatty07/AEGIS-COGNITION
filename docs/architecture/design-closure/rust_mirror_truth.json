@@ -1,29 +1,64 @@
 {
   "schema": "aegis-design-rust-mirror-truth-v1",
   "status": "INSPECTED",
-  "root": "core/rust/AEGIS-COGNITION",
+  "root": "docs/archive/legacy",
   "files": [
     {
-      "path": "core/rust/AEGIS-COGNITION/COMMERCIAL_CLOSURE_REPORT.md",
+      "path": "docs/archive/legacy/commercial-closure.md",
       "tracked": true,
       "git_status": "CLEAN",
       "history": [
+        "06e2a00e6d18a1fb1ca0edf125aae596ecc6068c 2026-09-12 16:35:15 +0700 chore: normalize repository layout and local secret hygiene",
         "9af7d47a49bf46ae943979d498d55d165daabc72 2026-08-25 18:44:41 +0700 Disclose evidence scope and derive release blockers",
         "4f76fdfa645ed2e34492aa921fe94fc410729378 2026-08-13 18:14:54 +0700 initial commit: AEGIS-COGNITION codebase"
       ],
       "content_sha256": "a82e04e9d6418dbe04da653cb70c5623cc09392321769cc6739dab7b2ab671ad",
       "references_by_basename_or_exact_path": [
-        "CLEANUP_REPORT.md",
-        "PROJECT_OVERVIEW_DETAILED.md",
         "README.md",
+        "docs/architecture/document_inventory.json",
+        "docs/archive/reports/cleanup.md"
+      ],
+      "reference_categories": {
+        "production_source": [],
+        "docs_history": [
+          "README.md",
+          "docs/architecture/document_inventory.json",
+          "docs/archive/reports/cleanup.md"
+        ],
+        "tooling": []
+      },
+      "cargo_reachable": false,
+      "package_reachable": false,
+      "script_reachable": false,
+      "ci_reachable": false,
+      "test_reachable": false,
+      "documentation_reachable": true,
+      "tool_workspace": false,
+      "nested_cargo_manifest": false,
+      "workspace_member": false,
+      "canonical_twin": null,
+      "canonical_content_identical": false,
+      "generated": false,
+      "classification": "ACTIVE_HISTORY"
+    },
+    {
+      "path": "docs/archive/legacy/dx-transformation.md",
+      "tracked": true,
+      "git_status": "CLEAN",
+      "history": [
+        "06e2a00e6d18a1fb1ca0edf125aae596ecc6068c 2026-09-12 16:35:15 +0700 chore: normalize repository layout and local secret hygiene",
+        "4fbec4b62be77477114617a64bfb55b63ecbc374 2026-08-25 19:29:25 +0700 Qualify historical performance and compliance claims",
+        "9af7d47a49bf46ae943979d498d55d165daabc72 2026-08-25 18:44:41 +0700 Disclose evidence scope and derive release blockers",
+        "3aeb55540db3dbda864317ca2cb914558ce0dbc6 2026-08-25 06:33:11 +0700 Close remediation evidence and verification gaps",
+        "4f76fdfa645ed2e34492aa921fe94fc410729378 2026-08-13 18:14:54 +0700 initial commit: AEGIS-COGNITION codebase"
+      ],
+      "content_sha256": "670c734f01bfb592fd872e90bc49dd9db648c2a31a596279a9e3edd5b97ec828",
+      "references_by_basename_or_exact_path": [
         "docs/architecture/document_inventory.json"
       ],
       "reference_categories": {
         "production_source": [],
         "docs_history": [
-          "CLEANUP_REPORT.md",
-          "PROJECT_OVERVIEW_DETAILED.md",
-          "README.md",
           "docs/architecture/document_inventory.json"
         ],
         "tooling": []
@@ -43,30 +78,25 @@
       "classification": "ACTIVE_HISTORY"
     },
     {
-      "path": "core/rust/AEGIS-COGNITION/core/rust/src/licensing.rs",
+      "path": "docs/archive/legacy/ownership.md",
       "tracked": true,
       "git_status": "CLEAN",
       "history": [
-        "4f76fdfa645ed2e34492aa921fe94fc410729378 2026-08-13 18:14:54 +0700 initial commit: AEGIS-COGNITION codebase"
+        "06e2a00e6d18a1fb1ca0edf125aae596ecc6068c 2026-09-12 16:35:15 +0700 chore: normalize repository layout and local secret hygiene"
       ],
-      "content_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "content_sha256": "17961e92888c7a351e85706e59e2e1e419264c422856a7f4675ef379e358d7e2",
       "references_by_basename_or_exact_path": [
-        "CHANGELOG.md",
-        "COMPREHENSIVE_HARDENING_REPORT.md",
-        "EXTREME_AUDIT_REPORT.md",
-        "PROJECT_OVERVIEW_DETAILED.md",
-        "core/rust/AEGIS-COGNITION/COMMERCIAL_CLOSURE_REPORT.md"
+        "docs/architecture/document_inventory.json",
+        "scripts/architecture_fitness.py"
       ],
       "reference_categories": {
         "production_source": [],
         "docs_history": [
-          "CHANGELOG.md",
-          "COMPREHENSIVE_HARDENING_REPORT.md",
-          "EXTREME_AUDIT_REPORT.md",
-          "PROJECT_OVERVIEW_DETAILED.md",
-          "core/rust/AEGIS-COGNITION/COMMERCIAL_CLOSURE_REPORT.md"
+          "docs/architecture/document_inventory.json"
         ],
-        "tooling": []
+        "tooling": [
+          "scripts/architecture_fitness.py"
+        ]
       },
       "cargo_reachable": false,
       "package_reachable": false,
@@ -77,32 +107,29 @@
       "tool_workspace": false,
       "nested_cargo_manifest": false,
       "workspace_member": false,
-      "canonical_twin": {
-        "path": "core/rust/src/licensing.rs",
-        "bytes": 17843,
-        "sha256": "5815516d0cc23df123f7acbae0d6b9fd2b0bb9885a6e43f35d1f0ceff9ad38ee"
-      },
+      "canonical_twin": null,
       "canonical_content_identical": false,
       "generated": false,
       "classification": "ACTIVE_HISTORY"
     },
     {
-      "path": "core/rust/AEGIS-COGNITION/core/rust/src/rbac.rs",
+      "path": "docs/archive/legacy/rust/rbac.rs",
       "tracked": true,
       "git_status": "CLEAN",
       "history": [
+        "06e2a00e6d18a1fb1ca0edf125aae596ecc6068c 2026-09-12 16:35:15 +0700 chore: normalize repository layout and local secret hygiene",
         "4f76fdfa645ed2e34492aa921fe94fc410729378 2026-08-13 18:14:54 +0700 initial commit: AEGIS-COGNITION codebase"
       ],
       "content_sha256": "a42432953005190190b4dea186cb152e754ebd7fc3122c9b8906cb8d6bc831a3",
       "references_by_basename_or_exact_path": [
-        "PROJECT_OVERVIEW_DETAILED.md",
-        "core/rust/AEGIS-COGNITION/COMMERCIAL_CLOSURE_REPORT.md"
+        "docs/archive/legacy/commercial-closure.md",
+        "docs/archive/reports/project-overview.md"
       ],
       "reference_categories": {
         "production_source": [],
         "docs_history": [
-          "PROJECT_OVERVIEW_DETAILED.md",
-          "core/rust/AEGIS-COGNITION/COMMERCIAL_CLOSURE_REPORT.md"
+          "docs/archive/legacy/commercial-closure.md",
+          "docs/archive/reports/project-overview.md"
         ],
         "tooling": []
       },
@@ -121,23 +148,30 @@
       "classification": "ACTIVE_HISTORY"
     },
     {
-      "path": "core/rust/AEGIS-COGNITION/website/index.html",
+      "path": "docs/archive/legacy/website/index.html",
       "tracked": true,
       "git_status": "CLEAN",
       "history": [
+        "06e2a00e6d18a1fb1ca0edf125aae596ecc6068c 2026-09-12 16:35:15 +0700 chore: normalize repository layout and local secret hygiene",
         "9af7d47a49bf46ae943979d498d55d165daabc72 2026-08-25 18:44:41 +0700 Disclose evidence scope and derive release blockers",
         "4f76fdfa645ed2e34492aa921fe94fc410729378 2026-08-13 18:14:54 +0700 initial commit: AEGIS-COGNITION codebase"
       ],
       "content_sha256": "b4b64caebd62ccd33f2bb29ddaeaec4d88c3f5b28d3dcb13899f6eb41167fe51",
       "references_by_basename_or_exact_path": [
-        "PROJECT_OVERVIEW_DETAILED.md",
-        "core/rust/AEGIS-COGNITION/COMMERCIAL_CLOSURE_REPORT.md"
+        "desktop/node_modules/@tauri-apps/cli/config.schema.json",
+        "desktop/node_modules/@vitejs/plugin-react/README.md",
+        "desktop/node_modules/lightningcss/package.json",
+        "docs/archive/legacy/commercial-closure.md",
+        "docs/archive/planning/agent-harness-continuation-plan.md",
+        "docs/archive/reports/project-overview.md"
       ],
       "reference_categories": {
         "production_source": [],
         "docs_history": [
-          "PROJECT_OVERVIEW_DETAILED.md",
-          "core/rust/AEGIS-COGNITION/COMMERCIAL_CLOSURE_REPORT.md"
+          "desktop/node_modules/@vitejs/plugin-react/README.md",
+          "docs/archive/legacy/commercial-closure.md",
+          "docs/archive/planning/agent-harness-continuation-plan.md",
+          "docs/archive/reports/project-overview.md"
         ],
         "tooling": []
       },
@@ -182,8 +216,8 @@
   "canonical_twins": {
     "licensing.rs": {
       "path": "core/rust/src/licensing.rs",
-      "bytes": 17843,
-      "sha256": "5815516d0cc23df123f7acbae0d6b9fd2b0bb9885a6e43f35d1f0ceff9ad38ee"
+      "bytes": 19190,
+      "sha256": "c6902e73b03deff267f60184edc2dae103c087e298808e146b2f1eeab4d6173d"
     }
   },
   "subtree_classification": "ACTIVE_HISTORY_NOT_EXECUTABLE",
@@ -201,8 +235,8 @@
   "limitations": [
     "the nested subtree has no Cargo.toml and is not in cargo metadata workspace members; textual references are historical/documentary, not execution proof"
   ],
-  "HEAD": "78bdc844285041f86e6769683795d9d8706e3f7e",
-  "WORKTREE_EPOCH": "86a717f3b7c2bb3ae59ec17d59b78d7f6f86de75a97f0c7e451bdd96207a5002",
-  "generated_at": "2026-09-02T03:59:43.968758+00:00",
+  "HEAD": "06e2a00e6d18a1fb1ca0edf125aae596ecc6068c",
+  "WORKTREE_EPOCH": "f510bd257dda8df093ba61c3a03bc5693e9a0f65a31094c0b737905b3ee9d499",
+  "generated_at": "2026-09-12T11:39:55.757574+00:00",
   "method": "aegis-design-closure-reconciliation-v1; direct Git/filesystem/source inspection, prior artifact hash reuse, disposable wheel reconciliation, bounded local probes"
 }

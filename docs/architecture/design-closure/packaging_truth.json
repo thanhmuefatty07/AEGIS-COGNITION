@@ -12,22 +12,22 @@
   "tool_versions": {
     "python": {
       "exit": 0,
-      "stdout": "Python 3.14.0",
+      "stdout": "Python 3.14.7",
       "stderr": ""
     },
     "rustc": {
       "exit": 0,
-      "stdout": "rustc 1.97.1 (8bab26f4f 2026-07-14)",
+      "stdout": "rustc 1.98.1 (48a229cea 2026-09-01)",
       "stderr": ""
     },
     "cargo": {
       "exit": 0,
-      "stdout": "cargo 1.97.1 (c980f4866 2026-06-30)",
+      "stdout": "cargo 1.98.1 (797e8a9bc 2026-08-05)",
       "stderr": ""
     },
     "uv": {
       "exit": 0,
-      "stdout": "uv 0.9.9 (4fac4cb7e 2025-11-12)",
+      "stdout": "uv 0.12.9 (9f9286029 2026-09-01 x86_64-pc-windows-msvc)",
       "stderr": ""
     },
     "maturin": {
@@ -67,9 +67,9 @@
     "status": "NOT_VERIFIED"
   },
   "secondary_classifications": [],
-  "HEAD": "78bdc844285041f86e6769683795d9d8706e3f7e",
-  "WORKTREE_EPOCH": "86a717f3b7c2bb3ae59ec17d59b78d7f6f86de75a97f0c7e451bdd96207a5002",
-  "generated_at": "2026-09-02T03:59:43.968758+00:00",
+  "HEAD": "06e2a00e6d18a1fb1ca0edf125aae596ecc6068c",
+  "WORKTREE_EPOCH": "f510bd257dda8df093ba61c3a03bc5693e9a0f65a31094c0b737905b3ee9d499",
+  "generated_at": "2026-09-12T11:39:55.757574+00:00",
   "method": "aegis-design-closure-reconciliation-v1; direct Git/filesystem/source inspection, prior artifact hash reuse, disposable wheel reconciliation, bounded local probes",
   "limitations": []
 }

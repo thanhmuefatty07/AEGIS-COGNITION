@@ -8,22 +8,20 @@ name: CI
     paths-ignore:
       - "**/*.md"
       - "docs/**"
-      - "AEGIS-COGNITION/**"
-      - "planning pdf/**"
-      - ".cursor/**"
-      - ".serena/**"
+      - ".agents/**"
+      - ".aegis/**"
       - "artifacts/**"
+      - ".local/**"
   pull_request:
     branches: [main]
     # Documentation/evidence-only changes do not need the runtime matrix.
     paths-ignore:
       - "**/*.md"
       - "docs/**"
-      - "AEGIS-COGNITION/**"
-      - "planning pdf/**"
-      - ".cursor/**"
-      - ".serena/**"
+      - ".agents/**"
+      - ".aegis/**"
       - "artifacts/**"
+      - ".local/**"
   workflow_dispatch:
 
 permissions:

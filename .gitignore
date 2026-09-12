@@ -9,6 +9,11 @@
 
 # Local agent-session metadata is not product source or release evidence.
 .agents/
+.cursor/
+.serena/
+.sixth/
+.cursorrules
+.aegis/
 
 # Python
 __pycache__/
@@ -30,7 +35,6 @@ venv/
 target/
 **/target/
 **/target_*/
-**/*target*/
 **/.benchmarks/
 **/build/
 !fuzz/fuzz_targets/
@@ -51,10 +55,6 @@ Thumbs.db
 .local/
 brain/
 artifacts/
-.aegis/
-.sixth/
-.serena/cache/
-.serena/memories/
 desktop/node_modules/
 desktop/dist/
 desktop/.pyinstaller-build/

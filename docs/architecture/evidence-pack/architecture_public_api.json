@@ -12,6 +12,40 @@
     },
     {
       "surface": "Python",
+      "name": "aegis_cognition._public_exports",
+      "path": "aegis_cognition/_public_exports.py",
+      "classification": "STABLE_PUBLIC",
+      "symbols": [
+        "version"
+      ]
+    },
+    {
+      "surface": "Python",
+      "name": "aegis_cognition.aese",
+      "path": "aegis_cognition/aese.py",
+      "classification": "STABLE_PUBLIC",
+      "symbols": [
+        "evaluate_adaptive_measurement",
+        "select_anchor_plan",
+        "predict_cross_hardware",
+        "AdaptiveMeasurementSpec",
+        "AdaptiveMeasurementResult",
+        "AdaptiveMeasurementSession",
+        "EvidenceLedgerEntry",
+        "EvidenceLedger",
+        "HardwareCapabilityVector",
+        "WorkloadSignature",
+        "SimulationEvidence",
+        "AnchorObservation",
+        "AnalyticPredictionModel",
+        "PredictionResult",
+        "AnchorCandidate",
+        "AnchorSelectionPlan",
+        "CoverageVector"
+      ]
+    },
+    {
+      "surface": "Python",
       "name": "aegis_cognition.agent",
       "path": "aegis_cognition/agent.py",
       "classification": "STABLE_PUBLIC",
@@ -57,10 +91,25 @@
       "path": "aegis_cognition/config.py",
       "classification": "STABLE_PUBLIC",
       "symbols": [
+        "redact_config",
+        "render_toml",
+        "save_config",
+        "trust_policy_hash",
         "load_config",
         "resolve_api_key",
         "resolve_trust_level",
         "AgentConfig"
+      ]
+    },
+    {
+      "surface": "Python",
+      "name": "aegis_cognition.desktop_service",
+      "path": "aegis_cognition/desktop_service.py",
+      "classification": "STABLE_PUBLIC",
+      "symbols": [
+        "main",
+        "DesktopServiceError",
+        "DesktopService"
       ]
     },
     {
@@ -90,6 +139,29 @@
     },
     {
       "surface": "Python",
+      "name": "aegis_cognition.goal_contract",
+      "path": "aegis_cognition/goal_contract.py",
+      "classification": "STABLE_PUBLIC",
+      "symbols": [
+        "projection_payload_digest",
+        "external_side_effect_key",
+        "GoalContractError",
+        "GoalContractLimits",
+        "StaleGoalGeneration",
+        "GoalLifecycle",
+        "GoalVerdict",
+        "TargetDescriptor",
+        "AcceptancePredicate",
+        "GoalBudgetContract",
+        "EvidencePolicy",
+        "GoalContract",
+        "ExecutionBinding",
+        "GoalVerification",
+        "GoalProgress"
+      ]
+    },
+    {
+      "surface": "Python",
       "name": "aegis_cognition.infrastructure",
       "path": "aegis_cognition/infrastructure.py",
       "classification": "STABLE_PUBLIC",
@@ -105,6 +177,7 @@
       "classification": "STABLE_PUBLIC",
       "symbols": [
         "calibrate_simulation",
+        "AuthorityMode",
         "SearchOperation",
         "SearchProgram",
         "SearchProgramExecutor",
@@ -141,6 +214,7 @@
         "LabMissionSpec",
         "ProcessExecutionCell",
         "ReplayWriterLease",
+        "ExternalSideEffectLease",
         "ExecutionCellBinding",
         "ExecutionCellRegistry",
         "LabSession",
@@ -200,15 +274,39 @@
       "path": "aegis_cognition/runtime.py",
       "classification": "STABLE_PUBLIC",
       "symbols": [
+        "normalize_runtime_trust_level",
         "native_runtime_available",
         "hardware_profile",
         "resource_contract_version",
         "execution_lanes",
+        "placement_capabilities",
+        "calibrate_placement",
+        "placement_plan_with_calibration",
+        "placement_plan",
+        "cooperative_placement_preview",
+        "cooperative_placement_preview_with_calibration",
+        "admit_cooperative_placement",
+        "release_cooperative_placement",
+        "configure_cooperative_runtime",
+        "submit_cooperative_runtime",
+        "finish_cooperative_runtime",
+        "cancel_cooperative_runtime",
+        "placement_resource_request",
+        "submit_placement_task",
         "resource_usage_sample",
+        "observe_runtime_resources",
         "admission_preview",
         "submit_runtime_task",
+        "poll_runtime_task",
+        "cancel_runtime_task",
         "finish_runtime_lease",
-        "retry_runtime_task"
+        "retry_runtime_task",
+        "acquire_runtime_task_async",
+        "acquire_runtime_task",
+        "coordinated_runtime_task",
+        "coordinated_runtime_task_sync",
+        "RuntimeCoordinationError",
+        "RuntimeLease"
       ]
     },
     {
@@ -248,13 +346,6 @@
   "rust": [
     {
       "surface": "Rust module",
-      "name": "aegis-nerve::AEGIS-COGNITION::core::rust::src::rbac",
-      "path": "core/rust/AEGIS-COGNITION/core/rust/src/rbac.rs",
-      "classification": "INTERNAL_BUT_PUBLIC",
-      "public_declarations": 22
-    },
-    {
-      "surface": "Rust module",
       "name": "aegis-nerve::src::bridge_mmap",
       "path": "core/rust/src/bridge_mmap.rs",
       "classification": "INTERNAL_BUT_PUBLIC",
@@ -283,10 +374,24 @@
     },
     {
       "surface": "Rust module",
+      "name": "aegis-nerve::src::connections",
+      "path": "core/rust/src/connections.rs",
+      "classification": "INTERNAL_BUT_PUBLIC",
+      "public_declarations": 16
+    },
+    {
+      "surface": "Rust module",
       "name": "aegis-nerve::src::context",
       "path": "core/rust/src/context.rs",
       "classification": "INTERNAL_BUT_PUBLIC",
-      "public_declarations": 40
+      "public_declarations": 41
+    },
+    {
+      "surface": "Rust module",
+      "name": "aegis-nerve::src::conversations",
+      "path": "core/rust/src/conversations.rs",
+      "classification": "INTERNAL_BUT_PUBLIC",
+      "public_declarations": 23
     },
     {
       "surface": "Rust module",
@@ -367,10 +472,94 @@
     },
     {
       "surface": "Rust module",
+      "name": "aegis-nerve::src::ffi::compat",
+      "path": "core/rust/src/ffi/compat.rs",
+      "classification": "INTERNAL_BUT_PUBLIC",
+      "public_declarations": 12
+    },
+    {
+      "surface": "Rust module",
+      "name": "aegis-nerve::src::ffi::connections",
+      "path": "core/rust/src/ffi/connections.rs",
+      "classification": "INTERNAL_BUT_PUBLIC",
+      "public_declarations": 8
+    },
+    {
+      "surface": "Rust module",
+      "name": "aegis-nerve::src::ffi::context",
+      "path": "core/rust/src/ffi/context.rs",
+      "classification": "INTERNAL_BUT_PUBLIC",
+      "public_declarations": 1
+    },
+    {
+      "surface": "Rust module",
+      "name": "aegis-nerve::src::ffi::conversations",
+      "path": "core/rust/src/ffi/conversations.rs",
+      "classification": "INTERNAL_BUT_PUBLIC",
+      "public_declarations": 14
+    },
+    {
+      "surface": "Rust module",
+      "name": "aegis-nerve::src::ffi::eac",
+      "path": "core/rust/src/ffi/eac.rs",
+      "classification": "INTERNAL_BUT_PUBLIC",
+      "public_declarations": 6
+    },
+    {
+      "surface": "Rust module",
+      "name": "aegis-nerve::src::ffi::hot",
+      "path": "core/rust/src/ffi/hot.rs",
+      "classification": "INTERNAL_BUT_PUBLIC",
+      "public_declarations": 2
+    },
+    {
+      "surface": "Rust module",
+      "name": "aegis-nerve::src::ffi::lab",
+      "path": "core/rust/src/ffi/lab.rs",
+      "classification": "INTERNAL_BUT_PUBLIC",
+      "public_declarations": 9
+    },
+    {
+      "surface": "Rust module",
+      "name": "aegis-nerve::src::ffi::learning",
+      "path": "core/rust/src/ffi/learning.rs",
+      "classification": "INTERNAL_BUT_PUBLIC",
+      "public_declarations": 20
+    },
+    {
+      "surface": "Rust module",
+      "name": "aegis-nerve::src::ffi::mmap",
+      "path": "core/rust/src/ffi/mmap.rs",
+      "classification": "INTERNAL_BUT_PUBLIC",
+      "public_declarations": 5
+    },
+    {
+      "surface": "Rust module",
+      "name": "aegis-nerve::src::ffi::runtime",
+      "path": "core/rust/src/ffi/runtime.rs",
+      "classification": "INTERNAL_BUT_PUBLIC",
+      "public_declarations": 21
+    },
+    {
+      "surface": "Rust module",
+      "name": "aegis-nerve::src::ffi::source_watcher",
+      "path": "core/rust/src/ffi/source_watcher.rs",
+      "classification": "INTERNAL_BUT_PUBLIC",
+      "public_declarations": 3
+    },
+    {
+      "surface": "Rust module",
+      "name": "aegis-nerve::src::ffi::status",
+      "path": "core/rust/src/ffi/status.rs",
+      "classification": "INTERNAL_BUT_PUBLIC",
+      "public_declarations": 16
+    },
+    {
+      "surface": "Rust module",
       "name": "aegis-nerve::src::ffi",
       "path": "core/rust/src/ffi.rs",
       "classification": "INTERNAL_BUT_PUBLIC",
-      "public_declarations": 61
+      "public_declarations": 15
     },
     {
       "surface": "Rust module",
@@ -391,7 +580,7 @@
       "name": "aegis-nerve::src::gt96",
       "path": "core/rust/src/gt96.rs",
       "classification": "INTERNAL_BUT_PUBLIC",
-      "public_declarations": 88
+      "public_declarations": 96
     },
     {
       "surface": "Rust module",
@@ -454,7 +643,7 @@
       "name": "aegis-nerve::crate",
       "path": "core/rust/src/lib.rs",
       "classification": "INTERNAL_BUT_PUBLIC",
-      "public_declarations": 45
+      "public_declarations": 48
     },
     {
       "surface": "Rust module",
@@ -482,7 +671,7 @@
       "name": "aegis-nerve::src::memory::fold",
       "path": "core/rust/src/memory/fold.rs",
       "classification": "INTERNAL_BUT_PUBLIC",
-      "public_declarations": 58
+      "public_declarations": 59
     },
     {
       "surface": "Rust module",
@@ -496,14 +685,14 @@
       "name": "aegis-nerve::src::memory",
       "path": "core/rust/src/memory/mod.rs",
       "classification": "INTERNAL_BUT_PUBLIC",
-      "public_declarations": 10
+      "public_declarations": 12
     },
     {
       "surface": "Rust module",
       "name": "aegis-nerve::src::memory::nudge",
       "path": "core/rust/src/memory/nudge.rs",
       "classification": "INTERNAL_BUT_PUBLIC",
-      "public_declarations": 11
+      "public_declarations": 13
     },
     {
       "surface": "Rust module",
@@ -514,10 +703,17 @@
     },
     {
       "surface": "Rust module",
+      "name": "aegis-nerve::src::memory::repository",
+      "path": "core/rust/src/memory/repository.rs",
+      "classification": "INTERNAL_BUT_PUBLIC",
+      "public_declarations": 32
+    },
+    {
+      "surface": "Rust module",
       "name": "aegis-nerve::src::memory::session_search",
       "path": "core/rust/src/memory/session_search.rs",
       "classification": "INTERNAL_BUT_PUBLIC",
-      "public_declarations": 9
+      "public_declarations": 22
     },
     {
       "surface": "Rust module",
@@ -556,6 +752,13 @@
     },
     {
       "surface": "Rust module",
+      "name": "aegis-nerve::src::placement",
+      "path": "core/rust/src/placement.rs",
+      "classification": "INTERNAL_BUT_PUBLIC",
+      "public_declarations": 52
+    },
+    {
+      "surface": "Rust module",
       "name": "aegis-nerve::src::policy",
       "path": "core/rust/src/policy.rs",
       "classification": "INTERNAL_BUT_PUBLIC",
@@ -566,14 +769,14 @@
       "name": "aegis-nerve::src::replay",
       "path": "core/rust/src/replay.rs",
       "classification": "INTERNAL_BUT_PUBLIC",
-      "public_declarations": 188
+      "public_declarations": 192
     },
     {
       "surface": "Rust module",
       "name": "aegis-nerve::src::resource",
       "path": "core/rust/src/resource.rs",
       "classification": "INTERNAL_BUT_PUBLIC",
-      "public_declarations": 79
+      "public_declarations": 111
     },
     {
       "surface": "Rust module",
@@ -587,7 +790,7 @@
       "name": "aegis-nerve::src::runtime",
       "path": "core/rust/src/runtime.rs",
       "classification": "INTERNAL_BUT_PUBLIC",
-      "public_declarations": 12
+      "public_declarations": 22
     },
     {
       "surface": "Rust module",
@@ -601,7 +804,7 @@
       "name": "aegis-nerve::src::sandbox",
       "path": "core/rust/src/sandbox.rs",
       "classification": "INTERNAL_BUT_PUBLIC",
-      "public_declarations": 45
+      "public_declarations": 47
     },
     {
       "surface": "Rust module",
@@ -751,6 +954,10 @@
     }
   ],
   "schemas": [
+    "desktop/src-tauri/gen/schemas/acl-manifests.json",
+    "desktop/src-tauri/gen/schemas/capabilities.json",
+    "desktop/src-tauri/gen/schemas/desktop-schema.json",
+    "desktop/src-tauri/gen/schemas/windows-schema.json",
     "schemas/lease-token-v1.json",
     "schemas/resource-contract-v1.json",
     "schemas/runtime-telemetry-v1.json"

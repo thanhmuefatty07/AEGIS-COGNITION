@@ -12,8 +12,26 @@
   "static_suspects": [
     {
       "suspect": "repeated_serialization",
-      "hits": 696,
+      "hits": 1766,
       "sample": [
+        {
+          "path": ".local/agent-state/agents/explorer_5/BRIEFING.md",
+          "line": 41,
+          "text": "- Confirmed feature `fast-json` is empty, indicating SIMD JSON library integration itself is still a future roadmap target, while the hot path currently uses zero-copy recursive `Cow` parsing via `serde_json` and `syn`.",
+          "category": "DOCUMENTATION"
+        },
+        {
+          "path": ".local/agent-state/agents/explorer_5/handoff.md",
+          "line": 21,
+          "text": "- JSON parsing uses zero-copy recursive `ZeroCopyValue` in `core/rust/src/physical.rs` line 90 using standard `serde_json` and `Cow<'a, str>`, but actual SIMD JSON dependency is not yet present.",
+          "category": "DOCUMENTATION"
+        },
+        {
+          "path": ".local/agent-state/agents/explorer_5/handoff.md",
+          "line": 58,
+          "text": "- **SIMD JSON**: The current empty `fast-json` feature gate indicates that standard JSON serialization/deserialization is active (`serde_json` with borrowing), and a true SIMD JSON layout parser remains unimplemented.",
+          "category": "DOCUMENTATION"
+        },
         {
           "path": "aegis-plugins/aegis-browser/Cargo.toml",
           "line": 22,
@@ -63,232 +81,214 @@
           "category": "PRODUCT"
         },
         {
+          "path": "aegis_cognition/aese.py",
+          "line": 132,
+          "text": "encoded = json.dumps(",
+          "category": "PRODUCT"
+        },
+        {
+          "path": "aegis_cognition/application.py",
+          "line": 236,
+          "text": "return json.dumps(output, ensure_ascii=False, sort_keys=True, default=str)",
+          "category": "PRODUCT"
+        },
+        {
+          "path": "aegis_cognition/application.py",
+          "line": 305,
+          "text": "continuation_json = json.dumps(",
+          "category": "PRODUCT"
+        },
+        {
           "path": "aegis_cognition/benchmark.py",
-          "line": 24,
+          "line": 41,
           "text": "encoded = json.dumps(payload, sort_keys=True, separators=(\",\", \":\"), default=str).encode()",
           "category": "PRODUCT"
         },
         {
           "path": "aegis_cognition/benchmark.py",
-          "line": 211,
+          "line": 269,
           "text": "payload = json.dumps(",
           "category": "PRODUCT"
         },
         {
           "path": "aegis_cognition/benchmark.py",
-          "line": 253,
+          "line": 311,
           "text": "result = json.loads(stdout)",
           "category": "PRODUCT"
         },
         {
-          "path": "aegis_cognition/lab.py",
-          "line": 39,
-          "text": "payload = json.dumps(value, sort_keys=True, separators=(\",\", \":\"), default=str).encode()",
-          "category": "LAB"
+          "path": "aegis_cognition/config.py",
+          "line": 65,
+          "text": "return json.dumps(value, ensure_ascii=False)",
+          "category": "PRODUCT"
         },
         {
-          "path": "aegis_cognition/lab.py",
-          "line": 104,
-          "text": "payload = json.dumps(value, separators=(\",\", \":\"), ensure_ascii=False).encode()",
-          "category": "LAB"
+          "path": "aegis_cognition/desktop_service.py",
+          "line": 608,
+          "text": "continuation_json=json.dumps(",
+          "category": "PRODUCT"
         },
         {
-          "path": "aegis_cognition/lab.py",
-          "line": 111,
+          "path": "aegis_cognition/desktop_service.py",
+          "line": 853,
+          "text": "return json.dumps(self.ready_payload(), ensure_ascii=False, sort_keys=True, separators=(\",\", \":\")).encode(",
+          "category": "PRODUCT"
+        },
+        {
+          "path": "aegis_cognition/goal_contract.py",
+          "line": 41,
           "text": "payload = json.dumps(",
-          "category": "LAB"
+          "category": "PRODUCT"
         },
         {
-          "path": "aegis_cognition/lab.py",
-          "line": 1191,
-          "text": "encoded = json.dumps(value, separators=(\",\", \":\"), ensure_ascii=False).encode()",
-          "category": "LAB"
+          "path": "aegis_cognition/goal_contract.py",
+          "line": 57,
+          "text": "payload = json.dumps(",
+          "category": "PRODUCT"
         },
         {
-          "path": "aegis_cognition/lab.py",
-          "line": 1279,
-          "text": "content = json.dumps(",
-          "category": "LAB"
+          "path": "aegis_cognition/goal_contract.py",
+          "line": 73,
+          "text": "payload = json.dumps(",
+          "category": "PRODUCT"
         },
         {
-          "path": "aegis_cognition/lab.py",
-          "line": 1310,
-          "text": "encoded = json.dumps(payload, sort_keys=True, separators=(\",\", \":\"), default=str).encode(\"utf-8\")",
-          "category": "LAB"
+          "path": "aegis_cognition/goal_contract.py",
+          "line": 274,
+          "text": "json.dumps(value, allow_nan=False)",
+          "category": "PRODUCT"
         },
         {
-          "path": "aegis_cognition/lab.py",
-          "line": 2497,
-          "text": "json.dumps(mission, separators=(\",\", \":\"), ensure_ascii=False)",
-          "category": "LAB"
-        },
-        {
-          "path": "aegis_cognition/lab.py",
-          "line": 3342,
-          "text": "canonical_payload = json.loads(",
-          "category": "LAB"
-        },
-        {
-          "path": "aegis_cognition/lab.py",
-          "line": 3343,
-          "text": "json.dumps(payload, sort_keys=True, separators=(\",\", \":\"), default=str)",
-          "category": "LAB"
-        },
-        {
-          "path": "aegis_cognition/lab.py",
-          "line": 3442,
-          "text": "return json.dumps(",
-          "category": "LAB"
-        },
-        {
-          "path": "aegis_cognition/lab.py",
-          "line": 3460,
-          "text": "return json.dumps(",
-          "category": "LAB"
-        },
-        {
-          "path": "aegis_cognition/lab.py",
-          "line": 3503,
-          "text": "json.dumps(spend, separators=(\",\", \":\")),",
-          "category": "LAB"
-        },
-        {
-          "path": "aegis_cognition/lab.py",
-          "line": 3509,
-          "text": "payload_json = json.dumps(",
-          "category": "LAB"
-        },
-        {
-          "path": "aegis_cognition/lab.py",
-          "line": 4681,
-          "text": "json.dumps(events),",
-          "category": "LAB"
+          "path": "aegis_cognition/goal_contract.py",
+          "line": 454,
+          "text": "json.dumps(current, allow_nan=False)",
+          "category": "PRODUCT"
         }
       ],
       "status": "SUSPECT_ONLY_UNMEASURED"
     },
     {
       "suspect": "repeated_hashing",
-      "hits": 898,
+      "hits": 1759,
       "sample": [
         {
-          "path": "_session_report_hardening_8_1_2026_06_16.md",
-          "line": 7,
-          "text": "an explicit user-denial of the retry against a workspace member. TASK 1 (BLAKE3",
+          "path": ".local/agent-config/cursor/skills/aegis-zero-trust-plugin-creator/SKILL.md",
+          "line": 20,
+          "text": "5. Physical evidence: BLAKE3-bound artifact, AST/DOM/data/screenshot fingerprint, and witness proof.",
           "category": "DOCUMENTATION"
         },
         {
-          "path": "_session_report_hardening_8_1_2026_06_16.md",
+          "path": ".local/agent-state/agents/explorer_1/analysis.md",
+          "line": 31,
+          "text": "$$\\text{event\\_hash} = \\text{BLAKE3}(\\text{event\\_id} \\mathbin{\\Vert} \\text{run\\_id} \\mathbin{\\Vert} \\text{kind} \\mathbin{\\Vert} \\text{subject\\_id} \\mathbin{\\Vert} \\text{primary\\_hash} \\mathbin{\\Vert} \\text{secondary\\_hash} \\mathbin{\\Vert} \\text{previous\\_event\\_hash})$$",
+          "category": "DOCUMENTATION"
+        },
+        {
+          "path": ".local/agent-state/agents/explorer_1/analysis.md",
+          "line": 115,
+          "text": "2.  **Wasmtime Sandbox**: Uses pre-cached compiled `wasmtime::Module` objects and instantiated environments (`InstancePre`) mapped by BLAKE3 hashes to eliminate cold starts.",
+          "category": "DOCUMENTATION"
+        },
+        {
+          "path": ".local/agent-state/agents/explorer_1/analysis.md",
+          "line": 132,
+          "text": "4.  Update the state hash chain with a BLAKE3 trace of the current turn's inputs/outputs.",
+          "category": "DOCUMENTATION"
+        },
+        {
+          "path": ".local/agent-state/agents/explorer_1/BRIEFING.md",
+          "line": 35,
+          "text": "- Semantic Cache POC implements L1 Blake3 match + L2 Cosine similarity cache.",
+          "category": "DOCUMENTATION"
+        },
+        {
+          "path": ".local/agent-state/agents/explorer_1/handoff.md",
           "line": 8,
-          "text": "migration to `blake3_domain_hash`) cannot be done as specified because the",
+          "text": "- **RunEvent Struct**: Chained via BLAKE3 hashes (`replay.rs:68-77`):",
           "category": "DOCUMENTATION"
         },
         {
-          "path": "_session_report_hardening_8_1_2026_06_16.md",
-          "line": 15,
-          "text": "## TASK 1: BLAKE3 Migration",
+          "path": ".local/agent-state/agents/explorer_4/BRIEFING.md",
+          "line": 25,
+          "text": "- Browser executions are verified via `BrowserWitnessProof` and `BrowserObservationPacket` using BLAKE3 hashes of DOM/screenshot/network files.",
           "category": "DOCUMENTATION"
         },
         {
-          "path": "_session_report_hardening_8_1_2026_06_16.md",
-          "line": 22,
-          "text": "- Evidence: `artifacts/hardening/blake3_task1_infeasible_2026_06_16.md`",
+          "path": ".local/agent-state/agents/orchestrator/original_prompt.md",
+          "line": 28,
+          "text": "- [ ] All 128 crash points in `ReplayChaosBench` recover successfully with correct BLAKE3 hash chain validations.",
           "category": "DOCUMENTATION"
         },
         {
-          "path": "_session_report_hardening_8_1_2026_06_16.md",
+          "path": ".local/agent-state/agents/orchestrator_graduate/plan.md",
+          "line": 14,
+          "text": "- Incorporate L1 BLAKE3 exact match and L2 Cosine Similarity.",
+          "category": "DOCUMENTATION"
+        },
+        {
+          "path": ".local/agent-state/agents/orchestrator_graduate/plan.md",
+          "line": 21,
+          "text": "- Implement `FilesystemSerde` API for atomic filesystem writes and BLAKE3-hashed turn state tracking.",
+          "category": "DOCUMENTATION"
+        },
+        {
+          "path": ".local/agent-state/agents/worker_m1_1/BRIEFING.md",
+          "line": 4,
+          "text": "Implement Milestone 1: Semantic Cache Integration in `core/rust/src/eac/cache/semantic.rs` with exact BLAKE3 matching and Cosine Similarity, along with file loading/saving.",
+          "category": "DOCUMENTATION"
+        },
+        {
+          "path": ".local/agent-state/agents/worker_m1_1/BRIEFING.md",
+          "line": 14,
+          "text": "- Use exact match via BLAKE3 (L1) and Cosine Similarity (L2) with a threshold.",
+          "category": "DOCUMENTATION"
+        },
+        {
+          "path": ".local/agent-state/agents/worker_m1_1/BRIEFING.md",
           "line": 24,
-          "text": "Reason: `blake3_domain_hash` does not exist (0 matches in `core/rust/src/`).",
+          "text": "- **What to build**: Implement SemanticCache struct in rust backend with BLAKE3 + Cosine Similarity.",
           "category": "DOCUMENTATION"
         },
         {
-          "path": "_session_report_hardening_8_1_2026_06_16.md",
-          "line": 29,
-          "text": "(`artifacts/audit_2026_06_15/blake3_domain_prefix_plan.md`) itself recommends",
+          "path": ".local/agent-state/agents/worker_m1_1/BRIEFING.md",
+          "line": 38,
+          "text": "- Use hex string of BLAKE3 hash of trimmed prompt for fast exact matching under namespace.",
           "category": "DOCUMENTATION"
         },
         {
-          "path": "_session_report_hardening_8_1_2026_06_16.md",
-          "line": 86,
-          "text": "| `artifacts/hardening/blake3_task1_infeasible_2026_06_16.md` | (later) | ~3.5 KB |",
+          "path": ".local/agent-state/agents/worker_m1_1/handoff.md",
+          "line": 10,
+          "text": "- Configured L1 exact match using a trimmed BLAKE3 hex hash comparison:",
           "category": "DOCUMENTATION"
         },
         {
-          "path": "_session_report_hardening_8_1_2026_06_16.md",
-          "line": 96,
-          "text": "No `core/rust/` source files modified. No on-disk BLAKE3 ledger touched.",
+          "path": ".local/agent-state/agents/worker_m1_1/handoff.md",
+          "line": 12,
+          "text": "let query_hash = blake3::hash(prompt.trim().as_bytes()).to_hex().to_string();",
           "category": "DOCUMENTATION"
         },
         {
-          "path": "_session_report_hardening_8_1_2026_06_16.md",
-          "line": 109,
-          "text": "`blake3_task1_infeasible_2026_06_16.md` — introduce the helper, write",
+          "path": ".local/agent-state/agents/worker_m1_1/handoff.md",
+          "line": 33,
+          "text": "1. Standard exact prompt matching is optimized using cryptographic BLAKE3 hashes, which maps a variable-length prompt to a fixed-size hex string (`prompt_hash`). Comparing hashes avoids overhead of storing/matching large strings (Step 1).",
           "category": "DOCUMENTATION"
         },
         {
-          "path": "AEGIS-COGNITION/artifacts/extreme_testing/EXTREME_TESTING_CHAOS_REPORT.md",
-          "line": 15,
-          "text": "| Load Test Ceiling | ~80,000 ops/sec BLAKE3 hashing (Python simulation) |",
+          "path": ".local/agent-state/agents/worker_m1_1/handoff.md",
+          "line": 45,
+          "text": "Milestone 1 is complete. The exact BLAKE3 + L2 Cosine Similarity semantic cache is implemented under a production-grade module structure and fully integrated. All unit tests build and pass cleanly.",
           "category": "DOCUMENTATION"
         },
         {
-          "path": "AEGIS-COGNITION/artifacts/extreme_testing/EXTREME_TESTING_CHAOS_REPORT.md",
-          "line": 55,
-          "text": "| BLAKE3 Chain Integrity | **Maintained** | — | PASS |",
+          "path": ".local/agent-state/agents/worker_m1_1/original_prompt.md",
+          "line": 3,
+          "text": "Implement L1 BLAKE3 exact match + L2 Cosine Similarity in a production-grade module `core/rust/src/eac/cache/semantic.rs` (and define modules in `core/rust/src/eac/mod.rs` and `core/rust/src/eac/cache/mod.rs`).",
           "category": "DOCUMENTATION"
         },
         {
-          "path": "AEGIS-COGNITION/artifacts/extreme_testing/EXTREME_TESTING_CHAOS_REPORT.md",
-          "line": 57,
-          "text": "**Observation**: Arena operations remain sub-20µs even at 10K concurrent payloads. The Python BLAKE3 hashing overhead dominates (12.8µs avg vs Rust SIMD 2.02µs baseline).",
-          "category": "DOCUMENTATION"
-        },
-        {
-          "path": "AEGIS-COGNITION/artifacts/extreme_testing/EXTREME_TESTING_CHAOS_REPORT.md",
-          "line": 81,
-          "text": "| one_byte | 1 byte | Accepted (valid mmap, content mismatch handled by BLAKE3) |",
-          "category": "DOCUMENTATION"
-        },
-        {
-          "path": "AEGIS-COGNITION/artifacts/extreme_testing/EXTREME_TESTING_CHAOS_REPORT.md",
-          "line": 135,
-          "text": "| Data loss | **None detected** (BLAKE3 chain integrity maintained) |",
-          "category": "DOCUMENTATION"
-        },
-        {
-          "path": "AEGIS-COGNITION/artifacts/extreme_testing/EXTREME_TESTING_CHAOS_REPORT.md",
-          "line": 138,
-          "text": "**Observation**: Python `file.write()` + BLAKE3 hash-per-line pattern survives SIGKILL cleanly because writes are line-buffered and the file is opened in append mode. Rust `fs::OpenOptions().append(true)` with `sync_all` would provide even stronger durability.",
-          "category": "DOCUMENTATION"
-        },
-        {
-          "path": "AEGIS-COGNITION/artifacts/extreme_testing/EXTREME_TESTING_CHAOS_REPORT.md",
-          "line": 162,
-          "text": "**Attack vector**: Modify 1 byte in a sealed Arrow IPC file. **Defense**: `ReplayDeterminismProof` recomputes BLAKE3 over the physical file bytes. Any bit flip produces a different hash, which fails `replay_hash_chain_valid`.",
-          "category": "DOCUMENTATION"
-        },
-        {
-          "path": "AEGIS-COGNITION/artifacts/extreme_testing/EXTREME_TESTING_CHAOS_REPORT.md",
-          "line": 206,
-          "text": "| BLAKE3 Chain Tamper Detection | **PASS** | 1-bit flip → hash mismatch confirmed |",
-          "category": "DOCUMENTATION"
-        },
-        {
-          "path": "AEGIS-COGNITION/artifacts/extreme_testing/EXTREME_TESTING_CHAOS_REPORT.md",
-          "line": 276,
-          "text": "CRYPTO BYPASS:       IMPOSSIBLE (BLAKE3 chain + 1-bit detection)",
-          "category": "DOCUMENTATION"
-        },
-        {
-          "path": "AEGIS-COGNITION/DX_TRANSFORMATION_REPORT.md",
-          "line": 26,
-          "text": "| **Error messages** | Cryptic (BLAKE3 mismatches, hash chain errors) | Friendly (actionable: \"How to fix\", \"Option 1/2\") | Actionable | PASS |",
-          "category": "DOCUMENTATION"
-        },
-        {
-          "path": "AEGIS-COGNITION/DX_TRANSFORMATION_REPORT.md",
-          "line": 153,
-          "text": "- BLAKE3 hash chains + Replay Ledger + Event Sourcing",
+          "path": ".local/agent-state/agents/worker_m1_1/progress.md",
+          "line": 9,
+          "text": "- [x] Complete implementation with BLAKE3 hashing, cosine similarity, serialization/deserialization to/from file_path",
           "category": "DOCUMENTATION"
         },
         {
@@ -326,8 +326,14 @@
     },
     {
       "suspect": "copies_clones",
-      "hits": 1046,
+      "hits": 1408,
       "sample": [
+        {
+          "path": ".local/agent-state/agents/worker_m1_1/handoff.md",
+          "line": 12,
+          "text": "let query_hash = blake3::hash(prompt.trim().as_bytes()).to_hex().to_string();",
+          "category": "DOCUMENTATION"
+        },
         {
           "path": "aegis-plugins/aegis-bench/src/lib.rs",
           "line": 65,
@@ -471,29 +477,41 @@
           "line": 328,
           "text": ".unwrap_or_else(|| candidate.id.clone()),",
           "category": "PRODUCT"
-        },
-        {
-          "path": "aegis-plugins/aegis-search-sdk/src/lib.rs",
-          "line": 329,
-          "text": "DedupeKey::Title => candidate.title.clone(),",
-          "category": "PRODUCT"
         }
       ],
       "status": "SUSPECT_ONLY_UNMEASURED"
     },
     {
       "suspect": "lock_heavy",
-      "hits": 112,
+      "hits": 343,
       "sample": [
         {
+          "path": ".local/agent-state/agents/explorer_1/analysis.md",
+          "line": 73,
+          "text": "pub inner: Arc<Mutex<crate::eac::cache::SemanticCache>>,",
+          "category": "DOCUMENTATION"
+        },
+        {
+          "path": ".local/agent-state/agents/explorer_5/handoff.md",
+          "line": 13,
+          "text": "- Caching mechanisms: uses `module_cache: RwLock<HashMap<[u8; 32], Module>>` (line 223), `wasm_pre_cache` (line 225), and `quickjs_bridge_pre_cache` (line 227) to avoid re-compilation and re-instantiation overhead.",
+          "category": "DOCUMENTATION"
+        },
+        {
+          "path": ".local/agent-state/agents/worker_m1_1/handoff.md",
+          "line": 41,
+          "text": "- The cache operations are designed with single-threaded caller safety in mind (`&mut self` is required for updates). Thread-safe cross-thread sharing must be managed by wrapping the cache in a mutex or read-write lock (`Arc<RwLock<SemanticCache>>`) on the caller side.",
+          "category": "DOCUMENTATION"
+        },
+        {
           "path": "aegis_cognition/lab.py",
-          "line": 5156,
+          "line": 8851,
           "text": "fcntl.flock(handle.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)",
           "category": "LAB"
         },
         {
           "path": "aegis_cognition/lab.py",
-          "line": 5177,
+          "line": 8872,
           "text": "fcntl.flock(handle.fileno(), fcntl.LOCK_UN)",
           "category": "LAB"
         },
@@ -505,31 +523,31 @@
         },
         {
           "path": "Cargo.lock",
-          "line": 57,
+          "line": 59,
           "text": "\"parking_lot\",",
           "category": "UNKNOWN"
         },
         {
           "path": "Cargo.lock",
-          "line": 1970,
+          "line": 2085,
           "text": "name = \"parking_lot\"",
           "category": "UNKNOWN"
         },
         {
           "path": "Cargo.lock",
-          "line": 1976,
+          "line": 2091,
           "text": "\"parking_lot_core\",",
           "category": "UNKNOWN"
         },
         {
           "path": "Cargo.lock",
-          "line": 1980,
+          "line": 2095,
           "text": "name = \"parking_lot_core\"",
           "category": "UNKNOWN"
         },
         {
           "path": "Cargo.lock",
-          "line": 2931,
+          "line": 3083,
           "text": "\"parking_lot\",",
           "category": "UNKNOWN"
         },
@@ -547,7 +565,7 @@
         },
         {
           "path": "core/rust/Cargo.toml",
-          "line": 45,
+          "line": 48,
           "text": "parking_lot = \"0.12\"",
           "category": "PRODUCT"
         },
@@ -616,355 +634,361 @@
           "line": 77,
           "text": "registry: Arc::new(Mutex::new(registry)),",
           "category": "PRODUCT"
-        },
-        {
-          "path": "core/rust/src/execution.rs",
-          "line": 79,
-          "text": "io_runtime: Mutex::new(io_runtime),",
-          "category": "PRODUCT"
-        },
-        {
-          "path": "core/rust/src/execution.rs",
-          "line": 85,
-          "text": ".lock()",
-          "category": "PRODUCT"
-        },
-        {
-          "path": "core/rust/src/execution.rs",
-          "line": 86,
-          "text": ".expect(\"execution lane mutex poisoned\")",
-          "category": "PRODUCT"
         }
       ],
       "status": "SUSPECT_ONLY_UNMEASURED"
     },
     {
       "suspect": "filesystem_scans",
-      "hits": 23,
+      "hits": 91,
       "sample": [
         {
           "path": ".github/workflows/ci.yml",
-          "line": 143,
+          "line": 166,
           "text": "wheels = glob.glob(\"target/wheels/*.whl\") + glob.glob(\"artifacts/maturin/*.whl\")",
           "category": "UNKNOWN"
         },
         {
+          "path": ".local/agent-state/agents/explorer_1/search_helper.py",
+          "line": 6,
+          "text": "for root, dirs, files in os.walk(os.path.join(project_root, 'core')):",
+          "category": "UNKNOWN"
+        },
+        {
           "path": "Cargo.lock",
-          "line": 870,
+          "line": 873,
           "text": "\"walkdir\",",
           "category": "UNKNOWN"
         },
         {
           "path": "Cargo.lock",
-          "line": 3206,
+          "line": 1964,
+          "text": "\"walkdir\",",
+          "category": "UNKNOWN"
+        },
+        {
+          "path": "Cargo.lock",
+          "line": 3364,
           "text": "name = \"walkdir\"",
           "category": "UNKNOWN"
         },
         {
+          "path": "core/python/aegis/code_intelligence.py",
+          "line": 319,
+          "text": "for directory, dirnames, filenames in os.walk(self.root, topdown=True, followlinks=False):",
+          "category": "COMPATIBILITY"
+        },
+        {
           "path": "core/python/tests.py",
-          "line": 1614,
+          "line": 82,
+          "text": "assert not list((tmp_path / \".aegis\").glob(\"*.tmp\"))",
+          "category": "TEST"
+        },
+        {
+          "path": "core/python/tests.py",
+          "line": 1665,
           "text": "metadata_seen_during_hot_commit.extend(output_root.rglob(\"producer-metadata.json\"))",
           "category": "TEST"
         },
         {
           "path": "core/python/tests.py",
-          "line": 1761,
+          "line": 1812,
           "text": "assert list(output_root.rglob(\"producer-metadata.json\")) == []",
           "category": "TEST"
         },
         {
           "path": "core/python/tests.py",
-          "line": 2898,
+          "line": 2949,
           "text": "metadata_seen_during_hot_batch.extend(output_root.rglob(\"producer-metadata.json\"))",
           "category": "TEST"
         },
         {
           "path": "core/python/tests.py",
-          "line": 3005,
+          "line": 3056,
           "text": "assert list(output_root.rglob(\"producer-metadata.json\")) == []",
           "category": "TEST"
         },
         {
-          "path": "docs/architecture/evidence-pack/collect.py",
-          "line": 47,
-          "text": "for dirpath, dirnames, filenames in os.walk(ROOT):",
-          "category": "SCRIPT"
+          "path": "desktop/node_modules/tinyglobby/README.md",
+          "line": 19,
+          "text": "await glob(['files/*.ts', '!**/*.d.ts'], { cwd: 'src' });",
+          "category": "DOCUMENTATION"
         },
         {
-          "path": "docs/architecture/evidence-pack/collect.py",
-          "line": 444,
-          "text": "ci_text = \"\\n\".join(p.read_text(encoding=\"utf-8\", errors=\"replace\") for p in (ROOT / \".github/workflows\").glob(\"*.yml\")) if (ROOT / \".github/workflows\").exists() else \"\"",
-          "category": "SCRIPT"
+          "path": "desktop/src-tauri/Cargo.lock",
+          "line": 1618,
+          "text": "\"walkdir\",",
+          "category": "UNKNOWN"
         },
         {
-          "path": "docs/architecture/evidence-pack/collect.py",
-          "line": 638,
-          "text": "\"filesystem_scans\": r\"rglob\\(|glob\\(|os\\.walk|walkdir\",",
-          "category": "SCRIPT"
+          "path": "desktop/src-tauri/Cargo.lock",
+          "line": 3138,
+          "text": "\"walkdir\",",
+          "category": "UNKNOWN"
         },
         {
-          "path": "scripts/_audit_regen_requirements.py",
-          "line": 105,
-          "text": "for path in (root / src_dir).rglob(\"*.py\"):",
-          "category": "SCRIPT"
+          "path": "desktop/src-tauri/Cargo.lock",
+          "line": 3165,
+          "text": "\"walkdir\",",
+          "category": "UNKNOWN"
         },
         {
-          "path": "scripts/architecture_fitness.py",
-          "line": 197,
-          "text": "for path in (ROOT / \"docs\" / \"adr\").glob(\"ADR-*.md\")",
-          "category": "SCRIPT"
+          "path": "desktop/src-tauri/Cargo.lock",
+          "line": 3268,
+          "text": "\"walkdir\",",
+          "category": "UNKNOWN"
         },
         {
-          "path": "scripts/architecture_fitness.py",
-          "line": 241,
-          "text": "for path in (ROOT / \"AEGIS-COGNITION\").rglob(\"*\")",
-          "category": "SCRIPT"
+          "path": "desktop/src-tauri/Cargo.lock",
+          "line": 3766,
+          "text": "name = \"walkdir\"",
+          "category": "UNKNOWN"
         },
         {
-          "path": "scripts/document_consistency_gate.py",
-          "line": 65,
-          "text": "matches = [path for path in root.glob(pattern) if path.is_file()]",
-          "category": "SCRIPT"
+          "path": "docs/architecture/design-closure/design_closure_collect.py",
+          "line": 113,
+          "text": "if root.exists(): wheels.extend(root.rglob(\"*.whl\"))",
+          "category": "DOCUMENTATION"
         },
         {
-          "path": "scripts/document_consistency_gate.py",
-          "line": 146,
-          "text": "for directory, dirnames, filenames in os.walk(root):",
-          "category": "SCRIPT"
+          "path": "docs/architecture/design-closure/design_closure_collect.py",
+          "line": 163,
+          "text": "pyvs.extend(tmp_root.glob(\"design-wheel-venv-*/Scripts/python.exe\"))",
+          "category": "DOCUMENTATION"
         },
         {
-          "path": "scripts/evidence_consistency_gate.py",
-          "line": 289,
-          "text": "for path in sorted(suite_dir.glob(\"*.json\")):",
-          "category": "SCRIPT"
+          "path": "docs/architecture/design-closure/design_closure_collect.py",
+          "line": 164,
+          "text": "pyvs.extend(tmp_root.glob(\"root-venv-*/Scripts/python.exe\"))",
+          "category": "DOCUMENTATION"
         },
         {
-          "path": "scripts/release_evidence.py",
-          "line": 63,
-          "text": "files = sorted(path for path in artifacts.rglob(\"*\") if path.is_file())",
-          "category": "SCRIPT"
+          "path": "docs/architecture/design-closure/design_closure_collect.py",
+          "line": 165,
+          "text": "pyvs.extend(tmp_root.glob(\"experiment-deadline-fence-v3-venv-*/Scripts/python.exe\"))",
+          "category": "DOCUMENTATION"
         },
         {
-          "path": "scripts/run_checks.py",
-          "line": 308,
-          "text": "inputs = list((rust_root / 'src').rglob('*.rs'))",
-          "category": "SCRIPT"
+          "path": "docs/architecture/design-closure/design_closure_collect.py",
+          "line": 178,
+          "text": "cores.extend(tmp_root.glob(\"design-core-venv-*/Scripts/aegis.exe\"))",
+          "category": "DOCUMENTATION"
         },
         {
-          "path": "scripts/run_checks.py",
-          "line": 309,
-          "text": "inputs.extend((rust_root / 'benches').rglob('*.rs'))",
-          "category": "SCRIPT"
+          "path": "docs/architecture/design-closure/design_closure_collect.py",
+          "line": 179,
+          "text": "cores.extend(tmp_root.glob(\"core-venv-*/Scripts/aegis.exe\"))",
+          "category": "DOCUMENTATION"
         },
         {
-          "path": "scripts/run_checks.py",
-          "line": 319,
-          "text": "inputs = list((rust_root / 'src').rglob('*.rs'))",
-          "category": "SCRIPT"
+          "path": "docs/architecture/design-closure/design_closure_collect.py",
+          "line": 180,
+          "text": "cores.extend(tmp_root.glob(\"core-runtime-reprobe-*/Scripts/aegis.exe\"))",
+          "category": "DOCUMENTATION"
         },
         {
-          "path": "scripts/run_checks.py",
-          "line": 346,
-          "text": "inputs.extend(criterion_root.rglob('estimates.json'))",
-          "category": "SCRIPT"
-        },
-        {
-          "path": "scripts/supply_chain_gate.py",
-          "line": 194,
-          "text": "for path in sorted(root_path.glob(glob))",
-          "category": "SCRIPT"
-        },
-        {
-          "path": "scripts/wasmtime_migration_gate.py",
-          "line": 13,
-          "text": "sandbox_tree = \"\\n\".join(path.read_text(encoding=\"utf-8\") for path in (ROOT / \"core\" / \"rust\" / \"src\" / \"eac\").rglob(\"*.rs\"))",
-          "category": "SCRIPT"
+          "path": "docs/architecture/design-closure/design_closure_collect.py",
+          "line": 181,
+          "text": "core_pythons.extend(tmp_root.glob(\"design-core-venv-*/Scripts/python.exe\"))",
+          "category": "DOCUMENTATION"
         }
       ],
       "status": "SUSPECT_ONLY_UNMEASURED"
     },
     {
       "suspect": "context_reconstruction",
-      "hits": 1641,
+      "hits": 8194,
       "sample": [
         {
-          "path": "AEGIS-COGNITION/artifacts/extreme_testing/EXTREME_TESTING_CHAOS_REPORT.md",
-          "line": 27,
-          "text": "| `.unwrap()` in prod code | 15+ | Low-Medium | bridge_mmap.rs header parsing (10), context.rs node lookup (1), evidence_index.rs (1) |",
-          "category": "DOCUMENTATION"
+          "path": ".aegis/lab-replay/lab-0006c4bba0809620c83c783557bad633.snapshot.json",
+          "line": 1,
+          "text": "{\"authority_mode\":\"projection_only\",\"blockers\":[\"search_as_code_hook_missing\",\"adaptive_no_progress_detected\",\"experiment_runner_missing\",\"research_plane_missing_or_empty\",\"hypothesis_not_registered\",\"experiment_not_preregistered\",\"valid_observation_missing\"],\"claims\":[],\"events\":[{\"event_hash\":\"921888e5965990fc5b6fc4680d2e200f1b916143d4e6c488068dc4a6d9f3a753\",\"kind\":\"mission_created\",\"payload\":{\"goal_contract_hash\":\"e6f96b1b1f4ed0f8bc8c55666cf7e2d813959e978cfb3bea11dea1b1c9b19254\",\"goal_generat",
+          "category": "UNKNOWN"
         },
         {
-          "path": "AEGIS-COGNITION/DX_TRANSFORMATION_REPORT.md",
-          "line": 4,
-          "text": "**Status**: HISTORICAL / SUPERSEDED — retained for audit context; current",
-          "category": "DOCUMENTATION"
+          "path": ".aegis/lab-replay/lab-001663fa7f6b01627b8246b1bdb8d2c3.snapshot.json",
+          "line": 1,
+          "text": "{\"authority_mode\":\"projection_only\",\"blockers\":[\"execution_cell_not_registered:context_retrieval\",\"execution_cell_not_registered:search_program\",\"experiment_runner_missing\",\"research_plane_missing_or_empty\",\"hypothesis_not_registered\",\"experiment_not_preregistered\",\"valid_observation_missing\"],\"claims\":[],\"events\":[{\"event_hash\":\"a198a6d30791746eabee3b518933f577a58e3f5d1717174a5317391ae92887c9\",\"kind\":\"mission_created\",\"payload\":{\"mission_id\":\"001663fa7f6b01627b8246b1bdb8d2c3\",\"non_goals\":[],\"ob",
+          "category": "UNKNOWN"
         },
         {
-          "path": "AEGIS-COGNITION/LEGACY_OWNERSHIP.md",
-          "line": 7,
-          "text": "- The tracked transformation report is retained as historical context only.",
-          "category": "DOCUMENTATION"
+          "path": ".aegis/lab-replay/lab-001a16874dd15da449ea59bbfbcc84aa.snapshot.json",
+          "line": 1,
+          "text": "{\"authority_mode\":\"projection_only\",\"blockers\":[\"search_as_code_hook_missing\",\"experiment_runner_missing\",\"research_plane_missing_or_empty\",\"hypothesis_not_registered\",\"experiment_not_preregistered\",\"valid_observation_missing\"],\"claims\":[],\"events\":[{\"event_hash\":\"59916b80683ecee4a18e5d77e6d1cd5511c8aa66f82fd1d780bdc141ab308ede\",\"kind\":\"mission_created\",\"payload\":{\"goal_contract_hash\":\"95e84ed91bf04ba3b24dd1bd20608adc9e617931e3959d1b11e1794795a74e11\",\"goal_generation\":1,\"goal_id\":\"2573a7fe215160",
+          "category": "UNKNOWN"
         },
         {
-          "path": "aegis-plugins/aegis-browser/src/lib.rs",
-          "line": 81,
-          "text": "pub struct BrowserContext<D> {",
-          "category": "PRODUCT"
+          "path": ".aegis/lab-replay/lab-0026b61754c3b1c3b736413680c720e6.snapshot.json",
+          "line": 1,
+          "text": "{\"authority_mode\":\"projection_only\",\"blockers\":[\"search_as_code_hook_missing\",\"controller_tool_effect_not_approved\",\"experiment_runner_missing\",\"research_plane_missing_or_empty\",\"hypothesis_not_registered\",\"experiment_not_preregistered\",\"valid_observation_missing\"],\"claims\":[],\"events\":[{\"event_hash\":\"8cbbca8913f420430e40433e0008fad6de447369cc29cee40e72f6b42ccf2a5c\",\"kind\":\"mission_created\",\"payload\":{\"mission_id\":\"0026b61754c3b1c3b736413680c720e6\",\"non_goals\":[],\"objective\":\"reject unapproved e",
+          "category": "UNKNOWN"
         },
         {
-          "path": "aegis-plugins/aegis-browser/src/lib.rs",
-          "line": 87,
-          "text": "context: &'a mut BrowserContext<D>,",
-          "category": "PRODUCT"
+          "path": ".aegis/lab-replay/lab-003690e7a69b130fe0a9f6ea04df4939.snapshot.json",
+          "line": 1,
+          "text": "{\"authority_mode\":\"projection_only\",\"blockers\":[\"search_as_code_hook_missing\",\"browser_cell_blocked:RuntimeError\",\"experiment_runner_missing\",\"research_plane_missing_or_empty\",\"hypothesis_not_registered\",\"experiment_not_preregistered\",\"valid_observation_missing\"],\"claims\":[],\"events\":[{\"event_hash\":\"d36693207fc187f1fd644b66725fd9ab5300f5bffa13863ec9e59df943696f8c\",\"kind\":\"mission_created\",\"payload\":{\"goal_contract_hash\":\"34b9d197bf52188629a2da53205d0c2ba6ff367e4c911a5b375d12301b237651\",\"goal_gen",
+          "category": "UNKNOWN"
         },
         {
-          "path": "aegis-plugins/aegis-browser/src/lib.rs",
-          "line": 158,
-          "text": "pub fn context(self) -> BrowserContext<D> {",
-          "category": "PRODUCT"
+          "path": ".aegis/lab-replay/lab-0061ff3e86bfa09abd1593680b82e7fd.snapshot.json",
+          "line": 1,
+          "text": "{\"authority_mode\":\"projection_only\",\"blockers\":[\"search_as_code_hook_missing\",\"adaptive_no_progress_detected\",\"experiment_runner_missing\",\"research_plane_missing_or_empty\",\"hypothesis_not_registered\",\"experiment_not_preregistered\",\"valid_observation_missing\"],\"claims\":[],\"events\":[{\"event_hash\":\"201261f3ef68aa2ca48580de649d2e1f595e4cf9b0dc61413cdf06f413d6cddc\",\"kind\":\"mission_created\",\"payload\":{\"goal_contract_hash\":\"e6f96b1b1f4ed0f8bc8c55666cf7e2d813959e978cfb3bea11dea1b1c9b19254\",\"goal_generat",
+          "category": "UNKNOWN"
         },
         {
-          "path": "aegis-plugins/aegis-browser/src/lib.rs",
-          "line": 159,
-          "text": "BrowserContext {",
-          "category": "PRODUCT"
+          "path": ".aegis/lab-replay/lab-007e437c6ef824b868babc6c76fce0e2.snapshot.json",
+          "line": 1,
+          "text": "{\"authority_mode\":\"projection_only\",\"blockers\":[\"execution_cell_not_registered:context_retrieval\",\"skill_execution_failed:SkillAdmissionError\",\"experiment_runner_missing\",\"research_plane_missing_or_empty\",\"hypothesis_not_registered\",\"experiment_not_preregistered\",\"valid_observation_missing\"],\"claims\":[],\"events\":[{\"event_hash\":\"2d2ff7f9b345bc81c9f907839e8de8455cfb2a3ffb86e270291145cae9c8e72b\",\"kind\":\"mission_created\",\"payload\":{\"goal_contract_hash\":\"58912884b0e92dd9fbe9fff1e02221a760801d613fc604",
+          "category": "UNKNOWN"
         },
         {
-          "path": "aegis-plugins/aegis-browser/src/lib.rs",
-          "line": 170,
-          "text": "impl<D: BrowserDriver> BrowserContext<D> {",
-          "category": "PRODUCT"
+          "path": ".aegis/lab-replay/lab-009ff1097822013da285bb00ef1129d8.snapshot.json",
+          "line": 1,
+          "text": "{\"authority_mode\":\"projection_only\",\"blockers\":[\"adaptive_no_progress_detected\",\"experiment_runner_missing\",\"hypothesis_not_registered\",\"experiment_not_preregistered\",\"valid_observation_missing\"],\"claims\":[],\"events\":[{\"event_hash\":\"5c254758cf0032a174cd7d80f2bc078ad5acfb25fadba09fe2b1d12c87cf88fa\",\"kind\":\"mission_created\",\"payload\":{\"mission_id\":\"009ff1097822013da285bb00ef1129d8\",\"non_goals\":[],\"objective\":\"typed search\",\"scope\":[],\"trust_policy_hash\":\"41f9c145ba8d0b9edf157c7a9e44878670b673ef36e",
+          "category": "UNKNOWN"
         },
         {
-          "path": "aegis-plugins/aegis-browser/src/lib.rs",
-          "line": 172,
-          "text": "Page { context: self }",
-          "category": "PRODUCT"
+          "path": ".aegis/lab-replay/lab-00a4e7acb4df76adc042f7c97411e0d8.snapshot.json",
+          "line": 1,
+          "text": "{\"authority_mode\":\"projection_only\",\"blockers\":[\"experiment_runner_missing\",\"hypothesis_not_registered\",\"experiment_not_preregistered\",\"valid_observation_missing\"],\"claims\":[],\"events\":[{\"event_hash\":\"9a71f75868dbe83a8d3fbf087b658f61fe359d3c6bdd10896c0e76e632c0af0e\",\"kind\":\"mission_created\",\"payload\":{\"mission_id\":\"00a4e7acb4df76adc042f7c97411e0d8\",\"non_goals\":[],\"objective\":\"controller research action\",\"scope\":[],\"trust_policy_hash\":\"41f9c145ba8d0b9edf157c7a9e44878670b673ef36e6477ef9aeb770ed42c",
+          "category": "UNKNOWN"
         },
         {
-          "path": "aegis-plugins/aegis-browser/src/lib.rs",
-          "line": 183,
-          "text": "self.context",
-          "category": "PRODUCT"
+          "path": ".aegis/lab-replay/lab-00bad890bc3d3ca9ffbd1e4ee75825a0.snapshot.json",
+          "line": 1,
+          "text": "{\"authority_mode\":\"projection_only\",\"blockers\":[],\"claims\":[],\"events\":[{\"event_hash\":\"d0018f3c4e48043ec19d700c871428a21c64037c8f82c0898f8298b58ee34cb5\",\"kind\":\"mission_created\",\"payload\":{\"mission_id\":\"00bad890bc3d3ca9ffbd1e4ee75825a0\",\"non_goals\":[],\"objective\":\"controller experiment retry\",\"scope\":[],\"trust_policy_hash\":\"41f9c145ba8d0b9edf157c7a9e44878670b673ef36e6477ef9aeb770ed42ceac\"},\"payload_hash\":\"2aab0909e254611b84af444ceddccc18297a592db8c034da8de0a5e0b65b6459\",\"previous_event_hash\":\"00",
+          "category": "UNKNOWN"
         },
         {
-          "path": "aegis-plugins/aegis-browser/src/lib.rs",
-          "line": 192,
-          "text": "self.context.browser.driver.execute(BrowserCommand::Click {",
-          "category": "PRODUCT"
+          "path": ".aegis/lab-replay/lab-00c8289308660634430c48458aa04156.snapshot.json",
+          "line": 1,
+          "text": "{\"authority_mode\":\"projection_only\",\"blockers\":[],\"claims\":[],\"events\":[{\"event_hash\":\"758544b02e3b6d30a79de5b01cb50089cc28c9f65f129d3258ddd0333a3dc0f9\",\"kind\":\"mission_created\",\"payload\":{\"goal_contract_hash\":\"bd3f9c2b1fbd8d0ced599d2cd467f651996628a1dde83930a965a5283daac2fe\",\"goal_generation\":1,\"goal_id\":\"1dccafdac530b8353a5c180d57f5093a\",\"mission_id\":\"00c8289308660634430c48458aa04156\",\"non_goals\":[],\"objective\":\"controller simulation action\",\"scope\":[],\"trust_policy_hash\":\"41f9c145ba8d0b9edf15",
+          "category": "UNKNOWN"
         },
         {
-          "path": "aegis-plugins/aegis-browser/src/lib.rs",
-          "line": 198,
-          "text": "self.context",
-          "category": "PRODUCT"
+          "path": ".aegis/lab-replay/lab-00d65d5480079000cfff0c12271fc0f4.snapshot.json",
+          "line": 1,
+          "text": "{\"authority_mode\":\"projection_only\",\"blockers\":[\"search_as_code_hook_missing\",\"browser_cell_blocked:RuntimeError\",\"experiment_runner_missing\",\"research_plane_missing_or_empty\",\"hypothesis_not_registered\",\"experiment_not_preregistered\",\"valid_observation_missing\"],\"claims\":[],\"events\":[{\"event_hash\":\"4d39ba8acaf68914f53b52dcb28e500e3feb070e09c2eb5971833b761a83fe60\",\"kind\":\"mission_created\",\"payload\":{\"goal_contract_hash\":\"34b9d197bf52188629a2da53205d0c2ba6ff367e4c911a5b375d12301b237651\",\"goal_gen",
+          "category": "UNKNOWN"
         },
         {
-          "path": "aegis-plugins/aegis-browser/src/lib.rs",
-          "line": 208,
-          "text": "self.context",
-          "category": "PRODUCT"
+          "path": ".aegis/lab-replay/lab-00e9bbd4537390ef41db0979cbe2ece9.snapshot.json",
+          "line": 1,
+          "text": "{\"authority_mode\":\"projection_only\",\"blockers\":[],\"claims\":[],\"events\":[{\"event_hash\":\"fe0c58f2ffcae9854f638446f8c584d2e2d32346b91b051ed543d87d8b02e041\",\"kind\":\"mission_created\",\"payload\":{\"goal_contract_hash\":\"4e31f6fc9796ef8eb63d2aa657dc1e756ecdda269a6b26caf2fd7226367ab2d2\",\"goal_generation\":1,\"goal_id\":\"65b1465f95134d75c336b2458453fad9\",\"mission_id\":\"00e9bbd4537390ef41db0979cbe2ece9\",\"non_goals\":[],\"objective\":\"controller experiment retry\",\"scope\":[],\"trust_policy_hash\":\"41f9c145ba8d0b9edf157",
+          "category": "UNKNOWN"
         },
         {
-          "path": "aegis-plugins/aegis-browser/src/lib.rs",
-          "line": 217,
-          "text": "self.context",
-          "category": "PRODUCT"
+          "path": ".aegis/lab-replay/lab-00eb0b255590b5c03354953d045d3831.snapshot.json",
+          "line": 1,
+          "text": "{\"authority_mode\":\"projection_only\",\"blockers\":[\"search_as_code_hook_missing\",\"experiment_runner_missing\",\"research_plane_missing_or_empty\",\"hypothesis_not_registered\",\"experiment_not_preregistered\",\"valid_observation_missing\"],\"claims\":[],\"events\":[{\"event_hash\":\"9200f9777a7f3a47a9f501ce3f71aa37822ab98984a23851aea0c94eb0b3a607\",\"kind\":\"mission_created\",\"payload\":{\"goal_contract_hash\":\"889a294a4025cf1301e38b400295a463018707a40bef8f766cd0c40285032482\",\"goal_generation\":1,\"goal_id\":\"7a1fc678685e99",
+          "category": "UNKNOWN"
         },
         {
-          "path": "aegis-plugins/aegis-browser/src/lib.rs",
-          "line": 266,
-          "text": "let mut context = browser.context();",
-          "category": "PRODUCT"
+          "path": ".aegis/lab-replay/lab-0116f7ba99c97330dcda78fbc6eca5be.snapshot.json",
+          "line": 1,
+          "text": "{\"authority_mode\":\"projection_only\",\"blockers\":[],\"claims\":[],\"events\":[{\"event_hash\":\"10b591d1c3f180fe09ee52a975a874b2209832e319c1b63a176eab7baafe813b\",\"kind\":\"mission_created\",\"payload\":{\"goal_contract_hash\":\"ee58b63a3f02085f0a18408b1b9e3fb2fc4f56ca37585d852fb02c4035f15bdc\",\"goal_generation\":1,\"goal_id\":\"772aaab7957f36650e1b6589fab9c2b8\",\"mission_id\":\"0116f7ba99c97330dcda78fbc6eca5be\",\"non_goals\":[],\"objective\":\"controller experiment action\",\"scope\":[],\"trust_policy_hash\":\"41f9c145ba8d0b9edf15",
+          "category": "UNKNOWN"
         },
         {
-          "path": "aegis-plugins/aegis-browser/src/lib.rs",
-          "line": 267,
-          "text": "let mut page = context.page();",
-          "category": "PRODUCT"
+          "path": ".aegis/lab-replay/lab-0117da60950b9646af6753af311132f2.snapshot.json",
+          "line": 1,
+          "text": "{\"authority_mode\":\"projection_only\",\"blockers\":[\"execution_cell_not_registered:context_retrieval\",\"skill_execution_failed:SkillAdmissionError\",\"experiment_runner_missing\",\"research_plane_missing_or_empty\",\"hypothesis_not_registered\",\"experiment_not_preregistered\",\"valid_observation_missing\"],\"claims\":[],\"events\":[{\"event_hash\":\"70d41ef38198a0d336dfeb3aadb6e7d687a65f56c3af38ecf0970c1cd402ea1e\",\"kind\":\"mission_created\",\"payload\":{\"goal_contract_hash\":\"58912884b0e92dd9fbe9fff1e02221a760801d613fc604",
+          "category": "UNKNOWN"
         },
         {
-          "path": "aegis-plugins/aegis-search-sdk/tests/evidence_integration.rs",
-          "line": 10,
-          "text": "fn retrieved_candidate_can_be_bound_into_evidence_audit() {",
-          "category": "TEST"
+          "path": ".aegis/lab-replay/lab-013d37baea78c420d349d93667206adb.snapshot.json",
+          "line": 1,
+          "text": "{\"authority_mode\":\"projection_only\",\"blockers\":[],\"claims\":[{\"claim_id\":\"c1\",\"confidence_bps\":5000,\"source_ids\":[\"s1\"],\"statement\":\"cited\",\"status\":\"unresolved\"}],\"events\":[{\"event_hash\":\"fa2750482eba6ebcaaeea6e572f88b6473b6730e1ef7b19dcc8828cbc129918c\",\"kind\":\"mission_created\",\"payload\":{\"mission_id\":\"013d37baea78c420d349d93667206adb\",\"non_goals\":[],\"objective\":\"retry bounded experiment\",\"scope\":[],\"trust_policy_hash\":\"41f9c145ba8d0b9edf157c7a9e44878670b673ef36e6477ef9aeb770ed42ceac\"},\"payload_",
+          "category": "UNKNOWN"
         },
         {
-          "path": "aegis-plugins/aegis-skills/skills/evidence-retrieval-skill/SKILL.md",
-          "line": 7,
-          "text": "Use when replay, memory, or context needs fast local evidence retrieval.",
-          "category": "DOCUMENTATION"
+          "path": ".aegis/lab-replay/lab-014ed10ed1a4821487339a7646efbe5b.snapshot.json",
+          "line": 1,
+          "text": "{\"authority_mode\":\"projection_only\",\"blockers\":[\"search_as_code_hook_missing\",\"browser_cell_blocked:RuntimeError\",\"experiment_runner_missing\",\"research_plane_missing_or_empty\",\"hypothesis_not_registered\",\"experiment_not_preregistered\",\"valid_observation_missing\"],\"claims\":[],\"events\":[{\"event_hash\":\"d30a814abe49a45f56469b36ead6ae3cbb14346bdd4a5fda749f4cc21a019c77\",\"kind\":\"mission_created\",\"payload\":{\"goal_contract_hash\":\"34b9d197bf52188629a2da53205d0c2ba6ff367e4c911a5b375d12301b237651\",\"goal_gen",
+          "category": "UNKNOWN"
         },
         {
-          "path": "aegis-plugins/aegis-skills/skills/research-skill/SKILL.md",
-          "line": 4,
-          "text": "Research is a pipeline: decompose, retrieve, cross-check, bind evidence, and",
-          "category": "DOCUMENTATION"
+          "path": ".aegis/lab-replay/lab-0153dd411c2e1d0035834ad5684c3c5c.snapshot.json",
+          "line": 1,
+          "text": "{\"authority_mode\":\"projection_only\",\"blockers\":[\"tool_external_effect_not_approved\",\"search_as_code_hook_missing\",\"adaptive_no_progress_detected\",\"experiment_runner_missing\",\"research_plane_missing_or_empty\",\"hypothesis_not_registered\",\"experiment_not_preregistered\",\"valid_observation_missing\"],\"claims\":[],\"events\":[{\"event_hash\":\"3a29831150c7ae1db32b79fbf80dbda57a800e4017009b793394fd386062ce66\",\"kind\":\"mission_created\",\"payload\":{\"goal_contract_hash\":\"442e94f1c8f8baa8d57ced460d6e93d8c85eed6d393",
+          "category": "UNKNOWN"
         },
         {
-          "path": "aegis-plugins/aegis-skills/skills/search-sdk-skill/SKILL.md",
-          "line": 25,
-          "text": "Do not treat retrieved text as final truth without verification.",
-          "category": "DOCUMENTATION"
+          "path": ".aegis/lab-replay/lab-015e6bf744e0df298f00ebf25b898e5b.snapshot.json",
+          "line": 1,
+          "text": "{\"authority_mode\":\"projection_only\",\"blockers\":[\"tool_external_effect_not_approved\",\"search_as_code_hook_missing\",\"adaptive_no_progress_detected\",\"experiment_runner_missing\",\"research_plane_missing_or_empty\",\"hypothesis_not_registered\",\"experiment_not_preregistered\",\"valid_observation_missing\"],\"claims\":[],\"events\":[{\"event_hash\":\"0e440de6a127586e151faf926f7d838ec31c76d4eb35518bfc853fd52b29b047\",\"kind\":\"mission_created\",\"payload\":{\"goal_contract_hash\":\"442e94f1c8f8baa8d57ced460d6e93d8c85eed6d393",
+          "category": "UNKNOWN"
         },
         {
-          "path": "aegis_cognition/__init__.py",
-          "line": 27,
-          "text": "\"CorrelationContext\",",
-          "category": "PRODUCT"
+          "path": ".aegis/lab-replay/lab-018d792177c59e3e0866ea086dcff3bf.snapshot.json",
+          "line": 1,
+          "text": "{\"authority_mode\":\"projection_only\",\"blockers\":[],\"claims\":[{\"claim_id\":\"c1\",\"confidence_bps\":5000,\"source_ids\":[\"s1\"],\"statement\":\"cited\",\"status\":\"unresolved\"}],\"events\":[{\"event_hash\":\"4e8eb7daf12d958819f09b9a9ffcd1038f4f8e57fa46b5aa9a3fd2cb5cb1b064\",\"kind\":\"mission_created\",\"payload\":{\"mission_id\":\"018d792177c59e3e0866ea086dcff3bf\",\"non_goals\":[],\"objective\":\"simulation retry lab\",\"scope\":[],\"trust_policy_hash\":\"41f9c145ba8d0b9edf157c7a9e44878670b673ef36e6477ef9aeb770ed42ceac\"},\"payload_hash",
+          "category": "UNKNOWN"
         },
         {
-          "path": "aegis_cognition/__init__.py",
-          "line": 115,
-          "text": "from .observability import CorrelationContext, RuntimeTelemetry",
-          "category": "PRODUCT"
+          "path": ".aegis/lab-replay/lab-0197a8c9c84af153b3ec809794c00ac6.snapshot.json",
+          "line": 1,
+          "text": "{\"authority_mode\":\"projection_only\",\"blockers\":[],\"claims\":[],\"events\":[{\"event_hash\":\"edfa5a08b5c15a69ff75585c598b7b6f3e67b17a94eee4e035896bca8f18be0e\",\"kind\":\"mission_created\",\"payload\":{\"mission_id\":\"0197a8c9c84af153b3ec809794c00ac6\",\"non_goals\":[],\"objective\":\"controller simulation action\",\"scope\":[],\"trust_policy_hash\":\"41f9c145ba8d0b9edf157c7a9e44878670b673ef36e6477ef9aeb770ed42ceac\"},\"payload_hash\":\"64db8bf1cb39a43d549e72e61e2ad276f9cb85efbdc32ee303912bb7722ec617\",\"previous_event_hash\":\"0",
+          "category": "UNKNOWN"
         },
         {
-          "path": "aegis_cognition/application.py",
-          "line": 15,
-          "text": "from .observability import CorrelationContext, RuntimeTelemetry",
-          "category": "PRODUCT"
+          "path": ".aegis/lab-replay/lab-019bc5e1d79072e1fcee9dfa58d4b475.snapshot.json",
+          "line": 1,
+          "text": "{\"authority_mode\":\"projection_only\",\"blockers\":[\"search_as_code_hook_missing\",\"adaptive_no_progress_detected\",\"experiment_runner_missing\",\"research_plane_missing_or_empty\",\"hypothesis_not_registered\",\"experiment_not_preregistered\",\"valid_observation_missing\"],\"claims\":[],\"events\":[{\"event_hash\":\"0b89965de88bf1a5d7d7ed5b064149489c46183223e302b4af351272d73ab309\",\"kind\":\"mission_created\",\"payload\":{\"goal_contract_hash\":\"4a46ff57c1b144531c3c7b2389f9b2e6e059363b62868ede31b8105459f436b8\",\"goal_generat",
+          "category": "UNKNOWN"
         },
         {
-          "path": "aegis_cognition/application.py",
-          "line": 32,
-          "text": "self.correlation = CorrelationContext.new()",
-          "category": "PRODUCT"
+          "path": ".aegis/lab-replay/lab-01a139deb703eb69d8e217886eb39682.snapshot.json",
+          "line": 1,
+          "text": "{\"authority_mode\":\"projection_only\",\"blockers\":[\"search_as_code_hook_missing\",\"experiment_runner_missing\",\"research_plane_missing_or_empty\",\"hypothesis_not_registered\",\"experiment_not_preregistered\",\"valid_observation_missing\"],\"claims\":[],\"events\":[{\"event_hash\":\"01b128d67390e6ab17df50668f1009acc2e4d8b8c009f14c67e2589a37c6001f\",\"kind\":\"mission_created\",\"payload\":{\"goal_contract_hash\":\"50ead91fd5bc07573a9dd390b5dd9c8ed4acb389fb480ba3d3dce0cd7783809c\",\"goal_generation\":1,\"goal_id\":\"5fef5d7f5f0918",
+          "category": "UNKNOWN"
         },
         {
-          "path": "aegis_cognition/application.py",
-          "line": 36,
-          "text": "rag_context = self._retrieve_context(task)",
-          "category": "PRODUCT"
+          "path": ".aegis/lab-replay/lab-01c2952968e668fa13c504ece5f2d916.snapshot.json",
+          "line": 1,
+          "text": "{\"authority_mode\":\"projection_only\",\"blockers\":[\"search_as_code_hook_missing\",\"browser_cell_blocked:TypeError\",\"experiment_runner_missing\",\"research_plane_missing_or_empty\",\"hypothesis_not_registered\",\"experiment_not_preregistered\",\"valid_observation_missing\"],\"claims\":[],\"events\":[{\"event_hash\":\"61a3a3ac26d4fdb223e3cd41c5cc380b04389fa23cfb58d8492505a7586384e8\",\"kind\":\"mission_created\",\"payload\":{\"goal_contract_hash\":\"a3d312744e8b506721b4613a6115d985f2e9ade50b9f87cb4b115a5d5a15b32c\",\"goal_genera",
+          "category": "UNKNOWN"
         }
       ],
       "status": "SUSPECT_ONLY_UNMEASURED"
     },
     {
       "suspect": "subprocess_startup",
-      "hits": 50,
+      "hits": 172,
       "sample": [
         {
           "path": "aegis_cognition/benchmark.py",
-          "line": 223,
+          "line": 281,
           "text": "process: subprocess.Popen[str] | None = None",
           "category": "PRODUCT"
         },
         {
           "path": "aegis_cognition/benchmark.py",
-          "line": 225,
+          "line": 283,
           "text": "process = subprocess.Popen(",
           "category": "PRODUCT"
         },
         {
+          "path": "aegis_cognition/lab.py",
+          "line": 8732,
+          "text": "subprocess.run(",
+          "category": "LAB"
+        },
+        {
+          "path": "core/python/aegis/code_intelligence.py",
+          "line": 417,
+          "text": "completed = subprocess.run(",
+          "category": "COMPATIBILITY"
+        },
+        {
           "path": "core/python/tests.py",
-          "line": 2057,
+          "line": 2108,
           "text": "patch(\"scripts.run_checks.subprocess.run\", side_effect=fake_run),",
           "category": "TEST"
         },
         {
           "path": "core/python/tests.py",
-          "line": 2532,
+          "line": 2583,
           "text": "with patch(\"scripts.run_checks.subprocess.run\", side_effect=fake_run):",
           "category": "TEST"
         },
@@ -975,142 +999,244 @@
           "category": "PRODUCT"
         },
         {
-          "path": "docs/architecture/evidence-pack/collect.py",
-          "line": 65,
-          "text": "p = subprocess.run(args, cwd=ROOT, text=True, capture_output=True, timeout=timeout, check=False)",
-          "category": "SCRIPT"
+          "path": "desktop/packaging/build_sidecar.py",
+          "line": 38,
+          "text": "completed = subprocess.run(command, cwd=ROOT, check=False)",
+          "category": "UNKNOWN"
         },
         {
-          "path": "docs/architecture/evidence-pack/collect.py",
-          "line": 208,
-          "text": "side_names = (\"open\", \"urlopen\", \"Popen\", \"run\", \"serve_forever\", \"create_task\", \"launch\", \"connect\", \"write_text\", \"unlink\", \"mkdir\", \"remove\", \"invoke\", \"index_session\")",
-          "category": "SCRIPT"
+          "path": "desktop/src-tauri/src/main.rs",
+          "line": 35,
+          "text": "let mut command = Command::new(program);",
+          "category": "UNKNOWN"
         },
         {
-          "path": "docs/architecture/evidence-pack/collect.py",
-          "line": 389,
-          "text": "\"PROCESS_SPAWN\": r\"Popen|subprocess\\.|create_subprocess|multiprocessing|os\\.system\",",
-          "category": "SCRIPT"
+          "path": "docs/architecture/design-closure/design_closure_collect.py",
+          "line": 20,
+          "text": "p=subprocess.run(args,cwd=cwd,text=True,capture_output=True,timeout=timeout,env=env,check=False)",
+          "category": "DOCUMENTATION"
         },
         {
-          "path": "docs/architecture/evidence-pack/collect.py",
-          "line": 426,
-          "text": "rust_sites = scan_text(r\"TcpListener|TcpStream|std::fs::|Command::new|std::process|wasmtime|mmap|unsafe\\b|File::create\", safe_files({\".rs\"}))",
-          "category": "SCRIPT"
+          "path": "docs/architecture/design-closure/design_closure_collect.py",
+          "line": 471,
+          "text": "{\"effect\":\"PROCESS SPAWN\",\"entrypoint\":\"Lab ProcessExecutionCell / benchmark hidden validator\",\"stages\":[{\"stage\":\"orchestrator\",\"status\":\"PRESENT_BY_CONVENTION\",\"evidence\":\"experiment/benchmark dispatch\"},{\"stage\":\"admission\",\"status\":\"PRESENT_AND_MECHANICAL\",\"scope\":\"Lab ProcessExecutionCell\"},{\"stage\":\"budget\",\"status\":\"PRESENT_AND_MECHANICAL\",\"scope\":\"Lab limits\"},{\"stage\":\"effect sink\",\"status\":\"PRESENT_AND_MECHANICAL\",\"evidence\":\"benchmark.py subprocess.Popen shell=False timeout\"},{\"stage\"",
+          "category": "DOCUMENTATION"
         },
         {
-          "path": "docs/architecture/evidence-pack/collect.py",
-          "line": 640,
-          "text": "\"subprocess_startup\": r\"Popen|subprocess\\.run|Command::new\",",
-          "category": "SCRIPT"
+          "path": "docs/architecture/design-closure/design_closure_collect.py",
+          "line": 477,
+          "text": "{\"sink\":\"subprocess/Popen\",\"classification\":\"DIRECT_OPERATOR_EFFECT\",\"can_execute_without_authoritative_admission\":\"YES for benchmark hidden validator and developer tooling; Lab cell is admitted\",\"evidence\":\"aegis_cognition/benchmark.py:225, shell=False\"},",
+          "category": "DOCUMENTATION"
         },
         {
-          "path": "scripts/external_deployment_smoke_gate.py",
-          "line": 548,
-          "text": "result = subprocess.run(",
-          "category": "SCRIPT"
+          "path": "docs/architecture/design-closure/side_effect_bypasses.json",
+          "line": 23,
+          "text": "\"sink\": \"subprocess/Popen\",",
+          "category": "DOCUMENTATION"
         },
         {
-          "path": "scripts/extreme_testing_suite.py",
-          "line": 385,
-          "text": "proc = subprocess.Popen(",
-          "category": "SCRIPT"
+          "path": "docs/architecture/design-closure/side_effect_chains.json",
+          "line": 149,
+          "text": "\"evidence\": \"benchmark.py subprocess.Popen shell=False timeout\"",
+          "category": "DOCUMENTATION"
         },
         {
-          "path": "scripts/hermes_baseline_gate.py",
-          "line": 77,
-          "text": "result = subprocess.run(",
-          "category": "SCRIPT"
-        },
-        {
-          "path": "scripts/hermes_baseline_gate.py",
-          "line": 91,
-          "text": "result = subprocess.run(",
-          "category": "SCRIPT"
-        },
-        {
-          "path": "scripts/hermes_persistence_baseline_gate.py",
-          "line": 77,
-          "text": "result = subprocess.run(",
-          "category": "SCRIPT"
-        },
-        {
-          "path": "scripts/hermes_persistence_baseline_gate.py",
-          "line": 91,
-          "text": "result = subprocess.run(",
-          "category": "SCRIPT"
-        },
-        {
-          "path": "scripts/hermes_rpc_baseline_gate.py",
-          "line": 69,
-          "text": "result = subprocess.run(",
-          "category": "SCRIPT"
-        },
-        {
-          "path": "scripts/hermes_rpc_baseline_gate.py",
-          "line": 83,
-          "text": "result = subprocess.run(",
-          "category": "SCRIPT"
-        },
-        {
-          "path": "scripts/hermes_session_recovery_baseline_gate.py",
-          "line": 80,
-          "text": "result = subprocess.run(",
-          "category": "SCRIPT"
-        },
-        {
-          "path": "scripts/hermes_session_recovery_baseline_gate.py",
-          "line": 94,
-          "text": "result = subprocess.run(",
-          "category": "SCRIPT"
-        },
-        {
-          "path": "scripts/linux_cgroup_live_probe.py",
-          "line": 80,
-          "text": "child: subprocess.Popen[bytes] | None = None",
-          "category": "SCRIPT"
-        },
-        {
-          "path": "scripts/linux_cgroup_live_probe.py",
-          "line": 88,
-          "text": "child = subprocess.Popen([sys.executable, \"-c\", _child_code()], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)",
-          "category": "SCRIPT"
-        },
-        {
-          "path": "scripts/local_git_backup.py",
-          "line": 13,
-          "text": "return subprocess.run(",
-          "category": "SCRIPT"
-        },
-        {
-          "path": "scripts/macos_capability_probe.py",
+          "path": "docs/architecture/empirical-research/collect.py",
           "line": 37,
-          "text": "child = subprocess.Popen([sys.executable, \"-c\", \"import time; time.sleep(30)\"])",
-          "category": "SCRIPT"
+          "text": "p = subprocess.run(args, cwd=cwd, text=True, capture_output=True, timeout=timeout, env=env, check=False)",
+          "category": "DOCUMENTATION"
         },
         {
-          "path": "scripts/production_closure.py",
-          "line": 146,
-          "text": "result = subprocess.run(",
-          "category": "SCRIPT"
+          "path": "docs/architecture/empirical-research/collect.py",
+          "line": 69,
+          "text": "head = subprocess.run([\"git\", \"rev-parse\", \"HEAD\"], cwd=ROOT, capture_output=True, text=True, check=False).stdout.strip()",
+          "category": "DOCUMENTATION"
+        },
+        {
+          "path": "docs/architecture/empirical-research/collect.py",
+          "line": 70,
+          "text": "diff = subprocess.run([\"git\", \"diff\", \"--binary\", \"HEAD\"], cwd=ROOT, capture_output=True, text=True, timeout=60, check=False).stdout",
+          "category": "DOCUMENTATION"
+        },
+        {
+          "path": "docs/architecture/empirical-research/collect.py",
+          "line": 71,
+          "text": "others = subprocess.run([\"git\", \"ls-files\", \"--others\", \"--exclude-standard\"], cwd=ROOT, capture_output=True, text=True, check=False).stdout.splitlines()",
+          "category": "DOCUMENTATION"
+        },
+        {
+          "path": "docs/architecture/evidence-pack/architecture_concurrency.json",
+          "line": 67,
+          "text": "\"text\": \"process: subprocess.Popen[str] | None = None\",",
+          "category": "GENERATED"
+        },
+        {
+          "path": "docs/architecture/evidence-pack/architecture_concurrency.json",
+          "line": 73,
+          "text": "\"text\": \"process = subprocess.Popen(\",",
+          "category": "GENERATED"
+        },
+        {
+          "path": "docs/architecture/evidence-pack/architecture_concurrency.json",
+          "line": 985,
+          "text": "\"text\": \"patch(\\\"scripts.run_checks.subprocess.run\\\", side_effect=fake_run),\",",
+          "category": "GENERATED"
+        },
+        {
+          "path": "docs/architecture/evidence-pack/architecture_concurrency.json",
+          "line": 1003,
+          "text": "\"text\": \"with patch(\\\"scripts.run_checks.subprocess.run\\\", side_effect=fake_run):\",",
+          "category": "GENERATED"
+        },
+        {
+          "path": "docs/architecture/evidence-pack/architecture_concurrency.json",
+          "line": 1111,
+          "text": "\"text\": \"p = subprocess.run(args, cwd=ROOT, text=True, capture_output=True, timeout=timeout, check=False)\",",
+          "category": "GENERATED"
+        },
+        {
+          "path": "docs/architecture/evidence-pack/architecture_concurrency.json",
+          "line": 1117,
+          "text": "\"text\": \"side_names = (\\\"open\\\", \\\"urlopen\\\", \\\"Popen\\\", \\\"run\\\", \\\"serve_forever\\\", \\\"create_task\\\", \\\"launch\\\", \\\"connect\\\", \\\"write_text\\\", \\\"unlink\\\", \\\"mkdir\\\", \\\"remove\\\", \\\"invoke\\\", \\\"index_session\\\")\",",
+          "category": "GENERATED"
+        },
+        {
+          "path": "docs/architecture/evidence-pack/architecture_concurrency.json",
+          "line": 1135,
+          "text": "\"text\": \"\\\"PROCESS_SPAWN\\\": r\\\"Popen|subprocess\\\\.|create_subprocess|multiprocessing|os\\\\.system\\\",\",",
+          "category": "GENERATED"
         }
       ],
       "status": "SUSPECT_ONLY_UNMEASURED"
     },
     {
       "suspect": "ffi_crossing",
-      "hits": 374,
+      "hits": 1154,
       "sample": [
         {
           "path": ".github/workflows/ci.yml",
-          "line": 148,
+          "line": 171,
           "text": "assert any(\"aegis_nerve\" in name for name in names)",
           "category": "UNKNOWN"
         },
         {
-          "path": "AEGIS-COGNITION/DX_TRANSFORMATION_REPORT.md",
-          "line": 75,
-          "text": "2. **Graceful degradation** — When the Rust `aegis_nerve` extension is missing, DEV mode falls back to Python BLAKE2 hashing with a warning. STAGING/PROD require the extension.",
+          "path": ".local/agent-state/agents/explorer_1/analysis.md",
+          "line": 53,
+          "text": "## 2. PyO3 Module `aegis_nerve` Binding & FFI Registrations (C2)",
+          "category": "DOCUMENTATION"
+        },
+        {
+          "path": ".local/agent-state/agents/explorer_1/analysis.md",
+          "line": 55,
+          "text": "The `aegis_nerve` module is registered inside `core/rust/src/ffi.rs` using the `#[pymodule]` macro:",
+          "category": "DOCUMENTATION"
+        },
+        {
+          "path": ".local/agent-state/agents/explorer_1/analysis.md",
+          "line": 58,
+          "text": "pub fn aegis_nerve(_py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {",
+          "category": "DOCUMENTATION"
+        },
+        {
+          "path": ".local/agent-state/agents/explorer_1/analysis.md",
+          "line": 59,
+          "text": "m.add_function(wrap_pyfunction!(aegis_status, m)?)?;",
+          "category": "DOCUMENTATION"
+        },
+        {
+          "path": ".local/agent-state/agents/explorer_1/analysis.md",
+          "line": 82,
+          "text": "fn lookup(&self, prompt: &str, embedding: Vec<f32>, namespace: &str) -> PyResult<Option<String>> { ... }",
+          "category": "DOCUMENTATION"
+        },
+        {
+          "path": ".local/agent-state/agents/explorer_1/analysis.md",
+          "line": 83,
+          "text": "fn insert(&mut self, prompt: String, response: String, embedding: Vec<f32>, namespace: String) -> PyResult<()> { ... }",
+          "category": "DOCUMENTATION"
+        },
+        {
+          "path": ".local/agent-state/agents/explorer_1/analysis.md",
+          "line": 84,
+          "text": "fn invalidate(&mut self, namespace: &str) -> PyResult<()> { ... }",
+          "category": "DOCUMENTATION"
+        },
+        {
+          "path": ".local/agent-state/agents/explorer_1/analysis.md",
+          "line": 100,
+          "text": "#[pyfunction]",
+          "category": "DOCUMENTATION"
+        },
+        {
+          "path": ".local/agent-state/agents/explorer_1/analysis.md",
+          "line": 101,
+          "text": "pub fn aegis_batch_tools(calls: Vec<PyToolCall>, policy: String) -> PyResult<String> { ... }",
+          "category": "DOCUMENTATION"
+        },
+        {
+          "path": ".local/agent-state/agents/explorer_1/analysis.md",
+          "line": 105,
+          "text": "#[pyfunction]",
+          "category": "DOCUMENTATION"
+        },
+        {
+          "path": ".local/agent-state/agents/explorer_1/analysis.md",
+          "line": 106,
+          "text": "pub fn aegis_persist_state(directory: String, turn_id: u64, state_json: String) -> PyResult<String> { ... }",
+          "category": "DOCUMENTATION"
+        },
+        {
+          "path": ".local/agent-state/agents/explorer_1/BRIEFING.md",
+          "line": 38,
+          "text": "- Rust FFI registers `aegis_nerve` functions but currently lacks classes.",
+          "category": "DOCUMENTATION"
+        },
+        {
+          "path": ".local/agent-state/agents/explorer_1/handoff.md",
+          "line": 24,
+          "text": "- **FFI Registration**: Functions are registered inside `aegis_nerve` module in `core/rust/src/ffi.rs` (lines 230-262):",
+          "category": "DOCUMENTATION"
+        },
+        {
+          "path": ".local/agent-state/agents/explorer_1/handoff.md",
+          "line": 27,
+          "text": "pub fn aegis_nerve(_py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {",
+          "category": "DOCUMENTATION"
+        },
+        {
+          "path": ".local/agent-state/agents/explorer_1/handoff.md",
+          "line": 28,
+          "text": "m.add_function(wrap_pyfunction!(aegis_status, m)?)?;",
+          "category": "DOCUMENTATION"
+        },
+        {
+          "path": ".local/agent-state/agents/explorer_1/original_prompt.md",
+          "line": 22,
+          "text": "2. Detail how the PyO3 module `aegis_nerve` in core/rust/src/ffi.rs registers functions and classes.",
+          "category": "DOCUMENTATION"
+        },
+        {
+          "path": ".local/agent-state/agents/explorer_1/original_prompt.md",
+          "line": 33,
+          "text": "- PyO3 module aegis_nerve in core/rust/src/ffi.rs needs detailing (C2).",
+          "category": "DOCUMENTATION"
+        },
+        {
+          "path": ".local/agent-state/agents/explorer_1/progress.md",
+          "line": 8,
+          "text": "- [x] Investigate PyO3 module `aegis_nerve` in ffi.rs",
+          "category": "DOCUMENTATION"
+        },
+        {
+          "path": ".local/agent-state/agents/explorer_3/BRIEFING.md",
+          "line": 26,
+          "text": "- `core/rust/src/ffi.rs` (PyO3 bindings for `aegis_nerve`)",
+          "category": "DOCUMENTATION"
+        },
+        {
+          "path": ".local/agent-state/agents/explorer_3/handoff.md",
+          "line": 39,
+          "text": "* **No PyCapsule / Arrow FFI Exports**: In `core/rust/src/ffi.rs:230-262`, PyO3 bindings for `aegis_nerve` are declared. None of them export Arrow structures or PyCapsules for Arrow data exchange.",
           "category": "DOCUMENTATION"
         },
         {
@@ -1136,138 +1262,66 @@
           "line": 495,
           "text": "fn lexical_sync(query: &PySearchQuery) -> PyResult<String> {",
           "category": "PRODUCT"
-        },
-        {
-          "path": "aegis-plugins/aegis-search-sdk/src/lib.rs",
-          "line": 507,
-          "text": "fn aegis_search_sdk(_py: Python<'_>, module: &Bound<'_, PyModule>) -> PyResult<()> {",
-          "category": "PRODUCT"
-        },
-        {
-          "path": "aegis-plugins/aegis-search-sdk/src/lib.rs",
-          "line": 509,
-          "text": "module.add_function(wrap_pyfunction!(lexical_sync, module)?)?;",
-          "category": "PRODUCT"
-        },
-        {
-          "path": "aegis-plugins/aegis-search-sdk/src/lib.rs",
-          "line": 569,
-          "text": "use aegis_nerve::evidence_index::EvidenceCandidateTier;",
-          "category": "PRODUCT"
-        },
-        {
-          "path": "aegis-plugins/aegis-search-sdk/tests/evidence_integration.rs",
-          "line": 2,
-          "text": "use aegis_nerve::evidence_index::HotEvidenceIndex;",
-          "category": "TEST"
-        },
-        {
-          "path": "aegis_cognition/lab.py",
-          "line": 1199,
-          "text": "import aegis_nerve  # type: ignore[import-not-found]",
-          "category": "LAB"
-        },
-        {
-          "path": "aegis_cognition/lab.py",
-          "line": 1201,
-          "text": "return cast(Any, aegis_nerve)",
-          "category": "LAB"
-        },
-        {
-          "path": "aegis_cognition/lab.py",
-          "line": 1204,
-          "text": "from aegis_cognition import aegis_nerve  # type: ignore[import-not-found]",
-          "category": "LAB"
-        },
-        {
-          "path": "aegis_cognition/lab.py",
-          "line": 1206,
-          "text": "return cast(Any, aegis_nerve)",
-          "category": "LAB"
-        },
-        {
-          "path": "aegis_cognition/lab.py",
-          "line": 1208,
-          "text": "raise ImportError(\"Rust aegis_nerve extension is unavailable\") from exc",
-          "category": "LAB"
-        },
-        {
-          "path": "aegis_cognition/lab.py",
-          "line": 3539,
-          "text": "aegis_nerve = _native_lab_module()",
-          "category": "LAB"
-        },
-        {
-          "path": "aegis_cognition/lab.py",
-          "line": 3544,
-          "text": "verifier = getattr(aegis_nerve, \"aegis_lab_verify_event_chain\", None)",
-          "category": "LAB"
-        },
-        {
-          "path": "aegis_cognition/lab.py",
-          "line": 3560,
-          "text": "aegis_nerve = _native_lab_module()",
-          "category": "LAB"
-        },
-        {
-          "path": "aegis_cognition/lab.py",
-          "line": 3565,
-          "text": "validator = getattr(aegis_nerve, \"aegis_lab_validate_transition\", None)",
-          "category": "LAB"
-        },
-        {
-          "path": "aegis_cognition/lab.py",
-          "line": 4662,
-          "text": "aegis_nerve = _native_lab_module()",
-          "category": "LAB"
-        },
-        {
-          "path": "aegis_cognition/lab.py",
-          "line": 4663,
-          "text": "archive = getattr(aegis_nerve, \"aegis_lab_archive_events\", None)",
-          "category": "LAB"
-        },
-        {
-          "path": "aegis_cognition/lab.py",
-          "line": 4693,
-          "text": "aegis_nerve, \"aegis_lab_verify_archive_against_manifest\", None",
-          "category": "LAB"
-        },
-        {
-          "path": "aegis_cognition/lab.py",
-          "line": 4695,
-          "text": "verifier = getattr(aegis_nerve, \"aegis_lab_verify_archive\", None)",
-          "category": "LAB"
-        },
-        {
-          "path": "aegis_cognition/lab.py",
-          "line": 4860,
-          "text": "aegis_nerve = _native_lab_module()",
-          "category": "LAB"
-        },
-        {
-          "path": "aegis_cognition/lab.py",
-          "line": 4861,
-          "text": "verifier = getattr(aegis_nerve, \"aegis_lab_verify_event_chain\", None)",
-          "category": "LAB"
         }
       ],
       "status": "SUSPECT_ONLY_UNMEASURED"
     },
     {
       "suspect": "unbounded_collections",
-      "hits": 1079,
+      "hits": 1998,
       "sample": [
         {
           "path": ".github/workflows/ci.yml",
-          "line": 146,
+          "line": 169,
           "text": "names = wheel.namelist()",
           "category": "UNKNOWN"
         },
         {
-          "path": "AEGIS-COGNITION/artifacts/extreme_testing/EXTREME_TESTING_CHAOS_REPORT.md",
-          "line": 138,
-          "text": "**Observation**: Python `file.write()` + BLAKE3 hash-per-line pattern survives SIGKILL cleanly because writes are line-buffered and the file is opened in append mode. Rust `fs::OpenOptions().append(true)` with `sync_all` would provide even stronger durability.",
+          "path": ".local/agent-state/agents/explorer_1/analysis.md",
+          "line": 82,
+          "text": "fn lookup(&self, prompt: &str, embedding: Vec<f32>, namespace: &str) -> PyResult<Option<String>> { ... }",
+          "category": "DOCUMENTATION"
+        },
+        {
+          "path": ".local/agent-state/agents/explorer_1/analysis.md",
+          "line": 83,
+          "text": "fn insert(&mut self, prompt: String, response: String, embedding: Vec<f32>, namespace: String) -> PyResult<()> { ... }",
+          "category": "DOCUMENTATION"
+        },
+        {
+          "path": ".local/agent-state/agents/explorer_1/analysis.md",
+          "line": 101,
+          "text": "pub fn aegis_batch_tools(calls: Vec<PyToolCall>, policy: String) -> PyResult<String> { ... }",
+          "category": "DOCUMENTATION"
+        },
+        {
+          "path": ".local/agent-state/agents/explorer_5/handoff.md",
+          "line": 13,
+          "text": "- Caching mechanisms: uses `module_cache: RwLock<HashMap<[u8; 32], Module>>` (line 223), `wasm_pre_cache` (line 225), and `quickjs_bridge_pre_cache` (line 227) to avoid re-compilation and re-instantiation overhead.",
+          "category": "DOCUMENTATION"
+        },
+        {
+          "path": ".local/agent-state/agents/worker_m1_1/BRIEFING.md",
+          "line": 28,
+          "text": "- `lookup(&self, prompt: &str, embedding: Vec<f32>, namespace: &str) -> Option<String>`",
+          "category": "DOCUMENTATION"
+        },
+        {
+          "path": ".local/agent-state/agents/worker_m1_1/BRIEFING.md",
+          "line": 29,
+          "text": "- `insert(&mut self, prompt: String, response: String, embedding: Vec<f32>, namespace: String)`",
+          "category": "DOCUMENTATION"
+        },
+        {
+          "path": ".local/agent-state/agents/worker_m1_1/original_prompt.md",
+          "line": 9,
+          "text": "- `lookup(&self, prompt: &str, embedding: Vec<f32>, namespace: &str) -> Option<String>`",
+          "category": "DOCUMENTATION"
+        },
+        {
+          "path": ".local/agent-state/agents/worker_m1_1/original_prompt.md",
+          "line": 10,
+          "text": "- `insert(&mut self, prompt: String, response: String, embedding: Vec<f32>, namespace: String)`",
           "category": "DOCUMENTATION"
         },
         {
@@ -1361,51 +1415,9 @@
           "category": "PRODUCT"
         },
         {
-          "path": "aegis_cognition/application.py",
-          "line": 132,
-          "text": "lab_events=tuple(asdict(event) for event in dossier.events),",
-          "category": "PRODUCT"
-        },
-        {
-          "path": "aegis_cognition/benchmark.py",
-          "line": 23,
-          "text": "payload = asdict(cast(Any, value)) if is_dataclass(value) else value",
-          "category": "PRODUCT"
-        },
-        {
-          "path": "aegis_cognition/benchmark.py",
-          "line": 125,
-          "text": "return _digest({\"schema\": \"aegis-environment-fingerprint-v1\", **asdict(self)})",
-          "category": "PRODUCT"
-        },
-        {
-          "path": "aegis_cognition/benchmark.py",
-          "line": 226,
-          "text": "list(argv),",
-          "category": "PRODUCT"
-        },
-        {
-          "path": "aegis_cognition/benchmark.py",
-          "line": 274,
-          "text": "\"command\": list(argv),",
-          "category": "PRODUCT"
-        },
-        {
-          "path": "aegis_cognition/benchmark.py",
-          "line": 337,
-          "text": "records.append(record)",
-          "category": "PRODUCT"
-        },
-        {
-          "path": "aegis_cognition/benchmark.py",
-          "line": 370,
-          "text": "failures.append(\"environment_hash_mismatch\")",
-          "category": "PRODUCT"
-        },
-        {
-          "path": "aegis_cognition/benchmark.py",
-          "line": 373,
-          "text": "failures.append(str(exc))",
+          "path": "aegis_cognition/__init__.py",
+          "line": 21,
+          "text": "_export_names = list(_exports.__all__)",
           "category": "PRODUCT"
         }
       ],
