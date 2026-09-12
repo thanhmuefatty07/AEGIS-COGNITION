@@ -34,6 +34,14 @@ evidence must come from a real macOS host or the pinned GitHub-hosted macOS
 runner; for release claims, the hosted artifact and gate are the recorded
 authority.
 
+AESE corpus provenance follows the same boundary. Its `environment_hash` is
+derived only from the declared Python runtime contract (implementation and
+version), so a corpus generated on one supported OS remains verifiable on the
+others when the locked toolchain is the same. The provenance envelope retains
+the generating OS, kernel release, machine architecture, and interpreter path
+under `host_observation`; those fields describe where the artifact was made and
+are deliberately not used as a cross-host reproducibility key.
+
 ## Evidence interpretation
 
 - `PROVEN`: the three hosted lanes and the aggregate gate passed for one
