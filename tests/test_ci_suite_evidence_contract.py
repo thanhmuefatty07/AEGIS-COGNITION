@@ -40,7 +40,7 @@ def test_every_ci_suite_gate_has_unique_owner_gate_attempt_and_timeout() -> None
         if "suite_evidence.py" in line
     ]
 
-    assert len(invocations) == 7
+    assert len(invocations) == 8
     owners = []
     gates = []
     for invocation in invocations:
@@ -63,5 +63,20 @@ def test_every_ci_suite_gate_has_unique_owner_gate_attempt_and_timeout() -> None
         for line in content.splitlines()
         if re.search(r"\b(?:cargo (?:nextest )?test|pytest)\b", line)
         and "suite_evidence.py" not in line
+        and "--command-fragment" not in line
     ]
     assert unwrapped_suite_commands == []
+
+
+def test_cross_platform_full_suite_is_a_closed_three_runner_gate() -> None:
+    content = (ROOT / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
+    assert "cross-platform-full-suite:" in content
+    assert "cross-platform-evidence-gate:" in content
+    assert "if: ${{ always() }}" in content
+    assert "--platform-id \"${{ matrix.platform-id }}\"" in content
+    for runner in ("ubuntu-latest", "windows-latest", "macos-14"):
+        assert f"platform-id: {runner}" in content
+        assert f"--expected-platform {runner}" in content
+    cross_platform_job = content.split("  cross-platform-full-suite:", 1)[1].split("  cross-platform-evidence-gate:", 1)[0]
+    assert "continue-on-error" not in cross_platform_job
+    assert "if-no-files-found: error" in cross_platform_job

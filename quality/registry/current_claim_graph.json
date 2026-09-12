@@ -1103,8 +1103,8 @@
     "future_obligations": 20,
     "invariants": 46,
     "mapped_surfaces": 9,
-    "surfaces": 151,
-    "unmapped_surfaces": 142,
+    "surfaces": 153,
+    "unmapped_surfaces": 144,
     "unmapped_verifications": 70,
     "unresolved_code_references": 0,
     "verifications": 92
@@ -3851,13 +3851,13 @@
     "all_surfaces_mapped": false,
     "critical_high_risk_mapped": false,
     "criticality_known": false,
-    "unmapped_surface_count": 142
+    "unmapped_surface_count": 144
   },
   "mode": "SHADOW",
   "phase": "PHASE_1_CLAIM_EVIDENCE_GRAPH",
   "schema": "aese-shadow-claim-evidence-graph-v1",
-  "source_head": "75d31c782d60dbf5768dbbe97965aeeac4e463ef",
-  "source_tree_sha256": "137cd13aca5dba589652470ea1a9aef26358b5718ae15411434d12d44248d262",
+  "source_head": "caca45e4016707e26544f08c4dbe3647aabb201f",
+  "source_tree_sha256": "68b1a366aa2104295ab71a3b8f42a47dad9a9c3c4c9f33f8d8407a6ae61bf083",
   "status": "SHADOW_GRAPH_PARTIAL_MAPPING_SELECTION_DISABLED",
   "surfaces": [
     {
@@ -4031,6 +4031,19 @@
     },
     {
       "claim_refs": [],
+      "id": "AESE-HOSTED_WORKFLOW_JOB-944500BE073DADA0",
+      "kind": "HOSTED_WORKFLOW_JOB",
+      "mapping_status": "NOT_MAPPED",
+      "path": ".github/workflows/ci.yml",
+      "release_critical": "UNKNOWN",
+      "release_criticality": "UNKNOWN",
+      "risk": "UNKNOWN",
+      "security_criticality": "UNKNOWN",
+      "target": "cross-platform-full-suite",
+      "unknown_dependency_policy": "INVALIDATE_CONSERVATIVELY"
+    },
+    {
+      "claim_refs": [],
       "id": "AESE-HOSTED_WORKFLOW_JOB-9A86E427E026057E",
       "kind": "HOSTED_WORKFLOW_JOB",
       "mapping_status": "NOT_MAPPED",
@@ -4079,6 +4092,19 @@
       "risk": "UNKNOWN",
       "security_criticality": "UNKNOWN",
       "target": "security-and-replay",
+      "unknown_dependency_policy": "INVALIDATE_CONSERVATIVELY"
+    },
+    {
+      "claim_refs": [],
+      "id": "AESE-HOSTED_WORKFLOW_JOB-E636341E6B0E9DBF",
+      "kind": "HOSTED_WORKFLOW_JOB",
+      "mapping_status": "NOT_MAPPED",
+      "path": ".github/workflows/ci.yml",
+      "release_critical": "UNKNOWN",
+      "release_criticality": "UNKNOWN",
+      "risk": "UNKNOWN",
+      "security_criticality": "UNKNOWN",
+      "target": "cross-platform-evidence-gate",
       "unknown_dependency_policy": "INVALIDATE_CONSERVATIVELY"
     },
     {
@@ -6640,6 +6666,6 @@
       "source_id": "AESE-011"
     }
   ],
-  "worktree_epoch": "e08c3bf14099eb998210b39883a4dc91893e3b48b10c6d86b5617dc89574c3ed",
+  "worktree_epoch": "e295d15bf6ae199676a0d4f7825963f61a810ce1718ad9f357009fcc2932ea95",
   "worktree_status": "DIRTY"
 }

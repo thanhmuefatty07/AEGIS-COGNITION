@@ -268,6 +268,7 @@ def main() -> int:
     parser.add_argument("--owner-id", required=True)
     parser.add_argument("--gate-id", required=True)
     parser.add_argument("--attempt-id")
+    parser.add_argument("--platform-id", help="canonical hosted-runner label for cross-platform evidence")
     parser.add_argument("--timeout-seconds", type=int, required=True)
     parser.add_argument("command", nargs=argparse.REMAINDER)
     args = parser.parse_args()
@@ -283,6 +284,9 @@ def main() -> int:
     gate_id = args.gate_id.strip()
     if not owner_id or not gate_id:
         raise SystemExit("--owner-id and --gate-id must be non-empty")
+    platform_id = args.platform_id.strip() if args.platform_id else None
+    if args.platform_id is not None and not platform_id:
+        raise SystemExit("--platform-id must be non-empty when provided")
     platform_name = platform.platform()
     toolchain_name = toolchain(command)
     claim_scope = "LOCAL_CHECKOUT_ONLY"
@@ -320,6 +324,7 @@ def main() -> int:
         "finished_at_utc": finished.isoformat().replace("+00:00", "Z"),
         "duration_seconds": (finished - started).total_seconds(),
         "platform": platform_name,
+        "platform_id": platform_id,
         "toolchain": toolchain_name,
         "discovered": counts["discovered"],
         "passed": counts["passed"],
