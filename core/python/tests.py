@@ -2430,21 +2430,21 @@ def test_python_hotpath_gate_accepts_mmap_payload_view():
 
 
 def test_hermes_session_recovery_baseline_gate_binds_physical_artifacts():
-    import scripts.hermes_session_recovery_baseline_gate as gate
+    import scripts.research.comparators.external.session_recovery_baseline_gate as gate
 
     with TemporaryDirectory() as tmp:
         baseline_dir = Path(tmp) / "hermes-session-recovery"
         with (
-            patch("scripts.hermes_session_recovery_baseline_gate.BASELINE_DIR", baseline_dir),
-            patch("scripts.hermes_session_recovery_baseline_gate.BASELINE_DB_PATH", baseline_dir / "state.db"),
+            patch("scripts.research.comparators.external.session_recovery_baseline_gate.BASELINE_DIR", baseline_dir),
+            patch("scripts.research.comparators.external.session_recovery_baseline_gate.BASELINE_DB_PATH", baseline_dir / "state.db"),
             patch(
-                "scripts.hermes_session_recovery_baseline_gate.BASELINE_RECOVERY_PAYLOAD_PATH",
+                "scripts.research.comparators.external.session_recovery_baseline_gate.BASELINE_RECOVERY_PAYLOAD_PATH",
                 baseline_dir / "recovered.json",
             ),
-            patch("scripts.hermes_session_recovery_baseline_gate._criterion_estimate_ns", return_value=1.0),
+            patch("scripts.research.comparators.external.session_recovery_baseline_gate._criterion_estimate_ns", return_value=1.0),
             # The production gate binds this to the checked-out research repo;
             # the unit fixture supplies a deterministic commit binding.
-            patch("scripts.hermes_session_recovery_baseline_gate._git_commit", return_value="a" * 40),
+            patch("scripts.research.comparators.external.session_recovery_baseline_gate._git_commit", return_value="a" * 40),
         ):
             report = gate.evaluate_hermes_session_recovery_baseline(Path.cwd())
         payload = gate.report_to_dict(report)
@@ -2464,16 +2464,16 @@ def test_hermes_session_recovery_baseline_gate_binds_physical_artifacts():
 
 
 def test_hermes_persistence_baseline_gate_binds_physical_artifacts():
-    import scripts.hermes_persistence_baseline_gate as gate
+    import scripts.research.comparators.external.persistence_write_baseline_gate as gate
 
     with TemporaryDirectory() as tmp:
         baseline_dir = Path(tmp) / "hermes-persistence"
         with (
-            patch("scripts.hermes_persistence_baseline_gate.BASELINE_DIR", baseline_dir),
-            patch("scripts.hermes_persistence_baseline_gate.BASELINE_DB_PATH", baseline_dir / "state.db"),
-            patch("scripts.hermes_persistence_baseline_gate.BASELINE_TRANSCRIPT_PATH", baseline_dir / "transcript.json"),
-            patch("scripts.hermes_persistence_baseline_gate._criterion_estimate_ns", return_value=1.0),
-            patch("scripts.hermes_persistence_baseline_gate._git_commit", return_value="a" * 40),
+            patch("scripts.research.comparators.external.persistence_write_baseline_gate.BASELINE_DIR", baseline_dir),
+            patch("scripts.research.comparators.external.persistence_write_baseline_gate.BASELINE_DB_PATH", baseline_dir / "state.db"),
+            patch("scripts.research.comparators.external.persistence_write_baseline_gate.BASELINE_TRANSCRIPT_PATH", baseline_dir / "transcript.json"),
+            patch("scripts.research.comparators.external.persistence_write_baseline_gate._criterion_estimate_ns", return_value=1.0),
+            patch("scripts.research.comparators.external.persistence_write_baseline_gate._git_commit", return_value="a" * 40),
         ):
             report = gate.evaluate_hermes_persistence_baseline(Path.cwd())
         payload = gate.report_to_dict(report)
@@ -2493,17 +2493,17 @@ def test_hermes_persistence_baseline_gate_binds_physical_artifacts():
 
 
 def test_hermes_rpc_baseline_gate_uses_aggregate_mmap_overhead():
-    import scripts.hermes_rpc_baseline_gate as gate
+    import scripts.research.comparators.external.rpc_context_baseline_gate as gate
 
     with TemporaryDirectory() as tmp:
         baseline_dir = Path(tmp) / "hermes-rpc"
         with (
-            patch("scripts.hermes_rpc_baseline_gate.BASELINE_DIR", baseline_dir),
-            patch("scripts.hermes_rpc_baseline_gate.BASELINE_PAYLOAD_PATH", baseline_dir / "payload.jsonl"),
-            patch("scripts.hermes_rpc_baseline_gate.BASELINE_MMAP_PATH", baseline_dir / "context.aegmmap"),
-            patch("scripts.hermes_rpc_baseline_gate._measure_json_rpc_context_ns") as json_rpc_measure,
-            patch("scripts.hermes_rpc_baseline_gate._measure_mmap_payload_view_ns", return_value=1_000.0),
-            patch("scripts.hermes_rpc_baseline_gate._git_commit", return_value="a" * 40),
+            patch("scripts.research.comparators.external.rpc_context_baseline_gate.BASELINE_DIR", baseline_dir),
+            patch("scripts.research.comparators.external.rpc_context_baseline_gate.BASELINE_PAYLOAD_PATH", baseline_dir / "payload.jsonl"),
+            patch("scripts.research.comparators.external.rpc_context_baseline_gate.BASELINE_MMAP_PATH", baseline_dir / "context.aegmmap"),
+            patch("scripts.research.comparators.external.rpc_context_baseline_gate._measure_json_rpc_context_ns") as json_rpc_measure,
+            patch("scripts.research.comparators.external.rpc_context_baseline_gate._measure_mmap_payload_view_ns", return_value=1_000.0),
+            patch("scripts.research.comparators.external.rpc_context_baseline_gate._git_commit", return_value="a" * 40),
         ):
             json_rpc_measure.return_value = (
                 1_000_000.0,

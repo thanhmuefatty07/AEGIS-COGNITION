@@ -5,6 +5,10 @@
 .agents
 .codex
 .cursor
+.serena
+.sixth
+.aegis
+.cursorrules
 .pytest_cache
 target
 artifacts/research
@@ -18,9 +22,5 @@ artifacts/run_checks_latest_stdout.json
 *.key
 *.p12
 *.pfx
-.aegis
-.sixth
-.serena/cache
-.serena/memories
 __pycache__
 *.pyc

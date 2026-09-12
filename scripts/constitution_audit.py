@@ -18,11 +18,11 @@ class ConstitutionCheck:
 
 REQUIRED_SYMBOLS = {
     "plan_file_present": (
-        Path("planning pdf") / "AEGIS-COGNITION_ Kiến trúc AI Tối ưu.md",
+        Path("docs/archive/planning/architecture-optimization.md"),
         ["PAV-GATED COGNITION", "Physical Witness", "OpenTelemetry / Prometheus"],
     ),
     "architecture_reality_check": (
-        Path("planning pdf") / "AEGIS-COGNITION_ Kiến trúc AI Tối ưu.md",
+        Path("docs/archive/planning/architecture-optimization.md"),
         [
             "Current Implementation Reality Check",
             "Arrow today is standard append-only Arrow IPC stream",
@@ -2229,7 +2229,7 @@ REQUIRED_SYMBOLS = {
         ],
     ),
     "hermes_baseline_gate": (
-        Path("scripts/hermes_baseline_gate.py"),
+        Path("scripts/research/comparators/external/fts5_baseline_gate.py"),
         [
             "Hermes FTS5 Baseline Gate",
             "HERMES_SPEEDUP_THRESHOLD",
@@ -2244,7 +2244,7 @@ REQUIRED_SYMBOLS = {
         ],
     ),
     "hermes_rpc_baseline_gate": (
-        Path("scripts/hermes_rpc_baseline_gate.py"),
+        Path("scripts/research/comparators/external/rpc_context_baseline_gate.py"),
         [
             "Hermes JSON-RPC Context Baseline Gate",
             "HERMES_RPC_SPEEDUP_THRESHOLD",
@@ -2259,7 +2259,7 @@ REQUIRED_SYMBOLS = {
         ],
     ),
     "hermes_session_recovery_baseline_gate": (
-        Path("scripts/hermes_session_recovery_baseline_gate.py"),
+        Path("scripts/research/comparators/external/session_recovery_baseline_gate.py"),
         [
             "Hermes Session Recovery Baseline Gate",
             "HERMES_SESSION_RECOVERY_SPEEDUP_THRESHOLD",
@@ -2274,7 +2274,7 @@ REQUIRED_SYMBOLS = {
         ],
     ),
     "hermes_persistence_baseline_gate": (
-        Path("scripts/hermes_persistence_baseline_gate.py"),
+        Path("scripts/research/comparators/external/persistence_write_baseline_gate.py"),
         [
             "Hermes Persistence Write-Amplification Baseline Gate",
             "HERMES_PERSISTENCE_SPEEDUP_THRESHOLD",
@@ -2990,7 +2990,7 @@ REQUIRED_SYMBOLS = {
         ["verify_target_prefix", "accepted_prefix_len", "take_while"],
     ),
     "plan_deterministic_priority": (
-        Path("planning pdf") / "AEGIS-COGNITION_ Agent Harness Continuation Plan.md",
+        Path("docs/archive/planning/agent-harness-continuation-plan.md"),
         [
             "deterministic_priority_score",
             "suggested_priority",
@@ -2999,7 +2999,7 @@ REQUIRED_SYMBOLS = {
         ],
     ),
     "plan_subagent_candidate_evidence": (
-        Path("planning pdf") / "AEGIS-COGNITION_ Agent Harness Continuation Plan.md",
+        Path("docs/archive/planning/agent-harness-continuation-plan.md"),
         [
             "Subagent outputs are not physical witness by themselves",
             "CandidateEvidence",
@@ -3007,7 +3007,7 @@ REQUIRED_SYMBOLS = {
         ],
     ),
     "plan_context_governor_activated_subgraph": (
-        Path("planning pdf") / "AEGIS-COGNITION_ Agent Harness Continuation Plan.md",
+        Path("docs/archive/planning/agent-harness-continuation-plan.md"),
         [
             "Activate only the hot-path subgraph",
             "1-hop and 2-hop neighbors of the seed set: `active_task_id` plus `required_evidence_refs`",
@@ -3016,7 +3016,7 @@ REQUIRED_SYMBOLS = {
         ],
     ),
     "plan_llm_response_replay": (
-        Path("planning pdf") / "AEGIS-COGNITION_ Agent Harness Continuation Plan.md",
+        Path("docs/archive/planning/agent-harness-continuation-plan.md"),
         [
             "LLMResponseReceived { response_hash: [u8; 32], raw_text_ref: EvidenceRef }",
             "`LLMResponseReceived` is mandatory",
@@ -3025,7 +3025,7 @@ REQUIRED_SYMBOLS = {
         ],
     ),
     "plan_r4_staging_dry_run": (
-        Path("planning pdf") / "AEGIS-COGNITION_ Agent Harness Continuation Plan.md",
+        Path("docs/archive/planning/agent-harness-continuation-plan.md"),
         [
             "Dry-run evidence means **Staging Sandbox Execution**",
             "`ReviewPacket.staging_proof_kind` must be one of",
@@ -3035,7 +3035,7 @@ REQUIRED_SYMBOLS = {
         ],
     ),
     "plan_wave6_optimization_governance": (
-        Path("planning pdf") / "AEGIS-COGNITION_ Agent Harness Continuation Plan.md",
+        Path("docs/archive/planning/agent-harness-continuation-plan.md"),
         [
             "Deep Research Wave 6: Optimization Governance and Performance Budgets",
             "PerformanceBudgetLedger",
@@ -3048,7 +3048,7 @@ REQUIRED_SYMBOLS = {
         ],
     ),
     "plan_wave7_hardware_aware_layout": (
-        Path("planning pdf") / "AEGIS-COGNITION_ Agent Harness Continuation Plan.md",
+        Path("docs/archive/planning/agent-harness-continuation-plan.md"),
         [
             "Deep Research Wave 7: Hardware-Aware Runtime Layout and Binary Replay",
             "RuntimeLayoutBudget",
@@ -3063,7 +3063,7 @@ REQUIRED_SYMBOLS = {
         ],
     ),
     "plan_wave8_formal_policy_kernel": (
-        Path("planning pdf") / "AEGIS-COGNITION_ Agent Harness Continuation Plan.md",
+        Path("docs/archive/planning/agent-harness-continuation-plan.md"),
         [
             "Deep Research Wave 8: Formal Policy Kernel and Typed Tool IR",
             "TypedToolIR",
@@ -3077,7 +3077,7 @@ REQUIRED_SYMBOLS = {
         ],
     ),
     "plan_wave9_evaluation_gauntlet": (
-        Path("planning pdf") / "AEGIS-COGNITION_ Agent Harness Continuation Plan.md",
+        Path("docs/archive/planning/agent-harness-continuation-plan.md"),
         [
             "Deep Research Wave 9: Evaluation Gauntlet and Adversarial Benchmarking",
             "HarnessBenchScorecard",
@@ -3092,7 +3092,7 @@ REQUIRED_SYMBOLS = {
         ],
     ),
     "plan_wave10_inference_runtime": (
-        Path("planning pdf") / "AEGIS-COGNITION_ Agent Harness Continuation Plan.md",
+        Path("docs/archive/planning/agent-harness-continuation-plan.md"),
         [
             "Deep Research Wave 10: Model/Inference Systems and Local Runtime Acceleration",
             "InferenceBackendContract",
@@ -3106,7 +3106,7 @@ REQUIRED_SYMBOLS = {
         ],
     ),
     "plan_wave11_storage_retrieval": (
-        Path("planning pdf") / "AEGIS-COGNITION_ Agent Harness Continuation Plan.md",
+        Path("docs/archive/planning/agent-harness-continuation-plan.md"),
         [
             "Deep Research Wave 11: Storage, Indexing, and Retrieval Engine",
             "EvidenceIndexManifest",
@@ -3120,7 +3120,7 @@ REQUIRED_SYMBOLS = {
         ],
     ),
     "plan_wave12_cluster_runtime": (
-        Path("planning pdf") / "AEGIS-COGNITION_ Agent Harness Continuation Plan.md",
+        Path("docs/archive/planning/agent-harness-continuation-plan.md"),
         [
             "Deep Research Wave 12: Distributed Execution and Consensus-Free Cluster Runtime",
             "ClusterWorkEnvelope",
@@ -3135,7 +3135,7 @@ REQUIRED_SYMBOLS = {
         ],
     ),
     "plan_wave13_security_supply_chain": (
-        Path("planning pdf") / "AEGIS-COGNITION_ Agent Harness Continuation Plan.md",
+        Path("docs/archive/planning/agent-harness-continuation-plan.md"),
         [
             "Deep Research Wave 13: Security Hardening and Supply Chain Integrity",
             "SupplyChainProof",
@@ -3149,7 +3149,7 @@ REQUIRED_SYMBOLS = {
         ],
     ),
     "plan_wave14_observability_forensics": (
-        Path("planning pdf") / "AEGIS-COGNITION_ Agent Harness Continuation Plan.md",
+        Path("docs/archive/planning/agent-harness-continuation-plan.md"),
         [
             "Deep Research Wave 14: Observability, Telemetry, and Control-Plane Forensics",
             "TelemetryEnvelope",
@@ -3164,7 +3164,7 @@ REQUIRED_SYMBOLS = {
         ],
     ),
     "plan_wave15_hitl_operator_safety": (
-        Path("planning pdf") / "AEGIS-COGNITION_ Agent Harness Continuation Plan.md",
+        Path("docs/archive/planning/agent-harness-continuation-plan.md"),
         [
             "Deep Research Wave 15: Human-in-the-Loop, Approval UX, and Operator Safety",
             "ReviewPacket",
@@ -3179,7 +3179,7 @@ REQUIRED_SYMBOLS = {
         ],
     ),
     "plan_wave16_productization_deployment": (
-        Path("planning pdf") / "AEGIS-COGNITION_ Agent Harness Continuation Plan.md",
+        Path("docs/archive/planning/agent-harness-continuation-plan.md"),
         [
             "Deep Research Wave 16: Productization, Packaging, and Deployment Topology",
             "ReleaseProfile",
@@ -3194,7 +3194,7 @@ REQUIRED_SYMBOLS = {
         ],
     ),
     "plan_wave17_architecture_freeze": (
-        Path("planning pdf") / "AEGIS-COGNITION_ Agent Harness Continuation Plan.md",
+        Path("docs/archive/planning/agent-harness-continuation-plan.md"),
         [
             "Deep Research Wave 17: Architecture Freeze and Implementation Roadmap",
             "Implementation Dependency Graph",
@@ -3208,7 +3208,7 @@ REQUIRED_SYMBOLS = {
         ],
     ),
     "plan_wave18_hot_evidence_index": (
-        Path("planning pdf") / "AEGIS-COGNITION_ Agent Harness Continuation Plan.md",
+        Path("docs/archive/planning/agent-harness-continuation-plan.md"),
         [
             "Deep Research Wave 18: Hot Evidence Index and Candidate Retrieval Cascade",
             "HotEvidenceIndex v2",
@@ -3307,7 +3307,7 @@ FORBIDDEN_IN_FILES = {
         ],
     ),
     "plan_no_stochastic_priority_formula": (
-        Path("planning pdf") / "AEGIS-COGNITION_ Agent Harness Continuation Plan.md",
+        Path("docs/archive/planning/agent-harness-continuation-plan.md"),
         [
             "priority = (expected_value",
             "expected_value * uncertainty_reduction",
@@ -3319,7 +3319,7 @@ FORBIDDEN_IN_FILES = {
         ],
     ),
     "architecture_no_stale_truth_claims": (
-        Path("planning pdf") / "AEGIS-COGNITION_ Kiến trúc AI Tối ưu.md",
+        Path("docs/archive/planning/architecture-optimization.md"),
         [
             "priority = (expected_value",
             "expected_value * uncertainty_reduction",
@@ -3755,9 +3755,9 @@ NO_OVERCLAIM_QUALIFIERS = (
 NO_OVERCLAIM_DOCS = (
     Path("README.md"),
     Path("docs/archive/reports/project-overview.md"),
-    Path("docs/ARCHITECTURE_FREEZE.md"),
+    Path("docs/architecture/ARCHITECTURE_FREEZE.md"),
     Path("docs/architecture/AEGIS_LAB_RUNTIME_MASTER_PLAN.md"),
-    Path("planning pdf/AEGIS-COGNITION_ Agent Harness Continuation Plan.md"),
+    Path("docs/archive/planning/agent-harness-continuation-plan.md"),
 )
 REQUIRED_AUDIT_TESTS = {
     Path("tests/test_constitution_audit_gates.py"): (
@@ -3806,7 +3806,7 @@ def _truth_schema_gate(root: Path) -> tuple[bool, str]:
 
 
 def _no_overclaim_gate(root: Path) -> tuple[bool, str]:
-    freeze = _read_text(root, Path("docs/ARCHITECTURE_FREEZE.md"))
+    freeze = _read_text(root, Path("docs/architecture/ARCHITECTURE_FREEZE.md"))
     required_freeze_markers = (
         "DESIGN_FREEZE_INPUT",
         "does not assert that the checkout already satisfies the target",
@@ -3815,7 +3815,7 @@ def _no_overclaim_gate(root: Path) -> tuple[bool, str]:
         "benchmark",
     )
     if freeze is None:
-        return False, "missing docs/ARCHITECTURE_FREEZE.md"
+        return False, "missing docs/architecture/ARCHITECTURE_FREEZE.md"
     normalized_freeze = " ".join(freeze.lower().split())
     missing = [marker for marker in required_freeze_markers if marker.lower() not in normalized_freeze]
     if missing:

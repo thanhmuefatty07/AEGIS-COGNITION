@@ -1,22 +1,36 @@
 # Documentation hierarchy
 
-The durable architecture and release evidence authority lives under
-`docs/architecture/`:
+Current implementation and release authority is separated from user guidance,
+design notes, and historical records. The root `README.md` remains the public
+repository entry point.
 
-Workspace and agent file hygiene is defined in
-[`WORKSPACE_HYGIENE.md`](WORKSPACE_HYGIENE.md).
+## Current authority
 
-- `evidence/current.json` is the machine-readable evidence template; CI emits
-  a checkout-bound artifact with the exact SHA.
-- `VERIFICATION_INDEX.md` is the entry point and authority rule.
-- `GT96_TRACEABILITY.md` is the requirement-level implementation/test matrix.
-- `NOT_VERIFIED_REGISTRY.md` retains every open external, privileged, or
-  unavailable-platform closure item.
-- `VERIFICATION_BASELINE.md` and `TRACEABILITY.md` are rendered/history views;
-  older run IDs are explicitly historical.
-- `adr/` contains durable decisions; `crystallized/` contains design notes and
-  must not be read as performance or production proof.
+- [`architecture/`](architecture/): implementation baseline, contracts, evidence,
+  verification, and deployment-readiness status.
+- [`architecture/VERIFICATION_INDEX.md`](architecture/VERIFICATION_INDEX.md):
+  evidence authority and status rules.
+- [`architecture/evidence/current.json`](architecture/evidence/current.json):
+  machine-readable evidence template.
+- [`architecture/NOT_VERIFIED_REGISTRY.md`](architecture/NOT_VERIFIED_REGISTRY.md):
+  open external, privileged, or unavailable-platform closure items.
+- [`adr/`](adr/): durable architecture decisions.
+- [`WORKSPACE_HYGIENE.md`](WORKSPACE_HYGIENE.md): repository layout, ownership,
+  naming, and disposable-state rules.
+- [`ENGINEERING_CONSTITUTION.md`](ENGINEERING_CONSTITUTION.md): normative
+  engineering policy for this repository.
 
-Historical reports and former nested project trees now live in
-[the archive](archive/README.md). The archive records previous work; current
-implementation and release authority remain in the canonical paths above.
+## User guidance
+
+- [`quickstart.md`](quickstart.md): installation and first-run guide.
+- [`api/`](api/): API and CLI references.
+- [`tutorials/`](tutorials/): task-oriented guides.
+- [`integrations/`](integrations/): provider and plugin integration notes.
+- [`troubleshooting/`](troubleshooting/): common failures and remedies.
+- [`crystallized/`](crystallized/): design notes, not release or performance proof.
+
+## Historical records
+
+[`archive/`](archive/README.md) contains superseded reports, plans, source
+snapshots, and external research. Historical records do not override the
+current authority paths above.
