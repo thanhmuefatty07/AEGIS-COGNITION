@@ -79,7 +79,14 @@ def _tracked_paths() -> list[str]:
         check=True,
         capture_output=True,
     ).stdout
-    return sorted(item.decode("utf-8") for item in output.split(b"\0") if item)
+    # An unstaged worktree rename leaves the old path in the index until the
+    # caller stages it; inventory the live checkout rather than reading a
+    # deleted source path as if it still existed.
+    return sorted(
+        path
+        for path in (item.decode("utf-8") for item in output.split(b"\0") if item)
+        if (ROOT / path).is_file()
+    )
 
 
 def _scope_for(path: str) -> tuple[str, str] | None:

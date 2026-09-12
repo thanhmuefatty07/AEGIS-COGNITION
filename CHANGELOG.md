@@ -73,7 +73,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.1.0] - 2026-06-15
 
 Baseline established. See:
-- `PROJECT_OVERVIEW_DETAILED.md` — system architecture and pillar split
-- `EXTREME_AUDIT_REPORT.md` — extreme testing, 0 critical / 0 high
-- `IMPLEMENTATION_SPEC.md` — DX and CLI implementation spec
-- `AEGIS_DX_RESEARCH_REPORT.md`, `DX_INTEGRATION_GUIDE.md` — competitive DX analysis
+- `docs/archive/reports/project-overview.md` — system architecture and pillar split
+- `docs/archive/reports/extreme-audit.md` — extreme testing, 0 critical / 0 high
+- `docs/archive/reports/implementation-spec.md` — DX and CLI implementation spec
+- `docs/archive/reports/dx-research.md`, `docs/archive/reports/dx-integration.md` — competitive DX analysis

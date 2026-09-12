@@ -34,7 +34,7 @@ REQUIRED_SYMBOLS = {
         ],
     ),
     "production_evidence_gap_disclosure": (
-        Path("PROJECT_OVERVIEW_DETAILED.md"),
+        Path("docs/archive/reports/project-overview.md"),
         [
             "Production Evidence Gaps",
             "QuickJS bridge cold-start now has Wasmtime probe data",
@@ -3754,7 +3754,7 @@ NO_OVERCLAIM_QUALIFIERS = (
 )
 NO_OVERCLAIM_DOCS = (
     Path("README.md"),
-    Path("PROJECT_OVERVIEW_DETAILED.md"),
+    Path("docs/archive/reports/project-overview.md"),
     Path("docs/ARCHITECTURE_FREEZE.md"),
     Path("docs/architecture/AEGIS_LAB_RUNTIME_MASTER_PLAN.md"),
     Path("planning pdf/AEGIS-COGNITION_ Agent Harness Continuation Plan.md"),

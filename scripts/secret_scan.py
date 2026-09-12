@@ -37,7 +37,26 @@ def tracked_files() -> list[Path]:
         check=True,
         capture_output=True,
     )
-    return [ROOT / Path(raw) for raw in result.stdout.decode().split("\0") if raw]
+    # A worktree can contain deleted or renamed index entries before staging.
+    # There are no bytes to inspect for those paths; the staged scan below
+    # validates the final index contents before a commit.
+    return [
+        ROOT / Path(raw)
+        for raw in result.stdout.decode().split("\0")
+        if raw and (ROOT / Path(raw)).is_file()
+    ]
+
+
+def staged_files() -> list[str]:
+    """Return changed paths whose staged blobs need an index-level scan."""
+
+    result = subprocess.run(
+        ["git", "diff", "--cached", "--name-only", "-z", "--diff-filter=ACMR"],
+        cwd=ROOT,
+        check=True,
+        capture_output=True,
+    )
+    return [raw for raw in result.stdout.decode().split("\0") if raw]
 
 
 def scan_file(path: Path) -> list[tuple[str, int]]:
@@ -45,6 +64,10 @@ def scan_file(path: Path) -> list[tuple[str, int]]:
         data = path.read_bytes()
     except OSError:
         return [("unreadable_file", 0)]
+    return scan_bytes(data)
+
+
+def scan_bytes(data: bytes) -> list[tuple[str, int]]:
     if len(data) > MAX_TEXT_BYTES or b"\0" in data:
         return []
     text = data.decode("utf-8", errors="replace")
@@ -56,13 +79,42 @@ def scan_file(path: Path) -> list[tuple[str, int]]:
     return findings
 
 
+def scan_staged_file(relative_path: str) -> list[tuple[str, int]]:
+    """Scan the blob currently in the Git index, without printing its value."""
+
+    try:
+        result = subprocess.run(
+            ["git", "show", f":{relative_path}"],
+            cwd=ROOT,
+            check=True,
+            capture_output=True,
+        )
+    except (OSError, subprocess.CalledProcessError):
+        return [("unreadable_staged_file", 0)]
+    return scan_bytes(result.stdout)
+
+
 def main() -> int:
-    findings = [(path, rule, line) for path in tracked_files() for rule, line in scan_file(path)]
+    live_files = tracked_files()
+    staged = staged_files()
+    findings = [
+        (path, rule, line)
+        for path in live_files
+        for rule, line in scan_file(path)
+    ]
+    findings.extend(
+        (ROOT / relative_path, rule, line)
+        for relative_path in staged
+        for rule, line in scan_staged_file(relative_path)
+    )
     if findings:
         for path, rule, line in findings:
             print(f"secret scan failed: {rule} at {path.relative_to(ROOT)}:{line}")
         return 1
-    print(f"secret scan passed: {len(tracked_files())} tracked files inspected")
+    print(
+        f"secret scan passed: {len(live_files)} tracked worktree files and "
+        f"{len(staged)} staged blobs inspected"
+    )
     return 0
 
 

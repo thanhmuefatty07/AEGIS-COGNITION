@@ -7540,9 +7540,9 @@ class LabRun:
                     restored.goal_contract.validate_for_admission()
                 except (GoalContractError, TypeError, ValueError) as exc:
                     raise ValueError("goal contract admission failed in lab snapshot") from exc
-                unsupported_record_types = set(
-                    restored.goal_contract.evidence_policy.required_record_types
-                ).difference(_GOAL_EVIDENCE_RECORD_TYPES)
+                unsupported_record_types = set(restored.goal_contract.evidence_policy.required_record_types).difference(
+                    _GOAL_EVIDENCE_RECORD_TYPES
+                )
                 if unsupported_record_types:
                     raise ValueError("goal evidence policy contains unsupported record types")
         raw_execution_binding = payload.get("execution_binding")

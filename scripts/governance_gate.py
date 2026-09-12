@@ -59,7 +59,7 @@ def evaluate_governance(root: str | Path = ROOT) -> dict:
     benchmark_gate = _text(root_path / "scripts" / "benchmark_gate.py")
     run_checks = _text(root_path / "scripts" / "run_checks.py")
     cargo_toml = _text(root_path / "core" / "rust" / "Cargo.toml")
-    overview = _text(root_path / "PROJECT_OVERVIEW_DETAILED.md")
+    overview = _text(root_path / "docs/archive/reports/project-overview.md")
 
     checks.append(
         GovernanceGateCheck(

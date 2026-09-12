@@ -4,7 +4,7 @@
 
 [![Python 3.14–3.15](https://img.shields.io/badge/python-3.14--3.15-blue.svg)](https://www.python.org/downloads/)
 [![Rust](https://img.shields.io/badge/rust-toolchain-orange.svg)](https://www.rust-lang.org/)
-[![License](https://img.shields.io/badge/license-BUSL--1.1-green.svg)](core/rust/AEGIS-COGNITION/COMMERCIAL_CLOSURE_REPORT.md)
+[![License](https://img.shields.io/badge/license-BUSL--1.1-green.svg)](docs/archive/legacy/commercial-closure.md)
 [![Status](https://img.shields.io/badge/status-evidence--in--progress-yellow.svg)](docs/architecture/BASELINE.md)
 
 ## Quick Start (2 minutes)
@@ -126,7 +126,7 @@ and retain raw output before making performance claims. Current status is
 
 BUSL-1.1 — Free for development and non-production use.
 Enterprise license required for production deployment.
-See business model in `core/rust/AEGIS-COGNITION/COMMERCIAL_CLOSURE_REPORT.md`.
+See business model in `docs/archive/legacy/commercial-closure.md`.
 
 ## Status
 

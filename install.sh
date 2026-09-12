@@ -9,7 +9,7 @@
 #   ./install.sh [--skip-rust] [--skip-browser] [--python 3.14.7]
 #
 # Honest scope: WRITTEN, NOT YET EXECUTED end-to-end on a Linux/macOS host
-# in this session. See INSTALL_SCRIPTS_REPORT.md for the gate.
+# in this session. See docs/archive/reports/install-scripts.md for the gate.
 #
 # Flags:
 #   --skip-rust        skip rustup install + cargo build
