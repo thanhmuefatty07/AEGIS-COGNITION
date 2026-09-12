@@ -1102,6 +1102,12 @@ def test_target_path_allowlist_is_effect_sensitive_and_boundary_safe() -> None:
     assert not target.allows_path("C:/repo/input/report.json", "unregistered_effect")
 
 
+def test_windows_path_scope_is_host_independent() -> None:
+    target = replace(_target(), read_roots=("C:/repo/input",))
+    assert target.allows_path("C:/repo/input/report.json", "read_only")
+    assert not target.allows_path("C:/repo/input-archive/report.json", "read_only")
+
+
 def test_target_uri_paths_remove_dot_segments_and_reject_ambiguous_escapes() -> None:
     target = replace(
         _target(),

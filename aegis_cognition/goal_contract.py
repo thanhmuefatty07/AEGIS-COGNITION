@@ -245,8 +245,16 @@ def _scope_contains(candidate: str, root: str) -> bool:
     root_path = _filesystem_scope(root)
     if candidate_path is None or root_path is None:
         return False
+    path_module = (
+        ntpath
+        if re.match(r"^[A-Za-z]:\\", candidate_path)
+        or re.match(r"^[A-Za-z]:\\", root_path)
+        or candidate_path.startswith("\\\\")
+        or root_path.startswith("\\\\")
+        else os.path
+    )
     try:
-        return os.path.commonpath((candidate_path, root_path)) == root_path
+        return path_module.commonpath((candidate_path, root_path)) == root_path
     except ValueError:
         return False
 
