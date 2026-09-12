@@ -100,6 +100,13 @@ Local quality evidence gần nhất:
   `artifacts/suites/python-non-aese-current-20260911-r1.json` and
   `artifacts/suites/aese-drift-after-profile-map-20260911-r6.json`; this is
   explicit partition coverage, not a single-process full-suite claim.
+- current unpartitioned Python suite: `713 passed, 1 skipped` in `512.22s`,
+  exit code `0`, from `uv run --locked pytest -q` on the current Windows /
+  CPython `3.14.7` checkout. The direct capture is retained at
+  `artifacts/verification/full-python-current-direct-20260912-r1.log` with
+  metadata in `artifacts/verification/full-python-current-direct-20260912-r1.meta.json`;
+  the worktree was dirty, so this is local checkout evidence rather than a
+  clean-commit or hosted-CI claim.
 - current project-scope Python quality gate: Ruff and strict Pyright both pass
   for `aegis_cognition`, `core/python`, `scripts` and `tests`; the focused
   regression after the export typing compatibility fix and package formatting
@@ -412,8 +419,8 @@ Implementation hiện có:
 
 | Artifact | Status | Sự thật chính |
 |---|---|---|
-| `current_inventory.json` | `INVENTORY_COMPLETE_DISPOSITIONS_RETAINED_MAPPING_PENDING` | 140 surfaces, 129 paths, 633 files, 11 jobs, missing scope 0 |
-| `current_claim_graph.json` | `SHADOW_GRAPH_PARTIAL_MAPPING_SELECTION_DISABLED` | 46 claims, 396 edges, 92 verifications, 131 unmapped surfaces |
+| `current_inventory.json` | `INVENTORY_COMPLETE_DISPOSITIONS_RETAINED_MAPPING_PENDING` | 152 surfaces, 141 paths, 656 live files, 11 jobs, missing scope 0 |
+| `current_claim_graph.json` | `SHADOW_GRAPH_PARTIAL_MAPPING_SELECTION_DISABLED` | 46 claims, 396 edges, 92 verifications, 143 unmapped surfaces |
 | `current_s2_mapping.json` | `S2_FAIL_CLOSED_MAPPING_COMPLETE` | declared-critical mapping complete; selection disabled |
 | `current_affected_closure.json` | `AFFECTED_CLOSURE_PLAN_ONLY_SELECTION_DISABLED` | plan only; unknown widens to retained suite |
 | `current_shadow_plan.json` | `SHADOW_PLAN_ONLY_SELECTION_DISABLED` | không execute |
@@ -422,9 +429,9 @@ Implementation hiện có:
 
 Inventory: 58 script/gate, 27 Rust unit tests, 16 Python tests, 11 hosted jobs, 5 Python benchmarks, 5 Rust benchmarks, 4 fuzz targets, 4 workflows, 1 Rust integration test. Raw items đều `NOT_VERIFIED`, `NOT_MAPPED`, risk/security `UNKNOWN`, `RETAIN_UNCHANGED`; S2 chỉ enrich subset.
 
-Claim graph: 46 claims/code contracts/invariants, 27 code nodes, 396 edges, 20 future obligations, 140 surfaces (9 mapped/131 unmapped), 92 verifications (70 unmapped), 0 unresolved code refs. Component evidence: 10 PROVEN, 1 MEASURED, 3 SOURCE-BACKED, 32 NOT VERIFIED; cả 46 high-level claims vẫn `IMPLEMENTED / NOT VERIFIED`.
+Claim graph: 46 claims/code contracts/invariants, 27 code nodes, 396 edges, 20 future obligations, 152 surfaces (9 mapped/143 unmapped), 92 verifications (70 unmapped), 0 unresolved code refs. Component evidence: 10 PROVEN, 1 MEASURED, 3 SOURCE-BACKED, 32 NOT VERIFIED; cả 46 high-level claims vẫn `IMPLEMENTED / NOT VERIFIED`.
 
-S2 có 9 declared-critical và 15 high-selection mapped records; 125 surfaces unknown. Scope chỉ `DECLARED_MAPPED_RECORDS_ONLY`, unknown có thể chứa criticality. S3/S4 chỉ lập plan; mẫu `core/rust/src/gt96.rs` would-run 1, would-skip 139, reuse 0. Đây là prediction, không phải executed safety evidence.
+S2 có 9 declared-critical và 15 high-selection mapped records; 137 surfaces unknown. Scope chỉ `DECLARED_MAPPED_RECORDS_ONLY`, unknown có thể chứa criticality. S3/S4 chỉ lập plan; mẫu `core/rust/src/gt96.rs` would-run 1, would-skip 151, reuse 0. Đây là prediction, không phải executed safety evidence.
 
 S5: 4 dev + 6 final cases; 5 synthetic critical targets reached, 0 miss, 5 widen events. Chỉ chứng minh planning reachability, không chứng minh mutation kill/real false-negative/non-inferiority.
 
@@ -582,6 +589,7 @@ workflow đến khi owner sửa Actions billing/permission/service condition.
 | Post-admission full Python attempt | `656 passed, 5 failed, 1 skipped; NOT PASS` | `1500.79s`, exit code 1; all five failures were generated AESE registry drift, then the exact five drift tests passed after registry regeneration; ledger `artifacts/verification/full-python-suite-20260910-r10.txt` and focused repair `artifacts/verification/aese-drift-regression-20260910-r8.log` |
 | Pre-profile-map full Python suite | `708 passed, 1 skipped; historical PASS_LOCAL` | `510.02s`, exit code 0 before the current profile-map source checkpoint; `artifacts/verification/full-python-suite-20260911-r4.txt` + `.meta.json`; local Windows/CPython 3.14.7 |
 | Current Python regression partition | `649/650 non-AESE + 64/64 AESE passed; 1 skipped; PROVEN by partitions` | Non-AESE run is `artifacts/suites/python-non-aese-current-20260911-r1.json`; AESE registry/drift run is `artifacts/suites/aese-drift-after-profile-map-20260911-r6.json`. This is explicit partition coverage, not a single-process full-suite claim. |
+| Current unpartitioned Python suite | `713 passed, 1 skipped; PROVEN local` | `uv run --locked pytest -q`, `512.22s`, exit code `0`; direct log `artifacts/verification/full-python-current-direct-20260912-r1.log` and metadata `artifacts/verification/full-python-current-direct-20260912-r1.meta.json`; dirty Windows/CPython 3.14.7 checkout, hosted and cross-platform scope open |
 | Current project-scope Python quality | `Ruff lint PASS; Ruff format PASS; Pyright PASS; 455 regression tests PASS_LOCAL` | Ruff scope `aegis_cognition core/python scripts tests`; strict Pyright package scope; artifacts `artifacts/verification/python-quality-project-scope-20260911-r3.meta.json` and `artifacts/verification/python-quality-regression-20260911-r2.meta.json`; repository-wide auxiliary Ruff scan remains `NOT VERIFIED` with 321 findings |
 | R6 focused Python regression | `34/34 PASS_LOCAL` | `tests/test_goal_contract.py` + `tests/test_lab_runtime.py` filtered for tool execution, external effects, controller action plans, provider attempts, execution cells and managed-internal memory effects; ledger `artifacts/verification/native-managed-internal-regression-20260910.log` |
 | Cooperative admission Python contract | `18 passed; PASS_LOCAL` | Native-unavailable fail-closed envelope, lease-required admission, exact release forwarding and malformed native response rejection; ledger `artifacts/verification/cooperative-admission-python-contract-20260910-r1.log` |
@@ -593,8 +601,8 @@ workflow đến khi owner sửa Actions billing/permission/service condition.
 | Current focused Rust Lab binding/manifest gate | `20 passed; PASS_LOCAL` | Rust 1.98.1; current execution-cell manifest binding, lineage, target-binding, evidence and external-effect-key tests; `artifacts/verification/native-lab-binding-focused-20260911-r6.meta.json` |
 | Rust no-default-features lib | `526 passed; PASS_LOCAL` | Rust 1.98.1; current-source run in one build worker, `126.67s`; ledger `artifacts/verification/full-rust-lib-20260910-r7.log`; local Windows evidence only |
 | Rust `python-extension` feature lib | `528 passed; PASS_LOCAL` | Rust 1.98.1, one build worker, `98.04s`; ledger `artifacts/verification/rust-python-extension-lib-20260910-r8.log`; local feature coverage only |
-| Current Rust no-default library | `544 passed, 0 failed; PROVEN local` | Serial direct run at `artifacts/verification/rust-library-resolved-state-path-final-20260911-r1.meta.json`; local Windows evidence only. |
-| Current Rust `python-extension` library | `545 passed, 0 failed; PROVEN local` | Serial final-source run at `artifacts/verification/rust-python-extension-resolved-state-path-final-20260911-r1.meta.json`; local Windows evidence only. |
+| Current Rust no-default library | `544 passed, 0 failed; PROVEN local` | Serial direct run at `artifacts/verification/rust-library-resolved-state-path-final-20260911-r1.meta.json`; a later `uv` wrapper attempt ended before test start with Windows `STATUS_DLL_NOT_FOUND` and is recorded separately as a failed harness attempt; local Windows evidence only. |
+| Current Rust `python-extension` library | `545 passed, 0 failed; PROVEN local` | Serial run at `artifacts/suites/rust-python-extension-current-20260911-r2.json`; local Windows evidence only. |
 | Rust all-feature library/integration gate | `541 + 2 passed; PASS_LOCAL` | `--all-features --lib --tests`; isolated target `target/rust-all-current-20260911`; `artifacts/verification/rust-lib-integration-all-features-20260911-r1.meta.json` |
 | Rust all-feature benchmark compilation | `PASS_LOCAL` | All benchmark targets compile with `cargo bench --all-features --no-run`; `artifacts/verification/rust-bench-all-features-no-run-20260911-r1.meta.json` |
 | Current extension affected Python slice | `450 passed; PASS_LOCAL` | GoalContract + Lab runtime + runtime coordination against the editable extension rebuilt with project `.venv`; `artifacts/verification/python-current-extension-goal-lab-20260911-r3.meta.json` |

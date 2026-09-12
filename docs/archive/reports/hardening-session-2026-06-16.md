@@ -85,7 +85,7 @@ denied by the user**. The retry did not happen.
 | `artifacts/hardening/geiger_refresh_2026_06_16.md` | (later) | ~4.4 KB |
 | `artifacts/hardening/blake3_task1_infeasible_2026_06_16.md` | (later) | ~3.5 KB |
 | `artifacts/hardening/geiger_output_2026_06_16.md` | `5fbf3538278d…` | 166 B (error capture only) |
-| `_session_report_hardening_8_1_2026_06_16.md` (this file) | (later) | (this file) |
+| `docs/archive/reports/hardening-session-2026-06-16.md` (this file) | (later) | (this file) |
 
 ## Files Modified This Session
 

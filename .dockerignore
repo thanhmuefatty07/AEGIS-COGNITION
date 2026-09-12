@@ -1,4 +1,7 @@
 .git
+.local
+.venv
+.ruff_cache
 .agents
 .codex
 .cursor
@@ -9,5 +12,15 @@ artifacts/**/*.arrow
 artifacts/**/*.tmp
 artifacts/run_checks_latest_stdout.json
 .env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+.aegis
+.sixth
+.serena/cache
+.serena/memories
 __pycache__
 *.pyc

@@ -102,7 +102,13 @@ def _resolve_verification_paths(value: str, sources: dict[str, str]) -> list[str
 
 def _tracked_paths() -> set[str]:
     output = subprocess.run(["git", "ls-files", "-z"], cwd=ROOT, check=True, capture_output=True).stdout
-    return {item.decode("utf-8") for item in output.split(b"\0") if item}
+    # Keep graph source loading aligned with the live checkout during unstaged
+    # renames; the index can still list the pre-rename path.
+    return {
+        path
+        for path in (item.decode("utf-8") for item in output.split(b"\0") if item)
+        if (ROOT / path).is_file()
+    }
 
 
 def _canonical_source_path(reference: str, tracked: set[str]) -> str | None:

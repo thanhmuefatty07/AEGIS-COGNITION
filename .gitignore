@@ -1,7 +1,14 @@
-# NVIDIA NIM secrets & Local Envs
+# Local secrets and environment files. Keep only the shareable template.
 .env
-.env.local
-.env.*.local
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+
+# Local agent-session metadata is not product source or release evidence.
+.agents/
 
 # Python
 __pycache__/
@@ -41,9 +48,13 @@ target/
 Thumbs.db
 
 # Runtime & temporary artifacts
+.local/
 brain/
 artifacts/
-.aegis/lab-replay/
+.aegis/
+.sixth/
+.serena/cache/
+.serena/memories/
 desktop/node_modules/
 desktop/dist/
 desktop/.pyinstaller-build/

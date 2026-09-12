@@ -16,7 +16,7 @@ In this session, **no install script has been executed end-to-end on any real pl
 | Linux/macOS installer | `install.sh` | ~7.0 KB | yes | NO |
 | WSL2 installer | `install_wsl.sh`   | ~3.5 KB | yes | NO |
 | Termux installer | `install_termux.sh` | ~5.2 KB | yes | NO |
-| This report | `INSTALL_SCRIPTS_REPORT.md` | (this file) | yes | NO |
+| This report | `docs/archive/reports/install-scripts.md` | (this file) | yes | NO |
 
 ## What was actually done in this session
 
