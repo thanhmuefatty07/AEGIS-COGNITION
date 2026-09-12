@@ -45,7 +45,7 @@ def _stable_hash(value: object) -> str:
 
 
 def _validator_hash() -> str:
-    return hashlib.sha256(Path(__file__).read_bytes()).hexdigest()
+    return hashlib.sha256(Path(__file__).read_bytes().replace(b"\r\n", b"\n")).hexdigest()
 
 
 def _items() -> list[dict[str, object]]:

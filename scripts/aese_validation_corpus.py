@@ -137,7 +137,7 @@ def _artifact_provenance(subject: object) -> dict[str, object]:
         "current_head": source_sha,
         "relevant_subject_digest": _stable_hash(subject),
         "protocol_hash": "NOT_APPLICABLE",
-        "validator_hash": hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
+        "validator_hash": hashlib.sha256(Path(__file__).read_bytes().replace(b"\r\n", b"\n")).hexdigest(),
         "environment_hash": _stable_hash(environment),
         "reuse_status": "NOT_REUSED",
     }

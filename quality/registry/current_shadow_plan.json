@@ -1,154 +1,15 @@
 {
-  "artifact_hash": "02f47a342124aec3fe588e7bc567adc59d21cf8d529f35843d95f03c54b92690",
+  "artifact_hash": "b4d3c806862fc670c55157cd8aa3256cca855bdc86d27017724e9f7cd2c894c3",
   "changed_paths": [
-    "."
+    "core/rust/src/gt96.rs"
   ],
   "changed_unmapped_surface_ids": [],
   "changed_unmapped_surface_paths": [],
-  "closure_hash": "3fbe22fbf4b71bdfb13d63e31e1ed2245f819bb042a135a297f4fa01a8406306",
+  "closure_hash": "e4b87ae07ff5287d802b339e3124e8d93233572e753ebe16973f47ede9e387b2",
   "closure_paths": [
-    ".github/workflows/aegis-plugins.yml",
-    ".github/workflows/ci.yml",
-    ".github/workflows/deep.yml",
-    ".github/workflows/release.yml",
-    "core/rust/benches/architecture_performance.rs",
-    "core/rust/benches/nerve_bench.rs",
-    "core/rust/benches/resource_runtime.rs",
-    "core/rust/benches/shadow_sealer_throughput.rs",
-    "core/rust/benches/skill_improvement.rs",
-    "core/rust/src/bridge_mmap.rs",
-    "core/rust/src/connections.rs",
-    "core/rust/src/conversations.rs",
-    "core/rust/src/eac/cache/semantic.rs",
-    "core/rust/src/eac/events.rs",
-    "core/rust/src/eac/sandbox/batch.rs",
-    "core/rust/src/eac/sandbox/runtime.rs",
-    "core/rust/src/execution.rs",
-    "core/rust/src/ffi/eac.rs",
-    "core/rust/src/ffi/learning.rs",
-    "core/rust/src/ffi/runtime.rs",
-    "core/rust/src/gt96.rs",
-    "core/rust/src/hot_engine.rs",
-    "core/rust/src/lab.rs",
-    "core/rust/src/learning/mod.rs",
-    "core/rust/src/lib.rs",
-    "core/rust/src/licensing.rs",
-    "core/rust/src/memory/nudge.rs",
-    "core/rust/src/memory/repository.rs",
-    "core/rust/src/memory/session_search.rs",
-    "core/rust/src/memory/user_model.rs",
-    "core/rust/src/mvcc.rs",
-    "core/rust/src/physical.rs",
-    "core/rust/src/placement.rs",
-    "core/rust/src/replay.rs",
-    "core/rust/src/resource.rs",
-    "core/rust/src/resource_platform.rs",
-    "core/rust/src/runtime.rs",
-    "core/rust/src/sandbox.rs",
-    "core/rust/src/telemetry.rs",
-    "core/rust/src/tests.rs",
-    "core/rust/tests/resource_contract_matrix.rs",
-    "fuzz/fuzz_targets/archive_prefix.rs",
-    "fuzz/fuzz_targets/protocol_frame.rs",
-    "fuzz/fuzz_targets/resource_contract.rs",
-    "fuzz/fuzz_targets/runtime_ffi_contract.rs",
-    "scripts/_audit_regen_requirements.py",
-    "scripts/aese_affected_closure.py",
-    "scripts/aese_claim_graph.py",
-    "scripts/aese_failure_diagnostic.py",
-    "scripts/aese_inventory.py",
-    "scripts/aese_preflight.py",
-    "scripts/aese_s2_mapping.py",
-    "scripts/aese_shadow_planner.py",
-    "scripts/aese_statistical_calibration.py",
-    "scripts/aese_validation_corpus.py",
-    "scripts/architecture_fitness.py",
-    "scripts/attestation_status.py",
-    "scripts/benchmark_gate.py",
-    "scripts/benchmark_preflight.py",
-    "scripts/benchmark_wrapper.py",
-    "scripts/cluster_loopback_gate.py",
-    "scripts/communication_payload_benchmark.py",
-    "scripts/constitution_audit.py",
-    "scripts/cooperative_resource_benchmark.py",
-    "scripts/dependency_audit_gate.py",
-    "scripts/deployment_manifest.py",
-    "scripts/document_consistency_gate.py",
-    "scripts/dynamic_provider_fallback_gate.py",
-    "scripts/e2e_release_gate.py",
-    "scripts/evidence_consistency_gate.py",
-    "scripts/external_deployment_smoke_gate.py",
-    "scripts/extreme_testing_suite.py",
-    "scripts/governance_gate.py",
-    "scripts/hardware_profile_report.py",
-    "scripts/hot_browser_shadow_gate.py",
-    "scripts/linux_cgroup_live_probe.py",
-    "scripts/local_git_backup.py",
-    "scripts/macos_capability_probe.py",
-    "scripts/mock_429_llm_server.py",
-    "scripts/platform_enforcement_probe.py",
-    "scripts/production_closure.py",
-    "scripts/production_packaging_smoke_gate.py",
-    "scripts/production_readiness.py",
-    "scripts/progress_gate.py",
-    "scripts/provider_route_gate.py",
-    "scripts/python_hotpath_gate.py",
-    "scripts/quickjs_cold_start_gate.py",
-    "scripts/release_controller_action_smoke.py",
-    "scripts/release_evidence.py",
-    "scripts/release_install_smoke.py",
-    "scripts/release_recovery_smoke.py",
-    "scripts/release_rollback_drill.py",
-    "scripts/research/comparators/external/fts5_baseline_gate.py",
-    "scripts/research/comparators/external/persistence_write_baseline_gate.py",
-    "scripts/research/comparators/external/rpc_context_baseline_gate.py",
-    "scripts/research/comparators/external/session_recovery_baseline_gate.py",
-    "scripts/resource_policy_benchmark.py",
-    "scripts/run_checks.py",
-    "scripts/rust_toolchain.py",
-    "scripts/secret_scan.py",
-    "scripts/shadow_sealer_soak_gate.py",
-    "scripts/smoke_check.py",
-    "scripts/sota_baseline_gate.py",
-    "scripts/suite_evidence.py",
-    "scripts/supply_chain_gate.py",
-    "scripts/tcp_cluster_soak_gate.py",
-    "scripts/wasmtime_migration_gate.py",
-    "scripts/windows_job_object_live_probe.py",
-    "tests/test_aese_affected_closure.py",
-    "tests/test_aese_claim_graph.py",
-    "tests/test_aese_failure_diagnostic.py",
-    "tests/test_aese_inventory.py",
-    "tests/test_aese_preflight.py",
-    "tests/test_aese_primitives.py",
-    "tests/test_aese_s2_mapping.py",
-    "tests/test_aese_shadow_planner.py",
-    "tests/test_aese_statistical_calibration.py",
-    "tests/test_aese_validation_corpus.py",
-    "tests/test_chatgpt_web_client.py",
-    "tests/test_ci_suite_evidence_contract.py",
-    "tests/test_cli.py",
-    "tests/test_code_intelligence.py",
-    "tests/test_connections.py",
-    "tests/test_constitution_audit_gates.py",
-    "tests/test_context_compiler.py",
-    "tests/test_conversations.py",
-    "tests/test_cooperative_resource_benchmark.py",
-    "tests/test_desktop_protocol.py",
-    "tests/test_document_consistency_gate.py",
-    "tests/test_evidence_consistency_gate.py",
-    "tests/test_goal_contract.py",
-    "tests/test_hardware_profile_report.py",
-    "tests/test_lab_progress_context.py",
-    "tests/test_lab_runtime.py",
-    "tests/test_progress_gate.py",
-    "tests/test_rag_semantics.py",
-    "tests/test_release_evidence.py",
-    "tests/test_runtime_contracts.py",
-    "tests/test_runtime_coordination.py",
-    "tests/test_suite_evidence.py"
+    "core/rust/src/gt96.rs"
   ],
-  "closure_status": "WIDENED_ALL_RETAINED",
+  "closure_status": "EXACT_CONTRACT_CLOSURE_SHADOW",
   "confusion_matrix": {
     "counts": {
       "AESE_SELECTED_FAILED": 0,
@@ -162,2122 +23,2123 @@
   },
   "critical_false_negative_status": "NOT_MEASURED",
   "decision_states": [
-    "WIDENED_UNKNOWN"
+    "WOULD_RUN",
+    "WOULD_SKIP"
   ],
   "decisions": [
     {
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [
-          "."
+          "core/rust/src/gt96.rs"
         ],
-        "closure_hash": "3fbe22fbf4b71bdfb13d63e31e1ed2245f819bb042a135a297f4fa01a8406306",
+        "closure_hash": "e4b87ae07ff5287d802b339e3124e8d93233572e753ebe16973f47ede9e387b2",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-HOSTED_WORKFLOW-E74493557E2F0C05",
       "path": ".github/workflows/aegis-plugins.yml",
-      "reason": "unknown_or_dynamic_dependency_widens_to_all_retained_items",
-      "state": "WIDENED_UNKNOWN"
+      "reason": "path_is_outside_exact_contract_closure_shadow_only",
+      "state": "WOULD_SKIP"
     },
     {
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [
-          "."
+          "core/rust/src/gt96.rs"
         ],
-        "closure_hash": "3fbe22fbf4b71bdfb13d63e31e1ed2245f819bb042a135a297f4fa01a8406306",
+        "closure_hash": "e4b87ae07ff5287d802b339e3124e8d93233572e753ebe16973f47ede9e387b2",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-HOSTED_WORKFLOW_JOB-FF41024D605E74C3",
       "path": ".github/workflows/aegis-plugins.yml",
-      "reason": "unknown_or_dynamic_dependency_widens_to_all_retained_items",
-      "state": "WIDENED_UNKNOWN"
+      "reason": "path_is_outside_exact_contract_closure_shadow_only",
+      "state": "WOULD_SKIP"
     },
     {
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [
-          "."
+          "core/rust/src/gt96.rs"
         ],
-        "closure_hash": "3fbe22fbf4b71bdfb13d63e31e1ed2245f819bb042a135a297f4fa01a8406306",
+        "closure_hash": "e4b87ae07ff5287d802b339e3124e8d93233572e753ebe16973f47ede9e387b2",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-HOSTED_WORKFLOW-B803FCB7F17ED923",
       "path": ".github/workflows/ci.yml",
-      "reason": "unknown_or_dynamic_dependency_widens_to_all_retained_items",
-      "state": "WIDENED_UNKNOWN"
+      "reason": "path_is_outside_exact_contract_closure_shadow_only",
+      "state": "WOULD_SKIP"
     },
     {
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [
-          "."
+          "core/rust/src/gt96.rs"
         ],
-        "closure_hash": "3fbe22fbf4b71bdfb13d63e31e1ed2245f819bb042a135a297f4fa01a8406306",
+        "closure_hash": "e4b87ae07ff5287d802b339e3124e8d93233572e753ebe16973f47ede9e387b2",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-HOSTED_WORKFLOW_JOB-05A370E07760FA2D",
       "path": ".github/workflows/ci.yml",
-      "reason": "unknown_or_dynamic_dependency_widens_to_all_retained_items",
-      "state": "WIDENED_UNKNOWN"
+      "reason": "path_is_outside_exact_contract_closure_shadow_only",
+      "state": "WOULD_SKIP"
     },
     {
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [
-          "."
+          "core/rust/src/gt96.rs"
         ],
-        "closure_hash": "3fbe22fbf4b71bdfb13d63e31e1ed2245f819bb042a135a297f4fa01a8406306",
+        "closure_hash": "e4b87ae07ff5287d802b339e3124e8d93233572e753ebe16973f47ede9e387b2",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-HOSTED_WORKFLOW_JOB-1F46A0C198D3ECE0",
       "path": ".github/workflows/ci.yml",
-      "reason": "unknown_or_dynamic_dependency_widens_to_all_retained_items",
-      "state": "WIDENED_UNKNOWN"
+      "reason": "path_is_outside_exact_contract_closure_shadow_only",
+      "state": "WOULD_SKIP"
     },
     {
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [
-          "."
+          "core/rust/src/gt96.rs"
         ],
-        "closure_hash": "3fbe22fbf4b71bdfb13d63e31e1ed2245f819bb042a135a297f4fa01a8406306",
+        "closure_hash": "e4b87ae07ff5287d802b339e3124e8d93233572e753ebe16973f47ede9e387b2",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-HOSTED_WORKFLOW_JOB-4297F5A9DAE87FC2",
       "path": ".github/workflows/ci.yml",
-      "reason": "unknown_or_dynamic_dependency_widens_to_all_retained_items",
-      "state": "WIDENED_UNKNOWN"
+      "reason": "path_is_outside_exact_contract_closure_shadow_only",
+      "state": "WOULD_SKIP"
     },
     {
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [
-          "."
+          "core/rust/src/gt96.rs"
         ],
-        "closure_hash": "3fbe22fbf4b71bdfb13d63e31e1ed2245f819bb042a135a297f4fa01a8406306",
+        "closure_hash": "e4b87ae07ff5287d802b339e3124e8d93233572e753ebe16973f47ede9e387b2",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-HOSTED_WORKFLOW_JOB-907D7B4FEA384338",
       "path": ".github/workflows/ci.yml",
-      "reason": "unknown_or_dynamic_dependency_widens_to_all_retained_items",
-      "state": "WIDENED_UNKNOWN"
+      "reason": "path_is_outside_exact_contract_closure_shadow_only",
+      "state": "WOULD_SKIP"
     },
     {
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [
-          "."
+          "core/rust/src/gt96.rs"
         ],
-        "closure_hash": "3fbe22fbf4b71bdfb13d63e31e1ed2245f819bb042a135a297f4fa01a8406306",
+        "closure_hash": "e4b87ae07ff5287d802b339e3124e8d93233572e753ebe16973f47ede9e387b2",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-HOSTED_WORKFLOW_JOB-B0F63D21D5F72735",
       "path": ".github/workflows/ci.yml",
-      "reason": "unknown_or_dynamic_dependency_widens_to_all_retained_items",
-      "state": "WIDENED_UNKNOWN"
+      "reason": "path_is_outside_exact_contract_closure_shadow_only",
+      "state": "WOULD_SKIP"
     },
     {
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [
-          "."
+          "core/rust/src/gt96.rs"
         ],
-        "closure_hash": "3fbe22fbf4b71bdfb13d63e31e1ed2245f819bb042a135a297f4fa01a8406306",
+        "closure_hash": "e4b87ae07ff5287d802b339e3124e8d93233572e753ebe16973f47ede9e387b2",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-HOSTED_WORKFLOW_JOB-F33099A5B936A446",
       "path": ".github/workflows/ci.yml",
-      "reason": "unknown_or_dynamic_dependency_widens_to_all_retained_items",
-      "state": "WIDENED_UNKNOWN"
+      "reason": "path_is_outside_exact_contract_closure_shadow_only",
+      "state": "WOULD_SKIP"
     },
     {
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [
-          "."
+          "core/rust/src/gt96.rs"
         ],
-        "closure_hash": "3fbe22fbf4b71bdfb13d63e31e1ed2245f819bb042a135a297f4fa01a8406306",
+        "closure_hash": "e4b87ae07ff5287d802b339e3124e8d93233572e753ebe16973f47ede9e387b2",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-HOSTED_WORKFLOW-481FBF069280B7D0",
       "path": ".github/workflows/deep.yml",
-      "reason": "unknown_or_dynamic_dependency_widens_to_all_retained_items",
-      "state": "WIDENED_UNKNOWN"
+      "reason": "path_is_outside_exact_contract_closure_shadow_only",
+      "state": "WOULD_SKIP"
     },
     {
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [
-          "."
+          "core/rust/src/gt96.rs"
         ],
-        "closure_hash": "3fbe22fbf4b71bdfb13d63e31e1ed2245f819bb042a135a297f4fa01a8406306",
+        "closure_hash": "e4b87ae07ff5287d802b339e3124e8d93233572e753ebe16973f47ede9e387b2",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-HOSTED_WORKFLOW_JOB-9A86E427E026057E",
       "path": ".github/workflows/deep.yml",
-      "reason": "unknown_or_dynamic_dependency_widens_to_all_retained_items",
-      "state": "WIDENED_UNKNOWN"
+      "reason": "path_is_outside_exact_contract_closure_shadow_only",
+      "state": "WOULD_SKIP"
     },
     {
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [
-          "."
+          "core/rust/src/gt96.rs"
         ],
-        "closure_hash": "3fbe22fbf4b71bdfb13d63e31e1ed2245f819bb042a135a297f4fa01a8406306",
+        "closure_hash": "e4b87ae07ff5287d802b339e3124e8d93233572e753ebe16973f47ede9e387b2",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-HOSTED_WORKFLOW_JOB-B864A49636644D5C",
       "path": ".github/workflows/deep.yml",
-      "reason": "unknown_or_dynamic_dependency_widens_to_all_retained_items",
-      "state": "WIDENED_UNKNOWN"
+      "reason": "path_is_outside_exact_contract_closure_shadow_only",
+      "state": "WOULD_SKIP"
     },
     {
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [
-          "."
+          "core/rust/src/gt96.rs"
         ],
-        "closure_hash": "3fbe22fbf4b71bdfb13d63e31e1ed2245f819bb042a135a297f4fa01a8406306",
+        "closure_hash": "e4b87ae07ff5287d802b339e3124e8d93233572e753ebe16973f47ede9e387b2",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-HOSTED_WORKFLOW_JOB-C611C411223DEE88",
       "path": ".github/workflows/deep.yml",
-      "reason": "unknown_or_dynamic_dependency_widens_to_all_retained_items",
-      "state": "WIDENED_UNKNOWN"
+      "reason": "path_is_outside_exact_contract_closure_shadow_only",
+      "state": "WOULD_SKIP"
     },
     {
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [
-          "."
+          "core/rust/src/gt96.rs"
         ],
-        "closure_hash": "3fbe22fbf4b71bdfb13d63e31e1ed2245f819bb042a135a297f4fa01a8406306",
+        "closure_hash": "e4b87ae07ff5287d802b339e3124e8d93233572e753ebe16973f47ede9e387b2",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-HOSTED_WORKFLOW-87DB21A973EED4FE",
       "path": ".github/workflows/release.yml",
-      "reason": "unknown_or_dynamic_dependency_widens_to_all_retained_items",
-      "state": "WIDENED_UNKNOWN"
+      "reason": "path_is_outside_exact_contract_closure_shadow_only",
+      "state": "WOULD_SKIP"
     },
     {
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [
-          "."
+          "core/rust/src/gt96.rs"
         ],
-        "closure_hash": "3fbe22fbf4b71bdfb13d63e31e1ed2245f819bb042a135a297f4fa01a8406306",
+        "closure_hash": "e4b87ae07ff5287d802b339e3124e8d93233572e753ebe16973f47ede9e387b2",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-HOSTED_WORKFLOW_JOB-16AA7B92C94F22CB",
       "path": ".github/workflows/release.yml",
-      "reason": "unknown_or_dynamic_dependency_widens_to_all_retained_items",
-      "state": "WIDENED_UNKNOWN"
+      "reason": "path_is_outside_exact_contract_closure_shadow_only",
+      "state": "WOULD_SKIP"
     },
     {
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [
-          "."
+          "core/rust/src/gt96.rs"
         ],
-        "closure_hash": "3fbe22fbf4b71bdfb13d63e31e1ed2245f819bb042a135a297f4fa01a8406306",
+        "closure_hash": "e4b87ae07ff5287d802b339e3124e8d93233572e753ebe16973f47ede9e387b2",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-RUST_BENCHMARK-56B8EE7D3073C0FD",
       "path": "core/rust/benches/architecture_performance.rs",
-      "reason": "unknown_or_dynamic_dependency_widens_to_all_retained_items",
-      "state": "WIDENED_UNKNOWN"
+      "reason": "path_is_outside_exact_contract_closure_shadow_only",
+      "state": "WOULD_SKIP"
     },
     {
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [
-          "."
+          "core/rust/src/gt96.rs"
         ],
-        "closure_hash": "3fbe22fbf4b71bdfb13d63e31e1ed2245f819bb042a135a297f4fa01a8406306",
+        "closure_hash": "e4b87ae07ff5287d802b339e3124e8d93233572e753ebe16973f47ede9e387b2",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-RUST_BENCHMARK-EB9579A3AA32341B",
       "path": "core/rust/benches/nerve_bench.rs",
-      "reason": "unknown_or_dynamic_dependency_widens_to_all_retained_items",
-      "state": "WIDENED_UNKNOWN"
+      "reason": "path_is_outside_exact_contract_closure_shadow_only",
+      "state": "WOULD_SKIP"
     },
     {
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [
-          "."
+          "core/rust/src/gt96.rs"
         ],
-        "closure_hash": "3fbe22fbf4b71bdfb13d63e31e1ed2245f819bb042a135a297f4fa01a8406306",
+        "closure_hash": "e4b87ae07ff5287d802b339e3124e8d93233572e753ebe16973f47ede9e387b2",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-RUST_BENCHMARK-16BA24B31D557E5B",
       "path": "core/rust/benches/resource_runtime.rs",
-      "reason": "unknown_or_dynamic_dependency_widens_to_all_retained_items",
-      "state": "WIDENED_UNKNOWN"
+      "reason": "path_is_outside_exact_contract_closure_shadow_only",
+      "state": "WOULD_SKIP"
     },
     {
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [
-          "."
+          "core/rust/src/gt96.rs"
         ],
-        "closure_hash": "3fbe22fbf4b71bdfb13d63e31e1ed2245f819bb042a135a297f4fa01a8406306",
+        "closure_hash": "e4b87ae07ff5287d802b339e3124e8d93233572e753ebe16973f47ede9e387b2",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-RUST_BENCHMARK-D6C0F4D92F1AC58D",
       "path": "core/rust/benches/shadow_sealer_throughput.rs",
-      "reason": "unknown_or_dynamic_dependency_widens_to_all_retained_items",
-      "state": "WIDENED_UNKNOWN"
+      "reason": "path_is_outside_exact_contract_closure_shadow_only",
+      "state": "WOULD_SKIP"
     },
     {
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [
-          "."
+          "core/rust/src/gt96.rs"
         ],
-        "closure_hash": "3fbe22fbf4b71bdfb13d63e31e1ed2245f819bb042a135a297f4fa01a8406306",
+        "closure_hash": "e4b87ae07ff5287d802b339e3124e8d93233572e753ebe16973f47ede9e387b2",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-RUST_BENCHMARK-320AA3A9FEA0E3FE",
       "path": "core/rust/benches/skill_improvement.rs",
-      "reason": "unknown_or_dynamic_dependency_widens_to_all_retained_items",
-      "state": "WIDENED_UNKNOWN"
+      "reason": "path_is_outside_exact_contract_closure_shadow_only",
+      "state": "WOULD_SKIP"
     },
     {
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [
-          "."
+          "core/rust/src/gt96.rs"
         ],
-        "closure_hash": "3fbe22fbf4b71bdfb13d63e31e1ed2245f819bb042a135a297f4fa01a8406306",
+        "closure_hash": "e4b87ae07ff5287d802b339e3124e8d93233572e753ebe16973f47ede9e387b2",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-RUST_UNIT_TEST-98A3418661C4B3C9",
       "path": "core/rust/src/bridge_mmap.rs",
-      "reason": "unknown_or_dynamic_dependency_widens_to_all_retained_items",
-      "state": "WIDENED_UNKNOWN"
+      "reason": "path_is_outside_exact_contract_closure_shadow_only",
+      "state": "WOULD_SKIP"
     },
     {
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [
-          "."
+          "core/rust/src/gt96.rs"
         ],
-        "closure_hash": "3fbe22fbf4b71bdfb13d63e31e1ed2245f819bb042a135a297f4fa01a8406306",
+        "closure_hash": "e4b87ae07ff5287d802b339e3124e8d93233572e753ebe16973f47ede9e387b2",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-RUST_UNIT_TEST-03F1D552147878B0",
       "path": "core/rust/src/connections.rs",
-      "reason": "unknown_or_dynamic_dependency_widens_to_all_retained_items",
-      "state": "WIDENED_UNKNOWN"
+      "reason": "path_is_outside_exact_contract_closure_shadow_only",
+      "state": "WOULD_SKIP"
     },
     {
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [
-          "."
+          "core/rust/src/gt96.rs"
         ],
-        "closure_hash": "3fbe22fbf4b71bdfb13d63e31e1ed2245f819bb042a135a297f4fa01a8406306",
+        "closure_hash": "e4b87ae07ff5287d802b339e3124e8d93233572e753ebe16973f47ede9e387b2",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-RUST_UNIT_TEST-AB06E12C09CF4DD4",
       "path": "core/rust/src/conversations.rs",
-      "reason": "unknown_or_dynamic_dependency_widens_to_all_retained_items",
-      "state": "WIDENED_UNKNOWN"
+      "reason": "path_is_outside_exact_contract_closure_shadow_only",
+      "state": "WOULD_SKIP"
     },
     {
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [
-          "."
+          "core/rust/src/gt96.rs"
         ],
-        "closure_hash": "3fbe22fbf4b71bdfb13d63e31e1ed2245f819bb042a135a297f4fa01a8406306",
+        "closure_hash": "e4b87ae07ff5287d802b339e3124e8d93233572e753ebe16973f47ede9e387b2",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-RUST_UNIT_TEST-6896058315F9E5A4",
       "path": "core/rust/src/eac/cache/semantic.rs",
-      "reason": "unknown_or_dynamic_dependency_widens_to_all_retained_items",
-      "state": "WIDENED_UNKNOWN"
+      "reason": "path_is_outside_exact_contract_closure_shadow_only",
+      "state": "WOULD_SKIP"
     },
     {
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [
-          "."
+          "core/rust/src/gt96.rs"
         ],
-        "closure_hash": "3fbe22fbf4b71bdfb13d63e31e1ed2245f819bb042a135a297f4fa01a8406306",
+        "closure_hash": "e4b87ae07ff5287d802b339e3124e8d93233572e753ebe16973f47ede9e387b2",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-RUST_UNIT_TEST-D378F0E030D804EB",
       "path": "core/rust/src/eac/events.rs",
-      "reason": "unknown_or_dynamic_dependency_widens_to_all_retained_items",
-      "state": "WIDENED_UNKNOWN"
+      "reason": "path_is_outside_exact_contract_closure_shadow_only",
+      "state": "WOULD_SKIP"
     },
     {
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [
-          "."
+          "core/rust/src/gt96.rs"
         ],
-        "closure_hash": "3fbe22fbf4b71bdfb13d63e31e1ed2245f819bb042a135a297f4fa01a8406306",
+        "closure_hash": "e4b87ae07ff5287d802b339e3124e8d93233572e753ebe16973f47ede9e387b2",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-RUST_UNIT_TEST-25A082632F2A02C7",
       "path": "core/rust/src/eac/sandbox/batch.rs",
-      "reason": "unknown_or_dynamic_dependency_widens_to_all_retained_items",
-      "state": "WIDENED_UNKNOWN"
+      "reason": "path_is_outside_exact_contract_closure_shadow_only",
+      "state": "WOULD_SKIP"
     },
     {
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [
-          "."
+          "core/rust/src/gt96.rs"
         ],
-        "closure_hash": "3fbe22fbf4b71bdfb13d63e31e1ed2245f819bb042a135a297f4fa01a8406306",
+        "closure_hash": "e4b87ae07ff5287d802b339e3124e8d93233572e753ebe16973f47ede9e387b2",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-RUST_UNIT_TEST-EB50407EAE4868AB",
       "path": "core/rust/src/eac/sandbox/runtime.rs",
-      "reason": "unknown_or_dynamic_dependency_widens_to_all_retained_items",
-      "state": "WIDENED_UNKNOWN"
+      "reason": "path_is_outside_exact_contract_closure_shadow_only",
+      "state": "WOULD_SKIP"
     },
     {
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [
-          "."
+          "core/rust/src/gt96.rs"
         ],
-        "closure_hash": "3fbe22fbf4b71bdfb13d63e31e1ed2245f819bb042a135a297f4fa01a8406306",
+        "closure_hash": "e4b87ae07ff5287d802b339e3124e8d93233572e753ebe16973f47ede9e387b2",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-RUST_UNIT_TEST-2C9D296895749679",
       "path": "core/rust/src/execution.rs",
-      "reason": "unknown_or_dynamic_dependency_widens_to_all_retained_items",
-      "state": "WIDENED_UNKNOWN"
+      "reason": "path_is_outside_exact_contract_closure_shadow_only",
+      "state": "WOULD_SKIP"
     },
     {
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [
-          "."
+          "core/rust/src/gt96.rs"
         ],
-        "closure_hash": "3fbe22fbf4b71bdfb13d63e31e1ed2245f819bb042a135a297f4fa01a8406306",
+        "closure_hash": "e4b87ae07ff5287d802b339e3124e8d93233572e753ebe16973f47ede9e387b2",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-RUST_UNIT_TEST-B07735E7D4D5F66B",
       "path": "core/rust/src/ffi/eac.rs",
-      "reason": "unknown_or_dynamic_dependency_widens_to_all_retained_items",
-      "state": "WIDENED_UNKNOWN"
+      "reason": "path_is_outside_exact_contract_closure_shadow_only",
+      "state": "WOULD_SKIP"
     },
     {
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [
-          "."
+          "core/rust/src/gt96.rs"
         ],
-        "closure_hash": "3fbe22fbf4b71bdfb13d63e31e1ed2245f819bb042a135a297f4fa01a8406306",
+        "closure_hash": "e4b87ae07ff5287d802b339e3124e8d93233572e753ebe16973f47ede9e387b2",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-RUST_UNIT_TEST-816051930BE8E9AF",
       "path": "core/rust/src/ffi/learning.rs",
-      "reason": "unknown_or_dynamic_dependency_widens_to_all_retained_items",
-      "state": "WIDENED_UNKNOWN"
+      "reason": "path_is_outside_exact_contract_closure_shadow_only",
+      "state": "WOULD_SKIP"
     },
     {
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [
-          "."
+          "core/rust/src/gt96.rs"
         ],
-        "closure_hash": "3fbe22fbf4b71bdfb13d63e31e1ed2245f819bb042a135a297f4fa01a8406306",
+        "closure_hash": "e4b87ae07ff5287d802b339e3124e8d93233572e753ebe16973f47ede9e387b2",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-RUST_UNIT_TEST-3850F0947D457EC0",
       "path": "core/rust/src/ffi/runtime.rs",
-      "reason": "unknown_or_dynamic_dependency_widens_to_all_retained_items",
-      "state": "WIDENED_UNKNOWN"
+      "reason": "path_is_outside_exact_contract_closure_shadow_only",
+      "state": "WOULD_SKIP"
     },
     {
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [
-          "."
+          "core/rust/src/gt96.rs"
         ],
-        "closure_hash": "3fbe22fbf4b71bdfb13d63e31e1ed2245f819bb042a135a297f4fa01a8406306",
+        "closure_hash": "e4b87ae07ff5287d802b339e3124e8d93233572e753ebe16973f47ede9e387b2",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-RUST_UNIT_TEST-6E0A9FEABAA1955E",
       "path": "core/rust/src/gt96.rs",
-      "reason": "unknown_or_dynamic_dependency_widens_to_all_retained_items",
-      "state": "WIDENED_UNKNOWN"
+      "reason": "path_is_in_exact_contract_closure",
+      "state": "WOULD_RUN"
     },
     {
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [
-          "."
+          "core/rust/src/gt96.rs"
         ],
-        "closure_hash": "3fbe22fbf4b71bdfb13d63e31e1ed2245f819bb042a135a297f4fa01a8406306",
+        "closure_hash": "e4b87ae07ff5287d802b339e3124e8d93233572e753ebe16973f47ede9e387b2",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-RUST_UNIT_TEST-940C3F295FD42710",
       "path": "core/rust/src/hot_engine.rs",
-      "reason": "unknown_or_dynamic_dependency_widens_to_all_retained_items",
-      "state": "WIDENED_UNKNOWN"
+      "reason": "path_is_outside_exact_contract_closure_shadow_only",
+      "state": "WOULD_SKIP"
     },
     {
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [
-          "."
+          "core/rust/src/gt96.rs"
         ],
-        "closure_hash": "3fbe22fbf4b71bdfb13d63e31e1ed2245f819bb042a135a297f4fa01a8406306",
+        "closure_hash": "e4b87ae07ff5287d802b339e3124e8d93233572e753ebe16973f47ede9e387b2",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-RUST_UNIT_TEST-92EBE7488C4A494F",
       "path": "core/rust/src/lab.rs",
-      "reason": "unknown_or_dynamic_dependency_widens_to_all_retained_items",
-      "state": "WIDENED_UNKNOWN"
+      "reason": "path_is_outside_exact_contract_closure_shadow_only",
+      "state": "WOULD_SKIP"
     },
     {
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [
-          "."
+          "core/rust/src/gt96.rs"
         ],
-        "closure_hash": "3fbe22fbf4b71bdfb13d63e31e1ed2245f819bb042a135a297f4fa01a8406306",
+        "closure_hash": "e4b87ae07ff5287d802b339e3124e8d93233572e753ebe16973f47ede9e387b2",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-RUST_UNIT_TEST-4FCC4984AF6D2C34",
       "path": "core/rust/src/learning/mod.rs",
-      "reason": "unknown_or_dynamic_dependency_widens_to_all_retained_items",
-      "state": "WIDENED_UNKNOWN"
+      "reason": "path_is_outside_exact_contract_closure_shadow_only",
+      "state": "WOULD_SKIP"
     },
     {
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [
-          "."
+          "core/rust/src/gt96.rs"
         ],
-        "closure_hash": "3fbe22fbf4b71bdfb13d63e31e1ed2245f819bb042a135a297f4fa01a8406306",
+        "closure_hash": "e4b87ae07ff5287d802b339e3124e8d93233572e753ebe16973f47ede9e387b2",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-RUST_UNIT_TEST-23BC7E3048BB4D91",
       "path": "core/rust/src/lib.rs",
-      "reason": "unknown_or_dynamic_dependency_widens_to_all_retained_items",
-      "state": "WIDENED_UNKNOWN"
+      "reason": "path_is_outside_exact_contract_closure_shadow_only",
+      "state": "WOULD_SKIP"
     },
     {
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [
-          "."
+          "core/rust/src/gt96.rs"
         ],
-        "closure_hash": "3fbe22fbf4b71bdfb13d63e31e1ed2245f819bb042a135a297f4fa01a8406306",
+        "closure_hash": "e4b87ae07ff5287d802b339e3124e8d93233572e753ebe16973f47ede9e387b2",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-RUST_UNIT_TEST-06AD9BFDAEC677E0",
       "path": "core/rust/src/licensing.rs",
-      "reason": "unknown_or_dynamic_dependency_widens_to_all_retained_items",
-      "state": "WIDENED_UNKNOWN"
+      "reason": "path_is_outside_exact_contract_closure_shadow_only",
+      "state": "WOULD_SKIP"
     },
     {
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [
-          "."
+          "core/rust/src/gt96.rs"
         ],
-        "closure_hash": "3fbe22fbf4b71bdfb13d63e31e1ed2245f819bb042a135a297f4fa01a8406306",
+        "closure_hash": "e4b87ae07ff5287d802b339e3124e8d93233572e753ebe16973f47ede9e387b2",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-RUST_UNIT_TEST-8135C64C8D1E687D",
       "path": "core/rust/src/memory/nudge.rs",
-      "reason": "unknown_or_dynamic_dependency_widens_to_all_retained_items",
-      "state": "WIDENED_UNKNOWN"
+      "reason": "path_is_outside_exact_contract_closure_shadow_only",
+      "state": "WOULD_SKIP"
     },
     {
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [
-          "."
+          "core/rust/src/gt96.rs"
         ],
-        "closure_hash": "3fbe22fbf4b71bdfb13d63e31e1ed2245f819bb042a135a297f4fa01a8406306",
+        "closure_hash": "e4b87ae07ff5287d802b339e3124e8d93233572e753ebe16973f47ede9e387b2",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-RUST_UNIT_TEST-A7BCCA355F3390EC",
       "path": "core/rust/src/memory/repository.rs",
-      "reason": "unknown_or_dynamic_dependency_widens_to_all_retained_items",
-      "state": "WIDENED_UNKNOWN"
+      "reason": "path_is_outside_exact_contract_closure_shadow_only",
+      "state": "WOULD_SKIP"
     },
     {
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [
-          "."
+          "core/rust/src/gt96.rs"
         ],
-        "closure_hash": "3fbe22fbf4b71bdfb13d63e31e1ed2245f819bb042a135a297f4fa01a8406306",
+        "closure_hash": "e4b87ae07ff5287d802b339e3124e8d93233572e753ebe16973f47ede9e387b2",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-RUST_UNIT_TEST-62F71A02E7DAEAF0",
       "path": "core/rust/src/memory/session_search.rs",
-      "reason": "unknown_or_dynamic_dependency_widens_to_all_retained_items",
-      "state": "WIDENED_UNKNOWN"
+      "reason": "path_is_outside_exact_contract_closure_shadow_only",
+      "state": "WOULD_SKIP"
     },
     {
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [
-          "."
+          "core/rust/src/gt96.rs"
         ],
-        "closure_hash": "3fbe22fbf4b71bdfb13d63e31e1ed2245f819bb042a135a297f4fa01a8406306",
+        "closure_hash": "e4b87ae07ff5287d802b339e3124e8d93233572e753ebe16973f47ede9e387b2",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-RUST_UNIT_TEST-0C9A2F9147ED09FC",
       "path": "core/rust/src/memory/user_model.rs",
-      "reason": "unknown_or_dynamic_dependency_widens_to_all_retained_items",
-      "state": "WIDENED_UNKNOWN"
+      "reason": "path_is_outside_exact_contract_closure_shadow_only",
+      "state": "WOULD_SKIP"
     },
     {
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [
-          "."
+          "core/rust/src/gt96.rs"
         ],
-        "closure_hash": "3fbe22fbf4b71bdfb13d63e31e1ed2245f819bb042a135a297f4fa01a8406306",
+        "closure_hash": "e4b87ae07ff5287d802b339e3124e8d93233572e753ebe16973f47ede9e387b2",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-RUST_UNIT_TEST-4126FC7BB01CB145",
       "path": "core/rust/src/mvcc.rs",
-      "reason": "unknown_or_dynamic_dependency_widens_to_all_retained_items",
-      "state": "WIDENED_UNKNOWN"
+      "reason": "path_is_outside_exact_contract_closure_shadow_only",
+      "state": "WOULD_SKIP"
     },
     {
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [
-          "."
+          "core/rust/src/gt96.rs"
         ],
-        "closure_hash": "3fbe22fbf4b71bdfb13d63e31e1ed2245f819bb042a135a297f4fa01a8406306",
+        "closure_hash": "e4b87ae07ff5287d802b339e3124e8d93233572e753ebe16973f47ede9e387b2",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-RUST_UNIT_TEST-F78B6AACEB6CDD0A",
       "path": "core/rust/src/physical.rs",
-      "reason": "unknown_or_dynamic_dependency_widens_to_all_retained_items",
-      "state": "WIDENED_UNKNOWN"
+      "reason": "path_is_outside_exact_contract_closure_shadow_only",
+      "state": "WOULD_SKIP"
     },
     {
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [
-          "."
+          "core/rust/src/gt96.rs"
         ],
-        "closure_hash": "3fbe22fbf4b71bdfb13d63e31e1ed2245f819bb042a135a297f4fa01a8406306",
+        "closure_hash": "e4b87ae07ff5287d802b339e3124e8d93233572e753ebe16973f47ede9e387b2",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-RUST_UNIT_TEST-678298D9C8FD4466",
       "path": "core/rust/src/placement.rs",
-      "reason": "unknown_or_dynamic_dependency_widens_to_all_retained_items",
-      "state": "WIDENED_UNKNOWN"
+      "reason": "path_is_outside_exact_contract_closure_shadow_only",
+      "state": "WOULD_SKIP"
     },
     {
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [
-          "."
+          "core/rust/src/gt96.rs"
         ],
-        "closure_hash": "3fbe22fbf4b71bdfb13d63e31e1ed2245f819bb042a135a297f4fa01a8406306",
+        "closure_hash": "e4b87ae07ff5287d802b339e3124e8d93233572e753ebe16973f47ede9e387b2",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-RUST_UNIT_TEST-706B6EC4F030313E",
       "path": "core/rust/src/replay.rs",
-      "reason": "unknown_or_dynamic_dependency_widens_to_all_retained_items",
-      "state": "WIDENED_UNKNOWN"
+      "reason": "path_is_outside_exact_contract_closure_shadow_only",
+      "state": "WOULD_SKIP"
     },
     {
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [
-          "."
+          "core/rust/src/gt96.rs"
         ],
-        "closure_hash": "3fbe22fbf4b71bdfb13d63e31e1ed2245f819bb042a135a297f4fa01a8406306",
+        "closure_hash": "e4b87ae07ff5287d802b339e3124e8d93233572e753ebe16973f47ede9e387b2",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-RUST_UNIT_TEST-7142417A253B65D2",
       "path": "core/rust/src/resource.rs",
-      "reason": "unknown_or_dynamic_dependency_widens_to_all_retained_items",
-      "state": "WIDENED_UNKNOWN"
+      "reason": "path_is_outside_exact_contract_closure_shadow_only",
+      "state": "WOULD_SKIP"
     },
     {
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [
-          "."
+          "core/rust/src/gt96.rs"
         ],
-        "closure_hash": "3fbe22fbf4b71bdfb13d63e31e1ed2245f819bb042a135a297f4fa01a8406306",
+        "closure_hash": "e4b87ae07ff5287d802b339e3124e8d93233572e753ebe16973f47ede9e387b2",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-RUST_UNIT_TEST-382B75CCEC122E20",
       "path": "core/rust/src/resource_platform.rs",
-      "reason": "unknown_or_dynamic_dependency_widens_to_all_retained_items",
-      "state": "WIDENED_UNKNOWN"
+      "reason": "path_is_outside_exact_contract_closure_shadow_only",
+      "state": "WOULD_SKIP"
     },
     {
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [
-          "."
+          "core/rust/src/gt96.rs"
         ],
-        "closure_hash": "3fbe22fbf4b71bdfb13d63e31e1ed2245f819bb042a135a297f4fa01a8406306",
+        "closure_hash": "e4b87ae07ff5287d802b339e3124e8d93233572e753ebe16973f47ede9e387b2",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-RUST_UNIT_TEST-627B7C3B524D6D59",
       "path": "core/rust/src/runtime.rs",
-      "reason": "unknown_or_dynamic_dependency_widens_to_all_retained_items",
-      "state": "WIDENED_UNKNOWN"
+      "reason": "path_is_outside_exact_contract_closure_shadow_only",
+      "state": "WOULD_SKIP"
     },
     {
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [
-          "."
+          "core/rust/src/gt96.rs"
         ],
-        "closure_hash": "3fbe22fbf4b71bdfb13d63e31e1ed2245f819bb042a135a297f4fa01a8406306",
+        "closure_hash": "e4b87ae07ff5287d802b339e3124e8d93233572e753ebe16973f47ede9e387b2",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-RUST_UNIT_TEST-EFB18248756AE77E",
       "path": "core/rust/src/sandbox.rs",
-      "reason": "unknown_or_dynamic_dependency_widens_to_all_retained_items",
-      "state": "WIDENED_UNKNOWN"
+      "reason": "path_is_outside_exact_contract_closure_shadow_only",
+      "state": "WOULD_SKIP"
     },
     {
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [
-          "."
+          "core/rust/src/gt96.rs"
         ],
-        "closure_hash": "3fbe22fbf4b71bdfb13d63e31e1ed2245f819bb042a135a297f4fa01a8406306",
+        "closure_hash": "e4b87ae07ff5287d802b339e3124e8d93233572e753ebe16973f47ede9e387b2",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-RUST_UNIT_TEST-1ACBE80688E0CB89",
       "path": "core/rust/src/telemetry.rs",
-      "reason": "unknown_or_dynamic_dependency_widens_to_all_retained_items",
-      "state": "WIDENED_UNKNOWN"
+      "reason": "path_is_outside_exact_contract_closure_shadow_only",
+      "state": "WOULD_SKIP"
     },
     {
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [
-          "."
+          "core/rust/src/gt96.rs"
         ],
-        "closure_hash": "3fbe22fbf4b71bdfb13d63e31e1ed2245f819bb042a135a297f4fa01a8406306",
+        "closure_hash": "e4b87ae07ff5287d802b339e3124e8d93233572e753ebe16973f47ede9e387b2",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-RUST_UNIT_TEST-BB56D2466AB0351F",
       "path": "core/rust/src/tests.rs",
-      "reason": "unknown_or_dynamic_dependency_widens_to_all_retained_items",
-      "state": "WIDENED_UNKNOWN"
+      "reason": "path_is_outside_exact_contract_closure_shadow_only",
+      "state": "WOULD_SKIP"
     },
     {
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [
-          "."
+          "core/rust/src/gt96.rs"
         ],
-        "closure_hash": "3fbe22fbf4b71bdfb13d63e31e1ed2245f819bb042a135a297f4fa01a8406306",
+        "closure_hash": "e4b87ae07ff5287d802b339e3124e8d93233572e753ebe16973f47ede9e387b2",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-RUST_INTEGRATION_TEST-896180209AD388CD",
       "path": "core/rust/tests/resource_contract_matrix.rs",
-      "reason": "unknown_or_dynamic_dependency_widens_to_all_retained_items",
-      "state": "WIDENED_UNKNOWN"
+      "reason": "path_is_outside_exact_contract_closure_shadow_only",
+      "state": "WOULD_SKIP"
     },
     {
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [
-          "."
+          "core/rust/src/gt96.rs"
         ],
-        "closure_hash": "3fbe22fbf4b71bdfb13d63e31e1ed2245f819bb042a135a297f4fa01a8406306",
+        "closure_hash": "e4b87ae07ff5287d802b339e3124e8d93233572e753ebe16973f47ede9e387b2",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-FUZZ_TARGET-26E115395EF2C8F9",
       "path": "fuzz/fuzz_targets/archive_prefix.rs",
-      "reason": "unknown_or_dynamic_dependency_widens_to_all_retained_items",
-      "state": "WIDENED_UNKNOWN"
+      "reason": "path_is_outside_exact_contract_closure_shadow_only",
+      "state": "WOULD_SKIP"
     },
     {
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [
-          "."
+          "core/rust/src/gt96.rs"
         ],
-        "closure_hash": "3fbe22fbf4b71bdfb13d63e31e1ed2245f819bb042a135a297f4fa01a8406306",
+        "closure_hash": "e4b87ae07ff5287d802b339e3124e8d93233572e753ebe16973f47ede9e387b2",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-FUZZ_TARGET-571CC359F5473719",
       "path": "fuzz/fuzz_targets/protocol_frame.rs",
-      "reason": "unknown_or_dynamic_dependency_widens_to_all_retained_items",
-      "state": "WIDENED_UNKNOWN"
+      "reason": "path_is_outside_exact_contract_closure_shadow_only",
+      "state": "WOULD_SKIP"
     },
     {
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [
-          "."
+          "core/rust/src/gt96.rs"
         ],
-        "closure_hash": "3fbe22fbf4b71bdfb13d63e31e1ed2245f819bb042a135a297f4fa01a8406306",
+        "closure_hash": "e4b87ae07ff5287d802b339e3124e8d93233572e753ebe16973f47ede9e387b2",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-FUZZ_TARGET-849E21CC12DE2882",
       "path": "fuzz/fuzz_targets/resource_contract.rs",
-      "reason": "unknown_or_dynamic_dependency_widens_to_all_retained_items",
-      "state": "WIDENED_UNKNOWN"
+      "reason": "path_is_outside_exact_contract_closure_shadow_only",
+      "state": "WOULD_SKIP"
     },
     {
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [
-          "."
+          "core/rust/src/gt96.rs"
         ],
-        "closure_hash": "3fbe22fbf4b71bdfb13d63e31e1ed2245f819bb042a135a297f4fa01a8406306",
+        "closure_hash": "e4b87ae07ff5287d802b339e3124e8d93233572e753ebe16973f47ede9e387b2",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-FUZZ_TARGET-A5DD33377FDD8B01",
       "path": "fuzz/fuzz_targets/runtime_ffi_contract.rs",
-      "reason": "unknown_or_dynamic_dependency_widens_to_all_retained_items",
-      "state": "WIDENED_UNKNOWN"
+      "reason": "path_is_outside_exact_contract_closure_shadow_only",
+      "state": "WOULD_SKIP"
     },
     {
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [
-          "."
+          "core/rust/src/gt96.rs"
         ],
-        "closure_hash": "3fbe22fbf4b71bdfb13d63e31e1ed2245f819bb042a135a297f4fa01a8406306",
+        "closure_hash": "e4b87ae07ff5287d802b339e3124e8d93233572e753ebe16973f47ede9e387b2",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-SCRIPT_OR_GATE-C758B4968E53DC97",
       "path": "scripts/_audit_regen_requirements.py",
-      "reason": "unknown_or_dynamic_dependency_widens_to_all_retained_items",
-      "state": "WIDENED_UNKNOWN"
+      "reason": "path_is_outside_exact_contract_closure_shadow_only",
+      "state": "WOULD_SKIP"
     },
     {
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [
-          "."
+          "core/rust/src/gt96.rs"
         ],
-        "closure_hash": "3fbe22fbf4b71bdfb13d63e31e1ed2245f819bb042a135a297f4fa01a8406306",
+        "closure_hash": "e4b87ae07ff5287d802b339e3124e8d93233572e753ebe16973f47ede9e387b2",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-SCRIPT_OR_GATE-688190526E92D702",
       "path": "scripts/aese_affected_closure.py",
-      "reason": "unknown_or_dynamic_dependency_widens_to_all_retained_items",
-      "state": "WIDENED_UNKNOWN"
+      "reason": "path_is_outside_exact_contract_closure_shadow_only",
+      "state": "WOULD_SKIP"
     },
     {
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [
-          "."
+          "core/rust/src/gt96.rs"
         ],
-        "closure_hash": "3fbe22fbf4b71bdfb13d63e31e1ed2245f819bb042a135a297f4fa01a8406306",
+        "closure_hash": "e4b87ae07ff5287d802b339e3124e8d93233572e753ebe16973f47ede9e387b2",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-SCRIPT_OR_GATE-CACC5F6A05F9757D",
       "path": "scripts/aese_claim_graph.py",
-      "reason": "unknown_or_dynamic_dependency_widens_to_all_retained_items",
-      "state": "WIDENED_UNKNOWN"
+      "reason": "path_is_outside_exact_contract_closure_shadow_only",
+      "state": "WOULD_SKIP"
     },
     {
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [
-          "."
+          "core/rust/src/gt96.rs"
         ],
-        "closure_hash": "3fbe22fbf4b71bdfb13d63e31e1ed2245f819bb042a135a297f4fa01a8406306",
+        "closure_hash": "e4b87ae07ff5287d802b339e3124e8d93233572e753ebe16973f47ede9e387b2",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-SCRIPT_OR_GATE-CD75F473D2F982DF",
       "path": "scripts/aese_failure_diagnostic.py",
-      "reason": "unknown_or_dynamic_dependency_widens_to_all_retained_items",
-      "state": "WIDENED_UNKNOWN"
+      "reason": "path_is_outside_exact_contract_closure_shadow_only",
+      "state": "WOULD_SKIP"
     },
     {
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [
-          "."
+          "core/rust/src/gt96.rs"
         ],
-        "closure_hash": "3fbe22fbf4b71bdfb13d63e31e1ed2245f819bb042a135a297f4fa01a8406306",
+        "closure_hash": "e4b87ae07ff5287d802b339e3124e8d93233572e753ebe16973f47ede9e387b2",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-SCRIPT_OR_GATE-2B63ED08D2F345A1",
       "path": "scripts/aese_inventory.py",
-      "reason": "unknown_or_dynamic_dependency_widens_to_all_retained_items",
-      "state": "WIDENED_UNKNOWN"
+      "reason": "path_is_outside_exact_contract_closure_shadow_only",
+      "state": "WOULD_SKIP"
     },
     {
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [
-          "."
+          "core/rust/src/gt96.rs"
         ],
-        "closure_hash": "3fbe22fbf4b71bdfb13d63e31e1ed2245f819bb042a135a297f4fa01a8406306",
+        "closure_hash": "e4b87ae07ff5287d802b339e3124e8d93233572e753ebe16973f47ede9e387b2",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-SCRIPT_OR_GATE-7CB77C78DCDC63EC",
       "path": "scripts/aese_preflight.py",
-      "reason": "unknown_or_dynamic_dependency_widens_to_all_retained_items",
-      "state": "WIDENED_UNKNOWN"
+      "reason": "path_is_outside_exact_contract_closure_shadow_only",
+      "state": "WOULD_SKIP"
     },
     {
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [
-          "."
+          "core/rust/src/gt96.rs"
         ],
-        "closure_hash": "3fbe22fbf4b71bdfb13d63e31e1ed2245f819bb042a135a297f4fa01a8406306",
+        "closure_hash": "e4b87ae07ff5287d802b339e3124e8d93233572e753ebe16973f47ede9e387b2",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-SCRIPT_OR_GATE-9220621BA19E17B1",
       "path": "scripts/aese_s2_mapping.py",
-      "reason": "unknown_or_dynamic_dependency_widens_to_all_retained_items",
-      "state": "WIDENED_UNKNOWN"
+      "reason": "path_is_outside_exact_contract_closure_shadow_only",
+      "state": "WOULD_SKIP"
     },
     {
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [
-          "."
+          "core/rust/src/gt96.rs"
         ],
-        "closure_hash": "3fbe22fbf4b71bdfb13d63e31e1ed2245f819bb042a135a297f4fa01a8406306",
+        "closure_hash": "e4b87ae07ff5287d802b339e3124e8d93233572e753ebe16973f47ede9e387b2",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-SCRIPT_OR_GATE-EA63DCF58D957DB3",
       "path": "scripts/aese_shadow_planner.py",
-      "reason": "unknown_or_dynamic_dependency_widens_to_all_retained_items",
-      "state": "WIDENED_UNKNOWN"
+      "reason": "path_is_outside_exact_contract_closure_shadow_only",
+      "state": "WOULD_SKIP"
     },
     {
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [
-          "."
+          "core/rust/src/gt96.rs"
         ],
-        "closure_hash": "3fbe22fbf4b71bdfb13d63e31e1ed2245f819bb042a135a297f4fa01a8406306",
+        "closure_hash": "e4b87ae07ff5287d802b339e3124e8d93233572e753ebe16973f47ede9e387b2",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-SCRIPT_OR_GATE-E35A4BAA0F067FCE",
       "path": "scripts/aese_statistical_calibration.py",
-      "reason": "unknown_or_dynamic_dependency_widens_to_all_retained_items",
-      "state": "WIDENED_UNKNOWN"
+      "reason": "path_is_outside_exact_contract_closure_shadow_only",
+      "state": "WOULD_SKIP"
     },
     {
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [
-          "."
+          "core/rust/src/gt96.rs"
         ],
-        "closure_hash": "3fbe22fbf4b71bdfb13d63e31e1ed2245f819bb042a135a297f4fa01a8406306",
+        "closure_hash": "e4b87ae07ff5287d802b339e3124e8d93233572e753ebe16973f47ede9e387b2",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-SCRIPT_OR_GATE-F82E0E9DC4FBA0AB",
       "path": "scripts/aese_validation_corpus.py",
-      "reason": "unknown_or_dynamic_dependency_widens_to_all_retained_items",
-      "state": "WIDENED_UNKNOWN"
+      "reason": "path_is_outside_exact_contract_closure_shadow_only",
+      "state": "WOULD_SKIP"
     },
     {
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [
-          "."
+          "core/rust/src/gt96.rs"
         ],
-        "closure_hash": "3fbe22fbf4b71bdfb13d63e31e1ed2245f819bb042a135a297f4fa01a8406306",
+        "closure_hash": "e4b87ae07ff5287d802b339e3124e8d93233572e753ebe16973f47ede9e387b2",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-SCRIPT_OR_GATE-89B834E04514B46F",
       "path": "scripts/architecture_fitness.py",
-      "reason": "unknown_or_dynamic_dependency_widens_to_all_retained_items",
-      "state": "WIDENED_UNKNOWN"
+      "reason": "path_is_outside_exact_contract_closure_shadow_only",
+      "state": "WOULD_SKIP"
     },
     {
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [
-          "."
+          "core/rust/src/gt96.rs"
         ],
-        "closure_hash": "3fbe22fbf4b71bdfb13d63e31e1ed2245f819bb042a135a297f4fa01a8406306",
+        "closure_hash": "e4b87ae07ff5287d802b339e3124e8d93233572e753ebe16973f47ede9e387b2",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-SCRIPT_OR_GATE-59733FC5B436637F",
       "path": "scripts/attestation_status.py",
-      "reason": "unknown_or_dynamic_dependency_widens_to_all_retained_items",
-      "state": "WIDENED_UNKNOWN"
+      "reason": "path_is_outside_exact_contract_closure_shadow_only",
+      "state": "WOULD_SKIP"
     },
     {
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [
-          "."
+          "core/rust/src/gt96.rs"
         ],
-        "closure_hash": "3fbe22fbf4b71bdfb13d63e31e1ed2245f819bb042a135a297f4fa01a8406306",
+        "closure_hash": "e4b87ae07ff5287d802b339e3124e8d93233572e753ebe16973f47ede9e387b2",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-PYTHON_BENCHMARK-DA7DC4EE5F9A3219",
       "path": "scripts/benchmark_gate.py",
-      "reason": "unknown_or_dynamic_dependency_widens_to_all_retained_items",
-      "state": "WIDENED_UNKNOWN"
+      "reason": "path_is_outside_exact_contract_closure_shadow_only",
+      "state": "WOULD_SKIP"
     },
     {
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [
-          "."
+          "core/rust/src/gt96.rs"
         ],
-        "closure_hash": "3fbe22fbf4b71bdfb13d63e31e1ed2245f819bb042a135a297f4fa01a8406306",
+        "closure_hash": "e4b87ae07ff5287d802b339e3124e8d93233572e753ebe16973f47ede9e387b2",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-PYTHON_BENCHMARK-DAAA8EB886A2B8E1",
       "path": "scripts/benchmark_preflight.py",
-      "reason": "unknown_or_dynamic_dependency_widens_to_all_retained_items",
-      "state": "WIDENED_UNKNOWN"
+      "reason": "path_is_outside_exact_contract_closure_shadow_only",
+      "state": "WOULD_SKIP"
     },
     {
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [
-          "."
+          "core/rust/src/gt96.rs"
         ],
-        "closure_hash": "3fbe22fbf4b71bdfb13d63e31e1ed2245f819bb042a135a297f4fa01a8406306",
+        "closure_hash": "e4b87ae07ff5287d802b339e3124e8d93233572e753ebe16973f47ede9e387b2",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-PYTHON_BENCHMARK-ADB45F89AA5C56C0",
       "path": "scripts/benchmark_wrapper.py",
-      "reason": "unknown_or_dynamic_dependency_widens_to_all_retained_items",
-      "state": "WIDENED_UNKNOWN"
+      "reason": "path_is_outside_exact_contract_closure_shadow_only",
+      "state": "WOULD_SKIP"
     },
     {
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [
-          "."
+          "core/rust/src/gt96.rs"
         ],
-        "closure_hash": "3fbe22fbf4b71bdfb13d63e31e1ed2245f819bb042a135a297f4fa01a8406306",
+        "closure_hash": "e4b87ae07ff5287d802b339e3124e8d93233572e753ebe16973f47ede9e387b2",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-SCRIPT_OR_GATE-3DA20698BDA0AFE0",
       "path": "scripts/cluster_loopback_gate.py",
-      "reason": "unknown_or_dynamic_dependency_widens_to_all_retained_items",
-      "state": "WIDENED_UNKNOWN"
+      "reason": "path_is_outside_exact_contract_closure_shadow_only",
+      "state": "WOULD_SKIP"
     },
     {
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [
-          "."
+          "core/rust/src/gt96.rs"
         ],
-        "closure_hash": "3fbe22fbf4b71bdfb13d63e31e1ed2245f819bb042a135a297f4fa01a8406306",
+        "closure_hash": "e4b87ae07ff5287d802b339e3124e8d93233572e753ebe16973f47ede9e387b2",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-PYTHON_BENCHMARK-7AC55EA6DC9C796D",
       "path": "scripts/communication_payload_benchmark.py",
-      "reason": "unknown_or_dynamic_dependency_widens_to_all_retained_items",
-      "state": "WIDENED_UNKNOWN"
+      "reason": "path_is_outside_exact_contract_closure_shadow_only",
+      "state": "WOULD_SKIP"
     },
     {
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [
-          "."
+          "core/rust/src/gt96.rs"
         ],
-        "closure_hash": "3fbe22fbf4b71bdfb13d63e31e1ed2245f819bb042a135a297f4fa01a8406306",
+        "closure_hash": "e4b87ae07ff5287d802b339e3124e8d93233572e753ebe16973f47ede9e387b2",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-SCRIPT_OR_GATE-C55A3E2F42DF2E66",
       "path": "scripts/constitution_audit.py",
-      "reason": "unknown_or_dynamic_dependency_widens_to_all_retained_items",
-      "state": "WIDENED_UNKNOWN"
+      "reason": "path_is_outside_exact_contract_closure_shadow_only",
+      "state": "WOULD_SKIP"
     },
     {
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [
-          "."
+          "core/rust/src/gt96.rs"
         ],
-        "closure_hash": "3fbe22fbf4b71bdfb13d63e31e1ed2245f819bb042a135a297f4fa01a8406306",
+        "closure_hash": "e4b87ae07ff5287d802b339e3124e8d93233572e753ebe16973f47ede9e387b2",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-SCRIPT_OR_GATE-0812FE7069EFEF5A",
       "path": "scripts/cooperative_resource_benchmark.py",
-      "reason": "unknown_or_dynamic_dependency_widens_to_all_retained_items",
-      "state": "WIDENED_UNKNOWN"
+      "reason": "path_is_outside_exact_contract_closure_shadow_only",
+      "state": "WOULD_SKIP"
     },
     {
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [
-          "."
+          "core/rust/src/gt96.rs"
         ],
-        "closure_hash": "3fbe22fbf4b71bdfb13d63e31e1ed2245f819bb042a135a297f4fa01a8406306",
+        "closure_hash": "e4b87ae07ff5287d802b339e3124e8d93233572e753ebe16973f47ede9e387b2",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-SCRIPT_OR_GATE-76148D210BE92453",
       "path": "scripts/dependency_audit_gate.py",
-      "reason": "unknown_or_dynamic_dependency_widens_to_all_retained_items",
-      "state": "WIDENED_UNKNOWN"
+      "reason": "path_is_outside_exact_contract_closure_shadow_only",
+      "state": "WOULD_SKIP"
     },
     {
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [
-          "."
+          "core/rust/src/gt96.rs"
         ],
-        "closure_hash": "3fbe22fbf4b71bdfb13d63e31e1ed2245f819bb042a135a297f4fa01a8406306",
+        "closure_hash": "e4b87ae07ff5287d802b339e3124e8d93233572e753ebe16973f47ede9e387b2",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-SCRIPT_OR_GATE-D8C9E5F1836A961A",
       "path": "scripts/deployment_manifest.py",
-      "reason": "unknown_or_dynamic_dependency_widens_to_all_retained_items",
-      "state": "WIDENED_UNKNOWN"
+      "reason": "path_is_outside_exact_contract_closure_shadow_only",
+      "state": "WOULD_SKIP"
     },
     {
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [
-          "."
+          "core/rust/src/gt96.rs"
         ],
-        "closure_hash": "3fbe22fbf4b71bdfb13d63e31e1ed2245f819bb042a135a297f4fa01a8406306",
+        "closure_hash": "e4b87ae07ff5287d802b339e3124e8d93233572e753ebe16973f47ede9e387b2",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-SCRIPT_OR_GATE-526FBDFF8E721A83",
       "path": "scripts/document_consistency_gate.py",
-      "reason": "unknown_or_dynamic_dependency_widens_to_all_retained_items",
-      "state": "WIDENED_UNKNOWN"
+      "reason": "path_is_outside_exact_contract_closure_shadow_only",
+      "state": "WOULD_SKIP"
     },
     {
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [
-          "."
+          "core/rust/src/gt96.rs"
         ],
-        "closure_hash": "3fbe22fbf4b71bdfb13d63e31e1ed2245f819bb042a135a297f4fa01a8406306",
+        "closure_hash": "e4b87ae07ff5287d802b339e3124e8d93233572e753ebe16973f47ede9e387b2",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-SCRIPT_OR_GATE-D2EE6FC497302FFE",
       "path": "scripts/dynamic_provider_fallback_gate.py",
-      "reason": "unknown_or_dynamic_dependency_widens_to_all_retained_items",
-      "state": "WIDENED_UNKNOWN"
+      "reason": "path_is_outside_exact_contract_closure_shadow_only",
+      "state": "WOULD_SKIP"
     },
     {
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [
-          "."
+          "core/rust/src/gt96.rs"
         ],
-        "closure_hash": "3fbe22fbf4b71bdfb13d63e31e1ed2245f819bb042a135a297f4fa01a8406306",
+        "closure_hash": "e4b87ae07ff5287d802b339e3124e8d93233572e753ebe16973f47ede9e387b2",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-SCRIPT_OR_GATE-521CE64FE820F115",
       "path": "scripts/e2e_release_gate.py",
-      "reason": "unknown_or_dynamic_dependency_widens_to_all_retained_items",
-      "state": "WIDENED_UNKNOWN"
+      "reason": "path_is_outside_exact_contract_closure_shadow_only",
+      "state": "WOULD_SKIP"
     },
     {
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [
-          "."
+          "core/rust/src/gt96.rs"
         ],
-        "closure_hash": "3fbe22fbf4b71bdfb13d63e31e1ed2245f819bb042a135a297f4fa01a8406306",
+        "closure_hash": "e4b87ae07ff5287d802b339e3124e8d93233572e753ebe16973f47ede9e387b2",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-SCRIPT_OR_GATE-EAD763949D76D450",
       "path": "scripts/evidence_consistency_gate.py",
-      "reason": "unknown_or_dynamic_dependency_widens_to_all_retained_items",
-      "state": "WIDENED_UNKNOWN"
+      "reason": "path_is_outside_exact_contract_closure_shadow_only",
+      "state": "WOULD_SKIP"
     },
     {
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [
-          "."
+          "core/rust/src/gt96.rs"
         ],
-        "closure_hash": "3fbe22fbf4b71bdfb13d63e31e1ed2245f819bb042a135a297f4fa01a8406306",
+        "closure_hash": "e4b87ae07ff5287d802b339e3124e8d93233572e753ebe16973f47ede9e387b2",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-SCRIPT_OR_GATE-7CEB4E4C29B7FB6E",
       "path": "scripts/external_deployment_smoke_gate.py",
-      "reason": "unknown_or_dynamic_dependency_widens_to_all_retained_items",
-      "state": "WIDENED_UNKNOWN"
+      "reason": "path_is_outside_exact_contract_closure_shadow_only",
+      "state": "WOULD_SKIP"
     },
     {
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [
-          "."
+          "core/rust/src/gt96.rs"
         ],
-        "closure_hash": "3fbe22fbf4b71bdfb13d63e31e1ed2245f819bb042a135a297f4fa01a8406306",
+        "closure_hash": "e4b87ae07ff5287d802b339e3124e8d93233572e753ebe16973f47ede9e387b2",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-SCRIPT_OR_GATE-F71A5FF033DCDDED",
       "path": "scripts/extreme_testing_suite.py",
-      "reason": "unknown_or_dynamic_dependency_widens_to_all_retained_items",
-      "state": "WIDENED_UNKNOWN"
+      "reason": "path_is_outside_exact_contract_closure_shadow_only",
+      "state": "WOULD_SKIP"
     },
     {
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [
-          "."
+          "core/rust/src/gt96.rs"
         ],
-        "closure_hash": "3fbe22fbf4b71bdfb13d63e31e1ed2245f819bb042a135a297f4fa01a8406306",
+        "closure_hash": "e4b87ae07ff5287d802b339e3124e8d93233572e753ebe16973f47ede9e387b2",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-SCRIPT_OR_GATE-9486938F341FABFA",
       "path": "scripts/governance_gate.py",
-      "reason": "unknown_or_dynamic_dependency_widens_to_all_retained_items",
-      "state": "WIDENED_UNKNOWN"
+      "reason": "path_is_outside_exact_contract_closure_shadow_only",
+      "state": "WOULD_SKIP"
     },
     {
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [
-          "."
+          "core/rust/src/gt96.rs"
         ],
-        "closure_hash": "3fbe22fbf4b71bdfb13d63e31e1ed2245f819bb042a135a297f4fa01a8406306",
+        "closure_hash": "e4b87ae07ff5287d802b339e3124e8d93233572e753ebe16973f47ede9e387b2",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-SCRIPT_OR_GATE-A252DD72700346F7",
       "path": "scripts/hardware_profile_report.py",
-      "reason": "unknown_or_dynamic_dependency_widens_to_all_retained_items",
-      "state": "WIDENED_UNKNOWN"
+      "reason": "path_is_outside_exact_contract_closure_shadow_only",
+      "state": "WOULD_SKIP"
     },
     {
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [
-          "."
+          "core/rust/src/gt96.rs"
         ],
-        "closure_hash": "3fbe22fbf4b71bdfb13d63e31e1ed2245f819bb042a135a297f4fa01a8406306",
+        "closure_hash": "e4b87ae07ff5287d802b339e3124e8d93233572e753ebe16973f47ede9e387b2",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-SCRIPT_OR_GATE-AF1C4A9C0ACF7C40",
       "path": "scripts/hot_browser_shadow_gate.py",
-      "reason": "unknown_or_dynamic_dependency_widens_to_all_retained_items",
-      "state": "WIDENED_UNKNOWN"
+      "reason": "path_is_outside_exact_contract_closure_shadow_only",
+      "state": "WOULD_SKIP"
     },
     {
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [
-          "."
+          "core/rust/src/gt96.rs"
         ],
-        "closure_hash": "3fbe22fbf4b71bdfb13d63e31e1ed2245f819bb042a135a297f4fa01a8406306",
+        "closure_hash": "e4b87ae07ff5287d802b339e3124e8d93233572e753ebe16973f47ede9e387b2",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-SCRIPT_OR_GATE-3C51C28EF48E3413",
       "path": "scripts/linux_cgroup_live_probe.py",
-      "reason": "unknown_or_dynamic_dependency_widens_to_all_retained_items",
-      "state": "WIDENED_UNKNOWN"
+      "reason": "path_is_outside_exact_contract_closure_shadow_only",
+      "state": "WOULD_SKIP"
     },
     {
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [
-          "."
+          "core/rust/src/gt96.rs"
         ],
-        "closure_hash": "3fbe22fbf4b71bdfb13d63e31e1ed2245f819bb042a135a297f4fa01a8406306",
+        "closure_hash": "e4b87ae07ff5287d802b339e3124e8d93233572e753ebe16973f47ede9e387b2",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-SCRIPT_OR_GATE-2AD6E9B4F21CBDFE",
       "path": "scripts/local_git_backup.py",
-      "reason": "unknown_or_dynamic_dependency_widens_to_all_retained_items",
-      "state": "WIDENED_UNKNOWN"
+      "reason": "path_is_outside_exact_contract_closure_shadow_only",
+      "state": "WOULD_SKIP"
     },
     {
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [
-          "."
+          "core/rust/src/gt96.rs"
         ],
-        "closure_hash": "3fbe22fbf4b71bdfb13d63e31e1ed2245f819bb042a135a297f4fa01a8406306",
+        "closure_hash": "e4b87ae07ff5287d802b339e3124e8d93233572e753ebe16973f47ede9e387b2",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-SCRIPT_OR_GATE-B05E47CF0E712757",
       "path": "scripts/macos_capability_probe.py",
-      "reason": "unknown_or_dynamic_dependency_widens_to_all_retained_items",
-      "state": "WIDENED_UNKNOWN"
+      "reason": "path_is_outside_exact_contract_closure_shadow_only",
+      "state": "WOULD_SKIP"
     },
     {
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [
-          "."
+          "core/rust/src/gt96.rs"
         ],
-        "closure_hash": "3fbe22fbf4b71bdfb13d63e31e1ed2245f819bb042a135a297f4fa01a8406306",
+        "closure_hash": "e4b87ae07ff5287d802b339e3124e8d93233572e753ebe16973f47ede9e387b2",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-SCRIPT_OR_GATE-A01FED7B9AF150FD",
       "path": "scripts/mock_429_llm_server.py",
-      "reason": "unknown_or_dynamic_dependency_widens_to_all_retained_items",
-      "state": "WIDENED_UNKNOWN"
+      "reason": "path_is_outside_exact_contract_closure_shadow_only",
+      "state": "WOULD_SKIP"
     },
     {
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [
-          "."
+          "core/rust/src/gt96.rs"
         ],
-        "closure_hash": "3fbe22fbf4b71bdfb13d63e31e1ed2245f819bb042a135a297f4fa01a8406306",
+        "closure_hash": "e4b87ae07ff5287d802b339e3124e8d93233572e753ebe16973f47ede9e387b2",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-SCRIPT_OR_GATE-1CA2D8719B5AFFDA",
       "path": "scripts/platform_enforcement_probe.py",
-      "reason": "unknown_or_dynamic_dependency_widens_to_all_retained_items",
-      "state": "WIDENED_UNKNOWN"
+      "reason": "path_is_outside_exact_contract_closure_shadow_only",
+      "state": "WOULD_SKIP"
     },
     {
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [
-          "."
+          "core/rust/src/gt96.rs"
         ],
-        "closure_hash": "3fbe22fbf4b71bdfb13d63e31e1ed2245f819bb042a135a297f4fa01a8406306",
+        "closure_hash": "e4b87ae07ff5287d802b339e3124e8d93233572e753ebe16973f47ede9e387b2",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-SCRIPT_OR_GATE-F4957AEC6076F5C8",
       "path": "scripts/production_closure.py",
-      "reason": "unknown_or_dynamic_dependency_widens_to_all_retained_items",
-      "state": "WIDENED_UNKNOWN"
+      "reason": "path_is_outside_exact_contract_closure_shadow_only",
+      "state": "WOULD_SKIP"
     },
     {
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [
-          "."
+          "core/rust/src/gt96.rs"
         ],
-        "closure_hash": "3fbe22fbf4b71bdfb13d63e31e1ed2245f819bb042a135a297f4fa01a8406306",
+        "closure_hash": "e4b87ae07ff5287d802b339e3124e8d93233572e753ebe16973f47ede9e387b2",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-SCRIPT_OR_GATE-2DE64D632EBCBD98",
       "path": "scripts/production_packaging_smoke_gate.py",
-      "reason": "unknown_or_dynamic_dependency_widens_to_all_retained_items",
-      "state": "WIDENED_UNKNOWN"
+      "reason": "path_is_outside_exact_contract_closure_shadow_only",
+      "state": "WOULD_SKIP"
     },
     {
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [
-          "."
+          "core/rust/src/gt96.rs"
         ],
-        "closure_hash": "3fbe22fbf4b71bdfb13d63e31e1ed2245f819bb042a135a297f4fa01a8406306",
+        "closure_hash": "e4b87ae07ff5287d802b339e3124e8d93233572e753ebe16973f47ede9e387b2",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-SCRIPT_OR_GATE-FD4DC115F24E2737",
       "path": "scripts/production_readiness.py",
-      "reason": "unknown_or_dynamic_dependency_widens_to_all_retained_items",
-      "state": "WIDENED_UNKNOWN"
+      "reason": "path_is_outside_exact_contract_closure_shadow_only",
+      "state": "WOULD_SKIP"
     },
     {
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [
-          "."
+          "core/rust/src/gt96.rs"
         ],
-        "closure_hash": "3fbe22fbf4b71bdfb13d63e31e1ed2245f819bb042a135a297f4fa01a8406306",
+        "closure_hash": "e4b87ae07ff5287d802b339e3124e8d93233572e753ebe16973f47ede9e387b2",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-SCRIPT_OR_GATE-6B9902B786796343",
       "path": "scripts/progress_gate.py",
-      "reason": "unknown_or_dynamic_dependency_widens_to_all_retained_items",
-      "state": "WIDENED_UNKNOWN"
+      "reason": "path_is_outside_exact_contract_closure_shadow_only",
+      "state": "WOULD_SKIP"
     },
     {
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [
-          "."
+          "core/rust/src/gt96.rs"
         ],
-        "closure_hash": "3fbe22fbf4b71bdfb13d63e31e1ed2245f819bb042a135a297f4fa01a8406306",
+        "closure_hash": "e4b87ae07ff5287d802b339e3124e8d93233572e753ebe16973f47ede9e387b2",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-SCRIPT_OR_GATE-B25F1BADD2B67BBE",
       "path": "scripts/provider_route_gate.py",
-      "reason": "unknown_or_dynamic_dependency_widens_to_all_retained_items",
-      "state": "WIDENED_UNKNOWN"
+      "reason": "path_is_outside_exact_contract_closure_shadow_only",
+      "state": "WOULD_SKIP"
     },
     {
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [
-          "."
+          "core/rust/src/gt96.rs"
         ],
-        "closure_hash": "3fbe22fbf4b71bdfb13d63e31e1ed2245f819bb042a135a297f4fa01a8406306",
+        "closure_hash": "e4b87ae07ff5287d802b339e3124e8d93233572e753ebe16973f47ede9e387b2",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-SCRIPT_OR_GATE-86F0635352FF1F36",
       "path": "scripts/python_hotpath_gate.py",
-      "reason": "unknown_or_dynamic_dependency_widens_to_all_retained_items",
-      "state": "WIDENED_UNKNOWN"
+      "reason": "path_is_outside_exact_contract_closure_shadow_only",
+      "state": "WOULD_SKIP"
     },
     {
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [
-          "."
+          "core/rust/src/gt96.rs"
         ],
-        "closure_hash": "3fbe22fbf4b71bdfb13d63e31e1ed2245f819bb042a135a297f4fa01a8406306",
+        "closure_hash": "e4b87ae07ff5287d802b339e3124e8d93233572e753ebe16973f47ede9e387b2",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-SCRIPT_OR_GATE-6A23A2E49524A60A",
       "path": "scripts/quickjs_cold_start_gate.py",
-      "reason": "unknown_or_dynamic_dependency_widens_to_all_retained_items",
-      "state": "WIDENED_UNKNOWN"
+      "reason": "path_is_outside_exact_contract_closure_shadow_only",
+      "state": "WOULD_SKIP"
     },
     {
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [
-          "."
+          "core/rust/src/gt96.rs"
         ],
-        "closure_hash": "3fbe22fbf4b71bdfb13d63e31e1ed2245f819bb042a135a297f4fa01a8406306",
+        "closure_hash": "e4b87ae07ff5287d802b339e3124e8d93233572e753ebe16973f47ede9e387b2",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-SCRIPT_OR_GATE-4A83B7C0E4DAF0C6",
       "path": "scripts/release_controller_action_smoke.py",
-      "reason": "unknown_or_dynamic_dependency_widens_to_all_retained_items",
-      "state": "WIDENED_UNKNOWN"
+      "reason": "path_is_outside_exact_contract_closure_shadow_only",
+      "state": "WOULD_SKIP"
     },
     {
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [
-          "."
+          "core/rust/src/gt96.rs"
         ],
-        "closure_hash": "3fbe22fbf4b71bdfb13d63e31e1ed2245f819bb042a135a297f4fa01a8406306",
+        "closure_hash": "e4b87ae07ff5287d802b339e3124e8d93233572e753ebe16973f47ede9e387b2",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-SCRIPT_OR_GATE-0F7930813782918F",
       "path": "scripts/release_evidence.py",
-      "reason": "unknown_or_dynamic_dependency_widens_to_all_retained_items",
-      "state": "WIDENED_UNKNOWN"
+      "reason": "path_is_outside_exact_contract_closure_shadow_only",
+      "state": "WOULD_SKIP"
     },
     {
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [
-          "."
+          "core/rust/src/gt96.rs"
         ],
-        "closure_hash": "3fbe22fbf4b71bdfb13d63e31e1ed2245f819bb042a135a297f4fa01a8406306",
+        "closure_hash": "e4b87ae07ff5287d802b339e3124e8d93233572e753ebe16973f47ede9e387b2",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-SCRIPT_OR_GATE-918159281814759A",
       "path": "scripts/release_install_smoke.py",
-      "reason": "unknown_or_dynamic_dependency_widens_to_all_retained_items",
-      "state": "WIDENED_UNKNOWN"
+      "reason": "path_is_outside_exact_contract_closure_shadow_only",
+      "state": "WOULD_SKIP"
     },
     {
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [
-          "."
+          "core/rust/src/gt96.rs"
         ],
-        "closure_hash": "3fbe22fbf4b71bdfb13d63e31e1ed2245f819bb042a135a297f4fa01a8406306",
+        "closure_hash": "e4b87ae07ff5287d802b339e3124e8d93233572e753ebe16973f47ede9e387b2",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-SCRIPT_OR_GATE-FF1EE659A1612713",
       "path": "scripts/release_recovery_smoke.py",
-      "reason": "unknown_or_dynamic_dependency_widens_to_all_retained_items",
-      "state": "WIDENED_UNKNOWN"
+      "reason": "path_is_outside_exact_contract_closure_shadow_only",
+      "state": "WOULD_SKIP"
     },
     {
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [
-          "."
+          "core/rust/src/gt96.rs"
         ],
-        "closure_hash": "3fbe22fbf4b71bdfb13d63e31e1ed2245f819bb042a135a297f4fa01a8406306",
+        "closure_hash": "e4b87ae07ff5287d802b339e3124e8d93233572e753ebe16973f47ede9e387b2",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-SCRIPT_OR_GATE-B179930A319949B1",
       "path": "scripts/release_rollback_drill.py",
-      "reason": "unknown_or_dynamic_dependency_widens_to_all_retained_items",
-      "state": "WIDENED_UNKNOWN"
+      "reason": "path_is_outside_exact_contract_closure_shadow_only",
+      "state": "WOULD_SKIP"
     },
     {
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [
-          "."
+          "core/rust/src/gt96.rs"
         ],
-        "closure_hash": "3fbe22fbf4b71bdfb13d63e31e1ed2245f819bb042a135a297f4fa01a8406306",
+        "closure_hash": "e4b87ae07ff5287d802b339e3124e8d93233572e753ebe16973f47ede9e387b2",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-SCRIPT_OR_GATE-AD06010ED55C0891",
       "path": "scripts/research/comparators/external/fts5_baseline_gate.py",
-      "reason": "unknown_or_dynamic_dependency_widens_to_all_retained_items",
-      "state": "WIDENED_UNKNOWN"
+      "reason": "path_is_outside_exact_contract_closure_shadow_only",
+      "state": "WOULD_SKIP"
     },
     {
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [
-          "."
+          "core/rust/src/gt96.rs"
         ],
-        "closure_hash": "3fbe22fbf4b71bdfb13d63e31e1ed2245f819bb042a135a297f4fa01a8406306",
+        "closure_hash": "e4b87ae07ff5287d802b339e3124e8d93233572e753ebe16973f47ede9e387b2",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-SCRIPT_OR_GATE-08301E22060A0496",
       "path": "scripts/research/comparators/external/persistence_write_baseline_gate.py",
-      "reason": "unknown_or_dynamic_dependency_widens_to_all_retained_items",
-      "state": "WIDENED_UNKNOWN"
+      "reason": "path_is_outside_exact_contract_closure_shadow_only",
+      "state": "WOULD_SKIP"
     },
     {
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [
-          "."
+          "core/rust/src/gt96.rs"
         ],
-        "closure_hash": "3fbe22fbf4b71bdfb13d63e31e1ed2245f819bb042a135a297f4fa01a8406306",
+        "closure_hash": "e4b87ae07ff5287d802b339e3124e8d93233572e753ebe16973f47ede9e387b2",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-SCRIPT_OR_GATE-725B072CD59F2910",
       "path": "scripts/research/comparators/external/rpc_context_baseline_gate.py",
-      "reason": "unknown_or_dynamic_dependency_widens_to_all_retained_items",
-      "state": "WIDENED_UNKNOWN"
+      "reason": "path_is_outside_exact_contract_closure_shadow_only",
+      "state": "WOULD_SKIP"
     },
     {
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [
-          "."
+          "core/rust/src/gt96.rs"
         ],
-        "closure_hash": "3fbe22fbf4b71bdfb13d63e31e1ed2245f819bb042a135a297f4fa01a8406306",
+        "closure_hash": "e4b87ae07ff5287d802b339e3124e8d93233572e753ebe16973f47ede9e387b2",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-SCRIPT_OR_GATE-0C9077E2BE56AF4E",
       "path": "scripts/research/comparators/external/session_recovery_baseline_gate.py",
-      "reason": "unknown_or_dynamic_dependency_widens_to_all_retained_items",
-      "state": "WIDENED_UNKNOWN"
+      "reason": "path_is_outside_exact_contract_closure_shadow_only",
+      "state": "WOULD_SKIP"
     },
     {
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [
-          "."
+          "core/rust/src/gt96.rs"
         ],
-        "closure_hash": "3fbe22fbf4b71bdfb13d63e31e1ed2245f819bb042a135a297f4fa01a8406306",
+        "closure_hash": "e4b87ae07ff5287d802b339e3124e8d93233572e753ebe16973f47ede9e387b2",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-PYTHON_BENCHMARK-058179949C4EE7AC",
       "path": "scripts/resource_policy_benchmark.py",
-      "reason": "unknown_or_dynamic_dependency_widens_to_all_retained_items",
-      "state": "WIDENED_UNKNOWN"
+      "reason": "path_is_outside_exact_contract_closure_shadow_only",
+      "state": "WOULD_SKIP"
     },
     {
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [
-          "."
+          "core/rust/src/gt96.rs"
         ],
-        "closure_hash": "3fbe22fbf4b71bdfb13d63e31e1ed2245f819bb042a135a297f4fa01a8406306",
+        "closure_hash": "e4b87ae07ff5287d802b339e3124e8d93233572e753ebe16973f47ede9e387b2",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-SCRIPT_OR_GATE-C61A256E619AADC4",
       "path": "scripts/run_checks.py",
-      "reason": "unknown_or_dynamic_dependency_widens_to_all_retained_items",
-      "state": "WIDENED_UNKNOWN"
+      "reason": "path_is_outside_exact_contract_closure_shadow_only",
+      "state": "WOULD_SKIP"
     },
     {
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [
-          "."
+          "core/rust/src/gt96.rs"
         ],
-        "closure_hash": "3fbe22fbf4b71bdfb13d63e31e1ed2245f819bb042a135a297f4fa01a8406306",
+        "closure_hash": "e4b87ae07ff5287d802b339e3124e8d93233572e753ebe16973f47ede9e387b2",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-SCRIPT_OR_GATE-7AE7927B69F23D65",
       "path": "scripts/rust_toolchain.py",
-      "reason": "unknown_or_dynamic_dependency_widens_to_all_retained_items",
-      "state": "WIDENED_UNKNOWN"
+      "reason": "path_is_outside_exact_contract_closure_shadow_only",
+      "state": "WOULD_SKIP"
     },
     {
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [
-          "."
+          "core/rust/src/gt96.rs"
         ],
-        "closure_hash": "3fbe22fbf4b71bdfb13d63e31e1ed2245f819bb042a135a297f4fa01a8406306",
+        "closure_hash": "e4b87ae07ff5287d802b339e3124e8d93233572e753ebe16973f47ede9e387b2",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-SCRIPT_OR_GATE-8DA14FC12AA842E6",
       "path": "scripts/secret_scan.py",
-      "reason": "unknown_or_dynamic_dependency_widens_to_all_retained_items",
-      "state": "WIDENED_UNKNOWN"
+      "reason": "path_is_outside_exact_contract_closure_shadow_only",
+      "state": "WOULD_SKIP"
     },
     {
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [
-          "."
+          "core/rust/src/gt96.rs"
         ],
-        "closure_hash": "3fbe22fbf4b71bdfb13d63e31e1ed2245f819bb042a135a297f4fa01a8406306",
+        "closure_hash": "e4b87ae07ff5287d802b339e3124e8d93233572e753ebe16973f47ede9e387b2",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-SCRIPT_OR_GATE-60FD4CE4E914F390",
       "path": "scripts/shadow_sealer_soak_gate.py",
-      "reason": "unknown_or_dynamic_dependency_widens_to_all_retained_items",
-      "state": "WIDENED_UNKNOWN"
+      "reason": "path_is_outside_exact_contract_closure_shadow_only",
+      "state": "WOULD_SKIP"
     },
     {
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [
-          "."
+          "core/rust/src/gt96.rs"
         ],
-        "closure_hash": "3fbe22fbf4b71bdfb13d63e31e1ed2245f819bb042a135a297f4fa01a8406306",
+        "closure_hash": "e4b87ae07ff5287d802b339e3124e8d93233572e753ebe16973f47ede9e387b2",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-SCRIPT_OR_GATE-01055752520CFFA7",
       "path": "scripts/smoke_check.py",
-      "reason": "unknown_or_dynamic_dependency_widens_to_all_retained_items",
-      "state": "WIDENED_UNKNOWN"
+      "reason": "path_is_outside_exact_contract_closure_shadow_only",
+      "state": "WOULD_SKIP"
     },
     {
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [
-          "."
+          "core/rust/src/gt96.rs"
         ],
-        "closure_hash": "3fbe22fbf4b71bdfb13d63e31e1ed2245f819bb042a135a297f4fa01a8406306",
+        "closure_hash": "e4b87ae07ff5287d802b339e3124e8d93233572e753ebe16973f47ede9e387b2",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-SCRIPT_OR_GATE-DCDBAB51D0B44452",
       "path": "scripts/sota_baseline_gate.py",
-      "reason": "unknown_or_dynamic_dependency_widens_to_all_retained_items",
-      "state": "WIDENED_UNKNOWN"
+      "reason": "path_is_outside_exact_contract_closure_shadow_only",
+      "state": "WOULD_SKIP"
     },
     {
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [
-          "."
+          "core/rust/src/gt96.rs"
         ],
-        "closure_hash": "3fbe22fbf4b71bdfb13d63e31e1ed2245f819bb042a135a297f4fa01a8406306",
+        "closure_hash": "e4b87ae07ff5287d802b339e3124e8d93233572e753ebe16973f47ede9e387b2",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-SCRIPT_OR_GATE-665823FFB7A1BC2E",
       "path": "scripts/suite_evidence.py",
-      "reason": "unknown_or_dynamic_dependency_widens_to_all_retained_items",
-      "state": "WIDENED_UNKNOWN"
+      "reason": "path_is_outside_exact_contract_closure_shadow_only",
+      "state": "WOULD_SKIP"
     },
     {
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [
-          "."
+          "core/rust/src/gt96.rs"
         ],
-        "closure_hash": "3fbe22fbf4b71bdfb13d63e31e1ed2245f819bb042a135a297f4fa01a8406306",
+        "closure_hash": "e4b87ae07ff5287d802b339e3124e8d93233572e753ebe16973f47ede9e387b2",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-SCRIPT_OR_GATE-615CB27130ABC689",
       "path": "scripts/supply_chain_gate.py",
-      "reason": "unknown_or_dynamic_dependency_widens_to_all_retained_items",
-      "state": "WIDENED_UNKNOWN"
+      "reason": "path_is_outside_exact_contract_closure_shadow_only",
+      "state": "WOULD_SKIP"
     },
     {
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [
-          "."
+          "core/rust/src/gt96.rs"
         ],
-        "closure_hash": "3fbe22fbf4b71bdfb13d63e31e1ed2245f819bb042a135a297f4fa01a8406306",
+        "closure_hash": "e4b87ae07ff5287d802b339e3124e8d93233572e753ebe16973f47ede9e387b2",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-SCRIPT_OR_GATE-2974F2FBD2B1A186",
       "path": "scripts/tcp_cluster_soak_gate.py",
-      "reason": "unknown_or_dynamic_dependency_widens_to_all_retained_items",
-      "state": "WIDENED_UNKNOWN"
+      "reason": "path_is_outside_exact_contract_closure_shadow_only",
+      "state": "WOULD_SKIP"
     },
     {
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [
-          "."
+          "core/rust/src/gt96.rs"
         ],
-        "closure_hash": "3fbe22fbf4b71bdfb13d63e31e1ed2245f819bb042a135a297f4fa01a8406306",
+        "closure_hash": "e4b87ae07ff5287d802b339e3124e8d93233572e753ebe16973f47ede9e387b2",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-SCRIPT_OR_GATE-61A2C157C5B9ED60",
       "path": "scripts/wasmtime_migration_gate.py",
-      "reason": "unknown_or_dynamic_dependency_widens_to_all_retained_items",
-      "state": "WIDENED_UNKNOWN"
+      "reason": "path_is_outside_exact_contract_closure_shadow_only",
+      "state": "WOULD_SKIP"
     },
     {
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [
-          "."
+          "core/rust/src/gt96.rs"
         ],
-        "closure_hash": "3fbe22fbf4b71bdfb13d63e31e1ed2245f819bb042a135a297f4fa01a8406306",
+        "closure_hash": "e4b87ae07ff5287d802b339e3124e8d93233572e753ebe16973f47ede9e387b2",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-SCRIPT_OR_GATE-43A7353F29E3A524",
       "path": "scripts/windows_job_object_live_probe.py",
-      "reason": "unknown_or_dynamic_dependency_widens_to_all_retained_items",
-      "state": "WIDENED_UNKNOWN"
+      "reason": "path_is_outside_exact_contract_closure_shadow_only",
+      "state": "WOULD_SKIP"
     },
     {
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [
-          "."
+          "core/rust/src/gt96.rs"
         ],
-        "closure_hash": "3fbe22fbf4b71bdfb13d63e31e1ed2245f819bb042a135a297f4fa01a8406306",
+        "closure_hash": "e4b87ae07ff5287d802b339e3124e8d93233572e753ebe16973f47ede9e387b2",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-PYTHON_TEST-D360D2BD4D944F44",
       "path": "tests/test_aese_affected_closure.py",
-      "reason": "unknown_or_dynamic_dependency_widens_to_all_retained_items",
-      "state": "WIDENED_UNKNOWN"
+      "reason": "path_is_outside_exact_contract_closure_shadow_only",
+      "state": "WOULD_SKIP"
     },
     {
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [
-          "."
+          "core/rust/src/gt96.rs"
         ],
-        "closure_hash": "3fbe22fbf4b71bdfb13d63e31e1ed2245f819bb042a135a297f4fa01a8406306",
+        "closure_hash": "e4b87ae07ff5287d802b339e3124e8d93233572e753ebe16973f47ede9e387b2",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-PYTHON_TEST-D79D5846F51A8B48",
       "path": "tests/test_aese_claim_graph.py",
-      "reason": "unknown_or_dynamic_dependency_widens_to_all_retained_items",
-      "state": "WIDENED_UNKNOWN"
+      "reason": "path_is_outside_exact_contract_closure_shadow_only",
+      "state": "WOULD_SKIP"
     },
     {
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [
-          "."
+          "core/rust/src/gt96.rs"
         ],
-        "closure_hash": "3fbe22fbf4b71bdfb13d63e31e1ed2245f819bb042a135a297f4fa01a8406306",
+        "closure_hash": "e4b87ae07ff5287d802b339e3124e8d93233572e753ebe16973f47ede9e387b2",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-PYTHON_TEST-132068D9A890F856",
       "path": "tests/test_aese_failure_diagnostic.py",
-      "reason": "unknown_or_dynamic_dependency_widens_to_all_retained_items",
-      "state": "WIDENED_UNKNOWN"
+      "reason": "path_is_outside_exact_contract_closure_shadow_only",
+      "state": "WOULD_SKIP"
     },
     {
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [
-          "."
+          "core/rust/src/gt96.rs"
         ],
-        "closure_hash": "3fbe22fbf4b71bdfb13d63e31e1ed2245f819bb042a135a297f4fa01a8406306",
+        "closure_hash": "e4b87ae07ff5287d802b339e3124e8d93233572e753ebe16973f47ede9e387b2",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-PYTHON_TEST-F44FE1653A27637B",
       "path": "tests/test_aese_inventory.py",
-      "reason": "unknown_or_dynamic_dependency_widens_to_all_retained_items",
-      "state": "WIDENED_UNKNOWN"
+      "reason": "path_is_outside_exact_contract_closure_shadow_only",
+      "state": "WOULD_SKIP"
     },
     {
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [
-          "."
+          "core/rust/src/gt96.rs"
         ],
-        "closure_hash": "3fbe22fbf4b71bdfb13d63e31e1ed2245f819bb042a135a297f4fa01a8406306",
+        "closure_hash": "e4b87ae07ff5287d802b339e3124e8d93233572e753ebe16973f47ede9e387b2",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-PYTHON_TEST-E1D184588A9806B3",
       "path": "tests/test_aese_preflight.py",
-      "reason": "unknown_or_dynamic_dependency_widens_to_all_retained_items",
-      "state": "WIDENED_UNKNOWN"
+      "reason": "path_is_outside_exact_contract_closure_shadow_only",
+      "state": "WOULD_SKIP"
     },
     {
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [
-          "."
+          "core/rust/src/gt96.rs"
         ],
-        "closure_hash": "3fbe22fbf4b71bdfb13d63e31e1ed2245f819bb042a135a297f4fa01a8406306",
+        "closure_hash": "e4b87ae07ff5287d802b339e3124e8d93233572e753ebe16973f47ede9e387b2",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-PYTHON_TEST-58D48A170B9DA222",
       "path": "tests/test_aese_primitives.py",
-      "reason": "unknown_or_dynamic_dependency_widens_to_all_retained_items",
-      "state": "WIDENED_UNKNOWN"
+      "reason": "path_is_outside_exact_contract_closure_shadow_only",
+      "state": "WOULD_SKIP"
     },
     {
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [
-          "."
+          "core/rust/src/gt96.rs"
         ],
-        "closure_hash": "3fbe22fbf4b71bdfb13d63e31e1ed2245f819bb042a135a297f4fa01a8406306",
+        "closure_hash": "e4b87ae07ff5287d802b339e3124e8d93233572e753ebe16973f47ede9e387b2",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-PYTHON_TEST-64CCBA10AA0FB215",
       "path": "tests/test_aese_s2_mapping.py",
-      "reason": "unknown_or_dynamic_dependency_widens_to_all_retained_items",
-      "state": "WIDENED_UNKNOWN"
+      "reason": "path_is_outside_exact_contract_closure_shadow_only",
+      "state": "WOULD_SKIP"
     },
     {
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [
-          "."
+          "core/rust/src/gt96.rs"
         ],
-        "closure_hash": "3fbe22fbf4b71bdfb13d63e31e1ed2245f819bb042a135a297f4fa01a8406306",
+        "closure_hash": "e4b87ae07ff5287d802b339e3124e8d93233572e753ebe16973f47ede9e387b2",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-PYTHON_TEST-E94EA486F06207C7",
       "path": "tests/test_aese_shadow_planner.py",
-      "reason": "unknown_or_dynamic_dependency_widens_to_all_retained_items",
-      "state": "WIDENED_UNKNOWN"
+      "reason": "path_is_outside_exact_contract_closure_shadow_only",
+      "state": "WOULD_SKIP"
     },
     {
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [
-          "."
+          "core/rust/src/gt96.rs"
         ],
-        "closure_hash": "3fbe22fbf4b71bdfb13d63e31e1ed2245f819bb042a135a297f4fa01a8406306",
+        "closure_hash": "e4b87ae07ff5287d802b339e3124e8d93233572e753ebe16973f47ede9e387b2",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-PYTHON_TEST-51A1BDDF0653E1AF",
       "path": "tests/test_aese_statistical_calibration.py",
-      "reason": "unknown_or_dynamic_dependency_widens_to_all_retained_items",
-      "state": "WIDENED_UNKNOWN"
+      "reason": "path_is_outside_exact_contract_closure_shadow_only",
+      "state": "WOULD_SKIP"
     },
     {
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [
-          "."
+          "core/rust/src/gt96.rs"
         ],
-        "closure_hash": "3fbe22fbf4b71bdfb13d63e31e1ed2245f819bb042a135a297f4fa01a8406306",
+        "closure_hash": "e4b87ae07ff5287d802b339e3124e8d93233572e753ebe16973f47ede9e387b2",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-PYTHON_TEST-946CC0E18A2AF577",
       "path": "tests/test_aese_validation_corpus.py",
-      "reason": "unknown_or_dynamic_dependency_widens_to_all_retained_items",
-      "state": "WIDENED_UNKNOWN"
+      "reason": "path_is_outside_exact_contract_closure_shadow_only",
+      "state": "WOULD_SKIP"
     },
     {
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [
-          "."
+          "core/rust/src/gt96.rs"
         ],
-        "closure_hash": "3fbe22fbf4b71bdfb13d63e31e1ed2245f819bb042a135a297f4fa01a8406306",
+        "closure_hash": "e4b87ae07ff5287d802b339e3124e8d93233572e753ebe16973f47ede9e387b2",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-PYTHON_TEST-0437C333BB08E1BC",
       "path": "tests/test_chatgpt_web_client.py",
-      "reason": "unknown_or_dynamic_dependency_widens_to_all_retained_items",
-      "state": "WIDENED_UNKNOWN"
+      "reason": "path_is_outside_exact_contract_closure_shadow_only",
+      "state": "WOULD_SKIP"
     },
     {
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [
-          "."
+          "core/rust/src/gt96.rs"
         ],
-        "closure_hash": "3fbe22fbf4b71bdfb13d63e31e1ed2245f819bb042a135a297f4fa01a8406306",
+        "closure_hash": "e4b87ae07ff5287d802b339e3124e8d93233572e753ebe16973f47ede9e387b2",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-PYTHON_TEST-0C3CA6E3DD27606A",
       "path": "tests/test_ci_suite_evidence_contract.py",
-      "reason": "unknown_or_dynamic_dependency_widens_to_all_retained_items",
-      "state": "WIDENED_UNKNOWN"
+      "reason": "path_is_outside_exact_contract_closure_shadow_only",
+      "state": "WOULD_SKIP"
     },
     {
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [
-          "."
+          "core/rust/src/gt96.rs"
         ],
-        "closure_hash": "3fbe22fbf4b71bdfb13d63e31e1ed2245f819bb042a135a297f4fa01a8406306",
+        "closure_hash": "e4b87ae07ff5287d802b339e3124e8d93233572e753ebe16973f47ede9e387b2",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-PYTHON_TEST-4E8715C7A425EE52",
       "path": "tests/test_cli.py",
-      "reason": "unknown_or_dynamic_dependency_widens_to_all_retained_items",
-      "state": "WIDENED_UNKNOWN"
+      "reason": "path_is_outside_exact_contract_closure_shadow_only",
+      "state": "WOULD_SKIP"
     },
     {
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [
-          "."
+          "core/rust/src/gt96.rs"
         ],
-        "closure_hash": "3fbe22fbf4b71bdfb13d63e31e1ed2245f819bb042a135a297f4fa01a8406306",
+        "closure_hash": "e4b87ae07ff5287d802b339e3124e8d93233572e753ebe16973f47ede9e387b2",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-PYTHON_TEST-6EE860DAF7328134",
       "path": "tests/test_code_intelligence.py",
-      "reason": "unknown_or_dynamic_dependency_widens_to_all_retained_items",
-      "state": "WIDENED_UNKNOWN"
+      "reason": "path_is_outside_exact_contract_closure_shadow_only",
+      "state": "WOULD_SKIP"
     },
     {
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [
-          "."
+          "core/rust/src/gt96.rs"
         ],
-        "closure_hash": "3fbe22fbf4b71bdfb13d63e31e1ed2245f819bb042a135a297f4fa01a8406306",
+        "closure_hash": "e4b87ae07ff5287d802b339e3124e8d93233572e753ebe16973f47ede9e387b2",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-PYTHON_TEST-AB1758C5973046FB",
       "path": "tests/test_connections.py",
-      "reason": "unknown_or_dynamic_dependency_widens_to_all_retained_items",
-      "state": "WIDENED_UNKNOWN"
+      "reason": "path_is_outside_exact_contract_closure_shadow_only",
+      "state": "WOULD_SKIP"
     },
     {
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [
-          "."
+          "core/rust/src/gt96.rs"
         ],
-        "closure_hash": "3fbe22fbf4b71bdfb13d63e31e1ed2245f819bb042a135a297f4fa01a8406306",
+        "closure_hash": "e4b87ae07ff5287d802b339e3124e8d93233572e753ebe16973f47ede9e387b2",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-PYTHON_TEST-BB462D748FA004AC",
       "path": "tests/test_constitution_audit_gates.py",
-      "reason": "unknown_or_dynamic_dependency_widens_to_all_retained_items",
-      "state": "WIDENED_UNKNOWN"
+      "reason": "path_is_outside_exact_contract_closure_shadow_only",
+      "state": "WOULD_SKIP"
     },
     {
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [
-          "."
+          "core/rust/src/gt96.rs"
         ],
-        "closure_hash": "3fbe22fbf4b71bdfb13d63e31e1ed2245f819bb042a135a297f4fa01a8406306",
+        "closure_hash": "e4b87ae07ff5287d802b339e3124e8d93233572e753ebe16973f47ede9e387b2",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-PYTHON_TEST-4C616F84A7DDC122",
       "path": "tests/test_context_compiler.py",
-      "reason": "unknown_or_dynamic_dependency_widens_to_all_retained_items",
-      "state": "WIDENED_UNKNOWN"
+      "reason": "path_is_outside_exact_contract_closure_shadow_only",
+      "state": "WOULD_SKIP"
     },
     {
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [
-          "."
+          "core/rust/src/gt96.rs"
         ],
-        "closure_hash": "3fbe22fbf4b71bdfb13d63e31e1ed2245f819bb042a135a297f4fa01a8406306",
+        "closure_hash": "e4b87ae07ff5287d802b339e3124e8d93233572e753ebe16973f47ede9e387b2",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-PYTHON_TEST-70E4A3E987E624F9",
       "path": "tests/test_conversations.py",
-      "reason": "unknown_or_dynamic_dependency_widens_to_all_retained_items",
-      "state": "WIDENED_UNKNOWN"
+      "reason": "path_is_outside_exact_contract_closure_shadow_only",
+      "state": "WOULD_SKIP"
     },
     {
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [
-          "."
+          "core/rust/src/gt96.rs"
         ],
-        "closure_hash": "3fbe22fbf4b71bdfb13d63e31e1ed2245f819bb042a135a297f4fa01a8406306",
+        "closure_hash": "e4b87ae07ff5287d802b339e3124e8d93233572e753ebe16973f47ede9e387b2",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-PYTHON_TEST-77DF12F0EBACE0E4",
       "path": "tests/test_cooperative_resource_benchmark.py",
-      "reason": "unknown_or_dynamic_dependency_widens_to_all_retained_items",
-      "state": "WIDENED_UNKNOWN"
+      "reason": "path_is_outside_exact_contract_closure_shadow_only",
+      "state": "WOULD_SKIP"
     },
     {
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [
-          "."
+          "core/rust/src/gt96.rs"
         ],
-        "closure_hash": "3fbe22fbf4b71bdfb13d63e31e1ed2245f819bb042a135a297f4fa01a8406306",
+        "closure_hash": "e4b87ae07ff5287d802b339e3124e8d93233572e753ebe16973f47ede9e387b2",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-PYTHON_TEST-29DA908655C0A48B",
       "path": "tests/test_desktop_protocol.py",
-      "reason": "unknown_or_dynamic_dependency_widens_to_all_retained_items",
-      "state": "WIDENED_UNKNOWN"
+      "reason": "path_is_outside_exact_contract_closure_shadow_only",
+      "state": "WOULD_SKIP"
     },
     {
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [
-          "."
+          "core/rust/src/gt96.rs"
         ],
-        "closure_hash": "3fbe22fbf4b71bdfb13d63e31e1ed2245f819bb042a135a297f4fa01a8406306",
+        "closure_hash": "e4b87ae07ff5287d802b339e3124e8d93233572e753ebe16973f47ede9e387b2",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-PYTHON_TEST-984710292DB89A59",
       "path": "tests/test_document_consistency_gate.py",
-      "reason": "unknown_or_dynamic_dependency_widens_to_all_retained_items",
-      "state": "WIDENED_UNKNOWN"
+      "reason": "path_is_outside_exact_contract_closure_shadow_only",
+      "state": "WOULD_SKIP"
     },
     {
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [
-          "."
+          "core/rust/src/gt96.rs"
         ],
-        "closure_hash": "3fbe22fbf4b71bdfb13d63e31e1ed2245f819bb042a135a297f4fa01a8406306",
+        "closure_hash": "e4b87ae07ff5287d802b339e3124e8d93233572e753ebe16973f47ede9e387b2",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-PYTHON_TEST-31777D847B63F344",
       "path": "tests/test_evidence_consistency_gate.py",
-      "reason": "unknown_or_dynamic_dependency_widens_to_all_retained_items",
-      "state": "WIDENED_UNKNOWN"
+      "reason": "path_is_outside_exact_contract_closure_shadow_only",
+      "state": "WOULD_SKIP"
     },
     {
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [
-          "."
+          "core/rust/src/gt96.rs"
         ],
-        "closure_hash": "3fbe22fbf4b71bdfb13d63e31e1ed2245f819bb042a135a297f4fa01a8406306",
+        "closure_hash": "e4b87ae07ff5287d802b339e3124e8d93233572e753ebe16973f47ede9e387b2",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-PYTHON_TEST-A282C1A69EFCE3DC",
       "path": "tests/test_goal_contract.py",
-      "reason": "unknown_or_dynamic_dependency_widens_to_all_retained_items",
-      "state": "WIDENED_UNKNOWN"
+      "reason": "path_is_outside_exact_contract_closure_shadow_only",
+      "state": "WOULD_SKIP"
     },
     {
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [
-          "."
+          "core/rust/src/gt96.rs"
         ],
-        "closure_hash": "3fbe22fbf4b71bdfb13d63e31e1ed2245f819bb042a135a297f4fa01a8406306",
+        "closure_hash": "e4b87ae07ff5287d802b339e3124e8d93233572e753ebe16973f47ede9e387b2",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-PYTHON_TEST-F242A9C1F7667D98",
       "path": "tests/test_hardware_profile_report.py",
-      "reason": "unknown_or_dynamic_dependency_widens_to_all_retained_items",
-      "state": "WIDENED_UNKNOWN"
+      "reason": "path_is_outside_exact_contract_closure_shadow_only",
+      "state": "WOULD_SKIP"
     },
     {
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [
-          "."
+          "core/rust/src/gt96.rs"
         ],
-        "closure_hash": "3fbe22fbf4b71bdfb13d63e31e1ed2245f819bb042a135a297f4fa01a8406306",
+        "closure_hash": "e4b87ae07ff5287d802b339e3124e8d93233572e753ebe16973f47ede9e387b2",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-PYTHON_TEST-C285FA64FF958C9C",
       "path": "tests/test_lab_progress_context.py",
-      "reason": "unknown_or_dynamic_dependency_widens_to_all_retained_items",
-      "state": "WIDENED_UNKNOWN"
+      "reason": "path_is_outside_exact_contract_closure_shadow_only",
+      "state": "WOULD_SKIP"
     },
     {
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [
-          "."
+          "core/rust/src/gt96.rs"
         ],
-        "closure_hash": "3fbe22fbf4b71bdfb13d63e31e1ed2245f819bb042a135a297f4fa01a8406306",
+        "closure_hash": "e4b87ae07ff5287d802b339e3124e8d93233572e753ebe16973f47ede9e387b2",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-PYTHON_TEST-655F58B6055A773C",
       "path": "tests/test_lab_runtime.py",
-      "reason": "unknown_or_dynamic_dependency_widens_to_all_retained_items",
-      "state": "WIDENED_UNKNOWN"
+      "reason": "path_is_outside_exact_contract_closure_shadow_only",
+      "state": "WOULD_SKIP"
     },
     {
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [
-          "."
+          "core/rust/src/gt96.rs"
         ],
-        "closure_hash": "3fbe22fbf4b71bdfb13d63e31e1ed2245f819bb042a135a297f4fa01a8406306",
+        "closure_hash": "e4b87ae07ff5287d802b339e3124e8d93233572e753ebe16973f47ede9e387b2",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-PYTHON_TEST-4F2C5D21ACFB3D5F",
       "path": "tests/test_progress_gate.py",
-      "reason": "unknown_or_dynamic_dependency_widens_to_all_retained_items",
-      "state": "WIDENED_UNKNOWN"
+      "reason": "path_is_outside_exact_contract_closure_shadow_only",
+      "state": "WOULD_SKIP"
     },
     {
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [
-          "."
+          "core/rust/src/gt96.rs"
         ],
-        "closure_hash": "3fbe22fbf4b71bdfb13d63e31e1ed2245f819bb042a135a297f4fa01a8406306",
+        "closure_hash": "e4b87ae07ff5287d802b339e3124e8d93233572e753ebe16973f47ede9e387b2",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-PYTHON_TEST-245D0C98F2F0786E",
       "path": "tests/test_rag_semantics.py",
-      "reason": "unknown_or_dynamic_dependency_widens_to_all_retained_items",
-      "state": "WIDENED_UNKNOWN"
+      "reason": "path_is_outside_exact_contract_closure_shadow_only",
+      "state": "WOULD_SKIP"
     },
     {
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [
-          "."
+          "core/rust/src/gt96.rs"
         ],
-        "closure_hash": "3fbe22fbf4b71bdfb13d63e31e1ed2245f819bb042a135a297f4fa01a8406306",
+        "closure_hash": "e4b87ae07ff5287d802b339e3124e8d93233572e753ebe16973f47ede9e387b2",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-PYTHON_TEST-2EAE0B226C89AC4F",
       "path": "tests/test_release_evidence.py",
-      "reason": "unknown_or_dynamic_dependency_widens_to_all_retained_items",
-      "state": "WIDENED_UNKNOWN"
+      "reason": "path_is_outside_exact_contract_closure_shadow_only",
+      "state": "WOULD_SKIP"
     },
     {
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [
-          "."
+          "core/rust/src/gt96.rs"
         ],
-        "closure_hash": "3fbe22fbf4b71bdfb13d63e31e1ed2245f819bb042a135a297f4fa01a8406306",
+        "closure_hash": "e4b87ae07ff5287d802b339e3124e8d93233572e753ebe16973f47ede9e387b2",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-PYTHON_TEST-67D480DEC30B36C4",
       "path": "tests/test_runtime_contracts.py",
-      "reason": "unknown_or_dynamic_dependency_widens_to_all_retained_items",
-      "state": "WIDENED_UNKNOWN"
+      "reason": "path_is_outside_exact_contract_closure_shadow_only",
+      "state": "WOULD_SKIP"
     },
     {
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [
-          "."
+          "core/rust/src/gt96.rs"
         ],
-        "closure_hash": "3fbe22fbf4b71bdfb13d63e31e1ed2245f819bb042a135a297f4fa01a8406306",
+        "closure_hash": "e4b87ae07ff5287d802b339e3124e8d93233572e753ebe16973f47ede9e387b2",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-PYTHON_TEST-CFF71A39EA33DA63",
       "path": "tests/test_runtime_coordination.py",
-      "reason": "unknown_or_dynamic_dependency_widens_to_all_retained_items",
-      "state": "WIDENED_UNKNOWN"
+      "reason": "path_is_outside_exact_contract_closure_shadow_only",
+      "state": "WOULD_SKIP"
     },
     {
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [
-          "."
+          "core/rust/src/gt96.rs"
         ],
-        "closure_hash": "3fbe22fbf4b71bdfb13d63e31e1ed2245f819bb042a135a297f4fa01a8406306",
+        "closure_hash": "e4b87ae07ff5287d802b339e3124e8d93233572e753ebe16973f47ede9e387b2",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-PYTHON_TEST-E30A8415486D502B",
       "path": "tests/test_suite_evidence.py",
-      "reason": "unknown_or_dynamic_dependency_widens_to_all_retained_items",
-      "state": "WIDENED_UNKNOWN"
+      "reason": "path_is_outside_exact_contract_closure_shadow_only",
+      "state": "WOULD_SKIP"
     }
   ],
   "direct_cutover": "PROHIBITED",
@@ -2291,19 +2153,19 @@
   "mode": "SHADOW",
   "observed_critical_false_negative_status": "NOT_MEASURED",
   "path_dependency_states": {
-    ".": "NOT_IN_INVENTORY"
+    "core/rust/src/gt96.rs": "MAPPED"
   },
   "phase": "PHASE_4_SHADOW_SELECTIVE_PLANNER",
-  "plan_widened": true,
+  "plan_widened": false,
   "provenance": {
     "claim_scope": "LOCAL_CHECKOUT_ONLY",
-    "closure_artifact_hash": "ba9dd6cbf0b53e58122cfb00cf782bd97e201dfde6e4d310bc362dddaca22b7c",
+    "closure_artifact_hash": "9200723f262bf41fe071ce45070ffdd71422eaa0487ead57f473a81dba192d9f",
     "environment_hash": "1c57998383c639cee2bc3b241252bdd0571910b0cecf4314489101b29016625c",
     "evidence_class": "PLANNING_ONLY",
     "promotion": "DISABLED_IN_SHADOW",
-    "source_sha": "06e2a00e6d18a1fb1ca0edf125aae596ecc6068c",
+    "source_sha": "75d31c782d60dbf5768dbbe97965aeeac4e463ef",
     "validator": "scripts/aese_shadow_planner.py",
-    "validator_hash": "57acced5678e82cdb41a9e3f258634b7618eb697d8dceb589ccecbbe433b5386"
+    "validator_hash": "bfbd470d87a0765246368e91bc545c2f9cef49f8142e21abcf5e1ebc0a54079c"
   },
   "reuse_policy": {
     "artifact_age_alone_is_not_sufficient": true,
@@ -2320,9 +2182,7 @@
   "status": "SHADOW_PLAN_ONLY_SELECTION_DISABLED",
   "structural_critical_reachability_status": "COMPLETE_ZERO_MAPPED_SCOPE",
   "unknown_dependency_policy": "WIDEN_TO_RETAINED_SUITE",
-  "unknown_repository_paths": [
-    "."
-  ],
+  "unknown_repository_paths": [],
   "unknown_surface_ids": [
     "AESE-FUZZ_TARGET-26E115395EF2C8F9",
     "AESE-FUZZ_TARGET-571CC359F5473719",
@@ -2590,6 +2450,9 @@
   ],
   "would_reuse_item_ids": [],
   "would_run_item_ids": [
+    "AESE-RUST_UNIT_TEST-6E0A9FEABAA1955E"
+  ],
+  "would_skip_item_ids": [
     "AESE-FUZZ_TARGET-26E115395EF2C8F9",
     "AESE-FUZZ_TARGET-571CC359F5473719",
     "AESE-FUZZ_TARGET-849E21CC12DE2882",
@@ -2667,7 +2530,6 @@
     "AESE-RUST_UNIT_TEST-62F71A02E7DAEAF0",
     "AESE-RUST_UNIT_TEST-678298D9C8FD4466",
     "AESE-RUST_UNIT_TEST-6896058315F9E5A4",
-    "AESE-RUST_UNIT_TEST-6E0A9FEABAA1955E",
     "AESE-RUST_UNIT_TEST-706B6EC4F030313E",
     "AESE-RUST_UNIT_TEST-7142417A253B65D2",
     "AESE-RUST_UNIT_TEST-8135C64C8D1E687D",
@@ -2741,6 +2603,5 @@
     "AESE-SCRIPT_OR_GATE-F82E0E9DC4FBA0AB",
     "AESE-SCRIPT_OR_GATE-FD4DC115F24E2737",
     "AESE-SCRIPT_OR_GATE-FF1EE659A1612713"
-  ],
-  "would_skip_item_ids": []
+  ]
 }
