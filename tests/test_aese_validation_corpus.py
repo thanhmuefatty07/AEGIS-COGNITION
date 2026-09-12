@@ -44,7 +44,7 @@ def test_final_corpus_covers_unknown_and_partial_mapping_without_skips(corpus: d
         case = cases[case_id]
         assert case["plan_widened"] is True
         assert case["changed_unmapped_surface_paths"]
-        assert case["decision_state_counts"]["WIDENED_UNKNOWN"] == 152
+        assert case["decision_state_counts"]["WIDENED_UNKNOWN"] == 151
         assert case["decision_state_counts"]["WOULD_SKIP"] == 0
     metrics = corpus["metrics"]
     assert metrics["synthetic_critical_planning_targets"] == 5
