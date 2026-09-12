@@ -9,6 +9,7 @@ artifact is correct, or that an OS isolation boundary exists.
 from __future__ import annotations
 
 import json
+import ntpath
 import os
 import posixpath
 import re
@@ -215,9 +216,18 @@ def _valid_network_allowlist_entry(value: str) -> bool:
 
 
 def _filesystem_scope(value: str) -> str | None:
-    """Return a lexical absolute filesystem scope without resolving symlinks."""
+    """Return a lexical absolute filesystem scope without resolving symlinks.
 
-    if _uri_scope(value) is not None or not os.path.isabs(value):
+    Contract paths are data, so their comparison must not depend on the host
+    running the validator. Windows drive and UNC paths may be validated from
+    Linux or macOS as well as from Windows.
+    """
+
+    if _uri_scope(value) is not None:
+        return None
+    if re.match(r"^[A-Za-z]:[\\/]", value) or value.startswith(("\\\\", "//")):
+        return ntpath.normcase(ntpath.normpath(value.replace("/", "\\")))
+    if not os.path.isabs(value):
         return None
     return os.path.normcase(os.path.normpath(os.path.abspath(value)))
 
