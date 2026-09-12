@@ -80,6 +80,8 @@ def _valid_suite(candidate: dict[str, Any], expected_commit: str, command_fragme
     )
     if candidate.get("filtered") != 0 or candidate.get("ignored") != 0:
         errors.append("filtered or ignored tests are not permitted")
+    if candidate.get("skipped") != 0:
+        errors.append("skipped tests are not permitted")
     return errors
 
 
