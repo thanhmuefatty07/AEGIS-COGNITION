@@ -73,10 +73,10 @@ LOCAL_AEGIS = {
     "production_readiness",
     "production_closure",
     "python_hotpath_gate",
-    "hermes_session_recovery_baseline_gate",
-    "hermes_persistence_baseline_gate",
-    "hermes_rpc_baseline_gate",
-    "hermes_baseline_gate",
+    "fts5_baseline_gate",
+    "persistence_write_baseline_gate",
+    "rpc_context_baseline_gate",
+    "session_recovery_baseline_gate",
 }
 
 EXTRAS_FROM_PYPROJECT: dict[str, list[str]] = {

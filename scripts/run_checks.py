@@ -31,19 +31,19 @@ if TYPE_CHECKING:
     from scripts.e2e_release_gate import evaluate_e2e_release_gate
     from scripts.external_deployment_smoke_gate import evaluate_external_deployment_smoke_gate
     from scripts.governance_gate import evaluate_governance
-    from scripts.hermes_baseline_gate import (
+    from scripts.research.comparators.external.fts5_baseline_gate import (
         evaluate_hermes_baseline,
         report_to_dict as hermes_baseline_report_to_dict,
     )
-    from scripts.hermes_persistence_baseline_gate import (
+    from scripts.research.comparators.external.persistence_write_baseline_gate import (
         evaluate_hermes_persistence_baseline,
         report_to_dict as hermes_persistence_baseline_report_to_dict,
     )
-    from scripts.hermes_rpc_baseline_gate import (
+    from scripts.research.comparators.external.rpc_context_baseline_gate import (
         evaluate_hermes_rpc_baseline,
         report_to_dict as hermes_rpc_baseline_report_to_dict,
     )
-    from scripts.hermes_session_recovery_baseline_gate import (
+    from scripts.research.comparators.external.session_recovery_baseline_gate import (
         evaluate_hermes_session_recovery_baseline,
         report_to_dict as hermes_session_recovery_baseline_report_to_dict,
     )
@@ -88,10 +88,10 @@ def _load_runtime_dependencies() -> None:
             "scripts.e2e_release_gate",
             "scripts.external_deployment_smoke_gate",
             "scripts.governance_gate",
-            "scripts.hermes_baseline_gate",
-            "scripts.hermes_persistence_baseline_gate",
-            "scripts.hermes_rpc_baseline_gate",
-            "scripts.hermes_session_recovery_baseline_gate",
+            "scripts.research.comparators.external.fts5_baseline_gate",
+            "scripts.research.comparators.external.persistence_write_baseline_gate",
+            "scripts.research.comparators.external.rpc_context_baseline_gate",
+            "scripts.research.comparators.external.session_recovery_baseline_gate",
             "scripts.hot_browser_shadow_gate",
             "scripts.production_closure",
             "scripts.production_packaging_smoke_gate",
@@ -125,14 +125,14 @@ def _load_runtime_dependencies() -> None:
         "evaluate_e2e_release_gate": ("scripts.e2e_release_gate", "evaluate_e2e_release_gate"),
         "evaluate_external_deployment_smoke_gate": ("scripts.external_deployment_smoke_gate", "evaluate_external_deployment_smoke_gate"),
         "evaluate_governance": ("scripts.governance_gate", "evaluate_governance"),
-        "evaluate_hermes_baseline": ("scripts.hermes_baseline_gate", "evaluate_hermes_baseline"),
-        "hermes_baseline_report_to_dict": ("scripts.hermes_baseline_gate", "report_to_dict"),
-        "evaluate_hermes_persistence_baseline": ("scripts.hermes_persistence_baseline_gate", "evaluate_hermes_persistence_baseline"),
-        "hermes_persistence_baseline_report_to_dict": ("scripts.hermes_persistence_baseline_gate", "report_to_dict"),
-        "evaluate_hermes_rpc_baseline": ("scripts.hermes_rpc_baseline_gate", "evaluate_hermes_rpc_baseline"),
-        "hermes_rpc_baseline_report_to_dict": ("scripts.hermes_rpc_baseline_gate", "report_to_dict"),
-        "evaluate_hermes_session_recovery_baseline": ("scripts.hermes_session_recovery_baseline_gate", "evaluate_hermes_session_recovery_baseline"),
-        "hermes_session_recovery_baseline_report_to_dict": ("scripts.hermes_session_recovery_baseline_gate", "report_to_dict"),
+        "evaluate_hermes_baseline": ("scripts.research.comparators.external.fts5_baseline_gate", "evaluate_hermes_baseline"),
+        "hermes_baseline_report_to_dict": ("scripts.research.comparators.external.fts5_baseline_gate", "report_to_dict"),
+        "evaluate_hermes_persistence_baseline": ("scripts.research.comparators.external.persistence_write_baseline_gate", "evaluate_hermes_persistence_baseline"),
+        "hermes_persistence_baseline_report_to_dict": ("scripts.research.comparators.external.persistence_write_baseline_gate", "report_to_dict"),
+        "evaluate_hermes_rpc_baseline": ("scripts.research.comparators.external.rpc_context_baseline_gate", "evaluate_hermes_rpc_baseline"),
+        "hermes_rpc_baseline_report_to_dict": ("scripts.research.comparators.external.rpc_context_baseline_gate", "report_to_dict"),
+        "evaluate_hermes_session_recovery_baseline": ("scripts.research.comparators.external.session_recovery_baseline_gate", "evaluate_hermes_session_recovery_baseline"),
+        "hermes_session_recovery_baseline_report_to_dict": ("scripts.research.comparators.external.session_recovery_baseline_gate", "report_to_dict"),
         "evaluate_hot_browser_shadow_gate": ("scripts.hot_browser_shadow_gate", "evaluate_hot_browser_shadow_gate"),
         "build_production_closure_workflow": ("scripts.production_closure", "build_production_closure_workflow"),
         "evaluate_production_packaging_smoke_gate": ("scripts.production_packaging_smoke_gate", "evaluate_production_packaging_smoke_gate"),
@@ -335,10 +335,10 @@ def _cli_report_inputs(root: Path) -> list[Path]:
 def _baseline_gate_inputs(root: Path) -> list[Path]:
     inputs = [
         root / 'scripts' / 'sota_baseline_gate.py',
-        root / 'scripts' / 'hermes_baseline_gate.py',
-        root / 'scripts' / 'hermes_rpc_baseline_gate.py',
-        root / 'scripts' / 'hermes_session_recovery_baseline_gate.py',
-        root / 'scripts' / 'hermes_persistence_baseline_gate.py',
+        root / 'scripts' / 'research' / 'comparators' / 'external' / 'fts5_baseline_gate.py',
+        root / 'scripts' / 'research' / 'comparators' / 'external' / 'rpc_context_baseline_gate.py',
+        root / 'scripts' / 'research' / 'comparators' / 'external' / 'session_recovery_baseline_gate.py',
+        root / 'scripts' / 'research' / 'comparators' / 'external' / 'persistence_write_baseline_gate.py',
         root / 'scripts' / 'run_checks.py',
     ]
     criterion_root = root / 'target' / 'criterion'

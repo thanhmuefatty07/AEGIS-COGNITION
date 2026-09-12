@@ -43,7 +43,7 @@ def _write_truth_fixture(root: Path) -> None:
 
 
 def _write_freeze_fixture(root: Path, body: str) -> None:
-    path = root / "docs" / "ARCHITECTURE_FREEZE.md"
+    path = root / "docs" / "architecture" / "ARCHITECTURE_FREEZE.md"
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(
         "Status: DESIGN_FREEZE_INPUT\n"

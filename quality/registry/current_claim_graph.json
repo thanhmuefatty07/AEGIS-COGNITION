@@ -1103,8 +1103,8 @@
     "future_obligations": 20,
     "invariants": 46,
     "mapped_surfaces": 9,
-    "surfaces": 152,
-    "unmapped_surfaces": 143,
+    "surfaces": 151,
+    "unmapped_surfaces": 142,
     "unmapped_verifications": 70,
     "unresolved_code_references": 0,
     "verifications": 92
@@ -3851,13 +3851,13 @@
     "all_surfaces_mapped": false,
     "critical_high_risk_mapped": false,
     "criticality_known": false,
-    "unmapped_surface_count": 143
+    "unmapped_surface_count": 142
   },
   "mode": "SHADOW",
   "phase": "PHASE_1_CLAIM_EVIDENCE_GRAPH",
   "schema": "aese-shadow-claim-evidence-graph-v1",
-  "source_head": "903920b2e7e002f2ea32679fe549427ea17f251c",
-  "source_tree_sha256": "d38c86ca6d0dc0068b49342950b147dd00d15507b285075f57613b9cd602e29c",
+  "source_head": "06e2a00e6d18a1fb1ca0edf125aae596ecc6068c",
+  "source_tree_sha256": "8b97febe05ac912dd52997e43346ea4a938a3692187e4ffeb24ee9c9b79f949b",
   "status": "SHADOW_GRAPH_PARTIAL_MAPPING_SELECTION_DISABLED",
   "surfaces": [
     {
@@ -5125,6 +5125,32 @@
     },
     {
       "claim_refs": [],
+      "id": "AESE-SCRIPT_OR_GATE-08301E22060A0496",
+      "kind": "SCRIPT_OR_GATE",
+      "mapping_status": "NOT_MAPPED",
+      "path": "scripts/research/comparators/external/persistence_write_baseline_gate.py",
+      "release_critical": "UNKNOWN",
+      "release_criticality": "UNKNOWN",
+      "risk": "UNKNOWN",
+      "security_criticality": "UNKNOWN",
+      "target": null,
+      "unknown_dependency_policy": "INVALIDATE_CONSERVATIVELY"
+    },
+    {
+      "claim_refs": [],
+      "id": "AESE-SCRIPT_OR_GATE-0C9077E2BE56AF4E",
+      "kind": "SCRIPT_OR_GATE",
+      "mapping_status": "NOT_MAPPED",
+      "path": "scripts/research/comparators/external/session_recovery_baseline_gate.py",
+      "release_critical": "UNKNOWN",
+      "release_criticality": "UNKNOWN",
+      "risk": "UNKNOWN",
+      "security_criticality": "UNKNOWN",
+      "target": null,
+      "unknown_dependency_policy": "INVALIDATE_CONSERVATIVELY"
+    },
+    {
+      "claim_refs": [],
       "id": "AESE-SCRIPT_OR_GATE-0F7930813782918F",
       "kind": "SCRIPT_OR_GATE",
       "mapping_status": "NOT_MAPPED",
@@ -5222,19 +5248,6 @@
       "kind": "SCRIPT_OR_GATE",
       "mapping_status": "NOT_MAPPED",
       "path": "scripts/cluster_loopback_gate.py",
-      "release_critical": "UNKNOWN",
-      "release_criticality": "UNKNOWN",
-      "risk": "UNKNOWN",
-      "security_criticality": "UNKNOWN",
-      "target": null,
-      "unknown_dependency_policy": "INVALIDATE_CONSERVATIVELY"
-    },
-    {
-      "claim_refs": [],
-      "id": "AESE-SCRIPT_OR_GATE-42F256E8C83B546F",
-      "kind": "SCRIPT_OR_GATE",
-      "mapping_status": "NOT_MAPPED",
-      "path": "scripts/hermes_baseline_gate.py",
       "release_critical": "UNKNOWN",
       "release_criticality": "UNKNOWN",
       "risk": "UNKNOWN",
@@ -5374,19 +5387,6 @@
     },
     {
       "claim_refs": [],
-      "id": "AESE-SCRIPT_OR_GATE-69E5D8F13CE0D30A",
-      "kind": "SCRIPT_OR_GATE",
-      "mapping_status": "NOT_MAPPED",
-      "path": "scripts/_debug_probe.py",
-      "release_critical": "UNKNOWN",
-      "release_criticality": "UNKNOWN",
-      "risk": "UNKNOWN",
-      "security_criticality": "UNKNOWN",
-      "target": null,
-      "unknown_dependency_policy": "INVALIDATE_CONSERVATIVELY"
-    },
-    {
-      "claim_refs": [],
       "id": "AESE-SCRIPT_OR_GATE-6A23A2E49524A60A",
       "kind": "SCRIPT_OR_GATE",
       "mapping_status": "NOT_MAPPED",
@@ -5404,6 +5404,19 @@
       "kind": "SCRIPT_OR_GATE",
       "mapping_status": "NOT_MAPPED",
       "path": "scripts/progress_gate.py",
+      "release_critical": "UNKNOWN",
+      "release_criticality": "UNKNOWN",
+      "risk": "UNKNOWN",
+      "security_criticality": "UNKNOWN",
+      "target": null,
+      "unknown_dependency_policy": "INVALIDATE_CONSERVATIVELY"
+    },
+    {
+      "claim_refs": [],
+      "id": "AESE-SCRIPT_OR_GATE-725B072CD59F2910",
+      "kind": "SCRIPT_OR_GATE",
+      "mapping_status": "NOT_MAPPED",
+      "path": "scripts/research/comparators/external/rpc_context_baseline_gate.py",
       "release_critical": "UNKNOWN",
       "release_criticality": "UNKNOWN",
       "risk": "UNKNOWN",
@@ -5493,19 +5506,6 @@
     },
     {
       "claim_refs": [],
-      "id": "AESE-SCRIPT_OR_GATE-8CA7D43E006E7E67",
-      "kind": "SCRIPT_OR_GATE",
-      "mapping_status": "NOT_MAPPED",
-      "path": "scripts/hermes_persistence_baseline_gate.py",
-      "release_critical": "UNKNOWN",
-      "release_criticality": "UNKNOWN",
-      "risk": "UNKNOWN",
-      "security_criticality": "UNKNOWN",
-      "target": null,
-      "unknown_dependency_policy": "INVALIDATE_CONSERVATIVELY"
-    },
-    {
-      "claim_refs": [],
       "id": "AESE-SCRIPT_OR_GATE-8DA14FC12AA842E6",
       "kind": "SCRIPT_OR_GATE",
       "mapping_status": "NOT_MAPPED",
@@ -5575,6 +5575,19 @@
       "kind": "SCRIPT_OR_GATE",
       "mapping_status": "NOT_MAPPED",
       "path": "scripts/hardware_profile_report.py",
+      "release_critical": "UNKNOWN",
+      "release_criticality": "UNKNOWN",
+      "risk": "UNKNOWN",
+      "security_criticality": "UNKNOWN",
+      "target": null,
+      "unknown_dependency_policy": "INVALIDATE_CONSERVATIVELY"
+    },
+    {
+      "claim_refs": [],
+      "id": "AESE-SCRIPT_OR_GATE-AD06010ED55C0891",
+      "kind": "SCRIPT_OR_GATE",
+      "mapping_status": "NOT_MAPPED",
+      "path": "scripts/research/comparators/external/fts5_baseline_gate.py",
       "release_critical": "UNKNOWN",
       "release_criticality": "UNKNOWN",
       "risk": "UNKNOWN",
@@ -5694,32 +5707,6 @@
       "kind": "SCRIPT_OR_GATE",
       "mapping_status": "NOT_MAPPED",
       "path": "scripts/aese_failure_diagnostic.py",
-      "release_critical": "UNKNOWN",
-      "release_criticality": "UNKNOWN",
-      "risk": "UNKNOWN",
-      "security_criticality": "UNKNOWN",
-      "target": null,
-      "unknown_dependency_policy": "INVALIDATE_CONSERVATIVELY"
-    },
-    {
-      "claim_refs": [],
-      "id": "AESE-SCRIPT_OR_GATE-D12E68D70CC5EDF5",
-      "kind": "SCRIPT_OR_GATE",
-      "mapping_status": "NOT_MAPPED",
-      "path": "scripts/hermes_rpc_baseline_gate.py",
-      "release_critical": "UNKNOWN",
-      "release_criticality": "UNKNOWN",
-      "risk": "UNKNOWN",
-      "security_criticality": "UNKNOWN",
-      "target": null,
-      "unknown_dependency_policy": "INVALIDATE_CONSERVATIVELY"
-    },
-    {
-      "claim_refs": [],
-      "id": "AESE-SCRIPT_OR_GATE-D221B7F3E670CEAA",
-      "kind": "SCRIPT_OR_GATE",
-      "mapping_status": "NOT_MAPPED",
-      "path": "scripts/hermes_session_recovery_baseline_gate.py",
       "release_critical": "UNKNOWN",
       "release_criticality": "UNKNOWN",
       "risk": "UNKNOWN",
@@ -6653,6 +6640,6 @@
       "source_id": "AESE-011"
     }
   ],
-  "worktree_epoch": "3a5b54c7fb0d426cca342a14d3899388b640a843b98b18d394ba258c06e365d7",
+  "worktree_epoch": "2c6db95da411df9ae881d1bc27100c8f02c81688face89322f2518b2e9af62ae",
   "worktree_status": "DIRTY"
 }
