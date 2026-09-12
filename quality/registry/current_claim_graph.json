@@ -1103,8 +1103,8 @@
     "future_obligations": 20,
     "invariants": 46,
     "mapped_surfaces": 9,
-    "surfaces": 153,
-    "unmapped_surfaces": 144,
+    "surfaces": 155,
+    "unmapped_surfaces": 146,
     "unmapped_verifications": 70,
     "unresolved_code_references": 0,
     "verifications": 92
@@ -3851,13 +3851,13 @@
     "all_surfaces_mapped": false,
     "critical_high_risk_mapped": false,
     "criticality_known": false,
-    "unmapped_surface_count": 144
+    "unmapped_surface_count": 146
   },
   "mode": "SHADOW",
   "phase": "PHASE_1_CLAIM_EVIDENCE_GRAPH",
   "schema": "aese-shadow-claim-evidence-graph-v1",
-  "source_head": "caca45e4016707e26544f08c4dbe3647aabb201f",
-  "source_tree_sha256": "68b1a366aa2104295ab71a3b8f42a47dad9a9c3c4c9f33f8d8407a6ae61bf083",
+  "source_head": "3a660eee84f5c9d1958eb0ee090bf7b2c551a5e4",
+  "source_tree_sha256": "36bbb4087d53149500a06a33e5e1bce3f7d9376a5620defaaa839cc9ab83e3cc",
   "status": "SHADOW_GRAPH_PARTIAL_MAPPING_SELECTION_DISABLED",
   "surfaces": [
     {
@@ -4191,6 +4191,19 @@
       "kind": "PYTHON_BENCHMARK",
       "mapping_status": "NOT_MAPPED",
       "path": "scripts/benchmark_preflight.py",
+      "release_critical": "UNKNOWN",
+      "release_criticality": "UNKNOWN",
+      "risk": "UNKNOWN",
+      "security_criticality": "UNKNOWN",
+      "target": null,
+      "unknown_dependency_policy": "INVALIDATE_CONSERVATIVELY"
+    },
+    {
+      "claim_refs": [],
+      "id": "AESE-PYTHON_TEST-0190BF9EFF2725A5",
+      "kind": "PYTHON_TEST",
+      "mapping_status": "NOT_MAPPED",
+      "path": "tests/test_cross_platform_evidence_gate.py",
       "release_critical": "UNKNOWN",
       "release_criticality": "UNKNOWN",
       "risk": "UNKNOWN",
@@ -5610,6 +5623,19 @@
     },
     {
       "claim_refs": [],
+      "id": "AESE-SCRIPT_OR_GATE-A62C02206FC85D60",
+      "kind": "SCRIPT_OR_GATE",
+      "mapping_status": "NOT_MAPPED",
+      "path": "scripts/cross_platform_evidence_gate.py",
+      "release_critical": "UNKNOWN",
+      "release_criticality": "UNKNOWN",
+      "risk": "UNKNOWN",
+      "security_criticality": "UNKNOWN",
+      "target": null,
+      "unknown_dependency_policy": "INVALIDATE_CONSERVATIVELY"
+    },
+    {
+      "claim_refs": [],
       "id": "AESE-SCRIPT_OR_GATE-AD06010ED55C0891",
       "kind": "SCRIPT_OR_GATE",
       "mapping_status": "NOT_MAPPED",
@@ -6666,6 +6692,6 @@
       "source_id": "AESE-011"
     }
   ],
-  "worktree_epoch": "e295d15bf6ae199676a0d4f7825963f61a810ce1718ad9f357009fcc2932ea95",
+  "worktree_epoch": "856a819bfa06686158bbdfc4cac12b168517526ee34635af27cccb9a5b5f822b",
   "worktree_status": "DIRTY"
 }
