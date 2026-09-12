@@ -28,10 +28,10 @@ def _write_lane(root: Path, platform_id: str, observed_platform: str, **override
         "platform": observed_platform,
         "toolchain": "Python 3.14.7",
         "discovered": 10,
-        "passed": 9,
+        "passed": 10,
         "ignored": 0,
         "filtered": 0,
-        "skipped": 1,
+        "skipped": 0,
     }
     lane.update(overrides)
     (root / f"{platform_id}.json").write_text(json.dumps(lane), encoding="utf-8")
@@ -64,7 +64,7 @@ def test_validate_directory_rejects_missing_platform(tmp_path: Path) -> None:
         ({"failed": 1, "exit_code": 1, "status": "FAILED", "release_eligible": False}, "non-zero exit"),
         ({"commit": "b" * 40}, "commit does not match"),
         ({"filtered": 1}, "filtered or ignored"),
-        ({"skipped": 2}, "count vectors differ"),
+        ({"skipped": 1}, "skipped tests are not permitted"),
         ({"command": COMMAND + " --maxfail=1"}, "commands differ"),
         ({"toolchain": "Python 3.15.0"}, "toolchains differ"),
     ],

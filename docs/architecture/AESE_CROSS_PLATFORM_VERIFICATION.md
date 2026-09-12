@@ -16,8 +16,8 @@ Each lane emits `aegis-suite-evidence-v1` with its commit, clean-worktree
 state, command, toolchain, host observation, canonical runner label, counts,
 timeout state, exit code, and output hashes. The separate
 `cross-platform-evidence-gate` fails closed when any lane is missing, failed,
-timed out, dirty, mislabeled, filtered, ignored, or has a different count
-vector. A green matrix job without the evidence gate is not a portability
+timed out, dirty, mislabeled, filtered, ignored, skipped, or has a different
+count vector. A green matrix job without the evidence gate is not a portability
 proof.
 
 AESE uses this evidence as a platform anchor while it remains in `SHADOW`.
