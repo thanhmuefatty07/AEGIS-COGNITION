@@ -40,7 +40,9 @@ def _sha256(value: bytes) -> str:
 
 
 def _file_sha256(path: Path) -> str:
-    return _sha256(path.read_bytes())
+    # Evidence inputs are text files. Normalize checkout line endings so the
+    # graph digest is stable across Windows, Linux, and macOS.
+    return _sha256(path.read_bytes().replace(b"\r\n", b"\n"))
 
 
 def _code_source_material(code_nodes: list[dict[str, object]]) -> str:
