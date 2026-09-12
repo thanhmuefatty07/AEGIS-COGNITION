@@ -68,6 +68,8 @@ def _valid_suite(candidate: dict[str, Any], expected_commit: str, command_fragme
     command = candidate.get("command")
     if not isinstance(command, str) or command_fragment not in command:
         errors.append("suite command does not match the required full-suite command")
+    if not isinstance(candidate.get("toolchain"), str) or not candidate["toolchain"].strip():
+        errors.append("toolchain is missing")
     platform_id = candidate.get("platform_id")
     if not isinstance(platform_id, str) or not platform_id.strip():
         errors.append("platform_id is missing")
@@ -123,6 +125,8 @@ def validate_directory(
         )
 
     count_vectors: dict[str, tuple[int, ...]] = {}
+    commands: dict[str, str] = {}
+    toolchains: dict[str, str] = {}
     lane_reports: list[dict[str, Any]] = []
     for platform_id in expected:
         pair = candidates.get(platform_id)
@@ -140,6 +144,8 @@ def validate_directory(
             )
         if not lane_errors:
             count_vectors[platform_id] = tuple(int(candidate[field]) for field in COUNT_FIELDS)
+            commands[platform_id] = str(candidate["command"])
+            toolchains[platform_id] = str(candidate["toolchain"])
         errors.extend(f"{platform_id}: {error}" for error in lane_errors)
         lane_reports.append(
             {
@@ -159,6 +165,10 @@ def validate_directory(
         unique_vectors = {vector for vector in count_vectors.values()}
         if len(unique_vectors) != 1:
             errors.append("suite count vectors differ between operating systems")
+    if commands and len(set(commands.values())) != 1:
+        errors.append("suite commands differ between operating systems")
+    if toolchains and len(set(toolchains.values())) != 1:
+        errors.append("toolchains differ between operating systems")
 
     return {
         "schema": REPORT_SCHEMA,
