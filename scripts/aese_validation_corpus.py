@@ -124,9 +124,15 @@ def _stable_hash(value: object) -> str:
 
 def _artifact_provenance(subject: object) -> dict[str, object]:
     source_sha = str(_planner._inventory.build_inventory()["source_head"])
+    # Reproducibility is keyed to the declared runtime contract, not to the
+    # host that generated the artifact. OS/kernel details and absolute paths
+    # remain useful observations but would make an identical artifact from
+    # Windows, Linux, and macOS unverifiable.
     environment = {
         "python": platform.python_version(),
         "implementation": platform.python_implementation(),
+    }
+    host_observation = {
         "os": platform.system(),
         "release": platform.release(),
         "machine": platform.machine(),
@@ -138,7 +144,9 @@ def _artifact_provenance(subject: object) -> dict[str, object]:
         "relevant_subject_digest": _stable_hash(subject),
         "protocol_hash": "NOT_APPLICABLE",
         "validator_hash": hashlib.sha256(Path(__file__).read_bytes().replace(b"\r\n", b"\n")).hexdigest(),
+        "environment": environment,
         "environment_hash": _stable_hash(environment),
+        "host_observation": host_observation,
         "reuse_status": "NOT_REUSED",
     }
 
@@ -346,7 +354,9 @@ def validate_corpus(actual: dict[str, object], expected: dict[str, object]) -> l
             "relevant_subject_digest",
             "protocol_hash",
             "validator_hash",
+            "environment",
             "environment_hash",
+            "host_observation",
             "reuse_status",
         }
         if not required.issubset(actual_provenance):
@@ -356,6 +366,13 @@ def validate_corpus(actual: dict[str, object], expected: dict[str, object]) -> l
             for key in ("relevant_subject_digest", "protocol_hash", "validator_hash", "environment_hash", "reuse_status")
             if actual_provenance.get(key) != expected_provenance.get(key)
         )
+        environment = actual_provenance.get("environment")
+        if type(environment) is not dict:
+            errors.append("provenance.environment is not a runtime contract")
+        elif actual_provenance.get("environment_hash") != _stable_hash(environment):
+            errors.append("provenance.environment_hash is not self-consistent")
+        if type(actual_provenance.get("host_observation")) is not dict:
+            errors.append("provenance.host_observation is missing")
         for key in ("artifact_source_sha", "current_head"):
             value = actual_provenance.get(key)
             if not isinstance(value, str) or len(value) != 40 or any(character not in "0123456789abcdef" for character in value):

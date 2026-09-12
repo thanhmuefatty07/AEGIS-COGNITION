@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 
 import pytest
+import scripts.aese_validation_corpus as validation_corpus
 
 from scripts.aese_validation_corpus import (
     DEFAULT_CORPUS_OUTPUT,
@@ -54,6 +55,19 @@ def test_final_corpus_covers_unknown_and_partial_mapping_without_skips(corpus: d
 def test_recorded_corpus_hash_is_reproducible(corpus: dict[str, object]) -> None:
     actual = json.loads(DEFAULT_CORPUS_OUTPUT.read_text(encoding="utf-8"))
     assert validate_corpus(actual, corpus) == []
+
+
+def test_environment_hash_is_host_independent_but_host_observation_is_retained(monkeypatch) -> None:
+    baseline = validation_corpus._artifact_provenance({"case": "same"})
+    monkeypatch.setattr(validation_corpus.platform, "system", lambda: "Linux")
+    monkeypatch.setattr(validation_corpus.platform, "release", lambda: "6.8.0")
+    monkeypatch.setattr(validation_corpus.platform, "machine", lambda: "x86_64")
+    monkeypatch.setattr(validation_corpus.sys, "executable", "/opt/venv/bin/python")
+    alternate = validation_corpus._artifact_provenance({"case": "same"})
+
+    assert alternate["environment"] == baseline["environment"]
+    assert alternate["environment_hash"] == baseline["environment_hash"]
+    assert alternate["host_observation"] != baseline["host_observation"]
 
 
 def test_corpus_validator_rejects_stable_decision_drift(corpus: dict[str, object]) -> None:
