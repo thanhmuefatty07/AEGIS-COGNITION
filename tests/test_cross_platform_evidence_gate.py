@@ -65,6 +65,8 @@ def test_validate_directory_rejects_missing_platform(tmp_path: Path) -> None:
         ({"commit": "b" * 40}, "commit does not match"),
         ({"filtered": 1}, "filtered or ignored"),
         ({"skipped": 2}, "count vectors differ"),
+        ({"command": COMMAND + " --maxfail=1"}, "commands differ"),
+        ({"toolchain": "Python 3.15.0"}, "toolchains differ"),
     ],
 )
 def test_validate_directory_rejects_unproven_or_inconsistent_lane(
