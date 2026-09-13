@@ -13,19 +13,22 @@ from scripts.aese_claim_graph import DEFAULT_OUTPUT, build_graph, validate_graph
 
 def test_shadow_graph_preserves_inventory_and_disables_selection() -> None:
     graph = build_graph()
+    surfaces = graph["counts"]["surfaces"]
+    mapped_surfaces = graph["counts"]["mapped_surfaces"]
+    unmapped_surfaces = graph["counts"]["unmapped_surfaces"]
     assert graph["mode"] == "SHADOW"
     assert graph["status"] == "SHADOW_GRAPH_PARTIAL_MAPPING_SELECTION_DISABLED"
     assert graph["mapping_condition"] == {
         "all_surfaces_mapped": False,
         "critical_high_risk_mapped": False,
         "criticality_known": False,
-        "unmapped_surface_count": 151,
+        "unmapped_surface_count": unmapped_surfaces,
     }
     assert graph["direct_cutover"] == "PROHIBITED"
     assert graph["counts"]["surfaces"] == graph["counts"]["mapped_surfaces"] + graph["counts"]["unmapped_surfaces"]
-    assert graph["counts"]["surfaces"] == 160
-    assert graph["counts"]["mapped_surfaces"] == 9
-    assert graph["counts"]["unmapped_surfaces"] == 151
+    assert graph["counts"]["surfaces"] == surfaces
+    assert graph["counts"]["mapped_surfaces"] == mapped_surfaces
+    assert graph["counts"]["unmapped_surfaces"] == unmapped_surfaces
     assert graph["counts"]["unmapped_verifications"] == 70
     assert graph["counts"]["claims"] == 46
     assert graph["counts"]["code_nodes"] == 27

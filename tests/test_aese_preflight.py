@@ -3,6 +3,7 @@ from __future__ import annotations
 import re
 
 from scripts.aese_preflight import build_preflight, validate_preflight
+from scripts.aese_inventory import build_inventory
 
 
 def test_empty_preflight_widens_and_never_skips() -> None:
@@ -36,7 +37,7 @@ def test_unknown_change_widens_conservatively() -> None:
     assert plan["unknown_dependency_policy"] == "WIDEN_TO_RETAINED_SUITE"
     selection = plan["shadow_selection"]
     assert isinstance(selection, dict)
-    assert len(selection["legacy_would_run_item_ids"]) == 160
+    assert len(selection["legacy_would_run_item_ids"]) == len(build_inventory()["items"])
     assert selection["would_reuse_item_ids"] == []
     assert selection["would_skip_item_ids"] == []
     assert selection["external_anchor_requests"] == []
