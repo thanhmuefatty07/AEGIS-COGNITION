@@ -317,7 +317,13 @@ jobs:
         shell: bash
         run: |
           python -m venv .wheel-smoke
-          if [ "$RUNNER_OS" = "Windows" ]; then .wheel-smoke/Scripts/python -m pip install --no-deps artifacts/wheels/*.whl; .wheel-smoke/Scripts/python -c "import importlib.metadata as m; import aegis_cognition; print(m.version('aegis-cognition'))"; else .wheel-smoke/bin/python -m pip install --no-deps artifacts/wheels/*.whl; .wheel-smoke/bin/python -c "import importlib.metadata as m; import aegis_cognition; print(m.version('aegis-cognition'))"; fi
+          if [ "$RUNNER_OS" = "Windows" ]; then
+            .wheel-smoke/Scripts/python -m pip install artifacts/wheels/*.whl
+            (cd .wheel-smoke && ./Scripts/python -c "import importlib.metadata as m; import aegis_cognition; print(m.version('aegis-cognition'))")
+          else
+            .wheel-smoke/bin/python -m pip install artifacts/wheels/*.whl
+            (cd .wheel-smoke && ./bin/python -c "import importlib.metadata as m; import aegis_cognition; print(m.version('aegis-cognition'))")
+          fi
 
   rust-beta-forward-compat:
     name: Rust beta forward compatibility
