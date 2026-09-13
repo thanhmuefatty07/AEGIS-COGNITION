@@ -34,7 +34,7 @@ def _read(path: Path) -> str | None:
         return None
 
 
-def _write(path: Path, value: str) -> None:
+def _write_text(path: Path, value: str) -> None:
     path.write_text(value, encoding="utf-8")
 
 
@@ -80,13 +80,13 @@ def probe(output: Path | None = None, *, cgroup_root: Path = Path("/sys/fs/cgrou
     child: subprocess.Popen[bytes] | None = None
     try:
         group.mkdir()
-        _write(group / "memory.max", str(report["limits"]["memory_max_bytes"]))
-        _write(group / "cpu.max", str(report["limits"]["cpu_max"]))
-        _write(group / "pids.max", str(report["limits"]["pids_max"]))
+        _write_text(group / "memory.max", str(report["limits"]["memory_max_bytes"]))
+        _write_text(group / "cpu.max", str(report["limits"]["cpu_max"]))
+        _write_text(group / "pids.max", str(report["limits"]["pids_max"]))
         report["checks"]["limits_configured"] = True
 
         child = subprocess.Popen([sys.executable, "-c", _child_code()], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        _write(group / "cgroup.procs", str(child.pid))
+        _write_text(group / "cgroup.procs", str(child.pid))
         report["checks"]["child_attached"] = _read(group / "cgroup.procs") == str(child.pid)
         before_memory = _read(group / "memory.current")
         before_events = _read(group / "memory.events") or ""
@@ -104,7 +104,7 @@ def probe(output: Path | None = None, *, cgroup_root: Path = Path("/sys/fs/cgrou
         report["checks"]["live_memory_accounting_observed"] = pressure_seen
         report["checks"]["memory_pressure_oom_kill_observed"] = oom_kill_seen
         report["checks"]["deadline_cancellation_observed"] = child.poll() is not None
-        _write(group / "cgroup.kill", "1")
+        _write_text(group / "cgroup.kill", "1")
         child.wait(timeout=5)
         report["checks"]["cgroup_kill_termination_observed"] = child.returncode is not None
         checks = report["checks"]
