@@ -2,7 +2,7 @@
   "deletion": "PROHIBITED_UNTIL_SUPERSESSION_PROOF",
   "direct_cutover": "PROHIBITED",
   "disposition_counts": {
-    "RETAIN_UNCHANGED": 160
+    "RETAIN_UNCHANGED": 162
   },
   "items": [
     {
@@ -460,6 +460,82 @@
       "stable_id": "AESE-HOSTED_WORKFLOW-481FBF069280B7D0",
       "supersession_rationale": "No stronger replacement evidence is recorded; preserve the existing authoritative path.",
       "target": null
+    },
+    {
+      "claims_supported": [],
+      "cost": "UNKNOWN",
+      "current_status": "NOT_VERIFIED",
+      "dependencies": [],
+      "determinism": "UNKNOWN",
+      "domain": "UNKNOWN",
+      "evidence_produced": [],
+      "failure_semantics": "UNKNOWN",
+      "hardware_requirement": "UNKNOWN",
+      "inputs": [],
+      "invariants_checked": [],
+      "kind": "HOSTED_WORKFLOW_JOB",
+      "known_defects": [],
+      "mapping_status": "NOT_MAPPED",
+      "migration_disposition": "RETAIN_UNCHANGED",
+      "outputs": [],
+      "owner": "UNKNOWN_OWNER",
+      "path": ".github/workflows/deep.yml",
+      "platform": "UNKNOWN",
+      "platform_requirement": "UNKNOWN",
+      "release_critical": "UNKNOWN",
+      "release_criticality": "UNKNOWN",
+      "replacement_id": null,
+      "resource_cost": "UNKNOWN",
+      "risk": "UNKNOWN",
+      "rollback_path": "Re-run the existing native runner directly.",
+      "runner_backend": "GitHub Actions job",
+      "runtime_class": "UNKNOWN",
+      "scope": ".github/workflows",
+      "security_criticality": "UNKNOWN",
+      "side_effects": [
+        "UNKNOWN"
+      ],
+      "stable_id": "AESE-HOSTED_WORKFLOW_JOB-E55A31276EF24D74",
+      "supersession_rationale": "No stronger replacement evidence is recorded; preserve the existing authoritative path.",
+      "target": "platform-enforcement-matrix"
+    },
+    {
+      "claims_supported": [],
+      "cost": "UNKNOWN",
+      "current_status": "NOT_VERIFIED",
+      "dependencies": [],
+      "determinism": "UNKNOWN",
+      "domain": "UNKNOWN",
+      "evidence_produced": [],
+      "failure_semantics": "UNKNOWN",
+      "hardware_requirement": "UNKNOWN",
+      "inputs": [],
+      "invariants_checked": [],
+      "kind": "HOSTED_WORKFLOW_JOB",
+      "known_defects": [],
+      "mapping_status": "NOT_MAPPED",
+      "migration_disposition": "RETAIN_UNCHANGED",
+      "outputs": [],
+      "owner": "UNKNOWN_OWNER",
+      "path": ".github/workflows/deep.yml",
+      "platform": "UNKNOWN",
+      "platform_requirement": "UNKNOWN",
+      "release_critical": "UNKNOWN",
+      "release_criticality": "UNKNOWN",
+      "replacement_id": null,
+      "resource_cost": "UNKNOWN",
+      "risk": "UNKNOWN",
+      "rollback_path": "Re-run the existing native runner directly.",
+      "runner_backend": "GitHub Actions job",
+      "runtime_class": "UNKNOWN",
+      "scope": ".github/workflows",
+      "security_criticality": "UNKNOWN",
+      "side_effects": [
+        "UNKNOWN"
+      ],
+      "stable_id": "AESE-HOSTED_WORKFLOW_JOB-10F17DABB578B02D",
+      "supersession_rationale": "No stronger replacement evidence is recorded; preserve the existing authoritative path.",
+      "target": "platform-enforcement-evidence-completeness"
     },
     {
       "claims_supported": [],
@@ -6095,16 +6171,16 @@
   "phase": "PHASE_0_REBIND_REALITY",
   "schema": "aese-current-evidence-system-inventory-v1",
   "scope_counts": {
-    "inventoried_items": 160,
+    "inventoried_items": 162,
     "missing_scopes": 0,
     "represented_paths": 145,
     "tracked_files": 559,
-    "workflow_jobs": 15
+    "workflow_jobs": 17
   },
   "scope_policy": "tracked_files_only; native runners remain authoritative",
-  "source_head": "b4b35a84433734838c39fb68bada64f26ed5e2fd",
-  "source_tree_sha256": "ef638f695e137f8bc560661c06c9e0da994c6c66c7e5d2fb05ed5b24c296363a",
+  "source_head": "b0c6a08b8494bb918f963bcceffb9a99a5b25215",
+  "source_tree_sha256": "5f3f918745a311d5b77f0022ba3bc17eb464cb836cba194d0bb071ac5ecba16b",
   "status": "INVENTORY_COMPLETE_DISPOSITIONS_RETAINED_MAPPING_PENDING",
-  "worktree_epoch": "5098b65e9499f2c8c77892897c2aad33210d83c1b4c00c822dd782ab7f1f5188",
-  "worktree_status": "DIRTY"
+  "worktree_epoch": "a4a96abeb6d7eb4c277f207ed6f1833951ebe21e664b3ac034784d46372fba8b",
+  "worktree_status": "CLEAN"
 }
