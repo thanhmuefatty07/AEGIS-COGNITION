@@ -231,7 +231,7 @@
             "name": "wasmtime",
             "kind": null,
             "optional": false,
-            "req": "=47.0.3"
+            "req": "=47.0.4"
           },
           {
             "name": "wat",
@@ -2775,17 +2775,17 @@
         "windows_sys"
       ],
       "public_declarations": 111,
-      "declarations": 220,
+      "declarations": 223,
       "child_modules": [
         {
           "name": "tests",
           "public": false,
-          "line": 2540
+          "line": 2555
         }
       ],
       "cfg_test_present": true,
       "unsafe_hits": 4,
-      "test_marker_count": 26,
+      "test_marker_count": 27,
       "resolved_imports": [],
       "fan_out": 0,
       "fan_in": 0,
@@ -2812,22 +2812,22 @@
         {
           "name": "linux",
           "public": false,
-          "line": 13
+          "line": 16
         },
         {
           "name": "windows",
           "public": false,
-          "line": 161
+          "line": 164
         },
         {
           "name": "macos",
           "public": false,
-          "line": 314
+          "line": 317
         },
         {
           "name": "tests",
           "public": false,
-          "line": 361
+          "line": 364
         }
       ],
       "cfg_test_present": false,

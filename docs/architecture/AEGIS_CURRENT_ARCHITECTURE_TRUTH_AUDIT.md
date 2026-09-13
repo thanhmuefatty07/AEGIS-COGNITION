@@ -334,7 +334,7 @@ Rust workspace có 10 members, bảy default:
 | `tool_batching_poc` | batching POC | không |
 | `code_orchestration_poc` | orchestration POC | không |
 
-Core direct deps: Thiserror 2, Memmap2 0.9, Parking_lot 0.12, Ed25519-dalek 2, PyO3 0.29.2, Arrow 54, FlatBuffers 24.12.23, Syn 2, Proc-macro2 1, Quote 1, Serde/JSON 1, Regex 1.10, Tracing 0.1, Wasmtime exact 47.0.3, WAT 1.251.0, BLAKE3 1.5.0, xxhash-rust 0.8.10, Aho-Corasick 1.1.2, Tokio 1, Rayon 1.12; Windows thêm windows-sys 0.61.2. Dev deps: Tempfile 3, Criterion 0.5, Proptest 1.4.0.
+Core direct deps: Thiserror 2, Memmap2 0.9, Parking_lot 0.12, Ed25519-dalek 2, PyO3 0.29.2, Arrow 54, FlatBuffers 24.12.23, Syn 2, Proc-macro2 1, Quote 1, Serde/JSON 1, Regex 1.10, Tracing 0.1, Wasmtime exact 47.0.4, WAT 1.251.0, BLAKE3 1.5.0, xxhash-rust 0.8.10, Aho-Corasick 1.1.2, Tokio 1, Rayon 1.12; Windows thêm windows-sys 0.61.2. Dev deps: Tempfile 3, Criterion 0.5, Proptest 1.4.0.
 
 Plugins dùng các tập con trên; Search SDK thêm Reqwest 0.12/Rustls/Futures/URL và link core; Browser/Sandbox có optional PyO3 và Tokio 1.35; Skills dùng Pulldown-CMark 0.11. POCs dùng Serde/JSON, PyO3 hoặc full Tokio tùy POC.
 
