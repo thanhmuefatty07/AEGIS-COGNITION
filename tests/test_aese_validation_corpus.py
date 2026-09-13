@@ -59,8 +59,10 @@ def test_recorded_corpus_hash_is_reproducible(corpus: dict[str, object]) -> None
     assert validate_corpus(actual, corpus) == []
 
 
-def test_environment_hash_is_host_independent_but_host_observation_is_retained(monkeypatch) -> None:
+def test_environment_hash_is_contract_stable_but_host_observation_is_retained(monkeypatch) -> None:
     baseline = validation_corpus._artifact_provenance({"case": "same"})
+    monkeypatch.setattr(validation_corpus.platform, "python_version", lambda: "3.15.0")
+    monkeypatch.setattr(validation_corpus.platform, "python_implementation", lambda: "PyPy")
     monkeypatch.setattr(validation_corpus.platform, "system", lambda: "Linux")
     monkeypatch.setattr(validation_corpus.platform, "release", lambda: "6.8.0")
     monkeypatch.setattr(validation_corpus.platform, "machine", lambda: "x86_64")
