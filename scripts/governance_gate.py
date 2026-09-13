@@ -12,7 +12,7 @@ REQUIRED_DEPENDENCIES = {
     "arrow-buffer": "54",
     "blake3": "1.5.0",
     "pyo3": "0.29.2",
-    "wasmtime": "47.0.3",
+    "wasmtime": "47.0.4",
 }
 GOVERNANCE_DOMAINS = [
     "runtime",

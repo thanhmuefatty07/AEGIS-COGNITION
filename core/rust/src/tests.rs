@@ -344,7 +344,7 @@ mod tests {
             governance_dependency_record("pyo3", "0.29.2", DependencyRiskClass::PythonFfi, 4),
             governance_dependency_record(
                 "wasmtime",
-                "47.0.3",
+                "47.0.4",
                 DependencyRiskClass::SandboxRuntime,
                 5,
             ),
