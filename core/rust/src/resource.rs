@@ -2518,8 +2518,10 @@ fn detect_filesystem_space(path: &std::path::Path) -> (Option<u64>, Option<u64>)
     let Some(block_size) = block_size else {
         return (None, None);
     };
-    let capacity = statvfs_field_u64(stats.f_blocks).and_then(|blocks| blocks.checked_mul(block_size));
-    let available = statvfs_field_u64(stats.f_bavail).and_then(|blocks| blocks.checked_mul(block_size));
+    let capacity =
+        statvfs_field_u64(stats.f_blocks).and_then(|blocks| blocks.checked_mul(block_size));
+    let available =
+        statvfs_field_u64(stats.f_bavail).and_then(|blocks| blocks.checked_mul(block_size));
     (capacity, available)
 }
 
