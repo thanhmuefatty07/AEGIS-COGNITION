@@ -2487,12 +2487,14 @@ fn detect_filesystem_space(path: &std::path::Path) -> (Option<u64>, Option<u64>)
 }
 
 #[cfg(all(not(miri), any(target_os = "linux", target_os = "macos")))]
-#[allow(clippy::useless_conversion)]
-fn statvfs_field_u64(value: libc::c_ulong) -> Option<u64> {
+fn statvfs_field_u64<T>(value: T) -> Option<u64>
+where
+    T: TryInto<u64>,
+{
     // libc maps these fields to the platform's native unsigned width.  The
     // conversion is required on 32-bit Unix and intentionally retained on
-    // 64-bit targets where it is a no-op.
-    u64::try_from(value).ok()
+    // 64-bit targets where it is infallible.
+    value.try_into().ok()
 }
 
 #[cfg(all(not(miri), any(target_os = "linux", target_os = "macos")))]
