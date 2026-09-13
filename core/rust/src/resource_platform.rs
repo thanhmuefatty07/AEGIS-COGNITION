@@ -6,8 +6,11 @@
 
 use crate::resource::{
     RESOURCE_CONTRACT_SCHEMA_V1, ResourceControlCapabilities, ResourceController, ResourceError,
-    ResourceLease, ResourceScope, ResourceUsageSample,
+    ResourceLease, ResourceUsageSample,
 };
+
+#[cfg(any(target_os = "linux", target_os = "windows"))]
+use crate::resource::ResourceScope;
 
 #[cfg(target_os = "linux")]
 mod linux {
