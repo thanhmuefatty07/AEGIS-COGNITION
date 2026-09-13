@@ -2,7 +2,7 @@
   "deletion": "PROHIBITED_UNTIL_SUPERSESSION_PROOF",
   "direct_cutover": "PROHIBITED",
   "disposition_counts": {
-    "RETAIN_UNCHANGED": 159
+    "RETAIN_UNCHANGED": 160
   },
   "items": [
     {
@@ -498,6 +498,44 @@
       "stable_id": "AESE-HOSTED_WORKFLOW_JOB-C611C411223DEE88",
       "supersession_rationale": "No stronger replacement evidence is recorded; preserve the existing authoritative path.",
       "target": "security-and-replay"
+    },
+    {
+      "claims_supported": [],
+      "cost": "UNKNOWN",
+      "current_status": "NOT_VERIFIED",
+      "dependencies": [],
+      "determinism": "UNKNOWN",
+      "domain": "UNKNOWN",
+      "evidence_produced": [],
+      "failure_semantics": "UNKNOWN",
+      "hardware_requirement": "UNKNOWN",
+      "inputs": [],
+      "invariants_checked": [],
+      "kind": "HOSTED_WORKFLOW_JOB",
+      "known_defects": [],
+      "mapping_status": "NOT_MAPPED",
+      "migration_disposition": "RETAIN_UNCHANGED",
+      "outputs": [],
+      "owner": "UNKNOWN_OWNER",
+      "path": ".github/workflows/deep.yml",
+      "platform": "UNKNOWN",
+      "platform_requirement": "UNKNOWN",
+      "release_critical": "UNKNOWN",
+      "release_criticality": "UNKNOWN",
+      "replacement_id": null,
+      "resource_cost": "UNKNOWN",
+      "risk": "UNKNOWN",
+      "rollback_path": "Re-run the existing native runner directly.",
+      "runner_backend": "GitHub Actions job",
+      "runtime_class": "UNKNOWN",
+      "scope": ".github/workflows",
+      "security_criticality": "UNKNOWN",
+      "side_effects": [
+        "UNKNOWN"
+      ],
+      "stable_id": "AESE-HOSTED_WORKFLOW_JOB-5FB63D9C024E4516",
+      "supersession_rationale": "No stronger replacement evidence is recorded; preserve the existing authoritative path.",
+      "target": "rust-resource-benchmark"
     },
     {
       "claims_supported": [],
@@ -6057,16 +6095,16 @@
   "phase": "PHASE_0_REBIND_REALITY",
   "schema": "aese-current-evidence-system-inventory-v1",
   "scope_counts": {
-    "inventoried_items": 159,
+    "inventoried_items": 160,
     "missing_scopes": 0,
     "represented_paths": 145,
     "tracked_files": 630,
-    "workflow_jobs": 14
+    "workflow_jobs": 15
   },
   "scope_policy": "tracked_files_only; native runners remain authoritative",
-  "source_head": "293e23e76b9409cf3a40e44b39211eb1ad484219",
-  "source_tree_sha256": "ffc2c2f66bf75f19183be1d0d148a361e75dc9dbda7092a7f7af2a77b1864be2",
+  "source_head": "766cf7b33bab8af8e3ba85d664c8b6be8b076c54",
+  "source_tree_sha256": "f1150e100bcee9a11f7222bace9884b7cb86dd9deeff56bbc30c1de0d6960c1f",
   "status": "INVENTORY_COMPLETE_DISPOSITIONS_RETAINED_MAPPING_PENDING",
-  "worktree_epoch": "8774893f7fa27127853484ddd59d5d6b77f743fbe53e7f357aef0d4b94b77ce6",
+  "worktree_epoch": "8b835c9a24dc5085d479b0724c8ae74ad06ba573da59fab7e9ec327740bfc33d",
   "worktree_status": "DIRTY"
 }
