@@ -2,7 +2,7 @@
   "affected_test_paths": [
     "core/rust/src/gt96.rs"
   ],
-  "artifact_hash": "c93d34bdb4742c1a0d203e44c63306611e31b668067e117d0474008effc05c56",
+  "artifact_hash": "dc8d63db921d114bc6ad90aebd87ab29cafab58c38173606964e3a4afc4a35f5",
   "changed_paths": [
     "core/rust/src/gt96.rs"
   ],
@@ -240,7 +240,7 @@
   "phase": "PHASE_3_DETERMINISTIC_AFFECTED_CLOSURE",
   "plan_widened": false,
   "provenance": {
-    "claim_graph_source_tree_sha256": "3d815c125a26a13c1b8b98c59745ba4495eb01d8f248c26c79427483e4dc0d66",
+    "claim_graph_source_tree_sha256": "c336ad07173acd5a13b6e6c28e5813e5a99d7bde0699ce22c8c7cfe8b79c100e",
     "claim_scope": "LOCAL_CHECKOUT_ONLY",
     "edge_digest": "2b47a62553191c763ba1542f9191284cc583f47c9ec205130a6d14530c64e65b",
     "environment": {
@@ -252,14 +252,14 @@
       "release": "10"
     },
     "evidence_class": "PLANNING_ONLY",
-    "inventory_source_tree_sha256": "04d4816a469a77015055389bad923d5049cd94287f95180ae46c6886a29106a5",
-    "mapping_artifact_hash": "86d1edb78e5425725d8b90fbfa09c18e10a2ba32f9c5fcb8a39ed2a43c6e64bd",
+    "inventory_source_tree_sha256": "53423c6eabbaa028f09146c13b403fa73b22a445d762d2e3cf6334dbe7ce241d",
+    "mapping_artifact_hash": "1a664ce7b4c5dd2510baf4151e5b9c842cad18fb321be25da0380cc744aae9db",
     "origin_main_sha": "45f603e4bc8f7f44cdce9a8606ddfb4141b6ef44",
     "promotion": "DISABLED_IN_SHADOW",
-    "source_sha": "f4398d5dfdbcdd1f447017098bd56af87d78485d",
+    "source_sha": "1be66e2636616e877ba98d09f43d1f6a09c1cbd8",
     "validator": "scripts/aese_affected_closure.py"
   },
-  "reproducible_hash": "477fc3629ee65fc88090667db1e5d1b4b9e0801b15ccece47827b96a0cc7a30a",
+  "reproducible_hash": "4bcfb5ef7dbd77796e59a7413e5f701dcb4093d96c4c2f2576dd5f1d40f9c214",
   "schema": "aese-affected-closure-v1",
   "shadow_selection": {
     "authority": "RETAINED_LEGACY_AUTHORITY",
@@ -270,8 +270,8 @@
     ],
     "would_skip_item_ids": []
   },
-  "source_head": "f4398d5dfdbcdd1f447017098bd56af87d78485d",
-  "source_tree_sha256": "3d815c125a26a13c1b8b98c59745ba4495eb01d8f248c26c79427483e4dc0d66",
+  "source_head": "1be66e2636616e877ba98d09f43d1f6a09c1cbd8",
+  "source_tree_sha256": "c336ad07173acd5a13b6e6c28e5813e5a99d7bde0699ce22c8c7cfe8b79c100e",
   "status": "AFFECTED_CLOSURE_PLAN_ONLY_SELECTION_DISABLED",
   "traversed_edges": [
     {
