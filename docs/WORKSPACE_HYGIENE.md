@@ -1,9 +1,10 @@
 # Workspace hygiene
 
-This repository has one canonical implementation root: `C:\Users\ADMIN\AEGIS-COGNITION`.
+This repository has one canonical implementation root: the repository root.
 The product name is `AEGIS-COGNITION`; the Python import package is
 `aegis_cognition`. New implementation, tests, manifests, evidence, and scripts
-must use those canonical names and paths.
+must use those canonical names and paths. Do not encode a developer's local
+drive, username, or checkout path in tracked files.
 
 ## Allowed locations
 
@@ -14,8 +15,8 @@ must use those canonical names and paths.
 - Reviewed machine evidence: the existing `quality/registry/` schemas. Do not
   create ad-hoc evidence folders or duplicate registry files.
 
-Never create project or test directories directly under `C:\Users\ADMIN`, the
-repository parent, or a shared user temp directory. A test that needs an explicit
+Never create project or test directories directly under the repository parent or
+a shared user temp directory. A test that needs an explicit
 temporary root must use a unique path such as
 `.local/tmp/evaluator/20260912T120000Z-<run-id>` and must record the path in its
 report. Concurrent pytest runs must never share a basetemp directory.
