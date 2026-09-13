@@ -6098,13 +6098,13 @@
     "inventoried_items": 160,
     "missing_scopes": 0,
     "represented_paths": 145,
-    "tracked_files": 630,
+    "tracked_files": 559,
     "workflow_jobs": 15
   },
   "scope_policy": "tracked_files_only; native runners remain authoritative",
-  "source_head": "396ab37b44cc1abfcb277316789e5b8480c3e7ed",
+  "source_head": "b4b35a84433734838c39fb68bada64f26ed5e2fd",
   "source_tree_sha256": "ef638f695e137f8bc560661c06c9e0da994c6c66c7e5d2fb05ed5b24c296363a",
   "status": "INVENTORY_COMPLETE_DISPOSITIONS_RETAINED_MAPPING_PENDING",
-  "worktree_epoch": "c06a0964b34544dc8beb5d89841561a349b78dfb8b857e5807eef3959542bd28",
+  "worktree_epoch": "5098b65e9499f2c8c77892897c2aad33210d83c1b4c00c822dd782ab7f1f5188",
   "worktree_status": "DIRTY"
 }

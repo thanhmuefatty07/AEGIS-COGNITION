@@ -1,149 +1,142 @@
 # AEGIS-COGNITION
 
-> Cryptographically-verified AI agent harness — drop-in developer experience.
+> Evidence-first runtime for AI agents: durable memory, replayable execution,
+> and bounded resource coordination.
 
-> **Restricted repository.** This public repository is available for inspection and
-> GitHub service operation only. No use, execution, copying, modification, distribution,
-> deployment, or other reuse is permitted without prior written authorization. See
-> [LICENSE.txt](LICENSE.txt).
-
+[![CI](https://github.com/thanhmuefatty07/AEGIS-COGNITION/actions/workflows/ci.yml/badge.svg)](https://github.com/thanhmuefatty07/AEGIS-COGNITION/actions/workflows/ci.yml)
 [![Python 3.14–3.15](https://img.shields.io/badge/python-3.14--3.15-blue.svg)](https://www.python.org/downloads/)
 [![Rust](https://img.shields.io/badge/rust-toolchain-orange.svg)](https://www.rust-lang.org/)
 [![License](https://img.shields.io/badge/license-Proprietary-red.svg)](LICENSE.txt)
-[![Status](https://img.shields.io/badge/status-evidence--in--progress-yellow.svg)](docs/architecture/BASELINE.md)
 
-## Quick Start (2 minutes)
+AEGIS-COGNITION combines a small Python-facing agent API with a Rust-owned
+authority layer. The design keeps intent and provider integration easy to use
+while making task admission, resource limits, cancellation, evidence, and
+replay explicit and auditable.
+
+## What it provides
+
+- **Durable evidence:** hash-bound records and append-only replay boundaries
+  make important transitions reconstructable.
+- **Bounded execution:** typed resource contracts, admission leases, deadlines,
+  cancellation, and capability-aware platform controls.
+- **Clear trust boundaries:** Wasmtime sandboxing, fail-closed policy checks,
+  and explicit `NOT VERIFIED` states prevent unsupported claims from becoming
+  runtime authority.
+- **A practical developer surface:** a thin `Agent` facade, CLI, provider
+  adapters, browser integration seams, and a Rust plugin/skill SDK.
+- **Cross-platform verification:** the same test contract runs on native
+  Ubuntu, Windows, and macOS GitHub-hosted runners, with deeper Linux evidence
+  available on a persistent test host.
+
+## Quick start
+
+The repository uses a locked `uv` environment and a pinned Rust toolchain.
 
 ```bash
-pip install aegis-cognition
-aegis init
-aegis run "Find trending repos on GitHub"
+git clone https://github.com/thanhmuefatty07/AEGIS-COGNITION.git
+cd AEGIS-COGNITION
+uv python install 3.14.7
+uv sync --locked --extra all --extra dev
+uv run --locked --extra all --extra dev aegis --help
 ```
 
-That's it. First agent runs in under 3 minutes.
+Run the complete Python suite locally:
 
-## Why AEGIS?
+```bash
+uv run --locked --extra all --extra dev python -m pytest -q
+```
 
-| Feature | AEGIS | Hermes | LangGraph | Browser-Use |
-|---------|-------|--------|-----------|-------------|
-| **Setup time** | 2 min | 2 min | 3 min | 2 min |
-| **API complexity** | 1 import | 1 import | 3 imports | 1 import |
-| **Cryptographic evidence** | Yes (BLAKE3) | No | No | No |
-| **Replay audit trail** | Yes (Arrow IPC) | FTS5 SQLite | Checkpoints | Trajectories |
-| **Sandbox isolation** | Wasmtime (fuel+epoch) | No | No | No |
-| **Provider fallback** | Automatic 429 → reserve | Config-only | Config-only | Config-only |
-| **FTS5 search speed** | Evidence in progress | Baseline | N/A | N/A |
-| **JSON-RPC speed** | Evidence in progress | Baseline | N/A | N/A |
+To call an external model provider, copy `.env.example` to `.env` and add a
+key for an approved provider. `.env` is local-only and must never be committed.
 
 ## Python API
 
 ```python
-from aegis_cognition import Agent
+from aegis_cognition import Agent, run
 
-# Simple task
-agent = Agent(task="Find trending repos on GitHub")
-result = agent.run()
+result = Agent(task="Summarize the supplied research notes").run()
 print(result.output)
 
-# With browser automation
-agent = Agent(
-    task="Go to amazon.com and find the best laptop under $1000",
-    browser=True,
-    trust_level="DEV"
-)
-result = agent.run()
-
-# One-liner
-from aegis_cognition import run
-result = run("Hello world")
+quick_result = run("Explain the evidence recorded for this task")
+print(quick_result.output)
 ```
 
-## CLI
+Provider credentials and browser access are explicit configuration choices;
+examples do not imply that external services or live browsing are enabled.
 
-```bash
-# Setup
-aegis init
+## Trust levels
 
-# Run tasks
-aegis run "Search for AI papers on arXiv"
-aegis run "Translate this text to Vietnamese"
-
-# See examples
-aegis examples
-
-# Check config
-aegis config show
-```
-
-## Trust Levels
-
-| Level | Speed | Crypto | Evidence | Use Case |
-|-------|-------|--------|----------|----------|
-| **DEV** | Fast (< 5µs) | BLAKE3 hash only | Degraded OK | Local development |
-| **STAGING** | Medium | BLAKE3 + Arrow IPC | Gaps recorded | CI/CD testing |
-| **PROD** | Slower | Full chain + mmap | Fail-closed | Production deployment |
+| Level | Evidence behavior | Intended use |
+|---|---|---|
+| `DEV` | Hash-only, degraded operation allowed | Local development |
+| `STAGING` | Hash and replay evidence, gaps recorded | CI and integration work |
+| `PROD` | Full evidence chain, fail-closed policy | Future production deployment |
 
 ## Architecture
 
-```
-from aegis_cognition import Agent
-         │
-    ┌────▼────┐  1. Task → GoalIntakeProof
-    │  Agent  │  2. LLM call with provider fallback
-    └────┬────┘  3. Browser evidence (optional)
-         │       4. Evidence commit → Hot Engine (InMemoryArena)
-    ┌────▼────┐  5. Async seal → Cold Ledger (Arrow IPC)
-    │ Result  │  6. Replay ledger append
-    └─────────┘
+```text
+             task intent
+                  │
+          ┌───────▼────────┐
+          │ Python facade  │  provider and semantic adapters
+          └───────┬────────┘
+                  │ versioned contracts
+          ┌───────▼────────┐
+          │ Rust authority │  admission, limits, evidence, replay
+          └───────┬────────┘
+                  │
+       ┌──────────▼──────────┐
+       │ bounded execution   │  sandbox and platform capability seams
+       └──────────┬──────────┘
+                  │
+       append-only evidence and replay archive
 ```
 
-## Benchmarks
+The detailed ownership map and current status live in
+[`docs/architecture/README.md`](docs/architecture/README.md). The canonical
+runtime plan is [`docs/architecture/AEGIS_LAB_RUNTIME_MASTER_PLAN.md`](docs/architecture/AEGIS_LAB_RUNTIME_MASTER_PLAN.md).
 
-Historical benchmark numbers are not release evidence for the current runtime
-architecture and are intentionally omitted here. Run the resource-policy
-protocol in [`docs/architecture/RESOURCE_POLICY_BENCHMARKS.md`](docs/architecture/RESOURCE_POLICY_BENCHMARKS.md)
-and retain raw output before making performance claims. Current status is
-`NOT VERIFIED` for cross-host H0/H1/H2 comparison.
+## Verification status
+
+The repository publishes evidence rather than broad quality claims. Current
+verification is visible in [GitHub Actions](https://github.com/thanhmuefatty07/AEGIS-COGNITION/actions)
+and governed by:
+
+- [`docs/architecture/VERIFICATION_INDEX.md`](docs/architecture/VERIFICATION_INDEX.md)
+- [`docs/architecture/TESTING_AND_EVIDENCE.md`](docs/architecture/TESTING_AND_EVIDENCE.md)
+- [`docs/architecture/NOT_VERIFIED_REGISTRY.md`](docs/architecture/NOT_VERIFIED_REGISTRY.md)
+- [`docs/architecture/evidence/current.json`](docs/architecture/evidence/current.json)
+
+The current release posture remains **production readiness not claimed**. Local
+or CI measurements are scoped to their host and workload; they do not become
+universal performance, hardware, or security guarantees.
 
 ## Documentation
 
-- [Quick Start Guide](docs/quickstart.md)
-- [Agent API Reference](docs/api/agent.md)
-- [CLI Commands](docs/api/cli.md)
+- [Quick start](docs/quickstart.md)
+- [API reference](docs/api/)
 - [Tutorials](docs/tutorials/)
-- [Examples](examples/)
-- [Error Guide](docs/troubleshooting/common-errors.md)
-- [Security Architecture](docs/architecture.md)
-- [Optional ChatGPT Web provider](docs/integrations/chatgpt-web.md)
-- [Architecture traceability](docs/architecture/TRACEABILITY.md)
-- [Current evidence manifest](docs/architecture/evidence/current.json)
-- [NOT VERIFIED registry](docs/architecture/NOT_VERIFIED_REGISTRY.md)
-
-## Requirements
-
-- CPython 3.14.7 (production/local baseline); CPython 3.15.0-rc.1 is a
-  separate forward-compatibility lane used by CI
-- Rust toolchain 1.98.1 (pinned by `rust-toolchain.toml`)
-- LLM API key (OpenAI, Anthropic, OpenRouter, or Nvidia NIM)
-- Optional: Playwright (for browser automation)
+- [Integrations](docs/integrations/)
+- [Troubleshooting](docs/troubleshooting/common-errors.md)
+- [Architecture and contracts](docs/architecture/)
+- [Architecture decisions](docs/adr/)
+- [Repository layout and hygiene](docs/WORKSPACE_HYGIENE.md)
+- [Historical records](docs/archive/README.md)
 
 ## License and use
 
-AEGIS-COGNITION is proprietary software. **All rights are reserved.** No permission is
-granted for personal, academic, research, testing, evaluation, internal, noncommercial,
-or commercial use without a separate written agreement signed by the copyright holder.
-The GitHub platform rights needed to view and fork a public repository do not authorize
-use of forked material outside GitHub. See [LICENSE.txt](LICENSE.txt) for the complete
-terms.
+AEGIS-COGNITION is proprietary software. All rights are reserved. The public
+repository is available for inspection and GitHub service operation only. No permission is
+granted for execution, copying, modification, distribution,
+deployment, evaluation, research, or commercial use without prior written
+authorization from the copyright holder. See [LICENSE.txt](LICENSE.txt) for the
+complete terms.
 
-## Status
+## Project status
 
-- Production readiness: **NOT CLAIMED** — see `docs/architecture/BASELINE.md`
-- Resource authority: Rust-owned `HardwareProfile` + bounded admission contracts
-- Benchmark status: **NOT VERIFIED** on the current hardware/resource architecture
-- Sandbox status: scoped evidence required; no absolute escape guarantee is made
+- Product name: **AEGIS-COGNITION**
+- Python package: `aegis_cognition`
+- Rust authority: pinned by `rust-toolchain.toml`
+- Release posture: **evidence-gated; production readiness not claimed**
 
----
-
-Built with Rust + Python + BLAKE3 + Arrow IPC + Wasmtime.  
-[Website](https://aegis-cognition.ai) · [Docs](https://docs.aegis-cognition.ai) · [GitHub](https://github.com/thanhmuefatty07/AEGIS-COGNITION)
+[Website](https://aegis-cognition.ai) · [Documentation](https://docs.aegis-cognition.ai) · [GitHub](https://github.com/thanhmuefatty07/AEGIS-COGNITION)

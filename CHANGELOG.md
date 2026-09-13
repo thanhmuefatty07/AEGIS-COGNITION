@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Current verification and repository hygiene — 2026-09-13
+
+- Refreshed the public repository entry point with evidence-scoped setup,
+  architecture, verification, documentation, and license guidance.
+- Removed tracked local agent metadata from the publishable tree; `.local/`
+  remains a developer-only path covered by `.gitignore`.
+- Revalidated the final CI/deep workflows across Ubuntu, Windows, and macOS;
+  the current commit is the reference revision for the published checks.
+
 ### Added
 - **`comprehensive_hardening_report.md`**: audit-grounded hardening record distinguishing
   premise-wrong prompt items, already-done prior-session items, and new-this-session work.
