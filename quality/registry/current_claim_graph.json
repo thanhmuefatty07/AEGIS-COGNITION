@@ -1103,8 +1103,8 @@
     "future_obligations": 20,
     "invariants": 46,
     "mapped_surfaces": 9,
-    "surfaces": 160,
-    "unmapped_surfaces": 151,
+    "surfaces": 162,
+    "unmapped_surfaces": 153,
     "unmapped_verifications": 70,
     "unresolved_code_references": 0,
     "verifications": 92
@@ -3851,13 +3851,13 @@
     "all_surfaces_mapped": false,
     "critical_high_risk_mapped": false,
     "criticality_known": false,
-    "unmapped_surface_count": 151
+    "unmapped_surface_count": 153
   },
   "mode": "SHADOW",
   "phase": "PHASE_1_CLAIM_EVIDENCE_GRAPH",
   "schema": "aese-shadow-claim-evidence-graph-v1",
-  "source_head": "b4b35a84433734838c39fb68bada64f26ed5e2fd",
-  "source_tree_sha256": "06ef60602ce3cd627bc7d480cd39a221804e45bf3da43a8777523d00aa377171",
+  "source_head": "de4774aa229a66cabd197a775573cf3fb7535a15",
+  "source_tree_sha256": "9712ca3e6e6b321c1c30b435054934922be32866d1f25699aaa9b48765b79b96",
   "status": "SHADOW_GRAPH_PARTIAL_MAPPING_SELECTION_DISABLED",
   "surfaces": [
     {
@@ -3992,6 +3992,19 @@
     },
     {
       "claim_refs": [],
+      "id": "AESE-HOSTED_WORKFLOW_JOB-10F17DABB578B02D",
+      "kind": "HOSTED_WORKFLOW_JOB",
+      "mapping_status": "NOT_MAPPED",
+      "path": ".github/workflows/deep.yml",
+      "release_critical": "UNKNOWN",
+      "release_criticality": "UNKNOWN",
+      "risk": "UNKNOWN",
+      "security_criticality": "UNKNOWN",
+      "target": "platform-enforcement-evidence-completeness",
+      "unknown_dependency_policy": "INVALIDATE_CONSERVATIVELY"
+    },
+    {
+      "claim_refs": [],
       "id": "AESE-HOSTED_WORKFLOW_JOB-16AA7B92C94F22CB",
       "kind": "HOSTED_WORKFLOW_JOB",
       "mapping_status": "NOT_MAPPED",
@@ -4118,6 +4131,19 @@
       "risk": "UNKNOWN",
       "security_criticality": "UNKNOWN",
       "target": "security-and-replay",
+      "unknown_dependency_policy": "INVALIDATE_CONSERVATIVELY"
+    },
+    {
+      "claim_refs": [],
+      "id": "AESE-HOSTED_WORKFLOW_JOB-E55A31276EF24D74",
+      "kind": "HOSTED_WORKFLOW_JOB",
+      "mapping_status": "NOT_MAPPED",
+      "path": ".github/workflows/deep.yml",
+      "release_critical": "UNKNOWN",
+      "release_criticality": "UNKNOWN",
+      "risk": "UNKNOWN",
+      "security_criticality": "UNKNOWN",
+      "target": "platform-enforcement-matrix",
       "unknown_dependency_policy": "INVALIDATE_CONSERVATIVELY"
     },
     {
@@ -6757,6 +6783,6 @@
       "source_id": "AESE-011"
     }
   ],
-  "worktree_epoch": "6577779caad5900ae50a3d15782cb7da422a01ac5df5fcf4a6c38dae6079adfa",
-  "worktree_status": "DIRTY"
+  "worktree_epoch": "2cdc90016987e9af7a0bf50785aaf71de7c3fe89ab655105655ba109ad529332",
+  "worktree_status": "CLEAN"
 }
