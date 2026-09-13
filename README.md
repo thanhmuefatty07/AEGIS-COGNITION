@@ -2,9 +2,14 @@
 
 > Cryptographically-verified AI agent harness — drop-in developer experience.
 
+> **Restricted repository.** This public repository is available for inspection and
+> GitHub service operation only. No use, execution, copying, modification, distribution,
+> deployment, or other reuse is permitted without prior written authorization. See
+> [LICENSE.txt](LICENSE.txt).
+
 [![Python 3.14–3.15](https://img.shields.io/badge/python-3.14--3.15-blue.svg)](https://www.python.org/downloads/)
 [![Rust](https://img.shields.io/badge/rust-toolchain-orange.svg)](https://www.rust-lang.org/)
-[![License](https://img.shields.io/badge/license-BUSL--1.1-green.svg)](docs/archive/legacy/commercial-closure.md)
+[![License](https://img.shields.io/badge/license-Proprietary-red.svg)](LICENSE.txt)
 [![Status](https://img.shields.io/badge/status-evidence--in--progress-yellow.svg)](docs/architecture/BASELINE.md)
 
 ## Quick Start (2 minutes)
@@ -122,11 +127,14 @@ and retain raw output before making performance claims. Current status is
 - LLM API key (OpenAI, Anthropic, OpenRouter, or Nvidia NIM)
 - Optional: Playwright (for browser automation)
 
-## License
+## License and use
 
-BUSL-1.1 — Free for development and non-production use.
-Enterprise license required for production deployment.
-See business model in `docs/archive/legacy/commercial-closure.md`.
+AEGIS-COGNITION is proprietary software. **All rights are reserved.** No permission is
+granted for personal, academic, research, testing, evaluation, internal, noncommercial,
+or commercial use without a separate written agreement signed by the copyright holder.
+The GitHub platform rights needed to view and fork a public repository do not authorize
+use of forked material outside GitHub. See [LICENSE.txt](LICENSE.txt) for the complete
+terms.
 
 ## Status
 

@@ -22,6 +22,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     (a separate `improved_wasm` binding is what the test exercises)
 
 ### Changed
+- **Repository licensing**: replaced the former source-available declarations with the
+  tracked `LICENSE.txt` proprietary policy. No default use, execution, modification,
+  distribution, or commercial permission is granted; authorized contributions require
+  prior written approval.
 - **License expiry diagnostics**: `LicenseManager::check_feature` now preserves
   the actual `expired_at` timestamp instead of returning `0`; a Rust regression
   test covers the error payload.

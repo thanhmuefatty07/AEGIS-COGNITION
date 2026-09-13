@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 name = "aegis-cognition-core-python"
 version = "0.1.0"
 description = "Python bridge contracts for AEGIS-COGNITION"
-license = {text = "BUSL-1.1"}
+license = {text = "Proprietary - All Rights Reserved"}
 requires-python = ">=3.14,<3.16"
 dependencies = [
     "pyyaml>=6.0",

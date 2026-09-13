@@ -1,7 +1,9 @@
 # Contributing
 
-AEGIS-COGNITION is a research project — contributions are accepted via the
-**Audit-First Workflow**. Every change must arrive with evidence.
+AEGIS-COGNITION is proprietary software. The repository may be inspected publicly, but
+no contribution, patch, fork-based reuse, or derivative work is accepted without prior
+written authorization from the copyright holder. Authorized contributions still use the
+**Audit-First Workflow** and must arrive with evidence. See [LICENSE.txt](LICENSE.txt).
 
 ## Ground Rules
 
