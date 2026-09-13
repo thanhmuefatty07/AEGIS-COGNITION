@@ -6,6 +6,9 @@ The former `AEGIS-COGNITION/` and `core/rust/AEGIS-COGNITION/` trees are in
 is kept under `scripts/research/comparators/external/`.
 These documents and source snapshots do not establish current release readiness.
 Existing evidence JSON retains original paths and hashes as historical records.
+Historical licensing or business-model wording in this archive is superseded and
+does not grant permission. The only current project terms are in the root
+[`LICENSE.txt`](../../LICENSE.txt).
 
 Current implementation lives in `aegis_cognition/`, `core/`, and `desktop/`.
 `aegis_cognition` is the Python import package, so its name is required by callers.
