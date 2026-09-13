@@ -7,6 +7,7 @@ import json
 import mmap
 import platform
 import socket
+import threading
 import time
 import tracemalloc
 from datetime import UTC, datetime
@@ -51,14 +52,45 @@ def _mmap_view(payload: bytes) -> None:
 
 def _socket_roundtrip(payload: bytes) -> None:
     left, right = socket.socketpair()
+    received = 0
+    reader_error: list[BaseException] = []
+
+    def drain() -> None:
+        nonlocal received
+        try:
+            while received < len(payload):
+                chunk = right.recv(min(1024 * 1024, len(payload) - received))
+                if not chunk:
+                    raise ConnectionError("socket peer closed before the payload was drained")
+                received += len(chunk)
+        except BaseException as exc:  # propagate the reader failure to the caller
+            reader_error.append(exc)
+
+    reader = threading.Thread(target=drain, name="aegis-payload-drain")
+    reader.start()
     try:
-        left.sendall(payload)
-        remaining = len(payload)
-        while remaining:
-            remaining -= len(right.recv(min(1024 * 1024, remaining)))
+        view = memoryview(payload)
+        while view:
+            sent = left.send(view)
+            if sent <= 0:
+                raise ConnectionError("socket peer closed before the payload was sent")
+            view = view[sent:]
+        reader.join(timeout=10)
+        if reader.is_alive():
+            raise TimeoutError("socket payload drain exceeded the bounded timeout")
+        if reader_error:
+            raise reader_error[0]
+        if received != len(payload):
+            raise ValueError("socket payload roundtrip received an incomplete payload")
     finally:
+        try:
+            left.shutdown(socket.SHUT_WR)
+        except OSError:
+            pass
         left.close()
         right.close()
+        if reader.is_alive():
+            reader.join(timeout=1)
 
 
 METHODS = {
