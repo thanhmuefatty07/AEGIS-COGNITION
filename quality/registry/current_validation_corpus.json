@@ -1,5 +1,5 @@
 {
-  "artifact_hash": "2071fb340ccd900ce8bd8bfe8fcedc4aa7e555b05387afb237fe75eef48645d0",
+  "artifact_hash": "361b98177dc339201de0d9be0fbe56e9e22c00866b2ee358281113eb0ce09875",
   "development_corpus": [
     {
       "case_id": "DEV-GT96-GOOD",
@@ -13,7 +13,7 @@
         "WIDENED_UNKNOWN": 0,
         "WOULD_REUSE": 0,
         "WOULD_RUN": 1,
-        "WOULD_SKIP": 159
+        "WOULD_SKIP": 161
       },
       "label": "KNOWN_GOOD",
       "mutation": "NONE",
@@ -41,7 +41,7 @@
       "closure_status": "WIDENED_ALL_RETAINED",
       "critical": true,
       "decision_state_counts": {
-        "WIDENED_UNKNOWN": 160,
+        "WIDENED_UNKNOWN": 162,
         "WOULD_REUSE": 0,
         "WOULD_RUN": 0,
         "WOULD_SKIP": 0
@@ -72,7 +72,7 @@
       "closure_status": "WIDENED_ALL_RETAINED",
       "critical": true,
       "decision_state_counts": {
-        "WIDENED_UNKNOWN": 160,
+        "WIDENED_UNKNOWN": 162,
         "WOULD_REUSE": 0,
         "WOULD_RUN": 0,
         "WOULD_SKIP": 0
@@ -103,7 +103,7 @@
       "closure_status": "WIDENED_ALL_RETAINED",
       "critical": false,
       "decision_state_counts": {
-        "WIDENED_UNKNOWN": 160,
+        "WIDENED_UNKNOWN": 162,
         "WOULD_REUSE": 0,
         "WOULD_RUN": 0,
         "WOULD_SKIP": 0
@@ -135,7 +135,7 @@
         "WIDENED_UNKNOWN": 0,
         "WOULD_REUSE": 0,
         "WOULD_RUN": 1,
-        "WOULD_SKIP": 159
+        "WOULD_SKIP": 161
       },
       "label": "KNOWN_BAD",
       "mutation": "SERIALIZATION_SCHEMA_MUTATION",
@@ -163,7 +163,7 @@
       "closure_status": "WIDENED_ALL_RETAINED",
       "critical": true,
       "decision_state_counts": {
-        "WIDENED_UNKNOWN": 160,
+        "WIDENED_UNKNOWN": 162,
         "WOULD_REUSE": 0,
         "WOULD_RUN": 0,
         "WOULD_SKIP": 0
@@ -196,7 +196,7 @@
       "closure_status": "WIDENED_ALL_RETAINED",
       "critical": true,
       "decision_state_counts": {
-        "WIDENED_UNKNOWN": 160,
+        "WIDENED_UNKNOWN": 162,
         "WOULD_REUSE": 0,
         "WOULD_RUN": 0,
         "WOULD_SKIP": 0
@@ -227,7 +227,7 @@
       "closure_status": "WIDENED_ALL_RETAINED",
       "critical": false,
       "decision_state_counts": {
-        "WIDENED_UNKNOWN": 160,
+        "WIDENED_UNKNOWN": 162,
         "WOULD_REUSE": 0,
         "WOULD_RUN": 0,
         "WOULD_SKIP": 0
@@ -256,7 +256,7 @@
       "closure_status": "WIDENED_ALL_RETAINED",
       "critical": true,
       "decision_state_counts": {
-        "WIDENED_UNKNOWN": 160,
+        "WIDENED_UNKNOWN": 162,
         "WOULD_REUSE": 0,
         "WOULD_RUN": 0,
         "WOULD_SKIP": 0
@@ -289,7 +289,7 @@
       "closure_status": "WIDENED_ALL_RETAINED",
       "critical": true,
       "decision_state_counts": {
-        "WIDENED_UNKNOWN": 160,
+        "WIDENED_UNKNOWN": 162,
         "WOULD_REUSE": 0,
         "WOULD_RUN": 0,
         "WOULD_SKIP": 0
@@ -332,21 +332,21 @@
   },
   "mode": "SHADOW",
   "provenance": {
-    "artifact_source_sha": "b4b35a84433734838c39fb68bada64f26ed5e2fd",
-    "current_head": "b4b35a84433734838c39fb68bada64f26ed5e2fd",
+    "artifact_source_sha": "5f91a903c23cadca84cc4109600980bed2333a1d",
+    "current_head": "5f91a903c23cadca84cc4109600980bed2333a1d",
     "environment": {
       "implementation": "CPython",
-      "python": "3.14.7"
+      "python": "3.11.9"
     },
-    "environment_hash": "55a122290fd67d75926e31926e0f1bbba62f3fef5d29fb173e497c0674cbf8a6",
+    "environment_hash": "0482ecc5d3247c8d2429659800c72df905c3561ff1c94397c37686356bf7c145",
     "host_observation": {
-      "executable": "C:\\Users\\ADMIN\\AEGIS-COGNITION\\.venv\\Scripts\\python.exe",
+      "executable": "C:\\Users\\ADMIN\\AppData\\Local\\Programs\\Python\\Python311\\python.exe",
       "machine": "AMD64",
       "os": "Windows",
-      "release": "11"
+      "release": "10"
     },
     "protocol_hash": "NOT_APPLICABLE",
-    "relevant_subject_digest": "4ec2644a2479b37060f1b1112277513266ca38d936652f63592941f37ab53953",
+    "relevant_subject_digest": "e3d8f524d1e117ee9fc4a8a4423fe2bf802dd501ac15dc6b4d8557ed79635e46",
     "reuse_status": "NOT_REUSED",
     "validator_hash": "889c24d819b80151f60ef935d3f1e84863714a594b793101255f81e71115dbc1"
   },
