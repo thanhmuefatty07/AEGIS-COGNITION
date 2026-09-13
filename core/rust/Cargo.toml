@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2024"
 rust-version.workspace = true
 publish = false
-license = "BUSL-1.1"
+license-file = "../../LICENSE.txt"
 repository = "https://github.com/thanhmuefatty07/AEGIS-COGNITION"
 
 [lib]

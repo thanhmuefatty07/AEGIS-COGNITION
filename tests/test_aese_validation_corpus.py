@@ -14,6 +14,7 @@ from scripts.aese_validation_corpus import (
     _load_retained_paired_cost,
     validate_corpus,
 )
+from scripts.aese_inventory import DEFAULT_OUTPUT as DEFAULT_INVENTORY_OUTPUT
 
 
 @pytest.fixture(scope="module")
@@ -45,7 +46,8 @@ def test_final_corpus_covers_unknown_and_partial_mapping_without_skips(corpus: d
         case = cases[case_id]
         assert case["plan_widened"] is True
         assert case["changed_unmapped_surface_paths"]
-        assert case["decision_state_counts"]["WIDENED_UNKNOWN"] == 155
+        inventory = json.loads(DEFAULT_INVENTORY_OUTPUT.read_text(encoding="utf-8"))
+        assert case["decision_state_counts"]["WIDENED_UNKNOWN"] == len(inventory["items"])
         assert case["decision_state_counts"]["WOULD_SKIP"] == 0
     metrics = corpus["metrics"]
     assert metrics["synthetic_critical_planning_targets"] == 5

@@ -258,10 +258,10 @@ Knowledge graph snapshot có 11,449 nodes, 45,333 edges: 2,424 Function, 1,873 M
 | Plugin/POC crates | đều `0.1.0` |
 | Python `__version__` | `0.1.0` |
 | Classifier | `Development Status :: 4 - Beta` |
-| Declared license | `BUSL-1.1`; `Other/Proprietary License` |
+| Declared license | Proprietary / All Rights Reserved; written permission required |
 | Rust publishing | `publish=false` |
 
-Không có Git tag. `CHANGELOG.md` có section `0.1.0` ngày 2026-06-15 nhưng tag tương ứng không tồn tại. README mô tả development/non-production và enterprise production, nhưng không có tracked `LICENSE`, `LICENCE`, `COPYING` hay `NOTICE`. Manifest string không thay văn bản license; đây là legal/packaging gap.
+Không có Git tag. `CHANGELOG.md` có section `0.1.0` ngày 2026-06-15 nhưng tag tương ứng không tồn tại. README và metadata hiện trỏ tới `LICENSE.txt`, trong đó giữ toàn bộ quyền và yêu cầu written permission cho mọi hình thức sử dụng. Quyền xem/fork do GitHub cấp qua Terms of Service là quyền của nền tảng, không phải license sử dụng mã nguồn.
 
 `core/rust/src/licensing.rs` có Ed25519-related logic nhưng vẫn có production-oriented comments/soft-check paths. Không được suy ra commercial enforcement production hoàn chỉnh. Repository/issue metadata hiện trỏ remote GitHub thực tế; website/docs domains và ownership/availability vẫn chưa verified.
 
@@ -499,7 +499,7 @@ Residual risks:
 - compatibility-only CLI vẫn ghi credential vào `.env`; canonical root CLI đã redacts output và atomic-write nhưng chưa có platform secret-store integration;
 - branch protection, full fuzz, Miri/ASan, signed attestation chưa verified;
 - browser adversarial coverage chưa đủ claim SSRF-proof;
-- thiếu license text;
+- enforcement ngoài nền tảng phụ thuộc vào quyền sở hữu bản quyền và hồ sơ written permission;
 - retention/deletion/export cho research/browser artifacts chưa chứng minh đầy đủ.
 
 ## 17. Resource, concurrency, cancellation và failure semantics
@@ -734,7 +734,7 @@ Policy đánh dấu 15 row còn lại non-blocking cho quyết định deploymen
 | Maturin exact 1.14.1 | global PATH remains 1.13.3; project `.venv` is 1.14.1 and the rebuild was run through it | build phải dùng `.venv`/locked dev env, không dùng binary global |
 | README/CONTRIBUTING test counts cũ | retained 456 Rust/615 Python | docs không là evidence |
 | changelog 0.1.0 | không Git tag | release history lệch |
-| BUSL declared | thiếu license text | legal/distribution gap |
+| Proprietary license | `LICENSE.txt` đã tracked; root/core Python/Rust metadata đã đồng bộ | mọi quyền sử dụng ngoài quyền nền tảng GitHub cần written permission; không có anti-fork control ở public repository |
 | repository/issue URLs | đã đồng bộ remote `thanhmuefatty07/AEGIS-COGNITION` | website/docs ownership và release identity vẫn cần external verification |
 | CLI quảng bá 5 providers | parity chưa proven | overclaim risk |
 | `config set` nói đã set | hiện ghi TOML atomically, validate key/type và không echo value | secret persistence vẫn nên ưu tiên env/platform store |
@@ -748,7 +748,7 @@ Policy đánh dấu 15 row còn lại non-blocking cho quyết định deploymen
 
 1. Production provenance/blockers: NV-004/016/017/018/019.
 2. Packaging authority: canonical root wheel và role của core Python distribution.
-3. License/release identity: license text, URLs, tags, changelog.
+3. Proprietary license/release identity: license text, URLs, tags, changelog.
 4. Lab cohesion: tách `lab.py` chỉ sau characterization tests; không mass-refactor vì thẩm mỹ.
 5. Global authority: same subject/cell policy qua provider/browser/process/benchmark/compat.
 6. AESE calibration: mapping, mutation/incident corpus, representative workloads trước cutover.
@@ -884,7 +884,7 @@ commit, push hoặc workflow retry nào được thực hiện.
 | Desktop release artifacts | sidecar PyInstaller, Vite renderer, Tauri release build | fresh r4 sidecar build + `service.shutdown` handshake pass on CPython 3.14.7; binary SHA-256 `9c0d9be12afcece87788b1614ec1df14a33c7bf914ca07a55ae0bc2fa0c12c7e`; Vite renderer and Tauri Cargo check pass; installer/MSI/NSIS and packaged local-provider E2E remain separate evidence gates |
 | Local wheel/release evidence | current-source R6 wheel + clean install + controller/recovery smoke + R6 manifest/SBOM | artifact/report set nằm trong `target/wheels-current-source-20260910-r6`, `artifacts/local-release-20260910-current-r6-bundle` và `artifacts/local-release-20260910-current-r6-evidence`; wheel và cả ba smoke cùng SHA `610d55b6…2e4830`; managed memory index is `SUCCESS`; manifest fail-closed label `WORKTREE_DIRTY`; signing/hosted parity và retained N-1 rollback subject vẫn chưa có |
 | CLI config boundary | `config set` validates documented keys, writes TOML atomically and never echoes values; `config show` redacts credential-like fields | local regression tests pass; environment/platform secret-store integration remains a user choice |
-| Package identity | root, core Python and Rust metadata declare BUSL-1.1; repository/issue URLs match the actual Git remote | tracked license text, tag/release identity and external website ownership remain open |
+| Package identity | root, core Python and Rust metadata declare proprietary/all-rights-reserved policy; repository/issue URLs match the actual Git remote | tag/release identity and external website ownership remain open |
 
 Global Python 3.11/3.13 vẫn được giữ vì có thể phục vụ project khác. Rust
 1.97.1, uv 0.9.9 và uv-managed Python 3.14.0 đã được gỡ sau khi xác nhận

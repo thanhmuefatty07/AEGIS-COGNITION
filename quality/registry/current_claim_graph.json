@@ -1103,8 +1103,8 @@
     "future_obligations": 20,
     "invariants": 46,
     "mapped_surfaces": 9,
-    "surfaces": 155,
-    "unmapped_surfaces": 146,
+    "surfaces": 159,
+    "unmapped_surfaces": 150,
     "unmapped_verifications": 70,
     "unresolved_code_references": 0,
     "verifications": 92
@@ -3851,13 +3851,13 @@
     "all_surfaces_mapped": false,
     "critical_high_risk_mapped": false,
     "criticality_known": false,
-    "unmapped_surface_count": 146
+    "unmapped_surface_count": 150
   },
   "mode": "SHADOW",
   "phase": "PHASE_1_CLAIM_EVIDENCE_GRAPH",
   "schema": "aese-shadow-claim-evidence-graph-v1",
-  "source_head": "4cc18c4861ad92f1ce4f042018391dabba64a7f8",
-  "source_tree_sha256": "feb60d1ac2f6bc7d2086f782776b61cc053fc4cbe7a95839706bafd2f2aea7b1",
+  "source_head": "9c993f1e1da5ac8d1b5e780a7e79a39d472aa2f4",
+  "source_tree_sha256": "3bf9fb50528dda6901178b1de591780909cd194cf495caa8c920ee21af8566f9",
   "status": "SHADOW_GRAPH_PARTIAL_MAPPING_SELECTION_DISABLED",
   "surfaces": [
     {
@@ -3905,6 +3905,19 @@
       "kind": "FUZZ_TARGET",
       "mapping_status": "NOT_MAPPED",
       "path": "fuzz/fuzz_targets/runtime_ffi_contract.rs",
+      "release_critical": "UNKNOWN",
+      "release_criticality": "UNKNOWN",
+      "risk": "UNKNOWN",
+      "security_criticality": "UNKNOWN",
+      "target": null,
+      "unknown_dependency_policy": "INVALIDATE_CONSERVATIVELY"
+    },
+    {
+      "claim_refs": [],
+      "id": "AESE-HOSTED_WORKFLOW-0C35795B6B274DAD",
+      "kind": "HOSTED_WORKFLOW",
+      "mapping_status": "NOT_MAPPED",
+      "path": ".github/workflows/license-policy.yml",
       "release_critical": "UNKNOWN",
       "release_criticality": "UNKNOWN",
       "risk": "UNKNOWN",
@@ -4105,6 +4118,19 @@
       "risk": "UNKNOWN",
       "security_criticality": "UNKNOWN",
       "target": "cross-platform-evidence-gate",
+      "unknown_dependency_policy": "INVALIDATE_CONSERVATIVELY"
+    },
+    {
+      "claim_refs": [],
+      "id": "AESE-HOSTED_WORKFLOW_JOB-EA9A902DD73B43A5",
+      "kind": "HOSTED_WORKFLOW_JOB",
+      "mapping_status": "NOT_MAPPED",
+      "path": ".github/workflows/license-policy.yml",
+      "release_critical": "UNKNOWN",
+      "release_criticality": "UNKNOWN",
+      "risk": "UNKNOWN",
+      "security_criticality": "UNKNOWN",
+      "target": "policy",
       "unknown_dependency_policy": "INVALIDATE_CONSERVATIVELY"
     },
     {
@@ -4375,6 +4401,19 @@
       "security_criticality": "UNKNOWN",
       "target": null,
       "unknown_dependency_policy": null
+    },
+    {
+      "claim_refs": [],
+      "id": "AESE-PYTHON_TEST-5C9DA82B63AD1F41",
+      "kind": "PYTHON_TEST",
+      "mapping_status": "NOT_MAPPED",
+      "path": "tests/test_repository_license_policy.py",
+      "release_critical": "UNKNOWN",
+      "release_criticality": "UNKNOWN",
+      "risk": "UNKNOWN",
+      "security_criticality": "UNKNOWN",
+      "target": null,
+      "unknown_dependency_policy": "INVALIDATE_CONSERVATIVELY"
     },
     {
       "claim_refs": [],
@@ -5768,6 +5807,19 @@
     },
     {
       "claim_refs": [],
+      "id": "AESE-SCRIPT_OR_GATE-CE3DF651370DD4D6",
+      "kind": "SCRIPT_OR_GATE",
+      "mapping_status": "NOT_MAPPED",
+      "path": "scripts/license_policy.py",
+      "release_critical": "UNKNOWN",
+      "release_criticality": "UNKNOWN",
+      "risk": "UNKNOWN",
+      "security_criticality": "UNKNOWN",
+      "target": null,
+      "unknown_dependency_policy": "INVALIDATE_CONSERVATIVELY"
+    },
+    {
+      "claim_refs": [],
       "id": "AESE-SCRIPT_OR_GATE-D2EE6FC497302FFE",
       "kind": "SCRIPT_OR_GATE",
       "mapping_status": "NOT_MAPPED",
@@ -6692,6 +6744,6 @@
       "source_id": "AESE-011"
     }
   ],
-  "worktree_epoch": "ab487a22990fa517116fcf67f58545ed0d000021819c3bb47d197455fad8c6cb",
+  "worktree_epoch": "b78cfb556089e056fb0543f49918ad70bb0beaea42c9717d191b7fbde73508a8",
   "worktree_status": "DIRTY"
 }
