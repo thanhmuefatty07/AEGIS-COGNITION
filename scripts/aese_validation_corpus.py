@@ -15,6 +15,7 @@ import platform
 import sys
 import tempfile
 import time
+import tomllib
 from pathlib import Path
 from typing import Final, cast
 
@@ -122,16 +123,23 @@ def _stable_hash(value: object) -> str:
     return hashlib.sha256(payload).hexdigest()
 
 
+def _declared_runtime_contract() -> dict[str, str]:
+    payload = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))
+    project = payload.get("project")
+    requires_python = project.get("requires-python") if isinstance(project, dict) else None
+    if not isinstance(requires_python, str) or not requires_python.strip():
+        raise ValueError("pyproject.toml must declare project.requires-python")
+    return {"requires_python": requires_python.strip()}
+
+
 def _artifact_provenance(subject: object) -> dict[str, object]:
     source_sha = str(_planner._inventory.build_inventory()["source_head"])
     # Reproducibility is keyed to the declared runtime contract, not to the
-    # host that generated the artifact. OS/kernel details and absolute paths
-    # remain useful observations but would make an identical artifact from
-    # Windows, Linux, and macOS unverifiable.
-    environment = {
-        "python": platform.python_version(),
-        "implementation": platform.python_implementation(),
-    }
+    # host or interpreter version that generated the artifact. OS/kernel
+    # details, interpreter versions, and absolute paths remain useful
+    # observations but would make an identical artifact from Windows, Linux,
+    # macOS, and supported Python versions unverifiable.
+    environment = _declared_runtime_contract()
     host_observation = {
         "os": platform.system(),
         "release": platform.release(),

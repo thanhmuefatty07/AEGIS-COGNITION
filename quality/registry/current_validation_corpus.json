@@ -1,5 +1,5 @@
 {
-  "artifact_hash": "1fe36a472976dd0bc1c847a2659a290918ec83d70cd365a493ab586676e9bf65",
+  "artifact_hash": "5087389ae9cb0a0186e4cba0234152ae803e3988676a4561c6aaaac7101fc92b",
   "development_corpus": [
     {
       "case_id": "DEV-GT96-GOOD",
@@ -332,13 +332,12 @@
   },
   "mode": "SHADOW",
   "provenance": {
-    "artifact_source_sha": "1be66e2636616e877ba98d09f43d1f6a09c1cbd8",
-    "current_head": "1be66e2636616e877ba98d09f43d1f6a09c1cbd8",
+    "artifact_source_sha": "0ab16cf65035cefec2f5f22cbe8ee46cb67708d1",
+    "current_head": "0ab16cf65035cefec2f5f22cbe8ee46cb67708d1",
     "environment": {
-      "implementation": "CPython",
-      "python": "3.11.9"
+      "requires_python": ">=3.14,<3.16"
     },
-    "environment_hash": "0482ecc5d3247c8d2429659800c72df905c3561ff1c94397c37686356bf7c145",
+    "environment_hash": "05077000fe0503d836a6c1e1cdf4d4eb6eb9b2063b998ec6439ce069abd9b1fb",
     "host_observation": {
       "executable": "C:\\Users\\ADMIN\\AppData\\Local\\Programs\\Python\\Python311\\python.exe",
       "machine": "AMD64",
@@ -348,7 +347,7 @@
     "protocol_hash": "NOT_APPLICABLE",
     "relevant_subject_digest": "e3d8f524d1e117ee9fc4a8a4423fe2bf802dd501ac15dc6b4d8557ed79635e46",
     "reuse_status": "NOT_REUSED",
-    "validator_hash": "889c24d819b80151f60ef935d3f1e84863714a594b793101255f81e71115dbc1"
+    "validator_hash": "c5a4f5850a6a297d02c1d48613b85b992213e40d8cf0dad0b8c54c0e6cc1a552"
   },
   "schema": "aese-validation-corpus-v1",
   "split_policy": {
