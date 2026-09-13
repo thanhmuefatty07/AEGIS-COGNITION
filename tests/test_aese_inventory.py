@@ -22,7 +22,7 @@ def test_inventory_covers_every_scoped_tracked_file() -> None:
     paths = {str(item["path"]) for item in items}
     identities = {(str(item["kind"]), str(item["path"]), str(item["target"])) for item in items}
     assert inventory["scope_counts"]["inventoried_items"] == len(identities)
-    assert inventory["scope_counts"]["workflow_jobs"] == 13
+    assert inventory["scope_counts"]["workflow_jobs"] == 14
     assert inventory["disposition_counts"] == {"RETAIN_UNCHANGED": len(items)}
     assert inventory["missing_scopes"] == []
     for prefix, _kind, suffixes in (
