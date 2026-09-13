@@ -2,7 +2,7 @@
   "affected_test_paths": [
     "core/rust/src/gt96.rs"
   ],
-  "artifact_hash": "588265e30285b118125ca4998d6c5080fb0529ca535834ff776edbc747bce509",
+  "artifact_hash": "d0ce68c32c3567ae5ed44caba6c86a01365e0cdef252d815ec303ed67b82069a",
   "changed_paths": [
     "core/rust/src/gt96.rs"
   ],
@@ -244,22 +244,22 @@
     "claim_scope": "LOCAL_CHECKOUT_ONLY",
     "edge_digest": "2b47a62553191c763ba1542f9191284cc583f47c9ec205130a6d14530c64e65b",
     "environment": {
-      "executable": "C:\\Users\\ADMIN\\AppData\\Local\\Programs\\Python\\Python311\\python.exe",
+      "executable": "C:\\Users\\ADMIN\\AEGIS-COGNITION\\.venv\\Scripts\\python.exe",
       "implementation": "CPython",
       "machine": "AMD64",
       "os": "Windows",
-      "python": "3.11.9",
-      "release": "10"
+      "python": "3.14.7",
+      "release": "11"
     },
     "evidence_class": "PLANNING_ONLY",
     "inventory_source_tree_sha256": "f3e775c62c3d3c539121861276cf63a5efc1de1019c7d338b30db00335ab5395",
-    "mapping_artifact_hash": "f4bd51a9a4664c094d54d5f139b0ea724cd52c6556de841322965f792e38b7c4",
-    "origin_main_sha": "7fb27c1e4eb56e05ec2f4da8c72884af0a830c6a",
+    "mapping_artifact_hash": "bd4c4efd63408efe88fb00bcf37a00ead895e1efb9e84b48cc4f61bdd5ee7c34",
+    "origin_main_sha": "c2d945da1fcd5c380a8d9464db94cff5352500ed",
     "promotion": "DISABLED_IN_SHADOW",
-    "source_sha": "7fb27c1e4eb56e05ec2f4da8c72884af0a830c6a",
+    "source_sha": "c2d945da1fcd5c380a8d9464db94cff5352500ed",
     "validator": "scripts/aese_affected_closure.py"
   },
-  "reproducible_hash": "951d7921ff1d94bd0aa9a7879d300fbb0a6972735e8854180370bb9805018aaf",
+  "reproducible_hash": "3aaeb382296c0f82009db0f306f417a503616f0a15b3a9d85d84b98b59a2e26d",
   "schema": "aese-affected-closure-v1",
   "shadow_selection": {
     "authority": "RETAINED_LEGACY_AUTHORITY",
@@ -270,7 +270,7 @@
     ],
     "would_skip_item_ids": []
   },
-  "source_head": "7fb27c1e4eb56e05ec2f4da8c72884af0a830c6a",
+  "source_head": "c2d945da1fcd5c380a8d9464db94cff5352500ed",
   "source_tree_sha256": "f379f0072c96c96e50ef4ccaac645062819ae477760e72761af4639087fa055c",
   "status": "AFFECTED_CLOSURE_PLAN_ONLY_SELECTION_DISABLED",
   "traversed_edges": [
