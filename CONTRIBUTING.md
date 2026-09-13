@@ -30,7 +30,7 @@ written authorization from the copyright holder. Authorized contributions still 
    ```
    cargo test --locked --manifest-path core/rust/Cargo.toml --lib
    cargo clippy --all-targets --all-features -- -W unused_imports -W dead_code
-   uv run --locked pytest -q
+   uv run --locked --extra all --extra dev python -m pytest -q
    ```
 5. Append an entry to `CHANGELOG.md` under `[Unreleased]`.
 
@@ -43,11 +43,14 @@ written authorization from the copyright holder. Authorized contributions still 
 - `artifacts/` — Audit evidence. Append-only; archive, do not delete.
 - `docs/` — Developer-facing guides. Treat as curated, not exhaustive.
 
-## Where NOT to PR
+## Generated and historical material
 
-- The 1,500+ `.md` files under `artifacts/research/hermes-agent/website/`. That
-  is read-only reference material we use to inform our competitive analysis.
-  Modifying it would corrupt the evidence chain.
+- Keep disposable caches, local agent metadata, and generated benchmark output
+  out of commits. Durable evidence belongs in the existing registry and
+  architecture documentation paths.
+- Historical records under `docs/archive/` are provenance only. Update the
+  current authority documents when a contract or release status changes; do
+  not silently rewrite archived reports.
 
 ## Questions?
 
