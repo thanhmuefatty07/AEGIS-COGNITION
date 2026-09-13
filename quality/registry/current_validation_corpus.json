@@ -1,5 +1,5 @@
 {
-  "artifact_hash": "0ad7b0c64bdd58c2d9b53ee23ccc5f141d3433f3bea5709778275fd5d196a708",
+  "artifact_hash": "2c6e52579e6f5fb27c241fb372b5c9e123b92680a0473f7298c3b210894d07c7",
   "development_corpus": [
     {
       "case_id": "DEV-GT96-GOOD",
@@ -13,7 +13,7 @@
         "WIDENED_UNKNOWN": 0,
         "WOULD_REUSE": 0,
         "WOULD_RUN": 1,
-        "WOULD_SKIP": 158
+        "WOULD_SKIP": 159
       },
       "label": "KNOWN_GOOD",
       "mutation": "NONE",
@@ -41,7 +41,7 @@
       "closure_status": "WIDENED_ALL_RETAINED",
       "critical": true,
       "decision_state_counts": {
-        "WIDENED_UNKNOWN": 159,
+        "WIDENED_UNKNOWN": 160,
         "WOULD_REUSE": 0,
         "WOULD_RUN": 0,
         "WOULD_SKIP": 0
@@ -72,7 +72,7 @@
       "closure_status": "WIDENED_ALL_RETAINED",
       "critical": true,
       "decision_state_counts": {
-        "WIDENED_UNKNOWN": 159,
+        "WIDENED_UNKNOWN": 160,
         "WOULD_REUSE": 0,
         "WOULD_RUN": 0,
         "WOULD_SKIP": 0
@@ -103,7 +103,7 @@
       "closure_status": "WIDENED_ALL_RETAINED",
       "critical": false,
       "decision_state_counts": {
-        "WIDENED_UNKNOWN": 159,
+        "WIDENED_UNKNOWN": 160,
         "WOULD_REUSE": 0,
         "WOULD_RUN": 0,
         "WOULD_SKIP": 0
@@ -135,7 +135,7 @@
         "WIDENED_UNKNOWN": 0,
         "WOULD_REUSE": 0,
         "WOULD_RUN": 1,
-        "WOULD_SKIP": 158
+        "WOULD_SKIP": 159
       },
       "label": "KNOWN_BAD",
       "mutation": "SERIALIZATION_SCHEMA_MUTATION",
@@ -163,7 +163,7 @@
       "closure_status": "WIDENED_ALL_RETAINED",
       "critical": true,
       "decision_state_counts": {
-        "WIDENED_UNKNOWN": 159,
+        "WIDENED_UNKNOWN": 160,
         "WOULD_REUSE": 0,
         "WOULD_RUN": 0,
         "WOULD_SKIP": 0
@@ -196,7 +196,7 @@
       "closure_status": "WIDENED_ALL_RETAINED",
       "critical": true,
       "decision_state_counts": {
-        "WIDENED_UNKNOWN": 159,
+        "WIDENED_UNKNOWN": 160,
         "WOULD_REUSE": 0,
         "WOULD_RUN": 0,
         "WOULD_SKIP": 0
@@ -227,7 +227,7 @@
       "closure_status": "WIDENED_ALL_RETAINED",
       "critical": false,
       "decision_state_counts": {
-        "WIDENED_UNKNOWN": 159,
+        "WIDENED_UNKNOWN": 160,
         "WOULD_REUSE": 0,
         "WOULD_RUN": 0,
         "WOULD_SKIP": 0
@@ -256,7 +256,7 @@
       "closure_status": "WIDENED_ALL_RETAINED",
       "critical": true,
       "decision_state_counts": {
-        "WIDENED_UNKNOWN": 159,
+        "WIDENED_UNKNOWN": 160,
         "WOULD_REUSE": 0,
         "WOULD_RUN": 0,
         "WOULD_SKIP": 0
@@ -289,7 +289,7 @@
       "closure_status": "WIDENED_ALL_RETAINED",
       "critical": true,
       "decision_state_counts": {
-        "WIDENED_UNKNOWN": 159,
+        "WIDENED_UNKNOWN": 160,
         "WOULD_REUSE": 0,
         "WOULD_RUN": 0,
         "WOULD_SKIP": 0
@@ -332,8 +332,8 @@
   },
   "mode": "SHADOW",
   "provenance": {
-    "artifact_source_sha": "293e23e76b9409cf3a40e44b39211eb1ad484219",
-    "current_head": "293e23e76b9409cf3a40e44b39211eb1ad484219",
+    "artifact_source_sha": "766cf7b33bab8af8e3ba85d664c8b6be8b076c54",
+    "current_head": "766cf7b33bab8af8e3ba85d664c8b6be8b076c54",
     "environment": {
       "implementation": "CPython",
       "python": "3.14.7"
@@ -346,7 +346,7 @@
       "release": "11"
     },
     "protocol_hash": "NOT_APPLICABLE",
-    "relevant_subject_digest": "f9279b35e0b5841291747e83eced68c081ffd29655adb2639e87b2065c6b1220",
+    "relevant_subject_digest": "4ec2644a2479b37060f1b1112277513266ca38d936652f63592941f37ab53953",
     "reuse_status": "NOT_REUSED",
     "validator_hash": "889c24d819b80151f60ef935d3f1e84863714a594b793101255f81e71115dbc1"
   },
