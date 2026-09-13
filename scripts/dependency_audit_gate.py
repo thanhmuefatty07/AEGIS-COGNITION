@@ -16,7 +16,7 @@ REQUIRED_DIRECT_DEPS: dict[str, str] = {
     "blake3": "1.5.0",
     "pyo3": "0.29.2",
     "rayon": "1.12",
-    "wasmtime": "47.0.3",
+    "wasmtime": "47.0.4",
     "windows-sys": "0.61.2",
 }
 CRATES_IO_SOURCE = "registry+https://github.com/rust-lang/crates.io-index"

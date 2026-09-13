@@ -4,7 +4,7 @@ Status: Accepted (2026-08-14)
 
 ## Context and problem
 
-Wasmtime is security-sensitive and changed from the prior 22.x line to 47.0.3.
+Wasmtime is security-sensitive and changed from the prior 22.x line to 47.0.4.
 A version edit without fuel, epoch, memory, WASI, replay, and adversarial proof
 does not establish a safe sandbox.
 
@@ -16,7 +16,7 @@ security gate.
 
 ## Decision and rationale
 
-Keep `47.0.3`, enable fuel and epoch interruption, enforce memory limits, retain
+Keep `47.0.4`, enable fuel and epoch interruption, enforce memory limits, retain
 WASI policy restrictions, and require source/static, Rust behavior, advisory,
 fuzz, adversarial, and replay-parity evidence.
 
