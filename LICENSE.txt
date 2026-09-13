@@ -1,0 +1,54 @@
+AEGIS-COGNITION PROPRIETARY LICENSE
+Version 1.0 — 2026-09-13
+
+Copyright © 2026 @thanhmuefatty07, AEGIS-COGNITION project owner. All rights reserved.
+
+1. Scope
+
+This license notice applies to the original source code, documentation, configuration,
+tests, build files, workflows, and other material in this repository that is owned by
+the AEGIS-COGNITION Project Owner (the "Protected Work"). Third-party material keeps
+its own copyright and license terms; this notice does not relicense it.
+
+2. No default permission
+
+The Protected Work is published on GitHub for public inspection and operation of the
+GitHub service only. Except for the limited rights that GitHub's Terms of Service
+require for hosting, displaying, and forking public repository content through GitHub,
+no license or other permission is granted.
+
+Without prior written permission from the AEGIS-COGNITION Project Owner, you may not,
+to the extent restricted by applicable law:
+
+- use, execute, install, deploy, or operate the Protected Work;
+- copy, reproduce, download for use outside GitHub, or create a derivative work;
+- modify, adapt, translate, merge, or incorporate any part into another work;
+- distribute, publish, sublicense, sell, rent, or make the Protected Work available;
+- host it as a service, embed it in a product, or use it to train or evaluate a model;
+- remove copyright, attribution, security, or licensing notices; or
+- use any project name, logo, or mark as a trademark or endorsement.
+
+These restrictions apply equally to personal, academic, research, testing, evaluation,
+internal, noncommercial, and commercial use. A GitHub fork is a platform operation and
+does not grant permission to use the forked material outside the rights GitHub grants
+through its service.
+
+3. Written permission
+
+Any permission must be granted in a separate written agreement signed by the
+AEGIS-COGNITION Project Owner. A message, issue comment, pull request, or other public
+discussion is not permission unless it expressly states that it is a written license
+grant.
+
+4. Statutory rights and disclaimer
+
+Nothing in this notice limits rights that applicable law does not allow the copyright
+holder to restrict. To the maximum extent permitted by law, the Protected Work is
+provided "AS IS", without warranty or condition of any kind, and the copyright holder
+is not liable for damages arising from the Protected Work or its use.
+
+5. Contact
+
+Requests for permission must identify the requested files, purpose, users, territory,
+duration, and distribution or deployment plan, and must be sent to the repository
+owner through a separately controlled channel.
