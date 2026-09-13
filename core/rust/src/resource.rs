@@ -2486,7 +2486,7 @@ fn detect_filesystem_space(path: &std::path::Path) -> (Option<u64>, Option<u64>)
     }
 }
 
-#[cfg(any(target_os = "linux", target_os = "macos"))]
+#[cfg(all(not(miri), any(target_os = "linux", target_os = "macos")))]
 fn detect_filesystem_space(path: &std::path::Path) -> (Option<u64>, Option<u64>) {
     use std::ffi::CString;
     use std::os::unix::ffi::OsStrExt;
@@ -2503,20 +2503,25 @@ fn detect_filesystem_space(path: &std::path::Path) -> (Option<u64>, Option<u64>)
     }
     // SAFETY: a successful `statvfs` call initializes the output structure.
     let stats = unsafe { stats.assume_init() };
-    let block_size = u64::try_from(stats.f_frsize)
-        .ok()
-        .filter(|value| *value > 0)
-        .or_else(|| u64::try_from(stats.f_bsize).ok().filter(|value| *value > 0));
+    // `statvfs` exposes unsigned native-width fields.  An explicit cast keeps
+    // the conversion portable across 32-bit and 64-bit Unix targets without
+    // triggering a same-type conversion lint on 64-bit Linux.
+    let block_size = [stats.f_frsize as u64, stats.f_bsize as u64]
+        .into_iter()
+        .find(|value| *value > 0);
     let Some(block_size) = block_size else {
         return (None, None);
     };
-    let capacity = u64::try_from(stats.f_blocks)
-        .ok()
-        .and_then(|blocks| blocks.checked_mul(block_size));
-    let available = u64::try_from(stats.f_bavail)
-        .ok()
-        .and_then(|blocks| blocks.checked_mul(block_size));
+    let capacity = (stats.f_blocks as u64).checked_mul(block_size);
+    let available = (stats.f_bavail as u64).checked_mul(block_size);
     (capacity, available)
+}
+
+#[cfg(miri)]
+fn detect_filesystem_space(_path: &std::path::Path) -> (Option<u64>, Option<u64>) {
+    // Miri deliberately rejects foreign calls such as `statvfs`; preserving
+    // an explicit unknown observation keeps the probe fail-closed in Miri.
+    (None, None)
 }
 
 #[cfg(not(any(target_os = "windows", target_os = "linux", target_os = "macos")))]
@@ -2606,7 +2611,7 @@ mod tests {
         assert!(available <= capacity);
     }
 
-    #[cfg(any(target_os = "linux", target_os = "macos"))]
+    #[cfg(all(not(miri), any(target_os = "linux", target_os = "macos")))]
     #[test]
     fn unix_probe_reports_filesystem_capacity_without_guessing() {
         let profile = HardwareProfile::probe();
@@ -2630,7 +2635,22 @@ mod tests {
         assert!(available <= total);
     }
 
-    #[cfg(not(target_os = "windows"))]
+    #[cfg(all(miri, not(target_os = "windows")))]
+    #[test]
+    fn miri_filesystem_probe_stays_explicitly_unknown() {
+        let profile = HardwareProfile::probe();
+        assert!(
+            profile
+                .storage
+                .iter()
+                .all(|storage| storage.capacity_bytes.is_none())
+        );
+    }
+
+    #[cfg(all(
+        not(miri),
+        not(any(target_os = "windows", target_os = "linux", target_os = "macos"))
+    ))]
     #[test]
     fn unsupported_filesystem_probe_stays_explicitly_unknown() {
         let profile = HardwareProfile::probe();
