@@ -2487,6 +2487,15 @@ fn detect_filesystem_space(path: &std::path::Path) -> (Option<u64>, Option<u64>)
 }
 
 #[cfg(all(not(miri), any(target_os = "linux", target_os = "macos")))]
+#[allow(clippy::useless_conversion)]
+fn statvfs_field_u64(value: libc::c_ulong) -> Option<u64> {
+    // libc maps these fields to the platform's native unsigned width.  The
+    // conversion is required on 32-bit Unix and intentionally retained on
+    // 64-bit targets where it is a no-op.
+    u64::try_from(value).ok()
+}
+
+#[cfg(all(not(miri), any(target_os = "linux", target_os = "macos")))]
 fn detect_filesystem_space(path: &std::path::Path) -> (Option<u64>, Option<u64>) {
     use std::ffi::CString;
     use std::os::unix::ffi::OsStrExt;
@@ -2503,17 +2512,14 @@ fn detect_filesystem_space(path: &std::path::Path) -> (Option<u64>, Option<u64>)
     }
     // SAFETY: a successful `statvfs` call initializes the output structure.
     let stats = unsafe { stats.assume_init() };
-    // `statvfs` exposes unsigned native-width fields.  An explicit cast keeps
-    // the conversion portable across 32-bit and 64-bit Unix targets without
-    // triggering a same-type conversion lint on 64-bit Linux.
-    let block_size = [stats.f_frsize as u64, stats.f_bsize as u64]
-        .into_iter()
-        .find(|value| *value > 0);
+    let block_size = statvfs_field_u64(stats.f_frsize)
+        .filter(|value| *value > 0)
+        .or_else(|| statvfs_field_u64(stats.f_bsize).filter(|value| *value > 0));
     let Some(block_size) = block_size else {
         return (None, None);
     };
-    let capacity = (stats.f_blocks as u64).checked_mul(block_size);
-    let available = (stats.f_bavail as u64).checked_mul(block_size);
+    let capacity = statvfs_field_u64(stats.f_blocks).and_then(|blocks| blocks.checked_mul(block_size));
+    let available = statvfs_field_u64(stats.f_bavail).and_then(|blocks| blocks.checked_mul(block_size));
     (capacity, available)
 }
 
