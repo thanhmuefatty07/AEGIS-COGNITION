@@ -1,8 +1,8 @@
-# Wasmtime 47.0.3 migration and security evidence
+# Wasmtime 47.0.4 migration and security evidence
 
 ## Context and decision
 
-The runtime is pinned to Wasmtime `47.0.3`. This is a security-sensitive
+The runtime is pinned to Wasmtime `47.0.4`. This is a security-sensitive
 migration from the former 22.x line, not a claim that a dependency version by
 itself provides sandbox isolation. The decision is to keep the newer release,
 make resource controls explicit, and require evidence at the engine, policy,
