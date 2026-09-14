@@ -984,6 +984,8 @@ Optional server mode requires a separate explicit consent and policy record cont
 
 The first server implementation must prefer GitHub-hosted ephemeral runners for authorized repository evidence. It must use least-privilege workflow permissions, job timeouts, commit-bound artifacts and safe argument passing for untrusted branch, issue, test-name and model text. Artifacts are evidence; caches are only performance hints and can never certify a result.
 
+Every evidence workflow must capture both stdout and stderr, preserve structured final statistics separately from human logs, and verify that the uploaded artifact is non-empty and commit-bound. A successful process with an empty uploaded log is an evidence-collection defect, not proof that the check produced no output. The existing bounded fuzz experiment demonstrated this exact failure mode: libFuzzer statistics appeared in the hosted job log while the `tee`-captured artifact logs were zero bytes.
+
 Google Cloud is a separate opt-in adapter, not an implicit fallback. Before it can run project code, it must prove: provider/project/zone identity; explicit maximum wall time and cost budget; automatic stop/cleanup; source upload scope; network policy; service-account least privilege; secret prohibition by default; artifact retention; cancellation; and final `TERMINATED`/cleanup evidence. The currently inspected VM has Secure Boot disabled and uses a project default service account, so it is restricted to bounded diagnostics until a hardened ephemeral profile exists. A failed guard is `BLOCKED`, never `PASS`.
 
 ## 13. Desktop, CLI and future API integration
