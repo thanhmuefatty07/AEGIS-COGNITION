@@ -61,6 +61,9 @@ and unresolved closure work is retained in
   outputs; use `design_closure_collect.py` as its source of truth.
 - [`empirical-research/`](empirical-research/): retained empirical research
   records and bounded comparisons.
+- [`MEMORY_AGENT_LIVING_WORKSPACE_RESEARCH.md`](MEMORY_AGENT_LIVING_WORKSPACE_RESEARCH.md):
+  current decision input for the local-first Memory Agent, token-bounded
+  context, and evidence-backed project graph inspired by external research.
 
 These directories are evidence outputs, not hand-maintained implementation
 authority. A historical path or label inside a retained snapshot is provenance
