@@ -48,8 +48,8 @@ jobs:
           python-version: ${{ matrix.python-version }}
       - name: Install pinned uv
         run: python -m pip install --upgrade pip "uv==${{ env.UV_VERSION }}"
-      - name: Resolve locked environment
-        run: uv sync --locked --extra all --extra dev
+      - name: Resolve locked environment without compiling the package
+        run: uv sync --locked --extra all --extra dev --no-install-project
       - name: Run provider-neutral context benchmark
         run: uv run --locked --extra all --extra dev python scripts/memory_context_benchmark.py --output artifacts/memory-context-benchmark-${{ runner.os }}.json
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
