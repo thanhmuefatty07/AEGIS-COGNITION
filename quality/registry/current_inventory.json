@@ -2,7 +2,7 @@
   "deletion": "PROHIBITED_UNTIL_SUPERSESSION_PROOF",
   "direct_cutover": "PROHIBITED",
   "disposition_counts": {
-    "RETAIN_UNCHANGED": 162
+    "RETAIN_UNCHANGED": 163
   },
   "items": [
     {
@@ -270,6 +270,44 @@
       "stable_id": "AESE-HOSTED_WORKFLOW_JOB-05A370E07760FA2D",
       "supersession_rationale": "No stronger replacement evidence is recorded; preserve the existing authoritative path.",
       "target": "tier1-platform-smoke"
+    },
+    {
+      "claims_supported": [],
+      "cost": "UNKNOWN",
+      "current_status": "NOT_VERIFIED",
+      "dependencies": [],
+      "determinism": "UNKNOWN",
+      "domain": "UNKNOWN",
+      "evidence_produced": [],
+      "failure_semantics": "UNKNOWN",
+      "hardware_requirement": "UNKNOWN",
+      "inputs": [],
+      "invariants_checked": [],
+      "kind": "HOSTED_WORKFLOW_JOB",
+      "known_defects": [],
+      "mapping_status": "NOT_MAPPED",
+      "migration_disposition": "RETAIN_UNCHANGED",
+      "outputs": [],
+      "owner": "UNKNOWN_OWNER",
+      "path": ".github/workflows/ci.yml",
+      "platform": "UNKNOWN",
+      "platform_requirement": "UNKNOWN",
+      "release_critical": "UNKNOWN",
+      "release_criticality": "UNKNOWN",
+      "replacement_id": null,
+      "resource_cost": "UNKNOWN",
+      "risk": "UNKNOWN",
+      "rollback_path": "Re-run the existing native runner directly.",
+      "runner_backend": "GitHub Actions job",
+      "runtime_class": "UNKNOWN",
+      "scope": ".github/workflows",
+      "security_criticality": "UNKNOWN",
+      "side_effects": [
+        "UNKNOWN"
+      ],
+      "stable_id": "AESE-HOSTED_WORKFLOW_JOB-B82FE508A122BA18",
+      "supersession_rationale": "No stronger replacement evidence is recorded; preserve the existing authoritative path.",
+      "target": "desktop-build"
     },
     {
       "claims_supported": [],
@@ -6171,16 +6209,16 @@
   "phase": "PHASE_0_REBIND_REALITY",
   "schema": "aese-current-evidence-system-inventory-v1",
   "scope_counts": {
-    "inventoried_items": 162,
+    "inventoried_items": 163,
     "missing_scopes": 0,
     "represented_paths": 145,
-    "tracked_files": 562,
-    "workflow_jobs": 17
+    "tracked_files": 565,
+    "workflow_jobs": 18
   },
   "scope_policy": "tracked_files_only; native runners remain authoritative",
-  "source_head": "c81db8377cdfd3482b73136b5b4c088acba2c941",
-  "source_tree_sha256": "e318aaa4997628f895f6cd0cdc7668195ae8586b47aa3a57d9e384b7f7f6e141",
+  "source_head": "aed21989a55fbcc17c0abba07fa363270401438e",
+  "source_tree_sha256": "b70c9af0341080b7d35a76b3a5047406e4c463e939b913808944f05a9bfac300",
   "status": "INVENTORY_COMPLETE_DISPOSITIONS_RETAINED_MAPPING_PENDING",
-  "worktree_epoch": "450c01d88523a1232a7ecae0dfda53bba62b4591a55efc0799df3f1123d4855f",
+  "worktree_epoch": "86f25e6faf9bbe91f7f69cc460c36228fec328ecef5e92313a83cfd7abc66450",
   "worktree_status": "CLEAN"
 }
