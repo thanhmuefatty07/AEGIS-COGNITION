@@ -174,9 +174,11 @@ The detailed evidence ledger is in `docs/architecture/empirical-research/AESE_IN
 - The existing local AESE S1–S6 shadow work is a foundation to extend, not a subsystem to replace: current artifacts report 9 critical mappings and 147 unknown surfaces; S3/S4 remain plan-only; S5 remains synthetic planning validation; S6 is three warm-cache exploratory samples for one Rust change class. Preserve `AESE_MODE=SHADOW`, `SELECTIVE_TEST_AUTHORITY=DISABLED`, `TEST_SKIPPING_AUTHORITY=DISABLED` and `EVIDENCE_PROMOTION=DISABLED` until the integrated held-out gates are complete.
 - The hosted artifact explicitly records `independent_verification = NOT VERIFIED`; preserve that distinction instead of upgrading the label in reports.
 - GitHub Actions remains an evidence/execution lane, not a second AEGIS runtime authority. Bind each receipt to commit, workflow/run/attempt, runner, toolchain, command, counts, exit semantics and artifact hashes. Keep caches separate from evidence artifacts.
+- The repository is currently public, so standard GitHub-hosted runners are a preferred low-cost evidence lane. The implementation must still respect GitHub's real limits: concurrency, six-hour per-job execution, matrix size and artifact/cache retention/storage. “Unlimited standard runner minutes” must not become unbounded fan-out or unbounded artifact retention.
 - Untrusted branch/PR/model text must never be interpolated into shell source. Pass it as validated arguments or files, and keep workflow permissions least-privilege.
 - Local execution remains the default. Cloud/server execution requires an explicit consent and policy record with provider, source scope, retention, network, cost ceiling, TTL, cancellation and secret policy.
 - The inspected GCP VM `aegis-test-linux-02` is only a bounded diagnostic host until hardened. It has 2 vCPU, 7.7 GiB RAM, 30 GiB disk, no Rust/Cargo, Secure Boot disabled and a project default service account. It was started for an environment probe, no project source was uploaded, and it was stopped and verified `TERMINATED`. Do not use it as a persistent generic untrusted-code runner.
+- `TERMINATED` does not mean zero cloud cost: the current VM still retains its 30 GiB `pd-standard` boot disk, which can continue to incur storage charges while the instance is stopped. Its disk is marked auto-delete only on instance deletion. Any future cloud experiment must verify retained disks/snapshots/IPs separately, and an alerts-only budget must not be treated as a hard spend cap.
 - Do not create cloud resources, install persistent agents/toolchains, upload private source, enable autoscaling, or run long experiments on the free-credit VM without a new bounded experiment record and an explicit cost/TTL guard.
 - A candidate test patch may be authored or modified freely, but only the candidate layer is free. Application requires oracle, requirement binding, non-weakening, mutation/negative-control, resource, path-boundary and three-way-merge checks. Conflicts stop application.
 - Impact selection, predictive selection, sharding and cache reuse remain non-authoritative until held-out paired evaluation reports false passes, critical misses, invalid evidence, flakiness and regressions before speed.
@@ -1096,6 +1098,20 @@ A candidate test patch is accepted only if:
 ### 14.3. Independence rule
 
 The same model may author and explain a test, but model explanation is not independent validation. Independence comes from execution, an oracle, known faults, mutation/property controls, contract evidence and a separate authority for final state.
+
+### 14.4. Empirical safeguards for model-authored tests
+
+Recent empirical work indicates that generated tests can pass and achieve high structural coverage on the original implementation while failing to adapt to changed semantics or failing to detect faults because their oracles are weak. Therefore the implementation must enforce the following distinctions:
+
+- execution success is not requirement satisfaction;
+- coverage is not fault detection;
+- mutation score is not real-bug detection;
+- regression evidence from a presumed-correct baseline is not evidence that an already-buggy implementation is correct;
+- a model's explanation is not an independent oracle.
+
+For each candidate test, persist separate fields for collection/compilation, execution, requirement oracle, fault-detection control, flakiness, discarded reason and evidence freshness. The candidate evaluator must reject or mark `INCONCLUSIVE` when the oracle is missing, when the candidate only reproduces the implementation, or when the relevant fault/negative-control check was not run. The baseline suite remains protected and is never replaced by a larger generated suite without explicit requirement-linked evidence.
+
+The evaluator must include held-out semantic changes or real/seeded faults in the quality experiment. It must report scenario, corpus, oracle type, mutation/coverage method and cost, rather than publishing a single “test quality” number. Coverage/mutation may guide prioritization, but they cannot authorize omission or promotion by themselves. See the research ledger's “Recent empirical evidence changes the acceptance design” section and its cited studies.
 
 ## 15. Performance and token-efficiency plan
 

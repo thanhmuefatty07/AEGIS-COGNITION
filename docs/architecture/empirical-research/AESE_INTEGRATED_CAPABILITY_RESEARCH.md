@@ -331,6 +331,25 @@ The minimum acceptance rule for a candidate test is:
 
 The model that authors a test cannot be the only authority that says the test is good. Execution, oracle behavior, seeded faults, mutation/property evidence and Lab receipts provide the independence.
 
+### 7.1 Recent empirical evidence changes the acceptance design
+
+`SOURCE-BACKED`, but not treated as universal production truth: recent empirical studies of LLM-generated tests reinforce that a passing generated suite, coverage and mutation score are insufficient as standalone quality claims.
+
+- A 2026 study spanning eight LLMs and 22,374 program variants reported strong baseline coverage on unchanged programs, but substantial degradation under semantic-altering and even semantic-preserving changes. The study also observed that generated tests can remain aligned with the old implementation instead of adapting to changed semantics. This supports AESE's requirement-bound contract and revision invalidation: when behavior or requirements change, old generated tests cannot silently remain authoritative. See [Evaluating LLM-Based Test Generation Under Software Evolution](https://arxiv.org/abs/2603.23443).
+- A 2026 end-to-end study of automatically generated code and tests found that difficult faults were often not triggered or detected because the oracle failed to capture the faulty behavior; mutation testing only marginally exceeded traditional coverage for that setting. This supports a separate oracle review and a real/seeded-fault detection metric rather than a coverage-only gate. See [How effective are traditional test criteria at detecting bugs in large language models generated code?](https://arxiv.org/abs/2609.09315).
+- A 2026 replication study found that coverage and mutation can be informative in regression-style settings when the provided code is reasonably assumed correct, but become unreliable indicators when the code-under-test may already be buggy and the generated tests are expected to discover that bug. AESE must therefore label evidence by scenario and never transfer a regression signal into a bug-finding claim. See [Do Coverage and Mutation Scores of LLM-Generated Test Suites Correlate with Their Effectiveness?](https://arxiv.org/abs/2607.22880).
+- A 2024 study of LLM-generated mutations found more diverse and real-bug-like mutations in its Java benchmarks, but also worse compilability and higher useless/equivalent mutation rates than rule-based approaches. LLM-authored faults can enrich a corpus, but they require compilation, equivalence and usefulness filtering; the model cannot be allowed to define the fault oracle alone. See [An Exploratory Study on Using Large Language Models for Mutation Testing](https://arxiv.org/abs/2406.09843).
+- An earlier TestPilot evaluation on 25 JavaScript packages showed that LLM test generation can improve coverage over one comparison technique, but its population and language scope do not establish all-language or real-project effectiveness. See [An Empirical Evaluation of Using Large Language Models for Automated Unit Test Generation](https://ieeexplore.ieee.org/document/10329992).
+
+Design consequences for AESE:
+
+1. Keep the original human/agent test suite as a protected baseline. Generated tests may add evidence, but may not replace the baseline merely because they pass or cover more lines.
+2. Separate three questions: does the test execute, does it assert the requirement, and does it detect a relevant fault. Each needs its own evidence field and failure state.
+3. Evaluate generated tests against held-out semantic changes and real/seeded faults. A test that only passes on the original implementation is not evidence of regression quality.
+4. Treat coverage and mutation as diagnostic signals whose interpretation includes the scenario, fault corpus, oracle type, suite size and toolchain. They are not a universal AESE score.
+5. Record discarded, uncompilable, equivalent, flaky and oracle-pending candidates. Silently filtering them would overstate authoring quality.
+6. Preserve a human- or requirement-derived oracle path for behavior that cannot be mechanically inferred from implementation text.
+
 ## 8. Local, GitHub and Google Cloud operating policy
 
 ### 8.1 Local default
@@ -355,6 +374,8 @@ GitHub Actions is the preferred repeatable hosted lane for public/authorized rep
 - retain only bounded artifacts needed for report/replay;
 - keep optimization lanes non-authoritative until held-out evaluation.
 
+`VERIFIED` by GitHub repository inspection: `thanhmuefatty07/AEGIS-COGNITION` is currently public. `SOURCE-BACKED` by GitHub documentation: standard GitHub-hosted runners are free and unlimited for public repositories, but workflow limits still apply, including a maximum of 20 concurrent standard jobs on the Free plan, 6 hours per job, and 256 matrix jobs per workflow run; artifact/cache storage and retention are separate operational constraints. “Unlimited” therefore means we can prefer the hosted lane without consuming the GCP credit, not that AESE may ignore concurrency, timeout, matrix or artifact-retention limits. AESE should bound artifacts, use retention policies, and queue/shard within the real limits. See [GitHub Actions billing](https://docs.github.com/en/billing/concepts/product-billing/github-actions), [Actions limits](https://docs.github.com/en/actions/reference/limits), and [secure workflow use](https://docs.github.com/en/actions/reference/security/secure-use).
+
 ### 8.3 Google Cloud optional lane
 
 Cloud execution requires an explicit consent record containing provider, project, region/zone, source/artifact scope, network policy, cost ceiling, maximum wall time, cancellation action, retention and whether secrets are allowed. Secrets are prohibited by default.
@@ -369,6 +390,26 @@ For the current free-credit VM specifically:
 - treat the current default service account and disabled Secure Boot as insufficient for generic untrusted code;
 - set an explicit TTL and hard cost budget in any future server adapter;
 - if a cloud lane is needed, prefer a new hardened ephemeral design over silently repurposing this VM.
+
+`VERIFIED` by current Compute Engine inspection: `aegis-test-linux-02` is `TERMINATED`, has an attached 30 GB `pd-standard` boot disk with `autoDelete=true`, and has an ephemeral external NAT configuration rather than a named static address. `SOURCE-BACKED` by Google Cloud billing documentation: stopping removes CPU-instance charges but attached disks and other retained resources continue to incur charges; an alerts-only budget does not automatically cap spending. Therefore “VM stopped” is not equivalent to “zero cloud cost”. Any future run record must check both instance state and retained resources, set a TTL/cost ceiling before start, verify termination after cancellation, and report the remaining disk/resource cost state. Deleting the current instance or disk is intentionally out of scope until the owner explicitly requests it and data preservation is confirmed. See [stop/terminate billing behavior](https://docs.cloud.google.com/compute/docs/instances/suspend-stop-reset-instances-overview), [disk and image pricing](https://cloud.google.com/compute/disks-image-pricing), and [Cloud Billing budgets](https://docs.cloud.google.com/billing/docs/how-to/budgets).
+
+### 8.4 Current project scope and language-adapter evidence
+
+`VERIFIED` by current manifests: the project currently contains Python (`pyproject.toml`, Python `>=3.14,<3.16`, pytest/pyright/ruff development tools), a Rust workspace (`Cargo.toml`, pinned `rust-toolchain.toml`), and a Tauri/React TypeScript desktop package (`desktop/package.json`). No Go, JVM, .NET, C/C++, Ruby, PHP, Swift or Dart project manifest was found in the current checkout. “All languages” is therefore a target support architecture, not current repository compatibility.
+
+The adapter protocol should separate discovery, collection, execution, result normalization and deep-quality tooling. Existing tools provide useful patterns but do not share one universal contract:
+
+| Family | First candidate adapter evidence | Important limitation or guard | Initial AESE level |
+|---|---|---|---|
+| Python | pytest collection/reporting hooks; optional mutmut on supported hosts | plugin loading and dynamic collection require a subprocess boundary; mutmut documents fork support and Windows/WSL constraints | L2 after conformance fixtures |
+| Rust | cargo-nextest machine-readable listing; cargo-mutants for mutation | preserve Cargo features/toolchain identity; mutation is expensive and must remain deep/optional | L2 for run/discovery, L3 only after mutation evidence |
+| JavaScript/TypeScript | StrykerJS runner and per-test coverage analysis | command runner loses coverage optimizations; prefer framework plugin and record static/no-coverage cases | L1/L2 per framework |
+| JVM | PIT targeted mutation and coverage-guided test selection | mutation outcomes include no-coverage, non-viable, timeout and run error; do not collapse them | L1/L2 per build tool |
+| .NET | Microsoft Testing Platform plus Stryker.NET | target/runtime/framework versions must be detected; coverage is not fault detection | L1/L2 per project |
+| Go | go-mutesting or a later maintained equivalent | repository/tool maturity and output contract must be verified at implementation time; no tool is promoted by name alone | L0/L1 until conformance |
+| C/C++ and other families | native build/test/fuzz/ sanitizer adapter first | no universal mutation promise; parser/build/resource boundaries differ substantially | L0 generic, then family-specific |
+
+The upstream evidence behind this table includes [pytest hooks](https://docs.pytest.org/en/stable/how-to/writing_hook_functions.html), [cargo-nextest machine-readable listing](https://nexte.st/docs/machine-readable/list/), [cargo-mutants](https://github.com/sourcefrog/cargo-mutants), [Stryker coverage analysis](https://github.com/stryker-mutator/stryker-js/blob/master/docs/configuration.md), [PIT basic concepts](https://pitest.org/quickstart/basic_concepts/), [Microsoft Testing Platform](https://learn.microsoft.com/en-us/dotnet/core/testing/microsoft-testing-platform-intro), [Stryker.NET](https://github.com/stryker-mutator/stryker-net), [mutmut](https://github.com/boxed/mutmut) and [go-mutesting](https://github.com/merlins-labs/go-mutesting). These sources support adapter capabilities and limitations; they do not prove AESE's future conformance.
 
 ## 9. Implementation gates for the other agent
 
@@ -439,10 +480,28 @@ The implementation agent should therefore begin with evidence hardening and the 
 - [GitHub self-hosted runner access](https://docs.github.com/en/actions/how-tos/manage-runners/self-hosted-runners/manage-access)
 - [GitHub workflow artifacts](https://docs.github.com/en/actions/concepts/workflows-and-actions/workflow-artifacts)
 - [GitHub script injection](https://docs.github.com/en/actions/concepts/security/script-injections)
+- [GitHub Actions billing](https://docs.github.com/en/billing/concepts/product-billing/github-actions)
+- [GitHub Actions limits](https://docs.github.com/en/actions/reference/limits)
+- [GitHub secure workflow use](https://docs.github.com/en/actions/reference/security/secure-use)
 - [Google Cloud service accounts](https://docs.cloud.google.com/compute/docs/access/service-accounts)
 - [Google Cloud access control](https://docs.cloud.google.com/compute/docs/access)
 - [Google Cloud VM access overview](https://docs.cloud.google.com/compute/docs/instances/access-overview)
 - [Google Cloud Shielded VM](https://docs.cloud.google.com/compute/docs/about-shielded-vm)
+- [Google Cloud stop/terminate billing behavior](https://docs.cloud.google.com/compute/docs/instances/suspend-stop-reset-instances-overview)
+- [Google Cloud disk and image pricing](https://cloud.google.com/compute/disks-image-pricing)
+- [Google Cloud budgets and budget alerts](https://docs.cloud.google.com/billing/docs/how-to/budgets)
+- [Evaluating LLM-Based Test Generation Under Software Evolution](https://arxiv.org/abs/2603.23443)
+- [How effective are traditional test criteria at detecting bugs in large language models generated code?](https://arxiv.org/abs/2609.09315)
+- [Do Coverage and Mutation Scores of LLM-Generated Test Suites Correlate with Their Effectiveness?](https://arxiv.org/abs/2607.22880)
+- [An Exploratory Study on Using Large Language Models for Mutation Testing](https://arxiv.org/abs/2406.09843)
+- [An Empirical Evaluation of Using Large Language Models for Automated Unit Test Generation](https://ieeexplore.ieee.org/document/10329992)
+- [pytest hook functions](https://docs.pytest.org/en/stable/how-to/writing_hook_functions.html)
+- [cargo-mutants](https://github.com/sourcefrog/cargo-mutants)
+- [StrykerJS configuration and coverage analysis](https://github.com/stryker-mutator/stryker-js/blob/master/docs/configuration.md)
+- [PIT basic concepts](https://pitest.org/quickstart/basic_concepts/)
+- [Microsoft Testing Platform overview](https://learn.microsoft.com/en-us/dotnet/core/testing/microsoft-testing-platform-intro)
+- [mutmut](https://github.com/boxed/mutmut)
+- [go-mutesting](https://github.com/merlins-labs/go-mutesting)
 
 ## 13. Evidence status at publication
 
