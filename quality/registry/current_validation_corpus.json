@@ -1,5 +1,5 @@
 {
-  "artifact_hash": "dd65ebd659801c63b6b5a8e5db7f79594d08eda8b934428a5e0fd4e4d0518d68",
+  "artifact_hash": "88870e1dab0b32e10070f2fd904d35a484c3a6fbf12754540837ee47a3cc1ea7",
   "development_corpus": [
     {
       "case_id": "DEV-GT96-GOOD",
@@ -332,17 +332,17 @@
   },
   "mode": "SHADOW",
   "provenance": {
-    "artifact_source_sha": "f1cdde446a81dcc3502ff5740847d6bd12dd2149",
-    "current_head": "f1cdde446a81dcc3502ff5740847d6bd12dd2149",
+    "artifact_source_sha": "d79692d20b6f10f1ec41a2853537f1b9e7353c81",
+    "current_head": "d79692d20b6f10f1ec41a2853537f1b9e7353c81",
     "environment": {
       "requires_python": ">=3.14,<3.16"
     },
     "environment_hash": "05077000fe0503d836a6c1e1cdf4d4eb6eb9b2063b998ec6439ce069abd9b1fb",
     "host_observation": {
-      "executable": "C:\\Users\\ADMIN\\AEGIS-COGNITION\\.venv\\Scripts\\python.exe",
+      "executable": "C:\\Users\\ADMIN\\AppData\\Local\\Programs\\Python\\Python311\\python.exe",
       "machine": "AMD64",
       "os": "Windows",
-      "release": "11"
+      "release": "10"
     },
     "protocol_hash": "NOT_APPLICABLE",
     "relevant_subject_digest": "94c1081177942c51a7088ab9f31178cf57510dcbf948ad203a6aa16d71eb169e",
