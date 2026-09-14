@@ -289,9 +289,11 @@ jobs:
             cat "$stdout_log" "$stderr_log" | tee "$combined_log"
             printf '%s\n' "$status" > "$status_log"
 
-            test -s "$stdout_log"
-            test -s "$stderr_log"
             test -s "$combined_log"
+            if [ ! -s "$stdout_log" ] && [ ! -s "$stderr_log" ]; then
+              echo "cargo fuzz target ${target} produced no stdout or stderr" >&2
+              exit 1
+            fi
             if [ "$status" -ne 0 ]; then
               echo "cargo fuzz target ${target} failed with status ${status}" >&2
               exit "$status"
