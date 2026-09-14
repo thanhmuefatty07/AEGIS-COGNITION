@@ -120,6 +120,21 @@ export type ConversationSnapshot = {
   turns: ConversationTurn[];
 };
 
+export type MemoryRecord = {
+  memory_id: string;
+  owner_id: string;
+  scope_kind: string;
+  lifecycle: string;
+  validation: string;
+  revision: number;
+  observed_at_ms: number;
+  content_hash: string | null;
+  content: string | null;
+  validation_basis?: string | null;
+  validation_reason?: string | null;
+  memory_kind: string;
+};
+
 export function createRequest(command: DesktopCommand, payload: Record<string, unknown>): DesktopRequest {
   return {
     schema: REQUEST_SCHEMA,
@@ -239,6 +254,16 @@ export function parseConversationSnapshot(value: unknown): ConversationSnapshot 
   return value as unknown as ConversationSnapshot;
 }
 
+export function parseMemorySearchResult(value: unknown): MemoryRecord[] {
+  if (!isRecord(value) || !Array.isArray(value.records)) {
+    throw new Error("Desktop service returned an invalid memory search result");
+  }
+  if (!value.records.every(isMemoryRecord)) {
+    throw new Error("Desktop service returned an invalid memory record");
+  }
+  return value.records as MemoryRecord[];
+}
+
 export function parseEmptyResult(value: unknown): Record<string, unknown> {
   if (!isRecord(value)) throw new Error("Desktop service returned an invalid command result");
   return value;
@@ -254,6 +279,22 @@ function isNullableString(value: unknown): value is string | null {
 
 function isStringArray(value: unknown): value is string[] {
   return Array.isArray(value) && value.every((item) => typeof item === "string");
+}
+
+function isMemoryRecord(value: unknown): value is MemoryRecord {
+  if (!isRecord(value)) return false;
+  return typeof value.memory_id === "string"
+    && typeof value.owner_id === "string"
+    && typeof value.scope_kind === "string"
+    && typeof value.lifecycle === "string"
+    && typeof value.validation === "string"
+    && typeof value.revision === "number"
+    && typeof value.observed_at_ms === "number"
+    && isNullableString(value.content_hash)
+    && isNullableString(value.content)
+    && (value.validation_basis === undefined || isNullableString(value.validation_basis))
+    && (value.validation_reason === undefined || isNullableString(value.validation_reason))
+    && typeof value.memory_kind === "string";
 }
 
 function isDesktopResponse<T>(value: unknown): value is DesktopResponse<T> {
