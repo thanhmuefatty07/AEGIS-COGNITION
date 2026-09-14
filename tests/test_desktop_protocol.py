@@ -259,6 +259,28 @@ def test_desktop_service_rejects_workspace_use_before_open(tmp_path: Path):
     assert response["error"]["code"] == "WORKSPACE_NOT_OPEN"
 
 
+def test_desktop_service_exposes_aeese_session_through_shared_facade(tmp_path: Path, monkeypatch):
+    monkeypatch.delenv("AEGIS_SESSION_DB_PATH", raising=False)
+    monkeypatch.delenv("AEGIS_PROFILE_ID", raising=False)
+    service = DesktopService(profile_root=tmp_path / "profile", profile_id="local-profile")
+    opened = json.loads(service.dispatch(_request("workspace.open")))
+    assert opened["status"] == "ok"
+    started = json.loads(
+        service.dispatch(
+            _request(
+                "verification.start_session",
+                {
+                    "task": "implement the feature",
+                    "expected_behavior": "the feature returns the documented value",
+                },
+            )
+        )
+    )
+    assert started["status"] == "ok"
+    assert started["result"]["packet"]["authority_state"] == "SHADOW_ONLY"
+    assert started["result"]["packet"]["can_start"] is True
+
+
 def test_desktop_service_rejects_switching_workspace_after_open(tmp_path: Path, monkeypatch):
     monkeypatch.delenv("AEGIS_SESSION_DB_PATH", raising=False)
     monkeypatch.delenv("AEGIS_PROFILE_ID", raising=False)

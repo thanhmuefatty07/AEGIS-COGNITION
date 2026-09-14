@@ -119,6 +119,11 @@ def _observed_critical_false_negative_status(
 ) -> str:
     if legacy_results is None:
         return "NOT_MEASURED"
+    if any(
+        type(outcome) is not str or outcome.strip().upper() not in {"PASS", "FAIL"}
+        for outcome in legacy_results.values()
+    ):
+        return "NOT_MEASURED_INCOMPLETE"
     if critical_false_negatives:
         return "OBSERVED_CRITICAL_FALSE_NEGATIVE"
     if not critical_ids.issubset(set(legacy_results)):
