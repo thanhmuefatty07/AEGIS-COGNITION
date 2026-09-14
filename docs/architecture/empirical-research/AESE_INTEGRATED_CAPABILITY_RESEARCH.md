@@ -187,7 +187,7 @@ This is an important design result. The inventory contract currently mixes two d
 
 Those values must not be treated as interchangeable. The preferred fix is to keep `tracked_files` as explicit provenance/diagnostic metadata and make the stable drift gate compare the scoped authority fields. If the project intentionally wants every tracked-file addition to force a registry refresh, that must be documented as an explicit policy and accompanied by a scoped refresh workflow; it must not be an accidental consequence of a count comparison. Blindly regenerating the registry only to make CI green would hide the contract defect.
 
-After the concurrent workspace-map update, the local current checkout reports both `python scripts/aese_inventory.py --check` and `python scripts/aese_claim_graph.py --check` as `PASS`. A rerun on the pushed current revision is still `NOT VERIFIED`; the old run above remains valid evidence that the former gate was too brittle for an integrated project capability.
+After the concurrent workspace-map update, the local current checkout reports both `python scripts/aese_inventory.py --check` and `python scripts/aese_claim_graph.py --check` as `PASS`. The first rerun correctly exposed stale dependent artifacts; after the ordered refresh, GitHub Actions run [`34809854825`](https://github.com/thanhmuefatty07/AEGIS-COGNITION/actions/runs/34809854825) on commit `0579edcf11780b563b43c2191f54aa10c24f29d0` completed successfully across the full declared matrix. This is evidence for the refreshed repository gates, not proof that every future change will remain green.
 
 `MEASURED` by a current-checkout targeted run after that registry refresh:
 
@@ -210,6 +210,8 @@ The four failures were deterministic artifact-content drift, not an excuse to we
 - no source implementation was changed by this test run, and the existing tests correctly rejected the stale evidence.
 
 The refresh dependency is therefore explicit: `inventory/claim graph -> S2 mapping -> S3 closure -> S4 shadow plan -> S5 validation corpus -> any S6 cost ledger`. A partial refresh is an invalid evidence state. The implementation must record input artifact hashes in every downstream artifact, regenerate in this order in an isolated temporary output set, validate the full chain, and only then atomically publish the new set. A “registry passes” result alone is not sufficient to certify the planner or corpus.
+
+`MEASURED` on run [`34809854825`](https://github.com/thanhmuefatty07/AEGIS-COGNITION/actions/runs/34809854825): Rust fast/MSRV/beta gates, three-platform smoke tests, three-platform desktop graph builds, wheel parity, Python 3.14/3.15 fast gates, full Python suites on Ubuntu/Windows/macOS, and the cross-platform evidence gate all completed with `success`. The run used 19 declared jobs and the refreshed evidence chain; it does not establish production deployment readiness or memory-quality improvement.
 
 ## 4. External research that changes the design
 
@@ -550,7 +552,7 @@ The implementation agent should therefore begin with evidence hardening and the 
 |---|---|
 | Current local AESE targeted tests | `MEASURED`: 145 passed, 1 skipped, 3.36s |
 | Current AESE registry/planner validation | `MEASURED`: 59 passed, 389.26s |
-| Current AESE registry/planner validation after workspace-map update | `MEASURED`: 55 passed, 4 stale-dependent-artifact failures, 396.60s; gate correctly rejected partial refresh |
+| Current AESE registry/planner validation after workspace-map update | `MEASURED`: initial partial refresh 55 passed/4 stale-artifact failures in 396.60s; after ordered S2–S5 refresh, final rerun 59 passed in 328.97s |
 | Current-SHA GitHub CI | `MEASURED`: run `34800284798`, success |
 | Current-SHA three-platform Python evidence | `MEASURED`: 821/821 on Ubuntu, Windows and macOS lanes |
 | GCP VM environment probe | `MEASURED`: bounded probe; VM stopped and verified `TERMINATED` |
@@ -558,5 +560,7 @@ The implementation agent should therefore begin with evidence hardening and the 
 | AESE held-out quality improvement | `NOT VERIFIED`: no corpus/evaluation yet |
 | Deep GitHub run `34800294483` | `MEASURED`: terminal `success`; Miri/sanitizer, fuzz, native platform, resource, security/replay/dependency and completeness jobs all succeeded on commit `45480ee173be50603929b2461c1a6a0b742b7a9e` |
 | GitHub CI regression experiment `34805425014` | `MEASURED`: fail-closed on inventory drift; 820 passed/1 failed in Python fast gate; downstream Python/evidence lanes failed from the same stale contract |
-| Deep GitHub run `34805437099` | `IN PROGRESS` at the time of this report; completed jobs passed, trust-boundary fuzz campaign remained running |
-| Deep fuzz artifact interpretation | `MEASURED` but limited: the commit-bound artifact was downloaded and its four target logs were zero bytes; this supports no observed fuzz failure in that bounded run, not coverage, mutation strength, or absence of latent bugs |
+| Current workspace-map CI rerun `34809854825` | `MEASURED`: terminal `success`; all 19 declared jobs passed on commit `0579edcf11780b563b43c2191f54aa10c24f29d0`, including full Python suites and the cross-platform evidence gate |
+| Deep GitHub run `34805437099` | `MEASURED`: terminal `success`; all jobs passed on commit `2872ac9b9d27f6c6bc84f2297a880d03d7aca7d` |
+| Deep fuzz campaign in run `34805437099` | `MEASURED`: four sequential 900-second libFuzzer targets completed; job log reports `resource_contract` 160,240,853 executions / cov 2,690 / peak RSS 805 MB, `protocol_frame` 451,038,587 / cov 16 / 637 MB, `runtime_ffi_contract` 159,060,974 / cov 2,714 / 754 MB, and `archive_prefix` 20,946,867 / cov 274 / 546 MB; no crash/failure was reported |
+| Deep fuzz artifact interpretation | `MEASURED` but limited: the downloaded commit-bound artifact contains four zero-byte target logs because the workflow pipes stdout to `tee` while libFuzzer writes its useful progress/statistics to stderr; the authoritative job log contains the stats above. The campaign supports no observed failure in this bounded run, not coverage completeness, mutation strength, or absence of latent bugs |
