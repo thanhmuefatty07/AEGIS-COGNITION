@@ -1180,6 +1180,8 @@ Tasks:
 - add regression tests for B1 and B2;
 - fix fail-closed behavior;
 - verify current AESE artifacts are not treated as current proof when their source HEAD differs;
+- refresh dependent evidence artifacts in order (`inventory/claim graph -> S2 -> S3 -> S4 -> S5 -> S6`) into a temporary output set, validate every input/output hash and cross-artifact count, then publish atomically; never refresh only one registry to make a gate green;
+- distinguish repository-wide bookkeeping such as `tracked_files` from the scoped surfaces that are authoritative for AESE planning, and encode that distinction in the drift contract;
 - preserve shadow-only selection authority.
 
 Exit gate:
