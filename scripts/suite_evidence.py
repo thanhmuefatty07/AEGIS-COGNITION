@@ -44,6 +44,20 @@ def parse_counts(output: str) -> dict[str, int | None]:
     return counts
 
 
+def classify_result(
+    *, exit_code: int, timed_out: bool, discovered: int | None
+) -> tuple[str, str, bool, str | None]:
+    """Classify a bounded suite without promoting an empty run to evidence."""
+
+    if timed_out:
+        return "FAILED", "LOCAL TIMEOUT", False, "TIMEOUT"
+    if exit_code != 0:
+        return "FAILED", "LOCAL FAILED", False, "NON_ZERO_EXIT"
+    if not isinstance(discovered, int) or discovered <= 0:
+        return "NOT_VERIFIED", "LOCAL ZERO TESTS", False, "ZERO_TESTS"
+    return "PROVEN", "LOCALLY PROVEN", True, None
+
+
 def toolchain(command: list[str]) -> str:
     executable = command[0].lower() if command else ""
     if "cargo" in executable:
@@ -314,6 +328,11 @@ def main() -> int:
         return 75
     output = stdout + stderr
     counts = parse_counts(output)
+    status, claim_label, release_eligible, failure_reason = classify_result(
+        exit_code=exit_code,
+        timed_out=timed_out,
+        discovered=counts["discovered"],
+    )
     result = {
         "schema": "aegis-suite-evidence-v1",
         "name": args.name,
@@ -335,21 +354,15 @@ def main() -> int:
         "filtered": counts["filtered"],
         "skipped": counts["skipped"],
         "exit_code": exit_code,
-        "status": "PROVEN" if exit_code == 0 and not timed_out else "FAILED",
+        "status": status,
         "claim_scope": claim_scope,
-        "claim_label": (
-            "LOCALLY PROVEN"
-            if exit_code == 0 and not timed_out
-            else "LOCAL TIMEOUT"
-            if timed_out
-            else "LOCAL FAILED"
-        ),
+        "claim_label": claim_label,
         "independent_verification": "NOT VERIFIED",
         "owner_id": owner_id,
         "gate_id": gate_id,
         "attempt_id": attempt_id,
         "run_key": run_key,
-        "release_eligible": exit_code == 0 and not timed_out,
+        "release_eligible": release_eligible,
         "timeout_seconds": args.timeout_seconds,
         "timed_out": timed_out,
         "termination": "TIMEOUT" if timed_out else "EXITED",
@@ -358,6 +371,8 @@ def main() -> int:
         "combined_output_sha256": _sha256(output),
         "remote_observation": _git_remote_observation(revision),
     }
+    if failure_reason is not None:
+        result["failure_reason"] = failure_reason
     args.output.write_text(json.dumps(result, indent=2, sort_keys=True) + "\n", encoding="utf-8")
     print(output, end="")
     print(json.dumps(result, sort_keys=True))

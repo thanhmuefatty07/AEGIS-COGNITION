@@ -317,6 +317,8 @@ def suite_artifact_release_eligible(candidate: dict[str, Any]) -> bool:
         and candidate.get("release_eligible") is True
         and type(candidate.get("exit_code")) is int
         and candidate["exit_code"] == 0
+        and type(candidate.get("discovered")) is int
+        and candidate["discovered"] > 0
         and type(candidate.get("failed")) is int
         and candidate["failed"] == 0
         and type(candidate.get("timed_out")) is bool

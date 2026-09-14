@@ -4,6 +4,7 @@ from pathlib import Path
 
 from scripts import suite_evidence as suite
 from scripts.suite_evidence import (
+    classify_result,
     exclusive_suite_lock,
     execution_run_key,
     parse_counts,
@@ -35,6 +36,24 @@ def test_parse_counts_strips_terminal_formatting() -> None:
         "filtered": 0,
         "skipped": 0,
     }
+
+
+def test_zero_test_success_is_not_verifiable() -> None:
+    assert classify_result(exit_code=0, timed_out=False, discovered=0) == (
+        "NOT_VERIFIED",
+        "LOCAL ZERO TESTS",
+        False,
+        "ZERO_TESTS",
+    )
+
+
+def test_successful_nonempty_suite_is_proven() -> None:
+    assert classify_result(exit_code=0, timed_out=False, discovered=1) == (
+        "PROVEN",
+        "LOCALLY PROVEN",
+        True,
+        None,
+    )
 
 
 def test_execution_run_key_is_stable_for_duplicate_detection() -> None:
