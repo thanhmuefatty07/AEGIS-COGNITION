@@ -48,6 +48,12 @@ completed successfully on `ubuntu-latest`, `windows-latest`, and `macos-14` in
 [GitHub Actions run 34831605691](https://github.com/thanhmuefatty07/AEGIS-COGNITION/actions/runs/34831605691).
 Each runner produced the JSON artifact defined above.
 
+The regression test `tests/test_memory_context_benchmark.py::test_memory_context_benchmark_is_self_consistent`
+also passed in the full Python jobs on all three hosted runners in that CI
+attempt. The umbrella CI run was still red because 11 unrelated AESE registry
+and recorded-corpus drift tests failed; those failures do not exercise this
+benchmark and remain a separate repository baseline issue.
+
 The same commit was run once on the existing GCP Compute Engine VM
 `aegis-test-linux-02` in `asia-southeast1-b` (Ubuntu 24.04, Python 3.14.7).
 It returned `status: PASS`, with 8 quantitative cases and 5 oracle cases;
