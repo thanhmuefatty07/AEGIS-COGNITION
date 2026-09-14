@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pytest
 
-from aegis_cognition.desktop_service import DesktopService
+from aegis_cognition.desktop_service import DesktopService, _select_source_paths_for_prompt
 from core.python.aegis.desktop_protocol import (
     DesktopCommandRouter,
     DesktopProtocolError,
@@ -290,6 +290,20 @@ def test_desktop_service_exposes_bounded_source_snapshot(tmp_path: Path, monkeyp
     assert snapshot["revision"]
     assert snapshot["files"]
     assert snapshot["files"][0]["extraction_status"] in {"EXTRACTED", "FALLBACK_HASH_ONLY"}
+
+
+def test_source_prompt_path_selection_is_bounded_and_query_ranked():
+    records = [{"relative_path": f"src/{index:03d}-module.py"} for index in range(70)]
+    records.append({"relative_path": "src/repository.py"})
+
+    selected = _select_source_paths_for_prompt(records, "inspect the repository")
+
+    assert len(selected) == 17
+    assert selected[0] == "src/repository.py"
+    assert "src/069-module.py" not in selected
+    assert _select_source_paths_for_prompt(records, "show the project files")[:16] == sorted(
+        item["relative_path"] for item in records
+    )[:16]
 
 
 def test_desktop_service_mock_send_uses_canonical_manager(tmp_path: Path, monkeypatch):

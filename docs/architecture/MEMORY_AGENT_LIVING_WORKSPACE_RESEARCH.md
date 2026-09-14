@@ -214,6 +214,11 @@ the above direction:
 - `aegis_cognition/desktop_service.py` already exposes versioned workspace,
   source-snapshot, conversation, and memory commands. It refreshes a bounded
   source snapshot before provider prompt construction.
+- The provider prompt now carries a bounded source-path projection: a stable
+  baseline prefix plus lexical path candidates from the current user message,
+  with total/selected/omitted counts and an explicit “not dependency proof”
+  label. This reduces avoidable path material in common turns without changing
+  the authoritative snapshot or memory selector.
 - `desktop/src/protocol.ts` validates the command/response envelope and already
   reserves memory operations (`search`, `inspect`, `capture`, `correct`,
   `forget`, `restore`, and `purge`).
