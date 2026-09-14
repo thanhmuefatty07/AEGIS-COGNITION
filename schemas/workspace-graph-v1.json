@@ -1,0 +1,75 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://aegis-cognition.ai/schemas/workspace-graph-v1.json",
+  "title": "AEGIS revision-bound workspace graph v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "project_id", "source_revision", "generated_at_ms", "nodes", "edges", "truncated", "stats"],
+  "properties": {
+    "schema": {"const": "aegis-workspace-graph-v1"},
+    "project_id": {"type": "string", "minLength": 1},
+    "source_revision": {"type": "string", "minLength": 1},
+    "generated_at_ms": {"type": "integer", "minimum": 0},
+    "truncated": {"type": "boolean"},
+    "nodes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "kind", "label", "path", "language", "extraction_status", "symbols"],
+        "properties": {
+          "id": {"type": "string", "minLength": 1},
+          "kind": {"enum": ["project", "directory", "file"]},
+          "label": {"type": "string", "minLength": 1},
+          "path": {"type": ["string", "null"]},
+          "language": {"type": ["string", "null"]},
+          "extraction_status": {"type": ["string", "null"]},
+          "symbols": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["name", "kind", "line", "signature_hash"],
+              "properties": {
+                "name": {"type": "string", "minLength": 1},
+                "kind": {"type": "string", "minLength": 1},
+                "line": {"type": "integer", "minimum": 1},
+                "signature_hash": {"type": "string", "minLength": 1}
+              }
+            }
+          }
+        }
+      }
+    },
+    "edges": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "source", "target", "kind", "certainty", "evidence"],
+        "properties": {
+          "id": {"type": "string", "minLength": 1},
+          "source": {"type": "string", "minLength": 1},
+          "target": {"type": "string", "minLength": 1},
+          "kind": {"enum": ["contains", "import_candidate", "lineage_candidate"]},
+          "certainty": {"enum": ["observed", "candidate"]},
+          "evidence": {"type": "string", "minLength": 1}
+        }
+      }
+    },
+    "stats": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["files", "directories", "symbols", "import_candidates", "lineage_candidates", "unresolved_candidates", "omitted_files"],
+      "properties": {
+        "files": {"type": "integer", "minimum": 0},
+        "directories": {"type": "integer", "minimum": 0},
+        "symbols": {"type": "integer", "minimum": 0},
+        "import_candidates": {"type": "integer", "minimum": 0},
+        "lineage_candidates": {"type": "integer", "minimum": 0},
+        "unresolved_candidates": {"type": "integer", "minimum": 0},
+        "omitted_files": {"type": "integer", "minimum": 0}
+      }
+    }
+  }
+}
