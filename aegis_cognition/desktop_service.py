@@ -11,6 +11,7 @@ import argparse
 import hashlib
 import json
 import os
+import re
 import sys
 import uuid
 from collections.abc import Callable, Iterator, Mapping
@@ -82,6 +83,7 @@ MAX_MESSAGE_LENGTH = 256 * 1024
 MAX_PROMPT_LENGTH = 64 * 1024
 MAX_HISTORY_TURNS = 32
 MAX_SOURCE_FILES_IN_PROMPT = 64
+MAX_BASELINE_SOURCE_FILES_IN_PROMPT = 16
 
 
 class DesktopServiceError(DesktopProtocolError):
@@ -138,6 +140,56 @@ def _json_value(value: Any) -> Any:
         items = cast(tuple[Any, ...] | list[Any], value)
         return [_json_value(item) for item in items]
     return value
+
+
+def _select_source_paths_for_prompt(file_records: list[dict[str, Any]], message: str) -> list[str]:
+    """Keep a small stable workspace prefix and rank lexical path candidates."""
+
+    paths = sorted(
+        {
+            str(item.get("relative_path", "")).strip()
+            for item in file_records
+            if str(item.get("relative_path", "")).strip()
+        }
+    )
+    if len(paths) <= MAX_SOURCE_FILES_IN_PROMPT:
+        return paths
+    stop_words = {
+        "the",
+        "and",
+        "for",
+        "with",
+        "from",
+        "this",
+        "that",
+        "project",
+        "file",
+        "code",
+        "memory",
+        "agent",
+        "workspace",
+        "please",
+        "show",
+        "what",
+        "how",
+    }
+    terms = {term for term in re.findall(r"[a-z0-9_]{3,}", message.casefold()) if term not in stop_words}
+    scored = sorted(
+        (
+            sum(1 for term in terms if term in path.casefold()),
+            path,
+        )
+        for path in paths
+    )
+    relevant = [path for score, path in sorted(scored, key=lambda item: (-item[0], item[1])) if score > 0]
+    baseline = paths[:MAX_BASELINE_SOURCE_FILES_IN_PROMPT]
+    selected: list[str] = []
+    for path in [*relevant, *baseline]:
+        if path not in selected:
+            selected.append(path)
+        if len(selected) == MAX_SOURCE_FILES_IN_PROMPT:
+            break
+    return selected
 
 
 class DesktopService:
@@ -747,12 +799,16 @@ class DesktopService:
             cast(dict[str, Any], item) for item in raw_file_items if isinstance(item, dict)
         ]
         files = [str(item.get("relative_path", "")) for item in file_records]
-        files = [item for item in files if item][:MAX_SOURCE_FILES_IN_PROMPT]
+        selected_files = _select_source_paths_for_prompt(file_records, message)
         prompt = "\n".join(
             [
                 "[AEGIS LOCAL WORKSPACE CONTEXT]",
                 f"source_revision: {source_snapshot.get('revision', '')}",
-                f"source_files: {', '.join(files)}",
+                f"source_files_total: {len([item for item in files if item])}",
+                f"source_files_selected: {len(selected_files)}",
+                f"source_files_omitted: {max(0, len([item for item in files if item]) - len(selected_files))}",
+                "source_file_selection: bounded lexical path candidates; not dependency proof",
+                f"source_files: {', '.join(selected_files)}",
                 "[PERSISTED CONVERSATION]",
                 *history,
                 "[RECALLED AUTHORIZED CONTEXT]",
