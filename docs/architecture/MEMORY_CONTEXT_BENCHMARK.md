@@ -22,7 +22,8 @@ data never leaves the machine.
 Run it locally with:
 
 ```text
-uv run --locked --extra all --extra dev python scripts/memory_context_benchmark.py --output artifacts/memory-context-benchmark-local.json
+uv sync --locked --extra all --extra dev --no-install-project
+uv run --no-project --no-sync --locked --extra all --extra dev python scripts/memory_context_benchmark.py --output artifacts/memory-context-benchmark-local.json
 ```
 
 GitHub Actions repeats the same command on Ubuntu, Windows, and macOS and
@@ -39,3 +40,17 @@ Interpret reductions only for the declared workload. The measurement does not
 prove answer-quality preservation, end-to-end provider cost, network latency,
 or universal savings for arbitrary repositories. Those require paired
 provider-specific workloads and a separate quality evaluation.
+
+## Recorded cross-platform evidence
+
+At commit `0dc5b7d53c87a5e9a7a9becd038d4e37523bd851`, the benchmark workflow
+completed successfully on `ubuntu-latest`, `windows-latest`, and `macos-14` in
+[GitHub Actions run 34831605691](https://github.com/thanhmuefatty07/AEGIS-COGNITION/actions/runs/34831605691).
+Each runner produced the JSON artifact defined above.
+
+The same commit was run once on the existing GCP Compute Engine VM
+`aegis-test-linux-02` in `asia-southeast1-b` (Ubuntu 24.04, Python 3.14.7).
+It returned `status: PASS`, with 8 quantitative cases and 5 oracle cases;
+the aggregate was 29,633 estimated baseline tokens versus 12,358 bounded
+tokens (58.296% for that checkout). The VM was stopped immediately afterward
+and verified `TERMINATED`.
