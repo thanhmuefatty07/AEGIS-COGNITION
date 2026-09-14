@@ -218,10 +218,12 @@ the above direction:
   reserves memory operations (`search`, `inspect`, `capture`, `correct`,
   `forget`, `restore`, and `purge`).
 
-The current desktop `App.tsx` is still a conversation/status surface. It does
-not yet render a project graph, memory graph, source-map legend, focused proof
-panel, or revision comparison. That is a product gap, not a reason to weaken
-the existing source and evidence contracts.
+The desktop now has a first read-only project-map slice in
+`desktop/src/workspace_graph.ts` and `desktop/src/WorkspaceGraphView.tsx`. It
+derives a bounded `aegis-workspace-graph-v1` projection from one validated
+source revision, renders file nodes and candidate relationships, and exposes a
+focused symbol inspector. Memory-linked nodes, exact source navigation,
+revision comparison, and a full memory graph remain later increments.
 
 ## Proposed AEGIS model
 
@@ -340,7 +342,9 @@ become the source of truth.
    class for every field. Do not add a database or dependency at this step.
 2. **Build one local vertical slice.** Convert the existing `SourceSnapshot` to
    a bounded graph projection, render it in the Tauri desktop surface, and add
-   focus/search/source-proof interactions. Keep the projection read-only.
+   focus/search/source-proof interactions. Keep the projection read-only. The
+   first file-map implementation is now present; source-proof navigation and
+   memory links are still gated on their contracts.
 3. **Connect memory progressively.** Show selected semantic memories and
    evidence beside a focused file/symbol; use the existing Context Compiler and
    Rust Governor rather than a second selector.
@@ -399,5 +403,3 @@ context compiler. It should be implemented only after the schemas and
 benchmark/evidence contract are frozen. No external system is being adopted as
 the memory authority, and no claim of reduced tokens or superior retrieval is
 made until the paired baseline measurements exist.
-
-\n
