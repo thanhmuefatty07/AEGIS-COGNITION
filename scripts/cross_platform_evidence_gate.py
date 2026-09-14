@@ -61,6 +61,8 @@ def _valid_suite(candidate: dict[str, Any], expected_commit: str, command_fragme
         errors.append("suite is not PROVEN and release-eligible")
     if candidate.get("exit_code") != 0 or candidate.get("failed") != 0:
         errors.append("suite has a non-zero exit or failed tests")
+    if type(candidate.get("discovered")) is not int or candidate["discovered"] <= 0:
+        errors.append("suite discovered zero tests")
     if candidate.get("timed_out") is not False or candidate.get("termination") != "EXITED":
         errors.append("suite timed out or did not terminate normally")
     if candidate.get("worktree_status") != "CLEAN":
