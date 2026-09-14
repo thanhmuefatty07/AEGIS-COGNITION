@@ -24,10 +24,12 @@ COUNT_PATTERNS = {
     "filtered": re.compile(r"(?P<count>\d+)\s+filtered(?:\s+out)?\b"),
     "skipped": re.compile(r"(?P<count>\d+)\s+skipped\b"),
 }
+ANSI_ESCAPE_RE = re.compile(r"\x1b(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])")
 DISCOVERED_RE = re.compile(r"(?P<count>\d+)\s+(?:tests?|cases?)\s+(?:run|collected)\b")
 
 
 def parse_counts(output: str) -> dict[str, int | None]:
+    output = ANSI_ESCAPE_RE.sub("", output)
     counts: dict[str, int | None] = {name: 0 for name in COUNT_PATTERNS}
     for name, pattern in COUNT_PATTERNS.items():
         matches = [int(match.group("count")) for match in pattern.finditer(output)]
