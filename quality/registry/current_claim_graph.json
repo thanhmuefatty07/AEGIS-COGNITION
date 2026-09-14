@@ -1103,8 +1103,8 @@
     "future_obligations": 20,
     "invariants": 46,
     "mapped_surfaces": 9,
-    "surfaces": 162,
-    "unmapped_surfaces": 153,
+    "surfaces": 163,
+    "unmapped_surfaces": 154,
     "unmapped_verifications": 70,
     "unresolved_code_references": 0,
     "verifications": 92
@@ -3851,13 +3851,13 @@
     "all_surfaces_mapped": false,
     "critical_high_risk_mapped": false,
     "criticality_known": false,
-    "unmapped_surface_count": 153
+    "unmapped_surface_count": 154
   },
   "mode": "SHADOW",
   "phase": "PHASE_1_CLAIM_EVIDENCE_GRAPH",
   "schema": "aese-shadow-claim-evidence-graph-v1",
-  "source_head": "d7b4e2afc98236f6f345e1fae4087af40d54f67a",
-  "source_tree_sha256": "733f0885f5bc7a05af6e39bfe8c95191b7abbdefaaffb80ff48a2174026ae4b3",
+  "source_head": "aed21989a55fbcc17c0abba07fa363270401438e",
+  "source_tree_sha256": "00e366635e3dc24de9145b6f3024fbff6e0df27e61105333a04eed28ad9b73ec",
   "status": "SHADOW_GRAPH_PARTIAL_MAPPING_SELECTION_DISABLED",
   "surfaces": [
     {
@@ -4105,6 +4105,19 @@
       "risk": "UNKNOWN",
       "security_criticality": "UNKNOWN",
       "target": "rust-beta-forward-compat",
+      "unknown_dependency_policy": "INVALIDATE_CONSERVATIVELY"
+    },
+    {
+      "claim_refs": [],
+      "id": "AESE-HOSTED_WORKFLOW_JOB-B82FE508A122BA18",
+      "kind": "HOSTED_WORKFLOW_JOB",
+      "mapping_status": "NOT_MAPPED",
+      "path": ".github/workflows/ci.yml",
+      "release_critical": "UNKNOWN",
+      "release_criticality": "UNKNOWN",
+      "risk": "UNKNOWN",
+      "security_criticality": "UNKNOWN",
+      "target": "desktop-build",
       "unknown_dependency_policy": "INVALIDATE_CONSERVATIVELY"
     },
     {
@@ -6783,6 +6796,6 @@
       "source_id": "AESE-011"
     }
   ],
-  "worktree_epoch": "4b9adf3590e101970bc70ee9768eedaae712317e6373dbb1287c0853fccd6ae1",
+  "worktree_epoch": "7f3a2647c8033211407e19a3d4887c0ebf18408817425e173bafd30ea1c9fa78",
   "worktree_status": "DIRTY"
 }
