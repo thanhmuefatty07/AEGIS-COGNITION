@@ -62,6 +62,7 @@ def test_validate_directory_rejects_missing_platform(tmp_path: Path) -> None:
     "overrides,needle",
     [
         ({"failed": 1, "exit_code": 1, "status": "FAILED", "release_eligible": False}, "non-zero exit"),
+        ({"discovered": 0, "passed": 0}, "zero tests"),
         ({"commit": "b" * 40}, "commit does not match"),
         ({"filtered": 1}, "filtered or ignored"),
         ({"skipped": 1}, "skipped tests are not permitted"),

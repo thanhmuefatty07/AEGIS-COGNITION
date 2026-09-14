@@ -66,6 +66,28 @@ def test_manifest_accepts_matching_sha_without_run_for_local() -> None:
     assert validate_manifest(manifest("a" * 40), "a" * 40, verification_index_text="a" * 40) == []
 
 
+def test_suite_release_eligibility_rejects_zero_tests() -> None:
+    candidate = {
+        "schema": "aegis-suite-evidence-v1",
+        "status": "PROVEN",
+        "release_eligible": True,
+        "exit_code": 0,
+        "discovered": 0,
+        "failed": 0,
+        "timed_out": False,
+        "termination": "EXITED",
+        "timeout_seconds": 30,
+        "owner_id": "ci-test",
+        "gate_id": "zero-test-gate",
+        "attempt_id": "fixture-1",
+        "run_key": "a" * 64,
+        "worktree_status": "CLEAN",
+        "worktree_sha256": "b" * 64,
+        "combined_output_sha256": "c" * 64,
+    }
+    assert gate.suite_artifact_release_eligible(candidate) is False
+
+
 def test_registry_parity_rejects_dropped_and_policy_unknown_ids(monkeypatch, tmp_path: Path) -> None:
     registry_path = tmp_path / "not_verified_registry.json"
     policy_path = tmp_path / "deployment_policy.json"
