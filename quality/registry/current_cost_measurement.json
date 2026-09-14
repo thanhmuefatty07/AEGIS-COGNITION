@@ -1,5 +1,5 @@
 {
-  "artifact_hash": "c4e7f9cb89d4ed98fe75fa03a4029828e4331315a740990a9743411a98c93345",
+  "artifact_hash": "6508011ab9ddd7ab2783738cfa1c37302385979a052102c0b10306004cd3c2f5",
   "legacy_wall_time_seconds": {
     "best": 57.168086,
     "median": 71.778817,
@@ -47,16 +47,16 @@
   },
   "provenance": {
     "artifact_source_sha": "4b3bad83edc19a3794d6e612981bdda31900343e",
-    "current_head": "d79692d20b6f10f1ec41a2853537f1b9e7353c81",
+    "current_head": "d6c55ad26c8f914ce7c5dea0576b44b0f317c2e7",
     "environment": {
       "requires_python": ">=3.14,<3.16"
     },
     "environment_hash": "05077000fe0503d836a6c1e1cdf4d4eb6eb9b2063b998ec6439ce069abd9b1fb",
     "host_observation": {
-      "executable": "C:\\Users\\ADMIN\\AppData\\Local\\Programs\\Python\\Python311\\python.exe",
+      "executable": "C:\\Users\\ADMIN\\AEGIS-COGNITION\\.venv\\Scripts\\python.exe",
       "machine": "AMD64",
       "os": "Windows",
-      "release": "10"
+      "release": "11"
     },
     "protocol_hash": "NOT_APPLICABLE",
     "relevant_subject_digest": "c9a75bdfdc22dcf5516eb1df69504c1aec997a42cd3d301b9c98226025f6daa8",
