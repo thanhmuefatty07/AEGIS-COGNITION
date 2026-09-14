@@ -222,8 +222,10 @@ The desktop now has a first read-only project-map slice in
 `desktop/src/workspace_graph.ts` and `desktop/src/WorkspaceGraphView.tsx`. It
 derives a bounded `aegis-workspace-graph-v1` projection from one validated
 source revision, renders file nodes and candidate relationships, and exposes a
-focused symbol inspector. Memory-linked nodes, exact source navigation,
-revision comparison, and a full memory graph remain later increments.
+focused symbol inspector. Selecting a file performs an explicit, scoped memory
+search and shows only authorized, truncated records beside that file. Exact
+source navigation, revision comparison, memory-linked nodes, and a full memory
+graph remain later increments.
 
 ## Proposed AEGIS model
 
@@ -384,6 +386,10 @@ applicable gates have evidence tied to one commit:
 - **Viewer quality:** search/focus/reach/source actions are deterministic,
   keyboard reachable, readable in dark and light modes, contained at supported
   desktop sizes, and understandable without animation.
+- **Cross-platform desktop build:** the `desktop-build` CI matrix compiles the
+  same graph surface on Ubuntu, Windows, and macOS using the locked npm
+  dependency tree. A successful build proves type and bundle compatibility;
+  it does not by itself prove native Tauri packaging or visual usability.
 - **Security/privacy:** owner and scope checks are enforced server-side,
   secrets and unredacted sensitive data are excluded, external content is
   treated as untrusted, and memory poisoning/cross-workspace leakage tests
