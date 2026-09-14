@@ -51,7 +51,7 @@ jobs:
       - name: Resolve locked environment without compiling the package
         run: uv sync --locked --extra all --extra dev --no-install-project
       - name: Run provider-neutral context benchmark
-        run: uv run --locked --extra all --extra dev python scripts/memory_context_benchmark.py --output artifacts/memory-context-benchmark-${{ runner.os }}.json
+        run: uv run --no-project --no-sync --locked --extra all --extra dev python scripts/memory_context_benchmark.py --output artifacts/memory-context-benchmark-${{ runner.os }}.json
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: memory-context-benchmark-${{ runner.os }}-${{ github.sha }}
