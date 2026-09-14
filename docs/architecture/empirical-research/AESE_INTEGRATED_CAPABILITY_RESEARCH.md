@@ -170,6 +170,47 @@ This is strong evidence that the current declared suite is portable for that rev
 - one local skipped symlink case is an environment limitation, not a successful security result;
 - no complete all-language adapter conformance matrix exists yet.
 
+### 3.5 Current CI experiment: evidence gates must separate authority from bookkeeping
+
+`MEASURED` on GitHub Actions run [`34805425014`](https://github.com/thanhmuefatty07/AEGIS-COGNITION/actions/runs/34805425014), executed at the then-published branch revision `2872ac9b9d27f6c6bc84f2297a880d03d7aca7d`:
+
+- Rust MSRV, beta compatibility, platform smoke and wheel-parity lanes completed successfully.
+- The Rust fast gate failed at `AESE inventory drift` before the remaining Rust checks.
+- The Python fast gate completed `820 passed, 1 failed` in `313.25s`; the single failure was `tests/test_aese_inventory.py::test_recorded_inventory_has_no_scoped_file_drift`.
+- The failure was exactly `scope_counts differs`: the recorded inventory had `tracked_files=562`, while the checkout had `tracked_files=565`; `inventoried_items=162`, `represented_paths=145` and `source_tree_sha256` were unchanged. The three additional tracked files were the newly added desktop workspace-graph files outside the declared AESE inventory scopes.
+- Full Python lanes and the downstream cross-platform evidence gate failed for the same upstream inventory contract, not because a test failure or compiler failure was observed in the project code.
+
+This is an important design result. The inventory contract currently mixes two different meanings:
+
+1. **stable AESE authority** — scoped surfaces, mapped paths, claims/contracts/invariants and the source digest used to interpret evidence;
+2. **repository bookkeeping** — the total number of tracked files, including files intentionally outside the AESE scope.
+
+Those values must not be treated as interchangeable. The preferred fix is to keep `tracked_files` as explicit provenance/diagnostic metadata and make the stable drift gate compare the scoped authority fields. If the project intentionally wants every tracked-file addition to force a registry refresh, that must be documented as an explicit policy and accompanied by a scoped refresh workflow; it must not be an accidental consequence of a count comparison. Blindly regenerating the registry only to make CI green would hide the contract defect.
+
+After the concurrent workspace-map update, the local current checkout reports both `python scripts/aese_inventory.py --check` and `python scripts/aese_claim_graph.py --check` as `PASS`. A rerun on the pushed current revision is still `NOT VERIFIED`; the old run above remains valid evidence that the former gate was too brittle for an integrated project capability.
+
+`MEASURED` by a current-checkout targeted run after that registry refresh:
+
+```text
+command: .venv/Scripts/python.exe -m pytest \
+  tests/test_aese_inventory.py \
+  tests/test_aese_statistical_calibration.py \
+  tests/test_aese_s2_mapping.py \
+  tests/test_aese_affected_closure.py \
+  tests/test_aese_shadow_planner.py \
+  tests/test_aese_validation_corpus.py -q -rs --durations=5
+result: 55 passed, 4 failed in 396.60s (0:06:36)
+```
+
+The four failures were deterministic artifact-content drift, not an excuse to weaken the tests:
+
+- fresh S2 mapping contains 163 inventory surfaces and 148 unknown surfaces, while the recorded dependent artifacts still describe 162/147;
+- fresh S3 closure, S4 shadow plan and S5 corpus therefore have different artifact/reproducibility hashes and different decision counts (`WOULD_SKIP=162` versus the recorded `161`, and `WIDENED_UNKNOWN=163` versus `162`);
+- S5 retains the same development/final case IDs, but its `decision_state_counts` and `provenance.relevant_subject_digest` changed with the inventory;
+- no source implementation was changed by this test run, and the existing tests correctly rejected the stale evidence.
+
+The refresh dependency is therefore explicit: `inventory/claim graph -> S2 mapping -> S3 closure -> S4 shadow plan -> S5 validation corpus -> any S6 cost ledger`. A partial refresh is an invalid evidence state. The implementation must record input artifact hashes in every downstream artifact, regenerate in this order in an isolated temporary output set, validate the full chain, and only then atomically publish the new set. A “registry passes” result alone is not sufficient to certify the planner or corpus.
+
 ## 4. External research that changes the design
 
 ### 4.1 Test runner contracts are not interchangeable
@@ -509,10 +550,13 @@ The implementation agent should therefore begin with evidence hardening and the 
 |---|---|
 | Current local AESE targeted tests | `MEASURED`: 145 passed, 1 skipped, 3.36s |
 | Current AESE registry/planner validation | `MEASURED`: 59 passed, 389.26s |
+| Current AESE registry/planner validation after workspace-map update | `MEASURED`: 55 passed, 4 stale-dependent-artifact failures, 396.60s; gate correctly rejected partial refresh |
 | Current-SHA GitHub CI | `MEASURED`: run `34800284798`, success |
 | Current-SHA three-platform Python evidence | `MEASURED`: 821/821 on Ubuntu, Windows and macOS lanes |
 | GCP VM environment probe | `MEASURED`: bounded probe; VM stopped and verified `TERMINATED` |
 | AESE integrated runtime implementation | `NOT VERIFIED`: this document is a plan/research artifact |
 | AESE held-out quality improvement | `NOT VERIFIED`: no corpus/evaluation yet |
 | Deep GitHub run `34800294483` | `MEASURED`: terminal `success`; Miri/sanitizer, fuzz, native platform, resource, security/replay/dependency and completeness jobs all succeeded on commit `45480ee173be50603929b2461c1a6a0b742b7a9e` |
+| GitHub CI regression experiment `34805425014` | `MEASURED`: fail-closed on inventory drift; 820 passed/1 failed in Python fast gate; downstream Python/evidence lanes failed from the same stale contract |
+| Deep GitHub run `34805437099` | `IN PROGRESS` at the time of this report; completed jobs passed, trust-boundary fuzz campaign remained running |
 | Deep fuzz artifact interpretation | `MEASURED` but limited: the commit-bound artifact was downloaded and its four target logs were zero bytes; this supports no observed fuzz failure in that bounded run, not coverage, mutation strength, or absence of latent bugs |

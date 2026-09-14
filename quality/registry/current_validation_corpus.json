@@ -1,5 +1,5 @@
 {
-  "artifact_hash": "5087389ae9cb0a0186e4cba0234152ae803e3988676a4561c6aaaac7101fc92b",
+  "artifact_hash": "f539b610dbd21b5edf4381a93c16c4aae0ad482f0aeefc3502f7e9cf99d6ff94",
   "development_corpus": [
     {
       "case_id": "DEV-GT96-GOOD",
@@ -13,7 +13,7 @@
         "WIDENED_UNKNOWN": 0,
         "WOULD_REUSE": 0,
         "WOULD_RUN": 1,
-        "WOULD_SKIP": 161
+        "WOULD_SKIP": 162
       },
       "label": "KNOWN_GOOD",
       "mutation": "NONE",
@@ -41,7 +41,7 @@
       "closure_status": "WIDENED_ALL_RETAINED",
       "critical": true,
       "decision_state_counts": {
-        "WIDENED_UNKNOWN": 162,
+        "WIDENED_UNKNOWN": 163,
         "WOULD_REUSE": 0,
         "WOULD_RUN": 0,
         "WOULD_SKIP": 0
@@ -72,7 +72,7 @@
       "closure_status": "WIDENED_ALL_RETAINED",
       "critical": true,
       "decision_state_counts": {
-        "WIDENED_UNKNOWN": 162,
+        "WIDENED_UNKNOWN": 163,
         "WOULD_REUSE": 0,
         "WOULD_RUN": 0,
         "WOULD_SKIP": 0
@@ -103,7 +103,7 @@
       "closure_status": "WIDENED_ALL_RETAINED",
       "critical": false,
       "decision_state_counts": {
-        "WIDENED_UNKNOWN": 162,
+        "WIDENED_UNKNOWN": 163,
         "WOULD_REUSE": 0,
         "WOULD_RUN": 0,
         "WOULD_SKIP": 0
@@ -135,7 +135,7 @@
         "WIDENED_UNKNOWN": 0,
         "WOULD_REUSE": 0,
         "WOULD_RUN": 1,
-        "WOULD_SKIP": 161
+        "WOULD_SKIP": 162
       },
       "label": "KNOWN_BAD",
       "mutation": "SERIALIZATION_SCHEMA_MUTATION",
@@ -163,7 +163,7 @@
       "closure_status": "WIDENED_ALL_RETAINED",
       "critical": true,
       "decision_state_counts": {
-        "WIDENED_UNKNOWN": 162,
+        "WIDENED_UNKNOWN": 163,
         "WOULD_REUSE": 0,
         "WOULD_RUN": 0,
         "WOULD_SKIP": 0
@@ -196,7 +196,7 @@
       "closure_status": "WIDENED_ALL_RETAINED",
       "critical": true,
       "decision_state_counts": {
-        "WIDENED_UNKNOWN": 162,
+        "WIDENED_UNKNOWN": 163,
         "WOULD_REUSE": 0,
         "WOULD_RUN": 0,
         "WOULD_SKIP": 0
@@ -227,7 +227,7 @@
       "closure_status": "WIDENED_ALL_RETAINED",
       "critical": false,
       "decision_state_counts": {
-        "WIDENED_UNKNOWN": 162,
+        "WIDENED_UNKNOWN": 163,
         "WOULD_REUSE": 0,
         "WOULD_RUN": 0,
         "WOULD_SKIP": 0
@@ -256,7 +256,7 @@
       "closure_status": "WIDENED_ALL_RETAINED",
       "critical": true,
       "decision_state_counts": {
-        "WIDENED_UNKNOWN": 162,
+        "WIDENED_UNKNOWN": 163,
         "WOULD_REUSE": 0,
         "WOULD_RUN": 0,
         "WOULD_SKIP": 0
@@ -289,7 +289,7 @@
       "closure_status": "WIDENED_ALL_RETAINED",
       "critical": true,
       "decision_state_counts": {
-        "WIDENED_UNKNOWN": 162,
+        "WIDENED_UNKNOWN": 163,
         "WOULD_REUSE": 0,
         "WOULD_RUN": 0,
         "WOULD_SKIP": 0
@@ -332,8 +332,8 @@
   },
   "mode": "SHADOW",
   "provenance": {
-    "artifact_source_sha": "0ab16cf65035cefec2f5f22cbe8ee46cb67708d1",
-    "current_head": "0ab16cf65035cefec2f5f22cbe8ee46cb67708d1",
+    "artifact_source_sha": "ec7697004b456cf1413243196ac33d89f33c4d16",
+    "current_head": "ec7697004b456cf1413243196ac33d89f33c4d16",
     "environment": {
       "requires_python": ">=3.14,<3.16"
     },
@@ -345,7 +345,7 @@
       "release": "10"
     },
     "protocol_hash": "NOT_APPLICABLE",
-    "relevant_subject_digest": "e3d8f524d1e117ee9fc4a8a4423fe2bf802dd501ac15dc6b4d8557ed79635e46",
+    "relevant_subject_digest": "e4b5506c5e192fe5221018d5571aa1e538980755e9ef5955908a0548342dbc7d",
     "reuse_status": "NOT_REUSED",
     "validator_hash": "c5a4f5850a6a297d02c1d48613b85b992213e40d8cf0dad0b8c54c0e6cc1a552"
   },
