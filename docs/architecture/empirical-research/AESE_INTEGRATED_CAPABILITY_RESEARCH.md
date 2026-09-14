@@ -98,7 +98,20 @@ This means an invalid legacy outcome can be counted as a complete observation. T
 - The native Rust process path must be reviewed for child-process output deadlock, cancellation, descendant cleanup and resource enforcement before untrusted/generated tests can use it.
 - The desktop protocol currently has runs-related commands but not a complete `verification.*` contract. Python allowlists, TypeScript unions, handlers, capability discovery and tests must change together.
 
-### 3.3 Existing AESE S1–S6 work: what is real and what is not
+### 3.3 Current integration seam audit
+
+`VERIFIED` by direct source inspection on the planning checkout, with structural cross-checks from the ready codebase-memory index:
+
+- **The codebase-memory graph is useful for discovery, not final source authority.** The index is ready and exposes the relevant package/call/test graph, but some stored line references have drifted from the current files. The implementation agent must use graph results to find candidate owners and then re-read the current source before changing a contract, runner or protocol. A stale graph result is not evidence that a current symbol or line still exists.
+- **Lab already has the correct execution seam.** `aegis_cognition/lab.py` includes `tool_call` in the controller/execution-cell action kinds. `ExecutionCellRegistry` is a sealed single trusted lookup table and rejects duplicate action-kind bindings. `LabApplication._run_tool_calls` already places generic tool work behind admission/settlement fences and resolves the registered cell instead of accepting a caller-provided callable. AESE must bind through this seam or a deliberately versioned existing capability; it must not add a second `tool_call` registry, scheduler, lease ledger or privileged subprocess path.
+- **The current local process cell is bounded but not a sandbox.** `ProcessExecutionCell` uses a killable child process, wall-time timeout, POSIX process-group handling and scoped Windows tree termination. Its own contract explicitly does not prove memory quotas, complete resource enforcement or cross-platform isolation. Generated tests must therefore remain behind a separately verified Lab policy; the adapter result must expose the actual enforcement level and fail closed when required controls are unavailable.
+- **Desktop has a real source-snapshot boundary but no AESE session boundary yet.** `desktop_service.py` opens a workspace through `SourceMapper`, refreshes a bounded source snapshot and includes source revision/file context in live provider prompts. That is the correct place to attach session creation and change observation, but it is not yet an AESE contract or evidence ledger. AESE must consume the snapshot as an input, record its own contract/revision, and invalidate evidence when the snapshot becomes stale.
+- **Desktop protocol parity is currently incomplete.** Python `ALLOWED_COMMANDS` and the router expose runs/approval/object/maintenance commands, while `desktop/src/protocol.ts` has a narrower command union and neither side has typed `verification.*` operations. Adding AESE requires a coordinated Python allowlist/router, TypeScript union/result decoders, service handlers, capability discovery and protocol tests. Updating only one side would create a version/contract split.
+- **The CLI has no verification surface today.** `aegis_cognition/cli.py` currently supports `init`, `run`, `examples`, `version` and `config`. The proposed `aegis verify ...` commands must call the same service façade as desktop and future API clients, not create a CLI-only execution path.
+
+Integration consequence: the first code change should establish one typed AESE façade and connect it to the existing desktop/source-snapshot and Lab/admission seams. It should not start by building all language adapters or by making the shadow selector authoritative. The minimum vertical slice must prove session creation, revision invalidation, one adapter discovery/execution receipt and feedback through the existing authority boundary before broader protocol or language expansion.
+
+### 3.4 Existing AESE S1–S6 work: what is real and what is not
 
 This repository already contains a meaningful AESE shadow program. Direct inspection of the current `quality/registry` artifacts and a focused current-checkout run produced:
 
@@ -442,4 +455,5 @@ The implementation agent should therefore begin with evidence hardening and the 
 | GCP VM environment probe | `MEASURED`: bounded probe; VM stopped and verified `TERMINATED` |
 | AESE integrated runtime implementation | `NOT VERIFIED`: this document is a plan/research artifact |
 | AESE held-out quality improvement | `NOT VERIFIED`: no corpus/evaluation yet |
-| Deep GitHub fuzz run | `NOT VERIFIED` until the in-progress run `34800294483` reaches a terminal result and its artifact is inspected |
+| Deep GitHub run `34800294483` | `MEASURED`: terminal `success`; Miri/sanitizer, fuzz, native platform, resource, security/replay/dependency and completeness jobs all succeeded on commit `45480ee173be50603929b2461c1a6a0b742b7a9e` |
+| Deep fuzz artifact interpretation | `MEASURED` but limited: the commit-bound artifact was downloaded and its four target logs were zero bytes; this supports no observed fuzz failure in that bounded run, not coverage, mutation strength, or absence of latent bugs |
