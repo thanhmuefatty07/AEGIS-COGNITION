@@ -11,9 +11,13 @@ reproducible estimate rather than a claim about a specific provider tokenizer.
 
 Each run records the commit, operating system, Python version, workload cases,
 baseline tokens, bounded tokens, saved tokens, reduction percentage, selection
-determinism, and mandatory-source retention. The benchmark intentionally uses
-synthetic data so private source and conversation content never leaves the
-machine.
+determinism, and mandatory-source retention. It also runs explicit negative
+probes for owner-scope isolation and stale mandatory evidence, a relevance
+recall oracle, a token-budget invariant, and a Unicode accounting consistency
+check against the production compiler. The checked-out workspace case uses the
+real repository file list without exporting file contents. The benchmark
+intentionally uses synthetic memory content so private source and conversation
+data never leaves the machine.
 
 Run it locally with:
 
@@ -25,6 +29,11 @@ GitHub Actions repeats the same command on Ubuntu, Windows, and macOS and
 retains one JSON artifact per runner. A VM run is an independent Linux sample;
 it is useful for environment confirmation but does not replace the hosted
 three-platform matrix.
+
+The benchmark output separates quantitative cases from oracle-only cases so
+non-token checks cannot inflate the reduction number. A regression test also
+executes the same harness to prevent the evidence script from silently drifting
+or reporting an invalid aggregate.
 
 Interpret reductions only for the declared workload. The measurement does not
 prove answer-quality preservation, end-to-end provider cost, network latency,
