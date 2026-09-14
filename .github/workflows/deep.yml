@@ -274,7 +274,30 @@ jobs:
           set -euo pipefail
           mkdir -p artifacts/fuzz
           for target in resource_contract protocol_frame runtime_ffi_contract archive_prefix; do
-            cargo fuzz run "$target" -- -max_total_time=900 -print_final_stats=1 | tee "artifacts/fuzz/${target}.log"
+            stdout_log="artifacts/fuzz/${target}.stdout.log"
+            stderr_log="artifacts/fuzz/${target}.stderr.log"
+            combined_log="artifacts/fuzz/${target}.log"
+            stats_log="artifacts/fuzz/${target}.stats.log"
+            status_log="artifacts/fuzz/${target}.status"
+
+            set +e
+            cargo fuzz run "$target" -- -max_total_time=900 -print_final_stats=1 \
+              > "$stdout_log" 2> "$stderr_log"
+            status=$?
+            set -e
+
+            cat "$stdout_log" "$stderr_log" | tee "$combined_log"
+            printf '%s\n' "$status" > "$status_log"
+
+            test -s "$stdout_log"
+            test -s "$stderr_log"
+            test -s "$combined_log"
+            if [ "$status" -ne 0 ]; then
+              echo "cargo fuzz target ${target} failed with status ${status}" >&2
+              exit "$status"
+            fi
+            grep -E '^stat::number_of_executed_units:' "$combined_log" > "$stats_log"
+            test -s "$stats_log"
           done
           git rev-parse HEAD > artifacts/fuzz/commit.txt
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
