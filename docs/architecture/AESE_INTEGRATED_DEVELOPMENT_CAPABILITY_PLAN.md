@@ -154,6 +154,18 @@ The current native process path must be reviewed and tested for:
 
 The existing process lane must not be described as a complete sandbox unless filesystem, network, memory, CPU and process-tree guarantees are each verified for the target platform.
 
+#### B5 — integration seams are distributed across existing contracts
+
+The current source inspection found that AESE cannot be added safely as an isolated Python module:
+
+- `aegis_cognition/lab.py` already owns the `tool_call` execution-cell binding, sealed registry, admission/settlement fences and trusted runner resolution. Reuse that seam; never register a competing `tool_call` cell or create a second execution ledger.
+- `ProcessExecutionCell` is a killable, wall-time-bounded local cell with platform-specific termination behavior, but it does not prove memory/resource isolation or a complete sandbox. Adapter policy must expose the real enforcement level and block when the requested safety level is absent.
+- `aegis_cognition/desktop_service.py` already owns workspace opening, `SourceMapper` and bounded source snapshots used to refresh live provider context. AESE session creation and revision invalidation should attach here, while the snapshot remains an input rather than an evidence decision.
+- `core/python/aegis/desktop_protocol.py` and `desktop/src/protocol.ts` are not currently symmetric, and neither has the typed `verification.*` contract. Update the Python allowlist/router, TypeScript union/decoders, service handlers, capability discovery and tests as one contract change.
+- `aegis_cognition/cli.py` has no verification commands. The CLI must call the same AESE façade as desktop and a future API; it must not introduce an alternate runner or result schema.
+
+The codebase-memory index is a navigation aid only. Its current structural graph is ready, but some line references are stale relative to source. Every implementation decision must be confirmed against the current file and symbol before editing.
+
 ### 3.4. Research-derived deployment and evidence constraints
 
 The detailed evidence ledger is in `docs/architecture/empirical-research/AESE_INTEGRATED_CAPABILITY_RESEARCH.md`. The implementing agent must treat the following as hard constraints:
