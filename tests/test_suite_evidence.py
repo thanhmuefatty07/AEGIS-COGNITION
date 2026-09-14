@@ -23,6 +23,20 @@ def test_parse_counts_keeps_scope_fields() -> None:
     }
 
 
+def test_parse_counts_strips_terminal_formatting() -> None:
+    counts = parse_counts(
+        "\x1b[32m566\x1b[0m tests run: \x1b[32m566\x1b[0m passed, \x1b[31m0\x1b[0m failed, \x1b[33m0\x1b[0m skipped"
+    )
+    assert counts == {
+        "discovered": 566,
+        "passed": 566,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 0,
+        "skipped": 0,
+    }
+
+
 def test_execution_run_key_is_stable_for_duplicate_detection() -> None:
     args = {
         "gate_id": "python-cross-language",
