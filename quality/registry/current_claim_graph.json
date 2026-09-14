@@ -1103,8 +1103,8 @@
     "future_obligations": 20,
     "invariants": 46,
     "mapped_surfaces": 9,
-    "surfaces": 163,
-    "unmapped_surfaces": 154,
+    "surfaces": 172,
+    "unmapped_surfaces": 163,
     "unmapped_verifications": 70,
     "unresolved_code_references": 0,
     "verifications": 92
@@ -3851,13 +3851,13 @@
     "all_surfaces_mapped": false,
     "critical_high_risk_mapped": false,
     "criticality_known": false,
-    "unmapped_surface_count": 154
+    "unmapped_surface_count": 163
   },
   "mode": "SHADOW",
   "phase": "PHASE_1_CLAIM_EVIDENCE_GRAPH",
   "schema": "aese-shadow-claim-evidence-graph-v1",
-  "source_head": "ce500efbb1aac1d944c298f39d59f5a34bd7ed5f",
-  "source_tree_sha256": "00e366635e3dc24de9145b6f3024fbff6e0df27e61105333a04eed28ad9b73ec",
+  "source_head": "f9c0d83eac2c858f2032e2e6aa868b785cfbb849",
+  "source_tree_sha256": "1e9c165bddba38c2e35189c59c3b285059da1c7fdb25a8cb1254198c5f1423d8",
   "status": "SHADOW_GRAPH_PARTIAL_MAPPING_SELECTION_DISABLED",
   "surfaces": [
     {
@@ -3966,6 +3966,19 @@
     },
     {
       "claim_refs": [],
+      "id": "AESE-HOSTED_WORKFLOW-D8B029656517F9E1",
+      "kind": "HOSTED_WORKFLOW",
+      "mapping_status": "NOT_MAPPED",
+      "path": ".github/workflows/memory-context-benchmark.yml",
+      "release_critical": "UNKNOWN",
+      "release_criticality": "UNKNOWN",
+      "risk": "UNKNOWN",
+      "security_criticality": "UNKNOWN",
+      "target": null,
+      "unknown_dependency_policy": "INVALIDATE_CONSERVATIVELY"
+    },
+    {
+      "claim_refs": [],
       "id": "AESE-HOSTED_WORKFLOW-E74493557E2F0C05",
       "kind": "HOSTED_WORKFLOW",
       "mapping_status": "NOT_MAPPED",
@@ -4040,6 +4053,19 @@
       "risk": "UNKNOWN",
       "security_criticality": "UNKNOWN",
       "target": "wheel-parity",
+      "unknown_dependency_policy": "INVALIDATE_CONSERVATIVELY"
+    },
+    {
+      "claim_refs": [],
+      "id": "AESE-HOSTED_WORKFLOW_JOB-5E1231BC0DE6B9A5",
+      "kind": "HOSTED_WORKFLOW_JOB",
+      "mapping_status": "NOT_MAPPED",
+      "path": ".github/workflows/memory-context-benchmark.yml",
+      "release_critical": "UNKNOWN",
+      "release_criticality": "UNKNOWN",
+      "risk": "UNKNOWN",
+      "security_criticality": "UNKNOWN",
+      "target": "benchmark",
       "unknown_dependency_policy": "INVALIDATE_CONSERVATIVELY"
     },
     {
@@ -4508,6 +4534,19 @@
     },
     {
       "claim_refs": [],
+      "id": "AESE-PYTHON_TEST-6D4683D29098D80C",
+      "kind": "PYTHON_TEST",
+      "mapping_status": "NOT_MAPPED",
+      "path": "tests/test_memory_context_benchmark.py",
+      "release_critical": "UNKNOWN",
+      "release_criticality": "UNKNOWN",
+      "risk": "UNKNOWN",
+      "security_criticality": "UNKNOWN",
+      "target": null,
+      "unknown_dependency_policy": "INVALIDATE_CONSERVATIVELY"
+    },
+    {
+      "claim_refs": [],
       "id": "AESE-PYTHON_TEST-6EE860DAF7328134",
       "kind": "PYTHON_TEST",
       "mapping_status": "NOT_MAPPED",
@@ -4538,6 +4577,19 @@
       "kind": "PYTHON_TEST",
       "mapping_status": "NOT_MAPPED",
       "path": "tests/test_cooperative_resource_benchmark.py",
+      "release_critical": "UNKNOWN",
+      "release_criticality": "UNKNOWN",
+      "risk": "UNKNOWN",
+      "security_criticality": "UNKNOWN",
+      "target": null,
+      "unknown_dependency_policy": "INVALIDATE_CONSERVATIVELY"
+    },
+    {
+      "claim_refs": [],
+      "id": "AESE-PYTHON_TEST-935DF7DE8CD1A05A",
+      "kind": "PYTHON_TEST",
+      "mapping_status": "NOT_MAPPED",
+      "path": "tests/test_verification_generic_adapter.py",
       "release_critical": "UNKNOWN",
       "release_criticality": "UNKNOWN",
       "risk": "UNKNOWN",
@@ -4599,6 +4651,32 @@
     },
     {
       "claim_refs": [],
+      "id": "AESE-PYTHON_TEST-B30CC6EFC0BE78B8",
+      "kind": "PYTHON_TEST",
+      "mapping_status": "NOT_MAPPED",
+      "path": "tests/test_verification_agent_integration.py",
+      "release_critical": "UNKNOWN",
+      "release_criticality": "UNKNOWN",
+      "risk": "UNKNOWN",
+      "security_criticality": "UNKNOWN",
+      "target": null,
+      "unknown_dependency_policy": "INVALIDATE_CONSERVATIVELY"
+    },
+    {
+      "claim_refs": [],
+      "id": "AESE-PYTHON_TEST-BA9263475352ACE5",
+      "kind": "PYTHON_TEST",
+      "mapping_status": "NOT_MAPPED",
+      "path": "tests/test_verification_adapter_registry.py",
+      "release_critical": "UNKNOWN",
+      "release_criticality": "UNKNOWN",
+      "risk": "UNKNOWN",
+      "security_criticality": "UNKNOWN",
+      "target": null,
+      "unknown_dependency_policy": "INVALIDATE_CONSERVATIVELY"
+    },
+    {
+      "claim_refs": [],
       "id": "AESE-PYTHON_TEST-BB462D748FA004AC",
       "kind": "PYTHON_TEST",
       "mapping_status": "NOT_MAPPED",
@@ -4629,6 +4707,19 @@
       "kind": "PYTHON_TEST",
       "mapping_status": "NOT_MAPPED",
       "path": "tests/test_runtime_coordination.py",
+      "release_critical": "UNKNOWN",
+      "release_criticality": "UNKNOWN",
+      "risk": "UNKNOWN",
+      "security_criticality": "UNKNOWN",
+      "target": null,
+      "unknown_dependency_policy": "INVALIDATE_CONSERVATIVELY"
+    },
+    {
+      "claim_refs": [],
+      "id": "AESE-PYTHON_TEST-D02F033C66DB2E7F",
+      "kind": "PYTHON_TEST",
+      "mapping_status": "NOT_MAPPED",
+      "path": "tests/test_verification_session.py",
       "release_critical": "UNKNOWN",
       "release_criticality": "UNKNOWN",
       "risk": "UNKNOWN",
@@ -4732,6 +4823,19 @@
       "security_criticality": "UNKNOWN",
       "target": null,
       "unknown_dependency_policy": null
+    },
+    {
+      "claim_refs": [],
+      "id": "AESE-PYTHON_TEST-FF1325E96D098B74",
+      "kind": "PYTHON_TEST",
+      "mapping_status": "NOT_MAPPED",
+      "path": "tests/test_verification_contracts.py",
+      "release_critical": "UNKNOWN",
+      "release_criticality": "UNKNOWN",
+      "risk": "UNKNOWN",
+      "security_criticality": "UNKNOWN",
+      "target": null,
+      "unknown_dependency_policy": "INVALIDATE_CONSERVATIVELY"
     },
     {
       "claim_refs": [],
@@ -5233,6 +5337,19 @@
       "kind": "SCRIPT_OR_GATE",
       "mapping_status": "NOT_MAPPED",
       "path": "scripts/smoke_check.py",
+      "release_critical": "UNKNOWN",
+      "release_criticality": "UNKNOWN",
+      "risk": "UNKNOWN",
+      "security_criticality": "UNKNOWN",
+      "target": null,
+      "unknown_dependency_policy": "INVALIDATE_CONSERVATIVELY"
+    },
+    {
+      "claim_refs": [],
+      "id": "AESE-SCRIPT_OR_GATE-079AEF1079DB1218",
+      "kind": "SCRIPT_OR_GATE",
+      "mapping_status": "NOT_MAPPED",
+      "path": "scripts/memory_context_benchmark.py",
       "release_critical": "UNKNOWN",
       "release_criticality": "UNKNOWN",
       "risk": "UNKNOWN",
@@ -6796,6 +6913,6 @@
       "source_id": "AESE-011"
     }
   ],
-  "worktree_epoch": "f3d22dfc355ad0bef5539c236eb29b800c4d974e2f9ab78d17f33b7a8ee95528",
+  "worktree_epoch": "8f9dbbe323beec3c9df5587a1419979e774178e3c10ab4e91770de425c97da43",
   "worktree_status": "DIRTY"
 }
