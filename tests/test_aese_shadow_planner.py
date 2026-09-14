@@ -106,6 +106,11 @@ def test_confusion_matrix_is_only_measured_from_explicit_legacy_results() -> Non
     assert measured["observed_critical_false_negative_status"] == "NOT_MEASURED_INCOMPLETE"
 
 
+def test_invalid_legacy_outcome_cannot_complete_false_negative_measurement() -> None:
+    plan = build_shadow_plan(["core/rust/src/gt96.rs"], {"critical-test": "ERROR"})
+    assert plan["observed_critical_false_negative_status"] == "NOT_MEASURED_INCOMPLETE"
+
+
 def test_shadow_plan_hash_and_recorded_artifact_are_stable() -> None:
     first = build_shadow_plan(["core/rust/src/gt96.rs", "aegis_cognition/aese.py"])
     second = build_shadow_plan(["aegis_cognition/aese.py", "core/rust/src/gt96.rs"])

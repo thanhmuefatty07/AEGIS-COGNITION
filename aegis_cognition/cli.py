@@ -17,12 +17,14 @@ Setup flow (< 2 minutes):
 
 from __future__ import annotations
 
+import json
 import sys
 from collections.abc import Callable, Mapping
 from pathlib import Path
 from typing import Protocol, cast
 
 from .config import VALID_TRUST_LEVELS, load_config, redact_config, save_config
+from .verification import VerificationFacade, VerificationSessionError
 
 
 class _Msvcrt(Protocol):
@@ -47,6 +49,8 @@ def main() -> int:
         _cmd_version()
     elif command == "config":
         return _cmd_config(sys.argv[2:])
+    elif command in ("verify", "verification"):
+        return _cmd_verify(sys.argv[2:])
     elif command in ("-h", "--help", "help"):
         _print_help()
     else:
@@ -68,6 +72,8 @@ def _print_help() -> None:
     aegis version                     Show version
     aegis config show                 Show current configuration
     aegis config set <key> <value>    Set a configuration value
+    aegis verify inspect [path]       Inspect a project for AESE verification
+    aegis verify start <task>         Create an AESE contract and agent packet
 
   Quick Start:
     pip install aegis-cognition
@@ -206,6 +212,57 @@ def _cmd_run(args: list[str]) -> int:
         print()
         return 1
     return 0
+
+
+def _cmd_verify(args: list[str]) -> int:
+    """Use the same AESE façade as the agent runtime and desktop service."""
+
+    if not args or args[0] in {"-h", "--help"}:
+        print("Usage: aegis verify inspect [path] | aegis verify start <task> --expected <behavior> [path]")
+        return 0 if args else 2
+    operation = args[0]
+    facade = VerificationFacade()
+    if operation == "inspect":
+        root = Path(args[1]) if len(args) > 1 else Path.cwd()
+        try:
+            print(json.dumps(facade.inspect_project(root).as_dict(), ensure_ascii=False, indent=2))
+        except (OSError, ValueError, VerificationSessionError) as error:
+            print(f"Verification error: {error}")
+            return 1
+        return 0
+    if operation == "start":
+        if len(args) < 2:
+            print("Usage: aegis verify start <task> --expected <behavior> [path]")
+            return 2
+        task = args[1]
+        try:
+            expected_index = args.index("--expected")
+            expected = args[expected_index + 1]
+        except ValueError, IndexError:
+            print("Verification error: --expected <behavior> is required; AESE does not infer acceptance criteria")
+            return 2
+        root = Path(args[expected_index + 2]) if len(args) > expected_index + 2 else Path.cwd()
+        try:
+            profile = facade.inspect_project(root)
+            requirements = facade.create_contract(
+                task,
+                expected_behavior=expected,
+                source_revision=profile.source_revision,
+                policy_hash="UNKNOWN",
+            )
+            session = facade.start_session(profile, requirements)
+            packet = facade.get_agent_packet(session.session_id)
+            print(
+                json.dumps(
+                    {"session": session.as_dict(), "packet": packet.__dict__}, ensure_ascii=False, indent=2, default=str
+                )
+            )
+        except (OSError, ValueError, VerificationSessionError) as error:
+            print(f"Verification error: {error}")
+            return 1
+        return 0
+    print(f"Unknown verify operation: {operation}")
+    return 2
 
 
 def _build_llm_from_config(config: dict[str, object]) -> object | None:
