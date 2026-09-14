@@ -1,0 +1,58 @@
+name: Memory context benchmark
+
+"on":
+  push:
+    branches: [main]
+    paths:
+      - "scripts/memory_context_benchmark.py"
+      - "aegis_cognition/desktop_service.py"
+      - "core/python/aegis/context_compiler.py"
+      - "pyproject.toml"
+      - "uv.lock"
+      - ".github/workflows/memory-context-benchmark.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "scripts/memory_context_benchmark.py"
+      - "aegis_cognition/desktop_service.py"
+      - "core/python/aegis/context_compiler.py"
+      - "pyproject.toml"
+      - "uv.lock"
+      - ".github/workflows/memory-context-benchmark.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: aegis-memory-context-benchmark-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  UV_VERSION: 0.12.9
+
+jobs:
+  benchmark:
+    name: Context benchmark (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-14]
+        python-version: ["3.14.7"]
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install pinned uv
+        run: python -m pip install --upgrade pip "uv==${{ env.UV_VERSION }}"
+      - name: Resolve locked environment
+        run: uv sync --locked --extra all --extra dev
+      - name: Run provider-neutral context benchmark
+        run: uv run --locked --extra all --extra dev python scripts/memory_context_benchmark.py --output artifacts/memory-context-benchmark-${{ runner.os }}.json
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: memory-context-benchmark-${{ runner.os }}-${{ github.sha }}
+          path: artifacts/memory-context-benchmark-${{ runner.os }}.json
