@@ -24,6 +24,20 @@ export type DesktopCommand =
   | "memory.forget"
   | "memory.restore"
   | "memory.purge"
+  | "verification.inspect_project"
+  | "verification.create_contract"
+  | "verification.start_session"
+  | "verification.get_agent_packet"
+  | "verification.observe_change"
+  | "verification.get_feedback"
+  | "verification.propose_test_change"
+  | "verification.evaluate_test_change"
+  | "verification.apply_test_change"
+  | "verification.request_deep_run"
+  | "verification.inspect_run"
+  | "verification.cancel_run"
+  | "verification.resume_session"
+  | "verification.read_report"
   | "service.shutdown";
 
 export type DesktopRequest = {
@@ -134,6 +148,73 @@ export type MemoryRecord = {
   validation_reason?: string | null;
   memory_kind: string;
 };
+
+export type VerificationSession = {
+  session_id: string;
+  project_id: string;
+  baseline_revision: string;
+  current_revision: string;
+  requirement_ids: string[];
+  plan_id: string;
+  state: string;
+  event_cursor: number;
+};
+
+export type VerificationAgentPacket = {
+  session_id: string;
+  project_profile: Record<string, unknown>;
+  requirements: Array<Record<string, unknown>>;
+  plan: Record<string, unknown>;
+  known_risks: string[];
+  rules: string[];
+  feedback_cursor: number;
+  source_revision: string;
+  can_start: boolean;
+  authority_state: "SHADOW_ONLY";
+};
+
+export type VerificationReport = {
+  session: Record<string, unknown>;
+  plan: Record<string, unknown>;
+  assessment: Record<string, unknown>;
+  events: Array<Record<string, unknown>>;
+  execution: "NOT_EXECUTED";
+  final_assurance: false;
+  promotion: "DISABLED";
+};
+
+export function parseVerificationPacket(value: unknown): VerificationAgentPacket {
+  if (!isRecord(value)
+    || typeof value.session_id !== "string"
+    || !isRecord(value.project_profile)
+    || !Array.isArray(value.requirements)
+    || !value.requirements.every(isRecord)
+    || !isRecord(value.plan)
+    || !isStringArray(value.known_risks)
+    || !isStringArray(value.rules)
+    || typeof value.feedback_cursor !== "number"
+    || typeof value.source_revision !== "string"
+    || typeof value.can_start !== "boolean"
+    || value.authority_state !== "SHADOW_ONLY") {
+    throw new Error("Desktop service returned an invalid AESE packet");
+  }
+  return value as unknown as VerificationAgentPacket;
+}
+
+export function parseVerificationReport(value: unknown): VerificationReport {
+  if (!isRecord(value)
+    || !isRecord(value.session)
+    || !isRecord(value.plan)
+    || !isRecord(value.assessment)
+    || !Array.isArray(value.events)
+    || !value.events.every(isRecord)
+    || value.execution !== "NOT_EXECUTED"
+    || value.final_assurance !== false
+    || value.promotion !== "DISABLED") {
+    throw new Error("Desktop service returned an invalid AESE report");
+  }
+  return value as unknown as VerificationReport;
+}
 
 export function createRequest(command: DesktopCommand, payload: Record<string, unknown>): DesktopRequest {
   return {

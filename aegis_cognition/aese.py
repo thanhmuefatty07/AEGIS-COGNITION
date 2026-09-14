@@ -928,6 +928,7 @@ def evaluate_adaptive_measurement(
         or container_invalid
         or "contamination_flags_invalid" in reasons
         or "observation_budget_exceeded" in reasons
+        or "baseline_invalid" in reasons
     ):
         status = "INSUFFICIENT_EVIDENCE"
     elif "incomplete_final_block" in reasons:

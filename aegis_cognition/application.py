@@ -8,6 +8,7 @@ import re
 import time
 import uuid
 from dataclasses import asdict
+from pathlib import Path
 from typing import Any, cast
 from collections.abc import Callable
 
@@ -19,6 +20,7 @@ from .observability import CorrelationContext, RuntimeTelemetry
 from .prompt import PromptBuilder
 from .rag import RAGManager
 from .runtime import coordinated_runtime_task
+from .verification import AgentImplementationPacket, VerificationFacade, VerificationSessionError
 
 try:
     from core.python.aegis.conversations import ConversationManager
@@ -40,6 +42,9 @@ class AgentApplication:
         self.telemetry = telemetry or RuntimeTelemetry()
         self.correlation = CorrelationContext.new()
         self._gateway_factory = gateway_factory
+        self._verification_facade: VerificationFacade | None = None
+        self._verification_session_id: str | None = None
+        self._verification_packet: AgentImplementationPacket | None = None
 
     def prepare(self, task: str) -> tuple[str, str]:
         rag_context = self._retrieve_context(task)
@@ -108,7 +113,63 @@ class AgentApplication:
             error_handlers=options.get("error_handlers"),
             completion_conditions=options.get("completion_conditions"),
         )
+        if self._verification_packet is not None:
+            packet = self._verification_packet
+            system_context = (
+                f"{system_context}\n\n"
+                "AESE IMPLEMENTATION PACKET (PROVISIONAL CONTROL-PLANE CONTEXT):\n"
+                f"session_id={packet.session_id}\n"
+                f"source_revision={packet.source_revision}\n"
+                f"requirements={json.dumps(packet.requirements, ensure_ascii=False, sort_keys=True)}\n"
+                f"rules={json.dumps(packet.rules, ensure_ascii=False)}\n"
+                "Do not treat provisional feedback as final assurance."
+            )
         return system_context
+
+    def _aese_enabled(self) -> bool:
+        return self.config.options.get("aese") is True or self.config.options.get("verification") is True
+
+    def _ensure_verification_session(self) -> None:
+        if not self._aese_enabled() or self._verification_session_id is not None:
+            return
+        raw_root = self.config.options.get("aese_project_root", str(Path.cwd()))
+        if not isinstance(raw_root, str) or not raw_root.strip():
+            raise VerificationSessionError("aese_project_root must be a non-empty path")
+        expected = self.config.options.get("aese_expected_behavior")
+        if expected is not None and not isinstance(expected, str):
+            raise VerificationSessionError("aese_expected_behavior must be a string")
+        facade = VerificationFacade()
+        profile = facade.inspect_project(raw_root)
+        requirements = facade.create_contract(
+            self.config.task,
+            expected_behavior=expected,
+            source_revision=profile.source_revision,
+            policy_hash=self.config.trust_policy_hash or "UNKNOWN",
+        )
+        session = facade.start_session(profile, requirements)
+        packet = facade.get_agent_packet(session.session_id)
+        if not packet.can_start:
+            raise VerificationSessionError(
+                "AESE contract is incomplete; provide aese_expected_behavior before source implementation"
+            )
+        self._verification_facade = facade
+        self._verification_session_id = session.session_id
+        self._verification_packet = packet
+        self.telemetry.emit(
+            "verification",
+            "contract_ready_before_agent_execution",
+            correlation=self.correlation,
+        )
+
+    def _observe_verification_change(self) -> None:
+        if self._verification_facade is None or self._verification_session_id is None:
+            return
+        raw_paths = self.config.options.get("aese_changed_paths", ())
+        if not isinstance(raw_paths, (tuple, list)):
+            raise VerificationSessionError("aese_changed_paths must be a list or tuple")
+        typed_paths = cast(list[str] | tuple[str, ...], raw_paths)
+        self._verification_facade.observe_change(self._verification_session_id, tuple(typed_paths))
+        self.telemetry.emit("verification", "change_observed", correlation=self.correlation)
 
     def _gateway(self, formatted_task: str) -> Any:
         options = self.config.options
@@ -272,6 +333,7 @@ class AgentApplication:
             self.telemetry.emit("agent", "run_started", correlation=self.correlation)
             conversation_run: dict[str, Any] | None = None
             try:
+                self._ensure_verification_session()
                 conversation_run = self._begin_conversation(self.config.task)
                 if self._lab_enabled():
                     # Lab owns compatibility retrieval as an admitted
@@ -385,6 +447,8 @@ class AgentApplication:
                 self.telemetry.emit("agent", "run_failed", correlation=self.correlation)
                 raise
             finally:
+                if self._verification_facade is not None and self._verification_session_id is not None:
+                    self._observe_verification_change()
                 self.telemetry.metrics.observe_ms(
                     "runtime.agent.run_duration",
                     (time.perf_counter() - started) * 1000,

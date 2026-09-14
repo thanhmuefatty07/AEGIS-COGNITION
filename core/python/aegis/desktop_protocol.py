@@ -47,6 +47,20 @@ ALLOWED_COMMANDS = frozenset(
         "maintenance.backup",
         "maintenance.restore",
         "maintenance.rebuild",
+        "verification.inspect_project",
+        "verification.create_contract",
+        "verification.start_session",
+        "verification.get_agent_packet",
+        "verification.observe_change",
+        "verification.get_feedback",
+        "verification.propose_test_change",
+        "verification.evaluate_test_change",
+        "verification.apply_test_change",
+        "verification.request_deep_run",
+        "verification.inspect_run",
+        "verification.cancel_run",
+        "verification.resume_session",
+        "verification.read_report",
     }
 )
 

@@ -335,6 +335,13 @@ def test_adaptive_measurement_baseline_failure_is_not_a_pass() -> None:
     assert "confidence_interval_does_not_clear_baseline" in result.failure_reasons
 
 
+def test_adaptive_measurement_invalid_baseline_is_not_a_pass() -> None:
+    spec = AdaptiveMeasurementSpec(metric="throughput", direction="higher_is_better")
+    result = evaluate_adaptive_measurement(spec, [1.0] * 30, warmups=[0.0] * 10, baseline=math.nan)
+    assert result.status == "INSUFFICIENT_EVIDENCE"
+    assert "baseline_invalid" in result.failure_reasons
+
+
 def test_adaptive_measurement_malformed_protocol_fails_closed_without_raising() -> None:
     malformed = AdaptiveMeasurementSpec(metric="latency_ms", min_observations="30")  # type: ignore[arg-type]
     result = evaluate_adaptive_measurement(malformed, [1.0] * 30, warmups=[0.0] * 10)

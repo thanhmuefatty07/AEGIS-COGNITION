@@ -20,11 +20,13 @@ from pathlib import Path
 from typing import Any, TextIO, cast
 from urllib.parse import urlsplit
 
+from .config import trust_policy_hash
 from .runtime import (
     coordinated_runtime_task_sync,
     native_runtime_available,
     normalize_runtime_trust_level,
 )
+from .verification import VerificationFacade, VerificationSessionError
 
 try:
     from core.python.aegis.code_intelligence import (
@@ -219,6 +221,7 @@ class DesktopService:
         self.profile_id = profile_id
         configured_trust = os.environ.get("AEGIS_TRUST_LEVEL", "DEV") if trust_level is None else trust_level
         self.trust_level = normalize_runtime_trust_level(configured_trust)
+        self.trust_policy_hash = trust_policy_hash(self.trust_level)
         self.profile_root = (profile_root or _default_profile_root(profile_id)).expanduser()
         self._manager_factory = manager_factory
         self._connection_catalog_factory = connection_catalog_factory
@@ -233,6 +236,7 @@ class DesktopService:
         self._source_snapshot: SourceSnapshot | None = None
         self._source_watcher: NativeSnapshotWatcher | None = None
         self._stop_requested = False
+        self._verification_facade = VerificationFacade()
         self._router = DesktopCommandRouter(self._handlers())
 
     def _handlers(self) -> dict[str, Callable[[dict[str, Any]], Mapping[str, Any]]]:
@@ -258,6 +262,20 @@ class DesktopService:
             "memory.forget": self._forget_memory,
             "memory.restore": self._restore_memory,
             "memory.purge": self._purge_memory,
+            "verification.inspect_project": self._verification_inspect_project,
+            "verification.create_contract": self._verification_create_contract,
+            "verification.start_session": self._verification_start_session,
+            "verification.get_agent_packet": self._verification_get_agent_packet,
+            "verification.observe_change": self._verification_observe_change,
+            "verification.get_feedback": self._verification_get_feedback,
+            "verification.propose_test_change": self._verification_propose_test_change,
+            "verification.evaluate_test_change": self._verification_evaluate_test_change,
+            "verification.apply_test_change": self._verification_apply_test_change,
+            "verification.request_deep_run": self._verification_request_deep_run,
+            "verification.inspect_run": self._verification_inspect_run,
+            "verification.cancel_run": self._verification_cancel_run,
+            "verification.resume_session": self._verification_resume_session,
+            "verification.read_report": self._verification_read_report,
         }
 
     def ready_payload(self) -> dict[str, Any]:
@@ -361,6 +379,172 @@ class DesktopService:
                 watcher.mark_overflow()
         self._source_snapshot = self._source_mapper.snapshot(self._source_snapshot, watcher=watcher)
         return {"snapshot": _json_value(self._source_snapshot)}
+
+    def _verification_session_id(self, payload: dict[str, Any]) -> str:
+        return _require_text(payload, "session_id", max_length=256)
+
+    def _verification_error(self, error: Exception) -> DesktopServiceError:
+        return DesktopServiceError("VERIFICATION_ERROR", str(error))
+
+    def _verification_inspect_project(self, _payload: dict[str, Any]) -> Mapping[str, Any]:
+        self._require_open()
+        try:
+            profile = self._verification_facade.inspect_project(self._opened_root or self.profile_root)
+        except (OSError, ValueError, VerificationSessionError) as error:
+            raise self._verification_error(error) from error
+        return {"profile": profile.as_dict()}
+
+    def _verification_create_contract(self, payload: dict[str, Any]) -> Mapping[str, Any]:
+        self._require_open()
+        task = _require_text(payload, "task", max_length=MAX_PROMPT_LENGTH)
+        expected = payload.get("expected_behavior")
+        if expected is not None and (not isinstance(expected, str) or len(expected) > MAX_PROMPT_LENGTH):
+            raise DesktopServiceError("INVALID_ARGUMENT", "expected_behavior must be a bounded string")
+        try:
+            profile = self._verification_facade.inspect_project(self._opened_root or self.profile_root)
+            requirements = self._verification_facade.create_contract(
+                task,
+                expected_behavior=expected,
+                source_revision=profile.source_revision,
+                policy_hash=self.trust_policy_hash,
+            )
+        except (OSError, ValueError, VerificationSessionError) as error:
+            raise self._verification_error(error) from error
+        return {
+            "profile": profile.as_dict(),
+            "requirements": tuple(requirement.as_dict() for requirement in requirements),
+        }
+
+    def _verification_start_session(self, payload: dict[str, Any]) -> Mapping[str, Any]:
+        self._require_open()
+        task = _require_text(payload, "task", max_length=MAX_PROMPT_LENGTH)
+        expected = payload.get("expected_behavior")
+        if expected is not None and (not isinstance(expected, str) or len(expected) > MAX_PROMPT_LENGTH):
+            raise DesktopServiceError("INVALID_ARGUMENT", "expected_behavior must be a bounded string")
+        risk_level = payload.get("risk_level", "UNKNOWN")
+        if not isinstance(risk_level, str) or not risk_level.strip():
+            raise DesktopServiceError("INVALID_ARGUMENT", "risk_level must be a non-empty string")
+        try:
+            profile = self._verification_facade.inspect_project(self._opened_root or self.profile_root)
+            requirements = self._verification_facade.create_contract(
+                task,
+                expected_behavior=expected,
+                source_revision=profile.source_revision,
+                policy_hash=self.trust_policy_hash,
+            )
+            session = self._verification_facade.start_session(profile, requirements, risk_level=risk_level)
+            packet = self._verification_facade.get_agent_packet(session.session_id)
+        except (OSError, ValueError, VerificationSessionError) as error:
+            raise self._verification_error(error) from error
+        return {"session": session.as_dict(), "packet": _json_value(packet)}
+
+    def _verification_get_agent_packet(self, payload: dict[str, Any]) -> Mapping[str, Any]:
+        try:
+            packet = self._verification_facade.get_agent_packet(self._verification_session_id(payload))
+        except (ValueError, VerificationSessionError) as error:
+            raise self._verification_error(error) from error
+        return _json_value(packet)
+
+    def _verification_observe_change(self, payload: dict[str, Any]) -> Mapping[str, Any]:
+        raw_paths = payload.get("changed_paths", [])
+        raw_path_values = cast(list[object], raw_paths) if isinstance(raw_paths, list) else []
+        if not isinstance(raw_paths, list) or any(not isinstance(path, str) for path in raw_path_values):
+            raise DesktopServiceError("INVALID_ARGUMENT", "changed_paths must be a list of strings")
+        typed_paths = cast(list[str], raw_paths)
+        revision = payload.get("source_revision")
+        if revision is not None and not isinstance(revision, str):
+            raise DesktopServiceError("INVALID_ARGUMENT", "source_revision must be a string")
+        try:
+            return self._verification_facade.observe_change(
+                self._verification_session_id(payload),
+                typed_paths,
+                source_revision=revision,
+            )
+        except (ValueError, VerificationSessionError) as error:
+            raise self._verification_error(error) from error
+
+    def _verification_get_feedback(self, payload: dict[str, Any]) -> Mapping[str, Any]:
+        try:
+            return self._verification_facade.get_feedback(self._verification_session_id(payload))
+        except (ValueError, VerificationSessionError) as error:
+            raise self._verification_error(error) from error
+
+    def _verification_propose_test_change(self, payload: dict[str, Any]) -> Mapping[str, Any]:
+        patch = payload.get("patch_text")
+        paths = payload.get("changed_paths")
+        if not isinstance(patch, str) or not patch.strip() or not isinstance(paths, list):
+            raise DesktopServiceError("INVALID_ARGUMENT", "patch_text and changed_paths are required")
+        path_values = cast(list[object], paths)
+        if any(not isinstance(path, str) for path in path_values):
+            raise DesktopServiceError("INVALID_ARGUMENT", "changed_paths must be a list of strings")
+        typed_paths = cast(list[str], paths)
+        requirement_ids = payload.get("requirement_ids", [])
+        requirement_values = cast(list[object], requirement_ids) if isinstance(requirement_ids, list) else []
+        if not isinstance(requirement_ids, list) or any(not isinstance(item, str) for item in requirement_values):
+            raise DesktopServiceError("INVALID_ARGUMENT", "requirement_ids must be a list of strings")
+        typed_requirement_ids = cast(list[str], requirement_ids)
+        try:
+            proposal = self._verification_facade.propose_test_change(
+                self._verification_session_id(payload), patch, typed_paths, requirement_ids=typed_requirement_ids
+            )
+        except (ValueError, VerificationSessionError) as error:
+            raise self._verification_error(error) from error
+        return {"proposal": proposal.as_dict()}
+
+    def _verification_evaluate_test_change(self, payload: dict[str, Any]) -> Mapping[str, Any]:
+        try:
+            proposal = self._verification_facade.evaluate_test_change(
+                self._verification_session_id(payload), _require_text(payload, "proposal_id", max_length=256)
+            )
+        except (ValueError, VerificationSessionError) as error:
+            raise self._verification_error(error) from error
+        return {"proposal": proposal.as_dict()}
+
+    def _verification_apply_test_change(self, payload: dict[str, Any]) -> Mapping[str, Any]:
+        try:
+            return self._verification_facade.apply_test_change(
+                self._verification_session_id(payload), _require_text(payload, "proposal_id", max_length=256)
+            )
+        except (ValueError, VerificationSessionError) as error:
+            raise self._verification_error(error) from error
+
+    def _verification_request_deep_run(self, payload: dict[str, Any]) -> Mapping[str, Any]:
+        reason = payload.get("reason", "desktop_requested")
+        if not isinstance(reason, str) or not reason.strip():
+            raise DesktopServiceError("INVALID_ARGUMENT", "reason must be a non-empty string")
+        try:
+            return self._verification_facade.request_deep_run(self._verification_session_id(payload), reason=reason)
+        except (ValueError, VerificationSessionError) as error:
+            raise self._verification_error(error) from error
+
+    def _verification_inspect_run(self, payload: dict[str, Any]) -> Mapping[str, Any]:
+        try:
+            return self._verification_facade.inspect_run(
+                self._verification_session_id(payload), _require_text(payload, "run_id", max_length=256)
+            )
+        except (ValueError, VerificationSessionError) as error:
+            raise self._verification_error(error) from error
+
+    def _verification_cancel_run(self, payload: dict[str, Any]) -> Mapping[str, Any]:
+        try:
+            return self._verification_facade.cancel_run(
+                self._verification_session_id(payload), _require_text(payload, "run_id", max_length=256)
+            )
+        except (ValueError, VerificationSessionError) as error:
+            raise self._verification_error(error) from error
+
+    def _verification_resume_session(self, payload: dict[str, Any]) -> Mapping[str, Any]:
+        try:
+            session = self._verification_facade.resume_session(self._verification_session_id(payload))
+        except (ValueError, VerificationSessionError) as error:
+            raise self._verification_error(error) from error
+        return {"session": session.as_dict()}
+
+    def _verification_read_report(self, payload: dict[str, Any]) -> Mapping[str, Any]:
+        try:
+            return self._verification_facade.read_report(self._verification_session_id(payload))
+        except (ValueError, VerificationSessionError) as error:
+            raise self._verification_error(error) from error
 
     def _manager_for_request(self) -> Any:
         self._require_open()
