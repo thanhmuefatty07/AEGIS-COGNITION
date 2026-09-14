@@ -2,15 +2,23 @@ import { useEffect, useState } from "react";
 import {
   desktopRequest,
   parseConversationSnapshot,
+  parseMemorySearchResult,
+  parseSourceSnapshot,
   parseWorkspaceSnapshot,
   type ConversationSnapshot,
+  type MemoryRecord,
+  type SourceSnapshot,
   type WorkspaceSnapshot,
 } from "./protocol";
+import WorkspaceGraphView from "./WorkspaceGraphView";
+import { buildWorkspaceGraph, type WorkspaceGraph } from "./workspace_graph";
 
 const conversationId = "desktop-smoke-conversation";
 
 export default function App() {
   const [workspace, setWorkspace] = useState<WorkspaceSnapshot | null>(null);
+  const [workspaceGraph, setWorkspaceGraph] = useState<WorkspaceGraph | null>(null);
+  const [sourceSnapshot, setSourceSnapshot] = useState<SourceSnapshot | null>(null);
   const [conversation, setConversation] = useState<ConversationSnapshot | null>(null);
   const [message, setMessage] = useState("");
   const [mode, setMode] = useState<"mock" | "live">("mock");
@@ -29,6 +37,7 @@ export default function App() {
       setError(null);
       const snapshot = await desktopRequest("workspace.open", {}, parseWorkspaceSnapshot);
       setWorkspace(snapshot);
+      await loadWorkspaceGraph();
       await configureConnection();
       try {
         await desktopRequest("conversations.create", {
@@ -57,6 +66,18 @@ export default function App() {
       await loadConversation();
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "Unable to open the local workspace");
+    }
+  }
+
+  async function loadWorkspaceGraph() {
+    try {
+      const snapshot = await desktopRequest("workspace.source_snapshot", {}, parseSourceSnapshot);
+      setSourceSnapshot(snapshot);
+      setWorkspaceGraph(buildWorkspaceGraph(snapshot));
+    } catch (reason) {
+      setSourceSnapshot(null);
+      setWorkspaceGraph(null);
+      setError(reason instanceof Error ? reason.message : "Unable to map the local workspace");
     }
   }
 
@@ -105,6 +126,16 @@ export default function App() {
     }
   }
 
+  async function loadMemoriesForFile(node: { path: string | null }): Promise<MemoryRecord[]> {
+    if (!node.path) return [];
+    const result = await desktopRequest("memory.search", {
+      query: node.path,
+      top_k: 6,
+      scope_kind: "USER_PRIVATE",
+    }, parseMemorySearchResult);
+    return result;
+  }
+
   return (
     <main className="shell">
       <header className="topbar">
@@ -139,6 +170,8 @@ export default function App() {
           </button>
         </div>
       </section>
+
+      {workspaceGraph && sourceSnapshot && <WorkspaceGraphView graph={workspaceGraph} loadMemories={loadMemoriesForFile} />}
 
       <section className="conversation-card" aria-label="Conversation">
         <div className="card-heading">
