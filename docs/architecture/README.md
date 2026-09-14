@@ -43,6 +43,7 @@ that a platform adapter is active merely because it is compiled.
 | Python runtime telemetry | `aegis_cognition/observability.py`, `metrics.py`, `core/rust/src/ffi.rs` | bounded correlation-chain tests; exporter/backend availability NOT VERIFIED |
 | Python application boundaries | `aegis_cognition/agent.py`, `application.py`, `config.py`, `infrastructure.py` | architecture fitness + strict Ruff/Pyright + regression tests |
 | Gateway responsibility boundaries | `core/python/aegis/contracts.py`, `provider.py`, `evidence.py`, `learning.py` | architecture fitness + full Python bridge regression suite |
+| Memory Agent workspace projection | `core/python/aegis/code_intelligence.py`, `desktop/src/workspace_graph.ts`, `desktop/src/WorkspaceGraphView.tsx` | revision-bound read-only graph contract; desktop build PASS; source-proof navigation and memory-linked graph NOT VERIFIED |
 
 The durable standards mapping is in
 [`STANDARDS_APPLICABILITY.md`](STANDARDS_APPLICABILITY.md). The testing tiers
