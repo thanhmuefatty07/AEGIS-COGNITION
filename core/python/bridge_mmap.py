@@ -15,6 +15,7 @@ MMAP_BRIDGE_PAYLOAD_ALIGNMENT = 64
 MIN_FILE_STREAM_CHUNK_BYTES = 64 * 1024
 DEFAULT_FILE_STREAM_CHUNK_BYTES = 1024 * 1024
 HIGH_HEADROOM_MIN_AVAILABLE_BYTES = 1024 * 1024 * 1024
+HIGH_HEADROOM_MIN_PAYLOAD_BYTES = 64 * 1024 * 1024
 HIGH_HEADROOM_FILE_STREAM_CHUNK_BYTES = 8 * 1024 * 1024
 
 
@@ -34,15 +35,19 @@ def _native_module(error_message: str):
 
 
 def recommended_file_stream_chunk_bytes(
-    *, available_bytes: int | None = None, capacity_bytes: int | None = None
+    *,
+    available_bytes: int | None = None,
+    capacity_bytes: int | None = None,
+    payload_bytes: int | None = None,
 ) -> int:
     """Choose a file-stream buffer from an OS memory snapshot.
 
     Automatic selection reduces the normal 1 MiB buffer under guarded or
-    critical pressure and enables the measured 8 MiB throughput lane only when
-    at least 1 GiB and 50% of host memory are available. Unknown or malformed
-    observations keep the safe default; this function never treats a memory
-    snapshot as a reservation for the current operation.
+    critical pressure and enables the measured 8 MiB throughput lane only for
+    payloads of at least 64 MiB when at least 1 GiB and 50% of host memory are
+    available. Unknown or malformed observations keep the safe default; this
+    function never treats a memory snapshot as a reservation for the current
+    operation.
     """
 
     if available_bytes is None or capacity_bytes is None:
@@ -85,6 +90,8 @@ def recommended_file_stream_chunk_bytes(
     if (
         available_bytes >= HIGH_HEADROOM_MIN_AVAILABLE_BYTES
         and available_bytes * 100 >= capacity_bytes * 50
+        and type(payload_bytes) is int
+        and payload_bytes >= HIGH_HEADROOM_MIN_PAYLOAD_BYTES
     ):
         # The 8 MiB cap is an explicit throughput lane for a genuinely
         # well-provisioned host.  Native code still clamps it and reduces it
@@ -192,13 +199,10 @@ class MmapBridgeWriter:
         once per chunk. The declared frame length remains authoritative: an
         early EOF or trailing source byte is rejected before the frame can be
         finalized. If ``chunk_bytes`` is omitted, the native memory snapshot
-        may reduce the normal 1 MiB buffer under host pressure; an unknown
-        snapshot keeps the default.
+        reduces the normal 1 MiB buffer under host pressure and enables the
+        8 MiB throughput lane only for large payloads on a high-headroom host;
+        an unknown snapshot keeps the default.
         """
-        if chunk_bytes is None:
-            chunk_bytes = recommended_file_stream_chunk_bytes()
-        if chunk_bytes <= 0:
-            raise ValueError("chunk_bytes must be positive")
         source_path = Path(source)
         if source_path.resolve() == self.path.resolve():
             raise ValueError("mmap bridge source and destination must differ")
@@ -208,6 +212,10 @@ class MmapBridgeWriter:
             raise OSError(f"unable to stat mmap bridge source: {source_path}") from exc
         if source_size != self._payload_len:
             raise ValueError("mmap bridge source size does not match declared payload length")
+        if chunk_bytes is None:
+            chunk_bytes = recommended_file_stream_chunk_bytes(payload_bytes=source_size)
+        if chunk_bytes <= 0:
+            raise ValueError("chunk_bytes must be positive")
         self._writer.write_file(str(source_path), chunk_bytes)
 
     def finish(self) -> MmapBridgeHeader:
