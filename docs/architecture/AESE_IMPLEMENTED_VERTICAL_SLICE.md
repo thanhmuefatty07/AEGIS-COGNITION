@@ -108,6 +108,21 @@ the declared host. It does not by itself prove a complete filesystem,
 network, memory or kernel sandbox. Those claims remain platform-specific and
 must continue to use the existing Linux/Windows/macOS evidence lanes.
 
+The clean checkout at commit `fa7c341ec4b2784d85b40c503f7292097f10861b`
+passed the [GitHub Actions CI run](https://github.com/thanhmuefatty07/AEGIS-COGNITION/actions/runs/35031855905)
+with 20/20 jobs successful. That run covered Rust quality gates, strict
+Pyright/Ruff gates, Python suites, wheel installation, desktop graph builds,
+and platform smoke on Ubuntu, Windows and macOS. This is evidence for the
+tested hosted matrix, not a claim of compatibility with every Linux
+distribution or every project language.
+
+The [deep-evidence run](https://github.com/thanhmuefatty07/AEGIS-COGNITION/actions/runs/35031856691)
+is intentionally separate and longer-running. At the time of this update,
+Miri/sanitizer, native platform evidence, resource benchmarks, security and
+replay/dependency gates had completed successfully; the trust-boundary fuzz
+campaign was still running. No authority promotion depends on an unfinished
+deep run.
+
 ## Adapter support matrix
 
 | Adapter family | Current level | Meaning |
