@@ -33,6 +33,11 @@ name: Memory context live model evaluation
         required: false
         default: "48"
         type: string
+      dry_run:
+        description: Validate workflow and artifact plumbing without provider calls
+        required: false
+        default: false
+        type: boolean
 
 permissions:
   contents: read
@@ -55,6 +60,7 @@ jobs:
       EVAL_NVIDIA_MODELS: ${{ inputs.nvidia_models }}
       EVAL_REPEATS: ${{ inputs.repeats }}
       EVAL_MAX_REQUESTS: ${{ inputs.max_requests }}
+      EVAL_DRY_RUN: ${{ inputs.dry_run }}
       OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
       NVIDIA_NIM_API_KEY: ${{ secrets.NVIDIA_NIM_API_KEY }}
     steps:
@@ -71,13 +77,18 @@ jobs:
           PYTHONPATH: ${{ github.workspace }}
         run: |
           mkdir -p artifacts
-          uv run --no-project --no-sync --locked --extra all --extra dev python scripts/memory_context_live_eval.py \
+          eval_args=( \
             --provider "$EVAL_PROVIDER" \
             --openrouter-models "$EVAL_OPENROUTER_MODELS" \
             --nvidia-models "$EVAL_NVIDIA_MODELS" \
             --repeats "$EVAL_REPEATS" \
             --max-requests "$EVAL_MAX_REQUESTS" \
-            --output artifacts/memory-context-live-eval.json
+            --output artifacts/memory-context-live-eval.json \
+          )
+          if [[ "$EVAL_DRY_RUN" == "true" ]]; then
+            eval_args+=(--dry-run)
+          fi
+          uv run --no-project --no-sync --locked --extra all --extra dev python scripts/memory_context_live_eval.py "${eval_args[@]}"
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         if: always()
         with:
