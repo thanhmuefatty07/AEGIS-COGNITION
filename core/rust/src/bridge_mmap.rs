@@ -421,7 +421,7 @@ fn same_open_file(left: &std::fs::File, right: &std::fs::File) -> Result<bool, &
         let right = right
             .metadata()
             .map_err(|_| "failed to identify mmap bridge source")?;
-        return Ok(left.dev() == right.dev() && left.ino() == right.ino());
+        Ok(left.dev() == right.dev() && left.ino() == right.ino())
     }
 
     #[cfg(windows)]

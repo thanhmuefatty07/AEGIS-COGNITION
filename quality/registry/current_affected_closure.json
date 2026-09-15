@@ -2,7 +2,7 @@
   "affected_test_paths": [
     "core/rust/src/gt96.rs"
   ],
-  "artifact_hash": "78a6e0cd86bfd3ca65e2e0a7d4ff176b8d36a427c7d3fcc9a604a2cc2c3bff15",
+  "artifact_hash": "0063aabd46384f1cb4142c7ab940d14ba284353543bd1574d9cb10cd165a87ae",
   "changed_paths": [
     "core/rust/src/gt96.rs"
   ],
@@ -122,6 +122,7 @@
     "core/rust/src/task_ledger.rs",
     "core/rust/src/telemetry.rs",
     "core/rust/src/tests.rs",
+    "core/rust/tests/linux_cgroup_native_probe.rs",
     "core/rust/tests/resource_contract_matrix.rs",
     "fuzz/fuzz_targets/archive_prefix.rs",
     "fuzz/fuzz_targets/protocol_frame.rs",
@@ -254,26 +255,26 @@
   "phase": "PHASE_3_DETERMINISTIC_AFFECTED_CLOSURE",
   "plan_widened": false,
   "provenance": {
-    "claim_graph_source_tree_sha256": "a3247a7260ca4634fb38aaa60a7c0502f95deca63f089294bcae1b3848d2c51a",
+    "claim_graph_source_tree_sha256": "38262dafe9d24141ef058117bb846adbf434be52967a97967bc742f8da5acc55",
     "claim_scope": "LOCAL_CHECKOUT_ONLY",
     "edge_digest": "2b47a62553191c763ba1542f9191284cc583f47c9ec205130a6d14530c64e65b",
     "environment": {
-      "executable": "C:\\Users\\ADMIN\\AEGIS-COGNITION\\.venv\\Scripts\\python.exe",
+      "executable": "C:\\Users\\ADMIN\\AppData\\Local\\Programs\\Python\\Python311\\python.exe",
       "implementation": "CPython",
       "machine": "AMD64",
       "os": "Windows",
-      "python": "3.14.7",
-      "release": "11"
+      "python": "3.11.9",
+      "release": "10"
     },
     "evidence_class": "PLANNING_ONLY",
-    "inventory_source_tree_sha256": "7bc74624ab6d9919857bd6d8373a67a371f86162eab6ab9368fc117e2f86cf3b",
-    "mapping_artifact_hash": "1822d0074fc6e328baf5e9788a1fe1ef6c4ae82c59c9926dec9104b152ebb98f",
-    "origin_main_sha": "6871bfc0ac79dfb53c2fc623971d27e634d4901e",
+    "inventory_source_tree_sha256": "f205267263a5a2faa882651fc0b762eec3b48720da6ac006e21e94d6954aa945",
+    "mapping_artifact_hash": "b126c8987a4084567e24887241a185943fe76165c60da53bc0424c5a9057ba91",
+    "origin_main_sha": "16ec4b992c6a4844a02e3a9e1cb9a34435afe50e",
     "promotion": "DISABLED_IN_SHADOW",
-    "source_sha": "2957ca5433ea68302c98f95d63c78964bd87757d",
+    "source_sha": "179109305c980037c1593681ee5eeab3668e4414",
     "validator": "scripts/aese_affected_closure.py"
   },
-  "reproducible_hash": "baa58c615a5ba3c385f2ff2eadee8e514618e10397313b13f0f4394c7e910a37",
+  "reproducible_hash": "f6f09b5d027d986d3dd56510982b67f2a4ca9f2d6d995abe2eb5df7a6e2c5564",
   "schema": "aese-affected-closure-v1",
   "shadow_selection": {
     "authority": "RETAINED_LEGACY_AUTHORITY",
@@ -284,8 +285,8 @@
     ],
     "would_skip_item_ids": []
   },
-  "source_head": "2957ca5433ea68302c98f95d63c78964bd87757d",
-  "source_tree_sha256": "a3247a7260ca4634fb38aaa60a7c0502f95deca63f089294bcae1b3848d2c51a",
+  "source_head": "179109305c980037c1593681ee5eeab3668e4414",
+  "source_tree_sha256": "38262dafe9d24141ef058117bb846adbf434be52967a97967bc742f8da5acc55",
   "status": "AFFECTED_CLOSURE_PLAN_ONLY_SELECTION_DISABLED",
   "traversed_edges": [
     {
@@ -379,6 +380,7 @@
     "AESE-RUST_BENCHMARK-D6C0F4D92F1AC58D",
     "AESE-RUST_BENCHMARK-EB9579A3AA32341B",
     "AESE-RUST_INTEGRATION_TEST-896180209AD388CD",
+    "AESE-RUST_INTEGRATION_TEST-E25BFE976086091E",
     "AESE-RUST_UNIT_TEST-03F1D552147878B0",
     "AESE-RUST_UNIT_TEST-06AD9BFDAEC677E0",
     "AESE-RUST_UNIT_TEST-0C9A2F9147ED09FC",
@@ -506,6 +508,7 @@
     "core/rust/src/sandbox.rs",
     "core/rust/src/telemetry.rs",
     "core/rust/src/tests.rs",
+    "core/rust/tests/linux_cgroup_native_probe.rs",
     "core/rust/tests/resource_contract_matrix.rs",
     "fuzz/fuzz_targets/archive_prefix.rs",
     "fuzz/fuzz_targets/protocol_frame.rs",
