@@ -142,35 +142,40 @@ impl ExecutionLanes {
                 ));
             }
             controller.create_scope(lease)?;
-            let mut child = Command::new(program)
+            let mut child = match Command::new(program)
                 .args(args)
                 .stdin(Stdio::null())
                 .stdout(Stdio::piped())
                 .stderr(Stdio::piped())
                 .spawn()
-                .map_err(|error| {
-                    ResourceError::ResourceUnavailable(format!(
+            {
+                Ok(child) => child,
+                Err(error) => {
+                    let primary = ResourceError::ResourceUnavailable(format!(
                         "untrusted process spawn failed: {error}"
-                    ))
-                })?;
+                    ));
+                    return Err(release_scope_after_error(controller, lease, primary));
+                }
+            };
             if let Err(error) = controller.apply_to_process(lease, child.id()) {
                 let _ = child.kill();
                 let _ = child.wait();
-                return Err(error);
+                return Err(release_scope_after_error(controller, lease, error));
             }
 
             let started = Instant::now();
             let mut timed_out = false;
             loop {
-                if child
-                    .try_wait()
-                    .map_err(|error| {
-                        ResourceError::ResourceUnavailable(format!(
+                let status = match child.try_wait() {
+                    Ok(status) => status,
+                    Err(error) => {
+                        let primary = ResourceError::ResourceUnavailable(format!(
                             "untrusted process wait failed: {error}"
-                        ))
-                    })?
-                    .is_some()
-                {
+                        ));
+                        return Err(release_scope_after_error(controller, lease, primary));
+                    }
+                };
+                if status.is_some() {
                     break;
                 }
                 if started.elapsed() >= timeout {
@@ -181,11 +186,16 @@ impl ExecutionLanes {
                 }
                 std::thread::sleep(Duration::from_millis(2));
             }
-            let output = child.wait_with_output().map_err(|error| {
-                ResourceError::ResourceUnavailable(format!(
-                    "untrusted process output failed: {error}"
-                ))
-            })?;
+            let output = match child.wait_with_output() {
+                Ok(output) => output,
+                Err(error) => {
+                    let primary = ResourceError::ResourceUnavailable(format!(
+                        "untrusted process output failed: {error}"
+                    ));
+                    return Err(release_scope_after_error(controller, lease, primary));
+                }
+            };
+            controller.release_scope(lease)?;
             Ok(UntrustedProcessOutput {
                 status: output.status,
                 stdout: output.stdout,
@@ -249,6 +259,19 @@ impl ExecutionLanes {
             ));
         }
         result
+    }
+}
+
+fn release_scope_after_error(
+    controller: &dyn ResourceController,
+    lease: &ResourceLease,
+    primary: ResourceError,
+) -> ResourceError {
+    match controller.release_scope(lease) {
+        Ok(()) => primary,
+        Err(cleanup) => ResourceError::ResourceUnavailable(format!(
+            "{primary:?}; resource scope cleanup failed: {cleanup:?}"
+        )),
     }
 }
 

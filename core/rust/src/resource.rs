@@ -191,11 +191,19 @@ pub enum EnforcementLevel {
 pub struct ResourceControlCapabilities {
     pub cpu: EnforcementLevel,
     pub memory: EnforcementLevel,
+    /// The OS may use this as a reclaim-order hint; it is not a hard memory
+    /// limit and must not be reported as kernel-enforced capacity.
+    #[serde(default = "default_measurement_only_enforcement")]
+    pub memory_priority: EnforcementLevel,
     pub process_count: EnforcementLevel,
     pub thread_count: EnforcementLevel,
     pub io: EnforcementLevel,
     pub termination: EnforcementLevel,
     pub backend: String,
+}
+
+fn default_measurement_only_enforcement() -> EnforcementLevel {
+    EnforcementLevel::MeasurementOnly
 }
 
 impl ResourceControlCapabilities {
@@ -205,6 +213,7 @@ impl ResourceControlCapabilities {
             return Self {
                 cpu: EnforcementLevel::MeasurementOnly,
                 memory: EnforcementLevel::MeasurementOnly,
+                memory_priority: EnforcementLevel::MeasurementOnly,
                 process_count: EnforcementLevel::MeasurementOnly,
                 thread_count: EnforcementLevel::MeasurementOnly,
                 io: EnforcementLevel::MeasurementOnly,
@@ -217,6 +226,7 @@ impl ResourceControlCapabilities {
             return Self {
                 cpu: EnforcementLevel::MeasurementOnly,
                 memory: EnforcementLevel::MeasurementOnly,
+                memory_priority: EnforcementLevel::MeasurementOnly,
                 process_count: EnforcementLevel::MeasurementOnly,
                 thread_count: EnforcementLevel::MeasurementOnly,
                 io: EnforcementLevel::MeasurementOnly,
@@ -229,6 +239,7 @@ impl ResourceControlCapabilities {
             return Self {
                 cpu: EnforcementLevel::MeasurementOnly,
                 memory: EnforcementLevel::MeasurementOnly,
+                memory_priority: EnforcementLevel::MeasurementOnly,
                 process_count: EnforcementLevel::MeasurementOnly,
                 thread_count: EnforcementLevel::MeasurementOnly,
                 io: EnforcementLevel::Unsupported,
@@ -240,6 +251,7 @@ impl ResourceControlCapabilities {
         Self {
             cpu: EnforcementLevel::MeasurementOnly,
             memory: EnforcementLevel::MeasurementOnly,
+            memory_priority: EnforcementLevel::MeasurementOnly,
             process_count: EnforcementLevel::MeasurementOnly,
             thread_count: EnforcementLevel::MeasurementOnly,
             io: EnforcementLevel::Unsupported,
@@ -284,6 +296,20 @@ pub struct ResourcePolicy {
     pub constrained_untrusted_lane_limit: u32,
     pub default_untrusted_lane_limit: u32,
     pub queue_multiplier: u32,
+}
+
+/// Adaptive host-memory mode used by the admission controller.
+///
+/// The controller only changes AEGIS-owned future work. It does not revoke
+/// leases that are already running and it cannot impose priority on unrelated
+/// processes owned by the operating system.
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum MemoryPressureState {
+    #[default]
+    Normal,
+    Guarded,
+    Critical,
 }
 
 impl Default for ResourcePolicy {
@@ -533,9 +559,10 @@ pub struct Deadline {
     pub deadline_ms: Option<u64>,
 }
 
-#[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, Default, Eq, Ord, PartialEq, PartialOrd, Serialize, Deserialize)]
 pub enum Priority {
     Background,
+    #[default]
     Normal,
     Foreground,
     Critical,
@@ -1481,6 +1508,8 @@ pub struct ResourceLease {
     pub task_id: TaskId,
     pub attempt_id: u64,
     pub work_kind: WorkKind,
+    #[serde(default)]
+    pub priority: Priority,
     pub granted: GrantedResources,
     pub generation: u64,
     pub issued_at_ms: u64,
@@ -1515,6 +1544,7 @@ impl PartialEq for ResourceLease {
             && self.task_id == other.task_id
             && self.attempt_id == other.attempt_id
             && self.work_kind == other.work_kind
+            && self.priority == other.priority
             && self.granted == other.granted
             && self.generation == other.generation
             && self.issued_at_ms == other.issued_at_ms
@@ -1549,6 +1579,10 @@ pub struct AdmissionController {
     next_lease_id: LeaseId,
     generation: u64,
     active: BTreeMap<LeaseId, ResourceLease>,
+    memory_pressure_state: MemoryPressureState,
+    healthy_memory_samples: u8,
+    adaptive_max_process_limit: u32,
+    guarded_process_limit: u32,
     accelerator_capabilities: BTreeSet<String>,
     accelerator_kinds: BTreeSet<AcceleratorKind>,
     accelerator_backends: BTreeSet<BackendKind>,
@@ -1583,6 +1617,10 @@ impl AdmissionController {
             next_lease_id: 1,
             generation: 0,
             active: BTreeMap::new(),
+            memory_pressure_state: MemoryPressureState::Normal,
+            healthy_memory_samples: 0,
+            adaptive_max_process_limit: capacity.process_limit.max(1),
+            guarded_process_limit: capacity.process_limit.max(1),
             accelerator_capabilities: BTreeSet::new(),
             accelerator_kinds: BTreeSet::new(),
             accelerator_backends: BTreeSet::new(),
@@ -1662,6 +1700,11 @@ impl AdmissionController {
                 .max(1) as usize,
         );
         controller.accelerator_available = !healthy_accelerators.is_empty();
+        controller.adaptive_max_process_limit = match profile.operating_profile() {
+            OperatingProfile::Constrained => cpu.clamp(2, 4),
+            OperatingProfile::BalancedLaptop | OperatingProfile::Performance => concurrency,
+        };
+        controller.guarded_process_limit = concurrency;
         controller.accelerator_capabilities = accelerator_capabilities;
         controller.accelerator_kinds = accelerator_kinds;
         controller.accelerator_backends = accelerator_backends;
@@ -1679,6 +1722,10 @@ impl AdmissionController {
     }
     pub fn used(&self) -> GrantedResources {
         self.used
+    }
+
+    pub fn memory_pressure_state(&self) -> MemoryPressureState {
+        self.memory_pressure_state
     }
 
     pub fn placement_capacity(&self) -> PlacementResourceBudget {
@@ -1898,13 +1945,17 @@ impl AdmissionController {
 
     pub fn capacity_feedback(&mut self, sample: &ResourceUsageSample) -> CapacityFeedback {
         let previous = self.capacity;
+        let previous_memory_state = self.memory_pressure_state;
+        self.update_memory_pressure_state(sample);
+        let immediate_memory_pressure = sample.memory_pressure
+            || available_memory_percent(sample).is_some_and(|percent| percent < 10);
         let observed_memory_target = sample.host_memory_available_bytes.map(|available| {
             self.used
                 .host_memory_bytes
                 .saturating_add(available.saturating_mul(75) / 100)
                 .max(self.used.host_memory_bytes)
         });
-        if sample.memory_pressure {
+        if immediate_memory_pressure {
             let pressure_target = self
                 .used
                 .host_memory_bytes
@@ -1913,6 +1964,12 @@ impl AdmissionController {
             let target = observed_memory_target
                 .map_or(pressure_target, |observed| pressure_target.min(observed));
             self.capacity.host_memory_bytes = self.capacity.host_memory_bytes.min(target);
+        } else if previous_memory_state == MemoryPressureState::Critical
+            && self.memory_pressure_state == MemoryPressureState::Critical
+        {
+            // Keep the reduced headroom while the recovery hysteresis is
+            // collecting healthy samples. This prevents a single optimistic
+            // sample from restoring load while the host is still recovering.
         } else if let Some(target) = observed_memory_target {
             self.capacity.host_memory_bytes = move_towards(
                 self.capacity.host_memory_bytes,
@@ -1926,24 +1983,113 @@ impl AdmissionController {
                 .cpu_threads
                 .min(sample.cpu_threads_active.max(self.used.cpu_threads));
         }
-        let changed = self.capacity != previous;
-        let reason = if sample.memory_pressure {
-            "memory pressure reduced admission headroom"
+        if available_memory_percent(sample).is_some() {
+            let target_process_limit = match self.memory_pressure_state {
+                MemoryPressureState::Normal => self.adaptive_max_process_limit,
+                MemoryPressureState::Guarded => self
+                    .guarded_process_limit
+                    .max(self.used.process_limit)
+                    .min(self.adaptive_max_process_limit),
+                MemoryPressureState::Critical => self.used.process_limit.max(1),
+            };
+            self.capacity.process_limit = if self.capacity.process_limit < target_process_limit {
+                self.capacity
+                    .process_limit
+                    .saturating_add(1)
+                    .min(target_process_limit)
+            } else {
+                self.capacity
+                    .process_limit
+                    .saturating_sub(1)
+                    .max(target_process_limit)
+            };
+        }
+        let changed =
+            self.capacity != previous || previous_memory_state != self.memory_pressure_state;
+        let reason = if previous_memory_state != self.memory_pressure_state {
+            format!(
+                "memory pressure state changed to {:?}",
+                self.memory_pressure_state
+            )
+        } else if immediate_memory_pressure {
+            "memory pressure reduced admission headroom".to_string()
         } else if sample.host_memory_available_bytes.is_some()
             && self.capacity.host_memory_bytes != previous.host_memory_bytes
         {
-            "available memory adjusted admission headroom"
+            "available memory adjusted admission headroom".to_string()
         } else if sample.cpu_threads_active > 0 {
-            "observed CPU activity bounded admission width"
+            "observed CPU activity bounded admission width".to_string()
+        } else if self.capacity.process_limit != previous.process_limit {
+            "available memory adjusted process admission width".to_string()
         } else {
-            "no capacity change"
+            "no capacity change".to_string()
         };
         CapacityFeedback {
             previous,
             current: self.capacity,
             changed,
-            reason: reason.to_string(),
+            reason,
+            memory_state: self.memory_pressure_state,
         }
+    }
+
+    fn update_memory_pressure_state(&mut self, sample: &ResourceUsageSample) {
+        const GUARDED_ENTER_PERCENT: u64 = 25;
+        const GUARDED_EXIT_PERCENT: u64 = 35;
+        const CRITICAL_EXIT_PERCENT: u64 = 15;
+        const RECOVERY_SAMPLES_REQUIRED: u8 = 3;
+
+        let available_percent = available_memory_percent(sample);
+        let critical_signal =
+            sample.memory_pressure || available_percent.is_some_and(|percent| percent < 10);
+        let previous = self.memory_pressure_state;
+        let next = match previous {
+            MemoryPressureState::Normal => {
+                if critical_signal {
+                    MemoryPressureState::Critical
+                } else if available_percent.is_some_and(|percent| percent < GUARDED_ENTER_PERCENT) {
+                    MemoryPressureState::Guarded
+                } else {
+                    MemoryPressureState::Normal
+                }
+            }
+            MemoryPressureState::Guarded => {
+                if critical_signal {
+                    MemoryPressureState::Critical
+                } else if available_percent.is_some_and(|percent| percent >= GUARDED_EXIT_PERCENT) {
+                    self.healthy_memory_samples = self.healthy_memory_samples.saturating_add(1);
+                    if self.healthy_memory_samples >= RECOVERY_SAMPLES_REQUIRED {
+                        MemoryPressureState::Normal
+                    } else {
+                        MemoryPressureState::Guarded
+                    }
+                } else {
+                    self.healthy_memory_samples = 0;
+                    MemoryPressureState::Guarded
+                }
+            }
+            MemoryPressureState::Critical => {
+                if critical_signal {
+                    self.healthy_memory_samples = 0;
+                    MemoryPressureState::Critical
+                } else if available_percent.is_some_and(|percent| percent >= CRITICAL_EXIT_PERCENT)
+                {
+                    self.healthy_memory_samples = self.healthy_memory_samples.saturating_add(1);
+                    if self.healthy_memory_samples >= RECOVERY_SAMPLES_REQUIRED {
+                        MemoryPressureState::Guarded
+                    } else {
+                        MemoryPressureState::Critical
+                    }
+                } else {
+                    self.healthy_memory_samples = 0;
+                    MemoryPressureState::Critical
+                }
+            }
+        };
+        if next != previous {
+            self.healthy_memory_samples = 0;
+        }
+        self.memory_pressure_state = next;
     }
 
     pub fn enqueue(
@@ -2003,6 +2149,22 @@ impl AdmissionController {
                 };
             }
         }
+        if self.memory_pressure_state == MemoryPressureState::Critical
+            && request.priority == Priority::Background
+        {
+            if self.queued_requests.len() < self.queue_limit {
+                let position = self
+                    .enqueue(request, now_ms)
+                    .expect("validated request must be enqueueable");
+                return AdmissionDecision::Queued {
+                    position,
+                    reason: "critical host memory pressure deferred background work".to_string(),
+                };
+            }
+            return AdmissionDecision::Rejected {
+                reason: ResourceError::ResourceExhausted,
+            };
+        }
         let granted = GrantedResources::from_request(&request);
         if granted.fits_within(self.capacity, self.used) {
             let lease_id = self.next_lease_id;
@@ -2015,6 +2177,7 @@ impl AdmissionController {
                 task_id: request.task_id,
                 attempt_id: request.attempt_id,
                 work_kind: request.work_kind,
+                priority: request.priority,
                 granted,
                 generation: self.generation,
                 issued_at_ms: now_ms,
@@ -2117,6 +2280,9 @@ pub struct CapacityFeedback {
     pub current: GrantedResources,
     pub changed: bool,
     pub reason: String,
+    /// Additive observability field; older feedback JSON remains readable.
+    #[serde(default)]
+    pub memory_state: MemoryPressureState,
 }
 
 #[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd, Serialize, Deserialize)]
@@ -2255,6 +2421,9 @@ pub trait ResourceController: Send + Sync {
         Err(ResourceError::UnsupportedControl(
             "controller does not expose process attachment".to_string(),
         ))
+    }
+    fn release_scope(&self, _lease: &ResourceLease) -> Result<(), ResourceError> {
+        Ok(())
     }
     fn terminate(&self, lease: &ResourceLease) -> Result<(), ResourceError>;
 }
@@ -2457,6 +2626,14 @@ fn host_memory_pressure(total: Option<u64>, available: Option<u64>) -> bool {
     total.zip(available).is_some_and(|(total, available)| {
         total > 0 && available.saturating_mul(100) < total.saturating_mul(10)
     })
+}
+
+fn available_memory_percent(sample: &ResourceUsageSample) -> Option<u64> {
+    sample
+        .host_memory_bytes
+        .zip(sample.host_memory_available_bytes)
+        .filter(|(total, _)| *total > 0)
+        .map(|(total, available)| available.saturating_mul(100).saturating_div(total).min(100))
 }
 
 #[cfg(target_os = "windows")]
@@ -2732,6 +2909,37 @@ mod tests {
     }
 
     #[test]
+    fn additive_priority_fields_preserve_older_json_shapes() {
+        let mut controller = AdmissionController::new(capacity(), 0);
+        let lease = match controller.admit(ResourceRequest::minimal(1, WorkKind::NativeTask), 1) {
+            AdmissionDecision::Admitted(lease) => lease,
+            other => panic!("expected lease, got {other:?}"),
+        };
+        let mut lease_json = serde_json::to_value(&lease).expect("lease JSON");
+        lease_json
+            .as_object_mut()
+            .expect("lease object")
+            .remove("priority");
+        let decoded_lease: ResourceLease =
+            serde_json::from_value(lease_json).expect("legacy lease JSON");
+        assert_eq!(decoded_lease.priority, Priority::Normal);
+
+        let mut capability_json =
+            serde_json::to_value(ResourceControlCapabilities::for_current_platform())
+                .expect("capability JSON");
+        capability_json
+            .as_object_mut()
+            .expect("capability object")
+            .remove("memory_priority");
+        let decoded_capability: ResourceControlCapabilities =
+            serde_json::from_value(capability_json).expect("legacy capability JSON");
+        assert_eq!(
+            decoded_capability.memory_priority,
+            EnforcementLevel::MeasurementOnly
+        );
+    }
+
+    #[test]
     fn cancellation_is_explicit_and_local() {
         let mut controller = AdmissionController::new(capacity(), 0);
         let request = ResourceRequest::minimal(9, WorkKind::PythonCognition);
@@ -2847,7 +3055,7 @@ mod tests {
     }
 
     #[test]
-    fn pressure_feedback_recovers_towards_baseline_without_a_capacity_jump() {
+    fn pressure_feedback_recovers_towards_baseline_after_healthy_samples() {
         let mut controller = AdmissionController::new(capacity(), 1);
         let pressured = ResourceUsageSample {
             schema: RESOURCE_CONTRACT_SCHEMA_V1.to_string(),
@@ -2859,19 +3067,124 @@ mod tests {
             memory_pressure: true,
         };
         let reduced = controller.capacity_feedback(&pressured).current;
-        let recovered = controller
-            .capacity_feedback(&ResourceUsageSample {
-                schema: RESOURCE_CONTRACT_SCHEMA_V1.to_string(),
-                sampled_at_ms: 2,
-                cpu_threads_active: 0,
-                host_memory_bytes: Some(1_000),
-                host_memory_available_bytes: Some(900),
-                queue_depth: 0,
-                memory_pressure: false,
-            })
-            .current;
+        let mut recovered = reduced;
+        for sampled_at_ms in 2..=4 {
+            recovered = controller
+                .capacity_feedback(&ResourceUsageSample {
+                    schema: RESOURCE_CONTRACT_SCHEMA_V1.to_string(),
+                    sampled_at_ms,
+                    cpu_threads_active: 0,
+                    host_memory_bytes: Some(1_000),
+                    host_memory_available_bytes: Some(900),
+                    queue_depth: 0,
+                    memory_pressure: false,
+                })
+                .current;
+        }
         assert!(recovered.host_memory_bytes > reduced.host_memory_bytes);
         assert!(recovered.host_memory_bytes < capacity().host_memory_bytes);
+    }
+
+    #[test]
+    fn memory_pressure_recovery_uses_hysteresis_and_incremental_headroom() {
+        let mut controller = AdmissionController::new(capacity(), 1);
+        let sample = |sampled_at_ms, available, memory_pressure| ResourceUsageSample {
+            schema: RESOURCE_CONTRACT_SCHEMA_V1.to_string(),
+            sampled_at_ms,
+            cpu_threads_active: 0,
+            host_memory_bytes: Some(1_000),
+            host_memory_available_bytes: Some(available),
+            queue_depth: 0,
+            memory_pressure,
+        };
+
+        let reduced = controller.capacity_feedback(&sample(1, 50, true));
+        assert_eq!(reduced.memory_state, MemoryPressureState::Critical);
+        let held_capacity = reduced.current.host_memory_bytes;
+
+        for sampled_at_ms in 2..=3 {
+            let feedback = controller.capacity_feedback(&sample(sampled_at_ms, 900, false));
+            assert_eq!(feedback.memory_state, MemoryPressureState::Critical);
+            assert_eq!(feedback.current.host_memory_bytes, held_capacity);
+        }
+
+        let guarded = controller.capacity_feedback(&sample(4, 900, false));
+        assert_eq!(guarded.memory_state, MemoryPressureState::Guarded);
+        assert!(guarded.current.host_memory_bytes > held_capacity);
+        assert!(guarded.current.host_memory_bytes < capacity().host_memory_bytes);
+
+        for sampled_at_ms in 5..=6 {
+            assert_eq!(
+                controller
+                    .capacity_feedback(&sample(sampled_at_ms, 900, false))
+                    .memory_state,
+                MemoryPressureState::Guarded
+            );
+        }
+        assert_eq!(
+            controller
+                .capacity_feedback(&sample(7, 900, false))
+                .memory_state,
+            MemoryPressureState::Normal
+        );
+    }
+
+    #[test]
+    fn healthy_constrained_host_expands_process_width_only_after_observation() {
+        let mut profile = HardwareProfile::probe();
+        profile.memory_domains[0].capacity_bytes = Some(4 * 1024 * 1024 * 1024);
+        profile.memory_domains[0].available_bytes = Some(2 * 1024 * 1024 * 1024);
+        let mut controller = AdmissionController::from_hardware(&profile);
+        assert_eq!(controller.capacity().process_limit, 2);
+
+        let healthy_sample = |sampled_at_ms| ResourceUsageSample {
+            schema: RESOURCE_CONTRACT_SCHEMA_V1.to_string(),
+            sampled_at_ms,
+            cpu_threads_active: 0,
+            host_memory_bytes: Some(4 * 1024 * 1024 * 1024),
+            host_memory_available_bytes: Some(2 * 1024 * 1024 * 1024),
+            queue_depth: 0,
+            memory_pressure: false,
+        };
+        controller.capacity_feedback(&healthy_sample(1));
+        assert_eq!(
+            controller.memory_pressure_state(),
+            MemoryPressureState::Normal
+        );
+        assert_eq!(controller.capacity().process_limit, 3);
+        controller.capacity_feedback(&healthy_sample(2));
+        assert_eq!(controller.capacity().process_limit, 4);
+    }
+
+    #[test]
+    fn critical_memory_defers_background_work_without_revoking_active_leases() {
+        let mut controller = AdmissionController::new(capacity(), 1);
+        let active = match controller.admit(ResourceRequest::minimal(1, WorkKind::NativeTask), 1) {
+            AdmissionDecision::Admitted(lease) => lease,
+            other => panic!("expected active lease, got {other:?}"),
+        };
+        controller.capacity_feedback(&ResourceUsageSample {
+            schema: RESOURCE_CONTRACT_SCHEMA_V1.to_string(),
+            sampled_at_ms: 2,
+            cpu_threads_active: 0,
+            host_memory_bytes: Some(1_000),
+            host_memory_available_bytes: Some(900),
+            queue_depth: 0,
+            memory_pressure: true,
+        });
+
+        let mut background = ResourceRequest::minimal(2, WorkKind::NativeTask);
+        background.priority = Priority::Background;
+        assert!(matches!(
+            controller.admit(background, 3),
+            AdmissionDecision::Queued { .. }
+        ));
+        assert_eq!(controller.active_leases(), 1);
+        assert_eq!(
+            controller.used().host_memory_bytes,
+            active.granted.host_memory_bytes
+        );
+        controller.release(active.lease_id).unwrap();
     }
 
     #[test]
