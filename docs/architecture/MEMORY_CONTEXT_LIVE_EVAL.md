@@ -100,8 +100,9 @@ Remove-Variable orKey, nimKey
 
 Use `--provider openrouter` or `--provider nvidia` when only one key is
 available. The planned request count is `providers × models × 6 tasks × 2
-variants × repeats`; the harness rejects counts above 96 or the selected
-`--max-requests` value.
+variants × repeats`; the harness defaults to 24 and rejects counts above 96
+or the selected `--max-requests` value. Keep free-tier probes at 12 or 24
+requests and raise the limit only when the account quota justifies it.
 
 ## GitHub Actions run
 
@@ -208,6 +209,14 @@ The three-repeat Nex Pro stability run
 [34960662950](https://github.com/thanhmuefatty07/AEGIS-COGNITION/actions/runs/34960662950)
 planned and observed 36 requests; all were HTTP `429` after the earlier matrix,
 so it is a provider-rate-limit observation rather than a quality measurement.
+
+At the time of these runs, OpenRouter's
+[FAQ](https://openrouter.ai/docs/faq) stated that free-model API access is
+limited to 50 requests per day without at least 10 purchased credits (and
+1000 per day after that threshold). The three OpenRouter runs above attempted
+132 requests in total, so the later `429` responses are consistent with the
+documented free-tier quota. The evaluator and workflow now default to 24
+requests; this is a guardrail, not a claim that provider quotas are unlimited.
 
 These live results are exploratory, scoped to this commit, provider, model,
 and timestamp. They do not establish a `PASS`, universal token savings, or
