@@ -161,7 +161,10 @@ def probe(output: Path | None = None, *, cgroup_root: Path = Path("/sys/fs/cgrou
         ]
         if all(checks.get(name) is True for name in required_checks):
             report["status"] = "LIVE VERIFIED" if checks.get("memory_pressure_oom_kill_observed") else "PARTIALLY LIVE VERIFIED"
-            report["verification_scope"]["verified"] = required_checks
+            verified_checks = list(required_checks)
+            if checks.get("memory_pressure_oom_kill_observed"):
+                verified_checks.append("memory_pressure_oom_kill_observed")
+            report["verification_scope"]["verified"] = verified_checks
             if checks.get("memory_pressure_oom_kill_observed"):
                 report["verification_scope"]["not_verified"] = []
             else:

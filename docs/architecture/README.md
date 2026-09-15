@@ -22,6 +22,12 @@ bounded execution primitives, and opt-in Linux/Windows OS adapters. It still
 does not certify production readiness, cross-host benchmark superiority, or
 that a platform adapter is active merely because it is compiled.
 
+The product-facing platform policy is in
+[`PORTABILITY.md`](PORTABILITY.md). The initial reference environment is Ubuntu
+LTS x86_64 with glibc, systemd, and cgroup v2. Windows and macOS remain
+separately scoped: Windows Job Object evidence is partial, while macOS resource
+control is cooperative/measurement-only until live evidence exists.
+
 ## Current implementation map
 
 | Concern | Implementation | Evidence status |
@@ -32,7 +38,7 @@ that a platform adapter is active merely because it is compiled.
 | Execution lane limits | `core/rust/src/resource.rs`, `core/rust/src/execution.rs` | bounded executor unit tests; stress fairness NOT VERIFIED |
 | Accelerator seam | `core/rust/src/resource.rs`, `core/rust/src/execution.rs` | optional lane fails closed when no device is advertised; vendor backend NOT VERIFIED |
 | Python boundary | `core/rust/src/ffi.rs`, `aegis_cognition/runtime.py` | opaque token tests; native wheel build required |
-| OS resource control | `core/rust/src/resource_platform.rs` | Linux fixture + Windows target compile; macOS cooperative adapter; live privileged tests NOT VERIFIED |
+| OS resource control | `core/rust/src/resource_platform.rs` | Linux cgroup primitive plus native Rust/Lab seam live-verified on one GCP Ubuntu 24.04 host/clean probe SHA; current uncommitted changes and cross-kernel coverage remain open; Windows and macOS evidence are scoped separately |
 | GT96 authority contracts | `core/rust/src/gt96.rs`, `GT96_TRACEABILITY.md`, `GT96_TRACEABILITY_DETAIL.md` | direct Rust contract tests; full runtime integration and final-SHA closure remain NOT VERIFIED |
 | Communication payload matrix | `scripts/communication_payload_benchmark.py`, `core/rust/src/ipc.rs` | local 64B–16MiB measured matrix; copy/zero-copy scope remains explicit |
 | Platform closure harnesses | `scripts/linux_cgroup_live_probe.py`, `windows_job_object_live_probe.py`, `macos_capability_probe.py` | platform-specific live/capability evidence retained separately; unavailable lanes NOT VERIFIED |

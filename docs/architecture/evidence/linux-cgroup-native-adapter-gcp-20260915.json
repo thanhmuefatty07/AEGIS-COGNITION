@@ -1,0 +1,39 @@
+{
+  "schema": "aegis-linux-cgroup-v2-native-adapter-probe-v1",
+  "status": "LIVE VERIFIED",
+  "root": "/sys/fs/cgroup/user.slice",
+  "checks": {
+    "controller_constructed": true,
+    "limits_configured": true,
+    "child_attached": true,
+    "live_memory_accounting_observed": true,
+    "memory_pressure_oom_kill_observed": true,
+    "cgroup_kill_termination_observed": true,
+    "deadline_cancellation_observed": true,
+    "lab_native_process_timeout_observed": true
+  },
+  "execution": {
+    "tests_passed": 1,
+    "tests_failed": 0,
+    "tests_ignored": 0,
+    "elapsed_seconds": 1.68,
+    "command": "sudo -n env AEGIS_LINUX_CGROUP_ROOT=/sys/fs/cgroup/user.slice /tmp/aegis-linux-cgroup-native-probe --ignored --nocapture --test-threads=1 linux_cgroup_native_adapter_live_controls"
+  },
+  "provenance": {
+    "github_run_id": "34926260332",
+    "github_head_sha": "62d84081dfbcd5e9a5f72550b797acfc113889be",
+    "binary_sha256": "0afd3c59b9a0c1bf898d69176185aabfd31b5afef21da8c95742a0574ef731eb",
+    "gcp_project": "aegis-verification-2026",
+    "vm_name": "aegis-test-linux-02",
+    "zone": "asia-southeast1-b",
+    "machine_type": "e2-standard-2",
+    "image_family": "ubuntu-2404-lts",
+    "kernel": "7.0.0-1011-gcp",
+    "source_scope": "aegis-nerve at a5c81b0cacfa6165c3a71884f40373b5773b67df plus the probe test committed at github_head_sha",
+    "capture_method": "native Rust test stdout captured through gcloud compute ssh",
+    "remote_cleanup": "binary, stdout/stderr files, and aegis cgroup directories verified absent",
+    "vm_final_state": "TERMINATED",
+    "resource_postcheck": "existing 30GB pd-standard disk only; no snapshot or address listed",
+    "scope_note": "This verifies the Rust adapter and Lab native-process seam on one GCP Ubuntu/kernel environment. It does not certify all Linux distributions, kernels, namespaces, or current uncommitted workspace changes."
+  }
+}

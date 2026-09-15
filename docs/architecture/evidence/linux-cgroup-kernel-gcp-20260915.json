@@ -1,0 +1,52 @@
+{
+  "schema": "aegis-linux-cgroup-v2-live-probe-v1",
+  "generated_at_utc": "2026-09-15T02:52:31Z",
+  "platform": "Linux-7.0.0-1011-gcp-x86_64-with-glibc2.39",
+  "os": "posix",
+  "implementation": "core/rust/src/resource_platform.rs::LinuxCgroupV2Controller",
+  "status": "LIVE VERIFIED",
+  "checks": {
+    "cgroup_kill_termination_observed": true,
+    "child_attached": true,
+    "deadline_cancellation_observed": true,
+    "limits_configured": true,
+    "live_memory_accounting_observed": true,
+    "memory_pressure_oom_kill_observed": true,
+    "swap_limit_configured": true
+  },
+  "limits": {
+    "cpu_max": "10000 100000",
+    "memory_max_bytes": 33554432,
+    "memory_swap_max_bytes": 0,
+    "pids_max": 4
+  },
+  "verification_scope": {
+    "verified": [
+      "limits_configured",
+      "swap_limit_configured",
+      "child_attached",
+      "live_memory_accounting_observed",
+      "deadline_cancellation_observed",
+      "cgroup_kill_termination_observed",
+      "memory_pressure_oom_kill_observed"
+    ],
+    "not_verified": []
+  },
+  "provenance": {
+    "source_script_sha256": "18f6e4f2c6593571e2040672f61aab887c012b4c79af731d3ec0198ffd55c323",
+    "source_revision": "a5c81b0cacfa6165c3a71884f40373b5773b67df",
+    "source_worktree": "DIRTY_AT_CAPTURE",
+    "gcp_project": "aegis-verification-2026",
+    "vm_name": "aegis-test-linux-02",
+    "zone": "asia-southeast1-b",
+    "machine_type": "e2-standard-2",
+    "image_family": "ubuntu-2404-lts",
+    "cgroup_root": "/sys/fs/cgroup/user.slice",
+    "capture_command": "sudo -n python3 /tmp/aegis-linux-cgroup-live-probe.py --cgroup-root /sys/fs/cgroup/user.slice --output /tmp/aegis-linux-cgroup-live-probe.json",
+    "capture_method": "stdout captured through gcloud compute ssh after remote JSON emission",
+    "remote_cleanup": "temporary probe, JSON, and cgroup directory verified absent",
+    "vm_final_state": "TERMINATED",
+    "resource_postcheck": "existing 30GB pd-standard disk only; no snapshot or address listed",
+    "scope_note": "This is live kernel/VM primitive evidence. The probe does not invoke the Rust adapter through the Lab, so native adapter wiring and other kernels remain open."
+  }
+}
