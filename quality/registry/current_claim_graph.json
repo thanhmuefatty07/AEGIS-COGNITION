@@ -1103,8 +1103,8 @@
     "future_obligations": 20,
     "invariants": 46,
     "mapped_surfaces": 9,
-    "surfaces": 182,
-    "unmapped_surfaces": 173,
+    "surfaces": 184,
+    "unmapped_surfaces": 175,
     "unmapped_verifications": 70,
     "unresolved_code_references": 0,
     "verifications": 92
@@ -3851,13 +3851,13 @@
     "all_surfaces_mapped": false,
     "critical_high_risk_mapped": false,
     "criticality_known": false,
-    "unmapped_surface_count": 173
+    "unmapped_surface_count": 175
   },
   "mode": "SHADOW",
   "phase": "PHASE_1_CLAIM_EVIDENCE_GRAPH",
   "schema": "aese-shadow-claim-evidence-graph-v1",
-  "source_head": "9fe073add40256d53ce268b80e2e09d16e3c9561",
-  "source_tree_sha256": "63a2e024b1f7b369069fe67e3efde62d29e311095092f0092a7767976983a4db",
+  "source_head": "44eb8c93111972bcf2dec7826fd78d740c4ec0d9",
+  "source_tree_sha256": "604ae0f38da60b682ac6d419ab828ba0d174cd3d728c7dfa83ff6d57f0f730ad",
   "status": "SHADOW_GRAPH_PARTIAL_MAPPING_SELECTION_DISABLED",
   "surfaces": [
     {
@@ -4421,6 +4421,19 @@
     },
     {
       "claim_refs": [],
+      "id": "AESE-PYTHON_TEST-195334A9B316012B",
+      "kind": "PYTHON_TEST",
+      "mapping_status": "NOT_MAPPED",
+      "path": "tests/test_placement_accelerator_metadata.py",
+      "release_critical": "UNKNOWN",
+      "release_criticality": "UNKNOWN",
+      "risk": "UNKNOWN",
+      "security_criticality": "UNKNOWN",
+      "target": null,
+      "unknown_dependency_policy": "INVALIDATE_CONSERVATIVELY"
+    },
+    {
+      "claim_refs": [],
       "id": "AESE-PYTHON_TEST-245D0C98F2F0786E",
       "kind": "PYTHON_TEST",
       "mapping_status": "NOT_MAPPED",
@@ -4785,6 +4798,19 @@
       "kind": "PYTHON_TEST",
       "mapping_status": "NOT_MAPPED",
       "path": "tests/test_verification_session.py",
+      "release_critical": "UNKNOWN",
+      "release_criticality": "UNKNOWN",
+      "risk": "UNKNOWN",
+      "security_criticality": "UNKNOWN",
+      "target": null,
+      "unknown_dependency_policy": "INVALIDATE_CONSERVATIVELY"
+    },
+    {
+      "claim_refs": [],
+      "id": "AESE-PYTHON_TEST-D19D7CC701B91D33",
+      "kind": "PYTHON_TEST",
+      "mapping_status": "NOT_MAPPED",
+      "path": "tests/test_verification_local_execution.py",
       "release_critical": "UNKNOWN",
       "release_criticality": "UNKNOWN",
       "risk": "UNKNOWN",
@@ -7043,6 +7069,6 @@
       "source_id": "AESE-011"
     }
   ],
-  "worktree_epoch": "25bcde1ab79d39796b376638a020fd709a199ceba4f7339fe985e92bcc15c777",
+  "worktree_epoch": "e1b42cb0542d85ece9374ec332ed71e80f03642ffc1a0bfe8d956885869eb070",
   "worktree_status": "DIRTY"
 }

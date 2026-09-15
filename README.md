@@ -68,6 +68,21 @@ quick_result = run("Explain the evidence recorded for this task")
 print(quick_result.output)
 ```
 
+Development tasks are automatically prepared for AESE verification. Provide an
+explicit expected behavior before source work begins:
+
+```python
+result = Agent(
+    "Implement the bounded verification lane",
+    aese_expected_behavior="The lane records a hash-bound Lab receipt",
+    aese_project_root=".",
+).run()
+```
+
+AESE uses the existing Lab execution path for its local fast lane. Results are
+provisional while `EVIDENCE_PROMOTION=DISABLED`; `aese=False` or
+`aese_auto=False` disables the automatic development-task entry point.
+
 Provider credentials and browser access are explicit configuration choices;
 examples do not imply that external services or live browsing are enabled.
 

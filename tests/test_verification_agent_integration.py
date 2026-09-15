@@ -46,3 +46,29 @@ def test_aese_blocks_source_task_without_explicit_expected_behavior(tmp_path: Pa
     application = AgentApplication(config, telemetry=RuntimeTelemetry())
     with pytest.raises(VerificationSessionError, match="expected_behavior"):
         application._ensure_verification_session()
+
+
+def test_development_task_enters_aese_without_explicit_aese_flag(tmp_path: Path) -> None:
+    config = AgentConfig.from_inputs(
+        "implement the feature",
+        llm=_LocalModel(),
+        aese_project_root=str(tmp_path),
+        aese_expected_behavior="the feature returns the documented value",
+    )
+    application = AgentApplication(config, telemetry=RuntimeTelemetry())
+    application._ensure_verification_session()
+    assert application._verification_packet is not None
+    assert application._verification_packet.can_start is True
+
+
+def test_explicit_aese_false_disables_automatic_development_entry(tmp_path: Path) -> None:
+    config = AgentConfig.from_inputs(
+        "implement the feature",
+        llm=_LocalModel(),
+        aese=False,
+        aese_project_root=str(tmp_path),
+        aese_expected_behavior="the feature returns the documented value",
+    )
+    application = AgentApplication(config, telemetry=RuntimeTelemetry())
+    application._ensure_verification_session()
+    assert application._verification_packet is None

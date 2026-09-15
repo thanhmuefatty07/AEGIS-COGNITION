@@ -10,7 +10,8 @@ shadow decision into execution authority.
 The shared façade is `aegis_cognition.verification.VerificationFacade`.
 Agent runtime, desktop service and CLI use the same façade. The façade owns
 contracts, session state, passive discovery, packet construction, change
-observation, candidate-test assessment and report assembly.
+observation, candidate-test assessment, Lab-bound receipt recording and report
+assembly.
 
 Execution authority remains the existing Lab path:
 
@@ -18,12 +19,17 @@ Execution authority remains the existing Lab path:
 AESE control plane
   -> structured plan / command description
   -> existing Lab ExecutionCellRegistry + tool_call admission/settlement
+  -> existing ProcessExecutionCell
+  -> bounded structured result
   -> ExecutionReceipt
 ```
 
-The new adapter code never calls a shell or subprocess. `BoundedCommand`
-contains an executable, an argv tuple, a working directory, a timeout and a
-string environment mapping. This prevents a second execution engine from
+The adapter accepts only an executable plus an `argv` tuple; it never builds a
+shell string. `LocalVerificationCommand` contains the working directory,
+timeout, source revision and a small redacted environment declaration. The
+command is executed only after Lab has admitted the generic tool call and the
+existing `ProcessExecutionCell` has created its bounded child process. This
+prevents a second scheduler, lease ledger or execution authority from
 appearing in AESE.
 
 ## Safety state
@@ -37,9 +43,12 @@ TEST_SKIPPING_AUTHORITY=DISABLED
 EVIDENCE_PROMOTION=DISABLED
 ```
 
-Unknown or incomplete requirements do not get inferred. An agent run with
-`aese=True` must provide `aese_expected_behavior`; otherwise session packet
-creation is incomplete and source implementation is blocked.
+Unknown or incomplete requirements do not get inferred. Development-looking
+agent tasks automatically enter AESE unless `aese=False` or
+`aese_auto=False` is supplied. An active source-development session must
+provide `aese_expected_behavior`; otherwise packet creation fails closed before
+the agent prompt is sent. Explicit `aese=True` remains available for tasks
+whose wording is not classified as development work.
 
 Candidate test patches can be proposed and assessed. Assessment rejects a
 missing oracle, skip/xfail weakening, stale base revision, or non-test-scoped
@@ -76,16 +85,35 @@ aegis verify start <task> --expected <behavior> [path]
 ```
 
 The current façade store is process-local. It is a control-plane seam, not a
-replacement for the durable Lab ledger. Persistence, cursors across process
-restarts and actual Lab-bound execution are later phases and must preserve
-the existing contract hashes and authority boundary.
+replacement for the durable Lab ledger. Lab-bound local receipts are now
+recorded in the façade for the lifetime of the session; durable cross-process
+session storage, cursors across process restarts and hosted execution remain
+open work and must preserve the existing contract hashes and authority
+boundary.
+
+For the current AEGIS repository, the default local fast lane discovers and
+runs the focused Python AESE/verification tests and, when Cargo is available,
+the bounded `aegis-nerve` library test lane. Set `aese_deep=True` for the
+broader Python/Rust command set. On rustup-managed Windows installations, the
+adapter resolves the real Cargo/rustc/rustdoc binaries and adds the active
+Python runtime DLL directory to the child `PATH`; this is required because
+the Rust test binary links to the Python ABI. It does not hard-code a Python
+version or use a shell. A stale compiler cache is reported as a build error;
+AESE does not silently clean a user's target directory. The result is still
+provisional: a passing receipt is not final assurance while
+`EVIDENCE_PROMOTION=DISABLED`.
+
+The local process cell proves a bounded wall-time and process-cleanup path for
+the declared host. It does not by itself prove a complete filesystem,
+network, memory or kernel sandbox. Those claims remain platform-specific and
+must continue to use the existing Linux/Windows/macOS evidence lanes.
 
 ## Adapter support matrix
 
 | Adapter family | Current level | Meaning |
 | --- | --- | --- |
-| Python/pytest | L0 | detection only |
-| Rust/Cargo | L0 | detection only |
+| Python/pytest | L1 | bounded command execution with structured counts |
+| Rust/Cargo | L1 | bounded command execution with structured counts |
 | JavaScript/TypeScript | L0 | detection only |
 | Go | L0 | detection only |
 | .NET | L0 | detection only |
@@ -112,8 +140,12 @@ false-negative measurement.
 
 ## Verification performed for this slice
 
-The focused contract, session, adapter, desktop and agent integration tests
-are the decisive checks for this change. Broader repository and hosted lanes
-remain required before any authority promotion. A full adapter matrix,
-hosted GitHub Actions lane and opt-in GCP lane are not claimed by this
-document.
+The local end-to-end smoke path exercised the real façade and Lab boundary on
+Windows: 102 Python tests and 558 Rust library tests passed, producing two
+`LAB_BOUND` receipts. The report correctly remained
+`PROVISIONAL_PASS` with `final_assurance=false`; evidence promotion and
+selective-test authority remain disabled. The focused Python integration gate
+also passes 9/9, including the rustup/toolchain-resolution regression. This is
+local Windows evidence only: broader repository, hosted GitHub Actions,
+Linux/macOS/VM and full adapter-matrix lanes remain required before authority
+promotion.
