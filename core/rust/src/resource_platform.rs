@@ -169,7 +169,7 @@ mod linux {
         value.parse().ok()
     }
 
-    fn psi_memory_pressure(value: &str) -> bool {
+    pub(super) fn psi_memory_pressure(value: &str) -> bool {
         // PSI averages are percentages over the last ten seconds. A small
         // amount of "some" stall is normal background activity; require 1%
         // before entering the critical boolean contract, while any non-zero
@@ -678,18 +678,18 @@ mod tests {
 
     #[test]
     fn psi_memory_pressure_requires_meaningful_some_or_any_full_stall() {
-        assert!(!psi_memory_pressure(
+        assert!(!linux::psi_memory_pressure(
             "some avg10=0.00 avg60=0.00 avg300=0.00 total=0"
         ));
-        assert!(!psi_memory_pressure(
+        assert!(!linux::psi_memory_pressure(
             "some avg10=0.99 avg60=0.00 avg300=0.00 total=0"
         ));
-        assert!(psi_memory_pressure(
+        assert!(linux::psi_memory_pressure(
             "some avg10=1.00 avg60=0.00 avg300=0.00 total=0"
         ));
-        assert!(psi_memory_pressure(
+        assert!(linux::psi_memory_pressure(
             "some avg10=0.01 avg60=0.00 avg300=0.00 total=0\nfull avg10=0.01 avg60=0.00 avg300=0.00 total=1"
         ));
-        assert!(!psi_memory_pressure("some avg10=not-a-number"));
+        assert!(!linux::psi_memory_pressure("some avg10=not-a-number"));
     }
 }
