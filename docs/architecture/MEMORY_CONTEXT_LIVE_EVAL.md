@@ -69,6 +69,20 @@ latency, quotas, and provider-side logging policies can change; the live
 artifact records what happened for this run and does not generalize beyond
 that provider/model/time combination.
 
+## NVIDIA trial-policy boundary
+
+The hosted NVIDIA API is used here only for internal prototyping, research,
+development, and testing. The [NVIDIA API Trial Terms of Service](https://assets.ngc.nvidia.com/products/api-catalog/legal/NVIDIA%20API%20Trial%20Terms%20of%20Service.pdf)
+restrict trial access from production use and prohibit sending confidential,
+controlled, sensitive, or personal data. They also prohibit scraping, bulk or
+spam traffic, security probing, vulnerability testing without authorization,
+and attempts to bypass access controls. The evaluator therefore sends only
+synthetic records, makes one sequential request stream with no retries, keeps
+the pacing at about 25 requests per minute, and stores hashes and metadata
+instead of model text. Each selected model remains subject to its own
+third-party license and NVIDIA terms; this section records an operational
+test boundary, not a legal determination.
+
 ## Local run (Windows PowerShell)
 
 First verify the harness without network access:
@@ -226,7 +240,8 @@ requests; this is a guardrail, not a claim that provider quotas are unlimited.
 
 The hosted NIM workflow was rerun with `delay_ms=2400`, which caps sequential
 scheduling at about 25 requests per minute, `repeats=1`, and no automatic
-retries. The runs used model IDs listed in the current NVIDIA catalog.
+retries. The first two runs below used model IDs listed in the current NVIDIA
+catalog.
 
 - [34972808716](https://github.com/thanhmuefatty07/AEGIS-COGNITION/actions/runs/34972808716)
   at commit `16ec4b992c6a4844a02e3a9e1cb9a34435afe50e` planned and observed 48
@@ -242,11 +257,25 @@ retries. The runs used model IDs listed in the current NVIDIA catalog.
   `qwen/qwen2.5-coder-32b-instruct` each returned 12/12 HTTP `410`. The artifact
   completed in 57.3 seconds and contained no HTTP `429` response.
 
-Across this follow-up, 72 requests were attempted at the 25-RPM pacing ceiling
-and none produced HTTP `429`. This does not prove the account has no rate
-limit; it shows that these failures were not rate-limit evidence. The remaining
-NVIDIA blocker is endpoint/model availability or account entitlement, and a
-complete quality/token `PASS` has not been established.
+- [34974991256](https://github.com/thanhmuefatty07/AEGIS-COGNITION/actions/runs/34974991256)
+  at commit `05114a01506c65f8cab9e8ad3c37d27e025893ad` planned and observed 36
+  requests. `deepseek-ai/deepseek-v4-flash-0731` produced two evaluator-usable
+  responses, one additional HTTP `200` with invalid JSON, two HTTP `529`, and
+  seven timeouts. `moonshotai/kimi-k2-thinking` returned 12/12 HTTP `410`.
+  The provider-accepted `poolside/laguna-xs-2.1` alias produced four usable
+  HTTP `200`, seven HTTP `503`, and one timeout; its one complete pair showed
+  `9.287%` prompt reduction but a quality regression, so coverage was
+  incomplete. No response was HTTP `429`.
+- [34976605009](https://github.com/thanhmuefatty07/AEGIS-COGNITION/actions/runs/34976605009)
+  tested the canonical catalog spelling `poolside/laguna-xs-2-1` with 12
+  requests. All 12 returned HTTP `404`; no quality or token evidence exists
+  for that model under the current key. No response was HTTP `429`.
+
+Across these four rate-25 NIM runs, 120 requests were attempted and none
+produced HTTP `429`. This does not prove the account has no rate limit; it
+shows that these failures were not rate-limit evidence. The remaining NVIDIA
+blocker is endpoint/model availability or account entitlement, and a complete
+quality/token `PASS` has not been established.
 
 These live results are exploratory, scoped to this commit, provider, model,
 and timestamp. They do not establish a `PASS`, universal token savings, or
