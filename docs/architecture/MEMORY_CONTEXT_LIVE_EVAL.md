@@ -165,3 +165,52 @@ with 24 planned and observed records for both providers; the retained artifact
 was `DRY_RUN` and contained neither raw model content nor key prefixes. This
 run proves workflow execution and artifact handling, not provider availability
 or model quality.
+
+## Live-provider evidence log
+
+These runs used fresh repository Actions secrets. They sent only the six
+synthetic tasks described above; artifacts retain metadata and response hashes,
+not raw model text or key values.
+
+The broad matrix run
+[34958748964](https://github.com/thanhmuefatty07/AEGIS-COGNITION/actions/runs/34958748964)
+at commit `f231b3181c5b5574b20938c6af587368d24ec055` planned and observed 96
+requests and finished `PARTIAL`:
+
+- OpenRouter `nex-agi/nex-n2.5-pro:free`: 12/12 transport successes, provider
+  token usage complete, mean prompt reduction `9.413%`, but oracle quality
+  passed 5/6 baseline and 4/6 bounded cases (one regression).
+- OpenRouter `nvidia/nemotron-3-super-120b-a12b:free`: 10/12 transport
+  successes; two transport errors and incomplete oracle coverage; successful
+  pairs averaged `9.067%` prompt reduction.
+- OpenRouter `nvidia/nemotron-3.5-lightning:free`: 12/12 transport successes
+  and `9.082%` mean reduction, but no response passed the JSON quality oracle.
+- OpenRouter `google/gemma-4-31b-it:free`: 12/12 responses were HTTP `429`.
+- NVIDIA returned HTTP `410` for the three `meta/llama` IDs tested and HTTP
+  `404` for `moonshotai/kimi-k2.6`; no NVIDIA quality or token result exists.
+
+The focused NVIDIA probe
+[34959258795](https://github.com/thanhmuefatty07/AEGIS-COGNITION/actions/runs/34959258795)
+tested the catalog-listed `deepseek-ai/deepseek-v4-flash` model with 12
+requests. All 12 returned HTTP `410`, so the endpoint/account availability
+still needs confirmation in NVIDIA Build; this is not evidence of model
+quality.
+
+The additional OpenRouter probe
+[34959406647](https://github.com/thanhmuefatty07/AEGIS-COGNITION/actions/runs/34959406647)
+planned and observed 48 requests and finished `PARTIAL`: the Cohere model
+returned HTTP 200 without a usable message content field, Liquid returned 11
+such responses plus one `429`, Nex Mini timed out 12 times, and Laguna XS had
+two successes plus ten `429` responses. No complete quality pair was produced
+by that run.
+
+The three-repeat Nex Pro stability run
+[34960662950](https://github.com/thanhmuefatty07/AEGIS-COGNITION/actions/runs/34960662950)
+planned and observed 36 requests; all were HTTP `429` after the earlier matrix,
+so it is a provider-rate-limit observation rather than a quality measurement.
+
+These live results are exploratory, scoped to this commit, provider, model,
+and timestamp. They do not establish a `PASS`, universal token savings, or
+production readiness. A future run should wait for the provider quota window,
+use currently available model IDs, and address NVIDIA account endpoint access
+before collecting repeat evidence.
