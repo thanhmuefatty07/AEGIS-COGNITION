@@ -22,7 +22,11 @@ The untrusted native-process path uses an argv-only `Command` invocation and
 requires `ResourceController::apply_to_process` before the child is allowed to
 run. Cooperative closures remain available only for trusted adapters and unit
 tests. `AcceleratorExecutor` is a capability seam; vendor SDKs are not core
-dependencies.
+dependencies. Device-bound work uses `ExecutionLanes::run_accelerator_request`:
+the adapter must have an exact profile match with a distinct, non-empty,
+healthy device in the lane inventory and must satisfy the request before
+vendor code is called. The older closure helper is lane accounting only and
+is not evidence of device execution.
 
 ## Trade-offs and consequences
 
@@ -38,10 +42,16 @@ lanes. A single unbounded Tokio pool was rejected for CPU and untrusted work.
 ## Migration, security, performance, operations, rollback
 
 Map every `WorkKind` in one function, catch panics at the boundary, and run
-stress tests for release mismatch. Record active/limit/queue metrics. Benchmark
-H0/H1/H2 before freezing limits. Roll back by disabling a lane or reducing
+stress tests for release mismatch. Record active/limit/queue metrics. The
+accelerator request gate also needs identity, health, and capability rejection
+tests. Benchmark H0/H1/H2 before freezing limits. Roll back by disabling a
+lane or reducing
 capacity, never by bypassing admission.
 
 ## Evidence
 
-`core/rust/src/execution.rs`, `resource.rs`, and `ExecutionLanes` unit tests.
+`core/rust/src/execution.rs`, `resource.rs`, and `ExecutionLanes` unit tests;
+the request path has deterministic success, missing-device, profile-mismatch,
+unsupported-capability, degraded-device, and lane-accounting coverage. A real
+vendor/iGPU backend remains outside this core crate and must provide separate
+execution, correctness, transfer, and paired-baseline evidence.

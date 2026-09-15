@@ -5,10 +5,11 @@
 //! bypassing the registry by calling a worker directly.
 
 use crate::resource::{
-    AcceleratorProfile, AcceleratorRequest, ExecutionLane, ExecutionLaneRegistry, HardwareProfile,
-    ResourceController, ResourceError, ResourceLease,
+    AcceleratorProfile, AcceleratorRequest, DeviceHealth, ExecutionLane, ExecutionLaneRegistry,
+    HardwareProfile, ResourceController, ResourceError, ResourceLease,
 };
 use rayon::ThreadPool;
+use std::collections::BTreeMap;
 use std::ffi::OsStr;
 use std::future::Future;
 use std::panic::{AssertUnwindSafe, catch_unwind};
@@ -16,8 +17,8 @@ use std::process::{Command, ExitStatus, Stdio};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
-/// Capability-driven seam for optional CUDA/ROCm/Metal adapters. The core
-/// runtime depends only on this contract and remains CPU-first.
+/// Capability-driven seam for optional accelerator adapters. The core runtime
+/// depends only on this contract and remains CPU-first.
 pub trait AcceleratorExecutor: Send + Sync {
     fn profile(&self) -> &AcceleratorProfile;
     fn execute(&self, request: &AcceleratorRequest, input: &[u8])
@@ -25,7 +26,9 @@ pub trait AcceleratorExecutor: Send + Sync {
 
     fn supports(&self, request: &AcceleratorRequest) -> bool {
         let profile = self.profile();
-        profile.kind == request.kind
+        profile.health == DeviceHealth::Healthy
+            && !profile.id.trim().is_empty()
+            && profile.kind == request.kind
             && request
                 .backend
                 .is_none_or(|backend| backend == profile.backend)
@@ -49,6 +52,7 @@ pub struct ExecutionLanes {
     registry: Arc<Mutex<ExecutionLaneRegistry>>,
     cpu_pool: ThreadPool,
     io_runtime: Mutex<tokio::runtime::Runtime>,
+    healthy_accelerators: BTreeMap<String, AcceleratorProfile>,
 }
 
 impl ExecutionLanes {
@@ -73,10 +77,19 @@ impl ExecutionLanes {
             .map_err(|error| {
                 ResourceError::InvalidRequest(format!("I/O lane build failed: {error}"))
             })?;
+        let healthy_accelerators = profile
+            .accelerators
+            .iter()
+            .filter(|accelerator| {
+                accelerator.health == DeviceHealth::Healthy && !accelerator.id.trim().is_empty()
+            })
+            .map(|accelerator| (accelerator.id.clone(), accelerator.clone()))
+            .collect();
         Ok(Self {
             registry: Arc::new(Mutex::new(registry)),
             cpu_pool,
             io_runtime: Mutex::new(io_runtime),
+            healthy_accelerators,
         })
     }
 
@@ -205,9 +218,12 @@ impl ExecutionLanes {
         })
     }
 
-    /// Execute an accelerator-capable work unit only when the probed profile
-    /// advertised accelerator capacity. Vendor-specific execution remains an
-    /// adapter concern; this lane is the bounded admission seam.
+    /// Execute a trusted closure through the accelerator lane.
+    ///
+    /// This compatibility helper provides lane accounting only. It is useful
+    /// for trusted adapters and tests, but it does not prove that a device
+    /// executed the closure. Device-bound work should use
+    /// [`Self::run_accelerator_request`].
     pub fn run_accelerator<F, R>(&self, work: F) -> Result<R, ResourceError>
     where
         F: FnOnce() -> R + Send,
@@ -218,6 +234,47 @@ impl ExecutionLanes {
                 ResourceError::InvalidRequest("accelerator lane work panicked".to_string())
             })
         })?)
+    }
+
+    /// Execute one request through a declared, healthy accelerator adapter.
+    ///
+    /// The adapter identity must be present in the hardware profile supplied
+    /// to [`Self::new`]. Capability matching happens before lane admission, so
+    /// a missing, degraded, or mismatched device fails closed without calling
+    /// vendor code. The adapter remains responsible for the actual backend
+    /// operation and its correctness contract.
+    pub fn run_accelerator_request(
+        &self,
+        executor: &dyn AcceleratorExecutor,
+        request: &AcceleratorRequest,
+        input: &[u8],
+    ) -> Result<Vec<u8>, ResourceError> {
+        let profile = executor.profile();
+        if profile.health != DeviceHealth::Healthy {
+            return Err(ResourceError::CapabilityDenied(
+                "accelerator profile is not healthy".to_string(),
+            ));
+        }
+        let Some(inventory_profile) = self.healthy_accelerators.get(&profile.id) else {
+            return Err(ResourceError::CapabilityDenied(
+                "accelerator profile is not present in the lane inventory".to_string(),
+            ));
+        };
+        if inventory_profile != profile {
+            return Err(ResourceError::CapabilityDenied(
+                "accelerator profile does not match the lane inventory".to_string(),
+            ));
+        }
+        if !executor.supports(request) {
+            return Err(ResourceError::CapabilityDenied(
+                "accelerator adapter does not support the request".to_string(),
+            ));
+        }
+        self.with_lane(ExecutionLane::Accelerator, || {
+            catch_unwind(AssertUnwindSafe(|| executor.execute(request, input))).map_err(|_| {
+                ResourceError::InvalidRequest("accelerator adapter panicked".to_string())
+            })?
+        })
     }
 
     pub fn run_io<F, R>(&self, future: F) -> Result<R, ResourceError>
@@ -278,6 +335,37 @@ fn release_scope_after_error(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::resource::{AcceleratorKind, BackendKind, MemoryRequest};
+
+    struct EchoAccelerator {
+        profile: AcceleratorProfile,
+    }
+
+    impl AcceleratorExecutor for EchoAccelerator {
+        fn profile(&self) -> &AcceleratorProfile {
+            &self.profile
+        }
+
+        fn execute(
+            &self,
+            _request: &AcceleratorRequest,
+            input: &[u8],
+        ) -> Result<Vec<u8>, ResourceError> {
+            Ok(input.iter().map(|byte| byte.wrapping_add(1)).collect())
+        }
+    }
+
+    fn accelerator_profile(id: &str, health: DeviceHealth) -> AcceleratorProfile {
+        AcceleratorProfile {
+            id: id.to_string(),
+            kind: AcceleratorKind::Gpu,
+            backend: BackendKind::Vulkan,
+            vendor: "test".to_string(),
+            memory_domain: "host".to_string(),
+            capabilities: vec!["compute".to_string()],
+            health,
+        }
+    }
 
     #[test]
     fn cpu_and_python_lanes_execute_with_bounded_accounting() {
@@ -307,6 +395,98 @@ mod tests {
         assert_eq!(
             lanes.run_accelerator(|| 7),
             Err(ResourceError::ResourceExhausted)
+        );
+    }
+
+    #[test]
+    fn accelerator_request_requires_a_healthy_inventory_bound_adapter() {
+        let mut profile = HardwareProfile::probe();
+        profile
+            .accelerators
+            .push(accelerator_profile("igpu-0", DeviceHealth::Healthy));
+        let lanes = ExecutionLanes::new(&profile).unwrap();
+        let executor = EchoAccelerator {
+            profile: accelerator_profile("igpu-0", DeviceHealth::Healthy),
+        };
+        let request = AcceleratorRequest {
+            kind: AcceleratorKind::Gpu,
+            backend: Some(BackendKind::Vulkan),
+            required_capabilities: vec!["compute".to_string()],
+            memory: MemoryRequest { bytes: 1 },
+        };
+
+        assert_eq!(
+            lanes
+                .run_accelerator_request(&executor, &request, &[1, 2, 255])
+                .unwrap(),
+            vec![2, 3, 0]
+        );
+        assert_eq!(
+            lanes.snapshot().lanes[&ExecutionLane::Accelerator].active,
+            0
+        );
+
+        let unsupported = AcceleratorRequest {
+            required_capabilities: vec!["matrix".to_string()],
+            ..request
+        };
+        assert!(matches!(
+            lanes.run_accelerator_request(&executor, &unsupported, &[]),
+            Err(ResourceError::CapabilityDenied(reason))
+                if reason.contains("does not support")
+        ));
+
+        let missing = EchoAccelerator {
+            profile: accelerator_profile("other-gpu", DeviceHealth::Healthy),
+        };
+        assert!(matches!(
+            lanes.run_accelerator_request(&missing, &request, &[]),
+            Err(ResourceError::CapabilityDenied(reason))
+                if reason.contains("not present")
+        ));
+
+        let mismatched = EchoAccelerator {
+            profile: AcceleratorProfile {
+                backend: BackendKind::Cuda,
+                ..accelerator_profile("igpu-0", DeviceHealth::Healthy)
+            },
+        };
+        assert!(matches!(
+            lanes.run_accelerator_request(&mismatched, &request, &[]),
+            Err(ResourceError::CapabilityDenied(reason))
+                if reason.contains("does not match")
+        ));
+
+        let degraded = EchoAccelerator {
+            profile: accelerator_profile("igpu-0", DeviceHealth::Degraded),
+        };
+        assert!(matches!(
+            lanes.run_accelerator_request(&degraded, &request, &[]),
+            Err(ResourceError::CapabilityDenied(reason))
+                if reason.contains("not healthy")
+        ));
+    }
+
+    #[test]
+    fn accelerator_lane_counts_only_distinct_nonempty_healthy_devices() {
+        let mut profile = HardwareProfile::probe();
+        profile
+            .accelerators
+            .push(accelerator_profile("igpu-0", DeviceHealth::Healthy));
+        profile
+            .accelerators
+            .push(accelerator_profile("igpu-0", DeviceHealth::Healthy));
+        profile
+            .accelerators
+            .push(accelerator_profile("gpu-0", DeviceHealth::Degraded));
+        profile
+            .accelerators
+            .push(accelerator_profile("", DeviceHealth::Healthy));
+
+        let lanes = ExecutionLanes::new(&profile).unwrap();
+        assert_eq!(
+            lanes.snapshot().lanes[&ExecutionLane::Accelerator].max_in_flight,
+            1
         );
     }
 

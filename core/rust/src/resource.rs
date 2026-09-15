@@ -2342,7 +2342,17 @@ impl ExecutionLaneRegistry {
         lanes.insert(
             ExecutionLane::Accelerator,
             LaneLimit {
-                max_in_flight: profile.accelerators.len().min(u32::MAX as usize) as u32,
+                max_in_flight: profile
+                    .accelerators
+                    .iter()
+                    .filter(|accelerator| {
+                        accelerator.health == DeviceHealth::Healthy
+                            && !accelerator.id.trim().is_empty()
+                    })
+                    .map(|accelerator| accelerator.id.as_str())
+                    .collect::<BTreeSet<_>>()
+                    .len()
+                    .min(u32::MAX as usize) as u32,
                 active: 0,
             },
         );
