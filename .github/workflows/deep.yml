@@ -256,6 +256,10 @@ jobs:
           path: target/criterion
           if-no-files-found: warn
 
+  hardware-buffer-benchmark:
+    name: Hardware buffer benchmark matrix
+    uses: ./.github/workflows/mmap-stream-buffer-benchmark.yml
+
   fuzz-resource-contract:
     name: Trust-boundary fuzz campaign
     runs-on: ubuntu-latest

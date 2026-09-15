@@ -35,6 +35,7 @@ name: Hardware buffer evidence
       - "uv.lock"
       - "rust-toolchain.toml"
       - ".github/workflows/mmap-stream-buffer-benchmark.yml"
+  workflow_call:
   workflow_dispatch:
 
 permissions:
@@ -90,10 +91,11 @@ jobs:
           PYTHONPATH: ${{ github.workspace }}
         run: >-
           uv run --locked --extra all --extra dev python -c
-          "from core.python.bridge_mmap import DEFAULT_FILE_STREAM_CHUNK_BYTES, MIN_FILE_STREAM_CHUNK_BYTES, recommended_file_stream_chunk_bytes;
+          "from core.python.bridge_mmap import DEFAULT_FILE_STREAM_CHUNK_BYTES, HIGH_HEADROOM_FILE_STREAM_CHUNK_BYTES, MIN_FILE_STREAM_CHUNK_BYTES, recommended_file_stream_chunk_bytes;
           assert recommended_file_stream_chunk_bytes(available_bytes=9, capacity_bytes=100) == MIN_FILE_STREAM_CHUNK_BYTES;
           assert recommended_file_stream_chunk_bytes(available_bytes=24, capacity_bytes=100) == 256 * 1024;
           assert recommended_file_stream_chunk_bytes(available_bytes=25, capacity_bytes=100) == DEFAULT_FILE_STREAM_CHUNK_BYTES;
+          assert recommended_file_stream_chunk_bytes(available_bytes=2 * 1024 * 1024 * 1024, capacity_bytes=4 * 1024 * 1024 * 1024) == HIGH_HEADROOM_FILE_STREAM_CHUNK_BYTES;
           print('pressure-aware chunk selection: PASS')"
       - name: Run bounded hot FFI boundary measurement
         env:
