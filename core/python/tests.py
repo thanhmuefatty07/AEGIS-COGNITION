@@ -17,6 +17,7 @@ import yaml
 from .bridge_mmap import (
     DEFAULT_FILE_STREAM_CHUNK_BYTES,
     HIGH_HEADROOM_FILE_STREAM_CHUNK_BYTES,
+    HIGH_HEADROOM_MIN_PAYLOAD_BYTES,
     MMAP_BRIDGE_HEADER_BYTES,
     MIN_FILE_STREAM_CHUNK_BYTES,
     MmapBridgeFrame,
@@ -2778,8 +2779,17 @@ def test_recommended_file_stream_chunk_is_pressure_aware_and_fail_safe():
         recommended_file_stream_chunk_bytes(
             available_bytes=2 * 1024 * 1024 * 1024,
             capacity_bytes=4 * 1024 * 1024 * 1024,
+            payload_bytes=HIGH_HEADROOM_MIN_PAYLOAD_BYTES,
         )
         == HIGH_HEADROOM_FILE_STREAM_CHUNK_BYTES
+    )
+    assert (
+        recommended_file_stream_chunk_bytes(
+            available_bytes=2 * 1024 * 1024 * 1024,
+            capacity_bytes=4 * 1024 * 1024 * 1024,
+            payload_bytes=16 * 1024 * 1024,
+        )
+        == DEFAULT_FILE_STREAM_CHUNK_BYTES
     )
     assert (
         recommended_file_stream_chunk_bytes(
