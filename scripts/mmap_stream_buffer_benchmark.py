@@ -256,7 +256,11 @@ def worker_main(
     except Exception as exc:  # report the failure to the parent as evidence
         error = f"{type(exc).__name__}: {exc}"
     producer_elapsed_ms = (time.perf_counter_ns() - started) / 1_000_000.0
-    done_path.write_text(
+    # Publish the completion marker atomically.  The parent polls for the
+    # marker while the worker is still alive; writing directly to the final
+    # path would let it observe a partially written JSON document.
+    done_tmp_path = done_path.with_name(f"{done_path.name}.tmp")
+    done_tmp_path.write_text(
         json.dumps(
             {
                 "elapsed_ms": producer_elapsed_ms,
@@ -266,6 +270,7 @@ def worker_main(
         ),
         encoding="utf-8",
     )
+    os.replace(done_tmp_path, done_path)
     # Let the parent stop RSS sampling before validation maps and hashes the
     # file. Validation remains mandatory, but it is a separate correctness
     # phase rather than producer-memory evidence.
