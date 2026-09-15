@@ -2,6 +2,9 @@ name: Linux native cgroup adapter artifact
 
 "on":
   workflow_dispatch:
+  push:
+    branches:
+      - codex/linux-native-cgroup-probe
 
 permissions:
   contents: read
