@@ -31,7 +31,7 @@ name: Memory context live model evaluation
       max_requests:
         description: Safety ceiling for planned requests (1-96)
         required: false
-        default: "48"
+        default: "24"
         type: string
       dry_run:
         description: Validate workflow and artifact plumbing without provider calls
