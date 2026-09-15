@@ -2,7 +2,7 @@
   "affected_test_paths": [
     "core/rust/src/gt96.rs"
   ],
-  "artifact_hash": "cb7dd3b8ca6fda17220ff57b69e166289f8912e8e192ab71764463258d84d80c",
+  "artifact_hash": "532cb32d8f9576a6267abfde34ec577afcddcb941619a3d203a53c8a4266497e",
   "changed_paths": [
     "core/rust/src/gt96.rs"
   ],
@@ -230,6 +230,7 @@
     "tests/test_lab_runtime.py",
     "tests/test_memory_context_benchmark.py",
     "tests/test_memory_context_live_eval.py",
+    "tests/test_placement_accelerator_metadata.py",
     "tests/test_progress_gate.py",
     "tests/test_rag_semantics.py",
     "tests/test_release_evidence.py",
@@ -241,6 +242,7 @@
     "tests/test_verification_agent_integration.py",
     "tests/test_verification_contracts.py",
     "tests/test_verification_generic_adapter.py",
+    "tests/test_verification_local_execution.py",
     "tests/test_verification_session.py"
   ],
   "limitations": [
@@ -255,26 +257,26 @@
   "phase": "PHASE_3_DETERMINISTIC_AFFECTED_CLOSURE",
   "plan_widened": false,
   "provenance": {
-    "claim_graph_source_tree_sha256": "63a2e024b1f7b369069fe67e3efde62d29e311095092f0092a7767976983a4db",
+    "claim_graph_source_tree_sha256": "604ae0f38da60b682ac6d419ab828ba0d174cd3d728c7dfa83ff6d57f0f730ad",
     "claim_scope": "LOCAL_CHECKOUT_ONLY",
     "edge_digest": "2b47a62553191c763ba1542f9191284cc583f47c9ec205130a6d14530c64e65b",
     "environment": {
-      "executable": "C:\\Users\\ADMIN\\AppData\\Local\\Programs\\Python\\Python311\\python.exe",
+      "executable": "C:\\Users\\ADMIN\\AEGIS-COGNITION\\.venv\\Scripts\\python.exe",
       "implementation": "CPython",
       "machine": "AMD64",
       "os": "Windows",
-      "python": "3.11.9",
-      "release": "10"
+      "python": "3.14.7",
+      "release": "11"
     },
     "evidence_class": "PLANNING_ONLY",
-    "inventory_source_tree_sha256": "9d5df515057574403acb2ccc3eb93bdba7e880331455b1e5ea9ef22471e27560",
-    "mapping_artifact_hash": "d48dd183e50777705fd52f20d7a619347bb189e865d4656484a14361f42829eb",
+    "inventory_source_tree_sha256": "1458462d1a02f251798500af6f64f5d81646b336d590fcb9b9bffe87eacb1d8d",
+    "mapping_artifact_hash": "42be382d5856b56cd1c986a518f437d82191ef9acb5034fa29187f44bfdd3e69",
     "origin_main_sha": "aa2188826ca12099cfadd35544bfc93ec53d63f0",
     "promotion": "DISABLED_IN_SHADOW",
-    "source_sha": "9fe073add40256d53ce268b80e2e09d16e3c9561",
+    "source_sha": "44eb8c93111972bcf2dec7826fd78d740c4ec0d9",
     "validator": "scripts/aese_affected_closure.py"
   },
-  "reproducible_hash": "3f0e9fcb40ad49b0d9eae7070cb86a98f660bf059cfaec06340d56ce4ac1abd3",
+  "reproducible_hash": "9fcf5858d264914b4a3fd5361f47fa63b49ccca8b98dd53804fc58904e78c303",
   "schema": "aese-affected-closure-v1",
   "shadow_selection": {
     "authority": "RETAINED_LEGACY_AUTHORITY",
@@ -285,8 +287,8 @@
     ],
     "would_skip_item_ids": []
   },
-  "source_head": "9fe073add40256d53ce268b80e2e09d16e3c9561",
-  "source_tree_sha256": "63a2e024b1f7b369069fe67e3efde62d29e311095092f0092a7767976983a4db",
+  "source_head": "44eb8c93111972bcf2dec7826fd78d740c4ec0d9",
+  "source_tree_sha256": "604ae0f38da60b682ac6d419ab828ba0d174cd3d728c7dfa83ff6d57f0f730ad",
   "status": "AFFECTED_CLOSURE_PLAN_ONLY_SELECTION_DISABLED",
   "traversed_edges": [
     {
@@ -343,6 +345,7 @@
     "AESE-PYTHON_TEST-0437C333BB08E1BC",
     "AESE-PYTHON_TEST-0C3CA6E3DD27606A",
     "AESE-PYTHON_TEST-132068D9A890F856",
+    "AESE-PYTHON_TEST-195334A9B316012B",
     "AESE-PYTHON_TEST-245D0C98F2F0786E",
     "AESE-PYTHON_TEST-29DA908655C0A48B",
     "AESE-PYTHON_TEST-2EAE0B226C89AC4F",
@@ -369,6 +372,7 @@
     "AESE-PYTHON_TEST-C285FA64FF958C9C",
     "AESE-PYTHON_TEST-CFF71A39EA33DA63",
     "AESE-PYTHON_TEST-D02F033C66DB2E7F",
+    "AESE-PYTHON_TEST-D19D7CC701B91D33",
     "AESE-PYTHON_TEST-D360D2BD4D944F44",
     "AESE-PYTHON_TEST-E94EA486F06207C7",
     "AESE-PYTHON_TEST-F1987F07975FDABF",
@@ -603,6 +607,7 @@
     "tests/test_lab_runtime.py",
     "tests/test_memory_context_benchmark.py",
     "tests/test_memory_context_live_eval.py",
+    "tests/test_placement_accelerator_metadata.py",
     "tests/test_progress_gate.py",
     "tests/test_rag_semantics.py",
     "tests/test_release_evidence.py",
@@ -613,6 +618,7 @@
     "tests/test_verification_agent_integration.py",
     "tests/test_verification_contracts.py",
     "tests/test_verification_generic_adapter.py",
+    "tests/test_verification_local_execution.py",
     "tests/test_verification_session.py"
   ]
 }

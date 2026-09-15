@@ -4,13 +4,17 @@ from __future__ import annotations
 
 import re
 import uuid
+from collections.abc import Mapping
 from dataclasses import dataclass, replace
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import cast
 
 from .contracts import (
+    ArtifactReference,
     ContractMetadata,
     DevelopmentVerificationSession,
+    ExecutionReceipt,
     ProjectProfile,
     TestChangeProposal,
     VerificationAssessment,
@@ -60,6 +64,8 @@ class _SessionRecord:
     proposals: dict[str, TestChangeProposal]
     feedback: list[dict[str, object]]
     runs: dict[str, dict[str, object]]
+    receipts: dict[str, ExecutionReceipt]
+    artifacts: dict[str, ArtifactReference]
 
 
 def _rebind[T: ContractMetadata](contract: T, **changes: object) -> T:
@@ -195,6 +201,8 @@ class VerificationFacade:
             proposals={},
             feedback=[],
             runs={},
+            receipts={},
+            artifacts={},
         )
         self._sessions[session_id] = record
         self._event(record, "SESSION_STARTED", {"state": state, "plan_hash": plan.plan_hash})
@@ -367,6 +375,208 @@ class VerificationFacade:
         self._event(record, "DEEP_RUN_REQUESTED", run)
         return dict(run)
 
+    def record_execution_result(
+        self,
+        session_id: str,
+        run_id: str,
+        result: object,
+    ) -> ExecutionReceipt:
+        """Record one result already executed through the existing Lab cell.
+
+        The façade accepts only the bounded structured projection returned by
+        the Lab adapter.  It never executes a command itself.  A source
+        revision mismatch is rejected as stale evidence rather than being
+        re-labelled as a current result.
+        """
+
+        record = self._record(session_id)
+        run = record.runs.get(run_id)
+        if run is None:
+            raise VerificationSessionError("verification run was not found")
+        if not isinstance(result, Mapping):
+            raise VerificationSessionError("execution result must be a mapping")
+        typed_result = cast(Mapping[str, object], result)
+        raw_source_revision = typed_result.get("source_revision", record.session.current_revision)
+        if type(raw_source_revision) is not str or not raw_source_revision.strip():
+            raise VerificationSessionError("execution result source revision is invalid")
+        if raw_source_revision != record.session.current_revision:
+            run["status"] = "STALE"
+            run["stale_reason"] = "source_revision_mismatch"
+            self._event(record, "EXECUTION_RESULT_REJECTED_STALE", {"run_id": run_id})
+            raise VerificationSessionError("execution result source revision is stale")
+
+        def text(name: str, default: str = "UNKNOWN") -> str:
+            value = typed_result.get(name, default)
+            if type(value) is not str or not value.strip() or "\x00" in value:
+                raise ValueError(f"execution result field is invalid: {name}")
+            return value
+
+        def non_negative_int(name: str) -> int:
+            value = typed_result.get(name, 0)
+            if type(value) is not int or value < 0:
+                raise ValueError(f"execution result count is invalid: {name}")
+            return value
+
+        status_value = typed_result.get("status")
+        status = status_value.upper() if type(status_value) is str else "MALFORMED"
+        if status not in {"PASS", "FAIL", "ZERO_TESTS", "MALFORMED", "TIMEOUT", "CANCELLED", "ERROR"}:
+            status = "MALFORMED"
+        try:
+            command_id = text("command_id")
+            adapter = text("adapter")
+            framework = text("framework")
+            toolchain = text("toolchain")
+            platform = text("platform")
+            executable = text("executable")
+            working_directory = text("working_directory")
+            exit_semantics = text("exit_semantics")
+            stdout_reference = text("stdout_reference", f"memory://aese/{run_id}/stdout")
+            stderr_reference = text("stderr_reference", f"memory://aese/{run_id}/stderr")
+            started_at = text("started_at", datetime.now(UTC).isoformat())
+            finished_at = text("finished_at", datetime.now(UTC).isoformat())
+            raw_argv = typed_result.get("argv", ())
+            if not isinstance(raw_argv, (tuple, list)):
+                raise ValueError("execution result argv is invalid")
+            typed_argv = cast(tuple[object, ...] | list[object], raw_argv)
+            if any(type(item) is not str for item in typed_argv):
+                raise ValueError("execution result argv is invalid")
+            argv = tuple(cast(str, item) for item in typed_argv)
+            raw_environment = typed_result.get("environment_fingerprint", {})
+            environment_items = (
+                tuple(cast(Mapping[object, object], raw_environment).items())
+                if isinstance(raw_environment, Mapping)
+                else ()
+            )
+            if not isinstance(raw_environment, Mapping) or any(
+                type(key) is not str or type(value) is not str for key, value in environment_items
+            ):
+                raise ValueError("execution result environment fingerprint is invalid")
+            environment = {cast(str, key): cast(str, value) for key, value in environment_items}
+            timeout_seconds = typed_result.get("timeout_seconds", 1.0)
+            if (
+                type(timeout_seconds) not in (int, float)
+                or isinstance(timeout_seconds, bool)
+                or not float(cast(int | float, timeout_seconds)) > 0
+            ):
+                raise ValueError("execution result timeout is invalid")
+            cancellation_requested = typed_result.get("cancellation_requested", False)
+            if type(cancellation_requested) is not bool:
+                raise ValueError("execution result cancellation flag is invalid")
+            exit_code = typed_result.get("exit_code")
+            if exit_code is not None and type(exit_code) is not int:
+                raise ValueError("execution result exit code is invalid")
+            counts = {name: non_negative_int(name) for name in ("discovered", "passed", "failed", "skipped", "filtered", "ignored")}
+            if sum(counts[name] for name in ("passed", "failed", "skipped", "filtered", "ignored")) > counts[
+                "discovered"
+            ]:
+                raise ValueError("execution result counts exceed discovered tests")
+            artifact_ids: list[str] = []
+            for stream in ("stdout", "stderr"):
+                digest = typed_result.get(f"{stream}_hash")
+                size = typed_result.get(f"{stream}_size", 0)
+                if (
+                    type(digest) is str
+                    and re.fullmatch(r"[0-9a-f]{64}", digest)
+                    and type(size) is int
+                    and size >= 0
+                ):
+                    artifact_id = f"{run_id}:{command_id}:{stream}"
+                    artifact = ArtifactReference(
+                        session_id=session_id,
+                        source_revision=record.session.current_revision,
+                        plan_hash=record.plan.plan_hash,
+                        policy_hash=record.profile.policy_hash,
+                        artifact_id=artifact_id,
+                        kind=f"{stream}_output",
+                        uri=f"memory://aese/{run_id}/{command_id}/{stream}",
+                        artifact_hash=digest,
+                        size_bytes=size,
+                        media_type="text/plain",
+                        redacted=True,
+                        status="RECORDED",
+                    )
+                    artifact.validate()
+                    record.artifacts[artifact_id] = artifact
+                    artifact_ids.append(artifact_id)
+            receipt = ExecutionReceipt(
+                session_id=session_id,
+                source_revision=record.session.current_revision,
+                plan_hash=record.plan.plan_hash,
+                policy_hash=record.profile.policy_hash,
+                attempt=1,
+                generation=0,
+                status=status,
+                run_id=run_id,
+                adapter=adapter,
+                framework=framework,
+                toolchain=toolchain,
+                platform=platform,
+                executable=executable,
+                argv=argv,
+                working_directory=working_directory,
+                environment_fingerprint=environment,
+                resource_class="LOCAL_PROCESS_CELL_BOUNDED_WALL_TIME",
+                timeout_seconds=float(cast(int | float, timeout_seconds)),
+                cancellation_requested=cancellation_requested,
+                exit_code=exit_code,
+                exit_semantics=exit_semantics,
+                discovered=counts["discovered"],
+                passed=counts["passed"],
+                failed=counts["failed"],
+                skipped=counts["skipped"],
+                filtered=counts["filtered"],
+                ignored=counts["ignored"],
+                artifact_ids=tuple(artifact_ids),
+                stdout_reference=stdout_reference,
+                stderr_reference=stderr_reference,
+                started_at=started_at,
+                finished_at=finished_at,
+                error_codes=tuple(
+                    code
+                    for code in (str(typed_result.get("failure_class", "")).strip(),)
+                    if code and code != "None"
+                ),
+            )
+            receipt.validate()
+        except (TypeError, ValueError):
+            status = "MALFORMED"
+            receipt = ExecutionReceipt(
+                session_id=session_id,
+                source_revision=record.session.current_revision,
+                plan_hash=record.plan.plan_hash,
+                policy_hash=record.profile.policy_hash,
+                status=status,
+                run_id=run_id,
+                adapter="unknown",
+                framework="unknown",
+                toolchain="UNKNOWN",
+                platform="UNKNOWN",
+                executable="UNKNOWN",
+                argv=(),
+                working_directory=record.profile.root_path,
+                resource_class="LOCAL_PROCESS_CELL_BOUNDED_WALL_TIME",
+                timeout_seconds=1.0,
+                exit_semantics="MALFORMED_RESULT",
+                stdout_reference=f"memory://aese/{run_id}/stdout",
+                stderr_reference=f"memory://aese/{run_id}/stderr",
+                started_at=datetime.now(UTC).isoformat(),
+                finished_at=datetime.now(UTC).isoformat(),
+                error_codes=("MALFORMED_RESULT",),
+            )
+            receipt.validate()
+        receipt_id = _new_id("aese-receipt")
+        record.receipts[receipt_id] = receipt
+        receipt_ids = tuple(cast(tuple[str, ...], run.get("receipt_ids", ())))
+        run["receipt_ids"] = (*receipt_ids, receipt_id)
+        run["status"] = "RECEIPT_RECORDED"
+        run["last_result_status"] = receipt.status
+        self._event(
+            record,
+            "EXECUTION_RECEIPT_RECORDED",
+            {"run_id": run_id, "receipt_id": receipt_id, "status": receipt.status},
+        )
+        return receipt
+
     def inspect_run(self, session_id: str, run_id: str) -> dict[str, object]:
         record = self._record(session_id)
         run = record.runs.get(run_id)
@@ -395,19 +605,42 @@ class VerificationFacade:
 
     def read_report(self, session_id: str) -> dict[str, object]:
         record = self._record(session_id)
+        receipts = tuple(record.receipts.values())
+        receipt_ids = tuple(record.receipts)
+        artifact_ids = tuple(record.artifacts)
+        if receipts:
+            statuses = {receipt.status for receipt in receipts}
+            if statuses == {"PASS"}:
+                requirement_status = {
+                    requirement.requirement_id: "PROVISIONAL_PASS" for requirement in record.requirements
+                }
+                failure_reasons = ("evidence_promotion_disabled_shadow_mode",)
+            elif statuses.intersection({"FAIL", "ERROR", "TIMEOUT", "CANCELLED", "MALFORMED", "ZERO_TESTS"}):
+                requirement_status = {requirement.requirement_id: "FAIL" for requirement in record.requirements}
+                failure_reasons = ("verification_run_not_passing",)
+            else:
+                requirement_status = {requirement.requirement_id: "INCOMPLETE" for requirement in record.requirements}
+                failure_reasons = ("verification_run_incomplete",)
+            assessment_run_id = receipts[0].run_id
+            execution_status = "LAB_BOUND"
+        else:
+            requirement_status = {requirement.requirement_id: "INCOMPLETE" for requirement in record.requirements}
+            failure_reasons = ("execution_not_bound_to_lab_in_vertical_slice",)
+            assessment_run_id = next(iter(record.runs), "not-executed")
+            execution_status = "NOT_EXECUTED"
         assessment = VerificationAssessment(
             session_id=session_id,
             source_revision=record.session.current_revision,
             plan_hash=record.plan.plan_hash,
             policy_hash=record.profile.policy_hash,
             assessment_id=_new_id("aese-assessment"),
-            run_id=next(iter(record.runs), "not-executed"),
-            requirement_status={requirement.requirement_id: "INCOMPLETE" for requirement in record.requirements},
-            receipt_ids=(),
-            artifact_ids=(),
+            run_id=assessment_run_id,
+            requirement_status=requirement_status,
+            receipt_ids=receipt_ids,
+            artifact_ids=artifact_ids,
             final_assurance=False,
             provisional=True,
-            failure_reasons=("execution_not_bound_to_lab_in_vertical_slice",),
+            failure_reasons=failure_reasons,
         )
         assessment.validate()
         self._update_session(
@@ -421,7 +654,9 @@ class VerificationFacade:
             "plan": record.plan.as_dict(),
             "assessment": assessment.as_dict(),
             "events": tuple(event.as_dict() for event in record.events),
-            "execution": "NOT_EXECUTED",
+            "receipts": tuple(receipt.as_dict() for receipt in receipts),
+            "artifacts": tuple(artifact.as_dict() for artifact in record.artifacts.values()),
+            "execution": execution_status,
             "final_assurance": False,
             "promotion": EVIDENCE_PROMOTION,
         }
