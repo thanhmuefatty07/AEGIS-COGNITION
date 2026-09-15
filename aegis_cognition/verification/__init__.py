@@ -20,6 +20,7 @@ from .contracts import (
     canonical_hash,
 )
 from .facade import AgentImplementationPacket, VerificationFacade
+from .execution import LocalVerificationCommand, build_local_verification_commands, run_local_verification_command
 from .session import SessionState, VerificationSessionError
 
 __all__ = [
@@ -28,6 +29,7 @@ __all__ = [
     "ContractValidationError",
     "DevelopmentVerificationSession",
     "ExecutionReceipt",
+    "LocalVerificationCommand",
     "ProjectProfile",
     "SessionState",
     "TestChangeProposal",
@@ -38,5 +40,7 @@ __all__ = [
     "VerificationPlan",
     "VerificationRequirement",
     "VerificationSessionError",
+    "build_local_verification_commands",
     "canonical_hash",
+    "run_local_verification_command",
 ]

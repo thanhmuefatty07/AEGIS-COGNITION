@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import inspect
 import json
 import re
 import time
@@ -10,22 +11,84 @@ import uuid
 from dataclasses import asdict
 from pathlib import Path
 from typing import Any, cast
-from collections.abc import Callable
+from collections.abc import Awaitable, Callable, Mapping
 
 from .config import AgentConfig
 from .infrastructure import build_gateway, build_learning_manager
-from .lab import LabApplication
+from .lab import LabApplication, ProcessExecutionCell
 from .models import RunResult
 from .observability import CorrelationContext, RuntimeTelemetry
 from .prompt import PromptBuilder
 from .rag import RAGManager
 from .runtime import coordinated_runtime_task
-from .verification import AgentImplementationPacket, VerificationFacade, VerificationSessionError
+from .subagents import (
+    AgentHandler,
+    AgentMessage,
+    AgentPlanProposal,
+    AgentResultPacket,
+    AgentSupervisor,
+    AgentSupervisorResult,
+    build_model_subagent_handler,
+    build_root_synthesizer,
+    parse_agent_plan,
+)
+from .verification import (
+    AgentImplementationPacket,
+    LocalVerificationCommand,
+    ProjectProfile,
+    VerificationFacade,
+    VerificationSessionError,
+    build_local_verification_commands,
+    run_local_verification_command,
+)
+from .verification.discovery import workspace_change_paths
 
 try:
     from core.python.aegis.conversations import ConversationManager
 except ImportError:
     from aegis.conversations import ConversationManager  # type: ignore[import-not-found]
+
+
+_DEVELOPMENT_TASK_MARKERS = (
+    "implement",
+    "implementation",
+    "develop",
+    "development",
+    "feature",
+    "fix",
+    "bug",
+    "refactor",
+    "code",
+    "source",
+    "module",
+    "function",
+    "class",
+    "test",
+    "pytest",
+    "cargo",
+    "rust",
+    "python",
+    "phát triển",
+    "triển khai",
+    "sửa",
+    "thêm",
+    "mã nguồn",
+    "kiểm thử",
+)
+
+_DEFAULT_SUBAGENT_CAPABILITIES = frozenset(
+    {"read_only", "network_read", "compute", "model_inference", "browser", "vision", "code_reuse"}
+)
+_DEFAULT_SUBAGENT_SIDE_EFFECT_CLASSES = frozenset({"ReadOnly", "NetworkRead", "Compute", "ModelInference", "LocalReversible"})
+_MAX_SUBAGENT_PLANNER_CHARS = 32_768
+
+
+def _looks_like_development_task(task: str) -> bool:
+    normalized = task.casefold()
+    return any(
+        (marker in normalized if any(not character.isascii() for character in marker) else re.search(rf"\b{re.escape(marker)}\b", normalized) is not None)
+        for marker in _DEVELOPMENT_TASK_MARKERS
+    )
 
 
 class AgentApplication:
@@ -45,6 +108,12 @@ class AgentApplication:
         self._verification_facade: VerificationFacade | None = None
         self._verification_session_id: str | None = None
         self._verification_packet: AgentImplementationPacket | None = None
+        self._aese_profile: ProjectProfile | None = None
+        self._aese_project_root: Path | None = None
+        self._aese_baseline_paths: frozenset[str] = frozenset()
+        self._aese_run_id: str | None = None
+        self._aese_commands: dict[str, LocalVerificationCommand] = {}
+        self._aese_delegate_tool_runner: Any = None
 
     def prepare(self, task: str) -> tuple[str, str]:
         rag_context = self._retrieve_context(task)
@@ -127,7 +196,14 @@ class AgentApplication:
         return system_context
 
     def _aese_enabled(self) -> bool:
-        return self.config.options.get("aese") is True or self.config.options.get("verification") is True
+        options = self.config.options
+        if options.get("aese") is False:
+            return False
+        if options.get("aese") is True or options.get("verification") is True:
+            return True
+        if options.get("aese_auto", True) is not True:
+            return False
+        return _looks_like_development_task(self.config.task)
 
     def _ensure_verification_session(self) -> None:
         if not self._aese_enabled() or self._verification_session_id is not None:
@@ -140,6 +216,9 @@ class AgentApplication:
             raise VerificationSessionError("aese_expected_behavior must be a string")
         facade = VerificationFacade()
         profile = facade.inspect_project(raw_root)
+        self._aese_profile = profile
+        self._aese_project_root = Path(profile.root_path)
+        self._aese_baseline_paths = frozenset(workspace_change_paths(self._aese_project_root))
         requirements = facade.create_contract(
             self.config.task,
             expected_behavior=expected,
@@ -161,15 +240,216 @@ class AgentApplication:
             correlation=self.correlation,
         )
 
+    def _prepare_aese_runtime(self) -> None:
+        """Attach AESE's local lane to the existing Lab tool boundary."""
+
+        if (
+            self._verification_facade is None
+            or self._verification_session_id is None
+            or self._verification_packet is None
+            or self._aese_profile is None
+            or not self._verification_packet.can_start
+        ):
+            return
+        options = self.config.options
+        execute_local = options.get("aese_execute_local", True)
+        if type(execute_local) is not bool:
+            raise VerificationSessionError("aese_execute_local must be boolean")
+        if not execute_local:
+            self.telemetry.emit("verification", "local_execution_disabled", correlation=self.correlation)
+            return
+        deep = options.get("aese_deep", False)
+        include_rust = options.get("aese_include_rust", True)
+        if type(deep) is not bool or type(include_rust) is not bool:
+            raise VerificationSessionError("aese_deep and aese_include_rust must be boolean")
+        commands = build_local_verification_commands(
+            self._aese_profile,
+            deep=deep,
+            include_rust=include_rust,
+        )
+        if not commands:
+            self.telemetry.emit("verification", "no_conformant_local_adapter", correlation=self.correlation)
+            return
+        if self._aese_run_id is None:
+            run = self._verification_facade.request_deep_run(
+                self._verification_session_id,
+                reason="local_deep_lane" if deep else "local_fast_lane",
+            )
+            raw_run_id = run.get("run_id")
+            if type(raw_run_id) is not str or not raw_run_id.strip():
+                raise VerificationSessionError("AESE Lab run did not return a valid run id")
+            self._aese_run_id = raw_run_id
+        self._aese_commands = {command.command_id: command for command in commands}
+        raw_existing_calls = options.get("tool_calls", ())
+        if raw_existing_calls is None:
+            existing_calls: tuple[Any, ...] = ()
+        elif isinstance(raw_existing_calls, (list, tuple)):
+            existing_calls = tuple(cast(list[Any] | tuple[Any, ...], raw_existing_calls))
+        else:
+            raise VerificationSessionError("tool_calls must be a list or tuple when AESE is active")
+        self._aese_delegate_tool_runner = options.get("tool_runner")
+        aese_calls = tuple(
+            {
+                "tool_name": "aese.local_verification",
+                "call_id": f"aese-{command.command_id}",
+                "effect_class": "compute",
+                "actor_role": "observer",
+                "expected_observation_schema": "aese.execution-result-v1",
+                "stop_rule": "single_call",
+                "lease_id": index,
+                "input": command.as_dict(),
+            }
+            for index, command in enumerate(commands, start=1)
+        )
+        # AESE calls are placed first so a user-supplied max_steps value cannot
+        # silently omit verification.  The existing Lab registry still owns
+        # the one generic tool cell and the one admission/settlement path.
+        options["tool_calls"] = (*aese_calls, *existing_calls)
+        options["tool_runner"] = self._aese_tool_runner
+        options.setdefault(
+            "tool_timeout_seconds",
+            min(3_600.0, max(command.timeout_seconds for command in commands) + 10.0),
+        )
+        self.telemetry.emit(
+            "verification",
+            "local_lane_bound_to_lab",
+            correlation=self.correlation,
+        )
+
+    async def _aese_tool_runner(self, request: Any, **kwargs: Any) -> dict[str, object]:
+        """Dispatch only pre-built AESE commands through a Lab process cell."""
+
+        if not isinstance(request, dict):
+            raise VerificationSessionError("AESE tool request must be a mapping")
+        typed_request = cast(dict[str, Any], request)
+        tool_name = typed_request.get("tool_name", typed_request.get("name", ""))
+        if tool_name != "aese.local_verification":
+            delegate = self._aese_delegate_tool_runner
+            if not callable(delegate):
+                raise VerificationSessionError("unregistered generic tool request")
+            delegated = delegate(typed_request, **kwargs)
+            return cast(dict[str, object], await delegated if inspect.isawaitable(delegated) else delegated)
+        if self._aese_run_id is None or self._verification_facade is None or self._verification_session_id is None:
+            raise VerificationSessionError("AESE local run is not initialized")
+        input_payload = typed_request.get("input")
+        if not isinstance(input_payload, Mapping):
+            raise VerificationSessionError("AESE local command payload is missing")
+        typed_input = cast(Mapping[str, object], input_payload)
+        command_id = typed_input.get("command_id")
+        if type(command_id) is not str:
+            raise VerificationSessionError("AESE local command id is invalid")
+        command = self._aese_commands.get(command_id)
+        try:
+            normalized_input = LocalVerificationCommand.from_mapping(typed_input)
+        except (TypeError, ValueError) as error:
+            raise VerificationSessionError("AESE local command payload is invalid") from error
+        if command is None or normalized_input.as_dict() != command.as_dict():
+            raise VerificationSessionError("AESE local command is not an admitted command")
+        runner = ProcessExecutionCell(
+            run_local_verification_command,
+            timeout_seconds=min(3_600.0, command.timeout_seconds + 5.0),
+        )
+        lab_run = kwargs.get("run")
+        try:
+            raw_result = await runner(command.as_dict())
+            if not isinstance(raw_result, Mapping):
+                raise VerificationSessionError("AESE local runner returned a malformed result")
+            result = dict(cast(Mapping[str, object], raw_result))
+            result["source_revision"] = command.source_revision
+            receipt = self._verification_facade.record_execution_result(
+                self._verification_session_id,
+                self._aese_run_id,
+                result,
+            )
+            if receipt.status != "PASS" and lab_run is not None:
+                lab_run.record_blocker(f"aese_verification_{receipt.status.casefold()}")
+            return result
+        except asyncio.CancelledError:
+            self._record_aese_runner_failure(command, status="CANCELLED", lab_run=lab_run)
+            raise
+        except Exception as error:
+            self._record_aese_runner_failure(command, status="ERROR", lab_run=lab_run, error=error)
+            raise
+
+    def _record_aese_runner_failure(
+        self,
+        command: LocalVerificationCommand,
+        *,
+        status: str,
+        lab_run: Any,
+        error: Exception | None = None,
+    ) -> None:
+        if self._verification_facade is None or self._verification_session_id is None or self._aese_run_id is None:
+            return
+        result: dict[str, object] = {
+            "source_revision": command.source_revision,
+            "command_id": command.command_id,
+            "adapter": command.adapter,
+            "framework": command.framework,
+            "toolchain": "UNKNOWN",
+            "platform": "UNKNOWN",
+            "executable": command.executable,
+            "argv": command.argv,
+            "working_directory": command.working_directory,
+            "environment_fingerprint": dict(command.environment),
+            "timeout_seconds": command.timeout_seconds,
+            "exit_semantics": type(error).__name__ if error is not None else status,
+            "status": status,
+            "detail": str(error)[:256] if error is not None else status,
+            "started_at": "AESE_UNKNOWN_START",
+            "finished_at": "AESE_UNKNOWN_FINISH",
+        }
+        try:
+            receipt = self._verification_facade.record_execution_result(
+                self._verification_session_id,
+                self._aese_run_id,
+                result,
+            )
+            if lab_run is not None:
+                lab_run.record_blocker(f"aese_verification_{receipt.status.casefold()}")
+        except (VerificationSessionError, TypeError, ValueError):
+            if lab_run is not None:
+                lab_run.record_blocker("aese_verification_receipt_rejected")
+
     def _observe_verification_change(self) -> None:
         if self._verification_facade is None or self._verification_session_id is None:
             return
-        raw_paths = self.config.options.get("aese_changed_paths", ())
-        if not isinstance(raw_paths, (tuple, list)):
-            raise VerificationSessionError("aese_changed_paths must be a list or tuple")
-        typed_paths = cast(list[str] | tuple[str, ...], raw_paths)
-        self._verification_facade.observe_change(self._verification_session_id, tuple(typed_paths))
+        raw_paths = self.config.options.get("aese_changed_paths")
+        if raw_paths is not None:
+            if not isinstance(raw_paths, (tuple, list)):
+                raise VerificationSessionError("aese_changed_paths must be a list or tuple")
+            typed_paths = tuple(cast(list[str] | tuple[str, ...], raw_paths))
+            source_revision = None
+        else:
+            root = self._aese_project_root
+            if root is None:
+                raise VerificationSessionError("AESE project root is unavailable")
+            current_profile = self._verification_facade.inspect_project(root)
+            current_paths = frozenset(workspace_change_paths(root))
+            typed_paths = tuple(sorted(current_paths.symmetric_difference(self._aese_baseline_paths)))
+            source_revision = current_profile.source_revision
+        self._verification_facade.observe_change(
+            self._verification_session_id,
+            typed_paths,
+            source_revision=source_revision,
+        )
         self.telemetry.emit("verification", "change_observed", correlation=self.correlation)
+
+    def _publish_aese_report(self) -> None:
+        if self._verification_facade is None or self._verification_session_id is None:
+            return
+        report = self._verification_facade.read_report(self._verification_session_id)
+        raw_assessment = report.get("assessment")
+        if isinstance(raw_assessment, Mapping):
+            typed_assessment = cast(Mapping[str, object], raw_assessment)
+            status: object = typed_assessment.get("requirement_status", "UNKNOWN")
+        else:
+            status = "UNKNOWN"
+        self.telemetry.emit(
+            "verification",
+            f"report_ready:{str(status)[:96]}",
+            correlation=self.correlation,
+        )
 
     def _gateway(self, formatted_task: str) -> Any:
         options = self.config.options
@@ -194,6 +474,179 @@ class AgentApplication:
         return self._gateway_factory(
             **gateway_kwargs,
         )
+
+    @staticmethod
+    def _bounded_subagent_planner_prompt(task: str, handler_keys: tuple[str, ...]) -> str:
+        prompt = "\n".join(
+            (
+                "You are the root agent's planning phase. Return only one JSON object; do not use markdown.",
+                "The host will validate the DAG, compute proposal_hash, bind trusted handlers, and enforce runtime policy.",
+                "Create only the smallest set of independent or dependency-linked child tasks needed for the user task.",
+                "Every task must use one handler_key from the allowlist and must be read-only unless the host policy says otherwise.",
+                "The JSON shape is {\"schema\":\"aegis-agent-plan-v1\",\"tasks\":[{...}]}; omit proposal_hash.",
+                "Each task object must contain exactly: task_id, handler_key, role, prompt, artifact_namespace, dependencies, capabilities, exclusive_resources, token_budget, timeout_seconds, memory_bytes, side_effect_class, parent_task_id, attempt_id.",
+                f"HANDLER_ALLOWLIST: {json.dumps(handler_keys, ensure_ascii=False)}",
+                f"USER_TASK: {task}",
+            )
+        )
+        if len(prompt) <= _MAX_SUBAGENT_PLANNER_CHARS:
+            return prompt
+        suffix = "\n[planner task truncated at the host boundary]"
+        return f"{prompt[: _MAX_SUBAGENT_PLANNER_CHARS - len(suffix)]}{suffix}"
+
+    def _validate_subagent_plan(
+        self,
+        proposal: AgentPlanProposal,
+        handlers: Mapping[str, AgentHandler],
+    ) -> None:
+        proposal.validate()
+        if not proposal.tasks:
+            raise ValueError("subagent plan must contain at least one child task")
+        options = self.config.options
+
+        def bounded_text_set(option_name: str, default: frozenset[str]) -> frozenset[str]:
+            raw = options.get(option_name, tuple(sorted(default)))
+            if type(raw) not in (list, tuple, set, frozenset):
+                raise ValueError(f"{option_name} must be a sequence of strings")
+            values = frozenset(raw)
+            if any(type(value) is not str or not value.strip() for value in values):
+                raise ValueError(f"{option_name} must contain non-empty strings")
+            return values
+
+        allowed_capabilities = bounded_text_set("subagent_allowed_capabilities", _DEFAULT_SUBAGENT_CAPABILITIES)
+        allowed_side_effects = bounded_text_set(
+            "subagent_allowed_side_effect_classes", _DEFAULT_SUBAGENT_SIDE_EFFECT_CLASSES
+        )
+        raw_max_tasks = options.get("subagent_max_tasks", 32)
+        raw_max_timeout = options.get("subagent_max_timeout_seconds", 300.0)
+        raw_max_memory = options.get("subagent_max_memory_bytes", 512 * 1024 * 1024)
+        raw_max_tokens = options.get("subagent_max_token_budget", 32_000)
+        if type(raw_max_tasks) is not int or not 1 <= raw_max_tasks <= 256:
+            raise ValueError("subagent_max_tasks must be an integer within [1, 256]")
+        if type(raw_max_timeout) not in (int, float) or raw_max_timeout <= 0:
+            raise ValueError("subagent_max_timeout_seconds must be positive")
+        if type(raw_max_memory) is not int or raw_max_memory < 1:
+            raise ValueError("subagent_max_memory_bytes must be positive")
+        if type(raw_max_tokens) is not int or raw_max_tokens < 1:
+            raise ValueError("subagent_max_token_budget must be positive")
+        if len(proposal.tasks) > raw_max_tasks:
+            raise ValueError("subagent plan exceeds the configured task bound")
+        known_ids = {task.task_id for task in proposal.tasks}
+        for task in proposal.tasks:
+            if task.handler_key not in handlers:
+                raise ValueError(f"subagent plan selected an unregistered handler: {task.handler_key}")
+            if any(capability not in allowed_capabilities for capability in task.capabilities):
+                raise ValueError(f"subagent plan requested a capability outside the host policy: {task.task_id}")
+            if task.side_effect_class not in allowed_side_effects:
+                raise ValueError(f"subagent plan requested a side effect outside the host policy: {task.task_id}")
+            if task.timeout_seconds > float(raw_max_timeout):
+                raise ValueError(f"subagent plan timeout exceeds the host policy: {task.task_id}")
+            if task.memory_bytes > raw_max_memory:
+                raise ValueError(f"subagent plan memory exceeds the host policy: {task.task_id}")
+            if task.token_budget is not None and task.token_budget > raw_max_tokens:
+                raise ValueError(f"subagent plan token budget exceeds the host policy: {task.task_id}")
+            # Composite parent/child lifecycle is intentionally deferred until
+            # the Rust ledger can persist it.  The first slice executes direct
+            # children only; dependencies remain the data-flow contract.
+            if task.parent_task_id is not None:
+                raise ValueError("nested parent_task_id is not supported by the current supervisor")
+            if task.task_id not in known_ids:
+                raise ValueError("subagent plan contains an unknown task identity")
+
+    async def arun_subagents(
+        self,
+        *,
+        plan: AgentPlanProposal | Mapping[str, object] | object | None = None,
+        handlers: Mapping[str, AgentHandler] | None = None,
+        root_synthesizer: Callable[[tuple[AgentResultPacket, ...]], object | Awaitable[object]] | None = None,
+        message_sink: Callable[[AgentMessage], object | Awaitable[object]] | None = None,
+        require_native_authority: bool | None = None,
+        max_concurrency: int | None = None,
+    ) -> AgentSupervisorResult[object]:
+        """Plan and run bounded local subagents, then synthesize once at root.
+
+        ``plan=None`` performs one root planning call.  The model can propose
+        metadata only; callable handlers remain host-owned.  Supplying a plan,
+        handlers, and root synthesizer allows deterministic local execution in
+        tests or in a specialised browser/research integration.
+        """
+
+        started = time.perf_counter()
+        gateway: Any | None = None
+        system_context = ""
+        try:
+            needs_model = plan is None or handlers is None or root_synthesizer is None
+            if needs_model:
+                formatted_task, system_context = self.prepare(self.config.task)
+                gateway = self._gateway(formatted_task)
+
+            async def invoke_model(prompt: str) -> object:
+                if gateway is None:
+                    raise RuntimeError("subagent model invocation is not configured")
+                method = getattr(gateway, "ainvoke", None)
+                if not callable(method):
+                    method = getattr(gateway, "run", None)
+                if not callable(method):
+                    raise TypeError("subagent gateway must expose ainvoke or run")
+                result = method(prompt, system_context=system_context)
+                if inspect.isawaitable(result):
+                    return await result
+                return result
+
+            trusted_handlers: dict[str, AgentHandler] = {}
+            if gateway is not None:
+                trusted_handlers["model"] = build_model_subagent_handler(invoke_model)
+            if handlers is not None:
+                for key, handler in handlers.items():
+                    if type(key) is not str or not key.strip() or len(key) > 128:
+                        raise ValueError("subagent handler keys must be bounded non-empty strings")
+                    if not callable(handler):
+                        raise TypeError(f"subagent handler is not callable: {key}")
+                    trusted_handlers[key] = handler
+            if not trusted_handlers:
+                raise ValueError("at least one trusted subagent handler is required")
+
+            if plan is None:
+                planner_prompt = self._bounded_subagent_planner_prompt(
+                    self.config.task,
+                    tuple(sorted(trusted_handlers)),
+                )
+                proposal = parse_agent_plan(await invoke_model(planner_prompt))
+                self.telemetry.emit("agent", "subagent_plan_proposed", correlation=self.correlation)
+            else:
+                proposal = parse_agent_plan(plan)
+            self._validate_subagent_plan(proposal, trusted_handlers)
+            specs = proposal.bind_handlers(trusted_handlers)
+            effective_root = root_synthesizer
+            if effective_root is None:
+                effective_root = build_root_synthesizer(invoke_model)
+            raw_require_native = (
+                self.config.options.get("subagents_require_native_authority", True)
+                if require_native_authority is None
+                else require_native_authority
+            )
+            raw_concurrency = (
+                self.config.options.get("subagent_max_concurrency", 4)
+                if max_concurrency is None
+                else max_concurrency
+            )
+            result = await AgentSupervisor(
+                run_id=self.correlation.task_id,
+                max_concurrency=raw_concurrency,
+                trust_level=self.config.trust_level,
+                require_native_authority=raw_require_native,
+                message_sink=message_sink,
+            ).run(specs, effective_root)
+            self.telemetry.emit("agent", "subagents_completed", correlation=self.correlation)
+            return result
+        except Exception:
+            self.telemetry.emit("agent", "subagents_failed", correlation=self.correlation)
+            raise
+        finally:
+            self.telemetry.metrics.observe_ms(
+                "runtime.agent.subagents_duration",
+                (time.perf_counter() - started) * 1000,
+            )
 
     def _begin_conversation(self, task: str) -> dict[str, Any] | None:
         """Create the canonical user/assistant execution envelope when opted in."""
@@ -334,6 +787,7 @@ class AgentApplication:
             conversation_run: dict[str, Any] | None = None
             try:
                 self._ensure_verification_session()
+                self._prepare_aese_runtime()
                 conversation_run = self._begin_conversation(self.config.task)
                 if self._lab_enabled():
                     # Lab owns compatibility retrieval as an admitted
@@ -397,6 +851,7 @@ class AgentApplication:
                         checkpoint_effect=(persist_lab_checkpoint if conversation_run is not None else None),
                     ).run()
                     self.telemetry.emit("lab", "dossier_committed", correlation=self.correlation)
+                    self._publish_aese_report()
                     self._finish_conversation(conversation_run, output=lab_result.output, status="COMPLETED")
                     self.telemetry.emit("agent", "run_completed", correlation=self.correlation)
                     return RunResult(
