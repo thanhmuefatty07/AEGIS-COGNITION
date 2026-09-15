@@ -94,7 +94,7 @@ uv run --no-project --no-sync --locked --extra all --extra dev python scripts/me
   --nvidia-models "<available-nim-model>" `
   --repeats 1 `
   --max-requests 24 `
-  --delay-ms 2000 `
+  --delay-ms 2400 `
   --output artifacts/memory-context-live-eval-local.json
 
 Remove-Item Env:OPENROUTER_API_KEY, Env:NVIDIA_NIM_API_KEY
@@ -104,8 +104,8 @@ Remove-Variable orKey, nimKey
 Use `--provider openrouter` or `--provider nvidia` when only one key is
 available. The planned request count is `providers × models × 6 tasks × 2
 variants × repeats`; the harness defaults to 24 and rejects counts above 96
-or the selected `--max-requests` value. The default 2,000 ms delay keeps a
-sequential run below about 30 requests per minute; do not lower it for a free
+or the selected `--max-requests` value. The default 2,400 ms delay keeps a
+sequential run below about 25 requests per minute; do not lower it for a free
 NIM account unless its current account limit is verified. Keep free-tier probes
 at 12 or 24 requests and raise the limit only when the account quota justifies it.
 
