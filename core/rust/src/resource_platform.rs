@@ -210,7 +210,7 @@ mod linux {
     }
 
     #[cfg(test)]
-    fn remove_group(path: &Path) -> Result<(), ResourceError> {
+    pub(super) fn remove_group(path: &Path) -> Result<(), ResourceError> {
         // Unit tests model cgroup control files with ordinary files in a
         // temporary directory.  Keep production cleanup strict, while
         // allowing this fixture-only representation to be removed.  A nested
@@ -695,7 +695,7 @@ mod tests {
         fs::create_dir_all(group.join("child")).unwrap();
         fs::write(group.join("memory.max"), "max").unwrap();
 
-        assert!(remove_group(&group).is_err());
+        assert!(linux::remove_group(&group).is_err());
         assert!(group.join("child").exists());
     }
 
