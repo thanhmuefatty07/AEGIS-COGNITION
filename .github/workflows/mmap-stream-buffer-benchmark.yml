@@ -87,6 +87,13 @@ jobs:
           uv run --locked --extra all --extra dev python scripts/mmap_stream_buffer_benchmark.py
           --payload-bytes 16777216 --payload-bytes 67108864 --repetitions 5
           --output artifacts/mmap-stream-buffer-${{ matrix.platform-id }}.json
+      - name: Run bounded high-headroom stream measurement
+        env:
+          PYTHONPATH: ${{ github.workspace }}
+        run: >-
+          uv run --locked --extra all --extra dev python scripts/mmap_stream_buffer_benchmark.py
+          --payload-bytes 67108864 --repetitions 5 --file-chunk-bytes 8388608
+          --output artifacts/mmap-stream-buffer-high-headroom-${{ matrix.platform-id }}.json
       - name: Verify pressure-aware chunk selection
         env:
           PYTHONPATH: ${{ github.workspace }}
@@ -122,7 +129,7 @@ jobs:
           from datetime import UTC, datetime
           from pathlib import Path
 
-          for prefix in ("mmap-stream-buffer", "hot-buffer-ffi"):
+          for prefix in ("mmap-stream-buffer", "mmap-stream-buffer-high-headroom", "hot-buffer-ffi"):
               path = Path("artifacts") / f"{prefix}-{os.environ['PLATFORM_ID']}.json"
               report = json.loads(path.read_text(encoding="utf-8"))
               report["evidence_binding"] = {
@@ -144,5 +151,6 @@ jobs:
           name: mmap-stream-buffer-${{ matrix.platform-id }}-${{ github.sha }}
           path: |
             artifacts/mmap-stream-buffer-${{ matrix.platform-id }}.json
+            artifacts/mmap-stream-buffer-high-headroom-${{ matrix.platform-id }}.json
             artifacts/hot-buffer-ffi-${{ matrix.platform-id }}.json
           if-no-files-found: error
