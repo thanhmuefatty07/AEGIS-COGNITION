@@ -49,6 +49,18 @@ pub struct PlacementCapability {
     pub pressure: bool,
     pub local_only: bool,
     pub confidence: PlacementConfidence,
+    /// Accelerator identity is optional because CPU, memory, and storage
+    /// capabilities do not have a vendor backend.  When present, these
+    /// fields must travel through planning so the runtime can construct the
+    /// same typed request that was measured and selected.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub accelerator_kind: Option<crate::resource::AcceleratorKind>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub backend: Option<crate::resource::BackendKind>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub vendor: Option<String>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub capabilities: Vec<String>,
     /// Explicit link observations are kept with the inventory entry so the
     /// legacy FFI shape can carry pairwise topology without a second global
     /// JSON envelope.  An empty list means that no link was observed.
@@ -193,6 +205,14 @@ pub struct PlacementCandidate {
     pub estimated_latency_us: Option<u64>,
     pub reason: String,
     pub confidence: PlacementConfidence,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub accelerator_kind: Option<crate::resource::AcceleratorKind>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub backend: Option<crate::resource::BackendKind>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub vendor: Option<String>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub capabilities: Vec<String>,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
@@ -1954,6 +1974,10 @@ fn evaluate_candidate(
         estimated_latency_us: None,
         reason: "eligible".to_string(),
         confidence: capability.confidence,
+        accelerator_kind: capability.accelerator_kind,
+        backend: capability.backend,
+        vendor: capability.vendor.clone(),
+        capabilities: capability.capabilities.clone(),
     };
 
     if capability.id.trim().is_empty() {
@@ -2319,6 +2343,10 @@ mod tests {
             pressure: false,
             local_only: true,
             confidence: PlacementConfidence::Measured,
+            accelerator_kind: None,
+            backend: None,
+            vendor: None,
+            capabilities: Vec::new(),
             transfer_paths: Vec::new(),
         }
     }
@@ -2336,6 +2364,10 @@ mod tests {
             pressure: false,
             local_only: true,
             confidence: PlacementConfidence::Measured,
+            accelerator_kind: None,
+            backend: None,
+            vendor: None,
+            capabilities: Vec::new(),
             transfer_paths: Vec::new(),
         }
     }
@@ -2385,6 +2417,10 @@ mod tests {
                     pressure: false,
                     local_only: true,
                     confidence: PlacementConfidence::Measured,
+                    accelerator_kind: Some(crate::resource::AcceleratorKind::Gpu),
+                    backend: Some(crate::resource::BackendKind::Cuda),
+                    vendor: Some("test-vendor".to_string()),
+                    capabilities: vec!["test-kernel".to_string()],
                     transfer_paths: vec![PlacementTransferPath {
                         schema: PLACEMENT_TRANSFER_PATH_SCHEMA_V1.to_string(),
                         id: "path-accelerator-to-ram".to_string(),
@@ -2409,6 +2445,18 @@ mod tests {
         assert_eq!(plan.executor.as_deref(), Some("accelerator-batch"));
         assert_eq!(plan.data_tier.as_deref(), Some("ram-hot"));
         assert_eq!(plan.decision, "selected");
+        let selected = plan
+            .candidates
+            .iter()
+            .find(|candidate| candidate.id == "accelerator-batch")
+            .expect("selected accelerator candidate");
+        assert_eq!(
+            selected.accelerator_kind,
+            Some(crate::resource::AcceleratorKind::Gpu)
+        );
+        assert_eq!(selected.backend, Some(crate::resource::BackendKind::Cuda));
+        assert_eq!(selected.vendor.as_deref(), Some("test-vendor"));
+        assert_eq!(selected.capabilities, vec!["test-kernel".to_string()]);
     }
 
     #[test]
@@ -2424,6 +2472,16 @@ mod tests {
         assert_eq!(plan.selected, None);
         assert_eq!(plan.decision, "deferred");
         assert!(plan.candidates[0].eligible);
+    }
+
+    #[test]
+    fn legacy_capability_json_defaults_optional_accelerator_metadata() {
+        let encoded = serde_json::to_value(cpu("cpu", 1)).unwrap();
+        let decoded: PlacementCapability = serde_json::from_value(encoded).unwrap();
+        assert_eq!(decoded.accelerator_kind, None);
+        assert_eq!(decoded.backend, None);
+        assert_eq!(decoded.vendor, None);
+        assert!(decoded.capabilities.is_empty());
     }
 
     #[test]
@@ -2463,6 +2521,10 @@ mod tests {
             pressure: false,
             local_only: true,
             confidence: PlacementConfidence::Measured,
+            accelerator_kind: None,
+            backend: None,
+            vendor: None,
+            capabilities: Vec::new(),
             transfer_paths: vec![PlacementTransferPath {
                 schema: PLACEMENT_TRANSFER_PATH_SCHEMA_V1.to_string(),
                 id: "path-cpu-to-ssd".to_string(),
@@ -2553,6 +2615,10 @@ mod tests {
             pressure: false,
             local_only: true,
             confidence: PlacementConfidence::Measured,
+            accelerator_kind: Some(crate::resource::AcceleratorKind::Gpu),
+            backend: Some(crate::resource::BackendKind::Cuda),
+            vendor: Some("test-vendor".to_string()),
+            capabilities: vec!["test-kernel".to_string()],
             transfer_paths: Vec::new(),
         };
         let plan = PlacementPlan::build(
@@ -2585,6 +2651,10 @@ mod tests {
             pressure: false,
             local_only: true,
             confidence: PlacementConfidence::Measured,
+            accelerator_kind: Some(crate::resource::AcceleratorKind::Gpu),
+            backend: Some(crate::resource::BackendKind::Vulkan),
+            vendor: Some("test-vendor".to_string()),
+            capabilities: vec!["test-kernel".to_string()],
             transfer_paths: vec![path(
                 "path-igpu-uma",
                 "igpu-0",
@@ -2686,6 +2756,10 @@ mod tests {
             pressure: false,
             local_only: true,
             confidence: PlacementConfidence::Measured,
+            accelerator_kind: None,
+            backend: None,
+            vendor: None,
+            capabilities: Vec::new(),
             transfer_paths: Vec::new(),
         }
     }

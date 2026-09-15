@@ -878,13 +878,25 @@ def placement_resource_request(
     if executor_domain == "Accelerator":
         kind = executor_mapping.get("accelerator_kind")
         backend = executor_mapping.get("backend")
-        raw_capabilities = executor_mapping.get("capabilities", [])
+        # The planner carries the adapter's advertised capabilities forward.
+        # A task may narrow that set explicitly; it must never silently add a
+        # capability that the selected inventory entry did not advertise.
+        raw_capabilities = task.get("accelerator_capabilities", executor_mapping.get("capabilities", []))
         if type(raw_capabilities) is not list:
             raise RuntimeCoordinationError("accelerator placement has invalid capability metadata")
         raw_required_capabilities = cast(list[object], raw_capabilities)
         if any(type(capability) is not str or not capability.strip() for capability in raw_required_capabilities):
             raise RuntimeCoordinationError("accelerator placement has invalid capability metadata")
         required_capabilities = cast(list[str], raw_required_capabilities)
+        advertised_capabilities = executor_mapping.get("capabilities", [])
+        if type(advertised_capabilities) is not list or any(
+            type(capability) is not str or not capability.strip()
+            for capability in cast(list[object], advertised_capabilities)
+        ):
+            raise RuntimeCoordinationError("accelerator placement has invalid advertised capabilities")
+        advertised = cast(list[str], advertised_capabilities)
+        if any(capability not in advertised for capability in required_capabilities):
+            raise RuntimeCoordinationError("accelerator task requests an unadvertised capability")
         if type(kind) is not str or not kind.strip():
             raise RuntimeCoordinationError("accelerator placement lacks adapter kind metadata")
         if type(backend) is not str or not backend.strip():
