@@ -1103,8 +1103,8 @@
     "future_obligations": 20,
     "invariants": 46,
     "mapped_surfaces": 9,
-    "surfaces": 180,
-    "unmapped_surfaces": 171,
+    "surfaces": 181,
+    "unmapped_surfaces": 172,
     "unmapped_verifications": 70,
     "unresolved_code_references": 0,
     "verifications": 92
@@ -3851,13 +3851,13 @@
     "all_surfaces_mapped": false,
     "critical_high_risk_mapped": false,
     "criticality_known": false,
-    "unmapped_surface_count": 171
+    "unmapped_surface_count": 172
   },
   "mode": "SHADOW",
   "phase": "PHASE_1_CLAIM_EVIDENCE_GRAPH",
   "schema": "aese-shadow-claim-evidence-graph-v1",
-  "source_head": "2957ca5433ea68302c98f95d63c78964bd87757d",
-  "source_tree_sha256": "a3247a7260ca4634fb38aaa60a7c0502f95deca63f089294bcae1b3848d2c51a",
+  "source_head": "752a0fe407fd4be3d21ade3fd5a2a4fcaa8bb9e8",
+  "source_tree_sha256": "156e8a555420ba81057ce9c9d6d4f1861dd819622f7c70ab1869d894e3efdbb1",
   "status": "SHADOW_GRAPH_PARTIAL_MAPPING_SELECTION_DISABLED",
   "surfaces": [
     {
@@ -4973,6 +4973,19 @@
       "kind": "RUST_INTEGRATION_TEST",
       "mapping_status": "NOT_MAPPED",
       "path": "core/rust/tests/resource_contract_matrix.rs",
+      "release_critical": "UNKNOWN",
+      "release_criticality": "UNKNOWN",
+      "risk": "UNKNOWN",
+      "security_criticality": "UNKNOWN",
+      "target": null,
+      "unknown_dependency_policy": "INVALIDATE_CONSERVATIVELY"
+    },
+    {
+      "claim_refs": [],
+      "id": "AESE-RUST_INTEGRATION_TEST-E25BFE976086091E",
+      "kind": "RUST_INTEGRATION_TEST",
+      "mapping_status": "NOT_MAPPED",
+      "path": "core/rust/tests/linux_cgroup_native_probe.rs",
       "release_critical": "UNKNOWN",
       "release_criticality": "UNKNOWN",
       "risk": "UNKNOWN",
@@ -7017,6 +7030,6 @@
       "source_id": "AESE-011"
     }
   ],
-  "worktree_epoch": "0b7a70d25d2356d7e6b8feb9c34b208b6ca024befc117d6650fa8e06d190cf10",
-  "worktree_status": "DIRTY"
+  "worktree_epoch": "4c71ba225b75d821809d77a278e5a712f39d000bebe7f48329395af25957090c",
+  "worktree_status": "CLEAN"
 }
