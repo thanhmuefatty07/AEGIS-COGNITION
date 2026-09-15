@@ -19,6 +19,7 @@ fn fixture(threads: usize, memory_bytes: u64, backend: &str) -> HardwareProfile 
     profile.os = ResourceControlCapabilities {
         cpu: EnforcementLevel::MeasurementOnly,
         memory: EnforcementLevel::MeasurementOnly,
+        memory_priority: EnforcementLevel::MeasurementOnly,
         process_count: EnforcementLevel::MeasurementOnly,
         thread_count: EnforcementLevel::MeasurementOnly,
         io: EnforcementLevel::MeasurementOnly,

@@ -305,6 +305,7 @@ fn calibrate_cpu(iterations: u64) -> Result<PlacementMeasurement, PlacementError
 fn calibrate_storage(bytes: u64) -> Result<PlacementMeasurement, PlacementError> {
     const MIN_STORAGE_BYTES: u64 = 4 * 1024;
     const MAX_STORAGE_BYTES: u64 = 64 * 1024 * 1024;
+    const CHUNK_BYTES: usize = 64 * 1024;
     if !(MIN_STORAGE_BYTES..=MAX_STORAGE_BYTES).contains(&bytes) {
         return Err(PlacementError::InvalidTask(format!(
             "storage calibration bytes must be between {MIN_STORAGE_BYTES} and {MAX_STORAGE_BYTES}"
@@ -322,14 +323,21 @@ fn calibrate_storage(bytes: u64) -> Result<PlacementMeasurement, PlacementError>
         std::process::id()
     ));
     let result = (|| {
-        let payload = vec![0_u8; bytes_usize];
+        let mut buffer = [0_u8; CHUNK_BYTES];
         let write_started = Instant::now();
         let mut file = File::create(&path).map_err(|error| {
             PlacementError::CalibrationFailed(format!("storage calibration create failed: {error}"))
         })?;
-        file.write_all(&payload).map_err(|error| {
-            PlacementError::CalibrationFailed(format!("storage calibration write failed: {error}"))
-        })?;
+        let mut remaining = bytes_usize;
+        while remaining > 0 {
+            let length = remaining.min(buffer.len());
+            file.write_all(&buffer[..length]).map_err(|error| {
+                PlacementError::CalibrationFailed(format!(
+                    "storage calibration write failed: {error}"
+                ))
+            })?;
+            remaining -= length;
+        }
         file.sync_all().map_err(|error| {
             PlacementError::CalibrationFailed(format!("storage calibration sync failed: {error}"))
         })?;
@@ -340,16 +348,31 @@ fn calibrate_storage(bytes: u64) -> Result<PlacementMeasurement, PlacementError>
         let mut file = File::open(&path).map_err(|error| {
             PlacementError::CalibrationFailed(format!("storage calibration open failed: {error}"))
         })?;
-        let mut observed = Vec::with_capacity(bytes_usize);
-        file.read_to_end(&mut observed).map_err(|error| {
-            PlacementError::CalibrationFailed(format!("storage calibration read failed: {error}"))
-        })?;
-        if observed.len() != bytes_usize {
+        let mut observed_bytes = 0_usize;
+        let mut checksum = 0_u8;
+        loop {
+            let read = file.read(&mut buffer).map_err(|error| {
+                PlacementError::CalibrationFailed(format!(
+                    "storage calibration read failed: {error}"
+                ))
+            })?;
+            if read == 0 {
+                break;
+            }
+            observed_bytes = observed_bytes.checked_add(read).ok_or_else(|| {
+                PlacementError::CalibrationFailed(
+                    "storage calibration read length overflow".to_string(),
+                )
+            })?;
+            checksum = buffer[..read]
+                .iter()
+                .fold(checksum, |state, byte| state ^ byte);
+        }
+        if observed_bytes != bytes_usize {
             return Err(PlacementError::CalibrationFailed(
                 "storage calibration read length mismatch".to_string(),
             ));
         }
-        let checksum = observed.iter().fold(0_u8, |state, byte| state ^ byte);
         std::hint::black_box(checksum);
         let read_us = elapsed_us(read_started);
         let elapsed = write_us.saturating_add(read_us).max(1);
@@ -471,20 +494,12 @@ impl PlacementPlan {
                             task,
                             Some(executor),
                             Some(data_tier),
-                            capabilities,
                             paths,
                             now_ms,
                         ));
                     }
                 } else {
-                    pair_candidates.push(evaluate_pair(
-                        task,
-                        Some(executor),
-                        None,
-                        capabilities,
-                        paths,
-                        now_ms,
-                    ));
+                    pair_candidates.push(evaluate_pair(task, Some(executor), None, paths, now_ms));
                 }
             }
         } else if data_required {
@@ -494,14 +509,7 @@ impl PlacementPlan {
                     PlacementDomain::HostMemory | PlacementDomain::Storage
                 )
             }) {
-                pair_candidates.push(evaluate_pair(
-                    task,
-                    None,
-                    Some(data_tier),
-                    capabilities,
-                    paths,
-                    now_ms,
-                ));
+                pair_candidates.push(evaluate_pair(task, None, Some(data_tier), paths, now_ms));
             }
         }
         pair_candidates.sort_by(|left, right| {
@@ -1464,6 +1472,18 @@ fn build_cooperative_buffers(
             capability.domain == PlacementDomain::Storage
                 && capability.usable_bytes.is_some_and(|bytes| bytes > 0)
         });
+    // Slice identifiers are validated as unique before this helper runs.
+    // Keep the producer-size lookup O(1) instead of scanning every slice for
+    // every pipeline dependency; large explicit pipelines should spend their
+    // time planning transfers, not rediscovering the same metadata.
+    let output_bytes_by_id = slices
+        .iter()
+        .map(|slice| (slice.id.as_str(), slice.output_bytes))
+        .collect::<BTreeMap<_, _>>();
+    let executor_by_slice_id = slices
+        .iter()
+        .map(|slice| (slice.id.as_str(), slice.executor_id.as_deref()))
+        .collect::<BTreeMap<_, _>>();
     let make_buffer = |id: String,
                        from_slice: Option<String>,
                        to_slice: Option<String>,
@@ -1486,8 +1506,13 @@ fn build_cooperative_buffers(
             backpressure: "BLOCK_PRODUCER_AT_HIGH_WATERMARK".to_string(),
         };
         if spill_to_storage {
-            buffer.spill_reservation =
-                select_cooperative_spill_reservation(task, &buffer, slices, capabilities, paths);
+            buffer.spill_reservation = select_cooperative_spill_reservation(
+                task,
+                &buffer,
+                &executor_by_slice_id,
+                capabilities,
+                paths,
+            );
             buffer.spill_to_storage = buffer.spill_reservation.is_some();
         }
         buffer
@@ -1511,10 +1536,9 @@ fn build_cooperative_buffers(
                 let mut dependencies = slice.depends_on.clone();
                 dependencies.sort();
                 for dependency in dependencies {
-                    let producer_bytes = slices
-                        .iter()
-                        .find(|candidate| candidate.id == dependency)
-                        .map(|candidate| candidate.output_bytes)
+                    let producer_bytes = output_bytes_by_id
+                        .get(dependency.as_str())
+                        .copied()
                         .unwrap_or(0);
                     buffers.push(make_buffer(
                         format!("cooperative-buffer-{}-{}", dependency, slice.id),
@@ -1532,7 +1556,7 @@ fn build_cooperative_buffers(
 fn select_cooperative_spill_reservation(
     task: &CooperativePlacementTask,
     buffer: &CooperativeBufferPlan,
-    slices: &[CooperativePlacementSlice],
+    executor_by_slice_id: &BTreeMap<&str, Option<&str>>,
     capabilities: &[PlacementCapability],
     paths: &[PlacementTransferPath],
 ) -> Option<CooperativeSpillReservation> {
@@ -1542,10 +1566,9 @@ fn select_cooperative_spill_reservation(
     let source_executor = buffer
         .from_slice
         .as_deref()
-        .and_then(|slice_id| slices.iter().find(|slice| slice.id == slice_id))
-        .and_then(|slice| slice.executor_id.as_deref())?;
+        .and_then(|slice_id| executor_by_slice_id.get(slice_id).copied().flatten())?;
 
-    let mut candidates = Vec::new();
+    let mut best_candidate: Option<(&str, &str)> = None;
     for storage in capabilities.iter().filter(|capability| {
         capability.domain == PlacementDomain::Storage
             && !capability.pressure
@@ -1580,22 +1603,25 @@ fn select_cooperative_spill_reservation(
         else {
             continue;
         };
-        candidates.push((storage.id.clone(), path.id.clone()));
+        let candidate = (storage.id.as_str(), path.id.as_str());
+        let is_better = best_candidate.as_ref().is_none_or(|best| {
+            candidate.0 < best.0 || (candidate.0 == best.0 && candidate.1 < best.1)
+        });
+        if is_better {
+            best_candidate = Some(candidate);
+        }
     }
 
-    candidates
-        .into_iter()
-        .min_by(|left, right| left.cmp(right))
-        .map(
-            |(storage_id, transfer_path_id)| CooperativeSpillReservation {
-                schema: COOPERATIVE_PLACEMENT_SPILL_SCHEMA_V1.to_string(),
-                storage_id,
-                storage_bytes: buffer.capacity_bytes,
-                storage_in_flight: 1,
-                transfer_path_id,
-                transfer_tokens: 1,
-            },
-        )
+    best_candidate.map(
+        |(storage_id, transfer_path_id)| CooperativeSpillReservation {
+            schema: COOPERATIVE_PLACEMENT_SPILL_SCHEMA_V1.to_string(),
+            storage_id: storage_id.to_string(),
+            storage_bytes: buffer.capacity_bytes,
+            storage_in_flight: 1,
+            transfer_path_id: transfer_path_id.to_string(),
+            transfer_tokens: 1,
+        },
+    )
 }
 
 fn aggregate_cooperative_reservation(
@@ -2031,7 +2057,6 @@ fn evaluate_pair(
     task: &PlacementTask,
     executor: Option<&PlacementCandidate>,
     data_tier: Option<&PlacementCandidate>,
-    capabilities: &[PlacementCapability],
     paths: &[PlacementTransferPath],
     now_ms: u64,
 ) -> PlacementPairCandidate {
@@ -2082,18 +2107,8 @@ fn evaluate_pair(
     let data_bytes = task.input_bytes.saturating_add(task.output_bytes);
     let mut path_cost = 0_u64;
     if data_bytes > 0 {
-        let executor_domain = executor.and_then(|candidate| {
-            capabilities
-                .iter()
-                .find(|capability| capability.id == candidate.id)
-                .map(|capability| capability.domain)
-        });
-        let data_domain = data_tier.and_then(|candidate| {
-            capabilities
-                .iter()
-                .find(|capability| capability.id == candidate.id)
-                .map(|capability| capability.domain)
-        });
+        let executor_domain = executor.map(|candidate| candidate.domain);
+        let data_domain = data_tier.map(|candidate| candidate.domain);
 
         // CPU access to host RAM is the one bounded path that requires no
         // transfer token.  Accelerator/UMA and storage routes still need an

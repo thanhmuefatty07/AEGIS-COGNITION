@@ -2,7 +2,7 @@
   "schema": "aegis-not-verified-registry-v1",
   "truth_claim": false,
   "entries": [
-    {"id": "NV-001", "title": "Linux cgroup v2 enforcement", "status": "NOT VERIFIED"},
+    {"id": "NV-001", "title": "Linux cgroup v2 enforcement", "status": "IMPLEMENTED / PARTIALLY LIVE VERIFIED"},
     {"id": "NV-002", "title": "Windows Job Object live process enforcement", "status": "IMPLEMENTED / PARTIALLY LIVE VERIFIED"},
     {"id": "NV-003", "title": "macOS resource enforcement", "status": "NOT VERIFIED"},
     {"id": "NV-004", "title": "External signed release attestation", "status": "NOT VERIFIED"},

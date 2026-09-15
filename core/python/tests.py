@@ -14,7 +14,16 @@ from urllib.request import urlopen
 import pytest
 import yaml
 
-from .bridge_mmap import MMAP_BRIDGE_HEADER_BYTES, MmapBridgeFrame, execute_mmap_wasm_bridge_frame
+from .bridge_mmap import (
+    DEFAULT_FILE_STREAM_CHUNK_BYTES,
+    MMAP_BRIDGE_HEADER_BYTES,
+    MIN_FILE_STREAM_CHUNK_BYTES,
+    MmapBridgeFrame,
+    MmapBridgeWriter,
+    execute_mmap_wasm_bridge_frame,
+    recommended_file_stream_chunk_bytes,
+    validate_mmap_bridge_frame,
+)
 from .browser_live_collector import (
     BrowserLiveCollectorArtifact,
     BrowserLiveCollectorProducer,
@@ -961,6 +970,80 @@ def test_aegis_adapter_prod_requires_rust_hot_engine_extension():
         pytest.raises(RuntimeError, match="Rust aegis_nerve extension"),
     ):
         commit_hot_evidence(b"prod evidence")
+
+
+def test_hot_evidence_prefers_buffer_ffi_without_breaking_legacy_native(monkeypatch):
+    from .aegis import evidence as evidence_module
+
+    calls: list[tuple[object, str]] = []
+
+    class Native:
+        def aegis_hot_commit_buffer(self, payload: object, level: str) -> str:
+            calls.append((payload, level))
+            return json.dumps(
+                {
+                    "schema": "aegis-hot-arena-commit-v1",
+                    "truth_claim": False,
+                    "verifier": "buffer-native",
+                    "byte_len": len(payload),
+                    "artifact_hash": "a" * 64,
+                    "storage_ref_hash": "b" * 64,
+                    "trust_level": level,
+                    "admission": "accepted",
+                    "physical_witness_required": False,
+                    "fail_closed": False,
+                    "handle_valid": True,
+                }
+            )
+
+        def aegis_hot_commit(self, _payload: object, _level: str) -> str:
+            raise AssertionError("legacy hot commit should not be selected")
+
+    monkeypatch.setattr(evidence_module, "native_module", lambda: Native())
+    payload = memoryview(b"buffer-native-evidence")
+
+    record = evidence_module.commit_hot_evidence(payload, "DEV")
+
+    assert record.verifier == "buffer-native"
+    assert record.byte_len == len(payload)
+    assert calls == [(payload, "DEV")]
+
+
+def test_hot_evidence_uses_owned_vec_for_immutable_bytes(monkeypatch):
+    from .aegis import evidence as evidence_module
+
+    calls: list[tuple[str, object, str]] = []
+
+    class Native:
+        def aegis_hot_commit_buffer(self, payload: object, level: str) -> str:
+            calls.append(("buffer", payload, level))
+            raise AssertionError("bytes should use the ownership-preserving Vec path")
+
+        def aegis_hot_commit(self, payload: object, level: str) -> str:
+            calls.append(("vec", payload, level))
+            return json.dumps(
+                {
+                    "schema": "aegis-hot-arena-commit-v1",
+                    "truth_claim": False,
+                    "verifier": "owned-vec-native",
+                    "byte_len": len(payload),
+                    "artifact_hash": "a" * 64,
+                    "storage_ref_hash": "b" * 64,
+                    "trust_level": level,
+                    "admission": "accepted",
+                    "physical_witness_required": False,
+                    "fail_closed": False,
+                    "handle_valid": True,
+                }
+            )
+
+    monkeypatch.setattr(evidence_module, "native_module", lambda: Native())
+    payload = b"owned-bytes-evidence"
+
+    record = evidence_module.commit_hot_evidence(payload, "DEV")
+
+    assert record.verifier == "owned-vec-native"
+    assert calls == [("vec", payload, "DEV")]
 
 
 def _write_dynamic_provider_fallback_fixture(root: Path) -> None:
@@ -2657,6 +2740,176 @@ def test_python_mmap_bridge_exposes_payload_memoryview_without_copy():
                 assert view[-1] == payload[-1]
             finally:
                 view.release()
+
+
+def test_python_mmap_bridge_writer_streams_bounded_chunks_into_rust():
+    payload = bytes((index * 31 + 7) & 0xFF for index in range(100_003))
+    with TemporaryDirectory() as tmp:
+        path = Path(tmp) / "streamed-frame.aegmmap"
+        with MmapBridgeWriter(path, 111, 222, len(payload)) as writer:
+            for chunk in (payload[index : index + 7_111] for index in range(0, len(payload), 7_111)):
+                writer.write(chunk)
+            header = writer.finish()
+
+        assert header.message_id == 111
+        assert header.session_id == 222
+        assert header.payload_len == len(payload)
+        assert validate_mmap_bridge_frame(path)
+        with MmapBridgeFrame(path) as frame:
+            view = frame.payload_view()
+            try:
+                assert bytes(view) == payload
+            finally:
+                view.release()
+
+
+def test_recommended_file_stream_chunk_is_pressure_aware_and_fail_safe():
+    assert (
+        recommended_file_stream_chunk_bytes(available_bytes=9, capacity_bytes=100)
+        == MIN_FILE_STREAM_CHUNK_BYTES
+    )
+    assert recommended_file_stream_chunk_bytes(available_bytes=24, capacity_bytes=100) == 256 * 1024
+    assert (
+        recommended_file_stream_chunk_bytes(available_bytes=25, capacity_bytes=100)
+        == DEFAULT_FILE_STREAM_CHUNK_BYTES
+    )
+    assert (
+        recommended_file_stream_chunk_bytes(available_bytes=None, capacity_bytes=100)
+        == DEFAULT_FILE_STREAM_CHUNK_BYTES
+    )
+    assert (
+        recommended_file_stream_chunk_bytes(available_bytes=-1, capacity_bytes=100)
+        == DEFAULT_FILE_STREAM_CHUNK_BYTES
+    )
+
+
+def test_python_mmap_bridge_writer_auto_sizes_file_stream():
+    payload = bytes((index * 19 + 5) & 0xFF for index in range(100_003))
+    with TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        source = root / "source.bin"
+        destination = root / "auto-streamed-frame.aegmmap"
+        source.write_bytes(payload)
+        with MmapBridgeWriter(destination, 337, 448, len(payload)) as writer:
+            writer.write_file(source)
+
+        assert validate_mmap_bridge_frame(destination)
+        with MmapBridgeFrame(destination) as frame:
+            view = frame.payload_view()
+            try:
+                assert bytes(view) == payload
+            finally:
+                view.release()
+
+
+def test_python_mmap_bridge_writer_streams_existing_file_with_reusable_buffer():
+    payload = bytes((index * 17 + 3) & 0xFF for index in range(100_003))
+    with TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        source = root / "source.bin"
+        destination = root / "streamed-frame.aegmmap"
+        source.write_bytes(payload)
+        with MmapBridgeWriter(destination, 223, 334, len(payload)) as writer:
+            writer.write_file(source, chunk_bytes=4_097)
+
+        assert validate_mmap_bridge_frame(destination)
+        with MmapBridgeFrame(destination) as frame:
+            view = frame.payload_view()
+            try:
+                assert bytes(view) == payload
+            finally:
+                view.release()
+
+
+def test_python_mmap_bridge_writer_rejects_file_size_mismatch_before_streaming():
+    with TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        source = root / "short.bin"
+        destination = root / "mismatched-frame.aegmmap"
+        source.write_bytes(b"short")
+        with (
+            pytest.raises(ValueError, match="source size does not match"),
+            MmapBridgeWriter(destination, 335, 446, 6) as writer,
+        ):
+            writer.write_file(source, chunk_bytes=2)
+
+        assert not validate_mmap_bridge_frame(destination)
+
+
+def test_python_mmap_bridge_writer_rejects_same_file_as_source_and_destination():
+    with TemporaryDirectory() as tmp:
+        path = Path(tmp) / "same-path.aegmmap"
+        with (
+            pytest.raises(ValueError, match="source and destination must differ"),
+            MmapBridgeWriter(path, 336, 447, 4) as writer,
+        ):
+            writer.write_file(path, chunk_bytes=4)
+
+        assert not validate_mmap_bridge_frame(path)
+
+
+def test_python_mmap_bridge_writer_accepts_reusable_buffer_without_copying_chunks():
+    payload_len = 100_003
+    reusable = bytearray(7_111)
+    reusable_view = memoryview(reusable)
+    with TemporaryDirectory() as tmp:
+        path = Path(tmp) / "reusable-buffer-frame.aegmmap"
+        with MmapBridgeWriter(path, 333, 444, payload_len) as writer:
+            offset = 0
+            while offset < payload_len:
+                length = min(len(reusable), payload_len - offset)
+                for index in range(length):
+                    reusable[index] = (offset + index) & 0xFF
+                writer.write(reusable_view[:length])
+                offset += length
+
+        assert validate_mmap_bridge_frame(path)
+        with MmapBridgeFrame(path) as frame:
+            view = frame.payload_view()
+            try:
+                assert bytes(view) == bytes(index & 0xFF for index in range(payload_len))
+            finally:
+                view.release()
+
+
+def test_python_mmap_bridge_writer_accepts_other_buffer_protocol_exporters():
+    from array import array
+
+    payload = array("B", ((index * 17 + 3) & 0xFF for index in range(4096)))
+    with TemporaryDirectory() as tmp:
+        path = Path(tmp) / "array-buffer-frame.aegmmap"
+        with MmapBridgeWriter(path, 445, 556, len(payload)) as writer:
+            writer.write(payload)
+
+        assert validate_mmap_bridge_frame(path)
+        with MmapBridgeFrame(path) as frame:
+            view = frame.payload_view()
+            try:
+                assert bytes(view) == payload.tobytes()
+            finally:
+                view.release()
+
+
+def test_python_mmap_bridge_writer_closes_native_handle_when_context_fails():
+    with TemporaryDirectory() as tmp:
+        path = Path(tmp) / "aborted-frame.aegmmap"
+        with (
+            pytest.raises(ValueError, match="exceeds declared length"),
+            MmapBridgeWriter(path, 667, 778, 2) as writer,
+        ):
+            writer.write(b"too large")
+
+        assert path.exists()
+        assert not validate_mmap_bridge_frame(path)
+
+
+def test_python_mmap_bridge_writer_rejects_noncontiguous_memoryview():
+    with TemporaryDirectory() as tmp:
+        path = Path(tmp) / "noncontiguous-frame.aegmmap"
+        with pytest.raises(BufferError, match="C-contiguous"), MmapBridgeWriter(
+            path, 555, 666, 4
+        ) as writer:
+            writer.write(memoryview(bytearray(8))[::2])
 
 
 def test_python_mmap_wasm_execution_requires_rust_wasmtime_extension():

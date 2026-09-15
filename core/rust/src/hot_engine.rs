@@ -135,7 +135,7 @@ struct ArenaInner {
 #[derive(Clone, Debug)]
 struct ArenaSlot {
     generation: u32,
-    payload: Option<Arc<[u8]>>,
+    payload: Option<Arc<Vec<u8>>>,
     artifact_hash: ArtifactHash,
     storage_ref_hash: ArtifactHash,
 }
@@ -143,7 +143,7 @@ struct ArenaSlot {
 #[derive(Clone, Debug)]
 struct ShadowSealRequest {
     handle: EvidenceHandle,
-    payload: Arc<[u8]>,
+    payload: Arc<Vec<u8>>,
 }
 
 pub struct AsyncShadowSealer {
@@ -222,13 +222,37 @@ impl InMemoryEvidenceArena {
         }
 
         let artifact_hash = simd_blake3_hash(bytes);
+        self.commit_arc(Arc::new(bytes.to_vec()), artifact_hash)
+    }
+
+    /// Commit an owned payload without copying it into a second payload allocation.
+    ///
+    /// This is the ownership-preserving path for FFI adapters that already
+    /// received a `Vec<u8>`.  The compatibility `commit` method above still
+    /// accepts borrowed buffers and therefore retains its copy semantics.
+    pub fn commit_owned(&self, payload: Vec<u8>) -> Result<EvidenceHandle, HotEngineError> {
+        if payload.is_empty() {
+            return Err(HotEngineError::InvalidInput);
+        }
+        if payload.len() > self.max_artifact_bytes {
+            return Err(HotEngineError::OversizedArtifact);
+        }
+
+        let artifact_hash = simd_blake3_hash(&payload);
+        self.commit_arc(Arc::new(payload), artifact_hash)
+    }
+
+    fn commit_arc(
+        &self,
+        payload: Arc<Vec<u8>>,
+        artifact_hash: ArtifactHash,
+    ) -> Result<EvidenceHandle, HotEngineError> {
         let admission = if self.trust_level == TrustLevel::Dev {
             self.total_degraded_commits.fetch_add(1, Ordering::Relaxed);
             ArenaAdmission::DegradedWarning
         } else {
             ArenaAdmission::Accepted
         };
-        let payload: Arc<[u8]> = Arc::from(bytes);
         let mut inner = self.inner.lock();
         let next_live_bytes = inner
             .live_bytes
@@ -258,6 +282,7 @@ impl InMemoryEvidenceArena {
             .wrapping_add(1)
             .max(1);
         let storage_ref_hash = arena_storage_ref_hash(slot_index, generation, artifact_hash);
+        let byte_len = payload.len() as u64;
         inner.slots[slot_index as usize] = ArenaSlot {
             generation,
             payload: Some(payload),
@@ -270,7 +295,7 @@ impl InMemoryEvidenceArena {
         Ok(EvidenceHandle {
             slot: slot_index,
             generation,
-            byte_len: bytes.len() as u64,
+            byte_len,
             artifact_hash,
             storage_ref_hash,
             trust_level: self.trust_level,
@@ -278,7 +303,12 @@ impl InMemoryEvidenceArena {
         })
     }
 
-    pub fn payload_arc(&self, handle: &EvidenceHandle) -> Result<Arc<[u8]>, HotEngineError> {
+    /// Return the arena-owned payload while preserving its allocation.
+    ///
+    /// The arena intentionally stores `Arc<Vec<u8>>` rather than converting an
+    /// owned `Vec<u8>` to `Arc<[u8]>`: the standard-library conversion allocates
+    /// an Arc slice, whereas `Arc::new(payload)` can retain the Vec buffer.
+    pub fn payload_arc(&self, handle: &EvidenceHandle) -> Result<Arc<Vec<u8>>, HotEngineError> {
         let inner = self.inner.lock();
         let slot = inner
             .slots
@@ -513,15 +543,17 @@ impl Drop for AsyncShadowSealer {
 
 async fn shadow_sealer_loop(directory: PathBuf, mut receiver: mpsc::Receiver<ShadowSealCommand>) {
     let mut pending = Vec::new();
+    let mut pending_bytes = 0_u64;
     while let Some(command) = receiver.recv().await {
         match command {
             ShadowSealCommand::Seal(request, receipt_tx) => {
                 let result = write_shadow_payload(&directory, request).await;
                 if let Ok(receipt) = &result {
+                    pending_bytes = pending_bytes.saturating_add(receipt.byte_len);
                     pending.push(receipt.clone());
-                    let pending_bytes: u64 = pending.iter().map(|receipt| receipt.byte_len).sum();
-                    if pending_bytes as usize >= DEFAULT_SEAL_BATCH_BYTES {
+                    if pending_bytes >= DEFAULT_SEAL_BATCH_BYTES as u64 {
                         pending.clear();
+                        pending_bytes = 0;
                     }
                 }
                 let _ = receipt_tx.send(result);
@@ -529,6 +561,7 @@ async fn shadow_sealer_loop(directory: PathBuf, mut receiver: mpsc::Receiver<Sha
             ShadowSealCommand::Flush(flush_tx) => {
                 let receipt = batch_receipt(&pending);
                 pending.clear();
+                pending_bytes = 0;
                 let _ = flush_tx.send(Ok(receipt));
             }
             ShadowSealCommand::Shutdown => break,

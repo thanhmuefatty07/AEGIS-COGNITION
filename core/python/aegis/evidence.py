@@ -68,7 +68,15 @@ def commit_hot_evidence(payload: bytes, trust_level: str | None = None) -> HotCo
             handle_valid=True,
             degraded_reason="missing-aegis-nerve-extension",
         )
-    raw = aegis_nerve.aegis_hot_commit(payload, level)
+    buffer_commit = getattr(aegis_nerve, "aegis_hot_commit_buffer", None)
+    # Immutable ``bytes`` already has an ownership-preserving native path:
+    # PyO3 materializes one Vec and Rust moves that Vec into the arena. Use the
+    # buffer adapter for other exporters, where it avoids a boundary Vec and
+    # can release the GIL for read-only memory.
+    if callable(buffer_commit) and not isinstance(payload, bytes):
+        raw = buffer_commit(payload, level)
+    else:
+        raw = aegis_nerve.aegis_hot_commit(payload, level)
     return HotCommitRecord.from_mapping(json.loads(raw))
 
 
@@ -90,9 +98,7 @@ def commit_hot_evidence_batch(artifacts: list[Any], trust_level: str | None = No
         for index, payload in enumerate(payloads):
             digest = hashlib.blake2b(payload, digest_size=32).hexdigest()
             storage_ref = hashlib.blake2b(
-                b"aegis-dev-hot-arena-batch-storage-ref-v1"
-                + index.to_bytes(8, "little")
-                + digest.encode("ascii"),
+                b"aegis-dev-hot-arena-batch-storage-ref-v1" + index.to_bytes(8, "little") + digest.encode("ascii"),
                 digest_size=32,
             ).hexdigest()
             total_bytes += len(payload)

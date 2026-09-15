@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 import mmap
 import struct
+import sys
 from pathlib import Path
 from typing import BinaryIO
 
@@ -11,6 +12,74 @@ MMAP_BRIDGE_MAGIC = b"AEGMMAP1"
 MMAP_BRIDGE_VERSION = 1
 MMAP_BRIDGE_HEADER_BYTES = 128
 MMAP_BRIDGE_PAYLOAD_ALIGNMENT = 64
+MIN_FILE_STREAM_CHUNK_BYTES = 64 * 1024
+DEFAULT_FILE_STREAM_CHUNK_BYTES = 1024 * 1024
+
+
+def _native_module(error_message: str):
+    if any(
+        name in sys.modules and sys.modules[name] is None for name in ("aegis_nerve", "aegis_cognition.aegis_nerve")
+    ):
+        raise RuntimeError(error_message)
+    try:
+        import aegis_nerve
+    except ImportError:
+        try:
+            from aegis_cognition import aegis_nerve
+        except ImportError as exc:
+            raise RuntimeError(error_message) from exc
+    return aegis_nerve
+
+
+def recommended_file_stream_chunk_bytes(
+    *, available_bytes: int | None = None, capacity_bytes: int | None = None
+) -> int:
+    """Choose a conservative file-stream buffer from an OS memory snapshot.
+
+    Automatic selection only reduces the normal 1 MiB buffer when the native
+    observation reports a guarded or critical memory ratio. Unknown or
+    malformed observations keep the safe default; this function never treats
+    a memory snapshot as a reservation for the current operation.
+    """
+
+    if available_bytes is None or capacity_bytes is None:
+        try:
+            import json
+
+            sample = json.loads(
+                _native_module(
+                    "aegis_nerve extension is required for automatic file-stream sizing"
+                ).aegis_resource_usage_sample()
+            )
+        except (
+            AttributeError,
+            ImportError,
+            RuntimeError,
+            TypeError,
+            ValueError,
+        ):
+            return DEFAULT_FILE_STREAM_CHUNK_BYTES
+        if not isinstance(sample, dict):
+            return DEFAULT_FILE_STREAM_CHUNK_BYTES
+        if available_bytes is None:
+            available_bytes = sample.get("host_memory_available_bytes")
+        if capacity_bytes is None:
+            capacity_bytes = sample.get("host_memory_bytes")
+
+    if (
+        type(available_bytes) is not int
+        or type(capacity_bytes) is not int
+        or available_bytes < 0
+        or capacity_bytes <= 0
+    ):
+        return DEFAULT_FILE_STREAM_CHUNK_BYTES
+
+    available_bytes = min(available_bytes, capacity_bytes)
+    if available_bytes * 100 < capacity_bytes * 10:
+        return MIN_FILE_STREAM_CHUNK_BYTES
+    if available_bytes * 100 < capacity_bytes * 25:
+        return 256 * 1024
+    return DEFAULT_FILE_STREAM_CHUNK_BYTES
 
 
 @dataclass(frozen=True)
@@ -73,6 +142,93 @@ class MmapBridgeFrame:
         self.close()
 
 
+class MmapBridgeWriter:
+    """Stream bounded byte buffers into a Rust-owned bridge frame.
+
+    ``payload_len`` is declared up front so the native writer can reject both
+    truncated and oversized frames before publishing a valid header. The
+    caller should keep chunks bounded; any object implementing the Python
+    buffer protocol is accepted. A reusable ``bytearray`` plus a
+    ``memoryview`` can avoid allocating a new Python object for every chunk.
+    Read-only buffers can let the native call run without the GIL; callers
+    must not mutate their underlying storage through another alias until
+    ``write`` returns.
+    """
+
+    def __init__(
+        self,
+        path: str | Path,
+        message_id: int,
+        session_id: int,
+        payload_len: int,
+    ) -> None:
+        self.path = Path(path)
+        self._payload_len = payload_len
+        self._writer = _native_module(
+            "aegis_nerve extension is required to write Rust-owned mmap bridge frames"
+        ).MmapBridgeWriter(str(self.path), message_id, session_id, payload_len)
+
+    def write(self, payload: object) -> None:
+        """Write one C-contiguous buffer-protocol export without staging it."""
+        self._writer.write(payload)
+
+    def write_file(self, source: str | Path, chunk_bytes: int | None = None) -> None:
+        """Stream an existing file through one bounded native buffer.
+
+        The source is read by Rust in bounded chunks, so callers can move a
+        large cold artifact into a bridge frame without materializing the
+        complete file in Python memory or crossing the Python/Rust boundary
+        once per chunk. The declared frame length remains authoritative: an
+        early EOF or trailing source byte is rejected before the frame can be
+        finalized. If ``chunk_bytes`` is omitted, the native memory snapshot
+        may reduce the normal 1 MiB buffer under host pressure; an unknown
+        snapshot keeps the default.
+        """
+        if chunk_bytes is None:
+            chunk_bytes = recommended_file_stream_chunk_bytes()
+        if chunk_bytes <= 0:
+            raise ValueError("chunk_bytes must be positive")
+        source_path = Path(source)
+        if source_path.resolve() == self.path.resolve():
+            raise ValueError("mmap bridge source and destination must differ")
+        try:
+            source_size = source_path.stat().st_size
+        except OSError as exc:
+            raise OSError(f"unable to stat mmap bridge source: {source_path}") from exc
+        if source_size != self._payload_len:
+            raise ValueError("mmap bridge source size does not match declared payload length")
+        self._writer.write_file(str(source_path), chunk_bytes)
+
+    def finish(self) -> MmapBridgeHeader:
+        metadata = self._writer.finish()
+        return MmapBridgeHeader(
+            version=MMAP_BRIDGE_VERSION,
+            header_bytes=MMAP_BRIDGE_HEADER_BYTES,
+            schema_id=0xAE1515,
+            schema_version=1,
+            alignment=MMAP_BRIDGE_PAYLOAD_ALIGNMENT,
+            message_id=int(metadata[0]),
+            session_id=int(metadata[1]),
+            payload_offset=int(metadata[2]),
+            payload_len=int(metadata[3]),
+            payload_blake3=bytes(metadata[4]),
+        )
+
+    def close(self) -> None:
+        """Release the native file handle without publishing an incomplete frame."""
+        if not self._writer.is_finished():
+            self._writer.abort()
+
+    def __enter__(self) -> MmapBridgeWriter:
+        return self
+
+    def __exit__(self, exc_type, exc, tb) -> None:
+        if exc_type is None and not self._writer.is_finished():
+            self.finish()
+        elif exc_type is not None:
+            self.close()
+
+
 def open_mmap_bridge_frame(path: str | Path) -> MmapBridgeFrame:
     return MmapBridgeFrame(path)
 
@@ -83,12 +239,9 @@ def write_mmap_bridge_pattern(
     session_id: int,
     payload_len: int,
 ) -> MmapBridgeHeader:
-    try:
-        import aegis_nerve
-    except ImportError as exc:
-        raise RuntimeError("aegis_nerve extension is required to write Rust-owned mmap bridge frames") from exc
-
-    aegis_nerve.aegis_write_mmap_bridge_pattern(
+    _native_module(
+        "aegis_nerve extension is required to write Rust-owned mmap bridge frames"
+    ).aegis_write_mmap_bridge_pattern(
         str(path),
         message_id,
         session_id,
@@ -102,19 +255,17 @@ def write_mmap_bridge_pattern(
 
 
 def validate_mmap_bridge_frame(path: str | Path) -> bool:
-    try:
-        import aegis_nerve
-    except ImportError as exc:
-        raise RuntimeError("aegis_nerve extension is required to verify mmap bridge payload hash") from exc
-    return bool(aegis_nerve.aegis_validate_mmap_bridge_frame(str(path)))
+    return bool(
+        _native_module(
+            "aegis_nerve extension is required to verify mmap bridge payload hash"
+        ).aegis_validate_mmap_bridge_frame(str(path))
+    )
 
 
 def execute_mmap_wasm_bridge_frame(path: str | Path, fuel_limit: int) -> tuple[int, bytes]:
-    try:
-        import aegis_nerve
-    except ImportError as exc:
-        raise RuntimeError("aegis_nerve extension is required to execute mmap Wasm bridge frames") from exc
-    fuel_consumed, artifact_hash = aegis_nerve.aegis_execute_mmap_wasm_bridge_frame(
+    fuel_consumed, artifact_hash = _native_module(
+        "aegis_nerve extension is required to execute mmap Wasm bridge frames"
+    ).aegis_execute_mmap_wasm_bridge_frame(
         str(path),
         fuel_limit,
     )
