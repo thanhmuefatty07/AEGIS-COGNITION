@@ -116,7 +116,7 @@ fn event_count(payload: &str, key: &str) -> u64 {
 fn lease(task_id: u128, profile: &HardwareProfile) -> Result<ResourceLease, String> {
     let mut request = ResourceRequest::minimal(task_id, WorkKind::Tool);
     request.host_memory.bytes = 32 * 1024 * 1024;
-    request.process_limit = Some(4);
+    request.process_limit = Some(1);
     request.cpu.max_threads = 1;
     let mut admission = AdmissionController::from_hardware(profile);
     match admission.admit(request, 1) {
