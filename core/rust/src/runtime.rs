@@ -620,6 +620,10 @@ mod tests {
                 pressure: false,
                 local_only: true,
                 confidence: crate::placement::PlacementConfidence::Measured,
+                accelerator_kind: None,
+                backend: None,
+                vendor: None,
+                capabilities: Vec::new(),
                 transfer_paths: Vec::new(),
             },
             crate::placement::PlacementCapability {
@@ -634,6 +638,10 @@ mod tests {
                 pressure: false,
                 local_only: true,
                 confidence: crate::placement::PlacementConfidence::Measured,
+                accelerator_kind: None,
+                backend: None,
+                vendor: None,
+                capabilities: Vec::new(),
                 transfer_paths: Vec::new(),
             },
         ]
