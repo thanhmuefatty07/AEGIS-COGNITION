@@ -113,6 +113,8 @@ trigger. Add repository Actions secrets named exactly:
 - `NVIDIA_NIM_API_KEY`
 
 Then open **Actions → Memory context live model evaluation → Run workflow**.
+You can first set `dry_run=true` to validate the workflow and artifact upload
+without making any provider call or using a secret.
 Start with one explicit model and `repeats=1`; increase to `repeats=2` or `3`
 only when the provider quota allows it. The workflow uploads one JSON artifact
 and never prints a key. A hosted Ubuntu runner is sufficient for the provider
