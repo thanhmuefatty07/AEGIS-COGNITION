@@ -60,8 +60,10 @@ OpenRouter accepts `openrouter/free` or an explicit model id ending in
 that is why the evaluator records `model_returned` and fails with
 `MODEL_MISMATCH` when a pair is not like-for-like. For the strongest comparison,
 use one currently available explicit `:free` model. NIM model availability is
-catalog-dependent, so pass a model that is currently enabled for the fresh
-key.
+catalog-dependent, so pass a model that is currently enabled for the fresh key.
+The workflow default is
+`deepseek-ai/deepseek-v4-flash`; verify the account's Public API Endpoints access
+and current model page before a live run.
 
 Free hosted access is suitable for a bounded test or prototype. Availability,
 latency, quotas, and provider-side logging policies can change; the live
@@ -92,6 +94,7 @@ uv run --no-project --no-sync --locked --extra all --extra dev python scripts/me
   --nvidia-models "<available-nim-model>" `
   --repeats 1 `
   --max-requests 24 `
+  --delay-ms 2000 `
   --output artifacts/memory-context-live-eval-local.json
 
 Remove-Item Env:OPENROUTER_API_KEY, Env:NVIDIA_NIM_API_KEY
@@ -101,8 +104,10 @@ Remove-Variable orKey, nimKey
 Use `--provider openrouter` or `--provider nvidia` when only one key is
 available. The planned request count is `providers × models × 6 tasks × 2
 variants × repeats`; the harness defaults to 24 and rejects counts above 96
-or the selected `--max-requests` value. Keep free-tier probes at 12 or 24
-requests and raise the limit only when the account quota justifies it.
+or the selected `--max-requests` value. The default 2,000 ms delay keeps a
+sequential run below about 30 requests per minute; do not lower it for a free
+NIM account unless its current account limit is verified. Keep free-tier probes
+at 12 or 24 requests and raise the limit only when the account quota justifies it.
 
 ## GitHub Actions run
 
