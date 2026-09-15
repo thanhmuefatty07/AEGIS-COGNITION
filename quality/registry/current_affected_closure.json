@@ -2,7 +2,7 @@
   "affected_test_paths": [
     "core/rust/src/gt96.rs"
   ],
-  "artifact_hash": "b3663ce3fee289bd6d661f5026f2d6361dce6d57e8a9ca11c22e4701ee178646",
+  "artifact_hash": "1f95ad0313f8aa0ac73e2890d7e8c73d9fdc5c5d6953553a8a0f02dec65eb771",
   "changed_paths": [
     "core/rust/src/gt96.rs"
   ],
@@ -255,7 +255,7 @@
   "phase": "PHASE_3_DETERMINISTIC_AFFECTED_CLOSURE",
   "plan_widened": false,
   "provenance": {
-    "claim_graph_source_tree_sha256": "37eb8514a77de0f443b56eab45619e91310b95d01e1237889b614d9bc0b2aa9b",
+    "claim_graph_source_tree_sha256": "877db61e2b09ecae51f2d72da9c5875147ea4004f1947622642bcc1af5c04d66",
     "claim_scope": "LOCAL_CHECKOUT_ONLY",
     "edge_digest": "2b47a62553191c763ba1542f9191284cc583f47c9ec205130a6d14530c64e65b",
     "environment": {
@@ -267,14 +267,14 @@
       "release": "10"
     },
     "evidence_class": "PLANNING_ONLY",
-    "inventory_source_tree_sha256": "172d1234cfffbbdbda61253de81c542aef34fcf7f0de0855b90f54f767aada10",
-    "mapping_artifact_hash": "05bdd22b8efd8b1a72da36e3572ebf070747edcd798cc378643edc4faaadf02c",
+    "inventory_source_tree_sha256": "323550d846c84ea109e60857916b664f95b958f55691cefa87ab3d81d1213a7a",
+    "mapping_artifact_hash": "57d03d931ad5734cd6836408b7d870492e7024672f430561da4d5bd883b520d0",
     "origin_main_sha": "16ec4b992c6a4844a02e3a9e1cb9a34435afe50e",
     "promotion": "DISABLED_IN_SHADOW",
-    "source_sha": "4e5479b2a8c7d1b6dd243f8c1ef120caddb99548",
+    "source_sha": "9f6a2503b2bab7063087dc3a64de845576dc9dc5",
     "validator": "scripts/aese_affected_closure.py"
   },
-  "reproducible_hash": "26ac84ef2b7325151a781ff3a8f650eb7de8e95ffa27432dc40afa5fce0953eb",
+  "reproducible_hash": "4162d3545dea47d808ece76dcbfdd91ecef60584a50957b1df09648b0f3db995",
   "schema": "aese-affected-closure-v1",
   "shadow_selection": {
     "authority": "RETAINED_LEGACY_AUTHORITY",
@@ -285,8 +285,8 @@
     ],
     "would_skip_item_ids": []
   },
-  "source_head": "4e5479b2a8c7d1b6dd243f8c1ef120caddb99548",
-  "source_tree_sha256": "37eb8514a77de0f443b56eab45619e91310b95d01e1237889b614d9bc0b2aa9b",
+  "source_head": "9f6a2503b2bab7063087dc3a64de845576dc9dc5",
+  "source_tree_sha256": "877db61e2b09ecae51f2d72da9c5875147ea4004f1947622642bcc1af5c04d66",
   "status": "AFFECTED_CLOSURE_PLAN_ONLY_SELECTION_DISABLED",
   "traversed_edges": [
     {
@@ -320,6 +320,7 @@
     "AESE-HOSTED_WORKFLOW_JOB-4297F5A9DAE87FC2",
     "AESE-HOSTED_WORKFLOW_JOB-5E1231BC0DE6B9A5",
     "AESE-HOSTED_WORKFLOW_JOB-5FB63D9C024E4516",
+    "AESE-HOSTED_WORKFLOW_JOB-88922BEECD136206",
     "AESE-HOSTED_WORKFLOW_JOB-907D7B4FEA384338",
     "AESE-HOSTED_WORKFLOW_JOB-944500BE073DADA0",
     "AESE-HOSTED_WORKFLOW_JOB-9A86E427E026057E",
