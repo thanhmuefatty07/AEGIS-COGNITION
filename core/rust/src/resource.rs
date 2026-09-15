@@ -419,6 +419,10 @@ impl HardwareProfile {
             pressure: false,
             local_only: true,
             confidence: crate::placement::PlacementConfidence::Unknown,
+            accelerator_kind: None,
+            backend: None,
+            vendor: None,
+            capabilities: Vec::new(),
             transfer_paths: Vec::new(),
         }];
 
@@ -442,6 +446,10 @@ impl HardwareProfile {
                 // but the policy remains estimated until workload costs are
                 // measured.
                 confidence: crate::placement::PlacementConfidence::Estimated,
+                accelerator_kind: None,
+                backend: None,
+                vendor: None,
+                capabilities: Vec::new(),
                 transfer_paths: Vec::new(),
             });
         }
@@ -459,6 +467,10 @@ impl HardwareProfile {
                 pressure: false,
                 local_only: true,
                 confidence: crate::placement::PlacementConfidence::Unknown,
+                accelerator_kind: None,
+                backend: None,
+                vendor: None,
+                capabilities: Vec::new(),
                 transfer_paths: Vec::new(),
             }
         }));
@@ -481,6 +493,10 @@ impl HardwareProfile {
                 pressure: accelerator.health != DeviceHealth::Healthy,
                 local_only: true,
                 confidence: crate::placement::PlacementConfidence::Unknown,
+                accelerator_kind: Some(accelerator.kind),
+                backend: Some(accelerator.backend),
+                vendor: Some(accelerator.vendor.clone()),
+                capabilities: accelerator.capabilities.clone(),
                 transfer_paths: Vec::new(),
             }
         }));
@@ -2768,6 +2784,10 @@ mod tests {
             pressure: false,
             local_only: true,
             confidence: crate::placement::PlacementConfidence::Measured,
+            accelerator_kind: None,
+            backend: None,
+            vendor: None,
+            capabilities: Vec::new(),
             transfer_paths: Vec::new(),
         };
         let ledger = CooperativeAdmissionLedger::from_inventory(&[capability], &[])
@@ -3307,6 +3327,10 @@ mod tests {
             pressure: false,
             local_only: true,
             confidence: crate::placement::PlacementConfidence::Measured,
+            accelerator_kind: None,
+            backend: None,
+            capabilities: Vec::new(),
+            vendor: None,
             transfer_paths: Vec::new(),
         }
     }

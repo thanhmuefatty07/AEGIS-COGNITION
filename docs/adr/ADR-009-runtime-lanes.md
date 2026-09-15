@@ -48,6 +48,13 @@ tests. Benchmark H0/H1/H2 before freezing limits. Roll back by disabling a
 lane or reducing
 capacity, never by bypassing admission.
 
+The placement contract carries optional accelerator kind, backend, vendor, and
+advertised capability metadata from inventory through the selected candidate.
+This prevents a valid measured selection from becoming an under-specified
+runtime request. It does not execute vendor code or bind a regular runtime
+lease to one physical device; exact executor/data-tier reservation still
+belongs to the cooperative placement admission path.
+
 ## Evidence
 
 `core/rust/src/execution.rs`, `resource.rs`, and `ExecutionLanes` unit tests;
