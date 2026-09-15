@@ -41,9 +41,8 @@ only response hashes and metadata. Keys are read from process environment
 variables and are never written to disk by the harness.
 
 The two keys pasted into the chat must be revoked and replaced before any live
-run. Treat them as compromised. Create fresh keys in the provider dashboards;
-do not copy the old values into a file, command history, VM image, or GitHub
-commit.
+run. Treat them as compromised. The live runs below used fresh repository
+Actions secrets; the old values were not used or written to the repository.
 
 ## Provider endpoints and model selection
 
@@ -161,8 +160,8 @@ Python jobs of
 [CI run 34927977822](https://github.com/thanhmuefatty07/AEGIS-COGNITION/actions/runs/34927977822)
 at commit `a2423aafce781aff7968190c01bfe62b44ef6d2c`. That umbrella run still
 failed its separate 11 AESE registry-drift tests; those failures do not import
-or exercise this evaluator. No hosted model call has been run yet because the
-keys previously pasted into chat must be revoked and replaced first.
+or exercise this evaluator. The earlier chat-exposed keys were revoked and replaced before the
+live runs below; those runs used only the fresh repository Actions secrets.
 
 The workflow plumbing was then exercised without credentials in
 [dry-run 34929741934](https://github.com/thanhmuefatty07/AEGIS-COGNITION/actions/runs/34929741934)
@@ -222,6 +221,32 @@ limited to 50 requests per day without at least 10 purchased credits (and
 132 requests in total, so the later `429` responses are consistent with the
 documented free-tier quota. The evaluator and workflow now default to 24
 requests; this is a guardrail, not a claim that provider quotas are unlimited.
+
+## Rate-25 NIM follow-up
+
+The hosted NIM workflow was rerun with `delay_ms=2400`, which caps sequential
+scheduling at about 25 requests per minute, `repeats=1`, and no automatic
+retries. The runs used model IDs listed in the current NVIDIA catalog.
+
+- [34972808716](https://github.com/thanhmuefatty07/AEGIS-COGNITION/actions/runs/34972808716)
+  at commit `16ec4b992c6a4844a02e3a9e1cb9a34435afe50e` planned and observed 48
+  requests: `meta/llama-3.2-1b-instruct`, `microsoft/phi-4-mini-instruct`, and
+  `nvidia/llama-3.1-nemotron-nano-8b-v1` each returned 12/12 HTTP `410`; the
+  `openai/gpt-oss-20b` model returned seven usable HTTP `200` responses and
+  five HTTP `200` responses without message content. It produced only three
+  complete pairs, with `8.439%` mean prompt reduction and incomplete quality
+  coverage. No response was HTTP `429`.
+- [34973622950](https://github.com/thanhmuefatty07/AEGIS-COGNITION/actions/runs/34973622950)
+  at commit `edaf1b60851304a287ccc2e8aa3f817543322132` planned and observed 24
+  requests: `moonshotai/kimi-k2-instruct` and
+  `qwen/qwen2.5-coder-32b-instruct` each returned 12/12 HTTP `410`. The artifact
+  completed in 57.3 seconds and contained no HTTP `429` response.
+
+Across this follow-up, 72 requests were attempted at the 25-RPM pacing ceiling
+and none produced HTTP `429`. This does not prove the account has no rate
+limit; it shows that these failures were not rate-limit evidence. The remaining
+NVIDIA blocker is endpoint/model availability or account entitlement, and a
+complete quality/token `PASS` has not been established.
 
 These live results are exploratory, scoped to this commit, provider, model,
 and timestamp. They do not establish a `PASS`, universal token savings, or
