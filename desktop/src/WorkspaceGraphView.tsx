@@ -65,7 +65,6 @@ export default function WorkspaceGraphView({ graph, loadMemories }: Props) {
       if (memoryRequest.current === requestId) setMemoryBusy(false);
     }
   }
-
   return (
     <section className="graph-card" aria-label="Project map">
       <div className="graph-heading">
