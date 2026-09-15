@@ -21,7 +21,7 @@ name: Memory context live model evaluation
       nvidia_models:
         description: NVIDIA NIM model id(s), comma-separated
         required: false
-        default: moonshotai/kimi-k2.6
+        default: deepseek-ai/deepseek-v4-flash
         type: string
       repeats:
         description: Repeated baseline/bounded pairs (1-3)
@@ -32,6 +32,11 @@ name: Memory context live model evaluation
         description: Safety ceiling for planned requests (1-96)
         required: false
         default: "24"
+        type: string
+      delay_ms:
+        description: Delay between provider requests in milliseconds (2000 is about 30 RPM)
+        required: false
+        default: "2000"
         type: string
       dry_run:
         description: Validate workflow and artifact plumbing without provider calls
@@ -60,6 +65,7 @@ jobs:
       EVAL_NVIDIA_MODELS: ${{ inputs.nvidia_models }}
       EVAL_REPEATS: ${{ inputs.repeats }}
       EVAL_MAX_REQUESTS: ${{ inputs.max_requests }}
+      EVAL_DELAY_MS: ${{ inputs.delay_ms }}
       EVAL_DRY_RUN: ${{ inputs.dry_run }}
       OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
       NVIDIA_NIM_API_KEY: ${{ secrets.NVIDIA_NIM_API_KEY }}
@@ -83,6 +89,7 @@ jobs:
             --nvidia-models "$EVAL_NVIDIA_MODELS" \
             --repeats "$EVAL_REPEATS" \
             --max-requests "$EVAL_MAX_REQUESTS" \
+            --delay-ms "$EVAL_DELAY_MS" \
             --output artifacts/memory-context-live-eval.json \
           )
           if [[ "$EVAL_DRY_RUN" == "true" ]]; then
