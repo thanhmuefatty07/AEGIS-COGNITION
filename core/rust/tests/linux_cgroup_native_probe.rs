@@ -77,7 +77,11 @@ struct ScopeGuard {
 impl Drop for ScopeGuard {
     fn drop(&mut self) {
         let _ = self.controller.terminate(&self.lease);
-        let _ = self.controller.release_scope(&self.lease);
+        let _ = fs::remove_dir(
+            self.controller
+                .root()
+                .join(format!("aegis-{}", self.lease.lease_id)),
+        );
     }
 }
 
@@ -219,6 +223,7 @@ fn native_probe() -> Result<serde_json::Value, String> {
         )
         .map_err(|error: ResourceError| format!("Lab process lane failed: {error:?}"))?;
     let lab_native_timeout_observed = output.timed_out && !output.status.success();
+    let _ = fs::remove_dir(root.join(format!("aegis-{}", second_lease.lease_id)));
 
     Ok(json!({
         "schema": "aegis-linux-cgroup-v2-native-adapter-probe-v1",
