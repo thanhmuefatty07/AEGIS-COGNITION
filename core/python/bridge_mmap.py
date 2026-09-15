@@ -14,6 +14,8 @@ MMAP_BRIDGE_HEADER_BYTES = 128
 MMAP_BRIDGE_PAYLOAD_ALIGNMENT = 64
 MIN_FILE_STREAM_CHUNK_BYTES = 64 * 1024
 DEFAULT_FILE_STREAM_CHUNK_BYTES = 1024 * 1024
+HIGH_HEADROOM_MIN_AVAILABLE_BYTES = 1024 * 1024 * 1024
+HIGH_HEADROOM_FILE_STREAM_CHUNK_BYTES = 8 * 1024 * 1024
 
 
 def _native_module(error_message: str):
@@ -34,12 +36,13 @@ def _native_module(error_message: str):
 def recommended_file_stream_chunk_bytes(
     *, available_bytes: int | None = None, capacity_bytes: int | None = None
 ) -> int:
-    """Choose a conservative file-stream buffer from an OS memory snapshot.
+    """Choose a file-stream buffer from an OS memory snapshot.
 
-    Automatic selection only reduces the normal 1 MiB buffer when the native
-    observation reports a guarded or critical memory ratio. Unknown or
-    malformed observations keep the safe default; this function never treats
-    a memory snapshot as a reservation for the current operation.
+    Automatic selection reduces the normal 1 MiB buffer under guarded or
+    critical pressure and enables the measured 8 MiB throughput lane only when
+    at least 1 GiB and 50% of host memory are available. Unknown or malformed
+    observations keep the safe default; this function never treats a memory
+    snapshot as a reservation for the current operation.
     """
 
     if available_bytes is None or capacity_bytes is None:
@@ -79,6 +82,14 @@ def recommended_file_stream_chunk_bytes(
         return MIN_FILE_STREAM_CHUNK_BYTES
     if available_bytes * 100 < capacity_bytes * 25:
         return 256 * 1024
+    if (
+        available_bytes >= HIGH_HEADROOM_MIN_AVAILABLE_BYTES
+        and available_bytes * 100 >= capacity_bytes * 50
+    ):
+        # The 8 MiB cap is an explicit throughput lane for a genuinely
+        # well-provisioned host.  Native code still clamps it and reduces it
+        # to the remaining payload, so this cannot over-allocate small files.
+        return HIGH_HEADROOM_FILE_STREAM_CHUNK_BYTES
     return DEFAULT_FILE_STREAM_CHUNK_BYTES
 
 

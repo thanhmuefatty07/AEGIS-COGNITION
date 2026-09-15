@@ -135,7 +135,7 @@ mod linux {
         fn release_scope(&self, lease: &ResourceLease) -> Result<(), ResourceError> {
             let group = self.group_for(lease);
             if group.exists() {
-                fs::remove_dir(&group).map_err(io_error)?;
+                remove_group(&group)?;
             }
             Ok(())
         }
@@ -199,6 +199,39 @@ mod linux {
 
     fn io_error(error: std::io::Error) -> ResourceError {
         ResourceError::UnsupportedControl(format!("cgroup operation failed: {error}"))
+    }
+
+    #[cfg(not(test))]
+    fn remove_group(path: &Path) -> Result<(), ResourceError> {
+        // A real cgroup contains kernel-managed control files.  Removing the
+        // directory itself is the only safe production cleanup operation;
+        // never recursively delete a cgroup hierarchy.
+        fs::remove_dir(path).map_err(io_error)
+    }
+
+    #[cfg(test)]
+    fn remove_group(path: &Path) -> Result<(), ResourceError> {
+        // Unit tests model cgroup control files with ordinary files in a
+        // temporary directory.  Keep production cleanup strict, while
+        // allowing this fixture-only representation to be removed.  A nested
+        // directory is refused so the test helper cannot become recursive.
+        match fs::remove_dir(path) {
+            Ok(()) => Ok(()),
+            Err(error) if error.kind() == std::io::ErrorKind::DirectoryNotEmpty => {
+                let reason = error.to_string();
+                for entry in fs::read_dir(path).map_err(io_error)? {
+                    let entry = entry.map_err(io_error)?;
+                    if !entry.file_type().map_err(io_error)?.is_file() {
+                        return Err(ResourceError::UnsupportedControl(format!(
+                            "cgroup operation failed: {reason}"
+                        )));
+                    }
+                    fs::remove_file(entry.path()).map_err(io_error)?;
+                }
+                fs::remove_dir(path).map_err(io_error)
+            }
+            Err(error) => Err(io_error(error)),
+        }
     }
 
     fn now_ms() -> u64 {
@@ -653,6 +686,17 @@ mod tests {
             controller.capabilities().termination,
             crate::resource::EnforcementLevel::KernelEnforced
         );
+    }
+
+    #[test]
+    fn fixture_cleanup_refuses_to_remove_nested_cgroup_hierarchies() {
+        let root = tempfile::tempdir().unwrap();
+        let group = root.path().join("aegis-1");
+        fs::create_dir_all(group.join("child")).unwrap();
+        fs::write(group.join("memory.max"), "max").unwrap();
+
+        assert!(remove_group(&group).is_err());
+        assert!(group.join("child").exists());
     }
 
     #[test]
