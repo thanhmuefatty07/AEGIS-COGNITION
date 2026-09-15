@@ -3132,6 +3132,14 @@ mod tests {
     #[test]
     fn healthy_constrained_host_expands_process_width_only_after_observation() {
         let mut profile = HardwareProfile::probe();
+        // Keep this synthetic capacity test independent of the runner's
+        // advertised CPU quota (Miri and hosted sandboxes may expose one
+        // logical processor even when the contract under test allows four).
+        profile.cpu.usable_parallelism = 4;
+        profile.cpu.logical_processors = Some(4);
+        if let Some(node) = profile.cpu.numa_nodes.first_mut() {
+            node.usable_parallelism = 4;
+        }
         profile.memory_domains[0].capacity_bytes = Some(4 * 1024 * 1024 * 1024);
         profile.memory_domains[0].available_bytes = Some(2 * 1024 * 1024 * 1024);
         let mut controller = AdmissionController::from_hardware(&profile);
