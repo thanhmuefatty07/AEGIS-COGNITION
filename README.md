@@ -28,6 +28,14 @@ replay explicit and auditable.
   Ubuntu, Windows, and macOS GitHub-hosted runners, with deeper Linux evidence
   available on a persistent test host.
 
+## Memory context efficiency
+
+The recorded cross-platform benchmark reduced the Memory Agent context from
+29,633 to 12,358 tokens, saving 17,275 tokens (**58.296%**) on Ubuntu, Windows,
+and macOS. In the 593-file workspace case, the context fell from 6,007 to 368
+tokens (**93.874%**). See the [benchmark report](docs/architecture/MEMORY_CONTEXT_BENCHMARK.md)
+and [GitHub Actions evidence](https://github.com/thanhmuefatty07/AEGIS-COGNITION/actions/runs/34831605691).
+
 ## Quick start
 
 The repository uses a locked `uv` environment and a pinned Rust toolchain.

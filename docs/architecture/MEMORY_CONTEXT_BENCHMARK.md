@@ -1,5 +1,13 @@
 # Memory context benchmark
 
+## Published result
+
+The recorded three-platform run reduced the Memory Agent context from **29,633
+to 12,358 tokens**, saving **17,275 tokens (58.296%)** on Ubuntu, Windows, and
+macOS. For the 593-file workspace case, it reduced **6,007 to 368 tokens
+(93.874%)**. The complete evidence is retained in [GitHub Actions run
+34831605691](https://github.com/thanhmuefatty07/AEGIS-COGNITION/actions/runs/34831605691).
+
 This benchmark measures the bounded Memory Agent context path against an
 unbounded baseline. It is provider-neutral and performs no network calls.
 
