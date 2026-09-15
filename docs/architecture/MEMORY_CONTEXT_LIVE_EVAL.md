@@ -157,3 +157,11 @@ at commit `a2423aafce781aff7968190c01bfe62b44ef6d2c`. That umbrella run still
 failed its separate 11 AESE registry-drift tests; those failures do not import
 or exercise this evaluator. No hosted model call has been run yet because the
 keys previously pasted into chat must be revoked and replaced first.
+
+The workflow plumbing was then exercised without credentials in
+[dry-run 34929741934](https://github.com/thanhmuefatty07/AEGIS-COGNITION/actions/runs/34929741934)
+at commit `51eae346f913a46a43bd3b15da378d942efd2708`. It completed successfully
+with 24 planned and observed records for both providers; the retained artifact
+was `DRY_RUN` and contained neither raw model content nor key prefixes. This
+run proves workflow execution and artifact handling, not provider availability
+or model quality.
