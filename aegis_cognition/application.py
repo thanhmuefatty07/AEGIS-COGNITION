@@ -79,14 +79,20 @@ _DEVELOPMENT_TASK_MARKERS = (
 _DEFAULT_SUBAGENT_CAPABILITIES = frozenset(
     {"read_only", "network_read", "compute", "model_inference", "browser", "vision", "code_reuse"}
 )
-_DEFAULT_SUBAGENT_SIDE_EFFECT_CLASSES = frozenset({"ReadOnly", "NetworkRead", "Compute", "ModelInference", "LocalReversible"})
+_DEFAULT_SUBAGENT_SIDE_EFFECT_CLASSES = frozenset(
+    {"ReadOnly", "NetworkRead", "Compute", "ModelInference", "LocalReversible"}
+)
 _MAX_SUBAGENT_PLANNER_CHARS = 32_768
 
 
 def _looks_like_development_task(task: str) -> bool:
     normalized = task.casefold()
     return any(
-        (marker in normalized if any(not character.isascii() for character in marker) else re.search(rf"\b{re.escape(marker)}\b", normalized) is not None)
+        (
+            marker in normalized
+            if any(not character.isascii() for character in marker)
+            else re.search(rf"\b{re.escape(marker)}\b", normalized) is not None
+        )
         for marker in _DEVELOPMENT_TASK_MARKERS
     )
 
@@ -407,7 +413,7 @@ class AgentApplication:
             )
             if lab_run is not None:
                 lab_run.record_blocker(f"aese_verification_{receipt.status.casefold()}")
-        except (VerificationSessionError, TypeError, ValueError):
+        except VerificationSessionError, TypeError, ValueError:
             if lab_run is not None:
                 lab_run.record_blocker("aese_verification_receipt_rejected")
 
@@ -483,7 +489,7 @@ class AgentApplication:
                 "The host will validate the DAG, compute proposal_hash, bind trusted handlers, and enforce runtime policy.",
                 "Create only the smallest set of independent or dependency-linked child tasks needed for the user task.",
                 "Every task must use one handler_key from the allowlist and must be read-only unless the host policy says otherwise.",
-                "The JSON shape is {\"schema\":\"aegis-agent-plan-v1\",\"tasks\":[{...}]}; omit proposal_hash.",
+                'The JSON shape is {"schema":"aegis-agent-plan-v1","tasks":[{...}]}; omit proposal_hash.',
                 "Each task object must contain exactly: task_id, handler_key, role, prompt, artifact_namespace, dependencies, capabilities, exclusive_resources, token_budget, timeout_seconds, memory_bytes, side_effect_class, parent_task_id, attempt_id.",
                 f"HANDLER_ALLOWLIST: {json.dumps(handler_keys, ensure_ascii=False)}",
                 f"USER_TASK: {task}",
@@ -626,9 +632,7 @@ class AgentApplication:
                 else require_native_authority
             )
             raw_concurrency = (
-                self.config.options.get("subagent_max_concurrency", 4)
-                if max_concurrency is None
-                else max_concurrency
+                self.config.options.get("subagent_max_concurrency", 4) if max_concurrency is None else max_concurrency
             )
             result = await AgentSupervisor(
                 run_id=self.correlation.task_id,
