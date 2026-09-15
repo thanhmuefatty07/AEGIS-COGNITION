@@ -64,3 +64,12 @@ and verified `TERMINATED`.
 For a separate, opt-in comparison using provider-reported token usage and a
 deterministic answer oracle, see
 [`MEMORY_CONTEXT_LIVE_EVAL.md`](MEMORY_CONTEXT_LIVE_EVAL.md).
+
+## Main-branch rerun
+
+At commit `a2423aafce781aff7968190c01bfe62b44ef6d2c`, manual
+[GitHub Actions run 34929289731](https://github.com/thanhmuefatty07/AEGIS-COGNITION/actions/runs/34929289731)
+completed successfully on Ubuntu, macOS, and Windows. Each runner reported
+`status: PASS`, 8 quantitative cases, and 5 oracle cases using Python 3.14.7:
+29,676 estimated baseline tokens versus 12,367 bounded tokens (58.327%).
+The three artifacts are retained by that run.

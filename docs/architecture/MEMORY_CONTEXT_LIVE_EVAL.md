@@ -145,3 +145,13 @@ Even `PASS` is scoped evidence: it supports the declared six-task synthetic
 workload for the recorded commit, provider, model, and run. It does not prove
 production readiness, universal token savings, privacy policy compliance of a
 provider, or correctness for arbitrary user memories.
+
+## Repository verification
+
+The five evaluator tests passed on Ubuntu, macOS, and Windows inside the full
+Python jobs of
+[CI run 34927977822](https://github.com/thanhmuefatty07/AEGIS-COGNITION/actions/runs/34927977822)
+at commit `a2423aafce781aff7968190c01bfe62b44ef6d2c`. That umbrella run still
+failed its separate 11 AESE registry-drift tests; those failures do not import
+or exercise this evaluator. No hosted model call has been run yet because the
+keys previously pasted into chat must be revoked and replaced first.
