@@ -55,7 +55,21 @@ def _source_revision(root: Path, files: tuple[Path, ...]) -> tuple[str, bool]:
                 ).stdout.strip()
                 != ""
             )
-            return result.stdout.strip(), dirty
+            head = result.stdout.strip()
+            if not dirty:
+                return head, False
+            status = subprocess.run(
+                ("git", "status", "--porcelain=v1", "--untracked-files=all"),
+                cwd=root,
+                capture_output=True,
+                text=True,
+                timeout=2.0,
+                check=False,
+            )
+            fingerprint = _dirty_workspace_fingerprint(root, status.stdout if status.returncode == 0 else "")
+            if fingerprint is None:
+                return UNKNOWN, True
+            return f"{head}+WORKTREE:{fingerprint}", True
     except OSError, subprocess.SubprocessError:
         pass
     digest = hashlib.sha256()
@@ -73,6 +87,68 @@ def _source_revision(root: Path, files: tuple[Path, ...]) -> tuple[str, bool]:
         digest.update(data)
         digest.update(b"\0")
     return f"WORKSPACE:{digest.hexdigest()}", True
+
+
+def _status_paths(status: str) -> tuple[str, ...]:
+    paths: set[str] = set()
+    for line in status.splitlines():
+        if len(line) < 4:
+            continue
+        raw_path = line[3:]
+        if " -> " in raw_path:
+            raw_path = raw_path.rsplit(" -> ", 1)[-1]
+        normalized = raw_path.strip().replace("\\", "/")
+        if normalized:
+            paths.add(normalized)
+    return tuple(sorted(paths))
+
+
+def _dirty_workspace_fingerprint(root: Path, status: str) -> str | None:
+    """Hash the exact dirty files so HEAD cannot certify a worktree change."""
+
+    paths = _status_paths(status)
+    if not paths:
+        return None
+    digest = hashlib.sha256()
+    total = 0
+    for relative in paths:
+        candidate = (root / relative).resolve()
+        try:
+            _safe_relative(candidate, root)
+        except ValueError:
+            return None
+        try:
+            data = candidate.read_bytes()
+        except OSError:
+            return None
+        total += len(data)
+        if total > _MAX_FINGERPRINT_BYTES:
+            return None
+        digest.update(relative.encode("utf-8"))
+        digest.update(b"\0")
+        digest.update(data)
+        digest.update(b"\0")
+    return digest.hexdigest()
+
+
+def workspace_change_paths(root: Path) -> tuple[str, ...]:
+    """Return bounded git worktree paths for change interception."""
+
+    resolved = root.expanduser().resolve()
+    try:
+        result = subprocess.run(
+            ("git", "status", "--porcelain=v1", "--untracked-files=all"),
+            cwd=resolved,
+            capture_output=True,
+            text=True,
+            timeout=2.0,
+            check=False,
+        )
+    except OSError, subprocess.SubprocessError:
+        return ()
+    if result.returncode != 0:
+        return ()
+    return _status_paths(result.stdout)
 
 
 def _languages(files: tuple[Path, ...]) -> tuple[str, ...]:
@@ -199,4 +275,4 @@ def inspect_project(root: Path, *, project_id: str | None = None) -> ProjectProf
     )
 
 
-__all__ = ["inspect_project"]
+__all__ = ["inspect_project", "workspace_change_paths"]
