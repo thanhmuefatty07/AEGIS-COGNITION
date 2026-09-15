@@ -60,3 +60,7 @@ It returned `status: PASS`, with 8 quantitative cases and 5 oracle cases;
 the aggregate was 29,633 estimated baseline tokens versus 12,358 bounded
 tokens (58.296% for that checkout). The VM was stopped immediately afterward
 and verified `TERMINATED`.
+
+For a separate, opt-in comparison using provider-reported token usage and a
+deterministic answer oracle, see
+[`MEMORY_CONTEXT_LIVE_EVAL.md`](MEMORY_CONTEXT_LIVE_EVAL.md).
