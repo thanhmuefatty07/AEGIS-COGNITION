@@ -4,7 +4,36 @@
 
 use super::{admission_label, hex32, parse_trust_level, py_safe, trust_level_label};
 use blake3::Hasher;
+use pyo3::buffer::PyBuffer;
 use pyo3::prelude::*;
+
+fn serialize_hot_commit(
+    handle: crate::hot_engine::EvidenceHandle,
+    stats: crate::hot_engine::ArenaStats,
+) -> PyResult<String> {
+    let response = serde_json::json!({
+        "schema": "aegis-hot-arena-commit-v1",
+        "truth_claim": false,
+        "verifier": "rust-hot-engine",
+        "slot": handle.slot,
+        "generation": handle.generation,
+        "byte_len": handle.byte_len,
+        "artifact_hash": hex32(&handle.artifact_hash),
+        "storage_ref_hash": hex32(&handle.storage_ref_hash),
+        "trust_level": trust_level_label(handle.trust_level),
+        "admission": admission_label(handle.admission),
+        "physical_witness_required": handle.trust_level.physical_witness_required(),
+        "fail_closed": handle.trust_level.fail_closed(),
+        "handle_valid": handle.is_valid(),
+        "arena_live_bytes": stats.live_bytes,
+        "arena_live_slots": stats.live_slots,
+        "arena_total_commits": stats.total_commits,
+        "arena_total_degraded_commits": stats.total_degraded_commits,
+    });
+    serde_json::to_string(&response).map_err(|err| {
+        pyo3::exceptions::PyRuntimeError::new_err(format!("Serialization failed: {err}"))
+    })
+}
 
 #[pyfunction]
 #[pyo3(signature = (payload, trust_level=None, max_live_bytes=None, max_artifact_bytes=None))]
@@ -25,31 +54,60 @@ pub fn aegis_hot_commit(
             max_artifact_bytes.unwrap_or(16 * 1024 * 1024),
         );
         let handle = arena
-            .commit(&payload)
+            .commit_owned(payload)
             .map_err(|err| pyo3::exceptions::PyRuntimeError::new_err(format!("{err:?}")))?;
         let stats = arena.stats();
-        let response = serde_json::json!({
-            "schema": "aegis-hot-arena-commit-v1",
-            "truth_claim": false,
-            "verifier": "rust-hot-engine",
-            "slot": handle.slot,
-            "generation": handle.generation,
-            "byte_len": handle.byte_len,
-            "artifact_hash": hex32(&handle.artifact_hash),
-            "storage_ref_hash": hex32(&handle.storage_ref_hash),
-            "trust_level": trust_level_label(handle.trust_level),
-            "admission": admission_label(handle.admission),
-            "physical_witness_required": handle.trust_level.physical_witness_required(),
-            "fail_closed": handle.trust_level.fail_closed(),
-            "handle_valid": handle.is_valid(),
-            "arena_live_bytes": stats.live_bytes,
-            "arena_live_slots": stats.live_slots,
-            "arena_total_commits": stats.total_commits,
-            "arena_total_degraded_commits": stats.total_degraded_commits,
-        });
-        serde_json::to_string(&response).map_err(|err| {
-            pyo3::exceptions::PyRuntimeError::new_err(format!("Serialization failed: {err}"))
-        })
+        serialize_hot_commit(handle, stats)
+    })?
+}
+
+/// Commit any C-contiguous Python buffer without first converting it to a
+/// temporary Rust `Vec<u8>`. The arena still owns one copy, but the adapter
+/// avoids the extra FFI conversion allocation and releases the GIL for
+/// read-only exporters while hashing/copying synchronously.
+#[pyfunction]
+#[pyo3(signature = (payload, trust_level=None, max_live_bytes=None, max_artifact_bytes=None))]
+pub fn aegis_hot_commit_buffer(
+    py: Python<'_>,
+    payload: PyBuffer<u8>,
+    trust_level: Option<String>,
+    max_live_bytes: Option<usize>,
+    max_artifact_bytes: Option<usize>,
+) -> PyResult<String> {
+    py_safe(move || {
+        let trust_level = match trust_level {
+            Some(value) => parse_trust_level(&value)?,
+            None => crate::hot_engine::TrustLevel::from_env(),
+        };
+        if payload.as_slice(py).is_none() {
+            return Err(pyo3::exceptions::PyBufferError::new_err(
+                "aegis_hot_commit_buffer requires a C-contiguous byte buffer",
+            ));
+        }
+        let payload_len = payload.len_bytes();
+        let payload_ptr = payload.buf_ptr();
+        if payload_ptr.is_null() {
+            return Err(pyo3::exceptions::PyBufferError::new_err(
+                "aegis_hot_commit_buffer received a null byte buffer",
+            ));
+        }
+        // SAFETY: the buffer is C-contiguous and remains exported by `payload`
+        // until this function returns; the slice is consumed synchronously and
+        // the pointer never escapes the call.
+        let bytes = unsafe { std::slice::from_raw_parts(payload_ptr.cast::<u8>(), payload_len) };
+        let arena = crate::hot_engine::InMemoryEvidenceArena::new(
+            trust_level,
+            max_live_bytes.unwrap_or(64 * 1024 * 1024),
+            max_artifact_bytes.unwrap_or(16 * 1024 * 1024),
+        );
+        let result = if payload.readonly() {
+            py.detach(|| arena.commit(bytes))
+        } else {
+            arena.commit(bytes)
+        };
+        let handle =
+            result.map_err(|err| pyo3::exceptions::PyRuntimeError::new_err(format!("{err:?}")))?;
+        serialize_hot_commit(handle, arena.stats())
     })?
 }
 
@@ -93,9 +151,9 @@ pub fn aegis_hot_commit_batch(
         })?;
         batch_hasher.update(&payload_count.to_le_bytes());
         let mut commits = Vec::with_capacity(payloads.len());
-        for (index, payload) in payloads.iter().enumerate() {
+        for (index, payload) in payloads.into_iter().enumerate() {
             let handle = arena
-                .commit(payload)
+                .commit_owned(payload)
                 .map_err(|err| pyo3::exceptions::PyRuntimeError::new_err(format!("{err:?}")))?;
             let index_u64 = u64::try_from(index).map_err(|_| {
                 pyo3::exceptions::PyOverflowError::new_err(

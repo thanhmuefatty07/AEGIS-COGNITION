@@ -1103,8 +1103,8 @@
     "future_obligations": 20,
     "invariants": 46,
     "mapped_surfaces": 9,
-    "surfaces": 172,
-    "unmapped_surfaces": 163,
+    "surfaces": 180,
+    "unmapped_surfaces": 171,
     "unmapped_verifications": 70,
     "unresolved_code_references": 0,
     "verifications": 92
@@ -3421,7 +3421,7 @@
       "classification": "FUTURE_ANCHOR_OR_RELEASE_OBLIGATION",
       "id": "AESE-BLOCKER-NV-001",
       "source_id": "NV-001",
-      "status": "NOT VERIFIED",
+      "status": "IMPLEMENTED / PARTIALLY LIVE VERIFIED",
       "title": "Linux cgroup v2 enforcement"
     },
     {
@@ -3851,13 +3851,13 @@
     "all_surfaces_mapped": false,
     "critical_high_risk_mapped": false,
     "criticality_known": false,
-    "unmapped_surface_count": 163
+    "unmapped_surface_count": 171
   },
   "mode": "SHADOW",
   "phase": "PHASE_1_CLAIM_EVIDENCE_GRAPH",
   "schema": "aese-shadow-claim-evidence-graph-v1",
-  "source_head": "d6c55ad26c8f914ce7c5dea0576b44b0f317c2e7",
-  "source_tree_sha256": "4f03f44f9e35c7ab0aa8a4cf00db85da924f72cb825ba9bee1ec835f889df5c4",
+  "source_head": "2957ca5433ea68302c98f95d63c78964bd87757d",
+  "source_tree_sha256": "a3247a7260ca4634fb38aaa60a7c0502f95deca63f089294bcae1b3848d2c51a",
   "status": "SHADOW_GRAPH_PARTIAL_MAPPING_SELECTION_DISABLED",
   "surfaces": [
     {
@@ -3914,6 +3914,19 @@
     },
     {
       "claim_refs": [],
+      "id": "AESE-HOSTED_WORKFLOW-09D65668A1CCBA2F",
+      "kind": "HOSTED_WORKFLOW",
+      "mapping_status": "NOT_MAPPED",
+      "path": ".github/workflows/memory-context-live-eval.yml",
+      "release_critical": "UNKNOWN",
+      "release_criticality": "UNKNOWN",
+      "risk": "UNKNOWN",
+      "security_criticality": "UNKNOWN",
+      "target": null,
+      "unknown_dependency_policy": "INVALIDATE_CONSERVATIVELY"
+    },
+    {
+      "claim_refs": [],
       "id": "AESE-HOSTED_WORKFLOW-0C35795B6B274DAD",
       "kind": "HOSTED_WORKFLOW",
       "mapping_status": "NOT_MAPPED",
@@ -3957,6 +3970,19 @@
       "kind": "HOSTED_WORKFLOW",
       "mapping_status": "NOT_MAPPED",
       "path": ".github/workflows/ci.yml",
+      "release_critical": "UNKNOWN",
+      "release_criticality": "UNKNOWN",
+      "risk": "UNKNOWN",
+      "security_criticality": "UNKNOWN",
+      "target": null,
+      "unknown_dependency_policy": "INVALIDATE_CONSERVATIVELY"
+    },
+    {
+      "claim_refs": [],
+      "id": "AESE-HOSTED_WORKFLOW-D3039EF099697FFD",
+      "kind": "HOSTED_WORKFLOW",
+      "mapping_status": "NOT_MAPPED",
+      "path": ".github/workflows/mmap-stream-buffer-benchmark.yml",
       "release_critical": "UNKNOWN",
       "release_criticality": "UNKNOWN",
       "risk": "UNKNOWN",
@@ -4040,6 +4066,19 @@
       "risk": "UNKNOWN",
       "security_criticality": "UNKNOWN",
       "target": "rust-msrv",
+      "unknown_dependency_policy": "INVALIDATE_CONSERVATIVELY"
+    },
+    {
+      "claim_refs": [],
+      "id": "AESE-HOSTED_WORKFLOW_JOB-268BA7C5382725F4",
+      "kind": "HOSTED_WORKFLOW_JOB",
+      "mapping_status": "NOT_MAPPED",
+      "path": ".github/workflows/memory-context-live-eval.yml",
+      "release_critical": "UNKNOWN",
+      "release_criticality": "UNKNOWN",
+      "risk": "UNKNOWN",
+      "security_criticality": "UNKNOWN",
+      "target": "live-evaluation",
       "unknown_dependency_policy": "INVALIDATE_CONSERVATIVELY"
     },
     {
@@ -4170,6 +4209,19 @@
       "risk": "UNKNOWN",
       "security_criticality": "UNKNOWN",
       "target": "security-and-replay",
+      "unknown_dependency_policy": "INVALIDATE_CONSERVATIVELY"
+    },
+    {
+      "claim_refs": [],
+      "id": "AESE-HOSTED_WORKFLOW_JOB-D42384DEC647C6B5",
+      "kind": "HOSTED_WORKFLOW_JOB",
+      "mapping_status": "NOT_MAPPED",
+      "path": ".github/workflows/mmap-stream-buffer-benchmark.yml",
+      "release_critical": "UNKNOWN",
+      "release_criticality": "UNKNOWN",
+      "risk": "UNKNOWN",
+      "security_criticality": "UNKNOWN",
+      "target": "benchmark",
       "unknown_dependency_policy": "INVALIDATE_CONSERVATIVELY"
     },
     {
@@ -4789,6 +4841,19 @@
       "kind": "PYTHON_TEST",
       "mapping_status": "NOT_MAPPED",
       "path": "tests/test_aese_shadow_planner.py",
+      "release_critical": "UNKNOWN",
+      "release_criticality": "UNKNOWN",
+      "risk": "UNKNOWN",
+      "security_criticality": "UNKNOWN",
+      "target": null,
+      "unknown_dependency_policy": "INVALIDATE_CONSERVATIVELY"
+    },
+    {
+      "claim_refs": [],
+      "id": "AESE-PYTHON_TEST-F1987F07975FDABF",
+      "kind": "PYTHON_TEST",
+      "mapping_status": "NOT_MAPPED",
+      "path": "tests/test_memory_context_live_eval.py",
       "release_critical": "UNKNOWN",
       "release_criticality": "UNKNOWN",
       "risk": "UNKNOWN",
@@ -5478,6 +5543,19 @@
     },
     {
       "claim_refs": [],
+      "id": "AESE-SCRIPT_OR_GATE-3320BBFBAFA69833",
+      "kind": "SCRIPT_OR_GATE",
+      "mapping_status": "NOT_MAPPED",
+      "path": "scripts/memory_context_live_eval.py",
+      "release_critical": "UNKNOWN",
+      "release_criticality": "UNKNOWN",
+      "risk": "UNKNOWN",
+      "security_criticality": "UNKNOWN",
+      "target": null,
+      "unknown_dependency_policy": "INVALIDATE_CONSERVATIVELY"
+    },
+    {
+      "claim_refs": [],
       "id": "AESE-SCRIPT_OR_GATE-3C51C28EF48E3413",
       "kind": "SCRIPT_OR_GATE",
       "mapping_status": "NOT_MAPPED",
@@ -5521,6 +5599,19 @@
       "kind": "SCRIPT_OR_GATE",
       "mapping_status": "NOT_MAPPED",
       "path": "scripts/release_controller_action_smoke.py",
+      "release_critical": "UNKNOWN",
+      "release_criticality": "UNKNOWN",
+      "risk": "UNKNOWN",
+      "security_criticality": "UNKNOWN",
+      "target": null,
+      "unknown_dependency_policy": "INVALIDATE_CONSERVATIVELY"
+    },
+    {
+      "claim_refs": [],
+      "id": "AESE-SCRIPT_OR_GATE-4FCE1440AD0CDD34",
+      "kind": "SCRIPT_OR_GATE",
+      "mapping_status": "NOT_MAPPED",
+      "path": "scripts/hot_buffer_ffi_benchmark.py",
       "release_critical": "UNKNOWN",
       "release_criticality": "UNKNOWN",
       "risk": "UNKNOWN",
@@ -6097,6 +6188,19 @@
       "kind": "SCRIPT_OR_GATE",
       "mapping_status": "NOT_MAPPED",
       "path": "scripts/aese_validation_corpus.py",
+      "release_critical": "UNKNOWN",
+      "release_criticality": "UNKNOWN",
+      "risk": "UNKNOWN",
+      "security_criticality": "UNKNOWN",
+      "target": null,
+      "unknown_dependency_policy": "INVALIDATE_CONSERVATIVELY"
+    },
+    {
+      "claim_refs": [],
+      "id": "AESE-SCRIPT_OR_GATE-FB21519DAAE97F9F",
+      "kind": "SCRIPT_OR_GATE",
+      "mapping_status": "NOT_MAPPED",
+      "path": "scripts/mmap_stream_buffer_benchmark.py",
       "release_critical": "UNKNOWN",
       "release_criticality": "UNKNOWN",
       "risk": "UNKNOWN",
@@ -6913,6 +7017,6 @@
       "source_id": "AESE-011"
     }
   ],
-  "worktree_epoch": "5934540b6cb6d3febea8507051e7012b22cb67f7e4b4559ae1aa9c4840331d34",
-  "worktree_status": "CLEAN"
+  "worktree_epoch": "0b7a70d25d2356d7e6b8feb9c34b208b6ca024befc117d6650fa8e06d190cf10",
+  "worktree_status": "DIRTY"
 }

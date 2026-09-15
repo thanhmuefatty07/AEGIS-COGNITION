@@ -15877,6 +15877,26 @@ mod tests {
     }
 
     #[test]
+    fn hot_engine_owned_commit_preserves_payload_and_hash() {
+        use crate::hot_engine::{InMemoryEvidenceArena, TrustLevel, simd_blake3_hash};
+
+        let payload = b"owned hot evidence payload".to_vec();
+        let payload_ptr = payload.as_ptr();
+        let expected_hash = simd_blake3_hash(&payload);
+        let arena = InMemoryEvidenceArena::new(TrustLevel::Prod, 1024 * 1024, 1024 * 1024);
+        let handle = arena.commit_owned(payload).expect("owned commit");
+
+        assert_eq!(handle.artifact_hash, expected_hash);
+        assert_eq!(handle.byte_len, 26);
+        assert_eq!(
+            arena.payload_arc(&handle).unwrap().as_ref(),
+            b"owned hot evidence payload"
+        );
+        assert_eq!(arena.payload_arc(&handle).unwrap().as_ptr(), payload_ptr);
+        assert_eq!(arena.stats().live_bytes, 26);
+    }
+
+    #[test]
     fn hot_engine_ffi_commit_returns_gateway_contract() {
         let payload = b"friendly gateway evidence".to_vec();
         let artifact_hash = aegis_hot_hash(payload.clone()).unwrap();

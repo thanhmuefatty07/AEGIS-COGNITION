@@ -7,7 +7,7 @@ machine-readable registry remains authoritative.
 
 | ID | Title | Registry status | Blocks production | Policy classification |
 |---|---|---|---|---|
-| NV-001 | Linux cgroup v2 enforcement | NOT VERIFIED | NO | non_blocking_registry_ids |
+| NV-001 | Linux cgroup v2 enforcement | IMPLEMENTED / PARTIALLY LIVE VERIFIED | NO | non_blocking_registry_ids |
 | NV-002 | Windows Job Object live process enforcement | IMPLEMENTED / PARTIALLY LIVE VERIFIED | NO | non_blocking_registry_ids |
 | NV-003 | macOS resource enforcement | NOT VERIFIED | NO | non_blocking_registry_ids |
 | NV-004 | External signed release attestation | NOT VERIFIED | YES | external_signed_attestation_missing |

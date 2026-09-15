@@ -21,8 +21,9 @@ manifest with the final SHA.
 | RES-003 | Queued work re-enters through TaskLedger, not a second scheduler | `runtime.rs` | `PROVEN`: FIFO queue drain integration test |
 | RES-004 | Expired lease is reclaimed as an explicit timeout | `runtime.rs` | `PROVEN`: deadline reaper test |
 | POL-001 | Policy numbers require provenance | `ResourcePolicy` | `ASSUMED`: defaults are labeled and H0/H1/H2 freeze is pending |
-| OS-001 | Linux cgroup v2 enforcement adapter | `resource_platform.rs` | `PROVEN` code path and fixture test; privileged host enforcement `NOT VERIFIED` |
-| OS-002 | Windows Job Object enforcement adapter | `resource_platform.rs` | `PROVEN` Windows-target compilation required; live process test `NOT VERIFIED` |
+| OS-001 | Linux cgroup v2 enforcement adapter | `resource_platform.rs`, `scripts/linux_cgroup_live_probe.py` | `IMPLEMENTED / PARTIALLY LIVE VERIFIED`: cgroup primitive and Rust/Lab native-process seam observed on one GCP Ubuntu 24.04/kernel `7.0.0-1011-gcp` clean probe SHA; cross-kernel and current dirty-workspace coverage remain `NOT VERIFIED` |
+| OS-002 | Windows Job Object enforcement adapter | `resource_platform.rs`, `scripts/windows_job_object_live_probe.py` | `IMPLEMENTED / PARTIALLY LIVE VERIFIED`: assignment, containment, active-process limit, termination, and deadline cancellation observed; allocation-pressure kill remains separately scoped |
+| OS-003 | macOS cooperative resource adapter | `resource_platform.rs`, `scripts/macos_capability_probe.py` | `NOT VERIFIED` for kernel-equivalent enforcement; adapter is explicitly measurement/cooperative-only |
 | LANE-001 | Actual bounded CPU/Python/I/O/untrusted primitives | `execution.rs` | `PROVEN` implementation and unit tests; stress fairness `NOT VERIFIED` |
 | LANE-002 | Optional accelerator lane with CPU-only fallback | `resource.rs`, `execution.rs` | `PROVEN`: zero advertised devices reject accelerator work without affecting CPU lanes; vendor adapters `NOT VERIFIED` |
 | LANE-003 | Native/untrusted work requires a process-controller attachment | `execution.rs`, `resource.rs`, `resource_platform.rs` | `PROVEN`: portable controller fail-closed test; privileged live process enforcement `NOT VERIFIED` |

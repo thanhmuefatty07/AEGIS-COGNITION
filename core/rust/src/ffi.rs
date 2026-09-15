@@ -51,7 +51,7 @@ pub use eac::{
     aegis_eac_batch, aegis_eac_cache_insert, aegis_eac_cache_invalidate, aegis_eac_cache_lookup,
     aegis_eac_load_state, aegis_eac_persist_state,
 };
-pub use hot::{aegis_hot_commit, aegis_hot_commit_batch};
+pub use hot::{aegis_hot_commit, aegis_hot_commit_batch, aegis_hot_commit_buffer};
 pub use lab::{
     PyLabController, aegis_lab_archive_events, aegis_lab_validate_snapshot,
     aegis_lab_validate_transition, aegis_lab_verify_archive,
@@ -68,7 +68,7 @@ pub use learning::{
     aegis_trigger_memory_nudge, aegis_validate_memory,
 };
 pub use mmap::{
-    aegis_execute_mmap_wasm_bridge_frame, aegis_mmap_bridge_header_bytes,
+    PyMmapBridgeWriter, aegis_execute_mmap_wasm_bridge_frame, aegis_mmap_bridge_header_bytes,
     aegis_mmap_bridge_payload_alignment, aegis_validate_mmap_bridge_frame,
     aegis_write_mmap_bridge_pattern,
 };
@@ -333,6 +333,7 @@ pub fn aegis_nerve(_py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(aegis_write_mmap_bridge_pattern, m)?)?;
     m.add_function(wrap_pyfunction!(aegis_validate_mmap_bridge_frame, m)?)?;
     m.add_function(wrap_pyfunction!(aegis_execute_mmap_wasm_bridge_frame, m)?)?;
+    m.add_class::<PyMmapBridgeWriter>()?;
     m.add_function(wrap_pyfunction!(aegis_new_message_identity, m)?)?;
     m.add_function(wrap_pyfunction!(aegis_can_bridge_python, m)?)?;
     m.add_function(wrap_pyfunction!(aegis_layout_header_bytes, m)?)?;
@@ -379,6 +380,7 @@ pub fn aegis_nerve(_py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(aegis_hot_hash, m)?)?;
     m.add_function(wrap_pyfunction!(aegis_hot_commit, m)?)?;
     m.add_function(wrap_pyfunction!(aegis_hot_commit_batch, m)?)?;
+    m.add_function(wrap_pyfunction!(aegis_hot_commit_buffer, m)?)?;
     // EaC bindings
     m.add_function(wrap_pyfunction!(aegis_eac_cache_lookup, m)?)?;
     m.add_function(wrap_pyfunction!(aegis_eac_cache_insert, m)?)?;
