@@ -34,9 +34,9 @@ name: Memory context live model evaluation
         default: "24"
         type: string
       delay_ms:
-        description: Delay between provider requests in milliseconds (2000 is about 30 RPM)
+        description: Delay between provider requests in milliseconds (2400 is about 25 RPM)
         required: false
-        default: "2000"
+        default: "2400"
         type: string
       dry_run:
         description: Validate workflow and artifact plumbing without provider calls
