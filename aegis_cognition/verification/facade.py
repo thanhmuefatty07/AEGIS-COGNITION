@@ -465,21 +465,20 @@ class VerificationFacade:
             exit_code = typed_result.get("exit_code")
             if exit_code is not None and type(exit_code) is not int:
                 raise ValueError("execution result exit code is invalid")
-            counts = {name: non_negative_int(name) for name in ("discovered", "passed", "failed", "skipped", "filtered", "ignored")}
-            if sum(counts[name] for name in ("passed", "failed", "skipped", "filtered", "ignored")) > counts[
-                "discovered"
-            ]:
+            counts = {
+                name: non_negative_int(name)
+                for name in ("discovered", "passed", "failed", "skipped", "filtered", "ignored")
+            }
+            if (
+                sum(counts[name] for name in ("passed", "failed", "skipped", "filtered", "ignored"))
+                > counts["discovered"]
+            ):
                 raise ValueError("execution result counts exceed discovered tests")
             artifact_ids: list[str] = []
             for stream in ("stdout", "stderr"):
                 digest = typed_result.get(f"{stream}_hash")
                 size = typed_result.get(f"{stream}_size", 0)
-                if (
-                    type(digest) is str
-                    and re.fullmatch(r"[0-9a-f]{64}", digest)
-                    and type(size) is int
-                    and size >= 0
-                ):
+                if type(digest) is str and re.fullmatch(r"[0-9a-f]{64}", digest) and type(size) is int and size >= 0:
                     artifact_id = f"{run_id}:{command_id}:{stream}"
                     artifact = ArtifactReference(
                         session_id=session_id,
@@ -532,13 +531,11 @@ class VerificationFacade:
                 started_at=started_at,
                 finished_at=finished_at,
                 error_codes=tuple(
-                    code
-                    for code in (str(typed_result.get("failure_class", "")).strip(),)
-                    if code and code != "None"
+                    code for code in (str(typed_result.get("failure_class", "")).strip(),) if code and code != "None"
                 ),
             )
             receipt.validate()
-        except (TypeError, ValueError):
+        except TypeError, ValueError:
             status = "MALFORMED"
             receipt = ExecutionReceipt(
                 session_id=session_id,
