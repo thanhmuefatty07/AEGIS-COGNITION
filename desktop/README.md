@@ -29,6 +29,7 @@ uv pip install --python .venv\\Scripts\\python.exe -r desktop/packaging/requirem
 npm run tauri:build
 ```
 
-The release configuration requires the generated
-`src-tauri/resources/aegis-desktop-service.exe`; the bundle intentionally
-fails when that authority binary is missing.
+The release configuration requires the generated native authority binary in
+`src-tauri/resources/`: PyInstaller emits
+`aegis-desktop-service.exe` on Windows and `aegis-desktop-service` on macOS or
+Linux. The bundle intentionally fails when that authority binary is missing.
