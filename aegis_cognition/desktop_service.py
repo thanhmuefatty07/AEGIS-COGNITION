@@ -279,6 +279,7 @@ class DesktopService:
         }
 
     def ready_payload(self) -> dict[str, Any]:
+        available_commands = sorted(self._handlers())
         return {
             "schema": READY_SCHEMA,
             "protocol_version": PROTOCOL_VERSION,
@@ -286,7 +287,12 @@ class DesktopService:
             "pid": os.getpid(),
             "profile_id": self.profile_id,
             "native_runtime_available": native_runtime_available(),
-            "commands": sorted(ALLOWED_COMMANDS),
+            # The allowlist is a policy boundary; only registered handlers are
+            # executable in this service instance. Advertising the latter
+            # prevents a desktop client from treating reserved commands as
+            # implemented and receiving COMMAND_UNAVAILABLE at runtime.
+            "commands": available_commands,
+            "allowed_commands": sorted(ALLOWED_COMMANDS),
         }
 
     def _shutdown(self, _payload: dict[str, Any]) -> Mapping[str, Any]:
