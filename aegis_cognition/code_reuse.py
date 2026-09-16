@@ -86,9 +86,8 @@ def _materialize_bytes(target: Path, data: bytes, *, overwrite: bool) -> None:
     """Write exact bytes without following a raced target symlink."""
 
     if not overwrite:
-        flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL
-        if hasattr(os, "O_BINARY"):
-            flags |= os.O_BINARY
+        flags = int(os.O_WRONLY | os.O_CREAT | os.O_EXCL)
+        flags |= int(getattr(os, "O_BINARY", 0))
         try:
             descriptor = os.open(target, flags, 0o600)
         except FileExistsError as error:
