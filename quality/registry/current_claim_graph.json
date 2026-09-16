@@ -1103,8 +1103,8 @@
     "future_obligations": 20,
     "invariants": 46,
     "mapped_surfaces": 9,
-    "surfaces": 184,
-    "unmapped_surfaces": 175,
+    "surfaces": 190,
+    "unmapped_surfaces": 181,
     "unmapped_verifications": 70,
     "unresolved_code_references": 0,
     "verifications": 92
@@ -3851,13 +3851,13 @@
     "all_surfaces_mapped": false,
     "critical_high_risk_mapped": false,
     "criticality_known": false,
-    "unmapped_surface_count": 175
+    "unmapped_surface_count": 181
   },
   "mode": "SHADOW",
   "phase": "PHASE_1_CLAIM_EVIDENCE_GRAPH",
   "schema": "aese-shadow-claim-evidence-graph-v1",
-  "source_head": "54a88b466cf2f65d661e7990cc7065a21dc1b97f",
-  "source_tree_sha256": "259ede959e04be8765e3cef813935b4f0462fc185d92adf2d0e025e2fdeec361",
+  "source_head": "4034df1074a6ccac23e078597f6a3f387a39e635",
+  "source_tree_sha256": "b2fbd907b33ed48fa25aad6e62f24f7ad69d7bea0e50548c47370f8c40f3aa45",
   "status": "SHADOW_GRAPH_PARTIAL_MAPPING_SELECTION_DISABLED",
   "surfaces": [
     {
@@ -4408,10 +4408,36 @@
     },
     {
       "claim_refs": [],
+      "id": "AESE-PYTHON_TEST-0E41D9806B1F8206",
+      "kind": "PYTHON_TEST",
+      "mapping_status": "NOT_MAPPED",
+      "path": "tests/test_application_subagents.py",
+      "release_critical": "UNKNOWN",
+      "release_criticality": "UNKNOWN",
+      "risk": "UNKNOWN",
+      "security_criticality": "UNKNOWN",
+      "target": null,
+      "unknown_dependency_policy": "INVALIDATE_CONSERVATIVELY"
+    },
+    {
+      "claim_refs": [],
       "id": "AESE-PYTHON_TEST-132068D9A890F856",
       "kind": "PYTHON_TEST",
       "mapping_status": "NOT_MAPPED",
       "path": "tests/test_aese_failure_diagnostic.py",
+      "release_critical": "UNKNOWN",
+      "release_criticality": "UNKNOWN",
+      "risk": "UNKNOWN",
+      "security_criticality": "UNKNOWN",
+      "target": null,
+      "unknown_dependency_policy": "INVALIDATE_CONSERVATIVELY"
+    },
+    {
+      "claim_refs": [],
+      "id": "AESE-PYTHON_TEST-1783E3D22C9A04BD",
+      "kind": "PYTHON_TEST",
+      "mapping_status": "NOT_MAPPED",
+      "path": "tests/test_research_adapters.py",
       "release_critical": "UNKNOWN",
       "release_criticality": "UNKNOWN",
       "risk": "UNKNOWN",
@@ -4477,6 +4503,19 @@
       "kind": "PYTHON_TEST",
       "mapping_status": "NOT_MAPPED",
       "path": "tests/test_evidence_consistency_gate.py",
+      "release_critical": "UNKNOWN",
+      "release_criticality": "UNKNOWN",
+      "risk": "UNKNOWN",
+      "security_criticality": "UNKNOWN",
+      "target": null,
+      "unknown_dependency_policy": "INVALIDATE_CONSERVATIVELY"
+    },
+    {
+      "claim_refs": [],
+      "id": "AESE-PYTHON_TEST-33515B9DD87F10CD",
+      "kind": "PYTHON_TEST",
+      "mapping_status": "NOT_MAPPED",
+      "path": "tests/test_vision_adapters.py",
       "release_critical": "UNKNOWN",
       "release_criticality": "UNKNOWN",
       "risk": "UNKNOWN",
@@ -4564,6 +4603,19 @@
       "kind": "PYTHON_TEST",
       "mapping_status": "NOT_MAPPED",
       "path": "tests/test_repository_license_policy.py",
+      "release_critical": "UNKNOWN",
+      "release_criticality": "UNKNOWN",
+      "risk": "UNKNOWN",
+      "security_criticality": "UNKNOWN",
+      "target": null,
+      "unknown_dependency_policy": "INVALIDATE_CONSERVATIVELY"
+    },
+    {
+      "claim_refs": [],
+      "id": "AESE-PYTHON_TEST-5F6901392B59DE6A",
+      "kind": "PYTHON_TEST",
+      "mapping_status": "NOT_MAPPED",
+      "path": "tests/test_subagents.py",
       "release_critical": "UNKNOWN",
       "release_criticality": "UNKNOWN",
       "risk": "UNKNOWN",
@@ -4876,6 +4928,19 @@
     },
     {
       "claim_refs": [],
+      "id": "AESE-PYTHON_TEST-E6F72A4824DD5C11",
+      "kind": "PYTHON_TEST",
+      "mapping_status": "NOT_MAPPED",
+      "path": "tests/test_code_reuse.py",
+      "release_critical": "UNKNOWN",
+      "release_criticality": "UNKNOWN",
+      "risk": "UNKNOWN",
+      "security_criticality": "UNKNOWN",
+      "target": null,
+      "unknown_dependency_policy": "INVALIDATE_CONSERVATIVELY"
+    },
+    {
+      "claim_refs": [],
       "id": "AESE-PYTHON_TEST-E94EA486F06207C7",
       "kind": "PYTHON_TEST",
       "mapping_status": "NOT_MAPPED",
@@ -5168,6 +5233,19 @@
       "kind": "RUST_UNIT_TEST",
       "mapping_status": "NOT_MAPPED",
       "path": "core/rust/src/learning/mod.rs",
+      "release_critical": "UNKNOWN",
+      "release_criticality": "UNKNOWN",
+      "risk": "UNKNOWN",
+      "security_criticality": "UNKNOWN",
+      "target": null,
+      "unknown_dependency_policy": "INVALIDATE_CONSERVATIVELY"
+    },
+    {
+      "claim_refs": [],
+      "id": "AESE-RUST_UNIT_TEST-55E0A1E324F5D479",
+      "kind": "RUST_UNIT_TEST",
+      "mapping_status": "NOT_MAPPED",
+      "path": "core/rust/src/agent_coordination.rs",
       "release_critical": "UNKNOWN",
       "release_criticality": "UNKNOWN",
       "risk": "UNKNOWN",
@@ -7069,6 +7147,6 @@
       "source_id": "AESE-011"
     }
   ],
-  "worktree_epoch": "9728e6e6a3865b090bbe4817c0ab269d38374b41124d169b46115b80a641319e",
-  "worktree_status": "CLEAN"
+  "worktree_epoch": "1c3a24886b7d4c8deaff691f5580ee76d694ada9d7cc5ee1055a0e39ec82317c",
+  "worktree_status": "DIRTY"
 }

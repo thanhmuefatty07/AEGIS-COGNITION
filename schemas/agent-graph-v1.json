@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "aegis-agent-graph-v1",
+  "title": "AEGIS bounded in-process subagent graph",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "tasks"],
+  "properties": {
+    "schema": {"const": "aegis-agent-graph-v1"},
+    "tasks": {
+      "type": "array",
+      "maxItems": 256,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["task_id", "dependency_ids", "artifact_namespace", "exclusive_resource_keys"],
+        "properties": {
+          "task_id": {"type": "integer", "minimum": 1},
+          "dependency_ids": {"type": "array", "maxItems": 4096, "items": {"type": "integer", "minimum": 1}},
+          "artifact_namespace": {"type": "string", "minLength": 1, "maxLength": 512},
+          "exclusive_resource_keys": {"type": "array", "maxItems": 64, "items": {"type": "string", "minLength": 1, "maxLength": 4096}}
+        }
+      }
+    }
+  }
+}

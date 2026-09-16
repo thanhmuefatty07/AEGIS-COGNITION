@@ -68,6 +68,21 @@ quick_result = run("Explain the evidence recorded for this task")
 print(quick_result.output)
 ```
 
+For bounded local subagents, the root can plan and synthesize without a user
+conversation between children:
+
+```python
+agent = Agent("Research the current evidence for this topic")
+result = agent.run_subagents()  # root plans, children run locally, root answers
+print(result.root_output)
+```
+
+The default research handler uses credential-free Reddit RSS; X is enabled only
+with an explicit system app-only bearer token. Browser/vision handlers are
+bound to the existing browser runtime by the host; the vision adapter keeps
+image bytes out of child messages and requires a real multimodal invoker. See
+the [subagent runtime design](docs/architecture/AGENT_SUBAGENT_RUNTIME_DESIGN.md).
+
 Development tasks are automatically prepared for AESE verification. Provide an
 explicit expected behavior before source work begins:
 
