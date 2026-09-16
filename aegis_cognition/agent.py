@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+import asyncio
 import os
 from pathlib import Path
+from collections.abc import Awaitable, Callable, Mapping
 from typing import Any
 
 from .application import AgentApplication
@@ -12,6 +14,7 @@ from .errors import ConfigError, ProviderError
 from .models import RunResult
 from .observability import RuntimeTelemetry
 from .runtime import native_runtime_available
+from .subagents import AgentHandler, AgentMessage, AgentPlanProposal, AgentResultPacket, AgentSupervisorResult
 
 
 # Kept as compatibility aliases for callers that used the old private helpers.
@@ -90,6 +93,57 @@ class Agent:
 
     async def arun(self) -> RunResult:
         return await self._application.arun()
+
+    async def arun_subagents(
+        self,
+        *,
+        plan: AgentPlanProposal | Mapping[str, object] | object | None = None,
+        handlers: Mapping[str, AgentHandler] | None = None,
+        root_synthesizer: Callable[[tuple[AgentResultPacket, ...]], object | Awaitable[object]] | None = None,
+        message_sink: Callable[[AgentMessage], object | Awaitable[object]] | None = None,
+        require_native_authority: bool | None = None,
+        max_concurrency: int | None = None,
+    ) -> AgentSupervisorResult[object]:
+        """Run local subagents while keeping final synthesis in the root agent."""
+
+        return await self._application.arun_subagents(
+            plan=plan,
+            handlers=handlers,
+            root_synthesizer=root_synthesizer,
+            message_sink=message_sink,
+            require_native_authority=require_native_authority,
+            max_concurrency=max_concurrency,
+        )
+
+    def run_subagents(
+        self,
+        *,
+        plan: AgentPlanProposal | Mapping[str, object] | object | None = None,
+        handlers: Mapping[str, AgentHandler] | None = None,
+        root_synthesizer: Callable[[tuple[AgentResultPacket, ...]], object | Awaitable[object]] | None = None,
+        message_sink: Callable[[AgentMessage], object | Awaitable[object]] | None = None,
+        require_native_authority: bool | None = None,
+        max_concurrency: int | None = None,
+    ) -> AgentSupervisorResult[object]:
+        """Synchronous wrapper for :meth:`arun_subagents`."""
+
+        try:
+            asyncio.get_running_loop()
+        except RuntimeError:
+            return asyncio.run(
+                self.arun_subagents(
+                    plan=plan,
+                    handlers=handlers,
+                    root_synthesizer=root_synthesizer,
+                    message_sink=message_sink,
+                    require_native_authority=require_native_authority,
+                    max_concurrency=max_concurrency,
+                )
+            )
+        raise RuntimeError(
+            "Agent.run_subagents() cannot be called inside an async event loop. "
+            "Use `await agent.arun_subagents()` or call from a sync context."
+        )
 
     def __repr__(self) -> str:
         return f"Agent(task={self.task!r}, trust_level={self.trust_level!r})"

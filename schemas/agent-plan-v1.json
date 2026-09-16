@@ -1,0 +1,56 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "aegis-agent-plan-v1",
+  "title": "AEGIS root-proposed subagent plan",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "tasks"],
+  "oneOf": [
+    {"required": ["proposal_hash"]},
+    {"not": {"required": ["proposal_hash"]}}
+  ],
+  "properties": {
+    "schema": {"const": "aegis-agent-plan-v1"},
+    "tasks": {
+      "type": "array",
+      "maxItems": 256,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "task_id",
+          "handler_key",
+          "role",
+          "prompt",
+          "artifact_namespace",
+          "dependencies",
+          "capabilities",
+          "exclusive_resources",
+          "token_budget",
+          "timeout_seconds",
+          "memory_bytes",
+          "side_effect_class",
+          "parent_task_id",
+          "attempt_id"
+        ],
+        "properties": {
+          "task_id": {"type": "integer", "minimum": 1},
+          "handler_key": {"type": "string", "minLength": 1, "maxLength": 128},
+          "role": {"type": "string", "minLength": 1, "maxLength": 256},
+          "prompt": {"type": "string", "minLength": 1, "maxLength": 32768},
+          "artifact_namespace": {"type": "string", "minLength": 1, "maxLength": 512},
+          "dependencies": {"type": "array", "maxItems": 4096, "items": {"type": "integer", "minimum": 1}},
+          "capabilities": {"type": "array", "maxItems": 64, "items": {"type": "string", "minLength": 1, "maxLength": 4096}},
+          "exclusive_resources": {"type": "array", "maxItems": 64, "items": {"type": "string", "minLength": 1, "maxLength": 4096}},
+          "token_budget": {"type": ["integer", "null"], "minimum": 1},
+          "timeout_seconds": {"type": "number", "exclusiveMinimum": 0},
+          "memory_bytes": {"type": "integer", "minimum": 1},
+          "side_effect_class": {"type": "string", "minLength": 1, "maxLength": 128},
+          "parent_task_id": {"type": ["integer", "null"], "minimum": 1},
+          "attempt_id": {"type": "integer", "minimum": 1}
+        }
+      }
+    },
+    "proposal_hash": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+  }
+}

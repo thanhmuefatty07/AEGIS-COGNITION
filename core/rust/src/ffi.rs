@@ -14,6 +14,7 @@ use std::panic::{AssertUnwindSafe, catch_unwind};
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, OnceLock};
 
+mod agent_coordination;
 mod compat;
 mod connections;
 mod context;
@@ -26,6 +27,7 @@ mod mmap;
 mod runtime;
 mod source_watcher;
 mod status;
+pub use agent_coordination::aegis_agent_graph_validate;
 pub use compat::{
     aegis_harness_analyze_errors, aegis_harness_generate_skeleton, aegis_hot_hash,
     aegis_llm_bridge_key, aegis_llm_normalize, aegis_llm_reject, aegis_llm_request,
@@ -320,6 +322,7 @@ fn py_safe<T>(f: impl FnOnce() -> T) -> PyResult<T> {
 
 #[pymodule]
 pub fn aegis_nerve(_py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
+    m.add_function(wrap_pyfunction!(aegis_agent_graph_validate, m)?)?;
     m.add_function(wrap_pyfunction!(aegis_status, m)?)?;
     m.add_function(wrap_pyfunction!(aegis_validate_schema, m)?)?;
     m.add_function(wrap_pyfunction!(aegis_validate_layout, m)?)?;
