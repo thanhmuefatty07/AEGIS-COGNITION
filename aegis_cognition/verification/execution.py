@@ -111,7 +111,7 @@ def _resolve_rustup_tool(tool: str, *, cwd: Path) -> str | None:
             cwd=cwd,
             shell=False,
         )
-    except (OSError, subprocess.SubprocessError):
+    except OSError, subprocess.SubprocessError:
         return str(Path(discovered))
     candidate_text = resolved.stdout.strip().splitlines()[-1] if resolved.stdout.strip() else ""
     if not candidate_text:
@@ -196,11 +196,7 @@ class LocalVerificationCommand:
         if not executable.is_file():
             raise ValueError("local verification executable is not an existing file")
         if any(
-            type(key) is not str
-            or type(value) is not str
-            or not key.strip()
-            or "\x00" in key
-            or "\x00" in value
+            type(key) is not str or type(value) is not str or not key.strip() or "\x00" in key or "\x00" in value
             for key, value in self.environment.items()
         ):
             raise ValueError("local verification environment is invalid")
@@ -301,12 +297,16 @@ def build_local_verification_commands(
     if include_rust and "rust" in profile.languages and "cargo" in profile.frameworks:
         cargo = _resolve_cargo_executable(cwd=root)
         if cargo is not None:
-            argv = ("test", "--workspace", "--no-default-features") if deep else (
-                "test",
-                "-p",
-                "aegis-nerve",
-                "--lib",
-                "--no-default-features",
+            argv = (
+                ("test", "--workspace", "--no-default-features")
+                if deep
+                else (
+                    "test",
+                    "-p",
+                    "aegis-nerve",
+                    "--lib",
+                    "--no-default-features",
+                )
             )
             rust_environment: dict[str, str] = {}
             rustc = _resolve_rustup_tool("rustc", cwd=root)
@@ -355,7 +355,7 @@ def _terminate_child(process: subprocess.Popen[bytes]) -> None:
             except subprocess.TimeoutExpired:
                 with contextlib.suppress(ProcessLookupError):
                     os.killpg(process.pid, signal.SIGKILL)
-    except (OSError, subprocess.SubprocessError):
+    except OSError, subprocess.SubprocessError:
         with contextlib.suppress(OSError):
             process.kill()
 
@@ -384,9 +384,7 @@ def run_local_verification_command(payload: object) -> dict[str, object]:
         python_runtime = _python_runtime_dll_directory()
         if python_runtime is not None:
             inherited_path = environment.get("PATH", "")
-            environment["PATH"] = os.pathsep.join(
-                value for value in (str(python_runtime), inherited_path) if value
-            )
+            environment["PATH"] = os.pathsep.join(value for value in (str(python_runtime), inherited_path) if value)
     started_at = _utc_now()
     timed_out = False
     return_code: int | None = None

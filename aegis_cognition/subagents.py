@@ -1527,9 +1527,7 @@ class AgentSupervisor[RootOutputT]:
                 await self._emit(result.to_message(recipient_id="root"))
                 return result
             context = AgentTaskContext(request=request, dependency_results=dependencies)
-            locks = tuple(
-                _exclusive_lock(key) for key in sorted(spec.exclusive_resources)
-            )
+            locks = tuple(_exclusive_lock(key) for key in sorted(spec.exclusive_resources))
             try:
                 async with asyncio.timeout(spec.timeout_seconds):
                     async with semaphore:
