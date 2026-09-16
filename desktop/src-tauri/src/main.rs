@@ -13,6 +13,11 @@ const READY_SCHEMA: &str = "aegis-desktop-ready-v1";
 const RESPONSE_SCHEMA: &str = "aegis-desktop-response-v1";
 const PROTOCOL_VERSION: u64 = 1;
 
+#[cfg(target_os = "windows")]
+const BUNDLED_SERVICE_NAME: &str = "aegis-desktop-service.exe";
+#[cfg(not(target_os = "windows"))]
+const BUNDLED_SERVICE_NAME: &str = "aegis-desktop-service";
+
 struct SidecarClient {
     child: Child,
     stdin: ChildStdin,
@@ -28,7 +33,7 @@ impl SidecarClient {
                     .ok()?
                     .parent()?
                     .join("resources")
-                    .join("aegis-desktop-service.exe");
+                    .join(BUNDLED_SERVICE_NAME);
                 bundled.is_file().then_some(bundled)
             })
             .unwrap_or_else(|| PathBuf::from("aegis-desktop"));
@@ -173,4 +178,17 @@ fn main() {
         .invoke_handler(tauri::generate_handler![desktop_request])
         .run(tauri::generate_context!())
         .expect("error while running AEGIS desktop");
+}
+
+#[cfg(test)]
+mod tests {
+    use super::BUNDLED_SERVICE_NAME;
+
+    #[test]
+    fn bundled_service_name_matches_the_host_platform() {
+        #[cfg(target_os = "windows")]
+        assert_eq!(BUNDLED_SERVICE_NAME, "aegis-desktop-service.exe");
+        #[cfg(not(target_os = "windows"))]
+        assert_eq!(BUNDLED_SERVICE_NAME, "aegis-desktop-service");
+    }
 }

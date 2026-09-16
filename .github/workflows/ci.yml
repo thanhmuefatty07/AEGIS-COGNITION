@@ -254,6 +254,23 @@ jobs:
       - name: Build desktop graph surface
         working-directory: desktop
         run: npm run build
+      - name: Install Tauri Linux system dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libwebkit2gtk-4.1-dev \
+            build-essential \
+            curl \
+            wget \
+            file \
+            libxdo-dev \
+            libssl-dev \
+            libayatana-appindicator3-dev \
+            librsvg2-dev
+      - name: Check Tauri host
+        working-directory: desktop
+        run: cargo check --manifest-path src-tauri/Cargo.toml
 
   cross-platform-full-suite:
     name: Full Python suite (${{ matrix.os }})
