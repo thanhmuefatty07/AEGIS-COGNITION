@@ -60,3 +60,18 @@ desktop/dist/
 desktop/.pyinstaller-build/
 desktop/src-tauri/resources/*.exe
 desktop/src-tauri/gen/
+
+# Project-private research and generated evidence. Keep collector sources and
+# the public evidence schema; keep raw results and host-specific reports local.
+docs/architecture/MEMORY_CONTEXT_BENCHMARK.md
+docs/architecture/MEMORY_CONTEXT_LIVE_EVAL.md
+docs/architecture/RESOURCE_POLICY_BENCHMARKS.md
+docs/architecture/empirical-research/*
+!docs/architecture/empirical-research/collect.py
+docs/architecture/evidence-pack/*
+!docs/architecture/evidence-pack/collect.py
+!docs/architecture/evidence-pack/final_closure_collect.py
+docs/architecture/design-closure/*
+!docs/architecture/design-closure/design_closure_collect.py
+docs/architecture/evidence/*
+!docs/architecture/evidence/current.json

@@ -28,12 +28,13 @@ replay explicit and auditable.
   Ubuntu, Windows, and macOS GitHub-hosted runners, with deeper Linux evidence
   available on a persistent test host.
 
-## Memory context efficiency
+## Measurement policy
 
-The recorded cross-platform benchmark shows a **58.296% token reduction** on
-Ubuntu, Windows, and macOS. In the 593-file workspace case, the reduction
-reached **93.874%**. See the [benchmark report](docs/architecture/MEMORY_CONTEXT_BENCHMARK.md)
-and [GitHub Actions evidence](https://github.com/thanhmuefatty07/AEGIS-COGNITION/actions/runs/34831605691).
+Benchmark harnesses remain part of the engineering surface, but raw runs,
+benchmark reports, and empirical evidence are local-only project material.
+They are deliberately excluded from Git history and from public performance
+claims. The repository therefore publishes the verification process and its
+scope, not copied numeric results from a particular host or workload.
 
 ## Quick start
 

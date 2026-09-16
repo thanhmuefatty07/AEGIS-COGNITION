@@ -39,8 +39,8 @@ manifest with the final SHA.
 | TEL-003 | Resource sampling is observation-only and can feed deterministic capacity feedback | `resource.rs`, `ffi.rs`, `aegis_cognition/runtime.py` | `PROVEN`: native sample boundary and pressure-feedback tests; external exporter `NOT VERIFIED` |
 | STD-001 | Standards applicability and test-process mapping | `docs/architecture/STANDARDS_APPLICABILITY.md`, `TESTING_AND_EVIDENCE.md` | `PROVEN`: durable matrix and evidence-label process |
 | PERF-001 | Hardware policy is measurement-backed | `scripts/resource_policy_benchmark.py` | `MEASURED` only for explicitly recorded local runs; H0/H1/H2 freeze `NOT VERIFIED` |
-| PERF-002 | Scheduler microbenchmarks have stable IDs | `core/rust/benches/resource_runtime.rs`, `RESOURCE_POLICY_BENCHMARKS.md` | `MEASURED`: local Windows sample-size-10 run retained in verification ledger; cross-tier comparison `NOT VERIFIED` |
-| PERF-003 | Full architecture microbenchmark ID set exists | `core/rust/benches/architecture_performance.rs`, `RESOURCE_POLICY_BENCHMARKS.md` | `MEASURED`: local Windows sample-size-10 smoke run covered FFI/SCH/CPU/SBX IDs; cross-tier comparison `NOT VERIFIED` |
+| PERF-002 | Scheduler microbenchmarks have stable IDs | `core/rust/benches/resource_runtime.rs` | `MEASURED LOCAL ONLY`: raw outputs are retained outside Git; cross-tier comparison `NOT VERIFIED` |
+| PERF-003 | Full architecture microbenchmark ID set exists | `core/rust/benches/architecture_performance.rs` | `MEASURED LOCAL ONLY`: raw outputs are retained outside Git; cross-tier comparison `NOT VERIFIED` |
 | SCM-001 | Dependency/secret/release gates are reproducible | `scripts/supply_chain_gate.py`, `scripts/secret_scan.py`, CI | `PROVEN`: gates passed in CI/plugin/deep runs [32778221183](https://github.com/thanhmuefatty07/AEGIS-COGNITION/actions/runs/32778221183), [32778221299](https://github.com/thanhmuefatty07/AEGIS-COGNITION/actions/runs/32778221299), and [32778232964](https://github.com/thanhmuefatty07/AEGIS-COGNITION/actions/runs/32778232964); external signed release attestation remains `NOT VERIFIED` |
 | REL-001 | Release wheel hashes, SBOM, and provenance path | `scripts/release_evidence.py`, `.github/workflows/release.yml` | `SOURCE-BACKED HISTORICAL`: the cited hosted run is not evidence for the current local final SHA; external signed attestation persistence remains `NOT VERIFIED` |
 | PY-002 | Agent facade has explicit application/config/infrastructure boundaries | `aegis_cognition/agent.py`, `application.py`, `config.py`, `infrastructure.py` | `PROVEN`: architecture fitness, strict Pyright/Ruff, 89-test local regression |
@@ -52,6 +52,6 @@ manifest with the final SHA.
 ## Evidence discipline
 
 Claims in README and release notes must link to this matrix or a retained
-benchmark artifact. A local run on one workstation cannot be relabeled as H0,
+verification artifact. A local run on one workstation cannot be relabeled as H0,
 H1, or H2 without recording the hardware profile, OS, toolchain, workload,
 sample count, and raw output.

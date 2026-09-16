@@ -21,7 +21,7 @@ name: Memory context live model evaluation
       nvidia_models:
         description: NVIDIA NIM model id(s), comma-separated
         required: false
-        default: moonshotai/kimi-k2.6
+        default: deepseek-ai/deepseek-v4-flash
         type: string
       repeats:
         description: Repeated baseline/bounded pairs (1-3)
@@ -31,8 +31,18 @@ name: Memory context live model evaluation
       max_requests:
         description: Safety ceiling for planned requests (1-96)
         required: false
-        default: "48"
+        default: "24"
         type: string
+      delay_ms:
+        description: Delay between provider requests in milliseconds (2400 is about 25 RPM)
+        required: false
+        default: "2400"
+        type: string
+      dry_run:
+        description: Validate workflow and artifact plumbing without provider calls
+        required: false
+        default: false
+        type: boolean
 
 permissions:
   contents: read
@@ -55,6 +65,8 @@ jobs:
       EVAL_NVIDIA_MODELS: ${{ inputs.nvidia_models }}
       EVAL_REPEATS: ${{ inputs.repeats }}
       EVAL_MAX_REQUESTS: ${{ inputs.max_requests }}
+      EVAL_DELAY_MS: ${{ inputs.delay_ms }}
+      EVAL_DRY_RUN: ${{ inputs.dry_run }}
       OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
       NVIDIA_NIM_API_KEY: ${{ secrets.NVIDIA_NIM_API_KEY }}
     steps:
@@ -71,13 +83,19 @@ jobs:
           PYTHONPATH: ${{ github.workspace }}
         run: |
           mkdir -p artifacts
-          uv run --no-project --no-sync --locked --extra all --extra dev python scripts/memory_context_live_eval.py \
+          eval_args=( \
             --provider "$EVAL_PROVIDER" \
             --openrouter-models "$EVAL_OPENROUTER_MODELS" \
             --nvidia-models "$EVAL_NVIDIA_MODELS" \
             --repeats "$EVAL_REPEATS" \
             --max-requests "$EVAL_MAX_REQUESTS" \
-            --output artifacts/memory-context-live-eval.json
+            --delay-ms "$EVAL_DELAY_MS" \
+            --output artifacts/memory-context-live-eval.json \
+          )
+          if [[ "$EVAL_DRY_RUN" == "true" ]]; then
+            eval_args+=(--dry-run)
+          fi
+          uv run --no-project --no-sync --locked --extra all --extra dev python scripts/memory_context_live_eval.py "${eval_args[@]}"
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         if: always()
         with:
