@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import inspect
 import json
+import math
 import re
 import time
 import uuid
@@ -79,14 +80,20 @@ _DEVELOPMENT_TASK_MARKERS = (
 _DEFAULT_SUBAGENT_CAPABILITIES = frozenset(
     {"read_only", "network_read", "compute", "model_inference", "browser", "vision", "code_reuse"}
 )
-_DEFAULT_SUBAGENT_SIDE_EFFECT_CLASSES = frozenset({"ReadOnly", "NetworkRead", "Compute", "ModelInference", "LocalReversible"})
+_DEFAULT_SUBAGENT_SIDE_EFFECT_CLASSES = frozenset(
+    {"ReadOnly", "NetworkRead", "Compute", "ModelInference", "LocalReversible"}
+)
 _MAX_SUBAGENT_PLANNER_CHARS = 32_768
 
 
 def _looks_like_development_task(task: str) -> bool:
     normalized = task.casefold()
     return any(
-        (marker in normalized if any(not character.isascii() for character in marker) else re.search(rf"\b{re.escape(marker)}\b", normalized) is not None)
+        (
+            marker in normalized
+            if any(not character.isascii() for character in marker)
+            else re.search(rf"\b{re.escape(marker)}\b", normalized) is not None
+        )
         for marker in _DEVELOPMENT_TASK_MARKERS
     )
 
@@ -407,7 +414,7 @@ class AgentApplication:
             )
             if lab_run is not None:
                 lab_run.record_blocker(f"aese_verification_{receipt.status.casefold()}")
-        except (VerificationSessionError, TypeError, ValueError):
+        except VerificationSessionError, TypeError, ValueError:
             if lab_run is not None:
                 lab_run.record_blocker("aese_verification_receipt_rejected")
 
@@ -476,14 +483,21 @@ class AgentApplication:
         )
 
     @staticmethod
-    def _bounded_subagent_planner_prompt(task: str, handler_keys: tuple[str, ...]) -> str:
+    def _bounded_subagent_planner_prompt(
+        task: str,
+        handler_keys: tuple[str, ...],
+        *,
+        research_x_configured: bool = False,
+    ) -> str:
         prompt = "\n".join(
             (
                 "You are the root agent's planning phase. Return only one JSON object; do not use markdown.",
                 "The host will validate the DAG, compute proposal_hash, bind trusted handlers, and enforce runtime policy.",
                 "Create only the smallest set of independent or dependency-linked child tasks needed for the user task.",
                 "Every task must use one handler_key from the allowlist and must be read-only unless the host policy says otherwise.",
-                "The JSON shape is {\"schema\":\"aegis-agent-plan-v1\",\"tasks\":[{...}]}; omit proposal_hash.",
+                "For the research handler, prefix the child prompt with reddit:, x:, or all:; x works only when the host reports an app-only token.",
+                f"RESEARCH_X_APP_ONLY_CONFIGURED: {str(research_x_configured).lower()}",
+                'The JSON shape is {"schema":"aegis-agent-plan-v1","tasks":[{...}]}; omit proposal_hash.',
                 "Each task object must contain exactly: task_id, handler_key, role, prompt, artifact_namespace, dependencies, capabilities, exclusive_resources, token_budget, timeout_seconds, memory_bytes, side_effect_class, parent_task_id, attempt_id.",
                 f"HANDLER_ALLOWLIST: {json.dumps(handler_keys, ensure_ascii=False)}",
                 f"USER_TASK: {task}",
@@ -523,7 +537,11 @@ class AgentApplication:
         raw_max_tokens = options.get("subagent_max_token_budget", 32_000)
         if type(raw_max_tasks) is not int or not 1 <= raw_max_tasks <= 256:
             raise ValueError("subagent_max_tasks must be an integer within [1, 256]")
-        if type(raw_max_timeout) not in (int, float) or raw_max_timeout <= 0:
+        if (
+            type(raw_max_timeout) not in (int, float)
+            or not math.isfinite(float(raw_max_timeout))
+            or raw_max_timeout <= 0
+        ):
             raise ValueError("subagent_max_timeout_seconds must be positive")
         if type(raw_max_memory) is not int or raw_max_memory < 1:
             raise ValueError("subagent_max_memory_bytes must be positive")
@@ -531,7 +549,6 @@ class AgentApplication:
             raise ValueError("subagent_max_token_budget must be positive")
         if len(proposal.tasks) > raw_max_tasks:
             raise ValueError("subagent plan exceeds the configured task bound")
-        known_ids = {task.task_id for task in proposal.tasks}
         for task in proposal.tasks:
             if task.handler_key not in handlers:
                 raise ValueError(f"subagent plan selected an unregistered handler: {task.handler_key}")
@@ -550,8 +567,6 @@ class AgentApplication:
             # children only; dependencies remain the data-flow contract.
             if task.parent_task_id is not None:
                 raise ValueError("nested parent_task_id is not supported by the current supervisor")
-            if task.task_id not in known_ids:
-                raise ValueError("subagent plan contains an unknown task identity")
 
     async def arun_subagents(
         self,
@@ -575,7 +590,68 @@ class AgentApplication:
         gateway: Any | None = None
         system_context = ""
         try:
-            needs_model = plan is None or handlers is None or root_synthesizer is None
+            proposed_plan = parse_agent_plan(plan) if plan is not None else None
+            trusted_handlers: dict[str, AgentHandler] = {}
+            research_x_configured = False
+            raw_public_research = self.config.options.get("subagent_public_research", True)
+            if type(raw_public_research) is not bool:
+                raise ValueError("subagent_public_research must be boolean")
+            if raw_public_research:
+                from .research_adapters import (
+                    PublicResearchRouter,
+                    RedditRssQueryProvider,
+                    XAppOnlyQueryProvider,
+                    build_public_research_handler,
+                )
+
+                raw_router = self.config.options.get("subagent_research_router")
+                if raw_router is not None and not callable(raw_router):
+                    raise TypeError("subagent_research_router must be callable")
+                router = raw_router or PublicResearchRouter(
+                    reddit=RedditRssQueryProvider(),
+                    x=XAppOnlyQueryProvider(),
+                )
+                if isinstance(router, PublicResearchRouter):
+                    research_x_configured = router.x is not None and router.x.configured
+                trusted_handlers["research"] = build_public_research_handler(router)
+            raw_browser_handler = self.config.options.get("subagent_browser_handler")
+            if raw_browser_handler is not None:
+                if not callable(raw_browser_handler):
+                    raise TypeError("subagent_browser_handler must be callable")
+                trusted_handlers["browser"] = cast(AgentHandler, raw_browser_handler)
+            raw_vision_invoker = self.config.options.get("subagent_vision_invoker")
+            raw_browser_capture = self.config.options.get("subagent_browser_capture")
+            if raw_vision_invoker is not None or raw_browser_capture is not None:
+                if not callable(raw_vision_invoker) or not callable(raw_browser_capture):
+                    raise TypeError("subagent_vision_invoker and subagent_browser_capture must be supplied together")
+                from .vision_adapters import (
+                    BrowserCaptureProvider,
+                    VisionInvoker,
+                    build_browser_vision_handler,
+                )
+
+                trusted_handlers["vision"] = build_browser_vision_handler(
+                    cast(VisionInvoker, raw_vision_invoker),
+                    cast(BrowserCaptureProvider, raw_browser_capture),
+                )
+            if handlers is not None:
+                for key, handler in handlers.items():
+                    if type(key) is not str or not key.strip() or len(key) > 128:
+                        raise ValueError("subagent handler keys must be bounded non-empty strings")
+                    if not callable(handler):
+                        raise TypeError(f"subagent handler is not callable: {key}")
+                    trusted_handlers[key] = handler
+
+            requested_handler_keys = (
+                frozenset(task.handler_key for task in proposed_plan.tasks)
+                if proposed_plan is not None
+                else frozenset[str]()
+            )
+            needs_model = (
+                proposed_plan is None
+                or root_synthesizer is None
+                or ("model" in requested_handler_keys and "model" not in trusted_handlers)
+            )
             if needs_model:
                 formatted_task, system_context = self.prepare(self.config.task)
                 gateway = self._gateway(formatted_task)
@@ -593,28 +669,21 @@ class AgentApplication:
                     return await result
                 return result
 
-            trusted_handlers: dict[str, AgentHandler] = {}
             if gateway is not None:
-                trusted_handlers["model"] = build_model_subagent_handler(invoke_model)
-            if handlers is not None:
-                for key, handler in handlers.items():
-                    if type(key) is not str or not key.strip() or len(key) > 128:
-                        raise ValueError("subagent handler keys must be bounded non-empty strings")
-                    if not callable(handler):
-                        raise TypeError(f"subagent handler is not callable: {key}")
-                    trusted_handlers[key] = handler
+                trusted_handlers.setdefault("model", build_model_subagent_handler(invoke_model))
             if not trusted_handlers:
                 raise ValueError("at least one trusted subagent handler is required")
 
-            if plan is None:
+            if proposed_plan is None:
                 planner_prompt = self._bounded_subagent_planner_prompt(
                     self.config.task,
                     tuple(sorted(trusted_handlers)),
+                    research_x_configured=research_x_configured,
                 )
                 proposal = parse_agent_plan(await invoke_model(planner_prompt))
                 self.telemetry.emit("agent", "subagent_plan_proposed", correlation=self.correlation)
             else:
-                proposal = parse_agent_plan(plan)
+                proposal = proposed_plan
             self._validate_subagent_plan(proposal, trusted_handlers)
             specs = proposal.bind_handlers(trusted_handlers)
             effective_root = root_synthesizer
@@ -626,17 +695,16 @@ class AgentApplication:
                 else require_native_authority
             )
             raw_concurrency = (
-                self.config.options.get("subagent_max_concurrency", 4)
-                if max_concurrency is None
-                else max_concurrency
+                self.config.options.get("subagent_max_concurrency", 4) if max_concurrency is None else max_concurrency
             )
-            result = await AgentSupervisor(
-                run_id=self.correlation.task_id,
-                max_concurrency=raw_concurrency,
+            supervisor: AgentSupervisor[object] = AgentSupervisor(
+                run_id=str(self.correlation.run_id),
+                max_concurrency=cast(int, raw_concurrency),
                 trust_level=self.config.trust_level,
-                require_native_authority=raw_require_native,
+                require_native_authority=cast(bool, raw_require_native),
                 message_sink=message_sink,
-            ).run(specs, effective_root)
+            )
+            result = await supervisor.run(specs, effective_root)
             self.telemetry.emit("agent", "subagents_completed", correlation=self.correlation)
             return result
         except Exception:
@@ -647,6 +715,36 @@ class AgentApplication:
                 "runtime.agent.subagents_duration",
                 (time.perf_counter() - started) * 1000,
             )
+
+    def run_subagents(
+        self,
+        *,
+        plan: AgentPlanProposal | Mapping[str, object] | object | None = None,
+        handlers: Mapping[str, AgentHandler] | None = None,
+        root_synthesizer: Callable[[tuple[AgentResultPacket, ...]], object | Awaitable[object]] | None = None,
+        message_sink: Callable[[AgentMessage], object | Awaitable[object]] | None = None,
+        require_native_authority: bool | None = None,
+        max_concurrency: int | None = None,
+    ) -> AgentSupervisorResult[object]:
+        """Synchronous wrapper for :meth:`arun_subagents`."""
+
+        try:
+            asyncio.get_running_loop()
+        except RuntimeError:
+            return asyncio.run(
+                self.arun_subagents(
+                    plan=plan,
+                    handlers=handlers,
+                    root_synthesizer=root_synthesizer,
+                    message_sink=message_sink,
+                    require_native_authority=require_native_authority,
+                    max_concurrency=max_concurrency,
+                )
+            )
+        raise RuntimeError(
+            "AgentApplication.run_subagents() cannot be called inside an async event loop. "
+            "Use `await application.arun_subagents()` or call from a sync context."
+        )
 
     def _begin_conversation(self, task: str) -> dict[str, Any] | None:
         """Create the canonical user/assistant execution envelope when opted in."""

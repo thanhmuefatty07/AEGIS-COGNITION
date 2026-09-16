@@ -11,6 +11,49 @@ result = Agent("Summarize the supplied evidence", trust_level="DEV").run()
 print(result.output)
 ```
 
+## Local subagents
+
+Use `run_subagents()` when one root agent should split a task into bounded
+children and retain final synthesis:
+
+```python
+agent = Agent("Research the current evidence for this topic")
+result = agent.run_subagents()
+print(result.root_output)
+```
+
+With no plan, the root makes one JSON planning call. The host hashes and
+constrains that plan, binds only trusted handler keys, runs independent tasks
+concurrently on the current machine, and sends compact result packets back to
+the root. The default handlers are `model` and public `research`; Reddit uses
+credential-free RSS, while X requires an explicit system app-only bearer token.
+`Agent.run()` is unchanged.
+
+Browser/vision handlers are intentionally supplied by the host so the handler
+can bind an existing `BrowserCell`/Playwright session and its evidence
+collector. Actor tasks should declare an exclusive session resource; observer
+tasks must use the read-only projection. No user cookie, login, or arbitrary
+model-selected callable is accepted by the planner boundary. See the
+[`AGENT_SUBAGENT_RUNTIME_DESIGN.md`](../architecture/AGENT_SUBAGENT_RUNTIME_DESIGN.md)
+for the protocol and limits.
+
+For a multimodal provider, bind the existing capture result rather than adding
+another browser stack:
+
+```python
+from aegis_cognition import build_browser_vision_handler
+
+vision = build_browser_vision_handler(vision_invoker, capture_browser_result)
+result = await agent.arun_subagents(handlers={"vision": vision}, plan=plan)
+```
+
+`capture_browser_result` is host-owned and may call the existing
+`AegisAdapter.capture_browser_action` or Playwright adapter. The vision
+adapter verifies image hashes, keeps image bytes out of result messages, and
+labels the model interpretation `INFERRED`. A provider-specific multimodal
+invoker is still required; text-only gateways are not silently treated as
+vision models.
+
 For a multi-step research or experiment mission, use the explicit Lab facade:
 
 ```python

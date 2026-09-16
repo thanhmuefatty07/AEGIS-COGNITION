@@ -15,6 +15,7 @@
     clippy::too_many_arguments
 )]
 
+pub mod agent_coordination;
 pub mod bridge_mmap;
 pub mod browser_witness;
 pub mod circuit_breaker;

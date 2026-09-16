@@ -49,6 +49,9 @@ control is cooperative/measurement-only until live evidence exists.
 | Python runtime telemetry | `aegis_cognition/observability.py`, `metrics.py`, `core/rust/src/ffi.rs` | bounded correlation-chain tests; exporter/backend availability NOT VERIFIED |
 | Python application boundaries | `aegis_cognition/agent.py`, `application.py`, `config.py`, `infrastructure.py` | architecture fitness + strict Ruff/Pyright + regression tests |
 | Gateway responsibility boundaries | `core/python/aegis/contracts.py`, `provider.py`, `evidence.py`, `learning.py` | architecture fitness + full Python bridge regression suite |
+| Local subagent coordination | `aegis_cognition/subagents.py`, `core/rust/src/agent_coordination.rs`, `schemas/agent-*.json` | native graph validation + bounded TaskGroup/resource-lock tests; cross-platform CI execution pending |
+| Public research adapters | `aegis_cognition/research_adapters.py` | Reddit RSS live read-only smoke + deterministic adapter tests; X requires an app-only token |
+| Exact code reuse | `aegis_cognition/code_reuse.py`, `core/python/aegis/code_intelligence.py` | snapshot/hash/license/path-bound tests; public-source retrieval and model-training lookup are not enabled |
 | Memory Agent workspace projection | `core/python/aegis/code_intelligence.py`, `desktop/src/workspace_graph.ts`, `desktop/src/WorkspaceGraphView.tsx` | revision-bound read-only graph contract; desktop build PASS; source-proof navigation and memory-linked graph NOT VERIFIED |
 
 The durable standards mapping is in
@@ -68,9 +71,16 @@ and unresolved closure work is retained in
   outputs; use `design_closure_collect.py` as its source of truth.
 - [`empirical-research/`](empirical-research/): retained empirical research
   records and bounded comparisons.
+- [`AGENT_SUBAGENT_ECOSYSTEM_RESEARCH.md`](empirical-research/AGENT_SUBAGENT_ECOSYSTEM_RESEARCH.md):
+  external subagent, browser/vision, public-source and code-reuse findings
+  bound to the current local runtime decision.
 - [`MEMORY_AGENT_LIVING_WORKSPACE_RESEARCH.md`](MEMORY_AGENT_LIVING_WORKSPACE_RESEARCH.md):
   current decision input for the local-first Memory Agent, token-bounded
   context, and evidence-backed project graph inspired by external research.
+
+The subagent decision and protocol are recorded in
+[`AGENT_SUBAGENT_RUNTIME_DESIGN.md`](AGENT_SUBAGENT_RUNTIME_DESIGN.md) and
+[`ADR-016-subagent-coordination.md`](../adr/ADR-016-subagent-coordination.md).
 
 These directories are evidence outputs, not hand-maintained implementation
 authority. A historical path or label inside a retained snapshot is provenance
