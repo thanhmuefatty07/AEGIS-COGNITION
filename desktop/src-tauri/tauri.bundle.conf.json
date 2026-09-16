@@ -2,7 +2,7 @@
   "bundle": {
     "active": true,
     "targets": "all",
-    "resources": ["resources/aegis-desktop-service.exe"],
+    "resources": ["resources/aegis-desktop-service*"],
     "icon": ["icons/icon.ico"]
   }
 }
