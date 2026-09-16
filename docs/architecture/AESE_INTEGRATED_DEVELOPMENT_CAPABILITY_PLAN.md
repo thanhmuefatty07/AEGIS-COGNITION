@@ -168,7 +168,9 @@ The codebase-memory index is a navigation aid only. Its current structural graph
 
 ### 3.4. Research-derived deployment and evidence constraints
 
-The detailed evidence ledger is in `docs/architecture/empirical-research/AESE_INTEGRATED_CAPABILITY_RESEARCH.md`. The implementing agent must treat the following as hard constraints:
+The detailed evidence ledger is retained in the local-only cleanup archive and
+is not a tracked implementation authority. The implementing agent must treat
+the following as hard constraints:
 
 - The current hosted evidence is strong only for its declared scope: at revision `45480ee173be50603929b2461c1a6a0b742b7a9e`, GitHub Actions run `34800284798` recorded the locked Python suite as `821/821` on `ubuntu-latest`, `windows-latest` and `macos-14`. This does not prove test-quality effectiveness, all-language support, or Rust evidence.
 - The existing local AESE S1–S6 shadow work is a foundation to extend, not a subsystem to replace: current artifacts report 9 critical mappings and 147 unknown surfaces; S3/S4 remain plan-only; S5 remains synthetic planning validation; S6 is three warm-cache exploratory samples for one Rust change class. Preserve `AESE_MODE=SHADOW`, `SELECTIVE_TEST_AUTHORITY=DISABLED`, `TEST_SKIPPING_AUTHORITY=DISABLED` and `EVIDENCE_PROMOTION=DISABLED` until the integrated held-out gates are complete.

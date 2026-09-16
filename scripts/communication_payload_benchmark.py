@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import contextlib
 import json
 import mmap
 import platform
@@ -83,10 +84,8 @@ def _socket_roundtrip(payload: bytes) -> None:
         if received != len(payload):
             raise ValueError("socket payload roundtrip received an incomplete payload")
     finally:
-        try:
+        with contextlib.suppress(OSError):
             left.shutdown(socket.SHUT_WR)
-        except OSError:
-            pass
         left.close()
         right.close()
         if reader.is_alive():

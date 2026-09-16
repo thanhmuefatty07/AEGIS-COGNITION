@@ -2107,7 +2107,7 @@ dưới đây là thay đổi đã có code/test, nhưng chưa được gọi l�
 | Browser lifecycle | `BrowserCell` lease/quota/relaunch-recovery/cleanup, external-session bind without implicit close, `BrowserObserverView` read-only projection with separate observation quota and replay-visible observer receipts, plus optional Playwright managed context and HTTPS route guard; literal private/loopback/link-local/multicast/reserved/unspecified and legacy obfuscated IPv4 destinations are rejected before browser admission; managed Playwright resolves every hostname request and rejects any private/loopback/etc. address, while browser accessibility/network projections are scanned for prompt-injection markers and rejected with hash-only security evidence | typed lifecycle + observer isolation/receipt tests plus live Chromium `1234` navigation/network capture/unauthorized-route rejection, literal IPv4/IPv6/decimal-IP unsafe-address rejection, hostname-resolution private-address rejection, and browser prompt-injection rejection/retention regression; prior v14 wheel smoke completed actor + observer pre-admission/settlement under native authority; current v15 wheel smoke covers research/experiment/cancel, while source tests cover browser paths; DNS rebinding race, process crash injection, OS/process isolation and hosted cross-domain evidence remain open | LOCAL-PROVEN (adapter + local role boundary + literal/obfuscated-IP guard + hostname-resolution preflight + local prompt-injection marker gate + live smoke) |
 | Replay snapshot | JSON snapshot restores reducer and rejects payload tampering; Rust `LabRuntime::snapshot_json/from_snapshot_json` and `aegis_lab_validate_snapshot` fail-closed; Python event hash canonicalization, per-append native admission and pre-mutation transition admission match Rust Lab event schema | Python replay/recovery + native-authority tests; Rust snapshot/tamper/transition test; Rust FFI compiled and clippy-clean | LOCAL-PROVEN (projection bridge) |
 | Replay segment archive | Rust `RunEventKind::LabEventRecorded` and `RunEventSegmentArchive::write_lab_events` validate the complete Lab chain before sealed Arrow publication; Python writes a durable snapshot sidecar and, when available, asks the strict native verifier to recover the prefix and match the sealed `manifest_hash` before accepting completion | Rust round-trip plus missing-tail adversarial test; FFI archive + recovery surface compiled; native E2E completed with 1 sealed segment and snapshot restore; Python regression proves strict native verifier preference and restore re-check; v63 packaged controller smoke proves the Agent compatibility lane writes its default archive when native authority is present; mixed-lane open-admission reconciliation is proven after snapshot restore; swallowed cancellation cannot be promoted to success | LOCAL-PROVEN (cross-platform crash-prefix injection and hosted restore evidence remain open) |
-| Release install/rollback smoke | Clean venv installs the exact replacement wheel with declared runtime dependencies, imports from outside the checkout, and records wheel SHA-256/platform/CPython metadata; the prior `--no-deps` + checkout-cwd path was corrected because it could test the source tree or fail on intentionally missing dependencies; root clean import/CLI, independent core-bridge import without a console script, and dependency-complete combined-runtime ownership are now reproducibly probed | Replacement wheel SHA-256 `9ed944de33159950f62755ae778e275eb5feec1783c50d433038dd80412ed65b`; Windows/CPython 3.14 disposable environments report `repo_on_sys_path=false`, native extension import success, `aegis --help` exit 0, core compatibility PASS, and exactly one combined `aegis=aegis_cognition.cli:main` entry point; evidence is retained in `docs/architecture/design-closure/packaging_truth.json` and `artifacts/local-runtime/provider-fence-settlement-20260901/provider_fence_settlement_packaging.json`; the referenced v63 directory/records are missing and therefore historical only | LOCAL-PROVEN (one Windows lane; hosted Tier-1 parity, signed final-SHA attestation and rollback subject provenance remain open) |
+| Release install/rollback smoke | Clean venv installs the exact replacement wheel with declared runtime dependencies, imports from outside the checkout, and records wheel SHA-256/platform/CPython metadata; the prior `--no-deps` + checkout-cwd path was corrected because it could test the source tree or fail on intentionally missing dependencies; root clean import/CLI, independent core-bridge import without a console script, and dependency-complete combined-runtime ownership are now reproducibly probed | Replacement wheel SHA-256 `9ed944de33159950f62755ae778e275eb5feec1783c50d433038dd80412ed65b`; Windows/CPython 3.14 disposable environments report `repo_on_sys_path=false`, native extension import success, `aegis --help` exit 0, core compatibility PASS, and exactly one combined `aegis=aegis_cognition.cli:main` entry point; detailed packaging evidence is retained in the local-only cleanup archive; the referenced v63 directory/records are missing and therefore historical only | LOCAL-PROVEN (one Windows lane; hosted Tier-1 parity, signed final-SHA attestation and rollback subject provenance remain open) |
 
 > **Evidence supersession (2026-08-27):** any v39/v40/v42/v43/v44/v54/v55/v56/v57/v58/v59/v60 references retained in
 > historical Native LabController/Replay rows are superseded for current release
@@ -2129,7 +2129,7 @@ dưới đây là thay đổi đã có code/test, nhưng chưa được gọi l�
 > The current local package subject is the replacement wheel with SHA-256
 > `9ed944de33159950f62755ae778e275eb5feec1783c50d433038dd80412ed65b`; its
 > clean root, independent core-bridge and dependency-complete combined-runtime
-> probes are recorded in `docs/architecture/design-closure/packaging_truth.json`.
+> probes are recorded in the local-only cleanup archive.
 > This is bounded Windows/CPython local evidence only, not a v63 replay or a
 > signed release attestation. The v63 phrases in the Native LabController,
 > Benchmark V2, Replay segment archive, Operations and Release rows above are
@@ -2652,7 +2652,7 @@ nhất; `docs/ENGINEERING_CONSTITUTION.md` là policy; `current.json`,
   `9ed944de33159950f62755ae778e275eb5feec1783c50d433038dd80412ed65b`.
 - **Current artifact record:**
   `artifacts/local-runtime/provider-fence-settlement-20260901/provider_fence_settlement_packaging.json`,
-  cùng `docs/architecture/design-closure/packaging_truth.json`; root, core
+  cùng local-only packaging evidence; root, core
   bridge và combined-runtime probes đều là local PASS.
 - **Historical v63 records:**
   `C:\Users\ADMIN\AppData\Local\Temp\aegis-lab-native-wheel-v63\install-smoke-v63.json`,
@@ -2681,7 +2681,7 @@ nhất; `docs/ENGINEERING_CONSTITUTION.md` là policy; `current.json`,
 > **Current-evidence note (2026-09-01):** any `v63 wheel smoke` wording in the
 > historical rows above refers to the prior recorded run only. The current
 > replayable package evidence is the replacement-wheel/root-core-combined
-> probe in Section 18.7 and `docs/architecture/design-closure/packaging_truth.json`;
+> probe in Section 18.7 and the local-only packaging evidence;
 > the missing v63 records cannot be replayed.
 
 ### 18.3 Blocker ledger cuối cùng và lý do không được “đóng giả”
@@ -2824,7 +2824,7 @@ design-closure artifacts.
 ### 19.0 Trạng thái, phạm vi và cơ sở quyết định
 
 Phần này là **target design**, được viết sau design-closure pass gần nhất; epoch
-được tham chiếu duy nhất từ `docs/architecture/design-closure/design_closure.json`
+được tham chiếu duy nhất từ local-only design-closure evidence
 để tránh nhân bản một giá trị dễ lỗi thời. Nó không
 biến bất kỳ claim `PARTIAL_LOCAL`, `NOT VERIFIED`, `UNKNOWN` hoặc blocker
 external nào thành proof. Mục tiêu là khóa quyết định và thứ tự migration để
@@ -4096,7 +4096,7 @@ therefore a genuine environment blocker, not an omitted verification step;
 the existing release DLL remains retained only as compatibility evidence.
 
 **Closure-artifact epoch reconciliation (2026-09-01):** the required
-`docs/architecture/design-closure/` set is complete, but its `22` JSON
+the local-only design-closure set is complete, but its `22` JSON
 closure records remain bound to the earlier epoch
 `58f454a05d959d75bf89f423f7bc22784fdfd5c21d4f32687fb00a38ca02d22`; the
 separate dependency-role record is bound to `549114d2…`. The current source
