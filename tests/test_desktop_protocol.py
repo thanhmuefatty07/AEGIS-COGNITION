@@ -236,6 +236,9 @@ def test_desktop_service_emits_handshake_opens_workspace_and_shuts_down(tmp_path
 
     assert responses[0]["schema"] == "aegis-desktop-ready-v1"
     assert responses[0]["protocol_version"] == 1
+    assert responses[0]["commands"] == sorted(service._handlers())
+    assert "runs.start" in responses[0]["allowed_commands"]
+    assert "runs.start" not in responses[0]["commands"]
     assert responses[1]["status"] == "ok"
     assert responses[1]["result"]["open"] is True
     assert Path(responses[1]["result"]["state_path"]).parts[-2:] == (".aegis", "state.db")
