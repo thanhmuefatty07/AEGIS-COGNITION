@@ -34,10 +34,9 @@ every platform.
 | Windows x86_64 | Tier-1 CPU/runtime target; Job Object is an opt-in hard-control adapter when the capability probe passes | `IMPLEMENTED / PARTIALLY LIVE VERIFIED`: assignment, containment, active-process limit, termination, and deadline cancellation were observed; allocation-pressure kill is tracked separately | Complete equivalence with Linux or universal memory-pressure enforcement |
 | macOS arm64 | Tier-1 CPU/runtime target; resource controls remain cooperative/measurement-only | `NOT VERIFIED` for kernel-equivalent resource enforcement; the adapter explicitly does not make that claim | Hard memory/CPU/process isolation or Linux/Windows-equivalent enforcement |
 
-The Linux evidence is retained in
-[`evidence/linux-cgroup-kernel-gcp-20260915.json`](evidence/linux-cgroup-kernel-gcp-20260915.json)
-and
-[`evidence/linux-cgroup-native-adapter-gcp-20260915.json`](evidence/linux-cgroup-native-adapter-gcp-20260915.json).
+The raw Linux host evidence is retained in the local-only evidence archive and
+is intentionally not tracked. The tracked `evidence/current.json` file is the
+schema/template; it is not a host-specific proof artifact.
 The authoritative unresolved scope is maintained in
 [`NOT_VERIFIED_REGISTRY.md`](NOT_VERIFIED_REGISTRY.md), especially NV-001 through
 NV-003.

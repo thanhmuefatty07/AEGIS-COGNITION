@@ -12,9 +12,8 @@ the migration entry and exit evidence in
 
 ## Evidence and current boundary
 
-The final local reconciliation is recorded in
-`docs/architecture/design-closure/AEGIS_FINAL_DESIGN_CLOSURE.md` and its JSON
-artifacts. The local package owner is proven for the current Windows/CPython
+The final local reconciliation is recorded in the local-only cleanup archive
+and its JSON artifacts. The local package owner is proven for the current Windows/CPython
 lane, while the following remain open before surgical convergence:
 
 - Python `LabRun` and Rust `LabController` are not one lossless reducer.

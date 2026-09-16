@@ -63,17 +63,27 @@ machine-readable template is [`evidence/current.json`](evidence/current.json),
 and unresolved closure work is retained in
 [`NOT_VERIFIED_REGISTRY.md`](NOT_VERIFIED_REGISTRY.md).
 
-## Generated evidence directories
+## Local-only evidence
 
-- [`evidence-pack/`](evidence-pack/): regenerated machine-grounded architecture
-  inputs; use `collect.py` as its source of truth.
-- [`design-closure/`](design-closure/): regenerated reconciliation and closure
-  outputs; use `design_closure_collect.py` as its source of truth.
-- [`empirical-research/`](empirical-research/): retained empirical research
-  records and bounded comparisons.
-- [`AGENT_SUBAGENT_ECOSYSTEM_RESEARCH.md`](empirical-research/AGENT_SUBAGENT_ECOSYSTEM_RESEARCH.md):
-  external subagent, browser/vision, public-source and code-reuse findings
-  bound to the current local runtime decision.
+Raw benchmark runs, empirical research records, generated architecture packs,
+and host-specific probe outputs are private project material. They are retained
+in the local cleanup archive and are intentionally excluded from the tracked
+tree and Git history. The collector sources remain available for reproducible
+local generation:
+
+- `empirical-research/collect.py`
+- `evidence-pack/collect.py`
+- `evidence-pack/final_closure_collect.py`
+- `design-closure/design_closure_collect.py`
+
+The collectors write generated outputs to a local-only evidence directory; an
+output is not architecture authority until it is reconciled with the canonical
+plan, contracts, ADRs, and tracked verification registry.
+
+The public decision input for the local-first Memory Agent remains
+[`MEMORY_AGENT_LIVING_WORKSPACE_RESEARCH.md`](MEMORY_AGENT_LIVING_WORKSPACE_RESEARCH.md):
+current decision input for the local-first Memory Agent, token-bounded context,
+and evidence-backed project graph inspired by external research.
 - [`MEMORY_AGENT_LIVING_WORKSPACE_RESEARCH.md`](MEMORY_AGENT_LIVING_WORKSPACE_RESEARCH.md):
   current decision input for the local-first Memory Agent, token-bounded
   context, and evidence-backed project graph inspired by external research.
@@ -82,6 +92,6 @@ The subagent decision and protocol are recorded in
 [`AGENT_SUBAGENT_RUNTIME_DESIGN.md`](AGENT_SUBAGENT_RUNTIME_DESIGN.md) and
 [`ADR-016-subagent-coordination.md`](../adr/ADR-016-subagent-coordination.md).
 
-These directories are evidence outputs, not hand-maintained implementation
-authority. A historical path or label inside a retained snapshot is provenance
-unless the current verification index explicitly promotes it.
+These generated outputs are evidence views, not hand-maintained implementation
+authority. A historical path or label inside a retained local snapshot is
+provenance unless the current verification index explicitly promotes it.
