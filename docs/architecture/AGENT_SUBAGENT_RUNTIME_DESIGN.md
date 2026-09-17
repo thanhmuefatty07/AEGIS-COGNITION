@@ -10,7 +10,7 @@ The implementation reuses AEGIS primitives:
 
 - Rust validates the task graph before execution: positive identities, closed dependencies, cycle rejection, disjoint artifact namespaces, deterministic topological order, and a BLAKE3 graph hash.
 - Python 3.14 uses `asyncio.TaskGroup` for structured lifecycle, a bounded semaphore for concurrency, and per-resource async locks for stateful resources such as one browser actor session.
-- Each child is admitted through the existing Rust-authoritative runtime lease. The current runtime lease API remains a per-child capacity gate; this slice does not claim that the existing runtime admission path enforces semantic dependencies.
+- Each child is admitted through the existing Rust-authoritative runtime lease. The runtime submission now carries the same run-scoped hashed dependency IDs into Rust, so native admission cannot treat a dependent child as dependency-free; Python still owns handler lifecycle and this slice does not claim a composite parent/child ledger.
 - The existing message transport remains unchanged. The semantic envelope is a versioned JSON payload that can be carried by the existing `MessageFrame` bytes.
 
 ## Protocol language
@@ -26,6 +26,13 @@ the already-bounded request/result envelopes in a local cursor window. It can
 signal `resync_required` after eviction, but it is observation-only and is not
 an execution mailbox: the supervisor remains the owner of dependencies,
 cancellation and task status.
+
+The current Tauri renderer follows the same boundary. It reads recent
+conversations through the existing `conversations.list` command, keeps the
+active transcript in the canonical conversation manager, and exposes the
+revision-bound project map as an opt-in view. The PI-Desktop-inspired shell is
+presentation only: it does not open the state database, start providers, or
+create a second session store.
 
 ## Isolation rules
 
@@ -177,4 +184,8 @@ any upstream implementation should be copied into AEGIS.
 - No LangGraph, AutoGen, A2A, or broker dependency is added to the core. Their supervisor/subagent, structured message, and artifact ideas informed this boundary; a remote A2A adapter can be added if a real multi-process or multi-machine requirement appears.
 - No personal login, browser-cookie, or cookie-scraping handling is enabled. `RedditRssQueryProvider` exposes public RSS without credentials; `XAppOnlyQueryProvider` uses only an explicitly supplied/system app bearer token and rejects an unconfigured source. `PublicResearchRouter` composes `reddit:`, `x:`, and `all:` queries for the existing `SearchProgramExecutor`. Internal scraping/login libraries remain out of the core dependency set.
 - No automatic code copying is enabled. The future reuse lane must bind source bytes, license/provenance, dependency changes, and verification results, then measure reuse versus generation before choosing a path. A model response is not treated as a source-code database or as proof that training data can be copied verbatim.
-- Rust graph validation is separate from runtime lease admission. Extending the Rust ledger to retain a composite parent/child lifecycle requires a compatibility and replay design; it is not hidden behind this first API.
+- Rust graph validation remains separate from runtime lease admission, while
+  the native lease submission now carries the validated run-scoped dependency
+  IDs. Extending the Rust ledger to retain a composite parent/child lifecycle
+  still requires a compatibility and replay design; it is not hidden behind
+  this first API.

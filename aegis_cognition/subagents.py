@@ -1631,6 +1631,9 @@ class AgentSupervisor[RootOutputT]:
                         async with _hold_locks(locks):
                             async with self._runtime_guard_factory(
                                 task_id=self._runtime_task_id(spec.task_id),
+                                dependency_ids=[
+                                    self._runtime_task_id(dependency_id) for dependency_id in spec.dependencies
+                                ],
                                 work_kind="Agent",
                                 attempt_id=spec.attempt_id,
                                 timeout_seconds=spec.timeout_seconds,
