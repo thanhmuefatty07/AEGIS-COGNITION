@@ -29,6 +29,13 @@ the root. The default handlers are `model` and public `research`; Reddit uses
 credential-free RSS, while X requires an explicit system app-only bearer token.
 `Agent.run()` is unchanged.
 
+Static nested plans are supported: a task may set `parent_task_id` to another
+planned task only when that parent is also listed in `dependencies`. The child
+then waits for the parent's result and is marked `BLOCKED` if the parent (or
+another dependency) does not succeed. This reuses the one existing DAG and
+runtime admission path; a running child cannot silently create a new dynamic
+plan.
+
 ## Adaptive memory proposals
 
 Normal structured model output may optionally contain the reserved internal

@@ -47,6 +47,7 @@ _MAX_COMPACT_SUMMARY_CHARS = 2_048
 _MAX_CLAIMS = 64
 _MAX_ARTIFACTS = 64
 _MAX_MESSAGE_BYTES = 64 * 1024
+_MAX_PARENT_DEPTH = 32
 _EVIDENCE_CLASSES = frozenset({"PROVEN", "MEASURED", "SOURCE-BACKED", "INFERRED", "ASSUMED", "UNKNOWN", "CONFLICTED"})
 _MESSAGE_KINDS = frozenset({"TASK_REQUEST", "TASK_RESULT"})
 _RESULT_STATUSES = frozenset({"SUCCEEDED", "FAILED", "BLOCKED", "CANCELLED", "TIMED_OUT"})
@@ -128,6 +129,39 @@ def _digest(value: object, name: str) -> str:
     if len(result) != 64 or any(character not in "0123456789abcdef" for character in result):
         raise AgentCoordinationError(f"{name} must be a lowercase 64-character hexadecimal digest")
     return result
+
+
+def _validate_parent_lineage(tasks: Mapping[int, object], *, require_dependency: bool) -> None:
+    """Validate bounded static parentage without introducing a second scheduler.
+
+    A child must list its parent as a dependency.  That makes the parent
+    result the lifecycle gate and keeps parentage inside the existing DAG,
+    native admission, cancellation, and failure propagation contracts.
+    """
+
+    for task_id, task in tasks.items():
+        parent_id = getattr(task, "parent_task_id", None)
+        if parent_id is None:
+            continue
+        dependencies = tuple(getattr(task, "dependencies", ()))
+        if parent_id not in tasks:
+            raise AgentCoordinationError("parent_task_id must refer to a planned task")
+        if require_dependency and parent_id not in dependencies:
+            raise AgentCoordinationError("parent_task_id must also be listed in dependencies")
+        seen = {task_id}
+        current = parent_id
+        for _ in range(_MAX_PARENT_DEPTH):
+            if current in seen:
+                raise AgentCoordinationError("parent_task_id lineage contains a cycle")
+            seen.add(current)
+            ancestor = tasks.get(current)
+            if ancestor is None:
+                raise AgentCoordinationError("parent_task_id must refer to a planned task")
+            current = getattr(ancestor, "parent_task_id", None)
+            if current is None:
+                break
+        else:
+            raise AgentCoordinationError("parent_task_id lineage exceeds its depth bound")
 
 
 @dataclass(frozen=True, slots=True)
@@ -1425,6 +1459,7 @@ class AgentPlanProposal:
         for task in self.tasks:
             if task.parent_task_id is not None and task.parent_task_id not in task_ids:
                 raise AgentCoordinationError("agent plan parent_task_id must refer to a planned task")
+        _validate_parent_lineage({task.task_id: task for task in self.tasks}, require_dependency=True)
         _local_graph_validation(self.graph_payload())
 
     def graph_payload(self) -> dict[str, object]:
@@ -2030,6 +2065,7 @@ class AgentSupervisor[RootOutputT]:
                     "handlers that own exclusive resources must be async so cancellation cannot release their lock early"
                 )
             spec_by_id[spec.task_id] = spec
+        _validate_parent_lineage(spec_by_id, require_dependency=True)
         graph = _graph_payload(spec_list)
         local_graph = _local_graph_validation(graph)
         graph_result = _validate_graph_response(self._graph_validator(graph))
