@@ -30,6 +30,7 @@ ALLOWED_COMMANDS = frozenset(
         "conversations.read",
         "conversations.send",
         "conversations.switch_model",
+        "subagents.run",
         "memory.search",
         "memory.inspect",
         "memory.capture",

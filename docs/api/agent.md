@@ -29,6 +29,12 @@ the root. The default handlers are `model` and public `research`; Reddit uses
 credential-free RSS, while X requires an explicit system app-only bearer token.
 `Agent.run()` is unchanged.
 
+The desktop shell exposes the same runtime through the versioned
+`subagents.run` command. It accepts a bounded task and optional JSON plan
+metadata, then returns the root synthesis and compact child result packets.
+The renderer cannot provide executable handlers or create a second state
+store; native graph validation and host resource policy remain authoritative.
+
 Static nested plans are supported: a task may set `parent_task_id` to another
 planned task only when that parent is also listed in `dependencies`. A running
 async child can also call `await context.spawn_plan(...)` to request more

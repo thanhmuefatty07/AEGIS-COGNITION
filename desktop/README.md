@@ -19,6 +19,13 @@ toggles the sidebar, `Ctrl/Cmd+K` focuses file search, `Escape` releases search
 focus, and `Shift+Enter` inserts a new line in the composer. These controls are
 presentation-only and continue to use the existing versioned desktop protocol.
 
+The `subagents.run` command is the desktop projection of the canonical local
+subagent runtime. It accepts bounded task/plan metadata only; handler binding,
+native graph validation, resource limits, and result packet hashing remain in
+`AgentApplication`. The renderer receives a compact worker/result projection,
+not executable callbacks or an additional state store. Browser capture is still
+host-injected and public research does not use user cookies or login sessions.
+
 For a development build:
 
 ```text

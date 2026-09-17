@@ -8,6 +8,7 @@ from pathlib import Path
 import pytest
 
 from aegis_cognition.desktop_service import DesktopService, _select_source_paths_for_prompt
+from aegis_cognition.subagents import AgentResultPacket, AgentSupervisorResult
 from core.python.aegis.desktop_protocol import (
     DesktopCommandRouter,
     DesktopProtocolError,
@@ -170,6 +171,35 @@ class _FakeClient:
         return "live answer"
 
 
+class _FakeSubagentClient:
+    requires_api_key = False
+
+
+class _FakeSubagentApplication:
+    def __init__(self, config) -> None:
+        self.config = config
+
+    def run_subagents(self, **kwargs):
+        assert kwargs["require_native_authority"] is True
+        assert kwargs["max_concurrency"] == 2
+        packet = AgentResultPacket(
+            run_id="desktop-subagent-run",
+            task_id=1,
+            parent_task_id=None,
+            attempt_id=1,
+            status="SUCCEEDED",
+            summary="bounded child evidence",
+        )
+        return AgentSupervisorResult(
+            run_id="desktop-subagent-run",
+            graph_hash="a" * 64,
+            graph_authority="native_runtime",
+            status="SUCCEEDED",
+            root_output="root synthesis",
+            child_results=(packet,),
+        )
+
+
 def _request(command: str, payload: dict | None = None) -> bytes:
     return json.dumps(
         {
@@ -286,6 +316,66 @@ def test_desktop_service_lists_canonical_conversations_for_the_renderer(tmp_path
     assert response["status"] == "ok"
     assert response["result"]["records"][0]["conversation_id"] == "desktop-list-check"
     assert response["result"]["records"][0]["owner_id"] == "local-profile"
+
+
+def test_desktop_service_runs_subagents_through_the_canonical_application(tmp_path: Path, monkeypatch):
+    monkeypatch.delenv("AEGIS_SESSION_DB_PATH", raising=False)
+    monkeypatch.delenv("AEGIS_PROFILE_ID", raising=False)
+    service = DesktopService(
+        profile_root=tmp_path / "profile",
+        connection_catalog_factory=_FakeConnectionCatalog,
+        client_factory=lambda *_args, **_kwargs: _FakeSubagentClient(),
+        subagent_application_factory=_FakeSubagentApplication,
+    )
+    assert json.loads(service.dispatch(_request("workspace.open")))["status"] == "ok"
+
+    response = json.loads(
+        service.dispatch(
+            _request(
+                "subagents.run",
+                {
+                    "task": "inspect the workspace",
+                    "connection_id": "local",
+                    "model_id": "local-model",
+                    "max_concurrency": 2,
+                },
+            )
+        )
+    )
+
+    assert response["status"] == "ok"
+    result = response["result"]
+    assert result["schema"] == "aegis-desktop-subagents-result-v1"
+    assert result["root_output"] == "root synthesis"
+    assert result["child_results"][0]["summary"] == "bounded child evidence"
+
+
+def test_desktop_service_persists_subagent_root_in_the_selected_conversation(tmp_path: Path, monkeypatch):
+    monkeypatch.delenv("AEGIS_SESSION_DB_PATH", raising=False)
+    monkeypatch.delenv("AEGIS_PROFILE_ID", raising=False)
+    service = DesktopService(
+        profile_root=tmp_path / "profile",
+        manager_factory=_FakeConversationManager,
+        connection_catalog_factory=_FakeConnectionCatalog,
+        client_factory=lambda *_args, **_kwargs: _FakeSubagentClient(),
+        subagent_application_factory=_FakeSubagentApplication,
+    )
+    assert json.loads(service.dispatch(_request("workspace.open")))["status"] == "ok"
+
+    response = json.loads(
+        service.dispatch(
+            _request(
+                "subagents.run",
+                {"task": "inspect this conversation", "conversation_id": "conv-1", "max_concurrency": 2},
+            )
+        )
+    )
+
+    assert response["status"] == "ok"
+    assert response["result"]["conversation_revision"] == 6
+    persisted = service._manager.read("conv-1", owner_id="local-profile")
+    assert persisted.turns[-1].content == "root synthesis"
+    assert persisted.executions[-1].status == "COMPLETED"
 
 
 def test_desktop_service_exposes_aeese_session_through_shared_facade(tmp_path: Path, monkeypatch):
