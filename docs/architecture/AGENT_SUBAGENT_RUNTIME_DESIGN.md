@@ -29,7 +29,11 @@ process boundary or restart-recovery path is required, the optional
 It deduplicates by idempotency key, leases one delivery to one consumer,
 requeues expired leases, and dead-letters after a bounded retry count. This is
 at-least-once delivery; the Rust task ledger still owns execution state and no
-exactly-once side-effect claim is made.
+exactly-once side-effect claim is made. `AgentMailboxWorker` is the matching
+host-owned delivery loop for restart-aware observers or routers: it claims one
+envelope, invokes a registered handler, ACKs success, and NACKs handler
+failure. It does not deserialize or execute a model-selected callable and it
+does not duplicate `AgentSupervisor`'s dependency scheduler.
 
 The current Tauri renderer follows the same boundary. It reads recent
 conversations through the existing `conversations.list` command, keeps the

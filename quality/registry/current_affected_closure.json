@@ -89,7 +89,7 @@
     "tests/test_verification_session.py",
     "tests/test_vision_adapters.py"
   ],
-  "artifact_hash": "70ce953e92245950d0b2adacbfa6b61690e11685aedbb4bb695459dbcd57adbb",
+  "artifact_hash": "488882b578304f6c185e94e2d54cbdccb765499ca55dcc4a7d2a1871d80d4fa3",
   "changed_paths": [],
   "changed_unmapped_surface_ids": [],
   "changed_unmapped_surface_paths": [],
@@ -515,7 +515,7 @@
   "phase": "PHASE_3_DETERMINISTIC_AFFECTED_CLOSURE",
   "plan_widened": true,
   "provenance": {
-    "claim_graph_source_tree_sha256": "0d0ca186c623f381b10a468c4f46d0a9279840a0a99d293e9a22b56e51ff61ab",
+    "claim_graph_source_tree_sha256": "e1ef9d30712302516ae07495a374804777258026a82afb4478a3541a33f844ca",
     "claim_scope": "LOCAL_CHECKOUT_ONLY",
     "edge_digest": "2b47a62553191c763ba1542f9191284cc583f47c9ec205130a6d14530c64e65b",
     "environment": {
@@ -527,14 +527,14 @@
       "release": "11"
     },
     "evidence_class": "PLANNING_ONLY",
-    "inventory_source_tree_sha256": "8513d1f5021ab97b446132cc7c54da16e50c1a231ee63d343f0c32ee7150a360",
+    "inventory_source_tree_sha256": "40c4838d720287f9d52f6dc4359ebaa2957e1df4c545b012390771e6397c948e",
     "mapping_artifact_hash": "2babc1994e5a6de4f68d54246a0f0cc8f1ab11dc0387df47dc3c20fc9e299481",
     "origin_main_sha": "1454c8c1740b95d1198d01e8211b6e6abd6dc060",
     "promotion": "DISABLED_IN_SHADOW",
-    "source_sha": "a3b02a535c2a54faaee2d99f7eeb2c21e6e42c29",
+    "source_sha": "5bb2f03dd2a68fd8e6016b8926cd28c74c93b839",
     "validator": "scripts/aese_affected_closure.py"
   },
-  "reproducible_hash": "dfd395ed22857ece84bd1facf5d5c2c88c0dc265ff91b0129fdf9c950fc4e685",
+  "reproducible_hash": "d21bfa936d801c8640d8136adf7e00efdb5a8795c4d47083449506aec6a990bf",
   "schema": "aese-affected-closure-v1",
   "shadow_selection": {
     "authority": "RETAINED_LEGACY_AUTHORITY",
@@ -735,8 +735,8 @@
     ],
     "would_skip_item_ids": []
   },
-  "source_head": "a3b02a535c2a54faaee2d99f7eeb2c21e6e42c29",
-  "source_tree_sha256": "0d0ca186c623f381b10a468c4f46d0a9279840a0a99d293e9a22b56e51ff61ab",
+  "source_head": "5bb2f03dd2a68fd8e6016b8926cd28c74c93b839",
+  "source_tree_sha256": "e1ef9d30712302516ae07495a374804777258026a82afb4478a3541a33f844ca",
   "status": "AFFECTED_CLOSURE_PLAN_ONLY_SELECTION_DISABLED",
   "traversed_edges": [],
   "unknown_dependency_policy": "WIDEN_TO_RETAINED_SUITE",
