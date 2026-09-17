@@ -589,6 +589,7 @@ class AgentApplication:
                 "You are the root agent's planning phase. Return only one JSON object; do not use markdown.",
                 "The host will validate the DAG, compute proposal_hash, bind trusted handlers, and enforce runtime policy.",
                 "Create only the smallest set of independent or dependency-linked child tasks needed for the user task.",
+                "A nested child may set parent_task_id only when that same parent task id is also in dependencies; this makes the parent result the child lifecycle gate.",
                 "Every task must use one handler_key from the allowlist and must be read-only unless the host policy says otherwise.",
                 "For the research handler, prefix the child prompt with reddit:, x:, or all:; x works only when the host reports an app-only token.",
                 f"RESEARCH_X_APP_ONLY_CONFIGURED: {str(research_x_configured).lower()}",
@@ -657,11 +658,6 @@ class AgentApplication:
                 raise ValueError(f"subagent plan memory exceeds the host policy: {task.task_id}")
             if task.token_budget is not None and task.token_budget > raw_max_tokens:
                 raise ValueError(f"subagent plan token budget exceeds the host policy: {task.task_id}")
-            # Composite parent/child lifecycle is intentionally deferred until
-            # the Rust ledger can persist it.  The first slice executes direct
-            # children only; dependencies remain the data-flow contract.
-            if task.parent_task_id is not None:
-                raise ValueError("nested parent_task_id is not supported by the current supervisor")
 
     async def arun_subagents(
         self,

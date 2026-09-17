@@ -8,9 +8,9 @@ Use a manager/supervisor model. The root agent retains final synthesis. Child ag
 
 The implementation reuses AEGIS primitives:
 
-- Rust validates the task graph before execution: positive identities, closed dependencies, cycle rejection, disjoint artifact namespaces, deterministic topological order, and a BLAKE3 graph hash.
+- Rust validates the task graph before execution: positive identities, closed dependencies, cycle rejection, disjoint artifact namespaces, deterministic topological order, and a BLAKE3 graph hash. Python additionally validates bounded parent lineage; a nested child must list its parent as a dependency, so the existing DAG is the lifecycle gate.
 - Python 3.14 uses `asyncio.TaskGroup` for structured lifecycle, a bounded semaphore for concurrency, and per-resource async locks for stateful resources such as one browser actor session.
-- Each child is admitted through the existing Rust-authoritative runtime lease. The runtime submission now carries the same run-scoped hashed dependency IDs into Rust, so native admission cannot treat a dependent child as dependency-free; Python still owns handler lifecycle and this slice does not claim a composite parent/child ledger.
+- Each child is admitted through the existing Rust-authoritative runtime lease. The runtime submission now carries the same run-scoped hashed dependency IDs into Rust, so native admission cannot treat a dependent child as dependency-free; Python owns handler lifecycle while the parent result and the existing DAG control nested child readiness and failure propagation.
 - The existing message transport remains unchanged. The semantic envelope is a versioned JSON payload that can be carried by the existing `MessageFrame` bytes.
 
 ## Protocol language
@@ -50,7 +50,7 @@ Handlers that declare an exclusive resource must be async. A synchronous handler
 
 ## Authority and degraded mode
 
-`AgentSupervisor` requires native graph authority by default. `require_native_authority=False` is an explicit development/test escape hatch and marks the graph as `python_proposal`; it is not a production assurance. A missing native extension is therefore visible rather than silently treated as authoritative. The child runtime guard remains the existing per-child capacity/lease boundary; this slice does not claim a composite parent/child ledger.
+`AgentSupervisor` requires native graph authority by default. `require_native_authority=False` is an explicit development/test escape hatch and marks the graph as `python_proposal`; it is not a production assurance. A missing native extension is therefore visible rather than silently treated as authoritative. The child runtime guard remains the existing per-child capacity/lease boundary. Static nested plans are supported through parent-as-dependency edges; dynamic child creation by a running handler is not silently enabled.
 
 The root synthesizer runs once after all child tasks settle. Failed or blocked children are passed to the root with explicit status so the root can decline to overclaim. A child never writes the root answer.
 
@@ -193,7 +193,9 @@ any upstream implementation should be copied into AEGIS.
 - No personal login, browser-cookie, or cookie-scraping handling is enabled. `RedditRssQueryProvider` exposes public RSS without credentials; `XAppOnlyQueryProvider` uses only an explicitly supplied/system app bearer token and rejects an unconfigured source. `PublicResearchRouter` composes `reddit:`, `x:`, and `all:` queries for the existing `SearchProgramExecutor`. Internal scraping/login libraries remain out of the core dependency set.
 - No automatic code copying is enabled. The future reuse lane must bind source bytes, license/provenance, dependency changes, and verification results, then measure reuse versus generation before choosing a path. A model response is not treated as a source-code database or as proof that training data can be copied verbatim.
 - Rust graph validation remains separate from runtime lease admission, while
-  the native lease submission now carries the validated run-scoped dependency
-  IDs. Extending the Rust ledger to retain a composite parent/child lifecycle
-  still requires a compatibility and replay design; the mailbox does not hide
-  that missing lifecycle authority.
+  the native lease submission carries the validated run-scoped dependency IDs.
+  Static parent/child plans use those dependency edges and are bounded by the
+  existing supervisor. Dynamic child-plan creation from a running child, plus
+  durable replay of a plan that is created after admission, still requires a
+  separate compatibility and replay design; the mailbox does not pretend to
+  provide that capability.

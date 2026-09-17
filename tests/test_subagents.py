@@ -100,6 +100,83 @@ async def test_independent_children_overlap_and_root_is_called_after_all_childre
     assert result.coordination_hash
 
 
+async def test_static_nested_parent_is_a_dependency_lifecycle_gate() -> None:
+    events: list[str] = []
+
+    async def parent(context: AgentTaskContext) -> str:
+        events.append(f"parent:{context.task_id}")
+        return "parent evidence"
+
+    async def child(context: AgentTaskContext) -> str:
+        events.append(f"child:{context.task_id}")
+        assert context.dependency_results[0].task_id == 1
+        assert context.dependency_results[0].status == "SUCCEEDED"
+        return "child evidence"
+
+    result = await AgentSupervisor(
+        run_id="run-nested-parent",
+        require_native_authority=False,
+        runtime_guard_factory=_fake_runtime_guard,
+    ).run(
+        (
+            _spec(1, parent),
+            replace(_spec(2, child, dependencies=(1,)), parent_task_id=1),
+        ),
+        lambda results: tuple(item.task_id for item in results),
+    )
+
+    assert events == ["parent:1", "child:2"]
+    assert result.root_output == (1, 2)
+    assert result.child_results[1].parent_task_id == 1
+
+
+async def test_static_nested_parent_failure_blocks_child() -> None:
+    called = False
+
+    async def parent(_: AgentTaskContext) -> str:
+        raise RuntimeError("parent failed")
+
+    async def child(_: AgentTaskContext) -> str:
+        nonlocal called
+        called = True
+        return "must not run"
+
+    result = await AgentSupervisor(
+        run_id="run-nested-parent-failure",
+        require_native_authority=False,
+        runtime_guard_factory=_fake_runtime_guard,
+    ).run(
+        (
+            _spec(1, parent),
+            replace(_spec(2, child, dependencies=(1,)), parent_task_id=1),
+        ),
+        lambda results: tuple(item.status for item in results),
+    )
+
+    assert called is False
+    assert result.root_output == ("FAILED", "BLOCKED")
+
+
+def test_parent_must_be_a_dependency_in_a_static_plan() -> None:
+    parent = AgentTaskBlueprint(
+        task_id=1,
+        handler_key="trusted",
+        role="parent",
+        prompt="prepare evidence",
+        artifact_namespace="agent/1",
+    )
+    child = AgentTaskBlueprint(
+        task_id=2,
+        handler_key="trusted",
+        role="child",
+        prompt="use parent evidence",
+        artifact_namespace="agent/2",
+        parent_task_id=1,
+    )
+    with pytest.raises(AgentCoordinationError, match="also be listed in dependencies"):
+        AgentPlanProposal(tasks=(parent, child)).validate()
+
+
 async def test_runtime_admission_receives_the_same_hashed_dependency_dag() -> None:
     observed: list[dict[str, object]] = []
 
