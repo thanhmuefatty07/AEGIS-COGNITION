@@ -1929,6 +1929,7 @@ def build_model_subagent_handler(
     system_instruction: str = "",
     max_prompt_chars: int = _MAX_PROMPT_CHARS,
     allow_dynamic_plans: bool = False,
+    dynamic_handler_keys: Iterable[str] = (),
 ) -> AgentHandler:
     """Create a one-call child handler around a provider-neutral model invoker."""
 
@@ -1940,6 +1941,7 @@ def build_model_subagent_handler(
         raise AgentCoordinationError("child model prompt bound is invalid")
     if type(allow_dynamic_plans) is not bool:
         raise AgentCoordinationError("allow_dynamic_plans must be boolean")
+    dynamic_keys = _string_tuple(dynamic_handler_keys, "dynamic_handler_keys", limit=64)
 
     async def handler(context: AgentTaskContext) -> AgentResultPacket:
         dependencies = json.dumps(
@@ -1964,6 +1966,11 @@ def build_model_subagent_handler(
                         "in dependencies. Otherwise return the evidence summary."
                         if allow_dynamic_plans
                         else "Return the bounded evidence summary."
+                    ),
+                    (
+                        f"DYNAMIC_HANDLER_ALLOWLIST: {json.dumps(dynamic_keys, ensure_ascii=False)}"
+                        if allow_dynamic_plans
+                        else ""
                     ),
                 )
                 if part
