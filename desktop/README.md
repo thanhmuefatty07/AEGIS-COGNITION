@@ -4,6 +4,13 @@ The desktop package is a Tauri 2 shell around the same local Python/Rust
 authority used by the SDK. The renderer sends only versioned command frames;
 it never opens the state database or starts a provider itself.
 
+The renderer is intentionally conversation-first: the sidebar reads the
+canonical conversation list, the center pane sends through the existing
+conversation commands, and the right-hand context pane exposes workspace and
+provider state. The optional project-map view is a bounded presentation of the
+existing source snapshot. Its compact three-pane layout takes visual cues from
+PI Desktop without importing its runtime or creating a second state store.
+
 For a development build:
 
 ```text

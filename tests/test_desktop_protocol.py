@@ -262,6 +262,32 @@ def test_desktop_service_rejects_workspace_use_before_open(tmp_path: Path):
     assert response["error"]["code"] == "WORKSPACE_NOT_OPEN"
 
 
+def test_desktop_service_lists_canonical_conversations_for_the_renderer(tmp_path: Path, monkeypatch):
+    monkeypatch.delenv("AEGIS_SESSION_DB_PATH", raising=False)
+    monkeypatch.delenv("AEGIS_PROFILE_ID", raising=False)
+    service = DesktopService(profile_root=tmp_path / "profile", profile_id="local-profile")
+    assert json.loads(service.dispatch(_request("workspace.open")))["status"] == "ok"
+    assert json.loads(
+        service.dispatch(
+            _request(
+                "conversations.create",
+                {
+                    "conversation_id": "desktop-list-check",
+                    "title": "List check",
+                    "connection_id": "local",
+                    "model_id": "local-model",
+                },
+            )
+        )
+    )["status"] == "ok"
+
+    response = json.loads(service.dispatch(_request("conversations.list")))
+
+    assert response["status"] == "ok"
+    assert response["result"]["records"][0]["conversation_id"] == "desktop-list-check"
+    assert response["result"]["records"][0]["owner_id"] == "local-profile"
+
+
 def test_desktop_service_exposes_aeese_session_through_shared_facade(tmp_path: Path, monkeypatch):
     monkeypatch.delenv("AEGIS_SESSION_DB_PATH", raising=False)
     monkeypatch.delenv("AEGIS_PROFILE_ID", raising=False)

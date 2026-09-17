@@ -28,20 +28,23 @@ class _Native:
         self.finished: list[tuple[str, str]] = []
         self.cancelled: list[tuple[int, int]] = []
         self.requests: list[tuple[int, str, str, int]] = []
+        self.dependencies: list[tuple[int, str]] = []
 
-    def aegis_runtime_submit(
-        self, task_id: int, dependencies: str, request: str, now_ms: int
-    ) -> str:
-        del dependencies
+    def aegis_runtime_submit(self, task_id: int, dependencies: str, request: str, now_ms: int) -> str:
+        self.dependencies.append((task_id, dependencies))
         self.requests.append((task_id, request, "submit", now_ms))
         return json.dumps(self.submit.pop(0))
 
     def aegis_runtime_poll(self, task_id: int, attempt_id: int, now_ms: int) -> str:
         self.requests.append((task_id, str(attempt_id), "poll", now_ms))
-        response = self.polls.pop(0) if self.polls else {
-            "schema": runtime.RUNTIME_ADMISSION_SCHEMA_V1,
-            "status": "pending",
-        }
+        response = (
+            self.polls.pop(0)
+            if self.polls
+            else {
+                "schema": runtime.RUNTIME_ADMISSION_SCHEMA_V1,
+                "status": "pending",
+            }
+        )
         return json.dumps(response)
 
     def aegis_runtime_cancel(self, task_id: int, attempt_id: int) -> bool:
@@ -126,9 +129,7 @@ def test_desktop_runtime_policy_defaults_to_dev_and_supports_explicit_prod(
     monkeypatch.delenv("AEGIS_TRUST_LEVEL", raising=False)
 
     default_service = DesktopService(profile_root=tmp_path / "default")
-    strict_service = DesktopService(
-        profile_root=tmp_path / "strict", trust_level="PROD"
-    )
+    strict_service = DesktopService(profile_root=tmp_path / "strict", trust_level="PROD")
 
     assert default_service.trust_level == "DEV"
     assert strict_service.trust_level == "PROD"
@@ -156,6 +157,25 @@ def test_admitted_lease_finishes_once(monkeypatch: pytest.MonkeyPatch) -> None:
     assert request["task_id"] == 2
     assert request["work_kind"] == "Agent"
     assert request["cpu"] == {"min_threads": 1, "max_threads": 1}
+
+
+def test_runtime_submission_preserves_dependency_ids(monkeypatch: pytest.MonkeyPatch) -> None:
+    native = _Native(
+        submit=[
+            {
+                "schema": runtime.RUNTIME_ADMISSION_SCHEMA_V1,
+                "status": "admitted",
+                "lease_token": _token(),
+            }
+        ],
+        polls=[],
+    )
+    monkeypatch.setattr(runtime, "_native_module", lambda: native)
+
+    lease = asyncio.run(runtime.acquire_runtime_task_async(task_id=12, dependency_ids=[3, 5]))
+    lease.finish()
+
+    assert native.dependencies == [(12, "[3, 5]")]
 
 
 def test_queued_task_polls_until_admitted_and_finishes(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -283,9 +303,7 @@ def test_cooperative_placement_preview_forwards_only_to_native_planner(
         def __init__(self) -> None:
             self.calls: list[tuple[str, str, str, int]] = []
 
-        def aegis_cooperative_placement_preview(
-            self, task: str, capabilities: str, paths: str, now_ms: int
-        ) -> str:
+        def aegis_cooperative_placement_preview(self, task: str, capabilities: str, paths: str, now_ms: int) -> str:
             self.calls.append((task, capabilities, paths, now_ms))
             return json.dumps(
                 {
@@ -303,9 +321,7 @@ def test_cooperative_placement_preview_forwards_only_to_native_planner(
     native = PreviewNative()
     monkeypatch.setattr(runtime, "_native_module", lambda: native)
 
-    result = runtime.cooperative_placement_preview(
-        {"task_id": 1}, [{"id": "cpu"}], [{"id": "path"}], now_ms=123
-    )
+    result = runtime.cooperative_placement_preview({"task_id": 1}, [{"id": "cpu"}], [{"id": "path"}], now_ms=123)
     assert result["executable"] is False
     assert len(native.calls) == 1
     task, capabilities, paths, now_ms = native.calls[0]
@@ -340,9 +356,7 @@ def test_cooperative_preview_with_calibration_merges_only_measured_fields(
                 ]
             )
 
-        def aegis_placement_calibrate(
-            self, cpu_iterations: int, storage_bytes: int | None
-        ) -> str:
+        def aegis_placement_calibrate(self, cpu_iterations: int, storage_bytes: int | None) -> str:
             assert cpu_iterations == 123
             assert storage_bytes == 4096
             return json.dumps(
@@ -379,9 +393,7 @@ def test_cooperative_preview_with_calibration_merges_only_measured_fields(
                 }
             )
 
-        def aegis_cooperative_placement_preview(
-            self, task: str, capabilities: str, paths: str, now_ms: int
-        ) -> str:
+        def aegis_cooperative_placement_preview(self, task: str, capabilities: str, paths: str, now_ms: int) -> str:
             del task, paths, now_ms
             self.preview_capabilities = json.loads(capabilities)
             return json.dumps(
@@ -416,9 +428,7 @@ def test_cooperative_placement_preview_rejects_executable_native_response(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     class PreviewNative:
-        def aegis_cooperative_placement_preview(
-            self, task: str, capabilities: str, paths: str, now_ms: int
-        ) -> str:
+        def aegis_cooperative_placement_preview(self, task: str, capabilities: str, paths: str, now_ms: int) -> str:
             del task, capabilities, paths, now_ms
             return json.dumps(
                 {
@@ -443,9 +453,7 @@ def test_cooperative_preview_with_calibration_validates_before_side_effects(
         def aegis_placement_capabilities(self) -> str:
             raise AssertionError("capability discovery must not run for invalid input")
 
-        def aegis_placement_calibrate(
-            self, cpu_iterations: int, storage_bytes: int | None
-        ) -> str:
+        def aegis_placement_calibrate(self, cpu_iterations: int, storage_bytes: int | None) -> str:
             del cpu_iterations, storage_bytes
             raise AssertionError("calibration must not run for invalid input")
 
@@ -461,9 +469,7 @@ def test_calibration_rejects_measurement_schema_and_values(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     class MalformedNative:
-        def aegis_placement_calibrate(
-            self, cpu_iterations: int, storage_bytes: int | None
-        ) -> str:
+        def aegis_placement_calibrate(self, cpu_iterations: int, storage_bytes: int | None) -> str:
             del cpu_iterations, storage_bytes
             return json.dumps(
                 {
@@ -496,9 +502,7 @@ def test_calibration_rejects_non_positive_measured_cost(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     class MalformedNative:
-        def aegis_placement_calibrate(
-            self, cpu_iterations: int, storage_bytes: int | None
-        ) -> str:
+        def aegis_placement_calibrate(self, cpu_iterations: int, storage_bytes: int | None) -> str:
             del cpu_iterations, storage_bytes
             return json.dumps(
                 {
@@ -575,9 +579,7 @@ def test_cooperative_placement_admission_requires_native_lease_and_releases_once
 
     native = AdmissionNative()
     monkeypatch.setattr(runtime, "_native_module", lambda: native)
-    result = runtime.admit_cooperative_placement(
-        {"task_id": 7}, [{"id": "cpu"}], [], attempt_id=2, now_ms=123
-    )
+    result = runtime.admit_cooperative_placement({"task_id": 7}, [{"id": "cpu"}], [], attempt_id=2, now_ms=123)
     assert result["status"] == "admitted"
     assert result["lease"] == {"lease_id": 9, "generation": 1}
     assert runtime.release_cooperative_placement(result["lease"])
@@ -622,9 +624,7 @@ class _CooperativeRuntimeNative:
         self.finished: list[tuple[int, str]] = []
         self.cancelled: list[int] = []
 
-    def aegis_runtime_cooperative_configure(
-        self, mode: str, capabilities: str, paths: str
-    ) -> str:
+    def aegis_runtime_cooperative_configure(self, mode: str, capabilities: str, paths: str) -> str:
         self.configured.append((mode, capabilities, paths))
         return json.dumps(
             {
@@ -773,9 +773,7 @@ def test_calibration_fallback_is_explicit_and_does_not_claim_measurements(
 ) -> None:
     monkeypatch.setattr(runtime, "_native_module", lambda: None)
 
-    result = runtime.placement_plan_with_calibration(
-        {"task_id": 1}, cpu_iterations=100, storage_bytes=None
-    )
+    result = runtime.placement_plan_with_calibration({"task_id": 1}, cpu_iterations=100, storage_bytes=None)
     assert result["calibration"]["measurements"] == []
     assert result["plan"]["decision"] == "native_unavailable"
 

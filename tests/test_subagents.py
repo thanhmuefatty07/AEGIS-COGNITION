@@ -98,14 +98,39 @@ async def test_independent_children_overlap_and_root_is_called_after_all_childre
     assert result.coordination_hash
 
 
+async def test_runtime_admission_receives_the_same_hashed_dependency_dag() -> None:
+    observed: list[dict[str, object]] = []
+
+    @asynccontextmanager
+    async def observing_runtime(**kwargs: object) -> AsyncIterator[None]:
+        observed.append(kwargs)
+        yield None
+
+    async def handler(context: AgentTaskContext) -> str:
+        return f"done-{context.task_id}"
+
+    supervisor = AgentSupervisor(
+        run_id="run-runtime-dag",
+        require_native_authority=False,
+        runtime_guard_factory=observing_runtime,
+    )
+    result = await supervisor.run(
+        (_spec(1, handler), _spec(2, handler, dependencies=(1,))),
+        lambda results: tuple(item.task_id for item in results),
+    )
+
+    assert result.status == "COMPLETED"
+    assert observed[0]["dependency_ids"] == []
+    assert observed[1]["dependency_ids"] == [supervisor._runtime_task_id(1)]
+
+
 def test_message_journal_is_bounded_and_reports_cursor_resync() -> None:
     async def handler(_: AgentTaskContext) -> str:
         return "ok"
 
     journal = AgentMessageJournal(max_messages=2)
     messages = tuple(
-        _spec(task_id, handler).request_message(run_id="journal-run", now_ms=task_id)
-        for task_id in (1, 2, 3)
+        _spec(task_id, handler).request_message(run_id="journal-run", now_ms=task_id) for task_id in (1, 2, 3)
     )
     assert journal.append(messages[0]) == 1
     assert journal.append(messages[1]) == 2

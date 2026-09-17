@@ -1132,6 +1132,7 @@ def _cancel_queued_after_abort(task_id: int, attempt_id: int) -> None:
 async def acquire_runtime_task_async(
     *,
     task_id: int,
+    dependency_ids: list[int] | None = None,
     work_kind: str = "Agent",
     attempt_id: int = 1,
     timeout_seconds: float = 60.0,
@@ -1162,7 +1163,7 @@ async def acquire_runtime_task_async(
         return RuntimeLease(task_id, attempt_id, None, authoritative=False)
     try:
         status, response = _parse_admission(
-            submit_runtime_task(task_id, request, now_ms=now_ms), source="runtime submit"
+            submit_runtime_task(task_id, request, dependency_ids, now_ms), source="runtime submit"
         )
     except RuntimeCoordinationError:
         raise
@@ -1198,6 +1199,7 @@ async def acquire_runtime_task_async(
 def acquire_runtime_task(
     *,
     task_id: int,
+    dependency_ids: list[int] | None = None,
     work_kind: str = "Agent",
     attempt_id: int = 1,
     timeout_seconds: float = 60.0,
@@ -1228,7 +1230,7 @@ def acquire_runtime_task(
         return RuntimeLease(task_id, attempt_id, None, authoritative=False)
     try:
         status, response = _parse_admission(
-            submit_runtime_task(task_id, request, now_ms=now_ms), source="runtime submit"
+            submit_runtime_task(task_id, request, dependency_ids, now_ms), source="runtime submit"
         )
     except RuntimeCoordinationError:
         raise
@@ -1261,6 +1263,7 @@ def acquire_runtime_task(
 async def coordinated_runtime_task(
     *,
     task_id: int,
+    dependency_ids: list[int] | None = None,
     work_kind: str = "Agent",
     attempt_id: int = 1,
     timeout_seconds: float = 60.0,
@@ -1273,6 +1276,7 @@ async def coordinated_runtime_task(
 
     lease = await acquire_runtime_task_async(
         task_id=task_id,
+        dependency_ids=dependency_ids,
         work_kind=work_kind,
         attempt_id=attempt_id,
         timeout_seconds=timeout_seconds,
@@ -1303,6 +1307,7 @@ async def coordinated_runtime_task(
 def coordinated_runtime_task_sync(
     *,
     task_id: int,
+    dependency_ids: list[int] | None = None,
     work_kind: str = "Agent",
     attempt_id: int = 1,
     timeout_seconds: float = 60.0,
@@ -1315,6 +1320,7 @@ def coordinated_runtime_task_sync(
 
     lease = acquire_runtime_task(
         task_id=task_id,
+        dependency_ids=dependency_ids,
         work_kind=work_kind,
         attempt_id=attempt_id,
         timeout_seconds=timeout_seconds,
