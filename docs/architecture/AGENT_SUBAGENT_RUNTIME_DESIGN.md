@@ -1,4 +1,4 @@
-# AEGIS in-process subagent runtime — first vertical slice
+# AEGIS in-process subagent runtime
 
 Status: implemented as an opt-in coordination primitive; not the default `Agent` execution path yet.
 
@@ -50,7 +50,7 @@ Handlers that declare an exclusive resource must be async. A synchronous handler
 
 ## Authority and degraded mode
 
-`AgentSupervisor` requires native graph authority by default. `require_native_authority=False` is an explicit development/test escape hatch and marks the graph as `python_proposal`; it is not a production assurance. A missing native extension is therefore visible rather than silently treated as authoritative. The child runtime guard remains the existing per-child capacity/lease boundary. Static nested plans are supported through parent-as-dependency edges; dynamic child creation by a running handler is not silently enabled.
+`AgentSupervisor` requires native graph authority by default. `require_native_authority=False` is an explicit development/test escape hatch and marks the graph as `python_proposal`; it is not a production assurance. A missing native extension is therefore visible rather than silently treated as authoritative. The child runtime guard remains the existing per-child capacity/lease boundary. Static nested plans and bounded dynamic expansion both use parent-as-dependency edges. A dynamic expansion is admitted only after the complete graph is revalidated and the new task ids, handlers, capabilities, resources, side-effect classes, budgets and deadlines pass the host policy.
 
 The root synthesizer runs once after all child tasks settle. Failed or blocked children are passed to the root with explicit status so the root can decline to overclaim. A child never writes the root answer.
 
@@ -59,6 +59,17 @@ strict `aegis-agent-plan-v1` document containing task metadata and a
 `handler_key`; the host validates its DAG and binds that key to an already
 registered callable. The model cannot select an arbitrary Python callable,
 change the native graph authority, or bypass the child runtime guard.
+
+An async handler may call `await context.spawn_plan(plan)` when the supervisor
+was given a trusted dynamic-plan binder. The plan may reference the spawning
+task as an external parent during parsing, but every bound child must set that
+parent as `parent_task_id` and include it in `dependencies`. The supervisor
+serializes expansion admission, validates the combined graph through the same
+graph authority, and schedules the accepted children in the existing
+TaskGroup. A child can therefore expand recursively within the global bound,
+while the parent remains a lifecycle gate; a parent failure blocks its
+expansion. No dynamic plan is persisted as executable code, and no model
+output is invoked as a callable.
 
 `Agent.arun_subagents()` and `Agent.run_subagents()` provide the application
 boundary. With no plan supplied, the root performs one bounded planning call;
@@ -194,8 +205,8 @@ any upstream implementation should be copied into AEGIS.
 - No automatic code copying is enabled. The future reuse lane must bind source bytes, license/provenance, dependency changes, and verification results, then measure reuse versus generation before choosing a path. A model response is not treated as a source-code database or as proof that training data can be copied verbatim.
 - Rust graph validation remains separate from runtime lease admission, while
   the native lease submission carries the validated run-scoped dependency IDs.
-  Static parent/child plans use those dependency edges and are bounded by the
-  existing supervisor. Dynamic child-plan creation from a running child, plus
-  durable replay of a plan that is created after admission, still requires a
-  separate compatibility and replay design; the mailbox does not pretend to
-  provide that capability.
+  Static and dynamically expanded parent/child plans use those dependency
+  edges and are bounded by the existing supervisor. Durable replay of a plan
+  created after admission remains intentionally unavailable: a mailbox can
+  recover delivery envelopes, but it must not silently re-execute provider or
+  external side effects after a crash.

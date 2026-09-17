@@ -786,3 +786,211 @@ def test_result_wire_does_not_duplicate_envelope_identity_or_artifacts() -> None
     actual_bytes = len(json.dumps(wire, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode())
     naive_bytes = len(json.dumps(naive_wire, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode())
     assert actual_bytes < naive_bytes
+
+
+async def test_dynamic_child_plan_expands_the_existing_task_group() -> None:
+    calls: list[int] = []
+
+    async def child_handler(context: AgentTaskContext) -> str:
+        calls.append(context.task_id)
+        return f"child-{context.task_id}"
+
+    child = AgentTaskBlueprint(
+        task_id=2,
+        handler_key="child",
+        role="dynamic child",
+        prompt="refine the parent evidence",
+        artifact_namespace="agent/2",
+        dependencies=(1,),
+        parent_task_id=1,
+    )
+
+    def bind(parent_task_id: int, proposal: AgentPlanProposal) -> tuple[AgentTaskSpec, ...]:
+        assert parent_task_id == 1
+        return proposal.bind_handlers({"child": child_handler}, external_parent_ids=(parent_task_id,))
+
+    async def parent_handler(context: AgentTaskContext) -> str:
+        task_ids = await context.spawn_plan(
+            {
+                "schema": AGENT_PLAN_SCHEMA_V1,
+                "tasks": [child.as_dict()],
+            }
+        )
+        assert task_ids == (2,)
+        calls.append(context.task_id)
+        return "parent"
+
+    result = await AgentSupervisor(
+        run_id="dynamic-group",
+        require_native_authority=False,
+        runtime_guard_factory=_fake_runtime_guard,
+        dynamic_plan_binder=bind,
+        max_dynamic_tasks=1,
+    ).run(
+        (_spec(1, parent_handler),),
+        lambda results: tuple(item.summary for item in results),
+    )
+
+    assert result.status == "COMPLETED"
+    assert result.root_output == ("parent", "child-2")
+    assert calls == [1, 2]
+    assert result.child_results[1].parent_task_id == 1
+
+
+async def test_concurrent_dynamic_expansions_are_serialized_and_keep_ids_isolated() -> None:
+    calls: list[int] = []
+
+    async def child_handler(context: AgentTaskContext) -> str:
+        calls.append(context.task_id)
+        return f"child-{context.task_id}"
+
+    def bind(parent_task_id: int, proposal: AgentPlanProposal) -> tuple[AgentTaskSpec, ...]:
+        return proposal.bind_handlers({"child": child_handler}, external_parent_ids=(parent_task_id,))
+
+    async def parent_handler(context: AgentTaskContext) -> str:
+        child_id = context.task_id + 1
+        await context.spawn_plan(
+            {
+                "schema": AGENT_PLAN_SCHEMA_V1,
+                "tasks": [
+                    AgentTaskBlueprint(
+                        task_id=child_id,
+                        handler_key="child",
+                        role="dynamic child",
+                        prompt="work",
+                        artifact_namespace=f"agent/{child_id}",
+                        dependencies=(context.task_id,),
+                        parent_task_id=context.task_id,
+                    ).as_dict()
+                ],
+            }
+        )
+        calls.append(context.task_id)
+        return f"parent-{context.task_id}"
+
+    result = await AgentSupervisor(
+        run_id="dynamic-concurrent",
+        max_concurrency=2,
+        require_native_authority=False,
+        runtime_guard_factory=_fake_runtime_guard,
+        dynamic_plan_binder=bind,
+        max_dynamic_tasks=2,
+        max_total_tasks=4,
+    ).run(
+        (_spec(1, parent_handler), _spec(10, parent_handler)),
+        lambda results: tuple(item.task_id for item in results),
+    )
+
+    assert result.status == "COMPLETED"
+    assert result.root_output == (1, 2, 10, 11)
+    assert set(calls) == {1, 2, 10, 11}
+
+
+async def test_dynamic_children_are_blocked_when_the_spawning_parent_fails() -> None:
+    child_started = False
+    child = AgentTaskBlueprint(
+        task_id=2,
+        handler_key="child",
+        role="dynamic child",
+        prompt="must not run",
+        artifact_namespace="agent/2",
+        dependencies=(1,),
+        parent_task_id=1,
+    )
+
+    async def child_handler(_: AgentTaskContext) -> str:
+        nonlocal child_started
+        child_started = True
+        return "unsafe"
+
+    def bind(parent_task_id: int, proposal: AgentPlanProposal) -> tuple[AgentTaskSpec, ...]:
+        return proposal.bind_handlers({"child": child_handler}, external_parent_ids=(parent_task_id,))
+
+    async def parent_handler(context: AgentTaskContext) -> str:
+        await context.spawn_plan({"schema": AGENT_PLAN_SCHEMA_V1, "tasks": [child.as_dict()]})
+        raise RuntimeError("parent failed after expansion")
+
+    result = await AgentSupervisor(
+        run_id="dynamic-failed-parent",
+        require_native_authority=False,
+        runtime_guard_factory=_fake_runtime_guard,
+        dynamic_plan_binder=bind,
+    ).run(
+        (_spec(1, parent_handler),),
+        lambda results: tuple(item.status for item in results),
+    )
+
+    assert result.status == "PARTIAL"
+    assert result.root_output == ("FAILED", "BLOCKED")
+    assert child_started is False
+    assert result.child_results[1].blockers == ("dependency:1",)
+
+
+async def test_dynamic_child_plan_requires_parent_dependency() -> None:
+    invalid_child = AgentTaskBlueprint(
+        task_id=2,
+        handler_key="child",
+        role="dynamic child",
+        prompt="invalid child",
+        artifact_namespace="agent/2",
+        parent_task_id=1,
+    )
+
+    def bind(parent_task_id: int, proposal: AgentPlanProposal) -> tuple[AgentTaskSpec, ...]:
+        return proposal.bind_handlers(
+            {"child": lambda _: "never"},
+            external_parent_ids=(parent_task_id,),
+        )
+
+    async def parent_handler(context: AgentTaskContext) -> str:
+        await context.spawn_plan({"schema": AGENT_PLAN_SCHEMA_V1, "tasks": [invalid_child.as_dict()]})
+        return "unreachable"
+
+    result = await AgentSupervisor(
+        run_id="dynamic-parent-gate",
+        require_native_authority=False,
+        runtime_guard_factory=_fake_runtime_guard,
+        dynamic_plan_binder=bind,
+    ).run(
+        (_spec(1, parent_handler),),
+        lambda results: tuple(item.status for item in results),
+    )
+
+    assert result.status == "PARTIAL"
+    assert result.root_output == ("FAILED",)
+    assert result.child_results[0].error_code == "AgentCoordinationError"
+
+
+async def test_dynamic_child_plan_bound_is_enforced() -> None:
+    first = AgentTaskBlueprint(
+        task_id=2,
+        handler_key="child",
+        role="dynamic child one",
+        prompt="one",
+        artifact_namespace="agent/2",
+        dependencies=(1,),
+        parent_task_id=1,
+    )
+    second = replace(first, task_id=3, artifact_namespace="agent/3")
+
+    def bind(parent_task_id: int, proposal: AgentPlanProposal) -> tuple[AgentTaskSpec, ...]:
+        return proposal.bind_handlers({"child": lambda _: "never"}, external_parent_ids=(parent_task_id,))
+
+    async def parent_handler(context: AgentTaskContext) -> str:
+        await context.spawn_plan({"schema": AGENT_PLAN_SCHEMA_V1, "tasks": [first.as_dict(), second.as_dict()]})
+        return "unreachable"
+
+    result = await AgentSupervisor(
+        run_id="dynamic-bound",
+        require_native_authority=False,
+        runtime_guard_factory=_fake_runtime_guard,
+        dynamic_plan_binder=bind,
+        max_dynamic_tasks=1,
+    ).run(
+        (_spec(1, parent_handler),),
+        lambda results: tuple(item.status for item in results),
+    )
+
+    assert result.status == "PARTIAL"
+    assert result.root_output == ("FAILED",)
+    assert result.child_results[0].error_code == "AgentCoordinationError"
