@@ -61,11 +61,14 @@ kept in the bounded pack and cause a fail-closed overflow when they cannot fit;
 last. Existing callers remain `condensable` unless they opt into a class, and
 the selected class is recorded in the context manifest.
 
-For a future desktop view, pass an optional `AgentMessageJournal` to
-`run_subagents()`. It retains only bounded `TASK_REQUEST`/`TASK_RESULT`
-envelopes and exposes cursor reads with resync signalling. It is an observation
-journal, not a mailbox or an execution authority; task dependencies and
-cancellation remain inside the supervisor.
+For a desktop view, pass an optional `AgentMessageJournal` to `run_subagents()`
+for a bounded in-process cursor. If messages must survive a worker restart,
+pass an optional `AgentMailbox(path)` as well. The mailbox stores only the
+bounded canonical envelopes, deduplicates by idempotency key, and exposes
+`claim()`/`ack()`/`nack()` with lease recovery and bounded dead-lettering. It is
+at-least-once delivery, not exactly-once execution; task dependencies,
+cancellation, and side-effect authority remain inside the supervisor/Rust
+runtime.
 
 Browser/vision handlers are intentionally supplied by the host so the handler
 can bind an existing `BrowserCell`/Playwright session and its evidence

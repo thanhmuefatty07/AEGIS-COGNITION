@@ -24,6 +24,7 @@ from .rag import RAGManager
 from .runtime import coordinated_runtime_task
 from .subagents import (
     AgentHandler,
+    AgentMailbox,
     AgentMessage,
     AgentMessageJournal,
     AgentPlanProposal,
@@ -670,6 +671,7 @@ class AgentApplication:
         root_synthesizer: Callable[[tuple[AgentResultPacket, ...]], object | Awaitable[object]] | None = None,
         message_sink: Callable[[AgentMessage], object | Awaitable[object]] | None = None,
         message_journal: AgentMessageJournal | None = None,
+        message_mailbox: AgentMailbox | None = None,
         require_native_authority: bool | None = None,
         max_concurrency: int | None = None,
     ) -> AgentSupervisorResult[object]:
@@ -799,6 +801,7 @@ class AgentApplication:
                 require_native_authority=cast(bool, raw_require_native),
                 message_sink=message_sink,
                 message_journal=message_journal,
+                message_mailbox=message_mailbox,
             )
             result = await supervisor.run(specs, effective_root)
             self.telemetry.emit("agent", "subagents_completed", correlation=self.correlation)
@@ -820,6 +823,7 @@ class AgentApplication:
         root_synthesizer: Callable[[tuple[AgentResultPacket, ...]], object | Awaitable[object]] | None = None,
         message_sink: Callable[[AgentMessage], object | Awaitable[object]] | None = None,
         message_journal: AgentMessageJournal | None = None,
+        message_mailbox: AgentMailbox | None = None,
         require_native_authority: bool | None = None,
         max_concurrency: int | None = None,
     ) -> AgentSupervisorResult[object]:
@@ -835,6 +839,7 @@ class AgentApplication:
                     root_synthesizer=root_synthesizer,
                     message_sink=message_sink,
                     message_journal=message_journal,
+                    message_mailbox=message_mailbox,
                     require_native_authority=require_native_authority,
                     max_concurrency=max_concurrency,
                 )
