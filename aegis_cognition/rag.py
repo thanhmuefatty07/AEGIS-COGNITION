@@ -137,12 +137,8 @@ class RAGManager:
                 or str(getattr(record, "lifecycle", "")).upper() != "ACTIVE"
                 or str(getattr(record, "validation", "")).upper() != "ACCEPTED"
                 or str(getattr(record, "scope_kind", "")) != resolved_scope
-                or (
-                    self.owner_id is not None
-                    and str(getattr(record, "owner_id", "")) != self.owner_id
-                )
-                or str(getattr(record, "content_hash", ""))
-                != str(getattr(candidate, "content_hash", ""))
+                or (self.owner_id is not None and str(getattr(record, "owner_id", "")) != self.owner_id)
+                or str(getattr(record, "content_hash", "")) != str(getattr(candidate, "content_hash", ""))
             ):
                 continue
             content = getattr(record, "content", None)
