@@ -21,6 +21,8 @@ from typing import Any, TextIO, cast
 from urllib.parse import urlsplit
 
 from .config import trust_policy_hash
+from .application import AgentApplication
+from .config import AgentConfig
 from .runtime import (
     coordinated_runtime_task_sync,
     native_runtime_available,
@@ -88,6 +90,10 @@ MAX_PROMPT_LENGTH = 64 * 1024
 MAX_HISTORY_TURNS = 32
 MAX_SOURCE_FILES_IN_PROMPT = 64
 MAX_BASELINE_SOURCE_FILES_IN_PROMPT = 16
+MAX_SUBAGENT_TASK_CHARS = 64 * 1024
+MAX_SUBAGENT_RESULT_CHARS = 16 * 1024
+MAX_SUBAGENT_TASKS = 64
+MAX_SUBAGENT_CONCURRENCY = 32
 
 
 class DesktopServiceError(DesktopProtocolError):
@@ -208,6 +214,7 @@ class DesktopService:
         connection_catalog_factory: Callable[[], Any] = ConnectionCatalog,
         learning_factory: Callable[[], Any] = LearningManager,
         client_factory: Callable[..., Any] = OpenAICompatibleClient,
+        subagent_application_factory: Callable[..., Any] = AgentApplication,
         trust_level: str | None = None,
     ) -> None:
         if (
@@ -229,6 +236,7 @@ class DesktopService:
         self._connection_catalog_factory = connection_catalog_factory
         self._learning_factory = learning_factory
         self._client_factory = client_factory
+        self._subagent_application_factory = subagent_application_factory
         self._manager: Any | None = None
         self._connections: Any | None = None
         self._learning: Any | None = None
@@ -257,6 +265,7 @@ class DesktopService:
             "conversations.read": self._read_conversation,
             "conversations.send": self._send_message,
             "conversations.switch_model": self._switch_model,
+            "subagents.run": self._run_subagents,
             "memory.search": self._search_memories,
             "memory.inspect": self._inspect_memory,
             "memory.capture": self._capture_memory,
@@ -673,6 +682,291 @@ class DesktopService:
             expected_revision=_require_revision(payload),
         )
         return {"record": _json_value(record)}
+
+    def _run_subagents(self, payload: dict[str, Any]) -> Mapping[str, Any]:
+        """Run the canonical local subagent runtime through the desktop boundary.
+
+        The desktop command deliberately accepts only a task and optional
+        validated plan metadata.  Model callables, handler binding, resource
+        admission, and the native graph authority remain owned by
+        ``AgentApplication``; the renderer cannot provide executable code.
+        """
+
+        self._require_open()
+        task = _require_text(payload, "task", max_length=MAX_SUBAGENT_TASK_CHARS)
+        owner_id = self._owner(payload)
+        conversation_id = payload.get("conversation_id")
+        if conversation_id is not None:
+            conversation_id = _require_text(payload, "conversation_id", max_length=256)
+
+        conversation_manager: Any = None
+        conversation_snapshot: Any = None
+        if conversation_id is not None:
+            conversation_manager = self._manager_for_request()
+            conversation_snapshot = conversation_manager.read(conversation_id, owner_id=owner_id)
+            if conversation_snapshot.conversation.status != "ACTIVE":
+                raise DesktopServiceError("CONVERSATION_NOT_ACTIVE", "conversation is not active")
+            if any(
+                turn.status in {"QUEUED", "RUNNING", "WAITING_APPROVAL"}
+                for turn in conversation_snapshot.turns
+            ) or any(call.status in {"REQUESTED", "AMBIGUOUS"} for call in conversation_snapshot.tool_calls):
+                raise DesktopServiceError("CONVERSATION_BUSY", "conversation has unresolved execution state")
+
+        raw_connection_id = payload.get("connection_id")
+        if raw_connection_id is None and conversation_snapshot is not None:
+            raw_connection_id = conversation_snapshot.conversation.connection_id
+        connection_id = _require_text(
+            {"connection_id": raw_connection_id}, "connection_id", max_length=256
+        )
+
+        raw_model_id = payload.get("model_id")
+        if raw_model_id is None and conversation_snapshot is not None:
+            raw_model_id = conversation_snapshot.conversation.model_id
+        if raw_model_id is None:
+            raw_model_id = os.environ.get("AEGIS_DESKTOP_MODEL_ID", "")
+        model_id = _require_text({"model_id": raw_model_id}, "model_id", max_length=256)
+
+        raw_plan = payload.get("plan")
+        if raw_plan is not None and not isinstance(raw_plan, Mapping):
+            raise DesktopServiceError("INVALID_ARGUMENT", "plan must be a JSON object")
+
+        def bounded_bool(key: str, default: bool) -> bool:
+            value = payload.get(key, default)
+            if type(value) is not bool:
+                raise DesktopServiceError("INVALID_ARGUMENT", f"{key} must be a boolean")
+            return value
+
+        def bounded_int(key: str, default: int, maximum: int) -> int:
+            value = payload.get(key, default)
+            if type(value) is not int or not 1 <= value <= maximum:
+                raise DesktopServiceError("INVALID_ARGUMENT", f"{key} must be an integer between 1 and {maximum}")
+            return value
+
+        allow_dynamic = bounded_bool("allow_dynamic_plans", True)
+        require_native = bounded_bool("require_native_authority", True)
+        max_concurrency = bounded_int("max_concurrency", 4, MAX_SUBAGENT_CONCURRENCY)
+        max_tasks = bounded_int("max_tasks", 32, MAX_SUBAGENT_TASKS)
+        max_dynamic_tasks = bounded_int("max_dynamic_tasks", min(128, max_tasks), MAX_SUBAGENT_TASKS)
+
+        connection = self._connection_for_conversation(connection_id)
+        client = self._provider_client(connection, model_id)
+        config = AgentConfig.from_inputs(
+            task,
+            llm=client,
+            trust_level=self.trust_level,
+            browser=False,
+            max_steps=1,
+            subagents_allow_dynamic_plans=allow_dynamic,
+            subagents_require_native_authority=require_native,
+            subagent_max_concurrency=max_concurrency,
+            subagent_max_tasks=max_tasks,
+            subagent_max_dynamic_tasks=max_dynamic_tasks,
+            subagent_public_research=True,
+        )
+        application = self._subagent_application_factory(config)
+        runner = getattr(application, "run_subagents", None)
+        if not callable(runner):
+            raise DesktopServiceError("SUBAGENT_UNAVAILABLE", "the local subagent application is unavailable")
+
+        execution: Any = None
+        assistant_turn: Any = None
+        if conversation_manager is not None and conversation_snapshot is not None and conversation_id is not None:
+            user_turn = conversation_manager.append_turn(
+                conversation_id,
+                owner_id=owner_id,
+                turn_id=f"turn-{uuid.uuid4().hex}",
+                role="user",
+                content=task,
+                connection_id=connection.connection_id,
+                model_id=model_id,
+                status="COMPLETED",
+                expected_revision=conversation_snapshot.conversation.revision,
+            )
+            assistant_turn = conversation_manager.append_turn(
+                conversation_id,
+                owner_id=owner_id,
+                turn_id=f"turn-{uuid.uuid4().hex}",
+                role="assistant",
+                content="",
+                connection_id=connection.connection_id,
+                model_id=model_id,
+                status="QUEUED",
+                expected_revision=user_turn.revision,
+            )
+            execution = conversation_manager.start_execution(
+                conversation_id,
+                owner_id=owner_id,
+                execution_id=f"exec-{uuid.uuid4().hex}",
+                turn_id=assistant_turn.turn_id,
+                provider_kind=connection.provider_kind,
+                connection_id=connection.connection_id,
+                model_id=model_id,
+                expected_revision=assistant_turn.revision,
+            )
+        try:
+            result = runner(
+                plan=(cast(Mapping[str, object], raw_plan) if raw_plan is not None else None),
+                require_native_authority=require_native,
+                max_concurrency=max_concurrency,
+            )
+        except DesktopServiceError:
+            self._finish_subagent_execution(
+                conversation_manager,
+                conversation_id,
+                owner_id,
+                execution,
+                status="FAILED",
+            )
+            raise
+        except Exception as error:
+            self._finish_subagent_execution(
+                conversation_manager,
+                conversation_id,
+                owner_id,
+                execution,
+                status="FAILED",
+            )
+            raise DesktopServiceError("SUBAGENT_ERROR", "local subagent execution failed") from error
+        try:
+            result_payload = self._subagent_result_payload(result)
+        except DesktopServiceError:
+            self._finish_subagent_execution(
+                conversation_manager,
+                conversation_id,
+                owner_id,
+                execution,
+                status="FAILED",
+            )
+            raise
+        except Exception as error:
+            self._finish_subagent_execution(
+                conversation_manager,
+                conversation_id,
+                owner_id,
+                execution,
+                status="FAILED",
+            )
+            raise DesktopServiceError("SUBAGENT_ERROR", "subagent result could not be projected") from error
+        if conversation_manager is not None and conversation_id is not None and execution is not None and assistant_turn is not None:
+            try:
+                output_turn = conversation_manager.append_part(
+                    conversation_id,
+                    owner_id=owner_id,
+                    turn_id=assistant_turn.turn_id,
+                    kind="TEXT",
+                    content=str(result_payload["root_output"]),
+                    expected_revision=execution.revision,
+                )
+                finished = conversation_manager.finish_execution(
+                    conversation_id,
+                    owner_id=owner_id,
+                    execution_id=execution.execution_id,
+                    status="COMPLETED",
+                    expected_revision=output_turn.revision,
+                )
+            except Exception as error:
+                self._finish_subagent_execution(
+                    conversation_manager,
+                    conversation_id,
+                    owner_id,
+                    execution,
+                    status="FAILED",
+                )
+                raise DesktopServiceError(
+                    "SUBAGENT_PERSISTENCE_FAILED", "subagent result could not be persisted"
+                ) from error
+            result_payload = {
+                **result_payload,
+                "conversation_revision": int(getattr(finished, "revision", output_turn.revision)),
+            }
+        return result_payload
+
+    @staticmethod
+    def _finish_subagent_execution(
+        manager: Any | None,
+        conversation_id: str | None,
+        owner_id: str,
+        execution: Any | None,
+        *,
+        status: str,
+    ) -> None:
+        if manager is None or conversation_id is None or execution is None:
+            return
+        try:
+            manager.finish_execution(
+                conversation_id,
+                owner_id=owner_id,
+                execution_id=execution.execution_id,
+                status=status,
+                expected_revision=execution.revision,
+            )
+        except Exception:
+            # A concurrent revision may have advanced after the worker
+            # returned. Re-read the canonical execution once and settle it
+            # with that fence; never overwrite an already-terminal execution.
+            try:
+                snapshot = manager.read(conversation_id, owner_id=owner_id)
+                current = next(
+                    item
+                    for item in snapshot.executions
+                    if item.execution_id == execution.execution_id
+                )
+                if current.status in {"COMPLETED", "FAILED", "CANCELLED", "INTERRUPTED"}:
+                    return
+                manager.finish_execution(
+                    conversation_id,
+                    owner_id=owner_id,
+                    execution_id=execution.execution_id,
+                    status=status,
+                    expected_revision=current.revision,
+                )
+            except Exception as settle_error:
+                raise DesktopServiceError(
+                    "SUBAGENT_PERSISTENCE_FAILED", "subagent execution state could not be settled"
+                ) from settle_error
+
+    @staticmethod
+    def _subagent_result_payload(result: Any) -> Mapping[str, Any]:
+        """Expose a bounded renderer projection, never raw internal objects."""
+
+        def text_value(value: object) -> tuple[str, bool]:
+            if isinstance(value, str):
+                text = value
+            else:
+                try:
+                    text = json.dumps(value, ensure_ascii=False, sort_keys=True, default=str)
+                except (TypeError, ValueError):
+                    text = str(value)
+            if len(text) <= MAX_SUBAGENT_RESULT_CHARS:
+                return text, False
+            suffix = "\n[result truncated at the desktop boundary]"
+            return f"{text[: MAX_SUBAGENT_RESULT_CHARS - len(suffix)]}{suffix}", True
+
+        root_output, root_output_truncated = text_value(getattr(result, "root_output", ""))
+        if not root_output.strip():
+            raise DesktopServiceError("SUBAGENT_ERROR", "subagent root synthesis was empty")
+        packets: list[Mapping[str, Any]] = []
+        for packet in getattr(result, "child_results", ()):
+            compact = getattr(packet, "compact_dict", None)
+            if not callable(compact):
+                raise DesktopServiceError("SUBAGENT_ERROR", "subagent result packet is invalid")
+            value = compact()
+            if not isinstance(value, Mapping):
+                raise DesktopServiceError("SUBAGENT_ERROR", "subagent result packet is invalid")
+            packets.append(dict(cast(Mapping[str, Any], value)))
+        return {
+            "schema": "aegis-desktop-subagents-result-v1",
+            "run_id": str(getattr(result, "run_id", "")),
+            "graph_hash": str(getattr(result, "graph_hash", "")),
+            "graph_authority": str(getattr(result, "graph_authority", "")),
+            "status": str(getattr(result, "status", "")),
+            "root_output": root_output,
+            "root_output_truncated": root_output_truncated,
+            "child_results": packets,
+            "failed_task_ids": [int(item) for item in getattr(result, "failed_task_ids", ())],
+            "blocked_task_ids": [int(item) for item in getattr(result, "blocked_task_ids", ())],
+            "coordination_hash": str(getattr(result, "coordination_hash", "")),
+        }
 
     def _send_message(self, payload: dict[str, Any]) -> Mapping[str, Any]:
         mode = payload.get("mode", "mock")

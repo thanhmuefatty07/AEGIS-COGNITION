@@ -141,6 +141,15 @@ svg { display: block; flex: 0 0 auto; }
 .message-content p { max-width: 72ch; margin: 0; color: var(--text-secondary); font-size: 13px; line-height: 1.55; white-space: pre-wrap; }
 .message-row.user .message-content { padding: 9px 12px; border: 1px solid var(--line); border-radius: var(--radius-md); background: var(--surface-1); }
 .message-row.user .message-meta { justify-content: flex-end; }
+.subagent-result { margin: 0 0 28px 35px; border: 1px solid rgba(64, 201, 119, .24); border-radius: var(--radius-md); padding: 13px 14px; background: rgba(32, 54, 40, .45); }
+.subagent-result-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.subagent-result-header strong { display: block; margin-top: 5px; color: var(--text-primary); font-size: 12px; font-weight: 600; }
+.subagent-result > p { margin: 12px 0 0; color: var(--text-secondary); font-size: 12px; line-height: 1.5; white-space: pre-wrap; }
+.subagent-result > small { display: block; margin-top: 11px; color: var(--text-faint); font-family: ui-monospace, SFMono-Regular, Consolas, monospace; font-size: 9px; }
+.subagent-workers { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 11px; }
+.worker-chip { display: inline-flex; align-items: center; gap: 5px; border: 1px solid var(--line); border-radius: var(--radius-full); padding: 4px 7px; color: var(--text-muted); background: rgba(0, 0, 0, .12); font-size: 9px; }
+.worker-chip i { width: 5px; height: 5px; border-radius: 50%; background: var(--success); }
+.worker-chip.failed i, .worker-chip.blocked i, .worker-chip.timed_out i { background: var(--warning); }
 .empty-chat { display: grid; justify-items: center; margin-top: 74px; text-align: center; }
 .empty-chat h2 { margin: 0; color: var(--text-primary); font-size: 18px; font-weight: 600; letter-spacing: -.02em; }
 .empty-chat p { margin: 8px 0 0; color: var(--text-muted); font-size: 11px; }
