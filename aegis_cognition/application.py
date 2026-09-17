@@ -775,6 +775,7 @@ class AgentApplication:
                     build_model_subagent_handler(
                         invoke_model,
                         allow_dynamic_plans=raw_allow_dynamic,
+                        dynamic_handler_keys=tuple(sorted(set(trusted_handlers).union({"model"}))),
                     ),
                 )
             if not trusted_handlers:
