@@ -2,7 +2,7 @@
   "affected_test_paths": [
     "core/rust/src/gt96.rs"
   ],
-  "artifact_hash": "e7cc4b2f2c761b92cb8a6340a00c9396e08e52fdbad610c9435cd7252aaf0c1b",
+  "artifact_hash": "c36b32b8038d99561c47689c585c59e3edf113899aa0746aa48a73fd1ffbdc3f",
   "changed_paths": [
     "core/rust/src/gt96.rs"
   ],
@@ -231,6 +231,7 @@
     "tests/test_hardware_profile_report.py",
     "tests/test_lab_progress_context.py",
     "tests/test_lab_runtime.py",
+    "tests/test_learning_manager.py",
     "tests/test_memory_context_benchmark.py",
     "tests/test_memory_context_live_eval.py",
     "tests/test_placement_accelerator_metadata.py",
@@ -263,7 +264,7 @@
   "phase": "PHASE_3_DETERMINISTIC_AFFECTED_CLOSURE",
   "plan_widened": false,
   "provenance": {
-    "claim_graph_source_tree_sha256": "efe367297c2fc72e47e684da76885dbb0bb94d6cf4db4be5b99a325f439e458f",
+    "claim_graph_source_tree_sha256": "c8ac60b35a9af8b2411838d36b4ed6aade8ed2ddef7107f8167dd3d87f5f2b45",
     "claim_scope": "LOCAL_CHECKOUT_ONLY",
     "edge_digest": "2b47a62553191c763ba1542f9191284cc583f47c9ec205130a6d14530c64e65b",
     "environment": {
@@ -275,14 +276,14 @@
       "release": "11"
     },
     "evidence_class": "PLANNING_ONLY",
-    "inventory_source_tree_sha256": "5c05238eec89c60f2c31b83df9ad8b2c84f63810dea5a3cfe0d412c2f1eff448",
-    "mapping_artifact_hash": "5303d405ce3c36da328fe0d432e9a33b46874abfbf7a03f1998fc87ce0ef5e3b",
+    "inventory_source_tree_sha256": "b02d8d0ff82516e6d32fac6588a9575da9071017033109ff0c43537ecb58c89d",
+    "mapping_artifact_hash": "0f9089e3cbbac17821e7cbdfc02dd13c9db1db5c395b3368eb6020ea4677281f",
     "origin_main_sha": "1454c8c1740b95d1198d01e8211b6e6abd6dc060",
     "promotion": "DISABLED_IN_SHADOW",
-    "source_sha": "1454c8c1740b95d1198d01e8211b6e6abd6dc060",
+    "source_sha": "278e026143d5df858f76dbaf75dc5d088c329f88",
     "validator": "scripts/aese_affected_closure.py"
   },
-  "reproducible_hash": "c7596b359e3c8851fcd3ccd075c8ace97751b2359b22f8827c9f028617b0ff10",
+  "reproducible_hash": "de03819c0606d71aa9404a4734c3ccb54aa85a5044bccdab88cc86590f84e7fa",
   "schema": "aese-affected-closure-v1",
   "shadow_selection": {
     "authority": "RETAINED_LEGACY_AUTHORITY",
@@ -293,8 +294,8 @@
     ],
     "would_skip_item_ids": []
   },
-  "source_head": "1454c8c1740b95d1198d01e8211b6e6abd6dc060",
-  "source_tree_sha256": "efe367297c2fc72e47e684da76885dbb0bb94d6cf4db4be5b99a325f439e458f",
+  "source_head": "278e026143d5df858f76dbaf75dc5d088c329f88",
+  "source_tree_sha256": "c8ac60b35a9af8b2411838d36b4ed6aade8ed2ddef7107f8167dd3d87f5f2b45",
   "status": "AFFECTED_CLOSURE_PLAN_ONLY_SELECTION_DISABLED",
   "traversed_edges": [
     {
@@ -357,6 +358,7 @@
     "AESE-PYTHON_TEST-245D0C98F2F0786E",
     "AESE-PYTHON_TEST-29DA908655C0A48B",
     "AESE-PYTHON_TEST-2EAE0B226C89AC4F",
+    "AESE-PYTHON_TEST-32654A498E035F3E",
     "AESE-PYTHON_TEST-33515B9DD87F10CD",
     "AESE-PYTHON_TEST-4C616F84A7DDC122",
     "AESE-PYTHON_TEST-4E8715C7A425EE52",
@@ -620,6 +622,7 @@
     "tests/test_hardware_profile_report.py",
     "tests/test_lab_progress_context.py",
     "tests/test_lab_runtime.py",
+    "tests/test_learning_manager.py",
     "tests/test_memory_context_benchmark.py",
     "tests/test_memory_context_live_eval.py",
     "tests/test_placement_accelerator_metadata.py",
