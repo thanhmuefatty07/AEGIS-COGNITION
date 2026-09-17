@@ -9,7 +9,7 @@ import pytest
 
 from aegis_cognition.application import AgentApplication
 from aegis_cognition.config import AgentConfig
-from aegis_cognition.subagents import AgentCoordinationError, AgentPlanProposal, AgentTaskBlueprint
+from aegis_cognition.subagents import AgentCoordinationError, AgentPlanProposal, AgentTaskBlueprint, AgentTaskContext
 
 
 class _NoKeyModel:
@@ -72,6 +72,45 @@ async def test_application_can_plan_children_and_synthesize_once_at_root(monkeyp
     assert "research" in gateway.prompts[0]
     assert "RESEARCH_X_APP_ONLY_CONFIGURED: false" in gateway.prompts[0]
     assert "CHILD_RESULT_PACKETS" in gateway.prompts[2]
+
+
+async def test_application_native_authority_runs_parallel_children_and_root_synthesis() -> None:
+    blueprint_one = AgentTaskBlueprint(
+        task_id=1,
+        handler_key="trusted",
+        role="worker one",
+        prompt="bounded work one",
+        artifact_namespace="agent/1",
+    )
+    blueprint_two = AgentTaskBlueprint(
+        task_id=2,
+        handler_key="trusted",
+        role="worker two",
+        prompt="bounded work two",
+        artifact_namespace="agent/2",
+    )
+    config = AgentConfig.from_inputs(
+        "native subagent integration",
+        llm=_NoKeyModel(),
+    )
+    application = AgentApplication(config)
+    plan = {"schema": "aegis-agent-plan-v1", "tasks": [blueprint_one.as_dict(), blueprint_two.as_dict()]}
+
+    async def handler(context: AgentTaskContext) -> object:
+        await asyncio.sleep(0)
+        return context.success(f"done-{context.task_id}")
+
+    result = await application.arun_subagents(
+        plan=plan,
+        handlers={"trusted": handler},
+        root_synthesizer=lambda children: tuple(child.summary for child in children),
+        require_native_authority=True,
+    )
+
+    assert result.status == "COMPLETED"
+    assert result.graph_authority == "native_runtime"
+    assert result.root_output == ("done-1", "done-2")
+    assert len(result.child_results) == 2
 
 
 async def test_application_binds_public_research_handler_into_the_supervisor(monkeypatch: pytest.MonkeyPatch) -> None:

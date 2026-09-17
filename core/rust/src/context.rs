@@ -21,10 +21,24 @@ pub enum ContextNodeKind {
     Tool,
 }
 
+/// Controls whether a context node may be removed by budget selection.
+///
+/// The default is deliberately `Condensable` for compatibility with the
+/// existing utility-based selector. Callers must opt a node into
+/// `Protected`; this avoids silently changing the retention semantics of
+/// existing context producers.
+#[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
+pub enum ContextRetentionClass {
+    Protected,
+    Condensable,
+    Ephemeral,
+}
+
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct ContextNode {
     pub node_id: ContextNodeId,
     pub kind: ContextNodeKind,
+    pub retention_class: ContextRetentionClass,
     pub token_cost: u32,
     pub utility_score: u32,
     pub dependency_coverage: u32,
@@ -126,11 +140,17 @@ impl ContextNode {
         Self {
             node_id,
             kind,
+            retention_class: ContextRetentionClass::Condensable,
             token_cost,
             utility_score,
             dependency_coverage,
             contradiction_risk,
         }
+    }
+
+    pub fn with_retention_class(mut self, retention_class: ContextRetentionClass) -> Self {
+        self.retention_class = retention_class;
+        self
     }
 
     pub fn deterministic_utility(&self) -> u64 {
@@ -268,9 +288,10 @@ impl ContextGovernor {
             }
         }
         let activated_ids: Vec<ContextNodeId> = self.nodes.keys().copied().collect();
-        let mut selected = required.clone();
+        let protected = self.retained_seed_ids(&activated_ids, &required);
+        let mut selected = protected.clone();
         let mut token_count = 0u32;
-        for node_id in &required {
+        for node_id in &protected {
             token_count = token_count
                 .checked_add(self.nodes[node_id].token_cost)
                 .ok_or(ContextGovernorError::TokenBudgetExceeded)?;
@@ -280,7 +301,7 @@ impl ContextGovernor {
         }
         let mut candidates: Vec<&ContextNode> = activated_ids
             .iter()
-            .filter(|node_id| required.binary_search(node_id).is_err())
+            .filter(|node_id| protected.binary_search(node_id).is_err())
             .filter_map(|node_id| self.nodes.get(node_id))
             .collect();
         candidates.sort_by(|left, right| candidate_order(left, right));
@@ -290,7 +311,7 @@ impl ContextGovernor {
                 selected.push(candidate.node_id);
             }
         }
-        self.local_swap_improve(&required, &activated_ids, &mut selected, &mut token_count);
+        self.local_swap_improve(&protected, &activated_ids, &mut selected, &mut token_count);
         selected.sort_unstable();
         let utility_score = selected
             .iter()
@@ -466,11 +487,12 @@ impl ContextGovernor {
             canonical_ids_with_active(activated.active_task_id, &activated.required_evidence_refs);
         let activated_ids = &activated.node_ids;
         let activation_node_count = activated.activation_node_count;
+        let protected = self.retained_seed_ids(activated_ids, &required);
         let mut selected = Vec::with_capacity(activated_ids.len().min(32));
         let mut token_count = 0u32;
         let mut utility_score = 0u64;
 
-        for required_id in &required {
+        for required_id in &protected {
             if activated_ids.binary_search(required_id).is_err() {
                 return Err(ContextGovernorError::MissingNode(*required_id));
             }
@@ -490,7 +512,7 @@ impl ContextGovernor {
 
         let mut candidates: Vec<&ContextNode> = activated_ids
             .iter()
-            .filter(|node_id| required.binary_search(node_id).is_err())
+            .filter(|node_id| protected.binary_search(node_id).is_err())
             .filter_map(|node_id| self.nodes.get(node_id))
             .collect();
         candidates.sort_by(|left, right| candidate_order(left, right));
@@ -505,7 +527,7 @@ impl ContextGovernor {
 
         if selected.len() < activated_ids.len() {
             self.local_swap_improve(
-                required.as_slice(),
+                protected.as_slice(),
                 activated_ids,
                 &mut selected,
                 &mut token_count,
@@ -526,6 +548,18 @@ impl ContextGovernor {
             utility_score,
             activation_node_count,
         })
+    }
+
+    fn retained_seed_ids(
+        &self,
+        activated_ids: &[ContextNodeId],
+        required_ids: &[ContextNodeId],
+    ) -> Vec<ContextNodeId> {
+        let mut retained = required_ids.to_vec();
+        retained.extend(activated_ids.iter().copied().filter(|node_id| {
+            self.nodes[node_id].retention_class == ContextRetentionClass::Protected
+        }));
+        canonical_ids(&retained)
     }
 
     fn insert_required(
@@ -573,6 +607,12 @@ impl ContextGovernor {
                     .nodes
                     .get(&removable_id)
                     .expect("selected node exists in graph");
+                if retention_rank(candidate.retention_class)
+                    > retention_rank(removable.retention_class)
+                {
+                    removable_index += 1;
+                    continue;
+                }
                 if candidate_utility <= removable.deterministic_utility() {
                     removable_index += 1;
                     continue;
@@ -1051,14 +1091,26 @@ impl ContextPackCandidateProof {
 }
 
 fn candidate_order(left: &ContextNode, right: &ContextNode) -> Ordering {
-    let left_utility = left.deterministic_utility();
-    let right_utility = right.deterministic_utility();
-    right_utility
-        .saturating_mul(left.token_cost as u64)
-        .cmp(&left_utility.saturating_mul(right.token_cost as u64))
-        .then_with(|| right_utility.cmp(&left_utility))
-        .then_with(|| left.token_cost.cmp(&right.token_cost))
-        .then_with(|| left.node_id.cmp(&right.node_id))
+    retention_rank(left.retention_class)
+        .cmp(&retention_rank(right.retention_class))
+        .then_with(|| {
+            let left_utility = left.deterministic_utility();
+            let right_utility = right.deterministic_utility();
+            right_utility
+                .saturating_mul(left.token_cost as u64)
+                .cmp(&left_utility.saturating_mul(right.token_cost as u64))
+                .then_with(|| right_utility.cmp(&left_utility))
+                .then_with(|| left.token_cost.cmp(&right.token_cost))
+                .then_with(|| left.node_id.cmp(&right.node_id))
+        })
+}
+
+fn retention_rank(class: ContextRetentionClass) -> u8 {
+    match class {
+        ContextRetentionClass::Protected => 0,
+        ContextRetentionClass::Condensable => 1,
+        ContextRetentionClass::Ephemeral => 2,
+    }
 }
 
 fn canonical_ids(ids: &[ContextNodeId]) -> Vec<ContextNodeId> {

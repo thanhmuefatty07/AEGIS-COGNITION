@@ -14,7 +14,14 @@ from .errors import ConfigError, ProviderError
 from .models import RunResult
 from .observability import RuntimeTelemetry
 from .runtime import native_runtime_available
-from .subagents import AgentHandler, AgentMessage, AgentPlanProposal, AgentResultPacket, AgentSupervisorResult
+from .subagents import (
+    AgentHandler,
+    AgentMessage,
+    AgentMessageJournal,
+    AgentPlanProposal,
+    AgentResultPacket,
+    AgentSupervisorResult,
+)
 
 
 # Kept as compatibility aliases for callers that used the old private helpers.
@@ -101,6 +108,7 @@ class Agent:
         handlers: Mapping[str, AgentHandler] | None = None,
         root_synthesizer: Callable[[tuple[AgentResultPacket, ...]], object | Awaitable[object]] | None = None,
         message_sink: Callable[[AgentMessage], object | Awaitable[object]] | None = None,
+        message_journal: AgentMessageJournal | None = None,
         require_native_authority: bool | None = None,
         max_concurrency: int | None = None,
     ) -> AgentSupervisorResult[object]:
@@ -111,6 +119,7 @@ class Agent:
             handlers=handlers,
             root_synthesizer=root_synthesizer,
             message_sink=message_sink,
+            message_journal=message_journal,
             require_native_authority=require_native_authority,
             max_concurrency=max_concurrency,
         )
@@ -122,6 +131,7 @@ class Agent:
         handlers: Mapping[str, AgentHandler] | None = None,
         root_synthesizer: Callable[[tuple[AgentResultPacket, ...]], object | Awaitable[object]] | None = None,
         message_sink: Callable[[AgentMessage], object | Awaitable[object]] | None = None,
+        message_journal: AgentMessageJournal | None = None,
         require_native_authority: bool | None = None,
         max_concurrency: int | None = None,
     ) -> AgentSupervisorResult[object]:
@@ -136,6 +146,7 @@ class Agent:
                     handlers=handlers,
                     root_synthesizer=root_synthesizer,
                     message_sink=message_sink,
+                    message_journal=message_journal,
                     require_native_authority=require_native_authority,
                     max_concurrency=max_concurrency,
                 )

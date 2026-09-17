@@ -15,6 +15,7 @@ import json
 import threading
 import time
 import uuid
+from collections import deque
 from collections.abc import AsyncGenerator, Awaitable, Callable, Iterable, Mapping
 from contextlib import AbstractAsyncContextManager, asynccontextmanager
 from dataclasses import dataclass
@@ -630,6 +631,96 @@ class AgentMessage:
         if _canonical_bytes(decoded) != value:
             raise AgentCoordinationError("message bytes are not canonical JSON")
         return cls.from_dict(decoded)
+
+
+@dataclass(frozen=True, slots=True)
+class AgentMessageJournalEntry:
+    """One bounded observation event with a monotonic local cursor."""
+
+    cursor: int
+    message: AgentMessage
+
+
+@dataclass(frozen=True, slots=True)
+class AgentMessageJournalRead:
+    """Cursor-based observation result for a future desktop consumer."""
+
+    latest_cursor: int
+    oldest_cursor: int
+    entries: tuple[AgentMessageJournalEntry, ...]
+    resync_required: bool
+
+
+class AgentMessageJournal:
+    """Bounded observation journal; it is not an execution mailbox.
+
+    The journal stores only already-bounded semantic envelopes. It is optional,
+    in-process, and non-authoritative: task dependencies, cancellation and
+    execution status remain owned by ``AgentSupervisor`` and Rust runtime
+    admission. A consumer that falls behind receives ``resync_required``
+    instead of an unbounded history.
+    """
+
+    def __init__(self, *, max_messages: int = 512, max_bytes: int = 8 * 1024 * 1024) -> None:
+        if type(max_messages) is not int or not 1 <= max_messages <= 4_096:
+            raise AgentCoordinationError("message journal max_messages must be within [1, 4096]")
+        if type(max_bytes) is not int or not 1 <= max_bytes <= 64 * 1024 * 1024:
+            raise AgentCoordinationError("message journal max_bytes must be within [1, 64 MiB]")
+        self.max_messages = max_messages
+        self.max_bytes = max_bytes
+        self._entries: deque[tuple[AgentMessageJournalEntry, int]] = deque()
+        self._next_cursor = 0
+        self._bytes = 0
+        self._lock = threading.RLock()
+
+    @property
+    def latest_cursor(self) -> int:
+        with self._lock:
+            return self._next_cursor
+
+    @property
+    def buffered_bytes(self) -> int:
+        with self._lock:
+            return self._bytes
+
+    def append(self, message: AgentMessage) -> int:
+        """Append one validated envelope and evict oldest observations as needed."""
+
+        message.validate()
+        wire_size = len(message.to_bytes())
+        if wire_size > self.max_bytes:
+            raise AgentCoordinationError("message journal cannot retain this envelope")
+        with self._lock:
+            while self._entries and (
+                len(self._entries) >= self.max_messages or self._bytes + wire_size > self.max_bytes
+            ):
+                _, evicted_size = self._entries.popleft()
+                self._bytes -= evicted_size
+            self._next_cursor += 1
+            entry = AgentMessageJournalEntry(cursor=self._next_cursor, message=message)
+            self._entries.append((entry, wire_size))
+            self._bytes += wire_size
+            return entry.cursor
+
+    def read_since(self, cursor: int = 0, *, max_messages: int | None = None) -> AgentMessageJournalRead:
+        """Read events after ``cursor`` without exposing model transcripts."""
+
+        if type(cursor) is not int or cursor < 0:
+            raise AgentCoordinationError("message journal cursor must be non-negative")
+        if max_messages is not None and (type(max_messages) is not int or max_messages < 1):
+            raise AgentCoordinationError("message journal read limit must be positive")
+        with self._lock:
+            latest = self._next_cursor
+            oldest = self._entries[0][0].cursor if self._entries else latest + 1
+            resync_required = bool(self._entries and cursor < oldest - 1)
+            limit = len(self._entries) if max_messages is None else min(max_messages, len(self._entries))
+            entries = tuple(entry for entry, _ in self._entries if entry.cursor > cursor)[:limit]
+            return AgentMessageJournalRead(
+                latest_cursor=latest,
+                oldest_cursor=oldest,
+                entries=entries,
+                resync_required=resync_required,
+            )
 
 
 type AgentHandlerResult = AgentResultPacket | str
@@ -1435,6 +1526,7 @@ class AgentSupervisor[RootOutputT]:
         runtime_guard_factory: RuntimeGuardFactory = coordinated_runtime_task,
         graph_validator: Callable[[Mapping[str, object]], Mapping[str, object]] | None = None,
         message_sink: MessageSink | None = None,
+        message_journal: AgentMessageJournal | None = None,
     ) -> None:
         selected_run_id = uuid.uuid4().hex if run_id is None else run_id
         self.run_id = _non_empty(selected_run_id, "run_id", limit=128)
@@ -1448,9 +1540,14 @@ class AgentSupervisor[RootOutputT]:
         self._runtime_guard_factory = runtime_guard_factory
         self._graph_validator = graph_validator or validate_agent_graph
         self._message_sink = message_sink
+        if message_journal is not None and type(message_journal) is not AgentMessageJournal:
+            raise AgentCoordinationError("message_journal must be an AgentMessageJournal")
+        self._message_journal = message_journal
         self._started = False
 
     async def _emit(self, message: AgentMessage) -> None:
+        if self._message_journal is not None:
+            self._message_journal.append(message)
         if self._message_sink is None:
             return
         result = self._message_sink(message)
@@ -1643,6 +1740,9 @@ __all__ = [
     "AgentCoordinationError",
     "AgentHandler",
     "AgentMessage",
+    "AgentMessageJournal",
+    "AgentMessageJournalEntry",
+    "AgentMessageJournalRead",
     "AgentPlanProposal",
     "AgentResultPacket",
     "AgentSupervisor",

@@ -4,6 +4,7 @@
 //! user-visible memory record state and its semantic events; it deliberately
 //! does not promote a candidate to physical execution authority.
 
+use crate::memory::nudge::MemoryCandidate;
 use blake3::Hasher;
 use rusqlite::{Connection, OptionalExtension, Transaction, backup::Backup, params};
 use std::fs;
@@ -54,6 +55,20 @@ pub struct MemoryRecordView {
     pub observed_at_ms: u64,
     pub content_hash: Option<[u8; 32]>,
     pub content: Option<String>,
+    pub source_session_id: Option<u128>,
+    pub nudge_id: Option<u128>,
+    pub nudge_hash: Option<[u8; 32]>,
+    pub candidate_hash: Option<[u8; 32]>,
+    pub relevance_score_micros: Option<u32>,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct MemoryNudgeProvenance {
+    pub source_session_id: u128,
+    pub nudge_id: u128,
+    pub nudge_hash: [u8; 32],
+    pub candidate_hash: [u8; 32],
+    pub relevance_score_micros: u32,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -127,6 +142,10 @@ fn parse_id(value: String) -> Result<u128, MemoryRepositoryError> {
     value
         .parse::<u128>()
         .map_err(|_| MemoryRepositoryError::Conflict("invalid stored memory id"))
+}
+
+fn parse_optional_id(value: Option<String>) -> Result<Option<u128>, MemoryRepositoryError> {
+    value.map(parse_id).transpose()
 }
 
 fn parse_u64(value: i64) -> Result<u64, MemoryRepositoryError> {
@@ -254,6 +273,16 @@ impl MemoryRepository {
                  content_hash BLOB,
                  occurred_at_ms INTEGER NOT NULL
              );
+             CREATE TABLE IF NOT EXISTS memory_nudge_provenance (
+                 memory_id TEXT PRIMARY KEY NOT NULL REFERENCES memory_records(memory_id),
+                 source_session_id TEXT NOT NULL,
+                 nudge_id TEXT NOT NULL,
+                 nudge_hash BLOB NOT NULL,
+                 candidate_hash BLOB NOT NULL,
+                 relevance_score_micros INTEGER NOT NULL CHECK (relevance_score_micros BETWEEN 0 AND 1000000)
+             );
+             CREATE INDEX IF NOT EXISTS memory_nudge_provenance_source
+                 ON memory_nudge_provenance(source_session_id);
              CREATE VIRTUAL TABLE IF NOT EXISTS memory_records_fts
                  USING fts5(memory_id UNINDEXED, owner_id UNINDEXED, scope_kind UNINDEXED, content);
              ",
@@ -692,6 +721,70 @@ impl MemoryRepository {
         observed_at_ms: u64,
         request_id: u128,
     ) -> Result<MemoryCaptureOutcome, MemoryRepositoryError> {
+        self.capture_with_kind_as_provenance(
+            memory_id,
+            subject_id,
+            owner_id,
+            scope_kind,
+            memory_kind,
+            content,
+            observed_at_ms,
+            request_id,
+            None,
+        )
+    }
+
+    /// Capture a candidate together with the sealed nudge provenance that
+    /// produced it. The candidate remains CANDIDATE/UNREVIEWED until an
+    /// explicit validation call promotes or rejects it.
+    pub fn capture_nudged_candidate(
+        &mut self,
+        memory_id: u128,
+        subject_id: &str,
+        owner_id: &str,
+        scope_kind: &str,
+        memory_kind: &str,
+        content: &str,
+        observed_at_ms: u64,
+        request_id: u128,
+        provenance: &MemoryNudgeProvenance,
+    ) -> Result<MemoryCaptureOutcome, MemoryRepositoryError> {
+        if provenance.source_session_id == 0
+            || provenance.nudge_id == 0
+            || provenance.nudge_hash == [0; 32]
+            || provenance.candidate_hash == [0; 32]
+            || provenance.relevance_score_micros > 1_000_000
+            || provenance.candidate_hash != MemoryCandidate::content_hash_for(content)
+        {
+            return Err(MemoryRepositoryError::InvalidInput(
+                "invalid memory nudge provenance",
+            ));
+        }
+        self.capture_with_kind_as_provenance(
+            memory_id,
+            subject_id,
+            owner_id,
+            scope_kind,
+            memory_kind,
+            content,
+            observed_at_ms,
+            request_id,
+            Some(provenance),
+        )
+    }
+
+    fn capture_with_kind_as_provenance(
+        &mut self,
+        memory_id: u128,
+        subject_id: &str,
+        owner_id: &str,
+        scope_kind: &str,
+        memory_kind: &str,
+        content: &str,
+        observed_at_ms: u64,
+        request_id: u128,
+        provenance: Option<&MemoryNudgeProvenance>,
+    ) -> Result<MemoryCaptureOutcome, MemoryRepositoryError> {
         self.require_access(subject_id, owner_id, scope_kind, true, observed_at_ms)?;
         if memory_id == 0 || request_id == 0 {
             return Err(MemoryRepositoryError::InvalidInput("ids must be non-zero"));
@@ -805,6 +898,22 @@ impl MemoryRepository {
             Some(content_hash),
             observed_at_ms,
         )?;
+        if let Some(provenance) = provenance {
+            transaction.execute(
+                "INSERT INTO memory_nudge_provenance
+                    (memory_id, source_session_id, nudge_id, nudge_hash, candidate_hash,
+                     relevance_score_micros)
+                 VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
+                params![
+                    memory_id.to_string(),
+                    provenance.source_session_id.to_string(),
+                    provenance.nudge_id.to_string(),
+                    provenance.nudge_hash.as_slice(),
+                    provenance.candidate_hash.as_slice(),
+                    i64::from(provenance.relevance_score_micros),
+                ],
+            )?;
+        }
         Self::mark_index_dirty(&transaction, memory_id, "capture", observed_at_ms)?;
         transaction.commit()?;
         self.finish_index(memory_id)?;
@@ -837,11 +946,14 @@ impl MemoryRepository {
         }
         self.connection
             .query_row(
-                "SELECT memory_id, owner_id, scope_kind, memory_kind, lifecycle, validation,
-                        validation_basis, validation_reason, revision,
-                        observed_at_ms, content_hash, content
-                FROM memory_records
-                 WHERE memory_id = ?1 AND owner_id = ?2 AND scope_kind = ?3",
+                "SELECT r.memory_id, r.owner_id, r.scope_kind, r.memory_kind, r.lifecycle, r.validation,
+                        r.validation_basis, r.validation_reason, r.revision,
+                        r.observed_at_ms, r.content_hash, r.content,
+                        p.source_session_id, p.nudge_id, p.nudge_hash, p.candidate_hash,
+                        p.relevance_score_micros
+                 FROM memory_records r
+                 LEFT JOIN memory_nudge_provenance p ON p.memory_id = r.memory_id
+                 WHERE r.memory_id = ?1 AND r.owner_id = ?2 AND r.scope_kind = ?3",
                 params![memory_id.to_string(), owner_id, scope_kind],
                 |row| {
                     let memory_kind: String = row.get(3)?;
@@ -865,6 +977,20 @@ impl MemoryRepository {
                         content_hash: decode_hash(row.get(10)?)
                             .map_err(|_| rusqlite::Error::InvalidQuery)?,
                         content: row.get(11)?,
+                        source_session_id: parse_optional_id(row.get(12)?)
+                            .map_err(|_| rusqlite::Error::InvalidQuery)?,
+                        nudge_id: parse_optional_id(row.get(13)?)
+                            .map_err(|_| rusqlite::Error::InvalidQuery)?,
+                        nudge_hash: decode_hash(row.get(14)?)
+                            .map_err(|_| rusqlite::Error::InvalidQuery)?,
+                        candidate_hash: decode_hash(row.get(15)?)
+                            .map_err(|_| rusqlite::Error::InvalidQuery)?,
+                        relevance_score_micros: row
+                            .get::<_, Option<i64>>(16)?
+                            .map(|value| {
+                                u32::try_from(value).map_err(|_| rusqlite::Error::InvalidQuery)
+                            })
+                            .transpose()?,
                     })
                 },
             )
@@ -1096,9 +1222,12 @@ impl MemoryRepository {
         }
         let mut statement = self.connection.prepare(
             "SELECT r.memory_id, r.owner_id, r.scope_kind, r.memory_kind, r.lifecycle, r.validation,
-                    r.validation_basis, r.validation_reason, r.revision, r.observed_at_ms, r.content_hash
+                    r.validation_basis, r.validation_reason, r.revision, r.observed_at_ms, r.content_hash,
+                    p.source_session_id, p.nudge_id, p.nudge_hash, p.candidate_hash,
+                    p.relevance_score_micros
              FROM memory_records_fts f
              JOIN memory_records r ON r.memory_id = f.memory_id
+             LEFT JOIN memory_nudge_provenance p ON p.memory_id = r.memory_id
              WHERE memory_records_fts MATCH ?1
                AND r.owner_id = ?2 AND r.scope_kind = ?3
                AND r.lifecycle IN ('CANDIDATE', 'ACTIVE')
@@ -1126,6 +1255,11 @@ impl MemoryRepository {
                     row.get::<_, i64>(8)?,
                     row.get::<_, i64>(9)?,
                     row.get::<_, Option<Vec<u8>>>(10)?,
+                    row.get::<_, Option<String>>(11)?,
+                    row.get::<_, Option<String>>(12)?,
+                    row.get::<_, Option<Vec<u8>>>(13)?,
+                    row.get::<_, Option<Vec<u8>>>(14)?,
+                    row.get::<_, Option<i64>>(15)?,
                 ))
             },
         )?;
@@ -1142,6 +1276,11 @@ impl MemoryRepository {
                 revision,
                 observed_at_ms,
                 content_hash,
+                source_session_id,
+                nudge_id,
+                nudge_hash,
+                candidate_hash,
+                relevance_score_micros,
             ) = row?;
             Ok(MemoryRecordView {
                 memory_id: parse_id(memory_id)?,
@@ -1162,6 +1301,16 @@ impl MemoryRepository {
                 observed_at_ms: parse_u64(observed_at_ms)?,
                 content_hash: decode_hash(content_hash)?,
                 content: None,
+                source_session_id: parse_optional_id(source_session_id)?,
+                nudge_id: parse_optional_id(nudge_id)?,
+                nudge_hash: decode_hash(nudge_hash)?,
+                candidate_hash: decode_hash(candidate_hash)?,
+                relevance_score_micros: relevance_score_micros
+                    .map(|value| {
+                        u32::try_from(value)
+                            .map_err(|_| MemoryRepositoryError::Conflict("invalid stored score"))
+                    })
+                    .transpose()?,
             })
         })
         .collect()
@@ -1679,6 +1828,7 @@ fn insert_event(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::memory::nudge::MemoryCandidate;
     use tempfile::tempdir;
 
     #[test]
@@ -1709,6 +1859,68 @@ mod tests {
         assert_eq!(record.lifecycle, "CANDIDATE");
         assert_eq!(record.revision, 1);
         assert_eq!(record.memory_kind, DEFAULT_MEMORY_KIND);
+    }
+
+    #[test]
+    fn nudged_candidate_persists_provenance_and_replays_without_activation() {
+        let dir = tempdir().unwrap();
+        let path = dir.path().join("state.db");
+        let content = "user prefers a bounded local workflow";
+        let provenance = MemoryNudgeProvenance {
+            source_session_id: 42,
+            nudge_id: 77,
+            nudge_hash: [9; 32],
+            candidate_hash: MemoryCandidate::content_hash_for(content),
+            relevance_score_micros: 850_000,
+        };
+        let mut repository = MemoryRepository::open(&path).unwrap();
+        let first = repository
+            .capture_nudged_candidate(
+                700,
+                "owner-a",
+                "owner-a",
+                "USER_PRIVATE",
+                DEFAULT_MEMORY_KIND,
+                content,
+                1_700_000_000_000,
+                7_001,
+                &provenance,
+            )
+            .unwrap();
+        assert!(first.created);
+        let replay = repository
+            .capture_nudged_candidate(
+                700,
+                "owner-a",
+                "owner-a",
+                "USER_PRIVATE",
+                DEFAULT_MEMORY_KIND,
+                content,
+                1_700_000_000_000,
+                7_001,
+                &provenance,
+            )
+            .unwrap();
+        assert!(!replay.created);
+
+        let record = repository
+            .inspect(700, "owner-a", "USER_PRIVATE")
+            .unwrap()
+            .unwrap();
+        assert_eq!(record.lifecycle, "CANDIDATE");
+        assert_eq!(record.validation, "UNREVIEWED");
+        assert_eq!(record.source_session_id, Some(42));
+        assert_eq!(record.nudge_id, Some(77));
+        assert_eq!(record.nudge_hash, Some([9; 32]));
+        assert_eq!(record.candidate_hash, Some(provenance.candidate_hash));
+        assert_eq!(record.relevance_score_micros, Some(850_000));
+
+        let results = repository
+            .search_candidates("bounded local", "owner-a", "USER_PRIVATE", 5)
+            .unwrap();
+        assert_eq!(results.len(), 1);
+        assert_eq!(results[0].source_session_id, Some(42));
+        assert_eq!(results[0].lifecycle, "CANDIDATE");
     }
 
     #[test]
