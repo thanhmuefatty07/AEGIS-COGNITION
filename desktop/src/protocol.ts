@@ -153,9 +153,49 @@ export type ConversationTurn = {
   revision: number;
 };
 
+export type ConversationExecution = {
+  execution_id: string;
+  conversation_id: string;
+  turn_id: string;
+  provider_kind: string;
+  connection_id: string;
+  model_id: string;
+  status: string;
+  checkpoint_seq: number;
+  revision: number;
+  started_at_ms: number;
+  finished_at_ms: number | null;
+};
+
+export type ConversationCheckpoint = {
+  execution_id: string;
+  sequence: number;
+  state: string;
+  continuation_json: string;
+  continuation_hash: string;
+  created_at_ms: number;
+};
+
+export type ConversationToolCall = {
+  call_id: string;
+  conversation_id: string;
+  request_turn_id: string;
+  result_turn_id: string | null;
+  tool_name: string;
+  arguments_json: string;
+  result_content: string | null;
+  status: string;
+  revision: number;
+  created_at_ms: number;
+  completed_at_ms: number | null;
+};
+
 export type ConversationSnapshot = {
   conversation: Conversation;
   turns: ConversationTurn[];
+  executions: ConversationExecution[];
+  checkpoints: ConversationCheckpoint[];
+  tool_calls: ConversationToolCall[];
 };
 
 export type MemoryRecord = {
@@ -350,7 +390,53 @@ export function parseConversationSnapshot(value: unknown): ConversationSnapshot 
     && typeof turn.revision === "number")) {
     throw new Error("Desktop service returned an invalid conversation turn");
   }
-  return value as unknown as ConversationSnapshot;
+  const executions = value.executions === undefined ? [] : value.executions;
+  const checkpoints = value.checkpoints === undefined ? [] : value.checkpoints;
+  const toolCalls = value.tool_calls === undefined ? [] : value.tool_calls;
+  if (!Array.isArray(executions) || !executions.every((execution) => isRecord(execution)
+    && typeof execution.execution_id === "string"
+    && typeof execution.conversation_id === "string"
+    && typeof execution.turn_id === "string"
+    && typeof execution.provider_kind === "string"
+    && typeof execution.connection_id === "string"
+    && typeof execution.model_id === "string"
+    && typeof execution.status === "string"
+    && typeof execution.checkpoint_seq === "number"
+    && typeof execution.revision === "number"
+    && typeof execution.started_at_ms === "number"
+    && (execution.finished_at_ms === null || typeof execution.finished_at_ms === "number"))) {
+    throw new Error("Desktop service returned an invalid conversation execution");
+  }
+  if (!Array.isArray(checkpoints) || !checkpoints.every((checkpoint) => isRecord(checkpoint)
+    && typeof checkpoint.execution_id === "string"
+    && typeof checkpoint.sequence === "number"
+    && typeof checkpoint.state === "string"
+    && typeof checkpoint.continuation_json === "string"
+    && typeof checkpoint.continuation_hash === "string"
+    && typeof checkpoint.created_at_ms === "number")) {
+    throw new Error("Desktop service returned an invalid conversation checkpoint");
+  }
+  if (!Array.isArray(toolCalls) || !toolCalls.every((toolCall) => isRecord(toolCall)
+    && typeof toolCall.call_id === "string"
+    && typeof toolCall.conversation_id === "string"
+    && typeof toolCall.request_turn_id === "string"
+    && (toolCall.result_turn_id === null || typeof toolCall.result_turn_id === "string")
+    && typeof toolCall.tool_name === "string"
+    && typeof toolCall.arguments_json === "string"
+    && (toolCall.result_content === null || typeof toolCall.result_content === "string")
+    && typeof toolCall.status === "string"
+    && typeof toolCall.revision === "number"
+    && typeof toolCall.created_at_ms === "number"
+    && (toolCall.completed_at_ms === null || typeof toolCall.completed_at_ms === "number"))) {
+    throw new Error("Desktop service returned an invalid conversation tool call");
+  }
+  return {
+    conversation,
+    turns: value.turns as unknown as ConversationTurn[],
+    executions: executions as unknown as ConversationExecution[],
+    checkpoints: checkpoints as unknown as ConversationCheckpoint[],
+    tool_calls: toolCalls as unknown as ConversationToolCall[],
+  };
 }
 
 export function parseConversationList(value: unknown): Conversation[] {
