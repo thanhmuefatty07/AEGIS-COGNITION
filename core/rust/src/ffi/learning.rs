@@ -6,11 +6,172 @@ use super::{
     get_memory_repository, get_session_index, get_session_ledger, hex32, py_safe,
     session_profile_id,
 };
+use crate::memory::MemoryNudgeProvenance;
+use crate::memory::nudge::{MAX_MEMORY_CANDIDATE_BYTES, MemoryCandidate, MemoryNudgeSystem};
 use crate::memory::repository::DEFAULT_MEMORY_KIND;
+use blake3::Hasher;
 use pyo3::prelude::*;
 use std::path::PathBuf;
 
 const MAX_LEARNING_LEDGER_JSON_BYTES: usize = 8 * 1024 * 1024;
+const MAX_MEMORY_NUDGE_CANDIDATES: usize = 64;
+
+fn parse_session_id(session_id_str: &str) -> PyResult<u128> {
+    let session_id = if let Some(hex) = session_id_str.strip_prefix("0x") {
+        u128::from_str_radix(hex, 16)
+    } else {
+        session_id_str.parse::<u128>()
+    }
+    .map_err(|error| {
+        pyo3::exceptions::PyValueError::new_err(format!(
+            "Invalid session_id '{}': {}",
+            session_id_str, error
+        ))
+    })?;
+    if session_id == 0 {
+        return Err(pyo3::exceptions::PyValueError::new_err(
+            "session_id must be non-zero",
+        ));
+    }
+    Ok(session_id)
+}
+
+fn parse_nudge_id(value: &serde_json::Value, name: &str) -> PyResult<u128> {
+    let raw = match value {
+        serde_json::Value::String(value) => value.clone(),
+        serde_json::Value::Number(value) => value.to_string(),
+        _ => {
+            return Err(pyo3::exceptions::PyValueError::new_err(format!(
+                "{name} must be a decimal or hexadecimal integer"
+            )));
+        }
+    };
+    let parsed = if let Some(hex) = raw.strip_prefix("0x") {
+        u128::from_str_radix(hex, 16)
+    } else {
+        raw.parse::<u128>()
+    }
+    .map_err(|error| {
+        pyo3::exceptions::PyValueError::new_err(format!("{name} is invalid: {error}"))
+    })?;
+    if parsed == 0 {
+        return Err(pyo3::exceptions::PyValueError::new_err(format!(
+            "{name} must be non-zero"
+        )));
+    }
+    Ok(parsed)
+}
+
+fn parse_nudge_candidates(
+    candidates_json: &str,
+    session_id: u128,
+) -> PyResult<Vec<MemoryCandidate>> {
+    let decoded: serde_json::Value = serde_json::from_str(candidates_json).map_err(|error| {
+        pyo3::exceptions::PyValueError::new_err(format!(
+            "memory nudge candidates must be valid JSON: {error}"
+        ))
+    })?;
+    let values = decoded.as_array().ok_or_else(|| {
+        pyo3::exceptions::PyValueError::new_err("memory nudge candidates must be a JSON array")
+    })?;
+    if values.is_empty() || values.len() > MAX_MEMORY_NUDGE_CANDIDATES {
+        return Err(pyo3::exceptions::PyValueError::new_err(format!(
+            "memory nudge candidates must contain 1..{} items",
+            MAX_MEMORY_NUDGE_CANDIDATES
+        )));
+    }
+    values
+        .iter()
+        .map(|value| {
+            let object = value.as_object().ok_or_else(|| {
+                pyo3::exceptions::PyValueError::new_err(
+                    "each memory nudge candidate must be an object",
+                )
+            })?;
+            if object.keys().any(|key| {
+                !matches!(
+                    key.as_str(),
+                    "content" | "relevance_score" | "source_session_id"
+                )
+            }) {
+                return Err(pyo3::exceptions::PyValueError::new_err(
+                    "memory nudge candidate contains an unsupported field",
+                ));
+            }
+            let content = object
+                .get("content")
+                .and_then(serde_json::Value::as_str)
+                .ok_or_else(|| {
+                    pyo3::exceptions::PyValueError::new_err(
+                        "memory nudge candidate content must be a string",
+                    )
+                })?;
+            if content.trim().is_empty() || content.len() > MAX_MEMORY_CANDIDATE_BYTES {
+                return Err(pyo3::exceptions::PyValueError::new_err(
+                    "memory nudge candidate content is empty or too large",
+                ));
+            }
+            let score = object
+                .get("relevance_score")
+                .and_then(serde_json::Value::as_f64)
+                .ok_or_else(|| {
+                    pyo3::exceptions::PyValueError::new_err(
+                        "memory nudge candidate relevance_score must be a number",
+                    )
+                })?;
+            if !score.is_finite() || !(0.0..=1.0).contains(&score) {
+                return Err(pyo3::exceptions::PyValueError::new_err(
+                    "memory nudge candidate relevance_score must be between 0 and 1",
+                ));
+            }
+            let source_session_id = object
+                .get("source_session_id")
+                .map(|value| parse_nudge_id(value, "source_session_id"))
+                .transpose()?
+                .unwrap_or(session_id);
+            if source_session_id != session_id {
+                return Err(pyo3::exceptions::PyValueError::new_err(
+                    "candidate source_session_id must match session_id",
+                ));
+            }
+            MemoryCandidate::new(content.to_string(), score as f32, source_session_id).ok_or_else(
+                || {
+                    pyo3::exceptions::PyValueError::new_err(
+                        "memory nudge candidate failed native validation",
+                    )
+                },
+            )
+        })
+        .collect()
+}
+
+fn derive_nudge_component_id(
+    kind: &[u8],
+    nudge_id: u128,
+    session_id: u128,
+    candidate_hash: [u8; 32],
+    ordinal: usize,
+    owner_id: &str,
+    scope_kind: &str,
+) -> u128 {
+    let mut hasher = Hasher::new();
+    hasher.update(b"aegis-memory-nudge-component-v1");
+    hasher.update(&[0]);
+    hasher.update(kind);
+    hasher.update(&[0]);
+    hasher.update(&nudge_id.to_le_bytes());
+    hasher.update(&session_id.to_le_bytes());
+    hasher.update(&candidate_hash);
+    hasher.update(&(ordinal as u64).to_le_bytes());
+    hasher.update(owner_id.as_bytes());
+    hasher.update(&[0]);
+    hasher.update(scope_kind.as_bytes());
+    let digest = *hasher.finalize().as_bytes();
+    let mut bytes = [0u8; 16];
+    bytes.copy_from_slice(&digest[..16]);
+    let value = u128::from_le_bytes(bytes);
+    if value == 0 { 1 } else { value }
+}
 
 fn memory_owner(owner_id: Option<String>) -> PyResult<String> {
     match owner_id {
@@ -56,6 +217,11 @@ fn memory_view_json(view: &crate::memory::repository::MemoryRecordView) -> serde
         "observed_at_ms": view.observed_at_ms,
         "content_hash": view.content_hash.as_ref().map(hex32),
         "content": view.content,
+        "source_session_id": view.source_session_id.map(|value| format!("0x{:x}", value)),
+        "nudge_id": view.nudge_id.map(|value| format!("0x{:x}", value)),
+        "nudge_hash": view.nudge_hash.as_ref().map(hex32),
+        "candidate_hash": view.candidate_hash.as_ref().map(hex32),
+        "relevance_score": view.relevance_score_micros.map(|value| f64::from(value) / 1_000_000.0),
     })
 }
 
@@ -727,55 +893,180 @@ mod tests {
     }
 }
 
-/// Trigger a background memory nudge for the given session.
+/// Filter and persist bounded memory candidates for the given session.
 ///
-/// This is a Python-facing stub that validates the inputs and returns
-/// a JSON acknowledgment. The actual Rust nudge must be called via
-/// the module's in-process MemoryNudgeSystem — this FFI entrypoint
-/// ensures the Python layer can invoke it without panicking.
-///
-/// Returns a truthful candidate-only status. This compatibility entrypoint
-/// validates the identifier but does not own a queue or perform persistence.
+/// The operation is deliberately candidate-only: it never promotes a record
+/// to ACTIVE and never hydrates a candidate into model context. The old
+/// no-candidate call remains a compatibility acknowledgment.
 #[pyfunction]
-#[pyo3(signature = (session_id_str, nudge_id=0u128, candidate_count=0usize))]
+#[pyo3(signature = (session_id_str, nudge_id=0u128, candidate_count=0usize, candidates_json=None, relevance_threshold=0.7f32, scope_kind=None, owner_id=None))]
 pub fn aegis_trigger_memory_nudge(
     session_id_str: String,
     nudge_id: u128,
     candidate_count: usize,
+    candidates_json: Option<String>,
+    relevance_threshold: f32,
+    scope_kind: Option<String>,
+    owner_id: Option<String>,
 ) -> PyResult<String> {
     py_safe(move || {
-        // Parse session_id from hex or decimal string
-        let session_id = if let Some(hex) = session_id_str.strip_prefix("0x") {
-            u128::from_str_radix(hex, 16)
-        } else {
-            session_id_str.parse::<u128>()
-        }
-        .map_err(|e| {
-            pyo3::exceptions::PyValueError::new_err(format!(
-                "Invalid session_id '{}': {}",
-                session_id_str, e
-            ))
-        })?;
-
-        if session_id == 0 {
+        let session_id = parse_session_id(&session_id_str)?;
+        let Some(candidates_json) = candidates_json else {
+            let ack = serde_json::json!({
+                "schema": "aegis-memory-nudge-status-v2",
+                "status": "not_executed",
+                "candidate_only": true,
+                "durable_commit": false,
+                "session_id": format!("0x{:x}", session_id),
+                "nudge_id": nudge_id,
+                "candidate_count": candidate_count,
+                "message": "Candidate nudge validated by the compatibility bridge; no background queue or durable commit was executed.",
+            });
+            return serde_json::to_string(&ack).map_err(|error| {
+                pyo3::exceptions::PyRuntimeError::new_err(format!("Serialization failed: {error}"))
+            });
+        };
+        if nudge_id == 0 {
             return Err(pyo3::exceptions::PyValueError::new_err(
-                "session_id must be non-zero",
+                "nudge_id must be non-zero when candidates are supplied",
             ));
         }
-
+        if !relevance_threshold.is_finite() || !(0.0..=1.0).contains(&relevance_threshold) {
+            return Err(pyo3::exceptions::PyValueError::new_err(
+                "relevance_threshold must be between 0 and 1",
+            ));
+        }
+        let raw_candidates = parse_nudge_candidates(&candidates_json, session_id)?;
+        if candidate_count != 0 && candidate_count != raw_candidates.len() {
+            return Err(pyo3::exceptions::PyValueError::new_err(
+                "candidate_count does not match the candidate payload",
+            ));
+        }
+        let owner_id = memory_owner(owner_id)?;
+        let scope_kind = memory_scope(scope_kind)?;
+        let ledger = get_session_ledger().map_err(|error| {
+            pyo3::exceptions::PyRuntimeError::new_err(format!(
+                "Learning ledger init failed: {error}"
+            ))
+        })?;
+        let nudge = MemoryNudgeSystem::new(relevance_threshold).periodic_nudge(
+            nudge_id,
+            session_id,
+            raw_candidates,
+            &mut ledger.lock(),
+            None,
+        );
+        let nudge = match nudge {
+            Ok(nudge) => nudge,
+            Err(crate::memory::nudge::MemoryError::EmptyCandidates) => {
+                let ack = serde_json::json!({
+                    "schema": "aegis-memory-nudge-status-v3",
+                    "status": "no_candidates",
+                    "candidate_only": true,
+                    "durable_commit": false,
+                    "durable_candidate_commit": false,
+                    "session_id": format!("0x{:x}", session_id),
+                    "nudge_id": nudge_id,
+                    "candidate_count": 0,
+                    "message": "No candidate met the relevance threshold.",
+                });
+                return serde_json::to_string(&ack).map_err(|error| {
+                    pyo3::exceptions::PyRuntimeError::new_err(format!(
+                        "Serialization failed: {error}"
+                    ))
+                });
+            }
+            Err(error) => {
+                return Err(pyo3::exceptions::PyValueError::new_err(format!(
+                    "Memory nudge validation failed: {error:?}"
+                )));
+            }
+        };
+        let repository = get_memory_repository().map_err(|error| {
+            pyo3::exceptions::PyRuntimeError::new_err(format!(
+                "Memory repository init failed: {error}"
+            ))
+        })?;
+        let mut repository = repository.lock();
+        let mut staged = 0usize;
+        let mut replayed = 0usize;
+        let mut index_pending = 0usize;
+        let mut errors = Vec::new();
+        for (ordinal, candidate) in nudge.candidates.iter().enumerate() {
+            let memory_id = derive_nudge_component_id(
+                b"memory",
+                nudge_id,
+                session_id,
+                candidate.content_hash,
+                ordinal,
+                &owner_id,
+                &scope_kind,
+            );
+            let request_id = derive_nudge_component_id(
+                b"request",
+                nudge_id,
+                session_id,
+                candidate.content_hash,
+                ordinal,
+                &owner_id,
+                &scope_kind,
+            );
+            let provenance = MemoryNudgeProvenance {
+                source_session_id: candidate.source_session_id,
+                nudge_id,
+                nudge_hash: nudge.nudge_hash,
+                candidate_hash: candidate.content_hash,
+                relevance_score_micros: (f64::from(candidate.relevance_score) * 1_000_000.0).round()
+                    as u32,
+            };
+            match repository.capture_nudged_candidate(
+                memory_id,
+                &owner_id,
+                &owner_id,
+                &scope_kind,
+                DEFAULT_MEMORY_KIND,
+                &candidate.content,
+                nudge.timestamp,
+                request_id,
+                &provenance,
+            ) {
+                Ok(outcome) if outcome.created => staged += 1,
+                Ok(_) => replayed += 1,
+                Err(crate::memory::repository::MemoryRepositoryError::CommittedIndexPending {
+                    ..
+                }) => {
+                    staged += 1;
+                    index_pending += 1;
+                }
+                Err(error) => errors.push(format!("candidate {ordinal}: {error:?}")),
+            }
+        }
+        let persisted = staged + replayed;
+        let status = if errors.is_empty() {
+            "committed"
+        } else if persisted > 0 {
+            "partial"
+        } else {
+            "failed"
+        };
         let ack = serde_json::json!({
-            "schema": "aegis-memory-nudge-status-v2",
-            "status": "not_executed",
+            "schema": "aegis-memory-nudge-status-v3",
+            "status": status,
             "candidate_only": true,
             "durable_commit": false,
+            "durable_candidate_commit": persisted > 0,
+            "activation": "requires_explicit_validation",
             "session_id": format!("0x{:x}", session_id),
             "nudge_id": nudge_id,
-            "candidate_count": candidate_count,
-            "message": "Candidate nudge validated by the compatibility bridge; no background queue or durable commit was executed.",
+            "nudge_hash": hex32(&nudge.nudge_hash),
+            "candidate_count": nudge.candidates.len(),
+            "staged_count": staged,
+            "replayed_count": replayed,
+            "index_pending_count": index_pending,
+            "errors": errors,
         });
-
-        serde_json::to_string(&ack).map_err(|e| {
-            pyo3::exceptions::PyRuntimeError::new_err(format!("Serialization failed: {}", e))
+        serde_json::to_string(&ack).map_err(|error| {
+            pyo3::exceptions::PyRuntimeError::new_err(format!("Serialization failed: {error}"))
         })
     })?
 }

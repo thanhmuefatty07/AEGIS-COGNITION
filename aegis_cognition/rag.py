@@ -6,7 +6,7 @@ context or attach invented retrieval-quality percentages to them.
 """
 
 from __future__ import annotations
-from typing import Any
+from typing import Any, cast
 
 from core.python.aegis_adapter import LearningManager
 from core.python.aegis.context_compiler import ContextCompilation, ContextCompilationError, ContextCompiler
@@ -29,6 +29,8 @@ class RAGManager:
         integration_method: str = "CandidateOnlyGate validation",
         conflict_resolution: str = "Prioritize latest physical evidence",
         consistency_check: str = "Compare across ContextFoldRecord",
+        scope_kind: str | None = None,
+        owner_id: str | None = None,
         # Deprecated compatibility inputs.  They are retained so existing
         # callers do not break, but are deliberately not stored or rendered.
         reliability_score: float | None = None,
@@ -45,7 +47,14 @@ class RAGManager:
         self.integration_method = integration_method
         self.conflict_resolution = conflict_resolution
         self.consistency_check = consistency_check
+        if scope_kind is not None and not scope_kind.strip():
+            raise ValueError("scope_kind must be non-empty when provided")
+        if owner_id is not None and not owner_id.strip():
+            raise ValueError("owner_id must be non-empty when provided")
+        self.scope_kind = scope_kind
+        self.owner_id = owner_id
         self.retrieval_error: str | None = None
+        self.memory_error: str | None = None
         del reliability_score, completeness_score, accuracy_score, verification_method
 
     def retrieve_candidates(self, query: str) -> tuple[Any, ...]:
@@ -55,8 +64,20 @@ class RAGManager:
             return ()
 
         self.retrieval_error = None
+        search_result: Any
         try:
-            search_result = self.learning_manager.search_past(query, top_k=self.top_k)
+            if self.scope_kind is None:
+                search_result = self.learning_manager.search_past(query, top_k=self.top_k)
+            else:
+                scoped_search = getattr(self.learning_manager, "search_past_scoped", None)
+                if not callable(scoped_search):
+                    raise RuntimeError("scoped memory search is unavailable")
+                search_result = scoped_search(
+                    query,
+                    top_k=self.top_k,
+                    scope_kind=self.scope_kind,
+                    owner_id=self.owner_id,
+                )
         except (ImportError, RuntimeError, ValueError) as error:
             # A missing optional native bridge or an unavailable index is a
             # degraded read path.  Preserve the truthful empty result and let
@@ -64,6 +85,73 @@ class RAGManager:
             self.retrieval_error = type(error).__name__
             return ()
         return tuple(search_result.results)
+
+    def retrieve_active_memories(self, query: str) -> tuple[Any, ...]:
+        """Hydrate only explicitly accepted ACTIVE memories in this scope."""
+
+        self.memory_error = None
+        search_memories = getattr(self.learning_manager, "search_memories", None)
+        inspect_memory = getattr(self.learning_manager, "inspect_memory", None)
+        if not callable(search_memories) or not callable(inspect_memory):
+            return ()
+        resolved_scope = self.scope_kind or "USER_PRIVATE"
+        try:
+            # Fetch a bounded superset because candidate-only records may rank
+            # ahead of ACTIVE records in the same FTS projection.
+            raw_records: object = search_memories(
+                query,
+                top_k=min(100, max(self.top_k * 4, self.top_k)),
+                scope_kind=resolved_scope,
+                owner_id=self.owner_id,
+            )
+            if not isinstance(raw_records, (tuple, list)):
+                raise TypeError("memory search returned a non-sequence")
+            records: tuple[Any, ...] = tuple(cast(tuple[Any, ...] | list[Any], raw_records))
+        except (ImportError, RuntimeError, TypeError, ValueError) as error:
+            self.memory_error = type(error).__name__
+            return ()
+
+        active: list[Any] = []
+        for candidate in records:
+            if (
+                str(getattr(candidate, "lifecycle", "")).upper() != "ACTIVE"
+                or str(getattr(candidate, "validation", "")).upper() != "ACCEPTED"
+            ):
+                continue
+            memory_id = getattr(candidate, "memory_id", None)
+            if not isinstance(memory_id, str) or not memory_id.strip():
+                continue
+            try:
+                record = inspect_memory(
+                    memory_id,
+                    scope_kind=resolved_scope,
+                    owner_id=self.owner_id,
+                )
+            except (ImportError, RuntimeError, TypeError, ValueError) as error:
+                self.memory_error = type(error).__name__
+                continue
+            if record is None:
+                continue
+            if (
+                str(getattr(record, "memory_id", "")) != memory_id
+                or str(getattr(record, "lifecycle", "")).upper() != "ACTIVE"
+                or str(getattr(record, "validation", "")).upper() != "ACCEPTED"
+                or str(getattr(record, "scope_kind", "")) != resolved_scope
+                or (
+                    self.owner_id is not None
+                    and str(getattr(record, "owner_id", "")) != self.owner_id
+                )
+                or str(getattr(record, "content_hash", ""))
+                != str(getattr(candidate, "content_hash", ""))
+            ):
+                continue
+            content = getattr(record, "content", None)
+            if not isinstance(content, str) or not content.strip():
+                continue
+            active.append(record)
+            if len(active) >= self.top_k:
+                break
+        return tuple(active)
 
     def retrieve_and_format(self, query: str) -> str:
         """
@@ -115,15 +203,25 @@ class RAGManager:
         owner_id: str | None = None,
         token_budget: int = 2048,
         mandatory_session_ids: tuple[int, ...] = (),
+        include_session_context: bool = True,
+        include_active_memory: bool = True,
+        active_memories: tuple[Any, ...] | list[Any] | None = None,
     ) -> ContextCompilation:
         """Hydrate authorized sources and render bounded model context."""
 
-        candidates = self.retrieve_candidates(query)
+        candidates = self.retrieve_candidates(query) if include_session_context else ()
         if self.retrieval_error is not None:
             raise ContextCompilationError(
                 "RETRIEVAL_UNAVAILABLE",
                 f"context retrieval unavailable: {self.retrieval_error}",
             )
+        hydrated_memories = (
+            tuple(active_memories)
+            if active_memories is not None
+            else self.retrieve_active_memories(query)
+            if include_active_memory
+            else ()
+        )
         return ContextCompiler(
             self.learning_manager,
             token_budget=token_budget,
@@ -134,4 +232,5 @@ class RAGManager:
             scope_kind=scope_kind,
             owner_id=owner_id,
             mandatory_session_ids=mandatory_session_ids,
+            active_memories=hydrated_memories,
         )

@@ -4,6 +4,8 @@ use crate::memory::CogniFoldStore;
 use crate::physical::PhysicalWatchdog;
 use blake3::Hasher;
 
+pub const MAX_MEMORY_CANDIDATE_BYTES: usize = 64 * 1024;
+
 /// Domain-tagged BLAKE3 hasher — matches the hasher pattern used in
 /// `skill_registry.rs` and `learning/mod.rs`.
 fn domain_hasher(domain: &[u8]) -> Hasher {
@@ -43,6 +45,7 @@ pub struct MemoryCandidate {
 impl MemoryCandidate {
     pub fn new(content: String, relevance_score: f32, source_session_id: u128) -> Option<Self> {
         if content.is_empty()
+            || content.len() > MAX_MEMORY_CANDIDATE_BYTES
             || !relevance_score.is_finite()
             || relevance_score < 0.0
             || relevance_score > 1.0
@@ -50,17 +53,19 @@ impl MemoryCandidate {
         {
             return None;
         }
-        let content_hash = {
-            let mut h = domain_hasher(b"aegis-memory-candidate-v1");
-            h.update(content.as_bytes());
-            *h.finalize().as_bytes()
-        };
+        let content_hash = Self::content_hash_for(&content);
         Some(Self {
             content,
             content_hash,
             relevance_score,
             source_session_id,
         })
+    }
+
+    pub fn content_hash_for(content: &str) -> [u8; 32] {
+        let mut h = domain_hasher(b"aegis-memory-candidate-v1");
+        h.update(content.as_bytes());
+        *h.finalize().as_bytes()
     }
 
     pub fn is_valid(&self) -> bool {
@@ -70,14 +75,7 @@ impl MemoryCandidate {
             && self.relevance_score >= 0.0
             && self.relevance_score <= 1.0
             && self.source_session_id > 0
-            && {
-                let recomputed = {
-                    let mut h = domain_hasher(b"aegis-memory-candidate-v1");
-                    h.update(self.content.as_bytes());
-                    *h.finalize().as_bytes()
-                };
-                self.content_hash == recomputed
-            }
+            && { self.content_hash == Self::content_hash_for(&self.content) }
     }
 }
 

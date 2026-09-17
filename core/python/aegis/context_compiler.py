@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import hashlib
+import math
 from dataclasses import dataclass
 from typing import Any
 
@@ -27,6 +29,10 @@ class HydratedContextItem:
     score: float
     token_cost: int
     mandatory: bool
+    retention_class: str = "condensable"
+    node_id: int | None = None
+    source_kind: str = "session"
+    source_id: str | None = None
 
 
 @dataclass(frozen=True)
@@ -71,6 +77,7 @@ class ContextCompiler:
         scope_kind: str = "USER_PRIVATE",
         owner_id: str | None = None,
         mandatory_session_ids: tuple[int, ...] = (),
+        active_memories: tuple[Any, ...] | list[Any] = (),
     ) -> ContextCompilation:
         if not query or not query.strip():
             raise ContextCompilationError("INVALID_QUERY", "context query must be non-empty")
@@ -129,29 +136,88 @@ class ContextCompiler:
                     score=self._candidate_score(candidate),
                     token_cost=self._estimate_tokens(content),
                     mandatory=session_id in mandatory,
+                    retention_class=self._candidate_retention_class(candidate),
+                    node_id=session_id,
+                    source_kind="session",
+                    source_id=f"0x{session_id:x}",
                 )
             )
 
-        hydrated.sort(key=lambda item: (-item.mandatory, -item.score, item.session_id, item.content_hash))
-        mandatory_items = [item for item in hydrated if item.mandatory]
-        mandatory_cost = sum(item.token_cost for item in mandatory_items)
-        if mandatory_cost > self.token_budget:
+        used_node_ids = {item.node_id or item.session_id for item in hydrated}
+        for memory in list(active_memories)[: self.candidate_cap]:
+            if not self._is_active_memory(memory, scope_kind=scope_kind, owner_id=resolved_owner):
+                continue
+            memory_id_text = str(self._value(memory, "memory_id", ""))
+            try:
+                memory_id = self._parse_session_id(memory_id_text)
+            except (TypeError, ValueError):
+                continue
+            if memory_id <= 0:
+                continue
+            content = self._value(memory, "content", None)
+            content_hash = str(self._value(memory, "content_hash", ""))
+            if not isinstance(content, str) or not content.strip() or not content_hash.strip():
+                continue
+            node_id = self._memory_node_id(memory_id)
+            if node_id in used_node_ids:
+                raise ContextCompilationError(
+                    "CONTEXT_NODE_COLLISION",
+                    "active memory node collided with another context source",
+                )
+            used_node_ids.add(node_id)
+            observed_at_ms = self._bounded_int(self._value(memory, "observed_at_ms", 0))
+            hydrated.append(
+                HydratedContextItem(
+                    # Kept populated for compatibility with the existing
+                    # selector contract; node_id/source_id are authoritative.
+                    session_id=node_id,
+                    content_hash=content_hash,
+                    timestamp=observed_at_ms,
+                    scope_kind=str(self._value(memory, "scope_kind", scope_kind)),
+                    owner_id=str(self._value(memory, "owner_id", resolved_owner)),
+                    content=content,
+                    score=self._memory_score(memory),
+                    token_cost=self._estimate_tokens(content),
+                    mandatory=False,
+                    retention_class="condensable",
+                    node_id=node_id,
+                    source_kind="memory",
+                    source_id=memory_id_text,
+                )
+            )
+
+        hydrated.sort(
+            key=lambda item: (
+                -item.mandatory,
+                self._retention_rank(item.retention_class),
+                -item.score,
+                item.session_id,
+                item.content_hash,
+            )
+        )
+        protected_items = [
+            item for item in hydrated if item.mandatory or item.retention_class == "protected"
+        ]
+        protected_cost = sum(item.token_cost for item in protected_items)
+        if protected_cost > self.token_budget:
             raise ContextCompilationError(
                 "CONTEXT_OVERFLOW",
-                "mandatory hydrated context exceeds the configured token budget",
+                "protected hydrated context exceeds the configured token budget",
             )
 
         selector = getattr(self.learning_manager, "select_context_items", None)
         backend = "python-compatibility-selector-v1"
         selection: dict[str, Any] | None = None
-        if callable(selector):
+        if callable(selector) and hydrated:
             try:
                 selection = selector(
                     [
                         {
                             "session_id": item.session_id,
+                            "node_id": item.node_id or item.session_id,
                             "token_cost": item.token_cost,
                             "score": item.score,
+                            "retention_class": item.retention_class,
                         }
                         for item in hydrated
                     ],
@@ -173,12 +239,21 @@ class ContextCompiler:
                 self._parse_session_id(value)
                 for value in selection.get("selected_node_ids", [])
             }
-            if not mandatory.issubset(selected_ids):
+            protected_ids = {
+                item.node_id or item.session_id
+                for item in hydrated
+                if item.retention_class == "protected"
+            } | mandatory
+            if not protected_ids.issubset(selected_ids):
                 raise ContextCompilationError(
                     "CONTEXT_SELECTOR_INVALID",
-                    "Rust context selector omitted a mandatory source",
+                    "Rust context selector omitted a protected source",
                 )
-            selected = [item for item in hydrated if item.session_id in selected_ids]
+            selected = [
+                item
+                for item in hydrated
+                if (item.node_id or item.session_id) in selected_ids
+            ]
             token_count = sum(item.token_cost for item in selected)
             if token_count > self.token_budget:
                 raise ContextCompilationError(
@@ -189,11 +264,18 @@ class ContextCompiler:
             selected = []
             token_count = 0
             for item in hydrated:
-                if item.mandatory or token_count + item.token_cost <= self.token_budget:
+                if item.mandatory or item.retention_class == "protected" or token_count + item.token_cost <= self.token_budget:
                     selected.append(item)
                     token_count += item.token_cost
 
-        selected.sort(key=lambda item: (-item.mandatory, -item.score, item.session_id, item.content_hash))
+        selected.sort(
+            key=lambda item: (
+                -item.mandatory,
+                -item.score,
+                item.node_id or item.session_id,
+                item.content_hash,
+            )
+        )
         rendered = self._render(selected)
         manifest = {
             "schema": "aegis-context-manifest-v1",
@@ -208,10 +290,14 @@ class ContextCompiler:
             "items": [
                 {
                     "session_id": item.session_id,
+                    "node_id": item.node_id or item.session_id,
+                    "source_kind": item.source_kind,
+                    "source_id": item.source_id,
                     "content_hash": item.content_hash,
                     "timestamp": item.timestamp,
                     "token_cost": item.token_cost,
                     "mandatory": item.mandatory,
+                    "retention_class": item.retention_class,
                 }
                 for item in selected
             ],
@@ -247,6 +333,70 @@ class ContextCompiler:
         return float(value)
 
     @staticmethod
+    def _candidate_retention_class(candidate: Any) -> str:
+        value = (
+            candidate.get("retention_class", "condensable")
+            if isinstance(candidate, dict)
+            else getattr(candidate, "retention_class", "condensable")
+        )
+        if value is None:
+            value = "condensable"
+        retention_class = str(value).strip().lower()
+        if retention_class not in {"protected", "condensable", "ephemeral"}:
+            raise ContextCompilationError(
+                "INVALID_RETENTION_CLASS",
+                "context retention_class must be protected, condensable, or ephemeral",
+            )
+        return retention_class
+
+    @staticmethod
+    def _value(value: Any, name: str, default: Any) -> Any:
+        if isinstance(value, dict):
+            return value.get(name, default)
+        return getattr(value, name, default)
+
+    @classmethod
+    def _is_active_memory(cls, memory: Any, *, scope_kind: str, owner_id: str) -> bool:
+        return (
+            str(cls._value(memory, "lifecycle", "")).upper() == "ACTIVE"
+            and str(cls._value(memory, "validation", "")).upper() == "ACCEPTED"
+            and str(cls._value(memory, "scope_kind", "")) == scope_kind
+            and str(cls._value(memory, "owner_id", "")) == owner_id
+        )
+
+    @classmethod
+    def _memory_score(cls, memory: Any) -> float:
+        raw_score = cls._value(memory, "relevance_score", None)
+        if type(raw_score) in (int, float) and math.isfinite(float(raw_score)):
+            return max(0.0, min(1.0, float(raw_score)))
+        # Search ordering is already bounded and deterministic.  This
+        # neutral fallback avoids pretending that FTS order is a calibrated
+        # relevance probability.
+        return 0.5
+
+    @staticmethod
+    def _bounded_int(value: Any) -> int:
+        if type(value) is bool:
+            return 0
+        try:
+            parsed = int(value)
+        except (TypeError, ValueError):
+            return 0
+        return max(0, parsed)
+
+    @staticmethod
+    def _memory_node_id(memory_id: int) -> int:
+        digest = hashlib.sha256(
+            b"aegis-context-memory-node-v1\0" + str(memory_id).encode("ascii")
+        ).digest()
+        node_id = int.from_bytes(digest[:16], "big")
+        return node_id or 1
+
+    @staticmethod
+    def _retention_rank(retention_class: str) -> int:
+        return {"protected": 0, "condensable": 1, "ephemeral": 2}[retention_class]
+
+    @staticmethod
     def _parse_session_id(value: Any) -> int:
         text = str(value)
         return int(text, 16) if text.startswith("0x") else int(text)
@@ -261,6 +411,16 @@ class ContextCompiler:
             return ""
         blocks = ["[AUTHORIZED HYDRATED CONTEXT — SOURCE BOUND]"]
         for item in items:
+            if item.source_kind == "memory":
+                blocks.extend(
+                    (
+                        f"[ACTIVE MEMORY DATA memory_id={item.source_id} hash={item.content_hash} "
+                        f"scope={item.scope_kind} owner={item.owner_id}]",
+                        item.content,
+                        "[/ACTIVE MEMORY DATA]",
+                    )
+                )
+                continue
             blocks.extend(
                 (
                     f"[SOURCE session=0x{item.session_id:x} hash={item.content_hash} "

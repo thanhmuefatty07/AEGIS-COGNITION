@@ -21,6 +21,12 @@ The implementation reuses AEGIS primitives:
 
 The scheduler uses direct dependency edges for data flow. It does not create a general-purpose broadcast bus or send progress chatter by default. A future progress stream can use the same envelope with a separately versioned kind after a measured need is demonstrated.
 
+For the future desktop surface, the optional `AgentMessageJournal` retains only
+the already-bounded request/result envelopes in a local cursor window. It can
+signal `resync_required` after eviction, but it is observation-only and is not
+an execution mailbox: the supervisor remains the owner of dependencies,
+cancellation and task status.
+
 ## Isolation rules
 
 Every child must have a unique artifact namespace. A result containing an artifact from another namespace is rejected. A handler declaring an exclusive resource key is serialized with other handlers declaring the same key, including supervisors sharing one Python event loop. Browser actor work must use an exclusive session key; read-only observers should use independent browser contexts or no shared actor key. The scheduler does not make a browser profile or external service safe by itself.
@@ -65,6 +71,106 @@ compares caller-supplied generation/adaptation/verification estimates; and
 `materialize_exact` requires explicit license/ownership, fresh hashes, an
 in-root target, and no implicit overwrite. This is an estimated token-cost
 decision, not a claim that model training data can be copied verbatim.
+
+The memory-nudge lane is also candidate-only. A normal structured model result
+may carry the reserved `_aegis_memory_proposals` field; the application strips
+it from the public output, accepts only bounded `{content, relevance_score}`
+objects, and sends them through `LearningManager.sync_memory`. Rust filters
+them by relevance, seals the nudge, stores each fact in the existing SQLite
+repository with source-session and hash provenance, and makes repeated
+`nudge_id` submissions idempotent. When callers omit that ID, the Python
+bridge derives a stable bounded ID from the session, scope, owner, and
+canonical candidate payload so a retry converges on the same operation. The
+resulting record is always
+`CANDIDATE/UNREVIEWED`; activation still requires the existing explicit
+validation path. This uses the existing model call; it does not launch a
+second extraction call. Plain-text results or malformed proposals produce no
+candidate, and calling `sync_memory` without candidates remains a truthful
+compatibility acknowledgment that performs no work.
+
+Completed ordinary runs are indexed through the scoped session API with the
+configured `memory_scope` and `memory_owner_id` (defaulting to the local
+profile). This keeps episodic recall attached to its owner/workspace instead
+of relying on an implicit native default. Candidate search uses the same
+boundary when the application configures a scope, and source hydration still
+requires an explicit authorized request. The transcript remains episodic
+source material; it is not silently promoted to semantic active memory. A
+record that has already received an explicit `ACCEPTED` validation is eligible
+for the bounded read path: AEGIS filters `ACTIVE/ACCEPTED` records, re-inspects
+the authoritative content and hash, and places them in the same Rust-selected
+context pack as session sources. The rendered block is explicitly data-only;
+it cannot raise its own instruction priority. `hydrate_memory=False` disables
+this read path without changing candidate staging.
+
+## Research evidence that shaped the core boundary
+
+The following upstream designs were inspected before choosing this boundary:
+
+- [PI agent SDK](https://github.com/pi-packages/earendil-works-pi/blob/main/packages/coding-agent/docs/sdk.md)
+  exposes lifecycle events, bounded steering/follow-up queues, parallel tool
+  execution with sequential overrides, and session branches. AEGIS should
+  adopt the event vocabulary and context/compaction ideas, but keep task
+  authority in its existing Rust/Python supervisor.
+- [PI-Desktop host-core requirements](https://github.com/vastsa/PI-Desktop/blob/main/docs/spec/03-runtime/05-host-core-rust.md)
+  make permission evaluation host-owned, require path containment and
+  versioned handshakes, and interrupt pending work on restart without replay.
+  These are future desktop acceptance criteria, not a reason to replace the
+  current Tauri/Python/Rust stack with Electron/Node.
+- [DeepSeek Harness agent-team documentation](https://github.com/deepseek-ai/deepseek-harness/blob/master/docs/subsystems/agent-team.md)
+  uses a durable queued message before acknowledging delivery. Its own
+  [subagent limitations](https://github.com/deepseek-ai/deepseek-harness/blob/master/packages/subagent/subagent/README.md)
+  still document process-local residency, loss of accepted-but-unlogged
+  messages after a crash, and the need for a durable mailbox plus lease
+  protocol for cross-process coordination. Therefore AEGIS's current journal
+  is deliberately observation-only; a mailbox is deferred until a durable
+  recovery and idempotency contract is designed and tested.
+- Public reporting on the Claude Code package incident says a debugging
+  source map was accidentally shipped in a routine package, exposing roughly
+  2,000 files and more than 500,000 lines; the reported cause included a manual
+  deployment step. The exact public ``512,000`` figure is not independently
+  verified here, and no leaked source is used. The reusable engineering lesson
+  is an automated publish gate: deny unexpected source maps, compare the
+  package manifest with an allowlist, scan secrets, record provenance, and
+  verify the published artifact before release.
+- [Aider's repository map](https://github.com/Aider-AI/aider/blob/main/aider/website/docs/repomap.md)
+  demonstrates a low-context alternative to repeatedly reading whole files:
+  rank symbols and signatures against a token budget, then let the agent open
+  exact source ranges only when needed. AEGIS already has a hash-bound
+  `SourceSnapshot`; the compatible next step is a deterministic map projection,
+  not a second code index or an embedding service.
+- The [Compaction Cliff study](https://arxiv.org/abs/2608.22752) reports that
+  type-blind compaction can lose safety constraints over repeated rounds. Its
+  numbers are not an AEGIS benchmark, but the failure mode is directly
+  relevant: safety rules, task requirements, artifact hashes, and ordinary
+  transcript prose must not share one undifferentiated summary bucket.
+- Recent primary research makes automatic semantic-memory promotion a
+  security boundary, not just a relevance threshold. [MPBench](https://arxiv.org/abs/2606.04329)
+  catalogs memory-write attack channels and reports that more aggressive write
+  and retrieval policies increase exposure. [GhostWriter](https://arxiv.org/abs/2607.06595)
+  demonstrates injection followed by later activation against memory-backed
+  agents. [TMA-NM](https://arxiv.org/abs/2606.24322) further argues that
+  summaries, trusted-tool echoes, and repeated corroboration can launder an
+  untrusted origin. Therefore repeated model-supplied candidates alone cannot
+  authorize ACTIVE memory in AEGIS.
+
+The resulting core priority is: extend the type-aware context budget plan into
+sidechain/session evidence, benchmark quality and token cost on fixed tasks,
+and run memory-poisoning negative probes before considering any automatic
+promotion policy. A model-generated summary is a recovery aid, not permission
+to discard authoritative requirements, hashes, leases, or failure states.
+
+The first type-aware context slice is now implemented in the existing Rust
+`ContextGovernor`. A context node defaults to `condensable` for compatibility;
+callers may explicitly mark it `protected` or `ephemeral`. Protected nodes are
+retained before utility selection, are included in the budget, and make an
+over-budget request fail closed. The local-swap improvement step cannot replace
+a higher-retention-class node with a lower-retention-class one. The Python
+hydration compiler carries the class into its manifest and rejects a selector
+that omits a protected source. This is retention protection, not a claim that a
+model-generated summary preserves arbitrary semantics.
+
+These observations are evidence for boundaries and tests, not evidence that
+any upstream implementation should be copied into AEGIS.
 
 ## What is intentionally deferred
 

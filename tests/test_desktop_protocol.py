@@ -386,6 +386,7 @@ def test_desktop_service_live_send_uses_connection_and_persists_transcript(tmp_p
     assert result["transcript_persisted"] is True
     assert result["source_revision"]
     assert observed and "use live" in observed[0][1]
+    assert "[AEGIS REPOSITORY MAP" in observed[0][1]
     assert learning.indexed and "use live" in learning.indexed[0][1]
 
 

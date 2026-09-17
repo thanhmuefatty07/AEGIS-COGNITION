@@ -7075,6 +7075,54 @@ mod tests {
     }
 
     #[test]
+    fn context_governor_preserves_protected_nodes_before_condensable_and_ephemeral_nodes() {
+        use crate::context::{
+            ContextGovernor, ContextGovernorConfig, ContextNode, ContextNodeKind,
+            ContextRetentionClass,
+        };
+
+        let mut governor = ContextGovernor::new(ContextGovernorConfig::bounded(20, 8)).unwrap();
+        governor
+            .insert_node(
+                ContextNode::new(1, ContextNodeKind::Policy, 10, 1, 0, 0)
+                    .with_retention_class(ContextRetentionClass::Protected),
+            )
+            .unwrap();
+        governor
+            .insert_node(ContextNode::new(
+                2,
+                ContextNodeKind::Evidence,
+                10,
+                100,
+                0,
+                0,
+            ))
+            .unwrap();
+        governor
+            .insert_node(
+                ContextNode::new(3, ContextNodeKind::Tool, 10, 10_000, 0, 0)
+                    .with_retention_class(ContextRetentionClass::Ephemeral),
+            )
+            .unwrap();
+
+        let pack = governor.build_hydrated_context_pack(&[]).unwrap();
+        assert_eq!(pack.node_ids, vec![1, 2]);
+        assert_eq!(pack.token_count, 20);
+
+        let mut overflow = ContextGovernor::new(ContextGovernorConfig::bounded(9, 8)).unwrap();
+        overflow
+            .insert_node(
+                ContextNode::new(1, ContextNodeKind::Policy, 10, 1, 0, 0)
+                    .with_retention_class(ContextRetentionClass::Protected),
+            )
+            .unwrap();
+        assert!(matches!(
+            overflow.build_hydrated_context_pack(&[]),
+            Err(crate::context::ContextGovernorError::TokenBudgetExceeded)
+        ));
+    }
+
+    #[test]
     fn context_governor_context_fold_records_retained_and_folded_nodes() {
         use crate::context::{
             ContextGovernor, ContextGovernorConfig, ContextNode, ContextNodeKind,

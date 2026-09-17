@@ -16,6 +16,7 @@ from aegis_cognition.subagents import (
     AgentClaim,
     AgentCoordinationError,
     AgentMessage,
+    AgentMessageJournal,
     AgentPlanProposal,
     AgentResultPacket,
     AgentSupervisor,
@@ -95,6 +96,48 @@ async def test_independent_children_overlap_and_root_is_called_after_all_childre
     assert result.root_output == [1, 2]
     assert result.status == "COMPLETED"
     assert result.coordination_hash
+
+
+def test_message_journal_is_bounded_and_reports_cursor_resync() -> None:
+    async def handler(_: AgentTaskContext) -> str:
+        return "ok"
+
+    journal = AgentMessageJournal(max_messages=2)
+    messages = tuple(
+        _spec(task_id, handler).request_message(run_id="journal-run", now_ms=task_id)
+        for task_id in (1, 2, 3)
+    )
+    assert journal.append(messages[0]) == 1
+    assert journal.append(messages[1]) == 2
+    assert journal.read_since(0).resync_required is False
+
+    assert journal.append(messages[2]) == 3
+    stale = journal.read_since(0)
+    assert stale.resync_required is True
+    assert [entry.cursor for entry in stale.entries] == [2, 3]
+    assert journal.read_since(1).resync_required is False
+    assert journal.latest_cursor == 3
+
+
+async def test_supervisor_can_publish_bounded_messages_to_the_observation_journal() -> None:
+    async def handler(_: AgentTaskContext) -> str:
+        return "ok"
+
+    journal = AgentMessageJournal(max_messages=8)
+    result = await AgentSupervisor(
+        run_id="journal-supervisor",
+        require_native_authority=False,
+        runtime_guard_factory=_fake_runtime_guard,
+        message_journal=journal,
+    ).run(
+        (_spec(1, handler),),
+        lambda results: results[0].summary,
+    )
+
+    assert result.status == "COMPLETED"
+    read = journal.read_since(0)
+    assert [entry.message.message_kind for entry in read.entries] == ["TASK_REQUEST", "TASK_RESULT"]
+    assert read.resync_required is False
 
 
 async def test_dependency_context_is_compact_and_dependency_failure_blocks_child() -> None:
