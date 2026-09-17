@@ -131,7 +131,7 @@ def _digest(value: object, name: str) -> str:
     return result
 
 
-def _validate_parent_lineage(tasks: Mapping[int, object], *, require_dependency: bool) -> None:
+def _validate_parent_lineage(tasks: Mapping[int, object]) -> None:
     """Validate bounded static parentage without introducing a second scheduler.
 
     A child must list its parent as a dependency.  That makes the parent
@@ -146,7 +146,7 @@ def _validate_parent_lineage(tasks: Mapping[int, object], *, require_dependency:
         dependencies = tuple(getattr(task, "dependencies", ()))
         if parent_id not in tasks:
             raise AgentCoordinationError("parent_task_id must refer to a planned task")
-        if require_dependency and parent_id not in dependencies:
+        if parent_id not in dependencies:
             raise AgentCoordinationError("parent_task_id must also be listed in dependencies")
         seen = {task_id}
         current = parent_id
@@ -1459,7 +1459,7 @@ class AgentPlanProposal:
         for task in self.tasks:
             if task.parent_task_id is not None and task.parent_task_id not in task_ids:
                 raise AgentCoordinationError("agent plan parent_task_id must refer to a planned task")
-        _validate_parent_lineage({task.task_id: task for task in self.tasks}, require_dependency=True)
+        _validate_parent_lineage({task.task_id: task for task in self.tasks})
         _local_graph_validation(self.graph_payload())
 
     def graph_payload(self) -> dict[str, object]:
@@ -2065,7 +2065,7 @@ class AgentSupervisor[RootOutputT]:
                     "handlers that own exclusive resources must be async so cancellation cannot release their lock early"
                 )
             spec_by_id[spec.task_id] = spec
-        _validate_parent_lineage(spec_by_id, require_dependency=True)
+        _validate_parent_lineage(spec_by_id)
         graph = _graph_payload(spec_list)
         local_graph = _local_graph_validation(graph)
         graph_result = _validate_graph_response(self._graph_validator(graph))
