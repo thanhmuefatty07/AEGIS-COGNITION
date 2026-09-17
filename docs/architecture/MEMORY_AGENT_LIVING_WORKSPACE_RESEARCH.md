@@ -201,13 +201,16 @@ the above direction:
   an activation cap, required evidence nodes, deterministic utility ordering,
   bounded token selection, local swaps, and context-pack digests.
 - `core/python/aegis/context_compiler.py` hydrates only authorized scoped
-  sources, preserves mandatory items, applies a hard token budget, records a
-  manifest, and hashes that manifest. Its byte-based token estimate is a
-  bounded compatibility heuristic, not a model-token measurement.
+  session and explicitly accepted semantic-memory sources, preserves mandatory
+  items, applies a hard token budget, records a manifest, and hashes that
+  manifest. Candidate/unreviewed memory never crosses this hydration boundary.
+  Its byte-based token estimate is a bounded compatibility heuristic, not a
+  model-token measurement.
 - `core/rust/src/memory/repository.rs` owns a SQLite memory record lifecycle
   with scopes, grants, revisions, content/request hashes, idempotent capture,
   validation, correction, forget/restore/purge transitions, an FTS projection,
-  dirty-index recovery, and an online backup path.
+  dirty-index recovery, an online backup path, and nudge provenance for
+  candidate facts.
 - `core/rust/src/memory/fold.rs`, `frame.rs`, `fidelity.rs`, `nudge.rs`, and
   `session_search.rs` provide the existing CogniFold, semantic-pointer,
   fidelity, candidate, and session-search primitives.
@@ -222,6 +225,19 @@ the above direction:
 - `desktop/src/protocol.ts` validates the command/response envelope and already
   reserves memory operations (`search`, `inspect`, `capture`, `correct`,
   `forget`, `restore`, and `purge`).
+- `core/python/aegis/learning.py` now exposes a bounded `sync_memory` candidate
+  path. The application can feed it the reserved structured proposal field
+  from the same model response, so no second extraction call is required. Rust
+  filters and seals the proposals, and the durable result remains
+  `CANDIDATE/UNREVIEWED` until explicit validation.
+- The same bridge exposes scoped session search. When an application provides
+  `memory_scope` or `memory_owner_id`, candidate retrieval uses that boundary
+  before any optional source hydration; it does not fall back to the native
+  profile implicitly.
+- The ordinary read path can retrieve only `ACTIVE/ACCEPTED` semantic memories,
+  re-inspect their authoritative content, verify owner/scope/hash, and pass
+  them through the same bounded Rust context selector. Memory text is rendered
+  as data-only context; `hydrate_memory=False` disables this read path.
 
 The desktop now has a first read-only project-map slice in
 `desktop/src/workspace_graph.ts` and `desktop/src/WorkspaceGraphView.tsx`. It
@@ -266,8 +282,12 @@ Use a staged, mostly local path:
    insufficient;
 5. score candidates deterministically using relevance, dependency coverage,
    freshness, evidence quality, contradiction risk, and token cost;
-6. let the Rust Context Governor select a pack under a hard budget;
-7. hydrate exact authorized content once and emit a manifest/digest.
+6. classify retention before selection: protected sources are never silently
+   evicted, condensable sources compete by utility, and ephemeral observations
+   are lowest priority;
+7. let the Rust Context Governor select a pack under a hard budget and fail
+   closed when protected content cannot fit;
+8. hydrate exact authorized content once and emit a manifest/digest.
 
 The normal turn must not ask an LLM to rediscover the entire graph or replay the
 whole transcript. A global graph summary is an explicit, cacheable operation.
@@ -408,9 +428,11 @@ applicable gates have evidence tied to one commit:
 The direction is sound: AEGIS already has a stronger evidence and resource
 boundary than a typical memory plugin, and Archify supplies a useful model for
 turning a bounded source projection into a compelling, inspectable artifact.
-The next semantic change should be the local read-only `SourceSnapshot →
-WorkspaceGraph → desktop viewer` slice, integrated with the existing bounded
-context compiler. It should be implemented only after the schemas and
-benchmark/evidence contract are frozen. No external system is being adopted as
+The local read-only `SourceSnapshot → WorkspaceGraph → desktop viewer` slice is
+now present, and the Hermes-inspired memory nudge bridge can durably stage
+provenance-bound candidates without activating them. The next semantic change
+should be a provenance-aware activation-policy evaluator plus paired
+quality/poisoning benchmarks, not automatic promotion or an unbounded free-text
+extractor. No external system is being adopted as
 the memory authority, and no claim of reduced tokens or superior retrieval is
-made until the paired baseline measurements exist.
+made until paired baseline measurements exist.

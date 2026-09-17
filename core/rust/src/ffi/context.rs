@@ -1,7 +1,9 @@
 //! PyO3 bindings for the Rust-owned deterministic context selector.
 
 use super::{hex32, py_safe};
-use crate::context::{ContextGovernor, ContextGovernorConfig, ContextNode, ContextNodeKind};
+use crate::context::{
+    ContextGovernor, ContextGovernorConfig, ContextNode, ContextNodeKind, ContextRetentionClass,
+};
 use pyo3::prelude::*;
 
 const MAX_CONTEXT_ITEMS_JSON_BYTES: usize = 2 * 1024 * 1024;
@@ -22,6 +24,25 @@ fn parse_node_id(value: &serde_json::Value) -> PyResult<u128> {
     parsed.map_err(|_| {
         pyo3::exceptions::PyValueError::new_err("context node id must be a valid u128")
     })
+}
+
+fn parse_retention_class(value: Option<&serde_json::Value>) -> PyResult<ContextRetentionClass> {
+    let Some(value) = value else {
+        return Ok(ContextRetentionClass::Condensable);
+    };
+    let Some(value) = value.as_str() else {
+        return Err(pyo3::exceptions::PyValueError::new_err(
+            "context item retention_class must be a string",
+        ));
+    };
+    match value {
+        "protected" => Ok(ContextRetentionClass::Protected),
+        "condensable" => Ok(ContextRetentionClass::Condensable),
+        "ephemeral" => Ok(ContextRetentionClass::Ephemeral),
+        _ => Err(pyo3::exceptions::PyValueError::new_err(
+            "context item retention_class must be protected, condensable, or ephemeral",
+        )),
+    }
 }
 
 #[pyfunction]
@@ -108,15 +129,19 @@ pub fn aegis_select_context_items(
                 .and_then(serde_json::Value::as_u64)
                 .and_then(|value| u32::try_from(value).ok())
                 .unwrap_or(0);
+            let retention_class = parse_retention_class(item.get("retention_class"))?;
             governor
-                .insert_node(ContextNode::new(
-                    node_id,
-                    ContextNodeKind::Memory,
-                    token_cost,
-                    utility_score,
-                    dependency_coverage,
-                    contradiction_risk,
-                ))
+                .insert_node(
+                    ContextNode::new(
+                        node_id,
+                        ContextNodeKind::Memory,
+                        token_cost,
+                        utility_score,
+                        dependency_coverage,
+                        contradiction_risk,
+                    )
+                    .with_retention_class(retention_class),
+                )
                 .map_err(|error| {
                     pyo3::exceptions::PyValueError::new_err(format!(
                         "invalid context item: {error:?}"

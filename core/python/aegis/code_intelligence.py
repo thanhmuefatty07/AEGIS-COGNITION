@@ -25,6 +25,10 @@ MAX_TOTAL_BYTES = 128 * 1024 * 1024
 MAX_SYMBOLS_PER_FILE = 2_000
 MAX_IMPORTS_PER_FILE = 1_000
 MAX_WATCH_EVENTS = 2_048
+MAX_REPO_MAP_FILES = 64
+MAX_REPO_MAP_SYMBOLS_PER_FILE = 64
+MAX_REPO_MAP_IMPORTS_PER_FILE = 32
+MAX_REPO_MAP_QUERY_LENGTH = 8_192
 IGNORED_DIRECTORIES = frozenset(
     {
         ".aegis",
@@ -100,6 +104,38 @@ class SourceSnapshot:
     stale_paths: tuple[str, ...] = ()
     deleted_paths: tuple[str, ...] = ()
     overflowed: bool = False
+
+
+@dataclass(frozen=True)
+class RepositoryMapEntry:
+    """A bounded symbol-level projection of one source file."""
+
+    relative_path: str
+    language: str
+    size_bytes: int
+    content_hash: str | None
+    extraction_status: str
+    score: int
+    symbols: tuple[SymbolRecord, ...]
+    imports: tuple[str, ...]
+    token_cost: int
+
+
+@dataclass(frozen=True)
+class RepositoryMap:
+    """A deterministic, revision-bound map suitable for model context."""
+
+    schema: str
+    source_revision: str
+    query: str
+    token_budget: int
+    token_count: int
+    accounting: str
+    complete: bool
+    entries: tuple[RepositoryMapEntry, ...]
+    omitted_files: int
+    rendered: str
+    map_hash: str
 
 
 @dataclass(frozen=True)
@@ -657,6 +693,215 @@ def invalidate_dependencies(snapshot: SourceSnapshot, changed_paths: Iterable[st
     return tuple(sorted(affected.values()))
 
 
+def build_repository_map(
+    snapshot: SourceSnapshot,
+    *,
+    query: str = "",
+    token_budget: int = 2_048,
+    max_files: int = MAX_REPO_MAP_FILES,
+) -> RepositoryMap:
+    """Project one source revision into a bounded symbol/import map.
+
+    The map contains no source text. It is a context hint only: exact source
+    hydration must still go through an authorized ``SourceSnapshot`` path.
+    Ranking is deliberately deterministic and lexical so this function does
+    not introduce a second index, embedding service, or provider dependency.
+    """
+
+    if type(snapshot) is not SourceSnapshot:
+        raise CodeIntelligenceError("repository map requires a SourceSnapshot")
+    if not isinstance(query, str) or len(query) > MAX_REPO_MAP_QUERY_LENGTH:
+        raise ValueError("repository map query must be a bounded string")
+    if isinstance(token_budget, bool) or not isinstance(token_budget, int) or token_budget < 1:
+        raise ValueError("repository map token_budget must be a positive integer")
+    if isinstance(max_files, bool) or not isinstance(max_files, int) or not 1 <= max_files <= MAX_REPO_MAP_FILES:
+        raise ValueError(f"repository map max_files must be between 1 and {MAX_REPO_MAP_FILES}")
+
+    normalized_query = query.strip()
+    records = tuple(sorted(snapshot.files, key=lambda item: item.relative_path))
+    terms = _repository_map_terms(normalized_query)
+    ranked = tuple(
+        sorted(
+            records,
+            key=lambda record: (-_repository_map_score(record, terms), record.relative_path),
+        )
+    )
+    selected: list[RepositoryMapEntry] = []
+    for record in ranked:
+        if len(selected) >= max_files:
+            break
+        entry = _repository_map_entry(record, _repository_map_score(record, terms))
+        trial = _render_repository_map(
+            snapshot,
+            normalized_query,
+            token_budget,
+            selected=[*selected, entry],
+            total_files=len(records),
+        )
+        if _estimate_repository_map_tokens(trial) <= token_budget:
+            selected.append(entry)
+
+    rendered = _render_repository_map(
+        snapshot,
+        normalized_query,
+        token_budget,
+        selected=selected,
+        total_files=len(records),
+    )
+    token_count = _estimate_repository_map_tokens(rendered)
+    if token_count > token_budget:
+        raise CodeIntelligenceError("repository map budget is too small for its bounded envelope")
+    omitted_files = max(0, len(records) - len(selected))
+    complete = not snapshot.overflowed and omitted_files == 0
+    map_hash = _digest(
+        "aegis-repository-map-v1",
+        snapshot.revision,
+        normalized_query,
+        str(token_budget),
+        rendered,
+    )
+    return RepositoryMap(
+        schema="aegis-repository-map-v1",
+        source_revision=snapshot.revision,
+        query=normalized_query,
+        token_budget=token_budget,
+        token_count=token_count,
+        accounting="estimated-byte-heuristic-v1",
+        complete=complete,
+        entries=tuple(selected),
+        omitted_files=omitted_files,
+        rendered=rendered,
+        map_hash=map_hash,
+    )
+
+
+_REPOSITORY_MAP_STOP_WORDS = frozenset(
+    {
+        "the",
+        "and",
+        "for",
+        "with",
+        "from",
+        "this",
+        "that",
+        "project",
+        "file",
+        "code",
+        "show",
+        "what",
+        "how",
+        "please",
+    }
+)
+
+
+def _repository_map_terms(query: str) -> tuple[str, ...]:
+    return tuple(
+        sorted(
+            {
+                term
+                for term in re.findall(r"[a-z0-9_]{3,}", query.casefold())
+                if term not in _REPOSITORY_MAP_STOP_WORDS
+            }
+        )
+    )
+
+
+def _repository_map_score(record: SourceFileRecord, terms: tuple[str, ...]) -> int:
+    path = record.relative_path.casefold()
+    symbols = " ".join(symbol.name for symbol in record.symbols).casefold()
+    imports = " ".join(record.imports).casefold()
+    return (
+        sum(term in path for term in terms) * 8
+        + sum(term in symbols for term in terms) * 5
+        + sum(term in imports for term in terms) * 2
+        + min(len(record.symbols), 8)
+    )
+
+
+def _repository_map_entry(record: SourceFileRecord, score: int) -> RepositoryMapEntry:
+    symbols = tuple(sorted(record.symbols, key=lambda item: (item.line, item.kind, item.name)))[
+        :MAX_REPO_MAP_SYMBOLS_PER_FILE
+    ]
+    imports = tuple(sorted(record.imports))[:MAX_REPO_MAP_IMPORTS_PER_FILE]
+    content = _render_repository_map_entry(record, score, symbols, imports)
+    return RepositoryMapEntry(
+        relative_path=record.relative_path,
+        language=record.language,
+        size_bytes=record.size_bytes,
+        content_hash=record.content_hash,
+        extraction_status=record.extraction_status,
+        score=score,
+        symbols=symbols[:MAX_REPO_MAP_SYMBOLS_PER_FILE],
+        imports=imports[:MAX_REPO_MAP_IMPORTS_PER_FILE],
+        token_cost=_estimate_repository_map_tokens(content),
+    )
+
+
+def _render_repository_map_entry(
+    record: SourceFileRecord,
+    score: int,
+    symbols: tuple[SymbolRecord, ...],
+    imports: tuple[str, ...],
+) -> str:
+    symbol_text = ", ".join(f"{item.kind} {item.name}@{item.line}#{item.signature_hash[:12]}" for item in symbols[:MAX_REPO_MAP_SYMBOLS_PER_FILE])
+    import_text = ", ".join(imports[:MAX_REPO_MAP_IMPORTS_PER_FILE])
+    return "\n".join(
+        (
+            f"[FILE path={record.relative_path} language={record.language} status={record.extraction_status} score={score}]",
+            f"size_bytes: {record.size_bytes}",
+            f"content_hash: {record.content_hash or '(none)'}",
+            f"symbols: {symbol_text or '(none)'}",
+            f"imports: {import_text or '(none)'}",
+            "[/FILE]",
+        )
+    )
+
+
+def _render_repository_map(
+    snapshot: SourceSnapshot,
+    query: str,
+    token_budget: int,
+    *,
+    selected: list[RepositoryMapEntry],
+    total_files: int,
+) -> str:
+    blocks = [
+        "[AEGIS REPOSITORY MAP — SOURCE BOUND]",
+        f"source_revision: {snapshot.revision}",
+        f"query: {query or '(none)'}",
+        f"source_files_total: {total_files}",
+        f"source_files_selected: {len(selected)}",
+        f"source_files_omitted: {max(0, total_files - len(selected))}",
+        f"token_budget: {token_budget}",
+        "selection: deterministic lexical path/symbol/import heuristic; not dependency proof",
+    ]
+    blocks.extend(
+        _render_repository_map_entry(
+            SourceFileRecord(
+                entry.relative_path,
+                entry.language,
+                entry.size_bytes,
+                0,
+                entry.content_hash,
+                entry.extraction_status,
+                entry.symbols,
+                entry.imports,
+            ),
+            entry.score,
+            entry.symbols,
+            entry.imports,
+        )
+        for entry in selected
+    )
+    blocks.append("[/AEGIS REPOSITORY MAP]")
+    return "\n".join(blocks)
+
+
+def _estimate_repository_map_tokens(text: str) -> int:
+    return max(1, (len(text.encode("utf-8")) + 3) // 4) + 8
+
+
 def _file_by_path(files: Iterable[SourceFileRecord], relative_path: str) -> SourceFileRecord | None:
     return next((item for item in files if item.relative_path == relative_path), None)
 
@@ -684,6 +929,9 @@ __all__ = [
     "IGNORED_DIRECTORIES",
     "MAX_FILES",
     "MAX_FILE_BYTES",
+    "MAX_REPO_MAP_FILES",
+    "MAX_REPO_MAP_IMPORTS_PER_FILE",
+    "MAX_REPO_MAP_SYMBOLS_PER_FILE",
     "MAX_TOTAL_BYTES",
     "MAX_WATCH_EVENTS",
     "BoundedSnapshotWatcher",
@@ -691,12 +939,15 @@ __all__ = [
     "LineageCandidate",
     "NativeSnapshotWatcher",
     "ProjectIdentity",
+    "RepositoryMap",
+    "RepositoryMapEntry",
     "SnapshotDelta",
     "SourceFileRecord",
     "SourceMapper",
     "SourceSnapshot",
     "SymbolRecord",
     "WatchEvent",
+    "build_repository_map",
     "compare_snapshots",
     "invalidate_dependencies",
 ]

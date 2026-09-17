@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import hashlib
 import time
 import uuid
 from dataclasses import dataclass
@@ -123,6 +124,11 @@ class MemoryRecord:
     validation_basis: str | None = None
     validation_reason: str | None = None
     memory_kind: str = "SEMANTIC_FACT"
+    source_session_id: str | None = None
+    nudge_id: str | None = None
+    nudge_hash: str | None = None
+    candidate_hash: str | None = None
+    relevance_score: float | None = None
 
     @classmethod
     def from_mapping(cls, data: dict[str, Any]) -> MemoryRecord:
@@ -139,6 +145,11 @@ class MemoryRecord:
             validation_basis=(str(data["validation_basis"]) if data.get("validation_basis") else None),
             validation_reason=(str(data["validation_reason"]) if data.get("validation_reason") else None),
             memory_kind=str(data.get("memory_kind", "SEMANTIC_FACT")),
+            source_session_id=(str(data["source_session_id"]) if data.get("source_session_id") else None),
+            nudge_id=(str(data["nudge_id"]) if data.get("nudge_id") else None),
+            nudge_hash=(str(data["nudge_hash"]) if data.get("nudge_hash") else None),
+            candidate_hash=(str(data["candidate_hash"]) if data.get("candidate_hash") else None),
+            relevance_score=(float(data["relevance_score"]) if data.get("relevance_score") is not None else None),
         )
 
 
@@ -164,6 +175,26 @@ class LearningManager:
         if top_k < 1 or top_k > 100:
             raise ValueError("top_k must be between 1 and 100")
         raw = self._native.aegis_search_past_sessions(query, top_k)
+        return SessionSearchResult.from_mapping(json.loads(raw))
+
+    def search_past_scoped(
+        self,
+        query: str,
+        top_k: int = 5,
+        *,
+        scope_kind: str = "USER_PRIVATE",
+        owner_id: str | None = None,
+    ) -> SessionSearchResult:
+        """Search candidate references inside one explicit owner scope."""
+        if not query or not query.strip():
+            raise ValueError("search_past_scoped requires a non-empty query")
+        if top_k < 1 or top_k > 100:
+            raise ValueError("top_k must be between 1 and 100")
+        if not scope_kind or not scope_kind.strip():
+            raise ValueError("scope_kind must be non-empty")
+        if owner_id is not None and not owner_id.strip():
+            raise ValueError("owner_id must be non-empty when provided")
+        raw = self._native.aegis_search_past_sessions_scoped(query, top_k, scope_kind, owner_id)
         return SessionSearchResult.from_mapping(json.loads(raw))
 
     def index_session(self, session_id: int | str, content: str, timestamp: int | None = None) -> str:
@@ -266,17 +297,33 @@ class LearningManager:
             raise ValueError("token_budget must be positive")
         payload = []
         for item in items:
-            session_id = int(item["session_id"])
+            # ``session_id`` is the legacy field.  New context producers may
+            # provide a namespace-neutral node_id (for example an ACTIVE
+            # semantic memory) while keeping session_id for compatibility
+            # with older selectors.
+            raw_node_id = item.get("node_id")
+            if raw_node_id is None:
+                raw_node_id = item["session_id"]
+            node_id = int(raw_node_id)
             score = max(0.0, min(1.0, float(item.get("score", 0.0))))
             payload.append(
                 {
-                    "node_id": f"0x{session_id:x}",
+                    "node_id": f"0x{node_id:x}",
                     "token_cost": int(item["token_cost"]),
                     "utility_score": int(score * 1_000_000),
                     "dependency_coverage": int(item.get("dependency_coverage", 0)),
                     "contradiction_risk": int(item.get("contradiction_risk", 0)),
                 }
             )
+            retention_class = item.get("retention_class")
+            if retention_class is not None:
+                normalized_retention = str(retention_class).strip().lower()
+                if normalized_retention not in {"protected", "condensable", "ephemeral"}:
+                    raise ValueError(
+                        "retention_class must be protected, condensable, or ephemeral"
+                    )
+                if normalized_retention != "condensable":
+                    payload[-1]["retention_class"] = normalized_retention
         raw = self._native.aegis_select_context_items(
             json.dumps(payload, sort_keys=True, separators=(",", ":")),
             int(token_budget),
@@ -552,8 +599,83 @@ class LearningManager:
         raw = getattr(self._native, function_name)(*args)
         return json.loads(raw)
 
-    def sync_memory(self, session_id: str = "0x1") -> dict[str, Any]:
-        raw = self._native.aegis_trigger_memory_nudge(session_id)
+    def sync_memory(
+        self,
+        session_id: str = "0x1",
+        *,
+        candidates: list[dict[str, Any]] | None = None,
+        nudge_id: int | str | None = None,
+        relevance_threshold: float = 0.7,
+        scope_kind: str = "USER_PRIVATE",
+        owner_id: str | None = None,
+    ) -> dict[str, Any]:
+        """Stage agent-proposed facts without activating them.
+
+        The native boundary seals and persists only candidates. A later
+        explicit validation is required before a candidate can enter active
+        memory or model context.
+        """
+        if candidates is None:
+            # Preserve the compatibility acknowledgement for callers that do
+            # not yet have an extractor or candidate payload.
+            raw = self._native.aegis_trigger_memory_nudge(session_id)
+            return json.loads(raw)
+        if type(candidates) is not list or not candidates:
+            raise ValueError("candidates must be a non-empty list")
+        if not isinstance(scope_kind, str) or not scope_kind.strip():
+            raise ValueError("scope_kind must be non-empty")
+        normalized: list[dict[str, Any]] = []
+        for candidate in candidates:
+            if type(candidate) is not dict:
+                raise ValueError("each memory candidate must be a mapping")
+            if set(candidate) - {"content", "relevance_score", "source_session_id"}:
+                raise ValueError("memory candidate contains an unsupported field")
+            content = candidate.get("content")
+            score = candidate.get("relevance_score")
+            if not isinstance(content, str) or not content.strip():
+                raise ValueError("memory candidate content must be non-empty")
+            if type(score) not in (int, float) or not 0.0 <= float(score) <= 1.0:
+                raise ValueError("memory candidate relevance_score must be between 0 and 1")
+            normalized_candidate: dict[str, Any] = {
+                "content": content,
+                "relevance_score": float(score),
+            }
+            if "source_session_id" in candidate:
+                normalized_candidate["source_session_id"] = candidate["source_session_id"]
+            normalized.append(normalized_candidate)
+        if nudge_id is None:
+            # Retries of the same bounded proposal should converge on the
+            # native idempotency key instead of creating duplicate candidates.
+            identity = json.dumps(
+                {
+                    "session_id": session_id,
+                    "scope_kind": scope_kind,
+                    "owner_id": owner_id or "native-profile",
+                    "candidates": normalized,
+                },
+                ensure_ascii=False,
+                sort_keys=True,
+                separators=(",", ":"),
+            ).encode("utf-8")
+            digest = hashlib.sha256(b"aegis-memory-nudge-v1\0" + identity).digest()
+            nudge_value = int.from_bytes(digest[:16], "big") or 1
+        else:
+            nudge_value = nudge_id
+        if isinstance(nudge_value, str):
+            nudge_value = int(nudge_value, 16) if nudge_value.startswith("0x") else int(nudge_value)
+        if type(nudge_value) is not int or nudge_value <= 0:
+            raise ValueError("nudge_id must be a positive integer")
+        if type(relevance_threshold) not in (int, float) or not 0.0 <= float(relevance_threshold) <= 1.0:
+            raise ValueError("relevance_threshold must be between 0 and 1")
+        raw = self._native.aegis_trigger_memory_nudge(
+            session_id,
+            int(nudge_value),
+            len(normalized),
+            json.dumps(normalized, ensure_ascii=False, sort_keys=True, separators=(",", ":")),
+            float(relevance_threshold),
+            scope_kind,
+            owner_id,
+        )
         return json.loads(raw)
 
 

@@ -35,6 +35,7 @@ try:
         NativeSnapshotWatcher,
         SourceMapper,
         SourceSnapshot,
+        build_repository_map,
     )
 except ImportError:
     from aegis.code_intelligence import (  # type: ignore[import-not-found]
@@ -43,6 +44,7 @@ except ImportError:
         NativeSnapshotWatcher,
         SourceMapper,
         SourceSnapshot,
+        build_repository_map,
     )
 
 try:
@@ -990,15 +992,37 @@ class DesktopService:
         ]
         files = [str(item.get("relative_path", "")) for item in file_records]
         selected_files = _select_source_paths_for_prompt(file_records, message)
+        repository_map = None
+        if self._source_snapshot is not None:
+            try:
+                repository_map = build_repository_map(
+                    self._source_snapshot,
+                    query=message,
+                    token_budget=2_048,
+                    max_files=MAX_SOURCE_FILES_IN_PROMPT,
+                )
+            except CodeIntelligenceError:
+                # The legacy bounded path list remains a safe compatibility
+                # projection when the optional symbol map cannot fit or build.
+                repository_map = None
+        source_context = (
+            repository_map.rendered
+            if repository_map is not None
+            else "\n".join(
+                (
+                    f"source_revision: {source_snapshot.get('revision', '')}",
+                    f"source_files_total: {len([item for item in files if item])}",
+                    f"source_files_selected: {len(selected_files)}",
+                    f"source_files_omitted: {max(0, len([item for item in files if item]) - len(selected_files))}",
+                    "source_file_selection: bounded lexical path candidates; not dependency proof",
+                    f"source_files: {', '.join(selected_files)}",
+                )
+            )
+        )
         prompt = "\n".join(
             [
                 "[AEGIS LOCAL WORKSPACE CONTEXT]",
-                f"source_revision: {source_snapshot.get('revision', '')}",
-                f"source_files_total: {len([item for item in files if item])}",
-                f"source_files_selected: {len(selected_files)}",
-                f"source_files_omitted: {max(0, len([item for item in files if item]) - len(selected_files))}",
-                "source_file_selection: bounded lexical path candidates; not dependency proof",
-                f"source_files: {', '.join(selected_files)}",
+                source_context,
                 "[PERSISTED CONVERSATION]",
                 *history,
                 "[RECALLED AUTHORIZED CONTEXT]",

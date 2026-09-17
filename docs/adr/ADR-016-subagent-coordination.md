@@ -21,6 +21,10 @@ arbitrary Python execution or external-write authority.
   compact dependency summaries, explicit evidence classes, and immutable
   artifact references. No progress broadcast or raw transcript forwarding is
   enabled by default.
+- Provide an optional bounded in-process `AgentMessageJournal` for a future
+  desktop observer. Cursor reads and `resync_required` handle slow consumers;
+  the journal is not an execution mailbox and does not become a second task
+  authority.
 - Let the root optionally produce an unsigned plan. The host hashes it, checks
   task/capability/side-effect/resource limits, binds only registered handlers,
   and invokes root synthesis once after children settle. Direct parent/child

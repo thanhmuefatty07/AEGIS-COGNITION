@@ -16,6 +16,6 @@ pub use frame::{
 };
 pub use pool::{PreAllocatedBuffer, SlabMemoryPool};
 pub use repository::{
-    DEFAULT_MEMORY_KIND, MEMORY_KINDS, MemoryCaptureOutcome, MemoryRecordView, MemoryRepository,
-    MemoryRepositoryError,
+    DEFAULT_MEMORY_KIND, MEMORY_KINDS, MemoryCaptureOutcome, MemoryNudgeProvenance,
+    MemoryRecordView, MemoryRepository, MemoryRepositoryError,
 };

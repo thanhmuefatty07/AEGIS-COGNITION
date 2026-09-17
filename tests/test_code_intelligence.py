@@ -9,6 +9,7 @@ from core.python.aegis.code_intelligence import (
     BoundedSnapshotWatcher,
     NativeSnapshotWatcher,
     SourceMapper,
+    build_repository_map,
     compare_snapshots,
     invalidate_dependencies,
 )
@@ -39,6 +40,37 @@ def test_non_git_snapshot_extracts_supported_symbols_and_excludes_generated(tmp_
     assert app.extraction_status == "EXTRACTED"
     assert {symbol.name for symbol in app.symbols} == {"App", "run"}
     assert app.imports == ("json",)
+
+
+def test_repository_map_is_query_ranked_bounded_and_does_not_include_source_text(tmp_path):
+    (tmp_path / "memory.py").write_text(
+        "def recall_memory(value):\n    return 'private-source-body'\n",
+        encoding="utf-8",
+    )
+    (tmp_path / "other.py").write_text("def unrelated():\n    return 1\n", encoding="utf-8")
+    snapshot = SourceMapper(tmp_path).snapshot()
+
+    repository_map = build_repository_map(snapshot, query="recall memory", token_budget=512, max_files=2)
+    repeated = build_repository_map(snapshot, query="recall memory", token_budget=512, max_files=2)
+
+    assert repository_map.schema == "aegis-repository-map-v1"
+    assert repository_map.entries[0].relative_path == "memory.py"
+    assert repository_map.entries[0].symbols[0].name == "recall_memory"
+    assert "private-source-body" not in repository_map.rendered
+    assert repository_map.token_count <= repository_map.token_budget
+    assert repository_map.map_hash == repeated.map_hash
+
+
+def test_repository_map_reports_bounded_incomplete_snapshot(tmp_path):
+    for index in range(3):
+        (tmp_path / f"module_{index}.py").write_text(f"def run_{index}():\n    return {index}\n", encoding="utf-8")
+
+    snapshot = SourceMapper(tmp_path).snapshot()
+    repository_map = build_repository_map(snapshot, token_budget=256, max_files=1)
+
+    assert repository_map.complete is False
+    assert repository_map.omitted_files == 2
+    assert repository_map.token_count <= 256
 
 
 def test_syntax_error_is_labeled_and_duplicate_signature_is_candidate(tmp_path):

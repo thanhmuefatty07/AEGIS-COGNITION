@@ -29,6 +29,44 @@ the root. The default handlers are `model` and public `research`; Reddit uses
 credential-free RSS, while X requires an explicit system app-only bearer token.
 `Agent.run()` is unchanged.
 
+## Adaptive memory proposals
+
+Normal structured model output may optionally contain the reserved internal
+field `_aegis_memory_proposals`:
+
+```json
+{
+  "answer": "...",
+  "_aegis_memory_proposals": [
+    {"content": "The user prefers concise reports", "relevance_score": 0.92}
+  ]
+}
+```
+
+The application removes that field before returning `result.output`. Valid
+bounded proposals are staged through the Rust memory repository with session,
+owner, scope and hash provenance. They remain `CANDIDATE/UNREVIEWED`; they are
+not automatically used as active model context. After an explicit
+`ACCEPTED` validation, the bounded read path may retrieve the record by scope
+and owner, inspect the authoritative content and hash, and include it in the
+same token-budgeted context pack as session evidence. It is rendered as data,
+not as a higher-priority instruction. Set `memory_learning=False` to disable
+proposal instructions and staging, or `hydrate_memory=False` to disable the
+automatic ACTIVE-memory read path. Plain-text output does not trigger an
+additional extraction call.
+
+Context selection has three explicit retention classes. `protected` items are
+kept in the bounded pack and cause a fail-closed overflow when they cannot fit;
+`condensable` items compete by utility; `ephemeral` observations are considered
+last. Existing callers remain `condensable` unless they opt into a class, and
+the selected class is recorded in the context manifest.
+
+For a future desktop view, pass an optional `AgentMessageJournal` to
+`run_subagents()`. It retains only bounded `TASK_REQUEST`/`TASK_RESULT`
+envelopes and exposes cursor reads with resync signalling. It is an observation
+journal, not a mailbox or an execution authority; task dependencies and
+cancellation remain inside the supervisor.
+
 Browser/vision handlers are intentionally supplied by the host so the handler
 can bind an existing `BrowserCell`/Playwright session and its evidence
 collector. Actor tasks should declare an exclusive session resource; observer
