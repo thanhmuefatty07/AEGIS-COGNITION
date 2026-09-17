@@ -256,6 +256,52 @@ export default function App() {
       .sort((left, right) => left.relative_path.localeCompare(right.relative_path))
       .slice(0, 120);
   }, [fileFilter, sourceSnapshot]);
+  const activityItems = useMemo(() => {
+    const items: Array<{ icon: IconName; title: string; detail: string; timestamp: number }> = [
+      {
+        icon: "check",
+        title: "Workspace opened",
+        detail: "Rust host admitted the local session",
+        timestamp: workspace ? (sourceSnapshot?.created_at_ms ?? 1) : 0,
+      },
+      {
+        icon: "map",
+        title: "Source map ready",
+        detail: `${workspaceGraph?.stats.files ?? 0} files available to inspect`,
+        timestamp: sourceSnapshot?.created_at_ms ?? 0,
+      },
+    ];
+    if (conversation) {
+      for (const execution of conversation.executions) {
+        items.push({
+          icon: execution.status === "COMPLETED" ? "check" : "activity",
+          title: `Provider execution ${execution.status.toLowerCase()}`,
+          detail: `${execution.model_id} · checkpoint ${execution.checkpoint_seq}`,
+          timestamp: execution.finished_at_ms ?? execution.started_at_ms,
+        });
+      }
+      for (const checkpoint of conversation.checkpoints) {
+        items.push({
+          icon: "activity",
+          title: `Checkpoint ${checkpoint.state.toLowerCase()}`,
+          detail: `Sequence ${checkpoint.sequence} · execution ${checkpoint.execution_id.slice(-12)}`,
+          timestamp: checkpoint.created_at_ms,
+        });
+      }
+      for (const toolCall of conversation.tool_calls) {
+        items.push({
+          icon: toolCall.status === "COMPLETED" ? "check" : "activity",
+          title: `Tool ${toolCall.status.toLowerCase()}`,
+          detail: `${toolCall.tool_name} · ${toolCall.call_id.slice(-12)}`,
+          timestamp: toolCall.completed_at_ms ?? toolCall.created_at_ms,
+        });
+      }
+    }
+    return items
+      .filter((item) => item.timestamp > 0)
+      .sort((left, right) => right.timestamp - left.timestamp)
+      .slice(0, 8);
+  }, [conversation, sourceSnapshot, workspace, workspaceGraph]);
 
   function openDestination(next: Destination) {
     setDestination(next);
@@ -350,7 +396,7 @@ export default function App() {
         <div className="work-panel-header"><div className="work-tabs" role="tablist" aria-label="Workspace panel tabs"><button className={workTab === "files" ? "active" : ""} type="button" onClick={() => setWorkTab("files")}><Icon name="files" size={14} />Files</button><button className={workTab === "map" ? "active" : ""} type="button" onClick={() => setWorkTab("map")}><Icon name="map" size={14} />Map</button><button className={workTab === "activity" ? "active" : ""} type="button" onClick={() => setWorkTab("activity")}><Icon name="activity" size={14} />Activity</button></div><button className="panel-more" type="button" aria-label="Work panel options"><Icon name="plus" size={15} /></button></div>
         {workTab === "files" && <div className="file-panel"><div className="panel-title"><div><span className="eyebrow">WORKSPACE</span><strong>Project files</strong></div><span className="file-count">{sourceSnapshot?.files.length ?? "—"}</span></div><label className="file-search"><Icon name="search" size={14} /><input ref={searchRef} value={fileFilter} onChange={(event) => setFileFilter(event.target.value)} placeholder="Search files" /></label><div className="file-tree">{filteredFiles.length ? filteredFiles.map((file) => <button className={`file-row ${selectedFile === file.relative_path ? "active" : ""}`} key={file.relative_path} type="button" onClick={() => setSelectedFile(file.relative_path)}><span className="file-kind">{fileKind(file.relative_path)}</span><span className="file-name">{file.relative_path}</span></button>) : <p className="panel-empty">No indexed files match this search.</p>}</div>{selected && <div className="file-inspector"><span className="eyebrow">SELECTED FILE</span><strong>{selected.relative_path}</strong><div><span>{selected.language || "unknown"}</span><span>{Math.round(selected.size_bytes / 1024)} KB</span></div><p>{selected.extraction_status === "ok" ? "Symbols and imports are indexed." : selected.extraction_status}</p></div>}</div>}
         {workTab === "map" && <div className="map-panel">{workspaceGraph && sourceSnapshot ? <WorkspaceGraphView graph={workspaceGraph} loadMemories={loadMemoriesForFile} /> : <p className="panel-empty">The source map is opening.</p>}</div>}
-        {workTab === "activity" && <div className="activity-panel"><div className="panel-title"><div><span className="eyebrow">SESSION</span><strong>Activity</strong></div><span className="status-chip"><i /> Live</span></div><div className="activity-item"><span className="activity-icon"><Icon name="check" size={13} /></span><div><strong>Workspace opened</strong><small>Rust host admitted the local session</small></div></div><div className="activity-item"><span className="activity-icon"><Icon name="map" size={13} /></span><div><strong>Source map ready</strong><small>{workspaceGraph?.stats.files ?? 0} files available to inspect</small></div></div><div className="activity-item"><span className="activity-icon"><Icon name="activity" size={13} /></span><div><strong>Conversation state</strong><small>{activeConversation?.status ?? "idle"} · revision {conversation?.conversation.revision ?? "—"}</small></div></div></div>}
+        {workTab === "activity" && <div className="activity-panel"><div className="panel-title"><div><span className="eyebrow">SESSION</span><strong>Activity</strong></div><span className="status-chip"><i /> {conversation?.executions.some((item) => item.status === "RUNNING") ? "Live" : "Ready"}</span></div>{activityItems.length ? activityItems.map((item) => <div className="activity-item" key={`${item.title}-${item.timestamp}-${item.detail}`}><span className="activity-icon"><Icon name={item.icon} size={13} /></span><div><strong>{item.title}</strong><small>{item.detail}</small></div></div>) : <p className="panel-empty">No session activity yet.</p>}</div>}
       </aside>
     );
   }
