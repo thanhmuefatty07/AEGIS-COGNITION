@@ -122,6 +122,29 @@ export type Conversation = {
   updated_at_ms: number;
 };
 
+export type ConnectionRecord = {
+  connection_id: string;
+  provider_kind: string;
+  endpoint: string;
+  protocol: string;
+  secret_ref: string | null;
+  enabled: boolean;
+  revision: number;
+  updated_at_ms: number;
+};
+
+export type ModelDescriptor = {
+  connection_id: string;
+  model_id: string;
+  family: string | null;
+  capabilities: string[];
+  context_limit: number | null;
+  output_limit: number | null;
+  source: string;
+  revision: number;
+  observed_at_ms: number;
+};
+
 export type ConversationTurn = {
   turn_id: string;
   role: string;
@@ -337,6 +360,20 @@ export function parseConversationList(value: unknown): Conversation[] {
   return value.records.map(parseConversationRecord);
 }
 
+export function parseConnectionList(value: unknown): ConnectionRecord[] {
+  if (!isRecord(value) || !Array.isArray(value.records) || !value.records.every(isRecord)) {
+    throw new Error("Desktop service returned an invalid connection list");
+  }
+  return value.records.map(parseConnectionRecord);
+}
+
+export function parseModelList(value: unknown): ModelDescriptor[] {
+  if (!isRecord(value) || !Array.isArray(value.models) || !value.models.every(isRecord)) {
+    throw new Error("Desktop service returned an invalid model list");
+  }
+  return value.models.map(parseModelDescriptor);
+}
+
 export function parseConversationRecordResult(value: unknown): Conversation {
   if (isRecord(value) && isRecord(value.record)) return parseConversationRecord(value.record);
   return parseConversationRecord(value);
@@ -399,6 +436,37 @@ function parseConversationRecord(value: unknown): Conversation {
     throw new Error("Desktop service returned an invalid conversation record");
   }
   return value as unknown as Conversation;
+}
+
+function parseConnectionRecord(value: unknown): ConnectionRecord {
+  if (!isRecord(value)
+    || typeof value.connection_id !== "string"
+    || typeof value.provider_kind !== "string"
+    || typeof value.endpoint !== "string"
+    || typeof value.protocol !== "string"
+    || !isNullableString(value.secret_ref)
+    || typeof value.enabled !== "boolean"
+    || typeof value.revision !== "number"
+    || typeof value.updated_at_ms !== "number") {
+    throw new Error("Desktop service returned an invalid connection record");
+  }
+  return value as unknown as ConnectionRecord;
+}
+
+function parseModelDescriptor(value: unknown): ModelDescriptor {
+  if (!isRecord(value)
+    || typeof value.connection_id !== "string"
+    || typeof value.model_id !== "string"
+    || !isNullableString(value.family)
+    || !isStringArray(value.capabilities)
+    || (value.context_limit !== null && typeof value.context_limit !== "number")
+    || (value.output_limit !== null && typeof value.output_limit !== "number")
+    || typeof value.source !== "string"
+    || typeof value.revision !== "number"
+    || typeof value.observed_at_ms !== "number") {
+    throw new Error("Desktop service returned an invalid model descriptor");
+  }
+  return value as unknown as ModelDescriptor;
 }
 
 function isDesktopResponse<T>(value: unknown): value is DesktopResponse<T> {
