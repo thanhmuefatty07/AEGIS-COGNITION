@@ -17,6 +17,10 @@ arbitrary Python execution or external-write authority.
   validates the bounded DAG and computes the graph hash; Python 3.14
   `TaskGroup`, a semaphore, and sorted resource locks run independent children
   on the same machine.
+- Forward each child’s run-scoped hashed dependency IDs into the existing Rust
+  runtime admission call. Python waits for dependency results for data flow,
+  while Rust also sees the same edges for admission ordering; this does not
+  introduce a second scheduler or a composite parent/child ledger.
 - Use versioned `TASK_REQUEST`/`TASK_RESULT` envelopes with hash-bound packets,
   compact dependency summaries, explicit evidence classes, and immutable
   artifact references. No progress broadcast or raw transcript forwarding is
@@ -80,6 +84,10 @@ quality, multi-process execution, and production SLOs remain `NOT VERIFIED`.
   `tests/test_subagents.py`, `tests/test_application_subagents.py`,
   `tests/test_research_adapters.py`, and `tests/test_code_reuse.py` provide the
   local regression closure for this slice.
+- `test_runtime_submission_preserves_dependency_ids` and
+  `test_runtime_admission_receives_the_same_hashed_dependency_dag` verify that
+  the Python and native admission boundaries receive the same dependency
+  contract.
 - Rust graph validation is in `core/rust/src/agent_coordination.rs` and is
   exposed through `core/rust/src/ffi/agent_coordination.rs`; native smoke
   execution reports `authority=native_runtime`.

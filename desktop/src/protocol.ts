@@ -14,6 +14,7 @@ export type DesktopCommand =
   | "connections.disable"
   | "models.list"
   | "conversations.create"
+  | "conversations.list"
   | "conversations.read"
   | "conversations.send"
   | "conversations.switch_model"
@@ -317,13 +318,7 @@ export function parseConversationSnapshot(value: unknown): ConversationSnapshot 
   if (!isRecord(value) || !isRecord(value.conversation) || !Array.isArray(value.turns)) {
     throw new Error("Desktop service returned an invalid conversation snapshot");
   }
-  const conversation = value.conversation;
-  if (typeof conversation.conversation_id !== "string"
-    || typeof conversation.title !== "string"
-    || typeof conversation.status !== "string"
-    || typeof conversation.revision !== "number") {
-    throw new Error("Desktop service returned an invalid conversation record");
-  }
+  const conversation = parseConversationRecord(value.conversation);
   if (!value.turns.every((turn) => isRecord(turn)
     && typeof turn.turn_id === "string"
     && typeof turn.role === "string"
@@ -333,6 +328,18 @@ export function parseConversationSnapshot(value: unknown): ConversationSnapshot 
     throw new Error("Desktop service returned an invalid conversation turn");
   }
   return value as unknown as ConversationSnapshot;
+}
+
+export function parseConversationList(value: unknown): Conversation[] {
+  if (!isRecord(value) || !Array.isArray(value.records) || !value.records.every(isRecord)) {
+    throw new Error("Desktop service returned an invalid conversation list");
+  }
+  return value.records.map(parseConversationRecord);
+}
+
+export function parseConversationRecordResult(value: unknown): Conversation {
+  if (isRecord(value) && isRecord(value.record)) return parseConversationRecord(value.record);
+  return parseConversationRecord(value);
 }
 
 export function parseMemorySearchResult(value: unknown): MemoryRecord[] {
@@ -376,6 +383,22 @@ function isMemoryRecord(value: unknown): value is MemoryRecord {
     && (value.validation_basis === undefined || isNullableString(value.validation_basis))
     && (value.validation_reason === undefined || isNullableString(value.validation_reason))
     && typeof value.memory_kind === "string";
+}
+
+function parseConversationRecord(value: unknown): Conversation {
+  if (!isRecord(value)
+    || typeof value.conversation_id !== "string"
+    || typeof value.owner_id !== "string"
+    || typeof value.title !== "string"
+    || typeof value.connection_id !== "string"
+    || typeof value.model_id !== "string"
+    || typeof value.status !== "string"
+    || typeof value.revision !== "number"
+    || typeof value.created_at_ms !== "number"
+    || typeof value.updated_at_ms !== "number") {
+    throw new Error("Desktop service returned an invalid conversation record");
+  }
+  return value as unknown as Conversation;
 }
 
 function isDesktopResponse<T>(value: unknown): value is DesktopResponse<T> {
