@@ -18,6 +18,7 @@ export type DesktopCommand =
   | "conversations.read"
   | "conversations.send"
   | "conversations.switch_model"
+  | "subagents.run"
   | "memory.search"
   | "memory.inspect"
   | "memory.capture"
@@ -196,6 +197,34 @@ export type ConversationSnapshot = {
   executions: ConversationExecution[];
   checkpoints: ConversationCheckpoint[];
   tool_calls: ConversationToolCall[];
+};
+
+export type SubagentResultPacket = {
+  task_id: number;
+  status: string;
+  summary: string;
+  summary_truncated: boolean;
+  claims: Array<Record<string, unknown>>;
+  artifacts: Array<Record<string, unknown>>;
+  uncertainty: string[];
+  blockers: string[];
+  tokens_in: number;
+  tokens_out: number;
+  packet_hash: string;
+};
+
+export type SubagentRunResult = {
+  schema: "aegis-desktop-subagents-result-v1";
+  run_id: string;
+  graph_hash: string;
+  graph_authority: string;
+  status: string;
+  root_output: string;
+  root_output_truncated: boolean;
+  child_results: SubagentResultPacket[];
+  failed_task_ids: number[];
+  blocked_task_ids: number[];
+  coordination_hash: string;
 };
 
 export type MemoryRecord = {
@@ -465,6 +494,55 @@ export function parseConversationRecordResult(value: unknown): Conversation {
   return parseConversationRecord(value);
 }
 
+export function parseSubagentRunResult(value: unknown): SubagentRunResult {
+  if (!isRecord(value)
+    || value.schema !== "aegis-desktop-subagents-result-v1"
+    || typeof value.run_id !== "string"
+    || typeof value.graph_hash !== "string"
+    || typeof value.graph_authority !== "string"
+    || typeof value.status !== "string"
+    || typeof value.root_output !== "string"
+    || typeof value.root_output_truncated !== "boolean"
+    || !Array.isArray(value.child_results)
+    || !Array.isArray(value.failed_task_ids)
+    || !Array.isArray(value.blocked_task_ids)
+    || !isNumberArray(value.failed_task_ids)
+    || !isNumberArray(value.blocked_task_ids)
+    || typeof value.coordination_hash !== "string") {
+    throw new Error("Desktop service returned an invalid subagent result");
+  }
+  const childResults = value.child_results;
+  if (!childResults.every((packet) => isRecord(packet)
+    && typeof packet.task_id === "number"
+    && typeof packet.status === "string"
+    && typeof packet.summary === "string"
+    && typeof packet.summary_truncated === "boolean"
+    && Array.isArray(packet.claims)
+    && packet.claims.every(isRecord)
+    && Array.isArray(packet.artifacts)
+    && packet.artifacts.every(isRecord)
+    && isStringArray(packet.uncertainty)
+    && isStringArray(packet.blockers)
+    && typeof packet.tokens_in === "number"
+    && typeof packet.tokens_out === "number"
+    && typeof packet.packet_hash === "string")) {
+    throw new Error("Desktop service returned an invalid subagent result packet");
+  }
+  return {
+    schema: "aegis-desktop-subagents-result-v1",
+    run_id: value.run_id,
+    graph_hash: value.graph_hash,
+    graph_authority: value.graph_authority,
+    status: value.status,
+    root_output: value.root_output,
+    root_output_truncated: value.root_output_truncated,
+    child_results: childResults as unknown as SubagentResultPacket[],
+    failed_task_ids: value.failed_task_ids as number[],
+    blocked_task_ids: value.blocked_task_ids as number[],
+    coordination_hash: value.coordination_hash,
+  };
+}
+
 export function parseMemorySearchResult(value: unknown): MemoryRecord[] {
   if (!isRecord(value) || !Array.isArray(value.records)) {
     throw new Error("Desktop service returned an invalid memory search result");
@@ -490,6 +568,10 @@ function isNullableString(value: unknown): value is string | null {
 
 function isStringArray(value: unknown): value is string[] {
   return Array.isArray(value) && value.every((item) => typeof item === "string");
+}
+
+function isNumberArray(value: unknown): value is number[] {
+  return Array.isArray(value) && value.every((item) => typeof item === "number" && Number.isSafeInteger(item));
 }
 
 function isMemoryRecord(value: unknown): value is MemoryRecord {

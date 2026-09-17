@@ -8,11 +8,13 @@ import {
   parseMemorySearchResult,
   parseModelList,
   parseSourceSnapshot,
+  parseSubagentRunResult,
   parseWorkspaceSnapshot,
   type Conversation,
   type ConversationSnapshot,
   type MemoryRecord,
   type SourceSnapshot,
+  type SubagentRunResult,
   type WorkspaceSnapshot,
 } from "./protocol";
 import WorkspaceGraphView from "./WorkspaceGraphView";
@@ -110,6 +112,8 @@ export default function App() {
   const [settingsSection, setSettingsSection] = useState("General");
   const [selectedFile, setSelectedFile] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [subagentBusy, setSubagentBusy] = useState(false);
+  const [subagentResult, setSubagentResult] = useState<SubagentRunResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const searchRef = useRef<HTMLInputElement>(null);
   const bootstrapStarted = useRef(false);
@@ -205,6 +209,7 @@ export default function App() {
 
   async function selectConversation(id: string) {
     setActiveConversationId(id);
+    setSubagentResult(null);
     await loadConversation(id);
   }
 
@@ -244,6 +249,26 @@ export default function App() {
   async function loadMemoriesForFile(node: { path: string | null }): Promise<MemoryRecord[]> {
     if (!node.path) return [];
     return desktopRequest("memory.search", { query: node.path, top_k: 6, scope_kind: "USER_PRIVATE" }, parseMemorySearchResult);
+  }
+
+  async function runSubagents() {
+    const task = message.trim() || "Inspect this workspace in parallel and summarize the relevant evidence.";
+    if (subagentBusy || !activeConversationId || !runtimeReady || !connectionSaved) return;
+    setSubagentBusy(true);
+    try {
+      setError(null);
+      const result = await desktopRequest("subagents.run", {
+        task,
+        conversation_id: activeConversationId,
+        max_concurrency: 4,
+      }, parseSubagentRunResult);
+      setSubagentResult(result);
+      setMessage("");
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : "The parallel run failed");
+    } finally {
+      setSubagentBusy(false);
+    }
   }
 
   const runtimeReady = workspace?.native_runtime_available === true;
@@ -370,19 +395,20 @@ export default function App() {
         <div className="chat-scroll">
           <div className="chat-column">
             <div className="chat-intro"><div className="intro-mark"><Icon name="spark" size={17} /></div><div><strong>AEGIS is ready</strong><span>Local workspace · {mode === "mock" ? "safe preview mode" : "live provider mode"}</span></div></div>
+            {subagentResult && <article className="subagent-result" aria-label="Subagent run result"><div className="subagent-result-header"><div><span className="eyebrow">PARALLEL RUN</span><strong>{subagentResult.status}</strong></div><span className="status-chip"><i /> {subagentResult.child_results.length} workers</span></div><p>{subagentResult.root_output}</p><div className="subagent-workers">{subagentResult.child_results.map((worker) => <span className={`worker-chip ${worker.status.toLowerCase()}`} key={`${worker.task_id}-${worker.packet_hash}`}><i />Worker {worker.task_id} · {worker.status}</span>)}</div><small>Graph {shortPath(subagentResult.graph_hash, 18)} · {subagentResult.graph_authority}</small></article>}
             {conversation?.turns.length ? conversation.turns.map((turn) => (
               <article className={`message-row ${turn.role}`} key={turn.turn_id}>
                 <div className="message-avatar">{turn.role === "user" ? "Y" : "A"}</div>
                 <div className="message-content"><div className="message-meta"><strong>{turn.role === "user" ? "You" : "AEGIS"}</strong><span>r{turn.revision}</span></div><p>{turn.content || "…"}</p></div>
               </article>
-            )) : <div className="empty-chat"><h2>Start a local task</h2><p>Ask AEGIS to research, inspect, or reason over this workspace.</p><div className="suggestion-row"><button type="button" onClick={() => setMessage("Summarize this workspace")}>Summarize workspace</button><button type="button" onClick={() => setMessage("Inspect the current project")}>Inspect project</button></div></div>}
+            )) : <div className="empty-chat"><h2>Start a local task</h2><p>Ask AEGIS to research, inspect, or reason over this workspace.</p><div className="suggestion-row"><button type="button" onClick={() => setMessage("Summarize this workspace")}>Summarize workspace</button><button type="button" onClick={() => setMessage("Inspect the current project")}>Inspect project</button><button type="button" onClick={() => void runSubagents()} disabled={!runtimeReady || !connectionSaved || subagentBusy}>Run parallel workers</button></div></div>}
           </div>
         </div>
         <div className="composer-wrap">
           <div className="composer-pill">
-            <div className="composer-toolbar"><button className="mode-chip" type="button" onClick={() => setMode(mode === "mock" ? "live" : "mock")}><span className="mode-dot" />{mode === "mock" ? "Agent · Preview" : "Agent · Live"}<span className="chevron"><Icon name="chevron-down" size={12} /></span></button><span className="composer-model">{modelId}</span><span className="composer-spacer" /><button className="composer-tool" type="button" onClick={() => setWorkTab("files")} aria-label="Browse files"><Icon name="attach" size={15} /></button></div>
-            <textarea value={message} onChange={(event) => setMessage(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); void sendMessage(); } }} placeholder="Message AEGIS…" rows={1} disabled={busy || !activeConversationId} />
-            <div className="composer-bottom"><span>Ctrl/⌘ Enter to send · Shift Enter for a new line</span><button className="send-button" type="button" onClick={() => void sendMessage()} disabled={busy || !message.trim() || !activeConversationId}>{busy ? <span className="send-loading" /> : <Icon name="arrow-up" size={16} />}</button></div>
+            <div className="composer-toolbar"><button className="mode-chip" type="button" onClick={() => setMode(mode === "mock" ? "live" : "mock")}><span className="mode-dot" />{mode === "mock" ? "Agent · Preview" : "Agent · Live"}<span className="chevron"><Icon name="chevron-down" size={12} /></span></button><span className="composer-model">{modelId}</span><span className="composer-spacer" /><button className="composer-tool" type="button" onClick={() => void runSubagents()} disabled={subagentBusy || !runtimeReady || !connectionSaved || !activeConversationId} aria-label="Run parallel workers" title="Run parallel workers"><Icon name="extensions" size={15} /></button><button className="composer-tool" type="button" onClick={() => setWorkTab("files")} aria-label="Browse files"><Icon name="attach" size={15} /></button></div>
+            <textarea value={message} onChange={(event) => setMessage(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); void sendMessage(); } }} placeholder="Message AEGIS…" rows={1} disabled={busy || subagentBusy || !activeConversationId} />
+            <div className="composer-bottom"><span>Ctrl/⌘ Enter to send · Shift Enter for a new line</span><button className="send-button" type="button" onClick={() => void sendMessage()} disabled={busy || subagentBusy || !message.trim() || !activeConversationId}>{busy || subagentBusy ? <span className="send-loading" /> : <Icon name="arrow-up" size={16} />}</button></div>
           </div>
         </div>
       </section>
@@ -412,8 +438,8 @@ export default function App() {
       ["Memory", "Search workspace-aware local memory from the work panel.", "Connected", "chat"],
       ["Conversations", "Append-only local sessions with revisioned turns.", "Connected", "chat"],
       ["Provider adapter", "Use the configured OpenAI-compatible local endpoint.", connectionSaved ? "Connected" : "Needs setup", "settings"],
-      ["Browser research", "A future connector can add browser-backed research.", "Not connected", "extensions"],
-      ["Subagents", "A future surface for admitted parallel workers.", "Not connected", "extensions"],
+      ["Browser research", "Public research adapters are available; browser capture remains explicitly host-injected.", "Needs setup", "extensions"],
+      ["Subagents", "Bounded parallel workers with native graph validation and hash-bound result packets.", runtimeReady && connectionSaved ? "Connected" : "Needs setup", "chat"],
     ];
     return <main className="destination-page extensions-page"><header className="destination-header"><div><span className="eyebrow">AEGIS / EXTENSIONS</span><h1>Extensions</h1><p>Workspace capabilities are surfaced here without hiding their authority boundary.</p></div><button className="outline-action" type="button" onClick={() => openDestination("settings")}>Configure connections</button></header><div className="extension-toolbar"><label className="extension-search"><Icon name="search" size={14} /><input placeholder="Search capabilities" /></label><div className="extension-filters"><button className="active" type="button">All</button><button type="button">Connected</button><button type="button">Local</button></div></div><div className="extension-grid">{cards.map(([title, description, status, target]) => <article className="extension-card" key={title}><div className="extension-icon"><Icon name={title === "Source map" ? "map" : title === "Memory" ? "spark" : title === "Conversations" ? "sessions" : title === "Provider adapter" ? "external" : title === "Browser research" ? "search" : "extensions"} size={16} /></div><div className="extension-card-body"><div className="extension-card-title"><h2>{title}</h2><span className={status === "Connected" ? "connected" : "pending"}>{status}</span></div><p>{description}</p><button type="button" onClick={() => target === "settings" ? openDestination("settings") : target === "map" ? (openDestination("chat"), setWorkTab("map")) : target === "chat" ? openDestination("chat") : undefined}>{status === "Connected" ? "Open" : "View details"}<span><Icon name="chevron-right" size={13} /></span></button></div></article>)}</div></main>;
   }

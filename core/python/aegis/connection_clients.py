@@ -40,6 +40,12 @@ SecretResolver = Callable[[str], str | None]
 class OpenAICompatibleClient:
     """Small synchronous/async client for the chat-completions contract."""
 
+    # ``AgentConfig`` uses this capability marker to distinguish a provider
+    # object that resolves credentials from the platform secret store from a
+    # provider that expects the process-wide OPENAI_API_KEY contract.  The
+    # connection boundary still enforces ``secret_ref`` when one is supplied.
+    requires_api_key = False
+
     def __init__(
         self,
         connection: ConnectionRecord,
