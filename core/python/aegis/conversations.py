@@ -71,6 +71,25 @@ class ConversationTurn:
 
 
 @dataclass(frozen=True)
+class ConversationPart:
+    conversation_id: str
+    turn_id: str
+    part_index: int
+    kind: str
+    content: str
+
+    @classmethod
+    def from_mapping(cls, data: dict[str, Any]) -> ConversationPart:
+        return cls(
+            conversation_id=str(data["conversation_id"]),
+            turn_id=str(data["turn_id"]),
+            part_index=int(data["part_index"]),
+            kind=str(data["kind"]),
+            content=str(data["content"]),
+        )
+
+
+@dataclass(frozen=True)
 class ConversationExecution:
     execution_id: str
     conversation_id: str
@@ -176,6 +195,7 @@ class ConversationSnapshot:
     executions: tuple[ConversationExecution, ...] = field(default_factory=tuple)
     checkpoints: tuple[ConversationCheckpoint, ...] = field(default_factory=tuple)
     tool_calls: tuple[ConversationToolCall, ...] = field(default_factory=tuple)
+    parts: tuple[ConversationPart, ...] = field(default_factory=tuple)
 
     @classmethod
     def from_mapping(cls, data: dict[str, Any]) -> ConversationSnapshot:
@@ -184,6 +204,11 @@ class ConversationSnapshot:
             turns=tuple(
                 ConversationTurn.from_mapping(item)
                 for item in data.get("turns", [])
+                if isinstance(item, dict)
+            ),
+            parts=tuple(
+                ConversationPart.from_mapping(item)
+                for item in data.get("parts", [])
                 if isinstance(item, dict)
             ),
             executions=tuple(
@@ -620,6 +645,7 @@ __all__ = [
     "ConversationCheckpoint",
     "ConversationExecution",
     "ConversationManager",
+    "ConversationPart",
     "ConversationRecord",
     "ConversationSnapshot",
     "ConversationToolCall",
