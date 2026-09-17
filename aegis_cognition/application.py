@@ -31,6 +31,7 @@ from .subagents import (
     AgentResultPacket,
     AgentSupervisor,
     AgentSupervisorResult,
+    AgentTaskSpec,
     build_model_subagent_handler,
     build_root_synthesizer,
     parse_agent_plan,
@@ -608,8 +609,10 @@ class AgentApplication:
         self,
         proposal: AgentPlanProposal,
         handlers: Mapping[str, AgentHandler],
+        *,
+        external_parent_ids: tuple[int, ...] = (),
     ) -> None:
-        proposal.validate()
+        proposal.validate(external_parent_ids=external_parent_ids)
         if not proposal.tasks:
             raise ValueError("subagent plan must contain at least one child task")
         options = self.config.options
@@ -735,6 +738,10 @@ class AgentApplication:
                         raise TypeError(f"subagent handler is not callable: {key}")
                     trusted_handlers[key] = handler
 
+            raw_allow_dynamic = self.config.options.get("subagents_allow_dynamic_plans", True)
+            if type(raw_allow_dynamic) is not bool:
+                raise ValueError("subagents_allow_dynamic_plans must be boolean")
+
             requested_handler_keys = (
                 frozenset(task.handler_key for task in proposed_plan.tasks)
                 if proposed_plan is not None
@@ -763,7 +770,13 @@ class AgentApplication:
                 return result
 
             if gateway is not None:
-                trusted_handlers.setdefault("model", build_model_subagent_handler(invoke_model))
+                trusted_handlers.setdefault(
+                    "model",
+                    build_model_subagent_handler(
+                        invoke_model,
+                        allow_dynamic_plans=raw_allow_dynamic,
+                    ),
+                )
             if not trusted_handlers:
                 raise ValueError("at least one trusted subagent handler is required")
 
@@ -779,6 +792,21 @@ class AgentApplication:
                 proposal = proposed_plan
             self._validate_subagent_plan(proposal, trusted_handlers)
             specs = proposal.bind_handlers(trusted_handlers)
+
+            def bind_dynamic_plan(
+                parent_task_id: int,
+                dynamic_proposal: AgentPlanProposal,
+            ) -> tuple[AgentTaskSpec, ...]:
+                self._validate_subagent_plan(
+                    dynamic_proposal,
+                    trusted_handlers,
+                    external_parent_ids=(parent_task_id,),
+                )
+                return dynamic_proposal.bind_handlers(
+                    trusted_handlers,
+                    external_parent_ids=(parent_task_id,),
+                )
+
             effective_root = root_synthesizer
             if effective_root is None:
                 effective_root = build_root_synthesizer(invoke_model)
@@ -798,6 +826,15 @@ class AgentApplication:
                 message_sink=message_sink,
                 message_journal=message_journal,
                 message_mailbox=message_mailbox,
+                dynamic_plan_binder=bind_dynamic_plan if raw_allow_dynamic else None,
+                max_dynamic_tasks=cast(
+                    int,
+                    self.config.options.get("subagent_max_dynamic_tasks", 128),
+                ),
+                max_total_tasks=cast(
+                    int,
+                    self.config.options.get("subagent_max_tasks", 32),
+                ),
             )
             result = await supervisor.run(specs, effective_root)
             self.telemetry.emit("agent", "subagents_completed", correlation=self.correlation)
