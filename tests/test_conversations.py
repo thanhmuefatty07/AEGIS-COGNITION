@@ -1,7 +1,7 @@
 from types import SimpleNamespace
 from unittest.mock import MagicMock
 
-from core.python.aegis.conversations import ConversationManager
+from core.python.aegis.conversations import ConversationManager, ConversationSnapshot
 
 
 def test_conversation_manager_preserves_canonical_revision_contract():
@@ -69,6 +69,7 @@ def test_conversation_manager_preserves_canonical_revision_contract():
     assert turn.revision == 2
     assert switched.revision == 3
     assert snapshot.turns[0].content == "hello"
+    assert snapshot.parts == ()
     bridge.aegis_append_conversation_turn.assert_called_once_with(
         "conv-1",
         "local-user",
@@ -99,6 +100,38 @@ def test_conversation_manager_rejects_empty_identity_before_native_call():
     else:
         raise AssertionError("empty conversation id must be rejected")
     bridge.aegis_create_conversation.assert_not_called()
+
+
+def test_conversation_snapshot_parses_typed_parts_and_keeps_legacy_defaults():
+    snapshot = ConversationSnapshot.from_mapping(
+        {
+            "conversation": {
+                "conversation_id": "conv-1",
+                "owner_id": "local-user",
+                "title": "Test",
+                "connection_id": "local",
+                "model_id": "model-a",
+                "status": "ACTIVE",
+                "revision": 2,
+                "created_at_ms": 1,
+                "updated_at_ms": 2,
+            },
+            "turns": [],
+            "parts": [
+                {
+                    "conversation_id": "conv-1",
+                    "turn_id": "assistant-1",
+                    "part_index": 0,
+                    "kind": "TEXT",
+                    "content": "hello",
+                }
+            ],
+        }
+    )
+
+    assert snapshot.parts[0].turn_id == "assistant-1"
+    assert snapshot.parts[0].kind == "TEXT"
+    assert snapshot.parts[0].content == "hello"
 
 
 def test_conversation_manager_exposes_streaming_execution_and_tool_pairing():

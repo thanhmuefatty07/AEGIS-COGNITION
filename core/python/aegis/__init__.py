@@ -16,6 +16,7 @@ _ADAPTER_EXPORTS = {
     "ConnectionRecord",
     "ConnectionResponse",
     "ConversationManager",
+    "ConversationPart",
     "ConversationCheckpoint",
     "ConversationExecution",
     "ConversationRecord",

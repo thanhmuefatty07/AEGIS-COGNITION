@@ -191,12 +191,21 @@ export type ConversationToolCall = {
   completed_at_ms: number | null;
 };
 
+export type ConversationPart = {
+  conversation_id: string;
+  turn_id: string;
+  part_index: number;
+  kind: string;
+  content: string;
+};
+
 export type ConversationSnapshot = {
   conversation: Conversation;
   turns: ConversationTurn[];
   executions: ConversationExecution[];
   checkpoints: ConversationCheckpoint[];
   tool_calls: ConversationToolCall[];
+  parts: ConversationPart[];
 };
 
 export type SubagentResultPacket = {
@@ -422,6 +431,7 @@ export function parseConversationSnapshot(value: unknown): ConversationSnapshot 
   const executions = value.executions === undefined ? [] : value.executions;
   const checkpoints = value.checkpoints === undefined ? [] : value.checkpoints;
   const toolCalls = value.tool_calls === undefined ? [] : value.tool_calls;
+  const parts = value.parts === undefined ? [] : value.parts;
   if (!Array.isArray(executions) || !executions.every((execution) => isRecord(execution)
     && typeof execution.execution_id === "string"
     && typeof execution.conversation_id === "string"
@@ -459,12 +469,21 @@ export function parseConversationSnapshot(value: unknown): ConversationSnapshot 
     && (toolCall.completed_at_ms === null || typeof toolCall.completed_at_ms === "number"))) {
     throw new Error("Desktop service returned an invalid conversation tool call");
   }
+  if (!Array.isArray(parts) || !parts.every((part) => isRecord(part)
+    && typeof part.conversation_id === "string"
+    && typeof part.turn_id === "string"
+    && typeof part.part_index === "number"
+    && typeof part.kind === "string"
+    && typeof part.content === "string")) {
+    throw new Error("Desktop service returned an invalid conversation part");
+  }
   return {
     conversation,
     turns: value.turns as unknown as ConversationTurn[],
     executions: executions as unknown as ConversationExecution[],
     checkpoints: checkpoints as unknown as ConversationCheckpoint[],
     tool_calls: toolCalls as unknown as ConversationToolCall[],
+    parts: parts as unknown as ConversationPart[],
   };
 }
 
