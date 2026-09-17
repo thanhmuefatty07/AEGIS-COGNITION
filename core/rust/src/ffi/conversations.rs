@@ -34,6 +34,16 @@ fn turn_json(record: &crate::conversations::ConversationTurnRecord) -> serde_jso
     })
 }
 
+fn part_json(record: &crate::conversations::ConversationPartRecord) -> serde_json::Value {
+    serde_json::json!({
+        "conversation_id": record.conversation_id,
+        "turn_id": record.turn_id,
+        "part_index": record.part_index,
+        "kind": record.kind,
+        "content": record.content,
+    })
+}
+
 fn execution_json(record: &crate::conversations::ConversationExecutionRecord) -> serde_json::Value {
     serde_json::json!({
         "execution_id": record.execution_id,
@@ -83,6 +93,7 @@ fn snapshot_json(snapshot: &crate::conversations::ConversationSnapshot) -> serde
     serde_json::json!({
         "conversation": conversation_json(&snapshot.conversation),
         "turns": snapshot.turns.iter().map(turn_json).collect::<Vec<_>>(),
+        "parts": snapshot.parts.iter().map(part_json).collect::<Vec<_>>(),
         "executions": snapshot.executions.iter().map(execution_json).collect::<Vec<_>>(),
         "checkpoints": snapshot.checkpoints.iter().map(checkpoint_json).collect::<Vec<_>>(),
         "tool_calls": snapshot.tool_calls.iter().map(tool_call_json).collect::<Vec<_>>(),

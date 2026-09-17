@@ -62,9 +62,19 @@ pub struct ConversationTurnRecord {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
+pub struct ConversationPartRecord {
+    pub conversation_id: String,
+    pub turn_id: String,
+    pub part_index: u64,
+    pub kind: String,
+    pub content: String,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct ConversationSnapshot {
     pub conversation: ConversationRecord,
     pub turns: Vec<ConversationTurnRecord>,
+    pub parts: Vec<ConversationPartRecord>,
     pub executions: Vec<ConversationExecutionRecord>,
     pub checkpoints: Vec<ConversationCheckpointRecord>,
     pub tool_calls: Vec<ConversationToolCallRecord>,
@@ -342,6 +352,14 @@ impl ConversationRepository {
         )?;
         let rows = statement.query_map(params![conversation_id], row_to_turn)?;
         let turns = rows.collect::<Result<Vec<_>, _>>()?;
+        let mut part_statement = self.connection.prepare(
+            "SELECT conversation_id, turn_id, part_index, kind, content
+             FROM conversation_parts WHERE conversation_id = ?1
+             ORDER BY turn_id, part_index",
+        )?;
+        let parts = part_statement
+            .query_map(params![conversation_id], row_to_part)?
+            .collect::<Result<Vec<_>, _>>()?;
         let mut execution_statement = self.connection.prepare(
             "SELECT execution_id, conversation_id, turn_id, provider_kind, connection_id,
                     model_id, status, checkpoint_seq, revision, started_at_ms, finished_at_ms
@@ -374,6 +392,7 @@ impl ConversationRepository {
         Ok(Some(ConversationSnapshot {
             conversation,
             turns,
+            parts,
             executions,
             checkpoints,
             tool_calls,
@@ -1793,6 +1812,16 @@ fn row_to_turn(row: &rusqlite::Row<'_>) -> rusqlite::Result<ConversationTurnReco
     })
 }
 
+fn row_to_part(row: &rusqlite::Row<'_>) -> rusqlite::Result<ConversationPartRecord> {
+    Ok(ConversationPartRecord {
+        conversation_id: row.get(0)?,
+        turn_id: row.get(1)?,
+        part_index: parse_sql_u64(row.get(2)?, 2)?,
+        kind: row.get(3)?,
+        content: row.get(4)?,
+    })
+}
+
 fn row_to_execution(row: &rusqlite::Row<'_>) -> rusqlite::Result<ConversationExecutionRecord> {
     Ok(ConversationExecutionRecord {
         execution_id: row.get(0)?,
@@ -1995,6 +2024,15 @@ mod tests {
             .unwrap()
             .unwrap();
         assert_eq!(snapshot.turns.len(), 3);
+        assert_eq!(snapshot.parts.len(), 4);
+        let image_part = snapshot
+            .parts
+            .iter()
+            .find(|part| part.kind == "IMAGE_REF")
+            .unwrap();
+        assert_eq!(image_part.turn_id, "turn-4");
+        assert_eq!(image_part.part_index, 1);
+        assert_eq!(image_part.content, "sha256:image");
     }
 
     #[test]
