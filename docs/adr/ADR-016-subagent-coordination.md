@@ -25,10 +25,12 @@ arbitrary Python execution or external-write authority.
   compact dependency summaries, explicit evidence classes, and immutable
   artifact references. No progress broadcast or raw transcript forwarding is
   enabled by default.
-- Provide an optional bounded in-process `AgentMessageJournal` for a future
-  desktop observer. Cursor reads and `resync_required` handle slow consumers;
-  the journal is not an execution mailbox and does not become a second task
-  authority.
+- Provide an optional bounded in-process `AgentMessageJournal` for a desktop
+  observer. Cursor reads and `resync_required` handle slow consumers. For a
+  process boundary or restart-recovery path, provide an optional SQLite
+  `AgentMailbox` that persists the same canonical envelopes, deduplicates by
+  idempotency key, and uses bounded leases/retries. It is at-least-once
+  delivery, not a second task authority or an exactly-once side-effect claim.
 - Let the root optionally produce an unsigned plan. The host hashes it, checks
   task/capability/side-effect/resource limits, binds only registered handlers,
   and invokes root synthesis once after children settle. Direct parent/child

@@ -16,6 +16,7 @@ from .observability import RuntimeTelemetry
 from .runtime import native_runtime_available
 from .subagents import (
     AgentHandler,
+    AgentMailbox,
     AgentMessage,
     AgentMessageJournal,
     AgentPlanProposal,
@@ -109,6 +110,7 @@ class Agent:
         root_synthesizer: Callable[[tuple[AgentResultPacket, ...]], object | Awaitable[object]] | None = None,
         message_sink: Callable[[AgentMessage], object | Awaitable[object]] | None = None,
         message_journal: AgentMessageJournal | None = None,
+        message_mailbox: AgentMailbox | None = None,
         require_native_authority: bool | None = None,
         max_concurrency: int | None = None,
     ) -> AgentSupervisorResult[object]:
@@ -120,6 +122,7 @@ class Agent:
             root_synthesizer=root_synthesizer,
             message_sink=message_sink,
             message_journal=message_journal,
+            message_mailbox=message_mailbox,
             require_native_authority=require_native_authority,
             max_concurrency=max_concurrency,
         )
@@ -132,6 +135,7 @@ class Agent:
         root_synthesizer: Callable[[tuple[AgentResultPacket, ...]], object | Awaitable[object]] | None = None,
         message_sink: Callable[[AgentMessage], object | Awaitable[object]] | None = None,
         message_journal: AgentMessageJournal | None = None,
+        message_mailbox: AgentMailbox | None = None,
         require_native_authority: bool | None = None,
         max_concurrency: int | None = None,
     ) -> AgentSupervisorResult[object]:
@@ -147,6 +151,7 @@ class Agent:
                     root_synthesizer=root_synthesizer,
                     message_sink=message_sink,
                     message_journal=message_journal,
+                    message_mailbox=message_mailbox,
                     require_native_authority=require_native_authority,
                     max_concurrency=max_concurrency,
                 )

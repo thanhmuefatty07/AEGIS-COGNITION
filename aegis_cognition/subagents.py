@@ -12,6 +12,7 @@ import asyncio
 import hashlib
 import inspect
 import json
+import sqlite3
 import threading
 import time
 import uuid
@@ -19,6 +20,7 @@ from collections import deque
 from collections.abc import AsyncGenerator, Awaitable, Callable, Iterable, Mapping
 from contextlib import AbstractAsyncContextManager, asynccontextmanager
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any, cast
 from weakref import WeakKeyDictionary
 
@@ -721,6 +723,320 @@ class AgentMessageJournal:
                 entries=entries,
                 resync_required=resync_required,
             )
+
+
+@dataclass(frozen=True, slots=True)
+class AgentMailboxDelivery:
+    """One leased envelope returned by the durable mailbox."""
+
+    delivery_id: int
+    consumer_id: str
+    message: AgentMessage
+    attempts: int
+    lease_until_ms: int
+
+
+class AgentMailbox:
+    """Small durable at-least-once queue for local agent message delivery.
+
+    The mailbox persists the already bounded ``AgentMessage`` envelope and
+    uses its idempotency key as the deduplication boundary.  A lease fences
+    concurrent consumers; acknowledgement is explicit, so a process crash
+    makes the message eligible again after the lease expires.  This is a
+    local coordination primitive, not a replacement for the Rust task ledger
+    or a claim of exactly-once execution.
+    """
+
+    _SCHEMA = """
+    CREATE TABLE IF NOT EXISTS agent_mailbox_messages (
+        delivery_id INTEGER PRIMARY KEY AUTOINCREMENT,
+        idempotency_key TEXT NOT NULL UNIQUE,
+        message_hash TEXT NOT NULL,
+        payload BLOB NOT NULL,
+        state TEXT NOT NULL CHECK (state IN ('READY', 'LEASED', 'ACKED', 'DEAD')),
+        attempts INTEGER NOT NULL DEFAULT 0,
+        available_at_ms INTEGER NOT NULL,
+        lease_owner TEXT,
+        lease_until_ms INTEGER,
+        created_at_ms INTEGER NOT NULL,
+        acked_at_ms INTEGER,
+        last_error TEXT
+    );
+    CREATE INDEX IF NOT EXISTS idx_agent_mailbox_ready
+        ON agent_mailbox_messages (state, available_at_ms, delivery_id);
+    CREATE INDEX IF NOT EXISTS idx_agent_mailbox_lease
+        ON agent_mailbox_messages (state, lease_until_ms);
+    """
+
+    def __init__(
+        self,
+        path: str | Path,
+        *,
+        max_messages: int = 4_096,
+        max_bytes: int = 64 * 1024 * 1024,
+        max_attempts: int = 5,
+    ) -> None:
+        try:
+            mailbox_path = Path(path).expanduser()
+        except TypeError as error:
+            raise AgentCoordinationError("mailbox path must be text or Path") from error
+        if not str(mailbox_path).strip() or "\x00" in str(mailbox_path):
+            raise AgentCoordinationError("mailbox path must be a bounded non-empty path")
+        if type(max_messages) is not int or not 1 <= max_messages <= 1_000_000:
+            raise AgentCoordinationError("mailbox max_messages must be within [1, 1000000]")
+        if type(max_bytes) is not int or not 1 <= max_bytes <= 1024 * 1024 * 1024:
+            raise AgentCoordinationError("mailbox max_bytes must be within [1, 1 GiB]")
+        if type(max_attempts) is not int or not 1 <= max_attempts <= 100:
+            raise AgentCoordinationError("mailbox max_attempts must be within [1, 100]")
+        self.path = mailbox_path
+        self.max_messages = max_messages
+        self.max_bytes = max_bytes
+        self.max_attempts = max_attempts
+        self.path.parent.mkdir(parents=True, exist_ok=True)
+        connection = self._connect()
+        try:
+            connection.executescript(self._SCHEMA)
+        finally:
+            connection.close()
+
+    def _connect(self) -> sqlite3.Connection:
+        connection = sqlite3.connect(str(self.path), timeout=5.0, isolation_level=None)
+        connection.row_factory = sqlite3.Row
+        connection.execute("PRAGMA busy_timeout = 5000")
+        connection.execute("PRAGMA journal_mode = WAL")
+        connection.execute("PRAGMA synchronous = NORMAL")
+        return connection
+
+    @staticmethod
+    def _now_ms() -> int:
+        return max(1, int(time.time() * 1000))
+
+    @staticmethod
+    def _consumer_id(value: object) -> str:
+        return _non_empty(value, "mailbox consumer_id", limit=128)
+
+    @staticmethod
+    def _lease_ms(value: object) -> int:
+        if type(value) is not int or not 1 <= value <= 86_400_000:
+            raise AgentCoordinationError("mailbox lease_ms must be within [1, 86400000]")
+        return value
+
+    def enqueue(self, message: AgentMessage, *, now_ms: int | None = None) -> int:
+        """Persist one envelope, returning its stable delivery id.
+
+        Re-enqueuing the same idempotency key is safe and returns the original
+        row.  Reusing that key for different bytes is rejected rather than
+        silently merging unrelated work.
+        """
+
+        message.validate()
+        payload = message.to_bytes()
+        message_hash = message.message_hash
+        now = self._now_ms() if now_ms is None else _non_negative_int(now_ms, "mailbox now_ms")
+        connection = self._connect()
+        try:
+            connection.execute("BEGIN IMMEDIATE")
+            existing = connection.execute(
+                "SELECT delivery_id, message_hash FROM agent_mailbox_messages WHERE idempotency_key = ?",
+                (message.idempotency_key,),
+            ).fetchone()
+            if existing is not None:
+                if existing["message_hash"] != message_hash:
+                    raise AgentCoordinationError("mailbox idempotency key is bound to different message bytes")
+                connection.execute("COMMIT")
+                return int(existing["delivery_id"])
+            count = int(
+                connection.execute(
+                    "SELECT COUNT(*) FROM agent_mailbox_messages WHERE state IN ('READY', 'LEASED')"
+                ).fetchone()[0]
+            )
+            retained_bytes = int(
+                connection.execute(
+                    "SELECT COALESCE(SUM(length(payload)), 0) FROM agent_mailbox_messages "
+                    "WHERE state IN ('READY', 'LEASED')"
+                ).fetchone()[0]
+            )
+            if count >= self.max_messages or retained_bytes + len(payload) > self.max_bytes:
+                raise AgentCoordinationError("mailbox capacity is exhausted")
+            cursor = connection.execute(
+                "INSERT INTO agent_mailbox_messages "
+                "(idempotency_key, message_hash, payload, state, attempts, available_at_ms, created_at_ms) "
+                "VALUES (?, ?, ?, 'READY', 0, ?, ?)",
+                (message.idempotency_key, message_hash, payload, now, now),
+            )
+            connection.execute("COMMIT")
+            if cursor.lastrowid is None:
+                raise AgentCoordinationError("mailbox insert did not return a delivery id")
+            return int(cursor.lastrowid)
+        except Exception:
+            if connection.in_transaction:
+                connection.execute("ROLLBACK")
+            raise
+        finally:
+            connection.close()
+
+    def _recover_expired(self, connection: sqlite3.Connection, now_ms: int) -> None:
+        connection.execute(
+            "UPDATE agent_mailbox_messages SET state = 'DEAD', lease_owner = NULL, lease_until_ms = NULL "
+            "WHERE state = 'LEASED' AND lease_until_ms <= ? AND attempts >= ?",
+            (now_ms, self.max_attempts),
+        )
+        connection.execute(
+            "UPDATE agent_mailbox_messages SET state = 'READY', lease_owner = NULL, lease_until_ms = NULL "
+            "WHERE state = 'LEASED' AND lease_until_ms <= ? AND attempts < ?",
+            (now_ms, self.max_attempts),
+        )
+
+    def claim(
+        self,
+        consumer_id: str,
+        *,
+        lease_ms: int = 30_000,
+        now_ms: int | None = None,
+    ) -> AgentMailboxDelivery | None:
+        """Atomically claim the oldest ready message for one consumer."""
+
+        consumer = self._consumer_id(consumer_id)
+        duration = self._lease_ms(lease_ms)
+        now = self._now_ms() if now_ms is None else _non_negative_int(now_ms, "mailbox now_ms")
+        connection = self._connect()
+        try:
+            connection.execute("BEGIN IMMEDIATE")
+            self._recover_expired(connection, now)
+            row = connection.execute(
+                "SELECT delivery_id, payload, attempts FROM agent_mailbox_messages "
+                "WHERE state = 'READY' AND available_at_ms <= ? "
+                "ORDER BY delivery_id LIMIT 1",
+                (now,),
+            ).fetchone()
+            if row is None:
+                connection.execute("COMMIT")
+                return None
+            attempts = int(row["attempts"]) + 1
+            lease_until = now + duration
+            connection.execute(
+                "UPDATE agent_mailbox_messages SET state = 'LEASED', attempts = ?, "
+                "lease_owner = ?, lease_until_ms = ? WHERE delivery_id = ? AND state = 'READY'",
+                (attempts, consumer, lease_until, int(row["delivery_id"])),
+            )
+            message = AgentMessage.from_bytes(bytes(row["payload"]))
+            connection.execute("COMMIT")
+            return AgentMailboxDelivery(
+                delivery_id=int(row["delivery_id"]),
+                consumer_id=consumer,
+                message=message,
+                attempts=attempts,
+                lease_until_ms=lease_until,
+            )
+        except Exception:
+            if connection.in_transaction:
+                connection.execute("ROLLBACK")
+            raise
+        finally:
+            connection.close()
+
+    def ack(self, delivery_id: int, consumer_id: str, *, now_ms: int | None = None) -> bool:
+        """Acknowledge only the currently owned lease."""
+
+        delivery = _positive_int(delivery_id, "mailbox delivery_id")
+        consumer = self._consumer_id(consumer_id)
+        now = self._now_ms() if now_ms is None else _non_negative_int(now_ms, "mailbox now_ms")
+        connection = self._connect()
+        try:
+            connection.execute("BEGIN IMMEDIATE")
+            cursor = connection.execute(
+                "UPDATE agent_mailbox_messages SET state = 'ACKED', lease_owner = NULL, "
+                "lease_until_ms = NULL, acked_at_ms = ? "
+                "WHERE delivery_id = ? AND state = 'LEASED' AND lease_owner = ? "
+                "AND lease_until_ms > ?",
+                (now, delivery, consumer, now),
+            )
+            connection.execute("COMMIT")
+            return cursor.rowcount == 1
+        finally:
+            connection.close()
+
+    def nack(
+        self,
+        delivery_id: int,
+        consumer_id: str,
+        *,
+        retry_after_ms: int = 0,
+        error: str | None = None,
+        now_ms: int | None = None,
+    ) -> str:
+        """Release a lease for retry or move it to the dead-letter state."""
+
+        delivery = _positive_int(delivery_id, "mailbox delivery_id")
+        consumer = self._consumer_id(consumer_id)
+        if type(retry_after_ms) is not int or not 0 <= retry_after_ms <= 86_400_000:
+            raise AgentCoordinationError("mailbox retry_after_ms must be within [0, 86400000]")
+        if error is not None:
+            error = _non_empty(error, "mailbox error", limit=1_024)
+        now = self._now_ms() if now_ms is None else _non_negative_int(now_ms, "mailbox now_ms")
+        connection = self._connect()
+        try:
+            connection.execute("BEGIN IMMEDIATE")
+            row = connection.execute(
+                "SELECT attempts FROM agent_mailbox_messages WHERE delivery_id = ? "
+                "AND state = 'LEASED' AND lease_owner = ? AND lease_until_ms > ?",
+                (delivery, consumer, now),
+            ).fetchone()
+            if row is None:
+                connection.execute("ROLLBACK")
+                raise AgentCoordinationError("mailbox delivery is not owned by this consumer")
+            state = "DEAD" if int(row["attempts"]) >= self.max_attempts else "READY"
+            connection.execute(
+                "UPDATE agent_mailbox_messages SET state = ?, available_at_ms = ?, "
+                "lease_owner = NULL, lease_until_ms = NULL, last_error = ? WHERE delivery_id = ?",
+                (state, now + retry_after_ms, error, delivery),
+            )
+            connection.execute("COMMIT")
+            return state
+        except Exception:
+            if connection.in_transaction:
+                connection.execute("ROLLBACK")
+            raise
+        finally:
+            connection.close()
+
+    def recover_expired(self, *, now_ms: int | None = None) -> int:
+        """Make expired leases available again and return rows changed."""
+
+        now = self._now_ms() if now_ms is None else _non_negative_int(now_ms, "mailbox now_ms")
+        connection = self._connect()
+        try:
+            connection.execute("BEGIN IMMEDIATE")
+            before = int(
+                connection.execute(
+                    "SELECT COUNT(*) FROM agent_mailbox_messages WHERE state = 'LEASED' AND lease_until_ms <= ?",
+                    (now,),
+                ).fetchone()[0]
+            )
+            self._recover_expired(connection, now)
+            connection.execute("COMMIT")
+            return before
+        except Exception:
+            if connection.in_transaction:
+                connection.execute("ROLLBACK")
+            raise
+        finally:
+            connection.close()
+
+    def counts(self) -> dict[str, int]:
+        """Return bounded operational counts without exposing message bodies."""
+
+        connection = self._connect()
+        try:
+            rows = connection.execute(
+                "SELECT state, COUNT(*) AS count FROM agent_mailbox_messages GROUP BY state"
+            ).fetchall()
+            counts = {"READY": 0, "LEASED": 0, "ACKED": 0, "DEAD": 0}
+            for row in rows:
+                counts[str(row["state"])] = int(row["count"])
+            return counts
+        finally:
+            connection.close()
 
 
 type AgentHandlerResult = AgentResultPacket | str
@@ -1527,6 +1843,7 @@ class AgentSupervisor[RootOutputT]:
         graph_validator: Callable[[Mapping[str, object]], Mapping[str, object]] | None = None,
         message_sink: MessageSink | None = None,
         message_journal: AgentMessageJournal | None = None,
+        message_mailbox: AgentMailbox | None = None,
     ) -> None:
         selected_run_id = uuid.uuid4().hex if run_id is None else run_id
         self.run_id = _non_empty(selected_run_id, "run_id", limit=128)
@@ -1542,12 +1859,17 @@ class AgentSupervisor[RootOutputT]:
         self._message_sink = message_sink
         if message_journal is not None and type(message_journal) is not AgentMessageJournal:
             raise AgentCoordinationError("message_journal must be an AgentMessageJournal")
+        if message_mailbox is not None and type(message_mailbox) is not AgentMailbox:
+            raise AgentCoordinationError("message_mailbox must be an AgentMailbox")
         self._message_journal = message_journal
+        self._message_mailbox = message_mailbox
         self._started = False
 
     async def _emit(self, message: AgentMessage) -> None:
         if self._message_journal is not None:
             self._message_journal.append(message)
+        if self._message_mailbox is not None:
+            self._message_mailbox.enqueue(message)
         if self._message_sink is None:
             return
         result = self._message_sink(message)
@@ -1742,6 +2064,8 @@ __all__ = [
     "AgentClaim",
     "AgentCoordinationError",
     "AgentHandler",
+    "AgentMailbox",
+    "AgentMailboxDelivery",
     "AgentMessage",
     "AgentMessageJournal",
     "AgentMessageJournalEntry",
