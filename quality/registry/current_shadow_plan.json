@@ -1,9 +1,9 @@
 {
-  "artifact_hash": "0212fb9a77b79bf34dab17f4fbab8d970389e891390bcc2df94d08a3423dfcc5",
+  "artifact_hash": "4464315b1bffbcf89b1c3c438b5754a887cb101e6fd23c251cda44c8705b7d30",
   "changed_paths": [],
   "changed_unmapped_surface_ids": [],
   "changed_unmapped_surface_paths": [],
-  "closure_hash": "dfd395ed22857ece84bd1facf5d5c2c88c0dc265ff91b0129fdf9c950fc4e685",
+  "closure_hash": "d21bfa936d801c8640d8136adf7e00efdb5a8795c4d47083449506aec6a990bf",
   "closure_paths": [
     ".github/workflows/aegis-plugins.yml",
     ".github/workflows/ci.yml",
@@ -196,7 +196,7 @@
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [],
-        "closure_hash": "dfd395ed22857ece84bd1facf5d5c2c88c0dc265ff91b0129fdf9c950fc4e685",
+        "closure_hash": "d21bfa936d801c8640d8136adf7e00efdb5a8795c4d47083449506aec6a990bf",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-HOSTED_WORKFLOW-E74493557E2F0C05",
@@ -208,7 +208,7 @@
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [],
-        "closure_hash": "dfd395ed22857ece84bd1facf5d5c2c88c0dc265ff91b0129fdf9c950fc4e685",
+        "closure_hash": "d21bfa936d801c8640d8136adf7e00efdb5a8795c4d47083449506aec6a990bf",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-HOSTED_WORKFLOW_JOB-FF41024D605E74C3",
@@ -220,7 +220,7 @@
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [],
-        "closure_hash": "dfd395ed22857ece84bd1facf5d5c2c88c0dc265ff91b0129fdf9c950fc4e685",
+        "closure_hash": "d21bfa936d801c8640d8136adf7e00efdb5a8795c4d47083449506aec6a990bf",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-HOSTED_WORKFLOW-B803FCB7F17ED923",
@@ -232,7 +232,7 @@
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [],
-        "closure_hash": "dfd395ed22857ece84bd1facf5d5c2c88c0dc265ff91b0129fdf9c950fc4e685",
+        "closure_hash": "d21bfa936d801c8640d8136adf7e00efdb5a8795c4d47083449506aec6a990bf",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-HOSTED_WORKFLOW_JOB-05A370E07760FA2D",
@@ -244,7 +244,7 @@
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [],
-        "closure_hash": "dfd395ed22857ece84bd1facf5d5c2c88c0dc265ff91b0129fdf9c950fc4e685",
+        "closure_hash": "d21bfa936d801c8640d8136adf7e00efdb5a8795c4d47083449506aec6a990bf",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-HOSTED_WORKFLOW_JOB-1F46A0C198D3ECE0",
@@ -256,7 +256,7 @@
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [],
-        "closure_hash": "dfd395ed22857ece84bd1facf5d5c2c88c0dc265ff91b0129fdf9c950fc4e685",
+        "closure_hash": "d21bfa936d801c8640d8136adf7e00efdb5a8795c4d47083449506aec6a990bf",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-HOSTED_WORKFLOW_JOB-4297F5A9DAE87FC2",
@@ -268,7 +268,7 @@
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [],
-        "closure_hash": "dfd395ed22857ece84bd1facf5d5c2c88c0dc265ff91b0129fdf9c950fc4e685",
+        "closure_hash": "d21bfa936d801c8640d8136adf7e00efdb5a8795c4d47083449506aec6a990bf",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-HOSTED_WORKFLOW_JOB-907D7B4FEA384338",
@@ -280,7 +280,7 @@
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [],
-        "closure_hash": "dfd395ed22857ece84bd1facf5d5c2c88c0dc265ff91b0129fdf9c950fc4e685",
+        "closure_hash": "d21bfa936d801c8640d8136adf7e00efdb5a8795c4d47083449506aec6a990bf",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-HOSTED_WORKFLOW_JOB-944500BE073DADA0",
@@ -292,7 +292,7 @@
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [],
-        "closure_hash": "dfd395ed22857ece84bd1facf5d5c2c88c0dc265ff91b0129fdf9c950fc4e685",
+        "closure_hash": "d21bfa936d801c8640d8136adf7e00efdb5a8795c4d47083449506aec6a990bf",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-HOSTED_WORKFLOW_JOB-B0F63D21D5F72735",
@@ -304,7 +304,7 @@
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [],
-        "closure_hash": "dfd395ed22857ece84bd1facf5d5c2c88c0dc265ff91b0129fdf9c950fc4e685",
+        "closure_hash": "d21bfa936d801c8640d8136adf7e00efdb5a8795c4d47083449506aec6a990bf",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-HOSTED_WORKFLOW_JOB-B82FE508A122BA18",
@@ -316,7 +316,7 @@
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [],
-        "closure_hash": "dfd395ed22857ece84bd1facf5d5c2c88c0dc265ff91b0129fdf9c950fc4e685",
+        "closure_hash": "d21bfa936d801c8640d8136adf7e00efdb5a8795c4d47083449506aec6a990bf",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-HOSTED_WORKFLOW_JOB-E636341E6B0E9DBF",
@@ -328,7 +328,7 @@
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [],
-        "closure_hash": "dfd395ed22857ece84bd1facf5d5c2c88c0dc265ff91b0129fdf9c950fc4e685",
+        "closure_hash": "d21bfa936d801c8640d8136adf7e00efdb5a8795c4d47083449506aec6a990bf",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-HOSTED_WORKFLOW_JOB-F33099A5B936A446",
@@ -340,7 +340,7 @@
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [],
-        "closure_hash": "dfd395ed22857ece84bd1facf5d5c2c88c0dc265ff91b0129fdf9c950fc4e685",
+        "closure_hash": "d21bfa936d801c8640d8136adf7e00efdb5a8795c4d47083449506aec6a990bf",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-HOSTED_WORKFLOW-481FBF069280B7D0",
@@ -352,7 +352,7 @@
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [],
-        "closure_hash": "dfd395ed22857ece84bd1facf5d5c2c88c0dc265ff91b0129fdf9c950fc4e685",
+        "closure_hash": "d21bfa936d801c8640d8136adf7e00efdb5a8795c4d47083449506aec6a990bf",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-HOSTED_WORKFLOW_JOB-10F17DABB578B02D",
@@ -364,7 +364,7 @@
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [],
-        "closure_hash": "dfd395ed22857ece84bd1facf5d5c2c88c0dc265ff91b0129fdf9c950fc4e685",
+        "closure_hash": "d21bfa936d801c8640d8136adf7e00efdb5a8795c4d47083449506aec6a990bf",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-HOSTED_WORKFLOW_JOB-5FB63D9C024E4516",
@@ -376,7 +376,7 @@
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [],
-        "closure_hash": "dfd395ed22857ece84bd1facf5d5c2c88c0dc265ff91b0129fdf9c950fc4e685",
+        "closure_hash": "d21bfa936d801c8640d8136adf7e00efdb5a8795c4d47083449506aec6a990bf",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-HOSTED_WORKFLOW_JOB-88922BEECD136206",
@@ -388,7 +388,7 @@
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [],
-        "closure_hash": "dfd395ed22857ece84bd1facf5d5c2c88c0dc265ff91b0129fdf9c950fc4e685",
+        "closure_hash": "d21bfa936d801c8640d8136adf7e00efdb5a8795c4d47083449506aec6a990bf",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-HOSTED_WORKFLOW_JOB-9A86E427E026057E",
@@ -400,7 +400,7 @@
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [],
-        "closure_hash": "dfd395ed22857ece84bd1facf5d5c2c88c0dc265ff91b0129fdf9c950fc4e685",
+        "closure_hash": "d21bfa936d801c8640d8136adf7e00efdb5a8795c4d47083449506aec6a990bf",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-HOSTED_WORKFLOW_JOB-B864A49636644D5C",
@@ -412,7 +412,7 @@
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [],
-        "closure_hash": "dfd395ed22857ece84bd1facf5d5c2c88c0dc265ff91b0129fdf9c950fc4e685",
+        "closure_hash": "d21bfa936d801c8640d8136adf7e00efdb5a8795c4d47083449506aec6a990bf",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-HOSTED_WORKFLOW_JOB-C611C411223DEE88",
@@ -424,7 +424,7 @@
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [],
-        "closure_hash": "dfd395ed22857ece84bd1facf5d5c2c88c0dc265ff91b0129fdf9c950fc4e685",
+        "closure_hash": "d21bfa936d801c8640d8136adf7e00efdb5a8795c4d47083449506aec6a990bf",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-HOSTED_WORKFLOW_JOB-E55A31276EF24D74",
@@ -436,7 +436,7 @@
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [],
-        "closure_hash": "dfd395ed22857ece84bd1facf5d5c2c88c0dc265ff91b0129fdf9c950fc4e685",
+        "closure_hash": "d21bfa936d801c8640d8136adf7e00efdb5a8795c4d47083449506aec6a990bf",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-HOSTED_WORKFLOW-0C35795B6B274DAD",
@@ -448,7 +448,7 @@
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [],
-        "closure_hash": "dfd395ed22857ece84bd1facf5d5c2c88c0dc265ff91b0129fdf9c950fc4e685",
+        "closure_hash": "d21bfa936d801c8640d8136adf7e00efdb5a8795c4d47083449506aec6a990bf",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-HOSTED_WORKFLOW_JOB-EA9A902DD73B43A5",
@@ -460,7 +460,7 @@
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [],
-        "closure_hash": "dfd395ed22857ece84bd1facf5d5c2c88c0dc265ff91b0129fdf9c950fc4e685",
+        "closure_hash": "d21bfa936d801c8640d8136adf7e00efdb5a8795c4d47083449506aec6a990bf",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-HOSTED_WORKFLOW-D8B029656517F9E1",
@@ -472,7 +472,7 @@
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [],
-        "closure_hash": "dfd395ed22857ece84bd1facf5d5c2c88c0dc265ff91b0129fdf9c950fc4e685",
+        "closure_hash": "d21bfa936d801c8640d8136adf7e00efdb5a8795c4d47083449506aec6a990bf",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-HOSTED_WORKFLOW_JOB-5E1231BC0DE6B9A5",
@@ -484,7 +484,7 @@
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [],
-        "closure_hash": "dfd395ed22857ece84bd1facf5d5c2c88c0dc265ff91b0129fdf9c950fc4e685",
+        "closure_hash": "d21bfa936d801c8640d8136adf7e00efdb5a8795c4d47083449506aec6a990bf",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-HOSTED_WORKFLOW-09D65668A1CCBA2F",
@@ -496,7 +496,7 @@
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [],
-        "closure_hash": "dfd395ed22857ece84bd1facf5d5c2c88c0dc265ff91b0129fdf9c950fc4e685",
+        "closure_hash": "d21bfa936d801c8640d8136adf7e00efdb5a8795c4d47083449506aec6a990bf",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-HOSTED_WORKFLOW_JOB-268BA7C5382725F4",
@@ -508,7 +508,7 @@
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [],
-        "closure_hash": "dfd395ed22857ece84bd1facf5d5c2c88c0dc265ff91b0129fdf9c950fc4e685",
+        "closure_hash": "d21bfa936d801c8640d8136adf7e00efdb5a8795c4d47083449506aec6a990bf",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-HOSTED_WORKFLOW-D3039EF099697FFD",
@@ -520,7 +520,7 @@
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [],
-        "closure_hash": "dfd395ed22857ece84bd1facf5d5c2c88c0dc265ff91b0129fdf9c950fc4e685",
+        "closure_hash": "d21bfa936d801c8640d8136adf7e00efdb5a8795c4d47083449506aec6a990bf",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-HOSTED_WORKFLOW_JOB-D42384DEC647C6B5",
@@ -532,7 +532,7 @@
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [],
-        "closure_hash": "dfd395ed22857ece84bd1facf5d5c2c88c0dc265ff91b0129fdf9c950fc4e685",
+        "closure_hash": "d21bfa936d801c8640d8136adf7e00efdb5a8795c4d47083449506aec6a990bf",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-HOSTED_WORKFLOW-87DB21A973EED4FE",
@@ -544,7 +544,7 @@
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [],
-        "closure_hash": "dfd395ed22857ece84bd1facf5d5c2c88c0dc265ff91b0129fdf9c950fc4e685",
+        "closure_hash": "d21bfa936d801c8640d8136adf7e00efdb5a8795c4d47083449506aec6a990bf",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-HOSTED_WORKFLOW_JOB-16AA7B92C94F22CB",
@@ -556,7 +556,7 @@
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [],
-        "closure_hash": "dfd395ed22857ece84bd1facf5d5c2c88c0dc265ff91b0129fdf9c950fc4e685",
+        "closure_hash": "d21bfa936d801c8640d8136adf7e00efdb5a8795c4d47083449506aec6a990bf",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-RUST_BENCHMARK-56B8EE7D3073C0FD",
@@ -568,7 +568,7 @@
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [],
-        "closure_hash": "dfd395ed22857ece84bd1facf5d5c2c88c0dc265ff91b0129fdf9c950fc4e685",
+        "closure_hash": "d21bfa936d801c8640d8136adf7e00efdb5a8795c4d47083449506aec6a990bf",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-RUST_BENCHMARK-EB9579A3AA32341B",
@@ -580,7 +580,7 @@
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [],
-        "closure_hash": "dfd395ed22857ece84bd1facf5d5c2c88c0dc265ff91b0129fdf9c950fc4e685",
+        "closure_hash": "d21bfa936d801c8640d8136adf7e00efdb5a8795c4d47083449506aec6a990bf",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-RUST_BENCHMARK-16BA24B31D557E5B",
@@ -592,7 +592,7 @@
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [],
-        "closure_hash": "dfd395ed22857ece84bd1facf5d5c2c88c0dc265ff91b0129fdf9c950fc4e685",
+        "closure_hash": "d21bfa936d801c8640d8136adf7e00efdb5a8795c4d47083449506aec6a990bf",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-RUST_BENCHMARK-D6C0F4D92F1AC58D",
@@ -604,7 +604,7 @@
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [],
-        "closure_hash": "dfd395ed22857ece84bd1facf5d5c2c88c0dc265ff91b0129fdf9c950fc4e685",
+        "closure_hash": "d21bfa936d801c8640d8136adf7e00efdb5a8795c4d47083449506aec6a990bf",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-RUST_BENCHMARK-320AA3A9FEA0E3FE",
@@ -616,7 +616,7 @@
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [],
-        "closure_hash": "dfd395ed22857ece84bd1facf5d5c2c88c0dc265ff91b0129fdf9c950fc4e685",
+        "closure_hash": "d21bfa936d801c8640d8136adf7e00efdb5a8795c4d47083449506aec6a990bf",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-RUST_UNIT_TEST-55E0A1E324F5D479",
@@ -628,7 +628,7 @@
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [],
-        "closure_hash": "dfd395ed22857ece84bd1facf5d5c2c88c0dc265ff91b0129fdf9c950fc4e685",
+        "closure_hash": "d21bfa936d801c8640d8136adf7e00efdb5a8795c4d47083449506aec6a990bf",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-RUST_UNIT_TEST-98A3418661C4B3C9",
@@ -640,7 +640,7 @@
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [],
-        "closure_hash": "dfd395ed22857ece84bd1facf5d5c2c88c0dc265ff91b0129fdf9c950fc4e685",
+        "closure_hash": "d21bfa936d801c8640d8136adf7e00efdb5a8795c4d47083449506aec6a990bf",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-RUST_UNIT_TEST-03F1D552147878B0",
@@ -652,7 +652,7 @@
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [],
-        "closure_hash": "dfd395ed22857ece84bd1facf5d5c2c88c0dc265ff91b0129fdf9c950fc4e685",
+        "closure_hash": "d21bfa936d801c8640d8136adf7e00efdb5a8795c4d47083449506aec6a990bf",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-RUST_UNIT_TEST-AB06E12C09CF4DD4",
@@ -664,7 +664,7 @@
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [],
-        "closure_hash": "dfd395ed22857ece84bd1facf5d5c2c88c0dc265ff91b0129fdf9c950fc4e685",
+        "closure_hash": "d21bfa936d801c8640d8136adf7e00efdb5a8795c4d47083449506aec6a990bf",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-RUST_UNIT_TEST-6896058315F9E5A4",
@@ -676,7 +676,7 @@
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [],
-        "closure_hash": "dfd395ed22857ece84bd1facf5d5c2c88c0dc265ff91b0129fdf9c950fc4e685",
+        "closure_hash": "d21bfa936d801c8640d8136adf7e00efdb5a8795c4d47083449506aec6a990bf",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-RUST_UNIT_TEST-D378F0E030D804EB",
@@ -688,7 +688,7 @@
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [],
-        "closure_hash": "dfd395ed22857ece84bd1facf5d5c2c88c0dc265ff91b0129fdf9c950fc4e685",
+        "closure_hash": "d21bfa936d801c8640d8136adf7e00efdb5a8795c4d47083449506aec6a990bf",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-RUST_UNIT_TEST-25A082632F2A02C7",
@@ -700,7 +700,7 @@
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [],
-        "closure_hash": "dfd395ed22857ece84bd1facf5d5c2c88c0dc265ff91b0129fdf9c950fc4e685",
+        "closure_hash": "d21bfa936d801c8640d8136adf7e00efdb5a8795c4d47083449506aec6a990bf",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-RUST_UNIT_TEST-EB50407EAE4868AB",
@@ -712,7 +712,7 @@
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [],
-        "closure_hash": "dfd395ed22857ece84bd1facf5d5c2c88c0dc265ff91b0129fdf9c950fc4e685",
+        "closure_hash": "d21bfa936d801c8640d8136adf7e00efdb5a8795c4d47083449506aec6a990bf",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-RUST_UNIT_TEST-2C9D296895749679",
@@ -724,7 +724,7 @@
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [],
-        "closure_hash": "dfd395ed22857ece84bd1facf5d5c2c88c0dc265ff91b0129fdf9c950fc4e685",
+        "closure_hash": "d21bfa936d801c8640d8136adf7e00efdb5a8795c4d47083449506aec6a990bf",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-RUST_UNIT_TEST-B07735E7D4D5F66B",
@@ -736,7 +736,7 @@
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [],
-        "closure_hash": "dfd395ed22857ece84bd1facf5d5c2c88c0dc265ff91b0129fdf9c950fc4e685",
+        "closure_hash": "d21bfa936d801c8640d8136adf7e00efdb5a8795c4d47083449506aec6a990bf",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-RUST_UNIT_TEST-816051930BE8E9AF",
@@ -748,7 +748,7 @@
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [],
-        "closure_hash": "dfd395ed22857ece84bd1facf5d5c2c88c0dc265ff91b0129fdf9c950fc4e685",
+        "closure_hash": "d21bfa936d801c8640d8136adf7e00efdb5a8795c4d47083449506aec6a990bf",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-RUST_UNIT_TEST-3850F0947D457EC0",
@@ -760,7 +760,7 @@
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [],
-        "closure_hash": "dfd395ed22857ece84bd1facf5d5c2c88c0dc265ff91b0129fdf9c950fc4e685",
+        "closure_hash": "d21bfa936d801c8640d8136adf7e00efdb5a8795c4d47083449506aec6a990bf",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-RUST_UNIT_TEST-6E0A9FEABAA1955E",
@@ -772,7 +772,7 @@
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [],
-        "closure_hash": "dfd395ed22857ece84bd1facf5d5c2c88c0dc265ff91b0129fdf9c950fc4e685",
+        "closure_hash": "d21bfa936d801c8640d8136adf7e00efdb5a8795c4d47083449506aec6a990bf",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-RUST_UNIT_TEST-940C3F295FD42710",
@@ -784,7 +784,7 @@
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [],
-        "closure_hash": "dfd395ed22857ece84bd1facf5d5c2c88c0dc265ff91b0129fdf9c950fc4e685",
+        "closure_hash": "d21bfa936d801c8640d8136adf7e00efdb5a8795c4d47083449506aec6a990bf",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-RUST_UNIT_TEST-92EBE7488C4A494F",
@@ -796,7 +796,7 @@
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [],
-        "closure_hash": "dfd395ed22857ece84bd1facf5d5c2c88c0dc265ff91b0129fdf9c950fc4e685",
+        "closure_hash": "d21bfa936d801c8640d8136adf7e00efdb5a8795c4d47083449506aec6a990bf",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-RUST_UNIT_TEST-4FCC4984AF6D2C34",
@@ -808,7 +808,7 @@
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [],
-        "closure_hash": "dfd395ed22857ece84bd1facf5d5c2c88c0dc265ff91b0129fdf9c950fc4e685",
+        "closure_hash": "d21bfa936d801c8640d8136adf7e00efdb5a8795c4d47083449506aec6a990bf",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-RUST_UNIT_TEST-23BC7E3048BB4D91",
@@ -820,7 +820,7 @@
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [],
-        "closure_hash": "dfd395ed22857ece84bd1facf5d5c2c88c0dc265ff91b0129fdf9c950fc4e685",
+        "closure_hash": "d21bfa936d801c8640d8136adf7e00efdb5a8795c4d47083449506aec6a990bf",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-RUST_UNIT_TEST-06AD9BFDAEC677E0",
@@ -832,7 +832,7 @@
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [],
-        "closure_hash": "dfd395ed22857ece84bd1facf5d5c2c88c0dc265ff91b0129fdf9c950fc4e685",
+        "closure_hash": "d21bfa936d801c8640d8136adf7e00efdb5a8795c4d47083449506aec6a990bf",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-RUST_UNIT_TEST-8135C64C8D1E687D",
@@ -844,7 +844,7 @@
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [],
-        "closure_hash": "dfd395ed22857ece84bd1facf5d5c2c88c0dc265ff91b0129fdf9c950fc4e685",
+        "closure_hash": "d21bfa936d801c8640d8136adf7e00efdb5a8795c4d47083449506aec6a990bf",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-RUST_UNIT_TEST-A7BCCA355F3390EC",
@@ -856,7 +856,7 @@
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [],
-        "closure_hash": "dfd395ed22857ece84bd1facf5d5c2c88c0dc265ff91b0129fdf9c950fc4e685",
+        "closure_hash": "d21bfa936d801c8640d8136adf7e00efdb5a8795c4d47083449506aec6a990bf",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-RUST_UNIT_TEST-62F71A02E7DAEAF0",
@@ -868,7 +868,7 @@
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [],
-        "closure_hash": "dfd395ed22857ece84bd1facf5d5c2c88c0dc265ff91b0129fdf9c950fc4e685",
+        "closure_hash": "d21bfa936d801c8640d8136adf7e00efdb5a8795c4d47083449506aec6a990bf",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-RUST_UNIT_TEST-0C9A2F9147ED09FC",
@@ -880,7 +880,7 @@
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [],
-        "closure_hash": "dfd395ed22857ece84bd1facf5d5c2c88c0dc265ff91b0129fdf9c950fc4e685",
+        "closure_hash": "d21bfa936d801c8640d8136adf7e00efdb5a8795c4d47083449506aec6a990bf",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-RUST_UNIT_TEST-4126FC7BB01CB145",
@@ -892,7 +892,7 @@
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [],
-        "closure_hash": "dfd395ed22857ece84bd1facf5d5c2c88c0dc265ff91b0129fdf9c950fc4e685",
+        "closure_hash": "d21bfa936d801c8640d8136adf7e00efdb5a8795c4d47083449506aec6a990bf",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-RUST_UNIT_TEST-F78B6AACEB6CDD0A",
@@ -904,7 +904,7 @@
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [],
-        "closure_hash": "dfd395ed22857ece84bd1facf5d5c2c88c0dc265ff91b0129fdf9c950fc4e685",
+        "closure_hash": "d21bfa936d801c8640d8136adf7e00efdb5a8795c4d47083449506aec6a990bf",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-RUST_UNIT_TEST-678298D9C8FD4466",
@@ -916,7 +916,7 @@
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [],
-        "closure_hash": "dfd395ed22857ece84bd1facf5d5c2c88c0dc265ff91b0129fdf9c950fc4e685",
+        "closure_hash": "d21bfa936d801c8640d8136adf7e00efdb5a8795c4d47083449506aec6a990bf",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-RUST_UNIT_TEST-706B6EC4F030313E",
@@ -928,7 +928,7 @@
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [],
-        "closure_hash": "dfd395ed22857ece84bd1facf5d5c2c88c0dc265ff91b0129fdf9c950fc4e685",
+        "closure_hash": "d21bfa936d801c8640d8136adf7e00efdb5a8795c4d47083449506aec6a990bf",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-RUST_UNIT_TEST-7142417A253B65D2",
@@ -940,7 +940,7 @@
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [],
-        "closure_hash": "dfd395ed22857ece84bd1facf5d5c2c88c0dc265ff91b0129fdf9c950fc4e685",
+        "closure_hash": "d21bfa936d801c8640d8136adf7e00efdb5a8795c4d47083449506aec6a990bf",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-RUST_UNIT_TEST-382B75CCEC122E20",
@@ -952,7 +952,7 @@
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [],
-        "closure_hash": "dfd395ed22857ece84bd1facf5d5c2c88c0dc265ff91b0129fdf9c950fc4e685",
+        "closure_hash": "d21bfa936d801c8640d8136adf7e00efdb5a8795c4d47083449506aec6a990bf",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-RUST_UNIT_TEST-627B7C3B524D6D59",
@@ -964,7 +964,7 @@
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [],
-        "closure_hash": "dfd395ed22857ece84bd1facf5d5c2c88c0dc265ff91b0129fdf9c950fc4e685",
+        "closure_hash": "d21bfa936d801c8640d8136adf7e00efdb5a8795c4d47083449506aec6a990bf",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-RUST_UNIT_TEST-EFB18248756AE77E",
@@ -976,7 +976,7 @@
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [],
-        "closure_hash": "dfd395ed22857ece84bd1facf5d5c2c88c0dc265ff91b0129fdf9c950fc4e685",
+        "closure_hash": "d21bfa936d801c8640d8136adf7e00efdb5a8795c4d47083449506aec6a990bf",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-RUST_UNIT_TEST-1ACBE80688E0CB89",
@@ -988,7 +988,7 @@
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [],
-        "closure_hash": "dfd395ed22857ece84bd1facf5d5c2c88c0dc265ff91b0129fdf9c950fc4e685",
+        "closure_hash": "d21bfa936d801c8640d8136adf7e00efdb5a8795c4d47083449506aec6a990bf",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-RUST_UNIT_TEST-BB56D2466AB0351F",
@@ -1000,7 +1000,7 @@
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [],
-        "closure_hash": "dfd395ed22857ece84bd1facf5d5c2c88c0dc265ff91b0129fdf9c950fc4e685",
+        "closure_hash": "d21bfa936d801c8640d8136adf7e00efdb5a8795c4d47083449506aec6a990bf",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-RUST_INTEGRATION_TEST-E25BFE976086091E",
@@ -1012,7 +1012,7 @@
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [],
-        "closure_hash": "dfd395ed22857ece84bd1facf5d5c2c88c0dc265ff91b0129fdf9c950fc4e685",
+        "closure_hash": "d21bfa936d801c8640d8136adf7e00efdb5a8795c4d47083449506aec6a990bf",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-RUST_INTEGRATION_TEST-896180209AD388CD",
@@ -1024,7 +1024,7 @@
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [],
-        "closure_hash": "dfd395ed22857ece84bd1facf5d5c2c88c0dc265ff91b0129fdf9c950fc4e685",
+        "closure_hash": "d21bfa936d801c8640d8136adf7e00efdb5a8795c4d47083449506aec6a990bf",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-FUZZ_TARGET-26E115395EF2C8F9",
@@ -1036,7 +1036,7 @@
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [],
-        "closure_hash": "dfd395ed22857ece84bd1facf5d5c2c88c0dc265ff91b0129fdf9c950fc4e685",
+        "closure_hash": "d21bfa936d801c8640d8136adf7e00efdb5a8795c4d47083449506aec6a990bf",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-FUZZ_TARGET-571CC359F5473719",
@@ -1048,7 +1048,7 @@
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [],
-        "closure_hash": "dfd395ed22857ece84bd1facf5d5c2c88c0dc265ff91b0129fdf9c950fc4e685",
+        "closure_hash": "d21bfa936d801c8640d8136adf7e00efdb5a8795c4d47083449506aec6a990bf",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-FUZZ_TARGET-849E21CC12DE2882",
@@ -1060,7 +1060,7 @@
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [],
-        "closure_hash": "dfd395ed22857ece84bd1facf5d5c2c88c0dc265ff91b0129fdf9c950fc4e685",
+        "closure_hash": "d21bfa936d801c8640d8136adf7e00efdb5a8795c4d47083449506aec6a990bf",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-FUZZ_TARGET-A5DD33377FDD8B01",
@@ -1072,7 +1072,7 @@
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [],
-        "closure_hash": "dfd395ed22857ece84bd1facf5d5c2c88c0dc265ff91b0129fdf9c950fc4e685",
+        "closure_hash": "d21bfa936d801c8640d8136adf7e00efdb5a8795c4d47083449506aec6a990bf",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-SCRIPT_OR_GATE-C758B4968E53DC97",
@@ -1084,7 +1084,7 @@
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [],
-        "closure_hash": "dfd395ed22857ece84bd1facf5d5c2c88c0dc265ff91b0129fdf9c950fc4e685",
+        "closure_hash": "d21bfa936d801c8640d8136adf7e00efdb5a8795c4d47083449506aec6a990bf",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-SCRIPT_OR_GATE-688190526E92D702",
@@ -1096,7 +1096,7 @@
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [],
-        "closure_hash": "dfd395ed22857ece84bd1facf5d5c2c88c0dc265ff91b0129fdf9c950fc4e685",
+        "closure_hash": "d21bfa936d801c8640d8136adf7e00efdb5a8795c4d47083449506aec6a990bf",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-SCRIPT_OR_GATE-CACC5F6A05F9757D",
@@ -1108,7 +1108,7 @@
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [],
-        "closure_hash": "dfd395ed22857ece84bd1facf5d5c2c88c0dc265ff91b0129fdf9c950fc4e685",
+        "closure_hash": "d21bfa936d801c8640d8136adf7e00efdb5a8795c4d47083449506aec6a990bf",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-SCRIPT_OR_GATE-CD75F473D2F982DF",
@@ -1120,7 +1120,7 @@
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [],
-        "closure_hash": "dfd395ed22857ece84bd1facf5d5c2c88c0dc265ff91b0129fdf9c950fc4e685",
+        "closure_hash": "d21bfa936d801c8640d8136adf7e00efdb5a8795c4d47083449506aec6a990bf",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-SCRIPT_OR_GATE-2B63ED08D2F345A1",
@@ -1132,7 +1132,7 @@
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [],
-        "closure_hash": "dfd395ed22857ece84bd1facf5d5c2c88c0dc265ff91b0129fdf9c950fc4e685",
+        "closure_hash": "d21bfa936d801c8640d8136adf7e00efdb5a8795c4d47083449506aec6a990bf",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-SCRIPT_OR_GATE-7CB77C78DCDC63EC",
@@ -1144,7 +1144,7 @@
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [],
-        "closure_hash": "dfd395ed22857ece84bd1facf5d5c2c88c0dc265ff91b0129fdf9c950fc4e685",
+        "closure_hash": "d21bfa936d801c8640d8136adf7e00efdb5a8795c4d47083449506aec6a990bf",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-SCRIPT_OR_GATE-9220621BA19E17B1",
@@ -1156,7 +1156,7 @@
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [],
-        "closure_hash": "dfd395ed22857ece84bd1facf5d5c2c88c0dc265ff91b0129fdf9c950fc4e685",
+        "closure_hash": "d21bfa936d801c8640d8136adf7e00efdb5a8795c4d47083449506aec6a990bf",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-SCRIPT_OR_GATE-EA63DCF58D957DB3",
@@ -1168,7 +1168,7 @@
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [],
-        "closure_hash": "dfd395ed22857ece84bd1facf5d5c2c88c0dc265ff91b0129fdf9c950fc4e685",
+        "closure_hash": "d21bfa936d801c8640d8136adf7e00efdb5a8795c4d47083449506aec6a990bf",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-SCRIPT_OR_GATE-E35A4BAA0F067FCE",
@@ -1180,7 +1180,7 @@
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [],
-        "closure_hash": "dfd395ed22857ece84bd1facf5d5c2c88c0dc265ff91b0129fdf9c950fc4e685",
+        "closure_hash": "d21bfa936d801c8640d8136adf7e00efdb5a8795c4d47083449506aec6a990bf",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-SCRIPT_OR_GATE-F82E0E9DC4FBA0AB",
@@ -1192,7 +1192,7 @@
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [],
-        "closure_hash": "dfd395ed22857ece84bd1facf5d5c2c88c0dc265ff91b0129fdf9c950fc4e685",
+        "closure_hash": "d21bfa936d801c8640d8136adf7e00efdb5a8795c4d47083449506aec6a990bf",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-SCRIPT_OR_GATE-89B834E04514B46F",
@@ -1204,7 +1204,7 @@
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [],
-        "closure_hash": "dfd395ed22857ece84bd1facf5d5c2c88c0dc265ff91b0129fdf9c950fc4e685",
+        "closure_hash": "d21bfa936d801c8640d8136adf7e00efdb5a8795c4d47083449506aec6a990bf",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-SCRIPT_OR_GATE-59733FC5B436637F",
@@ -1216,7 +1216,7 @@
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [],
-        "closure_hash": "dfd395ed22857ece84bd1facf5d5c2c88c0dc265ff91b0129fdf9c950fc4e685",
+        "closure_hash": "d21bfa936d801c8640d8136adf7e00efdb5a8795c4d47083449506aec6a990bf",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-PYTHON_BENCHMARK-DA7DC4EE5F9A3219",
@@ -1228,7 +1228,7 @@
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [],
-        "closure_hash": "dfd395ed22857ece84bd1facf5d5c2c88c0dc265ff91b0129fdf9c950fc4e685",
+        "closure_hash": "d21bfa936d801c8640d8136adf7e00efdb5a8795c4d47083449506aec6a990bf",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-PYTHON_BENCHMARK-DAAA8EB886A2B8E1",
@@ -1240,7 +1240,7 @@
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [],
-        "closure_hash": "dfd395ed22857ece84bd1facf5d5c2c88c0dc265ff91b0129fdf9c950fc4e685",
+        "closure_hash": "d21bfa936d801c8640d8136adf7e00efdb5a8795c4d47083449506aec6a990bf",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-PYTHON_BENCHMARK-ADB45F89AA5C56C0",
@@ -1252,7 +1252,7 @@
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [],
-        "closure_hash": "dfd395ed22857ece84bd1facf5d5c2c88c0dc265ff91b0129fdf9c950fc4e685",
+        "closure_hash": "d21bfa936d801c8640d8136adf7e00efdb5a8795c4d47083449506aec6a990bf",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-SCRIPT_OR_GATE-3DA20698BDA0AFE0",
@@ -1264,7 +1264,7 @@
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [],
-        "closure_hash": "dfd395ed22857ece84bd1facf5d5c2c88c0dc265ff91b0129fdf9c950fc4e685",
+        "closure_hash": "d21bfa936d801c8640d8136adf7e00efdb5a8795c4d47083449506aec6a990bf",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-PYTHON_BENCHMARK-7AC55EA6DC9C796D",
@@ -1276,7 +1276,7 @@
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [],
-        "closure_hash": "dfd395ed22857ece84bd1facf5d5c2c88c0dc265ff91b0129fdf9c950fc4e685",
+        "closure_hash": "d21bfa936d801c8640d8136adf7e00efdb5a8795c4d47083449506aec6a990bf",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-SCRIPT_OR_GATE-C55A3E2F42DF2E66",
@@ -1288,7 +1288,7 @@
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [],
-        "closure_hash": "dfd395ed22857ece84bd1facf5d5c2c88c0dc265ff91b0129fdf9c950fc4e685",
+        "closure_hash": "d21bfa936d801c8640d8136adf7e00efdb5a8795c4d47083449506aec6a990bf",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-SCRIPT_OR_GATE-0812FE7069EFEF5A",
@@ -1300,7 +1300,7 @@
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [],
-        "closure_hash": "dfd395ed22857ece84bd1facf5d5c2c88c0dc265ff91b0129fdf9c950fc4e685",
+        "closure_hash": "d21bfa936d801c8640d8136adf7e00efdb5a8795c4d47083449506aec6a990bf",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-SCRIPT_OR_GATE-A62C02206FC85D60",
@@ -1312,7 +1312,7 @@
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [],
-        "closure_hash": "dfd395ed22857ece84bd1facf5d5c2c88c0dc265ff91b0129fdf9c950fc4e685",
+        "closure_hash": "d21bfa936d801c8640d8136adf7e00efdb5a8795c4d47083449506aec6a990bf",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-SCRIPT_OR_GATE-76148D210BE92453",
@@ -1324,7 +1324,7 @@
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [],
-        "closure_hash": "dfd395ed22857ece84bd1facf5d5c2c88c0dc265ff91b0129fdf9c950fc4e685",
+        "closure_hash": "d21bfa936d801c8640d8136adf7e00efdb5a8795c4d47083449506aec6a990bf",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-SCRIPT_OR_GATE-D8C9E5F1836A961A",
@@ -1336,7 +1336,7 @@
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [],
-        "closure_hash": "dfd395ed22857ece84bd1facf5d5c2c88c0dc265ff91b0129fdf9c950fc4e685",
+        "closure_hash": "d21bfa936d801c8640d8136adf7e00efdb5a8795c4d47083449506aec6a990bf",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-SCRIPT_OR_GATE-526FBDFF8E721A83",
@@ -1348,7 +1348,7 @@
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [],
-        "closure_hash": "dfd395ed22857ece84bd1facf5d5c2c88c0dc265ff91b0129fdf9c950fc4e685",
+        "closure_hash": "d21bfa936d801c8640d8136adf7e00efdb5a8795c4d47083449506aec6a990bf",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-SCRIPT_OR_GATE-D2EE6FC497302FFE",
@@ -1360,7 +1360,7 @@
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [],
-        "closure_hash": "dfd395ed22857ece84bd1facf5d5c2c88c0dc265ff91b0129fdf9c950fc4e685",
+        "closure_hash": "d21bfa936d801c8640d8136adf7e00efdb5a8795c4d47083449506aec6a990bf",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-SCRIPT_OR_GATE-521CE64FE820F115",
@@ -1372,7 +1372,7 @@
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [],
-        "closure_hash": "dfd395ed22857ece84bd1facf5d5c2c88c0dc265ff91b0129fdf9c950fc4e685",
+        "closure_hash": "d21bfa936d801c8640d8136adf7e00efdb5a8795c4d47083449506aec6a990bf",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-SCRIPT_OR_GATE-EAD763949D76D450",
@@ -1384,7 +1384,7 @@
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [],
-        "closure_hash": "dfd395ed22857ece84bd1facf5d5c2c88c0dc265ff91b0129fdf9c950fc4e685",
+        "closure_hash": "d21bfa936d801c8640d8136adf7e00efdb5a8795c4d47083449506aec6a990bf",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-SCRIPT_OR_GATE-7CEB4E4C29B7FB6E",
@@ -1396,7 +1396,7 @@
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [],
-        "closure_hash": "dfd395ed22857ece84bd1facf5d5c2c88c0dc265ff91b0129fdf9c950fc4e685",
+        "closure_hash": "d21bfa936d801c8640d8136adf7e00efdb5a8795c4d47083449506aec6a990bf",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-SCRIPT_OR_GATE-F71A5FF033DCDDED",
@@ -1408,7 +1408,7 @@
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [],
-        "closure_hash": "dfd395ed22857ece84bd1facf5d5c2c88c0dc265ff91b0129fdf9c950fc4e685",
+        "closure_hash": "d21bfa936d801c8640d8136adf7e00efdb5a8795c4d47083449506aec6a990bf",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-SCRIPT_OR_GATE-9486938F341FABFA",
@@ -1420,7 +1420,7 @@
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [],
-        "closure_hash": "dfd395ed22857ece84bd1facf5d5c2c88c0dc265ff91b0129fdf9c950fc4e685",
+        "closure_hash": "d21bfa936d801c8640d8136adf7e00efdb5a8795c4d47083449506aec6a990bf",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-SCRIPT_OR_GATE-A252DD72700346F7",
@@ -1432,7 +1432,7 @@
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [],
-        "closure_hash": "dfd395ed22857ece84bd1facf5d5c2c88c0dc265ff91b0129fdf9c950fc4e685",
+        "closure_hash": "d21bfa936d801c8640d8136adf7e00efdb5a8795c4d47083449506aec6a990bf",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-SCRIPT_OR_GATE-AF1C4A9C0ACF7C40",
@@ -1444,7 +1444,7 @@
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [],
-        "closure_hash": "dfd395ed22857ece84bd1facf5d5c2c88c0dc265ff91b0129fdf9c950fc4e685",
+        "closure_hash": "d21bfa936d801c8640d8136adf7e00efdb5a8795c4d47083449506aec6a990bf",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-SCRIPT_OR_GATE-4FCE1440AD0CDD34",
@@ -1456,7 +1456,7 @@
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [],
-        "closure_hash": "dfd395ed22857ece84bd1facf5d5c2c88c0dc265ff91b0129fdf9c950fc4e685",
+        "closure_hash": "d21bfa936d801c8640d8136adf7e00efdb5a8795c4d47083449506aec6a990bf",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-SCRIPT_OR_GATE-CE3DF651370DD4D6",
@@ -1468,7 +1468,7 @@
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [],
-        "closure_hash": "dfd395ed22857ece84bd1facf5d5c2c88c0dc265ff91b0129fdf9c950fc4e685",
+        "closure_hash": "d21bfa936d801c8640d8136adf7e00efdb5a8795c4d47083449506aec6a990bf",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-SCRIPT_OR_GATE-3C51C28EF48E3413",
@@ -1480,7 +1480,7 @@
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [],
-        "closure_hash": "dfd395ed22857ece84bd1facf5d5c2c88c0dc265ff91b0129fdf9c950fc4e685",
+        "closure_hash": "d21bfa936d801c8640d8136adf7e00efdb5a8795c4d47083449506aec6a990bf",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-SCRIPT_OR_GATE-2AD6E9B4F21CBDFE",
@@ -1492,7 +1492,7 @@
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [],
-        "closure_hash": "dfd395ed22857ece84bd1facf5d5c2c88c0dc265ff91b0129fdf9c950fc4e685",
+        "closure_hash": "d21bfa936d801c8640d8136adf7e00efdb5a8795c4d47083449506aec6a990bf",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-SCRIPT_OR_GATE-B05E47CF0E712757",
@@ -1504,7 +1504,7 @@
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [],
-        "closure_hash": "dfd395ed22857ece84bd1facf5d5c2c88c0dc265ff91b0129fdf9c950fc4e685",
+        "closure_hash": "d21bfa936d801c8640d8136adf7e00efdb5a8795c4d47083449506aec6a990bf",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-SCRIPT_OR_GATE-079AEF1079DB1218",
@@ -1516,7 +1516,7 @@
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [],
-        "closure_hash": "dfd395ed22857ece84bd1facf5d5c2c88c0dc265ff91b0129fdf9c950fc4e685",
+        "closure_hash": "d21bfa936d801c8640d8136adf7e00efdb5a8795c4d47083449506aec6a990bf",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-SCRIPT_OR_GATE-3320BBFBAFA69833",
@@ -1528,7 +1528,7 @@
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [],
-        "closure_hash": "dfd395ed22857ece84bd1facf5d5c2c88c0dc265ff91b0129fdf9c950fc4e685",
+        "closure_hash": "d21bfa936d801c8640d8136adf7e00efdb5a8795c4d47083449506aec6a990bf",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-SCRIPT_OR_GATE-FB21519DAAE97F9F",
@@ -1540,7 +1540,7 @@
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [],
-        "closure_hash": "dfd395ed22857ece84bd1facf5d5c2c88c0dc265ff91b0129fdf9c950fc4e685",
+        "closure_hash": "d21bfa936d801c8640d8136adf7e00efdb5a8795c4d47083449506aec6a990bf",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-SCRIPT_OR_GATE-A01FED7B9AF150FD",
@@ -1552,7 +1552,7 @@
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [],
-        "closure_hash": "dfd395ed22857ece84bd1facf5d5c2c88c0dc265ff91b0129fdf9c950fc4e685",
+        "closure_hash": "d21bfa936d801c8640d8136adf7e00efdb5a8795c4d47083449506aec6a990bf",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-SCRIPT_OR_GATE-1CA2D8719B5AFFDA",
@@ -1564,7 +1564,7 @@
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [],
-        "closure_hash": "dfd395ed22857ece84bd1facf5d5c2c88c0dc265ff91b0129fdf9c950fc4e685",
+        "closure_hash": "d21bfa936d801c8640d8136adf7e00efdb5a8795c4d47083449506aec6a990bf",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-SCRIPT_OR_GATE-F4957AEC6076F5C8",
@@ -1576,7 +1576,7 @@
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [],
-        "closure_hash": "dfd395ed22857ece84bd1facf5d5c2c88c0dc265ff91b0129fdf9c950fc4e685",
+        "closure_hash": "d21bfa936d801c8640d8136adf7e00efdb5a8795c4d47083449506aec6a990bf",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-SCRIPT_OR_GATE-2DE64D632EBCBD98",
@@ -1588,7 +1588,7 @@
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [],
-        "closure_hash": "dfd395ed22857ece84bd1facf5d5c2c88c0dc265ff91b0129fdf9c950fc4e685",
+        "closure_hash": "d21bfa936d801c8640d8136adf7e00efdb5a8795c4d47083449506aec6a990bf",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-SCRIPT_OR_GATE-FD4DC115F24E2737",
@@ -1600,7 +1600,7 @@
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [],
-        "closure_hash": "dfd395ed22857ece84bd1facf5d5c2c88c0dc265ff91b0129fdf9c950fc4e685",
+        "closure_hash": "d21bfa936d801c8640d8136adf7e00efdb5a8795c4d47083449506aec6a990bf",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-SCRIPT_OR_GATE-6B9902B786796343",
@@ -1612,7 +1612,7 @@
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [],
-        "closure_hash": "dfd395ed22857ece84bd1facf5d5c2c88c0dc265ff91b0129fdf9c950fc4e685",
+        "closure_hash": "d21bfa936d801c8640d8136adf7e00efdb5a8795c4d47083449506aec6a990bf",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-SCRIPT_OR_GATE-B25F1BADD2B67BBE",
@@ -1624,7 +1624,7 @@
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [],
-        "closure_hash": "dfd395ed22857ece84bd1facf5d5c2c88c0dc265ff91b0129fdf9c950fc4e685",
+        "closure_hash": "d21bfa936d801c8640d8136adf7e00efdb5a8795c4d47083449506aec6a990bf",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-SCRIPT_OR_GATE-86F0635352FF1F36",
@@ -1636,7 +1636,7 @@
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [],
-        "closure_hash": "dfd395ed22857ece84bd1facf5d5c2c88c0dc265ff91b0129fdf9c950fc4e685",
+        "closure_hash": "d21bfa936d801c8640d8136adf7e00efdb5a8795c4d47083449506aec6a990bf",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-SCRIPT_OR_GATE-6A23A2E49524A60A",
@@ -1648,7 +1648,7 @@
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [],
-        "closure_hash": "dfd395ed22857ece84bd1facf5d5c2c88c0dc265ff91b0129fdf9c950fc4e685",
+        "closure_hash": "d21bfa936d801c8640d8136adf7e00efdb5a8795c4d47083449506aec6a990bf",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-SCRIPT_OR_GATE-4A83B7C0E4DAF0C6",
@@ -1660,7 +1660,7 @@
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [],
-        "closure_hash": "dfd395ed22857ece84bd1facf5d5c2c88c0dc265ff91b0129fdf9c950fc4e685",
+        "closure_hash": "d21bfa936d801c8640d8136adf7e00efdb5a8795c4d47083449506aec6a990bf",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-SCRIPT_OR_GATE-0F7930813782918F",
@@ -1672,7 +1672,7 @@
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [],
-        "closure_hash": "dfd395ed22857ece84bd1facf5d5c2c88c0dc265ff91b0129fdf9c950fc4e685",
+        "closure_hash": "d21bfa936d801c8640d8136adf7e00efdb5a8795c4d47083449506aec6a990bf",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-SCRIPT_OR_GATE-918159281814759A",
@@ -1684,7 +1684,7 @@
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [],
-        "closure_hash": "dfd395ed22857ece84bd1facf5d5c2c88c0dc265ff91b0129fdf9c950fc4e685",
+        "closure_hash": "d21bfa936d801c8640d8136adf7e00efdb5a8795c4d47083449506aec6a990bf",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-SCRIPT_OR_GATE-FF1EE659A1612713",
@@ -1696,7 +1696,7 @@
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [],
-        "closure_hash": "dfd395ed22857ece84bd1facf5d5c2c88c0dc265ff91b0129fdf9c950fc4e685",
+        "closure_hash": "d21bfa936d801c8640d8136adf7e00efdb5a8795c4d47083449506aec6a990bf",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-SCRIPT_OR_GATE-B179930A319949B1",
@@ -1708,7 +1708,7 @@
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [],
-        "closure_hash": "dfd395ed22857ece84bd1facf5d5c2c88c0dc265ff91b0129fdf9c950fc4e685",
+        "closure_hash": "d21bfa936d801c8640d8136adf7e00efdb5a8795c4d47083449506aec6a990bf",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-SCRIPT_OR_GATE-AD06010ED55C0891",
@@ -1720,7 +1720,7 @@
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [],
-        "closure_hash": "dfd395ed22857ece84bd1facf5d5c2c88c0dc265ff91b0129fdf9c950fc4e685",
+        "closure_hash": "d21bfa936d801c8640d8136adf7e00efdb5a8795c4d47083449506aec6a990bf",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-SCRIPT_OR_GATE-08301E22060A0496",
@@ -1732,7 +1732,7 @@
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [],
-        "closure_hash": "dfd395ed22857ece84bd1facf5d5c2c88c0dc265ff91b0129fdf9c950fc4e685",
+        "closure_hash": "d21bfa936d801c8640d8136adf7e00efdb5a8795c4d47083449506aec6a990bf",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-SCRIPT_OR_GATE-725B072CD59F2910",
@@ -1744,7 +1744,7 @@
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [],
-        "closure_hash": "dfd395ed22857ece84bd1facf5d5c2c88c0dc265ff91b0129fdf9c950fc4e685",
+        "closure_hash": "d21bfa936d801c8640d8136adf7e00efdb5a8795c4d47083449506aec6a990bf",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-SCRIPT_OR_GATE-0C9077E2BE56AF4E",
@@ -1756,7 +1756,7 @@
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [],
-        "closure_hash": "dfd395ed22857ece84bd1facf5d5c2c88c0dc265ff91b0129fdf9c950fc4e685",
+        "closure_hash": "d21bfa936d801c8640d8136adf7e00efdb5a8795c4d47083449506aec6a990bf",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-PYTHON_BENCHMARK-058179949C4EE7AC",
@@ -1768,7 +1768,7 @@
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [],
-        "closure_hash": "dfd395ed22857ece84bd1facf5d5c2c88c0dc265ff91b0129fdf9c950fc4e685",
+        "closure_hash": "d21bfa936d801c8640d8136adf7e00efdb5a8795c4d47083449506aec6a990bf",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-SCRIPT_OR_GATE-C61A256E619AADC4",
@@ -1780,7 +1780,7 @@
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [],
-        "closure_hash": "dfd395ed22857ece84bd1facf5d5c2c88c0dc265ff91b0129fdf9c950fc4e685",
+        "closure_hash": "d21bfa936d801c8640d8136adf7e00efdb5a8795c4d47083449506aec6a990bf",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-SCRIPT_OR_GATE-7AE7927B69F23D65",
@@ -1792,7 +1792,7 @@
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [],
-        "closure_hash": "dfd395ed22857ece84bd1facf5d5c2c88c0dc265ff91b0129fdf9c950fc4e685",
+        "closure_hash": "d21bfa936d801c8640d8136adf7e00efdb5a8795c4d47083449506aec6a990bf",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-SCRIPT_OR_GATE-8DA14FC12AA842E6",
@@ -1804,7 +1804,7 @@
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [],
-        "closure_hash": "dfd395ed22857ece84bd1facf5d5c2c88c0dc265ff91b0129fdf9c950fc4e685",
+        "closure_hash": "d21bfa936d801c8640d8136adf7e00efdb5a8795c4d47083449506aec6a990bf",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-SCRIPT_OR_GATE-60FD4CE4E914F390",
@@ -1816,7 +1816,7 @@
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [],
-        "closure_hash": "dfd395ed22857ece84bd1facf5d5c2c88c0dc265ff91b0129fdf9c950fc4e685",
+        "closure_hash": "d21bfa936d801c8640d8136adf7e00efdb5a8795c4d47083449506aec6a990bf",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-SCRIPT_OR_GATE-01055752520CFFA7",
@@ -1828,7 +1828,7 @@
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [],
-        "closure_hash": "dfd395ed22857ece84bd1facf5d5c2c88c0dc265ff91b0129fdf9c950fc4e685",
+        "closure_hash": "d21bfa936d801c8640d8136adf7e00efdb5a8795c4d47083449506aec6a990bf",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-SCRIPT_OR_GATE-DCDBAB51D0B44452",
@@ -1840,7 +1840,7 @@
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [],
-        "closure_hash": "dfd395ed22857ece84bd1facf5d5c2c88c0dc265ff91b0129fdf9c950fc4e685",
+        "closure_hash": "d21bfa936d801c8640d8136adf7e00efdb5a8795c4d47083449506aec6a990bf",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-SCRIPT_OR_GATE-665823FFB7A1BC2E",
@@ -1852,7 +1852,7 @@
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [],
-        "closure_hash": "dfd395ed22857ece84bd1facf5d5c2c88c0dc265ff91b0129fdf9c950fc4e685",
+        "closure_hash": "d21bfa936d801c8640d8136adf7e00efdb5a8795c4d47083449506aec6a990bf",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-SCRIPT_OR_GATE-615CB27130ABC689",
@@ -1864,7 +1864,7 @@
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [],
-        "closure_hash": "dfd395ed22857ece84bd1facf5d5c2c88c0dc265ff91b0129fdf9c950fc4e685",
+        "closure_hash": "d21bfa936d801c8640d8136adf7e00efdb5a8795c4d47083449506aec6a990bf",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-SCRIPT_OR_GATE-2974F2FBD2B1A186",
@@ -1876,7 +1876,7 @@
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [],
-        "closure_hash": "dfd395ed22857ece84bd1facf5d5c2c88c0dc265ff91b0129fdf9c950fc4e685",
+        "closure_hash": "d21bfa936d801c8640d8136adf7e00efdb5a8795c4d47083449506aec6a990bf",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-SCRIPT_OR_GATE-61A2C157C5B9ED60",
@@ -1888,7 +1888,7 @@
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [],
-        "closure_hash": "dfd395ed22857ece84bd1facf5d5c2c88c0dc265ff91b0129fdf9c950fc4e685",
+        "closure_hash": "d21bfa936d801c8640d8136adf7e00efdb5a8795c4d47083449506aec6a990bf",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-SCRIPT_OR_GATE-43A7353F29E3A524",
@@ -1900,7 +1900,7 @@
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [],
-        "closure_hash": "dfd395ed22857ece84bd1facf5d5c2c88c0dc265ff91b0129fdf9c950fc4e685",
+        "closure_hash": "d21bfa936d801c8640d8136adf7e00efdb5a8795c4d47083449506aec6a990bf",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-PYTHON_TEST-D360D2BD4D944F44",
@@ -1912,7 +1912,7 @@
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [],
-        "closure_hash": "dfd395ed22857ece84bd1facf5d5c2c88c0dc265ff91b0129fdf9c950fc4e685",
+        "closure_hash": "d21bfa936d801c8640d8136adf7e00efdb5a8795c4d47083449506aec6a990bf",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-PYTHON_TEST-D79D5846F51A8B48",
@@ -1924,7 +1924,7 @@
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [],
-        "closure_hash": "dfd395ed22857ece84bd1facf5d5c2c88c0dc265ff91b0129fdf9c950fc4e685",
+        "closure_hash": "d21bfa936d801c8640d8136adf7e00efdb5a8795c4d47083449506aec6a990bf",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-PYTHON_TEST-132068D9A890F856",
@@ -1936,7 +1936,7 @@
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [],
-        "closure_hash": "dfd395ed22857ece84bd1facf5d5c2c88c0dc265ff91b0129fdf9c950fc4e685",
+        "closure_hash": "d21bfa936d801c8640d8136adf7e00efdb5a8795c4d47083449506aec6a990bf",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-PYTHON_TEST-F44FE1653A27637B",
@@ -1948,7 +1948,7 @@
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [],
-        "closure_hash": "dfd395ed22857ece84bd1facf5d5c2c88c0dc265ff91b0129fdf9c950fc4e685",
+        "closure_hash": "d21bfa936d801c8640d8136adf7e00efdb5a8795c4d47083449506aec6a990bf",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-PYTHON_TEST-E1D184588A9806B3",
@@ -1960,7 +1960,7 @@
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [],
-        "closure_hash": "dfd395ed22857ece84bd1facf5d5c2c88c0dc265ff91b0129fdf9c950fc4e685",
+        "closure_hash": "d21bfa936d801c8640d8136adf7e00efdb5a8795c4d47083449506aec6a990bf",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-PYTHON_TEST-58D48A170B9DA222",
@@ -1972,7 +1972,7 @@
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [],
-        "closure_hash": "dfd395ed22857ece84bd1facf5d5c2c88c0dc265ff91b0129fdf9c950fc4e685",
+        "closure_hash": "d21bfa936d801c8640d8136adf7e00efdb5a8795c4d47083449506aec6a990bf",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-PYTHON_TEST-64CCBA10AA0FB215",
@@ -1984,7 +1984,7 @@
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [],
-        "closure_hash": "dfd395ed22857ece84bd1facf5d5c2c88c0dc265ff91b0129fdf9c950fc4e685",
+        "closure_hash": "d21bfa936d801c8640d8136adf7e00efdb5a8795c4d47083449506aec6a990bf",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-PYTHON_TEST-E94EA486F06207C7",
@@ -1996,7 +1996,7 @@
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [],
-        "closure_hash": "dfd395ed22857ece84bd1facf5d5c2c88c0dc265ff91b0129fdf9c950fc4e685",
+        "closure_hash": "d21bfa936d801c8640d8136adf7e00efdb5a8795c4d47083449506aec6a990bf",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-PYTHON_TEST-51A1BDDF0653E1AF",
@@ -2008,7 +2008,7 @@
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [],
-        "closure_hash": "dfd395ed22857ece84bd1facf5d5c2c88c0dc265ff91b0129fdf9c950fc4e685",
+        "closure_hash": "d21bfa936d801c8640d8136adf7e00efdb5a8795c4d47083449506aec6a990bf",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-PYTHON_TEST-946CC0E18A2AF577",
@@ -2020,7 +2020,7 @@
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [],
-        "closure_hash": "dfd395ed22857ece84bd1facf5d5c2c88c0dc265ff91b0129fdf9c950fc4e685",
+        "closure_hash": "d21bfa936d801c8640d8136adf7e00efdb5a8795c4d47083449506aec6a990bf",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-PYTHON_TEST-0E41D9806B1F8206",
@@ -2032,7 +2032,7 @@
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [],
-        "closure_hash": "dfd395ed22857ece84bd1facf5d5c2c88c0dc265ff91b0129fdf9c950fc4e685",
+        "closure_hash": "d21bfa936d801c8640d8136adf7e00efdb5a8795c4d47083449506aec6a990bf",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-PYTHON_TEST-0437C333BB08E1BC",
@@ -2044,7 +2044,7 @@
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [],
-        "closure_hash": "dfd395ed22857ece84bd1facf5d5c2c88c0dc265ff91b0129fdf9c950fc4e685",
+        "closure_hash": "d21bfa936d801c8640d8136adf7e00efdb5a8795c4d47083449506aec6a990bf",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-PYTHON_TEST-0C3CA6E3DD27606A",
@@ -2056,7 +2056,7 @@
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [],
-        "closure_hash": "dfd395ed22857ece84bd1facf5d5c2c88c0dc265ff91b0129fdf9c950fc4e685",
+        "closure_hash": "d21bfa936d801c8640d8136adf7e00efdb5a8795c4d47083449506aec6a990bf",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-PYTHON_TEST-4E8715C7A425EE52",
@@ -2068,7 +2068,7 @@
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [],
-        "closure_hash": "dfd395ed22857ece84bd1facf5d5c2c88c0dc265ff91b0129fdf9c950fc4e685",
+        "closure_hash": "d21bfa936d801c8640d8136adf7e00efdb5a8795c4d47083449506aec6a990bf",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-PYTHON_TEST-6EE860DAF7328134",
@@ -2080,7 +2080,7 @@
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [],
-        "closure_hash": "dfd395ed22857ece84bd1facf5d5c2c88c0dc265ff91b0129fdf9c950fc4e685",
+        "closure_hash": "d21bfa936d801c8640d8136adf7e00efdb5a8795c4d47083449506aec6a990bf",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-PYTHON_TEST-E6F72A4824DD5C11",
@@ -2092,7 +2092,7 @@
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [],
-        "closure_hash": "dfd395ed22857ece84bd1facf5d5c2c88c0dc265ff91b0129fdf9c950fc4e685",
+        "closure_hash": "d21bfa936d801c8640d8136adf7e00efdb5a8795c4d47083449506aec6a990bf",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-PYTHON_TEST-AB1758C5973046FB",
@@ -2104,7 +2104,7 @@
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [],
-        "closure_hash": "dfd395ed22857ece84bd1facf5d5c2c88c0dc265ff91b0129fdf9c950fc4e685",
+        "closure_hash": "d21bfa936d801c8640d8136adf7e00efdb5a8795c4d47083449506aec6a990bf",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-PYTHON_TEST-BB462D748FA004AC",
@@ -2116,7 +2116,7 @@
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [],
-        "closure_hash": "dfd395ed22857ece84bd1facf5d5c2c88c0dc265ff91b0129fdf9c950fc4e685",
+        "closure_hash": "d21bfa936d801c8640d8136adf7e00efdb5a8795c4d47083449506aec6a990bf",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-PYTHON_TEST-4C616F84A7DDC122",
@@ -2128,7 +2128,7 @@
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [],
-        "closure_hash": "dfd395ed22857ece84bd1facf5d5c2c88c0dc265ff91b0129fdf9c950fc4e685",
+        "closure_hash": "d21bfa936d801c8640d8136adf7e00efdb5a8795c4d47083449506aec6a990bf",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-PYTHON_TEST-70E4A3E987E624F9",
@@ -2140,7 +2140,7 @@
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [],
-        "closure_hash": "dfd395ed22857ece84bd1facf5d5c2c88c0dc265ff91b0129fdf9c950fc4e685",
+        "closure_hash": "d21bfa936d801c8640d8136adf7e00efdb5a8795c4d47083449506aec6a990bf",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-PYTHON_TEST-77DF12F0EBACE0E4",
@@ -2152,7 +2152,7 @@
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [],
-        "closure_hash": "dfd395ed22857ece84bd1facf5d5c2c88c0dc265ff91b0129fdf9c950fc4e685",
+        "closure_hash": "d21bfa936d801c8640d8136adf7e00efdb5a8795c4d47083449506aec6a990bf",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-PYTHON_TEST-0190BF9EFF2725A5",
@@ -2164,7 +2164,7 @@
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [],
-        "closure_hash": "dfd395ed22857ece84bd1facf5d5c2c88c0dc265ff91b0129fdf9c950fc4e685",
+        "closure_hash": "d21bfa936d801c8640d8136adf7e00efdb5a8795c4d47083449506aec6a990bf",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-PYTHON_TEST-29DA908655C0A48B",
@@ -2176,7 +2176,7 @@
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [],
-        "closure_hash": "dfd395ed22857ece84bd1facf5d5c2c88c0dc265ff91b0129fdf9c950fc4e685",
+        "closure_hash": "d21bfa936d801c8640d8136adf7e00efdb5a8795c4d47083449506aec6a990bf",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-PYTHON_TEST-984710292DB89A59",
@@ -2188,7 +2188,7 @@
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [],
-        "closure_hash": "dfd395ed22857ece84bd1facf5d5c2c88c0dc265ff91b0129fdf9c950fc4e685",
+        "closure_hash": "d21bfa936d801c8640d8136adf7e00efdb5a8795c4d47083449506aec6a990bf",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-PYTHON_TEST-31777D847B63F344",
@@ -2200,7 +2200,7 @@
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [],
-        "closure_hash": "dfd395ed22857ece84bd1facf5d5c2c88c0dc265ff91b0129fdf9c950fc4e685",
+        "closure_hash": "d21bfa936d801c8640d8136adf7e00efdb5a8795c4d47083449506aec6a990bf",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-PYTHON_TEST-A282C1A69EFCE3DC",
@@ -2212,7 +2212,7 @@
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [],
-        "closure_hash": "dfd395ed22857ece84bd1facf5d5c2c88c0dc265ff91b0129fdf9c950fc4e685",
+        "closure_hash": "d21bfa936d801c8640d8136adf7e00efdb5a8795c4d47083449506aec6a990bf",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-PYTHON_TEST-F242A9C1F7667D98",
@@ -2224,7 +2224,7 @@
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [],
-        "closure_hash": "dfd395ed22857ece84bd1facf5d5c2c88c0dc265ff91b0129fdf9c950fc4e685",
+        "closure_hash": "d21bfa936d801c8640d8136adf7e00efdb5a8795c4d47083449506aec6a990bf",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-PYTHON_TEST-C285FA64FF958C9C",
@@ -2236,7 +2236,7 @@
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [],
-        "closure_hash": "dfd395ed22857ece84bd1facf5d5c2c88c0dc265ff91b0129fdf9c950fc4e685",
+        "closure_hash": "d21bfa936d801c8640d8136adf7e00efdb5a8795c4d47083449506aec6a990bf",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-PYTHON_TEST-655F58B6055A773C",
@@ -2248,7 +2248,7 @@
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [],
-        "closure_hash": "dfd395ed22857ece84bd1facf5d5c2c88c0dc265ff91b0129fdf9c950fc4e685",
+        "closure_hash": "d21bfa936d801c8640d8136adf7e00efdb5a8795c4d47083449506aec6a990bf",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-PYTHON_TEST-32654A498E035F3E",
@@ -2260,7 +2260,7 @@
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [],
-        "closure_hash": "dfd395ed22857ece84bd1facf5d5c2c88c0dc265ff91b0129fdf9c950fc4e685",
+        "closure_hash": "d21bfa936d801c8640d8136adf7e00efdb5a8795c4d47083449506aec6a990bf",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-PYTHON_TEST-6D4683D29098D80C",
@@ -2272,7 +2272,7 @@
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [],
-        "closure_hash": "dfd395ed22857ece84bd1facf5d5c2c88c0dc265ff91b0129fdf9c950fc4e685",
+        "closure_hash": "d21bfa936d801c8640d8136adf7e00efdb5a8795c4d47083449506aec6a990bf",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-PYTHON_TEST-F1987F07975FDABF",
@@ -2284,7 +2284,7 @@
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [],
-        "closure_hash": "dfd395ed22857ece84bd1facf5d5c2c88c0dc265ff91b0129fdf9c950fc4e685",
+        "closure_hash": "d21bfa936d801c8640d8136adf7e00efdb5a8795c4d47083449506aec6a990bf",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-PYTHON_TEST-195334A9B316012B",
@@ -2296,7 +2296,7 @@
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [],
-        "closure_hash": "dfd395ed22857ece84bd1facf5d5c2c88c0dc265ff91b0129fdf9c950fc4e685",
+        "closure_hash": "d21bfa936d801c8640d8136adf7e00efdb5a8795c4d47083449506aec6a990bf",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-PYTHON_TEST-4F2C5D21ACFB3D5F",
@@ -2308,7 +2308,7 @@
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [],
-        "closure_hash": "dfd395ed22857ece84bd1facf5d5c2c88c0dc265ff91b0129fdf9c950fc4e685",
+        "closure_hash": "d21bfa936d801c8640d8136adf7e00efdb5a8795c4d47083449506aec6a990bf",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-PYTHON_TEST-245D0C98F2F0786E",
@@ -2320,7 +2320,7 @@
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [],
-        "closure_hash": "dfd395ed22857ece84bd1facf5d5c2c88c0dc265ff91b0129fdf9c950fc4e685",
+        "closure_hash": "d21bfa936d801c8640d8136adf7e00efdb5a8795c4d47083449506aec6a990bf",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-PYTHON_TEST-2EAE0B226C89AC4F",
@@ -2332,7 +2332,7 @@
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [],
-        "closure_hash": "dfd395ed22857ece84bd1facf5d5c2c88c0dc265ff91b0129fdf9c950fc4e685",
+        "closure_hash": "d21bfa936d801c8640d8136adf7e00efdb5a8795c4d47083449506aec6a990bf",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-PYTHON_TEST-5C9DA82B63AD1F41",
@@ -2344,7 +2344,7 @@
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [],
-        "closure_hash": "dfd395ed22857ece84bd1facf5d5c2c88c0dc265ff91b0129fdf9c950fc4e685",
+        "closure_hash": "d21bfa936d801c8640d8136adf7e00efdb5a8795c4d47083449506aec6a990bf",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-PYTHON_TEST-1783E3D22C9A04BD",
@@ -2356,7 +2356,7 @@
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [],
-        "closure_hash": "dfd395ed22857ece84bd1facf5d5c2c88c0dc265ff91b0129fdf9c950fc4e685",
+        "closure_hash": "d21bfa936d801c8640d8136adf7e00efdb5a8795c4d47083449506aec6a990bf",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-PYTHON_TEST-67D480DEC30B36C4",
@@ -2368,7 +2368,7 @@
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [],
-        "closure_hash": "dfd395ed22857ece84bd1facf5d5c2c88c0dc265ff91b0129fdf9c950fc4e685",
+        "closure_hash": "d21bfa936d801c8640d8136adf7e00efdb5a8795c4d47083449506aec6a990bf",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-PYTHON_TEST-CFF71A39EA33DA63",
@@ -2380,7 +2380,7 @@
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [],
-        "closure_hash": "dfd395ed22857ece84bd1facf5d5c2c88c0dc265ff91b0129fdf9c950fc4e685",
+        "closure_hash": "d21bfa936d801c8640d8136adf7e00efdb5a8795c4d47083449506aec6a990bf",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-PYTHON_TEST-5F6901392B59DE6A",
@@ -2392,7 +2392,7 @@
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [],
-        "closure_hash": "dfd395ed22857ece84bd1facf5d5c2c88c0dc265ff91b0129fdf9c950fc4e685",
+        "closure_hash": "d21bfa936d801c8640d8136adf7e00efdb5a8795c4d47083449506aec6a990bf",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-PYTHON_TEST-E30A8415486D502B",
@@ -2404,7 +2404,7 @@
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [],
-        "closure_hash": "dfd395ed22857ece84bd1facf5d5c2c88c0dc265ff91b0129fdf9c950fc4e685",
+        "closure_hash": "d21bfa936d801c8640d8136adf7e00efdb5a8795c4d47083449506aec6a990bf",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-PYTHON_TEST-BA9263475352ACE5",
@@ -2416,7 +2416,7 @@
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [],
-        "closure_hash": "dfd395ed22857ece84bd1facf5d5c2c88c0dc265ff91b0129fdf9c950fc4e685",
+        "closure_hash": "d21bfa936d801c8640d8136adf7e00efdb5a8795c4d47083449506aec6a990bf",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-PYTHON_TEST-B30CC6EFC0BE78B8",
@@ -2428,7 +2428,7 @@
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [],
-        "closure_hash": "dfd395ed22857ece84bd1facf5d5c2c88c0dc265ff91b0129fdf9c950fc4e685",
+        "closure_hash": "d21bfa936d801c8640d8136adf7e00efdb5a8795c4d47083449506aec6a990bf",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-PYTHON_TEST-FF1325E96D098B74",
@@ -2440,7 +2440,7 @@
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [],
-        "closure_hash": "dfd395ed22857ece84bd1facf5d5c2c88c0dc265ff91b0129fdf9c950fc4e685",
+        "closure_hash": "d21bfa936d801c8640d8136adf7e00efdb5a8795c4d47083449506aec6a990bf",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-PYTHON_TEST-935DF7DE8CD1A05A",
@@ -2452,7 +2452,7 @@
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [],
-        "closure_hash": "dfd395ed22857ece84bd1facf5d5c2c88c0dc265ff91b0129fdf9c950fc4e685",
+        "closure_hash": "d21bfa936d801c8640d8136adf7e00efdb5a8795c4d47083449506aec6a990bf",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-PYTHON_TEST-D19D7CC701B91D33",
@@ -2464,7 +2464,7 @@
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [],
-        "closure_hash": "dfd395ed22857ece84bd1facf5d5c2c88c0dc265ff91b0129fdf9c950fc4e685",
+        "closure_hash": "d21bfa936d801c8640d8136adf7e00efdb5a8795c4d47083449506aec6a990bf",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-PYTHON_TEST-D02F033C66DB2E7F",
@@ -2476,7 +2476,7 @@
       "evidence": {
         "authority": "RETAINED_LEGACY_AUTHORITY",
         "changed_paths": [],
-        "closure_hash": "dfd395ed22857ece84bd1facf5d5c2c88c0dc265ff91b0129fdf9c950fc4e685",
+        "closure_hash": "d21bfa936d801c8640d8136adf7e00efdb5a8795c4d47083449506aec6a990bf",
         "critical_audit_status": "COMPLETE_ZERO_MAPPED_SCOPE"
       },
       "item_id": "AESE-PYTHON_TEST-33515B9DD87F10CD",
@@ -2500,11 +2500,11 @@
   "plan_widened": true,
   "provenance": {
     "claim_scope": "LOCAL_CHECKOUT_ONLY",
-    "closure_artifact_hash": "70ce953e92245950d0b2adacbfa6b61690e11685aedbb4bb695459dbcd57adbb",
+    "closure_artifact_hash": "488882b578304f6c185e94e2d54cbdccb765499ca55dcc4a7d2a1871d80d4fa3",
     "environment_hash": "1c57998383c639cee2bc3b241252bdd0571910b0cecf4314489101b29016625c",
     "evidence_class": "PLANNING_ONLY",
     "promotion": "DISABLED_IN_SHADOW",
-    "source_sha": "a3b02a535c2a54faaee2d99f7eeb2c21e6e42c29",
+    "source_sha": "5bb2f03dd2a68fd8e6016b8926cd28c74c93b839",
     "validator": "scripts/aese_shadow_planner.py",
     "validator_hash": "0536ffa69ee62090c7fc2ec98f03111df553eafb58b890cfecbcca0799263cc0"
   },

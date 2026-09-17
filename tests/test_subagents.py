@@ -16,6 +16,7 @@ from aegis_cognition.subagents import (
     AgentClaim,
     AgentCoordinationError,
     AgentMailbox,
+    AgentMailboxWorker,
     AgentMessage,
     AgentMessageJournal,
     AgentPlanProposal,
@@ -203,6 +204,82 @@ async def test_supervisor_can_persist_compact_envelopes_to_durable_mailbox(tmp_p
     second = mailbox.claim("desktop")
     assert first is not None and first.message.message_kind == "TASK_REQUEST"
     assert second is not None and second.message.message_kind == "TASK_RESULT"
+
+
+async def test_mailbox_worker_acknowledges_host_owned_delivery(tmp_path) -> None:
+    mailbox = AgentMailbox(tmp_path / "agent-mailbox.db")
+    message = _spec(1, lambda _: "unused").request_message(run_id="worker-run", now_ms=1)
+    mailbox.enqueue(message, now_ms=1)
+    received: list[str] = []
+
+    async def handler(delivery: AgentMessage) -> None:
+        received.append(delivery.idempotency_key)
+
+    worker = AgentMailboxWorker(
+        mailbox,
+        consumer_id="worker-a",
+        handler=handler,
+        lease_ms=100,
+        retry_after_ms=0,
+    )
+    outcome = await worker.run_once(now_ms=10)
+
+    assert outcome is not None
+    assert outcome.outcome == "ACKED"
+    assert received == [message.idempotency_key]
+    assert mailbox.counts() == {"READY": 0, "LEASED": 0, "ACKED": 1, "DEAD": 0}
+    assert await worker.run_once(now_ms=11) is None
+
+
+async def test_mailbox_worker_nacks_failures_and_respects_dead_letter_bound(tmp_path) -> None:
+    mailbox = AgentMailbox(tmp_path / "agent-mailbox.db", max_attempts=2)
+    message = _spec(1, lambda _: "unused").request_message(run_id="worker-retry", now_ms=1)
+    mailbox.enqueue(message, now_ms=1)
+
+    async def failing_handler(_: AgentMessage) -> None:
+        raise RuntimeError("delivery failed")
+
+    worker = AgentMailboxWorker(
+        mailbox,
+        consumer_id="worker-a",
+        handler=failing_handler,
+        lease_ms=100,
+        retry_after_ms=0,
+    )
+    first = await worker.run_once(now_ms=10)
+    second = await worker.run_once(now_ms=11)
+
+    assert first is not None and first.outcome == "READY" and first.error_code == "RuntimeError"
+    assert second is not None and second.outcome == "DEAD" and second.attempts == 2
+    assert mailbox.counts() == {"READY": 0, "LEASED": 0, "ACKED": 0, "DEAD": 1}
+
+
+async def test_mailbox_worker_cancellation_leaves_lease_for_recovery(tmp_path) -> None:
+    mailbox = AgentMailbox(tmp_path / "agent-mailbox.db")
+    message = _spec(1, lambda _: "unused").request_message(run_id="worker-cancel", now_ms=1)
+    mailbox.enqueue(message, now_ms=1)
+    started = asyncio.Event()
+    release = asyncio.Event()
+
+    async def blocking_handler(_: AgentMessage) -> None:
+        started.set()
+        await release.wait()
+
+    worker = AgentMailboxWorker(
+        mailbox,
+        consumer_id="worker-a",
+        handler=blocking_handler,
+        lease_ms=100,
+    )
+    running = asyncio.create_task(worker.run_once(now_ms=10))
+    await asyncio.wait_for(started.wait(), timeout=1)
+    running.cancel()
+    with pytest.raises(asyncio.CancelledError):
+        await running
+
+    assert mailbox.counts() == {"READY": 0, "LEASED": 1, "ACKED": 0, "DEAD": 0}
+    assert mailbox.recover_expired(now_ms=110) == 1
+    assert mailbox.counts() == {"READY": 1, "LEASED": 0, "ACKED": 0, "DEAD": 0}
 
 
 async def test_supervisor_can_publish_bounded_messages_to_the_observation_journal() -> None:

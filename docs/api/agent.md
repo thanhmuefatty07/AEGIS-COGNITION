@@ -68,7 +68,11 @@ bounded canonical envelopes, deduplicates by idempotency key, and exposes
 `claim()`/`ack()`/`nack()` with lease recovery and bounded dead-lettering. It is
 at-least-once delivery, not exactly-once execution; task dependencies,
 cancellation, and side-effect authority remain inside the supervisor/Rust
-runtime.
+runtime. A host that needs automatic delivery after restart can attach an
+`AgentMailboxWorker`; it invokes only the host-supplied trusted message
+handler, ACKs successful delivery, and NACKs failures for the mailbox's
+bounded retry/dead-letter policy. It is a transport worker, not a second task
+scheduler and not a generic executor for model-selected callables.
 
 Browser/vision handlers are intentionally supplied by the host so the handler
 can bind an existing `BrowserCell`/Playwright session and its evidence

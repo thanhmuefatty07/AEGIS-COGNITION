@@ -1039,6 +1039,128 @@ class AgentMailbox:
             connection.close()
 
 
+@dataclass(frozen=True, slots=True)
+class AgentMailboxWorkResult:
+    """Outcome of one host-owned mailbox delivery attempt."""
+
+    delivery_id: int
+    attempts: int
+    outcome: str
+    error_code: str | None = None
+
+    def __post_init__(self) -> None:
+        _positive_int(self.delivery_id, "mailbox work delivery_id")
+        _positive_int(self.attempts, "mailbox work attempts")
+        if self.outcome not in {"ACKED", "READY", "DEAD", "LEASE_LOST"}:
+            raise AgentCoordinationError("mailbox work outcome is unsupported")
+        if self.error_code is not None:
+            _non_empty(self.error_code, "mailbox work error_code", limit=128)
+
+
+class AgentMailboxWorker:
+    """Consume mailbox envelopes with explicit at-least-once acknowledgement.
+
+    The worker owns transport delivery only.  It does not execute arbitrary
+    model-selected callables or replace :class:`AgentSupervisor`; the host
+    supplies the already-trusted message handler.  A handler success ACKs the
+    lease, while a handler exception NACKs it for bounded retry/dead-lettering.
+    Cancellation deliberately leaves the lease to expire so a later worker
+    can recover the envelope without pretending that an in-flight side effect
+    was rolled back.
+    """
+
+    def __init__(
+        self,
+        mailbox: AgentMailbox,
+        *,
+        consumer_id: str,
+        handler: Callable[[AgentMessage], object | Awaitable[object]],
+        lease_ms: int = 30_000,
+        retry_after_ms: int = 250,
+        idle_poll_ms: int = 250,
+    ) -> None:
+        if type(mailbox) is not AgentMailbox:
+            raise AgentCoordinationError("mailbox worker requires an AgentMailbox")
+        if not callable(handler):
+            raise AgentCoordinationError("mailbox worker handler must be callable")
+        self.mailbox = mailbox
+        self.consumer_id = AgentMailbox._consumer_id(consumer_id)
+        self.lease_ms = AgentMailbox._lease_ms(lease_ms)
+        if type(retry_after_ms) is not int or not 0 <= retry_after_ms <= 86_400_000:
+            raise AgentCoordinationError("mailbox worker retry_after_ms must be within [0, 86400000]")
+        if type(idle_poll_ms) is not int or not 1 <= idle_poll_ms <= 60_000:
+            raise AgentCoordinationError("mailbox worker idle_poll_ms must be within [1, 60000]")
+        self.retry_after_ms = retry_after_ms
+        self.idle_poll_ms = idle_poll_ms
+        self._handler = handler
+
+    async def run_once(self, *, now_ms: int | None = None) -> AgentMailboxWorkResult | None:
+        """Process at most one ready envelope and return its delivery outcome."""
+
+        delivery = self.mailbox.claim(
+            self.consumer_id,
+            lease_ms=self.lease_ms,
+            now_ms=now_ms,
+        )
+        if delivery is None:
+            return None
+        try:
+            result = self._handler(delivery.message)
+            if inspect.isawaitable(result):
+                await cast(Awaitable[object], result)
+        except asyncio.CancelledError:
+            raise
+        except Exception as error:
+            try:
+                outcome = self.mailbox.nack(
+                    delivery.delivery_id,
+                    self.consumer_id,
+                    retry_after_ms=self.retry_after_ms,
+                    error=type(error).__name__,
+                    now_ms=now_ms,
+                )
+            except AgentCoordinationError as lease_error:
+                return AgentMailboxWorkResult(
+                    delivery_id=delivery.delivery_id,
+                    attempts=delivery.attempts,
+                    outcome="LEASE_LOST",
+                    error_code=type(lease_error).__name__,
+                )
+            return AgentMailboxWorkResult(
+                delivery_id=delivery.delivery_id,
+                attempts=delivery.attempts,
+                outcome=outcome,
+                error_code=type(error).__name__,
+            )
+
+        if not self.mailbox.ack(delivery.delivery_id, self.consumer_id, now_ms=now_ms):
+            return AgentMailboxWorkResult(
+                delivery_id=delivery.delivery_id,
+                attempts=delivery.attempts,
+                outcome="LEASE_LOST",
+                error_code="LEASE_EXPIRED",
+            )
+        return AgentMailboxWorkResult(
+            delivery_id=delivery.delivery_id,
+            attempts=delivery.attempts,
+            outcome="ACKED",
+        )
+
+    async def run(self, stop_event: asyncio.Event) -> None:
+        """Run until the host asks this transport worker to stop."""
+
+        if type(stop_event) is not asyncio.Event:
+            raise AgentCoordinationError("mailbox worker stop_event must be an asyncio.Event")
+        while not stop_event.is_set():
+            result = await self.run_once()
+            if result is not None:
+                continue
+            try:
+                await asyncio.wait_for(stop_event.wait(), timeout=self.idle_poll_ms / 1000)
+            except TimeoutError:
+                continue
+
+
 type AgentHandlerResult = AgentResultPacket | str
 type AgentHandler = Callable[[AgentTaskContext], AgentHandlerResult | Awaitable[AgentHandlerResult]]
 type RuntimeGuardFactory = Callable[..., AbstractAsyncContextManager[Any]]
