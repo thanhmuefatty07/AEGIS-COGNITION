@@ -26,18 +26,13 @@ struct SidecarClient {
 
 impl SidecarClient {
     fn start() -> Result<Self, String> {
-        let program = env::var_os("AEGIS_DESKTOP_SERVICE")
-            .map(PathBuf::from)
-            .or_else(|| {
-                let bundled = env::current_exe()
-                    .ok()?
-                    .parent()?
-                    .join("resources")
-                    .join(BUNDLED_SERVICE_NAME);
-                bundled.is_file().then_some(bundled)
-            })
-            .unwrap_or_else(|| PathBuf::from("aegis-desktop"));
-        let mut command = Command::new(program);
+        let mut command = if let Some(program) = env::var_os("AEGIS_DESKTOP_SERVICE") {
+            Command::new(PathBuf::from(program))
+        } else if let Some(bundled) = bundled_service_path() {
+            Command::new(bundled)
+        } else {
+            development_service_command()?
+        };
         command
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
@@ -131,6 +126,44 @@ impl SidecarClient {
         serde_json::to_string(&response)
             .map_err(|_| "desktop response could not be serialized".to_string())
     }
+}
+
+fn bundled_service_path() -> Option<PathBuf> {
+    let bundled = env::current_exe()
+        .ok()?
+        .parent()?
+        .join("resources")
+        .join(BUNDLED_SERVICE_NAME);
+    bundled.is_file().then_some(bundled)
+}
+
+#[cfg(debug_assertions)]
+fn development_service_command() -> Result<Command, String> {
+    let repository_root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..");
+    let local_python = if cfg!(target_os = "windows") {
+        repository_root.join(".venv").join("Scripts").join("python.exe")
+    } else {
+        repository_root.join(".venv").join("bin").join("python")
+    };
+    let python = if local_python.is_file() {
+        local_python
+    } else if cfg!(target_os = "windows") {
+        PathBuf::from("python")
+    } else {
+        PathBuf::from("python3")
+    };
+    let mut command = Command::new(python);
+    command
+        .args(["-m", "desktop.packaging.sidecar_entry"])
+        .current_dir(repository_root);
+    Ok(command)
+}
+
+#[cfg(not(debug_assertions))]
+fn development_service_command() -> Result<Command, String> {
+    Err(format!(
+        "desktop service resource {BUNDLED_SERVICE_NAME} is missing; set AEGIS_DESKTOP_SERVICE to a valid sidecar"
+    ))
 }
 
 impl Drop for SidecarClient {
