@@ -21,11 +21,15 @@ The implementation reuses AEGIS primitives:
 
 The scheduler uses direct dependency edges for data flow. It does not create a general-purpose broadcast bus or send progress chatter by default. A future progress stream can use the same envelope with a separately versioned kind after a measured need is demonstrated.
 
-For the future desktop surface, the optional `AgentMessageJournal` retains only
-the already-bounded request/result envelopes in a local cursor window. It can
-signal `resync_required` after eviction, but it is observation-only and is not
-an execution mailbox: the supervisor remains the owner of dependencies,
-cancellation and task status.
+For a desktop observer, the optional `AgentMessageJournal` retains only the
+already-bounded request/result envelopes in a local cursor window. It can
+signal `resync_required` after eviction, but it is observation-only. When a
+process boundary or restart-recovery path is required, the optional
+`AgentMailbox` persists the same canonical bytes in a small SQLite WAL file.
+It deduplicates by idempotency key, leases one delivery to one consumer,
+requeues expired leases, and dead-letters after a bounded retry count. This is
+at-least-once delivery; the Rust task ledger still owns execution state and no
+exactly-once side-effect claim is made.
 
 The current Tauri renderer follows the same boundary. It reads recent
 conversations through the existing `conversations.list` command, keeps the
@@ -128,9 +132,9 @@ The following upstream designs were inspected before choosing this boundary:
   [subagent limitations](https://github.com/deepseek-ai/deepseek-harness/blob/master/packages/subagent/subagent/README.md)
   still document process-local residency, loss of accepted-but-unlogged
   messages after a crash, and the need for a durable mailbox plus lease
-  protocol for cross-process coordination. Therefore AEGIS's current journal
-  is deliberately observation-only; a mailbox is deferred until a durable
-  recovery and idempotency contract is designed and tested.
+  protocol for cross-process coordination. AEGIS now provides that narrow
+  local mailbox as an opt-in delivery projection; it remains separate from the
+  authoritative task ledger.
 - Public reporting on the Claude Code package incident says a debugging
   source map was accidentally shipped in a routine package, exposing roughly
   2,000 files and more than 500,000 lines; the reported cause included a manual
@@ -181,11 +185,11 @@ any upstream implementation should be copied into AEGIS.
 
 ## What is intentionally deferred
 
-- No LangGraph, AutoGen, A2A, or broker dependency is added to the core. Their supervisor/subagent, structured message, and artifact ideas informed this boundary; a remote A2A adapter can be added if a real multi-process or multi-machine requirement appears.
+- No LangGraph, AutoGen, A2A, or broker dependency is added to the core. Their supervisor/subagent, structured message, and artifact ideas informed this boundary. The local SQLite mailbox is deliberately smaller and is not a distributed broker; a remote A2A adapter can be added if a real multi-machine requirement appears.
 - No personal login, browser-cookie, or cookie-scraping handling is enabled. `RedditRssQueryProvider` exposes public RSS without credentials; `XAppOnlyQueryProvider` uses only an explicitly supplied/system app bearer token and rejects an unconfigured source. `PublicResearchRouter` composes `reddit:`, `x:`, and `all:` queries for the existing `SearchProgramExecutor`. Internal scraping/login libraries remain out of the core dependency set.
 - No automatic code copying is enabled. The future reuse lane must bind source bytes, license/provenance, dependency changes, and verification results, then measure reuse versus generation before choosing a path. A model response is not treated as a source-code database or as proof that training data can be copied verbatim.
 - Rust graph validation remains separate from runtime lease admission, while
   the native lease submission now carries the validated run-scoped dependency
   IDs. Extending the Rust ledger to retain a composite parent/child lifecycle
-  still requires a compatibility and replay design; it is not hidden behind
-  this first API.
+  still requires a compatibility and replay design; the mailbox does not hide
+  that missing lifecycle authority.
