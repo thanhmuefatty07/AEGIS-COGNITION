@@ -1182,9 +1182,7 @@ class AgentApplication:
                 nudge_result = manager.sync_memory(
                     session_id=f"0x{session_id:x}",
                     candidates=list(memory_candidates),
-                    relevance_threshold=float(
-                        self.config.options.get("memory_candidate_relevance_threshold", 0.7)
-                    ),
+                    relevance_threshold=float(self.config.options.get("memory_candidate_relevance_threshold", 0.7)),
                     scope_kind=raw_scope,
                     owner_id=raw_owner,
                 )
