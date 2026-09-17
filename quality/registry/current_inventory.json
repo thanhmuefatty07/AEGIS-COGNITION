@@ -2,7 +2,7 @@
   "deletion": "PROHIBITED_UNTIL_SUPERSESSION_PROOF",
   "direct_cutover": "PROHIBITED",
   "disposition_counts": {
-    "RETAIN_UNCHANGED": 190
+    "RETAIN_UNCHANGED": 191
   },
   "items": [
     {
@@ -6509,6 +6509,44 @@
       "current_status": "NOT_VERIFIED",
       "dependencies": [],
       "determinism": "UNKNOWN",
+      "domain": "UNKNOWN",
+      "evidence_produced": [],
+      "failure_semantics": "UNKNOWN",
+      "hardware_requirement": "UNKNOWN",
+      "inputs": [],
+      "invariants_checked": [],
+      "kind": "PYTHON_TEST",
+      "known_defects": [],
+      "mapping_status": "NOT_MAPPED",
+      "migration_disposition": "RETAIN_UNCHANGED",
+      "outputs": [],
+      "owner": "UNKNOWN_OWNER",
+      "path": "tests/test_learning_manager.py",
+      "platform": "UNKNOWN",
+      "platform_requirement": "UNKNOWN",
+      "release_critical": "UNKNOWN",
+      "release_criticality": "UNKNOWN",
+      "replacement_id": null,
+      "resource_cost": "UNKNOWN",
+      "risk": "UNKNOWN",
+      "rollback_path": "Re-run the existing native runner directly.",
+      "runner_backend": "pytest",
+      "runtime_class": "UNKNOWN",
+      "scope": "tests",
+      "security_criticality": "UNKNOWN",
+      "side_effects": [
+        "UNKNOWN"
+      ],
+      "stable_id": "AESE-PYTHON_TEST-32654A498E035F3E",
+      "supersession_rationale": "No stronger replacement evidence is recorded; preserve the existing authoritative path.",
+      "target": null
+    },
+    {
+      "claims_supported": [],
+      "cost": "UNKNOWN",
+      "current_status": "NOT_VERIFIED",
+      "dependencies": [],
+      "determinism": "UNKNOWN",
       "domain": "PERFORMANCE",
       "evidence_produced": [],
       "failure_semantics": "UNKNOWN",
@@ -7235,16 +7273,16 @@
   "phase": "PHASE_0_REBIND_REALITY",
   "schema": "aese-current-evidence-system-inventory-v1",
   "scope_counts": {
-    "inventoried_items": 190,
+    "inventoried_items": 191,
     "missing_scopes": 0,
-    "represented_paths": 168,
-    "tracked_files": 495,
+    "represented_paths": 169,
+    "tracked_files": 496,
     "workflow_jobs": 22
   },
   "scope_policy": "tracked_files_only; native runners remain authoritative",
-  "source_head": "1454c8c1740b95d1198d01e8211b6e6abd6dc060",
-  "source_tree_sha256": "5c05238eec89c60f2c31b83df9ad8b2c84f63810dea5a3cfe0d412c2f1eff448",
+  "source_head": "278e026143d5df858f76dbaf75dc5d088c329f88",
+  "source_tree_sha256": "b02d8d0ff82516e6d32fac6588a9575da9071017033109ff0c43537ecb58c89d",
   "status": "INVENTORY_COMPLETE_DISPOSITIONS_RETAINED_MAPPING_PENDING",
-  "worktree_epoch": "0eb4d313dba262399ebf87310fa711bc9bd42a85dfb4cb68845486100d3c49d9",
-  "worktree_status": "DIRTY"
+  "worktree_epoch": "7afc4dbe491f2260775637de5f247e0698b81feb7a5e49533838b242cd5bba87",
+  "worktree_status": "CLEAN"
 }
