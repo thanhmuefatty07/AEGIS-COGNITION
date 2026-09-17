@@ -790,6 +790,7 @@ def test_result_wire_does_not_duplicate_envelope_identity_or_artifacts() -> None
 
 async def test_dynamic_child_plan_expands_the_existing_task_group() -> None:
     calls: list[int] = []
+    graph_calls = 0
 
     async def child_handler(context: AgentTaskContext) -> str:
         calls.append(context.task_id)
@@ -809,6 +810,11 @@ async def test_dynamic_child_plan_expands_the_existing_task_group() -> None:
         assert parent_task_id == 1
         return proposal.bind_handlers({"child": child_handler}, external_parent_ids=(parent_task_id,))
 
+    def graph_validator(graph: dict[str, object]) -> dict[str, object]:
+        nonlocal graph_calls
+        graph_calls += 1
+        return _native_graph_validator(graph)
+
     async def parent_handler(context: AgentTaskContext) -> str:
         task_ids = await context.spawn_plan(
             {
@@ -822,7 +828,8 @@ async def test_dynamic_child_plan_expands_the_existing_task_group() -> None:
 
     result = await AgentSupervisor(
         run_id="dynamic-group",
-        require_native_authority=False,
+        require_native_authority=True,
+        graph_validator=graph_validator,
         runtime_guard_factory=_fake_runtime_guard,
         dynamic_plan_binder=bind,
         max_dynamic_tasks=1,
@@ -834,6 +841,8 @@ async def test_dynamic_child_plan_expands_the_existing_task_group() -> None:
     assert result.status == "COMPLETED"
     assert result.root_output == ("parent", "child-2")
     assert calls == [1, 2]
+    assert graph_calls == 2
+    assert result.graph_authority == "native_runtime"
     assert result.child_results[1].parent_task_id == 1
 
 
