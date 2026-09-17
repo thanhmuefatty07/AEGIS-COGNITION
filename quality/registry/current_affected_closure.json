@@ -2,7 +2,7 @@
   "affected_test_paths": [
     "core/rust/src/gt96.rs"
   ],
-  "artifact_hash": "9c54868bff24df92b32efe3c03956dff93b2a04bf7fce90f1571fc95c1be50c2",
+  "artifact_hash": "acdac156731f5fdd8ef7b227686cec554f18b16ad272475821eb022cc4fda2cc",
   "changed_paths": [
     "core/rust/src/gt96.rs"
   ],
@@ -280,7 +280,7 @@
     "mapping_artifact_hash": "2babc1994e5a6de4f68d54246a0f0cc8f1ab11dc0387df47dc3c20fc9e299481",
     "origin_main_sha": "1454c8c1740b95d1198d01e8211b6e6abd6dc060",
     "promotion": "DISABLED_IN_SHADOW",
-    "source_sha": "fd47b5997c97178982159a3c9f2c281276833a95",
+    "source_sha": "579d40bc4f833aa6ffcc11a7b61e2ca4d974b282",
     "validator": "scripts/aese_affected_closure.py"
   },
   "reproducible_hash": "a27d8378404847703f6797308be2e3307697272f3a6ef0d8847709f4d12d5319",
@@ -294,7 +294,7 @@
     ],
     "would_skip_item_ids": []
   },
-  "source_head": "fd47b5997c97178982159a3c9f2c281276833a95",
+  "source_head": "579d40bc4f833aa6ffcc11a7b61e2ca4d974b282",
   "source_tree_sha256": "73a7c878d082cd9af738e7e2e6554533dd341b3bda9e1a98c448dba67b253586",
   "status": "AFFECTED_CLOSURE_PLAN_ONLY_SELECTION_DISABLED",
   "traversed_edges": [
