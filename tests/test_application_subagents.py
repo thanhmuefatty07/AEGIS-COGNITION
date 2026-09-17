@@ -203,6 +203,43 @@ async def test_application_binds_host_owned_browser_vision_handler(monkeypatch: 
     assert result.child_results[0].claims[0].evidence_class == "INFERRED"
 
 
+async def test_application_executes_static_nested_parent_plan() -> None:
+    calls: list[int] = []
+
+    async def handler(context: AgentTaskContext) -> str:
+        calls.append(context.task_id)
+        return f"evidence-{context.task_id}"
+
+    parent = AgentTaskBlueprint(
+        task_id=1,
+        handler_key="trusted",
+        role="parent",
+        prompt="prepare evidence",
+        artifact_namespace="agent/1",
+    )
+    child = AgentTaskBlueprint(
+        task_id=2,
+        handler_key="trusted",
+        role="child",
+        prompt="refine parent evidence",
+        artifact_namespace="agent/2",
+        dependencies=(1,),
+        parent_task_id=1,
+    )
+    application = AgentApplication(AgentConfig.from_inputs("nested plan", llm=_NoKeyModel()))
+
+    result = await application.arun_subagents(
+        plan=AgentPlanProposal(tasks=(parent, child)),
+        handlers={"trusted": handler},
+        root_synthesizer=lambda results: tuple(item.summary for item in results),
+        require_native_authority=False,
+    )
+
+    assert calls == [1, 2]
+    assert result.root_output == ("evidence-1", "evidence-2")
+    assert result.child_results[1].parent_task_id == 1
+
+
 def test_application_rejects_untrusted_plan_capability_and_nested_parent() -> None:
     blueprint = AgentTaskBlueprint(
         task_id=1,
