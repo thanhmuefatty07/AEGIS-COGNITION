@@ -6,10 +6,18 @@ it never opens the state database or starts a provider itself.
 
 The renderer is intentionally conversation-first: the sidebar reads the
 canonical conversation list, the center pane sends through the existing
-conversation commands, and the right-hand context pane exposes workspace and
-provider state. The optional project-map view is a bounded presentation of the
-existing source snapshot. Its compact three-pane layout takes visual cues from
-PI Desktop without importing its runtime or creating a second state store.
+conversation commands, and the docked right-hand work panel exposes indexed
+files, the bounded project map, and session activity. Settings and Extensions
+are full-page destinations inside the same shell; they do not create a second
+state store or pretend that an unimplemented connector is installed. The
+compact three-pane layout, floating composer, dense neutral palette, and
+session/project navigation take visual cues from PI Desktop without importing
+its runtime.
+
+The renderer also supports the desktop interaction baseline: `Ctrl/Cmd+B`
+toggles the sidebar, `Ctrl/Cmd+K` focuses file search, `Escape` releases search
+focus, and `Shift+Enter` inserts a new line in the composer. These controls are
+presentation-only and continue to use the existing versioned desktop protocol.
 
 For a development build:
 
