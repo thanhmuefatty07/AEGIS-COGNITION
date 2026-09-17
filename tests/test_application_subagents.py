@@ -111,6 +111,7 @@ async def test_application_model_child_can_spawn_a_bounded_grandchild(monkeypatc
     assert result.child_results[1].summary == "grandchild evidence"
     assert len(gateway.prompts) == 4
     assert "more bounded workers" in gateway.prompts[1]
+    assert 'DYNAMIC_HANDLER_ALLOWLIST: ["model", "research"]' in gateway.prompts[1]
 
 
 async def test_application_native_authority_runs_parallel_children_and_root_synthesis() -> None:
