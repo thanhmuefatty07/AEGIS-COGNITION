@@ -74,6 +74,45 @@ async def test_application_can_plan_children_and_synthesize_once_at_root(monkeyp
     assert "CHILD_RESULT_PACKETS" in gateway.prompts[2]
 
 
+async def test_application_model_child_can_spawn_a_bounded_grandchild(monkeypatch: pytest.MonkeyPatch) -> None:
+    dynamic_child = {
+        "task_id": 2,
+        "handler_key": "model",
+        "role": "dynamic evidence worker",
+        "prompt": "refine the parent evidence",
+        "artifact_namespace": "agent/2",
+        "dependencies": [1],
+        "capabilities": ["model_inference"],
+        "exclusive_resources": [],
+        "token_budget": 100,
+        "timeout_seconds": 2.0,
+        "memory_bytes": 1_024,
+        "side_effect_class": "ReadOnly",
+        "parent_task_id": 1,
+        "attempt_id": 1,
+    }
+    gateway = _Gateway(
+        [
+            _unsigned_plan(),
+            json.dumps({"schema": "aegis-agent-plan-v1", "tasks": [dynamic_child]}),
+            "grandchild evidence",
+            "root synthesis",
+        ]
+    )
+
+    config = AgentConfig.from_inputs("research with bounded delegation", llm=_NoKeyModel())
+    application = AgentApplication(config, gateway_factory=lambda **_: gateway)
+    monkeypatch.setattr(application, "prepare", lambda _task: ("formatted", "system"))
+
+    result = await application.arun_subagents(require_native_authority=False)
+
+    assert result.status == "COMPLETED"
+    assert result.child_results[0].summary == "spawned 1 bounded child task(s): 2"
+    assert result.child_results[1].summary == "grandchild evidence"
+    assert len(gateway.prompts) == 4
+    assert "more bounded workers" in gateway.prompts[1]
+
+
 async def test_application_native_authority_runs_parallel_children_and_root_synthesis() -> None:
     blueprint_one = AgentTaskBlueprint(
         task_id=1,

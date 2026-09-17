@@ -19,7 +19,7 @@ import uuid
 from collections import deque
 from collections.abc import AsyncGenerator, Awaitable, Callable, Iterable, Mapping
 from contextlib import AbstractAsyncContextManager, asynccontextmanager
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, cast
 from weakref import WeakKeyDictionary
@@ -131,20 +131,27 @@ def _digest(value: object, name: str) -> str:
     return result
 
 
-def _validate_parent_lineage(tasks: Mapping[int, object]) -> None:
-    """Validate bounded static parentage without introducing a second scheduler.
+def _validate_parent_lineage(
+    tasks: Mapping[int, object],
+    *,
+    external_parent_ids: Iterable[int] = (),
+) -> None:
+    """Validate bounded parentage without introducing a second scheduler.
 
     A child must list its parent as a dependency.  That makes the parent
     result the lifecycle gate and keeps parentage inside the existing DAG,
-    native admission, cancellation, and failure propagation contracts.
+    native admission, cancellation, and failure propagation contracts. An
+    external parent is allowed only while a partial dynamic proposal is being
+    checked; the combined graph must still contain that parent.
     """
 
+    external = frozenset(_positive_id(value, "external parent_task_id") for value in external_parent_ids)
     for task_id, task in tasks.items():
         parent_id = getattr(task, "parent_task_id", None)
         if parent_id is None:
             continue
         dependencies = tuple(getattr(task, "dependencies", ()))
-        if parent_id not in tasks:
+        if parent_id not in tasks and parent_id not in external:
             raise AgentCoordinationError("parent_task_id must refer to a planned task")
         if parent_id not in dependencies:
             raise AgentCoordinationError("parent_task_id must also be listed in dependencies")
@@ -154,6 +161,8 @@ def _validate_parent_lineage(tasks: Mapping[int, object]) -> None:
             if current in seen:
                 raise AgentCoordinationError("parent_task_id lineage contains a cycle")
             seen.add(current)
+            if current in external:
+                break
             ancestor = tasks.get(current)
             if ancestor is None:
                 raise AgentCoordinationError("parent_task_id must refer to a planned task")
@@ -1199,6 +1208,8 @@ type AgentHandlerResult = AgentResultPacket | str
 type AgentHandler = Callable[[AgentTaskContext], AgentHandlerResult | Awaitable[AgentHandlerResult]]
 type RuntimeGuardFactory = Callable[..., AbstractAsyncContextManager[Any]]
 type MessageSink = Callable[[AgentMessage], object | Awaitable[object]]
+type DynamicPlanSpawner = Callable[[int, AgentPlanProposal | Mapping[str, object] | object], Awaitable[tuple[int, ...]]]
+type DynamicPlanBinder = Callable[[int, AgentPlanProposal], Iterable[AgentTaskSpec]]
 
 
 @dataclass(frozen=True, slots=True)
@@ -1447,7 +1458,8 @@ class AgentPlanProposal:
     def proposal_hash(self) -> str:
         return _sha256(self._payload())
 
-    def validate(self) -> None:
+    def validate(self, *, external_parent_ids: Iterable[int] = ()) -> None:
+        external = frozenset(_positive_id(value, "external parent_task_id") for value in external_parent_ids)
         if len(self.tasks) > _MAX_GRAPH_TASKS:
             raise AgentCoordinationError("agent plan exceeds its task bound")
         task_ids: set[int] = set()
@@ -1457,10 +1469,18 @@ class AgentPlanProposal:
                 raise AgentCoordinationError("agent plan task ids must be unique")
             task_ids.add(task.task_id)
         for task in self.tasks:
-            if task.parent_task_id is not None and task.parent_task_id not in task_ids:
+            if (
+                task.parent_task_id is not None
+                and task.parent_task_id not in task_ids
+                and task.parent_task_id not in external
+            ):
                 raise AgentCoordinationError("agent plan parent_task_id must refer to a planned task")
-        _validate_parent_lineage({task.task_id: task for task in self.tasks})
-        _local_graph_validation(self.graph_payload())
+        _validate_parent_lineage(
+            {task.task_id: task for task in self.tasks},
+            external_parent_ids=external,
+        )
+        if not external:
+            _local_graph_validation(self.graph_payload())
 
     def graph_payload(self) -> dict[str, object]:
         return {
@@ -1472,13 +1492,23 @@ class AgentPlanProposal:
         self.validate()
         return {**self._payload(), "proposal_hash": self.proposal_hash}
 
-    def bind_handlers(self, handlers: Mapping[str, AgentHandler]) -> tuple[AgentTaskSpec, ...]:
-        self.validate()
+    def bind_handlers(
+        self,
+        handlers: Mapping[str, AgentHandler],
+        *,
+        external_parent_ids: Iterable[int] = (),
+    ) -> tuple[AgentTaskSpec, ...]:
+        self.validate(external_parent_ids=external_parent_ids)
         specs = tuple(task.bind(handlers) for task in self.tasks)
         return specs
 
     @classmethod
-    def from_dict(cls, value: object) -> AgentPlanProposal:
+    def from_dict(
+        cls,
+        value: object,
+        *,
+        external_parent_ids: Iterable[int] = (),
+    ) -> AgentPlanProposal:
         if type(value) is not dict:
             raise AgentCoordinationError("agent plan proposal must be an object")
         payload = cast(dict[str, object], value)
@@ -1489,13 +1519,17 @@ class AgentPlanProposal:
         if type(raw_tasks) is not list:
             raise AgentCoordinationError("agent plan tasks must be a list")
         result = cls(tasks=tuple(AgentTaskBlueprint.from_dict(item) for item in cast(list[object], raw_tasks)))
-        result.validate()
+        result.validate(external_parent_ids=external_parent_ids)
         if payload["proposal_hash"] != result.proposal_hash:
             raise AgentCoordinationError("agent plan proposal hash mismatch")
         return result
 
 
-def parse_agent_plan(value: object) -> AgentPlanProposal:
+def parse_agent_plan(
+    value: object,
+    *,
+    external_parent_ids: Iterable[int] = (),
+) -> AgentPlanProposal:
     """Parse one strict or host-hashed model plan without executing it.
 
     A model is not expected to calculate the proposal hash reliably.  When it
@@ -1507,7 +1541,7 @@ def parse_agent_plan(value: object) -> AgentPlanProposal:
     """
 
     if isinstance(value, AgentPlanProposal):
-        value.validate()
+        value.validate(external_parent_ids=external_parent_ids)
         return value
     raw = getattr(value, "output", value)
     if isinstance(raw, Mapping):
@@ -1535,7 +1569,7 @@ def parse_agent_plan(value: object) -> AgentPlanProposal:
         raise AgentCoordinationError("agent plan output must be a mapping or JSON text")
 
     if "proposal_hash" in payload:
-        return AgentPlanProposal.from_dict(payload)
+        return AgentPlanProposal.from_dict(payload, external_parent_ids=external_parent_ids)
     if set(payload) != {"schema", "tasks"} or payload.get("schema") != AGENT_PLAN_SCHEMA_V1:
         raise AgentCoordinationError("unsigned agent plan keys or schema are invalid")
     raw_tasks = payload.get("tasks")
@@ -1544,7 +1578,7 @@ def parse_agent_plan(value: object) -> AgentPlanProposal:
     result = AgentPlanProposal(
         tasks=tuple(AgentTaskBlueprint.from_dict(item) for item in cast(list[object], raw_tasks))
     )
-    result.validate()
+    result.validate(external_parent_ids=external_parent_ids)
     return result
 
 
@@ -1554,6 +1588,7 @@ class AgentTaskContext:
 
     request: AgentMessage
     dependency_results: tuple[AgentResultPacket, ...]
+    _spawn_plan_callback: DynamicPlanSpawner | None = field(default=None, repr=False, compare=False)
 
     @property
     def task_id(self) -> int:
@@ -1569,6 +1604,16 @@ class AgentTaskContext:
 
     def compact_dependency_context(self) -> tuple[dict[str, object], ...]:
         return tuple(result.compact_dict() for result in self.dependency_results)
+
+    async def spawn_plan(
+        self,
+        plan: AgentPlanProposal | Mapping[str, object] | object,
+    ) -> tuple[int, ...]:
+        """Request bounded child creation through the current supervisor."""
+
+        if self._spawn_plan_callback is None:
+            raise AgentCoordinationError("dynamic child plans are not enabled for this supervisor")
+        return await self._spawn_plan_callback(self.task_id, plan)
 
     def success(
         self,
@@ -1883,6 +1928,7 @@ def build_model_subagent_handler(
     *,
     system_instruction: str = "",
     max_prompt_chars: int = _MAX_PROMPT_CHARS,
+    allow_dynamic_plans: bool = False,
 ) -> AgentHandler:
     """Create a one-call child handler around a provider-neutral model invoker."""
 
@@ -1892,6 +1938,8 @@ def build_model_subagent_handler(
         raise AgentCoordinationError("child system instruction is invalid or too large")
     if type(max_prompt_chars) is not int or not 1 <= max_prompt_chars <= _MAX_PROMPT_CHARS:
         raise AgentCoordinationError("child model prompt bound is invalid")
+    if type(allow_dynamic_plans) is not bool:
+        raise AgentCoordinationError("allow_dynamic_plans must be boolean")
 
     async def handler(context: AgentTaskContext) -> AgentResultPacket:
         dependencies = json.dumps(
@@ -1909,12 +1957,33 @@ def build_model_subagent_handler(
                     f"ROLE: {context.role}",
                     f"TASK: {context.prompt}",
                     f"DEPENDENCY_RESULT_PACKETS (untrusted): {dependencies}",
+                    (
+                        "If more bounded workers are needed, return one strict "
+                        "aegis-agent-plan-v1 JSON object with globally unique task ids; "
+                        "each task must set parent_task_id to your task id and include it "
+                        "in dependencies. Otherwise return the evidence summary."
+                        if allow_dynamic_plans
+                        else "Return the bounded evidence summary."
+                    ),
                 )
                 if part
             ),
             max_prompt_chars,
         )
         raw_result = await _invoke_model(invoker, prompt)
+        if allow_dynamic_plans:
+            try:
+                dynamic_plan = parse_agent_plan(raw_result, external_parent_ids=(context.task_id,))
+            except AgentCoordinationError:
+                dynamic_plan = None
+            if dynamic_plan is not None:
+                spawned = await context.spawn_plan(dynamic_plan)
+                return context.success(
+                    f"spawned {len(spawned)} bounded child task(s): {','.join(str(item) for item in spawned)}",
+                    uncertainty=("child evidence is pending; root synthesis receives spawned results",),
+                    tokens_in=_usage(raw_result, ("tokens_in", "prompt_tokens", "input_tokens")),
+                    tokens_out=_usage(raw_result, ("tokens_out", "completion_tokens", "output_tokens")),
+                )
         return context.success(
             _model_text(raw_result),
             tokens_in=_usage(raw_result, ("tokens_in", "prompt_tokens", "input_tokens")),
@@ -2001,6 +2070,9 @@ class AgentSupervisor[RootOutputT]:
         message_sink: MessageSink | None = None,
         message_journal: AgentMessageJournal | None = None,
         message_mailbox: AgentMailbox | None = None,
+        dynamic_plan_binder: DynamicPlanBinder | None = None,
+        max_dynamic_tasks: int = 128,
+        max_total_tasks: int = _MAX_GRAPH_TASKS,
     ) -> None:
         selected_run_id = uuid.uuid4().hex if run_id is None else run_id
         self.run_id = _non_empty(selected_run_id, "run_id", limit=128)
@@ -2018,8 +2090,17 @@ class AgentSupervisor[RootOutputT]:
             raise AgentCoordinationError("message_journal must be an AgentMessageJournal")
         if message_mailbox is not None and type(message_mailbox) is not AgentMailbox:
             raise AgentCoordinationError("message_mailbox must be an AgentMailbox")
+        if dynamic_plan_binder is not None and not callable(dynamic_plan_binder):
+            raise AgentCoordinationError("dynamic_plan_binder must be callable")
+        if type(max_dynamic_tasks) is not int or not 1 <= max_dynamic_tasks <= _MAX_GRAPH_TASKS:
+            raise AgentCoordinationError("max_dynamic_tasks must be within [1, 256]")
+        if type(max_total_tasks) is not int or not 1 <= max_total_tasks <= _MAX_GRAPH_TASKS:
+            raise AgentCoordinationError("max_total_tasks must be within [1, 256]")
         self._message_journal = message_journal
         self._message_mailbox = message_mailbox
+        self._dynamic_plan_binder = dynamic_plan_binder
+        self._max_dynamic_tasks = max_dynamic_tasks
+        self._max_total_tasks = max_total_tasks
         self._started = False
 
     async def _emit(self, message: AgentMessage) -> None:
@@ -2053,7 +2134,7 @@ class AgentSupervisor[RootOutputT]:
         spec_list = tuple(specs)
         if not spec_list:
             raise AgentCoordinationError("subagent graph must contain at least one child task")
-        if len(spec_list) > _MAX_GRAPH_TASKS:
+        if len(spec_list) > self._max_total_tasks:
             raise AgentCoordinationError("subagent count exceeds its bound")
         spec_by_id: dict[int, AgentTaskSpec] = {}
         for spec in spec_list:
@@ -2066,23 +2147,80 @@ class AgentSupervisor[RootOutputT]:
                 )
             spec_by_id[spec.task_id] = spec
         _validate_parent_lineage(spec_by_id)
-        graph = _graph_payload(spec_list)
-        local_graph = _local_graph_validation(graph)
-        graph_result = _validate_graph_response(self._graph_validator(graph))
-        if graph_result.get("executable") is not True:
-            if self.require_native_authority:
-                raise AgentCoordinationError(
-                    "native graph authority is required; pass require_native_authority=False only for degraded development"
-                )
-            graph_result = local_graph
-        graph_hash = cast(str, graph_result.get("graph_hash"))
-        _digest(graph_hash, "graph_hash")
-        if graph_result.get("task_count") != len(spec_list):
-            raise AgentCoordinationError("graph validator task count does not match the task proposal")
-        if graph_result.get("topological_order") != local_graph["topological_order"]:
-            raise AgentCoordinationError("graph validator topological order does not match the task proposal")
+
+        def validate_specs(candidate_specs: tuple[AgentTaskSpec, ...]) -> dict[str, object]:
+            graph = _graph_payload(candidate_specs)
+            local_graph = _local_graph_validation(graph)
+            result = _validate_graph_response(self._graph_validator(graph))
+            if result.get("executable") is not True:
+                if self.require_native_authority:
+                    raise AgentCoordinationError(
+                        "native graph authority is required; pass require_native_authority=False only for degraded development"
+                    )
+                result = local_graph
+            candidate_hash = result.get("graph_hash")
+            if candidate_hash is None:
+                candidate_hash = local_graph["graph_hash"]
+                result = {**result, "graph_hash": candidate_hash}
+            _digest(candidate_hash, "graph_hash")
+            if result.get("task_count") != len(candidate_specs):
+                raise AgentCoordinationError("graph validator task count does not match the task proposal")
+            if result.get("topological_order") != local_graph["topological_order"]:
+                raise AgentCoordinationError("graph validator topological order does not match the task proposal")
+            return result
+
+        initial_graph_result = validate_specs(spec_list)
+        graph_hash = cast(str, initial_graph_result["graph_hash"])
+        graph_authority = cast(str, initial_graph_result.get("authority"))
         semaphore = asyncio.Semaphore(self.max_concurrency)
         task_futures: dict[int, asyncio.Task[AgentResultPacket]] = {}
+        plan_lock = asyncio.Lock()
+        dynamic_task_count = 0
+        task_group: asyncio.TaskGroup | None = None
+
+        async def expand_plan(parent_task_id: int, raw_plan: object) -> tuple[int, ...]:
+            nonlocal graph_hash, graph_authority, dynamic_task_count
+            if self._dynamic_plan_binder is None:
+                raise AgentCoordinationError("dynamic child plans are not enabled for this supervisor")
+            async with plan_lock:
+                parent = spec_by_id.get(parent_task_id)
+                if parent is None:
+                    raise AgentCoordinationError("dynamic plan parent is not part of the active graph")
+                proposal = parse_agent_plan(raw_plan, external_parent_ids=(parent_task_id,))
+                bound = tuple(self._dynamic_plan_binder(parent_task_id, proposal))
+                if not bound:
+                    raise AgentCoordinationError("dynamic child plan must contain at least one task")
+                if dynamic_task_count + len(bound) > self._max_dynamic_tasks:
+                    raise AgentCoordinationError("dynamic child task bound was exceeded")
+                if len(spec_by_id) + len(bound) > self._max_total_tasks:
+                    raise AgentCoordinationError("total child task bound was exceeded")
+                for spec in bound:
+                    spec.validate()
+                    if spec.task_id in spec_by_id:
+                        raise AgentCoordinationError("dynamic child task id is already in use")
+                    if spec.parent_task_id != parent_task_id:
+                        raise AgentCoordinationError("dynamic child parent_task_id must identify the spawning task")
+                    if parent_task_id not in spec.dependencies:
+                        raise AgentCoordinationError("dynamic child must list its spawning task as a dependency")
+                    if spec.exclusive_resources and not _is_async_callable(spec.handler):
+                        raise AgentCoordinationError(
+                            "handlers that own exclusive resources must be async so cancellation cannot release their lock early"
+                        )
+                combined = tuple(spec_by_id.values()) + bound
+                _validate_parent_lineage({spec.task_id: spec for spec in combined})
+                candidate_result = validate_specs(combined)
+                if task_group is None:
+                    raise AgentCoordinationError("dynamic plan scheduler is not active")
+                for spec in bound:
+                    spec_by_id[spec.task_id] = spec
+                for spec in bound:
+                    task_futures[spec.task_id] = task_group.create_task(
+                        execute(spec), name=f"aegis-subagent-{spec.task_id}"
+                    )
+                dynamic_task_count += len(bound)
+                graph_hash = cast(str, candidate_result["graph_hash"])
+                graph_authority = cast(str, candidate_result.get("authority"))
+                return tuple(spec.task_id for spec in bound)
 
         async def execute(spec: AgentTaskSpec) -> AgentResultPacket:
             dependencies = tuple(await asyncio.gather(*(task_futures[dependency] for dependency in spec.dependencies)))
@@ -2103,7 +2241,11 @@ class AgentSupervisor[RootOutputT]:
                 result.validate()
                 await self._emit(result.to_message(recipient_id="root"))
                 return result
-            context = AgentTaskContext(request=request, dependency_results=dependencies)
+            context = AgentTaskContext(
+                request=request,
+                dependency_results=dependencies,
+                _spawn_plan_callback=expand_plan if self._dynamic_plan_binder is not None else None,
+            )
             locks = tuple(_exclusive_lock(key) for key in sorted(spec.exclusive_resources))
             try:
                 async with asyncio.timeout(spec.timeout_seconds):
@@ -2177,6 +2319,7 @@ class AgentSupervisor[RootOutputT]:
 
         try:
             async with asyncio.TaskGroup() as group:
+                task_group = group
                 for spec in spec_list:
                     task_futures[spec.task_id] = group.create_task(execute(spec), name=f"aegis-subagent-{spec.task_id}")
         except asyncio.CancelledError:
@@ -2190,7 +2333,7 @@ class AgentSupervisor[RootOutputT]:
         return AgentSupervisorResult(
             run_id=self.run_id,
             graph_hash=graph_hash,
-            graph_authority=cast(str, graph_result.get("authority")),
+            graph_authority=graph_authority,
             status=status,
             root_output=root_output,
             child_results=child_results,
@@ -2235,6 +2378,8 @@ __all__ = [
     "AgentTaskBlueprint",
     "AgentTaskContext",
     "AgentTaskSpec",
+    "DynamicPlanBinder",
+    "DynamicPlanSpawner",
     "build_model_subagent_handler",
     "build_root_synthesizer",
     "parse_agent_plan",

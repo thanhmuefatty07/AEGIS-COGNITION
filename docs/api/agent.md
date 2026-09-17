@@ -30,11 +30,28 @@ credential-free RSS, while X requires an explicit system app-only bearer token.
 `Agent.run()` is unchanged.
 
 Static nested plans are supported: a task may set `parent_task_id` to another
-planned task only when that parent is also listed in `dependencies`. The child
-then waits for the parent's result and is marked `BLOCKED` if the parent (or
-another dependency) does not succeed. This reuses the one existing DAG and
-runtime admission path; a running child cannot silently create a new dynamic
-plan.
+planned task only when that parent is also listed in `dependencies`. A running
+async child can also call `await context.spawn_plan(...)` to request more
+children. The host binds those tasks to registered handlers, revalidates the
+complete expanded DAG through the same Rust authority, and only then adds
+them to the existing `asyncio.TaskGroup`. Dynamic children must use globally
+unique ids, name their spawning task as a dependency, and remain within the
+configured task bound; a failed parent blocks them. The child cannot choose a
+Python callable or bypass capability, resource, token, or runtime limits.
+
+For a trusted custom async handler, the dynamic boundary is explicit:
+
+```python
+async def planner_child(context):
+    plan = {"schema": "aegis-agent-plan-v1", "tasks": [child_metadata]}
+    await context.spawn_plan(plan)
+    return "parent evidence"
+```
+
+The application-created model handler can use the same boundary when its
+bounded response is a valid plan document. Dynamic plan creation is enabled
+by default for `run_subagents()` and can be disabled with
+`subagents_allow_dynamic_plans=False`.
 
 ## Adaptive memory proposals
 
