@@ -38,7 +38,7 @@ function makeConversation(payload: Record<string, unknown>): Conversation {
   return {
     conversation_id: String(payload.conversation_id ?? id("preview")),
     owner_id: "preview-user",
-    title: String(payload.title ?? "New local task"),
+    title: String(payload.title ?? "New thread"),
     connection_id: String(payload.connection_id ?? "local"),
     model_id: String(payload.model_id ?? "local-model"),
     status: "OPEN",
