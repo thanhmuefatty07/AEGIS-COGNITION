@@ -3,6 +3,7 @@ import {
   desktopRequest,
   parseConnectionList,
   parseConversationList,
+  parseConversationInspection,
   parseConversationRecordResult,
   parseConversationSnapshot,
   parseMemorySearchResult,
@@ -10,16 +11,19 @@ import {
   parseSourceSnapshot,
   parseSubagentCancelResult,
   parseSubagentEventPage,
+  parseSubagentGraph,
   parseSubagentRunResult,
   parseSubagentStartResult,
   parseSubagentStatusResult,
   parseWorkspaceSnapshot,
   type Conversation,
+  type ConversationInspection,
   type ConversationSnapshot,
   type MemoryRecord,
   type SourceSnapshot,
   type SubagentCancelResult,
   type SubagentEvent,
+  type SubagentGraph,
   type SubagentRunResult,
   type SubagentStartResult,
   type SubagentStatusResult,
@@ -29,7 +33,7 @@ import WorkspaceGraphView from "./WorkspaceGraphView";
 import { buildWorkspaceGraph, type WorkspaceGraph } from "./workspace_graph";
 
 type Destination = "chat" | "settings" | "extensions";
-type WorkTab = "files" | "map" | "activity";
+type WorkTab = "files" | "map" | "activity" | "context";
 const defaultEndpoint = "http://127.0.0.1:8080/v1";
 
 function shortPath(value: string | null | undefined, length = 32) {
@@ -108,6 +112,7 @@ export default function App() {
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
   const [conversation, setConversation] = useState<ConversationSnapshot | null>(null);
+  const [conversationInspection, setConversationInspection] = useState<ConversationInspection | null>(null);
   const [message, setMessage] = useState("");
   const [mode, setMode] = useState<"mock" | "live">("mock");
   const [endpoint, setEndpoint] = useState(defaultEndpoint);
@@ -125,6 +130,7 @@ export default function App() {
   const [subagentRunId, setSubagentRunId] = useState<string | null>(null);
   const [subagentStatus, setSubagentStatus] = useState<SubagentStatusResult | null>(null);
   const [subagentEvents, setSubagentEvents] = useState<SubagentEvent[]>([]);
+  const [subagentGraph, setSubagentGraph] = useState<SubagentGraph | null>(null);
   const [error, setError] = useState<string | null>(null);
   const searchRef = useRef<HTMLInputElement>(null);
   const bootstrapStarted = useRef(false);
@@ -159,6 +165,9 @@ export default function App() {
         const status = await desktopRequest("subagents.status", { run_id: runId }, parseSubagentStatusResult);
         if (stopped) return;
         setSubagentStatus(status);
+        const graph = await desktopRequest("subagents.graph", { run_id: runId }, parseSubagentGraph);
+        if (stopped) return;
+        setSubagentGraph(graph);
         if (status.result !== null || status.status !== "RUNNING") {
           setSubagentResult(status.result);
           setSubagentBusy(false);
@@ -266,17 +275,23 @@ export default function App() {
 
   async function selectConversation(id: string) {
     setActiveConversationId(id);
+    setConversationInspection(null);
     setSubagentResult(null);
     setSubagentRunId(null);
     setSubagentStatus(null);
     setSubagentEvents([]);
+    setSubagentGraph(null);
     await loadConversation(id);
   }
 
   async function loadConversation(id: string) {
     try {
-      const snapshot = await desktopRequest("conversations.read", { conversation_id: id }, parseConversationSnapshot);
+      const [snapshot, inspection] = await Promise.all([
+        desktopRequest("conversations.read", { conversation_id: id }, parseConversationSnapshot),
+        desktopRequest("conversations.inspect", { conversation_id: id }, parseConversationInspection),
+      ]);
       setConversation(snapshot);
+      setConversationInspection(inspection);
       if (snapshot.conversation.model_id !== modelId) setConnectionSaved(false);
       setModelId(snapshot.conversation.model_id);
     } catch (reason) {
@@ -506,6 +521,10 @@ export default function App() {
               return <div className="subagent-event" key={event.cursor}><span className="activity-icon"><Icon name={event.message_kind === "TASK_RESULT" ? "check" : "activity"} size={12} /></span><div><strong>{detail}</strong><small>{summary.slice(0, 180)}</small></div></div>;
             })}
           </div>
+          {subagentGraph && subagentGraph.nodes.length > 0 && <div className="subagent-graph" aria-label="Subagent task graph">
+            <div className="eyebrow">TASK GRAPH</div>
+            {subagentGraph.nodes.map((node) => <div className="subagent-graph-row" key={node.task_id}><span className={`worker-dot ${node.status.toLowerCase()}`} /><strong>Worker {node.task_id}</strong><span>{node.role || "task"}</span><em>{node.status}</em></div>)}
+          </div>}
         </article>
       );
     }
@@ -526,9 +545,10 @@ export default function App() {
         {error && <div className="error" role="alert"><span className="error-mark">!</span>{error}</div>}
         <div className="chat-scroll">
           <div className="chat-column">
-            <div className="chat-intro"><div className="intro-mark"><Icon name="spark" size={17} /></div><div><strong>AEGIS is ready</strong><span>Local workspace · {mode === "mock" ? "safe preview mode" : "live provider mode"}</span></div></div>
+            <div className="chat-intro"><div className="intro-mark"><Icon name="spark" size={17} /></div><div><strong>AEGIS is ready</strong><span>Local workspace · {mode === "mock" ? "safe preview mode" : "live provider mode"}</span></div><span className="context-chip">{conversationInspection?.context.item_count ?? 0} context items</span></div>
             {renderSubagentActivity()}
             {subagentResult && <article className="subagent-result" aria-label="Subagent run result"><div className="subagent-result-header"><div><span className="eyebrow">PARALLEL RUN</span><strong>{subagentResult.status}</strong></div><span className="status-chip"><i /> {subagentResult.child_results.length} workers</span></div><p>{subagentResult.root_output}</p><div className="subagent-workers">{subagentResult.child_results.map((worker) => <span className={`worker-chip ${worker.status.toLowerCase()}`} key={`${worker.task_id}-${worker.packet_hash}`}><i />Worker {worker.task_id} · {worker.status}</span>)}</div><small>Graph {shortPath(subagentResult.graph_hash, 18)} · {subagentResult.graph_authority}</small></article>}
+            {conversationInspection?.approvals.map((approval) => <article className="approval-card" key={approval.approval_id} aria-label="Approval required"><div><span className="eyebrow">REVIEW REQUIRED</span><strong>{approval.tool_name}</strong></div><span className="status-chip warning"><i />{approval.status}</span><p>AEGIS is waiting for a policy decision. Arguments are redacted at the renderer boundary.</p><small>Risk {approval.risk} · {approval.argument_keys.length} argument keys</small></article>)}
             {conversation?.turns.length ? conversation.turns.map((turn) => (
               <article className={`message-row ${turn.role}`} key={turn.turn_id}>
                 <div className="message-avatar">{turn.role === "user" ? "Y" : "A"}</div>
@@ -552,10 +572,11 @@ export default function App() {
     const selected = sourceSnapshot?.files.find((file) => file.relative_path === selectedFile);
     return (
       <aside className="work-panel" aria-label="Workspace panel">
-        <div className="work-panel-header"><div className="work-tabs" role="tablist" aria-label="Workspace panel tabs"><button className={workTab === "files" ? "active" : ""} type="button" onClick={() => setWorkTab("files")}><Icon name="files" size={14} />Files</button><button className={workTab === "map" ? "active" : ""} type="button" onClick={() => setWorkTab("map")}><Icon name="map" size={14} />Map</button><button className={workTab === "activity" ? "active" : ""} type="button" onClick={() => setWorkTab("activity")}><Icon name="activity" size={14} />Activity</button></div><button className="panel-more" type="button" aria-label="Work panel options"><Icon name="plus" size={15} /></button></div>
+        <div className="work-panel-header"><div className="work-tabs" role="tablist" aria-label="Workspace panel tabs"><button className={workTab === "files" ? "active" : ""} type="button" onClick={() => setWorkTab("files")}><Icon name="files" size={14} />Files</button><button className={workTab === "map" ? "active" : ""} type="button" onClick={() => setWorkTab("map")}><Icon name="map" size={14} />Map</button><button className={workTab === "activity" ? "active" : ""} type="button" onClick={() => setWorkTab("activity")}><Icon name="activity" size={14} />Activity</button><button className={workTab === "context" ? "active" : ""} type="button" onClick={() => setWorkTab("context")}><Icon name="spark" size={14} />Context</button></div><button className="panel-more" type="button" aria-label="Work panel options"><Icon name="plus" size={15} /></button></div>
         {workTab === "files" && <div className="file-panel"><div className="panel-title"><div><span className="eyebrow">WORKSPACE</span><strong>Project files</strong></div><span className="file-count">{sourceSnapshot?.files.length ?? "—"}</span></div><label className="file-search"><Icon name="search" size={14} /><input ref={searchRef} value={fileFilter} onChange={(event) => setFileFilter(event.target.value)} placeholder="Search files" /></label><div className="file-tree">{filteredFiles.length ? filteredFiles.map((file) => <button className={`file-row ${selectedFile === file.relative_path ? "active" : ""}`} key={file.relative_path} type="button" onClick={() => setSelectedFile(file.relative_path)}><span className="file-kind">{fileKind(file.relative_path)}</span><span className="file-name">{file.relative_path}</span></button>) : <p className="panel-empty">No indexed files match this search.</p>}</div>{selected && <div className="file-inspector"><span className="eyebrow">SELECTED FILE</span><strong>{selected.relative_path}</strong><div><span>{selected.language || "unknown"}</span><span>{Math.round(selected.size_bytes / 1024)} KB</span></div><p>{selected.extraction_status === "ok" ? "Symbols and imports are indexed." : selected.extraction_status}</p></div>}</div>}
         {workTab === "map" && <div className="map-panel">{workspaceGraph && sourceSnapshot ? <WorkspaceGraphView graph={workspaceGraph} loadMemories={loadMemoriesForFile} /> : <p className="panel-empty">The source map is opening.</p>}</div>}
-        {workTab === "activity" && <div className="activity-panel"><div className="panel-title"><div><span className="eyebrow">SESSION</span><strong>Activity</strong></div><span className="status-chip"><i /> {conversation?.executions.some((item) => item.status === "RUNNING") ? "Live" : "Ready"}</span></div>{activityItems.length ? activityItems.map((item) => <div className="activity-item" key={`${item.title}-${item.timestamp}-${item.detail}`}><span className="activity-icon"><Icon name={item.icon} size={13} /></span><div><strong>{item.title}</strong><small>{item.detail}</small></div></div>) : <p className="panel-empty">No session activity yet.</p>}</div>}
+        {workTab === "activity" && <div className="activity-panel"><div className="panel-title"><div><span className="eyebrow">SESSION</span><strong>Activity</strong></div><span className="status-chip"><i /> {conversation?.executions.some((item) => item.status === "RUNNING") ? "Live" : "Ready"}</span></div>{conversationInspection?.timeline.length ? conversationInspection.timeline.slice().reverse().map((item) => <div className="activity-item" key={item.event_id}><span className="activity-icon"><Icon name={item.kind === "EXECUTION" && item.status === "COMPLETED" ? "check" : "activity"} size={13} /></span><div><strong>{item.title}</strong><small>{item.detail}</small></div></div>) : activityItems.length ? activityItems.map((item) => <div className="activity-item" key={`${item.title}-${item.timestamp}-${item.detail}`}><span className="activity-icon"><Icon name={item.icon} size={13} /></span><div><strong>{item.title}</strong><small>{item.detail}</small></div></div>) : <p className="panel-empty">No session activity yet.</p>}</div>}
+        {workTab === "context" && <div className="context-panel"><div className="panel-title"><div><span className="eyebrow">CONTEXT COCKPIT</span><strong>What AEGIS used</strong></div><span className="status-chip"><i />{conversationInspection?.context.status ?? "Unknown"}</span></div>{conversationInspection ? <><div className="context-metrics"><div><span>Items</span><strong>{conversationInspection.context.item_count ?? 0}</strong></div><div><span>Tokens</span><strong>{conversationInspection.context.token_count ?? "—"}</strong></div><div><span>History</span><strong>{conversationInspection.context.history_turn_count}</strong></div></div><div className="context-detail"><span>Source revision</span><code>{shortPath(conversationInspection.context.source_revision, 22)}</code></div><div className="context-detail"><span>Manifest</span><code>{shortPath(conversationInspection.context.context_manifest_hash, 22)}</code></div><div className="context-detail"><span>Selector</span><code>{conversationInspection.context.selection_backend ?? "—"}</code></div><p className="context-redaction">Sensitive prompt, tool arguments, and provider output remain outside this observer view.</p></> : <p className="panel-empty">Context inspection is opening.</p>}</div>}
       </aside>
     );
   }
