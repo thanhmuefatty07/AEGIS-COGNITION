@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import os
+import threading
 from pathlib import Path
 from collections.abc import Awaitable, Callable, Mapping
 from typing import Any
@@ -111,6 +112,7 @@ class Agent:
         message_sink: Callable[[AgentMessage], object | Awaitable[object]] | None = None,
         message_journal: AgentMessageJournal | None = None,
         message_mailbox: AgentMailbox | None = None,
+        cancel_event: threading.Event | None = None,
         require_native_authority: bool | None = None,
         max_concurrency: int | None = None,
     ) -> AgentSupervisorResult[object]:
@@ -123,6 +125,7 @@ class Agent:
             message_sink=message_sink,
             message_journal=message_journal,
             message_mailbox=message_mailbox,
+            cancel_event=cancel_event,
             require_native_authority=require_native_authority,
             max_concurrency=max_concurrency,
         )
@@ -136,6 +139,7 @@ class Agent:
         message_sink: Callable[[AgentMessage], object | Awaitable[object]] | None = None,
         message_journal: AgentMessageJournal | None = None,
         message_mailbox: AgentMailbox | None = None,
+        cancel_event: threading.Event | None = None,
         require_native_authority: bool | None = None,
         max_concurrency: int | None = None,
     ) -> AgentSupervisorResult[object]:
@@ -152,6 +156,7 @@ class Agent:
                     message_sink=message_sink,
                     message_journal=message_journal,
                     message_mailbox=message_mailbox,
+                    cancel_event=cancel_event,
                     require_native_authority=require_native_authority,
                     max_concurrency=max_concurrency,
                 )

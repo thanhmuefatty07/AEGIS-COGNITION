@@ -45,7 +45,10 @@ worker and returns its run id; `subagents.events` reads redacted events after a
 cursor; `subagents.status` returns the terminal result or a safe error. The
 renderer polls these commands while a run is active, so a long model call does
 not block the command channel and a child prompt never crosses the renderer
-boundary. The existing synchronous `subagents.run` command remains for
+boundary. `subagents.cancel` sets a host-owned cancellation event and the
+supervisor cancels its task group cooperatively; active handlers are not
+force-killed, and root synthesis is skipped after cancellation. The existing
+synchronous `subagents.run` command remains for
 compatibility and deterministic callers.
 
 ## Isolation rules
