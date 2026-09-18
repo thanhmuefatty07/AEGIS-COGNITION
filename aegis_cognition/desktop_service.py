@@ -65,6 +65,7 @@ try:
     from core.python.aegis.connections import ConnectionCatalog
     from core.python.aegis.context_compiler import ContextCompiler
     from core.python.aegis.conversations import ConversationManager
+    from core.python.aegis.desktop_projection import build_conversation_inspection, build_subagent_graph
     from core.python.aegis.learning import LearningManager
     from core.python.aegis.desktop_protocol import (
         ALLOWED_COMMANDS,
@@ -81,6 +82,7 @@ except ImportError:
     from aegis.conversations import (  # type: ignore[import-not-found]
         ConversationManager,
     )
+    from aegis.desktop_projection import build_conversation_inspection, build_subagent_graph  # type: ignore[import-not-found]
     from aegis.learning import LearningManager  # type: ignore[import-not-found]
     from aegis.desktop_protocol import (  # type: ignore[import-not-found]
         ALLOWED_COMMANDS,
@@ -300,6 +302,7 @@ class DesktopService:
             "conversations.create": self._create_conversation,
             "conversations.list": self._list_conversations,
             "conversations.read": self._read_conversation,
+            "conversations.inspect": self._inspect_conversation,
             "conversations.send": self._send_message,
             "conversations.switch_model": self._switch_model,
             "subagents.run": self._run_subagents,
@@ -307,6 +310,7 @@ class DesktopService:
             "subagents.cancel": self._cancel_subagents,
             "subagents.status": self._subagent_status,
             "subagents.events": self._read_subagent_events,
+            "subagents.graph": self._subagent_graph,
             "code_reuse.assess": self._assess_code_reuse,
             "code_reuse.materialize": self._materialize_code_reuse,
             "memory.search": self._search_memories,
@@ -714,6 +718,18 @@ class DesktopService:
         conversation_id = _require_text(payload, "conversation_id", max_length=256)
         snapshot = manager.read(conversation_id, owner_id=self._owner(payload))
         return {"snapshot": _json_value(snapshot)}
+
+    def _inspect_conversation(self, payload: dict[str, Any]) -> Mapping[str, Any]:
+        """Expose a bounded context/timeline/approval projection for the UI."""
+
+        manager = self._manager_for_request()
+        conversation_id = _require_text(payload, "conversation_id", max_length=256)
+        snapshot = manager.read(conversation_id, owner_id=self._owner(payload))
+        source_revision: str | None = None
+        if self._source_snapshot is not None:
+            source_revision = self._source_snapshot.revision
+        projection = build_conversation_inspection(snapshot, source_revision=source_revision)
+        return {"inspection": projection}
 
     def _switch_model(self, payload: dict[str, Any]) -> Mapping[str, Any]:
         manager = self._manager_for_request()
@@ -1215,6 +1231,16 @@ class DesktopService:
             "events": [self._subagent_event_projection(entry.cursor, entry.message) for entry in read.entries],
         }
 
+    def _subagent_graph(self, payload: dict[str, Any]) -> Mapping[str, Any]:
+        run_id = _require_text(payload, "run_id", max_length=128)
+        with self._subagent_event_lock:
+            journal = self._subagent_event_journals.get(run_id)
+        if journal is None:
+            raise DesktopServiceError("SUBAGENT_RUN_NOT_FOUND", "subagent event history is unavailable")
+        read = journal.read_since(0, max_messages=MAX_SUBAGENT_EVENT_MESSAGES)
+        events = [self._subagent_event_projection(entry.cursor, entry.message) for entry in read.entries]
+        return {"graph": build_subagent_graph(run_id, events)}
+
     @staticmethod
     def _subagent_event_projection(cursor: int, message: AgentMessage) -> Mapping[str, Any]:
         """Expose event metadata without forwarding child prompts or raw payloads."""
@@ -1519,6 +1545,10 @@ class DesktopService:
                         "schema": "aegis-desktop-provider-continuation-v1",
                         "source_revision": source_revision,
                         "context_manifest_hash": context.manifest_hash,
+                        "context_token_budget": context.token_budget,
+                        "context_token_count": context.token_count,
+                        "context_item_count": len(context.items),
+                        "context_selection_backend": context.manifest.get("selection_backend"),
                         "prompt_hash": hashlib.sha256(prompt.encode("utf-8")).hexdigest(),
                     },
                     sort_keys=True,

@@ -51,6 +51,16 @@ force-killed, and root synthesis is skipped after cancellation. The existing
 synchronous `subagents.run` command remains for
 compatibility and deterministic callers.
 
+The desktop observer has two additional read-only projections. The
+`conversations.inspect` projection reads the canonical conversation snapshot
+and exposes only bounded context metadata, timeline entries, and approval
+metadata. The `subagents.graph` projection reads the existing redacted event
+journal and reconstructs task nodes and dependency edges for the renderer.
+Neither projection is an execution authority: prompts, raw tool arguments, raw
+tool results, and continuation bodies are omitted before the desktop boundary.
+This gives the UI a context cockpit and task graph without adding a second
+state store or a second coordination bus.
+
 ## Isolation rules
 
 Every child must have a unique artifact namespace. A result containing an artifact from another namespace is rejected. A handler declaring an exclusive resource key is serialized with other handlers declaring the same key, including supervisors sharing one Python event loop. Browser actor work must use an exclusive session key; read-only observers should use independent browser contexts or no shared actor key. The scheduler does not make a browser profile or external service safe by itself.
