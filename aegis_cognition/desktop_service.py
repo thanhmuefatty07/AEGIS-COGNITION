@@ -1052,9 +1052,7 @@ class DesktopService:
                 "thread_alive": bool(state.thread is not None and state.thread.is_alive()),
                 "result": result,
                 "error": (
-                    {"code": state.error_code, "message": state.error_message}
-                    if state.error_code is not None
-                    else None
+                    {"code": state.error_code, "message": state.error_message} if state.error_code is not None else None
                 ),
             }
 
