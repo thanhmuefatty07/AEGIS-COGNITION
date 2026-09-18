@@ -1103,8 +1103,8 @@
     "future_obligations": 20,
     "invariants": 46,
     "mapped_surfaces": 9,
-    "surfaces": 191,
-    "unmapped_surfaces": 182,
+    "surfaces": 192,
+    "unmapped_surfaces": 183,
     "unmapped_verifications": 70,
     "unresolved_code_references": 0,
     "verifications": 92
@@ -3851,13 +3851,13 @@
     "all_surfaces_mapped": false,
     "critical_high_risk_mapped": false,
     "criticality_known": false,
-    "unmapped_surface_count": 182
+    "unmapped_surface_count": 183
   },
   "mode": "SHADOW",
   "phase": "PHASE_1_CLAIM_EVIDENCE_GRAPH",
   "schema": "aese-shadow-claim-evidence-graph-v1",
-  "source_head": "2d16b1d61a827d8353a0433d34ca55e93e56e916",
-  "source_tree_sha256": "83727fbcc3ad8a63d92b68b22fdc1e8f2467f10efb5544474a32a1a19768574d",
+  "source_head": "0827809af5c7757f032b90585e58babedf78c1d9",
+  "source_tree_sha256": "f1b222ed0a00355f56d185fe4c3de0fe08ffd249c2a4a1be85ac6aa52b051415",
   "status": "SHADOW_GRAPH_PARTIAL_MAPPING_SELECTION_DISABLED",
   "surfaces": [
     {
@@ -4581,6 +4581,19 @@
       "kind": "PYTHON_TEST",
       "mapping_status": "NOT_MAPPED",
       "path": "tests/test_aese_statistical_calibration.py",
+      "release_critical": "UNKNOWN",
+      "release_criticality": "UNKNOWN",
+      "risk": "UNKNOWN",
+      "security_criticality": "UNKNOWN",
+      "target": null,
+      "unknown_dependency_policy": "INVALIDATE_CONSERVATIVELY"
+    },
+    {
+      "claim_refs": [],
+      "id": "AESE-PYTHON_TEST-571353885FCC838D",
+      "kind": "PYTHON_TEST",
+      "mapping_status": "NOT_MAPPED",
+      "path": "tests/test_desktop_projection.py",
       "release_critical": "UNKNOWN",
       "release_criticality": "UNKNOWN",
       "risk": "UNKNOWN",
@@ -7160,6 +7173,6 @@
       "source_id": "AESE-011"
     }
   ],
-  "worktree_epoch": "2a38cbed45c22cb31510221f1379249d245aea1527d264bbd05c77e5dc9cf35d",
+  "worktree_epoch": "d9a50d67c72e968e6f6181b97c559a0692d8cdc1f880f0c6256917183a9c246e",
   "worktree_status": "DIRTY"
 }
