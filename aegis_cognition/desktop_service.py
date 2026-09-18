@@ -707,17 +707,14 @@ class DesktopService:
             if conversation_snapshot.conversation.status != "ACTIVE":
                 raise DesktopServiceError("CONVERSATION_NOT_ACTIVE", "conversation is not active")
             if any(
-                turn.status in {"QUEUED", "RUNNING", "WAITING_APPROVAL"}
-                for turn in conversation_snapshot.turns
+                turn.status in {"QUEUED", "RUNNING", "WAITING_APPROVAL"} for turn in conversation_snapshot.turns
             ) or any(call.status in {"REQUESTED", "AMBIGUOUS"} for call in conversation_snapshot.tool_calls):
                 raise DesktopServiceError("CONVERSATION_BUSY", "conversation has unresolved execution state")
 
         raw_connection_id = payload.get("connection_id")
         if raw_connection_id is None and conversation_snapshot is not None:
             raw_connection_id = conversation_snapshot.conversation.connection_id
-        connection_id = _require_text(
-            {"connection_id": raw_connection_id}, "connection_id", max_length=256
-        )
+        connection_id = _require_text({"connection_id": raw_connection_id}, "connection_id", max_length=256)
 
         raw_model_id = payload.get("model_id")
         if raw_model_id is None and conversation_snapshot is not None:
@@ -847,7 +844,12 @@ class DesktopService:
                 status="FAILED",
             )
             raise DesktopServiceError("SUBAGENT_ERROR", "subagent result could not be projected") from error
-        if conversation_manager is not None and conversation_id is not None and execution is not None and assistant_turn is not None:
+        if (
+            conversation_manager is not None
+            and conversation_id is not None
+            and execution is not None
+            and assistant_turn is not None
+        ):
             try:
                 output_turn = conversation_manager.append_part(
                     conversation_id,
@@ -906,11 +908,7 @@ class DesktopService:
             # with that fence; never overwrite an already-terminal execution.
             try:
                 snapshot = manager.read(conversation_id, owner_id=owner_id)
-                current = next(
-                    item
-                    for item in snapshot.executions
-                    if item.execution_id == execution.execution_id
-                )
+                current = next(item for item in snapshot.executions if item.execution_id == execution.execution_id)
                 if current.status in {"COMPLETED", "FAILED", "CANCELLED", "INTERRUPTED"}:
                     return
                 manager.finish_execution(
@@ -935,7 +933,7 @@ class DesktopService:
             else:
                 try:
                     text = json.dumps(value, ensure_ascii=False, sort_keys=True, default=str)
-                except (TypeError, ValueError):
+                except TypeError, ValueError:
                     text = str(value)
             if len(text) <= MAX_SUBAGENT_RESULT_CHARS:
                 return text, False
