@@ -120,6 +120,7 @@ export default function App() {
   const [connectionSaved, setConnectionSaved] = useState(false);
   const [destination, setDestination] = useState<Destination>("chat");
   const [workTab, setWorkTab] = useState<WorkTab>("files");
+  const [workPanelOpen, setWorkPanelOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [fileFilter, setFileFilter] = useState("");
   const [settingsSection, setSettingsSection] = useState("General");
@@ -445,7 +446,7 @@ export default function App() {
       <aside className={`sidebar ${sidebarCollapsed ? "collapsed" : ""}`} aria-label="Workspace navigation">
         <div className="sidebar-brand">
           <div className="brand-mark" aria-hidden="true"><Icon name="logo" size={17} /></div>
-          {!sidebarCollapsed && <div className="brand-copy"><strong>AEGIS</strong><span>LOCAL WORKSPACE</span></div>}
+          {!sidebarCollapsed && <div className="brand-copy"><strong>AEGIS</strong><span>LOCAL AGENT</span></div>}
           <button className="sidebar-toggle" type="button" onClick={() => setSidebarCollapsed((current) => !current)} aria-label="Toggle sidebar"><Icon name={sidebarCollapsed ? "chevron-right" : "chevron-left"} size={15} /></button>
         </div>
         <button className="new-task" type="button" onClick={() => void createConversation()} disabled={!workspace || busy}>
@@ -453,9 +454,9 @@ export default function App() {
         </button>
         <div className="sidebar-scroll">
           <div className="sidebar-group">
-            {!sidebarCollapsed && <div className="sidebar-label"><span>SESSIONS</span><span className="sidebar-count">{conversations.length}</span></div>}
+            {!sidebarCollapsed && <div className="sidebar-label"><span>THREADS</span><span className="sidebar-count">{conversations.length}</span></div>}
             <button className={`sidebar-nav ${destination === "chat" ? "active" : ""}`} type="button" onClick={() => openDestination("chat")} title="Sessions">
-              <span className="nav-icon"><Icon name="sessions" size={15} /></span>{!sidebarCollapsed && <span>Sessions</span>}
+              <span className="nav-icon"><Icon name="sessions" size={15} /></span>{!sidebarCollapsed && <span>Threads</span>}
             </button>
             {!sidebarCollapsed && <div className="session-list">
               {conversations.length === 0 ? <p className="sidebar-empty">No sessions yet.</p> : conversations.map((item) => (
@@ -468,7 +469,7 @@ export default function App() {
           </div>
           <div className="sidebar-group project-group">
             {!sidebarCollapsed && <div className="sidebar-label">PROJECTS</div>}
-            <button className="project-row" type="button" onClick={() => { openDestination("chat"); setWorkTab("files"); }} title={workspace?.workspace_path ?? "Workspace"}>
+            <button className="project-row" type="button" onClick={() => { openDestination("chat"); setWorkTab("files"); setWorkPanelOpen(true); }} title={workspace?.workspace_path ?? "Workspace"}>
               <span className="project-chevron"><Icon name="chevron-down" size={13} /></span><span className="project-icon"><Icon name="folder" size={14} /></span>{!sidebarCollapsed && <span className="project-name">{shortPath(workspace?.workspace_path, 23)}</span>}
             </button>
             {!sidebarCollapsed && <div className="project-subrow"><span className="project-subdot"><Icon name="circle" size={8} /></span>{activeTitle}</div>}
@@ -477,7 +478,7 @@ export default function App() {
         <div className="sidebar-bottom">
           <button className={`utility-row ${destination === "extensions" ? "active" : ""}`} type="button" onClick={() => openDestination("extensions")} title="Extensions"><span><Icon name="extensions" size={15} /></span>{!sidebarCollapsed && <span>Extensions</span>}</button>
           <button className={`utility-row ${destination === "settings" ? "active" : ""}`} type="button" onClick={() => openDestination("settings")} title="Settings"><span><Icon name="settings" size={15} /></span>{!sidebarCollapsed && <span>Settings</span>}</button>
-          {!sidebarCollapsed && <div className="sidebar-status"><span className={`status-dot ${runtimeReady ? "ready" : "attention"}`} />{previewMode ? "Browser preview" : runtimeReady ? "Rust host online" : "Opening local host"}</div>}
+          {!sidebarCollapsed && <div className="sidebar-status"><span className={`status-dot ${runtimeReady ? "ready" : "attention"}`} />{previewMode ? "Preview · local" : runtimeReady ? "Local host online" : "Opening local host"}</div>}
           {!sidebarCollapsed && <div className="sidebar-version">AEGIS 0.1.0 · protocol v1</div>}
         </div>
       </aside>
@@ -538,14 +539,15 @@ export default function App() {
           </div>
           <div className="topbar-actions">
             <span className="revision-label">r{conversation?.conversation.revision ?? "—"}</span>
-            <button className="topbar-icon" type="button" onClick={() => setWorkTab((current) => current === "files" ? "map" : "files")} aria-label="Toggle work panel"><Icon name="panel" size={16} /></button>
+            <button className={`topbar-text-action ${workPanelOpen ? "active" : ""}`} type="button" onClick={() => { setWorkPanelOpen(true); setWorkTab("files"); }} aria-label="Open project files">Open files</button>
+            <button className="topbar-icon" type="button" onClick={() => setWorkPanelOpen((current) => !current)} aria-label="Toggle work panel" aria-expanded={workPanelOpen}><Icon name="panel" size={16} /></button>
             <button className="topbar-icon" type="button" onClick={() => openDestination("settings")} aria-label="Open settings"><Icon name="more" size={16} /></button>
           </div>
         </header>
         {error && <div className="error" role="alert"><span className="error-mark">!</span>{error}</div>}
         <div className="chat-scroll">
           <div className="chat-column">
-            <div className="chat-intro"><div className="intro-mark"><Icon name="spark" size={17} /></div><div><strong>AEGIS is ready</strong><span>Local workspace · {mode === "mock" ? "safe preview mode" : "live provider mode"}</span></div><span className="context-chip">{conversationInspection?.context.item_count ?? 0} context items</span></div>
+            <div className="chat-intro"><div className="intro-mark"><Icon name="spark" size={17} /></div><div><strong>AEGIS is ready</strong><span>{mode === "mock" ? "Safe preview mode" : "Live provider mode"} · {conversationInspection?.context.item_count ?? 0} context items</span></div><span className="context-chip">{runtimeReady ? "Local" : "Opening"}</span></div>
             {renderSubagentActivity()}
             {subagentResult && <article className="subagent-result" aria-label="Subagent run result"><div className="subagent-result-header"><div><span className="eyebrow">PARALLEL RUN</span><strong>{subagentResult.status}</strong></div><span className="status-chip"><i /> {subagentResult.child_results.length} workers</span></div><p>{subagentResult.root_output}</p><div className="subagent-workers">{subagentResult.child_results.map((worker) => <span className={`worker-chip ${worker.status.toLowerCase()}`} key={`${worker.task_id}-${worker.packet_hash}`}><i />Worker {worker.task_id} · {worker.status}</span>)}</div><small>Graph {shortPath(subagentResult.graph_hash, 18)} · {subagentResult.graph_authority}</small></article>}
             {conversationInspection?.approvals.map((approval) => <article className="approval-card" key={approval.approval_id} aria-label="Approval required"><div><span className="eyebrow">REVIEW REQUIRED</span><strong>{approval.tool_name}</strong></div><span className="status-chip warning"><i />{approval.status}</span><p>AEGIS is waiting for a policy decision. Arguments are redacted at the renderer boundary.</p><small>Risk {approval.risk} · {approval.argument_keys.length} argument keys</small></article>)}
@@ -554,13 +556,13 @@ export default function App() {
                 <div className="message-avatar">{turn.role === "user" ? "Y" : "A"}</div>
                 <div className="message-content"><div className="message-meta"><strong>{turn.role === "user" ? "You" : "AEGIS"}</strong><span>r{turn.revision}</span></div>{renderTurnContent(turn)}</div>
               </article>
-            )) : <div className="empty-chat"><h2>Start a local task</h2><p>Ask AEGIS to research, inspect, or reason over this workspace.</p><div className="suggestion-row"><button type="button" onClick={() => setMessage("Summarize this workspace")}>Summarize workspace</button><button type="button" onClick={() => setMessage("Inspect the current project")}>Inspect project</button><button type="button" onClick={() => void runSubagents()} disabled={!runtimeReady || !connectionSaved || subagentBusy}>Run parallel workers</button></div></div>}
+            )) : <div className="empty-chat"><h2>Let's build {shortPath(workspace?.workspace_path, 28)}</h2><p>Ask AEGIS to research, inspect, or reason over this workspace.</p><div className="suggestion-row"><button type="button" onClick={() => setMessage("Summarize this workspace")}>Summarize workspace</button><button type="button" onClick={() => setMessage("Inspect the current project")}>Inspect project</button><button type="button" onClick={() => void runSubagents()} disabled={!runtimeReady || !connectionSaved || subagentBusy}>Run parallel workers</button></div></div>}
           </div>
         </div>
         <div className="composer-wrap">
           <div className="composer-pill">
-            <div className="composer-toolbar"><button className="mode-chip" type="button" onClick={() => setMode(mode === "mock" ? "live" : "mock")}><span className="mode-dot" />{mode === "mock" ? "Agent · Preview" : "Agent · Live"}<span className="chevron"><Icon name="chevron-down" size={12} /></span></button><span className="composer-model">{modelId}</span><span className="composer-spacer" /><button className="composer-tool" type="button" onClick={() => void runSubagents()} disabled={subagentBusy || !runtimeReady || !connectionSaved || !activeConversationId} aria-label="Run parallel workers" title="Run parallel workers"><Icon name="extensions" size={15} /></button><button className="composer-tool" type="button" onClick={() => setWorkTab("files")} aria-label="Browse files"><Icon name="attach" size={15} /></button></div>
-            <textarea value={message} onChange={(event) => setMessage(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); void sendMessage(); } }} placeholder="Message AEGIS…" rows={1} disabled={busy || subagentBusy || !activeConversationId} />
+            <div className="composer-toolbar"><button className="mode-chip" type="button" onClick={() => setMode(mode === "mock" ? "live" : "mock")}><span className="mode-dot" />{mode === "mock" ? "Agent · Preview" : "Agent · Live"}<span className="chevron"><Icon name="chevron-down" size={12} /></span></button><span className="composer-model">{modelId}</span><span className="composer-spacer" /><button className="composer-tool" type="button" onClick={() => void runSubagents()} disabled={subagentBusy || !runtimeReady || !connectionSaved || !activeConversationId} aria-label="Run parallel workers" title="Run parallel workers"><Icon name="extensions" size={15} /></button><button className="composer-tool" type="button" onClick={() => { setWorkPanelOpen(true); setWorkTab("files"); }} aria-label="Browse files"><Icon name="attach" size={15} /></button></div>
+            <textarea value={message} onChange={(event) => setMessage(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); void sendMessage(); } }} placeholder="Ask AEGIS anything…" rows={1} disabled={busy || subagentBusy || !activeConversationId} />
             <div className="composer-bottom"><span>Ctrl/⌘ Enter to send · Shift Enter for a new line</span><button className="send-button" type="button" onClick={() => void sendMessage()} disabled={busy || subagentBusy || !message.trim() || !activeConversationId}>{busy || subagentBusy ? <span className="send-loading" /> : <Icon name="arrow-up" size={16} />}</button></div>
           </div>
         </div>
@@ -572,7 +574,7 @@ export default function App() {
     const selected = sourceSnapshot?.files.find((file) => file.relative_path === selectedFile);
     return (
       <aside className="work-panel" aria-label="Workspace panel">
-        <div className="work-panel-header"><div className="work-tabs" role="tablist" aria-label="Workspace panel tabs"><button className={workTab === "files" ? "active" : ""} type="button" onClick={() => setWorkTab("files")}><Icon name="files" size={14} />Files</button><button className={workTab === "map" ? "active" : ""} type="button" onClick={() => setWorkTab("map")}><Icon name="map" size={14} />Map</button><button className={workTab === "activity" ? "active" : ""} type="button" onClick={() => setWorkTab("activity")}><Icon name="activity" size={14} />Activity</button><button className={workTab === "context" ? "active" : ""} type="button" onClick={() => setWorkTab("context")}><Icon name="spark" size={14} />Context</button></div><button className="panel-more" type="button" aria-label="Work panel options"><Icon name="plus" size={15} /></button></div>
+        <div className="work-panel-header"><div className="work-tabs" role="tablist" aria-label="Workspace panel tabs"><button className={workTab === "files" ? "active" : ""} type="button" onClick={() => setWorkTab("files")}><Icon name="files" size={14} />Files</button><button className={workTab === "map" ? "active" : ""} type="button" onClick={() => setWorkTab("map")}><Icon name="map" size={14} />Map</button><button className={workTab === "activity" ? "active" : ""} type="button" onClick={() => setWorkTab("activity")}><Icon name="activity" size={14} />Activity</button><button className={workTab === "context" ? "active" : ""} type="button" onClick={() => setWorkTab("context")}><Icon name="spark" size={14} />Context</button></div><button className="panel-more" type="button" onClick={() => setWorkPanelOpen(false)} aria-label="Close workspace panel"><Icon name="chevron-right" size={15} /></button></div>
         {workTab === "files" && <div className="file-panel"><div className="panel-title"><div><span className="eyebrow">WORKSPACE</span><strong>Project files</strong></div><span className="file-count">{sourceSnapshot?.files.length ?? "—"}</span></div><label className="file-search"><Icon name="search" size={14} /><input ref={searchRef} value={fileFilter} onChange={(event) => setFileFilter(event.target.value)} placeholder="Search files" /></label><div className="file-tree">{filteredFiles.length ? filteredFiles.map((file) => <button className={`file-row ${selectedFile === file.relative_path ? "active" : ""}`} key={file.relative_path} type="button" onClick={() => setSelectedFile(file.relative_path)}><span className="file-kind">{fileKind(file.relative_path)}</span><span className="file-name">{file.relative_path}</span></button>) : <p className="panel-empty">No indexed files match this search.</p>}</div>{selected && <div className="file-inspector"><span className="eyebrow">SELECTED FILE</span><strong>{selected.relative_path}</strong><div><span>{selected.language || "unknown"}</span><span>{Math.round(selected.size_bytes / 1024)} KB</span></div><p>{selected.extraction_status === "ok" ? "Symbols and imports are indexed." : selected.extraction_status}</p></div>}</div>}
         {workTab === "map" && <div className="map-panel">{workspaceGraph && sourceSnapshot ? <WorkspaceGraphView graph={workspaceGraph} loadMemories={loadMemoriesForFile} /> : <p className="panel-empty">The source map is opening.</p>}</div>}
         {workTab === "activity" && <div className="activity-panel"><div className="panel-title"><div><span className="eyebrow">SESSION</span><strong>Activity</strong></div><span className="status-chip"><i /> {conversation?.executions.some((item) => item.status === "RUNNING") ? "Live" : "Ready"}</span></div>{conversationInspection?.timeline.length ? conversationInspection.timeline.slice().reverse().map((item) => <div className="activity-item" key={item.event_id}><span className="activity-icon"><Icon name={item.kind === "EXECUTION" && item.status === "COMPLETED" ? "check" : "activity"} size={13} /></span><div><strong>{item.title}</strong><small>{item.detail}</small></div></div>) : activityItems.length ? activityItems.map((item) => <div className="activity-item" key={`${item.title}-${item.timestamp}-${item.detail}`}><span className="activity-icon"><Icon name={item.icon} size={13} /></span><div><strong>{item.title}</strong><small>{item.detail}</small></div></div>) : <p className="panel-empty">No session activity yet.</p>}</div>}
@@ -598,8 +600,8 @@ export default function App() {
     return <main className="destination-page extensions-page"><header className="destination-header"><div><span className="eyebrow">AEGIS / EXTENSIONS</span><h1>Extensions</h1><p>Workspace capabilities are surfaced here without hiding their authority boundary.</p></div><button className="outline-action" type="button" onClick={() => openDestination("settings")}>Configure connections</button></header><div className="extension-toolbar"><label className="extension-search"><Icon name="search" size={14} /><input placeholder="Search capabilities" /></label><div className="extension-filters"><button className="active" type="button">All</button><button type="button">Connected</button><button type="button">Local</button></div></div><div className="extension-grid">{cards.map(([title, description, status, target]) => <article className="extension-card" key={title}><div className="extension-icon"><Icon name={title === "Source map" ? "map" : title === "Memory" ? "spark" : title === "Conversations" ? "sessions" : title === "Provider adapter" ? "external" : title === "Browser research" ? "search" : "extensions"} size={16} /></div><div className="extension-card-body"><div className="extension-card-title"><h2>{title}</h2><span className={status === "Connected" ? "connected" : "pending"}>{status}</span></div><p>{description}</p><button type="button" onClick={() => target === "settings" ? openDestination("settings") : target === "map" ? (openDestination("chat"), setWorkTab("map")) : target === "chat" ? openDestination("chat") : undefined}>{status === "Connected" ? "Open" : "View details"}<span><Icon name="chevron-right" size={13} /></span></button></div></article>)}</div></main>;
   }
 
-  return <div className={`app-frame ${destination !== "chat" ? "destination-frame" : ""}`}>
+  return <div className={`app-frame ${destination !== "chat" ? "destination-frame" : ""} ${workPanelOpen && destination === "chat" ? "work-panel-open" : ""}`}>
     {renderSidebar()}
-    {destination === "chat" ? <>{renderConversation()}{renderWorkPanel()}</> : destination === "settings" ? renderSettings() : renderExtensions()}
+    {destination === "chat" ? <>{renderConversation()}{workPanelOpen && renderWorkPanel()}</> : destination === "settings" ? renderSettings() : renderExtensions()}
   </div>;
 }
