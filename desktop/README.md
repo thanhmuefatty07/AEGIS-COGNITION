@@ -38,6 +38,15 @@ not executable callbacks or an additional state store. Browser capture is
 still host-injected and public research does not use user cookies or login
 sessions.
 
+The shell also exposes two read-only observer projections. `conversations.inspect`
+shows the active context budget, source revision, bounded timeline, and approval
+metadata; `subagents.graph` shows task nodes, dependency edges, status, and
+bounded evidence summaries. Both are derived from canonical host state, mark
+their payload as redacted, and omit prompts, raw tool arguments, and raw tool
+results. They are UI observability surfaces, not a second scheduler, mailbox, or
+permission authority. The browser preview implements the same shapes with
+`PREVIEW_ONLY` data so it cannot be mistaken for native execution.
+
 The desktop host also exposes `code_reuse.assess` and
 `code_reuse.materialize`. They only reuse exact bytes from a current local
 source snapshot or a checked-out, explicitly licensed source inside the

@@ -1,11 +1,13 @@
 import type {
   Conversation,
   ConversationSnapshot,
+  ConversationInspection,
   DesktopCommand,
   SubagentEvent,
   SubagentResultPacket,
   SubagentRunResult,
   SubagentStatusResult,
+  SubagentGraph,
 } from "./protocol";
 
 type PreviewRun = {
@@ -155,7 +157,7 @@ function sourceSnapshot() {
         common_git_dir: null,
         checkout_id: "preview-checkout",
         branch: "codex/core-agent-integration",
-        head: "e371cf6",
+        head: "2d16b1d",
         dirty: false,
         dirty_paths: [],
       },
@@ -178,6 +180,75 @@ function sourceSnapshot() {
       deleted_paths: [],
       overflowed: false,
     },
+  };
+}
+
+function previewConversationInspection(snapshot: ConversationSnapshot): ConversationInspection {
+  return {
+    schema: "aegis-desktop-conversation-inspection-v1",
+    conversation_id: snapshot.conversation.conversation_id,
+    revision: snapshot.conversation.revision,
+    context: {
+      schema: "aegis-desktop-context-inspection-v1",
+      status: "NOT_CAPTURED",
+      source_revision: "preview-r1",
+      context_manifest_hash: null,
+      prompt_hash: null,
+      token_budget: null,
+      token_count: null,
+      item_count: null,
+      selection_backend: null,
+      history_turn_count: snapshot.turns.length,
+      sensitive_content: "REDACTED",
+    },
+    timeline: snapshot.turns.map((turn, index) => ({
+      event_id: `turn:${turn.turn_id}`,
+      kind: "TURN",
+      status: turn.status,
+      title: `${turn.role === "user" ? "User" : "Assistant"} turn`,
+      detail: "Turn content is hidden from the observer projection.",
+      timestamp_ms: index + 1,
+      reference: turn.turn_id,
+    })),
+    approvals: [],
+    redaction: "provider prompts, raw tool arguments, tool results, and continuation bodies are redacted",
+  };
+}
+
+function previewSubagentGraph(run: PreviewRun): SubagentGraph {
+  const nodes = run.events
+    .filter((item) => item.task_id > 0)
+    .reduce<SubagentGraph["nodes"]>((items, item) => {
+      const existing = items.find((node) => node.task_id === item.task_id);
+      const payload = item.payload;
+      if (existing) {
+        if (item.message_kind === "TASK_RESULT") {
+          existing.status = String(payload.status ?? "COMPLETED");
+          existing.summary = String(payload.summary ?? "");
+        }
+        return items;
+      }
+      items.push({
+        task_id: item.task_id,
+        parent_task_id: item.parent_task_id,
+        status: item.message_kind === "TASK_RESULT" ? String(payload.status ?? "COMPLETED") : "RUNNING",
+        role: String(payload.role ?? ""),
+        dependencies: Array.isArray(payload.dependency_ids) ? payload.dependency_ids.filter((value): value is number => typeof value === "number") : [],
+        capabilities: Array.isArray(payload.capabilities) ? payload.capabilities.filter((value): value is string => typeof value === "string") : [],
+        side_effect_class: String(payload.side_effect_class ?? ""),
+        summary: String(payload.summary ?? ""),
+        uncertainty: [],
+        blockers: [],
+        redacted: true,
+      });
+      return items;
+    }, []);
+  return {
+    schema: "aegis-desktop-subagent-graph-v1",
+    run_id: run.runId,
+    nodes,
+    edges: nodes.flatMap((node) => node.dependencies.map((from) => ({ from, to: node.task_id }))),
+    redaction: "task prompts and raw result bodies are redacted",
   };
 }
 
@@ -222,6 +293,10 @@ export async function previewRequest(command: DesktopCommand, payload: Record<st
     }
     case "conversations.read":
       return previewSnapshots.get(String(payload.conversation_id)) ?? getOrCreateConversation(String(payload.conversation_id));
+    case "conversations.inspect": {
+      const snapshot = previewSnapshots.get(String(payload.conversation_id)) ?? getOrCreateConversation(String(payload.conversation_id));
+      return { inspection: previewConversationInspection(snapshot) };
+    }
     case "conversations.send": {
       const conversationId = String(payload.conversation_id);
       const snapshot = getOrCreateConversation(conversationId);
@@ -256,6 +331,12 @@ export async function previewRequest(command: DesktopCommand, payload: Record<st
       advanceRun(run);
       const result: SubagentStatusResult = { schema: "aegis-desktop-subagents-status-v1", run_id: run.runId, status: run.status, event_cursor: run.events.length, started_at_ms: run.startedAt, finished_at_ms: run.result ? now() : null, cancel_requested_at_ms: run.cancelRequestedAt, cancel_supported: true, thread_alive: !run.result, result: run.result, error: null };
       return result;
+    }
+    case "subagents.graph": {
+      const run = previewRuns.get(String(payload.run_id));
+      if (!run) throw new Error("SUBAGENT_NOT_FOUND: preview run not found");
+      advanceRun(run);
+      return { graph: previewSubagentGraph(run) };
     }
     case "subagents.cancel": {
       const run = previewRuns.get(String(payload.run_id));

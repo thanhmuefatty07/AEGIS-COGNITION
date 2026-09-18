@@ -392,6 +392,14 @@ def test_desktop_service_lists_canonical_conversations_for_the_renderer(tmp_path
     assert response["result"]["records"][0]["conversation_id"] == "desktop-list-check"
     assert response["result"]["records"][0]["owner_id"] == "local-profile"
 
+    inspection = json.loads(
+        service.dispatch(_request("conversations.inspect", {"conversation_id": "desktop-list-check"}))
+    )
+    assert inspection["status"] == "ok"
+    assert inspection["result"]["inspection"]["schema"] == "aegis-desktop-conversation-inspection-v1"
+    assert inspection["result"]["inspection"]["conversation_id"] == "desktop-list-check"
+    assert "redacted" in inspection["result"]["inspection"]["redaction"]
+
 
 def test_desktop_service_runs_subagents_through_the_canonical_application(tmp_path: Path, monkeypatch):
     monkeypatch.delenv("AEGIS_SESSION_DB_PATH", raising=False)
@@ -459,6 +467,13 @@ def test_desktop_service_starts_background_subagents_and_polls_cursored_state(tm
     )
     assert events["result"]["latest_cursor"] == 1
     assert "private prompt" not in json.dumps(events)
+
+    graph = json.loads(service.dispatch(_request("subagents.graph", {"run_id": start["run_id"]})))
+    assert graph["status"] == "ok"
+    assert graph["result"]["graph"]["schema"] == "aegis-desktop-subagent-graph-v1"
+    assert "redacted" in graph["result"]["graph"]["redaction"]
+    assert "private prompt" not in json.dumps(graph)
+    assert graph["result"]["graph"]["nodes"][0]["task_id"] == 1
 
     _BlockingSubagentApplication.release.set()
     deadline = time.monotonic() + 2

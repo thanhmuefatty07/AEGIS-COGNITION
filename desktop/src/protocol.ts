@@ -17,6 +17,7 @@ export type DesktopCommand =
   | "conversations.create"
   | "conversations.list"
   | "conversations.read"
+  | "conversations.inspect"
   | "conversations.send"
   | "conversations.switch_model"
   | "subagents.run"
@@ -24,6 +25,7 @@ export type DesktopCommand =
   | "subagents.cancel"
   | "subagents.status"
   | "subagents.events"
+  | "subagents.graph"
   | "code_reuse.assess"
   | "code_reuse.materialize"
   | "memory.search"
@@ -214,6 +216,64 @@ export type ConversationSnapshot = {
   checkpoints: ConversationCheckpoint[];
   tool_calls: ConversationToolCall[];
   parts: ConversationPart[];
+};
+
+export type ConversationInspection = {
+  schema: "aegis-desktop-conversation-inspection-v1";
+  conversation_id: string;
+  revision: number;
+  context: {
+    schema: "aegis-desktop-context-inspection-v1";
+    status: string;
+    source_revision: string | null;
+    context_manifest_hash: string | null;
+    prompt_hash: string | null;
+    token_budget: number | null;
+    token_count: number | null;
+    item_count: number | null;
+    selection_backend: string | null;
+    history_turn_count: number;
+    sensitive_content: "REDACTED";
+  };
+  timeline: Array<{
+    event_id: string;
+    kind: string;
+    status: string;
+    title: string;
+    detail: string;
+    timestamp_ms: number;
+    reference: string;
+  }>;
+  approvals: Array<{
+    approval_id: string;
+    tool_name: string;
+    status: string;
+    risk: string;
+    argument_keys: string[];
+    arguments: "REDACTED";
+    result: "REDACTED";
+  }>;
+  redaction: string;
+};
+
+export type SubagentGraph = {
+  schema: "aegis-desktop-subagent-graph-v1";
+  run_id: string;
+  nodes: Array<{
+    task_id: number;
+    parent_task_id: number | null;
+    status: string;
+    role: string;
+    dependencies: number[];
+    capabilities: string[];
+    side_effect_class: string;
+    summary: string;
+    uncertainty: string[];
+    blockers: string[];
+    redacted: true;
+  }>;
+  edges: Array<{ from: number; to: number }>;
+  redaction: string;
 };
 
 export type SubagentResultPacket = {
@@ -556,6 +616,23 @@ export function parseConversationSnapshot(value: unknown): ConversationSnapshot 
   };
 }
 
+export function parseConversationInspection(value: unknown): ConversationInspection {
+  const inspection = isRecord(value) && isRecord(value.inspection) ? value.inspection : value;
+  if (!isRecord(inspection)
+    || inspection.schema !== "aegis-desktop-conversation-inspection-v1"
+    || typeof inspection.conversation_id !== "string"
+    || typeof inspection.revision !== "number"
+    || !isRecord(inspection.context)
+    || !Array.isArray(inspection.timeline)
+    || !Array.isArray(inspection.approvals)
+    || inspection.context.sensitive_content !== "REDACTED"
+    || !inspection.timeline.every(isRecord)
+    || !inspection.approvals.every(isRecord)) {
+    throw new Error("Desktop service returned an invalid conversation inspection");
+  }
+  return inspection as unknown as ConversationInspection;
+}
+
 export function parseConversationList(value: unknown): Conversation[] {
   if (!isRecord(value) || !Array.isArray(value.records) || !value.records.every(isRecord)) {
     throw new Error("Desktop service returned an invalid conversation list");
@@ -722,6 +799,21 @@ export function parseSubagentEventPage(value: unknown): SubagentEventPage {
     resync_required: value.resync_required,
     events: value.events as unknown as SubagentEvent[],
   };
+}
+
+export function parseSubagentGraph(value: unknown): SubagentGraph {
+  const graph = isRecord(value) && isRecord(value.graph) ? value.graph : value;
+  if (!isRecord(graph)
+    || graph.schema !== "aegis-desktop-subagent-graph-v1"
+    || typeof graph.run_id !== "string"
+    || !Array.isArray(graph.nodes)
+    || !Array.isArray(graph.edges)
+    || !graph.nodes.every(isRecord)
+    || !graph.edges.every(isRecord)
+    || graph.nodes.some((node) => node.redacted !== true)) {
+    throw new Error("Desktop service returned an invalid subagent graph");
+  }
+  return graph as unknown as SubagentGraph;
 }
 
 export function parseMemorySearchResult(value: unknown): MemoryRecord[] {
