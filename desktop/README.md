@@ -19,6 +19,12 @@ toggles the sidebar, `Ctrl/Cmd+K` focuses file search, `Escape` releases search
 focus, and `Shift+Enter` inserts a new line in the composer. These controls are
 presentation-only and continue to use the existing versioned desktop protocol.
 
+When the Vite renderer is opened outside a Tauri webview, it uses a clearly
+labelled in-memory browser preview adapter. The preview exercises the same
+request/response decoders, conversation flow, source-map surface, and
+subagent event/cancel states without claiming that the native Rust/Python host
+is running. Tauri builds always use the real `desktop_request` command.
+
 The `subagents.run` command is the synchronous desktop projection of the
 canonical local subagent runtime. For the interactive shell, `subagents.start`
 returns a host-owned run id immediately; the renderer then polls

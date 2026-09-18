@@ -362,7 +362,8 @@ export default function App() {
     }
   }
 
-  const runtimeReady = workspace?.native_runtime_available === true;
+  const previewMode = workspace?.preview_mode === true;
+  const runtimeReady = previewMode || workspace?.native_runtime_available === true;
   const activeTitle = conversation?.conversation.title ?? "New local task";
   const activeConversation = conversations.find((item) => item.conversation_id === activeConversationId);
   const filteredFiles = useMemo(() => {
@@ -461,7 +462,7 @@ export default function App() {
         <div className="sidebar-bottom">
           <button className={`utility-row ${destination === "extensions" ? "active" : ""}`} type="button" onClick={() => openDestination("extensions")} title="Extensions"><span><Icon name="extensions" size={15} /></span>{!sidebarCollapsed && <span>Extensions</span>}</button>
           <button className={`utility-row ${destination === "settings" ? "active" : ""}`} type="button" onClick={() => openDestination("settings")} title="Settings"><span><Icon name="settings" size={15} /></span>{!sidebarCollapsed && <span>Settings</span>}</button>
-          {!sidebarCollapsed && <div className="sidebar-status"><span className={`status-dot ${runtimeReady ? "ready" : "attention"}`} />{runtimeReady ? "Rust host online" : "Opening local host"}</div>}
+          {!sidebarCollapsed && <div className="sidebar-status"><span className={`status-dot ${runtimeReady ? "ready" : "attention"}`} />{previewMode ? "Browser preview" : runtimeReady ? "Rust host online" : "Opening local host"}</div>}
           {!sidebarCollapsed && <div className="sidebar-version">AEGIS 0.1.0 · protocol v1</div>}
         </div>
       </aside>

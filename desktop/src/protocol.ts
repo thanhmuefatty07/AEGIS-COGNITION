@@ -1,4 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
+import { previewRequest } from "./preview_backend";
 
 export const REQUEST_SCHEMA = "aegis-desktop-command-v1" as const;
 export const RESPONSE_SCHEMA = "aegis-desktop-response-v1" as const;
@@ -76,6 +77,7 @@ export type WorkspaceSnapshot = {
   state_path: string | null;
   profile_id: string;
   native_runtime_available: boolean;
+  preview_mode?: boolean;
 };
 
 export type SourceSnapshot = {
@@ -392,8 +394,16 @@ export async function desktopRequest<T>(
   decode: (value: unknown) => T,
 ): Promise<T> {
   const request = createRequest(command, payload);
-  const raw = await invoke<string>("desktop_request", { frame: JSON.stringify(request) });
-  const response: unknown = JSON.parse(raw);
+  const nativeRuntime = typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
+  const response: unknown = nativeRuntime
+    ? JSON.parse(await invoke<string>("desktop_request", { frame: JSON.stringify(request) }))
+    : {
+        schema: RESPONSE_SCHEMA,
+        protocol_version: PROTOCOL_VERSION,
+        request_id: request.request_id,
+        status: "ok",
+        result: await previewRequest(command, payload),
+      };
   if (!isDesktopResponse<T>(response)) {
     throw new Error("Desktop service returned an invalid response");
   }
@@ -409,7 +419,8 @@ export function parseWorkspaceSnapshot(value: unknown): WorkspaceSnapshot {
     || (value.workspace_path !== null && typeof value.workspace_path !== "string")
     || (value.state_path !== null && typeof value.state_path !== "string")
     || typeof value.profile_id !== "string"
-    || typeof value.native_runtime_available !== "boolean") {
+    || typeof value.native_runtime_available !== "boolean"
+    || (value.preview_mode !== undefined && typeof value.preview_mode !== "boolean")) {
     throw new Error("Desktop service returned an invalid workspace snapshot");
   }
   return value as unknown as WorkspaceSnapshot;
