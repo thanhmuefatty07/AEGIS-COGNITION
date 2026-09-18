@@ -8,7 +8,13 @@ from pathlib import Path
 import pytest
 
 from aegis_cognition.desktop_service import DesktopService, _select_source_paths_for_prompt
-from aegis_cognition.subagents import AgentResultPacket, AgentSupervisorResult
+from aegis_cognition.subagents import (
+    AGENT_MESSAGE_SCHEMA_V1,
+    AgentMessage,
+    AgentMessageJournal,
+    AgentResultPacket,
+    AgentSupervisorResult,
+)
 from core.python.aegis.desktop_protocol import (
     DesktopCommandRouter,
     DesktopProtocolError,
@@ -61,9 +67,7 @@ class _FakeSnapshot:
 
 class _FakeConversationManager:
     def __init__(self) -> None:
-        self.snapshot = _FakeSnapshot(
-            _FakeConversation("conv-1", "local-profile", "Smoke", "local", "mock-model")
-        )
+        self.snapshot = _FakeSnapshot(_FakeConversation("conv-1", "local-profile", "Smoke", "local", "mock-model"))
 
     def read(self, _conversation_id: str, *, owner_id: str) -> _FakeSnapshot:
         assert owner_id == self.snapshot.conversation.owner_id
@@ -124,7 +128,9 @@ class _FakeConversationManager:
                 replace(turn, status="COMPLETED") if turn.turn_id == execution.turn_id else turn
                 for turn in self.snapshot.turns
             ),
-            tuple(updated if item.execution_id == execution.execution_id else item for item in self.snapshot.executions),
+            tuple(
+                updated if item.execution_id == execution.execution_id else item for item in self.snapshot.executions
+            ),
         )
         return updated
 
@@ -214,9 +220,7 @@ def _request(command: str, payload: dict | None = None) -> bytes:
 
 def test_desktop_protocol_accepts_allowlisted_command_and_routes_typed_payload():
     observed: list[dict] = []
-    router = DesktopCommandRouter(
-        {"workspace.snapshot": lambda payload: observed.append(payload) or {"revision": 3}}
-    )
+    router = DesktopCommandRouter({"workspace.snapshot": lambda payload: observed.append(payload) or {"revision": 3}})
 
     response = json.loads(router.dispatch(_request("workspace.snapshot", {"workspace_id": "local"})))
 
@@ -252,13 +256,16 @@ def test_desktop_service_emits_handshake_opens_workspace_and_shuts_down(tmp_path
     monkeypatch.delenv("AEGIS_SESSION_DB_PATH", raising=False)
     monkeypatch.delenv("AEGIS_PROFILE_ID", raising=False)
     service = DesktopService(profile_root=tmp_path / "profile", profile_id="local-profile")
-    frames = b"\n".join(
-        [
-            _request("workspace.open"),
-            _request("workspace.snapshot"),
-            _request("service.shutdown"),
-        ]
-    ) + b"\n"
+    frames = (
+        b"\n".join(
+            [
+                _request("workspace.open"),
+                _request("workspace.snapshot"),
+                _request("service.shutdown"),
+            ]
+        )
+        + b"\n"
+    )
     output = io.BytesIO()
 
     assert service.run(io.BytesIO(frames), output) == 0
@@ -297,19 +304,22 @@ def test_desktop_service_lists_canonical_conversations_for_the_renderer(tmp_path
     monkeypatch.delenv("AEGIS_PROFILE_ID", raising=False)
     service = DesktopService(profile_root=tmp_path / "profile", profile_id="local-profile")
     assert json.loads(service.dispatch(_request("workspace.open")))["status"] == "ok"
-    assert json.loads(
-        service.dispatch(
-            _request(
-                "conversations.create",
-                {
-                    "conversation_id": "desktop-list-check",
-                    "title": "List check",
-                    "connection_id": "local",
-                    "model_id": "local-model",
-                },
+    assert (
+        json.loads(
+            service.dispatch(
+                _request(
+                    "conversations.create",
+                    {
+                        "conversation_id": "desktop-list-check",
+                        "title": "List check",
+                        "connection_id": "local",
+                        "model_id": "local-model",
+                    },
+                )
             )
-        )
-    )["status"] == "ok"
+        )["status"]
+        == "ok"
+    )
 
     response = json.loads(service.dispatch(_request("conversations.list")))
 
@@ -348,6 +358,47 @@ def test_desktop_service_runs_subagents_through_the_canonical_application(tmp_pa
     assert result["schema"] == "aegis-desktop-subagents-result-v1"
     assert result["root_output"] == "root synthesis"
     assert result["child_results"][0]["summary"] == "bounded child evidence"
+
+
+def test_desktop_service_exposes_cursored_redacted_subagent_events(tmp_path: Path, monkeypatch):
+    monkeypatch.delenv("AEGIS_SESSION_DB_PATH", raising=False)
+    monkeypatch.delenv("AEGIS_PROFILE_ID", raising=False)
+    service = DesktopService(profile_root=tmp_path / "profile")
+    assert json.loads(service.dispatch(_request("workspace.open")))["status"] == "ok"
+
+    journal = AgentMessageJournal(max_messages=2)
+    journal.append(
+        AgentMessage(
+            schema=AGENT_MESSAGE_SCHEMA_V1,
+            message_kind="TASK_REQUEST",
+            run_id="event-run",
+            sender_id="root",
+            recipient_id="subagent:1",
+            task_id=1,
+            parent_task_id=None,
+            attempt_id=1,
+            idempotency_key="event-run:1:1:request",
+            payload={
+                "role": "research",
+                "prompt": "private prompt must not cross the desktop event boundary",
+                "dependency_ids": [],
+                "capabilities": ["network_read"],
+                "artifact_namespace": "task-1",
+                "exclusive_resources": [],
+                "side_effect_class": "NetworkRead",
+            },
+        )
+    )
+    service._remember_subagent_event_journal("event-run", journal)
+
+    response = json.loads(service.dispatch(_request("subagents.events", {"run_id": "event-run", "max_messages": 2})))
+
+    assert response["status"] == "ok"
+    page = response["result"]
+    assert page["schema"] == "aegis-desktop-subagent-events-v1"
+    assert page["latest_cursor"] == 1
+    assert page["events"][0]["payload"]["redacted"] is True
+    assert "private prompt" not in json.dumps(page)
 
 
 def test_desktop_service_persists_subagent_root_in_the_selected_conversation(tmp_path: Path, monkeypatch):
@@ -406,11 +457,7 @@ def test_desktop_service_rejects_switching_workspace_after_open(tmp_path: Path, 
     service = DesktopService(profile_root=tmp_path / "one")
     first = json.loads(service.dispatch(_request("workspace.open")))
     assert first["status"] == "ok"
-    second = json.loads(
-        service.dispatch(
-            _request("workspace.open", {"workspace_path": str(tmp_path / "two")})
-        )
-    )
+    second = json.loads(service.dispatch(_request("workspace.open", {"workspace_path": str(tmp_path / "two")})))
     assert second["status"] == "error"
     assert second["error"]["code"] == "WORKSPACE_ALREADY_OPEN"
 
@@ -442,9 +489,10 @@ def test_source_prompt_path_selection_is_bounded_and_query_ranked():
     assert len(selected) == 17
     assert selected[0] == "src/repository.py"
     assert "src/069-module.py" not in selected
-    assert _select_source_paths_for_prompt(records, "show the project files")[:16] == sorted(
-        item["relative_path"] for item in records
-    )[:16]
+    assert (
+        _select_source_paths_for_prompt(records, "show the project files")[:16]
+        == sorted(item["relative_path"] for item in records)[:16]
+    )
 
 
 def test_desktop_service_mock_send_uses_canonical_manager(tmp_path: Path, monkeypatch):
@@ -530,19 +578,22 @@ def test_desktop_service_live_send_uses_real_local_compatible_endpoint(tmp_path:
     try:
         service = DesktopService(profile_root=tmp_path / "profile")
         assert json.loads(service.dispatch(_request("workspace.open")))["status"] == "ok"
-        assert json.loads(
-            service.dispatch(
-                _request(
-                    "conversations.create",
-                    {
-                        "conversation_id": "local-live",
-                        "title": "Local live",
-                        "connection_id": "local",
-                        "model_id": "local-model",
-                    },
+        assert (
+            json.loads(
+                service.dispatch(
+                    _request(
+                        "conversations.create",
+                        {
+                            "conversation_id": "local-live",
+                            "title": "Local live",
+                            "connection_id": "local",
+                            "model_id": "local-model",
+                        },
+                    )
                 )
-            )
-        )["status"] == "ok"
+            )["status"]
+            == "ok"
+        )
         response = json.loads(
             service.dispatch(
                 _request(
@@ -556,9 +607,10 @@ def test_desktop_service_live_send_uses_real_local_compatible_endpoint(tmp_path:
         assert response["result"]["transcript_persisted"] is True
         reopened = DesktopService(profile_root=tmp_path / "profile")
         assert json.loads(reopened.dispatch(_request("workspace.open")))["status"] == "ok"
-        assert json.loads(
-            reopened.dispatch(_request("conversations.read", {"conversation_id": "local-live"}))
-        )["status"] == "ok"
+        assert (
+            json.loads(reopened.dispatch(_request("conversations.read", {"conversation_id": "local-live"})))["status"]
+            == "ok"
+        )
         assert reopened._learning_for_request().search_past("hello endpoint", 8).results
     finally:
         server.shutdown()
