@@ -19,12 +19,22 @@ toggles the sidebar, `Ctrl/Cmd+K` focuses file search, `Escape` releases search
 focus, and `Shift+Enter` inserts a new line in the composer. These controls are
 presentation-only and continue to use the existing versioned desktop protocol.
 
-The `subagents.run` command is the desktop projection of the canonical local
-subagent runtime. It accepts bounded task/plan metadata only; handler binding,
-native graph validation, resource limits, and result packet hashing remain in
-`AgentApplication`. The renderer receives a compact worker/result projection,
-not executable callbacks or an additional state store. Browser capture is still
-host-injected and public research does not use user cookies or login sessions.
+The `subagents.run` command is the synchronous desktop projection of the
+canonical local subagent runtime. For the interactive shell, `subagents.start`
+returns a host-owned run id immediately; the renderer then polls
+`subagents.events` with a cursor and `subagents.status` until the terminal
+result arrives. Handler binding, native graph validation, resource limits, and
+result packet hashing remain in `AgentApplication`. The renderer receives a
+compact worker/result projection, not executable callbacks or an additional
+state store. Browser capture is still host-injected and public research does
+not use user cookies or login sessions.
+
+The desktop host also exposes `code_reuse.assess` and
+`code_reuse.materialize`. They only reuse exact bytes from a current local
+source snapshot or a checked-out, explicitly licensed source inside the
+workspace. The first command is read-only; the second requires an explicit
+target and refuses implicit overwrite. Model output or unknown training-data
+provenance is never treated as a source repository.
 
 For a development build:
 
