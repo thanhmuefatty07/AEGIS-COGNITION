@@ -378,6 +378,23 @@ export default function App() {
   }
 
   function renderConversation() {
+    function renderTurnContent(turn: ConversationSnapshot["turns"][number]) {
+      const parts = conversation?.parts.filter((part) => part.turn_id === turn.turn_id) ?? [];
+      if (parts.length === 0) return <p>{turn.content || "…"}</p>;
+      return (
+        <div className="message-parts">
+          {parts.map((part) => part.kind === "TEXT" ? (
+            <p key={`${part.turn_id}-${part.part_index}`}>{part.content}</p>
+          ) : (
+            <div className="message-part-record" key={`${part.turn_id}-${part.part_index}`}>
+              <span>{part.kind}</span>
+              <code>{part.content}</code>
+            </div>
+          ))}
+        </div>
+      );
+    }
+
     return (
       <section className="chat-view" aria-label="Conversation">
         <header className="conversation-topbar">
@@ -399,7 +416,7 @@ export default function App() {
             {conversation?.turns.length ? conversation.turns.map((turn) => (
               <article className={`message-row ${turn.role}`} key={turn.turn_id}>
                 <div className="message-avatar">{turn.role === "user" ? "Y" : "A"}</div>
-                <div className="message-content"><div className="message-meta"><strong>{turn.role === "user" ? "You" : "AEGIS"}</strong><span>r{turn.revision}</span></div><p>{turn.content || "…"}</p></div>
+                <div className="message-content"><div className="message-meta"><strong>{turn.role === "user" ? "You" : "AEGIS"}</strong><span>r{turn.revision}</span></div>{renderTurnContent(turn)}</div>
               </article>
             )) : <div className="empty-chat"><h2>Start a local task</h2><p>Ask AEGIS to research, inspect, or reason over this workspace.</p><div className="suggestion-row"><button type="button" onClick={() => setMessage("Summarize this workspace")}>Summarize workspace</button><button type="button" onClick={() => setMessage("Inspect the current project")}>Inspect project</button><button type="button" onClick={() => void runSubagents()} disabled={!runtimeReady || !connectionSaved || subagentBusy}>Run parallel workers</button></div></div>}
           </div>
