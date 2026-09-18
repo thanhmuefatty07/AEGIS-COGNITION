@@ -64,6 +64,7 @@ type IconName =
   | "search"
   | "sessions"
   | "folder"
+  | "branch"
   | "extensions"
   | "settings"
   | "panel"
@@ -89,6 +90,7 @@ function Icon({ name, size = 16 }: { name: IconName; size?: number }) {
     case "search": return <svg {...common}><circle cx="10.8" cy="10.8" r="6.3" /><path d="m16 16 4.2 4.2" /></svg>;
     case "sessions": return <svg {...common}><rect x="4" y="4" width="16" height="16" rx="3" /><path d="M8 9h8M8 13h5M8 17h3" /></svg>;
     case "folder": return <svg {...common}><path d="M3.5 7.5h6l1.8 2h9.2v7.8a2.2 2.2 0 0 1-2.2 2.2H5.7a2.2 2.2 0 0 1-2.2-2.2V7.5Z" /><path d="M3.5 7.5V6.7A2.2 2.2 0 0 1 5.7 4.5h3l1.8 2h6.8" /></svg>;
+    case "branch": return <svg {...common}><circle cx="7" cy="5" r="2" /><circle cx="17" cy="19" r="2" /><path d="M7 7v5a7 7 0 0 0 7 7h1" /><path d="M17 7v3a5 5 0 0 1-5 5H9" /></svg>;
     case "extensions": return <svg {...common}><path d="M8 4v4M16 4v4M4 8h16M6 4h12a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2Z" /><path d="M8 13h.01M12 13h.01M16 13h.01M8 17h.01M12 17h.01" /></svg>;
     case "settings": return <svg {...common}><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1-1.7 1.7-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.5v.2h-2.4v-.2a1.7 1.7 0 0 0-1-1.5 1.7 1.7 0 0 0-1.9.3l-.1.1L8 17l.1-.1a1.7 1.7 0 0 0 .3-1.9 1.7 1.7 0 0 0-1.5-1H6v-2.4h.2a1.7 1.7 0 0 0 1.5-1 1.7 1.7 0 0 0-.3-1.9L7.3 8l1.7-1.7.1.1a1.7 1.7 0 0 0 1.9.3 1.7 1.7 0 0 0 1-1.5V5h2.4v.2a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.9-.3l.1-.1L19.8 8l-.1.1a1.7 1.7 0 0 0-.3 1.9 1.7 1.7 0 0 0 1.5 1h.2v2.4h-.2a1.7 1.7 0 0 0-1.5 1Z" /></svg>;
     case "panel": return <svg {...common}><rect x="4" y="5" width="16" height="14" rx="2" /><path d="M15 5v14" /></svg>;
@@ -124,6 +126,7 @@ export default function App() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [fileFilter, setFileFilter] = useState("");
   const [settingsSection, setSettingsSection] = useState("General");
+  const [selectedSkill, setSelectedSkill] = useState<string | null>(null);
   const [selectedFile, setSelectedFile] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [subagentBusy, setSubagentBusy] = useState(false);
@@ -265,7 +268,7 @@ export default function App() {
     const id = `desktop-${crypto.randomUUID()}`;
     const record = await desktopRequest("conversations.create", {
       conversation_id: id,
-      title: "New local task",
+      title: "New thread",
       connection_id: "local",
       model_id: modelId,
     }, parseConversationRecordResult);
@@ -380,7 +383,7 @@ export default function App() {
 
   const previewMode = workspace?.preview_mode === true;
   const runtimeReady = previewMode || workspace?.native_runtime_available === true;
-  const activeTitle = conversation?.conversation.title ?? "New local task";
+  const activeTitle = conversation?.conversation.title ?? "New thread";
   const activeConversation = conversations.find((item) => item.conversation_id === activeConversationId);
   const filteredFiles = useMemo(() => {
     const query = fileFilter.trim().toLowerCase();
@@ -450,12 +453,12 @@ export default function App() {
           <button className="sidebar-toggle" type="button" onClick={() => setSidebarCollapsed((current) => !current)} aria-label="Toggle sidebar"><Icon name={sidebarCollapsed ? "chevron-right" : "chevron-left"} size={15} /></button>
         </div>
         <button className="new-task" type="button" onClick={() => void createConversation()} disabled={!workspace || busy}>
-          <Icon name="plus" size={15} />{!sidebarCollapsed && <span>New task</span>}
+          <Icon name="plus" size={15} />{!sidebarCollapsed && <span>New thread</span>}
         </button>
         <div className="sidebar-scroll">
           <div className="sidebar-group">
             {!sidebarCollapsed && <div className="sidebar-label"><span>THREADS</span><span className="sidebar-count">{conversations.length}</span></div>}
-            <button className={`sidebar-nav ${destination === "chat" ? "active" : ""}`} type="button" onClick={() => openDestination("chat")} title="Sessions">
+            <button className={`sidebar-nav ${destination === "chat" ? "active" : ""}`} type="button" onClick={() => openDestination("chat")} title="Threads">
               <span className="nav-icon"><Icon name="sessions" size={15} /></span>{!sidebarCollapsed && <span>Threads</span>}
             </button>
             {!sidebarCollapsed && <div className="session-list">
@@ -476,7 +479,7 @@ export default function App() {
           </div>
         </div>
         <div className="sidebar-bottom">
-          <button className={`utility-row ${destination === "extensions" ? "active" : ""}`} type="button" onClick={() => openDestination("extensions")} title="Extensions"><span><Icon name="extensions" size={15} /></span>{!sidebarCollapsed && <span>Extensions</span>}</button>
+          <button className={`utility-row ${destination === "extensions" ? "active" : ""}`} type="button" onClick={() => openDestination("extensions")} title="Skills"><span><Icon name="extensions" size={15} /></span>{!sidebarCollapsed && <span>Skills</span>}</button>
           <button className={`utility-row ${destination === "settings" ? "active" : ""}`} type="button" onClick={() => openDestination("settings")} title="Settings"><span><Icon name="settings" size={15} /></span>{!sidebarCollapsed && <span>Settings</span>}</button>
           {!sidebarCollapsed && <div className="sidebar-status"><span className={`status-dot ${runtimeReady ? "ready" : "attention"}`} />{previewMode ? "Preview · local" : runtimeReady ? "Local host online" : "Opening local host"}</div>}
           {!sidebarCollapsed && <div className="sidebar-version">AEGIS 0.1.0 · protocol v1</div>}
@@ -539,7 +542,7 @@ export default function App() {
           </div>
           <div className="topbar-actions">
             <span className="revision-label">r{conversation?.conversation.revision ?? "—"}</span>
-            <button className={`topbar-text-action ${workPanelOpen ? "active" : ""}`} type="button" onClick={() => { setWorkPanelOpen(true); setWorkTab("files"); }} aria-label="Open project files">Open files</button>
+            <button className={`topbar-text-action ${workPanelOpen ? "active" : ""}`} type="button" onClick={() => { setWorkPanelOpen(true); setWorkTab("files"); }} aria-label="Open project files">Open</button>
             <button className="topbar-icon" type="button" onClick={() => setWorkPanelOpen((current) => !current)} aria-label="Toggle work panel" aria-expanded={workPanelOpen}><Icon name="panel" size={16} /></button>
             <button className="topbar-icon" type="button" onClick={() => openDestination("settings")} aria-label="Open settings"><Icon name="more" size={16} /></button>
           </div>
@@ -556,7 +559,7 @@ export default function App() {
                 <div className="message-avatar">{turn.role === "user" ? "Y" : "A"}</div>
                 <div className="message-content"><div className="message-meta"><strong>{turn.role === "user" ? "You" : "AEGIS"}</strong><span>r{turn.revision}</span></div>{renderTurnContent(turn)}</div>
               </article>
-            )) : <div className="empty-chat"><h2>Let's build {shortPath(workspace?.workspace_path, 28)}</h2><p>Ask AEGIS to research, inspect, or reason over this workspace.</p><div className="suggestion-row"><button type="button" onClick={() => setMessage("Summarize this workspace")}>Summarize workspace</button><button type="button" onClick={() => setMessage("Inspect the current project")}>Inspect project</button><button type="button" onClick={() => void runSubagents()} disabled={!runtimeReady || !connectionSaved || subagentBusy}>Run parallel workers</button></div></div>}
+            )) : <div className="empty-chat"><h2><span className="empty-kicker">Let's build</span><span className="empty-project">{shortPath(workspace?.workspace_path, 28)} <Icon name="chevron-down" size={14} /></span></h2><p>Ask AEGIS to research, inspect, or reason over this workspace.</p><div className="suggestion-block"><span className="suggestion-caption">Explore more</span><div className="suggestion-row"><button type="button" onClick={() => setMessage("Summarize this workspace")}><Icon name="spark" size={14} /><span>Summarize workspace</span></button><button type="button" onClick={() => setMessage("Inspect the current project")}><Icon name="search" size={14} /><span>Inspect project</span></button><button type="button" onClick={() => void runSubagents()} disabled={!runtimeReady || !connectionSaved || subagentBusy}><Icon name="extensions" size={14} /><span>Run parallel workers</span></button></div></div></div>}
           </div>
         </div>
         <div className="composer-wrap">
@@ -565,6 +568,7 @@ export default function App() {
             <textarea value={message} onChange={(event) => setMessage(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); void sendMessage(); } }} placeholder="Ask AEGIS anything…" rows={1} disabled={busy || subagentBusy || !activeConversationId} />
             <div className="composer-bottom"><span>Ctrl/⌘ Enter to send · Shift Enter for a new line</span><button className="send-button" type="button" onClick={() => void sendMessage()} disabled={busy || subagentBusy || !message.trim() || !activeConversationId}>{busy || subagentBusy ? <span className="send-loading" /> : <Icon name="arrow-up" size={16} />}</button></div>
           </div>
+          <div className="composer-status" aria-label="Workspace environment"><div className="environment-status"><span className="environment-option active">Local</span><span className="environment-option">Checkout</span></div><span className="branch-status"><Icon name="branch" size={12} />{shortPath(sourceSnapshot?.identity.branch, 32)}</span></div>
         </div>
       </section>
     );
@@ -597,7 +601,8 @@ export default function App() {
       ["Browser research", "Public research adapters are available; browser capture remains explicitly host-injected.", "Needs setup", "extensions"],
       ["Subagents", "Bounded parallel workers with native graph validation and hash-bound result packets.", runtimeReady && connectionSaved ? "Connected" : "Needs setup", "chat"],
     ];
-    return <main className="destination-page extensions-page"><header className="destination-header"><div><span className="eyebrow">AEGIS / EXTENSIONS</span><h1>Extensions</h1><p>Workspace capabilities are surfaced here without hiding their authority boundary.</p></div><button className="outline-action" type="button" onClick={() => openDestination("settings")}>Configure connections</button></header><div className="extension-toolbar"><label className="extension-search"><Icon name="search" size={14} /><input placeholder="Search capabilities" /></label><div className="extension-filters"><button className="active" type="button">All</button><button type="button">Connected</button><button type="button">Local</button></div></div><div className="extension-grid">{cards.map(([title, description, status, target]) => <article className="extension-card" key={title}><div className="extension-icon"><Icon name={title === "Source map" ? "map" : title === "Memory" ? "spark" : title === "Conversations" ? "sessions" : title === "Provider adapter" ? "external" : title === "Browser research" ? "search" : "extensions"} size={16} /></div><div className="extension-card-body"><div className="extension-card-title"><h2>{title}</h2><span className={status === "Connected" ? "connected" : "pending"}>{status}</span></div><p>{description}</p><button type="button" onClick={() => target === "settings" ? openDestination("settings") : target === "map" ? (openDestination("chat"), setWorkTab("map")) : target === "chat" ? openDestination("chat") : undefined}>{status === "Connected" ? "Open" : "View details"}<span><Icon name="chevron-right" size={13} /></span></button></div></article>)}</div></main>;
+    const selected = cards.find(([title]) => title === selectedSkill);
+    return <main className="destination-page extensions-page"><header className="destination-header"><div><span className="eyebrow">AEGIS / SKILLS</span><h1>Skills</h1><p>Local capabilities that AEGIS can inspect and use without hiding their authority boundary.</p></div><button className="outline-action" type="button" onClick={() => openDestination("settings")}>Configure connections</button></header><div className="extension-toolbar"><label className="extension-search"><Icon name="search" size={14} /><input placeholder="Search skills" /></label><div className="extension-filters"><span className="filter-label">Installed</span><span className="filter-label">Local-first</span></div></div>{selected && <article className="skill-detail"><div><span className="eyebrow">CAPABILITY DETAILS</span><h2>{selected[0]}</h2><p>{selected[1]}</p><small>{selected[2]} · Host boundary enforced</small></div><button type="button" onClick={() => setSelectedSkill(null)} aria-label="Close skill details">Close</button></article>}<div className="extension-grid">{cards.map(([title, description, status, target]) => <article className="extension-card" key={title}><div className="extension-icon"><Icon name={title === "Source map" ? "map" : title === "Memory" ? "spark" : title === "Conversations" ? "sessions" : title === "Provider adapter" ? "external" : title === "Browser research" ? "search" : "extensions"} size={16} /></div><div className="extension-card-body"><div className="extension-card-title"><h2>{title}</h2><span className={status === "Connected" ? "connected" : "pending"}>{status}</span></div><p>{description}</p><button type="button" onClick={() => target === "settings" ? openDestination("settings") : target === "map" ? (openDestination("chat"), setWorkTab("map"), setWorkPanelOpen(true)) : target === "chat" ? openDestination("chat") : setSelectedSkill(title)}>{status === "Connected" ? "Open" : "View details"}<span><Icon name="chevron-right" size={13} /></span></button></div></article>)}</div></main>;
   }
 
   return <div className={`app-frame ${destination !== "chat" ? "destination-frame" : ""} ${workPanelOpen && destination === "chat" ? "work-panel-open" : ""}`}>
