@@ -1,5 +1,5 @@
 {
-  "artifact_hash": "016a89a9c23b04c2ea43b021533f13c8c622c09cc9d0e90fc756dc734f5bbfb9",
+  "artifact_hash": "5153ae6c34ade442a7ec03ffe2bcbd0f75dca6247adbc80513ae78314e3e1bf1",
   "changed_paths": [
     "core/rust/src/gt96.rs"
   ],
@@ -2719,11 +2719,11 @@
   "plan_widened": false,
   "provenance": {
     "claim_scope": "LOCAL_CHECKOUT_ONLY",
-    "closure_artifact_hash": "dc0d8fbc23f3f818cbf755a5e79148a482e262edc8a6a1534deb382a397d0871",
+    "closure_artifact_hash": "9674a41def1b0f25318b5e502c1c9ab26e4c35ec92546eaa14f92a89bf6bfd4a",
     "environment_hash": "1c57998383c639cee2bc3b241252bdd0571910b0cecf4314489101b29016625c",
     "evidence_class": "PLANNING_ONLY",
     "promotion": "DISABLED_IN_SHADOW",
-    "source_sha": "12a4cc4349abb3a39c6a538a7c41f93ad0d92aec",
+    "source_sha": "6e2ed5a3ecdf3e7b891a892033ee334f1fc5b50e",
     "validator": "scripts/aese_shadow_planner.py",
     "validator_hash": "0536ffa69ee62090c7fc2ec98f03111df553eafb58b890cfecbcca0799263cc0"
   },
