@@ -19,7 +19,11 @@ export type DesktopCommand =
   | "conversations.send"
   | "conversations.switch_model"
   | "subagents.run"
+  | "subagents.start"
+  | "subagents.status"
   | "subagents.events"
+  | "code_reuse.assess"
+  | "code_reuse.materialize"
   | "memory.search"
   | "memory.inspect"
   | "memory.capture"
@@ -236,6 +240,25 @@ export type SubagentRunResult = {
   blocked_task_ids: number[];
   coordination_hash: string;
   event_cursor?: number;
+};
+
+export type SubagentStartResult = {
+  schema: "aegis-desktop-subagents-start-v1";
+  run_id: string;
+  status: "RUNNING";
+  event_cursor: number;
+};
+
+export type SubagentStatusResult = {
+  schema: "aegis-desktop-subagents-status-v1";
+  run_id: string;
+  status: string;
+  event_cursor: number;
+  started_at_ms: number;
+  finished_at_ms: number | null;
+  thread_alive: boolean;
+  result: SubagentRunResult | null;
+  error: { code: string; message: string } | null;
 };
 
 export type SubagentEvent = {
@@ -585,6 +608,48 @@ export function parseSubagentRunResult(value: unknown): SubagentRunResult {
     blocked_task_ids: value.blocked_task_ids as number[],
     coordination_hash: value.coordination_hash,
     ...(typeof value.event_cursor === "number" ? { event_cursor: value.event_cursor } : {}),
+  };
+}
+
+export function parseSubagentStartResult(value: unknown): SubagentStartResult {
+  if (!isRecord(value)
+    || value.schema !== "aegis-desktop-subagents-start-v1"
+    || typeof value.run_id !== "string"
+    || value.status !== "RUNNING"
+    || typeof value.event_cursor !== "number") {
+    throw new Error("Desktop service returned an invalid subagent start result");
+  }
+  return value as unknown as SubagentStartResult;
+}
+
+export function parseSubagentStatusResult(value: unknown): SubagentStatusResult {
+  if (!isRecord(value)
+    || value.schema !== "aegis-desktop-subagents-status-v1"
+    || typeof value.run_id !== "string"
+    || typeof value.status !== "string"
+    || typeof value.event_cursor !== "number"
+    || typeof value.started_at_ms !== "number"
+    || (value.finished_at_ms !== null && typeof value.finished_at_ms !== "number")
+    || typeof value.thread_alive !== "boolean"
+    || (value.result !== null && !isRecord(value.result))
+    || (value.error !== null && (!isRecord(value.error)
+      || typeof value.error.code !== "string"
+      || typeof value.error.message !== "string"))) {
+    throw new Error("Desktop service returned an invalid subagent status result");
+  }
+  return {
+    schema: "aegis-desktop-subagents-status-v1",
+    run_id: value.run_id,
+    status: value.status,
+    event_cursor: value.event_cursor,
+    started_at_ms: value.started_at_ms,
+    finished_at_ms: value.finished_at_ms as number | null,
+    thread_alive: value.thread_alive,
+    result: value.result === null ? null : parseSubagentRunResult(value.result),
+    error: value.error === null ? null : {
+      code: value.error.code as string,
+      message: value.error.message as string,
+    },
   };
 }
 

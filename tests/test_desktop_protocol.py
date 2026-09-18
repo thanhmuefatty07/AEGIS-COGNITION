@@ -1,7 +1,9 @@
 import io
 import json
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
-from threading import Thread
+from threading import Event, Thread
+from types import SimpleNamespace
+import time
 from dataclasses import dataclass, replace
 from pathlib import Path
 
@@ -206,6 +208,59 @@ class _FakeSubagentApplication:
         )
 
 
+class _BlockingSubagentApplication:
+    started = Event()
+    release = Event()
+
+    def __init__(self, _config) -> None:
+        self.correlation = SimpleNamespace(run_id="background-subagent-run")
+
+    def run_subagents(self, *, message_journal, **kwargs):
+        del kwargs
+        journal = message_journal
+        journal.append(
+            AgentMessage(
+                schema=AGENT_MESSAGE_SCHEMA_V1,
+                message_kind="TASK_REQUEST",
+                run_id="background-subagent-run",
+                sender_id="root",
+                recipient_id="subagent:1",
+                task_id=1,
+                parent_task_id=None,
+                attempt_id=1,
+                idempotency_key="background-subagent-run:1:1:request",
+                payload={
+                    "role": "research",
+                    "prompt": "private prompt stays in the host journal",
+                    "dependency_ids": [],
+                    "capabilities": ["network_read"],
+                    "artifact_namespace": "task-1",
+                    "exclusive_resources": [],
+                    "side_effect_class": "NetworkRead",
+                },
+            )
+        )
+        self.started.set()
+        assert self.release.wait(2)
+        packet = AgentResultPacket(
+            run_id="background-subagent-run",
+            task_id=1,
+            parent_task_id=None,
+            attempt_id=1,
+            status="SUCCEEDED",
+            summary="background child evidence",
+        )
+        journal.append(packet.to_message(recipient_id="root"))
+        return AgentSupervisorResult(
+            run_id="background-subagent-run",
+            graph_hash="b" * 64,
+            graph_authority="native_runtime",
+            status="COMPLETED",
+            root_output="background root synthesis",
+            child_results=(packet,),
+        )
+
+
 def _request(command: str, payload: dict | None = None) -> bytes:
     return json.dumps(
         {
@@ -354,6 +409,114 @@ def test_desktop_service_runs_subagents_through_the_canonical_application(tmp_pa
     assert result["schema"] == "aegis-desktop-subagents-result-v1"
     assert result["root_output"] == "root synthesis"
     assert result["child_results"][0]["summary"] == "bounded child evidence"
+
+
+def test_desktop_service_starts_background_subagents_and_polls_cursored_state(tmp_path: Path, monkeypatch):
+    monkeypatch.delenv("AEGIS_SESSION_DB_PATH", raising=False)
+    monkeypatch.delenv("AEGIS_PROFILE_ID", raising=False)
+    _BlockingSubagentApplication.started.clear()
+    _BlockingSubagentApplication.release.clear()
+    service = DesktopService(
+        profile_root=tmp_path / "profile",
+        connection_catalog_factory=_FakeConnectionCatalog,
+        client_factory=lambda *_args, **_kwargs: _FakeSubagentClient(),
+        subagent_application_factory=_BlockingSubagentApplication,
+    )
+    assert json.loads(service.dispatch(_request("workspace.open")))["status"] == "ok"
+
+    response = json.loads(
+        service.dispatch(
+            _request(
+                "subagents.start",
+                {"task": "inspect the workspace", "connection_id": "local", "model_id": "local-model"},
+            )
+        )
+    )
+    assert response["status"] == "ok"
+    start = response["result"]
+    assert start["schema"] == "aegis-desktop-subagents-start-v1"
+    assert start["run_id"] == "background-subagent-run"
+    assert _BlockingSubagentApplication.started.wait(1)
+
+    running = json.loads(service.dispatch(_request("subagents.status", {"run_id": start["run_id"]})))
+    assert running["result"]["status"] == "RUNNING"
+    events = json.loads(
+        service.dispatch(_request("subagents.events", {"run_id": start["run_id"], "max_messages": 4}))
+    )
+    assert events["result"]["latest_cursor"] == 1
+    assert "private prompt" not in json.dumps(events)
+
+    _BlockingSubagentApplication.release.set()
+    deadline = time.monotonic() + 2
+    terminal = running
+    while time.monotonic() < deadline:
+        terminal = json.loads(service.dispatch(_request("subagents.status", {"run_id": start["run_id"]})))
+        if terminal["result"]["status"] == "COMPLETED":
+            break
+        time.sleep(0.01)
+    assert terminal["result"]["status"] == "COMPLETED"
+    assert terminal["result"]["result"]["root_output"] == "background root synthesis"
+
+
+def test_desktop_service_exposes_hash_bound_code_reuse_workflow(tmp_path: Path, monkeypatch):
+    monkeypatch.delenv("AEGIS_SESSION_DB_PATH", raising=False)
+    monkeypatch.delenv("AEGIS_PROFILE_ID", raising=False)
+    root = tmp_path / "profile"
+    root.mkdir()
+    (root / "source.py").write_text("def answer():\n    return 42\n", encoding="utf-8")
+    service = DesktopService(profile_root=root)
+    assert json.loads(service.dispatch(_request("workspace.open")))["status"] == "ok"
+
+    assessment = json.loads(
+        service.dispatch(
+            _request(
+                "code_reuse.assess",
+                {
+                    "source_path": "source.py",
+                    "start_line": 1,
+                    "end_line": 2,
+                    "generation_tokens": 80,
+                    "adaptation_tokens": 4,
+                    "verification_tokens": 3,
+                },
+            )
+        )
+    )
+    assert assessment["status"] == "ok"
+    assert assessment["result"]["assessment"]["decision"] == "REUSE_WITH_PATCH"
+    candidate = assessment["result"]["candidate"]
+    assert candidate["license_id"] == "INTERNAL"
+
+    materialized = json.loads(
+        service.dispatch(
+            _request(
+                "code_reuse.materialize",
+                {
+                    "source_path": "source.py",
+                    "start_line": 1,
+                    "end_line": 2,
+                    "target_relative_path": "copied.py",
+                },
+            )
+        )
+    )
+    assert materialized["status"] == "ok"
+    assert (root / "copied.py").read_text(encoding="utf-8") == "def answer():\n    return 42\n"
+    duplicate = json.loads(
+        service.dispatch(
+            _request(
+                "code_reuse.materialize",
+                {
+                    "source_path": "source.py",
+                    "start_line": 1,
+                    "end_line": 2,
+                    "target_relative_path": "copied.py",
+                },
+            )
+        )
+    )
+    assert duplicate["status"] == "error"
+    assert duplicate["error"]["code"] == "CODE_REUSE_REJECTED"
 
 
 def test_desktop_service_exposes_cursored_redacted_subagent_events(tmp_path: Path, monkeypatch):

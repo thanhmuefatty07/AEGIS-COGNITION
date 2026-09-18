@@ -15,16 +15,23 @@ import os
 import re
 import sys
 import threading
+import time
 import uuid
 from collections import OrderedDict
 from collections.abc import Callable, Iterator, Mapping
-from dataclasses import asdict, is_dataclass
+from dataclasses import asdict, dataclass, field, is_dataclass
 from pathlib import Path
 from typing import Any, TextIO, cast
 from urllib.parse import urlsplit
 
 from .config import trust_policy_hash
 from .application import AgentApplication
+from .code_reuse import (
+    CodeReuseError,
+    assess_code_reuse,
+    build_local_reuse_candidate,
+    materialize_exact,
+)
 from .config import AgentConfig
 from .runtime import (
     coordinated_runtime_task_sync,
@@ -100,6 +107,24 @@ MAX_SUBAGENT_TASKS = 64
 MAX_SUBAGENT_CONCURRENCY = 32
 MAX_SUBAGENT_EVENT_RUNS = 32
 MAX_SUBAGENT_EVENT_MESSAGES = 256
+MAX_CODE_REUSE_LINE = 1_000_000
+MAX_CODE_REUSE_TOKENS = 10_000_000
+
+
+@dataclass(slots=True)
+class _SubagentRunState:
+    """Host-owned state for a bounded background subagent run."""
+
+    run_id: str
+    journal: AgentMessageJournal
+    status: str = "RUNNING"
+    result_payload: dict[str, Any] | None = None
+    error_code: str | None = None
+    error_message: str | None = None
+    started_at_ms: int = field(default_factory=lambda: int(time.time() * 1000))
+    finished_at_ms: int | None = None
+    thread: threading.Thread | None = field(default=None, repr=False)
+    lock: threading.RLock = field(default_factory=threading.RLock, repr=False)
 
 
 class DesktopServiceError(DesktopProtocolError):
@@ -253,6 +278,7 @@ class DesktopService:
         self._source_watcher: NativeSnapshotWatcher | None = None
         self._stop_requested = False
         self._subagent_event_journals: OrderedDict[str, AgentMessageJournal] = OrderedDict()
+        self._subagent_runs: OrderedDict[str, _SubagentRunState] = OrderedDict()
         self._subagent_event_lock = threading.RLock()
         self._verification_facade = VerificationFacade()
         self._router = DesktopCommandRouter(self._handlers())
@@ -274,7 +300,11 @@ class DesktopService:
             "conversations.send": self._send_message,
             "conversations.switch_model": self._switch_model,
             "subagents.run": self._run_subagents,
+            "subagents.start": self._start_subagents,
+            "subagents.status": self._subagent_status,
             "subagents.events": self._read_subagent_events,
+            "code_reuse.assess": self._assess_code_reuse,
+            "code_reuse.materialize": self._materialize_code_reuse,
             "memory.search": self._search_memories,
             "memory.inspect": self._inspect_memory,
             "memory.capture": self._capture_memory,
@@ -692,7 +722,12 @@ class DesktopService:
         )
         return {"record": _json_value(record)}
 
-    def _run_subagents(self, payload: dict[str, Any]) -> Mapping[str, Any]:
+    def _start_subagents(self, payload: dict[str, Any]) -> Mapping[str, Any]:
+        """Start a host-owned run and return before model work completes."""
+
+        return self._run_subagents(payload, wait=False)
+
+    def _run_subagents(self, payload: dict[str, Any], *, wait: bool = True) -> Mapping[str, Any]:
         """Run the canonical local subagent runtime through the desktop boundary.
 
         The desktop command deliberately accepts only a task and optional
@@ -821,8 +856,11 @@ class DesktopService:
             parameters = {}
         if "message_journal" in parameters:
             runner_kwargs["message_journal"] = event_journal
+        application_run_id = str(getattr(getattr(application, "correlation", None), "run_id", "")).strip()
+        run_id = application_run_id or f"desktop-{uuid.uuid4().hex}"
+        state = _SubagentRunState(run_id=run_id, journal=event_journal)
         try:
-            result = runner(**runner_kwargs)
+            self._remember_subagent_run(state)
         except DesktopServiceError:
             self._finish_subagent_execution(
                 conversation_manager,
@@ -832,64 +870,19 @@ class DesktopService:
                 status="FAILED",
             )
             raise
-        except Exception as error:
-            self._finish_subagent_execution(
-                conversation_manager,
-                conversation_id,
-                owner_id,
-                execution,
-                status="FAILED",
-            )
-            raise DesktopServiceError("SUBAGENT_ERROR", "local subagent execution failed") from error
-        try:
-            result_payload = self._subagent_result_payload(result)
-        except DesktopServiceError:
-            self._finish_subagent_execution(
-                conversation_manager,
-                conversation_id,
-                owner_id,
-                execution,
-                status="FAILED",
-            )
-            raise
-        except Exception as error:
-            self._finish_subagent_execution(
-                conversation_manager,
-                conversation_id,
-                owner_id,
-                execution,
-                status="FAILED",
-            )
-            raise DesktopServiceError("SUBAGENT_ERROR", "subagent result could not be projected") from error
-        run_id = str(getattr(result, "run_id", "")).strip()
-        if run_id:
-            self._remember_subagent_event_journal(run_id, event_journal)
-            result_payload = {
-                **result_payload,
-                "event_cursor": event_journal.latest_cursor,
-            }
-        if (
-            conversation_manager is not None
-            and conversation_id is not None
-            and execution is not None
-            and assistant_turn is not None
-        ):
+
+        def execute_and_finalize() -> Mapping[str, Any]:
             try:
-                output_turn = conversation_manager.append_part(
+                result = runner(**runner_kwargs)
+            except DesktopServiceError:
+                self._finish_subagent_execution(
+                    conversation_manager,
                     conversation_id,
-                    owner_id=owner_id,
-                    turn_id=assistant_turn.turn_id,
-                    kind="TEXT",
-                    content=str(result_payload["root_output"]),
-                    expected_revision=execution.revision,
+                    owner_id,
+                    execution,
+                    status="FAILED",
                 )
-                finished = conversation_manager.finish_execution(
-                    conversation_id,
-                    owner_id=owner_id,
-                    execution_id=execution.execution_id,
-                    status="COMPLETED",
-                    expected_revision=output_turn.revision,
-                )
+                raise
             except Exception as error:
                 self._finish_subagent_execution(
                     conversation_manager,
@@ -898,14 +891,245 @@ class DesktopService:
                     execution,
                     status="FAILED",
                 )
-                raise DesktopServiceError(
-                    "SUBAGENT_PERSISTENCE_FAILED", "subagent result could not be persisted"
-                ) from error
+                raise DesktopServiceError("SUBAGENT_ERROR", "local subagent execution failed") from error
+            try:
+                result_payload = self._subagent_result_payload(result)
+            except DesktopServiceError:
+                self._finish_subagent_execution(
+                    conversation_manager,
+                    conversation_id,
+                    owner_id,
+                    execution,
+                    status="FAILED",
+                )
+                raise
+            except Exception as error:
+                self._finish_subagent_execution(
+                    conversation_manager,
+                    conversation_id,
+                    owner_id,
+                    execution,
+                    status="FAILED",
+                )
+                raise DesktopServiceError("SUBAGENT_ERROR", "subagent result could not be projected") from error
+            result_run_id = str(getattr(result, "run_id", "")).strip() or run_id
+            self._remember_subagent_event_journal(result_run_id, event_journal)
             result_payload = {
                 **result_payload,
-                "conversation_revision": int(getattr(finished, "revision", output_turn.revision)),
+                "event_cursor": event_journal.latest_cursor,
             }
-        return result_payload
+            if (
+                conversation_manager is not None
+                and conversation_id is not None
+                and execution is not None
+                and assistant_turn is not None
+            ):
+                try:
+                    output_turn = conversation_manager.append_part(
+                        conversation_id,
+                        owner_id=owner_id,
+                        turn_id=assistant_turn.turn_id,
+                        kind="TEXT",
+                        content=str(result_payload["root_output"]),
+                        expected_revision=execution.revision,
+                    )
+                    finished = conversation_manager.finish_execution(
+                        conversation_id,
+                        owner_id=owner_id,
+                        execution_id=execution.execution_id,
+                        status="COMPLETED",
+                        expected_revision=output_turn.revision,
+                    )
+                except Exception as error:
+                    self._finish_subagent_execution(
+                        conversation_manager,
+                        conversation_id,
+                        owner_id,
+                        execution,
+                        status="FAILED",
+                    )
+                    raise DesktopServiceError(
+                        "SUBAGENT_PERSISTENCE_FAILED", "subagent result could not be persisted"
+                    ) from error
+                result_payload = {
+                    **result_payload,
+                    "conversation_revision": int(getattr(finished, "revision", output_turn.revision)),
+                }
+            return result_payload
+
+        if wait:
+            try:
+                result_payload = dict(execute_and_finalize())
+            except DesktopServiceError as error:
+                self._finish_subagent_state(state, error=error)
+                raise
+            except Exception as error:
+                wrapped = DesktopServiceError("SUBAGENT_ERROR", "local subagent execution failed")
+                self._finish_subagent_state(state, error=wrapped)
+                raise wrapped from error
+            self._finish_subagent_state(state, result=result_payload)
+            return result_payload
+
+        def background_worker() -> None:
+            try:
+                self._finish_subagent_state(state, result=dict(execute_and_finalize()))
+            except DesktopServiceError as error:
+                self._finish_subagent_state(state, error=error)
+            except Exception:
+                self._finish_subagent_state(
+                    state,
+                    error=DesktopServiceError("SUBAGENT_ERROR", "local subagent execution failed"),
+                )
+
+        thread = threading.Thread(target=background_worker, name=f"aegis-subagent-{run_id[:24]}", daemon=True)
+        state.thread = thread
+        thread.start()
+        return {
+            "schema": "aegis-desktop-subagents-start-v1",
+            "run_id": run_id,
+            "status": "RUNNING",
+            "event_cursor": event_journal.latest_cursor,
+        }
+
+    def _remember_subagent_run(self, state: _SubagentRunState) -> None:
+        with self._subagent_event_lock:
+            self._subagent_runs[state.run_id] = state
+            self._subagent_runs.move_to_end(state.run_id)
+            self._subagent_event_journals[state.run_id] = state.journal
+            self._subagent_event_journals.move_to_end(state.run_id)
+            while len(self._subagent_runs) > MAX_SUBAGENT_EVENT_RUNS:
+                terminal_id: str | None = None
+                for candidate_id, candidate in self._subagent_runs.items():
+                    with candidate.lock:
+                        if candidate.status != "RUNNING":
+                            terminal_id = candidate_id
+                            break
+                if terminal_id is None:
+                    self._subagent_runs.pop(state.run_id, None)
+                    self._subagent_event_journals.pop(state.run_id, None)
+                    raise DesktopServiceError(
+                        "SUBAGENT_CAPACITY",
+                        "too many active subagent runs; wait for one to finish",
+                    )
+                run_id = terminal_id
+                self._subagent_runs.pop(run_id)
+                self._subagent_event_journals.pop(run_id, None)
+
+    @staticmethod
+    def _finish_subagent_state(
+        state: _SubagentRunState,
+        *,
+        result: dict[str, Any] | None = None,
+        error: DesktopServiceError | None = None,
+    ) -> None:
+        with state.lock:
+            if result is not None:
+                state.result_payload = dict(result)
+                state.status = str(result.get("status", "COMPLETED"))
+                state.error_code = None
+                state.error_message = None
+            elif error is not None:
+                state.status = "FAILED"
+                state.error_code = error.code
+                state.error_message = str(error)
+            state.finished_at_ms = int(time.time() * 1000)
+
+    def _subagent_status(self, payload: dict[str, Any]) -> Mapping[str, Any]:
+        run_id = _require_text(payload, "run_id", max_length=128)
+        with self._subagent_event_lock:
+            state = self._subagent_runs.get(run_id)
+        if state is None:
+            raise DesktopServiceError("SUBAGENT_RUN_NOT_FOUND", "subagent run is unavailable")
+        with state.lock:
+            result = dict(state.result_payload) if state.result_payload is not None else None
+            return {
+                "schema": "aegis-desktop-subagents-status-v1",
+                "run_id": state.run_id,
+                "status": state.status,
+                "event_cursor": state.journal.latest_cursor,
+                "started_at_ms": state.started_at_ms,
+                "finished_at_ms": state.finished_at_ms,
+                "thread_alive": bool(state.thread is not None and state.thread.is_alive()),
+                "result": result,
+                "error": (
+                    {"code": state.error_code, "message": state.error_message}
+                    if state.error_code is not None
+                    else None
+                ),
+            }
+
+    def _reuse_snapshot(self) -> SourceSnapshot:
+        self._require_open()
+        if self._source_mapper is None:
+            raise DesktopServiceError("SOURCE_MAPPER_UNAVAILABLE", "the local source mapper is unavailable")
+        if self._source_snapshot is None:
+            self._workspace_source_snapshot({})
+        if self._source_snapshot is None:
+            raise DesktopServiceError("SOURCE_SNAPSHOT_UNAVAILABLE", "the local source snapshot is unavailable")
+        return self._source_snapshot
+
+    @staticmethod
+    def _reuse_int(payload: Mapping[str, Any], key: str, *, maximum: int = MAX_CODE_REUSE_TOKENS) -> int:
+        value = payload.get(key)
+        if type(value) is not int or not 0 <= value <= maximum:
+            raise DesktopServiceError("INVALID_ARGUMENT", f"{key} must be an integer between 0 and {maximum}")
+        return value
+
+    def _reuse_candidate(self, payload: Mapping[str, Any]) -> Any:
+        source_path = _require_text(payload, "source_path", max_length=MAX_PATH_LENGTH)
+        start_line = self._reuse_int(payload, "start_line", maximum=MAX_CODE_REUSE_LINE)
+        end_line = self._reuse_int(payload, "end_line", maximum=MAX_CODE_REUSE_LINE)
+        if start_line < 1 or end_line < start_line:
+            raise DesktopServiceError("INVALID_ARGUMENT", "source line range is invalid")
+        license_id = str(payload.get("license_id", "INTERNAL"))
+        provenance_uri = payload.get("provenance_uri")
+        if provenance_uri is not None and not isinstance(provenance_uri, str):
+            raise DesktopServiceError("INVALID_ARGUMENT", "provenance_uri must be text")
+        try:
+            candidate = build_local_reuse_candidate(
+                self._reuse_snapshot(),
+                source_path,
+                start_line=start_line,
+                end_line=end_line,
+                license_id=license_id,
+                provenance_uri=provenance_uri,
+            )
+        except CodeReuseError as error:
+            raise DesktopServiceError("CODE_REUSE_REJECTED", str(error)) from error
+        return candidate
+
+    def _assess_code_reuse(self, payload: dict[str, Any]) -> Mapping[str, Any]:
+        candidate = self._reuse_candidate(payload)
+        try:
+            assessment = assess_code_reuse(
+                candidate,
+                generation_tokens=self._reuse_int(payload, "generation_tokens"),
+                adaptation_tokens=self._reuse_int(payload, "adaptation_tokens"),
+                verification_tokens=self._reuse_int(payload, "verification_tokens"),
+            )
+        except CodeReuseError as error:
+            raise DesktopServiceError("CODE_REUSE_REJECTED", str(error)) from error
+        return {"candidate": candidate.as_dict(), "assessment": assessment.as_dict()}
+
+    def _materialize_code_reuse(self, payload: dict[str, Any]) -> Mapping[str, Any]:
+        candidate = self._reuse_candidate(payload)
+        overwrite = payload.get("overwrite", False)
+        if type(overwrite) is not bool:
+            raise DesktopServiceError("INVALID_ARGUMENT", "overwrite must be a boolean")
+        target_relative_path = _require_text(payload, "target_relative_path", max_length=MAX_PATH_LENGTH)
+        root = self._opened_root
+        if root is None:
+            raise DesktopServiceError("WORKSPACE_NOT_OPEN", "open a workspace before reusing code")
+        try:
+            receipt = materialize_exact(
+                candidate,
+                target_root=root,
+                target_relative_path=target_relative_path,
+                overwrite=overwrite,
+            )
+        except CodeReuseError as error:
+            raise DesktopServiceError("CODE_REUSE_REJECTED", str(error)) from error
+        return {"candidate": candidate.as_dict(), "receipt": receipt.as_dict()}
 
     def _remember_subagent_event_journal(self, run_id: str, journal: AgentMessageJournal) -> None:
         if not run_id or type(journal) is not AgentMessageJournal:

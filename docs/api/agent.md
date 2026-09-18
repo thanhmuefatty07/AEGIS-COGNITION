@@ -29,11 +29,18 @@ the root. The default handlers are `model` and public `research`; Reddit uses
 credential-free RSS, while X requires an explicit system app-only bearer token.
 `Agent.run()` is unchanged.
 
-The desktop shell exposes the same runtime through the versioned
-`subagents.run` command. It accepts a bounded task and optional JSON plan
-metadata, then returns the root synthesis and compact child result packets.
-The renderer cannot provide executable handlers or create a second state
-store; native graph validation and host resource policy remain authoritative.
+The desktop shell exposes the same runtime through versioned commands. The
+legacy `subagents.run` command waits for the root synthesis. The interactive
+path uses `subagents.start`, then reads redacted request/result envelopes with
+`subagents.events` and polls `subagents.status` for the terminal root result.
+The renderer cannot provide executable handlers or create a second state store;
+native graph validation and host resource policy remain authoritative.
+
+The desktop host's code-reuse lane is similarly explicit: `code_reuse.assess`
+compares the estimated generation, adaptation and verification cost, while
+`code_reuse.materialize` copies only a fresh hash-bound local source range with
+an allowed license/ownership label. It does not copy arbitrary model output or
+unknown training data.
 
 Static nested plans are supported: a task may set `parent_task_id` to another
 planned task only when that parent is also listed in `dependencies`. A running

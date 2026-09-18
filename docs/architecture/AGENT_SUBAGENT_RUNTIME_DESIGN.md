@@ -19,7 +19,7 @@ The implementation reuses AEGIS primitives:
 
 `TASK_RESULT` contains status, a bounded summary, epistemic claims, uncertainty, blockers, token counters reported by the handler, elapsed time, and artifact references. `token_budget` is the child completion/output-token ceiling for the coordination contract; the supervisor rejects a reported `tokens_out` value above it, while provider-specific request-side truncation remains an adapter concern. An absent provider usage field is recorded as `0` but is not evidence that no tokens were consumed. The packet and envelope are hash-bound. The wire payload carries the result body once; envelope identity and artifact references are not duplicated. Dependency context exposes only the compact representation; raw child transcripts are not forwarded automatically.
 
-The scheduler uses direct dependency edges for data flow. It does not create a general-purpose broadcast bus or send progress chatter by default. A future progress stream can use the same envelope with a separately versioned kind after a measured need is demonstrated.
+The scheduler uses direct dependency edges for data flow. It does not create a general-purpose broadcast bus or send progress chatter by default. The desktop boundary now exposes an opt-in cursor projection of the same request/result envelopes; it is a polling observation surface, not an execution bus.
 
 For a desktop observer, the optional `AgentMessageJournal` retains only the
 already-bounded request/result envelopes in a local cursor window. It can
@@ -40,7 +40,13 @@ conversations through the existing `conversations.list` command, keeps the
 active transcript in the canonical conversation manager, and exposes the
 revision-bound project map as an opt-in view. The PI-Desktop-inspired shell is
 presentation only: it does not open the state database, start providers, or
-create a second session store.
+create a second session store. `subagents.start` starts a host-owned bounded
+worker and returns its run id; `subagents.events` reads redacted events after a
+cursor; `subagents.status` returns the terminal result or a safe error. The
+renderer polls these commands while a run is active, so a long model call does
+not block the command channel and a child prompt never crosses the renderer
+boundary. The existing synchronous `subagents.run` command remains for
+compatibility and deterministic callers.
 
 ## Isolation rules
 
@@ -96,7 +102,11 @@ binds an exact line range to the existing `SourceSnapshot`; `assess_code_reuse`
 compares caller-supplied generation/adaptation/verification estimates; and
 `materialize_exact` requires explicit license/ownership, fresh hashes, an
 in-root target, and no implicit overwrite. This is an estimated token-cost
-decision, not a claim that model training data can be copied verbatim.
+decision, not a claim that model training data can be copied verbatim. The
+desktop host exposes the same boundary as `code_reuse.assess` (read-only) and
+`code_reuse.materialize` (explicit write). Both commands rebuild the candidate
+from the current workspace snapshot; an old or forged candidate therefore
+cannot authorize a stale copy.
 
 The memory-nudge lane is also candidate-only. A normal structured model result
 may carry the reserved `_aegis_memory_proposals` field; the application strips
