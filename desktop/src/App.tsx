@@ -8,13 +8,19 @@ import {
   parseMemorySearchResult,
   parseModelList,
   parseSourceSnapshot,
+  parseSubagentEventPage,
   parseSubagentRunResult,
+  parseSubagentStartResult,
+  parseSubagentStatusResult,
   parseWorkspaceSnapshot,
   type Conversation,
   type ConversationSnapshot,
   type MemoryRecord,
   type SourceSnapshot,
+  type SubagentEvent,
   type SubagentRunResult,
+  type SubagentStartResult,
+  type SubagentStatusResult,
   type WorkspaceSnapshot,
 } from "./protocol";
 import WorkspaceGraphView from "./WorkspaceGraphView";
@@ -114,6 +120,9 @@ export default function App() {
   const [busy, setBusy] = useState(false);
   const [subagentBusy, setSubagentBusy] = useState(false);
   const [subagentResult, setSubagentResult] = useState<SubagentRunResult | null>(null);
+  const [subagentRunId, setSubagentRunId] = useState<string | null>(null);
+  const [subagentStatus, setSubagentStatus] = useState<SubagentStatusResult | null>(null);
+  const [subagentEvents, setSubagentEvents] = useState<SubagentEvent[]>([]);
   const [error, setError] = useState<string | null>(null);
   const searchRef = useRef<HTMLInputElement>(null);
   const bootstrapStarted = useRef(false);
@@ -123,6 +132,52 @@ export default function App() {
     bootstrapStarted.current = true;
     void bootstrap();
   }, []);
+
+  useEffect(() => {
+    const runId = subagentRunId;
+    if (!runId) return;
+    let stopped = false;
+    let cursor = 0;
+    let timer: number | undefined;
+
+    async function pollSubagent() {
+      try {
+        const page = await desktopRequest("subagents.events", {
+          run_id: runId,
+          cursor,
+          max_messages: 64,
+        }, parseSubagentEventPage);
+        if (stopped) return;
+        cursor = page.latest_cursor;
+        setSubagentEvents((current) => {
+          const merged = new Map<number, SubagentEvent>(page.resync_required ? [] : current.map((event) => [event.cursor, event]));
+          page.events.forEach((event) => merged.set(event.cursor, event));
+          return [...merged.values()].sort((left, right) => left.cursor - right.cursor).slice(-128);
+        });
+        const status = await desktopRequest("subagents.status", { run_id: runId }, parseSubagentStatusResult);
+        if (stopped) return;
+        setSubagentStatus(status);
+        if (status.result !== null || status.status !== "RUNNING") {
+          setSubagentResult(status.result);
+          setSubagentBusy(false);
+          setSubagentRunId(null);
+          return;
+        }
+        timer = window.setTimeout(() => void pollSubagent(), 250);
+      } catch (reason) {
+        if (stopped) return;
+        setError(reason instanceof Error ? reason.message : "The parallel run status could not be read");
+        setSubagentBusy(false);
+        setSubagentRunId(null);
+      }
+    }
+
+    void pollSubagent();
+    return () => {
+      stopped = true;
+      if (timer !== undefined) window.clearTimeout(timer);
+    };
+  }, [subagentRunId]);
 
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
@@ -210,6 +265,9 @@ export default function App() {
   async function selectConversation(id: string) {
     setActiveConversationId(id);
     setSubagentResult(null);
+    setSubagentRunId(null);
+    setSubagentStatus(null);
+    setSubagentEvents([]);
     await loadConversation(id);
   }
 
@@ -255,19 +313,34 @@ export default function App() {
     const task = message.trim() || "Inspect this workspace in parallel and summarize the relevant evidence.";
     if (subagentBusy || !activeConversationId || !runtimeReady || !connectionSaved) return;
     setSubagentBusy(true);
+    let started = false;
     try {
       setError(null);
-      const result = await desktopRequest("subagents.run", {
+      const result = await desktopRequest("subagents.start", {
         task,
         conversation_id: activeConversationId,
         max_concurrency: 4,
-      }, parseSubagentRunResult);
-      setSubagentResult(result);
+      }, parseSubagentStartResult);
+      setSubagentResult(null);
+      setSubagentStatus({
+        schema: "aegis-desktop-subagents-status-v1",
+        run_id: result.run_id,
+        status: result.status,
+        event_cursor: result.event_cursor,
+        started_at_ms: Date.now(),
+        finished_at_ms: null,
+        thread_alive: true,
+        result: null,
+        error: null,
+      });
+      setSubagentEvents([]);
+      setSubagentRunId(result.run_id);
       setMessage("");
+      started = true;
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "The parallel run failed");
     } finally {
-      setSubagentBusy(false);
+      if (!started) setSubagentBusy(false);
     }
   }
 
@@ -395,6 +468,29 @@ export default function App() {
       );
     }
 
+    function renderSubagentActivity() {
+      if (!subagentRunId && subagentEvents.length === 0) return null;
+      const status = subagentStatus?.status ?? "RUNNING";
+      return (
+        <article className="subagent-live" aria-label="Live subagent activity">
+          <div className="subagent-result-header">
+            <div><span className="eyebrow">LIVE WORKFLOW</span><strong>{status}</strong></div>
+            <span className="status-chip"><i /> {subagentEvents.length} events</span>
+          </div>
+          <div className="subagent-event-list">
+            {subagentEvents.slice(-8).map((event) => {
+              const payload = event.payload;
+              const summary = typeof payload.summary === "string" ? payload.summary : "worker admitted";
+              const detail = event.message_kind === "TASK_REQUEST"
+                ? `Worker ${event.task_id} started · ${String(payload.role ?? "task")}`
+                : `Worker ${event.task_id} · ${String(payload.status ?? "result")}`;
+              return <div className="subagent-event" key={event.cursor}><span className="activity-icon"><Icon name={event.message_kind === "TASK_RESULT" ? "check" : "activity"} size={12} /></span><div><strong>{detail}</strong><small>{summary.slice(0, 180)}</small></div></div>;
+            })}
+          </div>
+        </article>
+      );
+    }
+
     return (
       <section className="chat-view" aria-label="Conversation">
         <header className="conversation-topbar">
@@ -412,6 +508,7 @@ export default function App() {
         <div className="chat-scroll">
           <div className="chat-column">
             <div className="chat-intro"><div className="intro-mark"><Icon name="spark" size={17} /></div><div><strong>AEGIS is ready</strong><span>Local workspace · {mode === "mock" ? "safe preview mode" : "live provider mode"}</span></div></div>
+            {renderSubagentActivity()}
             {subagentResult && <article className="subagent-result" aria-label="Subagent run result"><div className="subagent-result-header"><div><span className="eyebrow">PARALLEL RUN</span><strong>{subagentResult.status}</strong></div><span className="status-chip"><i /> {subagentResult.child_results.length} workers</span></div><p>{subagentResult.root_output}</p><div className="subagent-workers">{subagentResult.child_results.map((worker) => <span className={`worker-chip ${worker.status.toLowerCase()}`} key={`${worker.task_id}-${worker.packet_hash}`}><i />Worker {worker.task_id} · {worker.status}</span>)}</div><small>Graph {shortPath(subagentResult.graph_hash, 18)} · {subagentResult.graph_authority}</small></article>}
             {conversation?.turns.length ? conversation.turns.map((turn) => (
               <article className={`message-row ${turn.role}`} key={turn.turn_id}>
