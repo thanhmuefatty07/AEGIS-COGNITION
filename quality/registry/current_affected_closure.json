@@ -2,7 +2,7 @@
   "affected_test_paths": [
     "core/rust/src/gt96.rs"
   ],
-  "artifact_hash": "85ff368da42c5004db9995e1990f3de81056ea56e5a0b4b9f7d7d9c074d17a04",
+  "artifact_hash": "f2a75d9dfa5ef523fd3c5c86a36e54bbc76ee406bf5ab952ce56d79af3533dcb",
   "changed_paths": [
     "core/rust/src/gt96.rs"
   ],
@@ -224,6 +224,7 @@
     "tests/test_conversations.py",
     "tests/test_cooperative_resource_benchmark.py",
     "tests/test_cross_platform_evidence_gate.py",
+    "tests/test_desktop_projection.py",
     "tests/test_desktop_protocol.py",
     "tests/test_document_consistency_gate.py",
     "tests/test_evidence_consistency_gate.py",
@@ -264,7 +265,7 @@
   "phase": "PHASE_3_DETERMINISTIC_AFFECTED_CLOSURE",
   "plan_widened": false,
   "provenance": {
-    "claim_graph_source_tree_sha256": "83727fbcc3ad8a63d92b68b22fdc1e8f2467f10efb5544474a32a1a19768574d",
+    "claim_graph_source_tree_sha256": "f1b222ed0a00355f56d185fe4c3de0fe08ffd249c2a4a1be85ac6aa52b051415",
     "claim_scope": "LOCAL_CHECKOUT_ONLY",
     "edge_digest": "2b47a62553191c763ba1542f9191284cc583f47c9ec205130a6d14530c64e65b",
     "environment": {
@@ -276,14 +277,14 @@
       "release": "11"
     },
     "evidence_class": "PLANNING_ONLY",
-    "inventory_source_tree_sha256": "a6730c64a853d9ef6b010ad2fcfc65ea73d8a4cebc4fa613695181e285ec816d",
+    "inventory_source_tree_sha256": "e6dd0d5ef8e0376e1d446c9791bed9c52fe5725c1dcf7b594d974387f9888688",
     "mapping_artifact_hash": "2babc1994e5a6de4f68d54246a0f0cc8f1ab11dc0387df47dc3c20fc9e299481",
     "origin_main_sha": "1454c8c1740b95d1198d01e8211b6e6abd6dc060",
     "promotion": "DISABLED_IN_SHADOW",
-    "source_sha": "2d16b1d61a827d8353a0433d34ca55e93e56e916",
+    "source_sha": "0827809af5c7757f032b90585e58babedf78c1d9",
     "validator": "scripts/aese_affected_closure.py"
   },
-  "reproducible_hash": "1a1432766e546996cfc30fac35818d8db72531d7326d724ca52c7a968c4ca5bf",
+  "reproducible_hash": "190211a392ee40e9a8591ada2716cb7fe3de1ca016511953d4142948c0c4722b",
   "schema": "aese-affected-closure-v1",
   "shadow_selection": {
     "authority": "RETAINED_LEGACY_AUTHORITY",
@@ -294,8 +295,8 @@
     ],
     "would_skip_item_ids": []
   },
-  "source_head": "2d16b1d61a827d8353a0433d34ca55e93e56e916",
-  "source_tree_sha256": "83727fbcc3ad8a63d92b68b22fdc1e8f2467f10efb5544474a32a1a19768574d",
+  "source_head": "0827809af5c7757f032b90585e58babedf78c1d9",
+  "source_tree_sha256": "f1b222ed0a00355f56d185fe4c3de0fe08ffd249c2a4a1be85ac6aa52b051415",
   "status": "AFFECTED_CLOSURE_PLAN_ONLY_SELECTION_DISABLED",
   "traversed_edges": [
     {
@@ -364,6 +365,7 @@
     "AESE-PYTHON_TEST-4E8715C7A425EE52",
     "AESE-PYTHON_TEST-4F2C5D21ACFB3D5F",
     "AESE-PYTHON_TEST-51A1BDDF0653E1AF",
+    "AESE-PYTHON_TEST-571353885FCC838D",
     "AESE-PYTHON_TEST-5C9DA82B63AD1F41",
     "AESE-PYTHON_TEST-5F6901392B59DE6A",
     "AESE-PYTHON_TEST-64CCBA10AA0FB215",
@@ -616,6 +618,7 @@
     "tests/test_conversations.py",
     "tests/test_cooperative_resource_benchmark.py",
     "tests/test_cross_platform_evidence_gate.py",
+    "tests/test_desktop_projection.py",
     "tests/test_desktop_protocol.py",
     "tests/test_document_consistency_gate.py",
     "tests/test_goal_contract.py",
