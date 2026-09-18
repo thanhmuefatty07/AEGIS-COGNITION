@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import threading
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from dataclasses import replace
@@ -14,6 +15,7 @@ from aegis_cognition.subagents import (
     AGENT_PLAN_SCHEMA_V1,
     AgentArtifactRef,
     AgentClaim,
+    AgentCancellationError,
     AgentCoordinationError,
     AgentMailbox,
     AgentMailboxWorker,
@@ -98,6 +100,43 @@ async def test_independent_children_overlap_and_root_is_called_after_all_childre
     assert result.root_output == [1, 2]
     assert result.status == "COMPLETED"
     assert result.coordination_hash
+
+
+async def test_host_cancellation_stops_children_before_root_synthesis() -> None:
+    started = asyncio.Event()
+    cancel_event = threading.Event()
+    journal = AgentMessageJournal(max_messages=8)
+    root_called = False
+
+    async def handler(_context: AgentTaskContext) -> str:
+        started.set()
+        await asyncio.sleep(30)
+        return "should not complete"
+
+    def root(_results: tuple[AgentResultPacket, ...]) -> str:
+        nonlocal root_called
+        root_called = True
+        return "should not synthesize"
+
+    supervisor = AgentSupervisor(
+        run_id="run-host-cancel",
+        cancel_event=cancel_event,
+        message_journal=journal,
+        require_native_authority=True,
+        graph_validator=_native_graph_validator,
+        runtime_guard_factory=_fake_runtime_guard,
+    )
+    running = asyncio.create_task(supervisor.run((_spec(1, handler),), root))
+    await asyncio.wait_for(started.wait(), timeout=1)
+    cancel_event.set()
+    with pytest.raises(AgentCancellationError):
+        await asyncio.wait_for(running, timeout=2)
+    assert root_called is False
+    page = journal.read_since(0, max_messages=8)
+    assert any(
+        entry.message.message_kind == "TASK_RESULT" and entry.message.payload.get("status") == "CANCELLED"
+        for entry in page.entries
+    )
 
 
 async def test_static_nested_parent_is_a_dependency_lifecycle_gate() -> None:

@@ -32,6 +32,7 @@ ALLOWED_COMMANDS = frozenset(
         "conversations.switch_model",
         "subagents.run",
         "subagents.start",
+        "subagents.cancel",
         "subagents.status",
         "subagents.events",
         "code_reuse.assess",

@@ -20,6 +20,7 @@ export type DesktopCommand =
   | "conversations.switch_model"
   | "subagents.run"
   | "subagents.start"
+  | "subagents.cancel"
   | "subagents.status"
   | "subagents.events"
   | "code_reuse.assess"
@@ -256,9 +257,18 @@ export type SubagentStatusResult = {
   event_cursor: number;
   started_at_ms: number;
   finished_at_ms: number | null;
+  cancel_requested_at_ms: number | null;
+  cancel_supported: boolean;
   thread_alive: boolean;
   result: SubagentRunResult | null;
   error: { code: string; message: string } | null;
+};
+
+export type SubagentCancelResult = {
+  schema: "aegis-desktop-subagents-cancel-v1";
+  run_id: string;
+  status: string;
+  event_cursor: number;
 };
 
 export type SubagentEvent = {
@@ -630,6 +640,8 @@ export function parseSubagentStatusResult(value: unknown): SubagentStatusResult 
     || typeof value.event_cursor !== "number"
     || typeof value.started_at_ms !== "number"
     || (value.finished_at_ms !== null && typeof value.finished_at_ms !== "number")
+    || (value.cancel_requested_at_ms !== null && typeof value.cancel_requested_at_ms !== "number")
+    || typeof value.cancel_supported !== "boolean"
     || typeof value.thread_alive !== "boolean"
     || (value.result !== null && !isRecord(value.result))
     || (value.error !== null && (!isRecord(value.error)
@@ -644,6 +656,8 @@ export function parseSubagentStatusResult(value: unknown): SubagentStatusResult 
     event_cursor: value.event_cursor,
     started_at_ms: value.started_at_ms,
     finished_at_ms: value.finished_at_ms as number | null,
+    cancel_requested_at_ms: value.cancel_requested_at_ms as number | null,
+    cancel_supported: value.cancel_supported,
     thread_alive: value.thread_alive,
     result: value.result === null ? null : parseSubagentRunResult(value.result),
     error: value.error === null ? null : {
@@ -651,6 +665,17 @@ export function parseSubagentStatusResult(value: unknown): SubagentStatusResult 
       message: value.error.message as string,
     },
   };
+}
+
+export function parseSubagentCancelResult(value: unknown): SubagentCancelResult {
+  if (!isRecord(value)
+    || value.schema !== "aegis-desktop-subagents-cancel-v1"
+    || typeof value.run_id !== "string"
+    || typeof value.status !== "string"
+    || typeof value.event_cursor !== "number") {
+    throw new Error("Desktop service returned an invalid subagent cancellation result");
+  }
+  return value as unknown as SubagentCancelResult;
 }
 
 export function parseSubagentEventPage(value: unknown): SubagentEventPage {

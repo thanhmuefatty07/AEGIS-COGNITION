@@ -38,7 +38,7 @@ from .runtime import (
     native_runtime_available,
     normalize_runtime_trust_level,
 )
-from .subagents import AgentMessage, AgentMessageJournal
+from .subagents import AgentCancellationError, AgentMessage, AgentMessageJournal
 from .verification import VerificationFacade, VerificationSessionError
 
 try:
@@ -121,6 +121,9 @@ class _SubagentRunState:
     result_payload: dict[str, Any] | None = None
     error_code: str | None = None
     error_message: str | None = None
+    cancel_event: threading.Event = field(default_factory=threading.Event, repr=False)
+    cancel_requested_at_ms: int | None = None
+    cancel_supported: bool = False
     started_at_ms: int = field(default_factory=lambda: int(time.time() * 1000))
     finished_at_ms: int | None = None
     thread: threading.Thread | None = field(default=None, repr=False)
@@ -301,6 +304,7 @@ class DesktopService:
             "conversations.switch_model": self._switch_model,
             "subagents.run": self._run_subagents,
             "subagents.start": self._start_subagents,
+            "subagents.cancel": self._cancel_subagents,
             "subagents.status": self._subagent_status,
             "subagents.events": self._read_subagent_events,
             "code_reuse.assess": self._assess_code_reuse,
@@ -851,14 +855,24 @@ class DesktopService:
             "max_concurrency": max_concurrency,
         }
         try:
-            parameters = cast(Mapping[str, inspect.Parameter], inspect.signature(runner).parameters)
+            parameters = dict(cast(Mapping[str, inspect.Parameter], inspect.signature(runner).parameters))
         except TypeError, ValueError:
             parameters = {}
         if "message_journal" in parameters:
             runner_kwargs["message_journal"] = event_journal
         application_run_id = str(getattr(getattr(application, "correlation", None), "run_id", "")).strip()
         run_id = application_run_id or f"desktop-{uuid.uuid4().hex}"
-        state = _SubagentRunState(run_id=run_id, journal=event_journal)
+        accepts_keyword_arguments = any(
+            parameter.kind is inspect.Parameter.VAR_KEYWORD for parameter in parameters.values()
+        )
+        cancel_supported = "cancel_event" in parameters or accepts_keyword_arguments
+        state = _SubagentRunState(
+            run_id=run_id,
+            journal=event_journal,
+            cancel_supported=cancel_supported,
+        )
+        if cancel_supported:
+            runner_kwargs["cancel_event"] = state.cancel_event
         try:
             self._remember_subagent_run(state)
         except DesktopServiceError:
@@ -874,6 +888,15 @@ class DesktopService:
         def execute_and_finalize() -> Mapping[str, Any]:
             try:
                 result = runner(**runner_kwargs)
+            except AgentCancellationError as error:
+                self._finish_subagent_execution(
+                    conversation_manager,
+                    conversation_id,
+                    owner_id,
+                    execution,
+                    status="CANCELLED",
+                )
+                raise DesktopServiceError("SUBAGENT_CANCELLED", "subagent run was cancelled") from error
             except DesktopServiceError:
                 self._finish_subagent_execution(
                     conversation_manager,
@@ -1029,7 +1052,7 @@ class DesktopService:
                 state.error_code = None
                 state.error_message = None
             elif error is not None:
-                state.status = "FAILED"
+                state.status = "CANCELLED" if error.code == "SUBAGENT_CANCELLED" else "FAILED"
                 state.error_code = error.code
                 state.error_message = str(error)
             state.finished_at_ms = int(time.time() * 1000)
@@ -1049,11 +1072,42 @@ class DesktopService:
                 "event_cursor": state.journal.latest_cursor,
                 "started_at_ms": state.started_at_ms,
                 "finished_at_ms": state.finished_at_ms,
+                "cancel_requested_at_ms": state.cancel_requested_at_ms,
+                "cancel_supported": state.cancel_supported,
                 "thread_alive": bool(state.thread is not None and state.thread.is_alive()),
                 "result": result,
                 "error": (
                     {"code": state.error_code, "message": state.error_message} if state.error_code is not None else None
                 ),
+            }
+
+    def _cancel_subagents(self, payload: dict[str, Any]) -> Mapping[str, Any]:
+        run_id = _require_text(payload, "run_id", max_length=128)
+        with self._subagent_event_lock:
+            state = self._subagent_runs.get(run_id)
+        if state is None:
+            raise DesktopServiceError("SUBAGENT_RUN_NOT_FOUND", "subagent run is unavailable")
+        with state.lock:
+            if state.status not in {"RUNNING", "CANCELLING"}:
+                return {
+                    "schema": "aegis-desktop-subagents-cancel-v1",
+                    "run_id": state.run_id,
+                    "status": state.status,
+                    "event_cursor": state.journal.latest_cursor,
+                }
+            if not state.cancel_supported:
+                raise DesktopServiceError(
+                    "SUBAGENT_CANCEL_UNSUPPORTED",
+                    "the active subagent runner does not expose cooperative cancellation",
+                )
+            state.cancel_event.set()
+            state.status = "CANCELLING"
+            state.cancel_requested_at_ms = int(time.time() * 1000)
+            return {
+                "schema": "aegis-desktop-subagents-cancel-v1",
+                "run_id": state.run_id,
+                "status": state.status,
+                "event_cursor": state.journal.latest_cursor,
             }
 
     def _reuse_snapshot(self) -> SourceSnapshot:

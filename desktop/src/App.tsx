@@ -8,6 +8,7 @@ import {
   parseMemorySearchResult,
   parseModelList,
   parseSourceSnapshot,
+  parseSubagentCancelResult,
   parseSubagentEventPage,
   parseSubagentRunResult,
   parseSubagentStartResult,
@@ -17,6 +18,7 @@ import {
   type ConversationSnapshot,
   type MemoryRecord,
   type SourceSnapshot,
+  type SubagentCancelResult,
   type SubagentEvent,
   type SubagentRunResult,
   type SubagentStartResult,
@@ -329,6 +331,8 @@ export default function App() {
         event_cursor: result.event_cursor,
         started_at_ms: Date.now(),
         finished_at_ms: null,
+        cancel_requested_at_ms: null,
+        cancel_supported: true,
         thread_alive: true,
         result: null,
         error: null,
@@ -341,6 +345,20 @@ export default function App() {
       setError(reason instanceof Error ? reason.message : "The parallel run failed");
     } finally {
       if (!started) setSubagentBusy(false);
+    }
+  }
+
+  async function cancelSubagents() {
+    if (!subagentRunId) return;
+    try {
+      const result = await desktopRequest<SubagentCancelResult>(
+        "subagents.cancel",
+        { run_id: subagentRunId },
+        parseSubagentCancelResult,
+      );
+      setSubagentStatus((current) => current ? { ...current, status: result.status, event_cursor: result.event_cursor } : current);
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : "The parallel run could not be cancelled");
     }
   }
 
@@ -475,7 +493,7 @@ export default function App() {
         <article className="subagent-live" aria-label="Live subagent activity">
           <div className="subagent-result-header">
             <div><span className="eyebrow">LIVE WORKFLOW</span><strong>{status}</strong></div>
-            <span className="status-chip"><i /> {subagentEvents.length} events</span>
+            <div className="subagent-live-actions"><span className="status-chip"><i /> {subagentEvents.length} events</span>{status === "RUNNING" && <button className="subagent-cancel" type="button" onClick={() => void cancelSubagents()}>Stop</button>}</div>
           </div>
           <div className="subagent-event-list">
             {subagentEvents.slice(-8).map((event) => {

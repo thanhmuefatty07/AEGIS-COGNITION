@@ -33,8 +33,10 @@ The desktop shell exposes the same runtime through versioned commands. The
 legacy `subagents.run` command waits for the root synthesis. The interactive
 path uses `subagents.start`, then reads redacted request/result envelopes with
 `subagents.events` and polls `subagents.status` for the terminal root result.
-The renderer cannot provide executable handlers or create a second state store;
-native graph validation and host resource policy remain authoritative.
+`subagents.cancel` requests cooperative cancellation for a live host-owned run;
+it does not force-kill threads. The renderer cannot provide executable handlers
+or create a second state store; native graph validation, host resource policy,
+and cancellation propagation remain authoritative.
 
 The desktop host's code-reuse lane is similarly explicit: `code_reuse.assess`
 compares the estimated generation, adaptation and verification cost, while

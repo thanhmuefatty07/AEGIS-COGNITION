@@ -18,7 +18,7 @@ import time
 import uuid
 from collections import deque
 from collections.abc import AsyncGenerator, Awaitable, Callable, Iterable, Mapping
-from contextlib import AbstractAsyncContextManager, asynccontextmanager
+from contextlib import AbstractAsyncContextManager, asynccontextmanager, suppress
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, cast
@@ -58,6 +58,10 @@ _EXCLUSIVE_LOCK_REGISTRY_GUARD = threading.Lock()
 
 class AgentCoordinationError(RuntimeError):
     """Raised when a subagent graph or protocol boundary cannot be trusted."""
+
+
+class AgentCancellationError(AgentCoordinationError):
+    """Raised when a host-owned subagent run is cooperatively cancelled."""
 
 
 def _non_empty(value: object, name: str, *, limit: int = _MAX_STRING_CHARS) -> str:
@@ -2077,6 +2081,7 @@ class AgentSupervisor[RootOutputT]:
         message_sink: MessageSink | None = None,
         message_journal: AgentMessageJournal | None = None,
         message_mailbox: AgentMailbox | None = None,
+        cancel_event: threading.Event | None = None,
         dynamic_plan_binder: DynamicPlanBinder | None = None,
         max_dynamic_tasks: int = 128,
         max_total_tasks: int = _MAX_GRAPH_TASKS,
@@ -2097,6 +2102,8 @@ class AgentSupervisor[RootOutputT]:
             raise AgentCoordinationError("message_journal must be an AgentMessageJournal")
         if message_mailbox is not None and type(message_mailbox) is not AgentMailbox:
             raise AgentCoordinationError("message_mailbox must be an AgentMailbox")
+        if cancel_event is not None and type(cancel_event) is not type(threading.Event()):
+            raise AgentCoordinationError("cancel_event must be a threading.Event")
         if dynamic_plan_binder is not None and not callable(dynamic_plan_binder):
             raise AgentCoordinationError("dynamic_plan_binder must be callable")
         if type(max_dynamic_tasks) is not int or not 1 <= max_dynamic_tasks <= _MAX_GRAPH_TASKS:
@@ -2105,10 +2112,28 @@ class AgentSupervisor[RootOutputT]:
             raise AgentCoordinationError("max_total_tasks must be within [1, 256]")
         self._message_journal = message_journal
         self._message_mailbox = message_mailbox
+        self._cancel_event = cancel_event
         self._dynamic_plan_binder = dynamic_plan_binder
         self._max_dynamic_tasks = max_dynamic_tasks
         self._max_total_tasks = max_total_tasks
         self._started = False
+
+    def _cancel_requested(self) -> bool:
+        return self._cancel_event is not None and self._cancel_event.is_set()
+
+    def _cancelled_result(self, spec: AgentTaskSpec) -> AgentResultPacket:
+        result = AgentResultPacket(
+            run_id=self.run_id,
+            task_id=spec.task_id,
+            parent_task_id=spec.parent_task_id,
+            attempt_id=spec.attempt_id,
+            status="CANCELLED",
+            summary="child was cancelled by the host before completion",
+            uncertainty=("result is not verified",),
+            blockers=("host cancellation requested",),
+            error_code="CANCELLED",
+        )
+        return result
 
     async def _emit(self, message: AgentMessage) -> None:
         if self._message_journal is not None:
@@ -2230,7 +2255,27 @@ class AgentSupervisor[RootOutputT]:
                 return tuple(spec.task_id for spec in bound)
 
         async def execute(spec: AgentTaskSpec) -> AgentResultPacket:
-            dependencies = tuple(await asyncio.gather(*(task_futures[dependency] for dependency in spec.dependencies)))
+            if self._cancel_requested():
+                result = self._cancelled_result(spec)
+                result.validate()
+                await self._emit(result.to_message(recipient_id="root"))
+                return result
+            try:
+                dependencies = tuple(
+                    await asyncio.gather(*(task_futures[dependency] for dependency in spec.dependencies))
+                )
+            except asyncio.CancelledError:
+                if not self._cancel_requested():
+                    raise
+                result = self._cancelled_result(spec)
+                result.validate()
+                await self._emit(result.to_message(recipient_id="root"))
+                return result
+            if self._cancel_requested():
+                result = self._cancelled_result(spec)
+                result.validate()
+                await self._emit(result.to_message(recipient_id="root"))
+                return result
             request = spec.request_message(run_id=self.run_id, now_ms=max(1, int(time.time() * 1000)))
             await self._emit(request)
             failed_dependencies = tuple(result.task_id for result in dependencies if result.status != "SUCCEEDED")
@@ -2291,7 +2336,9 @@ class AgentSupervisor[RootOutputT]:
                     error_code="TIMEOUT",
                 )
             except asyncio.CancelledError:
-                raise
+                if not self._cancel_requested():
+                    raise
+                result = self._cancelled_result(spec)
             except Exception as error:
                 result = AgentResultPacket(
                     run_id=self.run_id,
@@ -2324,13 +2371,44 @@ class AgentSupervisor[RootOutputT]:
             await self._emit(result.to_message(recipient_id="root"))
             return result
 
-        try:
+        async def run_children() -> None:
+            nonlocal task_group
             async with asyncio.TaskGroup() as group:
                 task_group = group
                 for spec in spec_list:
                     task_futures[spec.task_id] = group.create_task(execute(spec), name=f"aegis-subagent-{spec.task_id}")
-        except asyncio.CancelledError:
-            raise
+
+        if self._cancel_requested():
+            raise AgentCancellationError("subagent run was cancelled before scheduling")
+        if self._cancel_event is None:
+            await run_children()
+        else:
+            group_task = asyncio.create_task(run_children(), name="aegis-subagent-group")
+
+            async def wait_for_cancellation() -> None:
+                cancel_event = self._cancel_event
+                assert cancel_event is not None
+                while not cancel_event.is_set():
+                    await asyncio.to_thread(cancel_event.wait, 0.05)
+
+            cancel_task = asyncio.create_task(wait_for_cancellation(), name="aegis-subagent-cancel-watch")
+            try:
+                done, _pending = await asyncio.wait(
+                    (group_task, cancel_task),
+                    return_when=asyncio.FIRST_COMPLETED,
+                )
+                if cancel_task in done and not group_task.done():
+                    group_task.cancel()
+                    with suppress(asyncio.CancelledError):
+                        await group_task
+                    raise AgentCancellationError("subagent run was cancelled by the host")
+                await group_task
+            finally:
+                cancel_task.cancel()
+                with suppress(asyncio.CancelledError):
+                    await cancel_task
+        if self._cancel_requested():
+            raise AgentCancellationError("subagent run was cancelled by the host")
         child_results = tuple(task_futures[task_id].result() for task_id in sorted(task_futures))
         root_output = cast(
             RootOutputT,
@@ -2369,6 +2447,7 @@ __all__ = [
     "AGENT_PLAN_SCHEMA_V1",
     "AGENT_RESULT_SCHEMA_V1",
     "AgentArtifactRef",
+    "AgentCancellationError",
     "AgentClaim",
     "AgentCoordinationError",
     "AgentHandler",
