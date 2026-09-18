@@ -19,6 +19,7 @@ export type DesktopCommand =
   | "conversations.send"
   | "conversations.switch_model"
   | "subagents.run"
+  | "subagents.events"
   | "memory.search"
   | "memory.inspect"
   | "memory.capture"
@@ -234,6 +235,30 @@ export type SubagentRunResult = {
   failed_task_ids: number[];
   blocked_task_ids: number[];
   coordination_hash: string;
+  event_cursor?: number;
+};
+
+export type SubagentEvent = {
+  cursor: number;
+  message_kind: string;
+  run_id: string;
+  sender_id: string;
+  recipient_id: string;
+  task_id: number;
+  parent_task_id: number | null;
+  attempt_id: number;
+  message_hash: string;
+  artifact_refs: Array<Record<string, unknown>>;
+  payload: Record<string, unknown>;
+};
+
+export type SubagentEventPage = {
+  schema: "aegis-desktop-subagent-events-v1";
+  run_id: string;
+  latest_cursor: number;
+  oldest_cursor: number;
+  resync_required: boolean;
+  events: SubagentEvent[];
 };
 
 export type MemoryRecord = {
@@ -559,6 +584,42 @@ export function parseSubagentRunResult(value: unknown): SubagentRunResult {
     failed_task_ids: value.failed_task_ids as number[],
     blocked_task_ids: value.blocked_task_ids as number[],
     coordination_hash: value.coordination_hash,
+    ...(typeof value.event_cursor === "number" ? { event_cursor: value.event_cursor } : {}),
+  };
+}
+
+export function parseSubagentEventPage(value: unknown): SubagentEventPage {
+  if (!isRecord(value)
+    || value.schema !== "aegis-desktop-subagent-events-v1"
+    || typeof value.run_id !== "string"
+    || typeof value.latest_cursor !== "number"
+    || typeof value.oldest_cursor !== "number"
+    || typeof value.resync_required !== "boolean"
+    || !Array.isArray(value.events)) {
+    throw new Error("Desktop service returned an invalid subagent event page");
+  }
+  if (!value.events.every((event) => isRecord(event)
+    && typeof event.cursor === "number"
+    && typeof event.message_kind === "string"
+    && typeof event.run_id === "string"
+    && typeof event.sender_id === "string"
+    && typeof event.recipient_id === "string"
+    && typeof event.task_id === "number"
+    && (event.parent_task_id === null || typeof event.parent_task_id === "number")
+    && typeof event.attempt_id === "number"
+    && typeof event.message_hash === "string"
+    && Array.isArray(event.artifact_refs)
+    && event.artifact_refs.every(isRecord)
+    && isRecord(event.payload))) {
+    throw new Error("Desktop service returned an invalid subagent event");
+  }
+  return {
+    schema: "aegis-desktop-subagent-events-v1",
+    run_id: value.run_id,
+    latest_cursor: value.latest_cursor,
+    oldest_cursor: value.oldest_cursor,
+    resync_required: value.resync_required,
+    events: value.events as unknown as SubagentEvent[],
   };
 }
 

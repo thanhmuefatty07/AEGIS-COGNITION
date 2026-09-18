@@ -9,11 +9,14 @@ from __future__ import annotations
 
 import argparse
 import hashlib
+import inspect
 import json
 import os
 import re
 import sys
+import threading
 import uuid
+from collections import OrderedDict
 from collections.abc import Callable, Iterator, Mapping
 from dataclasses import asdict, is_dataclass
 from pathlib import Path
@@ -28,6 +31,7 @@ from .runtime import (
     native_runtime_available,
     normalize_runtime_trust_level,
 )
+from .subagents import AgentMessage, AgentMessageJournal
 from .verification import VerificationFacade, VerificationSessionError
 
 try:
@@ -94,6 +98,8 @@ MAX_SUBAGENT_TASK_CHARS = 64 * 1024
 MAX_SUBAGENT_RESULT_CHARS = 16 * 1024
 MAX_SUBAGENT_TASKS = 64
 MAX_SUBAGENT_CONCURRENCY = 32
+MAX_SUBAGENT_EVENT_RUNS = 32
+MAX_SUBAGENT_EVENT_MESSAGES = 256
 
 
 class DesktopServiceError(DesktopProtocolError):
@@ -246,6 +252,8 @@ class DesktopService:
         self._source_snapshot: SourceSnapshot | None = None
         self._source_watcher: NativeSnapshotWatcher | None = None
         self._stop_requested = False
+        self._subagent_event_journals: OrderedDict[str, AgentMessageJournal] = OrderedDict()
+        self._subagent_event_lock = threading.RLock()
         self._verification_facade = VerificationFacade()
         self._router = DesktopCommandRouter(self._handlers())
 
@@ -266,6 +274,7 @@ class DesktopService:
             "conversations.send": self._send_message,
             "conversations.switch_model": self._switch_model,
             "subagents.run": self._run_subagents,
+            "subagents.events": self._read_subagent_events,
             "memory.search": self._search_memories,
             "memory.inspect": self._inspect_memory,
             "memory.capture": self._capture_memory,
@@ -800,12 +809,20 @@ class DesktopService:
                 model_id=model_id,
                 expected_revision=assistant_turn.revision,
             )
+        event_journal = AgentMessageJournal(max_messages=MAX_SUBAGENT_EVENT_MESSAGES)
+        runner_kwargs: dict[str, object] = {
+            "plan": (cast(Mapping[str, object], raw_plan) if raw_plan is not None else None),
+            "require_native_authority": require_native,
+            "max_concurrency": max_concurrency,
+        }
         try:
-            result = runner(
-                plan=(cast(Mapping[str, object], raw_plan) if raw_plan is not None else None),
-                require_native_authority=require_native,
-                max_concurrency=max_concurrency,
-            )
+            parameters = cast(Mapping[str, inspect.Parameter], inspect.signature(runner).parameters)
+        except TypeError, ValueError:
+            parameters = {}
+        if "message_journal" in parameters:
+            runner_kwargs["message_journal"] = event_journal
+        try:
+            result = runner(**runner_kwargs)
         except DesktopServiceError:
             self._finish_subagent_execution(
                 conversation_manager,
@@ -844,6 +861,13 @@ class DesktopService:
                 status="FAILED",
             )
             raise DesktopServiceError("SUBAGENT_ERROR", "subagent result could not be projected") from error
+        run_id = str(getattr(result, "run_id", "")).strip()
+        if run_id:
+            self._remember_subagent_event_journal(run_id, event_journal)
+            result_payload = {
+                **result_payload,
+                "event_cursor": event_journal.latest_cursor,
+            }
         if (
             conversation_manager is not None
             and conversation_id is not None
@@ -882,6 +906,79 @@ class DesktopService:
                 "conversation_revision": int(getattr(finished, "revision", output_turn.revision)),
             }
         return result_payload
+
+    def _remember_subagent_event_journal(self, run_id: str, journal: AgentMessageJournal) -> None:
+        if not run_id or type(journal) is not AgentMessageJournal:
+            return
+        with self._subagent_event_lock:
+            self._subagent_event_journals[run_id] = journal
+            self._subagent_event_journals.move_to_end(run_id)
+            while len(self._subagent_event_journals) > MAX_SUBAGENT_EVENT_RUNS:
+                self._subagent_event_journals.popitem(last=False)
+
+    def _read_subagent_events(self, payload: dict[str, Any]) -> Mapping[str, Any]:
+        run_id = _require_text(payload, "run_id", max_length=128)
+        cursor = _require_revision(payload, "cursor") if payload.get("cursor") is not None else 0
+        raw_limit = payload.get("max_messages", 64)
+        if type(raw_limit) is not int or not 1 <= raw_limit <= MAX_SUBAGENT_EVENT_MESSAGES:
+            raise DesktopServiceError(
+                "INVALID_ARGUMENT",
+                f"max_messages must be an integer between 1 and {MAX_SUBAGENT_EVENT_MESSAGES}",
+            )
+        with self._subagent_event_lock:
+            journal = self._subagent_event_journals.get(run_id)
+        if journal is None:
+            raise DesktopServiceError("SUBAGENT_RUN_NOT_FOUND", "subagent event history is unavailable")
+        read = journal.read_since(cursor, max_messages=raw_limit)
+        return {
+            "schema": "aegis-desktop-subagent-events-v1",
+            "run_id": run_id,
+            "latest_cursor": read.latest_cursor,
+            "oldest_cursor": read.oldest_cursor,
+            "resync_required": read.resync_required,
+            "events": [self._subagent_event_projection(entry.cursor, entry.message) for entry in read.entries],
+        }
+
+    @staticmethod
+    def _subagent_event_projection(cursor: int, message: AgentMessage) -> Mapping[str, Any]:
+        """Expose event metadata without forwarding child prompts or raw payloads."""
+
+        def list_value(key: str) -> list[object]:
+            value = message.payload.get(key, [])
+            return list(cast(list[object], value)) if isinstance(value, list) else []
+
+        payload: dict[str, Any] = {}
+        if message.message_kind == "TASK_REQUEST":
+            payload = {
+                "role": str(message.payload.get("role", "")),
+                "dependency_ids": list_value("dependency_ids"),
+                "capabilities": list_value("capabilities"),
+                "side_effect_class": str(message.payload.get("side_effect_class", "")),
+                "redacted": True,
+            }
+        elif message.message_kind == "TASK_RESULT":
+            summary = str(message.payload.get("summary", ""))
+            truncated = len(summary) > 512
+            payload = {
+                "status": str(message.payload.get("status", "")),
+                "summary": summary[:512],
+                "summary_truncated": truncated,
+                "uncertainty": list_value("uncertainty"),
+                "blockers": list_value("blockers"),
+            }
+        return {
+            "cursor": cursor,
+            "message_kind": message.message_kind,
+            "run_id": message.run_id,
+            "sender_id": message.sender_id,
+            "recipient_id": message.recipient_id,
+            "task_id": message.task_id,
+            "parent_task_id": message.parent_task_id,
+            "attempt_id": message.attempt_id,
+            "message_hash": message.message_hash,
+            "artifact_refs": [artifact.compact_dict() for artifact in message.artifact_refs],
+            "payload": payload,
+        }
 
     @staticmethod
     def _finish_subagent_execution(
