@@ -12,6 +12,7 @@ import pytest
 from aegis_cognition.desktop_service import DesktopService, _select_source_paths_for_prompt
 from aegis_cognition.subagents import (
     AGENT_MESSAGE_SCHEMA_V1,
+    AgentCancellationError,
     AgentMessage,
     AgentMessageJournal,
     AgentResultPacket,
@@ -261,6 +262,19 @@ class _BlockingSubagentApplication:
         )
 
 
+class _CancellableSubagentApplication:
+    started = Event()
+
+    def __init__(self, _config) -> None:
+        self.correlation = SimpleNamespace(run_id="cancellable-subagent-run")
+
+    def run_subagents(self, *, message_journal, cancel_event, **kwargs):
+        del message_journal, kwargs
+        self.started.set()
+        assert cancel_event.wait(2)
+        raise AgentCancellationError("test cancellation")
+
+
 def _request(command: str, payload: dict | None = None) -> bytes:
     return json.dumps(
         {
@@ -456,6 +470,43 @@ def test_desktop_service_starts_background_subagents_and_polls_cursored_state(tm
         time.sleep(0.01)
     assert terminal["result"]["status"] == "COMPLETED"
     assert terminal["result"]["result"]["root_output"] == "background root synthesis"
+
+
+def test_desktop_service_cancels_background_subagents_cooperatively(tmp_path: Path, monkeypatch):
+    monkeypatch.delenv("AEGIS_SESSION_DB_PATH", raising=False)
+    monkeypatch.delenv("AEGIS_PROFILE_ID", raising=False)
+    _CancellableSubagentApplication.started.clear()
+    service = DesktopService(
+        profile_root=tmp_path / "profile",
+        connection_catalog_factory=_FakeConnectionCatalog,
+        client_factory=lambda *_args, **_kwargs: _FakeSubagentClient(),
+        subagent_application_factory=_CancellableSubagentApplication,
+    )
+    assert json.loads(service.dispatch(_request("workspace.open")))["status"] == "ok"
+    start = json.loads(
+        service.dispatch(
+            _request(
+                "subagents.start",
+                {"task": "inspect the workspace", "connection_id": "local", "model_id": "local-model"},
+            )
+        )
+    )["result"]
+    assert _CancellableSubagentApplication.started.wait(1)
+
+    cancelled = json.loads(service.dispatch(_request("subagents.cancel", {"run_id": start["run_id"]})))
+    assert cancelled["status"] == "ok"
+    assert cancelled["result"]["status"] == "CANCELLING"
+
+    deadline = time.monotonic() + 2
+    terminal = cancelled
+    while time.monotonic() < deadline:
+        terminal = json.loads(service.dispatch(_request("subagents.status", {"run_id": start["run_id"]})))
+        if terminal["result"]["status"] == "CANCELLED":
+            break
+        time.sleep(0.01)
+    assert terminal["result"]["status"] == "CANCELLED"
+    assert terminal["result"]["error"]["code"] == "SUBAGENT_CANCELLED"
+    assert terminal["result"]["cancel_requested_at_ms"] is not None
 
 
 def test_desktop_service_exposes_hash_bound_code_reuse_workflow(tmp_path: Path, monkeypatch):

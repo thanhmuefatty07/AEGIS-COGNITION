@@ -23,11 +23,14 @@ The `subagents.run` command is the synchronous desktop projection of the
 canonical local subagent runtime. For the interactive shell, `subagents.start`
 returns a host-owned run id immediately; the renderer then polls
 `subagents.events` with a cursor and `subagents.status` until the terminal
-result arrives. Handler binding, native graph validation, resource limits, and
-result packet hashing remain in `AgentApplication`. The renderer receives a
-compact worker/result projection, not executable callbacks or an additional
-state store. Browser capture is still host-injected and public research does
-not use user cookies or login sessions.
+result arrives. `subagents.cancel` requests cooperative cancellation through
+the same host-owned run state; it never kills a Python thread or discards
+conversation state. Handler binding, native graph validation, resource limits,
+result packet hashing, and cancellation propagation remain in
+`AgentApplication`. The renderer receives a compact worker/result projection,
+not executable callbacks or an additional state store. Browser capture is
+still host-injected and public research does not use user cookies or login
+sessions.
 
 The desktop host also exposes `code_reuse.assess` and
 `code_reuse.materialize`. They only reuse exact bytes from a current local

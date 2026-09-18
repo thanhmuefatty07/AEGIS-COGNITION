@@ -7,6 +7,7 @@ import inspect
 import json
 import math
 import re
+import threading
 import time
 import uuid
 from dataclasses import asdict
@@ -671,6 +672,7 @@ class AgentApplication:
         message_sink: Callable[[AgentMessage], object | Awaitable[object]] | None = None,
         message_journal: AgentMessageJournal | None = None,
         message_mailbox: AgentMailbox | None = None,
+        cancel_event: threading.Event | None = None,
         require_native_authority: bool | None = None,
         max_concurrency: int | None = None,
     ) -> AgentSupervisorResult[object]:
@@ -827,6 +829,7 @@ class AgentApplication:
                 message_sink=message_sink,
                 message_journal=message_journal,
                 message_mailbox=message_mailbox,
+                cancel_event=cancel_event,
                 dynamic_plan_binder=bind_dynamic_plan if raw_allow_dynamic else None,
                 max_dynamic_tasks=cast(
                     int,
@@ -858,6 +861,7 @@ class AgentApplication:
         message_sink: Callable[[AgentMessage], object | Awaitable[object]] | None = None,
         message_journal: AgentMessageJournal | None = None,
         message_mailbox: AgentMailbox | None = None,
+        cancel_event: threading.Event | None = None,
         require_native_authority: bool | None = None,
         max_concurrency: int | None = None,
     ) -> AgentSupervisorResult[object]:
@@ -874,6 +878,7 @@ class AgentApplication:
                     message_sink=message_sink,
                     message_journal=message_journal,
                     message_mailbox=message_mailbox,
+                    cancel_event=cancel_event,
                     require_native_authority=require_native_authority,
                     max_concurrency=max_concurrency,
                 )
