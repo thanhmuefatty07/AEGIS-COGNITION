@@ -34,6 +34,7 @@ import { buildWorkspaceGraph, type WorkspaceGraph } from "./workspace_graph";
 
 type Destination = "chat" | "settings" | "extensions";
 type WorkTab = "files" | "map" | "activity" | "context";
+type Theme = "dark" | "light";
 const defaultEndpoint = "http://127.0.0.1:8080/v1";
 
 function shortPath(value: string | null | undefined, length = 32) {
@@ -126,6 +127,10 @@ export default function App() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [fileFilter, setFileFilter] = useState("");
   const [settingsSection, setSettingsSection] = useState("General");
+  const [theme, setTheme] = useState<Theme>(() => {
+    const stored = typeof window === "undefined" ? null : window.localStorage.getItem("aegis-theme");
+    return stored === "light" ? "light" : "dark";
+  });
   const [selectedSkill, setSelectedSkill] = useState<string | null>(null);
   const [selectedFile, setSelectedFile] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -144,6 +149,11 @@ export default function App() {
     bootstrapStarted.current = true;
     void bootstrap();
   }, []);
+
+  useEffect(() => {
+    document.documentElement.dataset.theme = theme;
+    window.localStorage.setItem("aegis-theme", theme);
+  }, [theme]);
 
   useEffect(() => {
     const runId = subagentRunId;
@@ -543,6 +553,7 @@ export default function App() {
           <div className="topbar-actions">
             <span className="revision-label">r{conversation?.conversation.revision ?? "—"}</span>
             <button className={`topbar-text-action ${workPanelOpen ? "active" : ""}`} type="button" onClick={() => { setWorkPanelOpen(true); setWorkTab("files"); }} aria-label="Open project files">Open</button>
+            <button className="topbar-text-action" type="button" onClick={() => setTheme(theme === "dark" ? "light" : "dark")} aria-label={theme === "dark" ? "Switch to light theme" : "Switch to dark theme"}>{theme === "dark" ? "Light" : "Dark"}</button>
             <button className="topbar-icon" type="button" onClick={() => setWorkPanelOpen((current) => !current)} aria-label="Toggle work panel" aria-expanded={workPanelOpen}><Icon name="panel" size={16} /></button>
             <button className="topbar-icon" type="button" onClick={() => openDestination("settings")} aria-label="Open settings"><Icon name="more" size={16} /></button>
           </div>
