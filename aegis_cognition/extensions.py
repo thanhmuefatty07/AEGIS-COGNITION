@@ -505,7 +505,12 @@ class McpStdioConfig:
             (self.startup_timeout_seconds, "MCP startup timeout"),
             (self.request_timeout_seconds, "MCP request timeout"),
         ):
-            if type(value) not in (int, float) or isinstance(value, bool) or not math.isfinite(float(value)) or value <= 0:
+            if (
+                type(value) not in (int, float)
+                or isinstance(value, bool)
+                or not math.isfinite(float(value))
+                or value <= 0
+            ):
                 raise ExtensionError(f"{label} must be positive and finite")
             if value > 3_600:
                 raise ExtensionError(f"{label} is too large")
@@ -584,9 +589,7 @@ class McpStdioProvider:
                     },
                     ensure_started=False,
                 )
-                await self._write_message(
-                    {"jsonrpc": "2.0", "method": "notifications/initialized", "params": {}}
-                )
+                await self._write_message({"jsonrpc": "2.0", "method": "notifications/initialized", "params": {}})
             except Exception:
                 await self.close()
                 raise
@@ -651,7 +654,10 @@ class McpStdioProvider:
         normalized = _bounded_name(name, "MCP tool name")
         result = await self._request(
             "tools/call",
-            {"name": normalized, "arguments": cast(dict[str, Any], _json_value(dict(arguments), label="MCP arguments"))},
+            {
+                "name": normalized,
+                "arguments": cast(dict[str, Any], _json_value(dict(arguments), label="MCP arguments")),
+            },
         )
         return result
 
@@ -853,7 +859,12 @@ class McpHttpConfig:
             (self.connect_timeout_seconds, "MCP HTTP connect timeout"),
             (self.request_timeout_seconds, "MCP HTTP request timeout"),
         ):
-            if type(value) not in (int, float) or isinstance(value, bool) or not math.isfinite(float(value)) or value <= 0:
+            if (
+                type(value) not in (int, float)
+                or isinstance(value, bool)
+                or not math.isfinite(float(value))
+                or value <= 0
+            ):
                 raise ExtensionError(f"{label} must be positive and finite")
             if value > 3_600:
                 raise ExtensionError(f"{label} is too large")
@@ -896,7 +907,13 @@ def _resolve_mcp_host(host: str, port: int, *, allow_local: bool) -> tuple[str, 
         if parsed.is_loopback:
             if not allow_local:
                 raise ExtensionError("MCP HTTP loopback access requires allow_local=True")
-        elif parsed.is_private or parsed.is_link_local or parsed.is_reserved or parsed.is_unspecified or parsed.is_multicast:
+        elif (
+            parsed.is_private
+            or parsed.is_link_local
+            or parsed.is_reserved
+            or parsed.is_unspecified
+            or parsed.is_multicast
+        ):
             raise ExtensionError("MCP HTTP host resolved to a private or reserved address")
     return addresses
 
@@ -1043,7 +1060,10 @@ class McpHttpProvider:
         normalized = _bounded_name(name, "MCP tool name")
         return await self._request(
             "tools/call",
-            {"name": normalized, "arguments": cast(dict[str, Any], _json_value(dict(arguments), label="MCP arguments"))},
+            {
+                "name": normalized,
+                "arguments": cast(dict[str, Any], _json_value(dict(arguments), label="MCP arguments")),
+            },
         )
 
     def _assert_loop(self) -> None:
@@ -1347,10 +1367,7 @@ class ExtensionRegistry:
             return ""
         lines = ["AVAILABLE CAPABILITIES (metadata only; use typed tool_call):"]
         lines.extend(
-            (
-                f"- {row['name']}: {row['description']} [effect={row['effect_class']}; "
-                f"extension={row['extension_id']}]"
-            )
+            (f"- {row['name']}: {row['description']} [effect={row['effect_class']}; extension={row['extension_id']}]")
             for row in rows
         )
         skill_context = self.skill_catalog.prompt_context(task, token_budget=max(1, token_budget // 2))
@@ -1454,7 +1471,9 @@ class ExtensionRegistry:
                     description=descriptor.description,
                     input_schema=descriptor.input_schema,
                     effect_class=descriptor.effect_class,
-                    capabilities=("network_read" if descriptor.effect_class == "network_read" else descriptor.effect_class,),
+                    capabilities=(
+                        "network_read" if descriptor.effect_class == "network_read" else descriptor.effect_class,
+                    ),
                     timeout_seconds=descriptor.timeout_seconds,
                     extension_id=f"mcp.{server.server_id}",
                 )
@@ -1498,7 +1517,9 @@ def discover_extension_manifests(
         root = Path(raw_root).expanduser().resolve()
         if not root.is_dir() or root.is_symlink():
             continue
-        candidates = [root / "extension.toml"] + [path for path in root.rglob("extension.toml") if path != root / "extension.toml"]
+        candidates = [root / "extension.toml"] + [
+            path for path in root.rglob("extension.toml") if path != root / "extension.toml"
+        ]
         for path in candidates:
             if count >= max_files:
                 return tuple(manifests)
@@ -1525,7 +1546,7 @@ def discover_extension_manifests(
                     trusted=False,
                 )
                 manifest.validate()
-            except (OSError, tomllib.TOMLDecodeError, ExtensionError):
+            except OSError, tomllib.TOMLDecodeError, ExtensionError:
                 continue
             seen.add(extension_id)
             manifests.append(manifest)
@@ -1561,15 +1582,7 @@ def _skill_frontmatter(raw: bytes) -> tuple[str, str, str, tuple[str, ...]] | No
         version = _bounded_text(fields.get("version", "1.0.0"), "skill version", 128)
     except ExtensionError:
         return None
-    keywords = tuple(
-        sorted(
-            {
-                item.strip().lower()
-                for item in fields.get("keywords", "").split(",")
-                if item.strip()
-            }
-        )
-    )
+    keywords = tuple(sorted({item.strip().lower() for item in fields.get("keywords", "").split(",") if item.strip()}))
     try:
         _text_tuple(keywords, "skill keywords")
     except ExtensionError:
