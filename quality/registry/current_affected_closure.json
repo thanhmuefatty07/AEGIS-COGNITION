@@ -91,12 +91,8 @@
     "tests/test_verification_session.py",
     "tests/test_vision_adapters.py"
   ],
-  "artifact_hash": "c384cc840ab69944a69f550f26454febe33d493163f3d04109693a14582f50c7",
-  "changed_paths": [
-    "quality/registry/current_claim_graph.json",
-    "quality/registry/current_inventory.json",
-    "quality/registry/current_validation_corpus.json"
-  ],
+  "artifact_hash": "3965a66a9fda7499e7dfe82d101a3078a7e4cd573b762a1e823feed887f053c7",
+  "changed_paths": [],
   "changed_unmapped_surface_ids": [],
   "changed_unmapped_surface_paths": [],
   "closure_paths": [
@@ -521,11 +517,7 @@
     "Structural critical reachability covers only declared mapped records; observed test false negatives are not measured here."
   ],
   "mode": "SHADOW",
-  "path_dependency_states": {
-    "quality/registry/current_claim_graph.json": "NOT_IN_INVENTORY",
-    "quality/registry/current_inventory.json": "NOT_IN_INVENTORY",
-    "quality/registry/current_validation_corpus.json": "NOT_IN_INVENTORY"
-  },
+  "path_dependency_states": {},
   "phase": "PHASE_3_DETERMINISTIC_AFFECTED_CLOSURE",
   "plan_widened": true,
   "provenance": {
@@ -542,13 +534,13 @@
     },
     "evidence_class": "PLANNING_ONLY",
     "inventory_source_tree_sha256": "1f0af2a023ae56f1d511963dcb8871891b4e8c639fe762c080a0ddd6d836aa96",
-    "mapping_artifact_hash": "4d8aef9ac4df3b757443ff9381bd8039f925a73670d8348b3cc012a91e595559",
+    "mapping_artifact_hash": "94e360fe68e725d49e691085bcfc83c92df5d1a5aef820723963e76efb1fff09",
     "origin_main_sha": "1454c8c1740b95d1198d01e8211b6e6abd6dc060",
     "promotion": "DISABLED_IN_SHADOW",
-    "source_sha": "b1b4edc0b4f603295fc5dcc0a3163a03f7b7c9f9",
+    "source_sha": "275956b5ce04954eaf18f27067aa6b50578aa6fa",
     "validator": "scripts/aese_affected_closure.py"
   },
-  "reproducible_hash": "1755cc1919d62174ae3e8883e2922ab913f911bba387f594ad5fb562955ae06b",
+  "reproducible_hash": "83e3bfece090064471ab0037b74b54fa6e09ef2000b4533714395dbc8bd85d81",
   "schema": "aese-affected-closure-v1",
   "shadow_selection": {
     "authority": "RETAINED_LEGACY_AUTHORITY",
@@ -751,21 +743,13 @@
     ],
     "would_skip_item_ids": []
   },
-  "source_head": "b1b4edc0b4f603295fc5dcc0a3163a03f7b7c9f9",
+  "source_head": "275956b5ce04954eaf18f27067aa6b50578aa6fa",
   "source_tree_sha256": "c956fef1d4a7a42273c47ec0e639d331347449dd21b5779abe9445963c8bb8b9",
   "status": "AFFECTED_CLOSURE_PLAN_ONLY_SELECTION_DISABLED",
   "traversed_edges": [],
   "unknown_dependency_policy": "WIDEN_TO_RETAINED_SUITE",
-  "unknown_paths": [
-    "quality/registry/current_claim_graph.json",
-    "quality/registry/current_inventory.json",
-    "quality/registry/current_validation_corpus.json"
-  ],
-  "unknown_repository_paths": [
-    "quality/registry/current_claim_graph.json",
-    "quality/registry/current_inventory.json",
-    "quality/registry/current_validation_corpus.json"
-  ],
+  "unknown_paths": [],
+  "unknown_repository_paths": [],
   "unknown_surface_ids": [
     "AESE-FUZZ_TARGET-26E115395EF2C8F9",
     "AESE-FUZZ_TARGET-571CC359F5473719",

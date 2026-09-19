@@ -451,7 +451,12 @@ class DesktopService:
         destination_root = payload.get("destination_root")
         if destination_root is None:
             parent = (self.profile_root / "projects").resolve()
-        elif isinstance(destination_root, str) and destination_root.strip() and len(destination_root) <= MAX_PATH_LENGTH and "\x00" not in destination_root:
+        elif (
+            isinstance(destination_root, str)
+            and destination_root.strip()
+            and len(destination_root) <= MAX_PATH_LENGTH
+            and "\x00" not in destination_root
+        ):
             parent = Path(destination_root).expanduser().resolve()
         else:
             raise DesktopServiceError("INVALID_ARGUMENT", "destination_root must be a bounded directory path")
@@ -486,7 +491,12 @@ class DesktopService:
 
     @staticmethod
     def _clone_source(raw_url: object) -> tuple[str, str]:
-        if not isinstance(raw_url, str) or not raw_url.strip() or len(raw_url) > MAX_CLONE_URL_LENGTH or any(char.isspace() for char in raw_url):
+        if (
+            not isinstance(raw_url, str)
+            or not raw_url.strip()
+            or len(raw_url) > MAX_CLONE_URL_LENGTH
+            or any(char.isspace() for char in raw_url)
+        ):
             raise DesktopServiceError("INVALID_ARGUMENT", "clone_url must be a bounded public repository URL")
         value = raw_url.strip()
         scp = _SCP_GIT_SOURCE.fullmatch(value)
@@ -496,7 +506,12 @@ class DesktopService:
             parsed = urlsplit(value)
             host = parsed.hostname or ""
             path = parsed.path
-            if parsed.scheme not in {"git", "http", "https", "ssh"} or parsed.username not in {None, "git"} or parsed.password is not None or parsed.fragment:
+            if (
+                parsed.scheme not in {"git", "http", "https", "ssh"}
+                or parsed.username not in {None, "git"}
+                or parsed.password is not None
+                or parsed.fragment
+            ):
                 raise DesktopServiceError("INVALID_ARGUMENT", "clone_url must use a supported public git URL")
         if host.lower() not in _CLONE_HOSTS:
             raise DesktopServiceError("INVALID_ARGUMENT", "clone_url must target an approved public git host")
