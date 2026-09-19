@@ -7,6 +7,8 @@ export const PROTOCOL_VERSION = 1 as const;
 
 export type DesktopCommand =
   | "workspace.open"
+  | "workspace.switch"
+  | "workspace.clone"
   | "workspace.snapshot"
   | "workspace.source_snapshot"
   | "connections.list"
@@ -80,6 +82,11 @@ export type WorkspaceSnapshot = {
   profile_id: string;
   native_runtime_available: boolean;
   preview_mode?: boolean;
+};
+
+export type WorkspaceCloneResult = {
+  workspace_path: string;
+  name: string;
 };
 
 export type SourceSnapshot = {
@@ -484,6 +491,13 @@ export function parseWorkspaceSnapshot(value: unknown): WorkspaceSnapshot {
     throw new Error("Desktop service returned an invalid workspace snapshot");
   }
   return value as unknown as WorkspaceSnapshot;
+}
+
+export function parseWorkspaceCloneResult(value: unknown): WorkspaceCloneResult {
+  if (!isRecord(value) || typeof value.workspace_path !== "string" || !value.workspace_path || typeof value.name !== "string" || !value.name) {
+    throw new Error("Desktop service returned an invalid workspace clone result");
+  }
+  return value as unknown as WorkspaceCloneResult;
 }
 
 export function parseSourceSnapshot(value: unknown): SourceSnapshot {

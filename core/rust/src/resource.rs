@@ -1972,14 +1972,18 @@ impl AdmissionController {
                 .max(self.used.host_memory_bytes)
         });
         if immediate_memory_pressure {
-            let pressure_target = self
-                .used
-                .host_memory_bytes
-                .saturating_add(previous.host_memory_bytes.saturating_mul(75) / 100)
-                .max(self.used.host_memory_bytes);
-            let target = observed_memory_target
-                .map_or(pressure_target, |observed| pressure_target.min(observed));
-            self.capacity.host_memory_bytes = self.capacity.host_memory_bytes.min(target);
+            // Keep the 25% safety headroom, but do not let one earlier low
+            // sample permanently poison admission after the observed free
+            // memory has recovered.  The old `min(previous, observed)` path
+            // could ratchet a 64 MiB foreground request below its own
+            // required capacity while hundreds of MiB were available.
+            let target = observed_memory_target.unwrap_or_else(|| {
+                self.used
+                    .host_memory_bytes
+                    .saturating_add(previous.host_memory_bytes.saturating_mul(75) / 100)
+                    .max(self.used.host_memory_bytes)
+            });
+            self.capacity.host_memory_bytes = target.min(self.baseline_capacity.host_memory_bytes);
         } else if previous_memory_state == MemoryPressureState::Critical
             && self.memory_pressure_state == MemoryPressureState::Critical
         {
@@ -3082,6 +3086,31 @@ mod tests {
         assert!(feedback.changed);
         assert!(feedback.current.host_memory_bytes < feedback.previous.host_memory_bytes);
         assert!(feedback.current.host_memory_bytes >= controller.used().host_memory_bytes);
+    }
+
+    #[test]
+    fn critical_pressure_tracks_a_new_observed_floor_after_a_lower_sample() {
+        let mut controller = AdmissionController::new(capacity(), 1);
+        let sample = |sampled_at_ms, available| ResourceUsageSample {
+            schema: RESOURCE_CONTRACT_SCHEMA_V1.to_string(),
+            sampled_at_ms,
+            cpu_threads_active: 0,
+            host_memory_bytes: Some(1_000),
+            host_memory_available_bytes: Some(available),
+            queue_depth: 0,
+            memory_pressure: true,
+        };
+
+        let first = controller.capacity_feedback(&sample(1, 50)).current;
+        let second = controller.capacity_feedback(&sample(2, 90)).current;
+        assert!(second.host_memory_bytes > first.host_memory_bytes);
+
+        let mut request = ResourceRequest::minimal(1, WorkKind::NativeTask);
+        request.host_memory.bytes = 64;
+        assert!(matches!(
+            controller.admit(request, 3),
+            AdmissionDecision::Admitted(_)
+        ));
     }
 
     #[test]

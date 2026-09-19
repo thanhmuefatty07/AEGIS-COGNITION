@@ -1,5 +1,6 @@
 import io
 import json
+import os
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from threading import Event, Thread
 from types import SimpleNamespace
@@ -689,6 +690,59 @@ def test_desktop_service_rejects_switching_workspace_after_open(tmp_path: Path, 
     )
     assert second["status"] == "error"
     assert second["error"]["code"] == "WORKSPACE_ALREADY_OPEN"
+
+
+def test_desktop_service_switches_workspace_without_changing_open_contract(tmp_path: Path, monkeypatch):
+    monkeypatch.delenv("AEGIS_SESSION_DB_PATH", raising=False)
+    monkeypatch.delenv("AEGIS_PROFILE_ID", raising=False)
+    service = DesktopService(profile_root=tmp_path / "one")
+    assert json.loads(service.dispatch(_request("workspace.open")))["status"] == "ok"
+
+    target = tmp_path / "two"
+    switched = json.loads(
+        service.dispatch(_request("workspace.switch", {"workspace_path": str(target)}))
+    )
+
+    assert switched["status"] == "ok"
+    assert Path(switched["result"]["workspace_path"]) == target.resolve()
+    assert Path(service._state_path or "") == (target / ".aegis" / "state.db").resolve()
+    assert Path(os.environ["AEGIS_SESSION_DB_PATH"]) == (target / ".aegis" / "state.db").resolve()
+
+
+def test_desktop_service_clones_only_approved_public_hosts(tmp_path: Path, monkeypatch):
+    monkeypatch.delenv("AEGIS_SESSION_DB_PATH", raising=False)
+    monkeypatch.delenv("AEGIS_PROFILE_ID", raising=False)
+    service = DesktopService(profile_root=tmp_path / "profile")
+    assert json.loads(service.dispatch(_request("workspace.open")))["status"] == "ok"
+
+    def fake_git_clone(args, **_kwargs):
+        destination = Path(args[-1])
+        destination.mkdir(parents=True)
+        (destination / ".git").mkdir()
+        return SimpleNamespace(returncode=0, stdout="", stderr="")
+
+    monkeypatch.setattr("aegis_cognition.desktop_service.subprocess.run", fake_git_clone)
+    cloned = json.loads(
+        service.dispatch(
+            _request(
+                "workspace.clone",
+                {
+                    "clone_url": "https://github.com/example/project.git",
+                    "destination_root": str(tmp_path / "clones"),
+                },
+            )
+        )
+    )
+
+    assert cloned["status"] == "ok"
+    assert cloned["result"]["name"] == "project"
+    assert Path(cloned["result"]["workspace_path"]).is_dir()
+
+    rejected = json.loads(
+        service.dispatch(_request("workspace.clone", {"clone_url": "https://example.invalid/project.git"}))
+    )
+    assert rejected["status"] == "error"
+    assert rejected["error"]["code"] == "INVALID_ARGUMENT"
 
 
 def test_desktop_service_exposes_bounded_source_snapshot(tmp_path: Path, monkeypatch):

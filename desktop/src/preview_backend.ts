@@ -263,6 +263,20 @@ export async function previewRequest(command: DesktopCommand, payload: Record<st
         native_runtime_available: false,
         preview_mode: true,
       };
+    case "workspace.switch":
+      return {
+        open: true,
+        workspace_path: String(payload.workspace_path ?? "AEGIS-COGNITION"),
+        state_path: null,
+        profile_id: "preview",
+        native_runtime_available: false,
+        preview_mode: true,
+      };
+    case "workspace.clone": {
+      const cloneUrl = String(payload.clone_url ?? "").trim();
+      const name = cloneUrl.split(/[\\/]/).filter(Boolean).at(-1)?.replace(/\.git$/i, "") || "preview-project";
+      return { workspace_path: `preview/projects/${name}`, name };
+    }
     case "workspace.source_snapshot":
       return sourceSnapshot();
     case "connections.list":
@@ -296,6 +310,21 @@ export async function previewRequest(command: DesktopCommand, payload: Record<st
     case "conversations.inspect": {
       const snapshot = previewSnapshots.get(String(payload.conversation_id)) ?? getOrCreateConversation(String(payload.conversation_id));
       return { inspection: previewConversationInspection(snapshot) };
+    }
+    case "conversations.switch_model": {
+      const conversationId = String(payload.conversation_id);
+      const snapshot = getOrCreateConversation(conversationId);
+      const modelId = String(payload.model_id ?? "local-model");
+      const connectionId = String(payload.connection_id ?? "local");
+      snapshot.conversation = {
+        ...snapshot.conversation,
+        connection_id: connectionId,
+        model_id: modelId,
+        revision: snapshot.conversation.revision + 1,
+        updated_at_ms: now(),
+      };
+      previewConversations.set(conversationId, snapshot.conversation);
+      return snapshot.conversation;
     }
     case "conversations.send": {
       const conversationId = String(payload.conversation_id);
