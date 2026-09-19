@@ -1,5 +1,5 @@
 {
-  "artifact_hash": "a70993996a8068b7c75654eb681c541ad9e36549f0c2e4862385ecbd11f4d492",
+  "artifact_hash": "323750a3eb5bafd364c1830ff338ace9eecc4747deec62ee467aca54e0862ea4",
   "development_corpus": [
     {
       "case_id": "DEV-GT96-GOOD",
@@ -13,7 +13,7 @@
         "WIDENED_UNKNOWN": 0,
         "WOULD_REUSE": 0,
         "WOULD_RUN": 1,
-        "WOULD_SKIP": 191
+        "WOULD_SKIP": 192
       },
       "label": "KNOWN_GOOD",
       "mutation": "NONE",
@@ -41,7 +41,7 @@
       "closure_status": "WIDENED_ALL_RETAINED",
       "critical": true,
       "decision_state_counts": {
-        "WIDENED_UNKNOWN": 192,
+        "WIDENED_UNKNOWN": 193,
         "WOULD_REUSE": 0,
         "WOULD_RUN": 0,
         "WOULD_SKIP": 0
@@ -72,7 +72,7 @@
       "closure_status": "WIDENED_ALL_RETAINED",
       "critical": true,
       "decision_state_counts": {
-        "WIDENED_UNKNOWN": 192,
+        "WIDENED_UNKNOWN": 193,
         "WOULD_REUSE": 0,
         "WOULD_RUN": 0,
         "WOULD_SKIP": 0
@@ -103,7 +103,7 @@
       "closure_status": "WIDENED_ALL_RETAINED",
       "critical": false,
       "decision_state_counts": {
-        "WIDENED_UNKNOWN": 192,
+        "WIDENED_UNKNOWN": 193,
         "WOULD_REUSE": 0,
         "WOULD_RUN": 0,
         "WOULD_SKIP": 0
@@ -135,7 +135,7 @@
         "WIDENED_UNKNOWN": 0,
         "WOULD_REUSE": 0,
         "WOULD_RUN": 1,
-        "WOULD_SKIP": 191
+        "WOULD_SKIP": 192
       },
       "label": "KNOWN_BAD",
       "mutation": "SERIALIZATION_SCHEMA_MUTATION",
@@ -163,7 +163,7 @@
       "closure_status": "WIDENED_ALL_RETAINED",
       "critical": true,
       "decision_state_counts": {
-        "WIDENED_UNKNOWN": 192,
+        "WIDENED_UNKNOWN": 193,
         "WOULD_REUSE": 0,
         "WOULD_RUN": 0,
         "WOULD_SKIP": 0
@@ -196,7 +196,7 @@
       "closure_status": "WIDENED_ALL_RETAINED",
       "critical": true,
       "decision_state_counts": {
-        "WIDENED_UNKNOWN": 192,
+        "WIDENED_UNKNOWN": 193,
         "WOULD_REUSE": 0,
         "WOULD_RUN": 0,
         "WOULD_SKIP": 0
@@ -227,7 +227,7 @@
       "closure_status": "WIDENED_ALL_RETAINED",
       "critical": false,
       "decision_state_counts": {
-        "WIDENED_UNKNOWN": 192,
+        "WIDENED_UNKNOWN": 193,
         "WOULD_REUSE": 0,
         "WOULD_RUN": 0,
         "WOULD_SKIP": 0
@@ -256,7 +256,7 @@
       "closure_status": "WIDENED_ALL_RETAINED",
       "critical": true,
       "decision_state_counts": {
-        "WIDENED_UNKNOWN": 192,
+        "WIDENED_UNKNOWN": 193,
         "WOULD_REUSE": 0,
         "WOULD_RUN": 0,
         "WOULD_SKIP": 0
@@ -332,20 +332,20 @@
   },
   "mode": "SHADOW",
   "provenance": {
-    "artifact_source_sha": "06e5065b86e433d915d8493b6480e92cc9e1dd10",
-    "current_head": "06e5065b86e433d915d8493b6480e92cc9e1dd10",
+    "artifact_source_sha": "b1b4edc0b4f603295fc5dcc0a3163a03f7b7c9f9",
+    "current_head": "b1b4edc0b4f603295fc5dcc0a3163a03f7b7c9f9",
     "environment": {
       "requires_python": ">=3.14,<3.16"
     },
     "environment_hash": "05077000fe0503d836a6c1e1cdf4d4eb6eb9b2063b998ec6439ce069abd9b1fb",
     "host_observation": {
-      "executable": "C:\\Users\\ADMIN\\AppData\\Local\\Programs\\Python\\Python311\\python.exe",
+      "executable": "C:\\Users\\ADMIN\\AEGIS-COGNITION\\.venv\\Scripts\\python.exe",
       "machine": "AMD64",
       "os": "Windows",
-      "release": "10"
+      "release": "11"
     },
     "protocol_hash": "NOT_APPLICABLE",
-    "relevant_subject_digest": "0be14e0227768d71ae79338df8eda253013cef4f25669d6ff8857ff385d85ec8",
+    "relevant_subject_digest": "23ccfe263b4b6c24e15299eb0444daf4bb2d75613483b8259a232a3a9a95f7f7",
     "reuse_status": "NOT_REUSED",
     "validator_hash": "c5a4f5850a6a297d02c1d48613b85b992213e40d8cf0dad0b8c54c0e6cc1a552"
   },
