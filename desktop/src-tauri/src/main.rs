@@ -201,6 +201,14 @@ fn desktop_request(
         .request(&frame)
 }
 
+#[tauri::command]
+fn pick_workspace() -> Option<String> {
+    rfd::FileDialog::new()
+        .set_title("Open project")
+        .pick_folder()
+        .map(|path| path.to_string_lossy().into_owned())
+}
+
 fn main() {
     tauri::Builder::default()
         .setup(|app| {
@@ -208,7 +216,7 @@ fn main() {
             app.manage(Mutex::new(client));
             Ok(())
         })
-        .invoke_handler(tauri::generate_handler![desktop_request])
+        .invoke_handler(tauri::generate_handler![desktop_request, pick_workspace])
         .run(tauri::generate_context!())
         .expect("error while running AEGIS desktop");
 }

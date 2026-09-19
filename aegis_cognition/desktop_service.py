@@ -13,6 +13,8 @@ import inspect
 import json
 import os
 import re
+import shutil
+import subprocess
 import sys
 import threading
 import time
@@ -97,6 +99,8 @@ except ImportError:
 READY_SCHEMA = "aegis-desktop-ready-v1"
 SERVICE_VERSION_FALLBACK = "0.1.0"
 MAX_PATH_LENGTH = 4096
+MAX_CLONE_URL_LENGTH = 2048
+MAX_CLONE_TIMEOUT_SECONDS = 120
 MAX_PROFILE_ID_LENGTH = 128
 MAX_MESSAGE_LENGTH = 256 * 1024
 MAX_PROMPT_LENGTH = 64 * 1024
@@ -111,6 +115,9 @@ MAX_SUBAGENT_EVENT_RUNS = 32
 MAX_SUBAGENT_EVENT_MESSAGES = 256
 MAX_CODE_REUSE_LINE = 1_000_000
 MAX_CODE_REUSE_TOKENS = 10_000_000
+_SCP_GIT_SOURCE = re.compile(r"^git@([A-Za-z0-9.-]+):([A-Za-z0-9._/-]+)$")
+_CLONE_HOSTS = frozenset({"bitbucket.org", "codeberg.org", "github.com", "gitlab.com"})
+_REPOSITORY_NAME = re.compile(r"^[A-Za-z0-9._][A-Za-z0-9._-]*$")
 
 
 @dataclass(slots=True)
@@ -292,6 +299,8 @@ class DesktopService:
         return {
             "service.shutdown": self._shutdown,
             "workspace.open": self._open_workspace,
+            "workspace.switch": self._switch_workspace,
+            "workspace.clone": self._clone_workspace,
             "workspace.snapshot": self._workspace_snapshot,
             "workspace.source_snapshot": self._workspace_source_snapshot,
             "connections.list": self._list_connections,
@@ -367,6 +376,18 @@ class DesktopService:
             watcher.close()
 
     def _open_workspace(self, payload: dict[str, Any]) -> Mapping[str, Any]:
+        root = self._workspace_root(payload)
+        if self._opened_root is not None and root != self._opened_root:
+            raise DesktopServiceError("WORKSPACE_ALREADY_OPEN", "the service already owns another workspace")
+        return self._bind_workspace(root, switch=False)
+
+    def _switch_workspace(self, payload: dict[str, Any]) -> Mapping[str, Any]:
+        root = self._workspace_root(payload)
+        if any(self._subagent_is_active(state) for state in self._subagent_states()):
+            raise DesktopServiceError("WORKSPACE_BUSY", "stop active subagent runs before switching workspace")
+        return self._bind_workspace(root, switch=True)
+
+    def _workspace_root(self, payload: Mapping[str, Any]) -> Path:
         requested = payload.get("workspace_path")
         if requested is not None:
             if (
@@ -376,11 +397,19 @@ class DesktopService:
                 or "\x00" in requested
             ):
                 raise DesktopServiceError("INVALID_ARGUMENT", "workspace_path must be a bounded path")
-            root = Path(requested).expanduser().resolve()
-        else:
-            root = self.profile_root.resolve()
-        if self._opened_root is not None and root != self._opened_root:
-            raise DesktopServiceError("WORKSPACE_ALREADY_OPEN", "the service already owns another workspace")
+            return Path(requested).expanduser().resolve()
+        return self.profile_root.resolve()
+
+    def _subagent_states(self) -> tuple[_SubagentRunState, ...]:
+        with self._subagent_event_lock:
+            return tuple(self._subagent_runs.values())
+
+    @staticmethod
+    def _subagent_is_active(state: _SubagentRunState) -> bool:
+        with state.lock:
+            return state.status in {"RUNNING", "CANCELLING"}
+
+    def _bind_workspace(self, root: Path, *, switch: bool) -> Mapping[str, Any]:
         if root.exists() and not root.is_dir():
             raise DesktopServiceError("INVALID_ARGUMENT", "workspace_path must identify a directory")
         root.mkdir(parents=True, exist_ok=True)
@@ -393,7 +422,10 @@ class DesktopService:
                 "PROFILE_ALREADY_BOUND",
                 "the native profile is already bound to a different profile id",
             )
-        os.environ.setdefault("AEGIS_SESSION_DB_PATH", str(state_path))
+        if switch:
+            os.environ["AEGIS_SESSION_DB_PATH"] = str(state_path)
+        else:
+            os.environ.setdefault("AEGIS_SESSION_DB_PATH", str(state_path))
         os.environ.setdefault("AEGIS_PROFILE_ID", self.profile_id)
         configured_state = Path(os.environ["AEGIS_SESSION_DB_PATH"]).expanduser().resolve()
         if configured_state != state_path:
@@ -408,7 +440,72 @@ class DesktopService:
         self.close()
         self._connections = None
         self._learning = None
+        self._manager = None
         return self._workspace_snapshot({})
+
+    def _clone_workspace(self, payload: dict[str, Any]) -> Mapping[str, Any]:
+        if any(self._subagent_is_active(state) for state in self._subagent_states()):
+            raise DesktopServiceError("WORKSPACE_BUSY", "stop active subagent runs before cloning a workspace")
+        raw_url = payload.get("clone_url")
+        url, name = self._clone_source(raw_url)
+        destination_root = payload.get("destination_root")
+        if destination_root is None:
+            parent = (self.profile_root / "projects").resolve()
+        elif isinstance(destination_root, str) and destination_root.strip() and len(destination_root) <= MAX_PATH_LENGTH and "\x00" not in destination_root:
+            parent = Path(destination_root).expanduser().resolve()
+        else:
+            raise DesktopServiceError("INVALID_ARGUMENT", "destination_root must be a bounded directory path")
+        parent.mkdir(parents=True, exist_ok=True)
+        destination = (parent / name).resolve()
+        if destination == self._opened_root:
+            raise DesktopServiceError("INVALID_ARGUMENT", "clone destination must differ from the open workspace")
+        if destination.exists():
+            raise DesktopServiceError("CLONE_DESTINATION_EXISTS", "the clone destination already exists")
+        try:
+            completed = subprocess.run(
+                ["git", "clone", "--", url, str(destination)],
+                check=False,
+                capture_output=True,
+                text=True,
+                timeout=MAX_CLONE_TIMEOUT_SECONDS,
+            )
+        except FileNotFoundError as error:
+            raise DesktopServiceError("GIT_UNAVAILABLE", "git is not available on this machine") from error
+        except subprocess.TimeoutExpired as error:
+            self._remove_clone_destination(destination)
+            raise DesktopServiceError("CLONE_TIMEOUT", "git clone exceeded the time limit") from error
+        if completed.returncode != 0:
+            self._remove_clone_destination(destination)
+            raise DesktopServiceError("CLONE_FAILED", "git could not clone the requested public repository")
+        return {"workspace_path": str(destination), "name": name}
+
+    @staticmethod
+    def _remove_clone_destination(destination: Path) -> None:
+        if destination.exists() and destination.is_dir() and (destination / ".git").exists():
+            shutil.rmtree(destination, ignore_errors=True)
+
+    @staticmethod
+    def _clone_source(raw_url: object) -> tuple[str, str]:
+        if not isinstance(raw_url, str) or not raw_url.strip() or len(raw_url) > MAX_CLONE_URL_LENGTH or any(char.isspace() for char in raw_url):
+            raise DesktopServiceError("INVALID_ARGUMENT", "clone_url must be a bounded public repository URL")
+        value = raw_url.strip()
+        scp = _SCP_GIT_SOURCE.fullmatch(value)
+        if scp:
+            host, path = scp.groups()
+        else:
+            parsed = urlsplit(value)
+            host = parsed.hostname or ""
+            path = parsed.path
+            if parsed.scheme not in {"git", "http", "https", "ssh"} or parsed.username not in {None, "git"} or parsed.password is not None or parsed.fragment:
+                raise DesktopServiceError("INVALID_ARGUMENT", "clone_url must use a supported public git URL")
+        if host.lower() not in _CLONE_HOSTS:
+            raise DesktopServiceError("INVALID_ARGUMENT", "clone_url must target an approved public git host")
+        name = path.rstrip("/").rsplit("/", 1)[-1]
+        if name.lower().endswith(".git"):
+            name = name[:-4]
+        if not name or not _REPOSITORY_NAME.fullmatch(name):
+            raise DesktopServiceError("INVALID_ARGUMENT", "clone_url does not contain a safe repository name")
+        return value, name
 
     def _workspace_snapshot(self, _payload: dict[str, Any]) -> Mapping[str, Any]:
         return {

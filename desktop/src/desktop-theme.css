@@ -1,0 +1,5005 @@
+/*
+ * Pi-inspired desktop shell.
+ *
+ * The renderer keeps AEGIS' command wiring and state model. This layer only
+ * owns the visual contract: quiet chrome, a fixed desktop sidebar, a centered
+ * home stack, and the low-profile composer used by the reference desktop UI.
+ */
+
+:root {
+  --pi-sidebar-width: 275px;
+  --pi-toolbar-height: 46px;
+  --pi-content-width: 768px;
+  --pi-radius-row: 10px;
+  --pi-radius-composer: 20px;
+  --pi-shadow-composer: 0 3px 7.5px rgba(0, 0, 0, .04), 0 0 20px rgba(0, 0, 0, .05);
+}
+
+/* Accessible labels in Pi's compact menus stay available to assistive
+   technology without becoming visible flex children of the control. */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Pi's default right dock is 360px on desktop. Keep AEGIS' existing panel
+   actions, but use the same three-column geometry. */
+:root {
+  --work-width: 360px;
+}
+
+body {
+  min-width: 0;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+:root[data-theme="light"] {
+  --surface-0: #ffffff;
+  --surface-1: #fafafa;
+  --surface-2: #f3f3f3;
+  --surface-3: #ededed;
+  --surface-inset: #ededed;
+  --sidebar-surface: #f3f3f3;
+  --text-primary: #1a1c1f;
+  --text-secondary: rgba(26, 28, 31, .74);
+  --text-muted: #5d5d5d;
+  --text-faint: #afafaf;
+  --line: rgba(26, 28, 31, .08);
+  --line-soft: rgba(26, 28, 31, .05);
+  --line-strong: rgba(26, 28, 31, .12);
+  --hover: rgba(26, 28, 31, .05);
+  --active: rgba(26, 28, 31, .08);
+}
+
+:root[data-theme="dark"] {
+  --surface-0: #181818;
+  --surface-1: #212121;
+  --surface-2: #282828;
+  --surface-3: #303030;
+  --surface-inset: #0d0d0d;
+  --sidebar-surface: #000000;
+  --text-primary: #ffffff;
+  --text-secondary: rgba(255, 255, 255, .70);
+  --text-muted: rgba(255, 255, 255, .52);
+  --text-faint: rgba(255, 255, 255, .38);
+  --line: rgba(255, 255, 255, .08);
+  --line-soft: rgba(255, 255, 255, .05);
+  --line-strong: rgba(255, 255, 255, .14);
+  --hover: rgba(255, 255, 255, .06);
+  --active: rgba(255, 255, 255, .10);
+}
+
+.app-frame,
+.app-frame.destination-frame {
+  grid-template-columns: var(--pi-sidebar-width) minmax(0, 1fr);
+  min-height: 100dvh;
+  background: var(--surface-0);
+}
+
+.app-frame.work-panel-open {
+  grid-template-columns: var(--pi-sidebar-width) minmax(0, 1fr) var(--work-width);
+}
+
+.sidebar {
+  width: var(--pi-sidebar-width);
+  min-width: var(--pi-sidebar-width);
+  border-right: 0;
+  background: var(--sidebar-surface);
+}
+
+.sidebar-brand {
+  height: var(--pi-toolbar-height);
+  min-height: var(--pi-toolbar-height);
+  flex: 0 0 var(--pi-toolbar-height);
+  padding: 0 8px;
+  -webkit-app-region: drag;
+  app-region: drag;
+}
+
+/* Pi hides the brand only when the macOS titlebar owns that leading inset;
+   Windows/Linux keep the product mark in the same header slot. */
+:root[data-platform="darwin"] .sidebar-brand > .brand {
+  display: none;
+}
+
+.sidebar-brand .sidebar-toggle {
+  margin-left: auto;
+}
+
+.brand-mark {
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--line-strong);
+  border-radius: 9px;
+  color: var(--text-primary);
+  background: var(--surface-0);
+}
+
+.brand-mark svg {
+  width: 16px;
+  height: 16px;
+  stroke-width: 1.55;
+}
+
+.brand-copy strong {
+  color: var(--text-primary);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: -.01em;
+}
+
+.brand-copy span {
+  color: var(--text-faint);
+  font-size: 9px;
+  letter-spacing: .08em;
+}
+
+.sidebar-toggle,
+.topbar-icon,
+.composer-tool {
+  border-radius: 50%;
+}
+
+.new-task {
+  min-height: 32px;
+  margin: 8px 14px 2px;
+  border-radius: var(--pi-radius-row);
+  padding: 0 10px;
+  color: var(--text-secondary);
+  background: transparent;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.new-task:hover {
+  color: var(--text-primary);
+  background: var(--hover);
+}
+
+.compact-new-task {
+  display: none;
+}
+
+.sidebar.collapsed .compact-new-task {
+  display: grid;
+  width: 28px;
+  height: 28px;
+  margin: 0;
+  place-items: center;
+  padding: 0;
+}
+
+.sidebar-scroll {
+  padding: 4px 8px 12px;
+  scrollbar-color: color-mix(in oklab, var(--text-primary) 16%, transparent) transparent;
+}
+
+.sidebar-scroll > .sidebar-group:first-child {
+  margin-top: 0;
+}
+
+.sidebar-group {
+  margin-top: 17px;
+}
+
+.sidebar-label {
+  padding: 0 8px 7px;
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: .02em;
+}
+
+.sidebar-label-with-action {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.sidebar-label-with-action .new-task {
+  display: grid;
+  width: 24px;
+  min-height: 24px;
+  margin: -2px 0 0;
+  place-items: center;
+  padding: 0;
+}
+
+.sidebar-count {
+  color: var(--text-faint);
+  font-weight: 400;
+}
+
+.sidebar-nav,
+.utility-row {
+  min-height: 30px;
+  border-radius: var(--pi-radius-row);
+  padding: 0 9px;
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+
+.sidebar-nav:hover,
+.sidebar-nav.active,
+.utility-row:hover,
+.utility-row.active {
+  color: var(--text-primary);
+  background: var(--hover);
+}
+
+.sidebar-nav.active,
+.utility-row.active {
+  background: var(--active);
+}
+
+.session-list {
+  gap: 1px;
+  margin-top: 3px;
+}
+
+.session-row-wrap,
+.project-row-wrap {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 2px;
+}
+
+.session-row {
+  min-height: 28px;
+  border-radius: var(--pi-radius-row);
+  padding: 0 8px 0 20px;
+  flex: 1;
+  color: var(--text-secondary);
+  text-align: left;
+}
+
+.session-row:hover,
+.session-row-wrap.active .session-row,
+.session-row-wrap:hover .session-row {
+  color: var(--text-primary);
+  background: var(--active);
+}
+
+.session-row-wrap.active .session-row {
+  box-shadow: inset 2px 0 0 var(--text-primary);
+}
+
+.session-row-action,
+.project-row-action {
+  display: grid;
+  width: 24px;
+  height: 24px;
+  flex: 0 0 24px;
+  place-items: center;
+  border-radius: 50%;
+  color: var(--text-muted);
+  background: transparent;
+  opacity: 0;
+}
+
+.session-row-wrap:hover .session-row-action,
+.session-row-wrap:focus-within .session-row-action,
+.project-row-wrap:hover .project-row-action,
+.project-row-wrap:focus-within .project-row-action,
+.project-menu-button[aria-expanded="true"] {
+  opacity: 1;
+}
+
+.session-row-action:hover,
+.project-row-action:hover {
+  color: var(--text-primary);
+  background: var(--hover);
+}
+
+.session-info strong {
+  font-size: 13px;
+  font-weight: 400;
+}
+
+.session-info small {
+  display: none;
+}
+
+.project-row {
+  min-height: 28px;
+  border-radius: var(--pi-radius-row);
+  padding: 0 8px;
+  flex: 1;
+  color: var(--text-secondary);
+  font-size: 13px;
+  text-align: left;
+}
+
+.project-row:hover,
+.project-row-wrap:focus-within .project-row {
+  color: var(--text-primary);
+  background: var(--hover);
+}
+
+/* Pi marks the active project with a small neutral dot, not a runtime-status
+   green halo. Keep the state cue while matching the reference silhouette. */
+.project-active-dot {
+  width: 5px;
+  height: 5px;
+  flex: 0 0 auto;
+  margin-left: 2px;
+  border-radius: 50%;
+  background: var(--text-primary);
+}
+
+.project-subrow {
+  margin: 1px 0 0 26px;
+  padding: 5px 8px;
+  color: var(--text-muted);
+  font-size: 13px;
+  line-height: 1.25;
+}
+
+.sidebar-empty {
+  padding: 5px 8px;
+  color: var(--text-muted);
+  font-size: 13px;
+  line-height: 1.25;
+}
+
+.sidebar-bottom {
+  gap: 1px;
+  margin: 0 14px;
+  border-top: 0;
+  padding: 8px 0 12px;
+}
+
+.sidebar-bottom .utility-label {
+  display: none;
+}
+
+.sidebar-bottom .utility-row {
+  width: 30px;
+  min-height: 30px;
+  justify-content: center;
+  padding: 0;
+}
+
+.sidebar-bottom {
+  grid-template-columns: repeat(3, 30px) 1fr;
+  align-items: center;
+}
+
+.sidebar-status {
+  display: none;
+}
+
+.sidebar-version {
+  grid-column: 4;
+  grid-row: 1;
+  justify-self: end;
+  padding: 3px 3px 0;
+  color: var(--text-faint);
+  font-family: inherit;
+  font-size: 9px;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.chat-view {
+  min-height: 0;
+  background: var(--surface-0);
+}
+
+.chat-view.home-view .composer-status {
+  display: none;
+}
+
+/* Pi's transcript is intentionally flatter than the product's empty home:
+   the user bubble is the only visible plate, while assistant prose sits on
+   the canvas without avatars or a second metadata rail. */
+.thread-view .chat-intro {
+  display: none;
+}
+
+.thread-view .chat-column {
+  width: min(100%, var(--pi-content-width));
+  padding: 20px 32px calc(180px + 16px);
+}
+
+.thread-view .message-row {
+  gap: 0;
+  margin-bottom: 18px;
+  padding: 12px 0;
+}
+
+.thread-view .message-avatar,
+.thread-view .message-meta {
+  display: none;
+}
+
+.thread-view .message-content,
+.thread-view .message-row.assistant .message-content {
+  width: min(100%, var(--pi-content-width));
+  max-width: var(--pi-content-width);
+}
+
+.thread-view .message-row.user .message-content {
+  width: max-content;
+  max-width: 100%;
+  border: 0;
+  border-radius: 16px 16px 4px 16px;
+  padding: 10px 15px;
+  background: color-mix(in oklab, var(--text-primary) 8%, transparent);
+}
+
+.thread-view .message-row.user .message-content p,
+.thread-view .message-row.assistant .message-content p {
+  font-size: 14px;
+  line-height: 1.55;
+}
+
+.thread-view .composer-status {
+  display: none;
+}
+
+.conversation-topbar {
+  min-height: var(--pi-toolbar-height);
+  border-bottom: 1px solid var(--line-soft);
+  padding: 0 14px 0 16px;
+}
+
+.conversation-title {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.conversation-topbar .workspace-crumb {
+  display: none;
+}
+
+.workspace-crumb {
+  max-width: 42ch;
+  color: var(--text-faint);
+  font-size: 9px;
+}
+
+.conversation-topbar h1 {
+  max-width: 520px;
+  font-size: 14px;
+  font-weight: 500;
+  letter-spacing: -.01em;
+}
+
+.conversation-topbar .revision-label {
+  display: none;
+}
+
+.revision-label {
+  color: var(--text-faint);
+  font-family: inherit;
+  font-size: 10px;
+}
+
+.topbar-text-action {
+  min-height: 28px;
+  border-radius: var(--pi-radius-row);
+  padding: 0 7px;
+  font-size: 11px;
+}
+
+.topbar-icon {
+  width: 28px;
+  height: 28px;
+}
+
+.chat-scroll.home-main-content {
+  display: flex;
+  min-height: 0;
+  flex: 1;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.home-main-content .chat-column {
+  display: flex;
+  width: 100%;
+  min-height: 0;
+  flex: 1;
+  flex-direction: column;
+  padding: 0;
+}
+
+.home-main-content .chat-intro {
+  display: none;
+}
+
+.home-stack-inner {
+  display: flex;
+  width: min(100%, var(--pi-content-width));
+  min-height: 0;
+  flex: 1;
+  margin: 0 auto;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 28px 12px 24px;
+}
+
+.empty-hero {
+  display: flex;
+  width: 100%;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  text-align: center;
+  transform: translateY(-24px);
+}
+
+.home-mascot {
+  display: block;
+  width: 100px;
+  height: 100px;
+  margin-bottom: 0;
+  object-fit: contain;
+}
+
+.empty-hero h2 {
+  margin: 0;
+  color: var(--text-primary);
+  font-size: 28px;
+  font-weight: 400;
+  letter-spacing: -.035em;
+}
+
+.home-project-switcher {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  border-radius: 6px;
+  padding: 2px 4px;
+  color: var(--text-secondary);
+  background: transparent;
+  font-size: 13px;
+}
+
+.home-project-switcher:hover {
+  color: var(--text-primary);
+  background: var(--hover);
+}
+
+.empty-hero p {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.home-main-content .suggestion-block {
+  width: min(100%, 640px);
+  margin-top: 18px;
+}
+
+.home-main-content .suggestion-caption {
+  margin-bottom: 4px;
+  color: var(--text-faint);
+  font-size: 10px;
+}
+
+.home-main-content .suggestion-row {
+  display: flex;
+  justify-content: center;
+  gap: 4px;
+}
+
+.home-main-content .suggestion-row button {
+  min-height: 28px;
+  flex: 0 1 auto;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  border: 0;
+  border-radius: var(--pi-radius-row);
+  padding: 0 8px;
+  color: var(--text-muted);
+  background: transparent;
+  font-size: 11px;
+}
+
+.home-main-content .suggestion-row button:hover {
+  color: var(--text-primary);
+  background: var(--hover);
+  transform: none;
+}
+
+.composer-wrap {
+  position: relative;
+  padding: 0 24px 16px;
+}
+
+.home-actions-menu {
+  display: flex;
+  width: min(var(--pi-content-width), 100%);
+  margin: 0 auto 8px;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 2px;
+  border-radius: var(--pi-radius-composer);
+  padding: 5px 8px;
+  background: var(--surface-1);
+  box-shadow: var(--pi-shadow-composer);
+}
+
+.home-actions-menu button {
+  display: inline-flex;
+  min-height: 28px;
+  align-items: center;
+  gap: 6px;
+  border-radius: var(--pi-radius-row);
+  padding: 0 8px;
+  color: var(--text-secondary);
+  background: transparent;
+  font-size: 11px;
+}
+
+.home-actions-menu button:hover:not(:disabled) {
+  color: var(--text-primary);
+  background: var(--hover);
+}
+
+.home-actions-menu button:disabled {
+  cursor: not-allowed;
+  opacity: .45;
+}
+
+.composer-input-wrap {
+  min-height: 44px;
+  padding: 10px 12px 0;
+}
+
+.composer-input-stage {
+  position: relative;
+  width: 100%;
+}
+
+.composer-placeholder {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  padding-top: 2px;
+  color: var(--text-secondary);
+  font-size: 14px;
+  line-height: 1.45;
+  opacity: .72;
+  pointer-events: none;
+  text-overflow: ellipsis;
+  user-select: none;
+  white-space: nowrap;
+  animation: composer-placeholder-fade-in 120ms ease-out both;
+}
+
+@keyframes composer-placeholder-fade-in {
+  from { opacity: 0; }
+  to { opacity: .72; }
+}
+
+.composer-input {
+  display: block;
+  width: 100%;
+  min-height: 3lh;
+  max-height: 7lh;
+  overflow-y: hidden;
+  resize: none;
+  border: 0;
+  outline: none;
+  color: var(--text-primary);
+  background: transparent;
+  font-size: 14px;
+  line-height: 1.45;
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+  cursor: text;
+}
+
+.composer-toolbar {
+  justify-content: space-between;
+  gap: 8px;
+  min-height: 36px;
+  padding: 4px 8px 8px;
+}
+
+.composer-left,
+.composer-right {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 3px;
+}
+
+.composer-left { flex: 1 1 auto; }
+.composer-right { justify-content: flex-end; }
+
+.composer-plus,
+.composer-mode-chip-face {
+  display: inline-flex;
+  align-items: center;
+}
+
+.composer-mode-chip-face {
+  min-width: 0;
+  max-width: 100%;
+  gap: 6px;
+}
+
+.composer-tool {
+  width: 28px;
+  height: 28px;
+}
+
+.mode-chip,
+.permission-chip {
+  display: inline-flex;
+  min-height: 28px;
+  align-items: center;
+  gap: 6px;
+  border: 0;
+  border-radius: var(--pi-radius-row);
+  padding: 0 7px;
+  color: var(--text-secondary);
+  background: transparent;
+  font-size: 12px;
+}
+
+.mode-chip > svg:first-child {
+  /* Pi keeps the Agent glyph neutral; green is reserved for runtime/status
+     indicators rather than the always-present composer control. */
+  color: var(--text-secondary);
+}
+
+.mode-chip:hover,
+.permission-chip:hover {
+  color: var(--text-primary);
+  background: var(--hover);
+}
+
+.permission-chip { color: var(--text-muted); }
+
+.composer-model {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  max-width: 180px;
+  color: var(--text-muted);
+  font-family: inherit;
+  font-size: 11px;
+}
+
+.composer-model .chevron {
+  display: inline-flex;
+  margin-left: 3px;
+  vertical-align: -2px;
+}
+
+.send-button {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  color: var(--surface-0);
+  background: var(--text-primary);
+}
+
+.send-button:disabled {
+  opacity: .35;
+}
+
+.composer-status {
+  width: min(var(--pi-content-width), 100%);
+  margin: 3px auto 0;
+  padding: 0 4px;
+  opacity: .65;
+  font-size: 10px;
+}
+
+/* Settings uses Pi's dedicated rail instead of the conversation sidebar. */
+.settings-frame,
+.app-frame.settings-frame {
+  grid-template-columns: minmax(0, 1fr);
+  background: var(--surface-0);
+}
+
+.settings-frame .destination-page {
+  display: grid;
+  grid-template-columns: var(--pi-sidebar-width) minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr);
+  min-height: 100dvh;
+}
+
+.settings-frame .destination-header {
+  display: none;
+}
+
+.settings-frame .destination-header h1 {
+  margin-top: 8px;
+  font-size: 28px;
+  font-weight: 500;
+  letter-spacing: -.035em;
+}
+
+.settings-frame .destination-header p {
+  margin-top: 8px;
+  font-size: 12px;
+}
+
+.settings-frame .settings-layout {
+  display: contents;
+}
+
+.settings-frame .settings-nav {
+  grid-column: 1;
+  grid-row: 1 / -1;
+  min-height: 100dvh;
+  border: 0;
+  border-radius: 0;
+  padding: 64px 14px 24px;
+  background: var(--sidebar-surface);
+}
+
+.settings-back {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: 5px;
+  min-height: 30px;
+  border-radius: var(--pi-radius-row);
+  padding: 0 10px;
+  color: var(--text-secondary);
+  background: transparent;
+  font-size: 13px;
+}
+
+.settings-back:hover {
+  color: var(--text-primary);
+  background: var(--hover);
+}
+
+.settings-search {
+  display: flex;
+  height: 34px;
+  align-items: center;
+  gap: 7px;
+  margin: 18px 0 24px;
+  border-radius: 18px;
+  padding: 0 11px;
+  color: var(--text-muted);
+  background: var(--surface-0);
+}
+
+.settings-search input {
+  width: 100%;
+  border: 0;
+  outline: 0;
+  color: var(--text-primary);
+  background: transparent;
+  font: inherit;
+  font-size: 12px;
+}
+
+.settings-nav-group {
+  display: block;
+  margin: 0 10px 8px;
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.settings-nav-block {
+  display: grid;
+  gap: 2px;
+  margin-bottom: 14px;
+}
+
+.settings-frame .settings-nav button:not(.settings-back) {
+  width: 100%;
+  min-height: 34px;
+  border-radius: var(--pi-radius-row);
+  padding: 0 10px;
+  color: var(--text-secondary);
+  background: transparent;
+  font-size: 13px;
+  text-align: left;
+}
+
+.settings-frame .settings-nav button:not(.settings-back):hover,
+.settings-frame .settings-nav button.active {
+  color: var(--text-primary);
+  background: var(--active);
+}
+
+.settings-frame .settings-content {
+  grid-column: 2;
+  grid-row: 1;
+  width: auto;
+  max-width: none;
+  padding: 48px 44px 48px;
+}
+
+.settings-frame .settings-heading h2 {
+  font-size: 28px;
+  font-weight: 500;
+}
+
+.settings-frame .settings-heading p {
+  margin-top: 8px;
+  font-size: 12px;
+}
+
+.settings-frame .settings-card {
+  border: 0;
+  border-radius: var(--pi-radius-composer);
+  background: var(--surface-1);
+  box-shadow: none;
+}
+
+/* Extensions follows Pi's marketplace rhythm: quiet page header, a single
+   readiness band, pill tabs, catalog selector, filters, then three cards. */
+.extensions-page {
+  overflow: auto;
+}
+
+.extension-header {
+  min-height: 92px;
+  align-items: center;
+  border-bottom: 0;
+  padding: calc(var(--pi-toolbar-height) + 8px) 36px 14px;
+}
+
+.extension-heading {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 12px;
+}
+
+.extension-page-icon {
+  display: grid;
+  width: 32px;
+  height: 32px;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: 10px;
+  color: var(--text-primary);
+  background: var(--surface-2);
+}
+
+.extension-header h1 {
+  margin: 0;
+  color: var(--text-primary);
+  font-size: 22px;
+  font-weight: 600;
+  letter-spacing: -.035em;
+}
+
+.extension-header p {
+  max-width: 62ch;
+  margin: 4px 0 0;
+  color: var(--text-muted);
+  font-size: 11px;
+}
+
+.extension-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.primary-extension-action {
+  display: inline-flex;
+  min-height: 34px;
+  align-items: center;
+  gap: 7px;
+  border-radius: 10px;
+  padding: 0 13px;
+  color: var(--surface-0);
+  background: var(--text-primary);
+  font-size: 12px;
+}
+
+.extension-ready-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 0 36px 16px;
+  border-radius: 18px;
+  padding: 12px 16px;
+  color: var(--text-primary);
+  background: color-mix(in oklab, var(--success) 9%, var(--surface-1));
+}
+
+.extension-ready-banner > div,
+.ready-mark {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+}
+
+.ready-mark {
+  display: grid;
+  width: 28px;
+  height: 28px;
+  place-items: center;
+  border-radius: 50%;
+  color: var(--success);
+  background: color-mix(in oklab, var(--success) 13%, transparent);
+}
+
+.extension-ready-banner strong {
+  font-size: 13px;
+}
+
+.extension-ready-banner button {
+  min-height: 30px;
+  border-radius: 10px;
+  padding: 0 12px;
+  color: var(--text-secondary);
+  background: color-mix(in oklab, var(--surface-0) 50%, transparent);
+  font-size: 11px;
+}
+
+.extension-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 0 36px;
+}
+
+.extension-tabs,
+.extension-categories {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.extension-tabs button,
+.extension-categories button {
+  min-height: 30px;
+  border-radius: 16px;
+  padding: 0 12px;
+  color: var(--text-muted);
+  background: transparent;
+  font-size: 11px;
+}
+
+.extension-tabs button.active,
+.extension-categories button.active {
+  color: var(--text-primary);
+  background: var(--surface-2);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, .04);
+}
+
+.extension-tabs button span {
+  margin-left: 4px;
+  color: var(--text-faint);
+}
+
+.extension-search {
+  width: min(310px, 100%);
+  height: 34px;
+  border: 0;
+  border-radius: 18px;
+  background: var(--surface-2);
+}
+
+.extension-marketplace-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 14px 36px 18px;
+  border-radius: 18px;
+  padding: 15px 17px;
+  background: var(--surface-1);
+}
+
+.extension-marketplace-bar strong {
+  color: var(--text-primary);
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.extension-marketplace-bar span {
+  border-radius: 10px;
+  padding: 7px 10px;
+  color: var(--text-secondary);
+  background: var(--surface-2);
+  font-size: 11px;
+}
+
+.extension-marketplace-bar button {
+  display: inline-flex;
+  min-height: 32px;
+  align-items: center;
+  gap: 8px;
+  border: 0;
+  border-radius: 10px;
+  padding: 0 8px 0 0;
+  color: var(--text-secondary);
+  background: transparent;
+  font: inherit;
+}
+
+.extension-marketplace-bar button:hover span {
+  color: var(--text-primary);
+}
+
+.extension-categories {
+  margin: 0 36px 14px;
+}
+
+.extension-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  padding: 0 36px 44px;
+}
+
+.extension-card {
+  display: flex;
+  min-height: 190px;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 12px;
+  border: 0;
+  border-radius: 18px;
+  padding: 16px;
+  background: var(--surface-1);
+  box-shadow: none;
+}
+
+.extension-card:hover {
+  border: 0;
+  background: var(--surface-2);
+  transform: none;
+}
+
+.extension-card-main {
+  min-width: 0;
+}
+
+.extension-card-title {
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-start;
+  gap: 10px;
+}
+
+.extension-card-title > div:last-child {
+  min-width: 0;
+}
+
+.extension-icon {
+  display: grid;
+  width: 32px;
+  height: 32px;
+  flex: 0 0 auto;
+  place-items: center;
+  border: 0;
+  border-radius: 10px;
+  color: var(--text-primary);
+  background: var(--surface-2);
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.extension-card h2 {
+  margin: 1px 0 0;
+  color: var(--text-primary);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.extension-meta {
+  margin: 4px 0 0;
+  color: var(--text-muted);
+  font-size: 10px;
+}
+
+.extension-description {
+  min-height: 44px;
+  margin: 17px 0 12px;
+  color: var(--text-secondary);
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.extension-capabilities {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.extension-capabilities span {
+  border-radius: 7px;
+  padding: 4px 7px;
+  color: var(--text-muted);
+  background: var(--surface-2);
+  font-size: 10px;
+}
+
+.extension-card-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.extension-card-footer > span {
+  font-size: 11px;
+}
+
+.extension-card-footer button {
+  display: inline-flex;
+  min-height: 30px;
+  align-items: center;
+  gap: 6px;
+  border-radius: 10px;
+  padding: 0 10px;
+  color: var(--text-secondary);
+  background: transparent;
+  font-size: 11px;
+}
+
+.extension-card-footer button:hover {
+  color: var(--text-primary);
+  background: var(--hover);
+}
+
+@media (max-width: 820px) {
+  .settings-frame .destination-page {
+    grid-template-columns: 236px minmax(0, 1fr);
+  }
+
+  .settings-frame .destination-header,
+  .settings-frame .settings-content {
+    padding-inline: 28px;
+  }
+
+  .extension-header,
+  .extension-toolbar,
+  .extension-ready-banner,
+  .extension-marketplace-bar,
+  .extension-categories,
+  .extension-grid {
+    margin-inline: 22px;
+    padding-inline: 0;
+  }
+
+  .extension-header {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 14px;
+  }
+
+  .extension-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* Pi's global command/search spotlight. The AEGIS results are local and
+   renderer-safe, but use the same surface geometry and keyboard-first shape. */
+.search-overlay {
+  position: fixed;
+  z-index: 40;
+  inset: 0;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: clamp(48px, 16vh, 140px) 24px 48px;
+  background: rgba(0, 0, 0, .45);
+  animation: pi-overlay-in 180ms var(--ease) both;
+}
+
+.search-dialog {
+  display: flex;
+  width: min(100%, 620px);
+  max-height: min(460px, 100%);
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--surface-2);
+  box-shadow: 0 16px 48px rgba(0, 0, 0, .55);
+  animation: pi-surface-in-top 180ms var(--ease) both;
+}
+
+.search-input-row {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 16px 8px;
+  color: var(--text-muted);
+}
+
+.search-input {
+  min-width: 0;
+  flex: 1;
+  border: 0;
+  outline: 0;
+  color: var(--text-primary);
+  background: transparent;
+  font-size: 14px;
+}
+
+.search-input::placeholder { color: var(--text-muted); }
+
+.search-results {
+  min-height: 0;
+  overflow-y: auto;
+  padding: 6px;
+}
+
+.search-group-label {
+  padding: 10px 10px 4px;
+  color: var(--text-muted);
+  font-size: 10px;
+  font-weight: 600;
+}
+
+.search-item {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: 10px;
+  border-radius: 10px;
+  padding: 8px 10px;
+  color: var(--text-secondary);
+  background: transparent;
+  font-size: 13px;
+  line-height: 1.35;
+  text-align: left;
+  transition: background-color 150ms var(--ease), color 150ms var(--ease);
+}
+
+.search-item:hover,
+.search-item.active { color: var(--text-primary); background: var(--hover); }
+.search-item > svg { flex: 0 0 auto; color: var(--text-muted); }
+.search-item-title { min-width: 0; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.search-item-meta { max-width: 42%; overflow: hidden; color: var(--text-muted); font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
+.search-empty { padding: 28px 12px; color: var(--text-muted); font-size: 13px; text-align: center; }
+
+@keyframes pi-overlay-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes pi-surface-in-top { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: translateY(0); } }
+
+/* The settings page owns its own rail. The legacy app-frame breakpoint must
+   not reintroduce the conversation sidebar column around that full-page route. */
+@media (max-width: 1180px) {
+  .app-frame.settings-frame { grid-template-columns: minmax(0, 1fr); }
+}
+
+@media (max-width: 820px) {
+  .app-frame.settings-frame { grid-template-columns: minmax(0, 1fr); }
+}
+
+/* Final chrome pass: these controls are the part of Pi's shell that the eye
+   notices first. They remain renderer-safe in the browser preview and call
+   the Tauri window only when the native runtime is present. */
+.window-controls {
+  position: fixed;
+  top: 0;
+  right: 0;
+  z-index: 1000;
+  display: flex;
+  width: 120px;
+  height: var(--pi-toolbar-height);
+  box-sizing: border-box;
+  align-items: stretch;
+  padding-left: 8px;
+  background: var(--surface-0);
+  pointer-events: auto;
+  -webkit-app-region: no-drag;
+}
+
+.window-control-btn {
+  display: inline-flex;
+  height: 100%;
+  min-width: 0;
+  flex: 1 1 0;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0;
+  color: color-mix(in oklab, var(--text-primary) 55%, transparent);
+  background: transparent;
+  -webkit-app-region: no-drag;
+}
+
+.window-control-btn:hover {
+  color: var(--text-primary);
+  background: var(--hover);
+}
+
+.window-control-btn.window-control-close:hover {
+  color: #fff;
+  background: var(--error);
+}
+
+.window-controls + .sidebar,
+.window-controls + .chat-view {
+  -webkit-app-region: no-drag;
+}
+
+:root[data-platform="win32"] .conversation-topbar,
+:root[data-platform="linux"] .conversation-topbar {
+  padding-right: 12px;
+}
+
+.conversation-topbar {
+  border-bottom: 0;
+  -webkit-app-region: drag;
+}
+
+.conversation-topbar button,
+.conversation-topbar input,
+.conversation-topbar textarea,
+.sidebar-brand button,
+.settings-nav button,
+.settings-nav input {
+  -webkit-app-region: no-drag;
+}
+
+.sidebar-brand,
+.settings-nav {
+  -webkit-app-region: drag;
+}
+
+.sidebar-toolbar-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.sidebar-label-with-action {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.sidebar-toolbar-button {
+  display: grid;
+  width: 24px;
+  height: 24px;
+  place-items: center;
+  border-radius: 50%;
+  color: var(--text-muted);
+  background: transparent;
+}
+
+/* Match Pi's quiet sidebar: section actions reveal on hover/focus, while
+   remaining available to keyboard users and screen readers. */
+.sidebar-label-with-action .sidebar-toolbar-button {
+  opacity: 0;
+  transition: opacity var(--fast) var(--ease),
+    background-color var(--fast) var(--ease),
+    color var(--fast) var(--ease);
+}
+
+.sidebar-label-with-action:hover .sidebar-toolbar-button,
+.sidebar-label-with-action:focus-within .sidebar-toolbar-button,
+.sidebar-label-with-action .sidebar-toolbar-button:hover,
+.sidebar-label-with-action .sidebar-toolbar-button:focus-visible,
+.sidebar-label-with-action .sidebar-toolbar-button.active {
+  opacity: 1;
+}
+
+.sidebar-toolbar-button:hover,
+.sidebar-toolbar-button.active {
+  color: var(--text-primary);
+  background: var(--hover);
+}
+
+.sidebar-menu-anchor {
+  position: relative;
+  display: inline-flex;
+}
+
+.session-menu-anchor {
+  position: relative;
+  display: inline-flex;
+  flex: 0 0 24px;
+}
+
+.project-menu-anchor {
+  position: relative;
+  display: inline-flex;
+  flex: 0 0 24px;
+}
+
+/* The project switcher keeps its Pi menu shape, but is anchored to the
+   project row now that the empty Home hero follows Pi's temporary-session
+   state. The action remains discoverable from the project overflow menu. */
+.project-switcher-anchor {
+  position: relative;
+  display: inline-flex;
+  flex: 0 0 24px;
+}
+
+.sidebar-project-switcher-menu {
+  top: 27px;
+  right: 0;
+  left: auto;
+  transform: none;
+}
+
+.session-row-menu {
+  position: absolute;
+  top: 27px;
+  right: 0;
+  z-index: 90;
+  display: grid;
+  width: 184px;
+  gap: 2px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 6px;
+  background: var(--surface-2);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, .38);
+}
+
+.session-row-menu button {
+  min-height: 30px;
+  border-radius: 8px;
+  padding: 0 8px;
+  color: var(--text-secondary);
+  background: transparent;
+  font-size: 11px;
+  text-align: left;
+}
+
+.session-row-menu button:hover {
+  color: var(--text-primary);
+  background: var(--hover);
+}
+
+.project-row-menu {
+  position: absolute;
+  top: 27px;
+  right: 0;
+  z-index: 90;
+  display: grid;
+  width: 184px;
+  gap: 2px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 6px;
+  background: var(--surface-2);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, .38);
+}
+
+.project-row-menu button {
+  min-height: 30px;
+  border-radius: 8px;
+  padding: 0 8px;
+  color: var(--text-secondary);
+  background: transparent;
+  font-size: 11px;
+  text-align: left;
+}
+
+.project-row-menu button:hover {
+  color: var(--text-primary);
+  background: var(--hover);
+}
+
+.sidebar-mini-menu {
+  position: fixed;
+  top: calc(var(--pi-toolbar-height) + 32px);
+  left: 14px;
+  right: auto;
+  z-index: 80;
+  display: grid;
+  width: 172px;
+  gap: 2px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 6px;
+  background: var(--surface-2);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, .38);
+}
+
+.sidebar-mini-menu-title {
+  padding: 6px 8px 5px;
+  color: var(--text-muted);
+  font-size: 10px;
+  font-weight: 600;
+}
+
+.sidebar-mini-menu button {
+  min-height: 30px;
+  border-radius: 8px;
+  padding: 0 8px;
+  color: var(--text-secondary);
+  background: transparent;
+  font-size: 11px;
+  text-align: left;
+}
+
+.sidebar-mini-menu button:hover,
+.sidebar-mini-menu button.selected {
+  color: var(--text-primary);
+  background: var(--hover);
+}
+
+.sidebar-label-with-action .sidebar-toolbar-button {
+  margin-top: -2px;
+}
+
+.brand-mark {
+  overflow: hidden;
+  border-color: color-mix(in oklab, var(--text-primary) 14%, transparent);
+  background: var(--surface-1);
+  box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--text-primary) 4%, transparent);
+}
+
+.brand-mark svg {
+  color: var(--text-primary);
+  stroke-width: 1.55;
+}
+
+.brand-copy strong {
+  letter-spacing: .02em;
+}
+
+.environment-option.active {
+  background: transparent;
+}
+
+@media (max-width: 1180px) {
+  .app-frame,
+  .app-frame.destination-frame,
+  .app-frame.work-panel-open {
+    grid-template-columns: var(--pi-sidebar-width) minmax(0, 1fr);
+  }
+
+  .app-frame.work-panel-open .work-panel {
+    width: min(var(--work-width), calc(100vw - var(--pi-sidebar-width)));
+  }
+}
+
+@media (max-width: 820px) {
+  :root { --pi-sidebar-width: 236px; }
+  body { min-width: 0; }
+  .app-frame,
+  .app-frame.destination-frame,
+  .app-frame.work-panel-open {
+    grid-template-columns: var(--pi-sidebar-width) minmax(0, 1fr);
+  }
+
+  .sidebar {
+    width: var(--pi-sidebar-width);
+    min-width: var(--pi-sidebar-width);
+    align-items: stretch;
+    padding-inline: 0;
+  }
+
+  .sidebar-brand {
+    flex-direction: row;
+    gap: 10px;
+    padding-inline: 14px;
+  }
+
+  .brand-copy,
+  .sidebar-toggle,
+  .new-task span,
+  .sidebar-label,
+  .session-list,
+  .project-group,
+  .sidebar-status,
+  .sidebar-version {
+    display: revert;
+  }
+
+  .new-task {
+    width: auto;
+    justify-content: flex-start;
+    margin-inline: 14px;
+    padding: 0 10px;
+  }
+
+  .sidebar-nav,
+  .utility-row {
+    justify-content: flex-start;
+    padding-inline: 9px;
+  }
+
+  .sidebar-bottom .utility-row {
+    justify-content: center;
+    padding-inline: 0;
+  }
+
+  .conversation-topbar { padding-inline: 14px; }
+}
+
+/* Settings follows Pi's full-page information architecture: a quiet rail,
+   grouped destinations, and large row cards instead of an AEGIS dashboard. */
+.settings-frame .settings-page {
+  display: grid;
+  grid-template-columns: var(--pi-sidebar-width) minmax(0, 1fr);
+  min-height: 100dvh;
+  background: var(--surface-0);
+}
+
+.settings-page .settings-nav {
+  display: flex;
+  min-height: 100dvh;
+  flex-direction: column;
+  grid-column: 1;
+  grid-row: 1;
+  border: 0;
+  border-radius: 0;
+  padding: 48px 14px 14px;
+  background: var(--sidebar-surface);
+}
+
+.settings-nav-scroll {
+  min-height: 0;
+  overflow: auto;
+}
+
+.settings-page .settings-search {
+  margin: 0 0 10px;
+}
+
+.settings-page .settings-back {
+  min-height: 30px;
+  margin: 0;
+}
+
+.settings-search-empty {
+  margin: 18px 8px;
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.settings-nav-footer {
+  margin-top: auto;
+  padding-top: 10px;
+}
+
+.settings-nav-item-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.settings-nav-item-label svg {
+  color: var(--text-muted);
+}
+
+.settings-page .settings-content {
+  grid-column: 2;
+  grid-row: 1;
+  min-width: 0;
+  overflow: auto;
+  padding: 48px 40px 64px;
+}
+
+.settings-content-inner {
+  /* Pi's Settings content is a full-width column. The earlier 900px cap was
+     an AEGIS dashboard constraint and left a large dead band on wide windows. */
+  width: 100%;
+  margin: 0;
+}
+
+.settings-section-title {
+  margin: 0 0 28px;
+  color: var(--text-primary);
+  font-size: 28px;
+  font-weight: 500;
+  letter-spacing: -.04em;
+}
+
+.pi-settings-stack {
+  display: grid;
+  gap: 36px;
+}
+
+.pi-settings-group {
+  display: grid;
+  gap: 12px;
+}
+
+.pi-settings-group h2 {
+  margin: 0;
+  color: var(--text-primary);
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.pi-settings-card {
+  overflow: hidden;
+  border-radius: 18px;
+  background: var(--surface-1);
+}
+
+.pi-settings-row {
+  display: flex;
+  min-height: 76px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  border-bottom: 1px solid var(--line-soft);
+  padding: 16px 20px;
+  color: var(--text-primary);
+}
+
+.pi-settings-row:last-child {
+  border-bottom: 0;
+}
+
+.pi-settings-row > div {
+  min-width: 0;
+}
+
+.pi-settings-row strong,
+.pi-settings-row span {
+  display: block;
+}
+
+.pi-settings-row strong {
+  color: var(--text-primary);
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.pi-settings-row div > span {
+  margin-top: 5px;
+  color: var(--text-muted);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.pi-settings-row > button,
+.pi-settings-value {
+  display: inline-flex;
+  min-width: 118px;
+  min-height: 38px;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  border: 0;
+  border-radius: 18px;
+  padding: 0 14px;
+  color: var(--text-secondary);
+  background: var(--surface-2);
+  font-size: 12px;
+  text-align: center;
+}
+
+.pi-settings-row > button:hover {
+  color: var(--text-primary);
+  background: var(--surface-3);
+}
+
+.pi-settings-value {
+  background: transparent;
+}
+
+.pi-settings-value input {
+  width: min(360px, 40vw);
+  border: 0;
+  outline: 0;
+  color: var(--text-primary);
+  background: transparent;
+  font: inherit;
+  font-size: 12px;
+  text-align: right;
+}
+
+.pi-settings-card-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border-top: 1px solid var(--line-soft);
+  padding: 16px 20px;
+}
+
+.settings-primary {
+  min-height: 36px;
+  border: 0;
+  border-radius: 10px;
+  padding: 0 14px;
+  color: var(--surface-0);
+  background: var(--text-primary);
+  font-size: 12px;
+}
+
+.settings-primary:disabled {
+  cursor: not-allowed;
+  opacity: .4;
+}
+
+.pi-settings-card-actions span {
+  color: var(--text-muted);
+  font-size: 11px;
+}
+
+.pi-settings-card-actions .good {
+  color: var(--success);
+}
+
+/* Pi uses separate quiet cards for each preference row. Keeping the wrapper
+   transparent preserves AEGIS' existing settings ownership while matching the
+   source geometry instead of rendering one large dashboard panel. */
+.pi-settings-card {
+  overflow: visible;
+  border-radius: 0;
+  background: transparent;
+}
+
+.pi-settings-card > .pi-settings-row,
+.pi-settings-card > .pi-settings-card-actions,
+.pi-settings-card > .pi-settings-empty {
+  border: 0;
+  border-radius: 16px;
+  background: var(--surface-1);
+}
+
+.pi-settings-card > .pi-settings-row + .pi-settings-row,
+.pi-settings-card > .pi-settings-row + .pi-settings-card-actions,
+.pi-settings-card > .pi-settings-row + .pi-settings-empty {
+  margin-top: 7px;
+}
+
+.pi-settings-row {
+  min-height: 64px;
+  border-bottom: 0;
+  padding: 12px 16px;
+}
+
+.pi-settings-row > button,
+.pi-settings-value,
+.pi-settings-select-value {
+  min-height: 34px;
+  border-radius: 17px;
+  background: var(--surface-2);
+}
+
+.pi-settings-select-value {
+  display: inline-flex !important;
+  min-width: 118px;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 0 12px;
+  color: var(--text-secondary) !important;
+  font-size: 12px !important;
+}
+
+.pi-settings-font-size-row,
+.pi-settings-proxy-row {
+  min-height: 78px;
+}
+
+.font-size-control,
+.proxy-options {
+  display: flex;
+  min-width: 220px;
+  flex: 0 0 auto;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 7px;
+}
+
+.font-size-options,
+.font-size-slider-row,
+.proxy-options {
+  display: flex;
+  align-items: center;
+}
+
+.font-size-options,
+.proxy-options {
+  overflow: hidden;
+  border-radius: 16px;
+  background: var(--surface-2);
+}
+
+.font-size-options button,
+.proxy-options button {
+  min-height: 30px;
+  border: 0;
+  padding: 0 10px;
+  color: var(--text-muted);
+  background: transparent;
+  font-size: 11px;
+}
+
+.font-size-options button.active,
+.proxy-options button.active {
+  color: var(--text-primary);
+  background: var(--surface-3);
+}
+
+.font-size-slider-row {
+  width: 202px;
+  gap: 9px;
+  color: var(--text-muted);
+  font-size: 11px;
+}
+
+.font-size-slider-row input {
+  width: 158px;
+  accent-color: var(--text-primary);
+}
+
+.proxy-options {
+  min-width: 0;
+  flex-direction: row;
+  gap: 0;
+}
+
+.pi-settings-empty {
+  display: flex;
+  min-height: 100px;
+  align-items: center;
+  gap: 14px;
+  padding: 20px;
+}
+
+.pi-settings-empty > svg {
+  flex: 0 0 auto;
+  color: var(--text-muted);
+}
+
+.pi-settings-empty > div {
+  min-width: 0;
+  flex: 1;
+}
+
+.pi-settings-empty strong,
+.pi-settings-empty span {
+  display: block;
+}
+
+.pi-settings-empty strong {
+  color: var(--text-primary);
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.pi-settings-empty span {
+  margin-top: 5px;
+  color: var(--text-muted);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+/* Settings → Projects follows Pi's archive page: one quiet subtitle, one
+   compact toolbar, then a single elevated project row owned by the local
+   workspace state. */
+.project-archive-page {
+  display: grid;
+  gap: 14px;
+}
+
+.project-archive-subtitle {
+  margin: -12px 0 0;
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+
+.project-archive-toolbar {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 8px;
+}
+
+.project-sort-control,
+.project-search-control {
+  display: inline-flex;
+  height: 34px;
+  align-items: center;
+  border-radius: 18px;
+  background: var(--surface-2);
+}
+
+.project-sort-control {
+  gap: 2px;
+  padding: 2px;
+}
+
+.project-sort-control button {
+  min-height: 30px;
+  border-radius: 15px;
+  padding: 0 12px;
+  color: var(--text-muted);
+  background: transparent;
+  font-size: 12px;
+}
+
+.project-sort-control button.active {
+  color: var(--text-primary);
+  background: var(--surface-3);
+}
+
+.project-search-control {
+  min-width: 180px;
+  max-width: 320px;
+  flex: 1 1 180px;
+  gap: 7px;
+  padding: 0 12px;
+  color: var(--text-muted);
+}
+
+.project-search-control input {
+  min-width: 0;
+  width: 100%;
+  border: 0;
+  outline: 0;
+  color: var(--text-primary);
+  background: transparent;
+  font: inherit;
+  font-size: 12px;
+}
+
+.project-search-control input::placeholder {
+  color: var(--text-faint);
+}
+
+.project-add-button {
+  display: inline-flex;
+  min-height: 34px;
+  align-items: center;
+  gap: 7px;
+  margin-left: auto;
+  border-radius: 10px;
+  padding: 0 13px;
+  color: var(--surface-0);
+  background: var(--text-primary);
+  font-size: 12px;
+}
+
+.project-archive-label {
+  color: var(--text-secondary);
+  font-size: 11px;
+  letter-spacing: .06em;
+}
+
+.project-archive-label span {
+  display: inline-grid;
+  min-width: 22px;
+  min-height: 20px;
+  margin-left: 5px;
+  place-items: center;
+  border-radius: 10px;
+  color: var(--text-muted);
+  background: var(--surface-2);
+  letter-spacing: 0;
+}
+
+.project-archive-list,
+.project-archive-empty {
+  border-radius: 18px;
+  background: var(--surface-1);
+}
+
+.project-archive-row {
+  display: grid;
+  min-height: 82px;
+  grid-template-columns: auto auto minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 12px;
+  padding: 0 18px;
+}
+
+.project-archive-chevron {
+  color: var(--text-muted);
+}
+
+.project-archive-icon {
+  display: grid;
+  width: 36px;
+  height: 36px;
+  place-items: center;
+  border-radius: 11px;
+  color: var(--text-primary);
+  background: var(--surface-2);
+}
+
+.project-archive-main {
+  min-width: 0;
+}
+
+.project-archive-main strong,
+.project-archive-main span {
+  display: block;
+}
+
+.project-archive-main strong {
+  color: var(--text-primary);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.project-archive-main span,
+.project-archive-time {
+  overflow: hidden;
+  margin-top: 5px;
+  color: var(--text-muted);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.project-archive-status {
+  border-radius: 10px;
+  padding: 5px 8px;
+  color: var(--text-secondary);
+  background: var(--surface-2);
+  font-size: 11px;
+}
+
+.project-archive-time {
+  margin-top: 0;
+  max-width: 150px;
+  justify-self: end;
+}
+
+.project-archive-empty {
+  display: grid;
+  min-height: 160px;
+  place-items: center;
+  align-content: center;
+  gap: 7px;
+  color: var(--text-muted);
+}
+
+.project-archive-empty strong {
+  color: var(--text-primary);
+  font-size: 14px;
+}
+
+.project-archive-empty span {
+  font-size: 12px;
+}
+
+/* Settings → Models mirrors Pi's configuration hierarchy while keeping the
+   actual endpoint/model editor behind an explicit action. */
+.model-configuration-page {
+  display: grid;
+  gap: 34px;
+}
+
+.model-section {
+  display: grid;
+  gap: 12px;
+}
+
+.model-section > h2,
+.model-section-heading h2 {
+  margin: 0;
+  color: var(--text-primary);
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.model-section-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.model-section-heading h2 span {
+  display: inline-grid;
+  min-width: 22px;
+  min-height: 20px;
+  margin-left: 5px;
+  place-items: center;
+  border-radius: 10px;
+  color: var(--text-muted);
+  background: var(--surface-2);
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.model-default-row,
+.model-provider-row,
+.model-vendor-empty,
+.model-catalog-row {
+  display: flex;
+  min-height: 72px;
+  align-items: center;
+  gap: 16px;
+  border-radius: 16px;
+  padding: 0 16px;
+  background: var(--surface-1);
+}
+
+.model-default-row > div,
+.model-provider-row > div {
+  min-width: 0;
+  flex: 1;
+}
+
+.model-default-row strong,
+.model-default-row span,
+.model-provider-row strong,
+.model-provider-row span {
+  display: block;
+}
+
+.model-default-row strong,
+.model-provider-row strong {
+  color: var(--text-primary);
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.model-default-row span,
+.model-provider-row div span,
+.model-vendor-empty,
+.model-catalog-row {
+  margin-top: 5px;
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+
+.model-default-row button,
+.model-section-heading button,
+.model-provider-row > button,
+.model-catalog-row button {
+  display: inline-flex;
+  min-height: 34px;
+  align-items: center;
+  gap: 7px;
+  border-radius: 10px;
+  padding: 0 11px;
+  color: var(--text-secondary);
+  background: transparent;
+  font-size: 12px;
+}
+
+.model-default-row button:hover,
+.model-section-heading button:hover,
+.model-provider-row > button:hover,
+.model-catalog-row button:hover {
+  color: var(--text-primary);
+  background: var(--surface-2);
+}
+
+.model-section-heading button,
+.model-catalog-row button {
+  color: var(--text-primary);
+  background: var(--surface-2);
+}
+
+.model-provider-default {
+  white-space: nowrap;
+}
+
+.model-provider-toggle {
+  width: 38px;
+  min-width: 38px;
+  height: 22px;
+  min-height: 22px !important;
+  border-radius: 12px !important;
+  padding: 2px !important;
+  background: var(--surface-3) !important;
+}
+
+.model-provider-toggle span {
+  display: block;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--text-muted);
+  transition: transform .16s ease, background .16s ease;
+}
+
+.model-provider-toggle.active {
+  background: var(--text-primary) !important;
+}
+
+.model-provider-toggle.active span {
+  background: var(--surface-0);
+  transform: translateX(16px);
+}
+
+.model-vendor-empty {
+  min-height: 58px;
+  padding-inline: 16px;
+}
+
+.model-catalog-row {
+  justify-content: space-between;
+  min-height: 64px;
+  margin-top: 2px;
+}
+
+.model-catalog-row button {
+  flex: 0 0 auto;
+}
+
+.model-editor {
+  display: grid;
+  gap: 12px;
+  border-radius: 16px;
+  padding: 16px;
+  background: var(--surface-1);
+}
+
+.model-editor-heading,
+.model-editor-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.model-editor-heading button {
+  min-width: 28px;
+  min-height: 28px;
+  border-radius: 50%;
+  color: var(--text-muted);
+  background: var(--surface-2);
+}
+
+.model-editor label {
+  display: grid;
+  gap: 6px;
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.model-editor input {
+  min-height: 36px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 0 10px;
+  color: var(--text-primary);
+  background: var(--surface-2);
+  font: inherit;
+  font-size: 12px;
+  outline: 0;
+}
+
+.model-editor-actions {
+  justify-content: flex-start;
+}
+
+.import-configuration-page {
+  display: grid;
+  gap: 14px;
+}
+
+.import-notice {
+  border-radius: 12px;
+  padding: 10px 13px;
+  color: var(--text-secondary);
+  background: color-mix(in oklab, var(--success) 9%, var(--surface-1));
+  font-size: 12px;
+}
+
+.import-settings-card {
+  overflow: hidden;
+  border-radius: 16px;
+  background: var(--surface-1);
+}
+
+.import-settings-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 16px 18px;
+}
+
+.import-settings-heading h2 {
+  margin: 0;
+  color: var(--text-primary);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.import-settings-heading p {
+  margin: 5px 0 0;
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.import-settings-heading button {
+  min-height: 32px;
+  border-radius: 10px;
+  padding: 0 13px;
+  color: var(--surface-0);
+  background: var(--text-primary);
+  font-size: 12px;
+}
+
+.import-settings-empty {
+  border-top: 1px solid var(--line-soft);
+  padding: 14px 18px;
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.ai-settings-page {
+  display: grid;
+  gap: 34px;
+}
+
+.ai-mode-options {
+  display: inline-flex;
+  overflow: hidden;
+  border-radius: 16px;
+  background: var(--surface-2);
+}
+
+.ai-mode-options button {
+  min-height: 32px;
+  border: 0;
+  padding: 0 11px;
+  color: var(--text-muted);
+  background: transparent;
+  font-size: 11px;
+}
+
+.ai-mode-options button.active {
+  color: var(--text-primary);
+  background: var(--surface-3);
+}
+
+.settings-toggle {
+  position: relative;
+  width: 38px;
+  min-width: 38px !important;
+  height: 22px;
+  min-height: 22px !important;
+  border-radius: 12px !important;
+  padding: 2px !important;
+  background: var(--surface-3) !important;
+}
+
+.settings-toggle span {
+  display: block;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--text-muted);
+  transition: transform .16s ease, background .16s ease;
+}
+
+.settings-toggle.on {
+  background: var(--text-primary) !important;
+}
+
+.settings-toggle.on span {
+  background: var(--surface-0);
+  transform: translateX(16px);
+}
+
+.shortcut-settings-page,
+.instruction-settings-page,
+.capability-settings-page {
+  display: grid;
+  gap: 14px;
+}
+
+.shortcut-settings-card,
+.instruction-settings-card,
+.capability-settings-group {
+  overflow: hidden;
+  border-radius: 16px;
+  background: var(--surface-1);
+}
+
+.shortcut-settings-header,
+.instruction-settings-heading,
+.capability-settings-toolbar,
+.capability-settings-group-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.shortcut-settings-header,
+.instruction-settings-heading {
+  padding: 16px 18px;
+}
+
+.shortcut-settings-header h2,
+.instruction-settings-heading h2 {
+  margin: 0;
+  color: var(--text-primary);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.shortcut-settings-header p,
+.instruction-settings-heading p,
+.instruction-settings-heading span {
+  display: block;
+  margin: 5px 0 0;
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.shortcut-settings-header button,
+.shortcut-settings-row > button,
+.instruction-settings-actions button,
+.capability-settings-row > button {
+  display: inline-flex;
+  min-height: 32px;
+  align-items: center;
+  gap: 7px;
+  border-radius: 10px;
+  padding: 0 11px;
+  color: var(--text-secondary);
+  background: var(--surface-2);
+  font-size: 11px;
+}
+
+.shortcut-settings-row,
+.capability-settings-row {
+  display: flex;
+  min-height: 64px;
+  align-items: center;
+  gap: 14px;
+  border-top: 1px solid var(--line-soft);
+  padding: 12px 18px;
+}
+
+.shortcut-settings-row > div,
+.capability-settings-row > div {
+  min-width: 0;
+  flex: 1;
+}
+
+.shortcut-settings-row strong,
+.shortcut-settings-row span,
+.capability-settings-row strong,
+.capability-settings-row span,
+.capability-settings-row small {
+  display: block;
+}
+
+.shortcut-settings-row strong,
+.capability-settings-row strong {
+  color: var(--text-primary);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.shortcut-settings-row span,
+.capability-settings-row div span,
+.capability-settings-row small {
+  margin-top: 4px;
+  color: var(--text-muted);
+  font-size: 11px;
+}
+
+.shortcut-settings-row > button {
+  min-width: 82px;
+  justify-content: center;
+  color: var(--text-primary);
+  background: var(--surface-2);
+  font-variant-numeric: tabular-nums;
+}
+
+.shortcut-settings-notice,
+.capability-settings-notice {
+  border-radius: 12px;
+  padding: 10px 13px;
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+
+.shortcut-settings-notice {
+  background: color-mix(in oklab, var(--success) 9%, var(--surface-1));
+}
+
+.capability-settings-notice {
+  border: 1px solid var(--line-soft);
+  background: var(--surface-2);
+}
+
+.instruction-settings-heading {
+  align-items: flex-start;
+}
+
+.instruction-file-label {
+  margin-top: 0 !important;
+  border-radius: 9px;
+  padding: 5px 8px;
+  color: var(--text-muted) !important;
+  background: var(--surface-2);
+  white-space: nowrap;
+}
+
+.instruction-settings-card > textarea {
+  display: block;
+  width: calc(100% - 36px);
+  min-height: 180px;
+  margin: 0 18px;
+  resize: vertical;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 12px;
+  color: var(--text-primary);
+  background: var(--surface-2);
+  font: inherit;
+  font-size: 12px;
+  line-height: 1.55;
+  outline: 0;
+}
+
+.instruction-settings-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 18px 16px;
+}
+
+.instruction-settings-actions span {
+  color: var(--success);
+  font-size: 11px;
+}
+
+.capability-settings-toolbar > label {
+  display: inline-flex;
+  min-width: 180px;
+  height: 34px;
+  flex: 1;
+  align-items: center;
+  gap: 7px;
+  border-radius: 18px;
+  padding: 0 12px;
+  color: var(--text-muted);
+  background: var(--surface-2);
+}
+
+.capability-settings-toolbar > label input {
+  width: 100%;
+  border: 0;
+  outline: 0;
+  color: var(--text-primary);
+  background: transparent;
+  font: inherit;
+  font-size: 12px;
+}
+
+.capability-settings-toolbar > div {
+  display: flex;
+  gap: 8px;
+}
+
+.settings-secondary {
+  min-height: 36px;
+  border-radius: 10px;
+  padding: 0 12px;
+  color: var(--text-secondary);
+  background: var(--surface-2);
+  font-size: 12px;
+}
+
+.capability-settings-group-heading {
+  min-height: 44px;
+  padding: 0 18px;
+  color: var(--text-secondary);
+  font-size: 11px;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+}
+
+.capability-settings-group-heading span {
+  display: inline-grid;
+  min-width: 22px;
+  min-height: 20px;
+  place-items: center;
+  border-radius: 10px;
+  color: var(--text-muted);
+  background: var(--surface-2);
+  letter-spacing: 0;
+}
+
+.capability-settings-glyph {
+  display: grid !important;
+  width: 30px;
+  height: 30px;
+  flex: 0 0 auto;
+  place-items: center;
+  margin: 0 !important;
+  border-radius: 9px;
+  color: var(--text-primary) !important;
+  background: var(--surface-2);
+}
+
+.capability-settings-status {
+  flex: 0 0 auto;
+  border-radius: 9px;
+  padding: 5px 8px;
+  color: var(--text-muted) !important;
+  background: var(--surface-2);
+}
+
+@media (max-width: 820px) {
+  .settings-frame .settings-page {
+    grid-template-columns: 220px minmax(0, 1fr);
+  }
+
+  .settings-page .settings-content {
+    padding-inline: 28px;
+  }
+}
+
+/* Keep the outer shell single-column after all legacy breakpoints have run;
+   Settings owns the 220/236px navigation rail inside its page. */
+@media (max-width: 1180px) {
+  .app-frame.settings-frame { grid-template-columns: minmax(0, 1fr); }
+}
+
+@media (max-width: 820px) {
+  .app-frame.settings-frame { grid-template-columns: minmax(0, 1fr); }
+}
+
+/* Final cascade guard for the ported Pi chrome. */
+.sidebar-label-with-action {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: space-between;
+}
+
+:root[data-platform="win32"] .conversation-topbar,
+:root[data-platform="linux"] .conversation-topbar {
+  right: 120px;
+}
+
+:root[data-platform="win32"] .app-frame.work-panel-open .conversation-topbar,
+:root[data-platform="linux"] .app-frame.work-panel-open .conversation-topbar {
+  right: 0;
+}
+
+.settings-page .settings-back {
+  justify-content: flex-start;
+}
+
+@media (max-width: 820px) {
+  :root {
+    --pi-sidebar-width: clamp(240px, 275px, min(520px, calc(100vw - 320px)));
+  }
+}
+
+.app-frame.sidebar-is-collapsed,
+.app-frame.sidebar-is-collapsed.work-panel-open {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.app-frame.sidebar-is-collapsed.work-panel-open {
+  grid-template-columns: minmax(0, 1fr) var(--work-width);
+}
+
+.collapsed-topbar-actions {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 4px;
+  -webkit-app-region: no-drag;
+}
+
+:root[data-platform="win32"] .work-panel-header,
+:root[data-platform="linux"] .work-panel-header {
+  margin-right: 120px;
+}
+
+/* Destination pages port the same frame, segmented filters, soft tiles, and
+   empty-state rhythm as Pi. The actions remain AEGIS-owned and never pretend
+   that an unavailable host adapter is connected. */
+.pi-route-page {
+  min-width: 0;
+  min-height: 100dvh;
+  overflow: auto;
+  background: var(--surface-0);
+}
+
+.pi-destination-frame {
+  width: min(100%, 980px);
+  margin: 0 auto;
+  padding: 28px 28px 48px;
+}
+
+:root[data-platform="win32"] .pi-destination-frame,
+:root[data-platform="linux"] .pi-destination-frame,
+:root[data-platform="darwin"] .pi-destination-frame {
+  padding-top: calc(var(--pi-toolbar-height) + 8px);
+}
+
+.pi-route-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 18px;
+}
+
+.pi-route-header .page-title {
+  margin: 0;
+  color: var(--text-primary);
+  font-size: 28px;
+  font-weight: 650;
+  letter-spacing: -.04em;
+}
+
+.pi-route-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.pi-route-refresh,
+.pi-route-review {
+  display: inline-flex;
+  min-height: 36px;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  border-radius: 10px;
+  padding: 0 13px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.pi-route-refresh {
+  color: var(--text-primary);
+  background: var(--surface-2);
+}
+
+.pi-route-refresh:hover {
+  background: var(--surface-3);
+}
+
+.pi-route-review {
+  color: #171717;
+  background: #ededed;
+  font-weight: 600;
+}
+
+.pi-route-review:hover {
+  background: #fff;
+}
+
+.pi-route-review:disabled {
+  cursor: not-allowed;
+  opacity: .45;
+}
+
+.dest-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.dest-filters {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 3px;
+  border-radius: 999px;
+  background: color-mix(in oklab, var(--text-primary) 5%, transparent);
+}
+
+.dest-filter {
+  display: inline-flex;
+  min-height: 28px;
+  align-items: center;
+  gap: 5px;
+  border-radius: 999px;
+  padding: 5px 12px;
+  color: var(--text-secondary);
+  background: transparent;
+  font-size: 12px;
+  line-height: 1;
+}
+
+.dest-filter span {
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.dest-filter:hover {
+  color: var(--text-primary);
+  background: var(--hover);
+}
+
+.dest-filter.active {
+  color: var(--text-primary);
+  background: var(--surface-2);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, .12);
+}
+
+.dest-filter.active span {
+  color: var(--text-secondary);
+}
+
+.dest-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.dest-row {
+  display: flex;
+  width: 100%;
+  align-items: flex-start;
+  gap: 12px;
+  border-radius: 14px;
+  padding: 12px 14px;
+  text-align: left;
+  background: var(--surface-1);
+}
+
+.dest-row:hover {
+  background: var(--surface-2);
+}
+
+.dest-row-icon {
+  display: inline-flex;
+  width: 32px;
+  height: 32px;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9px;
+  color: var(--text-secondary);
+  background: color-mix(in oklab, var(--text-primary) 7%, transparent);
+}
+
+.dest-row-body {
+  min-width: 0;
+  flex: 1;
+}
+
+.dest-row-title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-primary);
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.dest-row-meta {
+  margin-top: 3px;
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.dest-row-actions {
+  display: flex;
+  flex: 0 0 auto;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.dest-create {
+  margin-bottom: 16px;
+  border-radius: 16px;
+  padding: 14px;
+  background: var(--surface-1);
+}
+
+.pi-scheduled-create {
+  display: grid;
+  gap: 12px;
+}
+
+.pi-route-create-heading {
+  color: var(--text-primary);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.pi-scheduled-create label {
+  display: grid;
+  gap: 6px;
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+
+.pi-scheduled-create input,
+.pi-scheduled-create textarea,
+.pi-scheduled-create select {
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 9px 11px;
+  color: var(--text-primary);
+  background: var(--surface-2);
+  font: inherit;
+  font-size: 12px;
+  outline: 0;
+}
+
+.pi-scheduled-create textarea {
+  min-height: 76px;
+  resize: vertical;
+}
+
+.pi-scheduled-create input:focus,
+.pi-scheduled-create textarea:focus,
+.pi-scheduled-create select:focus {
+  border-color: var(--line-strong);
+}
+
+.pi-scheduled-create-actions {
+  display: flex;
+  align-items: flex-end;
+  gap: 12px;
+}
+
+.pi-cadence-field {
+  min-width: 180px;
+  flex: 1;
+}
+
+.dest-section-label {
+  margin: 4px 0 10px;
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: .07em;
+  text-transform: uppercase;
+}
+
+.pi-route-empty {
+  display: flex;
+  min-height: 320px;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 56px 24px;
+  text-align: center;
+}
+
+.pi-route-empty.page-card {
+  border: 0;
+  border-radius: 16px;
+  background: var(--surface-1);
+  box-shadow: none;
+}
+
+.pi-route-empty .page-empty-icon {
+  display: flex;
+  width: 44px;
+  height: 44px;
+  align-items: center;
+  justify-content: center;
+  margin: 0 0 12px;
+  border-radius: 50%;
+  color: var(--text-secondary);
+  background: color-mix(in oklab, var(--text-primary) 6%, transparent);
+}
+
+.pi-route-empty-title {
+  color: var(--text-primary);
+  font-size: 16px;
+  font-weight: 500;
+}
+
+.pi-route-empty p {
+  max-width: 380px;
+  margin: 7px 0 18px;
+  color: var(--text-muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.pi-route-open {
+  min-height: 36px;
+  border-radius: 10px;
+  padding: 0 15px;
+  color: #222;
+  background: #ededed;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.pi-route-open:hover {
+  background: #fff;
+}
+
+@media (max-width: 700px) {
+  .pi-destination-frame { padding-inline: 22px; }
+  .pi-route-header { align-items: flex-start; flex-direction: column; }
+  .pi-route-actions { width: 100%; }
+  .pi-route-actions > button { flex: 1; }
+  .pi-scheduled-create-actions { align-items: stretch; flex-direction: column; }
+  .pi-cadence-field { min-width: 0; }
+}
+
+@media (max-width: 1180px) {
+  :root[data-platform="win32"] .pi-route-actions,
+  :root[data-platform="linux"] .pi-route-actions,
+  :root[data-platform="win32"] .extension-actions,
+  :root[data-platform="linux"] .extension-actions {
+    /* The preview viewport is narrower than a real desktop window. Reserve
+       the native control band while leaving enough title width for one line. */
+    margin-right: 96px;
+  }
+}
+
+/* Pi uses a full-width grouped list for installed extensions and reserves the
+   three-column grid for the marketplace. Keep AEGIS' capabilities and actions,
+   but match that visual distinction exactly. */
+.extension-installed-list {
+  display: grid;
+  gap: 24px;
+  padding: 0 36px 44px;
+}
+
+.extension-installed-group {
+  display: grid;
+  gap: 10px;
+}
+
+.extension-installed-group-label {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: .08em;
+}
+
+.extension-installed-group-label span {
+  display: inline-grid;
+  min-width: 18px;
+  height: 18px;
+  place-items: center;
+  border-radius: 9px;
+  color: var(--text-muted);
+  background: var(--surface-2);
+  font-size: 10px;
+  letter-spacing: 0;
+}
+
+.extension-installed-row {
+  display: flex;
+  min-height: 108px;
+  align-items: flex-start;
+  gap: 12px;
+  border-radius: 16px;
+  padding: 16px;
+  background: var(--surface-1);
+}
+
+.extension-installed-row:hover {
+  background: var(--surface-2);
+}
+
+.extension-installed-row.attention .extension-installed-glyph {
+  color: var(--error);
+  background: color-mix(in oklab, var(--error) 12%, var(--surface-2));
+}
+
+.extension-installed-glyph {
+  display: grid;
+  width: 32px;
+  height: 32px;
+  flex: 0 0 32px;
+  place-items: center;
+  border-radius: 10px;
+  color: var(--text-secondary);
+  background: var(--surface-2);
+}
+
+.extension-installed-copy {
+  min-width: 0;
+  flex: 1;
+}
+
+.extension-installed-title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.extension-installed-title strong {
+  color: var(--text-primary);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.extension-installed-meta,
+.extension-installed-details {
+  margin-top: 4px;
+  color: var(--text-muted);
+  font-size: 11px;
+}
+
+.extension-installed-details {
+  color: var(--text-secondary);
+}
+
+.extension-installed-error {
+  margin: 5px 0 0;
+  color: var(--error);
+  font-size: 12px;
+}
+
+.extension-local-tag {
+  border-radius: 8px;
+  padding: 3px 6px;
+  color: var(--text-secondary);
+  background: var(--surface-2);
+  font-size: 10px;
+}
+
+.extension-installed-actions {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 7px;
+}
+
+.extension-scope-chip,
+.extension-installed-actions > button:not(.extension-row-more) {
+  min-height: 32px;
+  border-radius: 10px;
+  padding: 0 11px;
+  color: var(--text-secondary);
+  background: var(--surface-2);
+  font-size: 11px;
+}
+
+.extension-installed-actions > button:not(.extension-row-more):hover {
+  color: var(--text-primary);
+  background: var(--surface-3);
+}
+
+.extension-row-more {
+  display: grid;
+  width: 30px;
+  height: 30px;
+  place-items: center;
+  border-radius: 50%;
+  color: var(--text-muted);
+  background: transparent;
+}
+
+.extension-row-more:hover {
+  color: var(--text-primary);
+  background: var(--hover);
+}
+
+.extension-installed-empty {
+  border-radius: 16px;
+  padding: 40px 24px;
+  color: var(--text-muted);
+  background: var(--surface-1);
+  text-align: center;
+  font-size: 12px;
+}
+
+.extension-menu-anchor {
+  position: relative;
+  display: inline-flex;
+}
+
+.extension-menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 80;
+  display: grid;
+  width: 214px;
+  gap: 2px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 6px;
+  background: var(--surface-2);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, .38);
+}
+
+.extension-menu button {
+  min-height: 32px;
+  border-radius: 9px;
+  padding: 0 9px;
+  color: var(--text-secondary);
+  background: transparent;
+  font-size: 11px;
+  text-align: left;
+}
+
+.extension-menu button:hover {
+  color: var(--text-primary);
+  background: var(--hover);
+}
+
+.extension-notice {
+  margin: 0 36px 12px;
+  border-radius: 12px;
+  padding: 10px 13px;
+  color: var(--text-secondary);
+  background: color-mix(in oklab, var(--success) 9%, var(--surface-1));
+  font-size: 12px;
+}
+
+@media (max-width: 700px) {
+  .extension-installed-list { padding-inline: 22px; }
+  .extension-installed-row { flex-wrap: wrap; }
+  .extension-installed-actions { width: 100%; margin-left: 44px; }
+  .extension-notice { margin-inline: 22px; }
+}
+
+/* Exact Pi home-surface geometry. The AEGIS renderer now uses the same
+   semantic shell, so these selectors can follow Pi directly instead of
+   relying on the old chat-column compatibility wrapper. */
+.home-main-content {
+  position: relative;
+  display: flex;
+  width: 100%;
+  min-height: 0;
+  flex: 1;
+  flex-direction: column;
+  overflow: hidden;
+  container-type: size;
+  container-name: home-main-content;
+}
+
+.home-scroll {
+  display: flex;
+  width: 100%;
+  min-height: 0;
+  flex: 1;
+  justify-content: center;
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
+.home-main-content > .home-scroll > .home-stack-inner {
+  display: flex;
+  width: min(100%, var(--pi-content-width));
+  max-width: 100%;
+  min-height: 0;
+  /* Pi keeps the home stack at the content cap instead of letting the
+     flex row stretch it across the entire conversation pane. */
+  flex: 0 1 auto;
+  margin: auto;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  padding: 28px 12px 24px;
+}
+
+.home-main-content .empty-hero {
+  display: flex;
+  width: 100%;
+  min-height: 0;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 0;
+  text-align: center;
+  transform: none;
+}
+
+.home-main-content .empty-hero-icon {
+  display: flex;
+  width: 100px;
+  height: 100px;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  opacity: 1;
+  user-select: none;
+}
+
+.home-main-content .home-mascot {
+  display: block;
+  width: 100px;
+  height: 100px;
+  margin: 0;
+  object-fit: contain;
+  pointer-events: none;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+.home-mascot-logo {
+  position: relative;
+  display: block;
+  width: 100px;
+  height: 100px;
+  flex: 0 0 auto;
+  overflow: hidden;
+}
+
+.home-mascot-logo img {
+  display: none;
+  width: 100px;
+  height: 100px;
+  object-fit: contain;
+  pointer-events: none;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+:root:not([data-theme="light"]) .home-mascot-logo .home-mascot-motion.home-mascot-dark,
+:root[data-theme="light"] .home-mascot-logo .home-mascot-motion.home-mascot-light {
+  display: block;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root:not([data-theme="light"]) .home-mascot-logo .home-mascot-motion.home-mascot-dark,
+  :root[data-theme="light"] .home-mascot-logo .home-mascot-motion.home-mascot-light {
+    display: none;
+  }
+
+  :root:not([data-theme="light"]) .home-mascot-logo .home-mascot-still.home-mascot-dark,
+  :root[data-theme="light"] .home-mascot-logo .home-mascot-still.home-mascot-light {
+    display: block;
+  }
+}
+
+.home-main-content .empty-hero h1 {
+  max-width: min(100%, 42rem);
+  margin: 0;
+  color: var(--text-primary);
+  font-size: 28px;
+  font-weight: 400;
+  letter-spacing: -.035em;
+  line-height: 1.2;
+  text-align: center;
+}
+
+.home-composer-wrap {
+  position: relative;
+  z-index: 2;
+  width: 100%;
+  max-width: 100%;
+  flex: 0 0 auto;
+  margin-inline: auto;
+  padding: 0 24px 16px;
+}
+
+.home-composer-wrap .composer-shell,
+.home-composer-wrap .composer-status {
+  width: min(var(--pi-content-width), 100%);
+  margin-inline: auto;
+}
+
+.home-composer-wrap .composer-shell {
+  margin-top: 0;
+}
+
+.home-composer-wrap .composer-status {
+  margin-top: 3px;
+  padding-inline: 4px;
+  opacity: .65;
+}
+
+/* Pi's Home composer ends at the rounded shell. AEGIS keeps the environment
+   state in the thread/work-panel surfaces, so do not expose that internal
+   status row on the Home surface where it changes the reference silhouette. */
+.home-composer-wrap > .composer-status {
+  display: none;
+}
+
+/* Keep the exact Pi composer containment contract in the AEGIS renderer.
+   The AEGIS controls remain local, but dock/stack/shell are the same layers
+   Pi uses for pointer ownership, width capping, focus, and future multiline
+   growth.  The dock stays in normal flow here so existing transcript sizing
+   remains stable until the AEGIS message surface also adopts Pi's measured
+   dock reserve. */
+.composer-dock {
+  display: flex;
+  width: 100%;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.composer-dock-home,
+.composer-dock-docked {
+  position: relative;
+  padding: 0;
+  background: transparent;
+}
+
+.composer-stack {
+  position: relative;
+  display: flex;
+  width: 100%;
+  min-width: 0;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0;
+  pointer-events: auto;
+}
+
+.composer-shell {
+  position: relative;
+  width: 100%;
+  min-width: 0;
+  border-radius: var(--pi-radius-composer);
+  background: var(--surface-1);
+  box-shadow: var(--pi-shadow-composer);
+  isolation: isolate;
+}
+
+/* Pi's slash/@ completion surface is anchored to the composer stack so it
+   grows upward without changing the Home layout or stealing editor focus. */
+.composer-autocomplete {
+  position: absolute;
+  right: 0;
+  bottom: calc(100% + 8px);
+  left: 0;
+  z-index: 40;
+  display: flex;
+  max-height: min(380px, calc(100vh - 160px));
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid var(--line-strong);
+  border-radius: 12px;
+  color: var(--text-primary);
+  background: var(--surface-2);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, .38);
+}
+
+.composer-ac-list {
+  min-height: 0;
+  overflow-y: auto;
+  padding: 6px;
+}
+
+.composer-ac-item {
+  display: flex;
+  width: 100%;
+  min-height: 32px;
+  align-items: center;
+  gap: 8px;
+  border: 0;
+  border-radius: 8px;
+  padding: 0 8px;
+  color: var(--text-secondary);
+  background: transparent;
+  font: inherit;
+  font-size: 12px;
+  text-align: left;
+}
+
+.composer-ac-item:hover,
+.composer-ac-item.kb-active {
+  color: var(--text-primary);
+  background: var(--hover);
+}
+
+.composer-ac-icon {
+  display: inline-flex;
+  flex: 0 0 auto;
+  color: var(--text-secondary);
+}
+
+.composer-ac-name {
+  min-width: 0;
+  flex: 0 1 auto;
+  overflow: hidden;
+  color: var(--text-primary);
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.composer-ac-desc {
+  min-width: 0;
+  flex: 1 1 0;
+  overflow: hidden;
+  color: var(--text-muted);
+  font-size: 11px;
+  text-align: right;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.composer-ac-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 6px 12px;
+  color: var(--text-muted);
+  background: var(--surface-3);
+  font-size: 10px;
+  user-select: none;
+}
+
+.home-composer-wrap .composer-dock-home .composer-status {
+  display: none;
+}
+
+/* The Home title is a real Pi interaction, not a static heading: its project
+   name opens the same quiet, searchable switcher used by Pi's HomeSurface.
+   AEGIS keeps the menu local because folder selection is still owned by the
+   existing workspace/work-panel bridge. */
+.empty-hero .home-project-switcher {
+  position: relative;
+  display: inline-block;
+  max-width: 100%;
+  gap: 0;
+  padding: 0;
+  border-radius: 0;
+  color: inherit;
+  background: transparent;
+  font: inherit;
+  vertical-align: baseline;
+}
+
+.empty-hero .project-underline {
+  display: inline-block;
+  max-width: 100%;
+  border: 0;
+  padding: 0;
+  color: inherit;
+  background: transparent;
+  font: inherit;
+  cursor: pointer;
+  text-decoration: underline dotted;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 4px;
+  text-decoration-color: var(--text-faint);
+}
+
+.empty-hero .project-underline:hover,
+.empty-hero .project-underline[aria-expanded="true"] {
+  color: var(--text-secondary);
+}
+
+.empty-hero .project-underline:focus-visible {
+  outline: 2px solid var(--line-strong);
+  outline-offset: 3px;
+  border-radius: 4px;
+}
+
+.home-project-switcher-menu {
+  position: absolute;
+  top: calc(100% + 10px);
+  left: 50%;
+  z-index: 60;
+  display: flex;
+  width: min(280px, calc(100vw - 24px));
+  max-height: min(420px, calc(100vh - 24px));
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid var(--line-strong);
+  border-radius: 14px;
+  padding: 6px;
+  color: var(--text-primary);
+  background: var(--surface-2);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, .38);
+  text-align: left;
+  transform: translateX(-50%);
+}
+
+.home-project-switcher-search {
+  display: flex;
+  height: 32px;
+  align-items: center;
+  gap: 7px;
+  margin-bottom: 4px;
+  border-radius: 9px;
+  padding: 0 9px;
+  color: var(--text-muted);
+  background: var(--surface-inset);
+}
+
+.home-project-switcher-search input {
+  min-width: 0;
+  height: 100%;
+  flex: 1;
+  border: 0;
+  outline: 0;
+  padding: 0;
+  color: var(--text-primary);
+  background: transparent;
+  font: inherit;
+  font-size: 12px;
+}
+
+.home-project-switcher-search input::placeholder {
+  color: var(--text-muted);
+}
+
+.home-project-switcher-list {
+  min-height: 0;
+  max-height: min(240px, calc(100vh - 220px));
+  overflow-x: hidden;
+  overflow-y: auto;
+  padding: 2px 0;
+}
+
+.home-project-switcher-empty {
+  padding: 12px 10px;
+  color: var(--text-muted);
+  font-size: 12px;
+  text-align: center;
+}
+
+.home-project-switcher-item {
+  display: flex;
+  width: 100%;
+  min-width: 0;
+  min-height: 32px;
+  align-items: center;
+  gap: 8px;
+  border: 0;
+  border-radius: 9px;
+  padding: 7px 8px;
+  color: var(--text-primary);
+  background: transparent;
+  font: inherit;
+  font-size: 12px;
+  line-height: 1.25;
+  text-align: left;
+  cursor: pointer;
+}
+
+.home-project-switcher-item:hover,
+.home-project-switcher-item.is-active,
+.home-project-switcher-item:focus-visible {
+  background: var(--hover);
+}
+
+.home-project-switcher-item svg {
+  flex: 0 0 auto;
+  color: var(--text-secondary);
+}
+
+.home-project-switcher-item-name {
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.home-project-switcher-divider {
+  height: 1px;
+  margin: 4px 6px;
+  background: var(--line);
+}
+
+.home-project-switcher-clone {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.home-project-switcher-clone-hint {
+  margin: 0 8px 2px;
+  color: var(--text-muted);
+  font-size: 10px;
+  line-height: 1.35;
+}
+
+.home-project-switcher-clone-submit {
+  margin: 0 6px 4px;
+  border: 0;
+  border-radius: 6px;
+  padding: 7px 8px;
+  color: var(--text-primary);
+  background: var(--hover);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.home-project-switcher-clone-submit:hover:not(:disabled),
+.home-project-switcher-clone-submit:focus-visible {
+  background: var(--surface-3);
+}
+
+.home-project-switcher-clone-submit:disabled {
+  cursor: default;
+  opacity: .6;
+}
+
+/* Pi work-panel contract: a raised dock with its own left-edge separator,
+   tab strip, and keyboard-resizable width. The panel body remains AEGIS-owned
+   so Files/Map/Activity/Context continue to use the real workspace data. */
+.work-panel {
+  position: relative;
+  flex-direction: row;
+  border-left: 0;
+  background: var(--surface-1);
+}
+
+.work-panel-main {
+  display: flex;
+  min-width: 0;
+  min-height: 0;
+  flex: 1;
+  flex-direction: column;
+}
+
+.work-panel-resize {
+  position: absolute;
+  inset-block: 0;
+  left: -5px;
+  z-index: 30;
+  width: 10px;
+  cursor: col-resize;
+  touch-action: none;
+  user-select: none;
+}
+
+.work-panel-resize::after {
+  position: absolute;
+  inset-block: 0;
+  left: 50%;
+  width: 1px;
+  content: "";
+  background: transparent;
+  transform: translateX(-50%);
+  transition: width var(--fast) var(--ease), background var(--fast) var(--ease);
+}
+
+.work-panel-resize:hover::after,
+.work-panel-resize:focus-visible::after,
+.work-panel-resize.is-resizing::after {
+  width: 2px;
+  background: color-mix(in oklab, var(--text-primary) 48%, transparent);
+}
+
+.work-panel-resize:focus-visible {
+  outline: none;
+}
+
+:root[data-work-panel-resizing="true"],
+:root[data-work-panel-resizing="true"] * {
+  cursor: col-resize !important;
+  user-select: none !important;
+}
+
+.work-panel-header {
+  position: relative;
+  height: var(--pi-toolbar-height);
+  min-height: var(--pi-toolbar-height);
+  flex: 0 0 auto;
+  border-bottom: 0;
+  padding: 0 12px;
+  background: var(--surface-2);
+}
+
+.work-tabs {
+  min-width: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.work-tabs::-webkit-scrollbar {
+  display: none;
+}
+
+.work-tabs button {
+  min-height: 28px;
+  border-radius: 8px;
+  padding-inline: 8px;
+  color: var(--text-muted);
+  font-size: 11px;
+}
+
+.work-tabs button.active,
+.work-tabs button:hover {
+  color: var(--text-primary);
+  background: var(--surface-3);
+}
+
+.panel-more {
+  flex: 0 0 auto;
+  border-radius: 50%;
+}
+
+/* Pi's header is a quiet 46px brand slot. Keep the copied brand asset at the
+   same size and spacing so it reads as native shell chrome. */
+.sidebar-brand {
+  min-height: var(--pi-toolbar-height);
+  padding: 0 8px;
+  gap: 6px;
+}
+
+.brand-mark {
+  width: 20px;
+  height: 20px;
+  border: 1px solid var(--line-strong);
+  border-radius: 6px;
+  background: var(--surface-2);
+  box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--text-primary) 4%, transparent);
+}
+
+.brand-copy strong {
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0;
+}
+
+/* Pi keeps the sidebar width user-adjustable instead of treating 275px as a
+   fixed dashboard column. The handle is quiet until hover/focus/drag. */
+.sidebar {
+  position: relative;
+}
+
+.sidebar-resize-handle {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 4;
+  width: 8px;
+  cursor: col-resize;
+  touch-action: none;
+  user-select: none;
+}
+
+.sidebar-resize-handle::after {
+  position: absolute;
+  top: 50%;
+  right: 2px;
+  width: 2px;
+  height: 32px;
+  content: "";
+  border-radius: 999px;
+  background: color-mix(in oklab, var(--text-primary) 20%, transparent);
+  opacity: 0;
+  transform: translateY(-50%);
+  transition: opacity var(--fast) var(--ease);
+}
+
+.sidebar-resize-handle:hover::after,
+.sidebar-resize-handle:focus-visible::after,
+.sidebar-resize-handle.is-resizing::after {
+  opacity: 1;
+}
+
+.sidebar-resize-handle:focus-visible {
+  outline: none;
+}
+
+.sidebar-resize-handle:focus-visible::after,
+.sidebar-resize-handle.is-resizing::after {
+  background: var(--accent);
+}
+
+:root[data-sidebar-resizing="true"],
+:root[data-sidebar-resizing="true"] * {
+  cursor: col-resize !important;
+  user-select: none !important;
+}
+
+/* Pi keeps the Settings rail on the same 275px contract as the chat rail.
+   The old AEGIS mobile fallback forced it to 220px inside the desktop preview,
+   which made Settings visibly narrower than Home and Extensions. */
+@media (max-width: 820px) {
+  .settings-frame .settings-page {
+    grid-template-columns: var(--pi-sidebar-width) minmax(0, 1fr);
+  }
+
+  .settings-frame .settings-content {
+    padding: calc(var(--pi-toolbar-height) + 8px) 48px 56px 40px;
+  }
+}
+
+/* Pi chrome contract: keep the titlebar geometry owned by the same left/right
+   groups as Pi. AEGIS keeps its own handlers, but the DOM seats and hitboxes
+   follow the upstream surface so the actions do not drift toward the title. */
+.conversation-topbar {
+  position: absolute;
+  inset-inline: 0;
+  top: 0;
+  z-index: 10;
+  display: flex;
+  min-height: var(--pi-toolbar-height);
+  height: var(--pi-toolbar-height);
+  flex: 0 0 var(--pi-toolbar-height);
+  align-items: center;
+  justify-content: space-between;
+  gap: 0;
+  padding: 0 12px;
+  border-bottom: 0;
+  background: var(--surface-0);
+}
+
+/* Pi's conversation chrome floats over the surface. Home keeps the same
+   full-height canvas; a transcript reserves the band explicitly so its first
+   row cannot paint underneath the topbar. */
+.chat-view {
+  position: relative;
+}
+
+.thread-view .thread-surface {
+  box-sizing: border-box;
+  padding-top: var(--pi-toolbar-height);
+}
+
+.conversation-topbar .ct-left,
+.conversation-topbar .ct-right {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 8px;
+  -webkit-app-region: no-drag;
+  app-region: no-drag;
+}
+
+.conversation-topbar .ct-left {
+  flex: 1 1 auto;
+  margin-right: auto;
+}
+
+.conversation-topbar .ct-right {
+  flex: 0 0 auto;
+  justify-content: flex-end;
+  /* The fixed panel toggle sits in this same top-right lane. Leave its 28px
+     seat plus a small gap clear of the native window-control band. */
+  padding-right: 36px;
+}
+
+.conversation-topbar .ct-title-wrap {
+  display: flex;
+  min-width: 0;
+  flex: 1 1 auto;
+  align-items: center;
+  overflow: hidden;
+  white-space: nowrap;
+  -webkit-app-region: drag;
+  app-region: drag;
+}
+
+.conversation-topbar .ct-title {
+  min-width: 0;
+  flex: 1 1 auto;
+  overflow: hidden;
+  color: var(--text-primary);
+  font-size: 14px;
+  font-weight: 500;
+  letter-spacing: -.01em;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.conversation-topbar .ct-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 0;
+  border-radius: var(--radius-md);
+  padding: 2px;
+  background: var(--surface-1);
+}
+
+.conversation-topbar .ct-icon-btn,
+.app-work-panel-toggle,
+.work-panel-toggle {
+  display: inline-flex;
+  width: 28px;
+  height: 28px;
+  flex: 0 0 28px;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-md);
+  color: var(--text-secondary);
+  background: transparent;
+  transition: background-color var(--fast) var(--ease), color var(--fast) var(--ease);
+}
+
+.conversation-topbar .ct-icon-btn:hover:not(:disabled),
+.app-work-panel-toggle:hover:not(:disabled),
+.work-panel-toggle:hover:not(:disabled) {
+  color: var(--text-primary);
+  background: var(--hover);
+}
+
+.conversation-topbar .ct-icon-btn:disabled,
+.app-work-panel-toggle:disabled,
+.work-panel-toggle:disabled {
+  cursor: default;
+  opacity: .42;
+}
+
+.conversation-topbar .ct-lead {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: -24px;
+  display: flex;
+  align-items: center;
+  opacity: 0;
+  pointer-events: none;
+  transition: left var(--normal) var(--ease), opacity var(--normal) var(--ease);
+}
+
+.conversation-topbar.ct-collapsed {
+  padding-left: 48px;
+}
+
+.conversation-topbar.ct-collapsed .ct-lead {
+  left: 12px;
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.conversation-topbar .ct-lead > .ct-icon-btn {
+  flex: 0 0 28px;
+}
+
+.app-work-panel-toggle {
+  position: fixed;
+  top: 12px;
+  right: 132px;
+  z-index: 30;
+  -webkit-app-region: no-drag;
+  app-region: no-drag;
+}
+
+.app-frame.work-panel-open .app-work-panel-toggle {
+  right: calc(var(--work-width) + 12px);
+}
+
+.work-panel-actions {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 2px;
+  margin-left: auto;
+}
+
+.work-panel-toggle {
+  -webkit-app-region: no-drag;
+  app-region: no-drag;
+}
+
+.project-active-dot {
+  width: 5px;
+  height: 5px;
+  flex: 0 0 auto;
+  margin-left: 2px;
+  border-radius: 50%;
+  background: var(--text-primary);
+}
+
+/* The brand slot follows Pi's header: the logo is the button itself, while
+   the collapse/new-task controls live in a separate right-hand action group. */
+.sidebar-brand {
+  display: flex;
+  min-height: var(--pi-toolbar-height);
+  align-items: center;
+  gap: 4px;
+  padding: 0 8px;
+}
+
+.sidebar-brand .brand {
+  display: inline-flex;
+  min-width: 0;
+  height: 32px;
+  align-items: center;
+  gap: 6px;
+  border-radius: var(--pi-radius-row);
+  padding: 0 6px 0 4px;
+  color: var(--text-primary);
+  background: transparent;
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 0;
+}
+
+.sidebar-brand .brand:hover {
+  background: var(--hover);
+}
+
+.sidebar-brand .brand .aegis-brand-logo {
+  display: block;
+  object-fit: contain;
+  pointer-events: none;
+}
+
+.sidebar-header-actions {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 2px;
+  margin-left: auto;
+}
+
+.sidebar-header-actions .compact-new-task {
+  margin: 0;
+}
+
+.sidebar-header-actions .sidebar-toggle {
+  margin-left: 0;
+}
+
+/* Pi's dock exposes one quiet active tab in the header and keeps the other
+   workspace surfaces behind its tab menu. This preserves AEGIS' four real
+   panel handlers while matching the compact Pi panel chrome. */
+.work-panel-header {
+  display: flex;
+  height: var(--pi-toolbar-height);
+  min-height: var(--pi-toolbar-height);
+  align-items: center;
+  gap: 6px;
+  padding: 0 12px;
+  border-bottom: 0;
+  background: var(--surface-2);
+  -webkit-app-region: drag;
+  app-region: drag;
+}
+
+.work-tabs {
+  position: relative;
+  display: flex;
+  min-width: 0;
+  flex: 1 1 auto;
+  align-items: center;
+  overflow: visible;
+}
+
+.work-tab-active-wrap {
+  position: relative;
+  min-width: 0;
+}
+
+.work-tab-active {
+  display: inline-flex;
+  max-width: 180px;
+  height: 28px;
+  align-items: center;
+  gap: 6px;
+  border-radius: var(--pi-radius-row);
+  padding: 0 8px;
+  color: var(--text-primary);
+  background: var(--hover);
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.work-tab-active:hover,
+.work-tab-active[aria-expanded="true"] {
+  background: var(--active);
+}
+
+.work-tab-active-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Pi closes the active resource from the tab itself. Keep the AEGIS tab
+   switcher, but move its close affordance into the same quiet tab strip. */
+.work-panel-tab-close {
+  display: inline-flex;
+  width: 24px;
+  height: 24px;
+  flex: 0 0 24px;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--pi-radius-row);
+  color: var(--text-muted);
+  background: transparent;
+  opacity: 1;
+  transition: background var(--fast) var(--ease), color var(--fast) var(--ease);
+}
+
+.work-panel-tab-close:hover,
+.work-panel-tab-close:focus-visible {
+  color: var(--text-primary);
+  background: var(--active);
+}
+
+.work-panel-tab-close:focus-visible {
+  outline: 2px solid var(--line-strong);
+  outline-offset: -2px;
+}
+
+.work-tab-menu {
+  position: absolute;
+  top: 32px;
+  left: 0;
+  z-index: 60;
+  display: grid;
+  min-width: 180px;
+  gap: 2px;
+  padding: 4px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--pi-radius-row);
+  background: var(--surface-2);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, .28);
+}
+
+.work-tab-menu button {
+  display: flex;
+  min-height: 30px;
+  align-items: center;
+  gap: 8px;
+  border-radius: 8px;
+  padding: 0 9px;
+  color: var(--text-secondary);
+  background: transparent;
+  text-align: left;
+  font-size: 11px;
+}
+
+.work-tab-menu button:hover,
+.work-tab-menu button.active {
+  color: var(--text-primary);
+  background: var(--hover);
+}
+
+.work-tab-menu button.active::after {
+  width: 5px;
+  height: 5px;
+  margin-left: auto;
+  border-radius: 50%;
+  content: "";
+  background: var(--text-primary);
+}
+
+.work-panel-actions {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 2px;
+  margin-left: auto;
+}
+
+.work-panel-actions .panel-more,
+.work-panel-actions .work-panel-toggle {
+  flex: 0 0 28px;
+}
+
+/* The header now follows Pi's tab-strip/body layering while the active tab
+   menu remains AEGIS-owned. */
+.work-panel-tab-strip-wrap {
+  display: flex;
+  min-width: 0;
+  flex: 1 1 auto;
+  align-items: center;
+  overflow: visible;
+}
+
+.work-panel-tab-strip {
+  display: flex;
+  min-width: 0;
+  max-width: 100%;
+  height: 32px;
+  flex: 1 1 auto;
+  align-items: center;
+  overflow: visible;
+}
+
+.work-panel-tab {
+  display: inline-flex;
+  min-width: 92px;
+  max-width: 180px;
+  height: 28px;
+  flex: 0 0 auto;
+  align-items: center;
+  border-radius: var(--pi-radius-row);
+  color: var(--text-primary);
+  background: var(--hover);
+}
+
+.work-panel-tab-button {
+  display: inline-flex;
+  min-width: 0;
+  height: 28px;
+  flex: 1 1 auto;
+  align-items: center;
+  gap: 6px;
+  padding: 0 8px;
+  color: inherit;
+  text-align: left;
+}
+
+.work-panel-tab-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.work-panel-body {
+  position: relative;
+  display: flex;
+  min-height: 0;
+  flex: 1;
+  flex-direction: column;
+}
+
+/* Pi FilesTab uses a quiet hierarchical tree rather than language badges and
+   a flat list. AEGIS keeps its indexed/searchable source snapshot, but the
+   visible rows now use the same folder/file primitive and row rhythm. */
+.file-panel {
+  display: flex;
+  min-height: 0;
+  flex: 1;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.file-tree {
+  display: block;
+  min-height: 0;
+  flex: 1;
+  overflow: auto;
+  padding: 6px 6px 16px;
+}
+
+.file-tree-row {
+  display: flex;
+  width: 100%;
+  min-width: 0;
+  align-items: center;
+  gap: 6px;
+  border-radius: 6px;
+  padding-top: 3px;
+  padding-right: 8px;
+  padding-bottom: 3px;
+  color: var(--text-secondary);
+  background: transparent;
+  font-size: 12px;
+  line-height: 1.35;
+  text-align: left;
+  transition: background-color var(--fast) var(--ease), color var(--fast) var(--ease);
+}
+
+.file-tree-row:hover {
+  color: var(--text-primary);
+  background: var(--hover);
+}
+
+.file-tree-row.active {
+  color: var(--text-primary);
+  background: var(--active);
+}
+
+.file-tree-folder {
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+.file-tree-row .file-tree-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Composer menus follow Pi's anchored, quiet surface instead of turning the
+   toolbar labels into decorative text. The handlers remain AEGIS-owned. */
+.composer-menu-anchor {
+  position: relative;
+  display: inline-flex;
+  min-width: 0;
+}
+
+.composer-menu {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  z-index: 80;
+  display: flex;
+  min-width: 188px;
+  flex-direction: column;
+  gap: 2px;
+  border: 1px solid var(--line-strong);
+  border-radius: 12px;
+  padding: 6px;
+  background: var(--surface-2);
+  box-shadow: 0 14px 34px rgba(0, 0, 0, .28);
+}
+
+.composer-permission-menu { left: 0; }
+.composer-model-menu { right: 0; min-width: 224px; }
+
+.composer-model-thinking-menu {
+  width: min(300px, calc(100vw - 24px));
+  min-width: 260px;
+}
+
+.composer-menu-root {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.composer-menu-entry,
+.composer-menu-back {
+  display: flex;
+  width: 100%;
+  min-width: 0;
+  min-height: 34px;
+  align-items: center;
+  gap: 8px;
+  border: 0;
+  border-radius: 9px;
+  padding: 0 10px;
+  color: var(--text-secondary);
+  background: transparent;
+  font: inherit;
+  font-size: 12px;
+  text-align: left;
+}
+
+.composer-menu-entry:hover,
+.composer-menu-entry:focus-visible,
+.composer-menu-back:hover,
+.composer-menu-back:focus-visible {
+  color: var(--text-primary);
+  background: var(--hover);
+}
+
+.composer-menu-entry > svg,
+.composer-menu-back > svg {
+  flex: 0 0 auto;
+  color: var(--text-secondary);
+}
+
+.composer-menu-entry-label {
+  flex: 0 0 auto;
+  color: var(--text-primary);
+}
+
+.composer-menu-entry-value {
+  min-width: 0;
+  flex: 1 1 auto;
+  overflow: hidden;
+  color: var(--text-muted);
+  text-align: right;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.composer-menu-separator {
+  height: 6px;
+}
+
+.composer-model-search {
+  display: flex;
+  height: 30px;
+  align-items: center;
+  gap: 7px;
+  margin: 4px 4px 6px;
+  border-radius: 8px;
+  padding: 0 8px;
+  color: var(--text-muted);
+  background: var(--surface-inset);
+}
+
+.composer-model-search input {
+  min-width: 0;
+  height: 100%;
+  flex: 1;
+  border: 0;
+  outline: 0;
+  padding: 0;
+  color: var(--text-primary);
+  background: transparent;
+  font: inherit;
+  font-size: 12px;
+}
+
+.composer-model-list,
+.composer-thinking-list {
+  display: flex;
+  max-height: 264px;
+  flex-direction: column;
+  overflow-y: auto;
+}
+
+.composer-plus-item {
+  display: flex;
+  min-height: 34px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  border: 0;
+  border-radius: 8px;
+  padding: 7px 10px;
+  color: var(--text-secondary);
+  background: transparent;
+  font: inherit;
+  font-size: 12px;
+  text-align: left;
+}
+
+.composer-plus-item:hover,
+.composer-plus-item.active,
+.composer-plus-item.kb-active {
+  color: var(--text-primary);
+  background: var(--hover);
+}
+
+.composer-model-option-main {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.composer-model-option-main .truncate {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.composer-model-option-meta {
+  display: block;
+  margin-top: 2px;
+  overflow: hidden;
+  color: var(--text-muted);
+  font-size: 10px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.composer-thinking-heading {
+  padding: 4px 10px 7px;
+  color: var(--text-muted);
+  font-size: 11px;
+}
+
+.composer-menu-heading {
+  padding: 5px 8px 6px;
+  color: var(--text-faint);
+  font-size: 10px;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+}
+
+.composer-menu button {
+  display: flex;
+  min-height: 28px;
+  width: 100%;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  border-radius: 8px;
+  padding: 0 8px;
+  color: var(--text-secondary);
+  background: transparent;
+  font: inherit;
+  font-size: 12px;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.composer-menu button:hover,
+.composer-menu button.active {
+  color: var(--text-primary);
+  background: var(--hover);
+}
+
+.composer-menu button svg { flex: 0 0 auto; }
+
+.composer-menu .composer-menu-secondary {
+  justify-content: space-between;
+  margin-top: 4px;
+  border-top: 1px solid var(--line-soft);
+  border-radius: 0 0 8px 8px;
+  padding-top: 6px;
+  color: var(--text-muted);
+}
+
+.composer-model {
+  max-width: 220px;
+}
+
+.composer-model > span:not(.chevron) {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sidebar-brand .brand .aegis-brand-logo {
+  object-fit: contain;
+}
+
+/* Keep the two-level model menu above the generic menu button recipe: Pi's
+   entry rows use a taller hit target and reserve the value column explicitly. */
+.composer-model-thinking-menu .composer-menu-entry,
+.composer-model-thinking-menu .composer-menu-back {
+  min-height: 34px;
+  padding: 0 10px;
+  justify-content: flex-start;
+}
+
+.composer-model-thinking-menu .composer-menu-entry-value {
+  margin-left: auto;
+}
+
+.composer-model-thinking-menu .composer-plus-item {
+  min-height: 34px;
+  padding: 7px 10px;
+}
+
+/* Pi sidebar structure pass. The renderer keeps AEGIS' actions, but the
+   section ladder, row pitch, and footer now use the same visual ownership as
+   Pi's Sidebar rather than relying on the older AEGIS group wrappers. */
+.sidebar-body.sidebar-scroll {
+  display: flex;
+  min-height: 0;
+  flex: 1 1 auto;
+  flex-direction: column;
+  padding: 0 8px 6px;
+  overflow: hidden;
+}
+
+.sidebar-standalone-sessions {
+  min-width: 0;
+  flex: 0 0 auto;
+  margin-top: 0;
+}
+
+.sidebar-list-toolbar {
+  position: relative;
+  display: flex;
+  min-height: 24px;
+  align-items: center;
+  justify-content: space-between;
+  border-radius: var(--radius-sm);
+  padding: 8px 2px 0;
+}
+
+.sidebar-list-toolbar .sidebar-label,
+.sidebar-list-toolbar .sidebar-list-label {
+  padding: 0;
+}
+
+.sidebar-list-label {
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: .02em;
+  text-transform: uppercase;
+}
+
+.sidebar-session-group-body {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  overflow: hidden;
+}
+
+.sidebar-session-group-body.standalone {
+  max-height: 146px;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  padding: 2px 2px 0;
+}
+
+.sidebar-group.project-group {
+  margin-top: 18px;
+}
+
+.sidebar-session-group-header {
+  display: flex;
+  min-height: 28px;
+  align-items: center;
+  gap: 2px;
+  padding: 0 2px;
+  border-radius: var(--radius-sm);
+}
+
+.sidebar-session-group-title {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  align-items: center;
+  gap: 5px;
+  min-height: 28px;
+  border-radius: var(--radius-sm);
+  padding: 5px 6px;
+  color: var(--text-secondary);
+  background: transparent;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.25;
+  text-align: left;
+}
+
+.sidebar-session-group-title:hover {
+  color: var(--text-primary);
+  background: var(--hover);
+}
+
+.sidebar-session-group-title > span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sidebar-session-group-body.project {
+  display: grid;
+  grid-template-rows: 1fr;
+  margin-left: 13px;
+  padding-left: 9px;
+  transition: grid-template-rows 220ms var(--ease);
+}
+
+.sidebar-session-group-body.project.collapsed {
+  grid-template-rows: 0fr;
+  pointer-events: none;
+}
+
+.sidebar-session-group-clip {
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.sidebar-session-group-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding: 2px 0 7px;
+}
+
+.sidebar-footer {
+  position: relative;
+  display: flex;
+  min-height: 40px;
+  align-items: center;
+  gap: 8px;
+  margin-top: auto;
+  padding: 7px 0 2px;
+}
+
+.sidebar-footer .footer-actions {
+  display: flex;
+  align-items: center;
+  gap: 0;
+}
+
+.sidebar-footer .footer-action {
+  display: inline-flex;
+  width: 32px;
+  height: 32px;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  border-radius: 12px;
+}
+
+.sidebar-footer .footer-build {
+  display: inline-flex;
+  min-width: 0;
+  margin-left: auto;
+  align-items: center;
+  border-radius: 10px;
+  padding: 5px 8px;
+  color: var(--text-muted);
+  font-size: 10px;
+  line-height: 1;
+}
