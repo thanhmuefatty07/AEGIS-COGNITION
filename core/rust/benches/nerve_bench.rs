@@ -4031,10 +4031,10 @@ fn bench_memory_periodic_nudge(c: &mut Criterion) {
     let system = MemoryNudgeSystem::new(0.5);
 
     let raw32: Vec<MemoryCandidate> = (0..32)
-        .map(|i| make_memory_candidate(i, ((i as f32) * 0.21).sin().abs()))
+        .map(|i| make_memory_candidate(i, ((i as f32) * 0.21).sin().abs(), 7_777_777))
         .collect();
     let raw256: Vec<MemoryCandidate> = (0..256)
-        .map(|i| make_memory_candidate(i, ((i as f32) * 0.13).cos().abs()))
+        .map(|i| make_memory_candidate(i, ((i as f32) * 0.13).cos().abs(), 8_888_888))
         .collect();
 
     c.bench_function("memory_periodic_nudge_filter_hash_32", |b| {
@@ -4103,13 +4103,14 @@ fn bench_memory_periodic_nudge(c: &mut Criterion) {
     });
 }
 
-fn make_memory_candidate(seed: u64, relevance: f32) -> MemoryCandidate {
+fn make_memory_candidate(seed: u64, relevance: f32, source_session_id: u128) -> MemoryCandidate {
     let content = format!("candidate-payload-seed-{}", seed);
     // Use MemoryCandidate::new so the content_hash matches the
     // domain-separator BLAKE3 hash that is_valid() recomputes and
-    // compares against. Manually constructing the struct would
-    // produce a hash mismatch and a spurious InvalidCandidate panic.
-    MemoryCandidate::new(content, relevance, 100u128 + (seed as u128))
+    // compares against, and bind each candidate to the nudge's session.
+    // Manually constructing the struct or using a different session would
+    // produce an InvalidCandidate panic before the benchmark hot path.
+    MemoryCandidate::new(content, relevance, source_session_id)
         .expect("memory candidate bench fixture must validate")
 }
 

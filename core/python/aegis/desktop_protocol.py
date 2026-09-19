@@ -18,6 +18,8 @@ ALLOWED_COMMANDS = frozenset(
     {
         "service.shutdown",
         "workspace.open",
+        "workspace.switch",
+        "workspace.clone",
         "workspace.snapshot",
         "workspace.source_snapshot",
         "connections.list",
