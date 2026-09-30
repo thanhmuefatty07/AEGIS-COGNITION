@@ -372,6 +372,10 @@ jobs:
         run: |
           uv sync --locked --extra all --extra dev
           uv build --wheel --out-dir artifacts/wheels
+      - name: Execute bounded WASM plugin runtime tests
+        env:
+          PYO3_PYTHON: python
+        run: cargo test --locked --release -p aegis-nerve --features wasm-plugins --lib wasm_plugins::tests
       - name: Clean install/import/native metadata smoke
         shell: bash
         run: |

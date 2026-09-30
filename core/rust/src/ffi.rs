@@ -27,6 +27,8 @@ mod mmap;
 mod runtime;
 mod source_watcher;
 mod status;
+#[cfg(feature = "wasm-plugins")]
+mod wasm_plugins;
 pub use agent_coordination::aegis_agent_graph_validate;
 pub use compat::{
     aegis_harness_analyze_errors, aegis_harness_generate_skeleton, aegis_hot_hash,
@@ -93,6 +95,8 @@ pub use status::{
     aegis_new_message_identity, aegis_release_ready, aegis_status, aegis_validate_layout,
     aegis_validate_schema, aegis_zero_copy_ready,
 };
+#[cfg(feature = "wasm-plugins")]
+pub use wasm_plugins::PyWasmPlugin;
 
 type ProfileKey = (PathBuf, String);
 type SessionIndexResult = Result<Arc<Mutex<SessionSearchIndex>>, String>;
@@ -337,6 +341,8 @@ pub fn aegis_nerve(_py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(aegis_validate_mmap_bridge_frame, m)?)?;
     m.add_function(wrap_pyfunction!(aegis_execute_mmap_wasm_bridge_frame, m)?)?;
     m.add_class::<PyMmapBridgeWriter>()?;
+    #[cfg(feature = "wasm-plugins")]
+    m.add_class::<PyWasmPlugin>()?;
     m.add_function(wrap_pyfunction!(aegis_new_message_identity, m)?)?;
     m.add_function(wrap_pyfunction!(aegis_can_bridge_python, m)?)?;
     m.add_function(wrap_pyfunction!(aegis_layout_header_bytes, m)?)?;

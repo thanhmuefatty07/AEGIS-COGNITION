@@ -54,7 +54,7 @@ manifest-path = "core/rust/Cargo.toml"
 module-name = "aegis_cognition.aegis_nerve"
 bindings = "pyo3"
 python-source = "."
-features = ["python-extension"]
+features = ["python-extension", "wasm-plugins"]
 include = [
     { path = "core/python/*.py", format = "wheel" },
     { path = "core/python/aegis/*.py", format = "wheel" },
