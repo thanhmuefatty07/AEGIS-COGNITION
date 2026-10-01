@@ -13,8 +13,7 @@
 # Usage:
 #   curl -fsSL https://aegis-cognition.ai/install_termux.sh | bash
 #
-# Gate: WRITTEN, NOT YET EXECUTED end-to-end in Termux on an Android
-# device in this session. See docs/archive/reports/install-scripts.md.
+# End-to-end execution remains unverified in Termux; no platform pass is claimed.
 
 set -euo pipefail
 

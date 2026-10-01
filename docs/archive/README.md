@@ -1,6 +1,7 @@
 # Historical archive
 
-Reports previously scattered across the repository root are in `reports/`.
+Research and report documents are retained in a local-only archive outside this
+repository; the detailed material is not part of the current source tree.
 The former `AEGIS-COGNITION/` and `core/rust/AEGIS-COGNITION/` trees are in
 `legacy/`. Historical planning is in `planning/`; external comparator research
 is kept under `scripts/research/comparators/external/`.
