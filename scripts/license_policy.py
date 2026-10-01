@@ -8,7 +8,7 @@ ACTIVE_DOCUMENTS = (
     ROOT / "README.md",
     ROOT / "CONTRIBUTING.md",
     ROOT / "CHANGELOG.md",
-    ROOT / "docs" / "architecture" / "AEGIS_CURRENT_ARCHITECTURE_TRUTH_AUDIT.md",
+    ROOT / "docs" / "architecture" / "README.md",
 )
 METADATA_FILES = (
     ROOT / "pyproject.toml",

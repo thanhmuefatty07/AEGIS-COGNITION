@@ -825,8 +825,8 @@ tranh nhau:
 | Normative constitution | `docs/ENGINEERING_CONSTITUTION.md` | quy tắc kỹ thuật/gate | authority; không tự thay yêu cầu người dùng |
 | Machine evidence | `docs/architecture/evidence/current.json`, `docs/architecture/not_verified_registry.json`, `docs/architecture/deployment_policy.json` | trạng thái kiểm chứng/release | machine source of truth; không sửa tay để “đóng” blocker |
 | Architecture/ADR | `docs/adr/*.md`, `docs/architecture/*.md` | hợp đồng và quyết định thành phần | tham chiếu theo scope, không phải Lab status |
-| Historical plans | `docs/archive/planning/agent-harness-continuation-plan.md`, `docs/archive/planning/architecture-optimization.md`, `docs/archive/reports/implementation-spec.md`, `docs/archive/reports/project-overview.md` | không có quyền current status | giữ lịch sử; bị plan này supersede khi nói về Lab |
-| Historical reports/proposals | `docs/archive/reports/browser-native-architecture.md`, `*_REPORT.md`, `docs/archive/reports/cluster-soak.md` | không có quyền promotion | chỉ dùng làm provenance/evidence candidate |
+| Historical plans | `docs/archive/planning/agent-harness-continuation-plan.md`, `docs/archive/planning/architecture-optimization.md` | không có quyền current status | giữ lịch sử; bị plan này supersede khi nói về Lab |
+| Historical reports/research | local-only archive outside the repository | không có quyền promotion | retained locally as provenance; never treat as current status |
 | User attachment | `C:\Users\ADMIN\Downloads\Ultimate Software Engineering Constitution — Maximum-Rigor Prompt.md` | không có quyền repo/runtime | normalized-content duplicate của constitution repo; coi là reference, không là override |
 
 Không phát hiện một plan-file độc lập nào khác ngoài các mục historical đã nêu

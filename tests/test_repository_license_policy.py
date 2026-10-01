@@ -34,7 +34,7 @@ def test_active_project_docs_do_not_grant_default_use() -> None:
         ROOT / "README.md",
         ROOT / "CONTRIBUTING.md",
         ROOT / "CHANGELOG.md",
-        ROOT / "docs" / "architecture" / "AEGIS_CURRENT_ARCHITECTURE_TRUTH_AUDIT.md",
+        ROOT / "docs" / "architecture" / "README.md",
     )
 
     for path in document_paths:
