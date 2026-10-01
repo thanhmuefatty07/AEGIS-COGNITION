@@ -86,7 +86,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.1.0] - 2026-06-15
 
 Baseline established. See:
-- `docs/archive/reports/project-overview.md` — system architecture and pillar split
-- `docs/archive/reports/extreme-audit.md` — extreme testing, 0 critical / 0 high
-- `docs/archive/reports/implementation-spec.md` — DX and CLI implementation spec
-- `docs/archive/reports/dx-research.md`, `docs/archive/reports/dx-integration.md` — competitive DX analysis
+- [Current architecture and release evidence](docs/architecture/README.md).
+- Detailed historical reports and research are retained in the local-only archive.
