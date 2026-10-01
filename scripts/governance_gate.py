@@ -59,13 +59,13 @@ def evaluate_governance(root: str | Path = ROOT) -> dict:
     benchmark_gate = _text(root_path / "scripts" / "benchmark_gate.py")
     run_checks = _text(root_path / "scripts" / "run_checks.py")
     cargo_toml = _text(root_path / "core" / "rust" / "Cargo.toml")
-    overview = _text(root_path / "docs/archive/reports/project-overview.md")
+    architecture_index = _text(root_path / "docs" / "architecture" / "README.md")
 
     checks.append(
         GovernanceGateCheck(
             "complexity_lane_map",
             all(token in governance_rs for token in ["GovernanceLaneMap", "REQUIRED_WAVE_MASK_18"])
-            and all(domain in overview.lower() for domain in GOVERNANCE_DOMAINS),
+            and all(domain in architecture_index.lower() for domain in GOVERNANCE_DOMAINS),
             "18 waves must collapse into five governance lanes with hash-bound coverage.",
         )
     )

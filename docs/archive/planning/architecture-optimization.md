@@ -7,7 +7,7 @@ This document compiles the core architectural paradigms, system constitutions, a
 4. **Turn 4**: `SECURITY_WITNESS.md` - Zero-Trust Guardrails and Physical Witness.
 
 ## Current Implementation Reality Check
-- This file is a constitution/target architecture. The current implementation source of truth is `core/rust`, `docs/archive/reports/project-overview.md`, and `planning pdf/AEGIS-COGNITION_ Agent Harness Continuation Plan.md`.
+- This file records a constitution/target architecture. Current implementation truth is in `core/rust` and `docs/architecture/AEGIS_LAB_RUNTIME_MASTER_PLAN.md`; older continuation materials remain local historical context.
 - Arrow today is standard append-only Arrow IPC stream plus sealed/mmap-readable replay segments. Mutable mmap writer and benchmark-proven zero-copy observability remain Phase 2 targets.
 - QuickJS/Wasm ABI remains a target until wrapper ABI and cold-start benchmarks exist. Do not claim `<1ms` or binary-size numbers without HarnessBench evidence.
 - Task priority is deterministic Rust DAG math: critical path, blocked descendants, evidence unblock count, and explicit deadline timestamp. LLM output may contain only `suggested_priority` metadata.

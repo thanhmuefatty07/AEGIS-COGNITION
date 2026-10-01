@@ -7,8 +7,7 @@
 #   # or:
 #   ./install_wsl.sh
 #
-# Honest scope: WRITTEN, NOT YET EXECUTED end-to-end in a WSL2 instance
-# in this session. See docs/archive/reports/install-scripts.md.
+# End-to-end execution remains unverified in WSL2; no platform pass is claimed.
 
 set -euo pipefail
 

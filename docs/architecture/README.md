@@ -5,6 +5,9 @@ architecture described in `AEGIS_LAB_RUNTIME_MASTER_PLAN.md`.
 
 The current runtime direction is intentionally conservative:
 
+The governance gate groups the implementation into five domains: runtime,
+evidence, security, evaluation, and product.
+
 - Rust owns authoritative task, resource, capability, cancellation, and evidence transitions.
 - Python owns intent interpretation, provider integrations, and semantic proposal generation.
 - Cross-language calls use coarse, versioned contracts rather than per-field scheduler mutations.

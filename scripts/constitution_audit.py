@@ -34,24 +34,12 @@ REQUIRED_SYMBOLS = {
         ],
     ),
     "production_evidence_gap_disclosure": (
-        Path("docs/archive/reports/project-overview.md"),
+        Path("docs/architecture/NOT_VERIFIED_REGISTRY.md"),
         [
-            "Production Evidence Gaps",
-            "QuickJS bridge cold-start now has Wasmtime probe data",
-            "full QuickJS interpreter semantic cold-start remains missing",
-            "distributed execution now has deterministic single-writer/lease microbenchmarks plus in-process loopback and TCP loopback socket evidence",
-            "aegis-real-multi-machine-cluster-soak-admission-v1",
-            "artifacts/real_multi_machine_cluster_soak_capture.json",
-            "no real multi-machine cluster network/RTT/soak test",
-            "security hardening now has internal SBOM/provenance/WASI deny evidence",
-            "external signed attestation remains pending",
-            "production deployment topology now has a materialized hash-bound `aegis-deployment-topology-contract-v1`",
-            "aegis-external-deployment-smoke-admission-v1",
-            "artifacts/external_deployment_smoke_capture.json",
-            "node/service placement, network-edge, explicit `durable_volumes`, durable-storage invariants, health-check, rollback, operator-runbook",
-            "production-blocker hashes",
-            "production_deployable=false",
-            "external/container deployment smoke",
+            "NV-004 | External signed attestation",
+            "NV-016 | Real multi-machine TCP cluster soak",
+            "NV-017 | Full QuickJS interpreter cold-start",
+            "NV-019 | External deployment smoke",
         ],
     ),
     "pav_tree_edit_distance": (
@@ -3754,7 +3742,7 @@ NO_OVERCLAIM_QUALIFIERS = (
 )
 NO_OVERCLAIM_DOCS = (
     Path("README.md"),
-    Path("docs/archive/reports/project-overview.md"),
+    Path("docs/architecture/README.md"),
     Path("docs/architecture/ARCHITECTURE_FREEZE.md"),
     Path("docs/architecture/AEGIS_LAB_RUNTIME_MASTER_PLAN.md"),
     Path("docs/archive/planning/agent-harness-continuation-plan.md"),

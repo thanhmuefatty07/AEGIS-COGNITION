@@ -7,8 +7,7 @@
 #   # or locally:
 #   .\install.ps1
 #
-# Honest scope: this script is WRITTEN but NOT YET EXECUTED end-to-end on a
-# Windows host in this session. See docs/archive/reports/install-scripts.md for the gate.
+# End-to-end execution remains unverified on Windows; no platform pass is claimed.
 
 [CmdletBinding()]
 param(

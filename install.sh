@@ -8,8 +8,7 @@
 #   # or locally:
 #   ./install.sh [--skip-rust] [--skip-browser] [--python 3.14.7]
 #
-# Honest scope: WRITTEN, NOT YET EXECUTED end-to-end on a Linux/macOS host
-# in this session. See docs/archive/reports/install-scripts.md for the gate.
+# End-to-end execution remains unverified on Linux/macOS; no platform pass is claimed.
 #
 # Flags:
 #   --skip-rust        skip rustup install + cargo build
