@@ -1573,33 +1573,15 @@ Không dùng PASS dựa trên cảm giác.
 
 ---
 
-# 51. QUALITY SCORECARD
+# 51. EVIDENCE-BASED QUALITY REVIEW
 
-Cuối cùng tự chấm từ 0–10 cho:
+Không tự chấm chất lượng, kiến trúc, mức sẵn sàng hoặc tác nhân bằng thang điểm từ 0 đến 10; không dùng ngưỡng chủ quan để buộc thay đổi ngoài yêu cầu được giao.
 
-- Correctness
-- Architecture
-- Maintainability
-- Testability
-- Security
-- Reliability
-- Performance
-- Scalability
-- Observability
-- Accessibility
-- Developer Experience
-- Operational Readiness
-- Supply-chain Security
-- Documentation
-- Simplicity
+Với mỗi gap, ghi yêu cầu hoặc invariant, bằng chứng, phạm vi, bước kiểm chứng còn thiếu và hành động phù hợp. Thiếu bằng chứng thì ghi NOT VERIFIED, không thay bằng điểm số.
 
-Với bất kỳ mục nào < 9:
+Chỉ báo số liệu hiệu năng hoặc chất lượng khi metric có đơn vị, workload, phương pháp đo và baseline/comparator phù hợp. Nêu cỡ mẫu và biến thiên khi chúng ảnh hưởng kết luận; metric cụ thể không phải điểm tổng hợp hay mức tự đánh giá.
 
-- giải thích gap;
-- xác định improvement;
-- nếu nằm trong scope và có thể sửa ngay, hãy sửa trước khi kết thúc.
-
-Không tự cho 10/10 nếu không có evidence.
+Chỉ sửa gap thuộc phạm vi và được ủy quyền; ghi nhận gap khác để giao riêng.
 
 ---
 

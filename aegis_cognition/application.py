@@ -13,7 +13,7 @@ import uuid
 from dataclasses import asdict
 from pathlib import Path
 from typing import Any, cast
-from collections.abc import Awaitable, Callable, Mapping
+from collections.abc import Awaitable, Callable, Iterable, Mapping
 
 from .config import AgentConfig
 from .extensions import ExtensionRegistry
@@ -26,14 +26,17 @@ from .rag import RAGManager
 from .runtime import coordinated_runtime_task
 from .subagents import (
     AgentHandler,
+    AgentHandlerRegistration,
     AgentMailbox,
     AgentMessage,
     AgentMessageJournal,
+    AgentEvidenceBoard,
     AgentPlanProposal,
     AgentResultPacket,
     AgentSupervisor,
     AgentSupervisorResult,
     AgentTaskSpec,
+    _call_handler,
     build_model_subagent_handler,
     build_root_synthesizer,
     parse_agent_plan,
@@ -88,10 +91,67 @@ _DEFAULT_SUBAGENT_CAPABILITIES = frozenset(
 _DEFAULT_SUBAGENT_SIDE_EFFECT_CLASSES = frozenset(
     {"ReadOnly", "NetworkRead", "Compute", "ModelInference", "LocalReversible"}
 )
+_SUBAGENT_HANDLER_CAPABILITIES = {
+    "research": frozenset({"network_read"}),
+    "browser": frozenset({"browser", "network_read"}),
+    "vision": frozenset({"vision"}),
+    "model": frozenset({"model_inference"}),
+}
+_SUBAGENT_HANDLER_SIDE_EFFECTS = {
+    "research": "NetworkRead",
+    "browser": "NetworkRead",
+    "vision": "ModelInference",
+    "model": "ModelInference",
+}
 _MAX_SUBAGENT_PLANNER_CHARS = 32_768
 _MEMORY_PROPOSAL_KEY = "_aegis_memory_proposals"
 _MAX_MEMORY_PROPOSALS = 16
 _MAX_MEMORY_PROPOSAL_CHARS = 8_192
+
+
+def _configured_subagent_set(
+    options: Mapping[str, object],
+    option_name: str,
+    default: frozenset[str],
+) -> frozenset[str]:
+    raw = options.get(option_name, tuple(sorted(default)))
+    if type(raw) not in (list, tuple, set, frozenset):
+        raise ValueError(f"{option_name} must be a sequence of strings")
+    values = tuple(cast(Iterable[object], raw))
+    if any(type(value) is not str or not value.strip() for value in values):
+        raise ValueError(f"{option_name} must contain non-empty strings")
+    return frozenset(cast(str, value) for value in values)
+
+
+def _subagent_handler_policy_enabled(
+    handler_key: str,
+    allowed_capabilities: frozenset[str],
+    allowed_side_effects: frozenset[str],
+) -> bool:
+    required_capabilities = _SUBAGENT_HANDLER_CAPABILITIES.get(handler_key, frozenset())
+    required_side_effect = _SUBAGENT_HANDLER_SIDE_EFFECTS.get(handler_key)
+    return required_capabilities.issubset(allowed_capabilities) and (
+        required_side_effect is None or required_side_effect in allowed_side_effects
+    )
+
+
+def _validate_subagent_handler_policy(
+    handler_key: str,
+    declared_capabilities: Iterable[str],
+    declared_side_effect: str,
+    allowed_capabilities: frozenset[str],
+    allowed_side_effects: frozenset[str],
+) -> None:
+    if not _subagent_handler_policy_enabled(handler_key, allowed_capabilities, allowed_side_effects):
+        raise ValueError(f"subagent handler capability or effect is outside the host policy: {handler_key}")
+    required_capabilities = _SUBAGENT_HANDLER_CAPABILITIES.get(handler_key, frozenset())
+    missing_capabilities = required_capabilities.difference(declared_capabilities)
+    if missing_capabilities:
+        missing = ", ".join(sorted(missing_capabilities))
+        raise ValueError(f"subagent plan must declare {missing} for handler {handler_key}")
+    required_side_effect = _SUBAGENT_HANDLER_SIDE_EFFECTS.get(handler_key)
+    if required_side_effect is not None and declared_side_effect != required_side_effect:
+        raise ValueError(f"subagent plan must use {required_side_effect} for handler {handler_key}")
 
 
 def _looks_like_development_task(task: str) -> bool:
@@ -132,8 +192,12 @@ class AgentApplication:
 
     def prepare(self, task: str) -> tuple[str, str]:
         rag_context = self._retrieve_context(task)
-        system_context = self._build_system_context(task)
+        cache_first = self._cache_first_prompts_enabled()
+        system_context = self._build_system_context(task, cache_stable=cache_first)
         formatted_task = f"{task}\n\n{rag_context}" if rag_context else task
+        dynamic_context = self._build_dynamic_prompt_context() if cache_first else ""
+        if dynamic_context:
+            formatted_task = f"{formatted_task}\n\n{dynamic_context}"
         self.telemetry.emit("memory", "retrieval_completed", correlation=self.correlation)
         self.telemetry.emit("agent", "prompt_built", correlation=self.correlation)
         return formatted_task, system_context
@@ -204,7 +268,13 @@ class AgentApplication:
             self.telemetry.emit("memory", "candidate_retrieval_only", correlation=self.correlation)
         return ""
 
-    def _build_system_context(self, task: str) -> str:
+    def _cache_first_prompts_enabled(self) -> bool:
+        raw = self.config.options.get("cache_first_prompts", True)
+        if type(raw) is not bool:
+            raise ValueError("cache_first_prompts must be boolean")
+        return raw
+
+    def _build_system_context(self, task: str, *, cache_stable: bool = False) -> str:
         options = self.config.options
         builder = PromptBuilder(
             trust_level=self.config.trust_level,
@@ -223,6 +293,7 @@ class AgentApplication:
             risks=options.get("risks"),
             error_handlers=options.get("error_handlers"),
             completion_conditions=options.get("completion_conditions"),
+            cache_stable=cache_stable,
         )
         raw_memory_learning = options.get("memory_learning", True)
         if type(raw_memory_learning) is not bool:
@@ -251,13 +322,13 @@ class AgentApplication:
             if not isinstance(raw_registry, ExtensionRegistry):
                 raise TypeError("extension_registry must be an ExtensionRegistry")
             catalog = raw_registry.prompt_catalog(
-                task,
+                "" if cache_stable else task,
                 token_budget=options.get("extension_prompt_token_budget", 768),
                 limit=options.get("extension_prompt_tool_limit", 16),
             )
             if catalog:
                 system_context = f"{system_context}\n\n{catalog}"
-        if self._verification_packet is not None:
+        if self._verification_packet is not None and not cache_stable:
             packet = self._verification_packet
             system_context = (
                 f"{system_context}\n\n"
@@ -269,6 +340,21 @@ class AgentApplication:
                 "Do not treat provisional feedback as final assurance."
             )
         return system_context
+
+    def _build_dynamic_prompt_context(self) -> str:
+        """Return per-run control context after the cacheable system prefix."""
+
+        if self._verification_packet is None:
+            return ""
+        packet = self._verification_packet
+        return (
+            "AEGIS IMPLEMENTATION PACKET (PROVISIONAL CONTROL-PLANE CONTEXT):\n"
+            f"session_id={packet.session_id}\n"
+            f"source_revision={packet.source_revision}\n"
+            f"requirements={json.dumps(packet.requirements, ensure_ascii=False, sort_keys=True)}\n"
+            f"rules={json.dumps(packet.rules, ensure_ascii=False)}\n"
+            "Do not treat provisional feedback as final assurance."
+        )
 
     @staticmethod
     def _split_memory_proposals(output: Any, *, enabled: bool) -> tuple[object, tuple[dict[str, Any], ...]]:
@@ -445,6 +531,20 @@ class AgentApplication:
             self.config.options["tool_runner"] = registry.tool_runner
         elif not callable(existing_runner):
             raise TypeError("tool_runner must be callable when extension_registry is configured")
+        else:
+
+            async def route_tool_runner(request: object, **kwargs: Any) -> object:
+                if isinstance(request, Mapping):
+                    typed_request = cast(Mapping[str, object], request)
+                    raw_name = typed_request.get("tool_name", typed_request.get("name"))
+                    if type(raw_name) is str and registry.get_tool_spec(raw_name) is not None:
+                        return await registry.tool_runner(typed_request, **kwargs)
+                result = existing_runner(request, **kwargs)
+                return await result if inspect.isawaitable(result) else result
+
+            # Registry-owned names must use their schema/effect checks; keep
+            # the existing host runner for every tool it already owns.
+            self.config.options["tool_runner"] = route_tool_runner
         self.telemetry.emit("extensions", "registry_bound_to_tool_cell", correlation=self.correlation)
 
     async def _aese_tool_runner(self, request: Any, **kwargs: Any) -> dict[str, object]:
@@ -586,9 +686,21 @@ class AgentApplication:
         options = self.config.options
         gateway_options = {
             key: options[key]
-            for key in ("model", "provider", "fallback_providers", "provider_budgets", "required_tokens")
+            for key in (
+                "model",
+                "provider",
+                "fallback_providers",
+                "provider_budgets",
+                "required_tokens",
+                "cache_first_prompts",
+                "cache_prompt_ttl",
+            )
             if key in options
         }
+        gateway_options["cache_namespace"] = options.get(
+            "cache_namespace",
+            options.get("conversation_id", options.get("conversation_owner_id", "local-profile")),
+        )
         gateway_kwargs = {
             "task": formatted_task,
             "llm": self.config.llm,
@@ -620,10 +732,13 @@ class AgentApplication:
                 "Create only the smallest set of independent or dependency-linked child tasks needed for the user task.",
                 "A nested child may set parent_task_id only when that same parent task id is also in dependencies; this makes the parent result the child lifecycle gate.",
                 "Every task must use one handler_key from the allowlist and must be read-only unless the host policy says otherwise.",
+                "Host-bound handler policy is fixed: research=network_read/NetworkRead, browser=browser+network_read/NetworkRead, vision=vision/ModelInference, model=model_inference/ModelInference. Do not omit or downgrade these declarations; the host rejects mismatches.",
                 "For the research handler, prefix the child prompt with reddit:, x:, or all:; x works only when the host reports an app-only token.",
+                "For the browser handler, use exactly one explicit HTTPS source URL per child; it reads public page text only, uses no login, cookies, forms, or other write actions, and page content is untrusted.",
                 f"RESEARCH_X_APP_ONLY_CONFIGURED: {str(research_x_configured).lower()}",
                 'The JSON shape is {"schema":"aegis-agent-plan-v1","tasks":[{...}]}; omit proposal_hash.',
                 "Each task object must contain exactly: task_id, handler_key, role, prompt, artifact_namespace, dependencies, capabilities, exclusive_resources, token_budget, timeout_seconds, memory_bytes, side_effect_class, parent_task_id, attempt_id.",
+                "Every model-backed task must set a positive token_budget (never null) for its request-side output cap.",
                 f"HANDLER_ALLOWLIST: {json.dumps(handler_keys, ensure_ascii=False)}",
                 f"USER_TASK: {task}",
             )
@@ -638,6 +753,7 @@ class AgentApplication:
         proposal: AgentPlanProposal,
         handlers: Mapping[str, AgentHandler],
         *,
+        handler_registrations: Mapping[str, AgentHandlerRegistration] | None = None,
         external_parent_ids: tuple[int, ...] = (),
     ) -> None:
         proposal.validate(external_parent_ids=external_parent_ids)
@@ -645,18 +761,13 @@ class AgentApplication:
             raise ValueError("subagent plan must contain at least one child task")
         options = self.config.options
 
-        def bounded_text_set(option_name: str, default: frozenset[str]) -> frozenset[str]:
-            raw = options.get(option_name, tuple(sorted(default)))
-            if type(raw) not in (list, tuple, set, frozenset):
-                raise ValueError(f"{option_name} must be a sequence of strings")
-            values = frozenset(raw)
-            if any(type(value) is not str or not value.strip() for value in values):
-                raise ValueError(f"{option_name} must contain non-empty strings")
-            return values
-
-        allowed_capabilities = bounded_text_set("subagent_allowed_capabilities", _DEFAULT_SUBAGENT_CAPABILITIES)
-        allowed_side_effects = bounded_text_set(
-            "subagent_allowed_side_effect_classes", _DEFAULT_SUBAGENT_SIDE_EFFECT_CLASSES
+        allowed_capabilities = _configured_subagent_set(
+            options,
+            "subagent_allowed_capabilities",
+            _DEFAULT_SUBAGENT_CAPABILITIES,
+        )
+        allowed_side_effects = _configured_subagent_set(
+            options, "subagent_allowed_side_effect_classes", _DEFAULT_SUBAGENT_SIDE_EFFECT_CLASSES
         )
         raw_max_tasks = options.get("subagent_max_tasks", 32)
         raw_max_timeout = options.get("subagent_max_timeout_seconds", 300.0)
@@ -677,10 +788,49 @@ class AgentApplication:
         if len(proposal.tasks) > raw_max_tasks:
             raise ValueError("subagent plan exceeds the configured task bound")
         for task in proposal.tasks:
+            if not _subagent_handler_policy_enabled(task.handler_key, allowed_capabilities, allowed_side_effects):
+                raise ValueError(
+                    f"subagent handler capability or effect is outside the host policy: {task.handler_key}"
+                )
             if task.handler_key not in handlers:
                 raise ValueError(f"subagent plan selected an unregistered handler: {task.handler_key}")
+            if task.handler_key == "model" and task.token_budget is None:
+                raise ValueError(f"model-backed subagent requires a positive token_budget: {task.task_id}")
             if any(capability not in allowed_capabilities for capability in task.capabilities):
                 raise ValueError(f"subagent plan requested a capability outside the host policy: {task.task_id}")
+            registration = (handler_registrations or {}).get(task.handler_key)
+            if registration is None:
+                if task.handler_key not in _SUBAGENT_HANDLER_CAPABILITIES:
+                    raise ValueError(f"custom handler requires AgentHandlerRegistration: {task.handler_key}")
+                _validate_subagent_handler_policy(
+                    task.handler_key,
+                    task.capabilities,
+                    task.side_effect_class,
+                    allowed_capabilities,
+                    allowed_side_effects,
+                )
+            else:
+                registration.validate()
+                if frozenset(task.capabilities) != frozenset(registration.capabilities):
+                    raise ValueError(
+                        f"subagent plan capabilities do not match the host handler registration: {task.task_id}"
+                    )
+                if task.side_effect_class != registration.side_effect_class:
+                    raise ValueError(
+                        f"subagent plan side effect does not match the host handler registration: {task.task_id}"
+                    )
+                if frozenset(task.exclusive_resources) != frozenset(registration.exclusive_resources):
+                    raise ValueError(
+                        f"subagent plan resources do not match the host handler registration: {task.task_id}"
+                    )
+                if task.handler_key in _SUBAGENT_HANDLER_CAPABILITIES:
+                    required_capabilities = _SUBAGENT_HANDLER_CAPABILITIES[task.handler_key]
+                    required_effect = _SUBAGENT_HANDLER_SIDE_EFFECTS[task.handler_key]
+                    if (
+                        not required_capabilities.issubset(registration.capabilities)
+                        or registration.side_effect_class != required_effect
+                    ):
+                        raise ValueError(f"registered handler does not match the built-in policy: {task.handler_key}")
             if task.side_effect_class not in allowed_side_effects:
                 raise ValueError(f"subagent plan requested a side effect outside the host policy: {task.task_id}")
             if task.timeout_seconds > float(raw_max_timeout):
@@ -694,7 +844,7 @@ class AgentApplication:
         self,
         *,
         plan: AgentPlanProposal | Mapping[str, object] | object | None = None,
-        handlers: Mapping[str, AgentHandler] | None = None,
+        handlers: Mapping[str, AgentHandlerRegistration] | None = None,
         root_synthesizer: Callable[[tuple[AgentResultPacket, ...]], object | Awaitable[object]] | None = None,
         message_sink: Callable[[AgentMessage], object | Awaitable[object]] | None = None,
         message_journal: AgentMessageJournal | None = None,
@@ -706,9 +856,8 @@ class AgentApplication:
         """Plan and run bounded local subagents, then synthesize once at root.
 
         ``plan=None`` performs one root planning call.  The model can propose
-        metadata only; callable handlers remain host-owned.  Supplying a plan,
-        handlers, and root synthesizer allows deterministic local execution in
-        tests or in a specialised browser/research integration.
+        metadata only; callable handlers and their exact execution policies
+        remain host-owned. Custom handlers require an AgentHandlerRegistration.
         """
 
         started = time.perf_counter()
@@ -716,12 +865,37 @@ class AgentApplication:
         system_context = ""
         try:
             proposed_plan = parse_agent_plan(plan) if plan is not None else None
+            allowed_capabilities = _configured_subagent_set(
+                self.config.options,
+                "subagent_allowed_capabilities",
+                _DEFAULT_SUBAGENT_CAPABILITIES,
+            )
+            allowed_side_effects = _configured_subagent_set(
+                self.config.options,
+                "subagent_allowed_side_effect_classes",
+                _DEFAULT_SUBAGENT_SIDE_EFFECT_CLASSES,
+            )
+            if proposed_plan is not None:
+                for task in proposed_plan.tasks:
+                    if not _subagent_handler_policy_enabled(
+                        task.handler_key,
+                        allowed_capabilities,
+                        allowed_side_effects,
+                    ):
+                        raise ValueError(
+                            f"subagent handler capability or effect is outside the host policy: {task.handler_key}"
+                        )
             trusted_handlers: dict[str, AgentHandler] = {}
+            handler_registrations: dict[str, AgentHandlerRegistration] = {}
             research_x_configured = False
             raw_public_research = self.config.options.get("subagent_public_research", True)
             if type(raw_public_research) is not bool:
                 raise ValueError("subagent_public_research must be boolean")
-            if raw_public_research:
+            if raw_public_research and _subagent_handler_policy_enabled(
+                "research",
+                allowed_capabilities,
+                allowed_side_effects,
+            ):
                 from .research_adapters import (
                     PublicResearchRouter,
                     RedditRssQueryProvider,
@@ -743,7 +917,8 @@ class AgentApplication:
             if raw_browser_handler is not None:
                 if not callable(raw_browser_handler):
                     raise TypeError("subagent_browser_handler must be callable")
-                trusted_handlers["browser"] = cast(AgentHandler, raw_browser_handler)
+                if _subagent_handler_policy_enabled("browser", allowed_capabilities, allowed_side_effects):
+                    trusted_handlers["browser"] = cast(AgentHandler, raw_browser_handler)
             raw_vision_invoker = self.config.options.get("subagent_vision_invoker")
             raw_browser_capture = self.config.options.get("subagent_browser_capture")
             if raw_vision_invoker is not None or raw_browser_capture is not None:
@@ -755,17 +930,28 @@ class AgentApplication:
                     build_browser_vision_handler,
                 )
 
-                trusted_handlers["vision"] = build_browser_vision_handler(
-                    cast(VisionInvoker, raw_vision_invoker),
-                    cast(BrowserCaptureProvider, raw_browser_capture),
-                )
+                if _subagent_handler_policy_enabled("vision", allowed_capabilities, allowed_side_effects):
+                    trusted_handlers["vision"] = build_browser_vision_handler(
+                        cast(VisionInvoker, raw_vision_invoker),
+                        cast(BrowserCaptureProvider, raw_browser_capture),
+                    )
             if handlers is not None:
-                for key, handler in handlers.items():
+                for key, registration in handlers.items():
                     if type(key) is not str or not key.strip() or len(key) > 128:
                         raise ValueError("subagent handler keys must be bounded non-empty strings")
-                    if not callable(handler):
-                        raise TypeError(f"subagent handler is not callable: {key}")
-                    trusted_handlers[key] = handler
+                    if type(registration) is not AgentHandlerRegistration:
+                        raise TypeError(f"custom subagent handlers require AgentHandlerRegistration: {key}")
+                    registration.validate()
+                    if key in _SUBAGENT_HANDLER_CAPABILITIES:
+                        required_capabilities = _SUBAGENT_HANDLER_CAPABILITIES[key]
+                        required_effect = _SUBAGENT_HANDLER_SIDE_EFFECTS[key]
+                        if (
+                            not required_capabilities.issubset(registration.capabilities)
+                            or registration.side_effect_class != required_effect
+                        ):
+                            raise ValueError(f"registered handler does not match the built-in policy: {key}")
+                    handler_registrations[key] = registration
+                    trusted_handlers[key] = registration.handler
 
             raw_allow_dynamic = self.config.options.get("subagents_allow_dynamic_plans", True)
             if type(raw_allow_dynamic) is not bool:
@@ -785,43 +971,61 @@ class AgentApplication:
                 formatted_task, system_context = self.prepare(self.config.task)
                 gateway = self._gateway(formatted_task)
 
-            async def invoke_model(prompt: str) -> object:
+            async def invoke_model(prompt: str, *, max_output_tokens: int | None = None) -> object:
                 if gateway is None:
                     raise RuntimeError("subagent model invocation is not configured")
-                method = getattr(gateway, "ainvoke", None)
+                method = getattr(gateway, "ainvoke_with_usage", None) if max_output_tokens is not None else None
+                if not callable(method):
+                    method = getattr(gateway, "ainvoke", None)
                 if not callable(method):
                     method = getattr(gateway, "run", None)
                 if not callable(method):
                     raise TypeError("subagent gateway must expose ainvoke or run")
-                result = method(prompt, system_context=system_context)
-                if inspect.isawaitable(result):
-                    return await result
-                return result
+                request_options: dict[str, object] = {"system_context": system_context}
+                if max_output_tokens is not None:
+                    request_options["max_output_tokens"] = max_output_tokens
+                return await _call_handler(method, prompt, **request_options)
 
-            if gateway is not None:
-                trusted_handlers.setdefault(
+            available_handlers = {
+                key: handler
+                for key, handler in trusted_handlers.items()
+                if _subagent_handler_policy_enabled(key, allowed_capabilities, allowed_side_effects)
+            }
+            if gateway is not None and _subagent_handler_policy_enabled(
+                "model",
+                allowed_capabilities,
+                allowed_side_effects,
+            ):
+                dynamic_handler_keys = set(available_handlers)
+                dynamic_handler_keys.add("model")
+                model_handler = trusted_handlers.setdefault(
                     "model",
                     build_model_subagent_handler(
                         invoke_model,
                         allow_dynamic_plans=raw_allow_dynamic,
-                        dynamic_handler_keys=tuple(sorted(set(trusted_handlers).union({"model"}))),
+                        dynamic_handler_keys=tuple(sorted(dynamic_handler_keys)),
                     ),
                 )
-            if not trusted_handlers:
+                available_handlers["model"] = model_handler
+            if not available_handlers:
                 raise ValueError("at least one trusted subagent handler is required")
 
             if proposed_plan is None:
                 planner_prompt = self._bounded_subagent_planner_prompt(
                     self.config.task,
-                    tuple(sorted(trusted_handlers)),
+                    tuple(sorted(available_handlers)),
                     research_x_configured=research_x_configured,
                 )
                 proposal = parse_agent_plan(await invoke_model(planner_prompt))
                 self.telemetry.emit("agent", "subagent_plan_proposed", correlation=self.correlation)
             else:
                 proposal = proposed_plan
-            self._validate_subagent_plan(proposal, trusted_handlers)
-            specs = proposal.bind_handlers(trusted_handlers)
+            self._validate_subagent_plan(
+                proposal,
+                available_handlers,
+                handler_registrations=handler_registrations,
+            )
+            specs = proposal.bind_handlers(available_handlers)
 
             def bind_dynamic_plan(
                 parent_task_id: int,
@@ -829,17 +1033,22 @@ class AgentApplication:
             ) -> tuple[AgentTaskSpec, ...]:
                 self._validate_subagent_plan(
                     dynamic_proposal,
-                    trusted_handlers,
+                    available_handlers,
+                    handler_registrations=handler_registrations,
                     external_parent_ids=(parent_task_id,),
                 )
                 return dynamic_proposal.bind_handlers(
-                    trusted_handlers,
+                    available_handlers,
                     external_parent_ids=(parent_task_id,),
                 )
 
             effective_root = root_synthesizer
+            raw_selective_evidence = self.config.options.get("subagents_selective_evidence", True)
+            if type(raw_selective_evidence) is not bool:
+                raise ValueError("subagents_selective_evidence must be boolean")
+            evidence_board = AgentEvidenceBoard() if raw_selective_evidence else None
             if effective_root is None:
-                effective_root = build_root_synthesizer(invoke_model)
+                effective_root = build_root_synthesizer(invoke_model, evidence_board=evidence_board)
             raw_require_native = (
                 self.config.options.get("subagents_require_native_authority", True)
                 if require_native_authority is None
@@ -856,6 +1065,7 @@ class AgentApplication:
                 message_sink=message_sink,
                 message_journal=message_journal,
                 message_mailbox=message_mailbox,
+                evidence_board=evidence_board,
                 cancel_event=cancel_event,
                 dynamic_plan_binder=bind_dynamic_plan if raw_allow_dynamic else None,
                 max_dynamic_tasks=cast(
@@ -883,7 +1093,7 @@ class AgentApplication:
         self,
         *,
         plan: AgentPlanProposal | Mapping[str, object] | object | None = None,
-        handlers: Mapping[str, AgentHandler] | None = None,
+        handlers: Mapping[str, AgentHandlerRegistration] | None = None,
         root_synthesizer: Callable[[tuple[AgentResultPacket, ...]], object | Awaitable[object]] | None = None,
         message_sink: Callable[[AgentMessage], object | Awaitable[object]] | None = None,
         message_journal: AgentMessageJournal | None = None,
@@ -1062,7 +1272,9 @@ class AgentApplication:
                     # read-only execution cell. Prompt construction is pure
                     # and is passed to the Lab so no RAG/database read occurs
                     # before the run ledger exists.
-                    system_context = self._build_system_context(self.config.task)
+                    cache_first = self._cache_first_prompts_enabled()
+                    system_context = self._build_system_context(self.config.task, cache_stable=cache_first)
+                    dynamic_context = self._build_dynamic_prompt_context() if cache_first else ""
 
                     def retrieve_lab_context(*, query: str, **_: Any) -> str:
                         return self._retrieve_context(query)
@@ -1120,9 +1332,12 @@ class AgentApplication:
                         correlation=self.correlation,
                         context_retriever=retrieve_lab_context,
                         system_context=system_context,
+                        dynamic_context=dynamic_context,
                         post_completion_effect=persist_lab_result,
                         checkpoint_effect=(persist_lab_checkpoint if conversation_run is not None else None),
                     ).run()
+                    if dossier is None:
+                        raise RuntimeError("normal Lab execution did not produce a dossier")
                     public_output, _ = self._split_memory_proposals(
                         lab_result.output,
                         enabled=self.config.options.get("memory_learning", True),

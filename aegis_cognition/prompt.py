@@ -55,6 +55,7 @@ class PromptBuilder:
         risks: list[dict[str, str]] | None = None,
         error_handlers: list[dict[str, str]] | None = None,
         completion_conditions: list[str] | None = None,
+        cache_stable: bool = False,
     ) -> str:
         """
         Compile the complete system prompt block.
@@ -70,7 +71,14 @@ class PromptBuilder:
         )
 
         # Section 2: TASK ANALYSIS (PHÂN TÍCH NHIỆM VỤ)
-        prim_obj = primary_objective or task
+        if type(cache_stable) is not bool:
+            raise ValueError("cache_stable must be boolean")
+        if cache_stable:
+            prim_obj = primary_objective or (
+                "The current user task is supplied separately and must be treated as the active objective."
+            )
+        else:
+            prim_obj = primary_objective or task
         sec_objs = secondary_objectives or []
         sec_objs_str = "\n".join(f"   - {obj}" for obj in sec_objs) if sec_objs else "   - Không có"
 

@@ -10,6 +10,7 @@ from core.python.chatgpt_web_client import (
     ChatGPTWebConfig,
     ChatGPTWebUnavailableError,
 )
+from core.python.aegis.cache_economics import extract_cache_usage
 from aegis_cognition.config import resolve_api_key
 from aegis_cognition.config import AgentConfig
 
@@ -60,6 +61,38 @@ def test_chatgpt_web_client_maps_responses_output_and_drops_orchestration_metada
         "max_output_tokens": 256,
         "instructions": "be concise",
     }]
+
+
+def test_chatgpt_web_client_forwards_explicit_prompt_cache_controls() -> None:
+    calls: list[dict[str, object]] = []
+
+    class Responses:
+        def create(self, **kwargs: object) -> object:
+            calls.append(kwargs)
+            return SimpleNamespace(output_text="bridge reply")
+
+    client = ChatGPTWebClient(client=SimpleNamespace(responses=Responses()))
+    assert client.invoke(
+        "hello",
+        prompt_cache_key="aegis-cache-test",
+        prompt_cache_options={"mode": "implicit", "ttl": "30m"},
+    ) == "bridge reply"
+    assert calls[0]["prompt_cache_key"] == "aegis-cache-test"
+    assert calls[0]["prompt_cache_options"] == {"mode": "implicit", "ttl": "30m"}
+
+
+def test_chatgpt_web_client_preserves_response_usage_on_string_output() -> None:
+    usage = SimpleNamespace(input_tokens=100, input_tokens_details=SimpleNamespace(cached_tokens=80))
+
+    class Responses:
+        def create(self, **_kwargs: object) -> object:
+            return SimpleNamespace(output_text="bridge reply", usage=usage)
+
+    client = ChatGPTWebClient(client=SimpleNamespace(responses=Responses()))
+    output = client.invoke("hello")
+    assert output == "bridge reply"
+    assert output.usage is usage  # type: ignore[attr-defined]
+    assert extract_cache_usage(output).cached_read_tokens == 80
 
 
 def test_chatgpt_web_client_rejects_empty_response() -> None:

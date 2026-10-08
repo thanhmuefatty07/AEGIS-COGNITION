@@ -31,6 +31,8 @@ repository entry point.
 
 ## Historical records
 
-[`archive/`](archive/README.md) contains superseded reports, plans, source
-snapshots, and external research. Historical records do not override the
-current authority paths above.
+[`archive/`](archive/README.md) contains retained plans and provenance needed to
+understand project history. Report-only research, raw benchmark measurements,
+and superseded QA captures are kept in the external private archive after their
+findings have been recorded; they are not part of the published repository.
+Historical records do not override the current authority paths above.

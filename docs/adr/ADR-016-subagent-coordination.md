@@ -17,6 +17,11 @@ arbitrary Python execution or external-write authority.
   validates the bounded DAG and computes the graph hash; Python 3.14
   `TaskGroup`, a semaphore, and sorted resource locks run independent children
   on the same machine.
+- Require async, cancellation-aware handlers for exclusive resources and
+  non-read-only effects. Python cannot forcibly stop a synchronous worker
+  thread at timeout; allowing it to outlive its resource lease could create
+  concurrent access or an effect after the task was reported timed out. Sync
+  handlers remain available for read-only work without exclusive resources.
 - Forward each child’s run-scoped hashed dependency IDs into the existing Rust
   runtime admission call. Python waits for dependency results for data flow,
   while Rust also sees the same edges for admission ordering; this does not
@@ -25,6 +30,12 @@ arbitrary Python execution or external-write authority.
   compact dependency summaries, explicit evidence classes, and immutable
   artifact references. No progress broadcast or raw transcript forwarding is
   enabled by default.
+- Allow an optional, run-scoped direct question/answer between active peers.
+  Each task can participate in at most three exchanges, with only one pending
+  exchange per task; each message is bounded to 2 KiB UTF-8, and the channel
+  is in-memory only. The supervisor remains the task authority; peer text
+  grants no tools or permissions and is never copied
+  into the observer journal or durable mailbox.
 - Provide an optional bounded in-process `AgentMessageJournal` for a desktop
   observer. Cursor reads and `resync_required` handle slow consumers. For a
   process boundary or restart-recovery path, provide an optional SQLite
@@ -51,9 +62,11 @@ arbitrary Python execution or external-write authority.
    this phase: their useful supervisor/message ideas are compatible references,
    but a new runtime would add dependency, deployment, and failure surfaces
    without a current multi-process requirement.
-2. Let children chat freely or all share full context. Rejected: larger token
-   payloads, unclear authority, prompt-injection amplification, and difficult
-   deterministic replay.
+2. Let children chat freely or all share full context. Rejected. The selected
+   bounded directed exchange permits one short request/reply only when both
+   tasks are active; this bounds message volume and avoids open-ended authority
+   confusion, injection amplification, and replay ambiguity without requiring
+   user mediation.
 3. Make subagents silently replace `Agent.run()` immediately. Rejected: this
    is a behavior and cost change without workload measurements. The additive
    `run_subagents` API is the reversible boundary; automatic defaulting requires
@@ -64,6 +77,9 @@ arbitrary Python execution or external-write authority.
 Migration is additive: callers opt into `run_subagents`; the existing
 `Agent.run()` path and persisted schemas remain unchanged. Removing the new
 modules and methods is the rollback path because no data migration is needed.
+The peer channel is run-local and in-memory; it does not change the serialized
+`AgentMessage` schema or durable mailbox format. Removing the context methods
+and built-in model action protocol is sufficient to roll this feature back.
 
 The planner cannot select an arbitrary callable, use personal cookies, or grant
 itself `ExternalSideEffect` under the default application policy. Public-source
@@ -76,7 +92,13 @@ bounded memory/token/task limits.
 The implementation enables measured overlap for independent tasks and removes
 duplicate envelope/artifact bytes from result messages. It does not claim a
 universal speedup or token reduction; workload benchmarks, browser visual-model
-quality, multi-process execution, and production SLOs remain `NOT VERIFIED`.
+quality, peer-exchange cost/quality, end-to-end multi-process worker execution,
+and production SLOs remain `NOT VERIFIED`. Peer exchange can add a provider
+call and prompt tokens; it is not claimed to reduce cost. A separate-process
+mailbox test verifies only that competing processes cannot claim the same live
+delivery and that an expired committed
+lease is recovered after its worker process is terminated. It does not prove
+exactly-once execution of a handler's external side effects.
 
 ## Evidence
 
@@ -90,6 +112,12 @@ quality, multi-process execution, and production SLOs remain `NOT VERIFIED`.
   `test_runtime_admission_receives_the_same_hashed_dependency_dag` verify that
   the Python and native admission boundaries receive the same dependency
   contract.
+- `tests/test_mailbox_fencing.py::test_separate_processes_cannot_claim_the_same_delivery`
+  exercises two spawned processes against one SQLite mailbox and verifies that
+  only one receives the same delivery lease.
+- `tests/test_mailbox_fencing.py::test_expired_lease_recovers_after_worker_process_is_terminated`
+  terminates a spawned worker after claim and verifies expiry recovery, attempt
+  fencing, and acknowledgement by the recovery worker.
 - Rust graph validation is in `core/rust/src/agent_coordination.rs` and is
   exposed through `core/rust/src/ffi/agent_coordination.rs`; native smoke
   execution reports `authority=native_runtime`.

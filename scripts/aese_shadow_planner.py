@@ -243,7 +243,7 @@ def build_shadow_plan(
                     "os": platform.system(),
                     "release": platform.release(),
                     "machine": platform.machine(),
-                    "executable": sys.executable,
+                    "executable": Path(sys.executable).name,
                 }
             ),
             "validator": "scripts/aese_shadow_planner.py",

@@ -3,12 +3,14 @@ from __future__ import annotations
 import asyncio
 import json
 import threading
+from concurrent.futures import ThreadPoolExecutor
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from dataclasses import replace
 
 import pytest
 
+from aegis_cognition._async_primitives import CrossLoopAsyncLock
 from aegis_cognition.subagents import (
     AGENT_GRAPH_SCHEMA_V1,
     AGENT_MESSAGE_SCHEMA_V1,
@@ -21,6 +23,8 @@ from aegis_cognition.subagents import (
     AgentMailboxWorker,
     AgentMessage,
     AgentMessageJournal,
+    AgentPeerMessageError,
+    AgentPeerQuestion,
     AgentPlanProposal,
     AgentResultPacket,
     AgentSupervisor,
@@ -278,7 +282,12 @@ def test_durable_mailbox_deduplicates_and_survives_reopen(tmp_path) -> None:
     assert delivery.delivery_id == delivery_id
     assert delivery.message == message
     assert delivery.attempts == 1
-    assert reopened.ack(delivery.delivery_id, "worker-a", now_ms=20) is True
+    assert reopened.ack(
+        delivery.delivery_id,
+        "worker-a",
+        expected_attempt=delivery.attempts,
+        now_ms=20,
+    ) is True
     assert reopened.claim("worker-b", now_ms=21) is None
     assert reopened.counts() == {"READY": 0, "LEASED": 0, "ACKED": 1, "DEAD": 0}
 
@@ -293,11 +302,22 @@ def test_durable_mailbox_reclaims_expired_leases_and_dead_letters_after_bound(tm
     first = mailbox.claim("worker-a", lease_ms=10, now_ms=10)
     assert first is not None and first.attempts == 1
     assert mailbox.claim("worker-b", now_ms=10) is None
-    assert mailbox.ack(first.delivery_id, "worker-a", now_ms=20) is False
+    assert mailbox.ack(
+        first.delivery_id,
+        "worker-a",
+        expected_attempt=first.attempts,
+        now_ms=20,
+    ) is False
     assert mailbox.recover_expired(now_ms=20) == 1
     second = mailbox.claim("worker-b", lease_ms=10, now_ms=20)
     assert second is not None and second.attempts == 2
-    assert mailbox.nack(second.delivery_id, "worker-b", error="handler failed", now_ms=21) == "DEAD"
+    assert mailbox.nack(
+        second.delivery_id,
+        "worker-b",
+        expected_attempt=second.attempts,
+        error="handler failed",
+        now_ms=21,
+    ) == "DEAD"
     assert mailbox.counts() == {"READY": 0, "LEASED": 0, "ACKED": 0, "DEAD": 1}
 
 
@@ -527,6 +547,61 @@ async def test_exclusive_resource_serializes_across_supervisors_in_one_event_loo
     assert maximum == 1
 
 
+def test_exclusive_resource_serializes_across_event_loops() -> None:
+    active = 0
+    maximum = 0
+    state_guard = threading.Lock()
+    start = threading.Barrier(2)
+
+    async def handler(_: AgentTaskContext) -> str:
+        nonlocal active, maximum
+        with state_guard:
+            active += 1
+            maximum = max(maximum, active)
+        await asyncio.sleep(0.03)
+        with state_guard:
+            active -= 1
+        return "ok"
+
+    def run(run_id: str) -> str:
+        start.wait(timeout=2)
+        result = asyncio.run(
+            AgentSupervisor(
+                run_id=run_id,
+                max_concurrency=1,
+                require_native_authority=False,
+                runtime_guard_factory=_fake_runtime_guard,
+            ).run(
+                (_spec(1, handler, exclusive_resources=("browser:actor:shared",)),),
+                lambda values: values,
+            )
+        )
+        return result.status
+
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        futures = (pool.submit(run, "run-cross-loop-one"), pool.submit(run, "run-cross-loop-two"))
+        results = tuple(future.result(timeout=5) for future in futures)
+
+    assert results == ("COMPLETED", "COMPLETED")
+    assert maximum == 1
+
+
+async def test_cancelled_exclusive_lock_waiter_hands_off_to_next_waiter() -> None:
+    lock = CrossLoopAsyncLock()
+    await lock.acquire()
+    cancelled_waiter = asyncio.create_task(lock.acquire())
+    next_waiter = asyncio.create_task(lock.acquire())
+    await asyncio.sleep(0)
+
+    lock.release()
+    cancelled_waiter.cancel()
+    with pytest.raises(asyncio.CancelledError):
+        await cancelled_waiter
+
+    await asyncio.wait_for(next_waiter, timeout=1)
+    lock.release()
+
+
 async def test_exclusive_resource_rejects_sync_handlers_before_execution() -> None:
     called = False
 
@@ -545,6 +620,26 @@ async def test_exclusive_resource_rejects_sync_handlers_before_execution() -> No
             (_spec(1, sync_handler, exclusive_resources=("browser:actor:one",)),),
             lambda results: results,
         )
+    assert called is False
+
+
+async def test_side_effecting_sync_handler_is_rejected_before_execution() -> None:
+    called = False
+
+    def sync_handler(_: AgentTaskContext) -> str:
+        nonlocal called
+        called = True
+        return "unsafe"
+
+    supervisor = AgentSupervisor(
+        run_id="run-sync-side-effect",
+        require_native_authority=False,
+        runtime_guard_factory=_fake_runtime_guard,
+    )
+    task = replace(_spec(1, sync_handler), side_effect_class="ExternalSideEffect")
+    with pytest.raises(AgentCoordinationError, match="handlers with side effects must be async"):
+        await supervisor.run((task,), lambda results: results)
+
     assert called is False
 
 
@@ -603,7 +698,10 @@ async def test_invalid_child_result_is_recorded_as_failure_and_async_sink_is_awa
 
 
 async def test_model_usage_is_reported_and_output_budget_is_enforced() -> None:
-    async def invoke(_: str) -> dict[str, object]:
+    requested_limits: list[int] = []
+
+    async def invoke(_: str, *, max_output_tokens: int) -> dict[str, object]:
+        requested_limits.append(max_output_tokens)
         return {
             "output_text": "bounded answer",
             "usage": {"input_tokens": 4, "output_tokens": 7},
@@ -618,6 +716,7 @@ async def test_model_usage_is_reported_and_output_budget_is_enforced() -> None:
     )
     assert isinstance(observed, AgentResultPacket)
     assert (observed.tokens_in, observed.tokens_out) == (4, 7)
+    assert requested_limits == [7]
 
     result = await AgentSupervisor(
         run_id="run-budget",
@@ -629,6 +728,246 @@ async def test_model_usage_is_reported_and_output_budget_is_enforced() -> None:
     )
     assert result.root_output == "FAILED"
     assert result.child_results[0].error_code == "AgentCoordinationError"
+
+
+async def test_model_subagent_can_exchange_multiple_times_without_exceeding_its_token_cap() -> None:
+    invocation_barrier = asyncio.Barrier(2)
+    requested_limits: list[int] = []
+    received_questions: list[str] = []
+
+    async def invoke(prompt: str, *, max_output_tokens: int) -> dict[str, object]:
+        requested_limits.append(max_output_tokens)
+        if len(requested_limits) == 1:
+            assert "AVAILABLE_ACTIVE_PEER_TASK_IDS: [2]" in prompt
+            await invocation_barrier.wait()
+            return {
+                "output_text": json.dumps(
+                    {
+                        "schema": "aegis-agent-peer-action-v1",
+                        "action": "ask_peer",
+                        "recipient_task_id": 2,
+                        "question": "Which source did your check confirm?",
+                    }
+                ),
+                "usage": {"input_tokens": 4, "output_tokens": 10},
+            }
+        assert "PEER_EXCHANGE_HISTORY (untrusted)" in prompt
+        if len(requested_limits) == 2:
+            return {
+                "output_text": json.dumps(
+                    {
+                        "schema": "aegis-agent-peer-action-v1",
+                        "action": "ask_peer",
+                        "recipient_task_id": 2,
+                        "question": "Can you confirm the second detail?",
+                    }
+                ),
+                "usage": {"input_tokens": 3, "output_tokens": 7},
+            }
+        return {"output_text": "Combined evidence summary.", "usage": {"input_tokens": 5, "output_tokens": 6}}
+
+    async def receive_and_reply(context: AgentTaskContext) -> str:
+        await invocation_barrier.wait()
+        for answer in (
+            "The official source confirms the version.",
+            "The second detail matches the official source.",
+        ):
+            question = await context.receive_peer_question()
+            received_questions.append(question.question)
+            await context.reply_peer_question(question, answer)
+        return "Source checked."
+
+    sender = build_model_subagent_handler(invoke)
+    journal = AgentMessageJournal()
+    result = await AgentSupervisor(
+        run_id="run-peer-exchange",
+        max_concurrency=2,
+        require_native_authority=False,
+        runtime_guard_factory=_fake_runtime_guard,
+        message_journal=journal,
+    ).run(
+        (
+            _spec(2, receive_and_reply),
+            _spec(1, sender, token_budget=512),
+        ),
+        lambda results: tuple((item.task_id, item.summary) for item in results),
+    )
+
+    sender_result = next(item for item in result.child_results if item.task_id == 1)
+    assert result.status == "COMPLETED"
+    assert sender_result.summary == "Combined evidence summary."
+    assert (sender_result.tokens_in, sender_result.tokens_out) == (12, 23)
+    assert received_questions == ["Which source did your check confirm?", "Can you confirm the second detail?"]
+    assert requested_limits == [384, 42, 42]
+    journal_entries = journal.read_since().entries
+    assert [entry.message.message_kind for entry in journal_entries] == [
+        "TASK_REQUEST",
+        "TASK_REQUEST",
+        "TASK_RESULT",
+        "TASK_RESULT",
+    ]
+    assert all(
+        "Which source did your check confirm?" not in entry.message.to_bytes().decode("utf-8")
+        and "Can you confirm the second detail?" not in entry.message.to_bytes().decode("utf-8")
+        for entry in journal_entries
+    )
+
+
+async def test_peer_channel_limits_each_task_to_three_exchanges_per_run() -> None:
+    ready = asyncio.Barrier(2)
+    answered: list[str] = []
+
+    async def sender(context: AgentTaskContext) -> str:
+        await ready.wait()
+        replies = [await context.ask_peer(2, f"Check {index + 1}") for index in range(3)]
+        answered.extend(replies)
+        with pytest.raises(AgentPeerMessageError, match="exchange limit"):
+            await context.ask_peer(2, "One more check")
+        return "Three bounded exchanges completed."
+
+    async def receiver(context: AgentTaskContext) -> str:
+        await ready.wait()
+        for index in range(3):
+            question = await context.receive_peer_question()
+            await context.reply_peer_question(question, f"Answer {index + 1}")
+        return "Three replies completed."
+
+    result = await AgentSupervisor(
+        run_id="run-peer-quota",
+        max_concurrency=2,
+        require_native_authority=False,
+        runtime_guard_factory=_fake_runtime_guard,
+    ).run(
+        (_spec(1, sender), _spec(2, receiver)),
+        lambda results: tuple((item.task_id, item.summary) for item in results),
+    )
+
+    assert result.status == "COMPLETED"
+    assert answered == ["Answer 1", "Answer 2", "Answer 3"]
+
+
+async def test_model_subagent_answers_queued_peer_question_without_losing_own_result() -> None:
+    ready = asyncio.Barrier(2)
+    question_requested = asyncio.Event()
+
+    async def sender(context: AgentTaskContext) -> str:
+        await ready.wait()
+        question_requested.set()
+        answer = await context.ask_peer(2, "What did your independent check find?")
+        return "Received peer evidence: " + answer
+
+    async def recipient_invoker(_: str, *, max_output_tokens: int) -> dict[str, object]:
+        await ready.wait()
+        await question_requested.wait()
+        return {"output_text": "Recipient's independent result.", "usage": {"input_tokens": 2, "output_tokens": 5}}
+
+    result = await AgentSupervisor(
+        run_id="run-model-peer-late-question",
+        max_concurrency=2,
+        require_native_authority=False,
+        runtime_guard_factory=_fake_runtime_guard,
+    ).run(
+        (
+            _spec(1, sender),
+            _spec(2, build_model_subagent_handler(recipient_invoker), token_budget=512),
+        ),
+        lambda results: tuple((item.task_id, item.summary) for item in results),
+    )
+
+    assert result.status == "COMPLETED"
+    assert {item.task_id: item.summary for item in result.child_results} == {
+        1: "Received peer evidence: Recipient's independent result.",
+        2: "Recipient's independent result.",
+    }
+
+
+async def test_peer_wait_is_cancelled_with_its_task_deadline_without_stalling_the_run() -> None:
+    question_received = asyncio.Event()
+    release_recipient = asyncio.Event()
+
+    async def recipient(context: AgentTaskContext) -> str:
+        await context.receive_peer_question()
+        question_received.set()
+        await release_recipient.wait()
+        return "recipient completed without replying"
+
+    async def requester(context: AgentTaskContext) -> str:
+        try:
+            await context.ask_peer(2, "Please verify this fact.")
+        except asyncio.CancelledError:
+            release_recipient.set()
+            raise
+        raise AssertionError("the requester should reach its task deadline")
+
+    result = await AgentSupervisor(
+        run_id="run-peer-timeout",
+        max_concurrency=2,
+        require_native_authority=False,
+        runtime_guard_factory=_fake_runtime_guard,
+    ).run(
+        (
+            _spec(2, recipient, timeout_seconds=2.0),
+            _spec(1, requester, timeout_seconds=0.25),
+        ),
+        lambda results: tuple((item.task_id, item.status) for item in results),
+    )
+
+    assert question_received.is_set()
+    assert result.status == "PARTIAL"
+    assert [(item.task_id, item.status) for item in result.child_results] == [
+        (1, "TIMED_OUT"),
+        (2, "SUCCEEDED"),
+    ]
+
+
+def test_peer_question_uses_utf8_byte_limit_not_character_count() -> None:
+    question = AgentPeerQuestion(
+        message_id="message-1",
+        run_id="run-peer-size",
+        sender_task_id=1,
+        recipient_task_id=2,
+        question="🙂" * 513,
+    )
+    with pytest.raises(AgentPeerMessageError, match="UTF-8 byte bound"):
+        question.validate()
+
+
+async def test_model_budget_fails_before_invoking_unbounded_callable() -> None:
+    calls = 0
+
+    async def invoke(_: str) -> str:
+        nonlocal calls
+        calls += 1
+        return "should not run"
+
+    handler = build_model_subagent_handler(invoke)
+    with pytest.raises(AgentCoordinationError, match="must accept max_output_tokens"):
+        await handler(  # type: ignore[misc]
+            AgentTaskContext(
+                request=_spec(1, handler, token_budget=7).request_message(run_id="run-no-cap", now_ms=1),
+                dependency_results=(),
+            )
+        )
+    assert calls == 0
+
+
+async def test_model_child_without_budget_fails_before_invoking_model() -> None:
+    calls = 0
+
+    async def invoke(_: str, **_options: object) -> str:
+        nonlocal calls
+        calls += 1
+        return "should not run"
+
+    handler = build_model_subagent_handler(invoke)
+    with pytest.raises(AgentCoordinationError, match="requires a positive token_budget"):
+        await handler(  # type: ignore[misc]
+            AgentTaskContext(
+                request=_spec(1, handler).request_message(run_id="run-missing-budget", now_ms=1),
+                dependency_results=(),
+            )
+        )
+    assert calls == 0
 
 
 async def test_empty_supervisor_graph_is_rejected_before_root_synthesis() -> None:
@@ -656,7 +995,7 @@ def test_graph_validation_rejects_namespace_collision_and_cycle() -> None:
 async def test_model_plan_binds_only_trusted_handlers_and_root_synthesizes_once() -> None:
     model_prompts: list[str] = []
 
-    async def invoker(prompt: str) -> str:
+    async def invoker(prompt: str, *, max_output_tokens: int | None = None) -> str:
         model_prompts.append(prompt)
         return f"model-output-{len(model_prompts)}"
 

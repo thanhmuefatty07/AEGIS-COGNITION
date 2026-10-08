@@ -1,8 +1,10 @@
 # aegis-sandbox
 
-Policy-first sandbox runtime primitives.
+Policy checks and state-storage primitives; not an execution sandbox.
 
-The current portable core validates Python snippets, enforces import and token
-policies, and persists explicit JSON state under a sandbox root. OS-level
-namespace/seccomp/cgroup backends are exposed as future host adapters rather than
-claimed by tests on unsupported systems.
+The current core checks a few Python import and token patterns and persists
+explicit JSON state. These checks are not a Python parser or a security boundary.
+`PolicyOnlyBackend` never executes submitted code (`code_executed` is false), and
+this crate provides no OS-level filesystem, network, or resource isolation.
+Native Python/Node plugin execution must stay unavailable until a platform
+worker establishes and verifies those controls before the code starts.

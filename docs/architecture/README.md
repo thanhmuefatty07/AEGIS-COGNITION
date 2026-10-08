@@ -24,6 +24,8 @@ The current closure slice includes the Rust resource contract, fenced runtime,
 bounded execution primitives, and opt-in Linux/Windows OS adapters. It still
 does not certify production readiness, cross-host benchmark superiority, or
 that a platform adapter is active merely because it is compiled.
+Governance coverage is organized across runtime, evidence, security, evaluation,
+and product domains.
 
 The product-facing platform policy is in
 [`PORTABILITY.md`](PORTABILITY.md). The initial reference environment is Ubuntu
@@ -54,7 +56,7 @@ control is cooperative/measurement-only until live evidence exists.
 | Gateway responsibility boundaries | `core/python/aegis/contracts.py`, `provider.py`, `evidence.py`, `learning.py` | architecture fitness + full Python bridge regression suite |
 | Local subagent coordination | `aegis_cognition/subagents.py`, `core/rust/src/agent_coordination.rs`, `schemas/agent-*.json` | native graph validation + bounded TaskGroup/resource-lock tests; cross-platform CI execution pending |
 | Public research adapters | `aegis_cognition/research_adapters.py` | Reddit RSS live read-only smoke + deterministic adapter tests; X requires an app-only token |
-| Exact code reuse | `aegis_cognition/code_reuse.py`, `core/python/aegis/code_intelligence.py` | snapshot/hash/license/path-bound tests; public-source retrieval and model-training lookup are not enabled |
+| Exact code reuse | `aegis_cognition/code_reuse.py`, `core/python/aegis/code_intelligence.py`, `aegis_cognition/desktop_service.py` | live chat can search bounded source metadata and read redacted excerpts; exact local copy is hash-bound, never overwrites, and requires host approval; public-source retrieval/model-training lookup and end-to-end token savings are not enabled or proven |
 | Memory Agent workspace projection | `core/python/aegis/code_intelligence.py`, `desktop/src/workspace_graph.ts`, `desktop/src/WorkspaceGraphView.tsx` | revision-bound read-only graph contract; desktop build PASS; source-proof navigation and memory-linked graph NOT VERIFIED |
 
 The durable standards mapping is in
@@ -71,8 +73,8 @@ and unresolved closure work is retained in
 Raw benchmark runs, empirical research records, generated architecture packs,
 and host-specific probe outputs are private project material. They are retained
 in the local cleanup archive and are intentionally excluded from the tracked
-tree and Git history. The collector sources remain available for reproducible
-local generation:
+tree and published Git history. The collector sources remain available for
+reproducible local generation:
 
 - `empirical-research/collect.py`
 - `evidence-pack/collect.py`
@@ -83,17 +85,24 @@ The collectors write generated outputs to a local-only evidence directory; an
 output is not architecture authority until it is reconciled with the canonical
 plan, contracts, ADRs, and tracked verification registry.
 
-The public decision input for the local-first Memory Agent remains
-[`MEMORY_AGENT_LIVING_WORKSPACE_RESEARCH.md`](MEMORY_AGENT_LIVING_WORKSPACE_RESEARCH.md):
-current decision input for the local-first Memory Agent, token-bounded context,
-and evidence-backed project graph inspired by external research.
-- [`MEMORY_AGENT_LIVING_WORKSPACE_RESEARCH.md`](MEMORY_AGENT_LIVING_WORKSPACE_RESEARCH.md):
-  current decision input for the local-first Memory Agent, token-bounded
-  context, and evidence-backed project graph inspired by external research.
+The retained decision input for the local-first Memory Agent is
+[`MEMORY_AGENT_LIVING_WORKSPACE_RESEARCH.md`](MEMORY_AGENT_LIVING_WORKSPACE_RESEARCH.md).
+It covers token-bounded context and an evidence-backed project graph informed
+by external research.
 
 The subagent decision and protocol are recorded in
 [`AGENT_SUBAGENT_RUNTIME_DESIGN.md`](AGENT_SUBAGENT_RUNTIME_DESIGN.md) and
 [`ADR-016-subagent-coordination.md`](../adr/ADR-016-subagent-coordination.md).
+
+The proposed personal code-map workspace, its use cases, source retrieval,
+agent controls, implementation sequence and acceptance gates are in
+[`personal-code-map-implementation-plan.md`](personal-code-map-implementation-plan.md).
+The project-map-first layout revision, actor avatars, interaction contracts and
+design-only sketches are in
+[`personal-diagram-workspace-design-plan.md`](personal-diagram-workspace-design-plan.md).
+Design intent is documented in the linked proposals.
+Exploratory images, prototypes and exports are archived outside this public repository;
+product behavior and token savings require implementation and measurement.
 
 These generated outputs are evidence views, not hand-maintained implementation
 authority. A historical path or label inside a retained local snapshot is

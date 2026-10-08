@@ -1,6 +1,11 @@
-# ADR-003: Free-threaded Python is an optimization lane
+# ADR-003: Free-threaded Python experiment (superseded)
 
-Status: Accepted (2026-08-14)
+Status: Superseded (2026-10-05; see current policy below)
+
+Superseding outcome: the current runtime and CI support standard CPython only.
+Free-threaded Python is not a supported or experimental lane. Reconsider it only
+through a new decision after native-extension ABI, dependency, and concurrency
+compatibility are independently verified.
 
 ## Context and problem
 
@@ -13,29 +18,31 @@ The core must work on ordinary CPython; optional builds may be evaluated. The
 options were no free-threaded support, default free-threaded support, or an
 isolated experimental lane.
 
-## Decision and rationale
+## Historical decision and rationale
 
-Free-threaded Python is experimental and cannot change Rust authority or token
-semantics. It is enabled only after native-extension and dependency tests pass.
+The former decision treated free-threaded Python as experimental and required
+that it not change Rust authority or token semantics. It could be enabled only
+after native-extension and dependency tests passed.
 
-## Trade-offs and consequences
+## Historical trade-offs and consequences
 
-This delays possible parallel speedups but preserves a predictable production
-ABI and makes GIL assumptions visible.
+That approach delayed possible parallel speedups while preserving a predictable
+production ABI and making GIL assumptions visible.
 
-## Rejected alternatives
+## Historical rejected alternatives
 
 Making free-threaded Python the default was rejected because ABI coverage and
-third-party compatibility are not yet measured.
+third-party compatibility had not been measured.
 
 ## Migration, security, performance, operations, rollback
 
-Add a separate CI matrix lane, record interpreter ABI, and run race/stress
-tests before enabling it. Keep FFI inputs immutable and Rust-side fencing
-unchanged. Compare throughput and tail latency to the production lane. Remove
-the lane or pin the prior interpreter if regressions appear.
+The former plan was to add a separate CI matrix lane, record interpreter ABI,
+and run race/stress tests before enabling it. It also required immutable FFI
+inputs, unchanged Rust-side fencing, and throughput/tail-latency comparison.
 
 ## Evidence
 
-The policy is reflected in ADR-002 and the release matrix; free-threaded
-production readiness remains `NOT VERIFIED`.
+This ADR records the former experimental-lane decision. The current standard-
+CPython-only matrix is reflected in ADR-002, `.python-version`, and
+`.github/workflows/ci.yml`; historical free-threaded runs do not establish
+current support.

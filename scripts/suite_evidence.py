@@ -374,7 +374,8 @@ def main() -> int:
     if failure_reason is not None:
         result["failure_reason"] = failure_reason
     args.output.write_text(json.dumps(result, indent=2, sort_keys=True) + "\n", encoding="utf-8")
-    print(output, end="")
+    if os.environ.get("GITHUB_ACTIONS") != "true":
+        print(output, end="")
     print(json.dumps(result, sort_keys=True))
     return exit_code
 

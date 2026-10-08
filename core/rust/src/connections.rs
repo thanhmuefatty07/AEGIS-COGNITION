@@ -382,6 +382,46 @@ impl ConnectionRepository {
         rows.collect::<Result<Vec<_>, _>>().map_err(Into::into)
     }
 
+    pub fn remove_model(
+        &mut self,
+        connection_id: &str,
+        model_id: &str,
+        expected_revision: u64,
+    ) -> Result<bool, ConnectionRepositoryError> {
+        if connection_id.trim().is_empty()
+            || model_id.trim().is_empty()
+            || model_id.len() > MAX_MODEL_ID_BYTES
+        {
+            return Err(ConnectionRepositoryError::InvalidInput(
+                "invalid model descriptor identifier",
+            ));
+        }
+        let transaction = self.connection.transaction()?;
+        let current: Option<i64> = transaction
+            .query_row(
+                "SELECT revision FROM model_descriptors
+                 WHERE connection_id = ?1 AND model_id = ?2",
+                params![connection_id, model_id],
+                |row| row.get(0),
+            )
+            .optional()?;
+        let Some(current) = current else {
+            return Ok(false);
+        };
+        if u64::try_from(current).ok() != Some(expected_revision) {
+            return Err(ConnectionRepositoryError::Conflict(
+                "model revision conflict",
+            ));
+        }
+        transaction.execute(
+            "DELETE FROM model_descriptors
+             WHERE connection_id = ?1 AND model_id = ?2 AND revision = ?3",
+            params![connection_id, model_id, current],
+        )?;
+        transaction.commit()?;
+        Ok(true)
+    }
+
     pub fn grant_egress(
         &mut self,
         grant_id: &str,
@@ -643,6 +683,16 @@ fn validate_connection(
     }
     validate_endpoint(endpoint)?;
     if let Some(secret_ref) = secret_ref {
+        let valid_os_keyring_reference = secret_ref
+            .strip_prefix("os-keyring:")
+            .map(|account| {
+                !account.is_empty()
+                    && account.len() <= 255
+                    && account.bytes().all(|byte| {
+                        byte.is_ascii_alphanumeric() || matches!(byte, b'.' | b'_' | b':' | b'-')
+                    })
+            })
+            .unwrap_or(false);
         let allowed_prefix = [
             "windows-credential:",
             "keychain:",
@@ -654,7 +704,7 @@ fn validate_connection(
         .any(|prefix| secret_ref.starts_with(prefix));
         if secret_ref.trim().is_empty()
             || secret_ref.len() > MAX_SECRET_REF_BYTES
-            || !allowed_prefix
+            || !(valid_os_keyring_reference || allowed_prefix)
         {
             return Err(ConnectionRepositoryError::InvalidInput(
                 "secret_ref must be an opaque platform reference",
@@ -896,6 +946,36 @@ mod tests {
             connection.secret_ref.as_deref(),
             Some("windows-credential:local-token")
         );
+        let oauth_connection = repository
+            .upsert_connection(
+                "oauth",
+                "mcp",
+                "https://mcp.example.test",
+                "mcp",
+                Some("os-keyring:mcp-oauth:abc123"),
+                true,
+                None,
+                1_700_000_000_001,
+            )
+            .unwrap();
+        assert_eq!(
+            oauth_connection.secret_ref.as_deref(),
+            Some("os-keyring:mcp-oauth:abc123")
+        );
+        assert!(
+            repository
+                .upsert_connection(
+                    "invalid-keyring",
+                    "mcp",
+                    "https://mcp.example.test",
+                    "mcp",
+                    Some("os-keyring:"),
+                    true,
+                    None,
+                    1_700_000_000_002,
+                )
+                .is_err()
+        );
         let model = repository
             .upsert_model(
                 "local",
@@ -926,6 +1006,17 @@ mod tests {
                 .is_err()
         );
         assert_eq!(repository.list_models("local").unwrap().len(), 1);
+        assert!(
+            repository
+                .remove_model("local", "local-model", model.revision)
+                .unwrap()
+        );
+        assert!(repository.list_models("local").unwrap().is_empty());
+        assert!(
+            !repository
+                .remove_model("local", "local-model", model.revision)
+                .unwrap()
+        );
     }
 
     #[test]

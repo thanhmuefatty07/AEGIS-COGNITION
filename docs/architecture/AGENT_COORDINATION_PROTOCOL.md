@@ -26,32 +26,30 @@ callers, contracts, stale references, test coverage, artifact provenance, or a
 rollback/acceptance plan. It must not create temporary project folders, repeat a
 heavy command, modify another owner's files, or turn a hypothesis into a pass.
 
-Use `BLOCKED_BACKEND` when a live handle has no progress evidence after one
-bounded observation, or when the thread cannot accept a follow-up. Do not retry
-the same dead handle automatically. The coordinator may continue local audits
-and keep the gate explicitly held.
+Use `BLOCKED_BACKEND` only when the tool explicitly reports a terminal failure,
+the handle is authoritatively missing, or a required external dependency is
+unavailable. An observation timeout is not terminal evidence. Keep the result
+`NOT VERIFIED`, do not restart the same work, and continue independent audits.
 
-The productive lane is one follow-up turn with a concise four-part report and a
-coordinator deadline of 15 minutes. The coordinator may make one immediate
-observation and one bounded wait of at most 30 seconds; no new prompt is sent
-when the handle has not produced a revision or evidence. A missing or stale
-handle then becomes `BLOCKED_BACKEND`, while the coordinator continues only with
-independent local audits.
+Background commands are never polled for status. After a tool yields a live
+handle, continue independent useful work; when none remains, end the turn and
+rely on the host to deliver the command's output. Do not use elapsed time,
+process enumeration, a lock file, or an old log to infer completion.
 
 ## Dispatch and resource rules
 
 1. Before dispatch, record `owner_id`, `gate_id`, source revision, file scope,
    acceptance checks, and the next bounded observation.
-2. Allow at most one productive-wait lane per agent and one heavy command
-   globally. No second run starts while the same gate/commit/command/environment
-   identity is active.
-   Every suite gate declares a positive wall-clock timeout; a timeout is a
+2. Allow one heavy command globally. No second run starts while the same
+   gate/commit/command/environment identity is unresolved. Every suite gate
+   declares a positive wall-clock timeout; a timeout is a
    failed/not-verified outcome, never an implicit permission to retry.
 3. Prefer Windows/local focused checks. macOS/Linux work is prepared as a
    contract or minimal CI lane until a real runner is available; an unexecuted
    workflow is not evidence.
-4. Poll a confirmed live process or thread handle. A UI `active` label, lock
-   file, old log, or intention is not proof of running work.
+4. Never poll a background process or job. Use terminal output delivered by the
+   execution tool. A UI `active` label, lock file, old log, elapsed time, or
+   intention is not proof that work is still running or has completed.
 5. On completion, reconcile the artifact before opening the next gate. If the
    artifact is missing, incomplete, stale, unowned, or ambiguous, hold the gate.
 

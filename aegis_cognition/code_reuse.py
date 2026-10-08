@@ -261,7 +261,11 @@ class CodeReuseAssessment:
 
     @property
     def savings_tokens(self) -> int:
-        return self.generation_tokens - self.estimated_total_tokens
+        """Return estimate only for exact copy; rejected/generated paths save nothing here."""
+
+        if self.decision != "REUSE_EXACT":
+            return 0
+        return max(0, self.generation_tokens - self.estimated_total_tokens)
 
     def as_dict(self) -> dict[str, object]:
         return {
@@ -285,7 +289,7 @@ def assess_code_reuse(
     verification_tokens: int = 0,
     policy: CodeReusePolicy | None = None,
 ) -> CodeReuseAssessment:
-    """Compare explicit reuse estimates with generation; no universal saving claim."""
+    """Compare caller estimates; retrieval/search overhead is not included."""
 
     candidate.validate()
     selected_policy = policy or CodeReusePolicy()
@@ -297,24 +301,25 @@ def assess_code_reuse(
     ):
         if type(value) is not int or value < 0:
             raise CodeReuseError(f"{name} must be a non-negative integer")
+    total = generation_tokens + verification_tokens
     if candidate.snippet_bytes > selected_policy.max_snippet_bytes:
         decision = "REJECT"
         reason = "snippet exceeds the reuse byte quota"
     elif not selected_policy.permits(candidate.license_id):
         decision = "REJECT"
         reason = "license or ownership is not explicitly permitted"
+    elif adaptation_tokens > 0:
+        decision = "GENERATE"
+        reason = "exact materialization cannot apply adaptations; this workflow must generate the change"
+    elif verification_tokens >= generation_tokens:
+        decision = "GENERATE"
+        reason = "verification estimate is not cheaper than the supplied generation estimate"
     else:
-        total = adaptation_tokens + verification_tokens
-        if total >= generation_tokens:
-            decision = "GENERATE"
-            reason = "measured/estimated adaptation and verification cost is not cheaper"
-        elif adaptation_tokens == 0:
-            decision = "REUSE_EXACT"
-            reason = "exact local materialization is cheaper under the supplied estimates"
-        else:
-            decision = "REUSE_WITH_PATCH"
-            reason = "explicit adaptation remains cheaper under the supplied estimates"
-    total = adaptation_tokens + verification_tokens
+        decision = "REUSE_EXACT"
+        total = verification_tokens
+        reason = (
+            "exact local materialization is cheaper under supplied estimates; search and retrieval context are excluded"
+        )
     return CodeReuseAssessment(
         schema=CODE_REUSE_SCHEMA_V1,
         candidate_hash=_digest_json(candidate.as_dict()),
@@ -368,6 +373,8 @@ def materialize_exact(
     selected_policy.validate()
     if not selected_policy.permits(candidate.license_id):
         raise CodeReuseError("license or ownership is not explicitly permitted")
+    if candidate.snippet_bytes > selected_policy.max_snippet_bytes:
+        raise CodeReuseError("snippet exceeds the reuse byte quota")
     source_root = Path(candidate.source_root).expanduser().resolve()
     source = _inside(source_root, Path(candidate.source_path))
     snippet, source_hash = _read_lines(source, candidate.start_line, candidate.end_line)

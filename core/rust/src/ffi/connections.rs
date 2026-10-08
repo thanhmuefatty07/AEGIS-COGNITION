@@ -226,6 +226,71 @@ pub fn aegis_list_model_descriptors(connection_id: String) -> PyResult<String> {
 }
 
 #[pyfunction]
+pub fn aegis_remove_model_descriptor(
+    connection_id: String,
+    model_id: String,
+    expected_revision: u64,
+) -> PyResult<String> {
+    py_safe(move || {
+        let repository = get_connection_repository().map_err(|error| {
+            pyo3::exceptions::PyRuntimeError::new_err(format!(
+                "Connection repository init failed: {error}"
+            ))
+        })?;
+        let removed = repository
+            .lock()
+            .remove_model(&connection_id, &model_id, expected_revision)
+            .map_err(|error| {
+                pyo3::exceptions::PyValueError::new_err(format!(
+                    "Model descriptor removal failed: {error:?}"
+                ))
+            })?;
+        serde_json::to_string(&serde_json::json!({
+            "schema": "aegis-model-descriptor-remove-v1",
+            "connection_id": connection_id,
+            "model_id": model_id,
+            "removed": removed,
+        }))
+        .map_err(|error| {
+            pyo3::exceptions::PyRuntimeError::new_err(format!("Serialization failed: {error}"))
+        })
+    })?
+}
+
+#[pyfunction]
+pub fn aegis_get_connection_egress(
+    connection_id: String,
+    data_class: String,
+    operation: String,
+) -> PyResult<String> {
+    py_safe(move || {
+        let repository = get_connection_repository().map_err(|error| {
+            pyo3::exceptions::PyRuntimeError::new_err(format!(
+                "Connection repository init failed: {error}"
+            ))
+        })?;
+        let record = repository
+            .lock()
+            .get_egress_grant(&connection_id, &data_class, &operation)
+            .map_err(|error| {
+                pyo3::exceptions::PyValueError::new_err(format!(
+                    "Egress grant lookup failed: {error:?}"
+                ))
+            })?;
+        serde_json::to_string(&serde_json::json!({
+            "schema": "aegis-egress-grant-v1",
+            "connection_id": connection_id,
+            "data_class": data_class,
+            "operation": operation,
+            "record": record.as_ref().map(egress_json),
+        }))
+        .map_err(|error| {
+            pyo3::exceptions::PyRuntimeError::new_err(format!("Serialization failed: {error}"))
+        })
+    })?
+}
+
+#[pyfunction]
 #[pyo3(signature = (grant_id, connection_id, data_class, operation, expires_at_ms=None, expected_revision=None, updated_at_ms=0u64))]
 pub fn aegis_grant_connection_egress(
     grant_id: String,

@@ -62,6 +62,8 @@ pub mod speculative;
 pub mod task_ledger;
 pub mod telemetry;
 pub mod tool_gateway;
+#[cfg(feature = "wasm-plugins")]
+pub mod wasm_plugins;
 
 #[cfg(test)]
 mod tests;

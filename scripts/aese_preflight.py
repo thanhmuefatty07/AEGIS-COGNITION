@@ -244,7 +244,7 @@ def build_preflight(changed_paths: list[str] | tuple[str, ...] = ()) -> dict[str
                 "os": platform.system(),
                 "release": platform.release(),
                 "machine": platform.machine(),
-                "executable": sys.executable,
+                "executable": Path(sys.executable).name,
             },
             "validator": "scripts/aese_preflight.py",
             "evidence_class": "PLANNING_ONLY",

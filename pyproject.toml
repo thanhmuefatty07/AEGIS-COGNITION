@@ -28,9 +28,14 @@ classifiers = [
 dependencies = [
     "blake3>=0.4,<2",
     "fastapi>=0.110,<1",
+    "jsonschema>=4.26,<5",
+    "keyring>=25.7,<26",
     "openai>=1.40,<2",
     "python-dotenv>=1,<2",
     "pyyaml>=6,<7",
+    "regex>=2026.9.29,<2027",
+    "referencing>=0.37,<1",
+    "uritemplate>=4.2,<5",
     "uvicorn[standard]>=0.27,<1",
 ]
 
@@ -38,6 +43,9 @@ dependencies = [
 browser = ["playwright>=1.40,<2"]
 all = ["playwright>=1.40,<2", "fastapi>=0.110,<1", "openai>=1.40,<2", "uvicorn[standard]>=0.27,<1"]
 dev = ["pyright>=1.1,<2", "pytest>=8,<9", "pytest-asyncio>=1,<2", "ruff>=0.3,<1"]
+
+[dependency-groups]
+desktop = ["pyinstaller==6.22.2"]
 
 [project.scripts]
 aegis = "aegis_cognition.cli:main"
@@ -54,7 +62,7 @@ manifest-path = "core/rust/Cargo.toml"
 module-name = "aegis_cognition.aegis_nerve"
 bindings = "pyo3"
 python-source = "."
-features = ["python-extension"]
+features = ["python-extension", "wasm-plugins"]
 include = [
     { path = "core/python/*.py", format = "wheel" },
     { path = "core/python/aegis/*.py", format = "wheel" },

@@ -11,6 +11,7 @@ from aegis_cognition.runtime import (
     resource_contract_version,
     submit_runtime_task,
 )
+from core.python.aegis.contracts import normalize_correlation
 
 
 def test_python_runtime_exposes_versioned_contract_without_overclaiming() -> None:
@@ -64,6 +65,18 @@ def test_python_runtime_telemetry_rejects_invalid_correlation() -> None:
             "run_started",
             correlation={"mission_id": "mission", "task_id": 0, "run_id": 1, "attempt_id": 1},
         )
+
+
+def test_gateway_correlation_contract_copies_and_validates_mapping() -> None:
+    source = {"mission_id": "mission", "task_id": 1, "run_id": 2, "attempt_id": 3, "lease_id": 4}
+    normalized = normalize_correlation(source)
+    assert normalized == source
+    assert normalized is not source
+    assert normalize_correlation(None) is None
+
+    source["task_id"] = True
+    with pytest.raises(ValueError, match="task_id"):
+        normalize_correlation(source)
 
 
 def test_runtime_metrics_provide_prometheus_surface() -> None:

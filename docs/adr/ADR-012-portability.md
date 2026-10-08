@@ -1,4 +1,4 @@
-# ADR-012: CPU baseline and capability honesty (superseded)
+# Historical compatibility stub: portability decision (renumbered to ADR-015)
 
 Status: Superseded by [ADR-015](ADR-015-portability.md) (2026-08-27)
 

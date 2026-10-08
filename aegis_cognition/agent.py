@@ -16,7 +16,7 @@ from .models import RunResult
 from .observability import RuntimeTelemetry
 from .runtime import native_runtime_available
 from .subagents import (
-    AgentHandler,
+    AgentHandlerRegistration,
     AgentMailbox,
     AgentMessage,
     AgentMessageJournal,
@@ -107,7 +107,7 @@ class Agent:
         self,
         *,
         plan: AgentPlanProposal | Mapping[str, object] | object | None = None,
-        handlers: Mapping[str, AgentHandler] | None = None,
+        handlers: Mapping[str, AgentHandlerRegistration] | None = None,
         root_synthesizer: Callable[[tuple[AgentResultPacket, ...]], object | Awaitable[object]] | None = None,
         message_sink: Callable[[AgentMessage], object | Awaitable[object]] | None = None,
         message_journal: AgentMessageJournal | None = None,
@@ -134,7 +134,7 @@ class Agent:
         self,
         *,
         plan: AgentPlanProposal | Mapping[str, object] | object | None = None,
-        handlers: Mapping[str, AgentHandler] | None = None,
+        handlers: Mapping[str, AgentHandlerRegistration] | None = None,
         root_synthesizer: Callable[[tuple[AgentResultPacket, ...]], object | Awaitable[object]] | None = None,
         message_sink: Callable[[AgentMessage], object | Awaitable[object]] | None = None,
         message_journal: AgentMessageJournal | None = None,

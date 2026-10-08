@@ -1,0 +1,39 @@
+name: Provider no-key integration smoke
+
+on:
+  schedule:
+    - cron: "29 5 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: provider-no-key-smoke-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  provider-no-key:
+    name: All built-in provider catalog/auth contracts without keys
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: "3.14.7"
+      - name: Install pinned uv
+        run: python -m pip install "uv==0.12.9"
+      - name: Resolve locked Python test dependencies without building the Rust extension
+        run: uv sync --locked --extra dev --no-install-project
+      - name: Check live model catalogs and authentication boundaries without keys
+        env:
+          AEGIS_TEST_PROVIDER_NO_KEY_SMOKE: "1"
+        run: python scripts/suite_evidence.py --name provider-public-catalog-no-key --output artifacts/suites/provider-public-catalog-no-key.json --owner-id ci-provider-no-key --gate-id provider-public-catalog-no-key --attempt-id "${{ github.run_id }}-${{ github.run_attempt }}" --timeout-seconds 300 -- uv run --locked --extra dev --no-sync python -m pytest -v -W error::DeprecationWarning tests/test_provider_public_catalog_live.py
+      - name: Upload provider no-key test evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: provider-no-key-evidence-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: artifacts/suites/provider-public-catalog-no-key.json
+          if-no-files-found: error

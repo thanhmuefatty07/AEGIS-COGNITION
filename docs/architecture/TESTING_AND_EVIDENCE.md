@@ -5,9 +5,10 @@ The repository uses four evidence tiers aligned with the architecture plan:
 1. Fast PR checks: formatting, strict Ruff/Pyright checks, default-member Rust
    tests through `cargo-nextest`, `cargo-deny`, focused Python tests,
    cross-language smoke, secret/lock/architecture gates.
-2. Compatibility checks: production Python, forward CPython, free-threaded
-   experimental lanes, pinned Rust, MSRV/beta signals, and Tier-1 operating
-   systems when runners are available.
+2. Compatibility checks: standard CPython 3.14.7 production and standard
+   CPython 3.15.0-rc.1 forward lanes, pinned Rust, MSRV/beta signals, and Tier-1
+   operating systems when runners are available. Free-threaded Python is not a
+   current support or CI lane.
 3. Deep checks: full-workspace nextest, cargo-deny, LLVM coverage, Miri/
    sanitizers, fuzz/property tests, dependency audit, replay chaos, stress, and
    Wasmtime adversarial cases. This is where POC members are exercised.

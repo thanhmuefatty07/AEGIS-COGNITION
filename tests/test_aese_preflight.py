@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import re
+import sys
+from pathlib import Path
 
 from scripts.aese_preflight import build_preflight, validate_preflight
 from scripts.aese_inventory import build_inventory
@@ -86,6 +88,7 @@ def test_preflight_provenance_is_explicit_and_non_promotable() -> None:
     assert re.fullmatch(r"[0-9a-f]{64}", str(provenance["worktree_epoch"]))
     assert re.fullmatch(r"[0-9a-f]{64}", str(provenance["inventory_source_tree_sha256"]))
     assert re.fullmatch(r"[0-9a-f]{64}", str(provenance["graph_input_sha256"]))
+    assert provenance["environment"]["executable"] == Path(sys.executable).name
     assert provenance["validator"] == "scripts/aese_preflight.py"
     assert provenance["evidence_class"] == "PLANNING_ONLY"
     assert provenance["claim_scope"] == "LOCAL_CHECKOUT_ONLY"

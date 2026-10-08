@@ -1,7 +1,7 @@
 """Bounded, redacted projections for the desktop observer.
 
 The renderer needs to explain execution without receiving provider prompts,
-raw tool arguments, or continuation payloads.  This module derives a small
+full tool arguments, or continuation payloads. This module derives a small
 read-only view from canonical conversation records and already-redacted
 subagent events; it does not own state, scheduling, or authority.
 """
@@ -19,7 +19,36 @@ SUBAGENT_GRAPH_SCHEMA_V1 = "aegis-desktop-subagent-graph-v1"
 _PENDING_APPROVAL_STATUSES = frozenset({"REQUESTED", "AMBIGUOUS"})
 _MAX_TIMELINE_ITEMS = 128
 _MAX_APPROVALS = 32
+_MAX_APPROVAL_ARGUMENTS = 12
+_MAX_APPROVAL_VALUE_CHARS = 160
 _MAX_GRAPH_NODES = 128
+_SAFE_APPROVAL_VALUE_KEYS = frozenset(
+    {
+        "action",
+        "directory",
+        "end_line",
+        "file",
+        "method",
+        "name",
+        "operation",
+        "path",
+        "resource",
+        "start_line",
+        "target",
+    }
+)
+_SAFE_APPROVAL_LICENSE_IDS = frozenset({"Apache-2.0", "BSD-2-Clause", "BSD-3-Clause", "INTERNAL", "ISC", "MIT"})
+_APPROVAL_SENSITIVE_MARKERS = (
+    "api_key",
+    "api-key",
+    "authorization",
+    "cookie",
+    "credential",
+    "password",
+    "private_key",
+    "secret",
+    "token",
+)
 
 
 def _text(value: object, *, limit: int = 256) -> str:
@@ -32,6 +61,64 @@ def _positive_int(value: object) -> int | None:
     if type(value) is int and value >= 0:
         return value
     return None
+
+
+def _approval_relative_path(value: object) -> str:
+    if type(value) is not str or not value or len(value) > _MAX_APPROVAL_VALUE_CHARS or "\x00" in value:
+        return "REDACTED"
+    normalized = value.replace("\\", "/")
+    parts = normalized.split("/")
+    if (
+        normalized.startswith("/")
+        or ":" in normalized
+        or any(part in {"", ".", ".."} for part in parts)
+        or any(part.casefold().startswith(".env") for part in parts)
+        or any(marker in normalized.casefold() for marker in _APPROVAL_SENSITIVE_MARKERS)
+    ):
+        return "REDACTED"
+    return normalized
+
+
+def _approval_argument_preview(arguments: Mapping[str, object]) -> list[dict[str, str]]:
+    preview: list[dict[str, str]] = []
+    for key in sorted(arguments)[:_MAX_APPROVAL_ARGUMENTS]:
+        value = arguments[key]
+        normalized_key = key.casefold().replace("-", "_")
+        if normalized_key in {"source_path", "target_relative_path"}:
+            display_value = _approval_relative_path(value)
+        elif normalized_key == "license_id":
+            display_value = (
+                f"{value} (declared; unverified)"
+                if type(value) is str and value in _SAFE_APPROVAL_LICENSE_IDS
+                else "REDACTED"
+            )
+        elif normalized_key not in _SAFE_APPROVAL_VALUE_KEYS:
+            display_value = "REDACTED"
+        elif type(value) is str:
+            if (
+                len(value) > _MAX_APPROVAL_VALUE_CHARS
+                or "://" in value
+                or "@" in value
+                or any(marker in value.casefold() for marker in _APPROVAL_SENSITIVE_MARKERS)
+            ):
+                display_value = "REDACTED"
+            else:
+                display_value = value
+        elif value is None or type(value) in (bool, int, float):
+            try:
+                encoded = json.dumps(value, ensure_ascii=False, allow_nan=False)
+            except (TypeError, ValueError):
+                display_value = "REDACTED"
+            else:
+                display_value = (
+                    encoded if len(encoded) <= _MAX_APPROVAL_VALUE_CHARS else "REDACTED"
+                )
+        else:
+            display_value = "REDACTED"
+        preview.append({"key": key[:128], "value": display_value})
+    if len(arguments) > _MAX_APPROVAL_ARGUMENTS:
+        preview.append({"key": "…", "value": f"{len(arguments) - _MAX_APPROVAL_ARGUMENTS} more fields"})
+    return preview
 
 
 def _context_from_snapshot(snapshot: ConversationSnapshot, source_revision: str | None) -> dict[str, object]:
@@ -136,12 +223,14 @@ def _pending_approvals(snapshot: ConversationSnapshot) -> list[dict[str, object]
         if call.status not in _PENDING_APPROVAL_STATUSES:
             continue
         argument_keys: list[str] = []
+        argument_preview: list[dict[str, str]] = []
         try:
             arguments = json.loads(call.arguments_json)
         except (TypeError, ValueError):
             arguments = None
         if isinstance(arguments, dict):
             argument_keys = sorted(str(key)[:128] for key in arguments)[:32]
+            argument_preview = _approval_argument_preview(arguments)
         approvals.append(
             {
                 "approval_id": _text(call.call_id, limit=256),
@@ -149,8 +238,12 @@ def _pending_approvals(snapshot: ConversationSnapshot) -> list[dict[str, object]
                 "status": _text(call.status, limit=64),
                 "risk": "REVIEW_REQUIRED",
                 "argument_keys": argument_keys,
+                "argument_preview": argument_preview,
                 "arguments": "REDACTED",
                 "result": "REDACTED",
+                "can_resolve": False,
+                "can_reconcile": False,
+                "effect_class": "unknown",
             }
         )
         if len(approvals) >= _MAX_APPROVALS:
@@ -174,7 +267,10 @@ def build_conversation_inspection(
         "context": _context_from_snapshot(snapshot, source_revision),
         "timeline": _timeline(snapshot),
         "approvals": _pending_approvals(snapshot),
-        "redaction": "provider prompts, raw tool arguments, tool results, and continuation bodies are redacted",
+        "redaction": (
+            "provider prompts, sensitive tool values, full results, and continuation bodies are redacted; "
+            "only bounded allowlisted tool-argument values may appear in approval previews"
+        ),
     }
 
 

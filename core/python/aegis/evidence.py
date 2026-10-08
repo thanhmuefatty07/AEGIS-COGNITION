@@ -6,7 +6,12 @@ import json
 import hashlib
 from typing import Any
 
-from .contracts import HotCommitRecord, TrustPolicySnapshot
+from .contracts import (
+    HotCommitRecord,
+    ProviderBudgetEvidence,
+    ProviderRouteRecord,
+    TrustPolicySnapshot,
+)
 from .native import native_module
 from .trust_policy import (
     TRUST_POLICY_SCHEMA,
@@ -21,9 +26,42 @@ __all__ = [
     "VALID_TRUST_LEVELS",
     "commit_hot_evidence",
     "commit_hot_evidence_batch",
+    "gateway_evidence_payload",
     "normalize_trust_level",
     "trust_policy_snapshot",
 ]
+
+
+def gateway_evidence_payload(
+    task: str,
+    output: Any,
+    model: str | None,
+    provider: str | None,
+    trust_policy: TrustPolicySnapshot,
+    provider_route: ProviderRouteRecord,
+    provider_budget: ProviderBudgetEvidence,
+) -> bytes:
+    return json.dumps(
+        {
+            "schema": "aegis-friendly-gateway-evidence-v1",
+            "task": task,
+            "output": output,
+            "model": model,
+            "provider": provider,
+            "trust_policy_hash": trust_policy.trust_policy_hash,
+            "trust_missing_artifact_policy": trust_policy.missing_artifact_policy,
+            "provider_route_hash": provider_route.route_hash,
+            "provider_fallback_used": provider_route.fallback_used,
+            "provider_throttled_count": provider_route.throttled_provider_count,
+            "provider_budget_hash": provider_budget.budget_evidence_hash,
+            "provider_budgeted": provider_budget.budgeted,
+            "provider_budget_skipped_count": len(provider_budget.skipped_providers),
+            "provider_egress_denied": provider_route.egress_denied_providers,
+        },
+        sort_keys=True,
+        separators=(",", ":"),
+        default=str,
+    ).encode("utf-8")
 
 
 def trust_policy_snapshot(trust_level: str | None = None) -> TrustPolicySnapshot:

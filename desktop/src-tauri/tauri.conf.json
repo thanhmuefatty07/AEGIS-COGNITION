@@ -6,7 +6,7 @@
   "build": {
     "beforeDevCommand": "npm run dev",
     "devUrl": "http://127.0.0.1:1420",
-    "beforeBuildCommand": "npm run build",
+    "beforeBuildCommand": "npm run build && npm run sidecar:build",
     "frontendDist": "../dist"
   },
   "app": {
@@ -16,18 +16,24 @@
         "title": "AEGIS",
         "width": 1280,
         "height": 800,
-        "minWidth": 960,
-        "minHeight": 640,
+        "minWidth": 640,
+        "minHeight": 480,
         "resizable": true,
-        "titleBarStyle": "Overlay",
-        "hiddenTitle": true
+        "decorations": true
       }
     ],
     "security": {
-      "csp": "default-src 'self'; connect-src ipc: http://ipc.localhost; style-src 'self' 'unsafe-inline'"
+      "csp": "default-src 'self'; connect-src ipc: http://ipc.localhost; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'"
     }
   },
   "bundle": {
-    "icon": ["icons/icon.ico"]
+    "icon": [
+      "icons/icon.ico",
+      "icons/icon.icns",
+      "icons/32x32.png",
+      "icons/64x64.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png"
+    ]
   }
 }

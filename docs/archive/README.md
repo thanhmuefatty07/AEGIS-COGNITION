@@ -1,12 +1,16 @@
 # Historical archive
 
-Research and report documents are retained in a local-only archive outside this
-repository; the detailed material is not part of the current source tree.
+Research and report documents, completed raw measurements, and superseded QA
+captures are retained in a local-only archive outside this repository after
+their findings are recorded. They are not part of the published repository and
+do not establish current release readiness. Existing evidence JSON retains
+original paths and hashes as historical records; active gate inputs and current
+captures stay with their consumers until they are no longer needed.
+
 The former `AEGIS-COGNITION/` and `core/rust/AEGIS-COGNITION/` trees are in
 `legacy/`. Historical planning is in `planning/`; external comparator research
-is kept under `scripts/research/comparators/external/`.
-These documents and source snapshots do not establish current release readiness.
-Existing evidence JSON retains original paths and hashes as historical records.
+and gate implementations are kept under
+`scripts/research/comparators/external/`.
 Historical licensing or business-model wording in this archive is superseded and
 does not grant permission. The only current project terms are in the root
 [`LICENSE.txt`](../../LICENSE.txt).
@@ -15,8 +19,12 @@ Current implementation lives in `aegis_cognition/`, `core/`, and `desktop/`.
 `aegis_cognition` is the Python import package, so its name is required by callers.
 The root Python/Rust manifests, lockfiles, toolchain pins, installers, README,
 contribution guide, changelog, and CI directory remain development contracts.
-Hermes baseline scripts name the external comparator they measure; changing that
-name to AEGIS would misidentify the experiment.
+Hermes baseline gates read the local ignored source snapshot at
+`artifacts/research/hermes-agent/`; keep that input available while those gates
+consume it. The gate names identify the external comparator; changing the name
+to AEGIS would misidentify the experiment. Other unreferenced research copies
+and report-only outputs are archived outside the workspace with their licenses
+and provenance intact.
 
 Local editor, agent, runtime, cache, and generated data belongs under `.local/`
 or the ignored `.aegis/` runtime directory; Git and Docker exclude them.

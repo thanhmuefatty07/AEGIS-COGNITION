@@ -7,6 +7,7 @@ the platform credential adapter and is never serialized into the catalog.
 from __future__ import annotations
 
 import json
+import math
 import time
 from dataclasses import dataclass
 from typing import Any
@@ -20,6 +21,13 @@ from .discovery import (
     SecretResolver,
     discover_connection_models,
 )
+from .provider_models import reasoning_efforts_from_capabilities
+
+
+# Model metadata changes much less often than a chat turn.  Keep the last
+# successful discovery in the native catalog and reuse it for a short window;
+# callers can still force a refresh when the user explicitly asks for one.
+MODEL_DISCOVERY_CACHE_TTL_SECONDS = 5 * 60
 
 
 @dataclass(frozen=True)
@@ -72,6 +80,73 @@ class ModelDescriptor:
             revision=int(data["revision"]),
             observed_at_ms=int(data["observed_at_ms"]),
         )
+
+    @property
+    def reasoning_efforts(self) -> tuple[str, ...]:
+        return reasoning_efforts_for_model(self)
+
+    @property
+    def supports_vision(self) -> bool:
+        return supports_vision_for_model(self)
+
+    @property
+    def input_modalities(self) -> tuple[str, ...]:
+        return input_modalities_for_model(self)
+
+
+def _model_capabilities(model: Any) -> tuple[str, ...]:
+    value = getattr(model, "capabilities", ())
+    if not isinstance(value, (tuple, list)):
+        return ()
+    return tuple(str(item).casefold() for item in value if isinstance(item, str))
+
+
+def reasoning_efforts_for_model(model: Any) -> tuple[str, ...]:
+    """Return only effort levels explicitly advertised by the provider.
+
+    Model-name heuristics are useful for search and diagnostics, but they are
+    not a contract for an account, endpoint, or deployment.  Keeping them out
+    of this list makes the picker and request validation fail closed: an
+    unadvertised model remains usable with ``Auto`` but cannot receive a
+    guessed provider-specific control.
+    """
+
+    capabilities = getattr(model, "capabilities", ())
+    return reasoning_efforts_from_capabilities(capabilities)
+
+
+def supports_vision_for_model(model: Any) -> bool:
+    capabilities = _model_capabilities(model)
+    # Older catalogs used to persist ``input:image`` together with the
+    # name-only ``vision:inferred`` marker.  Treat that legacy combination as
+    # unverified until the next authenticated catalog refresh replaces it.
+    if "vision:inferred" in capabilities and "vision" not in capabilities and "capability:provider-profile" not in capabilities:
+        return False
+    return any(
+        marker in capabilities
+        for marker in ("vision", "input:image", "image", "multimodal")
+    )
+
+
+def max_image_inputs_for_model(model: Any) -> int | None:
+    """Return an explicitly known per-model image count limit, if present."""
+
+    for capability in _model_capabilities(model):
+        prefix = "vision:max-images:"
+        if capability.startswith(prefix):
+            raw_limit = capability[len(prefix) :]
+            if raw_limit.isdecimal():
+                limit = int(raw_limit)
+                if 1 <= limit <= 4:
+                    return limit
+    return None
+
+
+def input_modalities_for_model(model: Any) -> tuple[str, ...]:
+    modalities = ["text"]
+    if supports_vision_for_model(model):
+        modalities.append("image")
+    return tuple(modalities)
 
 
 @dataclass(frozen=True)
@@ -162,8 +237,21 @@ class ConnectionCatalog:
         timeout_seconds: float = DISCOVERY_TIMEOUT_SECONDS,
         max_body_bytes: int = MAX_DISCOVERY_BODY_BYTES,
         timestamp: int | None = None,
+        force_refresh: bool = False,
+        cache_ttl_seconds: float = MODEL_DISCOVERY_CACHE_TTL_SECONDS,
+        now_ms: int | None = None,
     ) -> tuple[ModelDescriptor, ...]:
         self._require_text(connection_id, "connection_id")
+        if type(force_refresh) is not bool:
+            raise ValueError("force_refresh must be boolean")
+        if (
+            type(cache_ttl_seconds) not in (int, float)
+            or not math.isfinite(float(cache_ttl_seconds))
+            or float(cache_ttl_seconds) < 0
+        ):
+            raise ValueError("cache_ttl_seconds must be a finite non-negative number")
+        if now_ms is not None and (type(now_ms) is not int or now_ms < 0):
+            raise ValueError("now_ms must be a non-negative integer when provided")
         connection = next(
             (record for record in self.list_connections() if record.connection_id == connection_id),
             None,
@@ -172,6 +260,15 @@ class ConnectionCatalog:
             raise ValueError("connection_id was not found")
         if not connection.enabled:
             raise ValueError("disabled connections cannot be discovered")
+        existing_records = self.list_models(connection_id)
+        observed_now_ms = int(time.time() * 1000) if now_ms is None else now_ms
+        has_fresh_discovery = any(
+            record.source == "discovered"
+            and 0 <= observed_now_ms - record.observed_at_ms <= int(float(cache_ttl_seconds) * 1000)
+            for record in existing_records
+        )
+        if existing_records and has_fresh_discovery and not force_refresh:
+            return existing_records
         discovered = discover_connection_models(
             connection,
             secret_resolver=secret_resolver,
@@ -180,9 +277,9 @@ class ConnectionCatalog:
             timeout_seconds=timeout_seconds,
             max_body_bytes=max_body_bytes,
         )
-        existing = {record.model_id: record for record in self.list_models(connection_id)}
+        existing = {record.model_id: record for record in existing_records}
         event_time = int(time.time() * 1000) if timestamp is None else int(timestamp)
-        return tuple(
+        models = tuple(
             self.register_model(
                 connection_id,
                 str(item["model_id"]),
@@ -196,6 +293,29 @@ class ConnectionCatalog:
             )
             for item in discovered
         )
+        # A successful non-empty refresh is the authoritative catalog for the
+        # current credential.  Remove only stale discovered rows; manually
+        # registered models remain available for local/custom workflows.  An
+        # empty response deliberately keeps the previous catalog so a failed
+        # reconnect can roll back without destroying the last known-good state.
+        if models:
+            current_ids = {model.model_id for model in models}
+            for record in existing_records:
+                if record.source == "discovered" and record.model_id not in current_ids:
+                    self.remove_model(
+                        connection_id,
+                        record.model_id,
+                        expected_revision=record.revision,
+                    )
+        return models
+
+    def remove_model(self, connection_id: str, model_id: str, *, expected_revision: int) -> bool:
+        self._require_text(connection_id, "connection_id")
+        self._require_text(model_id, "model_id")
+        if type(expected_revision) is not int or expected_revision < 1:
+            raise ValueError("expected_revision must be a positive integer")
+        raw = self._native.aegis_remove_model_descriptor(connection_id, model_id, expected_revision)
+        return bool(json.loads(raw)["removed"])
 
     def revoke_connection(
         self,
@@ -254,6 +374,24 @@ class ConnectionCatalog:
             for item in raw.get("records", [])
             if isinstance(item, dict)
         )
+
+    def get_egress(
+        self,
+        connection_id: str,
+        data_class: str,
+        operation: str,
+    ) -> EgressGrant | None:
+        """Read one grant so a reconnect can update it with its revision."""
+
+        for value, name in (
+            (connection_id, "connection_id"),
+            (data_class, "data_class"),
+            (operation, "operation"),
+        ):
+            self._require_text(value, name)
+        raw = self._native.aegis_get_connection_egress(connection_id, data_class, operation)
+        record = json.loads(raw).get("record")
+        return EgressGrant.from_mapping(record) if isinstance(record, dict) else None
 
     def grant_egress(
         self,
@@ -326,4 +464,13 @@ class ConnectionCatalog:
             raise ValueError(f"{name} must be non-empty")
 
 
-__all__ = ["ConnectionCatalog", "ConnectionRecord", "EgressGrant", "ModelDescriptor"]
+__all__ = [
+    "ConnectionCatalog",
+    "ConnectionRecord",
+    "EgressGrant",
+    "ModelDescriptor",
+    "input_modalities_for_model",
+    "max_image_inputs_for_model",
+    "reasoning_efforts_for_model",
+    "supports_vision_for_model",
+]

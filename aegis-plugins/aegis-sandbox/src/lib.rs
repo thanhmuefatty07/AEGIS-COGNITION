@@ -42,6 +42,7 @@ pub struct ExecutionRequest {
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub struct ExecutionReport {
     pub accepted: bool,
+    pub code_executed: bool,
     pub stdout: String,
     pub stderr: String,
     pub report_hash: [u8; 32],
@@ -179,22 +180,23 @@ impl SandboxBackend for PolicyOnlyBackend {
         &self,
         request: &ExecutionRequest,
         policy: &SandboxPolicy,
-        state_root: &Path,
+        _state_root: &Path,
     ) -> Result<ExecutionReport, SandboxError> {
         policy.validate_code(&request.code)?;
-        let stdout = format!(
-            "policy_validated=true timeout_ms={} state_root={}",
-            policy.limits.timeout_ms,
-            state_root.display()
-        );
-        Ok(ExecutionReport::new(true, stdout, String::new()))
+        Ok(ExecutionReport::new(
+            true,
+            false,
+            String::new(),
+            String::new(),
+        ))
     }
 }
 
 impl ExecutionReport {
-    pub fn new(accepted: bool, stdout: String, stderr: String) -> Self {
+    pub fn new(accepted: bool, code_executed: bool, stdout: String, stderr: String) -> Self {
         let mut report = Self {
             accepted,
+            code_executed,
             stdout,
             stderr,
             report_hash: [0; 32],
@@ -205,10 +207,14 @@ impl ExecutionReport {
 
     pub fn compute_hash(&self) -> [u8; 32] {
         let mut hasher = blake3::Hasher::new();
-        hasher.update(b"aegis-sandbox-execution-report-v1");
-        hasher.update(&[u8::from(self.accepted)]);
-        hasher.update(self.stdout.as_bytes());
-        hasher.update(self.stderr.as_bytes());
+        hasher.update(b"aegis-sandbox-execution-report-v3");
+        hasher.update(&[u8::from(self.accepted), u8::from(self.code_executed)]);
+        let stdout = self.stdout.as_bytes();
+        hasher.update(&(stdout.len() as u64).to_le_bytes());
+        hasher.update(stdout);
+        let stderr = self.stderr.as_bytes();
+        hasher.update(&(stderr.len() as u64).to_le_bytes());
+        hasher.update(stderr);
         *hasher.finalize().as_bytes()
     }
 
@@ -315,6 +321,20 @@ mod tests {
             })
             .unwrap();
         assert!(report.accepted);
+        assert!(!report.code_executed);
+        assert!(report.stdout.is_empty());
+        let serialized = serde_json::to_value(&report).unwrap();
+        assert_eq!(
+            serialized.get("code_executed"),
+            Some(&serde_json::Value::Bool(false))
+        );
         assert!(report.is_valid());
+        let mut tampered = report.clone();
+        tampered.code_executed = true;
+        assert!(!tampered.is_valid());
+
+        let left = ExecutionReport::new(true, false, "ab".to_string(), "c".to_string());
+        let right = ExecutionReport::new(true, false, "a".to_string(), "bc".to_string());
+        assert_ne!(left.report_hash, right.report_hash);
     }
 }

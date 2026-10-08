@@ -803,7 +803,7 @@ arrow-buffer = "54"
 blake3 = "1.5.0"
 pyo3 = { version = "0.29.2", features = ["extension-module"] }
 rayon = "1.12"
-wasmtime = "47.0.4"
+wasmtime = "48.0.4"
 
 [target.'cfg(windows)'.dependencies]
 windows-sys = "0.61.2"
@@ -825,7 +825,7 @@ checksum = "{idx:064x}"
                     ("blake3", "1.5.0"),
                     ("pyo3", "0.29.2"),
                     ("rayon", "1.12.0"),
-                    ("wasmtime", "47.0.4"),
+                    ("wasmtime", "48.0.4"),
                     ("windows-sys", "0.61.2"),
                 ),
                 start=1,

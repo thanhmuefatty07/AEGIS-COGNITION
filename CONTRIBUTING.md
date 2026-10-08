@@ -40,14 +40,22 @@ written authorization from the copyright holder. Authorized contributions still 
   the rust-architect role.
 - `core/python/` — Friendly gateway, Agent API. Keep 1-import dev experience.
 - `aegis-plugins/` — External tooling. Each plugin has its own README.
-- `artifacts/` — Audit evidence. Append-only; archive, do not delete.
+- `artifacts/` — Ignored local audit and benchmark evidence. Append-only while
+  active; preserve gate inputs and consumer-required captures. After review and
+  recording the finding, move superseded raw runs to the external private
+  archive with provenance and hash verification; do not discard them.
 - `docs/` — Developer-facing guides. Treat as curated, not exhaustive.
 
 ## Generated and historical material
 
 - Keep disposable caches, local agent metadata, and generated benchmark output
-  out of commits. Durable evidence belongs in the existing registry and
-  architecture documentation paths.
+  out of commits. Promote concise, reviewed findings and current status to the
+  existing registry and architecture documentation paths. Keep report-only
+  research, raw benchmark runs, and superseded visual QA outputs in the external
+  private archive after their consumers are closed; retain the exact gate inputs
+  and current evidence needed by active checks.
+- CI may upload sanitized verification evidence, but raw benchmark output must
+  not appear in workflow logs or uploaded artifacts.
 - Historical records under `docs/archive/` are provenance only. Update the
   current authority documents when a contract or release status changes; do
   not silently rewrite archived reports.

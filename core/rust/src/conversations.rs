@@ -1561,9 +1561,27 @@ fn recover_incomplete_runs(connection: &mut Connection) -> Result<(), Conversati
             ],
         )?;
         transaction.execute(
+            "UPDATE conversation_tool_calls
+             SET status = 'CANCELLED',
+                 result_content = 'Not run: approval was pending when the application restarted.',
+                 revision = ?1, completed_at_ms = ?2
+             WHERE conversation_id = ?3 AND status = 'REQUESTED'
+               AND EXISTS (
+                   SELECT 1 FROM conversation_turns t
+                   WHERE t.conversation_id = conversation_tool_calls.conversation_id
+                     AND t.turn_id = conversation_tool_calls.request_turn_id
+                     AND t.status = 'WAITING_APPROVAL'
+               )",
+            params![
+                to_i64_revision(revision)?,
+                to_i64_timestamp(now_ms)?,
+                conversation_id,
+            ],
+        )?;
+        transaction.execute(
             "UPDATE conversation_turns SET status = 'INTERRUPTED', revision = ?1,
                     finished_at_ms = ?2
-             WHERE conversation_id = ?3 AND status IN ('QUEUED', 'RUNNING')",
+             WHERE conversation_id = ?3 AND status IN ('QUEUED', 'RUNNING', 'WAITING_APPROVAL')",
             params![
                 to_i64_revision(revision)?,
                 to_i64_timestamp(now_ms)?,
@@ -2263,6 +2281,80 @@ mod tests {
         assert_eq!(snapshot.turns[0].status, "INTERRUPTED");
         assert_eq!(snapshot.executions[0].status, "INTERRUPTED");
         assert!(snapshot.executions[0].finished_at_ms.is_some());
+    }
+
+    #[test]
+    fn reopening_repository_cancels_tool_calls_that_never_left_approval() {
+        let dir = tempdir().unwrap();
+        let path = dir.path().join("state.db");
+        {
+            let mut repository = ConversationRepository::open(&path).unwrap();
+            repository
+                .create_conversation("conv-1", "owner-a", "Test", "local", "model-a", 1)
+                .unwrap();
+            let turn = repository
+                .append_turn(
+                    "conv-1",
+                    "owner-a",
+                    "turn-1",
+                    "assistant",
+                    "tool call",
+                    Some("local"),
+                    Some("model-a"),
+                    "QUEUED",
+                    1,
+                    2,
+                )
+                .unwrap();
+            let execution = repository
+                .start_execution(
+                    "conv-1",
+                    "owner-a",
+                    "exec-1",
+                    &turn.turn_id,
+                    "local",
+                    "local",
+                    "model-a",
+                    turn.revision,
+                    3,
+                )
+                .unwrap();
+            let call = repository
+                .record_tool_call(
+                    "conv-1",
+                    "owner-a",
+                    "call-1",
+                    &turn.turn_id,
+                    "sample_tool",
+                    "{}",
+                    execution.revision,
+                    4,
+                )
+                .unwrap();
+            repository
+                .transition_turn(
+                    "conv-1",
+                    "owner-a",
+                    &turn.turn_id,
+                    "WAITING_APPROVAL",
+                    call.revision,
+                    5,
+                )
+                .unwrap();
+        }
+
+        let repository = ConversationRepository::open(&path).unwrap();
+        let snapshot = repository
+            .get_conversation("conv-1", "owner-a")
+            .unwrap()
+            .unwrap();
+        assert_eq!(snapshot.turns[0].status, "INTERRUPTED");
+        assert_eq!(snapshot.executions[0].status, "INTERRUPTED");
+        assert_eq!(snapshot.tool_calls[0].status, "CANCELLED");
+        assert_eq!(
+            snapshot.tool_calls[0].result_content.as_deref(),
+            Some("Not run: approval was pending when the application restarted.")
+        );
     }
 
     #[test]
