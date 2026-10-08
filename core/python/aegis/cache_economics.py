@@ -51,6 +51,7 @@ class CachePricing:
     storage_usd_per_million_hour: float = 0.0
     ttl_hours: float | None = None
     minimum_prefix_tokens: int = 0
+    output_usd_per_million: float | None = None
 
     def __post_init__(self) -> None:
         if not self.provider.strip() or not self.model.strip():
@@ -60,6 +61,8 @@ class CachePricing:
             _nonnegative_float(self.cached_input_usd_per_million, "cached_input_usd_per_million")
         if self.cache_write_usd_per_million is not None:
             _nonnegative_float(self.cache_write_usd_per_million, "cache_write_usd_per_million")
+        if self.output_usd_per_million is not None:
+            _nonnegative_float(self.output_usd_per_million, "output_usd_per_million")
         _nonnegative_float(self.storage_usd_per_million_hour, "storage_usd_per_million_hour")
         if self.ttl_hours is not None:
             _nonnegative_float(self.ttl_hours, "ttl_hours")
@@ -113,7 +116,9 @@ class CacheObservation:
     ) -> CacheObservation:
         if not provider.strip():
             raise ValueError("cache observation provider must be non-empty")
-        if prefix_hash is not None and (len(prefix_hash) != 64 or any(c not in "0123456789abcdef" for c in prefix_hash)):
+        if prefix_hash is not None and (
+            len(prefix_hash) != 64 or any(c not in "0123456789abcdef" for c in prefix_hash)
+        ):
             raise ValueError("cache observation prefix_hash must be a lowercase SHA-256 digest")
         return cls(provider, model, prefix_hash, usage, int(time.time() * 1000))
 
@@ -316,7 +321,9 @@ def estimate_cache_cost(
             + misses * prefix_tokens * pricing.input_usd_per_million
             + prefix_tokens * pricing.storage_usd_per_million_hour * hours
         ) / 1_000_000
-        rationale = "stable-prefix cache is worthwhile only when observed or forecast reads cover the write/storage cost"
+        rationale = (
+            "stable-prefix cache is worthwhile only when observed or forecast reads cover the write/storage cost"
+        )
     savings = uncached - cached
     break_even = _break_even_requests(pricing, prefix_tokens, hours)
     return CacheCostEstimate(
@@ -360,7 +367,7 @@ class ContextCompactionDecision:
     preserve_session: bool
     reason: str
     replay_cost_usd: float
-    compaction_cost_usd: float
+    compaction_cost_usd: float | None
 
 
 class EconomicContextCompaction:
@@ -380,24 +387,55 @@ class EconomicContextCompaction:
         cache_reads_after_compaction: int = 0,
     ) -> ContextCompactionDecision:
         _nonnegative_int(current_context_tokens, "current_context_tokens")
+        future_requests = _nonnegative_int(future_requests, "future_requests")
         if future_requests < 1:
             raise ValueError("future_requests must be positive")
         _nonnegative_int(compaction_input_tokens, "compaction_input_tokens")
         _nonnegative_int(compaction_output_tokens, "compaction_output_tokens")
         _nonnegative_int(cache_reads_after_compaction, "cache_reads_after_compaction")
-        if cache_reads_after_compaction > future_requests:
-            raise ValueError("cache_reads_after_compaction cannot exceed future_requests")
+        if cache_reads_after_compaction > future_requests - 1:
+            raise ValueError("cache_reads_after_compaction cannot exceed requests after the initial write")
         replay = future_requests * current_context_tokens * self.pricing.input_usd_per_million / 1_000_000
+        output_rate = self.pricing.output_usd_per_million
+        if compaction_output_tokens and output_rate is None:
+            return ContextCompactionDecision(
+                False,
+                True,
+                "retain context; output-token pricing is unavailable",
+                replay,
+                None,
+            )
+        if cache_reads_after_compaction and not self.pricing.supports_prompt_cache:
+            return ContextCompactionDecision(
+                False,
+                True,
+                "retain context; cache-read pricing is unavailable",
+                replay,
+                None,
+            )
+        compact_replay = future_requests * compaction_output_tokens * self.pricing.input_usd_per_million / 1_000_000
+        if cache_reads_after_compaction:
+            # The first future request writes the compacted stable prefix; the
+            # pricing helper includes write, read, miss, and storage charges.
+            compact_replay = estimate_cache_cost(
+                self.pricing,
+                prefix_tokens=compaction_output_tokens,
+                expected_requests=future_requests,
+                expected_cached_reads=cache_reads_after_compaction,
+                expected_cache_writes=1,
+            ).cached_usd
         compact = (
             compaction_input_tokens * self.pricing.input_usd_per_million
-            + compaction_output_tokens * self.pricing.input_usd_per_million
-        ) / 1_000_000
-        if self.pricing.cached_input_usd_per_million is not None:
-            replay -= cache_reads_after_compaction * current_context_tokens * (
-                self.pricing.input_usd_per_million - self.pricing.cached_input_usd_per_million
-            ) / 1_000_000
-        should_compact = replay > compact * (1.0 + self.safety_margin) and current_context_tokens > compaction_output_tokens
-        reason = "compact economically; keep the same user-visible session" if should_compact else "retain context; compaction cost is not justified yet"
+            + compaction_output_tokens * (output_rate or 0.0)
+        ) / 1_000_000 + compact_replay
+        should_compact = (
+            replay > compact * (1.0 + self.safety_margin) and current_context_tokens > compaction_output_tokens
+        )
+        reason = (
+            "compact economically; keep the same user-visible session"
+            if should_compact
+            else "retain context; compaction cost is not justified yet"
+        )
         return ContextCompactionDecision(should_compact, True, reason, replay, compact)
 
 

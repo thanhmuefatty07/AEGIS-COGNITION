@@ -63,7 +63,7 @@ def test_unknown_provider_pricing_does_not_claim_savings() -> None:
 
 def test_economic_compaction_keeps_user_session() -> None:
     decision = EconomicContextCompaction(
-        CachePricing("provider", "model", 10.0, 1.0),
+        CachePricing("provider", "model", 10.0, 1.0, output_usd_per_million=30.0),
     ).decide(
         current_context_tokens=100_000,
         future_requests=4,
@@ -73,6 +73,84 @@ def test_economic_compaction_keeps_user_session() -> None:
     )
     assert decision.compact
     assert decision.preserve_session
+
+
+def test_economic_compaction_accounts_for_replaying_the_compacted_context() -> None:
+    decision = EconomicContextCompaction(
+        CachePricing("provider", "model", 1.0, None, output_usd_per_million=1.0)
+    ).decide(
+        current_context_tokens=100_000,
+        future_requests=2,
+        compaction_input_tokens=100_000,
+        compaction_output_tokens=50_000,
+    )
+    assert not decision.compact
+    assert decision.replay_cost_usd == pytest.approx(0.20)
+    assert decision.compaction_cost_usd == pytest.approx(0.25)
+
+
+def test_economic_compaction_includes_cache_write_and_storage_costs() -> None:
+    decision = EconomicContextCompaction(
+        CachePricing(
+            "provider",
+            "model",
+            1.0,
+            0.0,
+            cache_write_usd_per_million=100.0,
+            storage_usd_per_million_hour=100.0,
+            ttl_hours=1.0,
+            output_usd_per_million=0.0,
+        )
+    ).decide(
+        current_context_tokens=100_000,
+        future_requests=2,
+        compaction_input_tokens=100_000,
+        compaction_output_tokens=50_000,
+        cache_reads_after_compaction=1,
+    )
+    assert not decision.compact
+    assert decision.replay_cost_usd == pytest.approx(0.20)
+    assert decision.compaction_cost_usd == pytest.approx(10.10)
+
+
+def test_economic_compaction_requires_output_price_and_integer_request_count() -> None:
+    compactor = EconomicContextCompaction(CachePricing("provider", "model", 1.0, None))
+    decision = compactor.decide(
+        current_context_tokens=100_000,
+        future_requests=2,
+        compaction_input_tokens=100_000,
+        compaction_output_tokens=50_000,
+    )
+    assert not decision.compact
+    assert decision.compaction_cost_usd is None
+    assert "output-token pricing" in decision.reason
+    no_cache_price = EconomicContextCompaction(
+        CachePricing("provider", "model", 1.0, None, output_usd_per_million=1.0)
+    ).decide(
+        current_context_tokens=100_000,
+        future_requests=2,
+        compaction_input_tokens=100_000,
+        compaction_output_tokens=50_000,
+        cache_reads_after_compaction=1,
+    )
+    assert not no_cache_price.compact
+    assert no_cache_price.compaction_cost_usd is None
+    assert "cache-read pricing" in no_cache_price.reason
+    with pytest.raises(ValueError, match="future_requests must be a non-negative integer"):
+        compactor.decide(
+            current_context_tokens=100_000,
+            future_requests=1.5,
+            compaction_input_tokens=100_000,
+            compaction_output_tokens=50_000,
+        )
+    with pytest.raises(ValueError, match="requests after the initial write"):
+        EconomicContextCompaction(CachePricing("provider", "model", 1.0, 0.0, output_usd_per_million=1.0)).decide(
+            current_context_tokens=100_000,
+            future_requests=2,
+            compaction_input_tokens=100_000,
+            compaction_output_tokens=50_000,
+            cache_reads_after_compaction=2,
+        )
 
 
 def test_stable_prefix_hash_changes_when_model_or_prefix_changes() -> None:

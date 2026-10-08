@@ -1553,6 +1553,9 @@ def test_provider_code_tools_search_read_and_redact_bounded_source(tmp_path: Pat
         'API_TOKEN = "test-only-api-token-placeholder"\n'
         'ACCESS_TOKEN: str = "test-only-opaque-credential-placeholder"\n'
         'CLIENT_SECRET = "test-prefix-\\\"tail-placeholder"\n'
+        'OPENAI_API_KEY = "test-only-openai-api-key-placeholder"\n'
+        'AZURE_OPENAI_API_KEY = "test-only-azure-api-key-placeholder"\n'
+        'AWS_SECRET_ACCESS_KEY = "test-only-aws-secret-placeholder"\n'
         "def lookup_items():\n"
         "    return API_KEY\n",
         encoding="utf-8",
@@ -1592,7 +1595,7 @@ def test_provider_code_tools_search_read_and_redact_bounded_source(tmp_path: Pat
         excerpt = asyncio.run(
             service._extension_registry.invoke(
                 read_spec.name,
-                {"relative_path": "app.py", "start_line": 1, "max_lines": 5},
+                {"relative_path": "app.py", "start_line": 1, "max_lines": 8},
                 expected_effect_class=read_spec.effect_class,
                 expected_descriptor_hash=read_spec.descriptor_hash,
             )
@@ -1602,8 +1605,11 @@ def test_provider_code_tools_search_read_and_redact_bounded_source(tmp_path: Pat
         assert "test-only-api-token-placeholder" not in excerpt["content"]
         assert "test-only-opaque-credential-placeholder" not in excerpt["content"]
         assert "tail-placeholder" not in excerpt["content"]
+        assert "test-only-openai-api-key-placeholder" not in excerpt["content"]
+        assert "test-only-azure-api-key-placeholder" not in excerpt["content"]
+        assert "test-only-aws-secret-placeholder" not in excerpt["content"]
         assert "[REDACTED]" in excerpt["content"]
-        assert excerpt["next_line"] == 6
+        assert excerpt["next_line"] == 9
         assert excerpt["has_more"] is True
 
         source.write_text(

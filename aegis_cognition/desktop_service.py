@@ -344,8 +344,12 @@ _AGENT_CODE_BLOCKED_FILENAMES = frozenset(
 )
 _AGENT_CODE_BLOCKED_SUFFIXES = frozenset({".crt", ".jks", ".key", ".keystore", ".p12", ".p7b", ".p7c", ".pem", ".pfx"})
 _AGENT_CODE_SECRET_ASSIGNMENT = re.compile(
-    r"""(?im)(\b(?:api[_-]?(?:key|token)|access[_-]?token|authorization|bearer|client[_-]?secret|cookie|credential|"""
-    r"""password|passwd|private[_-]?key|refresh[_-]?token|secret|token)\b["']?\s*(?::\s*[^=\r\n]{1,128})?\s*[:=]\s*)(["'])((?:\\[^\r\n]|(?!\2)[^\\\r\n]){8,})(\2)"""
+    r"""(?im)(?<![A-Za-z0-9])"""
+    r"""((?:[A-Za-z0-9]+[_-])*(?:api[_-]?(?:key|token)|access[_-]?token|"""
+    r"""authorization|bearer|client[_-]?secret|cookie|credential|password|"""
+    r"""passwd|private[_-]?key|refresh[_-]?token|secret|token)"""
+    r"""(?:[_-][A-Za-z0-9]+)*(?![A-Za-z0-9])["']?\s*(?::\s*[^=\r\n]{1,128})?"""
+    r"""\s*[:=]\s*)(["'])((?:\\[^\r\n]|(?!\2)[^\\\r\n]){8,})(\2)"""
 )
 _AGENT_CODE_PRIVATE_KEY = re.compile(
     r"-----BEGIN [A-Z0-9 ]*PRIVATE KEY-----[\s\S]*?-----END [A-Z0-9 ]*PRIVATE KEY-----", re.IGNORECASE
