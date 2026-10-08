@@ -23,6 +23,7 @@ from aegis_cognition.benchmark import (
     evaluate_benchmark,
 )
 from aegis_cognition.goal_contract import ExecutionBinding, GoalContractError
+from aegis_cognition.extensions import ExtensionManifest, ExtensionRegistry, TOOL_SEARCH_TOOL_NAME, ToolSpec
 from aegis_cognition.lab import (
     AdaptiveController,
     AuthorityMode,
@@ -42,6 +43,7 @@ from aegis_cognition.lab import (
     LabMissionSpec,
     LabPolicy,
     LabRun,
+    LabToolCallOutcome,
     ObservationRecord,
     ProcessExecutionCell,
     ReplayWriterLease,
@@ -851,6 +853,193 @@ def test_controller_action_and_tool_inputs_reject_lossy_metadata() -> None:
     config.options["tool_calls"] = [{"tool_name": 1}]
     asyncio.run(app._run_tool_calls(run, config.options))
     assert "tool_call_invalid" in run.blockers
+
+
+def test_controller_tool_result_context_is_bounded_and_treats_results_as_untrusted() -> None:
+    config = SimpleNamespace(max_steps=1, trust_level="DEV", task="inspect tool results", options={})
+    app = LabApplication(
+        config=config,
+        gateway_factory=lambda **_: object(),
+        telemetry=None,
+        correlation=None,
+    )
+    app._remember_controller_tool_result(
+        LabToolCallOutcome(
+            call_id="schema-call",
+            status="SUCCESS",
+            result={"schema": "aegis-tool-schema-v1", "input_schema": {"type": "object"}},
+        )
+    )
+    app._remember_controller_tool_result(
+        LabToolCallOutcome(
+            call_id="large-call",
+            status="SUCCESS",
+            result={"content": "x" * 40_000},
+        )
+    )
+
+    context = app._controller_tool_result_context()
+
+    assert context is not None
+    assert "untrusted data/evidence" in str(context["handling"])
+    items = context["items"]
+    assert isinstance(items, list)
+    assert items[0]["call_id"] == "schema-call"
+    assert items[0]["result"]["schema"] == "aegis-tool-schema-v1"
+    assert items[1]["call_id"] == "large-call"
+    assert items[1]["result"]["content_omitted"] is True
+
+
+def test_lab_tool_only_execution_reuses_registered_tool_admission() -> None:
+    registry = ExtensionRegistry()
+    spec = ToolSpec(
+        name="fixture.echo",
+        description="Return a bounded test value",
+        input_schema={"type": "object", "properties": {"value": {"type": "string"}}, "required": ["value"]},
+        effect_class="read_only",
+        extension_id="fixture",
+    )
+    registry.register(
+        ExtensionManifest(
+            extension_id="fixture",
+            version="1",
+            description="test tools",
+            tool_names=(spec.name,),
+        ),
+        ((spec, lambda arguments: {"echo": arguments["value"]}),),
+    )
+    config = SimpleNamespace(
+        task="execute one registered tool",
+        options={
+            "lab_authority_mode": "projection_only",
+            "extension_registry": registry,
+            "tool_calls": [
+                {
+                    "call_id": "provider-call-1",
+                    "tool_name": spec.name,
+                    "input": {"value": "bounded"},
+                }
+            ],
+        },
+        max_steps=1,
+        trust_level="DEV",
+    )
+    app = LabApplication(config=config, gateway_factory=lambda **_: pytest.fail("tool-only mode must not call a model"), telemetry=None, correlation=None)
+
+    result = asyncio.run(app.execute_tool_calls())
+
+    assert len(result.outcomes) == 1
+    assert result.outcomes[0].call_id == "provider-call-1"
+    assert result.outcomes[0].status == "SUCCESS"
+    assert result.outcomes[0].result == {"echo": "bounded"}
+    prompt_results = app._controller_tool_result_context()
+    assert prompt_results is not None
+    assert prompt_results["items"][0]["result"] == {"echo": "bounded"}
+    assert [event.kind for event in result.events if event.kind.startswith("tool_execution_")] == [
+        "tool_execution_admitted",
+        "tool_execution_recorded",
+    ]
+
+
+def test_lab_executes_tool_search_through_the_registered_admission_path() -> None:
+    calls: list[str] = []
+    registry = ExtensionRegistry()
+    specs = [
+        ToolSpec(
+            name=f"catalog.tool_{index:02d}",
+            description="A harmless catalog fixture capability",
+            extension_id="catalog",
+        )
+        for index in range(20)
+    ]
+    target = ToolSpec(
+        name="catalog.zzz_vault_lookup",
+        description="Look up a protected vault record",
+        effect_class="network_read",
+        capabilities=("network_read",),
+        extension_id="catalog",
+    )
+    specs.append(target)
+    registry.register(
+        ExtensionManifest(
+            extension_id="catalog",
+            version="1",
+            description="Catalog fixtures",
+            capabilities=("read_only", "network_read"),
+            tool_names=tuple(sorted(spec.name for spec in specs)),
+        ),
+        tuple((spec, lambda _arguments, name=spec.name: calls.append(name)) for spec in specs),
+    )
+    config = SimpleNamespace(
+        task="find a vault tool without running it",
+        options={
+            "lab_authority_mode": "projection_only",
+            "extension_registry": registry,
+            "tool_calls": [
+                {
+                    "call_id": "provider-search-1",
+                    "tool_name": TOOL_SEARCH_TOOL_NAME,
+                    "input": {"query": "vault"},
+                }
+            ],
+        },
+        max_steps=1,
+        trust_level="DEV",
+    )
+    app = LabApplication(
+        config=config,
+        gateway_factory=lambda **_: pytest.fail("tool-only mode must not call a model"),
+        telemetry=None,
+        correlation=None,
+    )
+
+    result = asyncio.run(app.execute_tool_calls())
+
+    assert result.outcomes[0].status == "SUCCESS"
+    assert result.outcomes[0].result["matches"][0]["name"] == target.name
+    assert calls == []
+    assert [event.kind for event in result.events if event.kind.startswith("tool_execution_")] == [
+        "tool_execution_admitted",
+        "tool_execution_recorded",
+    ]
+
+
+def test_lab_tool_only_execution_blocks_external_effect_without_approval() -> None:
+    registry = ExtensionRegistry()
+    spec = ToolSpec(
+        name="fixture.write",
+        description="A test external write",
+        input_schema={"type": "object"},
+        effect_class="external_write",
+        extension_id="fixture",
+    )
+    registry.register(
+        ExtensionManifest(
+            extension_id="fixture",
+            version="1",
+            description="test tools",
+            tool_names=(spec.name,),
+        ),
+        ((spec, lambda _arguments: pytest.fail("unapproved external tool must not execute")),),
+    )
+    config = SimpleNamespace(
+        task="block an unapproved external tool",
+        options={
+            "lab_authority_mode": "projection_only",
+            "extension_registry": registry,
+            "tool_calls": [{"call_id": "provider-call-write", "tool_name": spec.name, "input": {}}],
+        },
+        max_steps=1,
+        trust_level="DEV",
+    )
+    app = LabApplication(config=config, gateway_factory=lambda **_: object(), telemetry=None, correlation=None)
+
+    result = asyncio.run(app.execute_tool_calls())
+
+    assert result.outcomes[0].status == "APPROVAL_REQUIRED"
+    assert result.outcomes[0].result == {"error": "host approval is required"}
+    assert "tool_external_effect_not_approved" in result.blockers
+    assert not any(event.kind == "tool_execution_admitted" for event in result.events)
 
 
 def test_process_execution_cell_terminates_non_cooperative_runner() -> None:
@@ -4384,7 +4573,11 @@ def test_search_program_executor_fetches_bounded_https_snapshot(monkeypatch: pyt
         def read(self, _limit: int) -> bytes:
             return b"<body><p>bounded snapshot</p></body>"
 
-    monkeypatch.setattr("aegis_cognition.lab.urlopen", lambda *_args, **_kwargs: Response())
+    class Opener:
+        def open(self, *_args: object, **_kwargs: object) -> Response:
+            return Response()
+
+    monkeypatch.setattr("aegis_cognition.lab.build_opener", lambda *_args, **_kwargs: Opener())
     program = SearchProgram.from_mappings(
         [
             {"kind": "fetch", "url": "https://allowed.example/paper"},
@@ -4543,7 +4736,11 @@ def test_search_program_rejects_redirect_outside_allowlist(monkeypatch: pytest.M
         def read(self, _limit: int) -> bytes:
             return b"unexpected"
 
-    monkeypatch.setattr("aegis_cognition.lab.urlopen", lambda *_args, **_kwargs: RedirectedResponse())
+    class Opener:
+        def open(self, *_args: object, **_kwargs: object) -> RedirectedResponse:
+            return RedirectedResponse()
+
+    monkeypatch.setattr("aegis_cognition.lab.build_opener", lambda *_args, **_kwargs: Opener())
     program = SearchProgram.from_mappings(
         [{"kind": "fetch", "url": "https://allowed.example/paper"}],
         allowed_hosts=("allowed.example",),
@@ -4551,6 +4748,61 @@ def test_search_program_rejects_redirect_outside_allowlist(monkeypatch: pytest.M
     )
     with pytest.raises(ValueError, match="redirect leaves"):
         asyncio.run(SearchProgramExecutor().execute(program))
+
+
+@pytest.mark.parametrize(
+    ("allowed_hosts", "redirect_url", "error_match"),
+    (
+        (("allowed.example",), "https://evil.example/redirect", "redirect leaves"),
+        ((), "https://127.0.0.1/internal", "private IP"),
+        (("allowed.example",), "http://allowed.example/internal", "HTTPS host policy"),
+    ),
+)
+def test_search_program_rejects_redirect_before_opening_disallowed_hop(
+    monkeypatch: pytest.MonkeyPatch,
+    allowed_hosts: tuple[str, ...],
+    redirect_url: str,
+    error_match: str,
+) -> None:
+    import asyncio
+
+    monkeypatch.setattr(
+        socket,
+        "getaddrinfo",
+        lambda _host, port, *_args, **_kwargs: [
+            (socket.AF_INET, socket.SOCK_STREAM, 6, "", ("93.184.216.34", port))
+        ],
+    )
+    requests: list[str] = []
+    handlers: dict[str, object] = {}
+
+    class Opener:
+        def open(self, request: object, **_kwargs: object) -> object:
+            requests.append(request.full_url)
+            handler = handlers["redirect"]
+            handler.redirect_request(
+                request,
+                object(),
+                302,
+                "Found",
+                {"Location": redirect_url},
+                redirect_url,
+            )
+            raise AssertionError("the disallowed redirect hop was opened")
+
+    def fake_build_opener(handler: object) -> Opener:
+        handlers["redirect"] = handler
+        return Opener()
+
+    monkeypatch.setattr("aegis_cognition.lab.build_opener", fake_build_opener)
+    program = SearchProgram.from_mappings(
+        [{"kind": "fetch", "url": "https://allowed.example/paper"}],
+        allowed_hosts=allowed_hosts,
+        provider="fixture",
+    )
+    with pytest.raises(ValueError, match=error_match):
+        asyncio.run(SearchProgramExecutor().execute(program))
+    assert requests == ["https://allowed.example/paper"]
 
 
 def test_lab_application_uses_default_search_executor_for_fetch_program(
@@ -4581,7 +4833,11 @@ def test_lab_application_uses_default_search_executor_for_fetch_program(
         def read(self, _limit: int) -> bytes:
             return b"<body><p>default executor evidence</p></body>"
 
-    monkeypatch.setattr("aegis_cognition.lab.urlopen", lambda *_args, **_kwargs: Response())
+    class Opener:
+        def open(self, *_args: object, **_kwargs: object) -> Response:
+            return Response()
+
+    monkeypatch.setattr("aegis_cognition.lab.build_opener", lambda *_args, **_kwargs: Opener())
     from aegis_cognition.agent import Agent
 
     result = Agent(
@@ -7836,6 +8092,431 @@ def test_lab_generic_tool_retry_is_admitted_and_settled_per_attempt(monkeypatch:
     assert all(isinstance(key, str) and len(key) == 64 for key in idempotency_keys)
     assert len(set(idempotency_keys)) == len(idempotency_keys)
     assert all(event["payload"]["timeout_seconds"] == 30.0 for event in tool_events)
+
+
+def test_lab_does_not_retry_timed_out_mcp_side_effect(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("AEGIS_API_KEY", "test-key")
+    from aegis_cognition.extensions import ExtensionRegistry, McpServerSpec, McpToolDescriptor
+
+    committed_calls: list[int] = []
+    registry = ExtensionRegistry()
+
+    class Provider:
+        async def list_tools(self):
+            return (McpToolDescriptor("write", "Write a fixture record", timeout_seconds=1),)
+
+        def blocking_write(self) -> dict[str, int]:
+            call_number = len(committed_calls) + 1
+            if call_number == 1:
+                # The caller times out first, while this provider operation continues.
+                time.sleep(0.6)
+            committed_calls.append(call_number)
+            return {"write": call_number}
+
+        async def call_tool(self, _name: str, _arguments: dict[str, object]) -> object:
+            return await asyncio.to_thread(self.blocking_write)
+
+    spec = asyncio.run(
+        registry.register_mcp_provider(
+            McpServerSpec("timeout-retry", "timeout retry fixture", approved=True),
+            Provider(),
+            activate=True,
+        )
+    )[0]
+    options = {
+        "extension_registry": registry,
+        "tool_calls": [
+            {"call_id": "write-1", "tool_name": spec.name, "input": {"value": "once"}},
+            {"call_id": "write-2", "tool_name": spec.name, "input": {"value": "must-not-run"}},
+        ],
+        "lab_allow_external_writes": True,
+        "tool_max_attempts": 2,
+        "tool_timeout_seconds": 0.5,
+    }
+    config = SimpleNamespace(
+        task="do not duplicate a side effect after an ambiguous timeout",
+        options=options,
+        llm=None,
+        max_steps=2,
+        trust_level="DEV",
+    )
+    app = LabApplication(config=config, gateway_factory=lambda **_: object(), telemetry=None, correlation=None)
+    app.execution_cells = ExecutionCellRegistry(
+        (
+            ExecutionCellBinding(
+                cell_id="mcp-tool",
+                action_kinds=("tool_call",),
+                runner=registry.tool_runner,
+                capabilities=("compute",),
+                effect_classes=("external_write",),
+            ),
+        )
+    )
+    run = LabRun(config.task, max_steps=2)
+    app._active_run = run
+    asyncio.run(app._run_tool_calls(run, options))
+
+    assert committed_calls == [1]
+    tool_events = [event for event in run.events if event.kind == "tool_execution_recorded"]
+    assert [event.payload["status"] for event in tool_events] == ["TIMED_OUT"]
+    assert [event.payload["attempt"] for event in tool_events] == [1]
+    assert "tool_timeout_outcome_unknown_retry_suppressed" in run.blockers
+
+
+def test_lab_does_not_retry_mcp_side_effect_after_lost_response(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("AEGIS_API_KEY", "test-key")
+    from aegis_cognition.extensions import ExtensionRegistry, McpServerSpec, McpToolDescriptor
+
+    committed_calls: list[int] = []
+    registry = ExtensionRegistry()
+
+    class Provider:
+        async def list_tools(self):
+            return (McpToolDescriptor("write", "Write a fixture record", timeout_seconds=1),)
+
+        def blocking_write(self) -> dict[str, int]:
+            call_number = len(committed_calls) + 1
+            committed_calls.append(call_number)
+            if call_number == 1:
+                raise ConnectionResetError("response connection lost after commit")
+            return {"write": call_number}
+
+        async def call_tool(self, _name: str, _arguments: dict[str, object]) -> object:
+            return await asyncio.to_thread(self.blocking_write)
+
+    spec = asyncio.run(
+        registry.register_mcp_provider(
+            McpServerSpec("lost-response", "lost response fixture", approved=True),
+            Provider(),
+            activate=True,
+        )
+    )[0]
+    options = {
+        "extension_registry": registry,
+        "tool_calls": [{"call_id": "write-1", "tool_name": spec.name, "input": {"value": "once"}}],
+        "lab_allow_external_writes": True,
+        "tool_max_attempts": 2,
+        "tool_timeout_seconds": 1,
+    }
+    config = SimpleNamespace(
+        task="do not duplicate a side effect after losing its response",
+        options=options,
+        llm=None,
+        max_steps=2,
+        trust_level="DEV",
+    )
+    app = LabApplication(config=config, gateway_factory=lambda **_: object(), telemetry=None, correlation=None)
+    app.execution_cells = ExecutionCellRegistry(
+        (
+            ExecutionCellBinding(
+                cell_id="mcp-tool",
+                action_kinds=("tool_call",),
+                runner=registry.tool_runner,
+                capabilities=("compute",),
+                effect_classes=("external_write",),
+            ),
+        )
+    )
+    run = LabRun(config.task, max_steps=2)
+    app._active_run = run
+    asyncio.run(app._run_tool_calls(run, options))
+
+    assert committed_calls == [1]
+    tool_events = [event for event in run.events if event.kind == "tool_execution_recorded"]
+    assert [event.payload["status"] for event in tool_events] == ["REJECTED"]
+    assert [event.payload["attempt"] for event in tool_events] == [1]
+    assert "tool_external_effect_retry_suppressed_after_error" in run.blockers
+
+
+def test_controller_stops_action_plan_after_unknown_tool_side_effect(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("AEGIS_API_KEY", "test-key")
+    from aegis_cognition.extensions import ExtensionRegistry, McpServerSpec, McpToolDescriptor
+
+    committed_calls: list[str] = []
+    registry = ExtensionRegistry()
+
+    class Provider:
+        async def list_tools(self):
+            return (McpToolDescriptor("write", "Write a fixture record"),)
+
+        async def call_tool(self, _name: str, arguments: dict[str, object]) -> object:
+            value = str(arguments["value"])
+            committed_calls.append(value)
+            if len(committed_calls) == 1:
+                raise ConnectionResetError("response lost after commit")
+            return {"written": value}
+
+    spec = asyncio.run(
+        registry.register_mcp_provider(
+            McpServerSpec("action-plan-retry", "action plan retry fixture", approved=True),
+            Provider(),
+            activate=True,
+        )
+    )[0]
+    options = {
+        "extension_registry": registry,
+        "lab_allow_external_writes": True,
+        "tool_max_attempts": 2,
+        "tool_timeout_seconds": 1,
+    }
+    config = SimpleNamespace(
+        task="stop a plan after an uncertain external effect",
+        options=options,
+        max_steps=4,
+        trust_level="DEV",
+    )
+    app = LabApplication(config=config, gateway_factory=lambda **_: object(), telemetry=None, correlation=None)
+    app.execution_cells = ExecutionCellRegistry(
+        (
+            ExecutionCellBinding(
+                cell_id="mcp-tool",
+                action_kinds=("tool_call",),
+                runner=registry.tool_runner,
+                capabilities=("compute",),
+                effect_classes=("external_write",),
+            ),
+        )
+    )
+    run = LabRun(config.task, max_steps=4)
+    app._active_run = run
+    action_plan = {
+        "schema": "aegis-lab-action-plan-v1",
+        "actions": [
+            {
+                "kind": "tool_call",
+                "request": {
+                    "call_id": "write-first",
+                    "tool_name": spec.name,
+                    "effect_class": "external_write",
+                    "input": {"value": "first"},
+                },
+            },
+            {
+                "kind": "tool_call",
+                "request": {
+                    "call_id": "write-second",
+                    "tool_name": spec.name,
+                    "effect_class": "external_write",
+                    "input": {"value": "second"},
+                },
+            },
+        ],
+    }
+
+    asyncio.run(app._execute_controller_action_plan(run, action_plan, options, run_id=run.mission_id))
+
+    assert committed_calls == ["first"]
+    assert "tool_external_effect_retry_suppressed_after_error" in run.blockers
+
+
+def test_agent_stops_later_turns_and_experiment_after_unknown_tool_outcome(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("AEGIS_API_KEY", "test-key")
+    from aegis_cognition.agent import Agent
+    from aegis_cognition.extensions import ExtensionRegistry, McpServerSpec, McpToolDescriptor
+
+    committed_calls: list[str] = []
+    model_calls: list[int] = []
+    experiment_calls: list[str] = []
+    search_calls: list[str] = []
+    registry = ExtensionRegistry()
+
+    def search(query: str, **_: object) -> list[dict[str, str]]:
+        search_calls.append(query)
+        return []
+
+    class Provider:
+        async def list_tools(self):
+            return (McpToolDescriptor("write", "Write a fixture record"),)
+
+        async def call_tool(self, _name: str, arguments: dict[str, object]) -> object:
+            value = str(arguments["value"])
+            committed_calls.append(value)
+            raise ConnectionResetError("response lost after commit")
+
+    spec = asyncio.run(
+        registry.register_mcp_provider(
+            McpServerSpec("controller-outcome", "controller outcome fixture", approved=True),
+            Provider(),
+            activate=True,
+        )
+    )[0]
+
+    def llm(_task: str, **_: object) -> dict[str, object]:
+        model_calls.append(len(model_calls) + 1)
+        return {
+            "schema": "aegis-lab-action-plan-v1",
+            "actions": [
+                {
+                    "kind": "tool_call",
+                    "request": {
+                        "call_id": f"controller-call-{model_calls[-1]}",
+                        "tool_name": spec.name,
+                        "effect_class": "external_write",
+                        "input": {"value": f"turn-{model_calls[-1]}"},
+                    },
+                }
+            ],
+        }
+
+    result = Agent(
+        "stop after an external outcome becomes unknown",
+        llm=llm,
+        lab=True,
+        lab_iterations=3,
+        extension_registry=registry,
+        lab_execution_cells=(
+            ExecutionCellBinding(
+                cell_id="context-retrieval",
+                action_kinds=("context_retrieval",),
+                runner=lambda **_: "",
+                capabilities=("read_only",),
+                effect_classes=("read_only",),
+            ),
+            ExecutionCellBinding(
+                cell_id="mcp-tool",
+                action_kinds=("tool_call",),
+                runner=registry.tool_runner,
+                capabilities=("compute",),
+                effect_classes=("external_write",),
+            ),
+            ExecutionCellBinding(
+                cell_id="search",
+                action_kinds=("search_program",),
+                runner=search,
+                capabilities=("network_read",),
+                effect_classes=("network_read",),
+            ),
+        ),
+        search_as_code=search,
+        tool_calls=[
+            {
+                "call_id": "initial-write",
+                "tool_name": spec.name,
+                "effect_class": "external_write",
+                "input": {"value": "initial"},
+            }
+        ],
+        lab_allow_external_writes=True,
+        tool_max_attempts=2,
+        tool_timeout_seconds=1,
+        experiment_spec=ExperimentSpec("after-write", "h1", "bounded", ("seed",), ("baseline",), (1,), 1),
+        experiment_runner=lambda _spec, **_: experiment_calls.append("ran") or {"value": 1},
+    ).run()
+
+    assert committed_calls == ["initial"]
+    assert search_calls == ["stop after an external outcome becomes unknown"]
+    assert experiment_calls == []
+    assert result.lab_manifest is not None
+    assert "tool_external_effect_retry_suppressed_after_error" in result.lab_manifest["blockers"]
+    assert "controller_actions_suppressed_after_unknown_tool_outcome" in result.lab_manifest["blockers"]
+    assert "post_controller_experiment_suppressed_after_unknown_tool_outcome" in result.lab_manifest["blockers"]
+    assert "research_suppressed_after_unknown_tool_outcome" not in result.lab_manifest["blockers"]
+    assert "execution_cell_not_registered:context_retrieval" not in result.lab_manifest["blockers"]
+
+
+def test_lab_stops_tool_batch_when_external_effect_cannot_be_settled(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    calls: list[str] = []
+
+    def runner(request: dict[str, object], **_: object) -> dict[str, bool]:
+        calls.append(str(request["call_id"]))
+        return {"written": True}
+
+    options = {
+        "tool_calls": [
+            {"call_id": "write-first", "tool_name": "fixture.write", "effect_class": "external_write"},
+            {"call_id": "write-second", "tool_name": "fixture.write", "effect_class": "external_write"},
+        ],
+        "tool_runner": runner,
+        "lab_allow_external_writes": True,
+    }
+    config = SimpleNamespace(
+        task="stop after external settlement failure",
+        options=options,
+        max_steps=2,
+        trust_level="DEV",
+    )
+    app = LabApplication(config=config, gateway_factory=lambda **_: object(), telemetry=None, correlation=None)
+    app.execution_cells = ExecutionCellRegistry(
+        (
+            ExecutionCellBinding(
+                cell_id="generic-tool",
+                action_kinds=("tool_call",),
+                runner=runner,
+                capabilities=("compute",),
+                effect_classes=("external_write",),
+            ),
+        )
+    )
+    run = LabRun(config.task, max_steps=2)
+    app._active_run = run
+
+    def fail_settlement(**_: object) -> None:
+        raise RuntimeError("simulated event settlement failure")
+
+    monkeypatch.setattr(run, "record_tool_execution", fail_settlement)
+
+    uncertain = asyncio.run(app._run_tool_calls(run, options))
+
+    assert uncertain is True
+    assert calls == ["write-first"]
+    assert "tool_external_effect_outcome_unknown_after_settlement_failure" in run.blockers
+
+
+def test_lab_uses_registered_tool_effect_instead_of_model_claim(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A model cannot downgrade a registered side effect to read-only."""
+
+    monkeypatch.setenv("AEGIS_API_KEY", "test-key")
+    from aegis_cognition.agent import Agent
+    from aegis_cognition.extensions import ExtensionRegistry, McpServerSpec, McpToolDescriptor
+
+    calls: list[dict[str, object]] = []
+    registry = ExtensionRegistry()
+
+    class Provider:
+        async def list_tools(self):
+            return (McpToolDescriptor("write", "Write a fixture record"),)
+
+        async def call_tool(self, _name, arguments):
+            calls.append(dict(arguments))
+            return {"written": True}
+
+    spec = asyncio.run(
+        registry.register_mcp_provider(
+            McpServerSpec("fixture", "test fixture", approved=True),
+            Provider(),
+            activate=True,
+        )
+    )[0]
+    assert spec.effect_class == "external_write"
+
+    result = Agent(
+        "do not let a tool call relabel its side effect",
+        llm=lambda task, **_: {"answer": task},
+        lab=True,
+        extension_registry=registry,
+        tool_calls=[
+            {
+                "tool_name": spec.name,
+                "effect_class": "read_only",
+                "input": {"value": "must not write"},
+            }
+        ],
+        lab_iterations=1,
+    ).run()
+
+    assert calls == []
+    assert result.lab_manifest is not None
+    assert "tool_external_effect_not_approved" in result.lab_manifest["blockers"]
+    assert not any(
+        event["kind"] == "tool_execution_admitted" and event["payload"].get("tool_name") == spec.name
+        for event in result.lab_events
+    )
 
 
 def test_lab_generic_tool_deadline_fence_settles_timeout(monkeypatch: pytest.MonkeyPatch) -> None:

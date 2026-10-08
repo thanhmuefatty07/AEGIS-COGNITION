@@ -1,6 +1,6 @@
 # ADR-010: Wasmtime is a migration, not a version bump
 
-Status: Accepted (2026-08-14)
+Status: Superseded (2026-09-30; see ADR-018)
 
 ## Context and problem
 

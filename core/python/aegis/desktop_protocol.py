@@ -11,7 +11,9 @@ from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from typing import Any
 
-MAX_FRAME_BYTES = 1 * 1024 * 1024
+# Text-only commands fit below 1 MiB, but image paste uses bounded base64 in
+# the same local frame. Decoded image limits remain enforced at the service.
+MAX_FRAME_BYTES = 16 * 1024 * 1024
 PROTOCOL_VERSION = 1
 REQUEST_SCHEMA = "aegis-desktop-command-v1"
 ALLOWED_COMMANDS = frozenset(
@@ -22,11 +24,36 @@ ALLOWED_COMMANDS = frozenset(
         "workspace.clone",
         "workspace.snapshot",
         "workspace.source_snapshot",
+        "workspace.file_read",
+        "workspace.changes",
+        "workspace.open_external",
+        "projects.list",
+        "projects.remove",
+        "settings.get",
+        "settings.update",
         "connections.list",
+        "connections.identify",
+        "connections.connect",
         "connections.save",
         "connections.discover",
         "connections.disable",
         "models.list",
+        "extensions.discover",
+        "extensions.import_skill",
+        "extensions.import_pack",
+        "extensions.load_skill",
+        "extensions.mcp_preview",
+        "extensions.mcp_registry_search",
+        "extensions.add_mcp_metadata",
+        "extensions.state",
+        "extensions.set_state",
+        "extensions.test_mcp",
+        "extensions.activate_mcp",
+        "extensions.deactivate_mcp",
+        "extensions.mcp_prompts_list",
+        "extensions.mcp_prompts_get",
+        "extensions.mcp_skills_list",
+        "extensions.mcp_skill_set_state",
         "conversations.create",
         "conversations.list",
         "conversations.read",
@@ -53,6 +80,7 @@ ALLOWED_COMMANDS = frozenset(
         "runs.cancel",
         "runs.resume",
         "approvals.resolve",
+        "tool_calls.reconcile",
         "objects.inspect",
         "objects.explain",
         "maintenance.backup",

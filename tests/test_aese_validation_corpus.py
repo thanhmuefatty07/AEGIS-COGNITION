@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from pathlib import Path
 
 import pytest
 import scripts.aese_validation_corpus as validation_corpus
@@ -61,6 +62,7 @@ def test_recorded_corpus_hash_is_reproducible(corpus: dict[str, object]) -> None
 
 def test_environment_hash_is_contract_stable_but_host_observation_is_retained(monkeypatch) -> None:
     baseline = validation_corpus._artifact_provenance({"case": "same"})
+    assert baseline["host_observation"]["executable"] == Path(validation_corpus.sys.executable).name
     monkeypatch.setattr(validation_corpus.platform, "python_version", lambda: "3.15.0")
     monkeypatch.setattr(validation_corpus.platform, "python_implementation", lambda: "PyPy")
     monkeypatch.setattr(validation_corpus.platform, "system", lambda: "Linux")
@@ -71,6 +73,7 @@ def test_environment_hash_is_contract_stable_but_host_observation_is_retained(mo
 
     assert alternate["environment"] == baseline["environment"]
     assert alternate["environment_hash"] == baseline["environment_hash"]
+    assert alternate["host_observation"]["executable"] == "python"
     assert alternate["host_observation"] != baseline["host_observation"]
 
 

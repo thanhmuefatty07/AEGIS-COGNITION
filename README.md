@@ -31,10 +31,10 @@ replay explicit and auditable.
 ## Measurement policy
 
 Benchmark harnesses remain part of the engineering surface, but raw runs,
-benchmark reports, and empirical evidence are local-only project material.
-They are deliberately excluded from Git history and from public performance
-claims. The repository therefore publishes the verification process and its
-scope, not copied numeric results from a particular host or workload.
+benchmark reports, and empirical evidence stay in the private local archive.
+They are excluded from Git history, GitHub Actions artifacts, and public
+workflow logs. CI may publish sanitized verification status; the repository
+publishes the method and scope, not host-specific numeric results.
 
 ## Quick start
 

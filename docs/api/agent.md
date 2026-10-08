@@ -54,6 +54,13 @@ unique ids, name their spawning task as a dependency, and remain within the
 configured task bound; a failed parent blocks them. The child cannot choose a
 Python callable or bypass capability, resource, token, or runtime limits.
 
+Custom callables passed through `handlers` must be wrapped in
+`AgentHandlerRegistration`. The host fixes the exact capability set,
+side-effect class, and exclusive resource keys there; every planned task must
+match those values before it runs. Bare callables are rejected. This metadata
+does not sandbox Python code: a registered callable still has the host process'
+permissions, so only register code the host trusts.
+
 For a trusted custom async handler, the dynamic boundary is explicit:
 
 ```python
@@ -67,6 +74,31 @@ The application-created model handler can use the same boundary when its
 bounded response is a valid plan document. Dynamic plan creation is enabled
 by default for `run_subagents()` and can be disabled with
 `subagents_allow_dynamic_plans=False`.
+
+### Optional peer question and answer
+
+While a run is active, agents can exchange one short, directed question and
+answer without user mediation. The built-in model handler may request an
+active peer automatically; trusted async handlers can use the context API:
+
+```python
+async def source_checker(context):
+    question = await context.receive_peer_question()
+    await context.reply_peer_question(question, "The official source confirms the version.")
+    return "Source checked."
+```
+
+`available_peer_task_ids()` lists eligible active peers, and
+`ask_peer(task_id, question)` sends one question and waits for its answer. Each
+task can participate in at most three exchanges, with only one pending at a
+time; question and answer text are limited to 2 KiB UTF-8 and the existing task
+deadline bounds waiting. The channel is
+temporary and run-local: messages are not saved in the transcript, desktop
+event journal, or durable mailbox. Peer text is untrusted and cannot grant
+tools, permissions, or authority. The built-in model exchange requires a task
+token budget of at least 128 and reserves part of its existing output cap for
+up to three follow-up calls. It can add latency and tokens, so it is not
+enabled as a claimed cost optimization.
 
 ## Adaptive memory proposals
 
@@ -107,7 +139,12 @@ bounded canonical envelopes, deduplicates by idempotency key, and exposes
 `claim()`/`ack()`/`nack()` with lease recovery and bounded dead-lettering. It is
 at-least-once delivery, not exactly-once execution; task dependencies,
 cancellation, and side-effect authority remain inside the supervisor/Rust
-runtime. A host that needs automatic delivery after restart can attach an
+runtime. `ack()` and `nack()` require the `attempts` value returned by that
+specific `claim()` as `expected_attempt`; this fences a stale delivery from
+finalizing a later lease, even if the same consumer ID reclaims it. Lease
+expiry does not stop a handler that is already running, so handlers must make
+external effects idempotent or use the existing task/side-effect authority.
+A host that needs automatic delivery after restart can attach an
 `AgentMailboxWorker`; it invokes only the host-supplied trusted message
 handler, ACKs successful delivery, and NACKs failures for the mailbox's
 bounded retry/dead-letter policy. It is a transport worker, not a second task
@@ -125,10 +162,16 @@ For a multimodal provider, bind the existing capture result rather than adding
 another browser stack:
 
 ```python
-from aegis_cognition import build_browser_vision_handler
+from aegis_cognition import AgentHandlerRegistration, build_browser_vision_handler
 
 vision = build_browser_vision_handler(vision_invoker, capture_browser_result)
-result = await agent.arun_subagents(handlers={"vision": vision}, plan=plan)
+vision_registration = AgentHandlerRegistration(
+    handler=vision,
+    capabilities=("vision",),
+    side_effect_class="ModelInference",
+    exclusive_resources=("browser:actor:session",),
+)
+result = await agent.arun_subagents(handlers={"vision": vision_registration}, plan=plan)
 ```
 
 `capture_browser_result` is host-owned and may call the existing

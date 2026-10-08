@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 
-ROOT = Path(r"c:\Users\ADMIN\AEGIS-COGNITION")
+ROOT = Path(__file__).resolve().parents[1]
 ARTIFACTS_DIR = ROOT / "artifacts"
 REPORT_PATH = ARTIFACTS_DIR / "constitution_audit_report.json"
 

@@ -1,3 +1,4 @@
+import json
 import subprocess
 import sys
 from pathlib import Path
@@ -154,3 +155,39 @@ def test_run_command_records_missing_executable_as_failure(monkeypatch) -> None:
     monkeypatch.setattr(subprocess, "Popen", missing)
 
     assert run_command(["missing"], 2) == ("", "missing executable", 127, False)
+
+
+def test_main_suppresses_captured_child_output_in_github_actions(monkeypatch, tmp_path, capsys) -> None:
+    child = tmp_path / "child.py"
+    child.write_text(
+        'print("TEST_ONLY_CHILD_OUTPUT")\nprint("1 tests run: 1 passed, 0 failed, 0 skipped")\n',
+        encoding="utf-8",
+    )
+    output = tmp_path / "suite.json"
+    monkeypatch.setenv("GITHUB_ACTIONS", "true")
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "suite_evidence.py",
+            "--name",
+            "test-suite",
+            "--output",
+            str(output),
+            "--owner-id",
+            "test-owner",
+            "--gate-id",
+            "test-gate",
+            "--timeout-seconds",
+            "10",
+            "--",
+            sys.executable,
+            str(child),
+        ],
+    )
+
+    assert suite.main() == 0
+
+    captured = capsys.readouterr()
+    assert "TEST_ONLY_CHILD_OUTPUT" not in captured.out
+    assert json.loads(captured.out)["status"] == "PROVEN"

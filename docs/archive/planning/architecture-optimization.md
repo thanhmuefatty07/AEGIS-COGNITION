@@ -7,7 +7,7 @@ This document compiles the core architectural paradigms, system constitutions, a
 4. **Turn 4**: `SECURITY_WITNESS.md` - Zero-Trust Guardrails and Physical Witness.
 
 ## Current Implementation Reality Check
-- This file records a constitution/target architecture. Current implementation truth is in `core/rust` and `docs/architecture/AEGIS_LAB_RUNTIME_MASTER_PLAN.md`; older continuation materials remain local historical context.
+- This file records a constitution/target architecture. Current implementation truth is in `core/rust` and `docs/architecture/AEGIS_LAB_RUNTIME_MASTER_PLAN.md`; historical continuation materials do not override current status.
 - Arrow today is standard append-only Arrow IPC stream plus sealed/mmap-readable replay segments. Mutable mmap writer and benchmark-proven zero-copy observability remain Phase 2 targets.
 - QuickJS/Wasm ABI remains a target until wrapper ABI and cold-start benchmarks exist. Do not claim `<1ms` or binary-size numbers without HarnessBench evidence.
 - Task priority is deterministic Rust DAG math: critical path, blocked descendants, evidence unblock count, and explicit deadline timestamp. LLM output may contain only `suggested_priority` metadata.
@@ -507,7 +507,7 @@ Dựa trên cuộc kiểm toán kiến trúc pháp y (Forensic Architecture Revi
 - **Giải pháp Bắt buộc**:
   - Triển khai **Sanitization Layer** (tại Harness) trước khi nạp lại cho LLM.
   - Regex tước bỏ (strip) toàn bộ mã ANSI.
-  - Chuẩn hóa (Normalize) đường dẫn file để tránh lộ lọt cấu trúc hệ thống (ví dụ: `C:\Users\ADMIN\AEGIS\...` -> `/core/...`).
+- Chuẩn hóa (Normalize) đường dẫn file để tránh lộ lọt cấu trúc hệ thống (ví dụ: `<local-checkout>/core/...` -> `/core/...`).
   - Lọc bỏ mọi cảnh báo (warnings) không nghiêm trọng, chỉ giữ lại các Error Codes (`error[E...]`) để LLM sửa đúng trọng tâm.
 
 ## 2. NORMALIZED OUTPUT HASHING (Băm Đầu ra Chuẩn hóa - Chống phân kỳ giả)
@@ -531,7 +531,7 @@ Dựa trên cuộc kiểm toán kiến trúc pháp y (Forensic Architecture Revi
 # 🚀 FILE 7: GOD-TIER HPC ARCHITECTURAL UPGRADES (Nâng cấp Hiệu năng Cao Cấp HPC)
 
 ## 1. GENERATIONAL SLAB ALLOCATOR (Bộ phân bổ vùng nhớ Generational Slab)
-- **File vật lý**: [fold.rs](file:///c:/Users/ADMIN/AEGIS-COGNITION/core/rust/src/memory/fold.rs)
+- **File vật lý**: [fold.rs](../../../core/rust/src/memory/fold.rs)
 - **Vấn đề cốt lõi**: Cơ chế cấp phát bộ nhớ động thông thường (Heap allocation) gây phân mảnh bộ nhớ (Memory Fragmentation), không đảm bảo cache locality và tốn chi phí quản lý khi hệ thống chạy trong thời gian dài (MTC cao).
 - **Giải pháp HPC & Invariants**:
   - **Size-Classed Slab Pools**: Chia phân mảnh bộ nhớ thành các SlabPool cố định kích thước: 32 bytes, 64 bytes, 128 bytes, 256 bytes và một vùng overflow đặc biệt. Tự động ánh xạ dữ liệu đầu vào (`MemoryFrame`) vào pool tương ứng dựa trên chiều dài payload thông qua trait `HasPayloadLen`.
@@ -540,7 +540,7 @@ Dựa trên cuộc kiểm toán kiến trúc pháp y (Forensic Architecture Revi
   - **FIFO Order Preservation**: Lưu trữ thứ tự chèn phần tử trong cấu trúc `CogniFoldStore` bằng cách lưu trữ danh sách phẳng các `SlotId` trong một `Vec<SlotId>`, đảm bảo truy xuất O(1) và tính nhất quán lưu trữ.
 
 ## 2. SIMD AHO-CORASICK GUARDRAILS (Rào chắn kiểm soát mã độc dạng SIMD & AST)
-- **File vật lý**: [guardrail.rs](file:///c:/Users/ADMIN/AEGIS-COGNITION/core/rust/src/guardrail.rs)
+- **File vật lý**: [guardrail.rs](../../../core/rust/src/guardrail.rs)
 - **Vấn đề cốt lõi**: Quá trình phân tích cú pháp AST (Abstract Syntax Tree) tiêu tốn rất nhiều chu kỳ CPU. Nếu chạy trực tiếp AST Guardrail cho mọi đoạn mã không đáng tin cậy của LLM, hệ thống sẽ gặp thắt nút cổ chai (performance bottleneck).
 - **Giải pháp HPC & Invariants**:
   - **Tiered Dual-Shield Defense**:
@@ -549,7 +549,7 @@ Dựa trên cuộc kiểm toán kiến trúc pháp y (Forensic Architecture Revi
   - **Whitespace & Case Normalization**: Trước khi thực hiện quét Tier 1, hàm `normalize_for_scan()` chuẩn hóa dữ liệu bằng cách loại bỏ khoảng trắng thừa và đưa toàn bộ ký tự về dạng chữ thường, ngăn chặn việc LLM chèn ký tự lạ hoặc ngắt dòng để vượt qua bộ lọc.
 
 ## 3. WASMTIME AOT CACHE & INTERRUPT WATCHDOG (Bộ đệm biên dịch Wasmtime AOT & Đồng hồ giám sát ngắt Epoch)
-- **File vật lý**: [sandbox.rs](file:///c:/Users/ADMIN/AEGIS-COGNITION/core/rust/src/sandbox.rs)
+- **File vật lý**: [sandbox.rs](../../../core/rust/src/sandbox.rs)
 - **Vấn đề cốt lõi**: Trình biên dịch JIT (Just-In-Time) của Wasmtime tiêu tốn tài nguyên và thời gian rất lớn khi phải biên dịch lại cùng một đoạn mã nhiều lần. Ngoài ra, việc ngắt một vòng lặp vô hạn một cách an sau trên Windows (MSVC) thường gặp lỗi unwind bộ nhớ hoặc hỏng tệp PDB.
 - **Giải pháp HPC & Invariants**:
   - **AOT Engine Cache**: Triển khai bộ nhớ đệm luồng an toàn tĩnh `MODULE_CACHE` thông qua `OnceLock<RwLock<HashMap<String, Vec<u8>>>>`. Module WebAssembly được biên dịch trước bằng `engine.precompile_module()` và lưu trữ dưới dạng byte đã tuần tự hóa. Các lượt gọi sau chỉ cần giải tuần tự hóa bằng `Module::deserialize()` trực tiếp trên CPU, bỏ qua hoàn toàn JIT compilation latency.
@@ -557,7 +557,7 @@ Dựa trên cuộc kiểm toán kiến trúc pháp y (Forensic Architecture Revi
   - **MSVC Unwinding Safety**: Sử dụng cờ hiệu nguyên tử `AtomicBool` để chia sẻ trạng thái hoàn thành giữa luồng chạy chính và luồng watchdog. Nếu việc thực thi kết thúc bình thường, watchdog sẽ được hủy bỏ sạch sẽ trước khi nó gây ra một cuộc ngắt cưỡng bức. Kết hợp với cài đặt `native_unwind_info(true)`, giải pháp này khắc phục triệt để lỗi unwind PDB (`LNK1318`) trên môi trường Windows.
 
 ## 4. ZERO-COPY JSON & PAYLOAD CANONICALIZATION (Bộ phân tích cú pháp JSON không sao chép & Chuẩn hóa dữ liệu)
-- **File vật lý**: [physical.rs](file:///c:/Users/ADMIN/AEGIS-COGNITION/core/rust/src/physical.rs)
+- **File vật lý**: [physical.rs](../../../core/rust/src/physical.rs)
 - **Vấn đề cốt lõi**: Khác biệt nhỏ về định dạng đầu ra (ví dụ: khoảng trắng, thứ tự key JSON, comment) sẽ tạo ra mã BLAKE3 khác nhau, dẫn đến hiện tượng phân kỳ giả (Physical Witness Divergence) trong khi ngữ nghĩa hoàn toàn trùng khớp. Ngoài ra, việc sao chép chuỗi liên tục khi phân tích JSON tốn nhiều RAM và CPU cache.
 - **Giải pháp HPC & Invariants**:
   - **Zero-Copy JSON Deserialization**: Triển khai enum `ZeroCopyValue<'a>` đóng gói tất cả các kiểu dữ liệu JSON, sử dụng kiểu dữ liệu `Cow<'a, str>` (Clone-on-Write) từ Serde để mượn (borrow) trực tiếp lát cắt chuỗi gốc từ bộ nhớ đệm đầu vào mà không cần cấp phát vùng nhớ heap mới.
@@ -569,7 +569,7 @@ Dựa trên cuộc kiểm toán kiến trúc pháp y (Forensic Architecture Revi
     - **Structural AST Fingerprint**: Trích xuất vân tay cấu trúc 64-bit độc lập bằng cách sử dụng visitor đếm số lượng khai báo (`items` chiếm 16-bit đầu), số lượng câu lệnh (`stmts` chiếm 16-bit tiếp theo) và mã băm phi mật mã `xxh3` 32-bit từ nội dung thô (`items | stmts << 16 | hash_xxh3 << 32`).
 
 ## 5. CUSTOM OS MEMORY POOL & PRE-ALLOCATED BUFFER (Bể chứa bộ nhớ hệ điều hành tùy chỉnh & Nạp trước trang nền)
-- **File vật lý**: [pool.rs](file:///c:/Users/ADMIN/AEGIS-COGNITION/core/rust/src/memory/pool.rs)
+- **File vật lý**: [pool.rs](../../../core/rust/src/memory/pool.rs)
 - **Vấn đề cốt lõi**: OS Page Faults xảy ra khi một luồng JIT hoặc một buffer bộ nhớ chia sẻ ghi dữ liệu vào các trang bộ nhớ chưa được ánh xạ vật lý trên RAM, gây ra độ trễ I/O lớn bất ngờ (jitter).
 - **Giải pháp HPC & Invariants**:
   - **Direct System Allocation**: Bỏ qua bộ cấp phát mặc định của Rust/C. Sử dụng `VirtualAlloc` trên hệ điều hành Windows với cấu hình `MEM_COMMIT | MEM_RESERVE` để cấp phát bộ nhớ ảo liên tục. Trên các hệ điều hành Unix (Linux/macOS), sử dụng `mmap` với cờ `MAP_PRIVATE | MAP_ANON`.
@@ -578,7 +578,7 @@ Dựa trên cuộc kiểm toán kiến trúc pháp y (Forensic Architecture Revi
   - **Atomic Tracking**: Quản lý hạn mức và lượng bộ nhớ sử dụng thực tế của pool một cách an toàn luồng bằng các thanh ghi nguyên tử hiệu năng cao `AtomicUsize`.
 
 ## 6. HYBRID POLLING SHM IPC (IPC bộ nhớ chia sẻ thăm dò lai)
-- **File vật lý**: [shm.rs](file:///c:/Users/ADMIN/AEGIS-COGNITION/core/rust/src/shm.rs)
+- **File vật lý**: [shm.rs](../../../core/rust/src/shm.rs)
 - **Vấn đề cốt lõi**: Giao tiếp liên tiến trình (IPC) thông qua sockets hoặc nhân hệ điều hành (Kernel-space transitions) làm phát sinh chi phí chuyển ngữ cảnh (Context Switch Overhead) và làm chậm chu kỳ đồng thuận.
 - **Giải pháp HPC & Invariants**:
   - **Hybrid Polling Strategy**: Hàm `hybrid_poll_until` chia quá trình chờ tin nhắn thành hai giai đoạn tối ưu:
@@ -587,12 +587,12 @@ Dựa trên cuộc kiểm toán kiến trúc pháp y (Forensic Architecture Revi
   - **64-Byte Cache Alignment**: Cấu trúc `SharedMemoryRegion` được định cấu hình căn lề 64-byte nghiêm ngặt nhằm tránh hiện tượng rò rỉ hoặc truy cập không căn lề (misaligned access memory penalties) trên CPU hiện đại.
 
 ## 7. NEURO-SYMBOLIC HARNESS & PATH SANITIZATION (Harness Thần kinh - Biểu tượng & Làm sạch lỗi Trình biên dịch)
-- **File vật lý**: [harness.rs](file:///c:/Users/ADMIN/AEGIS-COGNITION/core/rust/src/harness.rs)
+- **File vật lý**: [harness.rs](../../../core/rust/src/harness.rs)
 - **Vấn đề cốt lõi**: Trình bày toàn bộ mã nguồn hoặc thông tin lỗi chi tiết chứa đường dẫn tuyệt đối cho LLM gây tốn MTC, lộ cấu trúc thư mục của máy chủ, và làm nhiễu loạn logic sửa lỗi của AI Agent.
 - **Giải pháp HPC & Invariants**:
   - **Skeleton-Driven Generation**: Sử dụng một `SkeletonVisitor` (dựa trên thư viện `syn::visit_mut::VisitMut`) để quét qua mã nguồn Rust của các Trait hoặc cấu trúc Impl và thay thế toàn bộ thân hàm bằng macro `todo!()`. LLM chỉ nhận được khung xương mã nguồn sạch và chỉ được phép điền mã vào các phần trống này, tránh việc thay đổi cấu trúc thiết kế cốt lõi.
   - **Compiler Error Sanitizer**: Hàm `analyze_compile_errors` sử dụng biểu thức chính quy (Regex) để làm sạch đầu ra của `cargo check`:
     - Loại bỏ mã màu ANSI cấu trúc dạng `\x1B\[[0-9;]*[a-zA-Z]`.
-    - Chuẩn hóa tất cả các đường dẫn tuyệt đối chứa thư mục dự án (ví dụ: `C:\Users\ADMIN\AEGIS-COGNITION\core\...`) thành đường dẫn tương đối `/core/` để bảo mật thông tin máy chủ và giảm kích thước Token thô.
+- Chuẩn hóa tất cả các đường dẫn tuyệt đối chứa thư mục dự án (ví dụ: `<local-checkout>/core/...`) thành đường dẫn tương đối `/core/` để bảo mật thông tin máy chủ và giảm kích thước Token thô.
     - Tách biệt và chỉ giữ lại nội dung lỗi bắt đầu bằng `error[` hoặc `error:` và bỏ qua toàn bộ các cảnh báo không nghiêm trọng.
   - **Token Logit Verification**: Sử dụng `validate_next_token` từ `GbnfConstraintEngine` để loại bỏ các token hoặc dòng mã có chứa các từ khóa cấm (`unsafe`, `.unwrap`, `TcpStream`) ngay tại tầng sinh từ ngữ.

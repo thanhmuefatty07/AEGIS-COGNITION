@@ -1,15 +1,22 @@
 """Final architecture design-closure/reconciliation collector (audit-only)."""
 from __future__ import annotations
-import hashlib, json, os, re, subprocess, zipfile
+import hashlib
+import json
+import os
+import re
+import subprocess
+import tempfile
+import zipfile
 from datetime import datetime, timezone
 from pathlib import Path
 
 ROOT=Path(__file__).resolve().parents[3]
 OUT=Path(__file__).resolve().parent
-TEMP_ROOT=Path(os.environ.get("TEMP","C:/Windows/Temp"))/"aegis-design-reconciliation-20260828"
-EMPIRICAL_TEMP_ROOT=Path(os.environ.get("TEMP","C:/Windows/Temp"))/"aegis-empirical-execution-20260829"
-CURRENT_EMPIRICAL_TEMP_ROOT=Path(os.environ.get("TEMP","C:/Windows/Temp"))/"aegis-empirical-execution-20260831"
-LATEST_EMPIRICAL_TEMP_ROOT=Path(os.environ.get("TEMP","C:/Windows/Temp"))/"aegis-empirical-execution-20260901"
+SYSTEM_TEMP_ROOT=Path(os.environ.get("TEMP") or tempfile.gettempdir())
+TEMP_ROOT=SYSTEM_TEMP_ROOT/"aegis-design-reconciliation-20260828"
+EMPIRICAL_TEMP_ROOT=SYSTEM_TEMP_ROOT/"aegis-empirical-execution-20260829"
+CURRENT_EMPIRICAL_TEMP_ROOT=SYSTEM_TEMP_ROOT/"aegis-empirical-execution-20260831"
+LATEST_EMPIRICAL_TEMP_ROOT=SYSTEM_TEMP_ROOT/"aegis-empirical-execution-20260901"
 TEMP_ROOTS=[TEMP_ROOT, EMPIRICAL_TEMP_ROOT, CURRENT_EMPIRICAL_TEMP_ROOT, LATEST_EMPIRICAL_TEMP_ROOT]
 PRIOR=ROOT/"docs/architecture/evidence-pack"
 VERSION="aegis-design-closure-reconciliation-v1"
@@ -20,6 +27,36 @@ def run(args,cwd=ROOT,timeout=30,env=None):
         p=subprocess.run(args,cwd=cwd,text=True,capture_output=True,timeout=timeout,env=env,check=False)
         return p.returncode,p.stdout,p.stderr
     except Exception as exc: return 99,"",f"{type(exc).__name__}: {exc}"
+
+def sanitize(value):
+    if isinstance(value, dict):
+        return {sanitize(key): sanitize(item) for key, item in value.items()}
+    if isinstance(value, list):
+        return [sanitize(item) for item in value]
+    if isinstance(value, tuple):
+        return [sanitize(item) for item in value]
+    if not isinstance(value, str):
+        return value
+    roots = [
+        (ROOT, "<repo>"),
+        (SYSTEM_TEMP_ROOT, "<system-temp>"),
+        (Path(tempfile.gettempdir()), "<system-temp>"),
+        (Path.home(), "<user-home>"),
+    ]
+    redactors = []
+    for base, label in sorted(roots, key=lambda item: len(str(item[0])), reverse=True):
+        raw = str(base).rstrip("/\\")
+        if raw:
+            redactors.extend(
+                (
+                    (raw, label),
+                    (raw.replace("\\", "/"), label),
+                    (raw.replace("/", "\\"), label),
+                )
+            )
+    for raw, label in redactors:
+        value = re.sub(re.escape(raw), label, value, flags=re.IGNORECASE)
+    return value
 
 def git(*args,timeout=30): return run(["git",*args],timeout=timeout)
 
@@ -79,11 +116,11 @@ def find(path,pattern,limit=20):
     except Exception: return []
 
 def v63_reconcile():
-    root=Path(r"C:/Users/ADMIN/AppData/Local/Temp/aegis-lab-native-wheel-v63")
+    root=Path(tempfile.gettempdir())/"aegis-lab-native-wheel-v63"
     expected=["install-smoke-v63.json","controller-smoke-v63.json","recovery-smoke-v63.json","rollback-v62-v63.json"]
-    present=[str(root/x) for x in expected if (root/x).is_file()]
-    missing=[str(root/x) for x in expected if not (root/x).is_file()]
-    return {"classification":"V63_ARTIFACT_MISSING","expected_root":str(root),"documented_wheel_sha256":"e2ae96f1c7886e3f2f7a1e522cb5e2d783b90df96db8caed2ef44eca2afd41bf","expected_records":expected,"present_records":present,"missing_records":missing,"parsed_records":[],"wheel_exists":False,"rollback_subject_verified":False,"reason":"all four documented v63 records and the referenced wheel directory are absent; historical claims cannot be replayed","new_wheel_justification":"ARTIFACT_MISSING"}
+    present=[name for name in expected if (root/name).is_file()]
+    missing=[name for name in expected if not (root/name).is_file()]
+    return {"classification":"V63_ARTIFACT_MISSING","expected_root":"<system-temp>/aegis-lab-native-wheel-v63","documented_wheel_sha256":"e2ae96f1c7886e3f2f7a1e522cb5e2d783b90df96db8caed2ef44eca2afd41bf","expected_records":expected,"present_records":present,"missing_records":missing,"parsed_records":[],"wheel_exists":False,"rollback_subject_verified":False,"reason":"all four documented v63 records and the referenced wheel directory are absent; historical claims cannot be replayed","new_wheel_justification":"ARTIFACT_MISSING"}
 
 def m2_fresh_replay_truth():
     path=ROOT/"artifacts/local-runtime/m2-all-lane-fresh-replay-20260901/m2_all_lane_fresh_replay.json"
@@ -566,8 +603,8 @@ def fixed_reports(base, ep):
     m2_replay_item={"kind":"M2 fresh-process replay witness","path":str(m2_replay),"exists_now":m2_replay.is_file(),"tracked":False,"temporary":False,"hash":sha(m2_replay) if m2_replay.is_file() else "NOT_AVAILABLE","source_sha":ep["HEAD"],"worktree_epoch":ep["WORKTREE_EPOCH"],"artifact_source_epoch":m2_replay_data.get("source",{}).get("WORKTREE_EPOCH","NOT_AVAILABLE") if isinstance(m2_replay_data,dict) else "NOT_AVAILABLE","reproducible":"bounded native-required parent/child replay command is recorded in the JSON witness","superseded":False,"required_for_release":False}
     if m2_replay_item["path"] not in retained_paths: retention.setdefault("artifacts",[]).append(m2_replay_item)
     for item in [
-      {"kind":"v63 smoke records","path":"C:\\Users\\ADMIN\\AppData\\Local\\Temp\\aegis-lab-native-wheel-v63\\*.json","exists_now":False,"tracked":False,"temporary":True,"hash":"NOT_AVAILABLE","source_sha":"NOT_AVAILABLE","worktree_epoch":"NOT_AVAILABLE","reproducible":False,"superseded":"historical/missing","required_for_release":False},
-      {"kind":"v62 predecessor","path":"C:\\Users\\ADMIN\\AppData\\Local\\Temp\\aegis-lab-native-wheel-v62","exists_now":False,"tracked":False,"temporary":True,"hash":"NOT_AVAILABLE","source_sha":"NOT_AVAILABLE","worktree_epoch":"NOT_AVAILABLE","reproducible":False,"superseded":"historical/missing","required_for_release":False},
+      {"kind":"v63 smoke records","path":"<system-temp>/aegis-lab-native-wheel-v63/*.json","exists_now":False,"tracked":False,"temporary":True,"hash":"NOT_AVAILABLE","source_sha":"NOT_AVAILABLE","worktree_epoch":"NOT_AVAILABLE","reproducible":False,"superseded":"historical/missing","required_for_release":False},
+      {"kind":"v62 predecessor","path":"<system-temp>/aegis-lab-native-wheel-v62","exists_now":False,"tracked":False,"temporary":True,"hash":"NOT_AVAILABLE","source_sha":"NOT_AVAILABLE","worktree_epoch":"NOT_AVAILABLE","reproducible":False,"superseded":"historical/missing","required_for_release":False},
       {"kind":"generated status","path":"docs/architecture/AEGIS_LAB_STATUS_GENERATED.md","exists_now":True,"tracked":False,"temporary":False,"hash":"in WORKTREE_EPOCH","source_sha":"not manifest-bound","worktree_epoch":"CURRENT_RUN_WORKTREE_EPOCH","reproducible":"source script dependent","superseded":False,"required_for_release":"unknown"},
       {"kind":"replay/snapshot samples","path":"local replay/snapshot artifact paths","exists_now":False,"tracked":False,"temporary":True,"hash":"NOT_AVAILABLE","source_sha":"NOT_AVAILABLE","worktree_epoch":"NOT_AVAILABLE","reproducible":False,"superseded":"unknown","required_for_release":"unknown"},
       {"kind":"benchmark outputs","path":"local benchmark artifact paths","exists_now":False,"tracked":False,"temporary":True,"hash":"NOT_AVAILABLE","source_sha":"NOT_AVAILABLE","worktree_epoch":"NOT_AVAILABLE","reproducible":False,"superseded":"unknown","required_for_release":"unknown"},
@@ -639,6 +676,7 @@ def fixed_reports(base, ep):
 
 def write(name,payload,ep,head,extra):
     x=dict(payload); x.update({"HEAD":head,"WORKTREE_EPOCH":ep,"generated_at":GENERATED,"method":f"{VERSION}; direct Git/filesystem/source inspection, prior artifact hash reuse, disposable wheel reconciliation, bounded local probes","limitations":list(x.get("limitations",[]))+extra})
+    x=sanitize(x)
     (OUT/name).write_text(json.dumps(x,indent=2,ensure_ascii=False)+"\n",encoding="utf-8")
 
 def main():
@@ -830,7 +868,7 @@ NO
 
 No broad feature, refactor, delete, rename, migration, optimization, uncontrolled crawl, fuzz, soak, stress, provider call, or live browser run was performed. The bounded M2 snapshot guard, six-lane fresh-process replay witness, conditional typed-materialization hardening, local M3 trust-policy hash binding (including native-capable direct `LabRun` construction), and targeted FFI wrapper leak safety fix are recorded in the master plan and verified by the local gates above; global trust-owner unification remains open.
 """
-    (OUT/"AEGIS_FINAL_DESIGN_CLOSURE.md").write_text(md,encoding="utf-8")
+    (OUT/"AEGIS_FINAL_DESIGN_CLOSURE.md").write_text(sanitize(md),encoding="utf-8")
     print(json.dumps({"status":closure_status,"WORKTREE_EPOCH":ep0["WORKTREE_EPOCH"],"HEAD":head,"artifact_count":len(reports)+3,"v63":v63["classification"],"packaging":pkg["classification"]},ensure_ascii=False))
     return 0 if stable else 2
 

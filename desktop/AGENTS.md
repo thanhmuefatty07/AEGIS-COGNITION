@@ -1,0 +1,12 @@
+# Desktop UI evidence workflow
+
+For interface changes in this package:
+
+- Before choosing visual or interaction behavior, consult the relevant official Apple Human Interface Guidelines pages. Consult official Radix Primitives docs when a component's keyboard, ARIA, or focus behavior is relevant, and official Tailwind CSS docs when responsive variants or theme tokens are relevant. Use the existing web-search tool; do not add a documentation MCP only to fetch these pages.
+- Inspect the running interface with Playwright screenshots and the browser accessibility tree. Cover the affected route, relevant light/dark themes, keyboard focus, representative wide and constrained viewports, and motion with `prefers-reduced-motion`. Keep transitions short and tied to state changes; avoid decorative motion. Source inspection alone is not visual evidence. Record the route, browser, viewport, and theme with findings.
+- For packaged-app evidence, inspect the actual Tauri window with the available Windows Computer Use bridge (`@oai/sky`): capture its native screenshot and accessibility text/tree, and record OS, window size, display scale, UI-size preset, route, and theme. This bridge already supplies native observation; do not add an MCP solely for screenshots. Browser preview does not verify native window chrome or WebView rendering.
+- Use Tauri WebDriver with WebdriverIO only when repeatable native end-to-end coverage is required in CI; it is a separate test harness, not a replacement for visual inspection. Keep platform chrome native (`decorations: true`) and test OS-specific primary shortcut labels/behavior (`Ctrl` on Windows/Linux, `⌘` on macOS).
+- Cover Home, an active conversation, the work-panel tabs, Utilities, and every Settings section. At minimum, inspect the 640×480 app minimum, 1280×800, and 1920×1080; test each UI-size preset and both light/dark appearances for clipping, unintended wrapping, and reachable controls.
+- Compare pixels only with a supplied or approved Figma/screenshot baseline. Without one, report concrete visual observations and do not claim pixel parity. Browser preview does not establish packaged/native rendering.
+- Keep the current React/CSS system unless a demonstrated behavior or accessibility gap justifies a component-library or styling dependency. Check the installed version's official docs before adopting a library API.
+- Record concise changes and decisive visual/accessibility evidence in `../docs/design/desktop-workbench.md`; mark remaining limits `NOT VERIFIED`.

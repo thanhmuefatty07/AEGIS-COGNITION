@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import json
+import sys
 from collections import defaultdict
+from pathlib import Path
 
 import pytest
 
@@ -105,6 +107,13 @@ def test_closure_reuses_its_inventory_snapshot(monkeypatch: pytest.MonkeyPatch) 
     monkeypatch.setattr(closure_module._claim_graph, "build_inventory", unexpected_inventory_rebuild)
     plan = build_closure(["core/rust/src/gt96.rs"])
     assert plan["closure_status"] == "EXACT_CONTRACT_CLOSURE_SHADOW"
+
+
+def test_closure_provenance_records_only_the_interpreter_name() -> None:
+    plan = build_closure(["core/rust/src/gt96.rs"])
+    environment = plan["provenance"]["environment"]
+
+    assert environment["executable"] == Path(sys.executable).name
 
 
 @pytest.mark.parametrize(

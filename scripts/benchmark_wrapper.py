@@ -1,8 +1,8 @@
 import json
 from pathlib import Path
 
-ROOT = r'c:\Users\ADMIN\AEGIS-COGNITION'
-ARTIFACTS_DIR = Path(ROOT) / 'artifacts'
+ROOT = Path(__file__).resolve().parents[1]
+ARTIFACTS_DIR = ROOT / 'artifacts'
 REPORT_PATH = ARTIFACTS_DIR / 'benchmark_preflight_report.json'
 
 
@@ -15,7 +15,7 @@ def main() -> int:
 
     from core.python import check_build_preflight
 
-    preflight = check_build_preflight(ROOT)
+    preflight = check_build_preflight(str(ROOT))
     report = {
         'cargo_present': preflight.cargo_present,
         'rustc_present': preflight.rustc_present,

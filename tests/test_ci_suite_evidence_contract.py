@@ -68,6 +68,18 @@ def test_every_ci_suite_gate_has_unique_owner_gate_attempt_and_timeout() -> None
     assert unwrapped_suite_commands == []
 
 
+def test_deep_workflow_does_not_publish_raw_coverage_or_fuzz_output() -> None:
+    content = (ROOT / ".github" / "workflows" / "deep.yml").read_text(encoding="utf-8")
+
+    assert "            artifacts/rust-coverage.lcov\n" not in content
+    assert 'cat "$stdout_log" "$stderr_log" | tee "$combined_log"' not in content
+    assert "            artifacts/fuzz\n" not in content
+    assert "            fuzz/corpus\n" not in content
+    assert "            fuzz/artifacts\n" not in content
+    assert "            artifacts/fuzz/*.stats.log\n" in content
+    assert "            artifacts/fuzz/*.status\n" in content
+
+
 def test_cross_platform_full_suite_is_a_closed_three_runner_gate() -> None:
     content = (ROOT / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
     assert "cross-platform-full-suite:" in content

@@ -55,6 +55,7 @@ Thumbs.db
 .local/
 brain/
 artifacts/
+desktop/test-results/
 desktop/node_modules/
 desktop/dist/
 desktop/.pyinstaller-build/

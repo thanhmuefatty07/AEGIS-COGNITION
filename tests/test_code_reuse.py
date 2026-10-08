@@ -64,9 +64,63 @@ def test_reuse_rejects_stale_source_unknown_license_and_non_cheaper_patch(tmp_pa
     unknown = replace(candidate, license_id="UNKNOWN")
     rejected = assess_code_reuse(unknown, generation_tokens=40, policy=CodeReusePolicy())
     assert rejected.decision == "REJECT"
+    assert rejected.estimated_total_tokens == 40
+    assert rejected.savings_tokens == 0
+
+    oversized = assess_code_reuse(
+        candidate,
+        generation_tokens=40,
+        verification_tokens=2,
+        policy=CodeReusePolicy(max_snippet_bytes=1),
+    )
+    assert oversized.decision == "REJECT"
+    assert oversized.estimated_total_tokens == 42
+    assert oversized.savings_tokens == 0
 
     generated = assess_code_reuse(candidate, generation_tokens=4, adaptation_tokens=2, verification_tokens=2)
     assert generated.decision == "GENERATE"
+    assert generated.estimated_total_tokens == 6
+    assert generated.savings_tokens == 0
+
+
+def test_exact_materialization_enforces_snippet_byte_quota_without_prior_assessment(tmp_path) -> None:
+    source = tmp_path / "source.py"
+    source.write_text("value = 1\n", encoding="utf-8")
+    candidate = build_local_reuse_candidate(
+        SourceMapper(tmp_path).snapshot(),
+        "source.py",
+        start_line=1,
+        end_line=1,
+    )
+
+    with pytest.raises(CodeReuseError, match="snippet exceeds the reuse byte quota"):
+        materialize_exact(
+            candidate,
+            target_root=tmp_path,
+            target_relative_path="copied.py",
+            policy=CodeReusePolicy(max_snippet_bytes=1),
+        )
+
+    assert not (tmp_path / "copied.py").exists()
+
+
+def test_reuse_does_not_claim_unimplemented_patch_or_retrieval_savings(tmp_path) -> None:
+    source = tmp_path / "source.py"
+    source.write_text("value = 1\n", encoding="utf-8")
+    candidate = build_local_reuse_candidate(
+        SourceMapper(tmp_path).snapshot(), "source.py", start_line=1, end_line=1
+    )
+
+    assessment = assess_code_reuse(
+        candidate,
+        generation_tokens=40,
+        adaptation_tokens=2,
+        verification_tokens=3,
+    )
+
+    assert assessment.decision == "GENERATE"
+    assert assessment.estimated_total_tokens == 43
+    assert assessment.savings_tokens == 0
 
 
 def test_reuse_rejects_current_directory_as_a_target_path(tmp_path) -> None:

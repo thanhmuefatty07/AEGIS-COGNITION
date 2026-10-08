@@ -44,3 +44,18 @@ def test_active_project_docs_do_not_grant_default_use() -> None:
     readme = (ROOT / "README.md").read_text(encoding="utf-8")
     assert "No permission is" in readme
     assert "LICENSE.txt" in readme
+
+
+def test_desktop_bundle_includes_regex_license_notice() -> None:
+    import json
+
+    bundle = json.loads((ROOT / "desktop" / "src-tauri" / "tauri.bundle.conf.json").read_text(encoding="utf-8"))
+    resources = bundle["bundle"]["resources"]
+    assert resources["resources/aegis-desktop-service*"] == "resources/"
+    assert resources["../THIRD_PARTY_NOTICES.md"] == "THIRD_PARTY_NOTICES.md"
+
+    notices = (ROOT / "desktop" / "THIRD_PARTY_NOTICES.md").read_text(encoding="utf-8")
+    assert "regex==2026.9.29" in notices
+    assert "Apache-2.0 AND CNRI-Python" in notices
+    assert "Apache License" in notices
+    assert "licensed under CNRI's Python 1.6" in notices

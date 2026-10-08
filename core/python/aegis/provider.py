@@ -14,6 +14,7 @@ from .contracts import (
     ProviderRateLimitError,
     ProviderRouteRecord,
 )
+from .cache_economics import CachePromptPlan
 from .hashing import stable_hash
 
 
@@ -184,6 +185,7 @@ async def invoke_with_provider_route(
     attempt_hook: Callable[[str, Mapping[str, Any]], Any] | None = None,
     attempt_context: Mapping[str, Any] | None = None,
     egress_check: Callable[[str], bool | Awaitable[bool]] | None = None,
+    _aegis_usage_observer: Callable[[Mapping[str, Any]], Any] | None = None,
     **kwargs: Any,
 ) -> tuple[Any, str | None, ProviderRouteRecord, ProviderBudgetEvidence]:
     candidates = [
@@ -228,7 +230,22 @@ async def invoke_with_provider_route(
         }
         fence = await _notify_attempt_hook(attempt_hook, "admit", attempt_payload)
         try:
-            output = await invoke_llm(llm, task, **kwargs)
+            request_kwargs = dict(kwargs)
+            request_kwargs.pop("_aegis_usage_observer", None)
+            cache_plan = request_kwargs.pop("_aegis_cache_plan", None)
+            if cache_plan is not None:
+                if not isinstance(cache_plan, CachePromptPlan):
+                    raise TypeError("_aegis_cache_plan must be a CachePromptPlan")
+                request_kwargs.update(
+                    cache_plan.request_options(
+                        provider=selected_name,
+                        model=getattr(llm, "model", None) or getattr(llm, "model_name", None),
+                        supports_controls=getattr(llm, "supports_prompt_cache_controls", False) is True,
+                    )
+                )
+            if _aegis_usage_observer is not None and getattr(llm, "supports_usage_observer", False) is True:
+                request_kwargs["_aegis_usage_observer"] = _aegis_usage_observer
+            output = await invoke_llm(llm, task, **request_kwargs)
         except asyncio.CancelledError:
             await _notify_attempt_hook(
                 attempt_hook,

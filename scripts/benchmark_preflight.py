@@ -1,7 +1,7 @@
 import json
 from pathlib import Path
 
-ROOT = r'c:\Users\ADMIN\AEGIS-COGNITION'
+ROOT = Path(__file__).resolve().parents[1]
 
 
 def main() -> int:
@@ -13,7 +13,7 @@ def main() -> int:
 
     from core.python import check_build_preflight
 
-    result = check_build_preflight(ROOT)
+    result = check_build_preflight(str(ROOT))
     report = {
         'cargo_present': result.cargo_present,
         'rustc_present': result.rustc_present,

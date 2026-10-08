@@ -2,8 +2,30 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import Any
+
+
+def normalize_correlation(value: Any) -> dict[str, Any] | None:
+    if value is None:
+        return None
+    if hasattr(value, "as_mapping"):
+        value = value.as_mapping()
+    if not isinstance(value, Mapping):
+        raise TypeError("correlation must be a mapping or expose as_mapping()")
+    normalized = dict(value)
+    required = ("mission_id", "task_id", "run_id", "attempt_id")
+    if not isinstance(normalized.get("mission_id"), str) or not normalized["mission_id"].strip():
+        raise ValueError("correlation mission_id must be non-empty")
+    for key in required[1:]:
+        raw = normalized.get(key)
+        if not isinstance(raw, int) or isinstance(raw, bool) or raw < 1:
+            raise ValueError(f"correlation {key} must be a positive integer")
+    lease_id = normalized.get("lease_id")
+    if lease_id is not None and (not isinstance(lease_id, int) or isinstance(lease_id, bool) or lease_id < 1):
+        raise ValueError("correlation lease_id must be null or a positive integer")
+    return normalized
 
 
 @dataclass(frozen=True)

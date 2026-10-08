@@ -1,5 +1,5 @@
 {
-  "artifact_hash": "515d294e39b88a60138a853e6ab15477039cdcb5bb7eab74e43020180308d8df",
+  "artifact_hash": "fa2e6d31641cfa995b546b76f83167264cc34e06274a8c8794c8809f509e3c44",
   "development_corpus": [
     {
       "case_id": "DEV-GT96-GOOD",
@@ -13,7 +13,7 @@
         "WIDENED_UNKNOWN": 0,
         "WOULD_REUSE": 0,
         "WOULD_RUN": 1,
-        "WOULD_SKIP": 192
+        "WOULD_SKIP": 195
       },
       "label": "KNOWN_GOOD",
       "mutation": "NONE",
@@ -41,7 +41,7 @@
       "closure_status": "WIDENED_ALL_RETAINED",
       "critical": true,
       "decision_state_counts": {
-        "WIDENED_UNKNOWN": 193,
+        "WIDENED_UNKNOWN": 196,
         "WOULD_REUSE": 0,
         "WOULD_RUN": 0,
         "WOULD_SKIP": 0
@@ -72,7 +72,7 @@
       "closure_status": "WIDENED_ALL_RETAINED",
       "critical": true,
       "decision_state_counts": {
-        "WIDENED_UNKNOWN": 193,
+        "WIDENED_UNKNOWN": 196,
         "WOULD_REUSE": 0,
         "WOULD_RUN": 0,
         "WOULD_SKIP": 0
@@ -103,7 +103,7 @@
       "closure_status": "WIDENED_ALL_RETAINED",
       "critical": false,
       "decision_state_counts": {
-        "WIDENED_UNKNOWN": 193,
+        "WIDENED_UNKNOWN": 196,
         "WOULD_REUSE": 0,
         "WOULD_RUN": 0,
         "WOULD_SKIP": 0
@@ -135,7 +135,7 @@
         "WIDENED_UNKNOWN": 0,
         "WOULD_REUSE": 0,
         "WOULD_RUN": 1,
-        "WOULD_SKIP": 192
+        "WOULD_SKIP": 195
       },
       "label": "KNOWN_BAD",
       "mutation": "SERIALIZATION_SCHEMA_MUTATION",
@@ -163,7 +163,7 @@
       "closure_status": "WIDENED_ALL_RETAINED",
       "critical": true,
       "decision_state_counts": {
-        "WIDENED_UNKNOWN": 193,
+        "WIDENED_UNKNOWN": 196,
         "WOULD_REUSE": 0,
         "WOULD_RUN": 0,
         "WOULD_SKIP": 0
@@ -196,7 +196,7 @@
       "closure_status": "WIDENED_ALL_RETAINED",
       "critical": true,
       "decision_state_counts": {
-        "WIDENED_UNKNOWN": 193,
+        "WIDENED_UNKNOWN": 196,
         "WOULD_REUSE": 0,
         "WOULD_RUN": 0,
         "WOULD_SKIP": 0
@@ -227,7 +227,7 @@
       "closure_status": "WIDENED_ALL_RETAINED",
       "critical": false,
       "decision_state_counts": {
-        "WIDENED_UNKNOWN": 193,
+        "WIDENED_UNKNOWN": 196,
         "WOULD_REUSE": 0,
         "WOULD_RUN": 0,
         "WOULD_SKIP": 0
@@ -256,7 +256,7 @@
       "closure_status": "WIDENED_ALL_RETAINED",
       "critical": true,
       "decision_state_counts": {
-        "WIDENED_UNKNOWN": 193,
+        "WIDENED_UNKNOWN": 196,
         "WOULD_REUSE": 0,
         "WOULD_RUN": 0,
         "WOULD_SKIP": 0
@@ -289,7 +289,7 @@
       "closure_status": "WIDENED_ALL_RETAINED",
       "critical": true,
       "decision_state_counts": {
-        "WIDENED_UNKNOWN": 193,
+        "WIDENED_UNKNOWN": 196,
         "WOULD_REUSE": 0,
         "WOULD_RUN": 0,
         "WOULD_SKIP": 0
@@ -332,22 +332,22 @@
   },
   "mode": "SHADOW",
   "provenance": {
-    "artifact_source_sha": "275956b5ce04954eaf18f27067aa6b50578aa6fa",
-    "current_head": "275956b5ce04954eaf18f27067aa6b50578aa6fa",
+    "artifact_source_sha": "1c07a2b265e0046f394a0ccb7ead9ff84e6de314",
+    "current_head": "1c07a2b265e0046f394a0ccb7ead9ff84e6de314",
     "environment": {
       "requires_python": ">=3.14,<3.16"
     },
     "environment_hash": "05077000fe0503d836a6c1e1cdf4d4eb6eb9b2063b998ec6439ce069abd9b1fb",
     "host_observation": {
-      "executable": "C:\\Users\\ADMIN\\AEGIS-COGNITION\\.venv\\Scripts\\python.exe",
+      "executable": "python.exe",
       "machine": "AMD64",
       "os": "Windows",
       "release": "11"
     },
     "protocol_hash": "NOT_APPLICABLE",
-    "relevant_subject_digest": "23ccfe263b4b6c24e15299eb0444daf4bb2d75613483b8259a232a3a9a95f7f7",
+    "relevant_subject_digest": "49a4587e26293dc0a2ff2a0fade461fb6e4be00700d169e1ed3b4e37d01c7cb4",
     "reuse_status": "NOT_REUSED",
-    "validator_hash": "c5a4f5850a6a297d02c1d48613b85b992213e40d8cf0dad0b8c54c0e6cc1a552"
+    "validator_hash": "9bf8170ad2a5d8ce2628b5c4da0bdfbf2d5b9005144cec608333a0067fa90fe7"
   },
   "schema": "aese-validation-corpus-v1",
   "split_policy": {

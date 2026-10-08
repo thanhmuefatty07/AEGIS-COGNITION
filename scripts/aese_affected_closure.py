@@ -452,7 +452,7 @@ def build_closure(changed_paths: list[str] | tuple[str, ...] = (), mapping_path:
                 "os": platform.system(),
                 "release": platform.release(),
                 "machine": platform.machine(),
-                "executable": sys.executable,
+                "executable": Path(sys.executable).name,
             },
             "validator": "scripts/aese_affected_closure.py",
             "evidence_class": "PLANNING_ONLY",

@@ -6,21 +6,31 @@
   "scripts": {
     "dev": "vite --host 127.0.0.1",
     "build": "tsc --noEmit && vite build",
+    "test": "node --test test/model-selection.test.mjs test/mcp-setup-suggestions.test.mjs test/workbench-core.test.mjs test/virtual-window.test.mjs && vitest run test/ambiguous-tool-call-reconciliation.test.tsx test/mcp-oauth-config.test.tsx",
+    "test:e2e": "npm run build && playwright test",
     "tauri": "tauri",
-    "tauri:build": "npm run build && tauri build --config src-tauri/tauri.bundle.conf.json"
+    "sidecar:build": "uv run --locked --extra all --extra dev --group desktop python packaging/build_sidecar.py",
+    "tauri:build": "tauri build --config src-tauri/tauri.bundle.conf.json"
   },
   "dependencies": {
     "@tauri-apps/api": "2.11.1",
     "lucide-react": "1.31.0",
     "react": "19.2.8",
-    "react-dom": "19.2.8"
+    "react-dom": "19.2.8",
+    "thinking-orbs": "0.3.2"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.13.0",
+    "@playwright/test": "^1.63.0",
     "@tauri-apps/cli": "2.11.4",
+    "@testing-library/dom": "^10.4.2",
+    "@testing-library/react": "^16.3.3",
     "@types/react": "19.2.18",
     "@types/react-dom": "19.2.7",
     "@vitejs/plugin-react": "6.1.1",
+    "jsdom": "^29.1.1",
     "typescript": "7.0.2",
-    "vite": "8.2.2"
+    "vite": "8.2.2",
+    "vitest": "^5.0.3"
   }
 }

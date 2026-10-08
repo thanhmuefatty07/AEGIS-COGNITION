@@ -9,7 +9,11 @@ from core.python.aegis.conversations import (
     ConversationToolCall,
     ConversationTurn,
 )
-from core.python.aegis.desktop_projection import build_conversation_inspection, build_subagent_graph
+from core.python.aegis.desktop_projection import (
+    _approval_argument_preview,
+    build_conversation_inspection,
+    build_subagent_graph,
+)
 
 
 def _snapshot() -> ConversationSnapshot:
@@ -75,7 +79,7 @@ def _snapshot() -> ConversationSnapshot:
         request_turn_id="turn-1",
         result_turn_id=None,
         tool_name="filesystem.write",
-        arguments_json=json.dumps({"path": "secret.txt", "token": "private-token"}),
+        arguments_json=json.dumps({"path": "notes.txt", "target": "api_key=private-key", "token": "private-token"}),
         result_content="private tool result",
         status="REQUESTED",
         revision=8,
@@ -99,11 +103,44 @@ def test_conversation_projection_is_bounded_and_redacts_payloads():
     assert projection["schema"] == "aegis-desktop-conversation-inspection-v1"
     assert projection["context"]["source_revision"] == "source-1"
     assert projection["context"]["item_count"] == 2
-    assert projection["approvals"][0]["argument_keys"] == ["path", "token"]
+    assert projection["approvals"][0]["argument_keys"] == ["path", "target", "token"]
+    assert projection["approvals"][0]["argument_preview"] == [
+        {"key": "path", "value": "notes.txt"},
+        {"key": "target", "value": "REDACTED"},
+        {"key": "token", "value": "REDACTED"},
+    ]
+    assert projection["approvals"][0]["can_resolve"] is False
+    assert projection["approvals"][0]["can_reconcile"] is False
+    assert projection["approvals"][0]["effect_class"] == "unknown"
     assert "private assistant content" not in encoded
     assert "private-token" not in encoded
+    assert "private-key" not in encoded
     assert "private prompt" not in encoded
     assert "private part" not in encoded
+
+
+def test_approval_preview_shows_only_safe_code_copy_scope():
+    preview = _approval_argument_preview(
+        {
+            "source_path": "src\\worker.py",
+            "start_line": 4,
+            "end_line": 9,
+            "target_relative_path": "src\\worker_copy.py",
+            "license_id": "MIT",
+            "api_key": "private-token",
+        }
+    )
+    assert preview == [
+        {"key": "api_key", "value": "REDACTED"},
+        {"key": "end_line", "value": "9"},
+        {"key": "license_id", "value": "MIT (declared; unverified)"},
+        {"key": "source_path", "value": "src/worker.py"},
+        {"key": "start_line", "value": "4"},
+        {"key": "target_relative_path", "value": "src/worker_copy.py"},
+    ]
+    assert _approval_argument_preview({"source_path": "C:\\private\\source.py"}) == [
+        {"key": "source_path", "value": "REDACTED"}
+    ]
 
 
 def test_subagent_graph_preserves_edges_and_redacts_prompt_bodies():

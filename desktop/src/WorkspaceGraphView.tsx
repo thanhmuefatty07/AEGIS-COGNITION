@@ -15,6 +15,7 @@ type Props = {
 
 export default function WorkspaceGraphView({ graph, loadMemories }: Props) {
   const [query, setQuery] = useState("");
+  const [viewMode, setViewMode] = useState<"graph" | "list">("graph");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [memories, setMemories] = useState<MemoryRecord[]>([]);
   const [memoryBusy, setMemoryBusy] = useState(false);
@@ -45,6 +46,18 @@ export default function WorkspaceGraphView({ graph, loadMemories }: Props) {
   const selectedEdges = selected
     ? graph.edges.filter((edge) => edge.source === selected.id || edge.target === selected.id)
     : [];
+  const nodeById = useMemo(() => new Map(graph.nodes.map((node) => [node.id, node])), [graph.nodes]);
+  const edgesByNode = useMemo(() => {
+    const result = new Map<string, typeof graph.edges>();
+    for (const edge of graph.edges) {
+      for (const id of [edge.source, edge.target]) {
+        const edges = result.get(id) ?? [];
+        edges.push(edge);
+        result.set(id, edges);
+      }
+    }
+    return result;
+  }, [graph.edges]);
 
   async function selectNode(node: WorkspaceGraphNode) {
     const requestId = memoryRequest.current + 1;
@@ -88,13 +101,17 @@ export default function WorkspaceGraphView({ graph, loadMemories }: Props) {
           placeholder="Search the source map"
         />
         <span className="graph-count">Showing {visibleFiles.length} of {filteredFiles.length}</span>
+        <div className="graph-view-switch" role="group" aria-label="Map display">
+          <button type="button" aria-pressed={viewMode === "graph"} onClick={() => setViewMode("graph")}>Graph</button>
+          <button type="button" aria-pressed={viewMode === "list"} onClick={() => setViewMode("list")}>List</button>
+        </div>
       </div>
       {graph.truncated && (
         <p className="graph-notice" role="status">
           This preview is bounded to keep the canvas responsive. {graph.stats.omitted_files} files are omitted from the visual layer; the source snapshot remains authoritative.
         </p>
       )}
-      <div className="graph-layout">
+      {viewMode === "graph" ? <div className="graph-layout">
         <div className="graph-canvas-wrap">
           <div className="graph-canvas" style={{ width: canvasWidth, minHeight: canvasHeight }}>
             <svg className="graph-edges" width={canvasWidth} height={canvasHeight} aria-hidden="true">
@@ -137,7 +154,23 @@ export default function WorkspaceGraphView({ graph, loadMemories }: Props) {
             </div>
           )}
         </aside>
-      </div>
+      </div> : <div className="graph-accessible-list" role="list" aria-label="Project files and relationships">
+        {filteredFiles.map((file) => {
+          const relationships = edgesByNode.get(file.id) ?? [];
+          return <article className="graph-list-item" role="listitem" key={file.id}>
+            <button className="graph-list-file" type="button" aria-pressed={file.id === selectedId} onClick={() => void selectNode(file)}>
+              <span>{file.language || "source"}</span><strong>{file.path}</strong>
+            </button>
+            {relationships.length > 0 ? <ul aria-label={`Relationships for ${file.path}`}>
+              {relationships.map((edge) => {
+                const otherId = edge.source === file.id ? edge.target : edge.source;
+                const other = nodeById.get(otherId);
+                return <li key={edge.id}><span>{edge.kind.replaceAll("_", " ")} · {edge.certainty}:</span> <code>{other?.path ?? other?.label ?? otherId}</code></li>;
+              })}
+            </ul> : <p>No relationships in this map.</p>}
+          </article>;
+        })}
+      </div>}
       <div className="graph-legend" aria-label="Project map legend">
         <span><i className="legend-dot observed" /> observed containment</span>
         <span><i className="legend-line candidate" /> candidate import or lineage</span>

@@ -2,7 +2,9 @@
   "bundle": {
     "active": true,
     "targets": "all",
-    "resources": ["resources/aegis-desktop-service*"],
-    "icon": ["icons/icon.ico"]
+    "resources": {
+      "resources/aegis-desktop-service*": "resources/",
+      "../THIRD_PARTY_NOTICES.md": "THIRD_PARTY_NOTICES.md"
+    }
   }
 }

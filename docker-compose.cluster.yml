@@ -1,24 +1,15 @@
 version: "3.8"
 
-# AEGIS-COGNITION real multi-machine cluster soak test topology.
+# Single-host Docker bridge topology for local worker smoke tests.
 #
-# Goal: 1 coordinator + 3 workers on a Docker bridge network with
-# statically-assigned IPv4 addresses so the orchestrator can address
-# each worker over a real non-loopback interface. Network packets
-# traverse the bridge (with real RTT in the 0.1-2 ms range), so this
-# satisfies the "real_multi_machine_cluster_soak" admission contract
-# without needing physical hosts.
+# The coordinator and all workers run under one Docker engine. This
+# exercises container-to-container TCP over a bridge; it does not prove
+# cross-host behavior or satisfy the NV-016 multi-machine soak contract.
 #
 # Usage:
-#   docker compose -f docker-compose.cluster.yml up -d --build
-#   # (record worker IPs with: docker network inspect aegis-cluster)
-#   export AEGIS_REAL_MULTI_MACHINE_CLUSTER_ENDPOINTS_JSON='[
-#     {"machine_id":"worker-1","host":"172.20.0.11","port":9000},
-#     {"machine_id":"worker-2","host":"172.20.0.12","port":9000},
-#     {"machine_id":"worker-3","host":"172.20.0.13","port":9000}
-#   ]'
-#   cd /c/Users/ADMIN/AEGIS-COGNITION
-#   python scripts/tcp_cluster_soak_gate.py --write-capture
+#   docker compose -p aegis-cluster-test -f docker-compose.cluster.yml up -d --build
+#   docker network inspect aegis-cluster-test_aegis-cluster
+# Run --write-capture only with endpoints on separate, verified hosts.
 
 networks:
   aegis-cluster:

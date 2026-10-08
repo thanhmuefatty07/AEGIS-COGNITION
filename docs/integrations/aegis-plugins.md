@@ -13,6 +13,28 @@ testable local cores:
 - `aegis-evidence`: evidence binding and tamper-evident audit chain.
 - `aegis-bench`: plugin performance gate model.
 
+## Runtime connection
+
+Being a Cargo workspace member does not make a crate an agent capability. The
+crates above are currently standalone Rust libraries; the desktop and Python
+product runtime do not automatically discover, load, or expose them as tools.
+In particular, crate tests prove those libraries in isolation, not their use by
+an agent.
+
+The product's current extension path is owned by
+`aegis_cognition.extensions.ExtensionRegistry` and its host wiring:
+
+- host tools and enabled Markdown skills are described and dispatched through
+  the registry and existing Lab execution path;
+- approved MCP connections are host-managed adapters;
+- executable extension packages are limited to explicitly approved,
+  compute-only WASM modules.
+
+The standalone crates should be connected only through a concrete adapter that
+preserves those owners' validation, authorization, resource limits, and tests.
+Do not duplicate an existing runtime capability or describe a workspace-only
+crate as integrated until an end-to-end test proves the product can call it.
+
 ## Security Notes
 
 The sandbox crate currently enforces a portable policy validator and state root.
@@ -34,10 +56,11 @@ cargo clippy --workspace --all-targets -- -D warnings
 cargo bench -p aegis-search-sdk --bench search_bench
 ```
 
-## Example Flow
+## Standalone crate example (not product-integrated)
 
 1. Build a `Pipeline` in `aegis-search-sdk`.
 2. Persist candidates through `SandboxStateStore`.
-3. Execute restricted code through `SandboxRuntime`.
+3. Validate source policy through `SandboxRuntime` with `PolicyOnlyBackend`;
+   this does not execute code or provide OS isolation.
 4. Search local artifacts through `EvidenceSearch`.
 5. Bind verified evidence with `EvidenceStore`.

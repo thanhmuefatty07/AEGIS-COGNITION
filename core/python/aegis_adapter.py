@@ -2,9 +2,10 @@ from __future__ import annotations
 
 import asyncio
 import inspect
-import json
 from collections.abc import Callable, Mapping
 from pathlib import Path
+from queue import Empty, SimpleQueue
+from types import SimpleNamespace
 from typing import Any
 
 try:
@@ -34,6 +35,7 @@ try:
         ProviderRateLimitError,
         ProviderRouteRecord,
         TrustPolicySnapshot,
+        normalize_correlation as _normalize_correlation,
     )
     from .aegis.hashing import stable_hash as _stable_hash, stable_u128 as _stable_u128
     from .aegis.discovery import DiscoveryError, DiscoveryResponse, discover_connection_models
@@ -59,6 +61,7 @@ try:
     from .aegis.evidence import (
         commit_hot_evidence,
         commit_hot_evidence_batch,
+        gateway_evidence_payload as _evidence_payload,
         normalize_trust_level as _normalize_trust_level,
         trust_policy_snapshot,
     )
@@ -70,6 +73,7 @@ try:
         provider_name as _provider_name,
         task_from_runnable_input as _task_from_runnable_input,
     )
+    from .aegis.cache_economics import CacheObservation, CachePromptPlan, extract_cache_usage
 except ImportError:
     from aegis.contracts import (
         AegisBrowserActionResult,
@@ -81,6 +85,7 @@ except ImportError:
         ProviderRateLimitError,
         ProviderRouteRecord,
         TrustPolicySnapshot,
+        normalize_correlation as _normalize_correlation,
     )
     from aegis.hashing import stable_hash as _stable_hash, stable_u128 as _stable_u128
     from aegis.discovery import DiscoveryError, DiscoveryResponse, discover_connection_models
@@ -106,6 +111,7 @@ except ImportError:
     from aegis.evidence import (
         commit_hot_evidence,
         commit_hot_evidence_batch,
+        gateway_evidence_payload as _evidence_payload,
         normalize_trust_level as _normalize_trust_level,
         trust_policy_snapshot,
     )
@@ -117,6 +123,7 @@ except ImportError:
         provider_name as _provider_name,
         task_from_runnable_input as _task_from_runnable_input,
     )
+    from aegis.cache_economics import CacheObservation, CachePromptPlan, extract_cache_usage
 
 
 class AegisAdapter:
@@ -138,6 +145,9 @@ class AegisAdapter:
         telemetry: Any = None,
         provider_attempt_hook: Callable[[str, Mapping[str, Any]], Any] | None = None,
         provider_egress_check: Callable[[str], Any] | None = None,
+        cache_first_prompts: bool = True,
+        cache_namespace: str | None = None,
+        cache_prompt_ttl: str | None = None,
         **_: Any,
     ) -> None:
         self.task = task
@@ -155,6 +165,11 @@ class AegisAdapter:
         self.telemetry = telemetry
         self.provider_attempt_hook = provider_attempt_hook
         self.provider_egress_check = provider_egress_check
+        if type(cache_first_prompts) is not bool:
+            raise ValueError("cache_first_prompts must be boolean")
+        self.cache_first_prompts = cache_first_prompts
+        self.cache_namespace = cache_namespace or "local-profile"
+        self.cache_prompt_ttl = cache_prompt_ttl
         self.provider_budgets = _normalize_provider_budgets(
             provider_budgets,
             required_tokens=self.required_tokens,
@@ -163,6 +178,10 @@ class AegisAdapter:
         self.last_result: AegisRunResult | None = None
         self.last_results: tuple[AegisRunResult, ...] = ()
         self.last_batch_results: tuple[AegisRunResult, ...] = ()
+        # Provider cache state is an observation only.  The adapter never
+        # treats a cache hit as an authoritative answer or durable memory.
+        self.last_cache_observation: CacheObservation | None = None
+        self.last_cache_prompt: CachePromptPlan | None = None
 
     def _emit(self, kind: str, outcome: str) -> None:
         """Emit observation-only telemetry without changing gateway authority."""
@@ -186,6 +205,33 @@ class AegisAdapter:
         attempt_hook = kwargs.pop("_provider_attempt_hook", self.provider_attempt_hook)
         attempt_context = kwargs.pop("_provider_attempt_context", None)
         egress_check = kwargs.pop("_provider_egress_check", self.provider_egress_check)
+        kwargs.pop("_aegis_usage_observer", None)
+        result_usage_observer = kwargs.pop("_aegis_result_usage_observer", None)
+        if result_usage_observer is not None and not callable(result_usage_observer):
+            raise TypeError("_aegis_result_usage_observer must be callable")
+
+        system_context = kwargs.get("system_context")
+        cache_plan: CachePromptPlan | None = None
+        if self.cache_first_prompts and isinstance(system_context, str):
+            cache_plan = CachePromptPlan.from_parts(
+                provider=str(self.provider or _provider_name(self.llm) or "unknown"),
+                model=self.model,
+                namespace=str(self.cache_namespace),
+                stable_prefix=system_context,
+                dynamic_suffix=effective_task,
+                prompt_cache_ttl=self.cache_prompt_ttl,
+            )
+            kwargs["system_context"] = cache_plan.stable_prefix
+            kwargs["_aegis_cache_plan"] = cache_plan
+            self.last_cache_prompt = cache_plan
+            self._emit("provider", "cache_prefix_ready")
+        else:
+            self.last_cache_prompt = None
+
+        provider_usage_reports: SimpleQueue[Mapping[str, Any]] = SimpleQueue()
+
+        def observe_provider_usage(usage: Mapping[str, Any]) -> None:
+            provider_usage_reports.put(usage)
 
         self._emit("provider", "request_started")
         output, provider, provider_route, provider_budget = await _invoke_with_provider_route(
@@ -199,8 +245,39 @@ class AegisAdapter:
             attempt_hook=attempt_hook,
             attempt_context=attempt_context,
             egress_check=egress_check,
+            _aegis_usage_observer=observe_provider_usage,
             **kwargs,
         )
+        try:
+            usage_source: object = provider_usage_reports.get_nowait()
+        except Empty:
+            usage_source = output
+        system_context = kwargs.get("system_context")
+        selected_prefix_hash = (
+            cache_plan.for_provider(str(provider or self.provider or "unknown"), self.model).prefix_hash
+            if cache_plan is not None
+            else None
+        )
+        prefix_hash = (
+            selected_prefix_hash
+            if isinstance(system_context, str)
+            else None
+        )
+        usage = extract_cache_usage(usage_source)
+        self.last_cache_observation = CacheObservation.now(
+            provider=str(provider or self.provider or "unknown"),
+            model=self.model,
+            prefix_hash=prefix_hash,
+            usage=usage,
+        )
+        if callable(result_usage_observer):
+            result_usage_observer(
+                {
+                    "input_tokens": usage.input_tokens,
+                    "output_tokens": usage.output_tokens,
+                }
+            )
+        self._emit("provider", f"cache_{self.last_cache_observation.usage.cache_status.lower()}")
         self._emit(
             "provider",
             "fallback_succeeded" if provider_route.fallback_used else "request_succeeded",
@@ -243,6 +320,25 @@ class AegisAdapter:
         self.last_result = result
         self.last_results = (*self.last_results, result)
         return result.output
+
+    async def ainvoke_with_usage(self, input: Any = None, **kwargs: Any) -> Any:
+        """Return one invocation's output and usage without reading shared last-call state."""
+
+        if "_aegis_result_usage_observer" in kwargs:
+            raise TypeError("_aegis_result_usage_observer is reserved for internal invocation tracking")
+        task = _task_from_runnable_input(input, self.task)
+        usage_reports: list[Mapping[str, int]] = []
+        result = await self.run(
+            task,
+            _aegis_result_usage_observer=usage_reports.append,
+            **kwargs,
+        )
+        self.last_result = result
+        self.last_results = (*self.last_results, result)
+        return SimpleNamespace(
+            output=result.output,
+            usage=(usage_reports[-1] if usage_reports else {}),
+        )
 
     def invoke(self, input: Any = None, **kwargs: Any) -> Any:
         try:
@@ -399,27 +495,6 @@ class AegisAdapter:
 Agent = AegisAdapter
 
 
-def _normalize_correlation(value: Any) -> dict[str, Any] | None:
-    if value is None:
-        return None
-    if hasattr(value, "as_mapping"):
-        value = value.as_mapping()
-    if not isinstance(value, Mapping):
-        raise TypeError("correlation must be a mapping or expose as_mapping()")
-    normalized = dict(value)
-    required = ("mission_id", "task_id", "run_id", "attempt_id")
-    if not isinstance(normalized.get("mission_id"), str) or not normalized["mission_id"].strip():
-        raise ValueError("correlation mission_id must be non-empty")
-    for key in required[1:]:
-        raw = normalized.get(key)
-        if not isinstance(raw, int) or isinstance(raw, bool) or raw < 1:
-            raise ValueError(f"correlation {key} must be a positive integer")
-    lease_id = normalized.get("lease_id")
-    if lease_id is not None and (not isinstance(lease_id, int) or isinstance(lease_id, bool) or lease_id < 1):
-        raise ValueError("correlation lease_id must be null or a positive integer")
-    return normalized
-
-
 def _bind_browser_action(action: Any, browser_session: Any) -> Any:
     if not callable(action):
         raise TypeError("browser action must be callable")
@@ -504,38 +579,6 @@ def _browser_hot_first_action_result(
         browser_action_result_hash=_stable_hash(payload),
         truth_claim=False,
     )
-
-
-def _evidence_payload(
-    task: str,
-    output: Any,
-    model: str | None,
-    provider: str | None,
-    trust_policy: TrustPolicySnapshot,
-    provider_route: ProviderRouteRecord,
-    provider_budget: ProviderBudgetEvidence,
-) -> bytes:
-    return json.dumps(
-        {
-            "schema": "aegis-friendly-gateway-evidence-v1",
-            "task": task,
-            "output": output,
-            "model": model,
-            "provider": provider,
-            "trust_policy_hash": trust_policy.trust_policy_hash,
-            "trust_missing_artifact_policy": trust_policy.missing_artifact_policy,
-            "provider_route_hash": provider_route.route_hash,
-            "provider_fallback_used": provider_route.fallback_used,
-            "provider_throttled_count": provider_route.throttled_provider_count,
-            "provider_budget_hash": provider_budget.budget_evidence_hash,
-            "provider_budgeted": provider_budget.budgeted,
-            "provider_budget_skipped_count": len(provider_budget.skipped_providers),
-            "provider_egress_denied": provider_route.egress_denied_providers,
-        },
-        sort_keys=True,
-        separators=(",", ":"),
-        default=str,
-    ).encode("utf-8")
 
 
 class AegisAgent(AegisAdapter):

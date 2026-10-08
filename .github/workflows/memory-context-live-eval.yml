@@ -95,10 +95,4 @@ jobs:
           if [[ "$EVAL_DRY_RUN" == "true" ]]; then
             eval_args+=(--dry-run)
           fi
-          uv run --no-project --no-sync --locked --extra all --extra dev python scripts/memory_context_live_eval.py "${eval_args[@]}"
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
-        if: always()
-        with:
-          name: memory-context-live-eval-${{ github.sha }}
-          path: artifacts/memory-context-live-eval.json
-          if-no-files-found: error
+          uv run --no-project --no-sync --locked --extra all --extra dev python scripts/memory_context_live_eval.py "${eval_args[@]}" > artifacts/memory-context-live-eval.console.log 2>&1

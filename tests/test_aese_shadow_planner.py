@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import scripts.aese_shadow_planner as shadow_planner
 
 import pytest
 
@@ -124,6 +125,15 @@ def test_no_legacy_results_cannot_be_reported_as_observed_zero() -> None:
     assert plan["confusion_matrix"]["status"] == "NOT_MEASURED"
     assert plan["observed_critical_false_negative_status"] == "NOT_MEASURED"
     assert plan["observed_critical_false_negative_status"] != "OBSERVED_COMPLETE_ZERO"
+
+
+def test_environment_fingerprint_ignores_private_interpreter_directory(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(shadow_planner.sys, "executable", "/agent/one/python")
+    first = build_shadow_plan(["core/rust/src/gt96.rs"])
+    monkeypatch.setattr(shadow_planner.sys, "executable", "/agent/two/python")
+    second = build_shadow_plan(["core/rust/src/gt96.rs"])
+
+    assert first["provenance"]["environment_hash"] == second["provenance"]["environment_hash"]
 
 
 @pytest.mark.parametrize("bad_state", ["RUN", "SKIP", "opaque_score"])

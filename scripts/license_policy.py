@@ -14,6 +14,12 @@ METADATA_FILES = (
     ROOT / "pyproject.toml",
     ROOT / "core" / "python" / "pyproject.toml",
     ROOT / "core" / "rust" / "Cargo.toml",
+    ROOT / "aegis-plugins" / "aegis-search-sdk" / "Cargo.toml",
+    ROOT / "aegis-plugins" / "aegis-browser" / "Cargo.toml",
+    ROOT / "aegis-plugins" / "aegis-sandbox" / "Cargo.toml",
+    ROOT / "aegis-plugins" / "aegis-skills" / "Cargo.toml",
+    ROOT / "aegis-plugins" / "aegis-evidence" / "Cargo.toml",
+    ROOT / "aegis-plugins" / "aegis-bench" / "Cargo.toml",
 )
 
 

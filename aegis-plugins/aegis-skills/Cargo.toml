@@ -4,6 +4,7 @@ version = "0.1.0"
 edition = "2024"
 rust-version.workspace = true
 publish = false
+license-file = "../../LICENSE.txt"
 description = "AEGIS markdown skill registry"
 
 [lib]

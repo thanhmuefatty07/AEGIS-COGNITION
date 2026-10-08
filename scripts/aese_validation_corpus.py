@@ -135,16 +135,14 @@ def _declared_runtime_contract() -> dict[str, str]:
 def _artifact_provenance(subject: object) -> dict[str, object]:
     source_sha = str(_planner._inventory.build_inventory()["source_head"])
     # Reproducibility is keyed to the declared runtime contract, not to the
-    # host or interpreter version that generated the artifact. OS/kernel
-    # details, interpreter versions, and absolute paths remain useful
-    # observations but would make an identical artifact from Windows, Linux,
-    # macOS, and supported Python versions unverifiable.
+    # host that generated the artifact. Keep useful host metadata without
+    # recording the machine-specific interpreter path.
     environment = _declared_runtime_contract()
     host_observation = {
         "os": platform.system(),
         "release": platform.release(),
         "machine": platform.machine(),
-        "executable": sys.executable,
+        "executable": Path(sys.executable).name,
     }
     return {
         "artifact_source_sha": source_sha,

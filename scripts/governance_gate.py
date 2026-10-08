@@ -3,7 +3,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 
-ROOT = Path(r"c:\Users\ADMIN\AEGIS-COGNITION")
+ROOT = Path(__file__).resolve().parents[1]
 ARTIFACTS_DIR = ROOT / "artifacts"
 REPORT_PATH = ARTIFACTS_DIR / "governance_gate_report.json"
 
@@ -12,7 +12,7 @@ REQUIRED_DEPENDENCIES = {
     "arrow-buffer": "54",
     "blake3": "1.5.0",
     "pyo3": "0.29.2",
-    "wasmtime": "47.0.4",
+    "wasmtime": "48.0.4",
 }
 GOVERNANCE_DOMAINS = [
     "runtime",

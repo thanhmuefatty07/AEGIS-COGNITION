@@ -7,7 +7,9 @@ benchmarking, and evidence verification.
 
 - `aegis-search-sdk`: programmable search primitives and pipeline execution.
 - `aegis-browser`: browser automation abstractions with CDP-oriented interfaces.
-- `aegis-sandbox`: restricted Python execution policy and filesystem state manager.
+- `aegis-sandbox`: Python source-policy validation and filesystem state storage.
+  Its `PolicyOnlyBackend` does not execute code or provide OS-level isolation;
+  a real execution backend must supply those guarantees separately.
 - `aegis-skills`: markdown skill registry and task-based selection.
 - `aegis-evidence`: evidence binding and tamper-evident audit chain.
 - `aegis-bench`: benchmark gate data structures and report validation.

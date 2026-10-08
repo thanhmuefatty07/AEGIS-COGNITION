@@ -2,7 +2,7 @@
 Friendly error messages for AEGIS-COGNITION.
 
 Transforms internal cryptographic/architectural errors into
-actionable, user-friendly guidance — like Hermes and Cursor do.
+actionable, user-friendly guidance without exposing internal implementation details.
 
 Design principles:
     1. What happened (in plain English)

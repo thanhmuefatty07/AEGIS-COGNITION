@@ -27,6 +27,19 @@ class ChatGPTWebUnavailableError(RuntimeError):
     """Raised when the local bridge is not reachable or not configured."""
 
 
+class _ResponseText(str):
+    """String-compatible output that preserves provider usage for the gateway."""
+
+    usage: Any
+    usage_metadata: Any
+
+    def __new__(cls, text: str, response: Any) -> _ResponseText:
+        instance = str.__new__(cls, text)
+        instance.usage = getattr(response, "usage", None)
+        instance.usage_metadata = getattr(response, "usage_metadata", None)
+        return instance
+
+
 @dataclass(frozen=True)
 class ChatGPTWebConfig:
     """Validated configuration for a loopback-only bridge connection."""
@@ -93,6 +106,7 @@ class ChatGPTWebClient:
     """LangChain-compatible text client backed by the local Responses bridge."""
 
     requires_api_key = False
+    supports_prompt_cache_controls = True
 
     def __init__(self, config: ChatGPTWebConfig | None = None, *, client: Any = None) -> None:
         self._config = config or ChatGPTWebConfig.from_env()
@@ -142,7 +156,16 @@ class ChatGPTWebClient:
         """Run one text turn through the selected account-eligible Web model."""
 
         instructions = kwargs.pop("instructions", kwargs.pop("system_context", None))
-        allowed = {"max_output_tokens", "temperature", "top_p", "reasoning", "previous_response_id"}
+        allowed = {
+            "max_output_tokens",
+            "temperature",
+            "top_p",
+            "reasoning",
+            "previous_response_id",
+            "prompt_cache_key",
+            "prompt_cache_options",
+            "prompt_cache_retention",
+        }
         request_options = {key: kwargs.pop(key) for key in tuple(kwargs) if key in allowed}
         # AEGIS orchestration metadata (for example ``mode``) is not a Responses
         # field.  It must not leak into the external request or fail a compatible
@@ -166,7 +189,7 @@ class ChatGPTWebClient:
         text = _response_text(response)
         if not text:
             raise ChatGPTWebUnavailableError("ChatGPT Web bridge returned no output text")
-        return text
+        return _ResponseText(text, response)
 
     async def ainvoke(self, prompt: str, **kwargs: Any) -> str:
         """Async compatibility wrapper used by the AEGIS provider router."""
