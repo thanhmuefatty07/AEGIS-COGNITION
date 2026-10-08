@@ -53,6 +53,7 @@ def test_desktop_bundle_includes_regex_license_notice() -> None:
     resources = bundle["bundle"]["resources"]
     assert resources["resources/aegis-desktop-service*"] == "resources/"
     assert resources["../THIRD_PARTY_NOTICES.md"] == "THIRD_PARTY_NOTICES.md"
+    assert resources["../node_modules/lucide-react/LICENSE"] == "THIRD_PARTY_LICENSES/lucide-react-LICENSE"
 
     notices = (ROOT / "desktop" / "THIRD_PARTY_NOTICES.md").read_text(encoding="utf-8")
     assert "regex==2026.9.29" in notices

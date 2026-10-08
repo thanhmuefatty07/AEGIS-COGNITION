@@ -5,7 +5,7 @@ use std::collections::HashSet;
 use std::env;
 use std::fs;
 use std::io::{BufReader, Read, Write};
-use std::path::{Path, PathBuf};
+use std::path::{Component, Path, PathBuf};
 use std::process::{Child, ChildStdin, ChildStdout, Command, Stdio};
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Mutex;
@@ -62,6 +62,14 @@ impl WorkspaceAuthority {
 
     fn authorize_destination(&self, raw_path: &str) -> Result<(), String> {
         let mut candidate = PathBuf::from(raw_path);
+        if candidate
+            .components()
+            .any(|component| matches!(component, Component::ParentDir))
+        {
+            return Err(
+                "clone destination must not contain parent-directory components".to_string(),
+            );
+        }
         while !candidate.exists() {
             if !candidate.pop() {
                 return Err("clone destination is not inside an approved folder".to_string());
@@ -641,6 +649,17 @@ mod tests {
         assert!(authority
             .authorize_destination(&approved.join("new-project").to_string_lossy())
             .is_ok());
+        let traversal = approved
+            .join("missing")
+            .join("..")
+            .join("..")
+            .join("sibling")
+            .join("new-project");
+        #[cfg(windows)]
+        let traversal = PathBuf::from(format!(r"\\?\{}", traversal.to_string_lossy()));
+        assert!(authority
+            .authorize_destination(&traversal.to_string_lossy())
+            .is_err());
         assert!(authority
             .authorize_existing(&sibling.to_string_lossy())
             .is_err());

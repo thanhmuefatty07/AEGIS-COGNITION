@@ -4,7 +4,8 @@
     "targets": "all",
     "resources": {
       "resources/aegis-desktop-service*": "resources/",
-      "../THIRD_PARTY_NOTICES.md": "THIRD_PARTY_NOTICES.md"
+      "../THIRD_PARTY_NOTICES.md": "THIRD_PARTY_NOTICES.md",
+      "../node_modules/lucide-react/LICENSE": "THIRD_PARTY_LICENSES/lucide-react-LICENSE"
     }
   }
 }
