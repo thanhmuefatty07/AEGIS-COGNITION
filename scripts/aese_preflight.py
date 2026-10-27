@@ -73,7 +73,7 @@ def _git_ref(ref: str) -> str:
             capture_output=True,
             text=True,
         ).stdout.strip()
-    except (OSError, subprocess.CalledProcessError):
+    except OSError, subprocess.CalledProcessError:
         return "NOT_AVAILABLE"
 
 
@@ -132,9 +132,7 @@ def build_preflight(changed_paths: list[str] | tuple[str, ...] = ()) -> dict[str
         and any(str(source_path) in paths for source_path in contract["source_paths"])
     }
     affected_invariants = {
-        target
-        for contract_id in affected_contracts
-        for target in relation.get((contract_id, "GUARDS"), set())
+        target for contract_id in affected_contracts for target in relation.get((contract_id, "GUARDS"), set())
     }
     affected_verifications = {
         target

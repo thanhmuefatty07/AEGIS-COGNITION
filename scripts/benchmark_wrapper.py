@@ -2,8 +2,8 @@ import json
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-ARTIFACTS_DIR = ROOT / 'artifacts'
-REPORT_PATH = ARTIFACTS_DIR / 'benchmark_preflight_report.json'
+ARTIFACTS_DIR = ROOT / "artifacts"
+REPORT_PATH = ARTIFACTS_DIR / "benchmark_preflight_report.json"
 
 
 def main() -> int:
@@ -17,19 +17,19 @@ def main() -> int:
 
     preflight = check_build_preflight(str(ROOT))
     report = {
-        'cargo_present': preflight.cargo_present,
-        'rustc_present': preflight.rustc_present,
-        'rust_toolchain_present': preflight.rust_toolchain_present,
-        'python_bridge_present': preflight.python_bridge_present,
-        'rust_core_present': preflight.rust_core_present,
-        'ready_to_benchmark': preflight.ready_to_benchmark,
+        "cargo_present": preflight.cargo_present,
+        "rustc_present": preflight.rustc_present,
+        "rust_toolchain_present": preflight.rust_toolchain_present,
+        "python_bridge_present": preflight.python_bridge_present,
+        "rust_core_present": preflight.rust_core_present,
+        "ready_to_benchmark": preflight.ready_to_benchmark,
     }
 
     ARTIFACTS_DIR.mkdir(parents=True, exist_ok=True)
-    REPORT_PATH.write_text(json.dumps(report, indent=2, sort_keys=True), encoding='utf-8')
+    REPORT_PATH.write_text(json.dumps(report, indent=2, sort_keys=True), encoding="utf-8")
     print(json.dumps(report, indent=2, sort_keys=True))
     return 0 if preflight.ready_to_benchmark else 1
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     raise SystemExit(main())

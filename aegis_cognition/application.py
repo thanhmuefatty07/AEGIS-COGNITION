@@ -6,6 +6,7 @@ import asyncio
 import inspect
 import json
 import math
+import os
 import re
 import threading
 import time
@@ -51,6 +52,7 @@ from .verification import (
     run_local_verification_command,
 )
 from .verification.discovery import workspace_change_paths
+from .verification.execution import run_local_verification_command_async
 
 try:
     from core.python.aegis.conversations import ConversationManager
@@ -232,7 +234,6 @@ class AgentApplication:
                 rag_manager.retrieve_candidates(task)
                 if rag_manager.retrieval_error is not None:
                     self.telemetry.emit("memory", "retrieval_degraded", correlation=self.correlation)
-                    return ""
                 active_memories = rag_manager.retrieve_active_memories(task)
                 if rag_manager.memory_error is not None:
                     self.telemetry.emit("memory", "active_memory_retrieval_degraded", correlation=self.correlation)
@@ -243,16 +244,36 @@ class AgentApplication:
             if not isinstance(raw_mandatory, list | tuple):
                 raise ValueError("mandatory_session_ids must be a list or tuple")
             mandatory_values = cast(list[Any] | tuple[Any, ...], raw_mandatory)
-            compiled = rag_manager.compile_context(
-                task,
-                scope_kind=str(options.get("memory_scope", "USER_PRIVATE")),
-                owner_id=options.get("memory_owner_id"),
-                token_budget=raw_budget,
-                mandatory_session_ids=tuple(int(value) for value in mandatory_values),
-                include_session_context=raw_hydrate_context,
-                include_active_memory=raw_hydrate_memory,
-                active_memories=active_memories,
-            )
+            mandatory_ids = tuple(int(value) for value in mandatory_values)
+            try:
+                compiled = rag_manager.compile_context(
+                    task,
+                    scope_kind=str(options.get("memory_scope", "USER_PRIVATE")),
+                    owner_id=options.get("memory_owner_id"),
+                    token_budget=raw_budget,
+                    mandatory_session_ids=mandatory_ids,
+                    include_session_context=raw_hydrate_context,
+                    include_active_memory=raw_hydrate_memory,
+                    active_memories=active_memories,
+                )
+            except Exception as error:
+                if getattr(error, "code", None) == "RETRIEVAL_UNAVAILABLE" and raw_hydrate_memory and not mandatory_ids:
+                    self.telemetry.emit("memory", "retrieval_degraded", correlation=self.correlation)
+                    active_memories = rag_manager.retrieve_active_memories(task)
+                    if rag_manager.memory_error is not None:
+                        self.telemetry.emit("memory", "active_memory_retrieval_degraded", correlation=self.correlation)
+                    compiled = rag_manager.compile_context(
+                        task,
+                        scope_kind=str(options.get("memory_scope", "USER_PRIVATE")),
+                        owner_id=options.get("memory_owner_id"),
+                        token_budget=raw_budget,
+                        mandatory_session_ids=(),
+                        include_session_context=False,
+                        include_active_memory=True,
+                        active_memories=active_memories,
+                    )
+                else:
+                    raise
             if compiled.status == "compiled":
                 self.telemetry.emit("memory", "context_hydrated", correlation=self.correlation)
             return compiled.rendered
@@ -576,13 +597,16 @@ class AgentApplication:
             raise VerificationSessionError("AESE local command payload is invalid") from error
         if command is None or normalized_input.as_dict() != command.as_dict():
             raise VerificationSessionError("AESE local command is not an admitted command")
-        runner = ProcessExecutionCell(
-            run_local_verification_command,
-            timeout_seconds=min(3_600.0, command.timeout_seconds + 5.0),
-        )
         lab_run = kwargs.get("run")
         try:
-            raw_result = await runner(command.as_dict())
+            if os.name == "nt":
+                runner = ProcessExecutionCell(
+                    run_local_verification_command,
+                    timeout_seconds=min(3_600.0, command.timeout_seconds + 5.0),
+                )
+                raw_result = await runner(command.as_dict())
+            else:
+                raw_result = await run_local_verification_command_async(command.as_dict())
             if not isinstance(raw_result, Mapping):
                 raise VerificationSessionError("AESE local runner returned a malformed result")
             result = dict(cast(Mapping[str, object], raw_result))
@@ -624,6 +648,7 @@ class AgentApplication:
             "working_directory": command.working_directory,
             "environment_fingerprint": dict(command.environment),
             "timeout_seconds": command.timeout_seconds,
+            "cancellation_requested": status == "CANCELLED",
             "exit_semantics": type(error).__name__ if error is not None else status,
             "status": status,
             "detail": str(error)[:256] if error is not None else status,

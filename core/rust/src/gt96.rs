@@ -1817,6 +1817,22 @@ mod tests {
     fn progress_cannot_be_verified_without_validated_evidence_and_closes_explicitly() {
         let current = contract();
         let mut ledger = ProgressLedger::new(&current);
+        let metadata_only = ArtifactRef::validated(
+            "gt96-tests",
+            [7; 32],
+            "test-report-v1",
+            "local",
+            1,
+            b"metadata only",
+        )
+        .unwrap();
+        assert_eq!(
+            ledger.mark_verified("c1", metadata_only),
+            Err(ContractError::InvalidEvidence)
+        );
+        assert_eq!(ledger.status("c1"), Some(CriterionStatus::Open));
+        assert!(ledger.evidence("c1").is_none());
+
         ledger.mark_in_progress("c1").unwrap();
         assert_eq!(ledger.status("c1"), Some(CriterionStatus::InProgress));
         ledger.mark_verified("c1", evidence("c1")).unwrap();

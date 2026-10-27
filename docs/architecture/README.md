@@ -24,8 +24,6 @@ The current closure slice includes the Rust resource contract, fenced runtime,
 bounded execution primitives, and opt-in Linux/Windows OS adapters. It still
 does not certify production readiness, cross-host benchmark superiority, or
 that a platform adapter is active merely because it is compiled.
-Governance coverage is organized across runtime, evidence, security, evaluation,
-and product domains.
 
 The product-facing platform policy is in
 [`PORTABILITY.md`](PORTABILITY.md). The initial reference environment is Ubuntu
@@ -70,10 +68,10 @@ and unresolved closure work is retained in
 
 ## Local-only evidence
 
-Raw benchmark runs, empirical research records, generated architecture packs,
-and host-specific probe outputs are private project material. They are retained
-in the local cleanup archive and are intentionally excluded from the tracked
-tree and published Git history. The collector sources remain available for
+Raw benchmark runs, unreviewed research captures, generated architecture packs,
+and host-specific probe outputs stay private and out of published history.
+Curated decision records with active contracts stay in docs until their
+consumers have a canonical replacement. The collector sources remain available for
 reproducible local generation:
 
 - `empirical-research/collect.py`
@@ -85,10 +83,23 @@ The collectors write generated outputs to a local-only evidence directory; an
 output is not architecture authority until it is reconciled with the canonical
 plan, contracts, ADRs, and tracked verification registry.
 
-The retained decision input for the local-first Memory Agent is
-[`MEMORY_AGENT_LIVING_WORKSPACE_RESEARCH.md`](MEMORY_AGENT_LIVING_WORKSPACE_RESEARCH.md).
-It covers token-bounded context and an evidence-backed project graph informed
-by external research.
+## AESE capability
+
+`AESE_INTEGRATED_DEVELOPMENT_CAPABILITY_PLAN.md` is the proposed capability
+plan; `AESE_IMPLEMENTED_VERTICAL_SLICE.md` records the implemented slice and
+its limits. That slice remains shadow-only and uses existing Lab execution
+authority; these documents do not promote test-skipping, evidence promotion, or
+release status.
+
+## Memory Agent and Living Workspace
+
+The product contract, implementation sequence, and acceptance gates are in the
+Personal Code Map plan below. The Personal Diagram Workspace plan resolves its
+layout decisions, while
+[`desktop-workbench.md`](../design/desktop-workbench.md) records current UI
+behavior and dated evidence. Use those current authorities and the verification
+index for product behavior and measured claims; historical research captures do
+not define the current contract.
 
 The subagent decision and protocol are recorded in
 [`AGENT_SUBAGENT_RUNTIME_DESIGN.md`](AGENT_SUBAGENT_RUNTIME_DESIGN.md) and
@@ -100,7 +111,6 @@ agent controls, implementation sequence and acceptance gates are in
 The project-map-first layout revision, actor avatars, interaction contracts and
 design-only sketches are in
 [`personal-diagram-workspace-design-plan.md`](personal-diagram-workspace-design-plan.md).
-Design intent is documented in the linked proposals.
 Exploratory images, prototypes and exports are archived outside this public repository;
 product behavior and token savings require implementation and measurement.
 

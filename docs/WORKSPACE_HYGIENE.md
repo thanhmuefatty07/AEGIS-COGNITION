@@ -25,6 +25,13 @@ temporary root must use a unique path such as
 `.local/tmp/evaluator/20260912T120000Z-<run-id>` and must record the path in its
 report. Concurrent pytest runs must never share a basetemp directory.
 
+Playwright E2E runs use a UUID-named directory under
+`.local/tmp/evaluator/`. The default single-project run may remove only its
+exact generated root after Playwright reports `passed` and completes the
+reporter lifecycle. Keep output from failed, timed-out, or interrupted runs for
+diagnosis. Caller-provided `--output` paths, nested overrides, and multi-project
+outputs are caller-owned and must not be cleaned by the default reporter.
+
 Pytest and Ruff caches are configured under `.local/cache/`. Build output such as
 `.venv/` and `target/` is disposable machine state and must remain ignored. Do not
 commit cache files, basetemp contents, logs, lock files, or one-off helper scripts.

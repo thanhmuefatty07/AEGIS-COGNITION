@@ -1,9 +1,11 @@
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 from tempfile import TemporaryDirectory
+from http.server import BaseHTTPRequestHandler, HTTPServer
 import asyncio
 import hashlib
 import json
 import os
+import socket
 import struct
 import sys
 import threading
@@ -56,11 +58,26 @@ from .orchestrator import build_message, to_zero_copy, validate_runtime_message
 from .integration import build_bridge_message, validate_bridge_batch, validate_bridge_contract, validate_bridge_smoke
 from .preflight import check_build_preflight
 from .service import ExternalServiceManifest, build_service_manifest
-from .operator_api import OperatorEvidenceApi, build_operator_evidence_snapshot, resolve_operator_root, serve_operator_evidence_api
+from .operator_api import (
+    OperatorEvidenceApi,
+    build_operator_evidence_snapshot,
+    resolve_operator_root,
+    serve_operator_evidence_api,
+)
 from scripts.dependency_audit_gate import evaluate_dependency_audit_gate
-from scripts.dynamic_provider_fallback_gate import evaluate_dynamic_provider_fallback_gate, write_live_provider_429_soak_capture
+from scripts import dynamic_provider_fallback_gate as dynamic_provider_gate
+from scripts.dynamic_provider_fallback_gate import (
+    _stable_hash as stable_dynamic_provider_hash,
+    evaluate_dynamic_provider_fallback_gate,
+    _live_provider_429_capture,
+    _live_provider_429_http_samples,
+    write_live_provider_429_soak_capture,
+)
 from scripts.e2e_release_gate import evaluate_e2e_release_gate
-from scripts.external_deployment_smoke_gate import evaluate_external_deployment_smoke_gate, write_external_deployment_smoke_capture
+from scripts.external_deployment_smoke_gate import (
+    evaluate_external_deployment_smoke_gate,
+    write_external_deployment_smoke_capture,
+)
 from scripts.provider_route_gate import evaluate_provider_route_gate
 from scripts.quickjs_cold_start_gate import (
     SEMANTIC_CORPUS_CASES,
@@ -89,7 +106,7 @@ def test_legacy_cli_config_writes_durable_quoted_files(tmp_path: Path, monkeypat
         "trust_level": "PROD",
         "tools": {"browser_automation": True},
     }
-    assert env_path.read_text(encoding="utf-8") == 'OPENAI_API_KEY="secret\\\"value"\n'
+    assert env_path.read_text(encoding="utf-8") == 'OPENAI_API_KEY="secret\\"value"\n'
     assert not list((tmp_path / ".aegis").glob("*.tmp"))
 
 
@@ -102,7 +119,7 @@ def test_core_bridge_does_not_claim_canonical_aegis_console_script():
 
 
 def test_message_validates_and_converts():
-    message = build_message(1, 2, b'abc')
+    message = build_message(1, 2, b"abc")
     assert validate_runtime_message(message)
     zero_copy = to_zero_copy(message)
     assert zero_copy.is_valid()
@@ -111,7 +128,7 @@ def test_message_validates_and_converts():
 
 
 def test_bridge_contract_validates():
-    message = build_message(1, 2, b'abc')
+    message = build_message(1, 2, b"abc")
     result = validate_bridge_contract(message)
     assert result.message_ok
     assert result.zero_copy_ok
@@ -124,18 +141,18 @@ def test_bridge_contract_validates():
 
 
 def test_build_bridge_message():
-    zero_copy = build_bridge_message(1, 2, b'abc')
+    zero_copy = build_bridge_message(1, 2, b"abc")
     assert zero_copy.is_valid()
 
 
 def test_bridge_contract_rejects_empty_payload():
-    message = build_message(1, 2, b'')
+    message = build_message(1, 2, b"")
     result = validate_bridge_contract(message)
     assert not result.message_ok or not result.bridge_ok
 
 
 def test_bridge_smoke_ok():
-    message = build_message(1, 2, b'abc')
+    message = build_message(1, 2, b"abc")
     smoke = validate_bridge_smoke(message)
     assert smoke.overall_ok
     assert smoke.contract.bridge_ok
@@ -145,15 +162,14 @@ def test_bridge_smoke_ok():
 
 def test_bridge_batch_ok():
     messages = [
-        build_message(1, 2, b'abc'),
-        build_message(2, 3, b'def'),
-        build_message(3, 4, b'ghi'),
+        build_message(1, 2, b"abc"),
+        build_message(2, 3, b"def"),
+        build_message(3, 4, b"ghi"),
     ]
     batch = validate_bridge_batch(messages)
     assert batch.overall_ok
     assert batch.total_messages == 3
     assert batch.passed_messages == 3
-
 
 
 def test_build_preflight_reports_missing_toolchain_cleanly():
@@ -176,12 +192,11 @@ def test_build_preflight_reports_present_toolchain_cleanly():
         assert result.ready_to_benchmark
 
 
-
 def test_service_manifest_reports_packaging_state():
-    message = build_message(1, 2, b'abc')
+    message = build_message(1, 2, b"abc")
     manifest = build_service_manifest(message)
-    assert manifest.service_name == 'aegis-cognition'
-    assert manifest.version == '0.1.0'
+    assert manifest.service_name == "aegis-cognition"
+    assert manifest.version == "0.1.0"
     assert manifest.bridge_ready
     assert manifest.contract_ok
     assert manifest.runtime_surface_ok
@@ -189,7 +204,7 @@ def test_service_manifest_reports_packaging_state():
 
 
 def test_service_manifest_type_is_frozen_dataclass():
-    message = build_message(1, 2, b'abc')
+    message = build_message(1, 2, b"abc")
     manifest = build_service_manifest(message)
     assert isinstance(manifest, ExternalServiceManifest)
 
@@ -376,7 +391,7 @@ def _minimal_supply_chain_root(root: Path) -> Path:
     (root / "core" / "rust" / "Cargo.toml").write_text(
         '[package]\nname = "aegis-nerve"\nversion = "0.1.0"\n'
         '[dependencies]\nwasmtime = "0"\n'
-        '[features]\ndefault = []\nnetwork-h3 = []\n',
+        "[features]\ndefault = []\nnetwork-h3 = []\n",
         encoding="utf-8",
     )
     (root / "pyproject.toml").write_text(
@@ -558,147 +573,174 @@ def test_e2e_release_gate_binds_goal_to_next_action_artifacts():
         )
 
         with (
-            patch("scripts.e2e_release_gate.evaluate_supply_chain_gate", return_value={
-                "overall_ok": True,
-                "sbom": {"sbom_index_hash": "aa" * 32},
-                "provenance": {"provenance_hash": "bb" * 32},
-                "wasi_deny_by_default": {
-                    "wasmtime_fuel_enabled": True,
-                    "wasmtime_epoch_enabled": True,
-                    "wasmtime_memory_limited": True,
-                    "sandbox_network_isolated": True,
+            patch(
+                "scripts.e2e_release_gate.evaluate_supply_chain_gate",
+                return_value={
+                    "overall_ok": True,
+                    "sbom": {"sbom_index_hash": "aa" * 32},
+                    "provenance": {"provenance_hash": "bb" * 32},
+                    "wasi_deny_by_default": {
+                        "wasmtime_fuel_enabled": True,
+                        "wasmtime_epoch_enabled": True,
+                        "wasmtime_memory_limited": True,
+                        "sandbox_network_isolated": True,
+                    },
+                    "release_attestation": {
+                        "attestation_state_recorded": True,
+                        "expected_subject_hash": "dd" * 32,
+                        "release_attestation_evidence_hash": "ee" * 32,
+                    },
+                    "production_release_blocked_without_external_attestation": True,
                 },
-                "release_attestation": {
-                    "attestation_state_recorded": True,
-                    "expected_subject_hash": "dd" * 32,
-                    "release_attestation_evidence_hash": "ee" * 32,
+            ),
+            patch(
+                "scripts.e2e_release_gate.evaluate_dynamic_provider_fallback_gate",
+                return_value={
+                    "overall_ok": True,
+                    "artifact_sha256": "ad" * 32,
+                    "dynamic_provider_fallback_evidence": {
+                        "fallback_used": True,
+                        "downgraded_model": True,
+                        "throttled_provider_count": 1,
+                        "latency_under_gate": True,
+                    },
+                    "live_provider_429_soak_admission": {
+                        "schema": "aegis-live-provider-429-soak-admission-v1",
+                        "expected_capture_path": "artifacts/live_provider_429_soak_capture.json",
+                    },
+                    "live_provider_429_soak_admission_hash": [1],
+                    "live_provider_429_soak_capture_missing_or_valid": True,
+                    "live_provider_429_soak_admission_blocker_id": "live_provider_429_soak_missing",
+                    "live_provider_429_soak_state_recorded": True,
                 },
-                "production_release_blocked_without_external_attestation": True,
-            }),
-            patch("scripts.e2e_release_gate.evaluate_dynamic_provider_fallback_gate", return_value={
-                "overall_ok": True,
-                "artifact_sha256": "ad" * 32,
-                "dynamic_provider_fallback_evidence": {
-                    "fallback_used": True,
-                    "downgraded_model": True,
-                    "throttled_provider_count": 1,
-                    "latency_under_gate": True,
+            ),
+            patch(
+                "scripts.e2e_release_gate.evaluate_cluster_loopback_gate",
+                return_value={
+                    "overall_ok": True,
+                    "artifact_sha256": "aa" * 32,
+                    "loopback_cluster_evidence": {
+                        "worker_count": 3,
+                        "work_item_count": 32,
+                        "accepted_count": 32,
+                        "max_logical_rtt_ticks": 4,
+                    },
+                    "production_cluster_release_blocked_without_real_multi_node_soak": True,
                 },
-                "live_provider_429_soak_admission": {
-                    "schema": "aegis-live-provider-429-soak-admission-v1",
-                    "expected_capture_path": "artifacts/live_provider_429_soak_capture.json",
+            ),
+            patch(
+                "scripts.e2e_release_gate.evaluate_tcp_cluster_soak_gate",
+                return_value={
+                    "overall_ok": True,
+                    "artifact_sha256": "bb" * 32,
+                    "tcp_cluster_soak_evidence": {
+                        "worker_count": 3,
+                        "work_item_count": 24,
+                        "tcp_worker_connections": 3,
+                        "tcp_round_trip_count": 24,
+                    },
+                    "real_multi_machine_cluster_admission": {
+                        "schema": "aegis-real-multi-machine-cluster-soak-admission-v1",
+                        "expected_capture_path": "artifacts/real_multi_machine_cluster_soak_capture.json",
+                    },
+                    "real_multi_machine_cluster_admission_hash": [1],
+                    "real_multi_machine_cluster_capture_missing_or_valid": True,
+                    "real_multi_machine_cluster_admission_blocker_id": "real_multi_machine_cluster_soak_missing",
+                    "real_multi_machine_cluster_state_recorded": True,
+                    "production_cluster_release_blocked_without_real_multi_node_soak": True,
                 },
-                "live_provider_429_soak_admission_hash": [1],
-                "live_provider_429_soak_capture_missing_or_valid": True,
-                "live_provider_429_soak_admission_blocker_id": "live_provider_429_soak_missing",
-                "live_provider_429_soak_state_recorded": True,
-            }),
-            patch("scripts.e2e_release_gate.evaluate_cluster_loopback_gate", return_value={
-                "overall_ok": True,
-                "artifact_sha256": "aa" * 32,
-                "loopback_cluster_evidence": {
-                    "worker_count": 3,
-                    "work_item_count": 32,
-                    "accepted_count": 32,
-                    "max_logical_rtt_ticks": 4,
+            ),
+            patch(
+                "scripts.e2e_release_gate.evaluate_quickjs_cold_start_gate",
+                return_value={
+                    "overall_ok": True,
+                    "artifact_sha256": "cc" * 32,
+                    "quickjs_cold_start_evidence": {
+                        "sample_count": 5,
+                        "cold_start_total_ns": 100,
+                        "warm_cached_total_ns": 10,
+                        "bridge_probe_executed": True,
+                    },
+                    "full_interpreter_admission": {
+                        "schema": "aegis-quickjs-full-interpreter-admission-v1",
+                        "expected_runtime_path": "artifacts/quickjs_full_interpreter.wasm",
+                    },
+                    "full_interpreter_admission_hash": [1],
+                    "full_interpreter_semantic_capture_missing_or_valid": True,
+                    "full_interpreter_admission_blocker_id": "full_quickjs_interpreter_cold_start_missing",
+                    "full_interpreter_state_recorded": True,
+                    "production_quickjs_release_blocked_without_full_interpreter": True,
                 },
-                "production_cluster_release_blocked_without_real_multi_node_soak": True,
-            }),
-            patch("scripts.e2e_release_gate.evaluate_tcp_cluster_soak_gate", return_value={
-                "overall_ok": True,
-                "artifact_sha256": "bb" * 32,
-                "tcp_cluster_soak_evidence": {
-                    "worker_count": 3,
-                    "work_item_count": 24,
-                    "tcp_worker_connections": 3,
-                    "tcp_round_trip_count": 24,
+            ),
+            patch(
+                "scripts.e2e_release_gate.evaluate_hot_browser_shadow_gate",
+                return_value={
+                    "overall_ok": True,
+                    "artifact_sha256": "dd" * 32,
+                    "hot_browser_shadow_evidence": {
+                        "artifact_count": 8,
+                        "hot_commit_count": 8,
+                        "cold_seal_receipt_count": 8,
+                        "shadow_seal_replay_recorded": True,
+                        "shadow_arrow_archive_recovered": True,
+                        "shadow_arrow_archive_replay_matches": True,
+                        "shadow_arrow_archive_contains_shadow_seal": True,
+                        "no_file_roundtrip_on_hot_path": True,
+                    },
                 },
-                "real_multi_machine_cluster_admission": {
-                    "schema": "aegis-real-multi-machine-cluster-soak-admission-v1",
-                    "expected_capture_path": "artifacts/real_multi_machine_cluster_soak_capture.json",
+            ),
+            patch(
+                "scripts.e2e_release_gate.evaluate_shadow_sealer_soak_gate",
+                return_value={
+                    "overall_ok": True,
+                    "artifact_sha256": "ae" * 32,
+                    "shadow_sealer_soak_evidence": {
+                        "sample_count": 128,
+                        "hot_submit_under_gate": True,
+                        "hot_submissions_completed_before_receipts": True,
+                        "cold_payload_files_materialized": True,
+                        "cold_payload_file_hashes_match": True,
+                        "cold_payload_sync_requested": True,
+                    },
                 },
-                "real_multi_machine_cluster_admission_hash": [1],
-                "real_multi_machine_cluster_capture_missing_or_valid": True,
-                "real_multi_machine_cluster_admission_blocker_id": "real_multi_machine_cluster_soak_missing",
-                "real_multi_machine_cluster_state_recorded": True,
-                "production_cluster_release_blocked_without_real_multi_node_soak": True,
-            }),
-            patch("scripts.e2e_release_gate.evaluate_quickjs_cold_start_gate", return_value={
-                "overall_ok": True,
-                "artifact_sha256": "cc" * 32,
-                "quickjs_cold_start_evidence": {
-                    "sample_count": 5,
-                    "cold_start_total_ns": 100,
-                    "warm_cached_total_ns": 10,
-                    "bridge_probe_executed": True,
+            ),
+            patch(
+                "scripts.e2e_release_gate.evaluate_production_packaging_smoke_gate",
+                return_value={
+                    "overall_ok": True,
+                    "production_packaging_smoke_present": True,
+                    "package_surface_hash": "af" * 32,
+                    "smoke_evidence_hash": "ba" * 32,
+                    "smoke_evidence": {
+                        "friendly_gateway_hash": "bb" * 32,
+                        "service_manifest_hash": "bc" * 32,
+                        "artifact_write_hash": "bd" * 32,
+                    },
                 },
-                "full_interpreter_admission": {
-                    "schema": "aegis-quickjs-full-interpreter-admission-v1",
-                    "expected_runtime_path": "artifacts/quickjs_full_interpreter.wasm",
+            ),
+            patch(
+                "scripts.e2e_release_gate.evaluate_external_deployment_smoke_gate",
+                return_value={
+                    "overall_ok": True,
+                    "external_deployment_smoke_evidence_hash": "be" * 32,
+                    "packaging_smoke_hash": "bf" * 32,
+                    "descriptor_index_hash": "ca" * 32,
+                    "runtime_probe_hash": "cb" * 32,
+                    "local_operator_health_hash": "cc" * 32,
+                    "external_health_hash": "cd" * 32,
+                    "external_deployment_smoke_admission": {
+                        "schema": "aegis-external-deployment-smoke-admission-v1",
+                        "expected_capture_path": "artifacts/external_deployment_smoke_capture.json",
+                    },
+                    "external_deployment_smoke_admission_hash": [1],
+                    "external_deployment_smoke_present": True,
+                    "external_deployment_smoke_admission_missing": False,
+                    "external_deployment_smoke_admission_blocker_id": "external_deployment_smoke_missing",
+                    "external_deployment_smoke_capture_missing_or_valid": True,
+                    "external_deployment_smoke_state_recorded": True,
+                    "container_attestation_state_recorded": True,
                 },
-                "full_interpreter_admission_hash": [1],
-                "full_interpreter_semantic_capture_missing_or_valid": True,
-                "full_interpreter_admission_blocker_id": "full_quickjs_interpreter_cold_start_missing",
-                "full_interpreter_state_recorded": True,
-                "production_quickjs_release_blocked_without_full_interpreter": True,
-            }),
-            patch("scripts.e2e_release_gate.evaluate_hot_browser_shadow_gate", return_value={
-                "overall_ok": True,
-                "artifact_sha256": "dd" * 32,
-                "hot_browser_shadow_evidence": {
-                    "artifact_count": 8,
-                    "hot_commit_count": 8,
-                    "cold_seal_receipt_count": 8,
-                    "shadow_seal_replay_recorded": True,
-                    "shadow_arrow_archive_recovered": True,
-                    "shadow_arrow_archive_replay_matches": True,
-                    "shadow_arrow_archive_contains_shadow_seal": True,
-                    "no_file_roundtrip_on_hot_path": True,
-                },
-            }),
-            patch("scripts.e2e_release_gate.evaluate_shadow_sealer_soak_gate", return_value={
-                "overall_ok": True,
-                "artifact_sha256": "ae" * 32,
-                "shadow_sealer_soak_evidence": {
-                    "sample_count": 128,
-                    "hot_submit_under_gate": True,
-                    "hot_submissions_completed_before_receipts": True,
-                    "cold_payload_files_materialized": True,
-                    "cold_payload_file_hashes_match": True,
-                    "cold_payload_sync_requested": True,
-                },
-            }),
-            patch("scripts.e2e_release_gate.evaluate_production_packaging_smoke_gate", return_value={
-                "overall_ok": True,
-                "production_packaging_smoke_present": True,
-                "package_surface_hash": "af" * 32,
-                "smoke_evidence_hash": "ba" * 32,
-                "smoke_evidence": {
-                    "friendly_gateway_hash": "bb" * 32,
-                    "service_manifest_hash": "bc" * 32,
-                    "artifact_write_hash": "bd" * 32,
-                },
-            }),
-            patch("scripts.e2e_release_gate.evaluate_external_deployment_smoke_gate", return_value={
-                "overall_ok": True,
-                "external_deployment_smoke_evidence_hash": "be" * 32,
-                "packaging_smoke_hash": "bf" * 32,
-                "descriptor_index_hash": "ca" * 32,
-                "runtime_probe_hash": "cb" * 32,
-                "local_operator_health_hash": "cc" * 32,
-                "external_health_hash": "cd" * 32,
-                "external_deployment_smoke_admission": {
-                    "schema": "aegis-external-deployment-smoke-admission-v1",
-                    "expected_capture_path": "artifacts/external_deployment_smoke_capture.json",
-                },
-                "external_deployment_smoke_admission_hash": [1],
-                "external_deployment_smoke_present": True,
-                "external_deployment_smoke_admission_missing": False,
-                "external_deployment_smoke_admission_blocker_id": "external_deployment_smoke_missing",
-                "external_deployment_smoke_capture_missing_or_valid": True,
-                "external_deployment_smoke_state_recorded": True,
-                "container_attestation_state_recorded": True,
-            }),
+            ),
             patch("scripts.e2e_release_gate.build_deployment_manifest", return_value=FakeDeploymentManifest()),
         ):
             report = evaluate_e2e_release_gate(root)
@@ -846,8 +888,9 @@ checksum = "{idx:064x}"
 
 
 def test_aegis_adapter_dev_mode_runs_without_rust_extension():
-    with patch.dict("sys.modules", {"aegis_nerve": None, "aegis_cognition.aegis_nerve": None}), patch.dict(
-        os.environ, {"AEGIS_TRUST_LEVEL": "DEV"}
+    with (
+        patch.dict("sys.modules", {"aegis_nerve": None, "aegis_cognition.aegis_nerve": None}),
+        patch.dict(os.environ, {"AEGIS_TRUST_LEVEL": "DEV"}),
     ):
         result = Agent("inspect page", llm=lambda task: {"done": task}).run_sync()
 
@@ -880,8 +923,9 @@ def test_aegis_adapter_langgraph_style_invoke_batch_preserves_evidence():
             calls.append(task)
             return {"echo": task, "mode": kwargs.get("mode", "sync")}
 
-    with patch.dict("sys.modules", {"aegis_nerve": None, "aegis_cognition.aegis_nerve": None}), patch.dict(
-        os.environ, {"AEGIS_TRUST_LEVEL": "DEV"}
+    with (
+        patch.dict("sys.modules", {"aegis_nerve": None, "aegis_cognition.aegis_nerve": None}),
+        patch.dict(os.environ, {"AEGIS_TRUST_LEVEL": "DEV"}),
     ):
         agent = Agent(llm=RunnableLlm(), provider="local/dev")
         output = agent.invoke({"input": "inspect page"}, mode="sync")
@@ -914,8 +958,9 @@ def test_aegis_adapter_langgraph_style_ainvoke_accepts_message_input():
     async def async_llm(task, **kwargs):
         return {"async_echo": task, "tag": kwargs["tag"]}
 
-    with patch.dict("sys.modules", {"aegis_nerve": None, "aegis_cognition.aegis_nerve": None}), patch.dict(
-        os.environ, {"AEGIS_TRUST_LEVEL": "DEV"}
+    with (
+        patch.dict("sys.modules", {"aegis_nerve": None, "aegis_cognition.aegis_nerve": None}),
+        patch.dict(os.environ, {"AEGIS_TRUST_LEVEL": "DEV"}),
     ):
         agent = Agent(llm=async_llm)
         output = asyncio.run(
@@ -1336,7 +1381,7 @@ def _real_multi_machine_probe_fixture(report: dict) -> dict:
     }
 
 
-def test_real_multi_machine_cluster_capture_producer_writes_valid_candidate_capture():
+def test_real_multi_machine_cluster_capture_producer_writes_valid_candidate_capture(tmp_path: Path):
     with TemporaryDirectory() as tmp:
         root = Path(tmp)
         report = _write_tcp_cluster_soak_fixture(root)
@@ -1354,8 +1399,7 @@ def test_real_multi_machine_cluster_capture_producer_writes_valid_candidate_capt
         assert producer_report["round_trip_count"] == 24
         assert producer_report["distinct_machine_count"] == 3
         assert gate["overall_ok"] is True
-        assert gate["real_multi_node_cluster_test_present"] is True
-        assert gate["production_cluster_release_blocked_without_real_multi_node_soak"] is False
+        assert gate["truth_claim"] is False
         assert gate["real_multi_machine_cluster_admission"]["admission_status"] == (
             "candidate-present-real-multi-machine-soak-gate-required"
         )
@@ -1367,6 +1411,77 @@ def test_real_multi_machine_cluster_capture_producer_writes_valid_candidate_capt
         assert capture["accepted_response_count"] == 24
         assert capture["all_round_trips_valid"] is True
         assert capture["response_bodies_redacted"] is True
+
+        from scripts import deployment_manifest
+
+        original_read_json = deployment_manifest._read_json
+        manifest_root = tmp_path / "deployment-manifest"
+        manifest_artifacts = manifest_root / "artifacts"
+        manifest_artifacts.mkdir(parents=True)
+        cluster_gate_path = manifest_artifacts / "tcp_cluster_soak_gate_report.json"
+        policy_hash = hashlib.sha256(b"test-deployment-policy").hexdigest()
+        registry_hash = hashlib.sha256(b"test-not-verified-registry").hexdigest()
+        cluster_blocker_policy = (
+            {
+                "id": "real_multi_machine_cluster_soak_missing",
+                "blocks_production": True,
+                "evidence_artifact": "tcp_cluster_soak_gate_report.json",
+                "registry_ids": ["NV-016"],
+            },
+        )
+        policy_result = (
+            cluster_blocker_policy,
+            policy_hash,
+            {
+                "policy_source": "test-deployment-policy",
+                "registry_source": "test-not-verified-registry",
+                "registry_hash": registry_hash,
+                "registry_ids": {"NV-016"},
+            },
+        )
+
+        def _manifest_with_gate_report(gate_report):
+            def _read_json_with_gate_override(path: Path):
+                assert path.is_relative_to(manifest_root)
+                if path == cluster_gate_path:
+                    return gate_report
+                return original_read_json(path)
+
+            with (
+                patch("scripts.deployment_manifest._load_deployment_policy", return_value=policy_result) as load_policy,
+                patch("scripts.deployment_manifest._read_json", side_effect=_read_json_with_gate_override),
+            ):
+                manifest = deployment_manifest.build_deployment_manifest(manifest_root)
+            load_policy.assert_called_once_with(manifest_root)
+            return manifest
+
+        manifest = _manifest_with_gate_report(gate)
+        cluster_blocker = next(
+            (
+                blocker
+                for blocker in manifest.active_production_blockers
+                if blocker["id"] == "real_multi_machine_cluster_soak_missing"
+            ),
+            None,
+        )
+        assert cluster_blocker is not None
+        assert "NV-016" in cluster_blocker["registry_ids"]
+
+        stale_candidate_gate = {**gate, "truth_claim": False, "real_multi_node_cluster_test_present": True}
+        manifest = _manifest_with_gate_report(stale_candidate_gate)
+        cluster_blocker = next(
+            (
+                blocker
+                for blocker in manifest.active_production_blockers
+                if blocker["id"] == "real_multi_machine_cluster_soak_missing"
+            ),
+            None,
+        )
+        assert cluster_blocker is not None
+        assert "NV-016" in cluster_blocker["registry_ids"]
+
+        assert gate["real_multi_node_cluster_test_present"] is False
+        assert gate["production_cluster_release_blocked_without_real_multi_node_soak"] is True
 
 
 def test_real_multi_machine_cluster_capture_missing_endpoints_preserves_blocker():
@@ -1544,8 +1659,9 @@ def test_aegis_adapter_dev_provider_fallback_records_route_evidence():
         calls.append(("nim/llama-3-70b", task))
         return {"provider": "reserve", "task": task}
 
-    with patch.dict("sys.modules", {"aegis_nerve": None, "aegis_cognition.aegis_nerve": None}), patch.dict(
-        os.environ, {"AEGIS_TRUST_LEVEL": "DEV"}
+    with (
+        patch.dict("sys.modules", {"aegis_nerve": None, "aegis_cognition.aegis_nerve": None}),
+        patch.dict(os.environ, {"AEGIS_TRUST_LEVEL": "DEV"}),
     ):
         result = Agent(
             "inspect page",
@@ -1571,7 +1687,7 @@ def test_aegis_adapter_dev_provider_fallback_records_route_evidence():
     assert result.hot_commit.trust_level == "DEV"
 
 
-def test_dynamic_provider_live_429_capture_producer_writes_redacted_valid_capture():
+def test_dynamic_provider_injected_429_responses_do_not_satisfy_live_capture():
     with TemporaryDirectory() as tmp:
         root = Path(tmp)
         _write_dynamic_provider_fallback_fixture(root)
@@ -1602,26 +1718,407 @@ def test_dynamic_provider_live_429_capture_producer_writes_redacted_valid_captur
 
         gate = evaluate_dynamic_provider_fallback_gate(root)
         capture_path = root / "artifacts" / "live_provider_429_soak_capture.json"
-        capture = json.loads(capture_path.read_text(encoding="utf-8"))
 
-        assert producer_report["overall_ok"] is True
-        assert producer_report["capture_written"] is True
         assert requested_indexes == list(range(32))
-        assert gate["overall_ok"] is True
-        assert gate["live_provider_traffic_present"] is True
-        assert gate["production_provider_release_blocked_without_live_429_soak"] is False
-        assert gate["live_provider_429_soak_admission"]["admission_status"] == (
-            "candidate-present-live-soak-gate-required"
+        assert producer_report["overall_ok"] is False
+        assert producer_report["capture_written"] is False
+        assert gate["live_provider_traffic_present"] is False
+        assert gate["production_provider_release_blocked_without_live_429_soak"] is True
+        assert gate["live_provider_429_soak_admission"]["capture_valid"] is False
+        assert not capture_path.exists()
+
+
+def test_dynamic_provider_legacy_429_capture_without_source_provenance_preserves_blocker():
+    with TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        _write_dynamic_provider_fallback_fixture(root)
+        artifact_path = root / "artifacts" / "dynamic_provider_fallback_report.json"
+        report = json.loads(artifact_path.read_text(encoding="utf-8"))["report"]
+        admission = report["live_provider_429_soak_admission"]
+        http_samples = {
+            "schema": "aegis-live-provider-429-http-samples-v2",
+            "transport": "urllib",
+            "endpoint_classification": "external_https_endpoint_candidate",
+            "source_classification": "external_https_endpoint_candidate",
+            "soak_url_present": True,
+            "request_url_hash": "a" * 64,
+            "samples": [{"status": 429, "elapsed_ns": 1, "body_hash": "b" * 64, "error": ""} for _ in range(32)],
+        }
+        candidate = _live_provider_429_capture(report, admission, http_samples)
+        capture_path = root / "artifacts" / "live_provider_429_soak_capture.json"
+        capture_path.write_text(json.dumps(candidate), encoding="utf-8")
+        candidate_gate = evaluate_dynamic_provider_fallback_gate(root)
+        assert candidate_gate["live_provider_429_soak_admission"]["capture_valid"] is True
+        assert candidate_gate["live_provider_traffic_present"] is False
+        assert candidate_gate["production_provider_release_blocked_without_live_429_soak"] is True
+
+        legacy_capture = json.loads(capture_path.read_text(encoding="utf-8"))
+        legacy_capture["schema"] = "aegis-live-provider-429-soak-capture-v1"
+        legacy_capture.pop("source_classification", None)
+        legacy_capture["http_samples"].pop("transport", None)
+        legacy_capture["http_samples"].pop("endpoint_classification", None)
+        legacy_capture["http_samples"].pop("source_classification", None)
+        capture_path.write_text(json.dumps(legacy_capture), encoding="utf-8")
+
+        legacy_gate = evaluate_dynamic_provider_fallback_gate(root)
+
+        assert legacy_gate["live_provider_traffic_present"] is False
+        assert legacy_gate["production_provider_release_blocked_without_live_429_soak"] is True
+        assert legacy_gate["live_provider_429_soak_admission"]["capture_valid"] is False
+
+
+@pytest.mark.parametrize("malformed_field", ("http_samples", "dynamic_fallback_evidence"))
+def test_dynamic_provider_429_gate_fails_closed_on_malformed_capture(malformed_field: str):
+    with TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        _write_dynamic_provider_fallback_fixture(root)
+        artifact_path = root / "artifacts" / "dynamic_provider_fallback_report.json"
+        report = json.loads(artifact_path.read_text(encoding="utf-8"))["report"]
+        admission = report["live_provider_429_soak_admission"]
+        http_samples = {
+            "schema": "aegis-live-provider-429-http-samples-v2",
+            "transport": "urllib",
+            "endpoint_classification": "external_https_endpoint_candidate",
+            "source_classification": "external_https_endpoint_candidate",
+            "soak_url_present": True,
+            "request_url_hash": "a" * 64,
+            "samples": [{"status": 429, "elapsed_ns": 1, "body_hash": "b" * 64, "error": ""} for _ in range(32)],
+        }
+        malformed_capture = _live_provider_429_capture(report, admission, http_samples)
+        capture_path = root / "artifacts" / "live_provider_429_soak_capture.json"
+        capture_path.write_text(json.dumps(malformed_capture), encoding="utf-8")
+        assert (
+            evaluate_dynamic_provider_fallback_gate(root)["live_provider_429_soak_admission"]["capture_valid"] is True
         )
-        assert capture["schema"] == "aegis-live-provider-429-soak-capture-v1"
-        assert capture["truth_claim"] is False
+        malformed_capture[malformed_field] = []
+        if malformed_field == "dynamic_fallback_evidence":
+            malformed_capture["dynamic_fallback_evidence_hash"] = stable_dynamic_provider_hash([])
+        capture_path.write_text(json.dumps(malformed_capture), encoding="utf-8")
+
+        try:
+            gate = evaluate_dynamic_provider_fallback_gate(root)
+        except (AttributeError, TypeError) as exc:
+            pytest.fail(f"malformed persisted capture must fail closed, raised {type(exc).__name__}")
+
+        assert gate["live_provider_traffic_present"] is False
+        assert gate["production_provider_release_blocked_without_live_429_soak"] is True
+        assert gate["live_provider_429_soak_admission"]["capture_valid"] is False
+
+
+def test_dynamic_provider_live_429_capture_rejects_loopback_server():
+    with TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        _write_dynamic_provider_fallback_fixture(root)
+        requests_seen: list[str] = []
+
+        class Always429Handler(BaseHTTPRequestHandler):
+            def do_POST(self) -> None:
+                requests_seen.append(self.path)
+                self.send_response(429)
+                self.send_header("Retry-After", "1")
+                self.end_headers()
+                self.wfile.write(b"synthetic local 429")
+
+            def log_message(self, format: str, *args: object) -> None:
+                return
+
+        server = HTTPServer(("127.0.0.1", 0), Always429Handler)
+        server_thread = threading.Thread(target=server.serve_forever, daemon=True)
+        server_thread.start()
+        try:
+            with patch.dict(
+                os.environ,
+                {
+                    "AEGIS_LIVE_PROVIDER_429_SOAK_URL": (f"http://127.0.0.1:{server.server_port}/always-429"),
+                    "AEGIS_LIVE_PROVIDER_429_SOAK_METHOD": "POST",
+                    "AEGIS_LIVE_PROVIDER_429_SOAK_HEADERS_JSON": "",
+                    "AEGIS_LIVE_PROVIDER_429_SOAK_TIMEOUT_SECONDS": "2",
+                },
+                clear=False,
+            ):
+                producer_report = write_live_provider_429_soak_capture(root)
+                gate = evaluate_dynamic_provider_fallback_gate(root)
+
+            assert producer_report["overall_ok"] is False
+            assert producer_report["capture_written"] is False
+            assert gate["live_provider_traffic_present"] is False
+            assert gate["production_provider_release_blocked_without_live_429_soak"] is True
+            assert requests_seen == []
+        finally:
+            server.shutdown()
+            server.server_close()
+            server_thread.join(timeout=2)
+        assert not server_thread.is_alive()
+
+
+def test_dynamic_provider_live_429_capture_rejects_private_dns_answer_before_request():
+    with TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        _write_dynamic_provider_fallback_fixture(root)
+        artifact = json.loads((root / "artifacts" / "dynamic_provider_fallback_report.json").read_text())
+        report = dict(artifact["report"])
+        report["sample_count"] = 1
+        admission = dict(report["live_provider_429_soak_admission"])
+        admission["required_sample_count"] = 1
+
+        class Synthetic429Response:
+            def __init__(self) -> None:
+                self.status = 429
+                self.headers = {}
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, exc_type, exc, traceback):
+                return False
+
+            def read(self, limit):
+                return b"synthetic 429; no provider was contacted"
+
+        with (
+            patch.dict(
+                os.environ,
+                {
+                    "AEGIS_LIVE_PROVIDER_429_SOAK_URL": "https://rate-limit.provider.test/always-429",
+                    "AEGIS_LIVE_PROVIDER_429_SOAK_METHOD": "GET",
+                    "AEGIS_LIVE_PROVIDER_429_SOAK_HEADERS_JSON": '{"Authorization":"Bearer synthetic-test-token"}',
+                },
+                clear=False,
+            ),
+            patch.object(
+                dynamic_provider_gate,
+                "_live_provider_429_endpoint_classification",
+                return_value="external_https_endpoint_candidate",
+            ),
+            patch(
+                "socket.getaddrinfo",
+                return_value=[(socket.AF_INET, socket.SOCK_STREAM, 6, "", ("127.0.0.1", 443))],
+            ) as resolver,
+            patch.object(
+                dynamic_provider_gate,
+                "urlopen",
+                return_value=Synthetic429Response(),
+                create=True,
+            ) as request_opener,
+        ):
+            samples = _live_provider_429_http_samples(report, admission)
+
+        assert samples["samples"] == []
+        assert samples["error"]
+        assert resolver.call_count == 1
+        request_opener.assert_not_called()
+        with patch(
+            "socket.getaddrinfo",
+            return_value=[(socket.AF_INET, socket.SOCK_STREAM, 6, "", ("8.8.8.8", 443))],
+        ):
+            public_address, public_error = dynamic_provider_gate._live_provider_429_resolve_address(
+                "https://api.provider.example.com/always-429"
+            )
+        assert public_address == "8.8.8.8"
+        assert public_error == ""
+
+
+def test_dynamic_provider_live_429_pinned_tls_uses_resolved_ip_and_original_hostname():
+    fake_socket = Mock()
+    fake_context = Mock()
+    wrapped_socket = Mock()
+    fake_context.wrap_socket.return_value = wrapped_socket
+    connection = dynamic_provider_gate._PinnedProviderHTTPSConnection(
+        "provider.example.test:8443",
+        "93.184.216.34",
+        context=fake_context,
+    )
+
+    with patch.object(dynamic_provider_gate.socket, "create_connection", return_value=fake_socket) as connect:
+        connection.connect()
+
+    connect.assert_called_once_with(
+        ("93.184.216.34", 8443),
+        connection.timeout,
+        connection.source_address,
+    )
+    fake_context.wrap_socket.assert_called_once_with(fake_socket, server_hostname="provider.example.test")
+    assert connection.sock is wrapped_socket
+
+
+def test_dynamic_provider_live_429_capture_rejects_unverified_proxy_before_request():
+    with TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        _write_dynamic_provider_fallback_fixture(root)
+        artifact = json.loads((root / "artifacts" / "dynamic_provider_fallback_report.json").read_text())
+        report = dict(artifact["report"])
+        report["sample_count"] = 1
+        admission = dict(report["live_provider_429_soak_admission"])
+        admission["required_sample_count"] = 1
+
+        class Synthetic429Response:
+            def __init__(self) -> None:
+                self.status = 429
+                self.headers = {}
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, exc_type, exc, traceback):
+                return False
+
+            def read(self, limit):
+                return b"synthetic 429; no provider was contacted"
+
+        proxy_environment = {
+            "HTTPS_PROXY": "http://proxy.example.invalid:8080",
+            "https_proxy": "http://proxy.example.invalid:8080",
+            "HTTP_PROXY": "",
+            "http_proxy": "",
+            "ALL_PROXY": "",
+            "all_proxy": "",
+            "NO_PROXY": "",
+            "no_proxy": "",
+            "AEGIS_LIVE_PROVIDER_429_SOAK_URL": "https://provider.example.com/always-429",
+            "AEGIS_LIVE_PROVIDER_429_SOAK_METHOD": "GET",
+            "AEGIS_LIVE_PROVIDER_429_SOAK_HEADERS_JSON": "",
+        }
+        with (
+            patch.dict(os.environ, proxy_environment, clear=False),
+            patch.object(
+                dynamic_provider_gate,
+                "_live_provider_429_endpoint_classification",
+                return_value="external_https_endpoint_candidate",
+            ),
+            patch.object(
+                dynamic_provider_gate,
+                "urlopen",
+                return_value=Synthetic429Response(),
+                create=True,
+            ) as request_opener,
+        ):
+            samples = _live_provider_429_http_samples(report, admission)
+
+        assert samples["samples"] == []
+        assert "proxy" in samples["error"].lower()
+        request_opener.assert_not_called()
+
+
+def test_dynamic_provider_live_429_capture_does_not_follow_redirect_or_forward_credentials():
+    with TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        _write_dynamic_provider_fallback_fixture(root)
+        artifact = json.loads((root / "artifacts" / "dynamic_provider_fallback_report.json").read_text())
+        report = dict(artifact["report"])
+        report["sample_count"] = 1
+        admission = dict(report["live_provider_429_soak_admission"])
+        admission["required_sample_count"] = 1
+        source_authorization: list[str | None] = []
+        sink_authorization: list[str | None] = []
+
+        class Internal429Handler(BaseHTTPRequestHandler):
+            def do_GET(self) -> None:
+                sink_authorization.append(self.headers.get("Authorization"))
+                self.send_response(429)
+                self.send_header("Content-Length", "0")
+                self.end_headers()
+
+            def log_message(self, format: str, *args: object) -> None:
+                return
+
+        sink = HTTPServer(("127.0.0.1", 0), Internal429Handler)
+
+        class RedirectHandler(BaseHTTPRequestHandler):
+            def do_GET(self) -> None:
+                source_authorization.append(self.headers.get("Authorization"))
+                self.send_response(302)
+                self.send_header("Location", f"http://127.0.0.1:{sink.server_port}/internal-429")
+                self.send_header("Content-Length", "0")
+                self.end_headers()
+
+            def log_message(self, format: str, *args: object) -> None:
+                return
+
+        source = HTTPServer(("127.0.0.1", 0), RedirectHandler)
+        sink_thread = threading.Thread(target=sink.serve_forever, daemon=True)
+        source_thread = threading.Thread(target=source.serve_forever, daemon=True)
+        sink_thread.start()
+        source_thread.start()
+        try:
+            with (
+                patch.dict(
+                    os.environ,
+                    {
+                        "AEGIS_LIVE_PROVIDER_429_SOAK_URL": f"http://127.0.0.1:{source.server_port}/redirect",
+                        "AEGIS_LIVE_PROVIDER_429_SOAK_METHOD": "GET",
+                        "AEGIS_LIVE_PROVIDER_429_SOAK_HEADERS_JSON": '{"Authorization":"Bearer synthetic-test-token"}',
+                        "AEGIS_LIVE_PROVIDER_429_SOAK_TIMEOUT_SECONDS": "2",
+                    },
+                    clear=False,
+                ),
+                patch.object(
+                    dynamic_provider_gate,
+                    "_live_provider_429_endpoint_classification",
+                    return_value="external_https_endpoint_candidate",
+                ),
+                patch.object(
+                    dynamic_provider_gate,
+                    "_live_provider_429_resolve_address",
+                    return_value=("127.0.0.1", ""),
+                    create=True,
+                ),
+            ):
+                samples = _live_provider_429_http_samples(report, admission)
+        finally:
+            source.shutdown()
+            source.server_close()
+            sink.shutdown()
+            sink.server_close()
+            source_thread.join(timeout=2)
+            sink_thread.join(timeout=2)
+
+        assert not source_thread.is_alive()
+        assert not sink_thread.is_alive()
+        assert source_authorization == ["Bearer synthetic-test-token"]
+        assert sink_authorization == []
+        assert samples["samples"][0]["status"] == 302
+
+
+def test_dynamic_provider_429_http_sample_capture_redacts_secrets():
+    with TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        _write_dynamic_provider_fallback_fixture(root)
+        artifact = json.loads((root / "artifacts" / "dynamic_provider_fallback_report.json").read_text())
+        report = dict(artifact["report"])
+        report["sample_count"] = 1
+        admission = dict(report["live_provider_429_soak_admission"])
+        admission["required_sample_count"] = 1
+        response_body = b"synthetic private response body"
+
+        def requester(request, timeout_seconds, index):
+            assert timeout_seconds == 10
+            assert index == 0
+            return {
+                "status": 429,
+                "body": response_body,
+                "headers": {"Retry-After": "1", "X-Request-Id": "private-request-id"},
+            }
+
+        with patch.dict(
+            os.environ,
+            {
+                "AEGIS_LIVE_PROVIDER_429_SOAK_URL": "https://provider.example.test/always-429",
+                "AEGIS_LIVE_PROVIDER_429_SOAK_METHOD": "POST",
+                "AEGIS_LIVE_PROVIDER_429_SOAK_HEADERS_JSON": '{"Authorization":"Bearer secret-token"}',
+            },
+            clear=False,
+        ):
+            http_samples = _live_provider_429_http_samples(report, admission, requester=requester)
+        capture = _live_provider_429_capture(report, admission, http_samples)
+        encoded = json.dumps(capture, sort_keys=True)
+
         assert capture["request_redacted"] is True
         assert capture["response_bodies_redacted"] is True
-        assert capture["status_counts"] == {"429": 32}
-        assert capture["sample_count"] == 32
-        assert capture["all_status_429"] is True
         assert capture["http_samples"]["request_header_names"] == ["authorization"]
-        assert "secret-token" not in json.dumps(capture, sort_keys=True)
+        assert capture["http_samples"]["samples"][0]["body_hash"] == hashlib.sha256(response_body).hexdigest()
+        assert "secret-token" not in encoded
+        assert "private response body" not in encoded
+        assert "private-request-id" not in encoded
 
 
 def test_dynamic_provider_live_429_capture_missing_url_preserves_blocker():
@@ -1664,8 +2161,9 @@ def test_aegis_adapter_provider_budget_skips_exhausted_primary_and_hashes_eviden
         calls.append(("nim/llama-3-70b", task))
         return {"provider": "reserve", "task": task}
 
-    with patch.dict("sys.modules", {"aegis_nerve": None, "aegis_cognition.aegis_nerve": None}), patch.dict(
-        os.environ, {"AEGIS_TRUST_LEVEL": "DEV"}
+    with (
+        patch.dict("sys.modules", {"aegis_nerve": None, "aegis_cognition.aegis_nerve": None}),
+        patch.dict(os.environ, {"AEGIS_TRUST_LEVEL": "DEV"}),
     ):
         result = Agent(
             "inspect page",
@@ -1763,8 +2261,9 @@ def test_aegis_adapter_dev_browser_action_capture_commits_hot_evidence_before_co
                 "handle_valid": True,
             }
 
-        with patch.dict("sys.modules", {"aegis_nerve": None, "aegis_cognition.aegis_nerve": None}), patch.dict(
-            os.environ, {"AEGIS_TRUST_LEVEL": "DEV"}
+        with (
+            patch.dict("sys.modules", {"aegis_nerve": None, "aegis_cognition.aegis_nerve": None}),
+            patch.dict(os.environ, {"AEGIS_TRUST_LEVEL": "DEV"}),
         ):
             result = Agent("inspect page").capture_browser_action_sync(
                 browser_session=session,
@@ -1799,8 +2298,9 @@ def test_aegis_adapter_default_browser_action_uses_batch_hot_evidence_without_ru
     with TemporaryDirectory() as tmp:
         session = _FakeBrowserSession()
 
-        with patch.dict("sys.modules", {"aegis_nerve": None, "aegis_cognition.aegis_nerve": None}), patch.dict(
-            os.environ, {"AEGIS_TRUST_LEVEL": "DEV"}
+        with (
+            patch.dict("sys.modules", {"aegis_nerve": None, "aegis_cognition.aegis_nerve": None}),
+            patch.dict(os.environ, {"AEGIS_TRUST_LEVEL": "DEV"}),
         ):
             result = Agent("inspect page").capture_browser_action_sync(
                 browser_session=session,
@@ -1816,9 +2316,7 @@ def test_aegis_adapter_default_browser_action_uses_batch_hot_evidence_without_ru
         assert result.hot_evidence.verifier == "python-dev-batch-fallback"
         assert result.hot_evidence.artifact_count == len(REQUIRED_BROWSER_ARTIFACT_KINDS)
         assert result.hot_evidence.no_file_roundtrip_on_hot_path is True
-        assert result.hot_evidence.total_bytes == sum(
-            commit.byte_len for commit in result.hot_evidence.commits
-        )
+        assert result.hot_evidence.total_bytes == sum(commit.byte_len for commit in result.hot_evidence.commits)
         assert all(commit.verifier == "python-dev-batch-fallback" for commit in result.hot_evidence.commits)
         assert all(commit.handle_valid for commit in result.hot_evidence.commits)
         assert len(result.hot_evidence.batch_digest) == 64
@@ -1864,8 +2362,9 @@ def test_aegis_adapter_hot_first_browser_action_returns_hot_evidence_before_cold
             publish_release,
         )
 
-        with patch.dict("sys.modules", {"aegis_nerve": None, "aegis_cognition.aegis_nerve": None}), patch.dict(
-            os.environ, {"AEGIS_TRUST_LEVEL": "DEV"}
+        with (
+            patch.dict("sys.modules", {"aegis_nerve": None, "aegis_cognition.aegis_nerve": None}),
+            patch.dict(os.environ, {"AEGIS_TRUST_LEVEL": "DEV"}),
         ):
             result = Agent("inspect page").capture_browser_action_hot_first_sync(
                 browser_session=session,
@@ -2114,8 +2613,8 @@ def test_bridge_batch_empty():
 
 def test_bridge_batch_mixed_invalid():
     messages = [
-        build_message(1, 2, b'abc'),
-        build_message(2, 3, b''),  # Invalid (empty payload)
+        build_message(1, 2, b"abc"),
+        build_message(2, 3, b""),  # Invalid (empty payload)
     ]
     batch = validate_bridge_batch(messages)
     assert not batch.overall_ok
@@ -2125,6 +2624,7 @@ def test_bridge_batch_mixed_invalid():
 
 def test_deployment_manifest_valid():
     from scripts.deployment_manifest import build_deployment_manifest
+
     manifest = build_deployment_manifest(str(REPO_ROOT))
     assert manifest.root == str(REPO_ROOT)
     assert manifest.python_bridge_ready
@@ -2321,7 +2821,9 @@ def test_run_checks_production_readiness_summary_exposes_active_blockers():
     assert summary["closure_packet_count"] == 5
     assert len(summary["closure_packet_set_hash"]) == 64
     assert [packet["blocker_id"] for packet in summary["closure_packets"]] == summary["active_production_blocker_ids"]
-    assert all(packet["schema"] == "aegis-production-blocker-closure-packet-v1" for packet in summary["closure_packets"])
+    assert all(
+        packet["schema"] == "aegis-production-blocker-closure-packet-v1" for packet in summary["closure_packets"]
+    )
     assert all(len(packet["closure_packet_hash"]) == 64 for packet in summary["closure_packets"])
     assert summary["closure_packets"][0]["expected_artifacts"] == [
         "artifacts/release_signed_attestation.json",
@@ -2521,15 +3023,24 @@ def test_hermes_session_recovery_baseline_gate_binds_physical_artifacts():
         baseline_dir = Path(tmp) / "hermes-session-recovery"
         with (
             patch("scripts.research.comparators.external.session_recovery_baseline_gate.BASELINE_DIR", baseline_dir),
-            patch("scripts.research.comparators.external.session_recovery_baseline_gate.BASELINE_DB_PATH", baseline_dir / "state.db"),
+            patch(
+                "scripts.research.comparators.external.session_recovery_baseline_gate.BASELINE_DB_PATH",
+                baseline_dir / "state.db",
+            ),
             patch(
                 "scripts.research.comparators.external.session_recovery_baseline_gate.BASELINE_RECOVERY_PAYLOAD_PATH",
                 baseline_dir / "recovered.json",
             ),
-            patch("scripts.research.comparators.external.session_recovery_baseline_gate._criterion_estimate_ns", return_value=1.0),
+            patch(
+                "scripts.research.comparators.external.session_recovery_baseline_gate._criterion_estimate_ns",
+                return_value=1.0,
+            ),
             # The production gate binds this to the checked-out research repo;
             # the unit fixture supplies a deterministic commit binding.
-            patch("scripts.research.comparators.external.session_recovery_baseline_gate._git_commit", return_value="a" * 40),
+            patch(
+                "scripts.research.comparators.external.session_recovery_baseline_gate._git_commit",
+                return_value="a" * 40,
+            ),
         ):
             report = gate.evaluate_hermes_session_recovery_baseline(Path.cwd())
         payload = gate.report_to_dict(report)
@@ -2555,18 +3066,28 @@ def test_hermes_persistence_baseline_gate_binds_physical_artifacts():
         baseline_dir = Path(tmp) / "hermes-persistence"
         with (
             patch("scripts.research.comparators.external.persistence_write_baseline_gate.BASELINE_DIR", baseline_dir),
-            patch("scripts.research.comparators.external.persistence_write_baseline_gate.BASELINE_DB_PATH", baseline_dir / "state.db"),
-            patch("scripts.research.comparators.external.persistence_write_baseline_gate.BASELINE_TRANSCRIPT_PATH", baseline_dir / "transcript.json"),
-            patch("scripts.research.comparators.external.persistence_write_baseline_gate._criterion_estimate_ns", return_value=1.0),
-            patch("scripts.research.comparators.external.persistence_write_baseline_gate._git_commit", return_value="a" * 40),
+            patch(
+                "scripts.research.comparators.external.persistence_write_baseline_gate.BASELINE_DB_PATH",
+                baseline_dir / "state.db",
+            ),
+            patch(
+                "scripts.research.comparators.external.persistence_write_baseline_gate.BASELINE_TRANSCRIPT_PATH",
+                baseline_dir / "transcript.json",
+            ),
+            patch(
+                "scripts.research.comparators.external.persistence_write_baseline_gate._criterion_estimate_ns",
+                return_value=1.0,
+            ),
+            patch(
+                "scripts.research.comparators.external.persistence_write_baseline_gate._git_commit",
+                return_value="a" * 40,
+            ),
         ):
             report = gate.evaluate_hermes_persistence_baseline(Path.cwd())
         payload = gate.report_to_dict(report)
         evidence = payload["physical_evidence"]
         assert report.overall_ok
-        assert payload["checks"][0]["name"] == (
-            "hermes_full_transcript_rewrite_vs_aegis_segmented_arrow_append"
-        )
+        assert payload["checks"][0]["name"] == ("hermes_full_transcript_rewrite_vs_aegis_segmented_arrow_append")
         assert payload["checks"][0]["speedup"] >= payload["checks"][0]["threshold_speedup"]
         assert evidence["baseline_message_rows"] == evidence["baseline_history_messages"]
         assert evidence["baseline_fts_rows"] == evidence["baseline_history_messages"]
@@ -2584,10 +3105,21 @@ def test_hermes_rpc_baseline_gate_uses_aggregate_mmap_overhead():
         baseline_dir = Path(tmp) / "hermes-rpc"
         with (
             patch("scripts.research.comparators.external.rpc_context_baseline_gate.BASELINE_DIR", baseline_dir),
-            patch("scripts.research.comparators.external.rpc_context_baseline_gate.BASELINE_PAYLOAD_PATH", baseline_dir / "payload.jsonl"),
-            patch("scripts.research.comparators.external.rpc_context_baseline_gate.BASELINE_MMAP_PATH", baseline_dir / "context.aegmmap"),
-            patch("scripts.research.comparators.external.rpc_context_baseline_gate._measure_json_rpc_context_ns") as json_rpc_measure,
-            patch("scripts.research.comparators.external.rpc_context_baseline_gate._measure_mmap_payload_view_ns", return_value=1_000.0),
+            patch(
+                "scripts.research.comparators.external.rpc_context_baseline_gate.BASELINE_PAYLOAD_PATH",
+                baseline_dir / "payload.jsonl",
+            ),
+            patch(
+                "scripts.research.comparators.external.rpc_context_baseline_gate.BASELINE_MMAP_PATH",
+                baseline_dir / "context.aegmmap",
+            ),
+            patch(
+                "scripts.research.comparators.external.rpc_context_baseline_gate._measure_json_rpc_context_ns"
+            ) as json_rpc_measure,
+            patch(
+                "scripts.research.comparators.external.rpc_context_baseline_gate._measure_mmap_payload_view_ns",
+                return_value=1_000.0,
+            ),
             patch("scripts.research.comparators.external.rpc_context_baseline_gate._git_commit", return_value="a" * 40),
         ):
             json_rpc_measure.return_value = (
@@ -2675,6 +3207,7 @@ def test_replay_chaos_scorecard_gate_accepts_valid_artifact():
 
 def test_python_skeleton_generation_fallback():
     from .orchestrator import generate_skeleton
+
     code = "impl Test {\n    fn hello() {\n        print(123)\n    }\n}"
     skeleton = generate_skeleton(code)
     assert "todo" in skeleton
@@ -2683,6 +3216,7 @@ def test_python_skeleton_generation_fallback():
 
 def test_python_analyze_compile_errors_fallback():
     from .orchestrator import analyze_compile_errors
+
     logs = "info: checking\nerror[E1234]: bad type\nwarning: unused"
     errors = analyze_compile_errors(logs)
     assert len(errors) == 1
@@ -2691,7 +3225,7 @@ def test_python_analyze_compile_errors_fallback():
 
 def test_ffi_boundary_robustness():
     # 1. Extremely large payload (10 MB)
-    large_payload = b'a' * 10 * 1024 * 1024
+    large_payload = b"a" * 10 * 1024 * 1024
     message = build_message(99, 100, large_payload)
     assert validate_runtime_message(message)
     zero_copy = to_zero_copy(message)
@@ -2766,14 +3300,10 @@ def test_python_mmap_bridge_writer_streams_bounded_chunks_into_rust():
 
 
 def test_recommended_file_stream_chunk_is_pressure_aware_and_fail_safe():
-    assert (
-        recommended_file_stream_chunk_bytes(available_bytes=9, capacity_bytes=100)
-        == MIN_FILE_STREAM_CHUNK_BYTES
-    )
+    assert recommended_file_stream_chunk_bytes(available_bytes=9, capacity_bytes=100) == MIN_FILE_STREAM_CHUNK_BYTES
     assert recommended_file_stream_chunk_bytes(available_bytes=24, capacity_bytes=100) == 256 * 1024
     assert (
-        recommended_file_stream_chunk_bytes(available_bytes=25, capacity_bytes=100)
-        == DEFAULT_FILE_STREAM_CHUNK_BYTES
+        recommended_file_stream_chunk_bytes(available_bytes=25, capacity_bytes=100) == DEFAULT_FILE_STREAM_CHUNK_BYTES
     )
     assert (
         recommended_file_stream_chunk_bytes(
@@ -2799,12 +3329,10 @@ def test_recommended_file_stream_chunk_is_pressure_aware_and_fail_safe():
         == DEFAULT_FILE_STREAM_CHUNK_BYTES
     )
     assert (
-        recommended_file_stream_chunk_bytes(available_bytes=None, capacity_bytes=100)
-        == DEFAULT_FILE_STREAM_CHUNK_BYTES
+        recommended_file_stream_chunk_bytes(available_bytes=None, capacity_bytes=100) == DEFAULT_FILE_STREAM_CHUNK_BYTES
     )
     assert (
-        recommended_file_stream_chunk_bytes(available_bytes=-1, capacity_bytes=100)
-        == DEFAULT_FILE_STREAM_CHUNK_BYTES
+        recommended_file_stream_chunk_bytes(available_bytes=-1, capacity_bytes=100) == DEFAULT_FILE_STREAM_CHUNK_BYTES
     )
 
 
@@ -2931,9 +3459,7 @@ def test_python_mmap_bridge_writer_closes_native_handle_when_context_fails():
 def test_python_mmap_bridge_writer_rejects_noncontiguous_memoryview():
     with TemporaryDirectory() as tmp:
         path = Path(tmp) / "noncontiguous-frame.aegmmap"
-        with pytest.raises(BufferError, match="C-contiguous"), MmapBridgeWriter(
-            path, 555, 666, 4
-        ) as writer:
+        with pytest.raises(BufferError, match="C-contiguous"), MmapBridgeWriter(path, 555, 666, 4) as writer:
             writer.write(memoryview(bytearray(8))[::2])
 
 
@@ -2966,8 +3492,7 @@ def test_browser_live_collector_producer_writes_exact_artifacts_and_metadata():
         )
 
         assert run.run_directory.name == (
-            "run-000000000000000000000000000a11ce-"
-            "action-0000000000000000000000000000beef-seq-0000000000000007"
+            "run-000000000000000000000000000a11ce-action-0000000000000000000000000000beef-seq-0000000000000007"
         )
         assert tuple(run.artifact_paths) == REQUIRED_BROWSER_ARTIFACT_KINDS
         assert run.artifact_paths["url_before"].read_bytes() == b"https://example.test/before"
@@ -3626,11 +4151,11 @@ def test_browser_ops_bench_records_capture_error_without_publishing():
 
 def test_prompt_builder():
     from aegis_cognition.prompt import PromptBuilder
-    
+
     # Test DEV trust level
     builder = PromptBuilder(trust_level="DEV", task_type="R1")
     prompt = builder.build("Run some local check")
-    
+
     assert "[SYSTEM INSTRUCTIONS - AEGIS-COGNITION PROTOCOL v3.1]" in prompt
     assert "- MỨC ĐỘ TIN CẬY: DEV" in prompt
     assert "- LOẠI NHIỆM VỤ: R1" in prompt
@@ -3655,8 +4180,9 @@ def test_prompt_builder():
 def test_rag_manager():
     from aegis_cognition.rag import RAGManager
     from unittest.mock import MagicMock
-    
+
     mock_lm = MagicMock()
+
     # Mock search result
     class MockCandidate:
         def __init__(self, ref_hash, segment_id, score, tier):
@@ -3669,13 +4195,11 @@ def test_rag_manager():
         def __init__(self, results):
             self.results = results
 
-    mock_lm.search_past.return_value = MockSearchResult([
-        MockCandidate("aabbcc", 101, 0.985, "ColdVectorExpansion")
-    ])
-    
+    mock_lm.search_past.return_value = MockSearchResult([MockCandidate("aabbcc", 101, 0.985, "ColdVectorExpansion")])
+
     mgr = RAGManager(learning_manager=mock_lm)
     context = mgr.retrieve_and_format("test query")
-    
+
     assert "[CANDIDATE REFERENCES ONLY — NOT MODEL CONTEXT]" in context
     assert "[QUALITY GUARANTEES]" not in context
     assert "[RETRIEVAL STRATEGY]" in context
@@ -3683,7 +4207,7 @@ def test_rag_manager():
     assert "aabbcc" in context
     assert "Session Segment: 101" in context
     assert "Match Tier: ColdVectorExpansion" in context
-    
+
     # Test empty results
     mock_lm.search_past.return_value = MockSearchResult([])
     context_empty = mgr.retrieve_and_format("test query")
@@ -3693,37 +4217,37 @@ def test_rag_manager():
 def test_nim_client_invoke_methods():
     from core.python.nim_client import NIMClient, NIMConfig
     from unittest.mock import MagicMock, patch
-    
+
     config = NIMConfig(api_key="nvapi-test-key", model="test-model")
-    
+
     with patch("openai.OpenAI") as mock_openai_cls:
         mock_client = MagicMock()
         mock_openai_cls.return_value = mock_client
-        
+
         # Mock completions response
         mock_choice = MagicMock()
         mock_choice.message.content = "Reply from model"
         mock_choice.finish_reason = "stop"
-        
+
         mock_usage = MagicMock()
         mock_usage.prompt_tokens = 10
         mock_usage.completion_tokens = 5
         mock_usage.total_tokens = 15
-        
+
         mock_response = MagicMock()
         mock_response.choices = [mock_choice]
         mock_response.usage = mock_usage
         mock_response.model = "test-model"
-        
+
         mock_client.chat.completions.create.return_value = mock_response
-        
+
         client = NIMClient(config)
-        
+
         # Test invoke
         reply = client.invoke("Hello model", system_context="Custom system instructions")
         assert reply == "Reply from model"
         mock_client.chat.completions.create.assert_called_once()
-        
+
         # Check system message in call args
         _args, kwargs = mock_client.chat.completions.create.call_args
         messages = kwargs["messages"]
@@ -3731,7 +4255,7 @@ def test_nim_client_invoke_methods():
         assert messages[0]["content"] == "Custom system instructions"
         assert messages[1]["role"] == "user"
         assert messages[1]["content"] == "Hello model"
-        
+
         # Test async ainvoke
         reply_async = __import__("asyncio").run(client.ainvoke("Hello model async"))
         assert reply_async == "Reply from model"
@@ -3740,7 +4264,7 @@ def test_nim_client_invoke_methods():
 def test_learning_manager_bridge_calls():
     from .aegis_adapter import LearningManager
     from unittest.mock import MagicMock
-    
+
     mock_bridge = MagicMock()
     mock_bridge.aegis_get_learning_stats.return_value = '{"schema": "aegis-learning-stats-v1", "ledger_events": 5, "improved_skills": 1, "nudged_memories": 2, "indexed_sessions": 3, "user_models": 0}'
     mock_bridge.aegis_search_past_sessions.return_value = '{"schema": "aegis-session-search-result-v1", "query": "test", "top_k": 5, "count": 1, "results": [{"evidence_ref_hash": "aabbcc", "segment_id": 12, "tier": "ColdVectorExpansion", "score": 0.95, "epoch_hash": "eeff"}], "tier": "ColdVectorExpansion", "gate": "CandidateOnly"}'
@@ -3752,23 +4276,23 @@ def test_learning_manager_bridge_calls():
     mock_bridge.aegis_select_context_items.return_value = '{"schema": "aegis-context-selection-v1", "selected_node_ids": ["0x12"], "token_count": 16, "utility_score": 10, "activation_node_count": 1, "digest": "dd", "backend": "rust-context-governor-v1"}'
     mock_bridge.aegis_forget_memory.return_value = '{"status": "committed"}'
     mock_bridge.aegis_validate_memory.return_value = '{"status": "committed", "validation": "ACCEPTED", "revision": 2}'
-    
+
     mgr = LearningManager(rust_bridge=mock_bridge)
-    
+
     # Test get_stats
     stats = mgr.get_stats()
     assert stats.ledger_events == 5
     assert stats.improved_skills == 1
     assert stats.nudged_memories == 2
     assert stats.indexed_sessions == 3
-    
+
     # Test search_past
     search = mgr.search_past("test query")
     assert search.count == 1
     assert search.results[0].evidence_ref_hash == "aabbcc"
     assert search.results[0].segment_id == 12
     assert search.results[0].score == 0.95
-    
+
     # Test index_session
     hash_result = mgr.index_session("0x12", "session transcript", 170000000)
     assert hash_result == "aabbcc"
@@ -3824,4 +4348,3 @@ def test_learning_manager_bridge_calls():
         "agent-1",
         1,
     )
-

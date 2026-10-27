@@ -4,7 +4,8 @@ This directory is a historical artifact, not an implementation tree.
 
 - The authoritative implementation is the repository root, especially
   `core/rust`, `core/python`, `aegis_cognition`, `schemas`, and `scripts`.
-- The tracked transformation report is retained as historical context only.
+- The historical transformation report is preserved in the private archive; it
+  is not a current implementation authority.
 - Rust and website snapshots here preserve historical source; they are outside
   the Cargo workspace and current runtime. Do not develop them here.
 - New code, tests, manifests, workflows, and operational scripts belong in the

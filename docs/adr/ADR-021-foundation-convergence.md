@@ -1,4 +1,6 @@
-# ADR-012: Foundation convergence boundaries
+# ADR-021: Foundation convergence boundaries
+
+Status: Accepted (recorded 2026-08-22)
 
 ## Context
 

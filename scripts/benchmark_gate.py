@@ -13,9 +13,7 @@ BENCHMARK_PROFILE_MULTIPLIERS = {
     BENCHMARK_PROFILE_RELEASE: 1.0,
     BENCHMARK_PROFILE_INNOVATION: 3.0,
 }
-ADVISORY_BENCHMARK_SURFACES = (
-    "provider_route_admission_proof",
-)
+ADVISORY_BENCHMARK_SURFACES = ("provider_route_admission_proof",)
 BENCHMARK_SCOPE_WARNING = (
     "These estimates cover isolated CPU-bound primitives, bounded TaskLedger ready "
     "queue cache-hit and recompute paths, bounded context-governor activation, QuickJS ABI packet "

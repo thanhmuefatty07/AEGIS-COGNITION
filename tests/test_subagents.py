@@ -282,12 +282,15 @@ def test_durable_mailbox_deduplicates_and_survives_reopen(tmp_path) -> None:
     assert delivery.delivery_id == delivery_id
     assert delivery.message == message
     assert delivery.attempts == 1
-    assert reopened.ack(
-        delivery.delivery_id,
-        "worker-a",
-        expected_attempt=delivery.attempts,
-        now_ms=20,
-    ) is True
+    assert (
+        reopened.ack(
+            delivery.delivery_id,
+            "worker-a",
+            expected_attempt=delivery.attempts,
+            now_ms=20,
+        )
+        is True
+    )
     assert reopened.claim("worker-b", now_ms=21) is None
     assert reopened.counts() == {"READY": 0, "LEASED": 0, "ACKED": 1, "DEAD": 0}
 
@@ -302,22 +305,28 @@ def test_durable_mailbox_reclaims_expired_leases_and_dead_letters_after_bound(tm
     first = mailbox.claim("worker-a", lease_ms=10, now_ms=10)
     assert first is not None and first.attempts == 1
     assert mailbox.claim("worker-b", now_ms=10) is None
-    assert mailbox.ack(
-        first.delivery_id,
-        "worker-a",
-        expected_attempt=first.attempts,
-        now_ms=20,
-    ) is False
+    assert (
+        mailbox.ack(
+            first.delivery_id,
+            "worker-a",
+            expected_attempt=first.attempts,
+            now_ms=20,
+        )
+        is False
+    )
     assert mailbox.recover_expired(now_ms=20) == 1
     second = mailbox.claim("worker-b", lease_ms=10, now_ms=20)
     assert second is not None and second.attempts == 2
-    assert mailbox.nack(
-        second.delivery_id,
-        "worker-b",
-        expected_attempt=second.attempts,
-        error="handler failed",
-        now_ms=21,
-    ) == "DEAD"
+    assert (
+        mailbox.nack(
+            second.delivery_id,
+            "worker-b",
+            expected_attempt=second.attempts,
+            error="handler failed",
+            now_ms=21,
+        )
+        == "DEAD"
+    )
     assert mailbox.counts() == {"READY": 0, "LEASED": 0, "ACKED": 0, "DEAD": 1}
 
 

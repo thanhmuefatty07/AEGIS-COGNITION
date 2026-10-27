@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import type { DesktopCommand } from "../../src/protocol";
 
 test("MCP OAuth Client ID guidance stays understandable across desktop sizes and themes", async ({ page }, testInfo) => {
   await page.addInitScript(() => {
@@ -24,7 +25,7 @@ test("MCP OAuth Client ID guidance stays understandable across desktop sizes and
       environment_variables: [],
     };
 
-    installDesktopTransport(async (command, payload) => {
+    installDesktopTransport(async (command: DesktopCommand, payload: Record<string, unknown>) => {
       const result = await previewRequest(command, payload) as Record<string, unknown>;
       if (command === "extensions.discover") {
         return { ...result, mcp_servers: [server] };

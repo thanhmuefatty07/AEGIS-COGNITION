@@ -23,7 +23,15 @@ from collections.abc import Callable, Mapping
 from pathlib import Path
 from typing import Protocol, cast
 
-from .config import VALID_TRUST_LEVELS, load_config, redact_config, save_config
+from .config import (
+    VALID_TRUST_LEVELS,
+    load_config,
+    redact_config,
+    render_toml,
+    resolve_trust_level,
+    save_config,
+    trust_policy_hash,
+)
 from .verification import VerificationFacade, VerificationSessionError
 
 
@@ -31,26 +39,64 @@ class _Msvcrt(Protocol):
     getch: Callable[[], bytes]
 
 
-def main() -> int:
+def main(argv: list[str] | None = None) -> int:
     """Main CLI entry point."""
-    if len(sys.argv) < 2:
+    args = list(argv) if argv is not None else sys.argv[1:]
+    if not args:
         _print_help()
         return 0
 
-    command = sys.argv[1]
+    command = args[0]
+    sub_args = args[1:]
 
     if command == "init":
+        if "--dry-run" in sub_args:
+            default_config = {
+                "llm": {"provider": "openai", "api_key": ""},
+                "trust": {"level": "DEV"},
+                "browser": {"enabled": True},
+            }
+            try:
+                trust_level = resolve_trust_level(default_config)
+                if trust_level not in VALID_TRUST_LEVELS:
+                    print(f"Invalid default trust level: {trust_level}", file=sys.stderr)
+                    return 1
+                trust_policy_hash(trust_level)
+                render_toml(default_config)
+            except Exception as error:
+                print(f"Default configuration invalid: {error}", file=sys.stderr)
+                return 1
+            print("AEGIS-COGNITION Setup Wizard (dry run)")
+            print("Dry run completed successfully.")
+            return 0
         _cmd_init()
     elif command == "run":
-        return _cmd_run(sys.argv[2:])
+        return _cmd_run(sub_args)
     elif command == "examples":
         _cmd_examples()
     elif command == "version":
         _cmd_version()
     elif command == "config":
-        return _cmd_config(sys.argv[2:])
+        return _cmd_config(sub_args)
     elif command in ("verify", "verification"):
-        return _cmd_verify(sys.argv[2:])
+        if "--dry-run" in sub_args:
+            config_path = Path.home() / ".aegis" / "config.toml"
+            if not config_path.exists():
+                print(f"Configuration file not found: {config_path}", file=sys.stderr)
+                return 1
+            try:
+                config = load_config(config_path)
+                trust_level = resolve_trust_level(config)
+                if trust_level not in VALID_TRUST_LEVELS:
+                    print(f"Invalid trust level: {trust_level}", file=sys.stderr)
+                    return 1
+                trust_policy_hash(trust_level)
+            except Exception as error:
+                print(f"Configuration error: {error}", file=sys.stderr)
+                return 1
+            print("AEGIS verification inspection (dry run): configuration valid")
+            return 0
+        return _cmd_verify(sub_args)
     elif command in ("-h", "--help", "help"):
         _print_help()
     else:
@@ -322,7 +368,7 @@ def _cmd_config(args: list[str]) -> int:
 
     subcmd = args[0]
 
-    if subcmd == "show":
+    if subcmd in ("show", "list"):
         try:
             config = load_config(config_path)
         except Exception as error:
@@ -347,7 +393,7 @@ def _cmd_config(args: list[str]) -> int:
         print(f"Set {key}.")
         return 0
     else:
-        print("Usage: aegis config show | aegis config set <key> <value>")
+        print("Usage: aegis config show | aegis config list | aegis config set <key> <value>")
         return 2
 
 

@@ -254,18 +254,20 @@ class McpOAuthClient:
                     scope=scope,
                 )
                 stored: dict[str, object] = dict(record or {})
-                stored.update({
-                    "version": 1,
-                    "resource": self.resource_uri,
-                    "issuer": issuer,
-                    "client_id": client_id,
-                    "authorization_endpoint": self._string_field(metadata, "authorization_endpoint"),
-                    "token_endpoint": self._string_field(metadata, "token_endpoint"),
-                    "authorization_response_iss_parameter_supported": (
-                        metadata.get("authorization_response_iss_parameter_supported") is True
-                    ),
-                    "requested_scopes": scope.split() if scope is not None else [],
-                })
+                stored.update(
+                    {
+                        "version": 1,
+                        "resource": self.resource_uri,
+                        "issuer": issuer,
+                        "client_id": client_id,
+                        "authorization_endpoint": self._string_field(metadata, "authorization_endpoint"),
+                        "token_endpoint": self._string_field(metadata, "token_endpoint"),
+                        "authorization_response_iss_parameter_supported": (
+                            metadata.get("authorization_response_iss_parameter_supported") is True
+                        ),
+                        "requested_scopes": scope.split() if scope is not None else [],
+                    }
+                )
                 self._record = stored
                 self._save_record(stored)
                 try:
@@ -427,7 +429,7 @@ class McpOAuthClient:
             return None
         try:
             parsed = json.loads(raw, object_pairs_hook=_reject_duplicate_keys, parse_constant=_reject_constant)
-        except (json.JSONDecodeError, ValueError):
+        except json.JSONDecodeError, ValueError:
             raise McpOAuthError("Saved MCP sign-in data is invalid; remove and reconnect this server") from None
         if (
             not isinstance(parsed, dict)
@@ -729,10 +731,7 @@ class _LoopbackCallback:
         deadline = time.monotonic() + self.timeout_seconds
         self._server.callback_deadline = deadline
         while (
-            time.monotonic() < deadline
-            and self._attempts < 3
-            and not self._result
-            and not self._cancel_event.is_set()
+            time.monotonic() < deadline and self._attempts < 3 and not self._result and not self._cancel_event.is_set()
         ):
             self._server.timeout = min(0.25, max(0.0, deadline - time.monotonic()))
             self._server.handle_request()
@@ -900,10 +899,7 @@ def _requested_scope(
     scopes = [*_scope_tokens_from_record(list(previously_requested)), *scopes]
     authorization_scopes = authorization_metadata.get("scopes_supported")
     if authorization_scopes is not None:
-        if (
-            type(authorization_scopes) is not list
-            or len(authorization_scopes) > _MAX_SCOPE_COUNT
-        ):
+        if type(authorization_scopes) is not list or len(authorization_scopes) > _MAX_SCOPE_COUNT:
             raise McpOAuthError("Authorization server metadata contains invalid scopes")
         if any(len(_scope_tokens(item)) != 1 for item in authorization_scopes):
             raise McpOAuthError("Authorization server metadata contains invalid scopes")
@@ -1020,7 +1016,7 @@ def _response_json(response: OAuthHttpResponse) -> Mapping[str, object]:
             object_pairs_hook=_reject_duplicate_keys,
             parse_constant=_reject_constant,
         )
-    except (UnicodeDecodeError, json.JSONDecodeError, ValueError):
+    except UnicodeDecodeError, json.JSONDecodeError, ValueError:
         raise McpOAuthError("An OAuth endpoint returned invalid JSON") from None
     if not isinstance(result, dict):
         raise McpOAuthError("An OAuth endpoint returned an invalid object")

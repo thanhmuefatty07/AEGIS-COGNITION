@@ -58,10 +58,7 @@ class NIMConfig:
         """
         api_key = os.environ.get("NVIDIA_NIM_API_KEY", "")
         if not api_key:
-            raise OSError(
-                "NVIDIA_NIM_API_KEY is not set. "
-                "Add it to your .env file or export it before running."
-            )
+            raise OSError("NVIDIA_NIM_API_KEY is not set. Add it to your .env file or export it before running.")
         return cls(
             api_key=api_key,
             base_url=os.environ.get("NVIDIA_NIM_BASE_URL", NIM_BASE_URL),
@@ -72,6 +69,7 @@ class NIMConfig:
 # ---------------------------------------------------------------------------
 # Message helpers
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class ChatMessage:
@@ -103,6 +101,7 @@ class NIMResponse:
 # Client
 # ---------------------------------------------------------------------------
 
+
 class NIMClient:
     """
     Thin wrapper around the NVIDIA NIM OpenAI-compatible REST API.
@@ -125,8 +124,7 @@ class NIMClient:
             from openai import OpenAI  # type: ignore[import]
         except ImportError as exc:
             raise ImportError(
-                "The 'openai' package is required for NIMClient. "
-                "Install it with:  pip install openai"
+                "The 'openai' package is required for NIMClient. Install it with:  pip install openai"
             ) from exc
 
         return OpenAI(

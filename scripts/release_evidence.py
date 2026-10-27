@@ -41,7 +41,7 @@ def git_revision(root: Path) -> str:
         return subprocess.check_output(
             ["git", "rev-parse", "HEAD"], cwd=root, text=True, stderr=subprocess.DEVNULL
         ).strip()
-    except (OSError, subprocess.CalledProcessError):
+    except OSError, subprocess.CalledProcessError:
         return "NOT VERIFIED"
 
 
@@ -50,7 +50,7 @@ def creation_timestamp() -> str:
     if declared_epoch:
         try:
             timestamp = datetime.fromtimestamp(int(declared_epoch), tz=UTC)
-        except (OverflowError, ValueError):
+        except OverflowError, ValueError:
             timestamp = datetime.now(UTC)
     else:
         timestamp = datetime.now(UTC)
@@ -121,9 +121,7 @@ def build_evidence(root: Path, artifacts: Path, output: Path) -> None:
         },
         "packages": packages,
     }
-    (output / "release.sbom.spdx.json").write_text(
-        json.dumps(sbom, indent=2, sort_keys=True) + "\n", encoding="utf-8"
-    )
+    (output / "release.sbom.spdx.json").write_text(json.dumps(sbom, indent=2, sort_keys=True) + "\n", encoding="utf-8")
 
 
 def main() -> int:

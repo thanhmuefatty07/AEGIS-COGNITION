@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import pytest
+
 from aegis_cognition.verification.adapters import GenericBoundedAdapter
 
 
@@ -21,6 +23,22 @@ def test_adapter_rejects_zero_test_pass_and_malformed_result() -> None:
     assert zero.status == "MALFORMED"
     malformed = adapter.parse_result({"status": "opaque", "discovered": 1})
     assert malformed.status == "MALFORMED"
+
+
+@pytest.mark.parametrize(
+    "payload",
+    (
+        {"status": "pass", "discovered": 0},
+        {"status": "PASS", "discovered": 2, "passed": 1},
+        {"status": "PASS", "discovered": 2, "skipped": 2},
+        {"status": "ZERO_TESTS", "discovered": 2, "skipped": 1},
+    ),
+    ids=("lowercase-zero-test-pass", "unaccounted-test", "all-skipped", "incomplete-zero-tests"),
+)
+def test_adapter_rejects_incomplete_or_non_executing_pass(payload: dict[str, object]) -> None:
+    parsed = GenericBoundedAdapter().parse_result(payload)
+
+    assert parsed.status == "MALFORMED"
 
 
 def test_adapter_classifies_timeout_cancellation_and_build_failures() -> None:

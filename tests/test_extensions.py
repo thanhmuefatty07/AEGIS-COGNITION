@@ -148,21 +148,27 @@ def test_mcp_skill_manifest_is_complete_content_bound_and_summarizable() -> None
             for item in sorted(page.skills[0].summary()["resources"], key=lambda item: item["uri"])
         ],
     }
-    assert skill.manifest_hash == hashlib.sha256(
-        json.dumps(expected_binding, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode("utf-8")
-    ).hexdigest()
+    assert (
+        skill.manifest_hash
+        == hashlib.sha256(
+            json.dumps(expected_binding, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode("utf-8")
+        ).hexdigest()
+    )
     assert page.summary()["skills"][0]["uri"] == skill_uri
     assert len(page.descriptor_hash) == 64
-    assert extension_module._mcp_skill_read_result(
-        {
-            "resultType": "complete",
-            "ttlMs": 30_000,
-            "cacheScope": "private",
-            "contents": [{"uri": skill_uri, "text": body.decode("utf-8")}],
-        },
-        skill,
-        skill_uri,
-    ) == body
+    assert (
+        extension_module._mcp_skill_read_result(
+            {
+                "resultType": "complete",
+                "ttlMs": 30_000,
+                "cacheScope": "private",
+                "contents": [{"uri": skill_uri, "text": body.decode("utf-8")}],
+            },
+            skill,
+            skill_uri,
+        )
+        == body
+    )
 
     with pytest.raises(ExtensionError, match="not in the approved manifest"):
         extension_module._mcp_skill_read_result(
@@ -386,11 +392,7 @@ def test_tool_search_finds_hidden_capabilities_without_invoking_them() -> None:
     specs = [
         ToolSpec(
             name=f"catalog.tool_{index:02d}",
-            description=(
-                "A vault archive lookup fixture"
-                if index >= 15
-                else "A harmless catalog fixture capability"
-            ),
+            description=("A vault archive lookup fixture" if index >= 15 else "A harmless catalog fixture capability"),
             extension_id="catalog",
         )
         for index in range(20)
@@ -421,9 +423,7 @@ def test_tool_search_finds_hidden_capabilities_without_invoking_them() -> None:
     search_spec = registry.get_tool_spec(TOOL_SEARCH_TOOL_NAME)
     assert search_spec is not None and search_spec.effect_class == "read_only"
 
-    search_result = asyncio.run(
-        registry.invoke(TOOL_SEARCH_TOOL_NAME, {"query": "vault", "limit": 4})
-    )
+    search_result = asyncio.run(registry.invoke(TOOL_SEARCH_TOOL_NAME, {"query": "vault", "limit": 4}))
     assert isinstance(search_result, dict)
     assert search_result["schema"] == "aegis-tool-search-v1"
     assert [item["name"] for item in search_result["matches"]] == [
@@ -500,9 +500,7 @@ def test_tool_search_is_not_advertised_without_overflow_or_capacity() -> None:
 
     constrained_registry = ExtensionRegistry(max_tools=2)
     constrained = ToolSpec(name="demo.constrained", description="Preserve the user slot", extension_id="demo")
-    constrained_registry.register(
-        _manifest(constrained.name), ((constrained, lambda _arguments: {"ok": True}),)
-    )
+    constrained_registry.register(_manifest(constrained.name), ((constrained, lambda _arguments: {"ok": True}),))
     assert constrained_registry.get_tool_spec(TOOL_SCHEMA_READ_TOOL_NAME) is not None
     assert constrained_registry.get_tool_spec(TOOL_SEARCH_TOOL_NAME) is None
     assert constrained_registry.get_tool_spec(constrained.name) is not None
@@ -1074,7 +1072,9 @@ def test_skill_catalog_does_not_discover_hard_linked_instruction_files(tmp_path:
     skill_dir = tmp_path / "research"
     skill_dir.mkdir()
     outside_file = tmp_path / "outside-skill.md"
-    outside_file.write_text("---\nname: research\ndescription: Research\n---\n\nExternal instructions.\n", encoding="utf-8")
+    outside_file.write_text(
+        "---\nname: research\ndescription: Research\n---\n\nExternal instructions.\n", encoding="utf-8"
+    )
     hard_link = skill_dir / "SKILL.md"
     os.link(outside_file, hard_link)
     assert hard_link.stat().st_nlink > 1
@@ -2372,7 +2372,9 @@ def test_mcp_stdio_concurrent_request_mode_rejects_non_tool_methods() -> None:
 
     async def run() -> None:
         with pytest.raises(ExtensionError, match="only applies to MCP tool calls"):
-            await provider._request("resources/read", {"uri": "kb://item"}, ensure_started=False, concurrent_read_only=True)
+            await provider._request(
+                "resources/read", {"uri": "kb://item"}, ensure_started=False, concurrent_read_only=True
+            )
 
     asyncio.run(run())
 
@@ -2545,13 +2547,23 @@ for line in sys.stdin:
 def test_mcp_stdio_provider_restart_and_close_terminate_descendants(tmp_path: Path) -> None:
     ticks = tmp_path / "descendant-ticks.log"
     child_pids = tmp_path / "descendant-pids.log"
+    child_ready_pids = tmp_path / "descendant-ready-pids.log"
+    child_stderr = tmp_path / "descendant-stderr.log"
     descendant_code = f"""
+import os
 import time
 from pathlib import Path
 path = Path({str(ticks)!r})
+ready = Path({str(child_ready_pids)!r})
+ready_recorded = False
 while True:
     with path.open("a", encoding="utf-8") as stream:
         stream.write("tick\\n")
+        stream.flush()
+    if not ready_recorded:
+        with ready.open("a", encoding="ascii") as stream:
+            stream.write(str(os.getpid()) + "\\n")
+        ready_recorded = True
     time.sleep(0.02)
 """
     server_code = f"""
@@ -2565,12 +2577,13 @@ for line in sys.stdin:
     if method == "server/discover":
         response = {{"jsonrpc": "2.0", "id": request["id"], "error": {{"code": -32601, "message": "unknown method"}}}}
     elif method == "initialize":
-        child = subprocess.Popen(
-            [sys.executable, "-c", {descendant_code!r}],
-            stdin=subprocess.DEVNULL,
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
-        )
+        with Path({str(child_stderr)!r}).open("ab", buffering=0) as stderr:
+            child = subprocess.Popen(
+                [sys.executable, "-c", {descendant_code!r}],
+                stdin=subprocess.DEVNULL,
+                stdout=subprocess.DEVNULL,
+                stderr=stderr,
+            )
         with Path({str(child_pids)!r}).open("a", encoding="ascii") as stream:
             stream.write(str(child.pid) + "\\n")
         response = {{"jsonrpc": "2.0", "id": request["id"], "result": {{"protocolVersion": "2025-11-25", "capabilities": {{}}, "serverInfo": {{"name": "test", "version": "1"}}}}}}
@@ -2584,20 +2597,42 @@ for line in sys.stdin:
     async def run() -> None:
         try:
             await provider.start()
-            deadline = asyncio.get_running_loop().time() + 2.0
-            while not child_pids.is_file() or not ticks.is_file() or ticks.stat().st_size == 0:
+            deadline = asyncio.get_running_loop().time() + provider.config.startup_timeout_seconds
+            while (
+                not child_pids.is_file()
+                or not child_ready_pids.is_file()
+                or not ticks.is_file()
+                or ticks.stat().st_size == 0
+            ):
                 if asyncio.get_running_loop().time() >= deadline:
-                    raise AssertionError("the MCP server did not start its descendant")
+                    stderr = child_stderr.read_text(encoding="utf-8", errors="replace") if child_stderr.exists() else ""
+                    raise AssertionError(
+                        "the MCP server descendant did not become ready; "
+                        f"child_pids={child_pids.read_text(encoding='ascii') if child_pids.exists() else ''!r}; "
+                        f"child_ready_pids={child_ready_pids.read_text(encoding='ascii') if child_ready_pids.exists() else ''!r}; "
+                        f"child_stderr={stderr!r}"
+                    )
                 await asyncio.sleep(0.02)
             first_process = provider._process
             assert first_process is not None
             first_process.kill()
             await asyncio.wait_for(first_process.wait(), timeout=2.0)
             await provider.start()
-            deadline = asyncio.get_running_loop().time() + 2.0
-            while not child_pids.is_file() or len(child_pids.read_text(encoding="ascii").splitlines()) < 2:
+            deadline = asyncio.get_running_loop().time() + provider.config.startup_timeout_seconds
+            while (
+                not child_pids.is_file()
+                or len(child_pids.read_text(encoding="ascii").splitlines()) < 2
+                or not child_ready_pids.is_file()
+                or len(child_ready_pids.read_text(encoding="ascii").splitlines()) < 2
+            ):
                 if asyncio.get_running_loop().time() >= deadline:
-                    raise AssertionError("the restarted MCP server did not start its descendant")
+                    stderr = child_stderr.read_text(encoding="utf-8", errors="replace") if child_stderr.exists() else ""
+                    raise AssertionError(
+                        "the restarted MCP server descendant did not become ready; "
+                        f"child_pids={child_pids.read_text(encoding='ascii') if child_pids.exists() else ''!r}; "
+                        f"child_ready_pids={child_ready_pids.read_text(encoding='ascii') if child_ready_pids.exists() else ''!r}; "
+                        f"child_stderr={stderr!r}"
+                    )
                 await asyncio.sleep(0.02)
         finally:
             await provider.close()
@@ -3000,8 +3035,7 @@ def test_mcp_http_provider_lists_and_verifies_remote_skills() -> None:
 
 def test_mcp_stdio_request_deadline_covers_interleaved_server_notifications(monkeypatch) -> None:
     messages = [
-        json.dumps({"jsonrpc": "2.0", "method": "notifications/message", "params": {}}) + "\n"
-        for _ in range(12)
+        json.dumps({"jsonrpc": "2.0", "method": "notifications/message", "params": {}}) + "\n" for _ in range(12)
     ]
     messages.append(json.dumps({"jsonrpc": "2.0", "id": 1, "result": {"ok": True}}) + "\n")
 
@@ -3017,9 +3051,7 @@ def test_mcp_stdio_request_deadline_covers_interleaved_server_notifications(monk
             del self.buffer[:count]
             return chunk
 
-    provider = McpStdioProvider(
-        McpStdioConfig(command=(sys.executable, "-c", "pass"), request_timeout_seconds=0.3)
-    )
+    provider = McpStdioProvider(McpStdioConfig(command=(sys.executable, "-c", "pass"), request_timeout_seconds=0.3))
     provider._protocol_mode = "legacy"
     provider._process = SimpleNamespace(stdout=DelayedReader())
 
@@ -3317,7 +3349,7 @@ def test_mcp_http_subscription_streams_notifications_without_blocking_requests()
                         self.wfile.write(b": keepalive\n\n")
                         self.wfile.flush()
                         threading.Event().wait(0.02)
-                except (BrokenPipeError, ConnectionResetError, OSError):
+                except BrokenPipeError, ConnectionResetError, OSError:
                     state["stream_closed"].set()
                 return
             if method == "tools/list":
@@ -4058,9 +4090,11 @@ def test_mcp_http_scope_step_up_never_repeats_side_effecting_tool_calls() -> Non
         calls.append(method)
         if method == "tools/call":
             return 403, {"www-authenticate": 'Bearer error="insufficient_scope", scope="files:write"'}, b""
-        return 200, {"content-type": "application/json"}, json.dumps(
-            {"jsonrpc": "2.0", "id": payload["id"], "result": {"ok": True}}
-        ).encode()
+        return (
+            200,
+            {"content-type": "application/json"},
+            json.dumps({"jsonrpc": "2.0", "id": payload["id"], "result": {"ok": True}}).encode(),
+        )
 
     provider._exchange = exchange  # type: ignore[method-assign]
 
@@ -4129,9 +4163,11 @@ def test_mcp_http_user_initiated_safe_request_completes_queued_scope_step_up() -
         calls += 1
         if calls == 1:
             return 403, {"www-authenticate": 'Bearer error="insufficient_scope", scope="files:read"'}, b""
-        return 200, {"content-type": "application/json"}, json.dumps(
-            {"jsonrpc": "2.0", "id": payload["id"], "result": {"ok": True}}
-        ).encode()
+        return (
+            200,
+            {"content-type": "application/json"},
+            json.dumps({"jsonrpc": "2.0", "id": payload["id"], "result": {"ok": True}}).encode(),
+        )
 
     provider._exchange = exchange  # type: ignore[method-assign]
 
@@ -4206,7 +4242,7 @@ def test_wasm_plugin_discovery_binds_code_and_tool_contract_without_running_it(t
     )
     (tmp_path / "wasm.toml").write_text(
         '[wasm]\nschema = "aegis-wasm-plugin-v1"\nmodule = "plugin.wasm"\n'
-        'fuel_limit = 10000\nmemory_pages = 8\ntimeout_ms = 1000\nmax_output_bytes = 4096\n\n'
+        "fuel_limit = 10000\nmemory_pages = 8\ntimeout_ms = 1000\nmax_output_bytes = 4096\n\n"
         '[[tool]]\nname = "compute-demo.answer"\nexport = "answer"\n'
         'description = "Return a computed answer"\n'
         'input_schema = { type = "object", additionalProperties = false }\n'
@@ -4361,3 +4397,347 @@ def test_agent_application_composes_registry_with_existing_tool_runner() -> None
     with pytest.raises(ToolExecutionError, match="arguments do not match"):
         invoke({"tool_name": spec.name, "input": {"unexpected": True}})
     assert received == [{"tool_name": "legacy.tool", "input": {}}]
+
+
+def test_windows_mcp_job_object_enables_process_and_job_memory_limits(monkeypatch: pytest.MonkeyPatch) -> None:
+    import ctypes
+    from aegis_cognition.extensions import _McpJobObjectExtendedLimitInformation, _WindowsMcpJobObject
+
+    captured_flags: list[int] = []
+    captured_process_mem: list[int] = []
+    captured_job_mem: list[int] = []
+
+    class FakeFunc:
+        def __init__(self, fn: object) -> None:
+            self._fn = fn
+            self.argtypes: object = None
+            self.restype: object = None
+
+        def __call__(self, *args: object) -> object:
+            return self._fn(*args)  # type: ignore[operator]
+
+    def fake_set_information(handle: int, info_class: int, ptr: object, size: int) -> int:
+        assert handle == 101
+        assert info_class == _WindowsMcpJobObject._JOB_OBJECT_EXTENDED_LIMIT_INFORMATION
+        info = ctypes.cast(ptr, ctypes.POINTER(_McpJobObjectExtendedLimitInformation)).contents
+        captured_flags.append(int(info.basic_limit_information.limit_flags))
+        captured_process_mem.append(int(info.process_memory_limit))
+        captured_job_mem.append(int(info.job_memory_limit))
+        return 1
+
+    class FakeKernel32:
+        def __init__(self) -> None:
+            self.CreateJobObjectW = FakeFunc(lambda _sec, _name: 101)
+            self.SetInformationJobObject = FakeFunc(fake_set_information)
+            self.OpenProcess = FakeFunc(lambda _access, _inherit, _pid: 202)
+            self.AssignProcessToJobObject = FakeFunc(lambda _job, _proc: 1)
+            self.CloseHandle = FakeFunc(lambda _handle: 1)
+
+    monkeypatch.setattr(ctypes, "WinDLL", lambda _name, use_last_error=True: FakeKernel32(), raising=False)
+    job = _WindowsMcpJobObject(1234)
+    expected_flags = (
+        _WindowsMcpJobObject._JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE
+        | _WindowsMcpJobObject._JOB_OBJECT_LIMIT_PROCESS_MEMORY
+        | _WindowsMcpJobObject._JOB_OBJECT_LIMIT_JOB_MEMORY
+    )
+    assert captured_flags == [expected_flags]
+    assert captured_flags[0] & 0x100 == 0x100
+    assert captured_flags[0] & 0x200 == 0x200
+    assert captured_process_mem == [_WindowsMcpJobObject._DEFAULT_PROCESS_MEMORY_LIMIT]
+    assert captured_job_mem == [_WindowsMcpJobObject._DEFAULT_JOB_MEMORY_LIMIT]
+    job.close()
+
+    with pytest.raises(ValueError, match="process memory limit"):
+        _WindowsMcpJobObject(1234, process_memory_limit=0)
+    with pytest.raises(ValueError, match="job memory limit"):
+        _WindowsMcpJobObject(1234, process_memory_limit=64 * 1024 * 1024, job_memory_limit=32 * 1024 * 1024)
+
+
+def test_mcp_stdio_provider_drains_stderr_into_bounded_ring_buffer() -> None:
+    server_code = """
+import json
+import sys
+for line in sys.stdin:
+    request = json.loads(line)
+    method = request.get("method")
+    if method == "server/discover":
+        response = {"jsonrpc": "2.0", "id": request["id"], "error": {"code": -32601, "message": "unknown method"}}
+    elif method == "initialize":
+        for idx in range(80):
+            sys.stderr.write(f"chunk-{idx:03d}\\n" + ("x" * 512) + "\\n")
+            sys.stderr.flush()
+        response = {"jsonrpc": "2.0", "id": request["id"], "result": {"protocolVersion": "2025-11-25", "capabilities": {"tools": {}}, "serverInfo": {"name": "test", "version": "1"}}}
+    elif method == "tools/list":
+        response = {"jsonrpc": "2.0", "id": request["id"], "result": {"tools": []}}
+    else:
+        continue
+    sys.stdout.write(json.dumps(response) + "\\n")
+    sys.stdout.flush()
+"""
+
+    async def run() -> None:
+        provider = McpStdioProvider(McpStdioConfig(command=(sys.executable, "-c", server_code)))
+        try:
+            tools = await provider.list_tools()
+            assert tools == ()
+            await asyncio.sleep(0.05)
+            assert provider._stderr_chunks.maxlen == 64
+            assert 1 <= len(provider.stderr_chunks) <= 64
+            assert "chunk-079" in provider.stderr_snapshot
+        finally:
+            await provider.close()
+
+    asyncio.run(run())
+
+
+def test_mcp_tool_schema_complexity_budget_and_compaction() -> None:
+    from aegis_cognition.desktop_service import DesktopService
+    from aegis_cognition.extensions import (
+        MAX_MCP_TOOL_SCHEMA_REFS,
+        MAX_MCP_TOOL_SCHEMA_SERIALIZED_CHARS,
+        compact_mcp_tool_schema,
+        count_json_schema_refs,
+        validate_mcp_tool_schema_budget,
+    )
+
+    oversized_schema: dict[str, object] = {
+        "type": "object",
+        "properties": {
+            f"field_{idx:02d}": {
+                "type": "string",
+                "description": f"Verbose description {idx}: " + ("A" * 450),
+                "anyOf": [{"$ref": f"#/$defs/Type{idx}"}, {"type": "null"}],
+            }
+            for idx in range(45)
+        },
+        "$defs": {
+            f"Type{idx}": {
+                "type": "string",
+                "description": "Definition " + ("B" * 200),
+            }
+            for idx in range(45)
+        },
+        "required": ["field_00", "field_01"],
+        "additionalProperties": False,
+    }
+    assert count_json_schema_refs(oversized_schema) == 45
+    with pytest.raises(ExtensionError, match="exceeds"):
+        validate_mcp_tool_schema_budget(oversized_schema)
+
+    compacted = compact_mcp_tool_schema(oversized_schema)
+    budget_stats = validate_mcp_tool_schema_budget(compacted)
+    assert budget_stats["serialized_chars"] <= MAX_MCP_TOOL_SCHEMA_SERIALIZED_CHARS
+    assert budget_stats["ref_count"] <= MAX_MCP_TOOL_SCHEMA_REFS
+    assert compacted["type"] == "object"
+
+    spec = ToolSpec(
+        name="mcp.heavy.query",
+        description="Heavy schema tool",
+        input_schema=oversized_schema,
+        extension_id="mcp.heavy",
+    )
+    provider_def = DesktopService._provider_tool_definition(spec)
+    def_stats = validate_mcp_tool_schema_budget(provider_def.input_schema)
+    assert def_stats["serialized_chars"] <= MAX_MCP_TOOL_SCHEMA_SERIALIZED_CHARS
+    assert def_stats["ref_count"] <= MAX_MCP_TOOL_SCHEMA_REFS
+
+
+def test_default_on_untrusted_target_provenance_and_error_responses() -> None:
+    from aegis_cognition.desktop_service import DesktopService
+    from aegis_cognition.extensions import (
+        DEFAULT_UNTRUSTED_TARGET_PROVENANCE,
+        attach_untrusted_target_provenance,
+        make_untrusted_mcp_error_response,
+    )
+
+    tagged = attach_untrusted_target_provenance({"content": [{"type": "text", "text": "decompiled main"}]})
+    assert tagged["_meta"] == {
+        "provenance": {
+            "untrusted_content": True,
+            "source": "analysis_target",
+        }
+    }
+    assert DEFAULT_UNTRUSTED_TARGET_PROVENANCE == {
+        "untrusted_content": True,
+        "source": "analysis_target",
+    }
+
+    error_resp = make_untrusted_mcp_error_response("symbol table corrupted", code=-32001)
+    assert error_resp["isError"] is True
+    assert error_resp["_meta"] == {
+        "provenance": {
+            "untrusted_content": True,
+            "source": "analysis_target",
+        }
+    }
+
+    serialized = DesktopService._provider_tool_output_text({"result": "disassembly"})
+    parsed = json.loads(serialized)
+    assert parsed["_meta"]["provenance"] == {
+        "untrusted_content": True,
+        "source": "analysis_target",
+    }
+
+    oversized_serialized = DesktopService._provider_tool_output_text({"result": "x" * 200_000})
+    oversized_parsed = json.loads(oversized_serialized)
+    assert oversized_parsed["truncated"] is True
+    assert oversized_parsed["_meta"]["provenance"] == {
+        "untrusted_content": True,
+        "source": "analysis_target",
+    }
+
+
+def test_multi_harness_mcp_discovery_msix_and_cordis_js_tag_preservation(tmp_path: Path) -> None:
+    from aegis_cognition.extensions import (
+        SUPPORTED_MCP_HARNESSES,
+        CordisJsTag,
+        discover_harness_mcp_servers,
+        dump_cordis_yaml_preserving_js_tags,
+        load_cordis_yaml_preserving_js_tags,
+        parse_mcp_harness_config,
+        resolve_mcp_harness_config_paths,
+    )
+
+    assert set(SUPPORTED_MCP_HARNESSES) == {
+        "antigravity",
+        "claude_code",
+        "claude_desktop",
+        "codex",
+        "cursor",
+        "dsh",
+        "omp",
+        "pi",
+    }
+
+    # Windows MSIX path resolution for Claude Desktop
+    localappdata = tmp_path / "LocalAppData"
+    appdata = tmp_path / "RoamingAppData"
+    msix_config = (
+        localappdata
+        / "Packages"
+        / "Claude_pzs8sxrjxfjjc"
+        / "LocalCache"
+        / "Roaming"
+        / "Claude"
+        / "claude_desktop_config.json"
+    )
+    msix_config.parent.mkdir(parents=True, exist_ok=True)
+    msix_config.write_text(
+        json.dumps(
+            {
+                "mcpServers": {
+                    "ghidra-bridge": {
+                        "command": "python",
+                        "args": ["-m", "ghidra_mcp"],
+                        "env": {"GHIDRA_INSTALL_DIR": "C:/ghidra"},
+                    }
+                }
+            }
+        ),
+        encoding="utf-8",
+    )
+    claude_paths = resolve_mcp_harness_config_paths(
+        "claude_desktop",
+        home=tmp_path,
+        env={"LOCALAPPDATA": str(localappdata), "APPDATA": str(appdata)},
+        os_name="nt",
+    )
+    assert claude_paths[0] == msix_config
+
+    # Cordis dsh.yml !!js tag preservation without executing JS
+    cordis_yaml = (
+        "plugins:\n"
+        "  filter: !!js/function >-\n"
+        "    (session) => session.content.startsWith('!')\n"
+        "  pattern: !js /re-aegis/i\n"
+        "mcpServers:\n"
+        "  cordis-re:\n"
+        "    command: node\n"
+        "    args:\n"
+        "      - server.js\n"
+    )
+    doc = load_cordis_yaml_preserving_js_tags(cordis_yaml)
+    plugins_map = doc["plugins"]
+    assert isinstance(plugins_map, dict)
+    assert isinstance(plugins_map["filter"], CordisJsTag)
+    assert "(session) =>" in plugins_map["filter"].value
+    assert isinstance(plugins_map["pattern"], CordisJsTag)
+    dumped_yaml = dump_cordis_yaml_preserving_js_tags(doc)
+    assert "!!js/function" in dumped_yaml
+    round_tripped = load_cordis_yaml_preserving_js_tags(dumped_yaml)
+    assert round_tripped == doc
+
+    # Parse configs across all 8 harnesses
+    dsh_entries = parse_mcp_harness_config("dsh", cordis_yaml, source_path="dsh.yml")
+    assert len(dsh_entries) == 1
+    assert dsh_entries[0].server_id == "cordis-re"
+    assert dsh_entries[0].command == ("node", "server.js")
+
+    codex_entries = parse_mcp_harness_config(
+        "codex",
+        '[mcp_servers.rizin]\ncommand = "rz-mcp"\nargs = ["--stdio"]\n',
+        source_path="config.toml",
+    )
+    assert len(codex_entries) == 1
+    assert codex_entries[0].server_id == "rizin"
+    assert codex_entries[0].to_server_spec().transport == "stdio"
+
+    omp_entries = parse_mcp_harness_config(
+        "omp",
+        "mcpServers:\n  remote-ida:\n    url: https://ida.example.com/mcp\n",
+        source_path="config.yml",
+    )
+    assert len(omp_entries) == 1
+    assert omp_entries[0].transport == "streamable-http"
+    assert omp_entries[0].endpoint == "https://ida.example.com/mcp"
+
+    for json_harness in ("antigravity", "claude_code", "cursor", "pi"):
+        parsed = parse_mcp_harness_config(
+            json_harness,
+            json.dumps({"mcpServers": {f"{json_harness}_srv": {"command": "npx", "args": ["-y", "srv"]}}}),
+        )
+        assert len(parsed) == 1
+        assert parsed[0].harness == json_harness
+
+    discovered = discover_harness_mcp_servers(
+        ("claude_desktop",),
+        home=tmp_path,
+        env={"LOCALAPPDATA": str(localappdata), "APPDATA": str(appdata)},
+        os_name="nt",
+    )
+    assert len(discovered) == 1
+    assert discovered[0].server_id == "ghidra-bridge"
+    assert discovered[0].environment_names == ("GHIDRA_INSTALL_DIR",)
+
+
+def test_cordis_and_harness_yaml_reject_alias_and_depth_bombs_and_unsafe_urls() -> None:
+    from aegis_cognition.extensions import (
+        load_cordis_yaml_preserving_js_tags,
+        parse_mcp_harness_config,
+    )
+
+    alias_bomb = "a: &a [1, 2]\nb:\n" + "".join("  - *a\n" for _ in range(40))
+    with pytest.raises(ExtensionError, match="could not be parsed"):
+        load_cordis_yaml_preserving_js_tags(alias_bomb)
+
+    with pytest.raises(ExtensionError, match="YAML configuration is invalid"):
+        parse_mcp_harness_config("omp", alias_bomb)
+
+    deep_yaml = "a: " + ("[" * 40) + "1" + ("]" * 40)
+    with pytest.raises(ExtensionError, match="could not be parsed"):
+        load_cordis_yaml_preserving_js_tags(deep_yaml)
+
+    unsafe_url_cfg = json.dumps(
+        {
+            "mcpServers": {
+                "file-url": {"url": "file:///etc/passwd"},
+                "cred-url": {"url": "https://user:secret@example.com/mcp"},
+                "js-url": {"url": "javascript:alert(1)"},
+                "safe-url": {"url": "https://mcp.example.com/v1"},
+            }
+        }
+    )
+    entries = parse_mcp_harness_config("cursor", unsafe_url_cfg)
+    assert [entry.server_id for entry in entries] == ["safe-url"]
+
+

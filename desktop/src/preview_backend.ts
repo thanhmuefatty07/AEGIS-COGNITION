@@ -647,6 +647,11 @@ export async function previewRequest(command: DesktopCommand, payload: Record<st
     }
     case "memory.search":
       return { records: [] };
+    case "memory.file_relations.list":
+      return { relations: [], next_cursor: null };
+    case "memory.file_relation.link":
+    case "memory.file_relation.unlink":
+      throw new Error("MEMORY_RELATION_UNAVAILABLE: persistent memory links require the desktop service");
     case "subagents.start": {
       const runId = id("preview-run");
       const run: PreviewRun = { runId, task: String(payload.task ?? "Inspect workspace"), startedAt: now(), cancelRequestedAt: null, events: [], status: "RUNNING", result: null };

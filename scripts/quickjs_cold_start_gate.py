@@ -58,10 +58,21 @@ def evaluate_quickjs_cold_start_gate(root: str | Path = ROOT) -> dict[str, Any]:
         _check("wasm_module_present", _positive_int(report.get("wasm_module_bytes"))),
         _check("cold_timings_recorded", _timing_window(report, "cold_start", samples)),
         _check("warm_timings_recorded", _timing_window(report, "warm_cached", samples)),
-        _check("warm_faster_than_cold_total", _positive_int(report.get("warm_cached_total_ns")) and report.get("warm_cached_total_ns") < report.get("cold_start_total_ns", 0)),
+        _check(
+            "warm_faster_than_cold_total",
+            _positive_int(report.get("warm_cached_total_ns"))
+            and report.get("warm_cached_total_ns") < report.get("cold_start_total_ns", 0),
+        ),
         _check("cold_cache_materialized", report.get("cold_cache_entries_after_first") == 1),
-        _check("warm_cache_reused", report.get("warm_cache_entries_before") == 1 and report.get("warm_cache_entries_after") == 1),
-        _check("fuel_consumed", _positive_int(report.get("cold_fuel_consumed_total")) and _positive_int(report.get("warm_fuel_consumed_total"))),
+        _check(
+            "warm_cache_reused",
+            report.get("warm_cache_entries_before") == 1 and report.get("warm_cache_entries_after") == 1,
+        ),
+        _check(
+            "fuel_consumed",
+            _positive_int(report.get("cold_fuel_consumed_total"))
+            and _positive_int(report.get("warm_fuel_consumed_total")),
+        ),
         _check("cold_artifact_hash_nonzero", _hash_array(report.get("cold_artifact_hash"))),
         _check("warm_artifact_hash_nonzero", _hash_array(report.get("warm_artifact_hash"))),
         _check("script_hash_nonzero", _hash_array(report.get("script_blake3"))),
@@ -70,18 +81,32 @@ def evaluate_quickjs_cold_start_gate(root: str | Path = ROOT) -> dict[str, Any]:
         _check("report_hash_nonzero", _hash_array(report.get("report_hash"))),
         _check("bridge_probe_executed", report.get("bridge_probe_executed") is True),
         _check("full_interpreter_admission_schema", admission.get("schema") == FULL_INTERPRETER_ADMISSION_SCHEMA),
-        _check("full_interpreter_admission_path", admission.get("expected_runtime_path") == FULL_INTERPRETER_EXPECTED_RUNTIME_PATH),
+        _check(
+            "full_interpreter_admission_path",
+            admission.get("expected_runtime_path") == FULL_INTERPRETER_EXPECTED_RUNTIME_PATH,
+        ),
         _check("full_interpreter_admission_hash", _hash_array(admission.get("admission_hash"))),
         _check("full_interpreter_semantic_corpus_hash", _hash_array(admission.get("semantic_corpus_hash"))),
         _check("full_interpreter_sandbox_contract_hash", _hash_array(admission.get("sandbox_contract_hash"))),
         _check("full_interpreter_admission_fuel", admission.get("required_fuel_limit") == report.get("fuel_limit")),
         _check("full_interpreter_admission_samples", admission.get("required_cold_start_sample_count") == samples),
-        _check("full_interpreter_admission_blocker", admission.get("production_blocker_id") == FULL_INTERPRETER_BLOCKER_ID),
+        _check(
+            "full_interpreter_admission_blocker", admission.get("production_blocker_id") == FULL_INTERPRETER_BLOCKER_ID
+        ),
         _check("full_interpreter_admission_state_bound", _admission_state_bound(admission)),
-        _check("full_interpreter_semantic_capture_missing_or_valid", (not admission.get("semantic_capture_present")) or admission.get("semantic_capture_valid") is True),
+        _check(
+            "full_interpreter_semantic_capture_missing_or_valid",
+            (not admission.get("semantic_capture_present")) or admission.get("semantic_capture_valid") is True,
+        ),
         _check("full_interpreter_state_recorded", True),
-        _check("full_interpreter_gap_disclosed", full_interpreter_present or report.get("full_quickjs_interpreter_present") is False),
-        _check("production_blocked_without_full_interpreter", production_blocked_without_full_interpreter == (not full_interpreter_present)),
+        _check(
+            "full_interpreter_gap_disclosed",
+            full_interpreter_present or report.get("full_quickjs_interpreter_present") is False,
+        ),
+        _check(
+            "production_blocked_without_full_interpreter",
+            production_blocked_without_full_interpreter == (not full_interpreter_present),
+        ),
     )
     payload = {
         "suite_name": "AEGIS QuickJS Cold-Start Gate",
@@ -125,8 +150,7 @@ def evaluate_quickjs_cold_start_gate(root: str | Path = ROOT) -> dict[str, Any]:
         },
         "full_interpreter_admission_hash": admission.get("admission_hash", []),
         "full_interpreter_admission_missing": (
-            admission.get("runtime_wasm_present") is False
-            and admission.get("admission_status") == "missing"
+            admission.get("runtime_wasm_present") is False and admission.get("admission_status") == "missing"
         ),
         "full_interpreter_semantic_capture_missing_or_valid": (
             (not admission.get("semantic_capture_present")) or admission.get("semantic_capture_valid") is True
@@ -263,7 +287,9 @@ def write_full_quickjs_interpreter_cold_start_capture(
         "sample_count": capture.get("sample_count", 0),
         "semantic_case_count": capture.get("semantic_case_count", 0),
         "overall_ok": capture_valid,
-        "error": "" if capture_valid else probe.get("error", "full QuickJS interpreter semantic cold-start capture did not satisfy contract"),
+        "error": ""
+        if capture_valid
+        else probe.get("error", "full QuickJS interpreter semantic cold-start capture did not satisfy contract"),
     }
 
 
@@ -335,10 +361,7 @@ def _full_interpreter_runner_probe(
         for case in SEMANTIC_CORPUS_CASES:
             script_path = temp_dir / f"{sample_index:02d}_{case['case_id']}.js"
             script_path.write_text(case["script"], encoding="utf-8")
-            command = [
-                part.format(runtime=str(runtime_path), script=str(script_path))
-                for part in runner
-            ]
+            command = [part.format(runtime=str(runtime_path), script=str(script_path)) for part in runner]
             started_ns = time.perf_counter_ns()
             try:
                 result = subprocess.run(
@@ -396,15 +419,19 @@ def _full_interpreter_capture(
 ) -> dict[str, Any]:
     runs = probe.get("runs", [])
     timing = _runs_timing(runs if isinstance(runs, list) else [])
-    valid_run_count = sum(
-        1
-        for run in runs
-        if isinstance(run, dict)
-        and run.get("returncode") == 0
-        and run.get("stdout_matches") is True
-        and _positive_int(run.get("elapsed_ns"))
-        and not run.get("error")
-    ) if isinstance(runs, list) else 0
+    valid_run_count = (
+        sum(
+            1
+            for run in runs
+            if isinstance(run, dict)
+            and run.get("returncode") == 0
+            and run.get("stdout_matches") is True
+            and _positive_int(run.get("elapsed_ns"))
+            and not run.get("error")
+        )
+        if isinstance(runs, list)
+        else 0
+    )
     return {
         "schema": FULL_INTERPRETER_CAPTURE_SCHEMA,
         "truth_claim": False,
@@ -455,7 +482,9 @@ def _full_interpreter_capture_valid(
         and capture.get("semantic_corpus_cases_hash") == _semantic_cases_hash()
         and capture.get("sandbox_contract") == admission.get("sandbox_contract")
         and capture.get("sandbox_contract_hash") == admission.get("sandbox_contract_hash")
-        and capture.get("required_cold_start_sample_count") == admission.get("required_cold_start_sample_count") == report.get("sample_count")
+        and capture.get("required_cold_start_sample_count")
+        == admission.get("required_cold_start_sample_count")
+        == report.get("sample_count")
         and capture.get("required_fuel_limit") == admission.get("required_fuel_limit") == report.get("fuel_limit")
         and capture.get("semantic_case_count") == len(SEMANTIC_CORPUS_CASES)
         and capture.get("sample_count") == report.get("sample_count")
@@ -530,15 +559,15 @@ def _hash_payload_array(value: Any) -> list[int]:
 
 
 def _nonzero_hex(value: str) -> bool:
-    return len(value) == 64 and all(char in "0123456789abcdef" for char in value.lower()) and any(char != "0" for char in value)
+    return (
+        len(value) == 64
+        and all(char in "0123456789abcdef" for char in value.lower())
+        and any(char != "0" for char in value)
+    )
 
 
 def _zero_hash_array(value: Any) -> bool:
-    return (
-        isinstance(value, list)
-        and len(value) == 32
-        and all(isinstance(item, int) and item == 0 for item in value)
-    )
+    return isinstance(value, list) and len(value) == 32 and all(isinstance(item, int) and item == 0 for item in value)
 
 
 def _admission_state_bound(admission: dict[str, Any]) -> bool:
@@ -558,7 +587,7 @@ def _admission_state_bound(admission: dict[str, Any]) -> bool:
 def _read_json(path: Path) -> dict[str, Any]:
     try:
         payload = json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError, UnicodeDecodeError):
+    except OSError, json.JSONDecodeError, UnicodeDecodeError:
         return {}
     return payload if isinstance(payload, dict) else {}
 
@@ -579,7 +608,7 @@ def _read_capture(path: Path) -> tuple[dict[str, Any], bool, bytes, str]:
         return {}, True, capture_bytes, "empty"
     try:
         payload = json.loads(capture_bytes.decode("utf-8"))
-    except (UnicodeDecodeError, json.JSONDecodeError):
+    except UnicodeDecodeError, json.JSONDecodeError:
         return {}, True, capture_bytes, "invalid-json"
     if not isinstance(payload, dict):
         return {}, True, capture_bytes, "non-object"

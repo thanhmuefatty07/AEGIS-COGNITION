@@ -1,9 +1,9 @@
 {
-  "schema": "aegis-document-inventory-v1",
+  "schema": "aegis-document-inventory-v2",
   "source_of_truth": "docs/architecture/AEGIS_LAB_RUNTIME_MASTER_PLAN.md",
   "generated_view": "docs/architecture/AEGIS_LAB_STATUS_GENERATED.md",
   "generator": "scripts/document_consistency_gate.py",
-  "last_verified_at": "2026-09-10",
+  "last_verified_at": "2026-10-17",
   "scopes": [
     {"glob": "docs/architecture/*.md", "document_type": "architecture", "authority": "architecture", "status": "ACTIVE", "id_prefix": "ARCH"},
     {"glob": "docs/adr/*.md", "document_type": "architecture_decision_record", "authority": "adr", "status": "ACTIVE", "id_prefix": "ADR"},
@@ -20,25 +20,28 @@
     "docs/architecture/AEGIS_LAB_RUNTIME_MASTER_PLAN.md": {"document_id": "AEGIS-LAB-RUNTIME-MASTER-PLAN", "document_type": "canonical_current_implementation_plan", "status": "IN_EXECUTION", "authority": "derived_from_checkout_and_evidence_manifest", "applies_to_commit": "CHECKOUT_HEAD + WORKTREE_DIRTY"},
     "docs/architecture/AEGIS_LAB_STATUS_GENERATED.md": {"document_id": "AEGIS-LAB-STATUS-GENERATED", "status": "GENERATED", "authority": "generated_view"},
     "docs/architecture/NOT_VERIFIED_REGISTRY.md": {"document_id": "AEGIS-NOT-VERIFIED-REGISTRY", "authority": "human_view"},
+    "docs/architecture/TRACEABILITY.md": {"status": "SUPERSEDED", "authority": "historical_architecture_snapshot", "last_verified_at": "2026-10-17"},
+    "docs/architecture/VERIFICATION_BASELINE.md": {"status": "SUPERSEDED", "authority": "historical_verification_snapshot", "last_verified_at": "2026-10-16"},
     "docs/architecture/evidence/current.json": {"document_id": "AEGIS-EVIDENCE-MANIFEST", "document_type": "machine_evidence", "authority": "machine_source", "status": "ACTIVE", "applies_to_commit": "CHECKOUT_HEAD", "last_verified_at": "2026-08-27"},
     "docs/README.md": {"document_id": "DOC-DOCS-README"},
     "README.md": {"document_id": "DOC-REPOSITORY-README"},
+    "docs/adr/ADR-003-free-threaded-python.md": {"status": "SUPERSEDED", "authority": "historical_decision", "last_verified_at": "2026-10-16"},
+    "docs/adr/ADR-010-wasmtime-security.md": {"status": "SUPERSEDED", "authority": "historical_security_decision", "last_verified_at": "2026-10-16"},
+    "docs/adr/ADR-021-foundation-convergence.md": {"status": "ACCEPTED", "authority": "adr", "last_verified_at": "2026-10-17"},
     "docs/adr/ADR-012-portability.md": {"document_id": "ADR-012-PORTABILITY-COMPATIBILITY-STUB", "status": "SUPERSEDED", "authority": "compatibility_stub"},
-    "docs/adr/ADR-015-portability.md": {"document_id": "ADR-015-PORTABILITY", "status": "ACCEPTED", "authority": "adr"}
+    "docs/adr/ADR-015-portability.md": {"document_id": "ADR-015-PORTABILITY", "status": "ACCEPTED", "authority": "adr"},
+    "docs/adr/ADR-018-wasmtime-security-patch.md": {"status": "SUPERSEDED", "authority": "historical_security_decision", "last_verified_at": "2026-10-16"},
+    "docs/adr/ADR-019-wasmtime-security-update.md": {"status": "SUPERSEDED", "authority": "historical_security_decision", "last_verified_at": "2026-10-17"}
   },
   "historical_paths": [
-    "docs/archive/legacy/dx-transformation.md",
     "docs/archive/legacy/ownership.md",
     "docs/archive/planning/agent-harness-continuation-plan.md",
-    "docs/archive/planning/architecture-optimization.md",
-    "docs/crystallized/aegis_nerve.md",
-    "docs/crystallized/cognifold_memory.md",
-    "docs/crystallized/sac_consensus.md",
-    "docs/crystallized/speculative_decoding.md",
-    "docs/archive/legacy/commercial-closure.md",
-    "fuzz/README.md",
-    "CONTRIBUTING.md",
+    "docs/archive/planning/architecture-optimization.md"
+  ],
+  "unscoped_paths": [
+    "AGENTS.md",
     "CHANGELOG.md",
+    "CONTRIBUTING.md",
     "aegis-plugins/README.md",
     "aegis-plugins/aegis-bench/README.md",
     "aegis-plugins/aegis-browser/README.md",
@@ -50,6 +53,18 @@
     "aegis-plugins/aegis-skills/skills/evidence-retrieval-skill/SKILL.md",
     "aegis-plugins/aegis-skills/skills/research-skill/SKILL.md",
     "aegis-plugins/aegis-skills/skills/sandbox-skill/SKILL.md",
-    "aegis-plugins/aegis-skills/skills/search-sdk-skill/SKILL.md"
+    "aegis-plugins/aegis-skills/skills/search-sdk-skill/SKILL.md",
+    "desktop/AGENTS.md",
+    "desktop/README.md",
+    "desktop/THIRD_PARTY_NOTICES.md",
+    "docs/WORKSPACE_HYGIENE.md",
+    "docs/archive/README.md",
+    "docs/design/desktop-ui-source-map.md",
+    "docs/design/desktop-workbench.md",
+    "docs/integrations/aegis-plugins.md",
+    "docs/integrations/capabilities.md",
+    "docs/integrations/chatgpt-web.md",
+    "fuzz/README.md",
+    "quality/registry/README.md"
   ]
 }

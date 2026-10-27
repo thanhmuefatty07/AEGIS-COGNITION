@@ -148,6 +148,7 @@ class OperatorEvidenceApi:
         if path in ("", "/", "/health"):
             snapshot = self.snapshot()
             payload = {
+                "status": "ok",
                 "schema": HEALTH_SCHEMA,
                 "truth_claim": False,
                 "verifier": snapshot.verifier,
@@ -245,8 +246,7 @@ def build_operator_evidence_snapshot(
     root_path = Path(root).resolve()
     artifacts_dir = root_path / "artifacts"
     summaries = tuple(
-        _summarize_report_artifact(artifacts_dir / artifact_name, artifact_name)
-        for artifact_name in artifact_names
+        _summarize_report_artifact(artifacts_dir / artifact_name, artifact_name) for artifact_name in artifact_names
     )
     missing = tuple(summary.logical_name for summary in summaries if not summary.exists)
     required_gate_names = {
@@ -254,12 +254,9 @@ def build_operator_evidence_snapshot(
         "benchmark_gate_report.json",
         "constitution_audit_report.json",
     }
-    required_gate_summaries = [
-        summary for summary in summaries if summary.logical_name in required_gate_names
-    ]
+    required_gate_summaries = [summary for summary in summaries if summary.logical_name in required_gate_names]
     release_gate_observed_ok = bool(required_gate_summaries) and all(
-        summary.exists and summary.json_ok and summary.observed_ok is True
-        for summary in required_gate_summaries
+        summary.exists and summary.json_ok and summary.observed_ok is True for summary in required_gate_summaries
     )
     unsigned_payload = {
         "schema": SNAPSHOT_SCHEMA,
@@ -315,6 +312,29 @@ def serve_operator_evidence_api(
 ) -> ThreadingHTTPServer:
     api = OperatorEvidenceApi(root)
     return ThreadingHTTPServer((host, port), build_operator_http_handler(api))
+
+
+def create_app(root: str | Path | None = None) -> Any:
+    from starlette.applications import Starlette
+    from starlette.requests import Request
+    from starlette.responses import Response
+    from starlette.routing import Route
+
+    resolved_root = resolve_operator_root(root)
+    api = OperatorEvidenceApi(resolved_root)
+
+    async def _handle_route(request: Request) -> Response:
+        res = api.handle_get(request.url.path)
+        return Response(content=res.body, status_code=res.status, media_type=res.content_type)
+
+    routes = [
+        Route("/", _handle_route, methods=["GET"]),
+        Route("/health", _handle_route, methods=["GET"]),
+        Route("/snapshot", _handle_route, methods=["GET"]),
+        Route("/artifacts", _handle_route, methods=["GET"]),
+        Route("/production-closure", _handle_route, methods=["GET"]),
+    ]
+    return Starlette(routes=routes)
 
 
 def _summarize_report_artifact(path: Path, logical_name: str) -> OperatorArtifactSummary:

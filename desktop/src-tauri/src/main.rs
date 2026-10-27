@@ -4,7 +4,7 @@ use serde_json::Value;
 use std::collections::HashSet;
 use std::env;
 use std::fs;
-use std::io::{BufReader, Read, Write};
+use std::io::{BufRead, BufReader, Read, Write};
 use std::path::{Component, Path, PathBuf};
 use std::process::{Child, ChildStdin, ChildStdout, Command, Stdio};
 use std::sync::atomic::{AtomicU64, Ordering};
@@ -32,7 +32,7 @@ struct WorkspaceAuthority {
 
 impl WorkspaceAuthority {
     fn approve_picker_result(&mut self, path: PathBuf) -> Result<String, String> {
-        let canonical = canonical_directory(&path)?;
+        let canonical = canonical_directory(&path, "native folder picker")?;
         self.approved_roots.insert(canonical.clone());
         Ok(canonical.to_string_lossy().into_owned())
     }
@@ -42,8 +42,8 @@ impl WorkspaceAuthority {
         selected: PathBuf,
         requested: &Path,
     ) -> Result<String, String> {
-        let selected = canonical_directory(&selected)?;
-        let requested = canonical_directory(requested)?;
+        let selected = canonical_directory(&selected, "native reapproval picker")?;
+        let requested = canonical_directory(requested, "workspace reapproval request")?;
         if selected != requested {
             return Err("the selected folder did not match the requested project".to_string());
         }
@@ -52,7 +52,8 @@ impl WorkspaceAuthority {
     }
 
     fn authorize_existing(&self, raw_path: &str) -> Result<(), String> {
-        let canonical = canonical_directory(Path::new(raw_path))?;
+        let canonical =
+            canonical_directory(Path::new(raw_path), "workspace command authorization")?;
         if self.is_within_approved_root(&canonical) {
             Ok(())
         } else {
@@ -91,11 +92,18 @@ impl WorkspaceAuthority {
     }
 }
 
-fn canonical_directory(path: &Path) -> Result<PathBuf, String> {
-    let canonical = fs::canonicalize(path)
-        .map_err(|error| format!("workspace folder could not be verified: {error}"))?;
+fn canonical_directory(path: &Path, operation: &str) -> Result<PathBuf, String> {
+    let canonical = fs::canonicalize(path).map_err(|error| {
+        format!(
+            "workspace folder could not be verified during {operation} (path: {}): {error}",
+            path.display()
+        )
+    })?;
     if !canonical.is_dir() {
-        return Err("workspace access requires a directory".to_string());
+        return Err(format!(
+            "workspace access during {operation} requires a directory (path: {})",
+            path.display()
+        ));
     }
     Ok(canonical)
 }
@@ -126,6 +134,34 @@ fn wait_for_service_exit(child: &mut Child, grace_period: Duration) -> bool {
             Err(_) => return false,
         }
     }
+}
+
+fn parse_bounded_json_line(bytes: usize, mut line: Vec<u8>) -> Result<Value, String> {
+    if bytes == 0 {
+        return Err("desktop service closed its output".to_string());
+    }
+    if line.len() > MAX_FRAME_BYTES + 1
+        || (line.len() == MAX_FRAME_BYTES + 1 && line.last() != Some(&b'\n'))
+    {
+        return Err("desktop service response exceeded the frame limit".to_string());
+    }
+    if line.last() != Some(&b'\n') {
+        return Err("desktop service closed its output".to_string());
+    }
+    while matches!(line.last(), Some(b'\r' | b'\n')) {
+        line.pop();
+    }
+    serde_json::from_slice(&line)
+        .map_err(|_| "desktop service response was invalid JSON".to_string())
+}
+
+fn read_bounded_json_line<R: BufRead>(reader: &mut R) -> Result<Value, String> {
+    let mut line = Vec::with_capacity(4096);
+    let bytes = reader
+        .take((MAX_FRAME_BYTES + 1) as u64)
+        .read_until(b'\n', &mut line)
+        .map_err(|error| format!("desktop service read failed: {error}"))?;
+    parse_bounded_json_line(bytes, line)
 }
 
 impl SidecarClient {
@@ -169,29 +205,7 @@ impl SidecarClient {
     }
 
     fn read_json_line(&mut self) -> Result<Value, String> {
-        let mut line = Vec::with_capacity(4096);
-        loop {
-            let mut byte = [0u8; 1];
-            let bytes = self
-                .stdout
-                .read(&mut byte)
-                .map_err(|error| format!("desktop service read failed: {error}"))?;
-            if bytes == 0 {
-                return Err("desktop service closed its output".to_string());
-            }
-            line.push(byte[0]);
-            if line.len() > MAX_FRAME_BYTES + 1 {
-                return Err("desktop service response exceeded the frame limit".to_string());
-            }
-            if byte[0] == b'\n' {
-                break;
-            }
-        }
-        while matches!(line.last(), Some(b'\r' | b'\n')) {
-            line.pop();
-        }
-        serde_json::from_slice(&line)
-            .map_err(|_| "desktop service response was invalid JSON".to_string())
+        read_bounded_json_line(&mut self.stdout)
     }
 
     fn request(&mut self, frame: &str) -> Result<String, String> {
@@ -483,7 +497,7 @@ fn approve_workspace_path(
     authority: State<'_, Mutex<WorkspaceAuthority>>,
     path: String,
 ) -> Result<String, String> {
-    let requested = canonical_directory(Path::new(&path))?;
+    let requested = canonical_directory(Path::new(&path), "project activation")?;
     {
         let authority = authority
             .lock()
@@ -529,8 +543,9 @@ fn main() {
 #[cfg(test)]
 mod tests {
     use super::{
-        authorize_workspace_request, wait_for_service_exit, WorkspaceAuthority,
-        BUNDLED_SERVICE_NAME, SERVICE_SHUTDOWN_GRACE,
+        authorize_workspace_request, read_bounded_json_line, wait_for_service_exit, Value,
+        WorkspaceAuthority, BUNDLED_SERVICE_NAME, MAX_FRAME_BYTES, READY_SCHEMA,
+        SERVICE_SHUTDOWN_GRACE,
     };
     use std::collections::HashSet;
     use std::fs;
@@ -592,6 +607,42 @@ mod tests {
         assert!(authority.is_within_approved_root(&approved.join("src")));
         assert!(
             !authority.is_within_approved_root(PathBuf::from("approved-project-other").as_path())
+        );
+    }
+
+    #[test]
+    fn workspace_path_errors_identify_the_operation_and_attempted_path() {
+        let unique = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("system clock must be after unix epoch")
+            .as_nanos();
+        let base = std::env::temp_dir().join(format!("aegis-missing-workspace-{unique}"));
+        let missing = base.join("missing-project");
+        let _cleanup = TempDirectory(base);
+        let mut authority = WorkspaceAuthority::default();
+
+        let picker_error = authority
+            .approve_picker_result(missing.clone())
+            .expect_err("a missing picker path must be rejected");
+        assert!(
+            picker_error.contains("native folder picker"),
+            "{picker_error}"
+        );
+        assert!(
+            picker_error.contains(&missing.display().to_string()),
+            "{picker_error}"
+        );
+
+        let request_error = authority
+            .authorize_existing(&missing.to_string_lossy())
+            .expect_err("a missing requested workspace must be rejected");
+        assert!(
+            request_error.contains("workspace command authorization"),
+            "{request_error}"
+        );
+        assert!(
+            request_error.contains(&missing.display().to_string()),
+            "{request_error}"
         );
     }
 
@@ -695,4 +746,51 @@ mod tests {
             .authorize_existing(&requested.to_string_lossy())
             .is_ok());
     }
+
+    #[test]
+    fn read_bounded_json_line_parses_crlf_and_enforces_frame_limits() {
+        let mut cursor = std::io::Cursor::new(
+            "{\"schema\":\"aegis-desktop-ready-v1\",\"protocol_version\":1}\r\n{\"ok\":true,\"utf8\":\"Tiếng Việt 🚀\"}\n"
+                .as_bytes()
+                .to_vec(),
+        );
+        let first = read_bounded_json_line(&mut cursor).expect("first frame must parse");
+        assert_eq!(first.get("schema").and_then(Value::as_str), Some(READY_SCHEMA));
+        let second = read_bounded_json_line(&mut cursor).expect("second frame must parse");
+        assert_eq!(second.get("ok").and_then(Value::as_bool), Some(true));
+        assert_eq!(second.get("utf8").and_then(Value::as_str), Some("Tiếng Việt 🚀"));
+        let eof = read_bounded_json_line(&mut cursor).expect_err("empty stream must report closed output");
+        assert_eq!(eof, "desktop service closed its output");
+
+        let mut truncated = std::io::Cursor::new(b"{\"incomplete\":true".to_vec());
+        assert_eq!(
+            read_bounded_json_line(&mut truncated).expect_err("truncated frame must fail"),
+            "desktop service closed its output"
+        );
+
+        let prefix = b"{\"pad\":\"";
+        let suffix = b"\"}\n";
+        let exact_pad_len = MAX_FRAME_BYTES - prefix.len() - (suffix.len() - 1);
+        let mut exact_frame = Vec::with_capacity(MAX_FRAME_BYTES + 1);
+        exact_frame.extend_from_slice(prefix);
+        exact_frame.resize(prefix.len() + exact_pad_len, b'x');
+        exact_frame.extend_from_slice(suffix);
+        assert_eq!(exact_frame.len(), MAX_FRAME_BYTES + 1);
+        let mut exact_cursor = std::io::Cursor::new(exact_frame);
+        let parsed_exact = read_bounded_json_line(&mut exact_cursor)
+            .expect("frame of exactly MAX_FRAME_BYTES before newline must parse");
+        assert_eq!(
+            parsed_exact.get("pad").and_then(Value::as_str).map(str::len),
+            Some(exact_pad_len)
+        );
+
+        let mut oversized = vec![b'a'; MAX_FRAME_BYTES + 1];
+        oversized.push(b'\n');
+        let mut oversized_cursor = std::io::Cursor::new(oversized);
+        assert_eq!(
+            read_bounded_json_line(&mut oversized_cursor).expect_err("oversized frame must fail"),
+            "desktop service response exceeded the frame limit"
+        );
+    }
 }
+

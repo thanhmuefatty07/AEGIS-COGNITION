@@ -61,7 +61,13 @@ REQUIRED_SYMBOLS = {
     ),
     "sac_physical_witness": (
         Path("core/rust/src/sac.rs"),
-        ["PhysicalWitnessVote", "SacPhysicalWitness", "WitnessProof", "verify_physical_witness", "physical_witness_threshold"],
+        [
+            "PhysicalWitnessVote",
+            "SacPhysicalWitness",
+            "WitnessProof",
+            "verify_physical_witness",
+            "physical_witness_threshold",
+        ],
     ),
     "runtime_physical_anchor": (
         Path("core/rust/src/orchestrator.rs"),
@@ -324,9 +330,10 @@ REQUIRED_SYMBOLS = {
     "python_operator_api_healthcheck": (
         Path("core/python/operator_api_healthcheck.py"),
         [
-            "OperatorEvidenceApi",
-            "resolve_operator_root",
-            "aegis-operator-health-v1",
+            "HTTPConnection",
+            "HEALTH_SCHEMA",
+            "HEALTHCHECK_PATH",
+            "MAX_HEALTH_RESPONSE_BYTES",
             "truth_claim",
         ],
     ),
@@ -2070,7 +2077,8 @@ REQUIRED_SYMBOLS = {
             "downgraded_model",
             "ledger_hash_drift",
             "aegis-live-provider-429-soak-admission-v1",
-            "aegis-live-provider-429-soak-capture-v1",
+            "aegis-live-provider-429-soak-capture-v2",
+            "aegis-live-provider-429-http-samples-v2",
             "aegis-live-provider-429-soak-capture-producer-v1",
             "artifacts/live_provider_429_soak_capture.json",
             "live_429_soak_admission_schema",
@@ -2087,6 +2095,11 @@ REQUIRED_SYMBOLS = {
             "requester",
             "request_redacted",
             "response_bodies_redacted",
+            "endpoint_classification",
+            "source_classification",
+            "external_https_endpoint_candidate",
+            "synthetic_injected_transport",
+            "_live_provider_429_endpoint_classification",
             "external-http-429-redacted-capture-producer",
             "_live_provider_429_capture_valid",
             "_live_provider_429_http_samples",
@@ -3244,7 +3257,13 @@ FORBIDDEN_IN_FILES = {
     ),
     "sandbox_no_mock_wat": (
         Path("core/rust/src/sandbox.rs"),
-        ["mock_wat", "execute_payload", "execute_untrusted_code", "pub struct WasmInterpreterManager", "impl WasmInterpreterManager"],
+        [
+            "mock_wat",
+            "execute_payload",
+            "execute_untrusted_code",
+            "pub struct WasmInterpreterManager",
+            "impl WasmInterpreterManager",
+        ],
     ),
     "sac_no_legacy_physical_consensus": (
         Path("core/rust/src/sac.rs"),
@@ -3651,7 +3670,11 @@ REQUIRED_PYTHON_TESTS = {
         "test_aegis_adapter_hot_first_browser_action_returns_hot_evidence_before_cold_publish",
     ],
     "python_dynamic_provider_live_429_tests": [
-        "test_dynamic_provider_live_429_capture_producer_writes_redacted_valid_capture",
+        "test_dynamic_provider_injected_429_responses_do_not_satisfy_live_capture",
+        "test_dynamic_provider_legacy_429_capture_without_source_provenance_preserves_blocker",
+        "test_dynamic_provider_429_gate_fails_closed_on_malformed_capture",
+        "test_dynamic_provider_live_429_capture_rejects_loopback_server",
+        "test_dynamic_provider_429_http_sample_capture_redacts_secrets",
         "test_dynamic_provider_live_429_capture_missing_url_preserves_blocker",
     ],
     "python_quickjs_full_interpreter_capture_tests": [
@@ -3824,16 +3847,8 @@ def _no_overclaim_gate(root: Path) -> tuple[bool, str]:
             # from accidentally qualifying an unrelated claim below it.
             sentence_context = " ".join(lines[max(0, line_number - 2) : line_number + 1])
             sentences = [part.lower() for part in re.split(r"[.!?](?:\s|$)", sentence_context)]
-            claim_sentences = [
-                sentence
-                for sentence in sentences
-                if any(pattern in sentence for pattern in matched)
-            ]
-            if not any(
-                qualifier in sentence
-                for sentence in claim_sentences
-                for qualifier in NO_OVERCLAIM_QUALIFIERS
-            ):
+            claim_sentences = [sentence for sentence in sentences if any(pattern in sentence for pattern in matched)]
+            if not any(qualifier in sentence for sentence in claim_sentences for qualifier in NO_OVERCLAIM_QUALIFIERS):
                 violations.append(f"{relative_path}:{line_number} ({', '.join(matched)})")
     if violations:
         return False, "unqualified readiness claims: " + "; ".join(violations[:8])
@@ -3859,9 +3874,7 @@ def evaluate_constitution(root: str | Path) -> dict:
     for name, (relative_path, needles) in REQUIRED_SYMBOLS.items():
         if isinstance(relative_path, tuple):
             source_texts = [_read_text(root_path, path) for path in relative_path]
-            missing_paths = [
-                str(path) for path, text in zip(relative_path, source_texts, strict=True) if text is None
-            ]
+            missing_paths = [str(path) for path, text in zip(relative_path, source_texts, strict=True) if text is None]
             text = "\n".join(source for source in source_texts if source is not None)
             if missing_paths:
                 checks.append(ConstitutionCheck(name, False, f"missing {', '.join(missing_paths)}"))

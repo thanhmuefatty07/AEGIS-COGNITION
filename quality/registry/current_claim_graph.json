@@ -1,7 +1,7 @@
 {
   "claims": [
     {
-      "evidence_class": "SOURCE-BACKED",
+      "evidence_class": "NOT VERIFIED",
       "id": "AESE-CLAIM-GT96-001",
       "owner": "Rust application",
       "requirement": "Goal Contract: typed goal intake and risk/evidence obligations",
@@ -10,7 +10,7 @@
       "status": "IMPLEMENTED / NOT VERIFIED"
     },
     {
-      "evidence_class": "SOURCE-BACKED",
+      "evidence_class": "NOT VERIFIED",
       "id": "AESE-CLAIM-GT96-002",
       "owner": "Rust application",
       "requirement": "Execution IR: typed execution proposal before runtime admission",
@@ -30,7 +30,7 @@
     {
       "evidence_class": "NOT VERIFIED",
       "id": "AESE-CLAIM-GT96-004",
-      "owner": "Rust runtime",
+      "owner": "Rust runtime / Python Lab fa\u00e7ade",
       "requirement": "Progress Ledger: durable progress distinct from task status",
       "security_relevance": "Supports bounded recovery",
       "source_id": "GT96-004",
@@ -82,9 +82,9 @@
       "status": "IMPLEMENTED / NOT VERIFIED"
     },
     {
-      "evidence_class": "SOURCE-BACKED",
+      "evidence_class": "NOT VERIFIED",
       "id": "AESE-CLAIM-GT96-010",
-      "owner": "Rust policy",
+      "owner": "Rust policy/runtime / Python Lab fa\u00e7ade",
       "requirement": "Evidence Contract: evidence obligations are explicit",
       "security_relevance": "Supports auditability",
       "source_id": "GT96-010",
@@ -100,7 +100,7 @@
       "status": "IMPLEMENTED / NOT VERIFIED"
     },
     {
-      "evidence_class": "PROVEN",
+      "evidence_class": "NOT VERIFIED",
       "id": "AESE-CLAIM-GT96-012",
       "owner": "Rust runtime",
       "requirement": "Execution Identity: task/attempt/lease are distinct",
@@ -118,7 +118,7 @@
       "status": "IMPLEMENTED / NOT VERIFIED"
     },
     {
-      "evidence_class": "PROVEN",
+      "evidence_class": "NOT VERIFIED",
       "id": "AESE-CLAIM-GT96-014",
       "owner": "Rust resource",
       "requirement": "Worker Capability: worker limits are explicit",
@@ -127,7 +127,7 @@
       "status": "IMPLEMENTED / NOT VERIFIED"
     },
     {
-      "evidence_class": "PROVEN",
+      "evidence_class": "NOT VERIFIED",
       "id": "AESE-CLAIM-GT96-015",
       "owner": "Rust runtime",
       "requirement": "Cancellation: cancellation is a state transition",
@@ -136,7 +136,7 @@
       "status": "IMPLEMENTED / NOT VERIFIED"
     },
     {
-      "evidence_class": "PROVEN",
+      "evidence_class": "NOT VERIFIED",
       "id": "AESE-CLAIM-GT96-016",
       "owner": "Rust runtime",
       "requirement": "Deadline: deadline is authoritative",
@@ -145,7 +145,7 @@
       "status": "IMPLEMENTED / NOT VERIFIED"
     },
     {
-      "evidence_class": "PROVEN",
+      "evidence_class": "NOT VERIFIED",
       "id": "AESE-CLAIM-GT96-017",
       "owner": "Rust resource",
       "requirement": "Bounded Admission: finite checked resource grant",
@@ -154,7 +154,7 @@
       "status": "IMPLEMENTED / NOT VERIFIED"
     },
     {
-      "evidence_class": "PROVEN",
+      "evidence_class": "NOT VERIFIED",
       "id": "AESE-CLAIM-GT96-018",
       "owner": "Rust runtime",
       "requirement": "Bounded Queueing: queue has explicit cap and FIFO path",
@@ -165,7 +165,7 @@
     {
       "evidence_class": "NOT VERIFIED",
       "id": "AESE-CLAIM-GT96-019",
-      "owner": "Rust sandbox/evidence",
+      "owner": "Rust sandbox/evidence/runtime / Python Lab fa\u00e7ade",
       "requirement": "Verification: verification is a separate obligation",
       "security_relevance": "Prevents trust confusion",
       "source_id": "GT96-019",
@@ -183,9 +183,9 @@
     {
       "evidence_class": "NOT VERIFIED",
       "id": "AESE-CLAIM-GT96-021",
-      "owner": "Rust execution",
-      "requirement": "Machine IR: machine-executable form is typed/versioned",
-      "security_relevance": "Limits parser ambiguity",
+      "owner": "Rust policy/intake",
+      "requirement": "Machine IR: typed execution data carries an explicit schema version",
+      "security_relevance": "Limits ambiguous schema interpretation",
       "source_id": "GT96-021",
       "status": "IMPLEMENTED / NOT VERIFIED"
     },
@@ -208,7 +208,7 @@
       "status": "IMPLEMENTED / NOT VERIFIED"
     },
     {
-      "evidence_class": "PROVEN",
+      "evidence_class": "NOT VERIFIED",
       "id": "AESE-CLAIM-GT96-024",
       "owner": "Rust IPC/FFI",
       "requirement": "Communication Envelope: cross-plane messages are typed",
@@ -235,7 +235,7 @@
       "status": "IMPLEMENTED / NOT VERIFIED"
     },
     {
-      "evidence_class": "PROVEN",
+      "evidence_class": "NOT VERIFIED",
       "id": "AESE-CLAIM-GT96-027",
       "owner": "Rust/Python observation",
       "requirement": "Telemetry correlation: parent/child/failure/retry/cancel/finalize",
@@ -253,7 +253,7 @@
       "status": "IMPLEMENTED / NOT VERIFIED"
     },
     {
-      "evidence_class": "PROVEN",
+      "evidence_class": "NOT VERIFIED",
       "id": "AESE-CLAIM-GT96-029",
       "owner": "Rust resource",
       "requirement": "Lease/fencing adversarial expansion",
@@ -289,7 +289,7 @@
       "status": "IMPLEMENTED / NOT VERIFIED"
     },
     {
-      "evidence_class": "MEASURED",
+      "evidence_class": "NOT VERIFIED",
       "id": "AESE-CLAIM-GT96-033",
       "owner": "Rust IPC",
       "requirement": "Communication payload performance",
@@ -298,9 +298,9 @@
       "status": "IMPLEMENTED / NOT VERIFIED"
     },
     {
-      "evidence_class": "PROVEN",
+      "evidence_class": "NOT VERIFIED",
       "id": "AESE-CLAIM-GT96-034",
-      "owner": "Python provider",
+      "owner": "Python provider discovery",
       "requirement": "Provider API-local capability",
       "security_relevance": "Prevents overclaim",
       "source_id": "GT96-034",
@@ -425,6 +425,13 @@
     },
     {
       "exists": true,
+      "id": "AESE-CODE-162F4DDE0302AFBB",
+      "mapping_status": "MAPPED_EXACT",
+      "path": "core/python/aegis/discovery.py",
+      "tracked": true
+    },
+    {
+      "exists": true,
       "id": "AESE-CODE-1ACBE80688E0CB89",
       "mapping_status": "MAPPED_EXACT",
       "path": "core/rust/src/telemetry.rs",
@@ -442,6 +449,13 @@
       "id": "AESE-CODE-2C9D296895749679",
       "mapping_status": "MAPPED_EXACT",
       "path": "core/rust/src/execution.rs",
+      "tracked": true
+    },
+    {
+      "exists": true,
+      "id": "AESE-CODE-39E810B061B711A8",
+      "mapping_status": "MAPPED_EXACT",
+      "path": "core/python/aegis/connections.py",
       "tracked": true
     },
     {
@@ -537,9 +551,23 @@
     },
     {
       "exists": true,
+      "id": "AESE-CODE-867F17411C02F16C",
+      "mapping_status": "MAPPED_EXACT",
+      "path": "aegis_cognition/lab.py",
+      "tracked": true
+    },
+    {
+      "exists": true,
       "id": "AESE-CODE-8753864AE21F73BF",
       "mapping_status": "MAPPED_EXACT",
       "path": "core/rust/src/policy.rs",
+      "tracked": true
+    },
+    {
+      "exists": true,
+      "id": "AESE-CODE-92EBE7488C4A494F",
+      "mapping_status": "MAPPED_EXACT",
+      "path": "core/rust/src/lab.rs",
       "tracked": true
     },
     {
@@ -639,12 +667,14 @@
     },
     {
       "id": "AESE-CONTRACT-GT96-004",
-      "implementation": "`core/rust/src/gt96.rs`: `ProgressLedger`; `task_ledger.rs`",
+      "implementation": "`core/rust/src/gt96.rs`: `ProgressLedger`; `task_ledger.rs`; `core/rust/src/lab.rs`: `LabController`; `aegis_cognition/lab.py`: `LabRun`",
       "mapping_status": "SOURCE_BACKED",
-      "owner": "Rust runtime",
+      "owner": "Rust runtime / Python Lab fa\u00e7ade",
       "source_id": "GT96-004",
       "source_paths": [
+        "aegis_cognition/lab.py",
         "core/rust/src/gt96.rs",
+        "core/rust/src/lab.rs",
         "core/rust/src/task_ledger.rs"
       ]
     },
@@ -703,11 +733,13 @@
     },
     {
       "id": "AESE-CONTRACT-GT96-010",
-      "implementation": "`policy.rs`: `EvidenceContract`",
+      "implementation": "`policy.rs`: `EvidenceContract`; `core/rust/src/lab.rs`: `LabController`; `aegis_cognition/lab.py`: `LabRun`",
       "mapping_status": "SOURCE_BACKED",
-      "owner": "Rust policy",
+      "owner": "Rust policy/runtime / Python Lab fa\u00e7ade",
       "source_id": "GT96-010",
       "source_paths": [
+        "aegis_cognition/lab.py",
+        "core/rust/src/lab.rs",
         "core/rust/src/policy.rs"
       ]
     },
@@ -802,12 +834,14 @@
     },
     {
       "id": "AESE-CONTRACT-GT96-019",
-      "implementation": "`sandbox.rs`, `evidence_index.rs`",
+      "implementation": "`sandbox.rs`, `evidence_index.rs`, `core/rust/src/lab.rs`: `LabController`; `aegis_cognition/lab.py`: `LabRun`",
       "mapping_status": "SOURCE_BACKED",
-      "owner": "Rust sandbox/evidence",
+      "owner": "Rust sandbox/evidence/runtime / Python Lab fa\u00e7ade",
       "source_id": "GT96-019",
       "source_paths": [
+        "aegis_cognition/lab.py",
         "core/rust/src/evidence_index.rs",
+        "core/rust/src/lab.rs",
         "core/rust/src/sandbox.rs"
       ]
     },
@@ -824,13 +858,13 @@
     },
     {
       "id": "AESE-CONTRACT-GT96-021",
-      "implementation": "`goal_intake.rs`, `schema.rs`",
+      "implementation": "`core/rust/src/policy.rs::TypedToolIR`; `core/rust/src/goal_intake.rs::to_initial_typed_tool_ir`",
       "mapping_status": "SOURCE_BACKED",
-      "owner": "Rust execution",
+      "owner": "Rust policy/intake",
       "source_id": "GT96-021",
       "source_paths": [
         "core/rust/src/goal_intake.rs",
-        "core/rust/src/schema.rs"
+        "core/rust/src/policy.rs"
       ]
     },
     {
@@ -965,12 +999,13 @@
     },
     {
       "id": "AESE-CONTRACT-GT96-034",
-      "implementation": "`core/python/aegis/provider.py`",
+      "implementation": "`core/python/aegis/discovery.py`: `_normalized_capabilities`, `_provider_profile_capabilities`; `core/python/aegis/connections.py`: `reasoning_efforts_for_model`",
       "mapping_status": "SOURCE_BACKED",
-      "owner": "Python provider",
+      "owner": "Python provider discovery",
       "source_id": "GT96-034",
       "source_paths": [
-        "core/python/aegis/provider.py"
+        "core/python/aegis/connections.py",
+        "core/python/aegis/discovery.py"
       ]
     },
     {
@@ -1097,15 +1132,15 @@
   ],
   "counts": {
     "claims": 46,
-    "code_nodes": 27,
+    "code_nodes": 31,
     "contracts": 46,
-    "edges": 396,
+    "edges": 497,
     "future_obligations": 20,
     "invariants": 46,
-    "mapped_surfaces": 9,
-    "surfaces": 216,
-    "unmapped_surfaces": 207,
-    "unmapped_verifications": 70,
+    "mapped_surfaces": 23,
+    "surfaces": 244,
+    "unmapped_surfaces": 221,
+    "unmapped_verifications": 35,
     "unresolved_code_references": 0,
     "verifications": 92
   },
@@ -1352,6 +1387,11 @@
       "to": "AESE-CONTRACT-GT96-023"
     },
     {
+      "from": "AESE-CODE-162F4DDE0302AFBB",
+      "relation": "IMPLEMENTS",
+      "to": "AESE-CONTRACT-GT96-034"
+    },
+    {
       "from": "AESE-CODE-1ACBE80688E0CB89",
       "relation": "IMPLEMENTS",
       "to": "AESE-CONTRACT-GT96-027"
@@ -1365,6 +1405,11 @@
       "from": "AESE-CODE-2C9D296895749679",
       "relation": "IMPLEMENTS",
       "to": "AESE-CONTRACT-GT96-014"
+    },
+    {
+      "from": "AESE-CODE-39E810B061B711A8",
+      "relation": "IMPLEMENTS",
+      "to": "AESE-CONTRACT-GT96-034"
     },
     {
       "from": "AESE-CODE-3C61A4E79AB2D720",
@@ -1559,11 +1604,6 @@
     {
       "from": "AESE-CODE-7A210A22178C603B",
       "relation": "IMPLEMENTS",
-      "to": "AESE-CONTRACT-GT96-021"
-    },
-    {
-      "from": "AESE-CODE-7A210A22178C603B",
-      "relation": "IMPLEMENTS",
       "to": "AESE-CONTRACT-GT96-031"
     },
     {
@@ -1582,6 +1622,21 @@
       "to": "AESE-CONTRACT-GT96-033"
     },
     {
+      "from": "AESE-CODE-867F17411C02F16C",
+      "relation": "IMPLEMENTS",
+      "to": "AESE-CONTRACT-GT96-004"
+    },
+    {
+      "from": "AESE-CODE-867F17411C02F16C",
+      "relation": "IMPLEMENTS",
+      "to": "AESE-CONTRACT-GT96-010"
+    },
+    {
+      "from": "AESE-CODE-867F17411C02F16C",
+      "relation": "IMPLEMENTS",
+      "to": "AESE-CONTRACT-GT96-019"
+    },
+    {
       "from": "AESE-CODE-8753864AE21F73BF",
       "relation": "IMPLEMENTS",
       "to": "AESE-CONTRACT-GT96-008"
@@ -1590,6 +1645,26 @@
       "from": "AESE-CODE-8753864AE21F73BF",
       "relation": "IMPLEMENTS",
       "to": "AESE-CONTRACT-GT96-010"
+    },
+    {
+      "from": "AESE-CODE-8753864AE21F73BF",
+      "relation": "IMPLEMENTS",
+      "to": "AESE-CONTRACT-GT96-021"
+    },
+    {
+      "from": "AESE-CODE-92EBE7488C4A494F",
+      "relation": "IMPLEMENTS",
+      "to": "AESE-CONTRACT-GT96-004"
+    },
+    {
+      "from": "AESE-CODE-92EBE7488C4A494F",
+      "relation": "IMPLEMENTS",
+      "to": "AESE-CONTRACT-GT96-010"
+    },
+    {
+      "from": "AESE-CODE-92EBE7488C4A494F",
+      "relation": "IMPLEMENTS",
+      "to": "AESE-CONTRACT-GT96-019"
     },
     {
       "from": "AESE-CODE-95E949E590039BCC",
@@ -1675,11 +1750,6 @@
       "from": "AESE-CODE-EDA6EB9445BB29CA",
       "relation": "IMPLEMENTS",
       "to": "AESE-CONTRACT-GT96-013"
-    },
-    {
-      "from": "AESE-CODE-EDA6EB9445BB29CA",
-      "relation": "IMPLEMENTS",
-      "to": "AESE-CONTRACT-GT96-034"
     },
     {
       "from": "AESE-CODE-EFB18248756AE77E",
@@ -1779,7 +1849,7 @@
     {
       "from": "AESE-CONTRACT-GT96-004",
       "relation": "GUARDS",
-      "to": "AESE-INVARIANT-DED584541FB70C6D"
+      "to": "AESE-INVARIANT-2BEAF8C710D43880"
     },
     {
       "from": "AESE-CONTRACT-GT96-005",
@@ -1809,7 +1879,7 @@
     {
       "from": "AESE-CONTRACT-GT96-010",
       "relation": "GUARDS",
-      "to": "AESE-INVARIANT-28476F7DB55AD808"
+      "to": "AESE-INVARIANT-6D2E8B3F6BD0524A"
     },
     {
       "from": "AESE-CONTRACT-GT96-011",
@@ -1854,7 +1924,7 @@
     {
       "from": "AESE-CONTRACT-GT96-019",
       "relation": "GUARDS",
-      "to": "AESE-INVARIANT-351BC354BC3B668B"
+      "to": "AESE-INVARIANT-1B0C1F74AA50137E"
     },
     {
       "from": "AESE-CONTRACT-GT96-020",
@@ -1864,7 +1934,7 @@
     {
       "from": "AESE-CONTRACT-GT96-021",
       "relation": "GUARDS",
-      "to": "AESE-INVARIANT-543ECFE2EAFEDC16"
+      "to": "AESE-INVARIANT-9F2F14A6A3365587"
     },
     {
       "from": "AESE-CONTRACT-GT96-022",
@@ -2217,6 +2287,16 @@
       "to": "AESE-TEST_OR_PROOF-AESE-003"
     },
     {
+      "from": "AESE-INVARIANT-1B0C1F74AA50137E",
+      "relation": "VERIFIED_BY_REFERENCE",
+      "to": "AESE-BENCHMARK-GT96-019"
+    },
+    {
+      "from": "AESE-INVARIANT-1B0C1F74AA50137E",
+      "relation": "VERIFIED_BY_REFERENCE",
+      "to": "AESE-TEST_OR_PROOF-GT96-019"
+    },
+    {
       "from": "AESE-INVARIANT-1C62EE917BBD117A",
       "relation": "VERIFIED_BY_REFERENCE",
       "to": "AESE-BENCHMARK-GT96-028"
@@ -2267,14 +2347,14 @@
       "to": "AESE-TEST_OR_PROOF-GT96-001"
     },
     {
-      "from": "AESE-INVARIANT-28476F7DB55AD808",
+      "from": "AESE-INVARIANT-2BEAF8C710D43880",
       "relation": "VERIFIED_BY_REFERENCE",
-      "to": "AESE-BENCHMARK-GT96-010"
+      "to": "AESE-BENCHMARK-GT96-004"
     },
     {
-      "from": "AESE-INVARIANT-28476F7DB55AD808",
+      "from": "AESE-INVARIANT-2BEAF8C710D43880",
       "relation": "VERIFIED_BY_REFERENCE",
-      "to": "AESE-TEST_OR_PROOF-GT96-010"
+      "to": "AESE-TEST_OR_PROOF-GT96-004"
     },
     {
       "from": "AESE-INVARIANT-2FBB68FDA8876B7A",
@@ -2297,16 +2377,6 @@
       "to": "AESE-TEST_OR_PROOF-GT96-023"
     },
     {
-      "from": "AESE-INVARIANT-351BC354BC3B668B",
-      "relation": "VERIFIED_BY_REFERENCE",
-      "to": "AESE-BENCHMARK-GT96-019"
-    },
-    {
-      "from": "AESE-INVARIANT-351BC354BC3B668B",
-      "relation": "VERIFIED_BY_REFERENCE",
-      "to": "AESE-TEST_OR_PROOF-GT96-019"
-    },
-    {
       "from": "AESE-INVARIANT-4F1CAC4358BF9B88",
       "relation": "VERIFIED_BY_REFERENCE",
       "to": "AESE-BENCHMARK-GT96-022"
@@ -2315,16 +2385,6 @@
       "from": "AESE-INVARIANT-4F1CAC4358BF9B88",
       "relation": "VERIFIED_BY_REFERENCE",
       "to": "AESE-TEST_OR_PROOF-GT96-022"
-    },
-    {
-      "from": "AESE-INVARIANT-543ECFE2EAFEDC16",
-      "relation": "VERIFIED_BY_REFERENCE",
-      "to": "AESE-BENCHMARK-GT96-021"
-    },
-    {
-      "from": "AESE-INVARIANT-543ECFE2EAFEDC16",
-      "relation": "VERIFIED_BY_REFERENCE",
-      "to": "AESE-TEST_OR_PROOF-GT96-021"
     },
     {
       "from": "AESE-INVARIANT-59417380F16D49CE",
@@ -2355,6 +2415,16 @@
       "from": "AESE-INVARIANT-6746E1D73B0ABCF9",
       "relation": "VERIFIED_BY_REFERENCE",
       "to": "AESE-TEST_OR_PROOF-GT96-026"
+    },
+    {
+      "from": "AESE-INVARIANT-6D2E8B3F6BD0524A",
+      "relation": "VERIFIED_BY_REFERENCE",
+      "to": "AESE-BENCHMARK-GT96-010"
+    },
+    {
+      "from": "AESE-INVARIANT-6D2E8B3F6BD0524A",
+      "relation": "VERIFIED_BY_REFERENCE",
+      "to": "AESE-TEST_OR_PROOF-GT96-010"
     },
     {
       "from": "AESE-INVARIANT-6E4B9EEED0194BEE",
@@ -2445,6 +2515,16 @@
       "from": "AESE-INVARIANT-9DEF1F32BEC88091",
       "relation": "VERIFIED_BY_REFERENCE",
       "to": "AESE-TEST_OR_PROOF-GT96-014"
+    },
+    {
+      "from": "AESE-INVARIANT-9F2F14A6A3365587",
+      "relation": "VERIFIED_BY_REFERENCE",
+      "to": "AESE-BENCHMARK-GT96-021"
+    },
+    {
+      "from": "AESE-INVARIANT-9F2F14A6A3365587",
+      "relation": "VERIFIED_BY_REFERENCE",
+      "to": "AESE-TEST_OR_PROOF-GT96-021"
     },
     {
       "from": "AESE-INVARIANT-AD7742728785E7AB",
@@ -2567,16 +2647,6 @@
       "to": "AESE-TEST_OR_PROOF-GT96-032"
     },
     {
-      "from": "AESE-INVARIANT-DED584541FB70C6D",
-      "relation": "VERIFIED_BY_REFERENCE",
-      "to": "AESE-BENCHMARK-GT96-004"
-    },
-    {
-      "from": "AESE-INVARIANT-DED584541FB70C6D",
-      "relation": "VERIFIED_BY_REFERENCE",
-      "to": "AESE-TEST_OR_PROOF-GT96-004"
-    },
-    {
       "from": "AESE-INVARIANT-E06AD461D3FF0937",
       "relation": "VERIFIED_BY_REFERENCE",
       "to": "AESE-BENCHMARK-AESE-005"
@@ -2625,6 +2695,16 @@
       "from": "AESE-INVARIANT-FCEF67417ACE05C0",
       "relation": "VERIFIED_BY_REFERENCE",
       "to": "AESE-TEST_OR_PROOF-GT96-003"
+    },
+    {
+      "from": "AESE-PYTHON_BENCHMARK-7AC55EA6DC9C796D",
+      "relation": "RESOLVES_REFERENCE",
+      "to": "AESE-BENCHMARK-GT96-033"
+    },
+    {
+      "from": "AESE-PYTHON_BENCHMARK-7AC55EA6DC9C796D",
+      "relation": "IMPLEMENTS_OR_EXERCISES",
+      "to": "AESE-CLAIM-GT96-033"
     },
     {
       "from": "AESE-PYTHON_TEST-58D48A170B9DA222",
@@ -2707,6 +2787,46 @@
       "to": "AESE-TEST_OR_PROOF-AESE-011"
     },
     {
+      "from": "AESE-PYTHON_TEST-A282C1A69EFCE3DC",
+      "relation": "IMPLEMENTS_OR_EXERCISES",
+      "to": "AESE-CLAIM-GT96-004"
+    },
+    {
+      "from": "AESE-PYTHON_TEST-A282C1A69EFCE3DC",
+      "relation": "IMPLEMENTS_OR_EXERCISES",
+      "to": "AESE-CLAIM-GT96-010"
+    },
+    {
+      "from": "AESE-PYTHON_TEST-A282C1A69EFCE3DC",
+      "relation": "IMPLEMENTS_OR_EXERCISES",
+      "to": "AESE-CLAIM-GT96-019"
+    },
+    {
+      "from": "AESE-PYTHON_TEST-A282C1A69EFCE3DC",
+      "relation": "RESOLVES_REFERENCE",
+      "to": "AESE-TEST_OR_PROOF-GT96-004"
+    },
+    {
+      "from": "AESE-PYTHON_TEST-A282C1A69EFCE3DC",
+      "relation": "RESOLVES_REFERENCE",
+      "to": "AESE-TEST_OR_PROOF-GT96-010"
+    },
+    {
+      "from": "AESE-PYTHON_TEST-A282C1A69EFCE3DC",
+      "relation": "RESOLVES_REFERENCE",
+      "to": "AESE-TEST_OR_PROOF-GT96-019"
+    },
+    {
+      "from": "AESE-PYTHON_TEST-AB1758C5973046FB",
+      "relation": "IMPLEMENTS_OR_EXERCISES",
+      "to": "AESE-CLAIM-GT96-034"
+    },
+    {
+      "from": "AESE-PYTHON_TEST-AB1758C5973046FB",
+      "relation": "RESOLVES_REFERENCE",
+      "to": "AESE-TEST_OR_PROOF-GT96-034"
+    },
+    {
       "from": "AESE-PYTHON_TEST-D79D5846F51A8B48",
       "relation": "IMPLEMENTS_OR_EXERCISES",
       "to": "AESE-CLAIM-AESE-010"
@@ -2737,9 +2857,229 @@
       "to": "AESE-TEST_OR_PROOF-AESE-009"
     },
     {
+      "from": "AESE-RUST_BENCHMARK-16BA24B31D557E5B",
+      "relation": "RESOLVES_REFERENCE",
+      "to": "AESE-BENCHMARK-GT96-012"
+    },
+    {
+      "from": "AESE-RUST_BENCHMARK-16BA24B31D557E5B",
+      "relation": "RESOLVES_REFERENCE",
+      "to": "AESE-BENCHMARK-GT96-017"
+    },
+    {
+      "from": "AESE-RUST_BENCHMARK-16BA24B31D557E5B",
+      "relation": "RESOLVES_REFERENCE",
+      "to": "AESE-BENCHMARK-GT96-018"
+    },
+    {
+      "from": "AESE-RUST_BENCHMARK-16BA24B31D557E5B",
+      "relation": "RESOLVES_REFERENCE",
+      "to": "AESE-BENCHMARK-GT96-030"
+    },
+    {
+      "from": "AESE-RUST_BENCHMARK-16BA24B31D557E5B",
+      "relation": "IMPLEMENTS_OR_EXERCISES",
+      "to": "AESE-CLAIM-GT96-012"
+    },
+    {
+      "from": "AESE-RUST_BENCHMARK-16BA24B31D557E5B",
+      "relation": "IMPLEMENTS_OR_EXERCISES",
+      "to": "AESE-CLAIM-GT96-017"
+    },
+    {
+      "from": "AESE-RUST_BENCHMARK-16BA24B31D557E5B",
+      "relation": "IMPLEMENTS_OR_EXERCISES",
+      "to": "AESE-CLAIM-GT96-018"
+    },
+    {
+      "from": "AESE-RUST_BENCHMARK-16BA24B31D557E5B",
+      "relation": "IMPLEMENTS_OR_EXERCISES",
+      "to": "AESE-CLAIM-GT96-030"
+    },
+    {
+      "from": "AESE-RUST_BENCHMARK-56B8EE7D3073C0FD",
+      "relation": "RESOLVES_REFERENCE",
+      "to": "AESE-BENCHMARK-GT96-024"
+    },
+    {
+      "from": "AESE-RUST_BENCHMARK-56B8EE7D3073C0FD",
+      "relation": "IMPLEMENTS_OR_EXERCISES",
+      "to": "AESE-CLAIM-GT96-024"
+    },
+    {
+      "from": "AESE-RUST_BENCHMARK-EB9579A3AA32341B",
+      "relation": "RESOLVES_REFERENCE",
+      "to": "AESE-BENCHMARK-GT96-001"
+    },
+    {
+      "from": "AESE-RUST_BENCHMARK-EB9579A3AA32341B",
+      "relation": "RESOLVES_REFERENCE",
+      "to": "AESE-BENCHMARK-GT96-002"
+    },
+    {
+      "from": "AESE-RUST_BENCHMARK-EB9579A3AA32341B",
+      "relation": "RESOLVES_REFERENCE",
+      "to": "AESE-BENCHMARK-GT96-005"
+    },
+    {
+      "from": "AESE-RUST_BENCHMARK-EB9579A3AA32341B",
+      "relation": "RESOLVES_REFERENCE",
+      "to": "AESE-BENCHMARK-GT96-011"
+    },
+    {
+      "from": "AESE-RUST_BENCHMARK-EB9579A3AA32341B",
+      "relation": "RESOLVES_REFERENCE",
+      "to": "AESE-BENCHMARK-GT96-013"
+    },
+    {
+      "from": "AESE-RUST_BENCHMARK-EB9579A3AA32341B",
+      "relation": "RESOLVES_REFERENCE",
+      "to": "AESE-BENCHMARK-GT96-022"
+    },
+    {
+      "from": "AESE-RUST_BENCHMARK-EB9579A3AA32341B",
+      "relation": "RESOLVES_REFERENCE",
+      "to": "AESE-BENCHMARK-GT96-032"
+    },
+    {
+      "from": "AESE-RUST_BENCHMARK-EB9579A3AA32341B",
+      "relation": "RESOLVES_REFERENCE",
+      "to": "AESE-BENCHMARK-GT96-033"
+    },
+    {
+      "from": "AESE-RUST_BENCHMARK-EB9579A3AA32341B",
+      "relation": "IMPLEMENTS_OR_EXERCISES",
+      "to": "AESE-CLAIM-GT96-001"
+    },
+    {
+      "from": "AESE-RUST_BENCHMARK-EB9579A3AA32341B",
+      "relation": "IMPLEMENTS_OR_EXERCISES",
+      "to": "AESE-CLAIM-GT96-002"
+    },
+    {
+      "from": "AESE-RUST_BENCHMARK-EB9579A3AA32341B",
+      "relation": "IMPLEMENTS_OR_EXERCISES",
+      "to": "AESE-CLAIM-GT96-005"
+    },
+    {
+      "from": "AESE-RUST_BENCHMARK-EB9579A3AA32341B",
+      "relation": "IMPLEMENTS_OR_EXERCISES",
+      "to": "AESE-CLAIM-GT96-011"
+    },
+    {
+      "from": "AESE-RUST_BENCHMARK-EB9579A3AA32341B",
+      "relation": "IMPLEMENTS_OR_EXERCISES",
+      "to": "AESE-CLAIM-GT96-013"
+    },
+    {
+      "from": "AESE-RUST_BENCHMARK-EB9579A3AA32341B",
+      "relation": "IMPLEMENTS_OR_EXERCISES",
+      "to": "AESE-CLAIM-GT96-022"
+    },
+    {
+      "from": "AESE-RUST_BENCHMARK-EB9579A3AA32341B",
+      "relation": "IMPLEMENTS_OR_EXERCISES",
+      "to": "AESE-CLAIM-GT96-032"
+    },
+    {
+      "from": "AESE-RUST_BENCHMARK-EB9579A3AA32341B",
+      "relation": "IMPLEMENTS_OR_EXERCISES",
+      "to": "AESE-CLAIM-GT96-033"
+    },
+    {
+      "from": "AESE-RUST_UNIT_TEST-0E05A7875F3F837A",
+      "relation": "IMPLEMENTS_OR_EXERCISES",
+      "to": "AESE-CLAIM-GT96-023"
+    },
+    {
+      "from": "AESE-RUST_UNIT_TEST-0E05A7875F3F837A",
+      "relation": "RESOLVES_REFERENCE",
+      "to": "AESE-TEST_OR_PROOF-GT96-023"
+    },
+    {
+      "from": "AESE-RUST_UNIT_TEST-1ACBE80688E0CB89",
+      "relation": "IMPLEMENTS_OR_EXERCISES",
+      "to": "AESE-CLAIM-GT96-024"
+    },
+    {
+      "from": "AESE-RUST_UNIT_TEST-1ACBE80688E0CB89",
+      "relation": "IMPLEMENTS_OR_EXERCISES",
+      "to": "AESE-CLAIM-GT96-027"
+    },
+    {
+      "from": "AESE-RUST_UNIT_TEST-1ACBE80688E0CB89",
+      "relation": "RESOLVES_REFERENCE",
+      "to": "AESE-TEST_OR_PROOF-GT96-024"
+    },
+    {
+      "from": "AESE-RUST_UNIT_TEST-1ACBE80688E0CB89",
+      "relation": "RESOLVES_REFERENCE",
+      "to": "AESE-TEST_OR_PROOF-GT96-027"
+    },
+    {
+      "from": "AESE-RUST_UNIT_TEST-627B7C3B524D6D59",
+      "relation": "IMPLEMENTS_OR_EXERCISES",
+      "to": "AESE-CLAIM-GT96-012"
+    },
+    {
+      "from": "AESE-RUST_UNIT_TEST-627B7C3B524D6D59",
+      "relation": "IMPLEMENTS_OR_EXERCISES",
+      "to": "AESE-CLAIM-GT96-015"
+    },
+    {
+      "from": "AESE-RUST_UNIT_TEST-627B7C3B524D6D59",
+      "relation": "IMPLEMENTS_OR_EXERCISES",
+      "to": "AESE-CLAIM-GT96-016"
+    },
+    {
+      "from": "AESE-RUST_UNIT_TEST-627B7C3B524D6D59",
+      "relation": "IMPLEMENTS_OR_EXERCISES",
+      "to": "AESE-CLAIM-GT96-018"
+    },
+    {
+      "from": "AESE-RUST_UNIT_TEST-627B7C3B524D6D59",
+      "relation": "IMPLEMENTS_OR_EXERCISES",
+      "to": "AESE-CLAIM-GT96-029"
+    },
+    {
+      "from": "AESE-RUST_UNIT_TEST-627B7C3B524D6D59",
+      "relation": "RESOLVES_REFERENCE",
+      "to": "AESE-TEST_OR_PROOF-GT96-012"
+    },
+    {
+      "from": "AESE-RUST_UNIT_TEST-627B7C3B524D6D59",
+      "relation": "RESOLVES_REFERENCE",
+      "to": "AESE-TEST_OR_PROOF-GT96-015"
+    },
+    {
+      "from": "AESE-RUST_UNIT_TEST-627B7C3B524D6D59",
+      "relation": "RESOLVES_REFERENCE",
+      "to": "AESE-TEST_OR_PROOF-GT96-016"
+    },
+    {
+      "from": "AESE-RUST_UNIT_TEST-627B7C3B524D6D59",
+      "relation": "RESOLVES_REFERENCE",
+      "to": "AESE-TEST_OR_PROOF-GT96-018"
+    },
+    {
+      "from": "AESE-RUST_UNIT_TEST-627B7C3B524D6D59",
+      "relation": "RESOLVES_REFERENCE",
+      "to": "AESE-TEST_OR_PROOF-GT96-029"
+    },
+    {
+      "from": "AESE-RUST_UNIT_TEST-6896058315F9E5A4",
+      "relation": "IMPLEMENTS_OR_EXERCISES",
+      "to": "AESE-CLAIM-GT96-025"
+    },
+    {
       "from": "AESE-RUST_UNIT_TEST-6896058315F9E5A4",
       "relation": "IMPLEMENTS_OR_EXERCISES",
       "to": "AESE-CLAIM-GT96-035"
+    },
+    {
+      "from": "AESE-RUST_UNIT_TEST-6896058315F9E5A4",
+      "relation": "RESOLVES_REFERENCE",
+      "to": "AESE-TEST_OR_PROOF-GT96-025"
     },
     {
       "from": "AESE-RUST_UNIT_TEST-6896058315F9E5A4",
@@ -2845,6 +3185,206 @@
       "from": "AESE-RUST_UNIT_TEST-6E0A9FEABAA1955E",
       "relation": "RESOLVES_REFERENCE",
       "to": "AESE-TEST_OR_PROOF-GT96-030"
+    },
+    {
+      "from": "AESE-RUST_UNIT_TEST-706B6EC4F030313E",
+      "relation": "IMPLEMENTS_OR_EXERCISES",
+      "to": "AESE-CLAIM-GT96-031"
+    },
+    {
+      "from": "AESE-RUST_UNIT_TEST-706B6EC4F030313E",
+      "relation": "IMPLEMENTS_OR_EXERCISES",
+      "to": "AESE-CLAIM-GT96-032"
+    },
+    {
+      "from": "AESE-RUST_UNIT_TEST-706B6EC4F030313E",
+      "relation": "RESOLVES_REFERENCE",
+      "to": "AESE-TEST_OR_PROOF-GT96-031"
+    },
+    {
+      "from": "AESE-RUST_UNIT_TEST-706B6EC4F030313E",
+      "relation": "RESOLVES_REFERENCE",
+      "to": "AESE-TEST_OR_PROOF-GT96-032"
+    },
+    {
+      "from": "AESE-RUST_UNIT_TEST-7142417A253B65D2",
+      "relation": "IMPLEMENTS_OR_EXERCISES",
+      "to": "AESE-CLAIM-GT96-012"
+    },
+    {
+      "from": "AESE-RUST_UNIT_TEST-7142417A253B65D2",
+      "relation": "IMPLEMENTS_OR_EXERCISES",
+      "to": "AESE-CLAIM-GT96-014"
+    },
+    {
+      "from": "AESE-RUST_UNIT_TEST-7142417A253B65D2",
+      "relation": "IMPLEMENTS_OR_EXERCISES",
+      "to": "AESE-CLAIM-GT96-015"
+    },
+    {
+      "from": "AESE-RUST_UNIT_TEST-7142417A253B65D2",
+      "relation": "IMPLEMENTS_OR_EXERCISES",
+      "to": "AESE-CLAIM-GT96-017"
+    },
+    {
+      "from": "AESE-RUST_UNIT_TEST-7142417A253B65D2",
+      "relation": "IMPLEMENTS_OR_EXERCISES",
+      "to": "AESE-CLAIM-GT96-029"
+    },
+    {
+      "from": "AESE-RUST_UNIT_TEST-7142417A253B65D2",
+      "relation": "RESOLVES_REFERENCE",
+      "to": "AESE-TEST_OR_PROOF-GT96-012"
+    },
+    {
+      "from": "AESE-RUST_UNIT_TEST-7142417A253B65D2",
+      "relation": "RESOLVES_REFERENCE",
+      "to": "AESE-TEST_OR_PROOF-GT96-014"
+    },
+    {
+      "from": "AESE-RUST_UNIT_TEST-7142417A253B65D2",
+      "relation": "RESOLVES_REFERENCE",
+      "to": "AESE-TEST_OR_PROOF-GT96-015"
+    },
+    {
+      "from": "AESE-RUST_UNIT_TEST-7142417A253B65D2",
+      "relation": "RESOLVES_REFERENCE",
+      "to": "AESE-TEST_OR_PROOF-GT96-017"
+    },
+    {
+      "from": "AESE-RUST_UNIT_TEST-7142417A253B65D2",
+      "relation": "RESOLVES_REFERENCE",
+      "to": "AESE-TEST_OR_PROOF-GT96-029"
+    },
+    {
+      "from": "AESE-RUST_UNIT_TEST-92EBE7488C4A494F",
+      "relation": "IMPLEMENTS_OR_EXERCISES",
+      "to": "AESE-CLAIM-GT96-004"
+    },
+    {
+      "from": "AESE-RUST_UNIT_TEST-92EBE7488C4A494F",
+      "relation": "IMPLEMENTS_OR_EXERCISES",
+      "to": "AESE-CLAIM-GT96-010"
+    },
+    {
+      "from": "AESE-RUST_UNIT_TEST-92EBE7488C4A494F",
+      "relation": "IMPLEMENTS_OR_EXERCISES",
+      "to": "AESE-CLAIM-GT96-019"
+    },
+    {
+      "from": "AESE-RUST_UNIT_TEST-92EBE7488C4A494F",
+      "relation": "RESOLVES_REFERENCE",
+      "to": "AESE-TEST_OR_PROOF-GT96-004"
+    },
+    {
+      "from": "AESE-RUST_UNIT_TEST-92EBE7488C4A494F",
+      "relation": "RESOLVES_REFERENCE",
+      "to": "AESE-TEST_OR_PROOF-GT96-010"
+    },
+    {
+      "from": "AESE-RUST_UNIT_TEST-92EBE7488C4A494F",
+      "relation": "RESOLVES_REFERENCE",
+      "to": "AESE-TEST_OR_PROOF-GT96-019"
+    },
+    {
+      "from": "AESE-RUST_UNIT_TEST-A7BCCA355F3390EC",
+      "relation": "IMPLEMENTS_OR_EXERCISES",
+      "to": "AESE-CLAIM-GT96-023"
+    },
+    {
+      "from": "AESE-RUST_UNIT_TEST-A7BCCA355F3390EC",
+      "relation": "IMPLEMENTS_OR_EXERCISES",
+      "to": "AESE-CLAIM-GT96-026"
+    },
+    {
+      "from": "AESE-RUST_UNIT_TEST-A7BCCA355F3390EC",
+      "relation": "RESOLVES_REFERENCE",
+      "to": "AESE-TEST_OR_PROOF-GT96-023"
+    },
+    {
+      "from": "AESE-RUST_UNIT_TEST-A7BCCA355F3390EC",
+      "relation": "RESOLVES_REFERENCE",
+      "to": "AESE-TEST_OR_PROOF-GT96-026"
+    },
+    {
+      "from": "AESE-RUST_UNIT_TEST-BB56D2466AB0351F",
+      "relation": "IMPLEMENTS_OR_EXERCISES",
+      "to": "AESE-CLAIM-GT96-001"
+    },
+    {
+      "from": "AESE-RUST_UNIT_TEST-BB56D2466AB0351F",
+      "relation": "IMPLEMENTS_OR_EXERCISES",
+      "to": "AESE-CLAIM-GT96-002"
+    },
+    {
+      "from": "AESE-RUST_UNIT_TEST-BB56D2466AB0351F",
+      "relation": "IMPLEMENTS_OR_EXERCISES",
+      "to": "AESE-CLAIM-GT96-016"
+    },
+    {
+      "from": "AESE-RUST_UNIT_TEST-BB56D2466AB0351F",
+      "relation": "IMPLEMENTS_OR_EXERCISES",
+      "to": "AESE-CLAIM-GT96-021"
+    },
+    {
+      "from": "AESE-RUST_UNIT_TEST-BB56D2466AB0351F",
+      "relation": "IMPLEMENTS_OR_EXERCISES",
+      "to": "AESE-CLAIM-GT96-022"
+    },
+    {
+      "from": "AESE-RUST_UNIT_TEST-BB56D2466AB0351F",
+      "relation": "IMPLEMENTS_OR_EXERCISES",
+      "to": "AESE-CLAIM-GT96-024"
+    },
+    {
+      "from": "AESE-RUST_UNIT_TEST-BB56D2466AB0351F",
+      "relation": "IMPLEMENTS_OR_EXERCISES",
+      "to": "AESE-CLAIM-GT96-027"
+    },
+    {
+      "from": "AESE-RUST_UNIT_TEST-BB56D2466AB0351F",
+      "relation": "IMPLEMENTS_OR_EXERCISES",
+      "to": "AESE-CLAIM-GT96-032"
+    },
+    {
+      "from": "AESE-RUST_UNIT_TEST-BB56D2466AB0351F",
+      "relation": "RESOLVES_REFERENCE",
+      "to": "AESE-TEST_OR_PROOF-GT96-001"
+    },
+    {
+      "from": "AESE-RUST_UNIT_TEST-BB56D2466AB0351F",
+      "relation": "RESOLVES_REFERENCE",
+      "to": "AESE-TEST_OR_PROOF-GT96-002"
+    },
+    {
+      "from": "AESE-RUST_UNIT_TEST-BB56D2466AB0351F",
+      "relation": "RESOLVES_REFERENCE",
+      "to": "AESE-TEST_OR_PROOF-GT96-016"
+    },
+    {
+      "from": "AESE-RUST_UNIT_TEST-BB56D2466AB0351F",
+      "relation": "RESOLVES_REFERENCE",
+      "to": "AESE-TEST_OR_PROOF-GT96-021"
+    },
+    {
+      "from": "AESE-RUST_UNIT_TEST-BB56D2466AB0351F",
+      "relation": "RESOLVES_REFERENCE",
+      "to": "AESE-TEST_OR_PROOF-GT96-022"
+    },
+    {
+      "from": "AESE-RUST_UNIT_TEST-BB56D2466AB0351F",
+      "relation": "RESOLVES_REFERENCE",
+      "to": "AESE-TEST_OR_PROOF-GT96-024"
+    },
+    {
+      "from": "AESE-RUST_UNIT_TEST-BB56D2466AB0351F",
+      "relation": "RESOLVES_REFERENCE",
+      "to": "AESE-TEST_OR_PROOF-GT96-027"
+    },
+    {
+      "from": "AESE-RUST_UNIT_TEST-BB56D2466AB0351F",
+      "relation": "RESOLVES_REFERENCE",
+      "to": "AESE-TEST_OR_PROOF-GT96-032"
     },
     {
       "from": "AESE-SCRIPT_OR_GATE-2B63ED08D2F345A1",
@@ -3094,14 +3634,14 @@
   ],
   "evidence_obligations": [
     {
-      "evidence_class": "SOURCE-BACKED",
+      "evidence_class": "NOT VERIFIED",
       "id": "AESE-EVIDENCE-GT96-001",
       "promotion": "DISABLED_IN_SHADOW",
       "source_id": "GT96-001",
       "status": "IMPLEMENTED / NOT VERIFIED"
     },
     {
-      "evidence_class": "SOURCE-BACKED",
+      "evidence_class": "NOT VERIFIED",
       "id": "AESE-EVIDENCE-GT96-002",
       "promotion": "DISABLED_IN_SHADOW",
       "source_id": "GT96-002",
@@ -3157,7 +3697,7 @@
       "status": "IMPLEMENTED / NOT VERIFIED"
     },
     {
-      "evidence_class": "SOURCE-BACKED",
+      "evidence_class": "NOT VERIFIED",
       "id": "AESE-EVIDENCE-GT96-010",
       "promotion": "DISABLED_IN_SHADOW",
       "source_id": "GT96-010",
@@ -3171,7 +3711,7 @@
       "status": "IMPLEMENTED / NOT VERIFIED"
     },
     {
-      "evidence_class": "PROVEN",
+      "evidence_class": "NOT VERIFIED",
       "id": "AESE-EVIDENCE-GT96-012",
       "promotion": "DISABLED_IN_SHADOW",
       "source_id": "GT96-012",
@@ -3185,35 +3725,35 @@
       "status": "IMPLEMENTED / NOT VERIFIED"
     },
     {
-      "evidence_class": "PROVEN",
+      "evidence_class": "NOT VERIFIED",
       "id": "AESE-EVIDENCE-GT96-014",
       "promotion": "DISABLED_IN_SHADOW",
       "source_id": "GT96-014",
       "status": "IMPLEMENTED / NOT VERIFIED"
     },
     {
-      "evidence_class": "PROVEN",
+      "evidence_class": "NOT VERIFIED",
       "id": "AESE-EVIDENCE-GT96-015",
       "promotion": "DISABLED_IN_SHADOW",
       "source_id": "GT96-015",
       "status": "IMPLEMENTED / NOT VERIFIED"
     },
     {
-      "evidence_class": "PROVEN",
+      "evidence_class": "NOT VERIFIED",
       "id": "AESE-EVIDENCE-GT96-016",
       "promotion": "DISABLED_IN_SHADOW",
       "source_id": "GT96-016",
       "status": "IMPLEMENTED / NOT VERIFIED"
     },
     {
-      "evidence_class": "PROVEN",
+      "evidence_class": "NOT VERIFIED",
       "id": "AESE-EVIDENCE-GT96-017",
       "promotion": "DISABLED_IN_SHADOW",
       "source_id": "GT96-017",
       "status": "IMPLEMENTED / NOT VERIFIED"
     },
     {
-      "evidence_class": "PROVEN",
+      "evidence_class": "NOT VERIFIED",
       "id": "AESE-EVIDENCE-GT96-018",
       "promotion": "DISABLED_IN_SHADOW",
       "source_id": "GT96-018",
@@ -3255,7 +3795,7 @@
       "status": "IMPLEMENTED / NOT VERIFIED"
     },
     {
-      "evidence_class": "PROVEN",
+      "evidence_class": "NOT VERIFIED",
       "id": "AESE-EVIDENCE-GT96-024",
       "promotion": "DISABLED_IN_SHADOW",
       "source_id": "GT96-024",
@@ -3276,7 +3816,7 @@
       "status": "IMPLEMENTED / NOT VERIFIED"
     },
     {
-      "evidence_class": "PROVEN",
+      "evidence_class": "NOT VERIFIED",
       "id": "AESE-EVIDENCE-GT96-027",
       "promotion": "DISABLED_IN_SHADOW",
       "source_id": "GT96-027",
@@ -3290,7 +3830,7 @@
       "status": "IMPLEMENTED / NOT VERIFIED"
     },
     {
-      "evidence_class": "PROVEN",
+      "evidence_class": "NOT VERIFIED",
       "id": "AESE-EVIDENCE-GT96-029",
       "promotion": "DISABLED_IN_SHADOW",
       "source_id": "GT96-029",
@@ -3318,14 +3858,14 @@
       "status": "IMPLEMENTED / NOT VERIFIED"
     },
     {
-      "evidence_class": "MEASURED",
+      "evidence_class": "NOT VERIFIED",
       "id": "AESE-EVIDENCE-GT96-033",
       "promotion": "DISABLED_IN_SHADOW",
       "source_id": "GT96-033",
       "status": "IMPLEMENTED / NOT VERIFIED"
     },
     {
-      "evidence_class": "PROVEN",
+      "evidence_class": "NOT VERIFIED",
       "id": "AESE-EVIDENCE-GT96-034",
       "promotion": "DISABLED_IN_SHADOW",
       "source_id": "GT96-034",
@@ -3583,8 +4123,8 @@
       "source_id": "GT96-003"
     },
     {
-      "description": "Progress cannot be inferred from telemetry alone",
-      "id": "AESE-INVARIANT-DED584541FB70C6D",
+      "description": "Progress cannot be inferred from telemetry alone; explicit-goal completion requires retained successful verification",
+      "id": "AESE-INVARIANT-2BEAF8C710D43880",
       "mapping_status": "SOURCE_BACKED",
       "source_id": "GT96-004"
     },
@@ -3619,8 +4159,8 @@
       "source_id": "GT96-009"
     },
     {
-      "description": "Done requires declared evidence policy",
-      "id": "AESE-INVARIANT-28476F7DB55AD808",
+      "description": "Done requires declared evidence policy and retained successful verification",
+      "id": "AESE-INVARIANT-6D2E8B3F6BD0524A",
       "mapping_status": "SOURCE_BACKED",
       "source_id": "GT96-010"
     },
@@ -3673,8 +4213,8 @@
       "source_id": "GT96-018"
     },
     {
-      "description": "Verification failure cannot become Done",
-      "id": "AESE-INVARIANT-351BC354BC3B668B",
+      "description": "Verification failure cannot become Done; receipt must precede completion and remain bound to the explicit goal",
+      "id": "AESE-INVARIANT-1B0C1F74AA50137E",
       "mapping_status": "SOURCE_BACKED",
       "source_id": "GT96-019"
     },
@@ -3685,8 +4225,8 @@
       "source_id": "GT96-020"
     },
     {
-      "description": "Unknown schema rejected",
-      "id": "AESE-INVARIANT-543ECFE2EAFEDC16",
+      "description": "Policy accepts schema version 1 only; unsupported versions cannot reach Allow; the legacy v1 canonical-hash encoding remains stable",
+      "id": "AESE-INVARIANT-9F2F14A6A3365587",
       "mapping_status": "SOURCE_BACKED",
       "source_id": "GT96-021"
     },
@@ -3851,13 +4391,13 @@
     "all_surfaces_mapped": false,
     "critical_high_risk_mapped": false,
     "criticality_known": false,
-    "unmapped_surface_count": 207
+    "unmapped_surface_count": 221
   },
   "mode": "SHADOW",
   "phase": "PHASE_1_CLAIM_EVIDENCE_GRAPH",
   "schema": "aese-shadow-claim-evidence-graph-v1",
-  "source_head": "e295046a44ccacc2912ae4db0e5f5ed5bf826d76",
-  "source_tree_sha256": "037bcc8e7e988d9a810815a1c4d9e53c09e5e9eff9e3a87618dd1e185794c665",
+  "source_head": "8962a259563a66e4d896b00e2e33c942947298b3",
+  "source_tree_sha256": "f4f7316fbac633c18866293c1b53ac496d6e29bfaf8688333b5adca52f62194d",
   "status": "SHADOW_GRAPH_PARTIAL_MAPPING_SELECTION_DISABLED",
   "surfaces": [
     {
@@ -4083,6 +4623,19 @@
     },
     {
       "claim_refs": [],
+      "id": "AESE-HOSTED_WORKFLOW_JOB-21A4EDD75539B57F",
+      "kind": "HOSTED_WORKFLOW_JOB",
+      "mapping_status": "NOT_MAPPED",
+      "path": ".github/workflows/deep.yml",
+      "release_critical": "UNKNOWN",
+      "release_criticality": "UNKNOWN",
+      "risk": "UNKNOWN",
+      "security_criticality": "UNKNOWN",
+      "target": "wp12-linux-cgroup-enforcement",
+      "unknown_dependency_policy": "INVALIDATE_CONSERVATIVELY"
+    },
+    {
+      "claim_refs": [],
       "id": "AESE-HOSTED_WORKFLOW_JOB-268BA7C5382725F4",
       "kind": "HOSTED_WORKFLOW_JOB",
       "mapping_status": "NOT_MAPPED",
@@ -4092,6 +4645,32 @@
       "risk": "UNKNOWN",
       "security_criticality": "UNKNOWN",
       "target": "live-evaluation",
+      "unknown_dependency_policy": "INVALIDATE_CONSERVATIVELY"
+    },
+    {
+      "claim_refs": [],
+      "id": "AESE-HOSTED_WORKFLOW_JOB-30A1959AE9089AE5",
+      "kind": "HOSTED_WORKFLOW_JOB",
+      "mapping_status": "NOT_MAPPED",
+      "path": ".github/workflows/ci.yml",
+      "release_critical": "UNKNOWN",
+      "release_criticality": "UNKNOWN",
+      "risk": "UNKNOWN",
+      "security_criticality": "UNKNOWN",
+      "target": "secret-scan",
+      "unknown_dependency_policy": "INVALIDATE_CONSERVATIVELY"
+    },
+    {
+      "claim_refs": [],
+      "id": "AESE-HOSTED_WORKFLOW_JOB-3C04E750EAED68D4",
+      "kind": "HOSTED_WORKFLOW_JOB",
+      "mapping_status": "NOT_MAPPED",
+      "path": ".github/workflows/deep.yml",
+      "release_critical": "UNKNOWN",
+      "release_criticality": "UNKNOWN",
+      "risk": "UNKNOWN",
+      "security_criticality": "UNKNOWN",
+      "target": "wp12-windows-native-process",
       "unknown_dependency_policy": "INVALIDATE_CONSERVATIVELY"
     },
     {
@@ -4157,6 +4736,19 @@
       "risk": "UNKNOWN",
       "security_criticality": "UNKNOWN",
       "target": "hardware-buffer-benchmark",
+      "unknown_dependency_policy": "INVALIDATE_CONSERVATIVELY"
+    },
+    {
+      "claim_refs": [],
+      "id": "AESE-HOSTED_WORKFLOW_JOB-8AB55CF0B4415369",
+      "kind": "HOSTED_WORKFLOW_JOB",
+      "mapping_status": "NOT_MAPPED",
+      "path": ".github/workflows/ci.yml",
+      "release_critical": "UNKNOWN",
+      "release_criticality": "UNKNOWN",
+      "risk": "UNKNOWN",
+      "security_criticality": "UNKNOWN",
+      "target": "documentation-contract",
       "unknown_dependency_policy": "INVALIDATE_CONSERVATIVELY"
     },
     {
@@ -4239,6 +4831,19 @@
     },
     {
       "claim_refs": [],
+      "id": "AESE-HOSTED_WORKFLOW_JOB-BB4EE1B39CF6BC1A",
+      "kind": "HOSTED_WORKFLOW_JOB",
+      "mapping_status": "NOT_MAPPED",
+      "path": ".github/workflows/ci.yml",
+      "release_critical": "UNKNOWN",
+      "release_criticality": "UNKNOWN",
+      "risk": "UNKNOWN",
+      "security_criticality": "UNKNOWN",
+      "target": "evidence-authority",
+      "unknown_dependency_policy": "INVALIDATE_CONSERVATIVELY"
+    },
+    {
+      "claim_refs": [],
       "id": "AESE-HOSTED_WORKFLOW_JOB-C611C411223DEE88",
       "kind": "HOSTED_WORKFLOW_JOB",
       "mapping_status": "NOT_MAPPED",
@@ -4261,6 +4866,19 @@
       "risk": "UNKNOWN",
       "security_criticality": "UNKNOWN",
       "target": "benchmark",
+      "unknown_dependency_policy": "INVALIDATE_CONSERVATIVELY"
+    },
+    {
+      "claim_refs": [],
+      "id": "AESE-HOSTED_WORKFLOW_JOB-E4C3C8F2E7FEE4FA",
+      "kind": "HOSTED_WORKFLOW_JOB",
+      "mapping_status": "NOT_MAPPED",
+      "path": ".github/workflows/ci.yml",
+      "release_critical": "UNKNOWN",
+      "release_criticality": "UNKNOWN",
+      "risk": "UNKNOWN",
+      "security_criticality": "UNKNOWN",
+      "target": "change-scope",
       "unknown_dependency_policy": "INVALIDATE_CONSERVATIVELY"
     },
     {
@@ -4342,17 +4960,19 @@
       "unknown_dependency_policy": "INVALIDATE_CONSERVATIVELY"
     },
     {
-      "claim_refs": [],
+      "claim_refs": [
+        "AESE-CLAIM-GT96-033"
+      ],
       "id": "AESE-PYTHON_BENCHMARK-7AC55EA6DC9C796D",
       "kind": "PYTHON_BENCHMARK",
-      "mapping_status": "NOT_MAPPED",
+      "mapping_status": "MAPPED_EXACT",
       "path": "scripts/communication_payload_benchmark.py",
       "release_critical": "UNKNOWN",
       "release_criticality": "UNKNOWN",
       "risk": "UNKNOWN",
       "security_criticality": "UNKNOWN",
       "target": null,
-      "unknown_dependency_policy": "INVALIDATE_CONSERVATIVELY"
+      "unknown_dependency_policy": null
     },
     {
       "claim_refs": [],
@@ -4412,6 +5032,19 @@
       "kind": "PYTHON_TEST",
       "mapping_status": "NOT_MAPPED",
       "path": "tests/test_chatgpt_web_client.py",
+      "release_critical": "UNKNOWN",
+      "release_criticality": "UNKNOWN",
+      "risk": "UNKNOWN",
+      "security_criticality": "UNKNOWN",
+      "target": null,
+      "unknown_dependency_policy": "INVALIDATE_CONSERVATIVELY"
+    },
+    {
+      "claim_refs": [],
+      "id": "AESE-PYTHON_TEST-08B1824BB3F3753E",
+      "kind": "PYTHON_TEST",
+      "mapping_status": "NOT_MAPPED",
+      "path": "tests/test_sanitize_fuzz_logs.py",
       "release_critical": "UNKNOWN",
       "release_criticality": "UNKNOWN",
       "risk": "UNKNOWN",
@@ -4512,10 +5145,49 @@
     },
     {
       "claim_refs": [],
+      "id": "AESE-PYTHON_TEST-1D86E84500C9AB7A",
+      "kind": "PYTHON_TEST",
+      "mapping_status": "NOT_MAPPED",
+      "path": "tests/test_linux_cgroup_live_probe.py",
+      "release_critical": "UNKNOWN",
+      "release_criticality": "UNKNOWN",
+      "risk": "UNKNOWN",
+      "security_criticality": "UNKNOWN",
+      "target": null,
+      "unknown_dependency_policy": "INVALIDATE_CONSERVATIVELY"
+    },
+    {
+      "claim_refs": [],
+      "id": "AESE-PYTHON_TEST-1EB324E9A01BAF7A",
+      "kind": "PYTHON_TEST",
+      "mapping_status": "NOT_MAPPED",
+      "path": "tests/test_architecture_fitness.py",
+      "release_critical": "UNKNOWN",
+      "release_criticality": "UNKNOWN",
+      "risk": "UNKNOWN",
+      "security_criticality": "UNKNOWN",
+      "target": null,
+      "unknown_dependency_policy": "INVALIDATE_CONSERVATIVELY"
+    },
+    {
+      "claim_refs": [],
       "id": "AESE-PYTHON_TEST-1FDB1CC2B8A84F6E",
       "kind": "PYTHON_TEST",
       "mapping_status": "NOT_MAPPED",
       "path": "tests/test_desktop_settings.py",
+      "release_critical": "UNKNOWN",
+      "release_criticality": "UNKNOWN",
+      "risk": "UNKNOWN",
+      "security_criticality": "UNKNOWN",
+      "target": null,
+      "unknown_dependency_policy": "INVALIDATE_CONSERVATIVELY"
+    },
+    {
+      "claim_refs": [],
+      "id": "AESE-PYTHON_TEST-205982FEFE52E728",
+      "kind": "PYTHON_TEST",
+      "mapping_status": "NOT_MAPPED",
+      "path": "tests/test_public_route_boundary.py",
       "release_critical": "UNKNOWN",
       "release_criticality": "UNKNOWN",
       "risk": "UNKNOWN",
@@ -4633,6 +5305,19 @@
       "kind": "PYTHON_TEST",
       "mapping_status": "NOT_MAPPED",
       "path": "tests/test_vision_adapters.py",
+      "release_critical": "UNKNOWN",
+      "release_criticality": "UNKNOWN",
+      "risk": "UNKNOWN",
+      "security_criticality": "UNKNOWN",
+      "target": null,
+      "unknown_dependency_policy": "INVALIDATE_CONSERVATIVELY"
+    },
+    {
+      "claim_refs": [],
+      "id": "AESE-PYTHON_TEST-3659AA413CA9EAAC",
+      "kind": "PYTHON_TEST",
+      "mapping_status": "NOT_MAPPED",
+      "path": "tests/test_secret_scan.py",
       "release_critical": "UNKNOWN",
       "release_criticality": "UNKNOWN",
       "risk": "UNKNOWN",
@@ -4846,6 +5531,19 @@
     },
     {
       "claim_refs": [],
+      "id": "AESE-PYTHON_TEST-680F7AC2BA725BD4",
+      "kind": "PYTHON_TEST",
+      "mapping_status": "NOT_MAPPED",
+      "path": "tests/test_docker_workspace_context.py",
+      "release_critical": "UNKNOWN",
+      "release_criticality": "UNKNOWN",
+      "risk": "UNKNOWN",
+      "security_criticality": "UNKNOWN",
+      "target": null,
+      "unknown_dependency_policy": "INVALIDATE_CONSERVATIVELY"
+    },
+    {
+      "claim_refs": [],
       "id": "AESE-PYTHON_TEST-6ABBF0C923075398",
       "kind": "PYTHON_TEST",
       "mapping_status": "NOT_MAPPED",
@@ -4937,6 +5635,58 @@
     },
     {
       "claim_refs": [],
+      "id": "AESE-PYTHON_TEST-7A18FE79FCE59D49",
+      "kind": "PYTHON_TEST",
+      "mapping_status": "NOT_MAPPED",
+      "path": "tests/test_adversarial_windows_containment.py",
+      "release_critical": "UNKNOWN",
+      "release_criticality": "UNKNOWN",
+      "risk": "UNKNOWN",
+      "security_criticality": "UNKNOWN",
+      "target": null,
+      "unknown_dependency_policy": "INVALIDATE_CONSERVATIVELY"
+    },
+    {
+      "claim_refs": [],
+      "id": "AESE-PYTHON_TEST-7A8D4FB4D8CE9A51",
+      "kind": "PYTHON_TEST",
+      "mapping_status": "NOT_MAPPED",
+      "path": "tests/test_suite_evidence_runtime.py",
+      "release_critical": "UNKNOWN",
+      "release_criticality": "UNKNOWN",
+      "risk": "UNKNOWN",
+      "security_criticality": "UNKNOWN",
+      "target": null,
+      "unknown_dependency_policy": "INVALIDATE_CONSERVATIVELY"
+    },
+    {
+      "claim_refs": [],
+      "id": "AESE-PYTHON_TEST-7F4FF721350D8C62",
+      "kind": "PYTHON_TEST",
+      "mapping_status": "NOT_MAPPED",
+      "path": "tests/platform/windows.py",
+      "release_critical": "UNKNOWN",
+      "release_criticality": "UNKNOWN",
+      "risk": "UNKNOWN",
+      "security_criticality": "UNKNOWN",
+      "target": null,
+      "unknown_dependency_policy": "INVALIDATE_CONSERVATIVELY"
+    },
+    {
+      "claim_refs": [],
+      "id": "AESE-PYTHON_TEST-8481EB816B51A2C9",
+      "kind": "PYTHON_TEST",
+      "mapping_status": "NOT_MAPPED",
+      "path": "tests/test_provider_smoke_scope.py",
+      "release_critical": "UNKNOWN",
+      "release_criticality": "UNKNOWN",
+      "risk": "UNKNOWN",
+      "security_criticality": "UNKNOWN",
+      "target": null,
+      "unknown_dependency_policy": "INVALIDATE_CONSERVATIVELY"
+    },
+    {
+      "claim_refs": [],
       "id": "AESE-PYTHON_TEST-8B4C1D49248A5B93",
       "kind": "PYTHON_TEST",
       "mapping_status": "NOT_MAPPED",
@@ -4976,6 +5726,19 @@
     },
     {
       "claim_refs": [],
+      "id": "AESE-PYTHON_TEST-97655B373A65FBE5",
+      "kind": "PYTHON_TEST",
+      "mapping_status": "NOT_MAPPED",
+      "path": "tests/test_cluster_setup_contract.py",
+      "release_critical": "UNKNOWN",
+      "release_criticality": "UNKNOWN",
+      "risk": "UNKNOWN",
+      "security_criticality": "UNKNOWN",
+      "target": null,
+      "unknown_dependency_policy": "INVALIDATE_CONSERVATIVELY"
+    },
+    {
+      "claim_refs": [],
       "id": "AESE-PYTHON_TEST-984710292DB89A59",
       "kind": "PYTHON_TEST",
       "mapping_status": "NOT_MAPPED",
@@ -4988,17 +5751,21 @@
       "unknown_dependency_policy": "INVALIDATE_CONSERVATIVELY"
     },
     {
-      "claim_refs": [],
+      "claim_refs": [
+        "AESE-CLAIM-GT96-004",
+        "AESE-CLAIM-GT96-010",
+        "AESE-CLAIM-GT96-019"
+      ],
       "id": "AESE-PYTHON_TEST-A282C1A69EFCE3DC",
       "kind": "PYTHON_TEST",
-      "mapping_status": "NOT_MAPPED",
+      "mapping_status": "MAPPED_EXACT",
       "path": "tests/test_goal_contract.py",
       "release_critical": "UNKNOWN",
       "release_criticality": "UNKNOWN",
       "risk": "UNKNOWN",
       "security_criticality": "UNKNOWN",
       "target": null,
-      "unknown_dependency_policy": "INVALIDATE_CONSERVATIVELY"
+      "unknown_dependency_policy": null
     },
     {
       "claim_refs": [],
@@ -5015,16 +5782,31 @@
     },
     {
       "claim_refs": [],
-      "id": "AESE-PYTHON_TEST-AB1758C5973046FB",
+      "id": "AESE-PYTHON_TEST-AAC0F7B48F3FE524",
       "kind": "PYTHON_TEST",
       "mapping_status": "NOT_MAPPED",
-      "path": "tests/test_connections.py",
+      "path": "tests/test_ci_python_bootstrap.py",
       "release_critical": "UNKNOWN",
       "release_criticality": "UNKNOWN",
       "risk": "UNKNOWN",
       "security_criticality": "UNKNOWN",
       "target": null,
       "unknown_dependency_policy": "INVALIDATE_CONSERVATIVELY"
+    },
+    {
+      "claim_refs": [
+        "AESE-CLAIM-GT96-034"
+      ],
+      "id": "AESE-PYTHON_TEST-AB1758C5973046FB",
+      "kind": "PYTHON_TEST",
+      "mapping_status": "MAPPED_EXACT",
+      "path": "tests/test_connections.py",
+      "release_critical": "UNKNOWN",
+      "release_criticality": "UNKNOWN",
+      "risk": "UNKNOWN",
+      "security_criticality": "UNKNOWN",
+      "target": null,
+      "unknown_dependency_policy": null
     },
     {
       "claim_refs": [],
@@ -5071,6 +5853,19 @@
       "kind": "PYTHON_TEST",
       "mapping_status": "NOT_MAPPED",
       "path": "tests/test_project_registry.py",
+      "release_critical": "UNKNOWN",
+      "release_criticality": "UNKNOWN",
+      "risk": "UNKNOWN",
+      "security_criticality": "UNKNOWN",
+      "target": null,
+      "unknown_dependency_policy": "INVALIDATE_CONSERVATIVELY"
+    },
+    {
+      "claim_refs": [],
+      "id": "AESE-PYTHON_TEST-BFA9A8F5A1A91B2B",
+      "kind": "PYTHON_TEST",
+      "mapping_status": "NOT_MAPPED",
+      "path": "tests/test_installer_shell.py",
       "release_critical": "UNKNOWN",
       "release_criticality": "UNKNOWN",
       "risk": "UNKNOWN",
@@ -5188,10 +5983,49 @@
     },
     {
       "claim_refs": [],
+      "id": "AESE-PYTHON_TEST-E4D78EB928F11001",
+      "kind": "PYTHON_TEST",
+      "mapping_status": "NOT_MAPPED",
+      "path": "tests/test_requirements_export.py",
+      "release_critical": "UNKNOWN",
+      "release_criticality": "UNKNOWN",
+      "risk": "UNKNOWN",
+      "security_criticality": "UNKNOWN",
+      "target": null,
+      "unknown_dependency_policy": "INVALIDATE_CONSERVATIVELY"
+    },
+    {
+      "claim_refs": [],
+      "id": "AESE-PYTHON_TEST-E52E4DDD58B7EF88",
+      "kind": "PYTHON_TEST",
+      "mapping_status": "NOT_MAPPED",
+      "path": "tests/conftest.py",
+      "release_critical": "UNKNOWN",
+      "release_criticality": "UNKNOWN",
+      "risk": "UNKNOWN",
+      "security_criticality": "UNKNOWN",
+      "target": null,
+      "unknown_dependency_policy": "INVALIDATE_CONSERVATIVELY"
+    },
+    {
+      "claim_refs": [],
       "id": "AESE-PYTHON_TEST-E6F72A4824DD5C11",
       "kind": "PYTHON_TEST",
       "mapping_status": "NOT_MAPPED",
       "path": "tests/test_code_reuse.py",
+      "release_critical": "UNKNOWN",
+      "release_criticality": "UNKNOWN",
+      "risk": "UNKNOWN",
+      "security_criticality": "UNKNOWN",
+      "target": null,
+      "unknown_dependency_policy": "INVALIDATE_CONSERVATIVELY"
+    },
+    {
+      "claim_refs": [],
+      "id": "AESE-PYTHON_TEST-E79AA6C0397F4C8F",
+      "kind": "PYTHON_TEST",
+      "mapping_status": "NOT_MAPPED",
+      "path": "tests/test_platform_suite_scope.py",
       "release_critical": "UNKNOWN",
       "release_criticality": "UNKNOWN",
       "risk": "UNKNOWN",
@@ -5214,10 +6048,36 @@
     },
     {
       "claim_refs": [],
+      "id": "AESE-PYTHON_TEST-ECE4AB367A1B188B",
+      "kind": "PYTHON_TEST",
+      "mapping_status": "NOT_MAPPED",
+      "path": "tests/test_operator_api_healthcheck.py",
+      "release_critical": "UNKNOWN",
+      "release_criticality": "UNKNOWN",
+      "risk": "UNKNOWN",
+      "security_criticality": "UNKNOWN",
+      "target": null,
+      "unknown_dependency_policy": "INVALIDATE_CONSERVATIVELY"
+    },
+    {
+      "claim_refs": [],
       "id": "AESE-PYTHON_TEST-ED16F6D2A0DDFEE8",
       "kind": "PYTHON_TEST",
       "mapping_status": "NOT_MAPPED",
       "path": "tests/test_sync_model_invoker_concurrency.py",
+      "release_critical": "UNKNOWN",
+      "release_criticality": "UNKNOWN",
+      "risk": "UNKNOWN",
+      "security_criticality": "UNKNOWN",
+      "target": null,
+      "unknown_dependency_policy": "INVALIDATE_CONSERVATIVELY"
+    },
+    {
+      "claim_refs": [],
+      "id": "AESE-PYTHON_TEST-F05E25E20C52BA5B",
+      "kind": "PYTHON_TEST",
+      "mapping_status": "NOT_MAPPED",
+      "path": "tests/test_sidecar_build_contract.py",
       "release_critical": "UNKNOWN",
       "release_criticality": "UNKNOWN",
       "risk": "UNKNOWN",
@@ -5281,10 +6141,10 @@
     },
     {
       "claim_refs": [],
-      "id": "AESE-PYTHON_TEST-F4BC39BEEEE7A51C",
+      "id": "AESE-PYTHON_TEST-FE43B25803DCE7DA",
       "kind": "PYTHON_TEST",
       "mapping_status": "NOT_MAPPED",
-      "path": "tests/test_provider_public_catalog_live.py",
+      "path": "tests/test_script_roots.py",
       "release_critical": "UNKNOWN",
       "release_criticality": "UNKNOWN",
       "risk": "UNKNOWN",
@@ -5294,10 +6154,10 @@
     },
     {
       "claim_refs": [],
-      "id": "AESE-PYTHON_TEST-FE43B25803DCE7DA",
+      "id": "AESE-PYTHON_TEST-FE4532BF3134C709",
       "kind": "PYTHON_TEST",
       "mapping_status": "NOT_MAPPED",
-      "path": "tests/test_script_roots.py",
+      "path": "tests/live/provider_public_catalog.py",
       "release_critical": "UNKNOWN",
       "release_criticality": "UNKNOWN",
       "risk": "UNKNOWN",
@@ -5319,17 +6179,22 @@
       "unknown_dependency_policy": "INVALIDATE_CONSERVATIVELY"
     },
     {
-      "claim_refs": [],
+      "claim_refs": [
+        "AESE-CLAIM-GT96-012",
+        "AESE-CLAIM-GT96-017",
+        "AESE-CLAIM-GT96-018",
+        "AESE-CLAIM-GT96-030"
+      ],
       "id": "AESE-RUST_BENCHMARK-16BA24B31D557E5B",
       "kind": "RUST_BENCHMARK",
-      "mapping_status": "NOT_MAPPED",
+      "mapping_status": "MAPPED_EXACT",
       "path": "core/rust/benches/resource_runtime.rs",
       "release_critical": "UNKNOWN",
       "release_criticality": "UNKNOWN",
       "risk": "UNKNOWN",
       "security_criticality": "UNKNOWN",
       "target": null,
-      "unknown_dependency_policy": "INVALIDATE_CONSERVATIVELY"
+      "unknown_dependency_policy": null
     },
     {
       "claim_refs": [],
@@ -5345,17 +6210,19 @@
       "unknown_dependency_policy": "INVALIDATE_CONSERVATIVELY"
     },
     {
-      "claim_refs": [],
+      "claim_refs": [
+        "AESE-CLAIM-GT96-024"
+      ],
       "id": "AESE-RUST_BENCHMARK-56B8EE7D3073C0FD",
       "kind": "RUST_BENCHMARK",
-      "mapping_status": "NOT_MAPPED",
+      "mapping_status": "MAPPED_EXACT",
       "path": "core/rust/benches/architecture_performance.rs",
       "release_critical": "UNKNOWN",
       "release_criticality": "UNKNOWN",
       "risk": "UNKNOWN",
       "security_criticality": "UNKNOWN",
       "target": null,
-      "unknown_dependency_policy": "INVALIDATE_CONSERVATIVELY"
+      "unknown_dependency_policy": null
     },
     {
       "claim_refs": [],
@@ -5371,17 +6238,26 @@
       "unknown_dependency_policy": "INVALIDATE_CONSERVATIVELY"
     },
     {
-      "claim_refs": [],
+      "claim_refs": [
+        "AESE-CLAIM-GT96-001",
+        "AESE-CLAIM-GT96-002",
+        "AESE-CLAIM-GT96-005",
+        "AESE-CLAIM-GT96-011",
+        "AESE-CLAIM-GT96-013",
+        "AESE-CLAIM-GT96-022",
+        "AESE-CLAIM-GT96-032",
+        "AESE-CLAIM-GT96-033"
+      ],
       "id": "AESE-RUST_BENCHMARK-EB9579A3AA32341B",
       "kind": "RUST_BENCHMARK",
-      "mapping_status": "NOT_MAPPED",
+      "mapping_status": "MAPPED_EXACT",
       "path": "core/rust/benches/nerve_bench.rs",
       "release_critical": "UNKNOWN",
       "release_criticality": "UNKNOWN",
       "risk": "UNKNOWN",
       "security_criticality": "UNKNOWN",
       "target": null,
-      "unknown_dependency_policy": "INVALIDATE_CONSERVATIVELY"
+      "unknown_dependency_policy": null
     },
     {
       "claim_refs": [],
@@ -5449,17 +6325,35 @@
       "unknown_dependency_policy": "INVALIDATE_CONSERVATIVELY"
     },
     {
-      "claim_refs": [],
+      "claim_refs": [
+        "AESE-CLAIM-GT96-023"
+      ],
+      "id": "AESE-RUST_UNIT_TEST-0E05A7875F3F837A",
+      "kind": "RUST_UNIT_TEST",
+      "mapping_status": "MAPPED_EXACT",
+      "path": "core/rust/src/context.rs",
+      "release_critical": "UNKNOWN",
+      "release_criticality": "UNKNOWN",
+      "risk": "UNKNOWN",
+      "security_criticality": "UNKNOWN",
+      "target": null,
+      "unknown_dependency_policy": null
+    },
+    {
+      "claim_refs": [
+        "AESE-CLAIM-GT96-024",
+        "AESE-CLAIM-GT96-027"
+      ],
       "id": "AESE-RUST_UNIT_TEST-1ACBE80688E0CB89",
       "kind": "RUST_UNIT_TEST",
-      "mapping_status": "NOT_MAPPED",
+      "mapping_status": "MAPPED_EXACT",
       "path": "core/rust/src/telemetry.rs",
       "release_critical": "UNKNOWN",
       "release_criticality": "UNKNOWN",
       "risk": "UNKNOWN",
       "security_criticality": "UNKNOWN",
       "target": null,
-      "unknown_dependency_policy": "INVALIDATE_CONSERVATIVELY"
+      "unknown_dependency_policy": null
     },
     {
       "claim_refs": [],
@@ -5580,16 +6474,35 @@
     },
     {
       "claim_refs": [],
-      "id": "AESE-RUST_UNIT_TEST-627B7C3B524D6D59",
+      "id": "AESE-RUST_UNIT_TEST-5A5097B40AC1743F",
       "kind": "RUST_UNIT_TEST",
       "mapping_status": "NOT_MAPPED",
-      "path": "core/rust/src/runtime.rs",
+      "path": "core/rust/src/task_ledger.rs",
       "release_critical": "UNKNOWN",
       "release_criticality": "UNKNOWN",
       "risk": "UNKNOWN",
       "security_criticality": "UNKNOWN",
       "target": null,
       "unknown_dependency_policy": "INVALIDATE_CONSERVATIVELY"
+    },
+    {
+      "claim_refs": [
+        "AESE-CLAIM-GT96-012",
+        "AESE-CLAIM-GT96-015",
+        "AESE-CLAIM-GT96-016",
+        "AESE-CLAIM-GT96-018",
+        "AESE-CLAIM-GT96-029"
+      ],
+      "id": "AESE-RUST_UNIT_TEST-627B7C3B524D6D59",
+      "kind": "RUST_UNIT_TEST",
+      "mapping_status": "MAPPED_EXACT",
+      "path": "core/rust/src/runtime.rs",
+      "release_critical": "UNKNOWN",
+      "release_criticality": "UNKNOWN",
+      "risk": "UNKNOWN",
+      "security_criticality": "UNKNOWN",
+      "target": null,
+      "unknown_dependency_policy": null
     },
     {
       "claim_refs": [],
@@ -5619,6 +6532,7 @@
     },
     {
       "claim_refs": [
+        "AESE-CLAIM-GT96-025",
         "AESE-CLAIM-GT96-035"
       ],
       "id": "AESE-RUST_UNIT_TEST-6896058315F9E5A4",
@@ -5658,10 +6572,10 @@
     },
     {
       "claim_refs": [],
-      "id": "AESE-RUST_UNIT_TEST-706B6EC4F030313E",
+      "id": "AESE-RUST_UNIT_TEST-6FA3A82FCA1D2735",
       "kind": "RUST_UNIT_TEST",
       "mapping_status": "NOT_MAPPED",
-      "path": "core/rust/src/replay.rs",
+      "path": "core/rust/src/ffi/context.rs",
       "release_critical": "UNKNOWN",
       "release_criticality": "UNKNOWN",
       "risk": "UNKNOWN",
@@ -5670,17 +6584,39 @@
       "unknown_dependency_policy": "INVALIDATE_CONSERVATIVELY"
     },
     {
-      "claim_refs": [],
+      "claim_refs": [
+        "AESE-CLAIM-GT96-031",
+        "AESE-CLAIM-GT96-032"
+      ],
+      "id": "AESE-RUST_UNIT_TEST-706B6EC4F030313E",
+      "kind": "RUST_UNIT_TEST",
+      "mapping_status": "MAPPED_EXACT",
+      "path": "core/rust/src/replay.rs",
+      "release_critical": "UNKNOWN",
+      "release_criticality": "UNKNOWN",
+      "risk": "UNKNOWN",
+      "security_criticality": "UNKNOWN",
+      "target": null,
+      "unknown_dependency_policy": null
+    },
+    {
+      "claim_refs": [
+        "AESE-CLAIM-GT96-012",
+        "AESE-CLAIM-GT96-014",
+        "AESE-CLAIM-GT96-015",
+        "AESE-CLAIM-GT96-017",
+        "AESE-CLAIM-GT96-029"
+      ],
       "id": "AESE-RUST_UNIT_TEST-7142417A253B65D2",
       "kind": "RUST_UNIT_TEST",
-      "mapping_status": "NOT_MAPPED",
+      "mapping_status": "MAPPED_EXACT",
       "path": "core/rust/src/resource.rs",
       "release_critical": "UNKNOWN",
       "release_criticality": "UNKNOWN",
       "risk": "UNKNOWN",
       "security_criticality": "UNKNOWN",
       "target": null,
-      "unknown_dependency_policy": "INVALIDATE_CONSERVATIVELY"
+      "unknown_dependency_policy": null
     },
     {
       "claim_refs": [],
@@ -5709,17 +6645,21 @@
       "unknown_dependency_policy": "INVALIDATE_CONSERVATIVELY"
     },
     {
-      "claim_refs": [],
+      "claim_refs": [
+        "AESE-CLAIM-GT96-004",
+        "AESE-CLAIM-GT96-010",
+        "AESE-CLAIM-GT96-019"
+      ],
       "id": "AESE-RUST_UNIT_TEST-92EBE7488C4A494F",
       "kind": "RUST_UNIT_TEST",
-      "mapping_status": "NOT_MAPPED",
+      "mapping_status": "MAPPED_EXACT",
       "path": "core/rust/src/lab.rs",
       "release_critical": "UNKNOWN",
       "release_criticality": "UNKNOWN",
       "risk": "UNKNOWN",
       "security_criticality": "UNKNOWN",
       "target": null,
-      "unknown_dependency_policy": "INVALIDATE_CONSERVATIVELY"
+      "unknown_dependency_policy": null
     },
     {
       "claim_refs": [],
@@ -5761,17 +6701,20 @@
       "unknown_dependency_policy": "INVALIDATE_CONSERVATIVELY"
     },
     {
-      "claim_refs": [],
+      "claim_refs": [
+        "AESE-CLAIM-GT96-023",
+        "AESE-CLAIM-GT96-026"
+      ],
       "id": "AESE-RUST_UNIT_TEST-A7BCCA355F3390EC",
       "kind": "RUST_UNIT_TEST",
-      "mapping_status": "NOT_MAPPED",
+      "mapping_status": "MAPPED_EXACT",
       "path": "core/rust/src/memory/repository.rs",
       "release_critical": "UNKNOWN",
       "release_criticality": "UNKNOWN",
       "risk": "UNKNOWN",
       "security_criticality": "UNKNOWN",
       "target": null,
-      "unknown_dependency_policy": "INVALIDATE_CONSERVATIVELY"
+      "unknown_dependency_policy": null
     },
     {
       "claim_refs": [],
@@ -5800,17 +6743,26 @@
       "unknown_dependency_policy": "INVALIDATE_CONSERVATIVELY"
     },
     {
-      "claim_refs": [],
+      "claim_refs": [
+        "AESE-CLAIM-GT96-001",
+        "AESE-CLAIM-GT96-002",
+        "AESE-CLAIM-GT96-016",
+        "AESE-CLAIM-GT96-021",
+        "AESE-CLAIM-GT96-022",
+        "AESE-CLAIM-GT96-024",
+        "AESE-CLAIM-GT96-027",
+        "AESE-CLAIM-GT96-032"
+      ],
       "id": "AESE-RUST_UNIT_TEST-BB56D2466AB0351F",
       "kind": "RUST_UNIT_TEST",
-      "mapping_status": "NOT_MAPPED",
+      "mapping_status": "MAPPED_EXACT",
       "path": "core/rust/src/tests.rs",
       "release_critical": "UNKNOWN",
       "release_criticality": "UNKNOWN",
       "risk": "UNKNOWN",
       "security_criticality": "UNKNOWN",
       "target": null,
-      "unknown_dependency_policy": "INVALIDATE_CONSERVATIVELY"
+      "unknown_dependency_policy": null
     },
     {
       "claim_refs": [],
@@ -6080,6 +7032,19 @@
       "kind": "SCRIPT_OR_GATE",
       "mapping_status": "NOT_MAPPED",
       "path": "scripts/hot_buffer_ffi_benchmark.py",
+      "release_critical": "UNKNOWN",
+      "release_criticality": "UNKNOWN",
+      "risk": "UNKNOWN",
+      "security_criticality": "UNKNOWN",
+      "target": null,
+      "unknown_dependency_policy": "INVALIDATE_CONSERVATIVELY"
+    },
+    {
+      "claim_refs": [],
+      "id": "AESE-SCRIPT_OR_GATE-5105B6693772DC47",
+      "kind": "SCRIPT_OR_GATE",
+      "mapping_status": "NOT_MAPPED",
+      "path": "scripts/sanitize_fuzz_logs.py",
       "release_critical": "UNKNOWN",
       "release_criticality": "UNKNOWN",
       "risk": "UNKNOWN",
@@ -6707,33 +7672,41 @@
     {
       "id": "AESE-TEST_OR_PROOF-GT96-001",
       "kind": "TEST_OR_PROOF",
-      "mapping_status": "NOT_MAPPED",
-      "reference": "goal intake unit/contract tests",
-      "resolved_paths": [],
+      "mapping_status": "MAPPED_EXACT",
+      "reference": "`goal_intake_classifies_financial_destructive_goal_as_r4_and_mints_root_task_ir`",
+      "resolved_paths": [
+        "core/rust/src/tests.rs"
+      ],
       "source_id": "GT96-001"
     },
     {
       "id": "AESE-BENCHMARK-GT96-001",
       "kind": "BENCHMARK",
-      "mapping_status": "NOT_MAPPED",
-      "reference": "goal intake overhead",
-      "resolved_paths": [],
+      "mapping_status": "MAPPED_EXACT",
+      "reference": "`core/rust/benches/nerve_bench.rs::bench_goal_intake_classify_packet`; source only, not executed",
+      "resolved_paths": [
+        "core/rust/benches/nerve_bench.rs"
+      ],
       "source_id": "GT96-001"
     },
     {
       "id": "AESE-TEST_OR_PROOF-GT96-002",
       "kind": "TEST_OR_PROOF",
-      "mapping_status": "NOT_MAPPED",
-      "reference": "typed IR conversion tests",
-      "resolved_paths": [],
+      "mapping_status": "MAPPED_EXACT",
+      "reference": "`typed_tool_ir_requires_approval_and_staging_by_risk`; `typed_tool_ir_rejects_underclassified_side_effects`",
+      "resolved_paths": [
+        "core/rust/src/tests.rs"
+      ],
       "source_id": "GT96-002"
     },
     {
       "id": "AESE-BENCHMARK-GT96-002",
       "kind": "BENCHMARK",
-      "mapping_status": "NOT_MAPPED",
-      "reference": "pending payload benchmark",
-      "resolved_paths": [],
+      "mapping_status": "MAPPED_EXACT",
+      "reference": "`core/rust/benches/nerve_bench.rs::bench_goal_intake_classify_packet`; source only: times combined goal classification and `initial_ir` construction, not isolated IR conversion, not executed",
+      "resolved_paths": [
+        "core/rust/benches/nerve_bench.rs"
+      ],
       "source_id": "GT96-002"
     },
     {
@@ -6758,9 +7731,11 @@
       "id": "AESE-TEST_OR_PROOF-GT96-004",
       "kind": "TEST_OR_PROOF",
       "mapping_status": "MAPPED_EXACT",
-      "reference": "`progress_cannot_be_verified_without_validated_evidence_and_closes_explicitly`",
+      "reference": "`progress_cannot_be_verified_without_validated_evidence_and_closes_explicitly`; `native_explicit_goal_completion_requires_successful_retained_verification`; `native_completed_explicit_goal_snapshots_require_retained_verification`; `test_independent_goal_verification_is_event_bound_and_restorable`; `test_completed_goal_snapshot_rejects_verification_after_completion`; `test_explicit_goal_completion_without_verification_is_rejected_atomically`",
       "resolved_paths": [
-        "core/rust/src/gt96.rs"
+        "core/rust/src/gt96.rs",
+        "core/rust/src/lab.rs",
+        "tests/test_goal_contract.py"
       ],
       "source_id": "GT96-004"
     },
@@ -6785,9 +7760,11 @@
     {
       "id": "AESE-BENCHMARK-GT96-005",
       "kind": "BENCHMARK",
-      "mapping_status": "NOT_MAPPED",
-      "reference": "budget admission benchmark",
-      "resolved_paths": [],
+      "mapping_status": "MAPPED_EXACT",
+      "reference": "`core/rust/benches/nerve_bench.rs::bench_provider_route_admission_proof`; source only, not executed",
+      "resolved_paths": [
+        "core/rust/benches/nerve_bench.rs"
+      ],
       "source_id": "GT96-005"
     },
     {
@@ -6863,9 +7840,12 @@
     {
       "id": "AESE-TEST_OR_PROOF-GT96-010",
       "kind": "TEST_OR_PROOF",
-      "mapping_status": "NOT_MAPPED",
-      "reference": "evidence contract tests",
-      "resolved_paths": [],
+      "mapping_status": "MAPPED_EXACT",
+      "reference": "`native_goal_verification_record_requires_typed_receipt`; `native_explicit_goal_completion_requires_successful_retained_verification`; `test_independent_goal_verification_is_event_bound_and_restorable`; `test_explicit_goal_completion_without_verification_is_rejected_atomically`",
+      "resolved_paths": [
+        "core/rust/src/lab.rs",
+        "tests/test_goal_contract.py"
+      ],
       "source_id": "GT96-010"
     },
     {
@@ -6889,25 +7869,32 @@
     {
       "id": "AESE-BENCHMARK-GT96-011",
       "kind": "BENCHMARK",
-      "mapping_status": "NOT_MAPPED",
-      "reference": "hashing throughput",
-      "resolved_paths": [],
+      "mapping_status": "MAPPED_EXACT",
+      "reference": "`core/rust/benches/nerve_bench.rs::bench_hot_engine_simd_blake3_hash`; source only, not executed",
+      "resolved_paths": [
+        "core/rust/benches/nerve_bench.rs"
+      ],
       "source_id": "GT96-011"
     },
     {
       "id": "AESE-TEST_OR_PROOF-GT96-012",
       "kind": "TEST_OR_PROOF",
-      "mapping_status": "NOT_MAPPED",
-      "reference": "forged/stale lease tests",
-      "resolved_paths": [],
+      "mapping_status": "MAPPED_EXACT",
+      "reference": "`state_machine_supports_retry_and_fenced_attempts`; `cooperative_admission_stale_generation_is_fenced`; `expired_lease_is_reaped_as_timeout_and_capacity_is_reclaimed`",
+      "resolved_paths": [
+        "core/rust/src/resource.rs",
+        "core/rust/src/runtime.rs"
+      ],
       "source_id": "GT96-012"
     },
     {
       "id": "AESE-BENCHMARK-GT96-012",
       "kind": "BENCHMARK",
-      "mapping_status": "NOT_MAPPED",
-      "reference": "admission/finish benchmark",
-      "resolved_paths": [],
+      "mapping_status": "MAPPED_EXACT",
+      "reference": "`core/rust/benches/resource_runtime.rs::SCH-008_runtime_submit_finish`; source only: single-task submit-to-finish lifecycle, not executed or performance evidence",
+      "resolved_paths": [
+        "core/rust/benches/resource_runtime.rs"
+      ],
       "source_id": "GT96-012"
     },
     {
@@ -6923,17 +7910,21 @@
     {
       "id": "AESE-BENCHMARK-GT96-013",
       "kind": "BENCHMARK",
-      "mapping_status": "NOT_MAPPED",
-      "reference": "route selection benchmark",
-      "resolved_paths": [],
+      "mapping_status": "MAPPED_EXACT",
+      "reference": "`core/rust/benches/nerve_bench.rs::bench_llm_route`; source only: one-provider route selection, does not validate declared feature capability, not executed",
+      "resolved_paths": [
+        "core/rust/benches/nerve_bench.rs"
+      ],
       "source_id": "GT96-013"
     },
     {
       "id": "AESE-TEST_OR_PROOF-GT96-014",
       "kind": "TEST_OR_PROOF",
-      "mapping_status": "NOT_MAPPED",
-      "reference": "lane capability tests",
-      "resolved_paths": [],
+      "mapping_status": "MAPPED_EXACT",
+      "reference": "`lane_registry_prevents_oversubscription`; `admission_is_bounded_and_release_reclaims_capacity`",
+      "resolved_paths": [
+        "core/rust/src/resource.rs"
+      ],
       "source_id": "GT96-014"
     },
     {
@@ -6947,9 +7938,12 @@
     {
       "id": "AESE-TEST_OR_PROOF-GT96-015",
       "kind": "TEST_OR_PROOF",
-      "mapping_status": "NOT_MAPPED",
-      "reference": "cancellation tests",
-      "resolved_paths": [],
+      "mapping_status": "MAPPED_EXACT",
+      "reference": "`cancellation_exposes_cancelling_transition_before_release`; `queued_cancellation_removes_work_without_a_lease`; `placement_reservation_rejects_wrong_identity_and_reclaims_on_cancel`",
+      "resolved_paths": [
+        "core/rust/src/resource.rs",
+        "core/rust/src/runtime.rs"
+      ],
       "source_id": "GT96-015"
     },
     {
@@ -6963,9 +7957,12 @@
     {
       "id": "AESE-TEST_OR_PROOF-GT96-016",
       "kind": "TEST_OR_PROOF",
-      "mapping_status": "NOT_MAPPED",
-      "reference": "deadline reaper tests",
-      "resolved_paths": [],
+      "mapping_status": "MAPPED_EXACT",
+      "reference": "`expired_lease_is_reaped_as_timeout_and_capacity_is_reclaimed`; `task_ledger_deadline_pressure_uses_explicit_timestamp`",
+      "resolved_paths": [
+        "core/rust/src/runtime.rs",
+        "core/rust/src/tests.rs"
+      ],
       "source_id": "GT96-016"
     },
     {
@@ -6979,41 +7976,52 @@
     {
       "id": "AESE-TEST_OR_PROOF-GT96-017",
       "kind": "TEST_OR_PROOF",
-      "mapping_status": "NOT_MAPPED",
-      "reference": "admission/property tests",
-      "resolved_paths": [],
+      "mapping_status": "MAPPED_EXACT",
+      "reference": "`admission_is_bounded_and_release_reclaims_capacity`; `cooperative_admission_unknown_capacity_path_and_spill_fail_closed`",
+      "resolved_paths": [
+        "core/rust/src/resource.rs"
+      ],
       "source_id": "GT96-017"
     },
     {
       "id": "AESE-BENCHMARK-GT96-017",
       "kind": "BENCHMARK",
-      "mapping_status": "NOT_MAPPED",
-      "reference": "admission latency",
-      "resolved_paths": [],
+      "mapping_status": "MAPPED_EXACT",
+      "reference": "`core/rust/benches/resource_runtime.rs` \u2014 SCH-004 resource admission / SCH-006 capacity feedback; source only",
+      "resolved_paths": [
+        "core/rust/benches/resource_runtime.rs"
+      ],
       "source_id": "GT96-017"
     },
     {
       "id": "AESE-TEST_OR_PROOF-GT96-018",
       "kind": "TEST_OR_PROOF",
-      "mapping_status": "NOT_MAPPED",
-      "reference": "queue drain integration test",
-      "resolved_paths": [],
+      "mapping_status": "MAPPED_EXACT",
+      "reference": "`queued_task_is_released_and_re_admitted_through_the_ledger`; `queue_poll_preserves_other_admissions_and_retries_pending_work`",
+      "resolved_paths": [
+        "core/rust/src/runtime.rs"
+      ],
       "source_id": "GT96-018"
     },
     {
       "id": "AESE-BENCHMARK-GT96-018",
       "kind": "BENCHMARK",
-      "mapping_status": "NOT_MAPPED",
-      "reference": "queue depth/latency",
-      "resolved_paths": [],
+      "mapping_status": "MAPPED_EXACT",
+      "reference": "`core/rust/benches/resource_runtime.rs` \u2014 SCH-007 bounded queue; source only",
+      "resolved_paths": [
+        "core/rust/benches/resource_runtime.rs"
+      ],
       "source_id": "GT96-018"
     },
     {
       "id": "AESE-TEST_OR_PROOF-GT96-019",
       "kind": "TEST_OR_PROOF",
-      "mapping_status": "NOT_MAPPED",
-      "reference": "verification gauntlet tests",
-      "resolved_paths": [],
+      "mapping_status": "MAPPED_EXACT",
+      "reference": "`native_goal_verification_record_requires_typed_receipt`; `native_explicit_goal_completion_requires_successful_retained_verification`; `native_completed_explicit_goal_snapshots_require_retained_verification`; `test_independent_goal_verification_is_event_bound_and_restorable`; `test_completed_goal_snapshot_rejects_verification_after_completion`; `test_explicit_goal_completion_without_verification_is_rejected_atomically`",
+      "resolved_paths": [
+        "core/rust/src/lab.rs",
+        "tests/test_goal_contract.py"
+      ],
       "source_id": "GT96-019"
     },
     {
@@ -7045,41 +8053,50 @@
     {
       "id": "AESE-TEST_OR_PROOF-GT96-021",
       "kind": "TEST_OR_PROOF",
-      "mapping_status": "NOT_MAPPED",
-      "reference": "schema round-trip tests",
-      "resolved_paths": [],
+      "mapping_status": "MAPPED_EXACT",
+      "reference": "`typed_tool_ir_rejects_unsupported_schema_before_policy_allow`; `typed_tool_ir_requires_approval_and_staging_by_risk`; `typed_tool_ir_rejects_underclassified_side_effects`",
+      "resolved_paths": [
+        "core/rust/src/tests.rs"
+      ],
       "source_id": "GT96-021"
     },
     {
       "id": "AESE-BENCHMARK-GT96-021",
       "kind": "BENCHMARK",
       "mapping_status": "NOT_MAPPED",
-      "reference": "parse benchmark",
+      "reference": "Not applicable to the current in-memory IR: no serialized parser or isolated parse operation exists; not measured",
       "resolved_paths": [],
       "source_id": "GT96-021"
     },
     {
       "id": "AESE-TEST_OR_PROOF-GT96-022",
       "kind": "TEST_OR_PROOF",
-      "mapping_status": "NOT_MAPPED",
-      "reference": "context governor tests",
-      "resolved_paths": [],
+      "mapping_status": "MAPPED_EXACT",
+      "reference": "`context_governor_activates_only_two_hops_and_required_evidence`; `context_governor_keeps_required_evidence_under_budget`; `context_governor_preserves_protected_nodes_before_condensable_and_ephemeral_nodes`; `context_governor_enforces_activation_cap`",
+      "resolved_paths": [
+        "core/rust/src/tests.rs"
+      ],
       "source_id": "GT96-022"
     },
     {
       "id": "AESE-BENCHMARK-GT96-022",
       "kind": "BENCHMARK",
-      "mapping_status": "NOT_MAPPED",
-      "reference": "projection benchmark",
-      "resolved_paths": [],
+      "mapping_status": "MAPPED_EXACT",
+      "reference": "`bench_context_governor_activated_pack`; source only",
+      "resolved_paths": [
+        "core/rust/benches/nerve_bench.rs"
+      ],
       "source_id": "GT96-022"
     },
     {
       "id": "AESE-TEST_OR_PROOF-GT96-023",
       "kind": "TEST_OR_PROOF",
-      "mapping_status": "NOT_MAPPED",
-      "reference": "projection/invalidations tests",
-      "resolved_paths": [],
+      "mapping_status": "MAPPED_EXACT",
+      "reference": "`typed_file_memory_edges_change_selection_without_becoming_candidates`; `file_relation_rejects_stale_memory_revision_or_hash`; `pending_index_rebuilds_after_source_commit`",
+      "resolved_paths": [
+        "core/rust/src/context.rs",
+        "core/rust/src/memory/repository.rs"
+      ],
       "source_id": "GT96-023"
     },
     {
@@ -7093,25 +8110,32 @@
     {
       "id": "AESE-TEST_OR_PROOF-GT96-024",
       "kind": "TEST_OR_PROOF",
-      "mapping_status": "NOT_MAPPED",
-      "reference": "FFI/IPC contract tests",
-      "resolved_paths": [],
+      "mapping_status": "MAPPED_EXACT",
+      "reference": "`message_frame_validates_and_converts`; `zero_copy_roundtrip_rebuilds_message`; `integration_probe_roundtrips_runtime_message`; `json_boundary_rejects_wrong_schema_and_preserves_correlation`",
+      "resolved_paths": [
+        "core/rust/src/telemetry.rs",
+        "core/rust/src/tests.rs"
+      ],
       "source_id": "GT96-024"
     },
     {
       "id": "AESE-BENCHMARK-GT96-024",
       "kind": "BENCHMARK",
-      "mapping_status": "NOT_MAPPED",
-      "reference": "64B-16MB payload matrix",
-      "resolved_paths": [],
+      "mapping_status": "MAPPED_EXACT",
+      "reference": "`core/rust/benches/architecture_performance.rs::benchmark_communication_payloads`; source only, not executed",
+      "resolved_paths": [
+        "core/rust/benches/architecture_performance.rs"
+      ],
       "source_id": "GT96-024"
     },
     {
       "id": "AESE-TEST_OR_PROOF-GT96-025",
       "kind": "TEST_OR_PROOF",
-      "mapping_status": "NOT_MAPPED",
-      "reference": "cache namespace tests",
-      "resolved_paths": [],
+      "mapping_status": "MAPPED_EXACT",
+      "reference": "`core/rust/src/eac/cache/semantic.rs::test_cache_invalidation` (same prompt remains isolated between namespaces)",
+      "resolved_paths": [
+        "core/rust/src/eac/cache/semantic.rs"
+      ],
       "source_id": "GT96-025"
     },
     {
@@ -7125,9 +8149,11 @@
     {
       "id": "AESE-TEST_OR_PROOF-GT96-026",
       "kind": "TEST_OR_PROOF",
-      "mapping_status": "NOT_MAPPED",
-      "reference": "rebuild/recovery tests",
-      "resolved_paths": [],
+      "mapping_status": "MAPPED_EXACT",
+      "reference": "`pending_index_rebuilds_after_source_commit`; `file_relation_rejects_stale_memory_revision_or_hash`",
+      "resolved_paths": [
+        "core/rust/src/memory/repository.rs"
+      ],
       "source_id": "GT96-026"
     },
     {
@@ -7141,9 +8167,12 @@
     {
       "id": "AESE-TEST_OR_PROOF-GT96-027",
       "kind": "TEST_OR_PROOF",
-      "mapping_status": "NOT_MAPPED",
-      "reference": "correlation-chain tests",
-      "resolved_paths": [],
+      "mapping_status": "MAPPED_EXACT",
+      "reference": "`invalid_correlation_is_rejected_before_recording`; `json_boundary_rejects_wrong_schema_and_preserves_correlation`; `telemetry_envelope_requires_redaction_and_payload_hash`",
+      "resolved_paths": [
+        "core/rust/src/telemetry.rs",
+        "core/rust/src/tests.rs"
+      ],
       "source_id": "GT96-027"
     },
     {
@@ -7173,9 +8202,12 @@
     {
       "id": "AESE-TEST_OR_PROOF-GT96-029",
       "kind": "TEST_OR_PROOF",
-      "mapping_status": "NOT_MAPPED",
-      "reference": "adversarial matrix",
-      "resolved_paths": [],
+      "mapping_status": "MAPPED_EXACT",
+      "reference": "`state_machine_supports_retry_and_fenced_attempts`; `cooperative_admission_stale_generation_is_fenced`; `expired_lease_is_reaped_as_timeout_and_capacity_is_reclaimed`",
+      "resolved_paths": [
+        "core/rust/src/resource.rs",
+        "core/rust/src/runtime.rs"
+      ],
       "source_id": "GT96-029"
     },
     {
@@ -7199,17 +8231,21 @@
     {
       "id": "AESE-BENCHMARK-GT96-030",
       "kind": "BENCHMARK",
-      "mapping_status": "NOT_MAPPED",
-      "reference": "transition throughput",
-      "resolved_paths": [],
+      "mapping_status": "MAPPED_EXACT",
+      "reference": "`core/rust/benches/resource_runtime.rs::SCH-008_runtime_submit_finish`; source only: submit-to-finish lifecycle, not isolated transition cost, not executed",
+      "resolved_paths": [
+        "core/rust/benches/resource_runtime.rs"
+      ],
       "source_id": "GT96-030"
     },
     {
       "id": "AESE-TEST_OR_PROOF-GT96-031",
       "kind": "TEST_OR_PROOF",
-      "mapping_status": "NOT_MAPPED",
-      "reference": "migration/recovery matrix",
-      "resolved_paths": [],
+      "mapping_status": "MAPPED_EXACT",
+      "reference": "`binary_archive_schema_migration_matrix_is_explicit_and_fail_closed`; `binary_archive_recovery_preserves_committed_prefix_and_rejects_invalid_header`",
+      "resolved_paths": [
+        "core/rust/src/replay.rs"
+      ],
       "source_id": "GT96-031"
     },
     {
@@ -7223,41 +8259,53 @@
     {
       "id": "AESE-TEST_OR_PROOF-GT96-032",
       "kind": "TEST_OR_PROOF",
-      "mapping_status": "NOT_MAPPED",
-      "reference": "crash-point tests",
-      "resolved_paths": [],
+      "mapping_status": "MAPPED_EXACT",
+      "reference": "`binary_run_event_segment_recovers_last_valid_prefix_after_tail_damage`; `binary_archive_recovery_preserves_committed_prefix_and_rejects_invalid_header`",
+      "resolved_paths": [
+        "core/rust/src/replay.rs",
+        "core/rust/src/tests.rs"
+      ],
       "source_id": "GT96-032"
     },
     {
       "id": "AESE-BENCHMARK-GT96-032",
       "kind": "BENCHMARK",
-      "mapping_status": "NOT_MAPPED",
-      "reference": "recovery latency",
-      "resolved_paths": [],
+      "mapping_status": "MAPPED_EXACT",
+      "reference": "`bench_replay_io_binary_mmap_recover_prefix`; source only",
+      "resolved_paths": [
+        "core/rust/benches/nerve_bench.rs"
+      ],
       "source_id": "GT96-032"
     },
     {
       "id": "AESE-TEST_OR_PROOF-GT96-033",
       "kind": "TEST_OR_PROOF",
-      "mapping_status": "NOT_MAPPED",
-      "reference": "payload benchmark",
-      "resolved_paths": [],
+      "mapping_status": "MAPPED_EXACT",
+      "reference": "`test_python_mmap_bridge_exposes_payload_memoryview_without_copy`; `test_python_mmap_bridge_writer_rejects_noncontiguous_memoryview`; `test_python_mmap_bridge_writer_streams_bounded_chunks_into_rust`",
+      "resolved_paths": [
+        "core/python/tests.py"
+      ],
       "source_id": "GT96-033"
     },
     {
       "id": "AESE-BENCHMARK-GT96-033",
       "kind": "BENCHMARK",
-      "mapping_status": "NOT_MAPPED",
-      "reference": "64B, 1KiB, 64KiB, 1MiB, 16MiB p50/p95",
-      "resolved_paths": [],
+      "mapping_status": "MAPPED_EXACT",
+      "reference": "`scripts/communication_payload_benchmark.py`; `bench_message_to_zero_copy`; `bench_zero_copy_roundtrip`; sources only, no current measurement",
+      "resolved_paths": [
+        "core/rust/benches/nerve_bench.rs",
+        "scripts/communication_payload_benchmark.py"
+      ],
       "source_id": "GT96-033"
     },
     {
       "id": "AESE-TEST_OR_PROOF-GT96-034",
       "kind": "TEST_OR_PROOF",
-      "mapping_status": "NOT_MAPPED",
-      "reference": "capability fallback tests",
-      "resolved_paths": [],
+      "mapping_status": "MAPPED_EXACT",
+      "reference": "`tests/test_connections.py::test_explicit_catalog_efforts_override_stale_provider_profile`; `tests/test_connections.py::test_reasoning_picker_exposes_only_explicit_provider_capabilities`",
+      "resolved_paths": [
+        "tests/test_connections.py"
+      ],
       "source_id": "GT96-034"
     },
     {
@@ -7485,6 +8533,6 @@
       "source_id": "AESE-011"
     }
   ],
-  "worktree_epoch": "5dba09df011e5bcae42f63e90285c4ec7007cf0b310865d46d2b18f275163688",
+  "worktree_epoch": "6bbdce2cccb300fc203ea8dada9e4042d11b4c60f9dc2261748da7c14e561c0d",
   "worktree_status": "DIRTY"
 }

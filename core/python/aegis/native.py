@@ -13,8 +13,7 @@ def native_module() -> Any:
     # exercise the no-extension fallback even when an editable maturin build
     # has already attached the packaged extension to ``aegis_cognition``.
     if any(
-        name in sys.modules and sys.modules[name] is None
-        for name in ("aegis_nerve", "aegis_cognition.aegis_nerve")
+        name in sys.modules and sys.modules[name] is None for name in ("aegis_nerve", "aegis_cognition.aegis_nerve")
     ):
         raise ImportError("Rust aegis_nerve extension is explicitly unavailable")
 

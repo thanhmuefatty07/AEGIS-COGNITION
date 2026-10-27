@@ -7,13 +7,15 @@ candidate observation into an authoritative result.
 
 from __future__ import annotations
 
+import contextlib
 import hashlib
 import json
+import re
 import shutil
 import subprocess
 import tempfile
 import threading
-from collections.abc import Callable, Mapping
+from collections.abc import Callable, Generator, Mapping
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -355,50 +357,105 @@ def _ignore_disposable_worktree_entries(directory: str, names: list[str]) -> set
 
 
 class DisposableWorktree:
-    """Create a disposable checkout and omit known local/private paths on copy fallback."""
+    """Create a ref checkout or filtered working-tree copy under repository-local scratch."""
 
     def __init__(self, repository: Path, *, ref: str | None = None, lineage: str = "root") -> None:
         self.repository = repository.expanduser().resolve()
-        self.ref = ref or "HEAD"
+        self.ref = "HEAD" if ref is None else _require_text(ref, "ref", 512)
+        if "\x00" in self.ref:
+            raise ValueError("ref must not contain NUL")
+        self._explicit_ref = ref is not None
         self.lineage = _require_text(lineage, "lineage", 512)
         self.path: Path | None = None
+        self._scratch_root: Path | None = None
         self._temporary_root: Path | None = None
         self._git_worktree = False
 
-    def __enter__(self) -> Path:
-        if not self.repository.is_dir():
-            raise ValueError("disposable worktree repository must be a directory")
-        temporary = Path(tempfile.mkdtemp(prefix="aegis-worktree-"))
-        shutil.rmtree(temporary)
+    @staticmethod
+    def _is_redirected_path(path: Path) -> bool:
+        return path.is_symlink() or path.is_junction()
+
+    def _owned_scratch_root(self, *, create: bool) -> Path:
+        scratch_root = self.repository / ".local" / "tmp" / "worktrees"
+        for directory in (
+            self.repository / ".local",
+            self.repository / ".local" / "tmp",
+            scratch_root,
+        ):
+            if self._is_redirected_path(directory):
+                raise ValueError("disposable worktree scratch path must not use a symlink or junction")
+            if create:
+                directory.mkdir(exist_ok=True)
+            elif not directory.is_dir():
+                raise RuntimeError("disposable worktree scratch root is no longer available")
+            resolved = directory.resolve(strict=True)
+            try:
+                resolved.relative_to(self.repository)
+            except ValueError as exc:
+                raise ValueError("disposable worktree scratch path escaped the repository") from exc
+        return scratch_root
+
+    def _assert_owned_temporary(self, temporary: Path, scratch_root: Path) -> None:
+        if self._is_redirected_path(temporary):
+            raise RuntimeError("disposable worktree path became a symlink or junction")
+        resolved_scratch = scratch_root.resolve(strict=True)
+        expected_scratch = self.repository / ".local" / "tmp" / "worktrees"
+        if resolved_scratch != expected_scratch:
+            raise RuntimeError("disposable worktree scratch root changed after allocation")
+        resolved_temporary = temporary.resolve(strict=False)
+        if resolved_temporary.parent != resolved_scratch:
+            raise RuntimeError("disposable worktree path escaped its owned scratch directory")
+        if not temporary.name.startswith("aegis-worktree-"):
+            raise RuntimeError("refusing to remove a path not allocated by this worktree")
+
+    def _git_repository_root(self) -> Path | None:
         try:
             result = subprocess.run(
-                ("git", "worktree", "add", "--detach", str(temporary), self.ref),
+                ("git", "rev-parse", "--show-toplevel"),
                 cwd=self.repository,
                 capture_output=True,
                 text=True,
                 timeout=30.0,
                 check=False,
             )
-        except OSError, subprocess.SubprocessError:
-            result = None
-        if result is not None and result.returncode == 0:
-            self._git_worktree = True
-        else:
-            try:
-                shutil.copytree(self.repository, temporary, ignore=_ignore_disposable_worktree_entries)
-            except BaseException:
-                shutil.rmtree(temporary, ignore_errors=True)
-                raise
-        self._temporary_root = temporary
-        self.path = temporary
-        return temporary
+        except FileNotFoundError:
+            return None
+        except subprocess.SubprocessError as exc:
+            raise RuntimeError("could not determine the disposable worktree Git root") from exc
+        if result.returncode != 0 or not result.stdout.strip():
+            return None
+        return Path(result.stdout.strip()).resolve()
 
-    def __exit__(self, exc_type: object, exc: object, traceback: object) -> None:
-        temporary = self._temporary_root
-        if temporary is None:
-            return
-        if self._git_worktree:
-            subprocess.run(
+    def _git_worktree_is_registered(self, temporary: Path) -> bool:
+        try:
+            result = subprocess.run(
+                ("git", "worktree", "list", "--porcelain", "-z"),
+                cwd=self.repository,
+                capture_output=True,
+                text=True,
+                timeout=30.0,
+                check=False,
+            )
+        except (OSError, subprocess.SubprocessError) as exc:
+            raise RuntimeError("could not verify disposable Git worktree registration") from exc
+        if result.returncode != 0:
+            raise RuntimeError("could not verify disposable Git worktree registration")
+        expected = temporary.resolve(strict=False)
+        return any(
+            Path(record.removeprefix("worktree ")).resolve(strict=False) == expected
+            for record in result.stdout.split("\0")
+            if record.startswith("worktree ")
+        )
+
+    def _remove_temporary_directory(self, temporary: Path, scratch_root: Path) -> None:
+        self._assert_owned_temporary(temporary, scratch_root)
+        if temporary.exists():
+            shutil.rmtree(temporary)
+
+    def _remove_git_worktree(self, temporary: Path, scratch_root: Path) -> None:
+        self._assert_owned_temporary(temporary, scratch_root)
+        try:
+            result = subprocess.run(
                 ("git", "worktree", "remove", "--force", str(temporary)),
                 cwd=self.repository,
                 capture_output=True,
@@ -406,9 +463,71 @@ class DisposableWorktree:
                 timeout=30.0,
                 check=False,
             )
-        if temporary.exists():
-            shutil.rmtree(temporary)
+        except (OSError, subprocess.SubprocessError) as exc:
+            raise RuntimeError("failed to remove the owned disposable Git worktree") from exc
+        if result.returncode != 0:
+            raise RuntimeError("failed to remove the owned disposable Git worktree")
+        if self._git_worktree_is_registered(temporary):
+            raise RuntimeError("disposable Git worktree remains registered after removal")
+        self._remove_temporary_directory(temporary, scratch_root)
+
+    def _cleanup_failed_git_add(self, temporary: Path, scratch_root: Path) -> None:
+        if self._git_worktree_is_registered(temporary):
+            self._remove_git_worktree(temporary, scratch_root)
+        else:
+            self._remove_temporary_directory(temporary, scratch_root)
+
+    def __enter__(self) -> Path:
+        if not self.repository.is_dir():
+            raise ValueError("disposable worktree repository must be a directory")
+        git_root = self._git_repository_root()
+        if self._explicit_ref and git_root != self.repository:
+            raise RuntimeError("a requested Git ref requires the repository root to be a Git checkout")
+
+        scratch_root = self._owned_scratch_root(create=True)
+        temporary = Path(tempfile.mkdtemp(prefix="aegis-worktree-", dir=scratch_root))
+        self._assert_owned_temporary(temporary, scratch_root)
+        if git_root == self.repository:
+            try:
+                result = subprocess.run(
+                    ("git", "worktree", "add", "--detach", str(temporary), self.ref),
+                    cwd=self.repository,
+                    capture_output=True,
+                    text=True,
+                    timeout=30.0,
+                    check=False,
+                )
+            except (OSError, subprocess.SubprocessError) as exc:
+                self._cleanup_failed_git_add(temporary, scratch_root)
+                raise RuntimeError("could not create the requested Git ref worktree") from exc
+            if result.returncode != 0:
+                self._cleanup_failed_git_add(temporary, scratch_root)
+                raise RuntimeError("could not create the requested Git ref worktree")
+            self._git_worktree = True
+        else:
+            temporary.rmdir()
+            try:
+                shutil.copytree(self.repository, temporary, ignore=_ignore_disposable_worktree_entries)
+            except BaseException:
+                self._remove_temporary_directory(temporary, scratch_root)
+                raise
+        self._scratch_root = scratch_root
+        self._temporary_root = temporary
+        self.path = temporary
+        return temporary
+
+    def __exit__(self, exc_type: object, exc: object, traceback: object) -> None:
+        temporary = self._temporary_root
+        scratch_root = self._scratch_root
+        if temporary is None or scratch_root is None:
+            return
+        self._assert_owned_temporary(temporary, scratch_root)
+        if self._git_worktree:
+            self._remove_git_worktree(temporary, scratch_root)
+        else:
+            self._remove_temporary_directory(temporary, scratch_root)
         self.path = None
+        self._scratch_root = None
         self._temporary_root = None
         self._git_worktree = False
 
@@ -466,6 +585,52 @@ def evaluate_capability_floor(
     )
 
 
+@contextlib.contextmanager
+def managed_scratch_dir(
+    subsystem: str = "evaluator",
+    *,
+    prefix: str = "scratch-",
+    repository: Path | None = None,
+    retain_on_failure: bool = True,
+) -> Generator[Path]:
+    """Managed temporary scratch directory strictly contained within .local/tmp/<subsystem>/ per docs/WORKSPACE_HYGIENE.md."""
+    if not subsystem or not re.fullmatch(r"[A-Za-z0-9_-]+", subsystem):
+        raise ValueError(f"invalid scratch subsystem: {subsystem!r}")
+    repo = (repository or Path(__file__).resolve().parents[1]).resolve(strict=True)
+    local_dir = repo / ".local"
+    tmp_dir = local_dir / "tmp"
+    subsystem_dir = tmp_dir / subsystem
+
+    for directory in (local_dir, tmp_dir, subsystem_dir):
+        if directory.is_symlink() or (hasattr(directory, "is_junction") and directory.is_junction()):
+            raise ValueError(f"managed scratch path must not use a symlink or junction: {directory}")
+        directory.mkdir(parents=True, exist_ok=True)
+        resolved = directory.resolve(strict=True)
+        try:
+            resolved.relative_to(repo)
+        except ValueError as exc:
+            raise ValueError("managed scratch path escaped the repository") from exc
+
+    resolved_subsystem = subsystem_dir.resolve(strict=True)
+    temp_dir = Path(tempfile.mkdtemp(prefix=prefix, dir=str(resolved_subsystem)))
+    resolved_temp = temp_dir.resolve(strict=True)
+    if resolved_temp.parent != resolved_subsystem:
+        shutil.rmtree(temp_dir, ignore_errors=True)
+        raise RuntimeError("managed scratch path escaped its subsystem directory")
+
+    failed = False
+    try:
+        yield resolved_temp
+    except BaseException:
+        failed = True
+        raise
+    finally:
+        if failed and retain_on_failure:
+            pass  # Retain diagnostic artifacts on failure per docs/WORKSPACE_HYGIENE.md
+        else:
+            shutil.rmtree(temp_dir, ignore_errors=True)
+
+
 __all__ = [
     "ACTION_FUSION_SCHEMA_V1",
     "CAPABILITY_EVALUATION_SCHEMA_V1",
@@ -481,4 +646,5 @@ __all__ = [
     "ObservationPack",
     "ObservationProjection",
     "evaluate_capability_floor",
+    "managed_scratch_dir",
 ]

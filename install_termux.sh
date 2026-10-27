@@ -3,12 +3,9 @@
 # All-in-one installer for Android (Termux).
 #
 # IMPORTANT — Honest scope:
-#   This script installs only the *bridge* dependencies
-#   (core/python/requirements.txt — pyyaml, python-dotenv) because
-#   the full root requirements.txt pulls Playwright + voice extras
-#   that are not buildable on Android. Rule 3 of the master prompt
-#   forbids duplicating requirements, so we DO NOT introduce a new
-#   "termux" extras set — bridge mode is the canonical narrow contract.
+#   This script installs only the bridge dependencies from
+#   core/python/requirements.txt and uses the legacy bridge CLI. It does not
+#   install the canonical root Python project or native Rust extension.
 #
 # Usage:
 #   curl -fsSL https://aegis-cognition.ai/install_termux.sh | bash

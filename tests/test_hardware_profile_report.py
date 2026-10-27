@@ -64,9 +64,7 @@ def test_hardware_profile_report_preserves_provenance_and_unknown_boundaries(mon
     assert result["memory"]["available_bytes"]["value"] == 3 * 1024**3
     assert result["memory"]["unified_memory"]["provenance"] == "UNKNOWN"
     assert result["accelerator_topology"]["provenance"] == "UNKNOWN"
-    assert "empty value is not evidence" in " ".join(
-        result["accelerator_topology"]["limitations"]
-    ).lower()
+    assert "empty value is not evidence" in " ".join(result["accelerator_topology"]["limitations"]).lower()
     assert result["storage_topology"]["provenance"] == "DETECTED"
     assert result["storage_topology"]["value"][0]["available_bytes"] == 400
     assert result["storage_topology"]["limitations"] == ["no medium or bandwidth evidence"]

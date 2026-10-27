@@ -8,6 +8,7 @@ edge adapter, not a second scheduler or evidence authority.
 
 from __future__ import annotations
 
+import asyncio
 import contextlib
 import hashlib
 import math
@@ -19,25 +20,39 @@ import signal
 import subprocess
 import sys
 import tempfile
-from collections.abc import Mapping
+import threading
+import time
+from collections.abc import Callable, Generator, Mapping
+from contextlib import contextmanager
+from contextvars import ContextVar
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, cast
+from xml.etree import ElementTree
 
+from ..agent_efficiency import managed_scratch_dir
 from .contracts import ProjectProfile
+
+_PROCESS_EXECUTION_CELL_ACTIVE: ContextVar[bool] = ContextVar("aegis_process_execution_cell_active", default=False)
+
+
+@contextmanager
+def process_execution_cell_scope() -> Generator[None]:
+    token = _PROCESS_EXECUTION_CELL_ACTIVE.set(True)
+    try:
+        yield
+    finally:
+        _PROCESS_EXECUTION_CELL_ACTIVE.reset(token)
 
 
 _MAX_OUTPUT_BYTES = 256 * 1024
+_MAX_CAPTURE_BYTES = 8 * 1024 * 1024
+_OUTPUT_READ_CHUNK_BYTES = 64 * 1024
+_MAX_JUNIT_XML_BYTES = 64 * 1024 * 1024
+_MAX_CARGO_OUTPUT_BYTES = 64 * 1024 * 1024
 _MAX_TIMEOUT_SECONDS = 3_600.0
 _MAX_COMMAND_ARGUMENTS = 512
-_COUNT_PATTERNS = {
-    "passed": re.compile(r"(?P<count>\d+)\s+passed\b", flags=re.IGNORECASE),
-    "failed": re.compile(r"(?P<count>\d+)\s+failed\b", flags=re.IGNORECASE),
-    "skipped": re.compile(r"(?P<count>\d+)\s+skipped\b", flags=re.IGNORECASE),
-    "filtered": re.compile(r"(?P<count>\d+)\s+deselected\b", flags=re.IGNORECASE),
-    "ignored": re.compile(r"(?P<count>\d+)\s+(?:xfailed|ignored)\b", flags=re.IGNORECASE),
-}
 
 
 def _utc_now() -> str:
@@ -49,6 +64,73 @@ def _bounded_text(data: bytes) -> str:
         return data.decode("utf-8", errors="replace")
     clipped = data[:_MAX_OUTPUT_BYTES]
     return clipped.decode("utf-8", errors="replace") + "\n[AESE_OUTPUT_TRUNCATED]"
+
+
+class _BoundedOutputCapture:
+    def __init__(self, stdout_file: Any, stderr_file: Any) -> None:
+        self.stdout_file = stdout_file
+        self.stderr_file = stderr_file
+        self.captured_bytes = 0
+        self.exceeded = False
+        self.failed = False
+        self._lock = threading.Lock()
+
+    def append(self, stream: str, chunk: bytes) -> bool:
+        target = self.stdout_file if stream == "stdout" else self.stderr_file
+        with self._lock:
+            remaining = max(0, _MAX_CAPTURE_BYTES - self.captured_bytes)
+            captured = min(len(chunk), remaining)
+            if captured:
+                target.write(chunk[:captured])
+                self.captured_bytes += captured
+            if captured < len(chunk):
+                self.exceeded = True
+            return self.exceeded
+
+    def mark_failed(self) -> None:
+        with self._lock:
+            self.failed = True
+
+
+def _capture_sync_pipe(
+    pipe: Any,
+    *,
+    stream: str,
+    capture: _BoundedOutputCapture,
+    limit_reached: threading.Event,
+) -> None:
+    try:
+        while True:
+            chunk = pipe.read(_OUTPUT_READ_CHUNK_BYTES)
+            if not chunk:
+                return
+            if capture.append(stream, chunk):
+                limit_reached.set()
+    except OSError, ValueError:
+        capture.mark_failed()
+        limit_reached.set()
+    finally:
+        with contextlib.suppress(OSError, ValueError):
+            pipe.close()
+
+
+async def _capture_async_pipe(
+    pipe: asyncio.StreamReader,
+    *,
+    stream: str,
+    capture: _BoundedOutputCapture,
+    limit_reached: asyncio.Event,
+) -> None:
+    try:
+        while True:
+            chunk = await pipe.read(_OUTPUT_READ_CHUNK_BYTES)
+            if not chunk:
+                return
+            if capture.append(stream, chunk):
+                limit_reached.set()
+    except OSError, ValueError:
+        capture.mark_failed()
+        limit_reached.set()
 
 
 def _read_artifact(handle: Any) -> tuple[str, int, str]:
@@ -88,6 +170,256 @@ def _relative_existing_paths(root: Path, candidates: list[Path]) -> tuple[str, .
             continue
         selected.append(resolved.relative_to(root).as_posix())
     return tuple(dict.fromkeys(selected))
+
+
+@dataclass(frozen=True, slots=True)
+class _PytestJUnitSummary:
+    discovered: int
+    passed: int
+    failed: int
+    skipped: int
+    test_ids: tuple[str, ...]
+    report_sha256: str
+    report_size: int
+
+
+@dataclass(frozen=True, slots=True)
+class _CargoTestSummary:
+    discovered: int
+    passed: int
+    failed: int
+    ignored: int
+    filtered: int
+    report_sha256: str
+    report_size: int
+    summary: str
+    skipped: int = 0
+    test_ids: tuple[str, ...] = ()
+
+
+_CARGO_RUNNING_RE = re.compile(r"^running (?P<count>\d+) tests?$", re.ASCII)
+_CARGO_RESULT_RE = re.compile(
+    r"^test result: (?P<result>ok|FAILED)\. "
+    r"(?P<passed>\d+) passed; (?P<failed>\d+) failed; "
+    r"(?P<ignored>\d+) ignored; (?P<measured>\d+) measured; "
+    r"(?P<filtered>\d+) filtered out; finished in (?P<duration>\d+(?:\.\d+)?s)$",
+    re.ASCII,
+)
+_CARGO_CASE_RE = re.compile(r"^test (?P<name>.+) \.\.\. (?P<result>ok|FAILED|ignored)$")
+
+
+def _parse_cargo_test_report(report_file: Any) -> _CargoTestSummary:
+    report_file.seek(0)
+    payload = report_file.read(_MAX_CARGO_OUTPUT_BYTES + 1)
+    if len(payload) > _MAX_CARGO_OUTPUT_BYTES:
+        raise ValueError("Cargo test output exceeds the size limit")
+    if not payload:
+        raise ValueError("Cargo test output is empty")
+
+    pending_run_count: int | None = None
+    pending_case_counts = {"ok": 0, "FAILED": 0, "ignored": 0}
+    pending_test_ids: list[str] = []
+    pending_test_id_set: set[str] = set()
+    reading_failure_details = False
+    summary_counts = {"passed": 0, "failed": 0, "ignored": 0, "filtered": 0, "discovered": 0}
+    test_ids: list[str] = []
+    summary_lines: list[str] = []
+    summary_count = 0
+    for line in payload.decode("utf-8", errors="replace").splitlines():
+        if line.startswith("running "):
+            match = _CARGO_RUNNING_RE.fullmatch(line)
+            if match is None or pending_run_count is not None:
+                raise ValueError("Cargo test run header is malformed or incomplete")
+            pending_run_count = int(match.group("count"), 10)
+            pending_case_counts = {"ok": 0, "FAILED": 0, "ignored": 0}
+            pending_test_ids = []
+            pending_test_id_set = set()
+            reading_failure_details = False
+            continue
+
+        if line.startswith("test result:"):
+            match = _CARGO_RESULT_RE.fullmatch(line)
+            if match is None or pending_run_count is None:
+                raise ValueError("Cargo test result summary is malformed or unbound")
+            counts = {
+                name: int(match.group(name), 10) for name in ("passed", "failed", "ignored", "measured", "filtered")
+            }
+            if counts["measured"]:
+                raise ValueError("Cargo measured benchmark results are unsupported")
+            executed = counts["passed"] + counts["failed"] + counts["ignored"]
+            if pending_run_count != executed:
+                raise ValueError("Cargo running count does not match the test result summary")
+            expected_case_counts = {
+                "ok": counts["passed"],
+                "FAILED": counts["failed"],
+                "ignored": counts["ignored"],
+            }
+            if pending_case_counts != expected_case_counts:
+                raise ValueError("Cargo test case lines do not match the result summary")
+            expected_result = "FAILED" if counts["failed"] else "ok"
+            if match.group("result") != expected_result:
+                raise ValueError("Cargo summary status does not match its failure count")
+            summary_counts["passed"] += counts["passed"]
+            summary_counts["failed"] += counts["failed"]
+            summary_counts["ignored"] += counts["ignored"]
+            summary_counts["filtered"] += counts["filtered"]
+            summary_counts["discovered"] += executed + counts["filtered"]
+            suite_prefix = f"cargo-suite-{summary_count + 1}::"
+            test_ids.extend(f"{suite_prefix}{test_id}" for test_id in pending_test_ids)
+            summary_lines.append(line)
+            summary_count += 1
+            pending_run_count = None
+            reading_failure_details = False
+            continue
+
+        if pending_run_count is not None and line.strip():
+            if line == "failures:":
+                reading_failure_details = True
+                continue
+            if reading_failure_details:
+                continue
+            match = _CARGO_CASE_RE.fullmatch(line)
+            if match is None:
+                raise ValueError("Cargo test output contains an unrecognized case result")
+            test_id = match.group("name")
+            if test_id in pending_test_id_set:
+                raise ValueError("Cargo test output contains duplicate case identities")
+            pending_test_id_set.add(test_id)
+            pending_test_ids.append(test_id)
+            pending_case_counts[match.group("result")] += 1
+
+    if pending_run_count is not None:
+        raise ValueError("Cargo test output ended before the result summary")
+    if summary_count == 0:
+        raise ValueError("Cargo test output contains no result summary")
+    return _CargoTestSummary(
+        discovered=summary_counts["discovered"],
+        passed=summary_counts["passed"],
+        failed=summary_counts["failed"],
+        ignored=summary_counts["ignored"],
+        filtered=summary_counts["filtered"],
+        report_sha256=hashlib.sha256(payload).hexdigest(),
+        report_size=len(payload),
+        summary=summary_lines[-1],
+        test_ids=tuple(test_ids),
+    )
+
+
+def _xml_local_name(tag: str) -> str:
+    return tag.rsplit("}", 1)[-1]
+
+
+def _junit_count(root: ElementTree.Element, name: str) -> int | None:
+    raw_value = root.attrib.get(name)
+    if raw_value is None:
+        return None
+    try:
+        value = int(raw_value, 10)
+    except ValueError as error:
+        raise ValueError(f"JUnit {name} count is malformed") from error
+    if value < 0:
+        raise ValueError(f"JUnit {name} count is negative")
+    return value
+
+
+def _junit_total(root: ElementTree.Element, suites: tuple[ElementTree.Element, ...], name: str) -> int | None:
+    total = _junit_count(root, name)
+    if total is not None:
+        return total
+    if _xml_local_name(root.tag) == "testsuite":
+        return None
+    if not suites:
+        return 0
+    suite_counts = tuple(_junit_count(suite, name) for suite in suites)
+    if any(count is None for count in suite_counts):
+        return None
+    return sum(cast(int, count) for count in suite_counts)
+
+
+def _parse_pytest_junit_report(report_path: Path) -> _PytestJUnitSummary:
+    try:
+        with report_path.open("rb") as report_file:
+            payload = report_file.read(_MAX_JUNIT_XML_BYTES + 1)
+        if len(payload) > _MAX_JUNIT_XML_BYTES:
+            raise ValueError("JUnit report exceeds the size limit")
+    except OSError as error:
+        raise ValueError("JUnit report is unavailable") from error
+    report_size = len(payload)
+    if not payload:
+        raise ValueError("JUnit report is empty")
+    if b"<!DOCTYPE" in payload or b"<!ENTITY" in payload:
+        raise ValueError("JUnit report declarations are unsupported")
+    try:
+        root = ElementTree.fromstring(payload)
+    except ElementTree.ParseError as error:
+        raise ValueError("JUnit report is malformed XML") from error
+    if _xml_local_name(root.tag) not in {"testsuite", "testsuites"}:
+        raise ValueError("JUnit report root is not a test suite")
+    suites = (
+        (root,)
+        if _xml_local_name(root.tag) == "testsuite"
+        else tuple(child for child in root if _xml_local_name(child.tag) == "testsuite")
+    )
+
+    test_ids: list[str] = []
+    outcomes = {"failure": 0, "error": 0, "skipped": 0}
+    allowed_case_children = {
+        "failure",
+        "error",
+        "skipped",
+        "system-out",
+        "system-err",
+        "properties",
+        "rerunFailure",
+        "flakyFailure",
+    }
+    failure_tags = {"failure", "rerunFailure", "flakyFailure"}
+    seen_test_ids: set[str] = set()
+    for test_case in (node for node in root.iter() if _xml_local_name(node.tag) == "testcase"):
+        classname = test_case.attrib.get("classname", "")
+        name = test_case.attrib.get("name", "")
+        if not classname.strip() or not name.strip():
+            raise ValueError("JUnit test case identity is incomplete")
+        test_id = f"{classname}::{name}"
+        if test_id in seen_test_ids:
+            raise ValueError("JUnit test case identities are not unique")
+        seen_test_ids.add(test_id)
+        test_ids.append(test_id)
+        child_tags = [_xml_local_name(child.tag) for child in test_case]
+        if any(tag not in allowed_case_children for tag in child_tags):
+            raise ValueError("JUnit test case contains an unknown result element")
+        case_outcomes = [tag for tag in child_tags if tag in outcomes or tag in failure_tags]
+        if len(case_outcomes) > 1:
+            raise ValueError("JUnit test case has conflicting outcomes")
+        if case_outcomes:
+            outcome = case_outcomes[0]
+            if outcome in failure_tags:
+                outcomes["failure"] += 1
+            else:
+                outcomes[outcome] += 1
+
+    declared_tests = _junit_total(root, suites, "tests")
+    if declared_tests is None:
+        if test_ids:
+            raise ValueError("JUnit report omits the collected test count")
+        declared_tests = 0
+    if declared_tests != len(test_ids):
+        raise ValueError("JUnit collected test count does not match test cases")
+    for name, actual in outcomes.items():
+        declared = _junit_total(root, suites, name if name != "failure" else "failures")
+        if declared is not None and declared != actual:
+            raise ValueError(f"JUnit {name} count does not match test case outcomes")
+
+    failed = outcomes["failure"] + outcomes["error"]
+    return _PytestJUnitSummary(
+        discovered=declared_tests,
+        passed=declared_tests - failed - outcomes["skipped"],
+        failed=failed,
+        skipped=outcomes["skipped"],
+        test_ids=tuple(sorted(test_ids)),
+        report_sha256=hashlib.sha256(payload).hexdigest(),
+        report_size=report_size,
+    )
 
 
 def _resolve_rustup_tool(tool: str, *, cwd: Path) -> str | None:
@@ -132,6 +464,56 @@ def _resolve_cargo_executable(*, cwd: Path) -> str | None:
     """
 
     return _resolve_rustup_tool("cargo", cwd=cwd)
+
+
+def _require_active_cargo_executable(command: LocalVerificationCommand, *, cwd: Path) -> None:
+    if command.adapter != "rust-cargo" or command.framework != "cargo":
+        return
+    expected = _resolve_cargo_executable(cwd=cwd)
+    if expected is None:
+        raise ValueError("Cargo adapter cannot resolve the active toolchain executable")
+    actual_path = os.path.normcase(str(Path(command.executable).expanduser().resolve()))
+    expected_path = os.path.normcase(str(Path(expected).expanduser().resolve()))
+    if actual_path != expected_path:
+        raise ValueError("Cargo adapter executable does not match the active toolchain binary")
+    for variable, tool, required in (("RUSTC", "rustc", True), ("RUSTDOC", "rustdoc", False)):
+        expected_tool = _resolve_rustup_tool(tool, cwd=cwd)
+        configured_tool = command.environment.get(variable)
+        if expected_tool is None:
+            if required or configured_tool is not None:
+                raise ValueError(f"Cargo adapter cannot bind its active {tool} executable")
+            continue
+        if configured_tool is None:
+            raise ValueError(f"Cargo adapter must bind the active {tool} executable")
+        configured_path = os.path.normcase(str(Path(configured_tool).expanduser().resolve()))
+        expected_tool_path = os.path.normcase(str(Path(expected_tool).expanduser().resolve()))
+        if configured_path != expected_tool_path:
+            raise ValueError(f"Cargo adapter {tool} does not match the active toolchain binary")
+
+
+def _rustc_toolchain_version(environment: Mapping[str, str], *, cwd: Path) -> str:
+    executable = environment.get("RUSTC")
+    if executable is None:
+        return "UNKNOWN"
+    try:
+        result = subprocess.run(
+            (executable, "--version"),
+            check=True,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            timeout=5.0,
+            cwd=cwd,
+            env=dict(environment),
+            shell=False,
+        )
+    except OSError, subprocess.SubprocessError:
+        return "UNKNOWN"
+    version = result.stdout.strip()
+    if not version.startswith("rustc ") or len(version) > 128 or "\n" in version:
+        return "UNKNOWN"
+    return version
 
 
 def _python_runtime_dll_directory() -> Path | None:
@@ -331,11 +713,11 @@ def build_local_verification_commands(
     return tuple(commands)
 
 
-def _terminate_child(process: subprocess.Popen[bytes]) -> None:
-    if process.poll() is not None:
-        return
+def _terminate_child(process: subprocess.Popen[Any]) -> None:
     try:
         if os.name == "nt":
+            if process.poll() is not None:
+                return
             taskkill = shutil.which("taskkill")
             if taskkill is not None and process.pid > 0:
                 subprocess.run(
@@ -348,101 +730,188 @@ def _terminate_child(process: subprocess.Popen[bytes]) -> None:
             else:
                 process.kill()
         else:
-            with contextlib.suppress(ProcessLookupError):
-                os.killpg(process.pid, signal.SIGTERM)
-            try:
-                process.wait(timeout=1.0)
-            except subprocess.TimeoutExpired:
+            if _PROCESS_EXECUTION_CELL_ACTIVE.get():
+                # The cell owns the shared worker group. Stop this command
+                # here; the cell tears down its full group after the runner
+                # returns the timeout receipt.
+                with contextlib.suppress(ProcessLookupError):
+                    process.terminate()
+                try:
+                    process.wait(timeout=1.0)
+                except subprocess.TimeoutExpired:
+                    process.kill()
+                    with contextlib.suppress(subprocess.TimeoutExpired):
+                        process.wait(timeout=2.0)
+            else:
+                # Keep the leader unreaped until the group is escalated. A
+                # completed leader can leave descendants that still need the
+                # same process-group kill.
+                with contextlib.suppress(ProcessLookupError):
+                    os.killpg(process.pid, signal.SIGTERM)
+                time.sleep(1.0)
                 with contextlib.suppress(ProcessLookupError):
                     os.killpg(process.pid, signal.SIGKILL)
+                with contextlib.suppress(subprocess.TimeoutExpired):
+                    process.wait(timeout=2.0)
     except OSError, subprocess.SubprocessError:
         with contextlib.suppress(OSError):
             process.kill()
 
 
-def _summary_counts(output: str) -> dict[str, int]:
-    counts = {name: 0 for name in _COUNT_PATTERNS}
-    for name, pattern in _COUNT_PATTERNS.items():
-        matches = tuple(pattern.finditer(output))
-        if matches:
-            counts[name] = int(matches[-1].group("count"))
-    return counts
-
-
-def run_local_verification_command(payload: object) -> dict[str, object]:
-    """Run one validated command inside the Lab-provided process cell.
-
-    The function is top-level and argument-only so ``ProcessExecutionCell``
-    can spawn it on Windows and POSIX without serializing a live Lab object.
-    """
-
-    command = LocalVerificationCommand.from_mapping(payload)
-    root = Path(command.working_directory).expanduser().resolve()
+def _verification_environment(command: LocalVerificationCommand, *, is_pytest: bool) -> dict[str, str]:
     environment = os.environ.copy()
     environment.update(dict(command.environment))
+    if is_pytest:
+        # Test selection belongs in the validated command argv, not ambient environment.
+        for key in tuple(environment):
+            if key.casefold() in ("pytest_addopts", "pytest_plugins"):
+                environment.pop(key, None)
     if command.adapter == "rust-cargo":
         python_runtime = _python_runtime_dll_directory()
         if python_runtime is not None:
             inherited_path = environment.get("PATH", "")
             environment["PATH"] = os.pathsep.join(value for value in (str(python_runtime), inherited_path) if value)
-    started_at = _utc_now()
-    timed_out = False
-    return_code: int | None = None
-    with tempfile.TemporaryFile(mode="w+b") as stdout_file, tempfile.TemporaryFile(mode="w+b") as stderr_file:
-        creationflags = getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0) if os.name == "nt" else 0
-        process = subprocess.Popen(
-            [command.executable, *command.argv],
-            cwd=root,
-            env=environment,
-            stdin=subprocess.DEVNULL,
-            stdout=stdout_file,
-            stderr=stderr_file,
-            shell=False,
-            start_new_session=os.name != "nt",
-            creationflags=creationflags,
-        )
+    return environment
+
+
+def _resolve_working_directory(path: str) -> Path:
+    return Path(path).expanduser().resolve()
+
+
+def _verification_argv(
+    command: LocalVerificationCommand,
+    *,
+    is_pytest: bool,
+    report_directory: str | None,
+) -> tuple[tuple[str, ...], Path | None]:
+    execution_argv = tuple(command.argv)
+    if not is_pytest:
+        return execution_argv, None
+    if report_directory is None:
+        return (*execution_argv, "-o", "addopts="), None
+    report_path = Path(report_directory) / "junit.xml"
+    return (
+        (
+            *execution_argv,
+            "-o",
+            "addopts=",
+            "-o",
+            "junit_family=xunit2",
+            f"--junitxml={report_path}",
+        ),
+        report_path,
+    )
+
+
+def _build_local_verification_result(
+    command: LocalVerificationCommand,
+    *,
+    root: Path,
+    is_pytest: bool,
+    environment: dict[str, str],
+    started_at: str,
+    timed_out: bool,
+    output_limited: bool,
+    output_capture_failed: bool,
+    return_code: int | None,
+    execution_argv: tuple[str, ...],
+    stdout_file: Any,
+    stderr_file: Any,
+    report_path: Path | None,
+) -> dict[str, object]:
+    stdout_hash, stdout_size, stdout_text = _read_artifact(stdout_file)
+    stderr_hash, stderr_size, stderr_text = _read_artifact(stderr_file)
+    is_cargo = command.adapter == "rust-cargo" and command.framework == "cargo"
+    report_summary: _PytestJUnitSummary | _CargoTestSummary | None = None
+    report_error: str | None = None
+    if is_pytest and not timed_out and report_path is not None:
         try:
-            return_code = process.wait(timeout=float(command.timeout_seconds))
-        except subprocess.TimeoutExpired:
-            timed_out = True
-            _terminate_child(process)
-            with contextlib.suppress(subprocess.TimeoutExpired):
-                process.wait(timeout=2.0)
-        stdout_hash, stdout_size, stdout_text = _read_artifact(stdout_file)
-        stderr_hash, stderr_size, stderr_text = _read_artifact(stderr_file)
+            report_summary = _parse_pytest_junit_report(report_path)
+        except ValueError as error:
+            report_error = str(error)
+    elif is_cargo and not timed_out:
+        try:
+            report_summary = _parse_cargo_test_report(stdout_file)
+        except ValueError as error:
+            report_error = str(error)
 
     combined = f"{stdout_text}\n{stderr_text}"
-    counts = _summary_counts(combined)
-    discovered = sum(counts.values())
+    discovered = report_summary.discovered if report_summary is not None else 0
+    passed = report_summary.passed if report_summary is not None else 0
+    failed = report_summary.failed if report_summary is not None else 0
+    skipped = report_summary.skipped if isinstance(report_summary, _PytestJUnitSummary) else 0
+    filtered = report_summary.filtered if isinstance(report_summary, _CargoTestSummary) else 0
+    ignored = report_summary.ignored if isinstance(report_summary, _CargoTestSummary) else 0
     if timed_out:
         status = "TIMEOUT"
         failure_class = "TIMEOUT"
-    elif discovered == 0 and return_code == 0:
+        detail = "verification command timed out"
+    elif output_limited:
+        status = "ERROR"
+        failure_class = "OUTPUT_LIMIT"
+        detail = f"verification output exceeded the {_MAX_CAPTURE_BYTES}-byte capture limit"
+    elif output_capture_failed:
+        status = "ERROR"
+        failure_class = "OUTPUT_CAPTURE_FAILED"
+        detail = "verification output could not be captured completely"
+    elif not (is_pytest or is_cargo):
+        status = "ERROR"
+        failure_class = "UNSUPPORTED_RESULT_FORMAT"
+        detail = next(
+            (line.strip() for line in reversed(combined.splitlines()) if line.strip()),
+            f"no structured test collector for {command.adapter}/{command.framework}",
+        )
+    elif report_summary is None:
+        status = "MALFORMED"
+        failure_class = "MALFORMED_RESULT"
+        detail = report_error or (
+            "JUnit report was not produced" if is_pytest else "Cargo test output was not produced"
+        )
+    elif discovered == 0 or (passed == 0 and failed == 0):
         status = "ZERO_TESTS"
         failure_class = "ZERO_TESTS"
-    elif discovered == 0:
-        status = "ERROR" if re.search(r"collect|compile|build|error", combined, re.IGNORECASE) else "ZERO_TESTS"
-        failure_class = "COLLECTION_OR_BUILD_ERROR" if status == "ERROR" else "ZERO_TESTS"
-    elif return_code == 0:
+        detail = "no test case passed in the collected result"
+    elif return_code == 0 and failed == 0:
         status = "PASS"
         failure_class = None
-    else:
+        detail = (
+            report_summary.summary
+            if isinstance(report_summary, _CargoTestSummary)
+            else next((line.strip() for line in reversed(combined.splitlines()) if line.strip()), "pytest completed")
+        )
+    elif return_code != 0 and failed > 0:
         status = "FAIL"
         failure_class = "TEST_FAILURE"
-    detail = next((line.strip() for line in reversed(combined.splitlines()) if line.strip()), "command completed")
+        detail = (
+            report_summary.summary
+            if isinstance(report_summary, _CargoTestSummary)
+            else next(
+                (line.strip() for line in reversed(combined.splitlines()) if line.strip()), "pytest reported failures"
+            )
+        )
+    else:
+        status = "ERROR"
+        failure_class = "RESULT_CONTRADICTS_PROCESS_EXIT"
+        detail = "JUnit outcomes and process exit code disagree"
     return {
         "command_id": command.command_id,
         "source_revision": command.source_revision,
         "adapter": command.adapter,
         "framework": command.framework,
-        "toolchain": sys.version.split()[0] if command.adapter == "python-pytest" else "UNKNOWN",
+        "toolchain": sys.version.split()[0]
+        if is_pytest
+        else _rustc_toolchain_version(environment, cwd=root)
+        if is_cargo
+        else "UNKNOWN",
         "platform": platform.platform(aliased=True),
         "executable": command.executable,
-        "argv": tuple(command.argv),
+        "argv": execution_argv,
         "working_directory": str(root),
         "environment_fingerprint": {
             "PYTHONHASHSEED": environment.get("PYTHONHASHSEED", ""),
             "PYTHONIOENCODING": environment.get("PYTHONIOENCODING", ""),
+            "PYTEST_ADDOPTS": environment.get("PYTEST_ADDOPTS", "") if is_pytest else "",
+            "PYTEST_PLUGINS": environment.get("PYTEST_PLUGINS", "") if is_pytest else "",
             "RUSTC": environment.get("RUSTC", ""),
             "RUSTDOC": environment.get("RUSTDOC", ""),
         },
@@ -455,22 +924,383 @@ def run_local_verification_command(payload: object) -> dict[str, object]:
         "failure_class": failure_class,
         "detail": detail[:512],
         "discovered": discovered,
-        "passed": counts["passed"],
-        "failed": counts["failed"],
-        "skipped": counts["skipped"],
-        "filtered": counts["filtered"],
-        "ignored": counts["ignored"],
+        "passed": passed,
+        "failed": failed,
+        "skipped": skipped,
+        "filtered": filtered,
+        "ignored": ignored,
+        "collector": "pytest-junitxml-xunit2" if is_pytest else "cargo-libtest-summary" if is_cargo else "unsupported",
+        "collected_test_ids": report_summary.test_ids if report_summary is not None else (),
+        "collection_report_sha256": report_summary.report_sha256 if report_summary is not None else "",
+        "collection_report_size": report_summary.report_size if report_summary is not None else 0,
         "stdout_hash": stdout_hash,
         "stderr_hash": stderr_hash,
         "stdout_size": stdout_size,
         "stderr_size": stderr_size,
+        "output_truncated": output_limited,
+        "output_limit_bytes": _MAX_CAPTURE_BYTES,
         "started_at": started_at,
         "finished_at": _utc_now(),
     }
 
 
+def _posix_process_group_exists(process_group_id: int) -> bool:
+    killpg: Callable[[int, int], None] | None = getattr(os, "killpg", None)
+    if killpg is None:
+        return False
+    try:
+        killpg(process_group_id, 0)
+    except ProcessLookupError:
+        return False
+    except PermissionError:
+        return True
+    return True
+
+
+async def _wait_for_posix_process_group_exit(process_group_id: int, timeout_seconds: float) -> bool:
+    loop = asyncio.get_running_loop()
+    deadline = loop.time() + timeout_seconds
+    while _posix_process_group_exists(process_group_id):
+        remaining = deadline - loop.time()
+        if remaining <= 0:
+            return False
+        await asyncio.sleep(min(0.02, remaining))
+    return True
+
+
+async def _terminate_async_child(process: asyncio.subprocess.Process) -> None:
+    process_id = process.pid
+    if os.name == "nt":
+        taskkill = shutil.which("taskkill")
+        if taskkill is not None and process.returncode is None:
+            killer = await asyncio.create_subprocess_exec(
+                taskkill,
+                "/PID",
+                str(process_id),
+                "/T",
+                "/F",
+                stdin=asyncio.subprocess.DEVNULL,
+                stdout=asyncio.subprocess.DEVNULL,
+                stderr=asyncio.subprocess.DEVNULL,
+            )
+            try:
+                await asyncio.wait_for(killer.wait(), timeout=3.0)
+            except TimeoutError:
+                killer.kill()
+                await killer.wait()
+        if process.returncode is None:
+            process.kill()
+            await process.wait()
+        return
+
+    killpg: Callable[[int, int], None] | None = getattr(os, "killpg", None)
+    sigterm: int = getattr(signal, "SIGTERM", 15)
+    sigkill: int = getattr(signal, "SIGKILL", 9)
+    if killpg is not None:
+        with contextlib.suppress(ProcessLookupError):
+            killpg(process_id, sigterm)
+        if not await _wait_for_posix_process_group_exit(process_id, 1.0):
+            with contextlib.suppress(ProcessLookupError):
+                killpg(process_id, sigkill)
+            await _wait_for_posix_process_group_exit(process_id, 1.0)
+    if process.returncode is None:
+        try:
+            await asyncio.wait_for(process.wait(), timeout=2.0)
+        except TimeoutError:
+            process.kill()
+            await process.wait()
+
+
+async def _await_task_to_completion(task: asyncio.Task[Any]) -> Any:
+    while not task.done():
+        try:
+            await asyncio.shield(task)
+        except asyncio.CancelledError:
+            continue
+    return task.result()
+
+
+async def _terminate_async_child_resilient(process: asyncio.subprocess.Process) -> None:
+    cleanup = asyncio.create_task(_terminate_async_child(process))
+    try:
+        await asyncio.shield(cleanup)
+    except asyncio.CancelledError:
+        await _await_task_to_completion(cleanup)
+        raise
+
+
+async def _build_local_verification_result_async(
+    command: LocalVerificationCommand,
+    *,
+    root: Path,
+    is_pytest: bool,
+    environment: dict[str, str],
+    started_at: str,
+    timed_out: bool,
+    output_limited: bool,
+    output_capture_failed: bool,
+    return_code: int | None,
+    execution_argv: tuple[str, ...],
+    stdout_file: Any,
+    stderr_file: Any,
+    report_path: Path | None,
+) -> dict[str, object]:
+    build = asyncio.create_task(
+        asyncio.to_thread(
+            _build_local_verification_result,
+            command,
+            root=root,
+            is_pytest=is_pytest,
+            environment=environment,
+            started_at=started_at,
+            timed_out=timed_out,
+            output_limited=output_limited,
+            output_capture_failed=output_capture_failed,
+            return_code=return_code,
+            execution_argv=execution_argv,
+            stdout_file=stdout_file,
+            stderr_file=stderr_file,
+            report_path=report_path,
+        )
+    )
+    try:
+        return await asyncio.shield(build)
+    except asyncio.CancelledError:
+        await _await_task_to_completion(build)
+        raise
+
+
+async def run_local_verification_command_async(payload: object) -> dict[str, object]:
+    """Run and supervise a verification process group in the application process."""
+
+    command = LocalVerificationCommand.from_mapping(payload)
+    root = await asyncio.to_thread(_resolve_working_directory, command.working_directory)
+    await asyncio.to_thread(_require_active_cargo_executable, command, cwd=root)
+    is_pytest = command.adapter == "python-pytest" and command.framework == "pytest"
+    environment = _verification_environment(command, is_pytest=is_pytest)
+    started_at = _utc_now()
+    report_context = (
+        managed_scratch_dir("verification", prefix="aese-pytest-report-") if is_pytest else contextlib.nullcontext(None)
+    )
+    with report_context as report_directory:
+        execution_argv, report_path = _verification_argv(
+            command,
+            is_pytest=is_pytest,
+            report_directory=str(report_directory) if report_directory is not None else None,
+        )
+        with tempfile.TemporaryFile(mode="w+b") as stdout_file, tempfile.TemporaryFile(mode="w+b") as stderr_file:
+            capture = _BoundedOutputCapture(stdout_file, stderr_file)
+            output_limit_reached = asyncio.Event()
+            creationflags = getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0) if os.name == "nt" else 0
+            creation = asyncio.create_task(
+                asyncio.create_subprocess_exec(
+                    command.executable,
+                    *execution_argv,
+                    cwd=root,
+                    env=environment,
+                    stdin=asyncio.subprocess.DEVNULL,
+                    stdout=asyncio.subprocess.PIPE,
+                    stderr=asyncio.subprocess.PIPE,
+                    start_new_session=(os.name != "nt" and not _PROCESS_EXECUTION_CELL_ACTIVE.get()),
+                    creationflags=creationflags,
+                )
+            )
+            try:
+                process = await asyncio.shield(creation)
+            except asyncio.CancelledError:
+                process = await _await_task_to_completion(creation)
+                await _terminate_async_child_resilient(process)
+                raise
+
+            timed_out = False
+            output_limited = False
+            output_capture_failed = False
+            return_code: int | None = None
+            if process.stdout is None or process.stderr is None:
+                await _terminate_async_child_resilient(process)
+                raise RuntimeError("verification output pipes were not created")
+            capture_tasks = (
+                asyncio.create_task(
+                    _capture_async_pipe(
+                        process.stdout,
+                        stream="stdout",
+                        capture=capture,
+                        limit_reached=output_limit_reached,
+                    )
+                ),
+                asyncio.create_task(
+                    _capture_async_pipe(
+                        process.stderr,
+                        stream="stderr",
+                        capture=capture,
+                        limit_reached=output_limit_reached,
+                    )
+                ),
+            )
+            process_wait = asyncio.create_task(process.wait())
+            limit_wait = asyncio.create_task(output_limit_reached.wait())
+            try:
+                completed, _ = await asyncio.wait(
+                    (process_wait, limit_wait),
+                    timeout=float(command.timeout_seconds),
+                    return_when=asyncio.FIRST_COMPLETED,
+                )
+                if not completed:
+                    timed_out = True
+                    await _terminate_async_child_resilient(process)
+                elif output_limit_reached.is_set():
+                    output_limited = capture.exceeded
+                    await _terminate_async_child_resilient(process)
+                else:
+                    return_code = process_wait.result()
+
+                _, pending_capture = await asyncio.wait(
+                    capture_tasks,
+                    timeout=2.0,
+                    return_when=asyncio.ALL_COMPLETED,
+                )
+                if pending_capture:
+                    output_capture_failed = True
+                    await _terminate_async_child_resilient(process)
+                    for task in pending_capture:
+                        task.cancel()
+                    await asyncio.gather(*pending_capture, return_exceptions=True)
+                output_limited = output_limited or capture.exceeded
+                output_capture_failed = output_capture_failed or capture.failed
+                return_code = process.returncode if return_code is None else return_code
+                return await _build_local_verification_result_async(
+                    command,
+                    root=root,
+                    is_pytest=is_pytest,
+                    environment=environment,
+                    started_at=started_at,
+                    timed_out=timed_out,
+                    output_limited=output_limited,
+                    output_capture_failed=output_capture_failed,
+                    return_code=return_code,
+                    execution_argv=execution_argv,
+                    stdout_file=stdout_file,
+                    stderr_file=stderr_file,
+                    report_path=report_path,
+                )
+            except asyncio.CancelledError:
+                await _terminate_async_child_resilient(process)
+                raise
+            except Exception:
+                await _terminate_async_child_resilient(process)
+                raise
+            finally:
+                for task in (process_wait, limit_wait):
+                    if not task.done():
+                        task.cancel()
+                await asyncio.gather(process_wait, limit_wait, return_exceptions=True)
+
+
+def run_local_verification_command(payload: object) -> dict[str, object]:
+    """Run one validated command inside the Lab-provided process cell.
+
+    The function is top-level and argument-only so ``ProcessExecutionCell``
+    can spawn it on Windows and POSIX without serializing a live Lab object.
+    """
+
+    command = LocalVerificationCommand.from_mapping(payload)
+    root = Path(command.working_directory).expanduser().resolve()
+    _require_active_cargo_executable(command, cwd=root)
+    is_pytest = command.adapter == "python-pytest" and command.framework == "pytest"
+    environment = _verification_environment(command, is_pytest=is_pytest)
+    started_at = _utc_now()
+    timed_out = False
+    return_code: int | None = None
+    report_context = (
+        managed_scratch_dir("verification", prefix="aese-pytest-report-") if is_pytest else contextlib.nullcontext(None)
+    )
+    with report_context as report_directory:
+        execution_argv, report_path = _verification_argv(
+            command,
+            is_pytest=is_pytest,
+            report_directory=str(report_directory) if report_directory is not None else None,
+        )
+        with tempfile.TemporaryFile(mode="w+b") as stdout_file, tempfile.TemporaryFile(mode="w+b") as stderr_file:
+            capture = _BoundedOutputCapture(stdout_file, stderr_file)
+            output_limit_reached = threading.Event()
+            creationflags = getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0) if os.name == "nt" else 0
+            process_options: dict[str, Any] = {}
+            if os.name != "nt":
+                process_options["start_new_session"] = not _PROCESS_EXECUTION_CELL_ACTIVE.get()
+            process = subprocess.Popen(
+                [command.executable, *execution_argv],
+                cwd=root,
+                env=environment,
+                stdin=subprocess.DEVNULL,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                shell=False,
+                creationflags=creationflags,
+                **process_options,
+            )
+            if process.stdout is None or process.stderr is None:
+                _terminate_child(process)
+                raise RuntimeError("verification output pipes were not created")
+            capture_threads = (
+                threading.Thread(
+                    target=_capture_sync_pipe,
+                    args=(process.stdout,),
+                    kwargs={"stream": "stdout", "capture": capture, "limit_reached": output_limit_reached},
+                    daemon=True,
+                ),
+                threading.Thread(
+                    target=_capture_sync_pipe,
+                    args=(process.stderr,),
+                    kwargs={"stream": "stderr", "capture": capture, "limit_reached": output_limit_reached},
+                    daemon=True,
+                ),
+            )
+            for thread in capture_threads:
+                thread.start()
+            deadline = time.monotonic() + float(command.timeout_seconds)
+            while True:
+                if output_limit_reached.is_set():
+                    break
+                remaining = deadline - time.monotonic()
+                if remaining <= 0:
+                    timed_out = True
+                    break
+                try:
+                    return_code = process.wait(timeout=min(0.02, remaining))
+                    break
+                except subprocess.TimeoutExpired:
+                    continue
+            if timed_out or output_limit_reached.is_set():
+                _terminate_child(process)
+                with contextlib.suppress(subprocess.TimeoutExpired):
+                    process.wait(timeout=2.0)
+            for thread in capture_threads:
+                thread.join(timeout=2.0)
+            output_capture_failed = any(thread.is_alive() for thread in capture_threads) or capture.failed
+            output_limited = capture.exceeded
+            return_code = process.returncode if return_code is None else return_code
+            result = _build_local_verification_result(
+                command,
+                root=root,
+                is_pytest=is_pytest,
+                environment=environment,
+                started_at=started_at,
+                timed_out=timed_out,
+                output_limited=output_limited,
+                output_capture_failed=output_capture_failed,
+                return_code=return_code,
+                execution_argv=execution_argv,
+                stdout_file=stdout_file,
+                stderr_file=stderr_file,
+                report_path=report_path,
+            )
+    return result
+
+
 __all__ = [
     "LocalVerificationCommand",
     "build_local_verification_commands",
+    "process_execution_cell_scope",
     "run_local_verification_command",
+    "run_local_verification_command_async",
 ]

@@ -49,7 +49,7 @@ def _criterion_estimate_ns(root: Path, name: str) -> float | None:
     path = root / "target" / "criterion" / name / "new" / "estimates.json"
     try:
         data = json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError):
+    except OSError, json.JSONDecodeError:
         return None
     estimate = data.get("slope") or data.get("mean") or data.get("median")
     if not estimate or "point_estimate" not in estimate:
@@ -61,9 +61,7 @@ def _cargo_env() -> dict:
     env = os.environ.copy()
     py_root = Path(sys.executable).parent
     env["PYO3_PYTHON"] = sys.executable
-    env["PATH"] = os.pathsep.join(
-        [str(py_root), str(py_root / "DLLs"), str(py_root / "libs"), env.get("PATH", "")]
-    )
+    env["PATH"] = os.pathsep.join([str(py_root), str(py_root / "DLLs"), str(py_root / "libs"), env.get("PATH", "")])
     env.setdefault("RUSTFLAGS", "-C debuginfo=0")
     return env
 
@@ -94,7 +92,7 @@ def _git_commit(path: Path) -> str | None:
             check=True,
             text=True,
         )
-    except (OSError, subprocess.CalledProcessError):
+    except OSError, subprocess.CalledProcessError:
         return None
     return result.stdout.strip()
 
@@ -214,8 +212,7 @@ def _connect_hermes_state_db(path: Path) -> sqlite3.Connection:
 
 def _content(msg_idx: int) -> str:
     prefix = (
-        f"session={BASELINE_SESSION_ID} message={msg_idx:05d} "
-        "policy replay witness checkpoint evidence fts rewrite "
+        f"session={BASELINE_SESSION_ID} message={msg_idx:05d} policy replay witness checkpoint evidence fts rewrite "
     )
     if len(prefix) >= BASELINE_CONTENT_BYTES:
         return prefix[:BASELINE_CONTENT_BYTES]
@@ -249,7 +246,9 @@ def _history() -> list[dict]:
                 "token_count": BASELINE_CONTENT_BYTES // 4,
                 "finish_reason": "stop" if role == "assistant" else None,
                 "reasoning": "whole transcript rewrite" if role == "assistant" and msg_idx % 11 == 0 else None,
-                "reasoning_content": "append-only replay avoids this path" if role == "assistant" and msg_idx % 13 == 0 else None,
+                "reasoning_content": "append-only replay avoids this path"
+                if role == "assistant" and msg_idx % 13 == 0
+                else None,
                 "reasoning_details": {"round": msg_idx, "rewrite": True} if role == "assistant" else None,
                 "codex_reasoning_items": [{"type": "reasoning", "index": msg_idx}] if role == "assistant" else None,
                 "codex_message_items": [{"type": "message", "index": msg_idx}] if role == "assistant" else None,
@@ -352,7 +351,9 @@ def _persisted_transcript(conn: sqlite3.Connection) -> bytes:
     return json.dumps(payload, sort_keys=True, separators=(",", ":")).encode("utf-8")
 
 
-def _measure_hermes_persist_ns(conn: sqlite3.Connection, history: list[dict]) -> tuple[float, str, int, int, bool, bytes]:
+def _measure_hermes_persist_ns(
+    conn: sqlite3.Connection, history: list[dict]
+) -> tuple[float, str, int, int, bool, bytes]:
     samples: list[float] = []
     digests: list[str] = []
     import hashlib
@@ -407,11 +408,7 @@ def evaluate_hermes_persistence_baseline(root: str | Path = ROOT) -> HermesPersi
     baseline_db_hash = _blake3_hex(root_path, db_bytes)
     transcript_hash = _blake3_hex(root_path, transcript)
     aegis_estimate_ns = _criterion_estimate_ns(root_path, AEGIS_APPEND_BENCHMARK_NAME)
-    speedup = (
-        baseline_estimate_ns / aegis_estimate_ns
-        if aegis_estimate_ns and aegis_estimate_ns > 0
-        else None
-    )
+    speedup = baseline_estimate_ns / aegis_estimate_ns if aegis_estimate_ns and aegis_estimate_ns > 0 else None
     evidence = {
         "aegis_benchmark_name": AEGIS_APPEND_BENCHMARK_NAME,
         "aegis_replacement_surface": "SegmentedArrowAuditStream append/flush with replay sidecar evidence",

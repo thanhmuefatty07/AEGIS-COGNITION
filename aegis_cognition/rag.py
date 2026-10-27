@@ -202,15 +202,19 @@ class RAGManager:
         include_session_context: bool = True,
         include_active_memory: bool = True,
         active_memories: tuple[Any, ...] | list[Any] | None = None,
+        verified_file_relations: tuple[Any, ...] | list[Any] = (),
     ) -> ContextCompilation:
         """Hydrate authorized sources and render bounded model context."""
 
-        candidates = self.retrieve_candidates(query) if include_session_context else ()
-        if self.retrieval_error is not None:
-            raise ContextCompilationError(
-                "RETRIEVAL_UNAVAILABLE",
-                f"context retrieval unavailable: {self.retrieval_error}",
-            )
+        if include_session_context:
+            candidates = self.retrieve_candidates(query)
+            if self.retrieval_error is not None:
+                raise ContextCompilationError(
+                    "RETRIEVAL_UNAVAILABLE",
+                    f"context retrieval unavailable: {self.retrieval_error}",
+                )
+        else:
+            candidates = ()
         hydrated_memories = (
             tuple(active_memories)
             if active_memories is not None
@@ -229,4 +233,5 @@ class RAGManager:
             owner_id=owner_id,
             mandatory_session_ids=mandatory_session_ids,
             active_memories=hydrated_memories,
+            verified_file_relations=verified_file_relations,
         )

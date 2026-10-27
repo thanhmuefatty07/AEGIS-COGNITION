@@ -59,9 +59,7 @@ class BrowserLiveCollectorProducerRun:
             "action_id": self.action_id,
             "sequence_number": self.sequence_number,
             "run_directory": str(self.run_directory),
-            "artifact_paths": {
-                kind: str(path) for kind, path in sorted(self.artifact_paths.items())
-            },
+            "artifact_paths": {kind: str(path) for kind, path in sorted(self.artifact_paths.items())},
             "verifier": "rust-browser-live-collector-run",
             "truth_claim": False,
         }
@@ -83,9 +81,7 @@ class BrowserLiveCollectorProducer:
     ) -> BrowserLiveCollectorProducerRun:
         _validate_positive_ids(run_id, action_id, sequence_number)
         ordered = _required_artifacts(artifacts, self.max_bytes)
-        run_directory = (
-            self.output_root / _run_directory_name(run_id, action_id, sequence_number)
-        ).resolve()
+        run_directory = (self.output_root / _run_directory_name(run_id, action_id, sequence_number)).resolve()
         run_directory.mkdir(parents=True, exist_ok=True)
 
         artifact_paths: dict[str, Path] = {}
@@ -213,7 +209,4 @@ def _network_log_bytes(value: str | bytes | list[Mapping[str, object]]) -> bytes
         return value.encode("utf-8")
     if not value:
         return b"[]"
-    return b"\n".join(
-        json.dumps(entry, sort_keys=True, separators=(",", ":")).encode("utf-8")
-        for entry in value
-    )
+    return b"\n".join(json.dumps(entry, sort_keys=True, separators=(",", ":")).encode("utf-8") for entry in value)

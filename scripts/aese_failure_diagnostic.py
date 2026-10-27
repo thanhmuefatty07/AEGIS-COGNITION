@@ -47,7 +47,7 @@ def _git_head() -> str:
         return subprocess.run(
             ["git", "rev-parse", "HEAD"], cwd=ROOT, check=True, capture_output=True, text=True
         ).stdout.strip()
-    except (OSError, subprocess.CalledProcessError):
+    except OSError, subprocess.CalledProcessError:
         return "NOT_AVAILABLE"
 
 
@@ -142,7 +142,9 @@ def _diagnose_cell(
         "scenario": scenario,
         "replicate_count": len(trials),
         "final_status_distribution": dict(sorted(status_counts.items())),
-        "lag1_distribution": _distribution([cast(float | int | None, trial["lag1_autocorrelation"]) for trial in trials]),
+        "lag1_distribution": _distribution(
+            [cast(float | int | None, trial["lag1_autocorrelation"]) for trial in trials]
+        ),
         "drift_distribution": _distribution([cast(float | int | None, trial["drift_ratio"]) for trial in trials]),
         "ci_width_distribution": _distribution([cast(float | int | None, trial["ci_width"]) for trial in trials]),
         "precision_ratio_distribution": _distribution(
@@ -171,7 +173,11 @@ def build_diagnostic(input_path: Path = DEFAULT_INPUT) -> dict[str, object]:
     raw_trials_value = source_artifact.get("raw_trials")
     cells_value = source_artifact.get("cells")
     assessments_value = source_artifact.get("domain_assessments")
-    if not isinstance(raw_trials_value, list) or not isinstance(cells_value, list) or not isinstance(assessments_value, dict):
+    if (
+        not isinstance(raw_trials_value, list)
+        or not isinstance(cells_value, list)
+        or not isinstance(assessments_value, dict)
+    ):
         raise ValueError("calibration artifact lacks diagnostic inputs")
     raw_trials = [cast(dict[str, object], value) for value in raw_trials_value if isinstance(value, dict)]
     assessments = cast(dict[str, dict[str, object]], assessments_value)
@@ -209,10 +215,14 @@ def build_diagnostic(input_path: Path = DEFAULT_INPUT) -> dict[str, object]:
     artifact_without_hash: dict[str, object] = {
         "schema": SCHEMA,
         "generator_version": GENERATOR_VERSION,
-        "input_artifact_path": input_path.relative_to(ROOT).as_posix() if input_path.is_relative_to(ROOT) else str(input_path),
+        "input_artifact_path": input_path.relative_to(ROOT).as_posix()
+        if input_path.is_relative_to(ROOT)
+        else str(input_path),
         "input_artifact_hash": source_artifact.get("artifact_hash"),
         "artifact_source_sha": source.get("source_sha"),
-        "relevant_subject_digest": _hash([(item["family"], item["variant"], item["checkpoint_policy"], item["scenario"]) for item in diagnostics]),
+        "relevant_subject_digest": _hash(
+            [(item["family"], item["variant"], item["checkpoint_policy"], item["scenario"]) for item in diagnostics]
+        ),
         "current_head": _git_head(),
         "protocol_hash": source_artifact.get("protocol_hash"),
         "validator_hash": source_artifact.get("validator_hash"),
@@ -241,7 +251,11 @@ def main() -> int:
     artifact = build_diagnostic(input_path)
     output_path.parent.mkdir(parents=True, exist_ok=True)
     output_path.write_text(json.dumps(artifact, indent=2, sort_keys=True) + "\n", encoding="utf-8")
-    print(json.dumps({"artifact_hash": artifact["artifact_hash"], "diagnostic_cell_count": artifact["diagnostic_cell_count"]}))
+    print(
+        json.dumps(
+            {"artifact_hash": artifact["artifact_hash"], "diagnostic_cell_count": artifact["diagnostic_cell_count"]}
+        )
+    )
     return 0
 
 

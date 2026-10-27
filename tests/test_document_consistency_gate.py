@@ -3,6 +3,8 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+import pytest
+
 from scripts import document_consistency_gate as gate
 
 
@@ -32,7 +34,7 @@ def _fixture_tree(tmp_path: Path) -> None:
     (architecture / "document_inventory.json").write_text(
         json.dumps(
             {
-                "schema": "aegis-document-inventory-v1",
+                "schema": "aegis-document-inventory-v2",
                 "source_of_truth": "docs/architecture/AEGIS_LAB_RUNTIME_MASTER_PLAN.md",
                 "generated_view": "docs/architecture/AEGIS_LAB_STATUS_GENERATED.md",
                 "last_verified_at": "2026-08-27",
@@ -55,6 +57,7 @@ def _fixture_tree(tmp_path: Path) -> None:
                     }
                 },
                 "historical_paths": [],
+                "unscoped_paths": [],
             }
         ),
         encoding="utf-8",
@@ -86,9 +89,7 @@ def test_broken_markdown_link_is_rejected(tmp_path: Path) -> None:
 def test_ephemeral_uv_environment_markdown_is_ignored(tmp_path: Path) -> None:
     package_docs = tmp_path / ".venv-3.14.7" / "Lib" / "site-packages"
     package_docs.mkdir(parents=True)
-    (package_docs / "third_party.md").write_text(
-        "[package-local](missing-package-doc.md)\n", encoding="utf-8"
-    )
+    (package_docs / "third_party.md").write_text("[package-local](missing-package-doc.md)\n", encoding="utf-8")
     assert gate._link_errors(tmp_path) == []
 
 
@@ -98,3 +99,94 @@ def test_generated_node_modules_markdown_is_ignored(tmp_path: Path) -> None:
     (package_docs / "README.md").write_text("[package-local](missing-package-doc.md)\n", encoding="utf-8")
 
     assert gate._link_errors(tmp_path) == []
+
+
+@pytest.mark.parametrize(
+    "relative_path",
+    (
+        ".pytest_cache/README.md",
+        "desktop/test-results/failure/error-context.md",
+    ),
+)
+def test_generated_test_output_markdown_is_ignored(tmp_path: Path, relative_path: str) -> None:
+    generated_doc = tmp_path / relative_path
+    generated_doc.parent.mkdir(parents=True)
+    generated_doc.write_text("[generated](missing-output.md)\n", encoding="utf-8")
+
+    assert gate._link_errors(tmp_path) == []
+
+
+@pytest.mark.parametrize(
+    ("path", "historical_paths", "expected_error"),
+    (
+        ("docs/architecture/missing.md", [], "unscoped path does not exist"),
+        ("docs/architecture/guide.md", [], "path is both current and unscoped"),
+        (
+            "docs/architecture/guide.md",
+            ["docs/architecture/guide.md"],
+            "path is both historical and unscoped",
+        ),
+    ),
+)
+def test_unscoped_inventory_paths_are_validated(
+    tmp_path: Path,
+    path: str,
+    historical_paths: list[str],
+    expected_error: str,
+) -> None:
+    _fixture_tree(tmp_path)
+    inventory_path = tmp_path / "docs" / "architecture" / "document_inventory.json"
+    inventory = json.loads(inventory_path.read_text(encoding="utf-8"))
+    inventory["historical_paths"] = historical_paths
+    inventory["unscoped_paths"] = [path]
+
+    _, errors = gate._scoped_documents(tmp_path, inventory)
+
+    assert any(expected_error in error for error in errors), errors
+
+
+def test_unclassified_markdown_path_is_rejected(tmp_path: Path) -> None:
+    _fixture_tree(tmp_path)
+    (tmp_path / "notes.md").write_text("# Unclassified\n", encoding="utf-8")
+    inventory_path = tmp_path / "docs" / "architecture" / "document_inventory.json"
+    inventory = json.loads(inventory_path.read_text(encoding="utf-8"))
+
+    _, errors = gate._scoped_documents(tmp_path, inventory)
+
+    assert errors == ["document inventory Markdown path is not classified: notes.md"]
+
+
+@pytest.mark.parametrize(
+    ("compatibility_stub", "expect_duplicate"),
+    ((False, True), (True, False)),
+)
+def test_duplicate_adr_numbers_are_rejected_except_declared_compatibility_stubs(
+    tmp_path: Path, compatibility_stub: bool, expect_duplicate: bool
+) -> None:
+    _fixture_tree(tmp_path)
+    adr_directory = tmp_path / "docs" / "adr"
+    adr_directory.mkdir()
+    paths = (
+        "docs/adr/ADR-012-foundation-convergence.md",
+        "docs/adr/ADR-012-portability.md",
+    )
+    for path in paths:
+        (tmp_path / path).write_text("# Decision\n", encoding="utf-8")
+
+    inventory_path = tmp_path / "docs" / "architecture" / "document_inventory.json"
+    inventory = json.loads(inventory_path.read_text(encoding="utf-8"))
+    inventory["scopes"].append(
+        {
+            "glob": "docs/adr/*.md",
+            "document_type": "architecture_decision_record",
+            "authority": "adr",
+            "status": "ACTIVE",
+            "id_prefix": "ADR",
+        }
+    )
+    if compatibility_stub:
+        inventory["overrides"][paths[1]] = {"authority": "compatibility_stub"}
+
+    _, errors = gate._scoped_documents(tmp_path, inventory)
+
+    assert any("duplicate ADR number 012" in error for error in errors) is expect_duplicate, errors

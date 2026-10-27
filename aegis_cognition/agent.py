@@ -3,14 +3,12 @@
 from __future__ import annotations
 
 import asyncio
-import os
 import threading
-from pathlib import Path
 from collections.abc import Awaitable, Callable, Mapping
 from typing import Any
 
 from .application import AgentApplication
-from .config import AgentConfig, load_config
+from .config import AgentConfig, load_config, resolve_lab_replay_directory
 from .errors import ConfigError, ProviderError
 from .models import RunResult
 from .observability import RuntimeTelemetry
@@ -62,10 +60,9 @@ class Agent:
         # compiled authority keeps the legacy no-archive development path;
         # explicitly requesting the archive still fails closed there.
         if lab and replay_requested is not False and (replay_requested is True or native_runtime_available()):
-            configured_replay_dir = os.environ.get("AEGIS_LAB_REPLAY_DIR", "").strip()
             kwargs.setdefault(
                 "lab_replay_directory",
-                configured_replay_dir or str(Path.cwd() / ".aegis" / "lab-replay"),
+                resolve_lab_replay_directory(),
             )
         self._config = AgentConfig.from_inputs(
             task,

@@ -55,6 +55,7 @@ Thumbs.db
 .local/
 brain/
 artifacts/
+node_modules/
 desktop/test-results/
 desktop/node_modules/
 desktop/dist/

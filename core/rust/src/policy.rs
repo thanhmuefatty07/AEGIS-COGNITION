@@ -8,6 +8,9 @@ pub type ApprovalId = u128;
 pub type BenchId = u128;
 pub type TaskId = u128;
 
+/// The only TypedToolIR schema currently accepted by the policy boundary.
+pub const TYPED_TOOL_IR_SCHEMA_VERSION: u16 = 1;
+
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum CapabilityClass {
     LocalRead,
@@ -102,6 +105,7 @@ pub struct EvidenceContract {
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct TypedToolIR {
+    pub schema_version: u16,
     pub tool_id: ToolId,
     pub operation_id: OperationId,
     pub capability: CapabilityClass,
@@ -322,6 +326,7 @@ impl TypedToolIR {
             approval_scope_hash,
         );
         Self {
+            schema_version: TYPED_TOOL_IR_SCHEMA_VERSION,
             tool_id,
             operation_id,
             capability,
@@ -337,7 +342,10 @@ impl TypedToolIR {
     }
 
     pub fn is_valid(&self) -> bool {
-        self.tool_id > 0
+        // Keep the legacy v1 canonical hash stable. If another schema is ever
+        // accepted, bind that version into a new canonical hash domain first.
+        self.schema_version == TYPED_TOOL_IR_SCHEMA_VERSION
+            && self.tool_id > 0
             && self.operation_id > 0
             && nonzero_hash(&self.credential_scope_hash)
             && nonzero_hash(&self.precondition_hash)

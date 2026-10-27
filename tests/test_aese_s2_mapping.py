@@ -3,7 +3,14 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from scripts.aese_s2_mapping import DEFAULT_INVENTORY, DEFAULT_OUTPUT, DEFAULT_GRAPH, DEFAULT_SEED, build_mapping
+from scripts.aese_s2_mapping import (
+    DEFAULT_GRAPH,
+    DEFAULT_INVENTORY,
+    DEFAULT_OUTPUT,
+    DEFAULT_SEED,
+    _hash,
+    build_mapping,
+)
 
 
 def test_s2_mapping_closes_critical_and_high_selection_surfaces() -> None:
@@ -24,8 +31,23 @@ def test_s2_mapping_closes_critical_and_high_selection_surfaces() -> None:
 def test_recorded_s2_mapping_has_no_content_drift() -> None:
     actual = json.loads(DEFAULT_OUTPUT.read_text(encoding="utf-8"))
     expected = build_mapping()
-    for key in ("schema", "phase", "mode", "selection_authority", "mapping_status", "all_declared_critical_mapped", "all_declared_high_selection_relevant_mapped", "unknown_surface_ids", "unknown_surface_paths", "records", "errors_by_surface"):
+    for key in (
+        "schema",
+        "phase",
+        "mode",
+        "selection_authority",
+        "mapping_status",
+        "all_declared_critical_mapped",
+        "all_declared_high_selection_relevant_mapped",
+        "unknown_surface_ids",
+        "unknown_surface_paths",
+        "records",
+        "errors_by_surface",
+        "inventory_source_tree_sha256",
+        "claim_graph_source_tree_sha256",
+    ):
         assert actual[key] == expected[key]
+    assert actual["artifact_hash"] == _hash({key: value for key, value in actual.items() if key != "artifact_hash"})
 
 
 def test_s2_mapping_rejects_file_name_only_test_subject(tmp_path: Path) -> None:

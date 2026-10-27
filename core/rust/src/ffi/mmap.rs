@@ -85,12 +85,12 @@ impl PyMmapBridgeWriter {
     }
 
     /// Finalize and return the hash-bound frame metadata.
-    pub fn finish(&mut self) -> PyResult<(u128, u128, u64, u64, Vec<u8>)> {
+    pub fn finish(&mut self, py: Python<'_>) -> PyResult<(u128, u128, u64, u64, Vec<u8>)> {
         let writer = self.inner.take().ok_or_else(|| {
             pyo3::exceptions::PyRuntimeError::new_err("mmap bridge writer is already finished")
         })?;
-        let header = writer
-            .finish()
+        let header = py
+            .detach(move || writer.finish())
             .map_err(pyo3::exceptions::PyValueError::new_err)?;
         Ok((
             header.message_id,
@@ -112,6 +112,18 @@ impl PyMmapBridgeWriter {
     }
 }
 
+fn shared_mmap_wasm_sandbox() -> PyResult<&'static crate::sandbox::WasmtimeSandbox> {
+    static SANDBOX: std::sync::OnceLock<Result<crate::sandbox::WasmtimeSandbox, String>> =
+        std::sync::OnceLock::new();
+    SANDBOX
+        .get_or_init(|| {
+            crate::sandbox::WasmtimeSandbox::try_new()
+                .map_err(|error| format!("Wasmtime sandbox initialization failed: {error:?}"))
+        })
+        .as_ref()
+        .map_err(|message| pyo3::exceptions::PyRuntimeError::new_err(message.clone()))
+}
+
 #[pyfunction]
 pub fn aegis_mmap_bridge_header_bytes() -> PyResult<usize> {
     py_safe(|| crate::bridge_mmap::MMAP_BRIDGE_HEADER_BYTES)
@@ -124,48 +136,50 @@ pub fn aegis_mmap_bridge_payload_alignment() -> PyResult<usize> {
 
 #[pyfunction]
 pub fn aegis_write_mmap_bridge_pattern(
+    py: Python<'_>,
     path: String,
     message_id: u128,
     session_id: u128,
     payload_len: usize,
 ) -> PyResult<(u128, u128, u64, u64, Vec<u8>)> {
-    py_safe(move || {
-        let header = crate::bridge_mmap::write_pattern_mmap_bridge_frame(
-            path,
-            message_id,
-            session_id,
-            payload_len,
-        )
-        .map_err(pyo3::exceptions::PyRuntimeError::new_err)?;
-        Ok((
-            header.message_id,
-            header.session_id,
-            header.payload_offset,
-            header.payload_len,
-            header.payload_blake3.to_vec(),
-        ))
-    })?
+    py.detach(move || {
+        py_safe(move || {
+            let header = crate::bridge_mmap::write_pattern_mmap_bridge_frame(
+                path,
+                message_id,
+                session_id,
+                payload_len,
+            )
+            .map_err(pyo3::exceptions::PyRuntimeError::new_err)?;
+            Ok((
+                header.message_id,
+                header.session_id,
+                header.payload_offset,
+                header.payload_len,
+                header.payload_blake3.to_vec(),
+            ))
+        })?
+    })
 }
 
 #[pyfunction]
-pub fn aegis_validate_mmap_bridge_frame(path: String) -> PyResult<bool> {
-    py_safe(move || crate::bridge_mmap::validate_mmap_bridge_frame(path))
+pub fn aegis_validate_mmap_bridge_frame(py: Python<'_>, path: String) -> PyResult<bool> {
+    py.detach(move || py_safe(move || crate::bridge_mmap::validate_mmap_bridge_frame(path)))
 }
 
 #[pyfunction]
 pub fn aegis_execute_mmap_wasm_bridge_frame(
+    py: Python<'_>,
     path: String,
     fuel_limit: u64,
 ) -> PyResult<(u64, Vec<u8>)> {
-    py_safe(move || {
-        let sandbox = crate::sandbox::WasmtimeSandbox::try_new().map_err(|error| {
-            pyo3::exceptions::PyRuntimeError::new_err(format!(
-                "Wasmtime sandbox initialization failed: {error:?}"
-            ))
-        })?;
-        let result = sandbox
-            .execute_mmap_wasm_bridge_frame(std::path::Path::new(&path), fuel_limit)
-            .map_err(|err| pyo3::exceptions::PyRuntimeError::new_err(format!("{err:?}")))?;
-        Ok((result.fuel_consumed, result.artifact.artifact_hash.to_vec()))
-    })?
+    py.detach(move || {
+        py_safe(move || {
+            let sandbox = shared_mmap_wasm_sandbox()?;
+            let result = sandbox
+                .execute_mmap_wasm_bridge_frame(std::path::Path::new(&path), fuel_limit)
+                .map_err(|err| pyo3::exceptions::PyRuntimeError::new_err(format!("{err:?}")))?;
+            Ok((result.fuel_consumed, result.artifact.artifact_hash.to_vec()))
+        })?
+    })
 }

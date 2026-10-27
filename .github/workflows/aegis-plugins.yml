@@ -39,6 +39,9 @@ jobs:
       RUSTFLAGS: -C debuginfo=0
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: '3.14.7'
       - name: Resolve pinned Rust toolchain
         id: rust-toolchain
         shell: bash
@@ -56,7 +59,7 @@ jobs:
       - name: Test plugins
         env:
           PYO3_PYTHON: python
-        run: python scripts/suite_evidence.py --name plugins-rust-workspace --output artifacts/suites/plugins-rust-workspace.json --owner-id ci-plugins-rust --gate-id plugins-rust-workspace --attempt-id "${{ github.run_id }}-${{ github.run_attempt }}" --timeout-seconds 1200 -- cargo test --workspace --no-default-features
+        run: python scripts/suite_evidence.py --name plugins-rust-workspace --output artifacts/suites/plugins-rust-workspace.json --status-output artifacts/suite-status/plugins-rust-workspace.json --owner-id ci-plugins-rust --gate-id plugins-rust-workspace --attempt-id "${{ github.run_id }}-${{ github.run_attempt }}" --timeout-seconds 1200 -- cargo test --workspace --no-default-features
       - name: Clippy plugins
         env:
           PYO3_PYTHON: python
@@ -64,5 +67,5 @@ jobs:
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         if: always()
         with:
-          name: aegis-plugins-evidence-${{ github.sha }}
-          path: artifacts/suites
+          name: aegis-plugins-evidence-${{ github.sha }}-${{ github.run_attempt }}
+          path: artifacts/suite-status/plugins-rust-workspace.json

@@ -1102,7 +1102,11 @@ def finish_runtime_lease(token: dict[str, Any], outcome: str) -> bool:
     )
 
 
-def retry_runtime_task(task_id: int, request: dict[str, Any], now_ms: int = 0) -> dict[str, Any]:
+def retry_runtime_task(
+    task_id: int,
+    request: dict[str, Any],
+    now_ms: int | None = None,
+) -> dict[str, Any]:
     """Start a newer fenced attempt through the Rust-owned runtime."""
 
     native = _native_module()
@@ -1115,7 +1119,11 @@ def retry_runtime_task(task_id: int, request: dict[str, Any], now_ms: int = 0) -
         }
     import json
 
-    return json.loads(native.aegis_runtime_retry(task_id, json.dumps(request), now_ms))
+    _positive_int(task_id, "task_id")
+    current_ms = _unix_time_ms() if now_ms is None else now_ms
+    if type(current_ms) is not int or current_ms < 1:
+        raise ValueError("now_ms must be a positive integer")
+    return json.loads(native.aegis_runtime_retry(task_id, json.dumps(request), current_ms))
 
 
 def _cancel_queued_after_abort(task_id: int, attempt_id: int) -> None:

@@ -67,8 +67,6 @@ jobs:
       EVAL_MAX_REQUESTS: ${{ inputs.max_requests }}
       EVAL_DELAY_MS: ${{ inputs.delay_ms }}
       EVAL_DRY_RUN: ${{ inputs.dry_run }}
-      OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
-      NVIDIA_NIM_API_KEY: ${{ secrets.NVIDIA_NIM_API_KEY }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
@@ -79,8 +77,11 @@ jobs:
       - name: Resolve locked environment without compiling the package
         run: uv sync --locked --extra all --extra dev --no-install-project
       - name: Run opt-in live evaluation
+        if: github.ref == 'refs/heads/main'
         env:
           PYTHONPATH: ${{ github.workspace }}
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          NVIDIA_NIM_API_KEY: ${{ secrets.NVIDIA_NIM_API_KEY }}
         run: |
           mkdir -p artifacts
           eval_args=( \

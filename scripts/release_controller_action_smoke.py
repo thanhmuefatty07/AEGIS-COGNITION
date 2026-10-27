@@ -25,7 +25,7 @@ def sha256(path: Path) -> str:
 
 
 _SCENARIO = textwrap.dedent(
-    r'''
+    r"""
     import json
     import os
     import sys
@@ -259,7 +259,7 @@ _SCENARIO = textwrap.dedent(
             event["payload"].get("status") for event in benchmark_validator_events
         ],
     }, sort_keys=True))
-    ''',
+    """,
 )
 
 
@@ -296,9 +296,7 @@ def run_smoke(wheel: Path) -> dict[str, object]:
                 raise ValueError("controller action smoke output must be a mapping")
             typed_scenario = cast(dict[str, Any], scenario)
             report["scenario"] = scenario
-            report["python"] = subprocess.check_output(
-                [str(python), "--version"], text=True
-            ).strip()
+            report["python"] = subprocess.check_output([str(python), "--version"], text=True).strip()
             report["status"] = (
                 "PROVEN"
                 if typed_scenario.get("authority") == "rust_native_verified"
@@ -310,8 +308,7 @@ def run_smoke(wheel: Path) -> dict[str, object]:
                 and typed_scenario.get("browser_actions") == ["#packaged"]
                 and typed_scenario.get("controller_calls") == 2
                 and typed_scenario.get("provider_attempt_count") == 4
-                and typed_scenario.get("provider_attempt_statuses")
-                == ["REJECTED", "SUCCESS", "REJECTED", "SUCCESS"]
+                and typed_scenario.get("provider_attempt_statuses") == ["REJECTED", "SUCCESS", "REJECTED", "SUCCESS"]
                 and typed_scenario.get("memory_index_effect_count") == 1
                 and typed_scenario.get("memory_index_effect_statuses") == ["SUCCESS"]
                 and typed_scenario.get("context_retrieval_effect_count") == 1

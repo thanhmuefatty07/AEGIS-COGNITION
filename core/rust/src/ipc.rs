@@ -79,20 +79,52 @@ pub fn message_to_zero_copy(message: &MessageFrame) -> Result<ZeroCopyFrame, &'s
     })
 }
 
+/// Copies the payload described by a raw zero-copy frame into an owned message.
+///
+/// Validation checks the frame's metadata, not whether its pointer is live or
+/// readable. Safe callers must not be able to dereference a forged pointer:
+///
+/// ```compile_fail
+/// use aegis_nerve::ipc::{zero_copy_to_message, ZeroCopyFrame};
+/// use aegis_nerve::schema::BinarySchemaId;
+///
+/// let forged = ZeroCopyFrame {
+///     schema_id: BinarySchemaId(1),
+///     message_id: 1,
+///     session_id: 1,
+///     payload_ptr: std::ptr::NonNull::<u8>::dangling().as_ptr(),
+///     payload_len: 1,
+/// };
+/// let _ = zero_copy_to_message(&forged);
+/// ```
+///
+/// Nor may they dereference a frame after its backing message has been dropped:
+///
+/// ```compile_fail
+/// use aegis_nerve::ipc::{message_to_zero_copy, zero_copy_to_message};
+/// use aegis_nerve::message::MessageFrame;
+///
+/// let stale = {
+///     let message = MessageFrame::with_identity(1, 1, vec![7]);
+///     message_to_zero_copy(&message).unwrap()
+/// };
+/// let _ = zero_copy_to_message(&stale);
+/// ```
+///
+/// # Safety
+///
+/// `frame.payload_ptr` must point to `payload_len` initialized, readable bytes
+/// in one allocation. The allocation must remain alive and must not be mutated
+/// for the duration of this call. Frame validation alone does not establish
+/// these pointer invariants.
 #[inline]
-pub fn zero_copy_to_message(frame: &ZeroCopyFrame) -> Result<MessageFrame, &'static str> {
+pub unsafe fn zero_copy_to_message(frame: &ZeroCopyFrame) -> Result<MessageFrame, &'static str> {
     if !frame.is_valid() {
         return Err("invalid zero-copy frame");
     }
-    // SAFETY: `frame.is_valid()` (lines 13-19) and `validate_frame` (lines 26-45)
-    // both verify `payload_ptr` is non-null, `payload_len > 0`, and `message_id`
-    // / `session_id` are non-zero. Callers that produce a `ZeroCopyFrame` via
-    // `message_to_zero_copy` (line 68) or `mmap`-backed readers pass a pointer
-    // pointing into the backing allocation (MessageFrame buffer or mmap region)
-    // with `payload_len <= allocation.len()`. Resulting slice is read-only and
-    // copied (`.to_vec()`) into a fresh `MessageFrame` so no aliasing survives.
-    // Lifetime: the slice is dropped at end of expression; the `Vec` outlives
-    // any reference to the original `ZeroCopyFrame`.
+    // SAFETY: The caller must uphold the pointer-validity and immutability
+    // requirements documented on this function. The resulting slice is copied
+    // immediately into an owned `Vec` and does not escape this call.
     let payload =
         unsafe { core::slice::from_raw_parts(frame.payload_ptr, frame.payload_len) }.to_vec();
     Ok(MessageFrame {

@@ -56,7 +56,9 @@ def validate_bridge_contract(message: MessageFrame) -> BridgeContractResult:
     message_ok = validate_runtime_message(message)
     zero_copy = to_zero_copy(message) if message_ok else None
     zero_copy_ok = zero_copy.is_valid() if zero_copy else False
-    schema_ok = message.message_id > 0 and message.session_id > 0 and RUST_SCHEMA_ID == 0xAE1515 and RUST_SCHEMA_VERSION == 1
+    schema_ok = (
+        message.message_id > 0 and message.session_id > 0 and RUST_SCHEMA_ID == 0xAE1515 and RUST_SCHEMA_VERSION == 1
+    )
     alignment_ok = RUST_ALIGNMENT == 64
     layout_ok = RUST_HEADER_BYTES == 64
     metadata_ok = layout_ok and alignment_ok and schema_ok

@@ -20,7 +20,9 @@ pub fn run_integration_probe(
     }
     let zero_copy = message_to_zero_copy(&message)?;
     validate_default_zero_copy(&zero_copy)?;
-    let rebuilt = zero_copy_to_message(&zero_copy)?;
+    // SAFETY: `zero_copy` points into `message.payload`; `message` remains alive
+    // and is not mutated until this copy completes.
+    let rebuilt = unsafe { zero_copy_to_message(&zero_copy)? };
     runtime.ingest_message(rebuilt)?;
     let latest = runtime.memory.latest();
     Ok(IntegrationProbe {

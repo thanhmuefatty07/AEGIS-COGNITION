@@ -43,7 +43,9 @@ def probe(output: Path | None = None) -> dict[str, object]:
         report["checks"]["cooperative_termination_observed"] = child.returncode == -signal.SIGTERM
         if all(report["checks"].values()):
             report["status"] = "COOPERATIVE LIVE VERIFIED"
-            report["reason"] = "macOS lane verifies cooperative cancellation only; kernel-equivalent limits remain unclaimed"
+            report["reason"] = (
+                "macOS lane verifies cooperative cancellation only; kernel-equivalent limits remain unclaimed"
+            )
     finally:
         if child.poll() is None:
             child.kill()

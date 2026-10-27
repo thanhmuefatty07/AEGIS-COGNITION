@@ -4,10 +4,20 @@ from __future__ import annotations
 
 import hashlib
 import math
-from dataclasses import dataclass
+import re
+from dataclasses import dataclass, replace
 from typing import Any
 
 from .hashing import stable_hash
+
+MAX_SELECTOR_CONTEXT_ITEMS = 100
+MAX_VERIFIED_FILE_RELATIONS = 8
+# The Rust selector uses fixed-point relevance scores in millionths. One
+# verified current file relation adds one bounded unit, regardless of link count.
+FILE_RELATION_UTILITY_MICROS = 1_000_000
+CONTEXT_ACCOUNTING = "estimated-rendered-context-utf8-bytes-v2"
+_CONTEXT_RENDER_HEADER = "[AUTHORIZED HYDRATED CONTEXT — SOURCE BOUND]"
+_CONTEXT_RENDER_FOOTER = "[/AUTHORIZED HYDRATED CONTEXT]"
 
 
 class ContextCompilationError(ValueError):
@@ -33,6 +43,8 @@ class HydratedContextItem:
     node_id: int | None = None
     source_kind: str = "session"
     source_id: str | None = None
+    dependency_coverage: int = 0
+    file_relations: tuple[tuple[str, str], ...] = ()
 
 
 @dataclass(frozen=True)
@@ -78,6 +90,7 @@ class ContextCompiler:
         owner_id: str | None = None,
         mandatory_session_ids: tuple[int, ...] = (),
         active_memories: tuple[Any, ...] | list[Any] = (),
+        verified_file_relations: tuple[Any, ...] | list[Any] = (),
     ) -> ContextCompilation:
         if not query or not query.strip():
             raise ContextCompilationError("INVALID_QUERY", "context query must be non-empty")
@@ -86,6 +99,14 @@ class ContextCompiler:
         resolved_owner = owner_id or "local-profile"
         if not resolved_owner.strip():
             raise ContextCompilationError("INVALID_OWNER", "owner_id must be non-empty")
+
+        relations_by_memory = self._file_relation_sources(verified_file_relations)
+        selector_v2 = getattr(self.learning_manager, "select_context_items_v2", None)
+        relation_graph = (
+            self._file_relation_graph(verified_file_relations, scope_kind=scope_kind)
+            if callable(selector_v2) and verified_file_relations
+            else None
+        )
 
         mandatory = {int(session_id) for session_id in mandatory_session_ids}
         unique_candidates: dict[int, Any] = {}
@@ -134,7 +155,7 @@ class ContextCompiler:
                     owner_id=record.owner_id,
                     content=content,
                     score=self._candidate_score(candidate),
-                    token_cost=self._estimate_tokens(content),
+                    token_cost=0,
                     mandatory=session_id in mandatory,
                     retention_class=self._candidate_retention_class(candidate),
                     node_id=session_id,
@@ -150,7 +171,7 @@ class ContextCompiler:
             memory_id_text = str(self._value(memory, "memory_id", ""))
             try:
                 memory_id = self._parse_session_id(memory_id_text)
-            except (TypeError, ValueError):
+            except TypeError, ValueError:
                 continue
             if memory_id <= 0:
                 continue
@@ -166,6 +187,7 @@ class ContextCompiler:
                 )
             used_node_ids.add(node_id)
             observed_at_ms = self._bounded_int(self._value(memory, "observed_at_ms", 0))
+            relation_sources = relations_by_memory.get(memory_id, ())
             hydrated.append(
                 HydratedContextItem(
                     # Kept populated for compatibility with the existing
@@ -177,15 +199,22 @@ class ContextCompiler:
                     owner_id=str(self._value(memory, "owner_id", resolved_owner)),
                     content=content,
                     score=self._memory_score(memory),
-                    token_cost=self._estimate_tokens(content),
+                    token_cost=0,
                     mandatory=False,
                     retention_class="condensable",
                     node_id=node_id,
                     source_kind="memory",
                     source_id=memory_id_text,
+                    # Explicit file provenance is a single bounded support
+                    # signal; additional links do not multiply its utility.
+                    dependency_coverage=(FILE_RELATION_UTILITY_MICROS if relation_sources else 0),
+                    file_relations=relation_sources,
                 )
             )
 
+        hydrated = [
+            replace(item, token_cost=self._estimate_tokens(f"{self._render_item(item)}\n")) for item in hydrated
+        ]
         hydrated.sort(
             key=lambda item: (
                 -item.mandatory,
@@ -195,35 +224,78 @@ class ContextCompiler:
                 item.content_hash,
             )
         )
-        protected_items = [
-            item for item in hydrated if item.mandatory or item.retention_class == "protected"
-        ]
+        protected_items = [item for item in hydrated if item.mandatory or item.retention_class == "protected"]
+        if len(protected_items) > MAX_SELECTOR_CONTEXT_ITEMS:
+            raise ContextCompilationError(
+                "CONTEXT_ITEM_LIMIT_EXCEEDED",
+                "mandatory or protected hydrated context exceeds the selector item limit",
+            )
+        render_overhead = self._render_overhead_tokens() if hydrated else 0
         protected_cost = sum(item.token_cost for item in protected_items)
+        if protected_items:
+            protected_cost += render_overhead
         if protected_cost > self.token_budget:
             raise ContextCompilationError(
                 "CONTEXT_OVERFLOW",
                 "protected hydrated context exceeds the configured token budget",
             )
+        if len(hydrated) > MAX_SELECTOR_CONTEXT_ITEMS:
+            protected_ids = {item.node_id or item.session_id for item in protected_items}
+            optional_items = [item for item in hydrated if (item.node_id or item.session_id) not in protected_ids]
+            hydrated = [
+                *protected_items,
+                *optional_items[: MAX_SELECTOR_CONTEXT_ITEMS - len(protected_items)],
+            ]
 
+        selection_budget = max(0, self.token_budget - render_overhead)
         selector = getattr(self.learning_manager, "select_context_items", None)
         backend = "python-compatibility-selector-v1"
         selection: dict[str, Any] | None = None
-        if callable(selector) and hydrated:
+        selected_relation_ids: list[str] | None = None
+        if relation_graph is not None:
+            hydrated_memory_ids = {item.node_id or item.session_id for item in hydrated if item.source_kind == "memory"}
+            graph_relations = [
+                edge
+                for edge in relation_graph["relations"]
+                if self._parse_session_id(edge["memory_node_id"]) in hydrated_memory_ids
+            ]
+            relation_graph = {
+                "schema": relation_graph["schema"],
+                "active_file_node_ids": sorted(
+                    {edge["file_node_id"] for edge in graph_relations},
+                    key=self._parse_session_id,
+                ),
+                "relations": graph_relations,
+            }
+            if not graph_relations:
+                relation_graph = None
+        if callable(selector) and hydrated and selection_budget > 0:
             try:
-                selection = selector(
-                    [
-                        {
-                            "session_id": item.session_id,
-                            "node_id": item.node_id or item.session_id,
-                            "token_cost": item.token_cost,
-                            "score": item.score,
-                            "retention_class": item.retention_class,
-                        }
-                        for item in hydrated
-                    ],
-                    self.token_budget,
-                    mandatory_session_ids=tuple(sorted(mandatory)),
-                )
+                selector_items = [
+                    {
+                        "session_id": item.session_id,
+                        "node_id": item.node_id or item.session_id,
+                        "kind": item.source_kind,
+                        "token_cost": item.token_cost,
+                        "score": item.score,
+                        "retention_class": item.retention_class,
+                        "dependency_coverage": item.dependency_coverage,
+                    }
+                    for item in hydrated
+                ]
+                if relation_graph is not None and callable(selector_v2):
+                    selection = selector_v2(
+                        selector_items,
+                        relation_graph,
+                        selection_budget,
+                        mandatory_session_ids=tuple(sorted(mandatory)),
+                    )
+                else:
+                    selection = selector(
+                        selector_items,
+                        selection_budget,
+                        mandatory_session_ids=tuple(sorted(mandatory)),
+                    )
                 if not isinstance(selection, dict):
                     selection = None
                     backend = "python-compatibility-selector-v1"
@@ -235,27 +307,53 @@ class ContextCompiler:
                 selection = None
 
         if selection is not None:
-            selected_ids = {
-                self._parse_session_id(value)
-                for value in selection.get("selected_node_ids", [])
-            }
+            selected_ids = {self._parse_session_id(value) for value in selection.get("selected_node_ids", [])}
+            if relation_graph is not None and selection.get("schema") == "aegis-context-selection-v2":
+                available_ids = {item.node_id or item.session_id for item in hydrated}
+                expected_related_ids = {
+                    self._parse_session_id(edge["memory_node_id"]) for edge in relation_graph["relations"]
+                }
+                expected_selected_relations = sorted(
+                    (
+                        self._parse_session_id(edge["relation_id"]),
+                        edge["relation_id"],
+                    )
+                    for edge in relation_graph["relations"]
+                    if self._parse_session_id(edge["memory_node_id"]) in selected_ids
+                )
+                try:
+                    actual_related_ids = {
+                        self._parse_session_id(value) for value in selection["related_memory_node_ids"]
+                    }
+                    actual_selected_relations = [
+                        self._parse_session_id(value) for value in selection["selected_relation_ids"]
+                    ]
+                except KeyError, TypeError, ValueError:
+                    raise ContextCompilationError(
+                        "CONTEXT_SELECTOR_INVALID",
+                        "versioned context selector returned an invalid relation explanation",
+                    ) from None
+                if (
+                    selected_ids.difference(available_ids)
+                    or actual_related_ids != expected_related_ids.intersection(selected_ids)
+                    or actual_selected_relations != [item[0] for item in expected_selected_relations]
+                ):
+                    raise ContextCompilationError(
+                        "CONTEXT_SELECTOR_INVALID",
+                        "versioned context selector returned relations outside the verified graph",
+                    )
+                selected_relation_ids = [item[1] for item in expected_selected_relations]
             protected_ids = {
-                item.node_id or item.session_id
-                for item in hydrated
-                if item.retention_class == "protected"
+                item.node_id or item.session_id for item in hydrated if item.retention_class == "protected"
             } | mandatory
             if not protected_ids.issubset(selected_ids):
                 raise ContextCompilationError(
                     "CONTEXT_SELECTOR_INVALID",
                     "Rust context selector omitted a protected source",
                 )
-            selected = [
-                item
-                for item in hydrated
-                if (item.node_id or item.session_id) in selected_ids
-            ]
+            selected = [item for item in hydrated if (item.node_id or item.session_id) in selected_ids]
             token_count = sum(item.token_cost for item in selected)
-            if token_count > self.token_budget:
+            if token_count > selection_budget:
                 raise ContextCompilationError(
                     "CONTEXT_SELECTOR_INVALID",
                     "context selector returned a pack over the configured budget",
@@ -264,9 +362,21 @@ class ContextCompiler:
             selected = []
             token_count = 0
             for item in hydrated:
-                if item.mandatory or item.retention_class == "protected" or token_count + item.token_cost <= self.token_budget:
+                if (
+                    item.mandatory
+                    or item.retention_class == "protected"
+                    or token_count + item.token_cost <= selection_budget
+                ):
                     selected.append(item)
                     token_count += item.token_cost
+
+        if selected:
+            token_count += render_overhead
+        if token_count > self.token_budget:
+            raise ContextCompilationError(
+                "CONTEXT_SELECTOR_INVALID",
+                "rendered context exceeds the configured token budget",
+            )
 
         selected.sort(
             key=lambda item: (
@@ -284,7 +394,7 @@ class ContextCompiler:
             "owner_id": resolved_owner,
             "token_budget": self.token_budget,
             "token_count": token_count,
-            "accounting": "estimated-byte-heuristic-v1",
+            "accounting": CONTEXT_ACCOUNTING,
             "renderer": "provider-neutral-context-v1",
             "selection_backend": backend,
             "items": [
@@ -298,10 +408,26 @@ class ContextCompiler:
                     "token_cost": item.token_cost,
                     "mandatory": item.mandatory,
                     "retention_class": item.retention_class,
+                    **(
+                        {
+                            "relations": [
+                                {
+                                    "kind": "confirmed_file_memory",
+                                    "relative_path": relative_path,
+                                    "source_content_hash": source_content_hash,
+                                }
+                                for relative_path, source_content_hash in item.file_relations
+                            ]
+                        }
+                        if item.file_relations
+                        else {}
+                    ),
                 }
                 for item in selected
             ],
         }
+        if selected_relation_ids is not None:
+            manifest["selected_relation_ids"] = selected_relation_ids
         return ContextCompilation(
             schema="aegis-context-compilation-v1",
             status="compiled" if selected else "empty",
@@ -310,7 +436,7 @@ class ContextCompiler:
             owner_id=resolved_owner,
             token_budget=self.token_budget,
             token_count=token_count,
-            accounting="estimated-byte-heuristic-v1",
+            accounting=CONTEXT_ACCOUNTING,
             items=tuple(selected),
             rendered=rendered,
             manifest=manifest,
@@ -324,7 +450,11 @@ class ContextCompiler:
 
     @staticmethod
     def _candidate_hash(candidate: Any) -> str:
-        value = candidate.get("evidence_ref_hash", "") if isinstance(candidate, dict) else getattr(candidate, "evidence_ref_hash", "")
+        value = (
+            candidate.get("evidence_ref_hash", "")
+            if isinstance(candidate, dict)
+            else getattr(candidate, "evidence_ref_hash", "")
+        )
         return str(value)
 
     @staticmethod
@@ -374,21 +504,161 @@ class ContextCompiler:
         # relevance probability.
         return 0.5
 
+    @classmethod
+    def _file_relation_sources(
+        cls,
+        relations: tuple[Any, ...] | list[Any],
+    ) -> dict[int, tuple[tuple[str, str], ...]]:
+        if not isinstance(relations, (tuple, list)):
+            raise ContextCompilationError(
+                "INVALID_FILE_RELATION",
+                "verified file relations must be a bounded sequence",
+            )
+        if len(relations) > MAX_VERIFIED_FILE_RELATIONS:
+            raise ContextCompilationError(
+                "FILE_RELATION_LIMIT_EXCEEDED",
+                "verified file relations exceed the bounded context limit",
+            )
+        by_memory: dict[int, set[tuple[str, str]]] = {}
+        for relation in relations:
+            memory_id_text = cls._value(relation, "memory_id", "")
+            relative_path = cls._value(relation, "relative_path", "")
+            source_hash = cls._value(relation, "source_content_hash", "")
+            if (
+                not isinstance(memory_id_text, str)
+                or not isinstance(relative_path, str)
+                or not isinstance(source_hash, str)
+            ):
+                raise ContextCompilationError(
+                    "INVALID_FILE_RELATION",
+                    "verified file relation fields have invalid types",
+                )
+            parts = relative_path.split("/")
+            if (
+                not relative_path
+                or relative_path.startswith("/")
+                or "\\" in relative_path
+                or any(part in {"", ".", "..", ".git", ".aegis"} for part in parts)
+                or len(relative_path) > 4096
+                or len(source_hash) != 64
+                or any(character not in "0123456789abcdefABCDEF" for character in source_hash)
+            ):
+                raise ContextCompilationError(
+                    "INVALID_FILE_RELATION",
+                    "verified file relation source identity is invalid",
+                )
+            try:
+                memory_id = cls._parse_session_id(memory_id_text)
+            except TypeError, ValueError:
+                raise ContextCompilationError(
+                    "INVALID_FILE_RELATION",
+                    "verified file relation memory identifier is invalid",
+                ) from None
+            if memory_id <= 0:
+                raise ContextCompilationError(
+                    "INVALID_FILE_RELATION",
+                    "verified file relation memory identifier is invalid",
+                )
+            by_memory.setdefault(memory_id, set()).add((relative_path, source_hash.lower()))
+        return {memory_id: tuple(sorted(sources)) for memory_id, sources in by_memory.items()}
+
+    @classmethod
+    def _file_relation_graph(
+        cls,
+        relations: tuple[Any, ...] | list[Any],
+        *,
+        scope_kind: str,
+    ) -> dict[str, Any]:
+        cls._file_relation_sources(relations)
+        roots: set[int] = set()
+        edges: list[dict[str, str]] = []
+        seen_relation_ids: set[int] = set()
+        for relation in relations:
+            relation_id_text = cls._value(relation, "relation_id", "")
+            memory_id_text = cls._value(relation, "memory_id", "")
+            project_id = cls._value(relation, "project_id", "")
+            relative_path = cls._value(relation, "relative_path", "")
+            source_hash = cls._value(relation, "source_content_hash", "")
+            if (
+                not isinstance(relation_id_text, str)
+                or not isinstance(memory_id_text, str)
+                or not isinstance(project_id, str)
+                or not project_id.strip()
+                or cls._value(relation, "scope_kind", None) != scope_kind
+                or str(cls._value(relation, "memory_lifecycle", "")).upper() != "ACTIVE"
+                or str(cls._value(relation, "memory_validation", "")).upper() != "ACCEPTED"
+                or cls._value(relation, "memory_content_current", False) is not True
+            ):
+                raise ContextCompilationError(
+                    "INVALID_FILE_RELATION",
+                    "verified file relation provenance is incomplete or stale",
+                )
+            try:
+                relation_id = cls._parse_session_id(relation_id_text)
+                memory_id = cls._parse_session_id(memory_id_text)
+            except TypeError, ValueError:
+                raise ContextCompilationError(
+                    "INVALID_FILE_RELATION",
+                    "verified file relation identifier is invalid",
+                ) from None
+            if relation_id <= 0 or relation_id in seen_relation_ids:
+                raise ContextCompilationError(
+                    "INVALID_FILE_RELATION",
+                    "verified file relation identifiers must be unique and positive",
+                )
+            seen_relation_ids.add(relation_id)
+            if memory_id <= 0:
+                raise ContextCompilationError(
+                    "INVALID_FILE_RELATION",
+                    "verified file relation memory identifier is invalid",
+                )
+            file_node_id = cls._file_node_id(project_id, relative_path, source_hash)
+            roots.add(file_node_id)
+            edges.append(
+                {
+                    "relation_id": f"0x{relation_id:x}",
+                    "kind": "confirmed_file_memory",
+                    "file_node_id": f"0x{file_node_id:x}",
+                    "memory_node_id": f"0x{cls._memory_node_id(memory_id):x}",
+                }
+            )
+        if len(roots) > MAX_VERIFIED_FILE_RELATIONS:
+            raise ContextCompilationError(
+                "FILE_RELATION_LIMIT_EXCEEDED",
+                "verified file relations exceed the bounded context limit",
+            )
+        edges.sort(key=lambda edge: cls._parse_session_id(edge["relation_id"]))
+        return {
+            "schema": "aegis-context-relation-graph-v1",
+            "active_file_node_ids": [f"0x{node_id:x}" for node_id in sorted(roots)],
+            "relations": edges,
+        }
+
     @staticmethod
     def _bounded_int(value: Any) -> int:
         if type(value) is bool:
             return 0
         try:
             parsed = int(value)
-        except (TypeError, ValueError):
+        except TypeError, ValueError:
             return 0
         return max(0, parsed)
 
     @staticmethod
     def _memory_node_id(memory_id: int) -> int:
-        digest = hashlib.sha256(
-            b"aegis-context-memory-node-v1\0" + str(memory_id).encode("ascii")
-        ).digest()
+        digest = hashlib.sha256(b"aegis-context-memory-node-v1\0" + str(memory_id).encode("ascii")).digest()
+        node_id = int.from_bytes(digest[:16], "big")
+        return node_id or 1
+
+    @staticmethod
+    def _file_node_id(project_id: str, relative_path: str, source_hash: str) -> int:
+        identity = (project_id, relative_path, source_hash.lower())
+        encoded = bytearray(b"aegis-context-file-node-v1\0")
+        for value in identity:
+            part = value.encode("utf-8")
+            encoded.extend(len(part).to_bytes(4, "big"))
+            encoded.extend(part)
+        digest = hashlib.sha256(encoded).digest()
         node_id = int.from_bytes(digest[:16], "big")
         return node_id or 1
 
@@ -403,37 +673,61 @@ class ContextCompiler:
 
     @staticmethod
     def _estimate_tokens(content: str) -> int:
-        return max(1, (len(content.encode("utf-8")) + 3) // 4) + 8
+        return max(1, (len(content.encode("utf-8")) + 3) // 4)
+
+    @staticmethod
+    def _sanitize_rendered_content(content: str) -> str:
+        return re.sub(
+            r"\[(\/?(?:ACTIVE MEMORY DATA|SOURCE|AUTHORIZED HYDRATED CONTEXT|CONFIRMED FILE RELATION)\b)",
+            lambda m: f"[\u200b{m.group(1)}",
+            content,
+            flags=re.IGNORECASE,
+        )
+
+    @classmethod
+    def _render_item(cls, item: HydratedContextItem) -> str:
+        safe_content = cls._sanitize_rendered_content(item.content)
+        if item.source_kind == "memory":
+            return "\n".join(
+                [
+                    f"[ACTIVE MEMORY DATA memory_id={item.source_id} hash={item.content_hash} "
+                    f"scope={item.scope_kind} owner={item.owner_id}]",
+                    *(
+                        f"[CONFIRMED FILE RELATION path={relative_path}]"
+                        for relative_path, _source_hash in item.file_relations
+                    ),
+                    safe_content,
+                    "[/ACTIVE MEMORY DATA]",
+                ]
+            )
+        return "\n".join(
+            (
+                f"[SOURCE session=0x{item.session_id:x} hash={item.content_hash} "
+                f"scope={item.scope_kind} owner={item.owner_id}]",
+                safe_content,
+                "[/SOURCE]",
+            )
+        )
+
+    @classmethod
+    def _render_overhead_tokens(cls) -> int:
+        return cls._estimate_tokens(f"{_CONTEXT_RENDER_HEADER}\n{_CONTEXT_RENDER_FOOTER}")
 
     @staticmethod
     def _render(items: list[HydratedContextItem]) -> str:
         if not items:
             return ""
-        blocks = ["[AUTHORIZED HYDRATED CONTEXT — SOURCE BOUND]"]
-        for item in items:
-            if item.source_kind == "memory":
-                blocks.extend(
-                    (
-                        f"[ACTIVE MEMORY DATA memory_id={item.source_id} hash={item.content_hash} "
-                        f"scope={item.scope_kind} owner={item.owner_id}]",
-                        item.content,
-                        "[/ACTIVE MEMORY DATA]",
-                    )
-                )
-                continue
-            blocks.extend(
-                (
-                    f"[SOURCE session=0x{item.session_id:x} hash={item.content_hash} "
-                    f"scope={item.scope_kind} owner={item.owner_id}]",
-                    item.content,
-                    "[/SOURCE]",
-                )
+        return "\n".join(
+            (
+                _CONTEXT_RENDER_HEADER,
+                *(ContextCompiler._render_item(item) for item in items),
+                _CONTEXT_RENDER_FOOTER,
             )
-        blocks.append("[/AUTHORIZED HYDRATED CONTEXT]")
-        return "\n".join(blocks)
+        )
 
 
 __all__ = [
+    "CONTEXT_ACCOUNTING",
     "ContextCompilation",
     "ContextCompilationError",
     "ContextCompiler",

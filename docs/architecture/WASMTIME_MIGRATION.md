@@ -1,5 +1,21 @@
 # Wasmtime 48.0.4 security update and migration evidence
 
+> **Advisory update — 2026-10-14:** The 2026-10-02 decision below is now a
+> historical baseline. Bytecode Alliance advisory
+> [GHSA-p79w-pv2r-29qp](https://github.com/bytecodealliance/wasmtime/security/advisories/GHSA-p79w-pv2r-29qp)
+> and [RUSTSEC-2026-0364](https://rustsec.org/advisories/RUSTSEC-2026-0364.html)
+> report undefined behavior in affected Wasmtime releases when exception tags
+> misalign host runtime structures. Wasmtime `48.0.4` is affected; the advisory
+> lists `48.0.6` and `49.0.3` as patched releases. This repository still pins
+> `48.0.4`, and `scripts/wasmtime_migration_gate.py` plus
+> `scripts/architecture_fitness.py` still require that version. Existing passes
+> of those gates and the dependency audit below do not establish the current
+> advisory state. No exploit or sandbox escape is established here; the upstream
+> advisory reports no known exploitation method. Update the dependency and its
+> version gates together when remediation is authorized.
+>
+> The upstream also reports [GHSA-wjc8-633q-pwxr / RUSTSEC-2026-0359](https://github.com/bytecodealliance/wasmtime/security/advisories/GHSA-wjc8-633q-pwxr): guest-controlled recursive type chains can overflow the host stack. Wasmtime `48.0.4` is affected; `48.0.6` and `49.0.3` are patched. This is a separate availability advisory and further confirms that the current pin is not a patched release.
+
 ## Context and decision
 
 ADR-018 previously selected Wasmtime `48.0.3` to address RUSTSEC-2026-0315 and
@@ -48,9 +64,10 @@ platforms.
 
 ## Open evidence
 
-The updated lockfile passes local `cargo deny` and `cargo audit`; the dependency
-gate and exact Wasmtime/Extism tree are verified at `48.0.4`. These checks
-establish the current known-advisory state, not runtime compatibility.
+At the original 2026-10-02 review, the lockfile passed local `cargo deny` and
+`cargo audit`, and the dependency gate and exact Wasmtime/Extism tree were
+verified at `48.0.4`. That result is historical: the 2026-10-14 advisory above
+means it no longer establishes the current known-advisory state.
 
 Local Windows Rust linking lacks Windows SDK libraries. The updated source
 snapshot is present on the existing Linux test VM, but runtime-test execution

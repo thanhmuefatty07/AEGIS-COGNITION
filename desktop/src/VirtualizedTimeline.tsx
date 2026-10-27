@@ -1,4 +1,4 @@
-import { useState, type UIEvent } from "react";
+import { useEffect, useRef, useState, type UIEvent } from "react";
 import { CapabilityIcon } from "./capability-icons";
 import type { ConversationInspection } from "./protocol";
 import { virtualWindow } from "./virtual_window.js";
@@ -8,17 +8,33 @@ const ROW_HEIGHT = 64;
 type TimelineItem = ConversationInspection["timeline"][number];
 
 export default function VirtualizedTimeline({ items }: { items: TimelineItem[] }) {
+  const containerRef = useRef<HTMLDivElement>(null);
   const [scrollTop, setScrollTop] = useState(0);
   const [viewportHeight, setViewportHeight] = useState(360);
   const window = virtualWindow(items.length, scrollTop, viewportHeight, ROW_HEIGHT, 6);
 
+  useEffect(() => {
+    const element = containerRef.current;
+    if (!element) return;
+    const measureViewport = () => {
+      setViewportHeight(element.clientHeight > 0 ? element.clientHeight : 360);
+    };
+    measureViewport();
+    if (typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver(() => {
+      measureViewport();
+    });
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, []);
+
   function updateScroll(event: UIEvent<HTMLDivElement>) {
     setScrollTop(event.currentTarget.scrollTop);
-    setViewportHeight(event.currentTarget.clientHeight);
+    setViewportHeight(event.currentTarget.clientHeight > 0 ? event.currentTarget.clientHeight : 360);
   }
 
   return (
-    <div className="activity-feed" role="list" aria-label="Task timeline" tabIndex={0} onScroll={updateScroll}>
+    <div ref={containerRef} className="activity-feed" role="list" aria-label="Task timeline" tabIndex={0} onScroll={updateScroll}>
       <div className="activity-feed-spacer" style={{ height: window.totalHeight }}>
         {items.slice(window.start, window.end).map((item, offset) => {
           const index = window.start + offset;

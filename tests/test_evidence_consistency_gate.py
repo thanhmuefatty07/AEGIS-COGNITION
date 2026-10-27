@@ -1,10 +1,51 @@
 from __future__ import annotations
 
 import json
+import shlex
 from pathlib import Path
+
+import pytest
 
 from scripts import evidence_consistency_gate as gate
 from scripts.evidence_consistency_gate import validate_manifest
+
+
+def _eligible_suite_fields(*, rust: bool = False) -> dict[str, object]:
+    argv = ["cargo", "nextest", "run", "--workspace"] if rust else ["pytest"]
+    return {
+        "command": shlex.join(argv),
+        "command_argv": argv,
+        "executed_command_argv": argv
+        if rust
+        else [
+            *argv,
+            "-o",
+            "junit_family=xunit2",
+            "-o",
+            "junit_logging=no",
+            "--junitxml",
+            "artifacts/suites/pytest-fixture/junit.xml",
+        ],
+        "count_source": "NEXTEST_SUMMARY" if rust else "PYTEST_JUNIT_XML",
+        "runner_report_sha256": None if rust else "d" * 64,
+        "runner_report_bytes": None if rust else 256,
+        "discovered": 2,
+        "passed": 2,
+        "failed": 0,
+        "ignored": 0,
+        "skipped": 0,
+        "filtered": 0,
+        "timed_out": False,
+        "termination": "EXITED",
+        "timeout_seconds": 30,
+        "owner_id": "ci-test",
+        "gate_id": "fixture",
+        "attempt_id": "fixture-1",
+        "run_key": "a" * 64,
+        "worktree_status": "CLEAN",
+        "worktree_sha256": "b" * 64,
+        "combined_output_sha256": "c" * 64,
+    }
 
 
 def manifest(commit: str) -> dict[str, object]:
@@ -66,14 +107,24 @@ def test_manifest_accepts_matching_sha_without_run_for_local() -> None:
     assert validate_manifest(manifest("a" * 40), "a" * 40, verification_index_text="a" * 40) == []
 
 
-def test_suite_release_eligibility_rejects_zero_tests() -> None:
+@pytest.mark.parametrize(
+    ("counts", "eligible"),
+    [
+        ({"discovered": 0, "passed": 0, "failed": 0, "ignored": 0, "skipped": 0}, False),
+        ({"discovered": 1, "passed": 0, "failed": 0, "ignored": 0, "skipped": 0}, False),
+        ({"discovered": 1, "passed": 1, "failed": 0, "ignored": 0, "skipped": 0}, True),
+        ({"discovered": 2, "passed": 1, "failed": 0, "ignored": 0, "skipped": 0}, False),
+    ],
+)
+def test_suite_release_eligibility_requires_passes_and_consistent_counts(
+    counts: dict[str, int], eligible: bool
+) -> None:
     candidate = {
+        **_eligible_suite_fields(),
         "schema": "aegis-suite-evidence-v1",
         "status": "PROVEN",
         "release_eligible": True,
         "exit_code": 0,
-        "discovered": 0,
-        "failed": 0,
         "timed_out": False,
         "termination": "EXITED",
         "timeout_seconds": 30,
@@ -85,7 +136,9 @@ def test_suite_release_eligibility_rejects_zero_tests() -> None:
         "worktree_sha256": "b" * 64,
         "combined_output_sha256": "c" * 64,
     }
-    assert gate.suite_artifact_release_eligible(candidate) is False
+    candidate.update(counts)
+
+    assert gate.suite_artifact_release_eligible(candidate) is eligible
 
 
 def test_registry_parity_rejects_dropped_and_policy_unknown_ids(monkeypatch, tmp_path: Path) -> None:
@@ -120,17 +173,19 @@ def test_materializer_binds_retained_suite_artifact(monkeypatch, tmp_path) -> No
     (suite_dir / "rust.json").write_text(
         json.dumps(
             {
+                **_eligible_suite_fields(rust=True),
                 "schema": "aegis-suite-evidence-v1",
                 "name": "rust-full-workspace-final",
                 "command": "cargo nextest run --workspace",
                 "commit": "a" * 40,
                 "timestamp_utc": "2026-01-01T00:00:00Z",
                 "platform": "Windows",
-                "toolchain": "rustc 1.98.1",
+                "toolchain": "rustc 1.99.1",
                 "discovered": 2,
                 "passed": 2,
                 "failed": 0,
                 "ignored": 0,
+                "skipped": 0,
                 "filtered": 0,
                 "status": "PROVEN",
                 "exit_code": 0,
@@ -205,6 +260,7 @@ def test_materializer_rejects_self_contradictory_timeout_evidence(monkeypatch, t
     (suite_dir / "timed-out.json").write_text(
         json.dumps(
             {
+                **_eligible_suite_fields(),
                 "schema": "aegis-suite-evidence-v1",
                 "name": "timed-out-final",
                 "commit": "a" * 40,
@@ -266,6 +322,7 @@ def test_materializer_rejects_boolean_numeric_evidence(monkeypatch, tmp_path) ->
     (suite_dir / "boolean-fields.json").write_text(
         json.dumps(
             {
+                **_eligible_suite_fields(),
                 "schema": "aegis-suite-evidence-v1",
                 "name": "boolean-fields-final",
                 "commit": "a" * 40,
@@ -325,6 +382,7 @@ def test_materializer_rejects_competing_identities_for_one_gate(monkeypatch, tmp
     suite_dir = tmp_path / "artifacts" / "suites"
     suite_dir.mkdir(parents=True)
     base = {
+        **_eligible_suite_fields(),
         "schema": "aegis-suite-evidence-v1",
         "commit": "a" * 40,
         "status": "PROVEN",
@@ -379,6 +437,7 @@ def test_materializer_rejects_duplicate_artifact_names(monkeypatch, tmp_path) ->
     suite_dir = tmp_path / "artifacts" / "suites"
     suite_dir.mkdir(parents=True)
     base = {
+        **_eligible_suite_fields(),
         "schema": "aegis-suite-evidence-v1",
         "name": "duplicate-name",
         "commit": "a" * 40,
@@ -425,6 +484,7 @@ def test_materializer_rejects_aliases_with_different_result_fingerprints(monkeyp
     suite_dir = tmp_path / "artifacts" / "suites"
     suite_dir.mkdir(parents=True)
     base = {
+        **_eligible_suite_fields(),
         "schema": "aegis-suite-evidence-v1",
         "commit": "a" * 40,
         "status": "PROVEN",
@@ -447,7 +507,15 @@ def test_materializer_rejects_aliases_with_different_result_fingerprints(monkeyp
         "combined_output_sha256": "f" * 64,
     }
     first = {**base, "name": "python-alias"}
-    second = {**base, "name": "python-alias-final", "passed": 1, "combined_output_sha256": "1" * 64}
+    second = {
+        **base,
+        "name": "python-alias-final",
+        "discovered": 1,
+        "passed": 1,
+        "combined_output_sha256": "1" * 64,
+    }
+    assert gate.suite_artifact_release_eligible(first)
+    assert gate.suite_artifact_release_eligible(second)
     for name, artifact in (("first.json", first), ("second.json", second)):
         (suite_dir / name).write_text(json.dumps(artifact), encoding="utf-8")
 
@@ -472,14 +540,70 @@ def test_materializer_rejects_aliases_with_different_result_fingerprints(monkeyp
     assert materialized["suites"][0]["status"] == "NOT VERIFIED"
 
 
+@pytest.mark.parametrize("suffix", ["", "-final"])
+def test_materializer_rejects_noop_evidence_through_each_name_alias(monkeypatch, tmp_path: Path, suffix: str) -> None:
+    suite_dir = tmp_path / "artifacts" / "suites"
+    suite_dir.mkdir(parents=True)
+    argv = ["python", "-c", "print('1 passed')", "pytest"]
+    candidate = {
+        **_eligible_suite_fields(),
+        "schema": "aegis-suite-evidence-v1",
+        "name": f"python-suite{suffix}",
+        "commit": "a" * 40,
+        "status": "PROVEN",
+        "release_eligible": True,
+        "exit_code": 0,
+        "command": shlex.join(argv),
+        "command_argv": argv,
+        "executed_command_argv": argv,
+        "count_source": "UNVERIFIED_OUTPUT",
+        "discovered": 1,
+        "passed": 1,
+    }
+    (suite_dir / "suite.json").write_text(json.dumps(candidate), encoding="utf-8")
+    monkeypatch.setattr(gate, "ROOT", tmp_path)
+    template = {
+        "commit": "CHECKOUT_HEAD",
+        "evidence": [
+            {
+                "id": "LOCAL-PYTHON",
+                "kind": "local",
+                "source_artifact": "python-suite",
+                "status": "NOT VERIFIED",
+                "evidence_class": "NOT VERIFIED",
+            }
+        ],
+        "suites": [{"name": "python-suite", "status": "NOT VERIFIED"}],
+        "requirements": [
+            {
+                "id": "LOCAL-REQUIREMENT",
+                "evidence_ids": ["LOCAL-PYTHON"],
+                "status": "IMPLEMENTED / NOT VERIFIED",
+                "evidence_class": "NOT VERIFIED",
+            }
+        ],
+    }
+
+    materialized = gate.materialize_for_head(template, "a" * 40)
+
+    assert not gate.suite_artifact_release_eligible(candidate)
+    assert materialized["evidence"][0]["status"] == "NOT VERIFIED"
+    assert materialized["suites"][0]["status"] == "NOT VERIFIED"
+    assert materialized["requirements"][0]["status"] == "IMPLEMENTED / NOT VERIFIED"
+
+
 def test_materializer_does_not_promote_unowned_suite_evidence(monkeypatch, tmp_path) -> None:
     suite_dir = tmp_path / "artifacts" / "suites"
     suite_dir.mkdir(parents=True)
     (suite_dir / "unowned.json").write_text(
         json.dumps(
             {
+                **_eligible_suite_fields(),
                 "schema": "aegis-suite-evidence-v1",
                 "name": "unowned-final",
+                "owner_id": "",
+                "gate_id": "",
+                "attempt_id": "",
                 "commit": "a" * 40,
                 "status": "PROVEN",
                 "exit_code": 0,
@@ -588,9 +712,7 @@ def test_gt96_traceability_statuses_cannot_drift_from_current_evidence(monkeypat
         encoding="utf-8",
     )
     traceability_path.write_text(
-        "| ID | Requirement | Status |\n"
-        "|---|---|---|\n"
-        "| GT96-001 | fixture | IMPLEMENTED / NOT VERIFIED |\n",
+        "| ID | Requirement | Status |\n|---|---|---|\n| GT96-001 | fixture | IMPLEMENTED / NOT VERIFIED |\n",
         encoding="utf-8",
     )
     monkeypatch.setattr(gate, "ROOT", tmp_path)
@@ -598,3 +720,82 @@ def test_gt96_traceability_statuses_cannot_drift_from_current_evidence(monkeypat
     monkeypatch.setattr(gate, "DEPLOYMENT_POLICY", policy_path)
     errors = gate.validate_registry_parity({"not_verified_ids": ["NV-001"]})
     assert any("GT96_TRACEABILITY.md statuses do not match" in error for error in errors)
+
+
+def test_gt96_evidence_classes_cannot_drift_in_either_traceability_matrix(monkeypatch, tmp_path: Path) -> None:
+    registry_path = tmp_path / "not_verified_registry.json"
+    policy_path = tmp_path / "deployment_policy.json"
+    evidence_path = tmp_path / "docs" / "architecture" / "evidence" / "current.json"
+    blocker_markdown = tmp_path / "docs" / "architecture" / "NOT_VERIFIED_REGISTRY.md"
+    traceability_path = tmp_path / "docs" / "architecture" / "GT96_TRACEABILITY.md"
+    detail_path = tmp_path / "docs" / "architecture" / "GT96_TRACEABILITY_DETAIL.md"
+    evidence_path.parent.mkdir(parents=True)
+    registry_path.write_text(
+        json.dumps(
+            {
+                "schema": "aegis-not-verified-registry-v1",
+                "entries": [{"id": "NV-001", "status": "NOT VERIFIED"}],
+            }
+        ),
+        encoding="utf-8",
+    )
+    policy_path.write_text(
+        json.dumps(
+            {
+                "schema": "aegis-deployment-policy-v1",
+                "blockers": [],
+                "non_blocking_registry_ids": ["NV-001"],
+            }
+        ),
+        encoding="utf-8",
+    )
+    blocker_markdown.write_text(
+        "| ID | Area | Reason | Risk | Required | Owner | Status |\n"
+        "|---|---|---|---|---|---|---|\n"
+        "| NV-001 | Runtime | reason | risk | closure | owner | NOT VERIFIED |\n",
+        encoding="utf-8",
+    )
+    evidence_path.write_text(
+        json.dumps(
+            {
+                "requirements": [
+                    {
+                        "id": "GT96-001",
+                        "evidence_class": "NOT VERIFIED",
+                        "status": "IMPLEMENTED / NOT VERIFIED",
+                    }
+                ]
+            }
+        ),
+        encoding="utf-8",
+    )
+    traceability_path.write_text(
+        "| ID | Requirement | Evidence class | Status |\n"
+        "|---|---|---|---|\n"
+        "| GT96-001 | fixture | PROVEN | IMPLEMENTED / NOT VERIFIED |\n",
+        encoding="utf-8",
+    )
+    detail_path.write_text(
+        "| ID | Rationale | Evidence class | Status |\n|---|---|---|---|\n| GT96-001 | fixture | PROVEN | PROVEN |\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(gate, "ROOT", tmp_path)
+    monkeypatch.setattr(gate, "NOT_VERIFIED_REGISTRY", registry_path)
+    monkeypatch.setattr(gate, "DEPLOYMENT_POLICY", policy_path)
+
+    errors = gate.validate_registry_parity({"not_verified_ids": ["NV-001"]})
+
+    assert any("GT96_TRACEABILITY.md evidence classes do not match current evidence" in error for error in errors)
+    assert any(
+        "GT96_TRACEABILITY_DETAIL.md evidence classes do not match current evidence" in error for error in errors
+    )
+    assert any("GT96_TRACEABILITY_DETAIL.md statuses do not match current evidence" in error for error in errors)
+
+    evidence_path.write_text(
+        json.dumps({"requirements": [{"id": "GT96-001", "status": "IMPLEMENTED / NOT VERIFIED"}]}),
+        encoding="utf-8",
+    )
+    missing_class_errors = gate.validate_registry_parity({"not_verified_ids": ["NV-001"]})
+    assert any(
+        "current evidence GT96 evidence classes are missing: ['GT96-001']" in error for error in missing_class_errors
+    )

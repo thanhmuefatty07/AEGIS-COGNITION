@@ -1,4 +1,4 @@
-import type { SourceSnapshot } from "./protocol";
+import type { MemoryFileRelation, SourceSnapshot } from "./protocol";
 
 export const WORKSPACE_GRAPH_SCHEMA = "aegis-workspace-graph-v1" as const;
 
@@ -11,9 +11,22 @@ export type WorkspaceGraphNode = {
   kind: WorkspaceGraphNodeKind;
   label: string;
   path: string | null;
+  source_content_hash?: string | null;
+  source_stale?: boolean;
   language: string | null;
   extraction_status: string | null;
   symbols: SourceSnapshot["files"][number]["symbols"];
+};
+
+export type WorkspaceGraphMemoryCandidateSource = {
+  certainty: "candidate";
+  basis: "lexical_path_search";
+  verified_relation: false;
+  project_id: string;
+  source_revision: string;
+  source_path: string;
+  source_content_hash: string | null;
+  source_state: "current" | "stale";
 };
 
 export type WorkspaceGraphEdge = {
@@ -35,6 +48,8 @@ export type WorkspaceGraph = {
   truncated: boolean;
   stats: {
     files: number;
+    snapshot_files: number;
+    source_overflowed: boolean;
     directories: number;
     symbols: number;
     import_candidates: number;
@@ -44,6 +59,10 @@ export type WorkspaceGraph = {
   };
 };
 
+export function fileMemoryRelationProjectId(workspaceProjectId: string): string {
+  return `project:${workspaceProjectId}`;
+}
+
 const DEFAULT_FILE_LIMIT = 600;
 const IMPORT_SUFFIXES = ["", ".py", ".rs", ".ts", ".tsx", ".js", ".jsx", ".json"];
 
@@ -51,11 +70,15 @@ export function buildWorkspaceGraph(
   snapshot: SourceSnapshot,
   options: { maxFiles?: number } = {},
 ): WorkspaceGraph {
-  const maxFiles = options.maxFiles ?? DEFAULT_FILE_LIMIT;
+  const requestedLimit = options.maxFiles ?? DEFAULT_FILE_LIMIT;
+  const maxFiles = Number.isFinite(requestedLimit)
+    ? Math.min(DEFAULT_FILE_LIMIT, Math.max(0, Math.floor(requestedLimit)))
+    : DEFAULT_FILE_LIMIT;
   const files = [...snapshot.files].sort((left, right) => left.relative_path.localeCompare(right.relative_path));
   const selectedFiles = files.slice(0, maxFiles);
   const selectedPaths = new Set(selectedFiles.map((file) => file.relative_path));
-  const projectId = `project:${snapshot.identity.project_id}`;
+  const stalePaths = new Set(snapshot.stale_paths);
+  const projectId = fileMemoryRelationProjectId(snapshot.identity.project_id);
   const nodes: WorkspaceGraphNode[] = [{
     id: projectId,
     kind: "project",
@@ -80,6 +103,8 @@ export function buildWorkspaceGraph(
       kind: "file",
       label: parts.at(-1) ?? file.relative_path,
       path: file.relative_path,
+      source_content_hash: file.content_hash,
+      source_stale: stalePaths.has(file.relative_path),
       language: file.language,
       extraction_status: file.extraction_status,
       symbols: file.symbols,
@@ -126,6 +151,8 @@ export function buildWorkspaceGraph(
 
   const seenRelations = new Set<string>();
   let unresolvedCandidates = 0;
+  let importCandidates = 0;
+  let lineageCandidates = 0;
   for (const file of selectedFiles) {
     const source = fileNodeId(snapshot.identity.project_id, file.relative_path);
     for (const imported of file.imports) {
@@ -137,6 +164,7 @@ export function buildWorkspaceGraph(
       const relationKey = `${source}|${targetPath}|import_candidate`;
       if (seenRelations.has(relationKey)) continue;
       seenRelations.add(relationKey);
+      importCandidates += 1;
       edges.push({
         id: `import:${file.relative_path}:${targetPath}`,
         source,
@@ -159,6 +187,7 @@ export function buildWorkspaceGraph(
       const relationKey = `${source}|${targetPath}|lineage_candidate`;
       if (seenRelations.has(relationKey)) continue;
       seenRelations.add(relationKey);
+      lineageCandidates += 1;
       edges.push({
         id: `lineage:${lineage.source_path}:${lineage.symbol}:${targetPath}`,
         source,
@@ -181,14 +210,85 @@ export function buildWorkspaceGraph(
     truncated: snapshot.overflowed || files.length > selectedFiles.length,
     stats: {
       files: fileNodes.length,
+      snapshot_files: files.length,
+      source_overflowed: snapshot.overflowed,
       directories: sortedDirectories.length,
       symbols: fileNodes.reduce((total, node) => total + node.symbols.length, 0),
-      import_candidates: edges.filter((edge) => edge.kind === "import_candidate").length,
-      lineage_candidates: edges.filter((edge) => edge.kind === "lineage_candidate").length,
+      import_candidates: importCandidates,
+      lineage_candidates: lineageCandidates,
       unresolved_candidates: unresolvedCandidates,
       omitted_files: Math.max(0, files.length - selectedFiles.length),
     },
   };
+}
+
+export function memorySearchCandidateSource(
+  graph: WorkspaceGraph,
+  node: WorkspaceGraphNode,
+): WorkspaceGraphMemoryCandidateSource | null {
+  if (node.kind !== "file" || !node.path) return null;
+  return {
+    certainty: "candidate",
+    basis: "lexical_path_search",
+    verified_relation: false,
+    project_id: graph.project_id,
+    source_revision: graph.source_revision,
+    source_path: node.path,
+    source_content_hash: node.source_content_hash ?? null,
+    source_state: node.source_stale ? "stale" : "current",
+  };
+}
+
+export function isMemorySearchCandidateCurrent(
+  source: WorkspaceGraphMemoryCandidateSource,
+  graph: WorkspaceGraph,
+  node: WorkspaceGraphNode,
+): boolean {
+  const current = memorySearchCandidateSource(graph, node);
+  return current !== null
+    && current.project_id === source.project_id
+    && current.source_revision === source.source_revision
+    && current.source_path === source.source_path
+    && current.source_content_hash === source.source_content_hash
+    && current.source_state === source.source_state;
+}
+
+export type MemoryFileRelationStatus = "Current" | "Stale source" | "Stale memory" | "Memory not active";
+
+export function memoryFileRelationStatus(
+  relation: MemoryFileRelation,
+  graph: WorkspaceGraph,
+  node: WorkspaceGraphNode,
+): MemoryFileRelationStatus {
+  const sourceMatches = node.kind === "file"
+    && relation.project_id === fileMemoryRelationProjectId(graph.project_id)
+    && relation.relative_path === node.path
+    && node.source_content_hash !== null
+    && node.source_content_hash !== undefined
+    && relation.source_content_hash === node.source_content_hash
+    && !node.source_stale;
+  if (!sourceMatches) return "Stale source";
+  const memoryEligible = (relation.memory_lifecycle === "CANDIDATE" || relation.memory_lifecycle === "ACTIVE")
+    && (relation.memory_validation === "UNREVIEWED" || relation.memory_validation === "ACCEPTED");
+  if (!memoryEligible) {
+    return "Memory not active";
+  }
+  if (!relation.memory_content_current) return "Stale memory";
+  return "Current";
+}
+
+export function isMemoryFileRelationSourceCurrent(
+  source: WorkspaceGraphMemoryCandidateSource,
+  graph: WorkspaceGraph,
+): boolean {
+  if (source.project_id !== graph.project_id) return false;
+  const node = graph.nodes.find((candidate) => candidate.kind === "file" && candidate.path === source.source_path);
+  const current = node ? memorySearchCandidateSource(graph, node) : null;
+  return current !== null
+    && current.project_id === source.project_id
+    && current.source_path === source.source_path
+    && current.source_content_hash === source.source_content_hash
+    && current.source_state === source.source_state;
 }
 
 export function fileNodeId(projectId: string, path: string): string {
@@ -199,14 +299,30 @@ function directoryNodeId(projectId: string, path: string): string {
   return `directory:${projectId}:${path}`;
 }
 
+function normalizeRelativeImportSpec(raw: string): string {
+  if (!raw.startsWith(".") || raw.includes("/")) return raw;
+  const match = /^(\.+)(.*)$/.exec(raw);
+  if (!match) return raw;
+  const dots = match[1].length;
+  const rest = match[2].replaceAll(".", "/");
+  const prefix = dots === 1 ? "." : Array.from({ length: dots - 1 }, () => "..").join("/");
+  return rest ? `${prefix}/${rest}` : prefix;
+}
+
 function resolveImport(sourcePath: string, imported: string, knownPaths: Set<string>): string | null {
   const raw = imported.trim().replace(/^['"]|['"]$/g, "").replaceAll("\\", "/");
-  if (!raw) return null;
+  if (!raw || raw.startsWith("/")) return null;
   const candidates = new Set<string>();
   const sourceDirectory = sourcePath.includes("/") ? sourcePath.slice(0, sourcePath.lastIndexOf("/")) : "";
-  const base = raw.startsWith(".") ? joinPath(sourceDirectory, raw) : raw;
+  const normalizedSpec = normalizeRelativeImportSpec(raw);
+  const base = normalizedSpec.startsWith(".")
+    ? joinPath(sourceDirectory, normalizedSpec)
+    : joinPath("", normalizedSpec);
+  if (base === null) return null;
   candidates.add(base);
-  if (!raw.includes("/") && raw.includes(".")) candidates.add(raw.replaceAll(".", "/"));
+  if (!raw.startsWith(".") && !raw.includes("/") && raw.includes(".")) {
+    candidates.add(raw.replaceAll(".", "/"));
+  }
   for (const candidate of [...candidates]) {
     const withoutExtension = candidate.replace(/\.(py|rs|ts|tsx|js|jsx|json)$/, "");
     for (const suffix of IMPORT_SUFFIXES) candidates.add(`${withoutExtension}${suffix}`);
@@ -220,13 +336,79 @@ function resolveImport(sourcePath: string, imported: string, knownPaths: Set<str
   return null;
 }
 
-function joinPath(directory: string, child: string): string {
-  const parts = `${directory}/${child}`.split("/");
+function joinPath(directory: string, child: string): string | null {
+  const parts = (directory ? `${directory}/${child}` : child).split("/");
   const result: string[] = [];
   for (const part of parts) {
     if (!part || part === ".") continue;
-    if (part === "..") result.pop();
-    else result.push(part);
+    if (part === "..") {
+      if (result.length === 0) return null;
+      result.pop();
+    } else {
+      result.push(part);
+    }
   }
   return result.join("/");
+}
+
+export function orderWorkspaceGraphNodes(
+  files: WorkspaceGraphNode[],
+  edges: WorkspaceGraphEdge[],
+): WorkspaceGraphNode[] {
+  if (files.length <= 1) return files;
+  const visibleIds = new Set(files.map((file) => file.id));
+  const outDegree = new Map<string, number>();
+  const inDegree = new Map<string, number>();
+  let hasDependencyEdges = false;
+  for (const edge of edges) {
+    if (edge.kind === "contains") continue;
+    if (!visibleIds.has(edge.source) || !visibleIds.has(edge.target)) continue;
+    hasDependencyEdges = true;
+    outDegree.set(edge.source, (outDegree.get(edge.source) ?? 0) + 1);
+    inDegree.set(edge.target, (inDegree.get(edge.target) ?? 0) + 1);
+  }
+  if (!hasDependencyEdges) return files;
+  const decorated = files.map((node) => {
+    const path = node.path ?? "";
+    const sep = path.lastIndexOf("/");
+    const folder = sep < 0 ? "" : path.slice(0, sep);
+    const inDeg = inDegree.get(node.id) ?? 0;
+    const outDeg = outDegree.get(node.id) ?? 0;
+    return {
+      node,
+      folder,
+      connections: inDeg + outDeg,
+      inDeg,
+      sortKey: path || node.label,
+    };
+  });
+  decorated.sort((left, right) => {
+    if (left.folder !== right.folder) {
+      return left.folder < right.folder ? -1 : 1;
+    }
+    if (left.connections !== right.connections) {
+      return right.connections - left.connections;
+    }
+    if (left.inDeg !== right.inDeg) {
+      return right.inDeg - left.inDeg;
+    }
+    return left.sortKey < right.sortKey ? -1 : left.sortKey > right.sortKey ? 1 : 0;
+  });
+  return decorated.map((item) => item.node);
+}
+
+export function workspaceGraphEdgePath(
+  from: { x: number; y: number },
+  to: { x: number; y: number },
+): string {
+  const dx = to.x - from.x;
+  const dy = to.y - from.y;
+  if (Math.abs(dx) >= Math.abs(dy)) {
+    const c1x = Math.round(from.x + dx * 0.45);
+    const c2x = Math.round(to.x - dx * 0.45);
+    return `M ${from.x} ${from.y} C ${c1x} ${from.y}, ${c2x} ${to.y}, ${to.x} ${to.y}`;
+  }
+  const c1y = Math.round(from.y + dy * 0.45);
+  const c2y = Math.round(to.y - dy * 0.45);
+  return `M ${from.x} ${from.y} C ${from.x} ${c1y}, ${to.x} ${c2y}, ${to.x} ${to.y}`;
 }

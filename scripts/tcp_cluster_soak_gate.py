@@ -25,7 +25,8 @@ def evaluate_tcp_cluster_soak_gate(root: str | Path = ROOT) -> dict[str, Any]:
     base_admission = report.get("real_multi_machine_cluster_admission", {})
     base_admission = base_admission if isinstance(base_admission, dict) else {}
     admission = _real_multi_machine_cluster_admission(root_path, report, base_admission)
-    real_multi_node_cluster_test_present = admission.get("capture_valid") is True
+    # This gate verifies candidate captures only; it does not prove real topology.
+    real_multi_node_cluster_test_present = False
     production_blocked_without_real_multi_node = not real_multi_node_cluster_test_present
     checks = (
         _check("artifact_present", bool(artifact)),
@@ -39,7 +40,9 @@ def evaluate_tcp_cluster_soak_gate(root: str | Path = ROOT) -> dict[str, Any]:
         _check("replay_hash_chain_valid", report.get("replay_hash_chain_valid") is True),
         _check("tcp_listener_bound", report.get("tcp_listener_bound") is True),
         _check("tcp_worker_connections", report.get("tcp_worker_connections") == report.get("worker_count")),
-        _check("tcp_round_trips_recorded", _timing_window(report, "tcp_round_trip", report.get("tcp_round_trip_count"))),
+        _check(
+            "tcp_round_trips_recorded", _timing_window(report, "tcp_round_trip", report.get("tcp_round_trip_count"))
+        ),
         _check("tcp_round_trip_count", report.get("tcp_round_trip_count") == report.get("work_item_count")),
         _check("tcp_payload_bytes_sent", report.get("tcp_payload_bytes_sent") == 24 * (1 + 228)),
         _check("tcp_payload_bytes_received", report.get("tcp_payload_bytes_received") == 24 * 156),
@@ -52,22 +55,55 @@ def evaluate_tcp_cluster_soak_gate(root: str | Path = ROOT) -> dict[str, Any]:
         _check("report_hash_nonzero", _hash_array(report.get("report_hash"))),
         _check("tcp_loopback_gap_disclosed", report.get("loopback_tcp_only") is True),
         _check("multi_machine_gap_disclosed", report.get("multi_machine_real_cluster") is False),
-        _check("real_multi_machine_admission_schema", admission.get("schema") == REAL_MULTI_MACHINE_CLUSTER_ADMISSION_SCHEMA),
-        _check("real_multi_machine_admission_path", admission.get("expected_capture_path") == REAL_MULTI_MACHINE_CLUSTER_EXPECTED_PATH),
+        _check(
+            "real_multi_machine_admission_schema",
+            admission.get("schema") == REAL_MULTI_MACHINE_CLUSTER_ADMISSION_SCHEMA,
+        ),
+        _check(
+            "real_multi_machine_admission_path",
+            admission.get("expected_capture_path") == REAL_MULTI_MACHINE_CLUSTER_EXPECTED_PATH,
+        ),
         _check("real_multi_machine_admission_hash", _hash_array(admission.get("admission_hash"))),
         _check("real_multi_machine_network_contract_hash", _hash_array(admission.get("network_contract_hash"))),
         _check("real_multi_machine_topology_contract_hash", _hash_array(admission.get("topology_contract_hash"))),
-        _check("real_multi_machine_required_worker_count", admission.get("required_worker_count") == report.get("worker_count")),
-        _check("real_multi_machine_required_work_items", admission.get("required_work_item_count") == report.get("work_item_count")),
-        _check("real_multi_machine_required_round_trips", admission.get("required_round_trip_count") == report.get("tcp_round_trip_count")),
-        _check("real_multi_machine_local_worker_count", admission.get("local_loopback_worker_count") == report.get("worker_count")),
-        _check("real_multi_machine_local_work_items", admission.get("local_loopback_work_item_count") == report.get("work_item_count")),
-        _check("real_multi_machine_local_round_trips", admission.get("local_loopback_round_trip_count") == report.get("tcp_round_trip_count")),
-        _check("real_multi_machine_admission_blocker", admission.get("production_blocker_id") == REAL_MULTI_MACHINE_CLUSTER_BLOCKER_ID),
+        _check(
+            "real_multi_machine_required_worker_count",
+            admission.get("required_worker_count") == report.get("worker_count"),
+        ),
+        _check(
+            "real_multi_machine_required_work_items",
+            admission.get("required_work_item_count") == report.get("work_item_count"),
+        ),
+        _check(
+            "real_multi_machine_required_round_trips",
+            admission.get("required_round_trip_count") == report.get("tcp_round_trip_count"),
+        ),
+        _check(
+            "real_multi_machine_local_worker_count",
+            admission.get("local_loopback_worker_count") == report.get("worker_count"),
+        ),
+        _check(
+            "real_multi_machine_local_work_items",
+            admission.get("local_loopback_work_item_count") == report.get("work_item_count"),
+        ),
+        _check(
+            "real_multi_machine_local_round_trips",
+            admission.get("local_loopback_round_trip_count") == report.get("tcp_round_trip_count"),
+        ),
+        _check(
+            "real_multi_machine_admission_blocker",
+            admission.get("production_blocker_id") == REAL_MULTI_MACHINE_CLUSTER_BLOCKER_ID,
+        ),
         _check("real_multi_machine_admission_state_bound", _admission_state_bound(admission)),
-        _check("real_multi_machine_capture_missing_or_valid", (not admission.get("capture_present")) or admission.get("capture_valid") is True),
+        _check(
+            "real_multi_machine_capture_missing_or_valid",
+            (not admission.get("capture_present")) or admission.get("capture_valid") is True,
+        ),
         _check("real_multi_machine_state_recorded", True),
-        _check("production_blocked_without_real_multi_node_soak", production_blocked_without_real_multi_node == (not real_multi_node_cluster_test_present)),
+        _check(
+            "production_blocked_without_real_multi_node_soak",
+            production_blocked_without_real_multi_node == (not real_multi_node_cluster_test_present),
+        ),
     )
     payload = {
         "suite_name": "AEGIS TCP Cluster Soak Gate",
@@ -115,8 +151,7 @@ def evaluate_tcp_cluster_soak_gate(root: str | Path = ROOT) -> dict[str, Any]:
         },
         "real_multi_machine_cluster_admission_hash": admission.get("admission_hash", []),
         "real_multi_machine_cluster_admission_missing": (
-            admission.get("capture_present") is False
-            and admission.get("admission_status") == "missing"
+            admission.get("capture_present") is False and admission.get("admission_status") == "missing"
         ),
         "real_multi_machine_cluster_capture_missing_or_valid": (
             (not admission.get("capture_present")) or admission.get("capture_valid") is True
@@ -231,7 +266,9 @@ def write_real_multi_machine_cluster_soak_capture(
         "round_trip_count": capture.get("round_trip_count", 0),
         "distinct_machine_count": capture.get("distinct_machine_count", 0),
         "overall_ok": capture_valid,
-        "error": "" if capture_valid else probe.get("error", "real multi-machine cluster soak did not satisfy capture contract"),
+        "error": ""
+        if capture_valid
+        else probe.get("error", "real multi-machine cluster soak did not satisfy capture contract"),
     }
 
 
@@ -297,7 +334,7 @@ def _real_multi_machine_cluster_probe(report: dict[str, Any], admission: dict[st
         elapsed_ns = time.perf_counter_ns() - started_ns
         try:
             response = json.loads(response_bytes.decode("utf-8")) if response_bytes else {}
-        except (UnicodeDecodeError, json.JSONDecodeError):
+        except UnicodeDecodeError, json.JSONDecodeError:
             response = {}
         round_trips.append(
             {
@@ -387,10 +424,11 @@ def _real_multi_machine_capture(
         for endpoint in endpoints
         if isinstance(endpoint, dict) and isinstance(endpoint.get("machine_id"), str)
     }
-    non_loopback_hosts = all(
-        isinstance(endpoint, dict) and not _loopback_host(str(endpoint.get("host", "")))
-        for endpoint in endpoints
-    ) if isinstance(endpoints, list) else False
+    non_loopback_hosts = (
+        all(isinstance(endpoint, dict) and not _loopback_host(str(endpoint.get("host", ""))) for endpoint in endpoints)
+        if isinstance(endpoints, list)
+        else False
+    )
     accepted_responses = 0
     if isinstance(round_trips, list):
         for row in round_trips:
@@ -446,8 +484,12 @@ def _real_multi_machine_capture_valid(
         and capture.get("topology_contract") == admission.get("topology_contract")
         and capture.get("topology_contract_hash") == admission.get("topology_contract_hash")
         and capture.get("required_worker_count") == admission.get("required_worker_count") == report.get("worker_count")
-        and capture.get("required_work_item_count") == admission.get("required_work_item_count") == report.get("work_item_count")
-        and capture.get("required_round_trip_count") == admission.get("required_round_trip_count") == report.get("tcp_round_trip_count")
+        and capture.get("required_work_item_count")
+        == admission.get("required_work_item_count")
+        == report.get("work_item_count")
+        and capture.get("required_round_trip_count")
+        == admission.get("required_round_trip_count")
+        == report.get("tcp_round_trip_count")
         and capture.get("loopback_network_trace_hash") == report.get("network_trace_hash")
         and capture.get("loopback_candidate_result_hash") == report.get("candidate_result_hash")
         and capture.get("loopback_replay_last_hash") == report.get("replay_last_hash")
@@ -471,8 +513,7 @@ def _real_multi_machine_capture_valid(
         and isinstance(round_trips, list)
         and len(round_trips) == report.get("tcp_round_trip_count")
         and all(
-            isinstance(row, dict)
-            and _cluster_worker_response_valid(row, row.get("response", {}), admission)
+            isinstance(row, dict) and _cluster_worker_response_valid(row, row.get("response", {}), admission)
             for row in round_trips
         )
     )
@@ -515,7 +556,7 @@ def _read_capture(path: Path) -> tuple[dict[str, Any], bool, bytes, str]:
         return {}, True, capture_bytes, "empty"
     try:
         payload = json.loads(capture_bytes.decode("utf-8"))
-    except (UnicodeDecodeError, json.JSONDecodeError):
+    except UnicodeDecodeError, json.JSONDecodeError:
         return {}, True, capture_bytes, "invalid-json"
     if not isinstance(payload, dict):
         return {}, True, capture_bytes, "non-object"
@@ -545,15 +586,15 @@ def _hash_payload_array(value: Any) -> list[int]:
 
 
 def _nonzero_hex(value: str) -> bool:
-    return len(value) == 64 and all(char in "0123456789abcdef" for char in value.lower()) and any(char != "0" for char in value)
+    return (
+        len(value) == 64
+        and all(char in "0123456789abcdef" for char in value.lower())
+        and any(char != "0" for char in value)
+    )
 
 
 def _zero_hash_array(value: Any) -> bool:
-    return (
-        isinstance(value, list)
-        and len(value) == 32
-        and all(isinstance(item, int) and item == 0 for item in value)
-    )
+    return isinstance(value, list) and len(value) == 32 and all(isinstance(item, int) and item == 0 for item in value)
 
 
 def _admission_state_bound(admission: dict[str, Any]) -> bool:
@@ -573,7 +614,7 @@ def _admission_state_bound(admission: dict[str, Any]) -> bool:
 def _read_json(path: Path) -> dict[str, Any]:
     try:
         payload = json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError, UnicodeDecodeError):
+    except OSError, json.JSONDecodeError, UnicodeDecodeError:
         return {}
     return payload if isinstance(payload, dict) else {}
 

@@ -186,9 +186,7 @@ def test_progress_checkpoint_failure_is_not_treated_as_success() -> None:
     execution_id = next(iter(run.tool_execution_admissions))
     assert execution_id in run.tool_executions
     assert run.tool_execution_admissions[execution_id]["tool_name"] == "lab.progress_checkpoint"
-    settlements = [
-        event.payload for event in run.events if event.kind == "tool_execution_recorded"
-    ]
+    settlements = [event.payload for event in run.events if event.kind == "tool_execution_recorded"]
     assert settlements[-1]["status"] == "REJECTED"
 
 

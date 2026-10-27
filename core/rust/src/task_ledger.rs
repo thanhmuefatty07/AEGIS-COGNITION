@@ -1,5 +1,6 @@
 use blake3::Hasher;
 use std::collections::{BTreeMap, BTreeSet};
+use std::num::NonZeroU64;
 
 pub type TaskId = u128;
 type ChildrenByDependency = BTreeMap<TaskId, Vec<TaskId>>;
@@ -8,6 +9,37 @@ type TopologicalOrderWithChildren = (Vec<TaskId>, ChildrenByDependency);
 pub const PRIORITY_WEIGHT_CRITICAL_PATH: u64 = 1_000_000_000;
 pub const PRIORITY_WEIGHT_BLOCKED_DESCENDANT: u64 = 1_000_000;
 pub const PRIORITY_WEIGHT_EVIDENCE_UNBLOCK: u64 = 1_000;
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+struct RetryPolicy {
+    max_total_attempts: u8,
+    initial_backoff_ms: u16,
+    max_backoff_ms: u16,
+}
+
+impl Default for RetryPolicy {
+    fn default() -> Self {
+        Self {
+            max_total_attempts: 3,
+            initial_backoff_ms: 2_000,
+            max_backoff_ms: 4_000,
+        }
+    }
+}
+
+impl RetryPolicy {
+    fn delay_after(self, completed_attempt_id: u64) -> Option<u64> {
+        if completed_attempt_id == 0 || completed_attempt_id >= u64::from(self.max_total_attempts) {
+            return None;
+        }
+        let exponent = completed_attempt_id.saturating_sub(1).min(63) as u32;
+        let multiplier = 1_u64.checked_shl(exponent).unwrap_or(u64::MAX);
+        let delay = u64::from(self.initial_backoff_ms)
+            .saturating_mul(multiplier)
+            .min(u64::from(self.max_backoff_ms));
+        (delay > 0).then_some(delay)
+    }
+}
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum TaskStatus {
@@ -36,6 +68,7 @@ pub struct TaskCard {
     pub blocked_descendant_count: u32,
     pub evidence_unblock_count: u32,
     pub hard_deadline_ms: Option<u64>,
+    retry_not_before_ms: Option<NonZeroU64>,
     insertion_order: u64,
 }
 
@@ -72,6 +105,7 @@ pub enum TaskLedgerError {
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct TaskLedger {
     tasks: BTreeMap<TaskId, TaskCard>,
+    retry_policy: RetryPolicy,
     deadline_horizon_ms: u64,
     next_insertion_order: u64,
     state_epoch: u64,
@@ -130,13 +164,11 @@ impl TaskStatus {
                     | Self::Cancelling
                     | Self::TimedOut
                     | Self::NeedsReconciliation
-            ) | (
-                Self::RetryWait,
-                Self::Ready | Self::Cancelled | Self::TimedOut
-            ) | (
-                Self::Cancelling,
-                Self::Cancelled | Self::Failed | Self::NeedsReconciliation
-            )
+            ) | (Self::RetryWait, Self::Cancelled | Self::TimedOut)
+                | (
+                    Self::Cancelling,
+                    Self::Cancelled | Self::Failed | Self::NeedsReconciliation
+                )
         )
     }
 
@@ -175,6 +207,7 @@ impl TaskCard {
             blocked_descendant_count: 0,
             evidence_unblock_count,
             hard_deadline_ms,
+            retry_not_before_ms: None,
             insertion_order: 0,
         }
     }
@@ -188,12 +221,17 @@ impl TaskCard {
         self.attempt_id = attempt_id.max(1);
         self
     }
+
+    pub(crate) fn retry_not_before_ms(&self) -> Option<u64> {
+        self.retry_not_before_ms.map(NonZeroU64::get)
+    }
 }
 
 impl TaskLedger {
     pub fn new(deadline_horizon_ms: u64) -> Self {
         Self {
             tasks: BTreeMap::new(),
+            retry_policy: RetryPolicy::default(),
             deadline_horizon_ms,
             next_insertion_order: 1,
             state_epoch: 0,
@@ -212,6 +250,10 @@ impl TaskLedger {
                 .any(|dependency| *dependency == 0 || *dependency == task.task_id)
         {
             return Err(TaskLedgerError::InvalidTask(task.task_id));
+        }
+        if task.attempt_id == 0 || task.attempt_id > u64::from(self.retry_policy.max_total_attempts)
+        {
+            return Err(TaskLedgerError::InvalidAttempt(task.task_id));
         }
         if self.tasks.contains_key(&task.task_id) {
             return Err(TaskLedgerError::DuplicateTask(task.task_id));
@@ -285,6 +327,9 @@ impl TaskLedger {
                 return Ok(());
             }
             task.status = status;
+            if status != TaskStatus::RetryWait {
+                task.retry_not_before_ms = None;
+            }
         }
         self.bump_state_epoch();
         Ok(())
@@ -318,6 +363,9 @@ impl TaskLedger {
         self.set_status(task_id, status)
     }
 
+    /// Retained for source compatibility; retry attempts must be committed by
+    /// `AuthoritativeRuntime` only after the resource admission succeeds.
+    #[deprecated(note = "retry attempts are committed by AuthoritativeRuntime after admission")]
     pub fn set_attempt_id(
         &mut self,
         task_id: TaskId,
@@ -326,14 +374,108 @@ impl TaskLedger {
         if attempt_id == 0 {
             return Err(TaskLedgerError::InvalidAttempt(task_id));
         }
+        self.tasks
+            .get(&task_id)
+            .ok_or(TaskLedgerError::MissingTask(task_id))?;
+        Err(TaskLedgerError::InvalidAttempt(task_id))
+    }
+
+    pub(crate) fn retry_delay_after_current_attempt(&self, task_id: TaskId) -> Option<u64> {
+        let task = self.tasks.get(&task_id)?;
+        self.retry_policy.delay_after(task.attempt_id)
+    }
+
+    pub(crate) fn schedule_retry_wait(
+        &mut self,
+        task_id: TaskId,
+        not_before_ms: u64,
+    ) -> Result<(), TaskLedgerError> {
+        let not_before =
+            NonZeroU64::new(not_before_ms).ok_or(TaskLedgerError::InvalidAttempt(task_id))?;
+        self.validate_retry_wait(task_id, not_before_ms)?;
         let task = self
             .tasks
             .get_mut(&task_id)
             .ok_or(TaskLedgerError::MissingTask(task_id))?;
-        if attempt_id <= task.attempt_id || task.status != TaskStatus::RetryWait {
+        task.retry_not_before_ms = Some(not_before);
+        task.status = TaskStatus::RetryWait;
+        self.bump_state_epoch();
+        Ok(())
+    }
+
+    pub(crate) fn validate_retry_wait(
+        &self,
+        task_id: TaskId,
+        not_before_ms: u64,
+    ) -> Result<(), TaskLedgerError> {
+        let task = self
+            .tasks
+            .get(&task_id)
+            .ok_or(TaskLedgerError::MissingTask(task_id))?;
+        if task.status != TaskStatus::Running
+            || !task.status.can_transition_to(TaskStatus::RetryWait)
+            || self.retry_policy.delay_after(task.attempt_id).is_none()
+            || task
+                .hard_deadline_ms
+                .is_some_and(|deadline_ms| not_before_ms >= deadline_ms)
+        {
+            return Err(TaskLedgerError::InvalidStatusTransition {
+                task_id,
+                from: task.status,
+                to: TaskStatus::RetryWait,
+            });
+        }
+        Ok(())
+    }
+
+    pub(crate) fn validate_retry_start(
+        &self,
+        task_id: TaskId,
+        attempt_id: u64,
+        now_ms: u64,
+    ) -> Result<(), TaskLedgerError> {
+        let task = self
+            .tasks
+            .get(&task_id)
+            .ok_or(TaskLedgerError::MissingTask(task_id))?;
+        if task.status != TaskStatus::RetryWait
+            || task.attempt_id.checked_add(1) != Some(attempt_id)
+            || attempt_id > u64::from(self.retry_policy.max_total_attempts)
+            || task
+                .retry_not_before_ms()
+                .is_none_or(|not_before_ms| now_ms < not_before_ms)
+            || task
+                .hard_deadline_ms
+                .is_some_and(|deadline_ms| now_ms >= deadline_ms)
+        {
             return Err(TaskLedgerError::InvalidAttempt(task_id));
         }
+        let valid_transition_path = TaskStatus::Ready.can_transition_to(TaskStatus::Admitted)
+            && TaskStatus::Admitted.can_transition_to(TaskStatus::Running);
+        if !valid_transition_path {
+            return Err(TaskLedgerError::InvalidStatusTransition {
+                task_id,
+                from: task.status,
+                to: TaskStatus::Running,
+            });
+        }
+        Ok(())
+    }
+
+    pub(crate) fn start_retry_attempt(
+        &mut self,
+        task_id: TaskId,
+        attempt_id: u64,
+        now_ms: u64,
+    ) -> Result<(), TaskLedgerError> {
+        self.validate_retry_start(task_id, attempt_id, now_ms)?;
+        let task = self
+            .tasks
+            .get_mut(&task_id)
+            .ok_or(TaskLedgerError::MissingTask(task_id))?;
         task.attempt_id = attempt_id;
+        task.retry_not_before_ms = None;
+        task.status = TaskStatus::Running;
         self.bump_state_epoch();
         Ok(())
     }
@@ -618,13 +760,19 @@ impl TaskLedger {
         Ok(task_ids)
     }
 
-    fn ledger_state_hash(&self) -> Result<[u8; 32], TaskLedgerError> {
+    pub(crate) fn ledger_state_hash(&self) -> Result<[u8; 32], TaskLedgerError> {
         self.validate_dependencies()?;
         Ok(task_ledger_state_hash(
             self.state_epoch,
             self.deadline_horizon_ms,
+            self.retry_policy,
             &self.tasks,
         ))
+    }
+
+    #[cfg(test)]
+    pub(crate) fn ledger_state_hash_for_test(&self) -> Result<[u8; 32], TaskLedgerError> {
+        self.ledger_state_hash()
     }
 
     fn bump_state_epoch(&mut self) {
@@ -855,7 +1003,7 @@ fn task_dependency_hash(dependency_ids: &[TaskId]) -> [u8; 32] {
 
 fn task_card_state_hash(task: &TaskCard) -> [u8; 32] {
     let mut hasher = Hasher::new();
-    hasher.update(b"aegis-task-card-state-v1");
+    hasher.update(b"aegis-task-card-state-v2");
     update_u128(&mut hasher, task.task_id);
     update_u64(&mut hasher, task.attempt_id);
     update_task_status(&mut hasher, task.status);
@@ -866,6 +1014,7 @@ fn task_card_state_hash(task: &TaskCard) -> [u8; 32] {
     update_u32(&mut hasher, task.blocked_descendant_count);
     update_u32(&mut hasher, task.evidence_unblock_count);
     update_optional_u64(&mut hasher, task.hard_deadline_ms);
+    update_optional_u64(&mut hasher, task.retry_not_before_ms());
     update_u64(&mut hasher, task.insertion_order);
     *hasher.finalize().as_bytes()
 }
@@ -873,12 +1022,16 @@ fn task_card_state_hash(task: &TaskCard) -> [u8; 32] {
 fn task_ledger_state_hash(
     state_epoch: u64,
     deadline_horizon_ms: u64,
+    retry_policy: RetryPolicy,
     tasks: &BTreeMap<TaskId, TaskCard>,
 ) -> [u8; 32] {
     let mut hasher = Hasher::new();
-    hasher.update(b"aegis-task-ledger-state-v1");
+    hasher.update(b"aegis-task-ledger-state-v2");
     update_u64(&mut hasher, state_epoch);
     update_u64(&mut hasher, deadline_horizon_ms);
+    update_u64(&mut hasher, u64::from(retry_policy.max_total_attempts));
+    update_u64(&mut hasher, u64::from(retry_policy.initial_backoff_ms));
+    update_u64(&mut hasher, u64::from(retry_policy.max_backoff_ms));
     update_u64(&mut hasher, tasks.len() as u64);
     for (task_id, task) in tasks {
         update_u128(&mut hasher, *task_id);
@@ -895,7 +1048,7 @@ fn task_ready_queue_hash(
     tasks: &BTreeMap<TaskId, TaskCard>,
 ) -> Result<[u8; 32], TaskLedgerError> {
     let mut hasher = Hasher::new();
-    hasher.update(b"aegis-task-ready-queue-v1");
+    hasher.update(b"aegis-task-ready-queue-v2");
     update_u64(&mut hasher, now_ms);
     update_u64(&mut hasher, state_epoch);
     update_u64(&mut hasher, deadline_horizon_ms);
@@ -928,7 +1081,7 @@ fn task_selection_proof_hash(
     ready_queue_hash: [u8; 32],
 ) -> [u8; 32] {
     let mut hasher = Hasher::new();
-    hasher.update(b"aegis-task-selection-proof-v1");
+    hasher.update(b"aegis-task-selection-proof-v2");
     update_u64(&mut hasher, now_ms);
     update_u64(&mut hasher, state_epoch);
     update_u64(&mut hasher, deadline_horizon_ms);
@@ -997,4 +1150,116 @@ fn update_u32(hasher: &mut Hasher, value: u32) {
 
 fn nonzero_hash(hash: &[u8; 32]) -> bool {
     hash.iter().any(|byte| *byte != 0)
+}
+
+#[cfg(test)]
+mod retry_attempt_invariant_tests {
+    use super::{
+        NonZeroU64, RetryPolicy, TaskCard, TaskLedger, TaskLedgerError, TaskStatus,
+        task_card_state_hash,
+    };
+
+    #[test]
+    fn insertion_rejects_an_attempt_above_the_total_attempt_budget() {
+        let mut ledger = TaskLedger::new(60_000);
+        let task = TaskCard::new(1, Vec::new(), 0, None, None).with_attempt_id(4);
+
+        assert_eq!(
+            ledger.insert_task(task),
+            Err(TaskLedgerError::InvalidAttempt(1))
+        );
+    }
+
+    #[test]
+    fn public_attempt_setter_cannot_consume_a_retry_before_admission() {
+        let mut ledger = TaskLedger::new(60_000);
+        ledger
+            .insert_task(TaskCard::new(1, Vec::new(), 0, None, None))
+            .unwrap();
+        for status in [TaskStatus::Ready, TaskStatus::Admitted, TaskStatus::Running] {
+            ledger.transition_status(1, status).unwrap();
+        }
+        ledger.schedule_retry_wait(1, 2_000).unwrap();
+        let before_hash = ledger.ledger_state_hash().unwrap();
+
+        #[allow(deprecated)]
+        let result = ledger.set_attempt_id(1, 2);
+
+        assert_eq!(result, Err(TaskLedgerError::InvalidAttempt(1)));
+        assert_eq!(ledger.task(1).map(|task| task.attempt_id), Some(1));
+        assert_eq!(
+            ledger.task(1).map(|task| task.status),
+            Some(TaskStatus::RetryWait)
+        );
+        assert_eq!(ledger.ledger_state_hash().unwrap(), before_hash);
+    }
+
+    #[test]
+    fn public_status_transitions_cannot_bypass_retry_admission() {
+        let mut ledger = TaskLedger::new(60_000);
+        ledger
+            .insert_task(TaskCard::new(1, Vec::new(), 0, None, None))
+            .unwrap();
+        for status in [TaskStatus::Ready, TaskStatus::Admitted, TaskStatus::Running] {
+            ledger.transition_status(1, status).unwrap();
+        }
+        ledger.schedule_retry_wait(1, 2_000).unwrap();
+        let before_task = ledger.task(1).cloned().unwrap();
+        let before_hash = ledger.ledger_state_hash().unwrap();
+
+        assert!(!TaskStatus::RetryWait.can_transition_to(TaskStatus::Ready));
+        assert!(matches!(
+            ledger.transition_status(1, TaskStatus::Ready),
+            Err(TaskLedgerError::InvalidStatusTransition {
+                task_id: 1,
+                from: TaskStatus::RetryWait,
+                to: TaskStatus::Ready,
+            })
+        ));
+        assert!(matches!(
+            ledger.complete_task(1),
+            Err(TaskLedgerError::InvalidStatusTransition {
+                task_id: 1,
+                from: TaskStatus::RetryWait,
+                to: TaskStatus::Ready,
+            })
+        ));
+        assert_eq!(ledger.task(1), Some(&before_task));
+        assert_eq!(ledger.ledger_state_hash().unwrap(), before_hash);
+    }
+
+    #[test]
+    fn task_state_hash_binds_retry_not_before_time() {
+        let task = TaskCard::new(1, Vec::new(), 0, None, None);
+        let original_hash = task_card_state_hash(&task);
+        let mut scheduled = task.clone();
+        scheduled.retry_not_before_ms = NonZeroU64::new(2_000);
+
+        assert_ne!(task_card_state_hash(&scheduled), original_hash);
+    }
+
+    #[test]
+    fn ledger_state_hash_binds_retry_policy_and_scheduled_retry() {
+        let mut ledger = TaskLedger::new(60_000);
+        ledger
+            .insert_task(TaskCard::new(1, Vec::new(), 0, None, None))
+            .unwrap();
+        let original_hash = ledger.ledger_state_hash().unwrap();
+
+        ledger.retry_policy.max_total_attempts += 1;
+        assert_ne!(ledger.ledger_state_hash().unwrap(), original_hash);
+
+        ledger.retry_policy = RetryPolicy::default();
+        ledger.tasks.get_mut(&1).unwrap().retry_not_before_ms = NonZeroU64::new(2_000);
+        assert_ne!(ledger.ledger_state_hash().unwrap(), original_hash);
+    }
+
+    #[test]
+    fn retry_policy_uses_two_then_four_seconds_and_stops_after_three_total_attempts() {
+        let policy = RetryPolicy::default();
+
+        assert_eq!(policy.delay_after(1), Some(2_000));
+        assert_eq!(policy.delay_after(2), Some(4_000));
+        assert_eq!(policy.delay_after(3), None);
+    }
 }

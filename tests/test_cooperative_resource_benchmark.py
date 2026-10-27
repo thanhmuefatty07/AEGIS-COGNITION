@@ -18,15 +18,13 @@ def test_benchmark_compares_paths_with_one_correctness_oracle() -> None:
 
 
 @pytest.mark.parametrize(
-    ("mode", "payload_bytes", "iterations"),
+    ("mode", "payload_bytes", "iterations", "error"),
     [
-        ("unknown", 4 * 1024, 1),
-        ("ram", 1, 1),
-        ("spill", 4 * 1024, 0),
+        ("unknown", 4 * 1024, 1, "mode must be ram, spill, or both"),
+        ("ram", 1, 1, "payload_bytes must be an integer"),
+        ("spill", 4 * 1024, 0, "iterations must be an integer"),
     ],
 )
-def test_benchmark_rejects_invalid_bounds(
-    mode: str, payload_bytes: int, iterations: int
-) -> None:
-    with pytest.raises(ValueError):
+def test_benchmark_rejects_invalid_bounds(mode: str, payload_bytes: int, iterations: int, error: str) -> None:
+    with pytest.raises(ValueError, match=error):
         run_benchmark(mode=mode, payload_bytes=payload_bytes, iterations=iterations)  # type: ignore[arg-type]

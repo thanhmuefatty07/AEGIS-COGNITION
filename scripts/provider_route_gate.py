@@ -135,7 +135,7 @@ def evaluate_provider_route_gate(root: str | Path = ROOT) -> dict[str, Any]:
 def _read_json(path: Path) -> dict[str, Any]:
     try:
         payload = json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError, UnicodeDecodeError):
+    except OSError, json.JSONDecodeError, UnicodeDecodeError:
         return {}
     return payload if isinstance(payload, dict) else {}
 

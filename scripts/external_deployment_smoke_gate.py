@@ -56,10 +56,9 @@ def evaluate_external_deployment_smoke_gate(
     local_operator_health_hash = _stable_hash(local_operator_health)
     external_health_hash = _stable_hash(external_health)
     container_attestation_hash = str(container_attestation.get("attestation_hash", ""))
-    container_image_attestation_present = (
-        container_attestation.get("schema") == "aegis-container-image-attestation-v1"
-        and _nonzero_hex(container_attestation_hash)
-    )
+    container_image_attestation_present = container_attestation.get(
+        "schema"
+    ) == "aegis-container-image-attestation-v1" and _nonzero_hex(container_attestation_hash)
     external_deployment_smoke_present = (
         external_health["overall_ok"]
         and external_health["external_url_present"]
@@ -81,21 +80,40 @@ def evaluate_external_deployment_smoke_gate(
     evidence_hash = _stable_hash(evidence)
 
     checks = (
-        _check("packaging_smoke_bound", packaging_smoke.get("overall_ok") is True and _nonzero_hex(packaging_smoke_hash)),
+        _check(
+            "packaging_smoke_bound", packaging_smoke.get("overall_ok") is True and _nonzero_hex(packaging_smoke_hash)
+        ),
         _check("deployment_descriptor_present", descriptor_index["descriptor_count"] > 0),
         _check("descriptor_index_hash_nonzero", _nonzero_hex(descriptor_index_hash)),
-        _check("descriptor_contract_bound", descriptor_contract["overall_ok"] and _nonzero_hex(descriptor_contract_hash)),
+        _check(
+            "descriptor_contract_bound", descriptor_contract["overall_ok"] and _nonzero_hex(descriptor_contract_hash)
+        ),
         _check("runtime_probe_hash_nonzero", _nonzero_hex(runtime_probe_hash)),
         _check("local_operator_health_probe_passed", local_operator_health["overall_ok"]),
         _check("external_health_probe_recorded", _nonzero_hex(external_health_hash)),
-        _check("external_deployment_smoke_gap_disclosed", external_deployment_smoke_present or admission["admission_status"] == "missing"),
-        _check("external_deployment_smoke_admission_schema", admission["schema"] == EXTERNAL_DEPLOYMENT_SMOKE_ADMISSION_SCHEMA),
-        _check("external_deployment_smoke_admission_path", admission["expected_capture_path"] == EXTERNAL_DEPLOYMENT_SMOKE_EXPECTED_CAPTURE_PATH),
+        _check(
+            "external_deployment_smoke_gap_disclosed",
+            external_deployment_smoke_present or admission["admission_status"] == "missing",
+        ),
+        _check(
+            "external_deployment_smoke_admission_schema",
+            admission["schema"] == EXTERNAL_DEPLOYMENT_SMOKE_ADMISSION_SCHEMA,
+        ),
+        _check(
+            "external_deployment_smoke_admission_path",
+            admission["expected_capture_path"] == EXTERNAL_DEPLOYMENT_SMOKE_EXPECTED_CAPTURE_PATH,
+        ),
         _check("external_deployment_smoke_admission_hash", _nonzero_hex(admission["admission_hash"])),
         _check("external_deployment_smoke_probe_contract_hash", _nonzero_hex(admission["probe_contract_hash"])),
-        _check("external_deployment_smoke_admission_blocker", admission["production_blocker_id"] == EXTERNAL_DEPLOYMENT_SMOKE_BLOCKER_ID),
+        _check(
+            "external_deployment_smoke_admission_blocker",
+            admission["production_blocker_id"] == EXTERNAL_DEPLOYMENT_SMOKE_BLOCKER_ID,
+        ),
         _check("external_deployment_smoke_admission_state_bound", _admission_state_bound(admission)),
-        _check("external_deployment_smoke_capture_missing_or_valid", (not admission["capture_present"]) or admission["capture_valid"]),
+        _check(
+            "external_deployment_smoke_capture_missing_or_valid",
+            (not admission["capture_present"]) or admission["capture_valid"],
+        ),
         _check("container_attestation_gap_disclosed", container_image_attestation_present or not container_attestation),
         _check("external_deployment_smoke_evidence_hash_nonzero", _nonzero_hex(evidence_hash)),
     )
@@ -128,8 +146,7 @@ def evaluate_external_deployment_smoke_gate(
         "external_deployment_smoke_admission": admission,
         "external_deployment_smoke_admission_hash": admission["admission_hash"],
         "external_deployment_smoke_admission_missing": (
-            admission["capture_present"] is False
-            and admission["admission_status"] == "missing"
+            admission["capture_present"] is False and admission["admission_status"] == "missing"
         ),
         "external_deployment_smoke_admission_blocker_id": admission["production_blocker_id"],
         "external_deployment_smoke_capture_missing_or_valid": (
@@ -222,7 +239,7 @@ def _deployment_descriptor_contract(root: Path, records: list[dict[str, Any]]) -
         relative = str(record["path"])
         try:
             text_by_path[relative] = (root / relative).read_text(encoding="utf-8")
-        except (OSError, UnicodeDecodeError):
+        except OSError, UnicodeDecodeError:
             text_by_path[relative] = ""
 
     checks = (
@@ -233,7 +250,7 @@ def _deployment_descriptor_contract(root: Path, records: list[dict[str, Any]]) -
                 (
                     "AEGIS_OPERATOR_ROOT=/var/lib/aegis",
                     "AEGIS_ARTIFACTS_DIR=/var/lib/aegis/artifacts",
-                    'core.python.operator_api_healthcheck',
+                    "core.python.operator_api_healthcheck",
                     '"--root", "/var/lib/aegis"',
                 ),
             ),
@@ -279,12 +296,14 @@ def _local_operator_health_probe(root: Path) -> dict[str, Any]:
     try:
         from core.python.operator_api import OperatorEvidenceApi
 
-        payload = OperatorEvidenceApi(
-            root,
-            (
-                "production_packaging_smoke_gate_report.json",
-            ),
-        ).handle_get("/health").json()
+        payload = (
+            OperatorEvidenceApi(
+                root,
+                ("production_packaging_smoke_gate_report.json",),
+            )
+            .handle_get("/health")
+            .json()
+        )
     except Exception as exc:
         # The read-only evidence endpoint must retain the exact failure class
         # in its bounded report rather than swallowing the probe result.
@@ -347,7 +366,7 @@ def _external_health_probe(external_url: str, requester: Any | None = None) -> d
         }
     try:
         payload = json.loads(body.decode("utf-8"))
-    except (UnicodeDecodeError, json.JSONDecodeError):
+    except UnicodeDecodeError, json.JSONDecodeError:
         payload = {}
     return {
         "schema": "aegis-external-health-probe-v1",
@@ -477,7 +496,7 @@ def _read_capture(path: Path) -> tuple[dict[str, Any], bool, bytes, str]:
         return {}, False, b"", "empty"
     try:
         payload = json.loads(capture_bytes.decode("utf-8"))
-    except (UnicodeDecodeError, json.JSONDecodeError):
+    except UnicodeDecodeError, json.JSONDecodeError:
         return {}, True, capture_bytes, "invalid-json"
     if not isinstance(payload, dict):
         return {}, True, capture_bytes, "non-object"
@@ -528,8 +547,7 @@ def _admission_state_bound(admission: dict[str, Any]) -> bool:
         admission.get("capture_present") is True
         and admission.get("capture_valid") is True
         and _nonzero_hex(str(admission.get("capture_hash", "")))
-        and admission.get("admission_status")
-        == "candidate-present-external-deployment-smoke-gate-required"
+        and admission.get("admission_status") == "candidate-present-external-deployment-smoke-gate-required"
     )
     return (
         admission.get("schema") == EXTERNAL_DEPLOYMENT_SMOKE_ADMISSION_SCHEMA
@@ -574,7 +592,7 @@ def _check(name: str, ok: bool) -> dict[str, Any]:
 def _read_json(path: Path) -> dict[str, Any]:
     try:
         payload = json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError, UnicodeDecodeError):
+    except OSError, json.JSONDecodeError, UnicodeDecodeError:
         return {}
     return payload if isinstance(payload, dict) else {}
 

@@ -10,7 +10,9 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 manifest = (ROOT / "core" / "rust" / "Cargo.toml").read_text(encoding="utf-8")
 sandbox = (ROOT / "core" / "rust" / "src" / "sandbox.rs").read_text(encoding="utf-8")
-sandbox_tree = "\n".join(path.read_text(encoding="utf-8") for path in (ROOT / "core" / "rust" / "src" / "eac").rglob("*.rs"))
+sandbox_tree = "\n".join(
+    path.read_text(encoding="utf-8") for path in (ROOT / "core" / "rust" / "src" / "eac").rglob("*.rs")
+)
 cli = (ROOT / "core" / "rust" / "src" / "cli" / "mod.rs").read_text(encoding="utf-8")
 source = (sandbox + sandbox_tree + cli).lower()
 

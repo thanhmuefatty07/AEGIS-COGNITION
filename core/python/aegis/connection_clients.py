@@ -47,6 +47,16 @@ class ConnectionResponse:
 
 ConnectionRequester = Callable[[str, Mapping[str, str], bytes, float], ConnectionResponse]
 SecretResolver = Callable[[str], str | None]
+ProviderPayloadObserver = Callable[[bytes], None]
+
+
+def _provider_payload_observer(kwargs: Mapping[str, object]) -> ProviderPayloadObserver | None:
+    observer = kwargs.get("_aegis_payload_observer")
+    if observer is None:
+        return None
+    if not callable(observer):
+        raise ValueError("_aegis_payload_observer must be callable")
+    return cast(ProviderPayloadObserver, observer)
 
 
 @dataclass(frozen=True, slots=True)
@@ -233,9 +243,7 @@ def _provider_tool_history(raw_history: object, *, api: str) -> tuple[ProviderTo
             if type(state) is not list:
                 raise ValueError("Anthropic history requires content blocks")
             state_ids = [
-                item.get("id")
-                for item in state
-                if isinstance(item, Mapping) and item.get("type") == "tool_use"
+                item.get("id") for item in state if isinstance(item, Mapping) and item.get("type") == "tool_use"
             ]
         else:
             raise ValueError("provider tool history API is unsupported")
@@ -315,7 +323,9 @@ def _responses_tool_turn(document: Mapping[str, object], aliases: Mapping[str, s
     calls = _provider_tool_calls(raw_calls, aliases)
     if not text and not calls:
         raise ConnectionClientError("provider response has no text or tool calls")
-    return ProviderTurn(text, calls, output, document.get("status") if isinstance(document.get("status"), str) else None)
+    return ProviderTurn(
+        text, calls, output, document.get("status") if isinstance(document.get("status"), str) else None
+    )
 
 
 def _system_context(kwargs: Mapping[str, object]) -> str | None:
@@ -363,6 +373,7 @@ class OpenAICompatibleClient:
     # the OpenAI contract.
     supports_prompt_cache_controls = False
     supports_usage_observer = True
+    supports_request_payload_capture = True
 
     def __init__(
         self,
@@ -480,7 +491,7 @@ class OpenAICompatibleClient:
                 payload["thinking"] = {"type": "disabled"}
             else:
                 payload["reasoning_effort"] = effort
-        response = self._request(payload)
+        response = self._request(payload, payload_observer=_provider_payload_observer(kwargs))
         try:
             document = json.loads(response.body.decode("utf-8"))
         except (UnicodeDecodeError, json.JSONDecodeError) as exc:
@@ -518,7 +529,12 @@ class OpenAICompatibleClient:
     async def ainvoke(self, prompt: str, **kwargs: object) -> str:
         return await asyncio.to_thread(self.invoke, prompt, **kwargs)
 
-    def _request(self, payload: Mapping[str, object]) -> ConnectionResponse:
+    def _request(
+        self,
+        payload: Mapping[str, object],
+        *,
+        payload_observer: ProviderPayloadObserver | None = None,
+    ) -> ConnectionResponse:
         url = _chat_url(self.connection.endpoint)
         endpoint_host = urlsplit(self.connection.endpoint).hostname or ""
         if self._egress_check is None and not _is_loopback_host(endpoint_host):
@@ -532,6 +548,8 @@ class OpenAICompatibleClient:
                 raise ConnectionClientError("connection egress is denied")
         headers = _provider_headers(self.connection, self._secret_resolver)
         body = json.dumps(payload, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
+        if payload_observer is not None:
+            payload_observer(body)
         response = self._requester(url, headers, body, self._timeout_seconds)
         if not isinstance(response.status, int) or isinstance(response.status, bool):
             raise ConnectionClientError("provider response status is invalid")
@@ -548,6 +566,7 @@ class XaiResponsesClient:
     requires_api_key = False
     supports_prompt_cache_controls = False
     supports_usage_observer = True
+    supports_request_payload_capture = True
 
     def __init__(
         self,
@@ -649,7 +668,7 @@ class XaiResponsesClient:
                 raise ValueError("reasoning_effort is unsupported by the xAI Responses API")
             payload["reasoning"] = {"effort": effort}
 
-        response = self._request(payload)
+        response = self._request(payload, payload_observer=_provider_payload_observer(kwargs))
         try:
             document = json.loads(response.body.decode("utf-8"))
         except (UnicodeDecodeError, json.JSONDecodeError) as exc:
@@ -663,11 +682,18 @@ class XaiResponsesClient:
     async def ainvoke(self, prompt: str, **kwargs: object) -> str:
         return await asyncio.to_thread(self.invoke, prompt, **kwargs)
 
-    def _request(self, payload: Mapping[str, object]) -> ConnectionResponse:
+    def _request(
+        self,
+        payload: Mapping[str, object],
+        *,
+        payload_observer: ProviderPayloadObserver | None = None,
+    ) -> ConnectionResponse:
         url = _responses_url(self.connection.endpoint)
         _check_egress(self.connection, self._egress_check)
         headers = _provider_headers(self.connection, self._secret_resolver)
         body = json.dumps(payload, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
+        if payload_observer is not None:
+            payload_observer(body)
         response = self._requester(url, headers, body, self._timeout_seconds)
         _validate_response(response, self._max_response_bytes)
         return response
@@ -679,6 +705,7 @@ class OpenAIResponsesClient:
     requires_api_key = False
     supports_prompt_cache_controls = False
     supports_usage_observer = True
+    supports_request_payload_capture = True
 
     def __init__(
         self,
@@ -791,7 +818,7 @@ class OpenAIResponsesClient:
         if wire_tools:
             payload["tools"] = wire_tools
 
-        response = self._request(payload)
+        response = self._request(payload, payload_observer=_provider_payload_observer(kwargs))
         try:
             document = json.loads(response.body.decode("utf-8"))
         except (UnicodeDecodeError, json.JSONDecodeError) as exc:
@@ -805,11 +832,18 @@ class OpenAIResponsesClient:
     async def ainvoke(self, prompt: str, **kwargs: object) -> str:
         return await asyncio.to_thread(self.invoke, prompt, **kwargs)
 
-    def _request(self, payload: Mapping[str, object]) -> ConnectionResponse:
+    def _request(
+        self,
+        payload: Mapping[str, object],
+        *,
+        payload_observer: ProviderPayloadObserver | None = None,
+    ) -> ConnectionResponse:
         url = _responses_url(self.connection.endpoint)
         _check_egress(self.connection, self._egress_check)
         headers = _provider_headers(self.connection, self._secret_resolver)
         body = json.dumps(payload, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
+        if payload_observer is not None:
+            payload_observer(body)
         response = self._requester(url, headers, body, self._timeout_seconds)
         _validate_response(response, self._max_response_bytes)
         return response
@@ -824,6 +858,7 @@ class AnthropicMessagesClient:
 
     requires_api_key = False
     supports_usage_observer = True
+    supports_request_payload_capture = True
 
     def __init__(
         self,
@@ -961,7 +996,7 @@ class AnthropicMessagesClient:
         for name in ("temperature", "top_p"):
             if name in kwargs:
                 payload[name] = kwargs[name]
-        response = self._request(payload)
+        response = self._request(payload, payload_observer=_provider_payload_observer(kwargs))
         try:
             document = json.loads(response.body.decode("utf-8"))
         except (UnicodeDecodeError, json.JSONDecodeError) as exc:
@@ -989,12 +1024,19 @@ class AnthropicMessagesClient:
     async def ainvoke(self, prompt: str, **kwargs: object) -> str:
         return await asyncio.to_thread(self.invoke, prompt, **kwargs)
 
-    def _request(self, payload: Mapping[str, object]) -> ConnectionResponse:
+    def _request(
+        self,
+        payload: Mapping[str, object],
+        *,
+        payload_observer: ProviderPayloadObserver | None = None,
+    ) -> ConnectionResponse:
         url = _messages_url(self.connection.endpoint)
         _check_egress(self.connection, self._egress_check)
         headers = _provider_headers(self.connection, self._secret_resolver)
         headers["anthropic-version"] = "2023-06-01"
         body = json.dumps(payload, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
+        if payload_observer is not None:
+            payload_observer(body)
         response = self._requester(url, headers, body, self._timeout_seconds)
         _validate_response(response, self._max_response_bytes)
         return response

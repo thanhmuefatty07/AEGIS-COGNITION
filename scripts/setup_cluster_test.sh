@@ -13,6 +13,13 @@
 
 set -euo pipefail
 
+if [[ "${1:-}" == "--help" || "${1:-}" == "-h" ]]; then
+  echo "Usage: ./scripts/setup_cluster_test.sh"
+  echo "Local Docker Bridge Smoke Test — starts 3 containerized workers on one host."
+  echo "DISCLAIMER: This is a single-host local TCP smoke check only; it does NOT satisfy the NV-016 multi-machine soak contract."
+  exit 0
+fi
+
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 COMPOSE_FILE="${REPO_ROOT}/docker-compose.cluster.yml"
@@ -51,15 +58,21 @@ fi
 
 echo "[setup] waiting for sockets to bind…"
 for W in 1 2 3; do
+  worker_ready=0
   for _ in $(seq 1 30); do
     if docker exec "aegis-worker-${W}" python -c \
         "import socket;s=socket.socket();s.connect(('127.0.0.1',9000));s.close()" \
         >/dev/null 2>&1; then
       echo "  worker-${W}: listening"
+      worker_ready=1
       break
     fi
     sleep 1
   done
+  if [ "$worker_ready" -ne 1 ]; then
+    echo "[setup] worker-${W} did not open its socket after 30 attempts" >&2
+    exit 1
+  fi
 done
 
 echo "[setup] verifying bridge IPs:"

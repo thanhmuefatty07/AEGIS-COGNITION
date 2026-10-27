@@ -18,7 +18,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[3]
 OUT = Path(__file__).resolve().parent
 RAW = OUT / "raw"
-TEMP = Path(os.environ.get("TEMP", "C:/Windows/Temp"))
+TEMP = Path(os.environ.get("TEMP", str(ROOT / ".local" / "tmp")))
 STAMP = datetime.now(timezone.utc).isoformat()
 METHOD = "aegis-empirical-research-execution-v1; bounded local probes and direct source inspection; no production mutation"
 

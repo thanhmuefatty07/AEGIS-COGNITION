@@ -1,5 +1,7 @@
 import asyncio
+import base64
 import hashlib
+import hmac
 import io
 import json
 import os
@@ -16,6 +18,7 @@ from types import SimpleNamespace
 import time
 from dataclasses import dataclass, replace
 from pathlib import Path
+from typing import Any
 
 import pytest
 
@@ -28,6 +31,7 @@ from aegis_cognition.desktop_service import (
     MAX_PROMPT_LENGTH,
     _McpRuntime,
     _select_source_paths_for_prompt,
+    workspace_scope_id,
 )
 from aegis_cognition.extensions import (
     ExtensionError,
@@ -39,9 +43,14 @@ from aegis_cognition.extensions import (
     ToolSpec,
 )
 from core.python.aegis import connection_clients, discovery, secrets as secret_store_module
-from core.python.aegis.connection_clients import ConnectionResponse, ProviderToolCall, ProviderTurn
+from core.python.aegis.connection_clients import (
+    ConnectionResponse,
+    OpenAICompatibleClient,
+    ProviderToolCall,
+    ProviderTurn,
+)
 from core.python.aegis.cache_economics import CachePromptPlan
-from core.python.aegis.connections import ModelDescriptor
+from core.python.aegis.connections import ConnectionRecord, ModelDescriptor
 from core.python.aegis.discovery import DiscoveryResponse
 from aegis_cognition.subagents import (
     AGENT_MESSAGE_SCHEMA_V1,
@@ -59,6 +68,11 @@ from core.python.aegis.desktop_protocol import (
     decode_request,
 )
 from core.python.aegis.secrets import SecretStoreError
+
+
+@pytest.fixture(autouse=True)
+def _isolate_temporary_git_discovery(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+    monkeypatch.setenv("GIT_CEILING_DIRECTORIES", str(tmp_path.parent))
 
 
 @dataclass(frozen=True)
@@ -374,6 +388,11 @@ class _FakeLearning:
         assert top_k == 8
         return _FakeSearch()
 
+    def search_past_scoped(self, query: str, *, top_k: int, scope_kind: str, owner_id: str):
+        assert scope_kind == "USER_PRIVATE"
+        assert owner_id
+        return self.search_past(query, top_k=top_k)
+
 
 class _FakeClient:
     def __init__(self, observed: list[tuple[str, str]]) -> None:
@@ -516,7 +535,9 @@ def _request(command: str, payload: dict | None = None) -> bytes:
     ).encode()
 
 
-def _tested_mcp_config_token(service, server_id: str, descriptor_hash: str, expected_revision: int, config: dict) -> str:
+def _tested_mcp_config_token(
+    service, server_id: str, descriptor_hash: str, expected_revision: int, config: dict
+) -> str:
     response = json.loads(
         service.dispatch(
             _request(
@@ -780,9 +801,7 @@ def test_desktop_memory_commands_bind_owner_to_the_active_profile(tmp_path: Path
     searched_owners: list[str] = []
 
     class Learning:
-        def search_memories(
-            self, _query: str, _top_k: int, *, owner_id: str, **_kwargs: object
-        ) -> tuple[object, ...]:
+        def search_memories(self, _query: str, _top_k: int, *, owner_id: str, **_kwargs: object) -> tuple[object, ...]:
             searched_owners.append(owner_id)
             return ()
 
@@ -795,9 +814,7 @@ def test_desktop_memory_commands_bind_owner_to_the_active_profile(tmp_path: Path
 
     accepted = json.loads(service.dispatch(_request("memory.search", {"query": "project", "top_k": 1})))
     rejected = json.loads(
-        service.dispatch(
-            _request("memory.search", {"query": "project", "top_k": 1, "owner_id": "another-profile"})
-        )
+        service.dispatch(_request("memory.search", {"query": "project", "top_k": 1, "owner_id": "another-profile"}))
     )
 
     assert accepted["status"] == "ok"
@@ -805,6 +822,932 @@ def test_desktop_memory_commands_bind_owner_to_the_active_profile(tmp_path: Path
     assert rejected["status"] == "error"
     assert rejected["error"]["code"] == "OWNER_SCOPE_FORBIDDEN"
     assert searched_owners == ["local-profile"]
+
+
+def test_desktop_file_memory_relation_endpoints_enforce_snapshot_and_query_scope(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+):
+    monkeypatch.delenv("AEGIS_SESSION_DB_PATH", raising=False)
+    monkeypatch.delenv("AEGIS_PROFILE_ID", raising=False)
+    profile_root = tmp_path / "profile"
+    source = profile_root / "src" / "parser.py"
+    source.parent.mkdir(parents=True)
+    source_bytes = b"MAX_ITEMS = 100\n"
+    source.write_bytes(source_bytes)
+    subprocess.run(
+        ["git", "init", "--initial-branch=main", "--quiet", str(profile_root)], check=True, capture_output=True
+    )
+    memory_hash = "b" * 64
+
+    class Learning:
+        def __init__(self) -> None:
+            self.linked: list[dict[str, object]] = []
+            self.inspect_owner_ids: list[str] = []
+            self.relation_page_calls: list[tuple[int, object, str, str]] = []
+            self.lifecycle = "CANDIDATE"
+            self.validation = "UNREVIEWED"
+
+        def inspect_memory(self, memory_id: str, *, owner_id: str, scope_kind: str, **_kwargs: object):
+            self.inspect_owner_ids.append(owner_id)
+            if memory_id != "0x2a":
+                return None
+            return SimpleNamespace(
+                memory_id=memory_id,
+                owner_id=owner_id,
+                scope_kind=scope_kind,
+                lifecycle=self.lifecycle,
+                validation=self.validation,
+                revision=4,
+                content_hash=memory_hash,
+                content="The parser caps the item count at 100.",
+            )
+
+        def link_file_relation(self, relation_id: int, memory_id: str, **kwargs: object):
+            relation = {
+                "relation_id": f"0x{relation_id:x}",
+                "memory_id": memory_id,
+                "scope_kind": str(kwargs["scope_kind"]),
+                "project_id": str(kwargs["project_id"]),
+                "relative_path": str(kwargs["relative_path"]),
+                "source_revision": str(kwargs["source_revision"]),
+                "source_content_hash": str(kwargs["source_content_hash"]),
+                "memory_revision": int(kwargs["memory_revision"]),
+                "memory_content_hash": str(kwargs["memory_content_hash"]),
+                "created_at_ms": 10,
+                "memory_lifecycle": self.lifecycle,
+                "memory_validation": self.validation,
+                "memory_content_current": True,
+            }
+            self.linked.append(relation)
+            return relation
+
+        def list_file_relations(self, project_id: str, relative_path: str, **_kwargs: object):
+            return tuple(
+                relation
+                for relation in self.linked
+                if relation["project_id"] == project_id and relation["relative_path"] == relative_path
+            )
+
+        def list_file_relations_page(
+            self,
+            project_id: str,
+            relative_path: str,
+            *,
+            limit: int,
+            cursor: object,
+            scope_kind: str,
+            owner_id: str,
+        ):
+            self.relation_page_calls.append((limit, cursor, scope_kind, owner_id))
+            relations = self.list_file_relations(project_id, relative_path)
+            return SimpleNamespace(
+                relations=relations,
+                next_cursor=desktop_service_module.MemoryFileRelationCursor(created_at_ms=10, relation_id="0x7b"),
+            )
+
+        def unlink_file_relation(self, relation_id: str, **kwargs: object) -> bool:
+            before = len(self.linked)
+            self.linked = [
+                relation
+                for relation in self.linked
+                if not (
+                    relation["relation_id"] == relation_id
+                    and relation["project_id"] == kwargs["project_id"]
+                    and relation["relative_path"] == kwargs["relative_path"]
+                )
+            ]
+            return len(self.linked) != before
+
+    learning = Learning()
+    service = DesktopService(
+        profile_root=profile_root,
+        profile_id="local-profile",
+        learning_factory=lambda: learning,
+    )
+    assert json.loads(service.dispatch(_request("workspace.open")))["status"] == "ok"
+    source_result = json.loads(service.dispatch(_request("workspace.source_snapshot")))
+    snapshot = source_result["result"]["snapshot"]
+    source_file = next(item for item in snapshot["files"] if item["relative_path"] == "src/parser.py")
+    confirmed = {
+        "relation_id": "0x7b",
+        "memory_id": "0x2a",
+        "scope_kind": "USER_PRIVATE",
+        "project_id": snapshot["identity"]["project_id"],
+        "relative_path": "src/parser.py",
+        "source_revision": snapshot["revision"],
+        "source_content_hash": source_file["content_hash"],
+        "memory_revision": 4,
+        "memory_content_hash": memory_hash,
+    }
+
+    canonical_link_request = {
+        **confirmed,
+        "project_id": f"project:{snapshot['identity']['project_id']}",
+    }
+    linked = json.loads(service.dispatch(_request("memory.file_relation.link", canonical_link_request)))
+    assert linked["status"] == "ok", linked
+    opaque_cursor = None
+    listed = json.loads(
+        service.dispatch(
+            _request(
+                "memory.file_relations.list",
+                {"project_id": confirmed["project_id"], "relative_path": "src/parser.py", "limit": 1},
+            )
+        )
+    )
+    opaque_cursor = listed["result"]["next_cursor"]
+    restarted_service = DesktopService(
+        profile_root=profile_root,
+        profile_id="local-profile",
+        learning_factory=lambda: learning,
+    )
+    restarted_open = json.loads(restarted_service.dispatch(_request("workspace.open")))
+    rejected_restart_cursor = json.loads(
+        restarted_service.dispatch(
+            _request(
+                "memory.file_relations.list",
+                {
+                    "project_id": confirmed["project_id"],
+                    "relative_path": "src/parser.py",
+                    "limit": 1,
+                    "cursor": opaque_cursor,
+                },
+            )
+        )
+    )
+    encoded_cursor_payload = opaque_cursor[len("mfr1_") :]
+    cursor_payload = json.loads(
+        base64.urlsafe_b64decode(encoded_cursor_payload + "=" * (-len(encoded_cursor_payload) % 4))
+    )
+    tampered_position_payload = dict(cursor_payload)
+    tampered_position_payload["created_at_ms"] += 1
+    tampered_position_body = json.dumps(
+        tampered_position_payload,
+        sort_keys=True,
+        separators=(",", ":"),
+    ).encode("ascii")
+    tampered_position_cursor = "mfr1_" + base64.urlsafe_b64encode(tampered_position_body).decode("ascii").rstrip("=")
+    unicode_unsigned_payload = {key: value for key, value in cursor_payload.items() if key != "mac"}
+    unicode_unsigned_payload["binding"] = "café"
+    unicode_unsigned_bytes = json.dumps(
+        unicode_unsigned_payload,
+        sort_keys=True,
+        separators=(",", ":"),
+    ).encode("ascii")
+    unicode_payload = {
+        **unicode_unsigned_payload,
+        "mac": hmac.new(
+            service._memory_relation_cursor_key,
+            b"aegis-memory-file-relation-cursor-v1\x00" + unicode_unsigned_bytes,
+            hashlib.sha256,
+        ).hexdigest(),
+    }
+    unicode_binding_payload = json.dumps(unicode_payload, sort_keys=True, separators=(",", ":")).encode("ascii")
+    unicode_binding_cursor = "mfr1_" + base64.urlsafe_b64encode(unicode_binding_payload).decode("ascii").rstrip("=")
+    listed_next_page = json.loads(
+        service.dispatch(
+            _request(
+                "memory.file_relations.list",
+                {
+                    "project_id": confirmed["project_id"],
+                    "relative_path": "src/parser.py",
+                    "limit": 1,
+                    "cursor": opaque_cursor,
+                },
+            )
+        )
+    )
+    rejected_tampered_cursor = json.loads(
+        service.dispatch(
+            _request(
+                "memory.file_relations.list",
+                {
+                    "project_id": confirmed["project_id"],
+                    "relative_path": "src/parser.py",
+                    "cursor": tampered_position_cursor,
+                },
+            )
+        )
+    )
+    rejected_page_limit = json.loads(
+        service.dispatch(
+            _request(
+                "memory.file_relations.list",
+                {"project_id": confirmed["project_id"], "relative_path": "src/parser.py", "limit": 101},
+            )
+        )
+    )
+    rejected_page_cursor = json.loads(
+        service.dispatch(
+            _request(
+                "memory.file_relations.list",
+                {
+                    "project_id": confirmed["project_id"],
+                    "relative_path": "src/parser.py",
+                    "cursor": {"created_at_ms": 10},
+                },
+            )
+        )
+    )
+    rejected_cross_path_cursor = json.loads(
+        service.dispatch(
+            _request(
+                "memory.file_relations.list",
+                {
+                    "project_id": confirmed["project_id"],
+                    "relative_path": "src/other.py",
+                    "cursor": opaque_cursor,
+                },
+            )
+        )
+    )
+    rejected_cross_scope_cursor = json.loads(
+        service.dispatch(
+            _request(
+                "memory.file_relations.list",
+                {
+                    "project_id": confirmed["project_id"],
+                    "relative_path": "src/parser.py",
+                    "scope_kind": "TEAM_SHARED",
+                    "cursor": opaque_cursor,
+                },
+            )
+        )
+    )
+    rejected_malformed_page_cursor = json.loads(
+        service.dispatch(
+            _request(
+                "memory.file_relations.list",
+                {
+                    "project_id": confirmed["project_id"],
+                    "relative_path": "src/parser.py",
+                    "cursor": "mfr1_not-base64!",
+                },
+            )
+        )
+    )
+    rejected_unicode_binding_cursor = json.loads(
+        service.dispatch(
+            _request(
+                "memory.file_relations.list",
+                {
+                    "project_id": confirmed["project_id"],
+                    "relative_path": "src/parser.py",
+                    "cursor": unicode_binding_cursor,
+                },
+            )
+        )
+    )
+    rejected_oversized_page_cursor = json.loads(
+        service.dispatch(
+            _request(
+                "memory.file_relations.list",
+                {
+                    "project_id": confirmed["project_id"],
+                    "relative_path": "src/parser.py",
+                    "cursor": "x" * 513,
+                },
+            )
+        )
+    )
+    rejected_owner = json.loads(
+        service.dispatch(_request("memory.file_relation.link", {**confirmed, "owner_id": "another-profile"}))
+    )
+    rejected_stale_source = json.loads(
+        service.dispatch(_request("memory.file_relation.link", {**confirmed, "source_content_hash": "c" * 64}))
+    )
+    rejected_stale_memory = json.loads(
+        service.dispatch(_request("memory.file_relation.link", {**confirmed, "memory_revision": 3}))
+    )
+    source.write_bytes(b"MAX_ITEMS = 200\n")
+    rejected_changed_file = json.loads(service.dispatch(_request("memory.file_relation.link", confirmed)))
+    unlinked = json.loads(
+        service.dispatch(
+            _request(
+                "memory.file_relation.unlink",
+                {
+                    "relation_id": linked["result"]["relation"]["relation_id"],
+                    "project_id": linked["result"]["relation"]["project_id"],
+                    "relative_path": "src/parser.py",
+                },
+            )
+        )
+    )
+
+    assert linked["status"] == "ok"
+    relation = linked["result"]["relation"]
+    assert relation["project_id"] == f"project:{snapshot['identity']['project_id']}"
+    assert relation["source_content_hash"] == hashlib.sha256(source_bytes).hexdigest()
+    assert relation["memory_content_hash"] == memory_hash
+    assert relation["memory_lifecycle"] == "CANDIDATE"
+    assert relation["memory_validation"] == "UNREVIEWED"
+    assert "owner_id" not in relation
+    assert listed["status"] == "ok"
+    assert listed["result"]["relations"] == [relation]
+    assert isinstance(opaque_cursor, str) and opaque_cursor.startswith("mfr1_") and len(opaque_cursor) <= 512
+    assert "created_at_ms" not in opaque_cursor and "relation_id" not in opaque_cursor
+    assert listed["result"]["next_cursor"] == opaque_cursor
+    assert restarted_open["status"] == "ok"
+    assert rejected_restart_cursor["status"] == "error"
+    assert rejected_restart_cursor["error"]["code"] == "INVALID_ARGUMENT"
+    assert rejected_restart_cursor["error"]["message"] == "cursor is invalid for this relation query"
+    assert listed_next_page["status"] == "ok"
+    assert rejected_tampered_cursor["status"] == "error"
+    assert rejected_tampered_cursor["error"]["code"] == "INVALID_ARGUMENT"
+    assert learning.relation_page_calls[0] == (1, None, "USER_PRIVATE", "local-profile")
+    assert learning.relation_page_calls[1][0] == 1
+    assert learning.relation_page_calls[1][1].created_at_ms == 10
+    assert learning.relation_page_calls[1][1].relation_id == "0x7b"
+    assert rejected_page_limit["status"] == "error"
+    assert rejected_page_limit["error"]["code"] == "INVALID_ARGUMENT"
+    assert rejected_page_cursor["status"] == "error"
+    assert rejected_page_cursor["error"]["code"] == "INVALID_ARGUMENT"
+    assert rejected_cross_path_cursor["status"] == "error"
+    assert rejected_cross_path_cursor["error"]["code"] == "INVALID_ARGUMENT"
+    assert rejected_cross_scope_cursor["status"] == "error"
+    assert rejected_cross_scope_cursor["error"]["code"] == "INVALID_ARGUMENT"
+    assert rejected_malformed_page_cursor["status"] == "error"
+    assert rejected_malformed_page_cursor["error"]["code"] == "INVALID_ARGUMENT"
+    assert rejected_unicode_binding_cursor["status"] == "error"
+    assert rejected_unicode_binding_cursor["error"]["code"] == "INVALID_ARGUMENT"
+    assert rejected_oversized_page_cursor["status"] == "error"
+    assert rejected_oversized_page_cursor["error"]["code"] == "INVALID_ARGUMENT"
+    assert len(learning.relation_page_calls) == 2
+    assert rejected_owner["status"] == "error"
+    assert rejected_owner["error"]["code"] == "OWNER_SCOPE_FORBIDDEN"
+    assert rejected_stale_source["status"] == "error"
+    assert rejected_stale_source["error"]["code"] == "SOURCE_SNAPSHOT_STALE"
+    assert rejected_stale_memory["status"] == "error"
+    assert rejected_stale_memory["error"]["code"] == "MEMORY_STALE"
+    assert rejected_changed_file["status"] == "error"
+    assert rejected_changed_file["error"]["code"] == "SOURCE_SNAPSHOT_STALE"
+    assert unlinked["status"] == "ok"
+    assert unlinked["result"]["removed"] is True
+    assert learning.inspect_owner_ids == ["local-profile", "local-profile"]
+    assert len(learning.linked) == 0
+
+
+def test_desktop_context_uses_only_current_file_relations_to_accepted_scoped_memories(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+):
+    monkeypatch.delenv("AEGIS_SESSION_DB_PATH", raising=False)
+    monkeypatch.delenv("AEGIS_PROFILE_ID", raising=False)
+    profile_root = tmp_path / "profile"
+    source = profile_root / "src" / "parser.py"
+    source.parent.mkdir(parents=True)
+    source_bytes = b"MAX_ITEMS = 100\n"
+    source.write_bytes(source_bytes)
+    subprocess.run(
+        ["git", "init", "--initial-branch=main", "--quiet", str(profile_root)], check=True, capture_output=True
+    )
+    source_hash = hashlib.sha256(source_bytes).hexdigest()
+    memory_hash = "b" * 64
+    stale_memory_hash = "c" * 64
+    second_source_bytes = b"MAX_ITEMS = 200\n"
+    second_source_hash = hashlib.sha256(second_source_bytes).hexdigest()
+    relation_source_hashes = {
+        "src/parser.py": source_hash,
+        "src/reader.py": second_source_hash,
+    }
+    relation_memory_hashes = {
+        "src/parser.py": memory_hash,
+        "src/reader.py": stale_memory_hash,
+    }
+
+    class Learning:
+        lifecycle = "ACTIVE"
+        validation = "ACCEPTED"
+        owner_id = "local-profile"
+        relation_current = True
+
+        def __init__(self) -> None:
+            self.relation_queries: list[tuple[str, str, str, int]] = []
+
+        def search_past_scoped(self, *_args: object, **_kwargs: object):
+            return SimpleNamespace(results=())
+
+        def search_memories(self, *_args: object, **_kwargs: object):
+            return ()
+
+        def list_current_file_relations(
+            self,
+            project_id: str,
+            relative_path: str,
+            *,
+            source_content_hash: str,
+            limit: int,
+            **_kwargs: object,
+        ):
+            self.relation_queries.append((project_id, relative_path, source_content_hash, limit))
+            if source_content_hash != relation_source_hashes.get(relative_path) or limit == 0:
+                return ()
+            return (
+                SimpleNamespace(
+                    relation_id="0x7b" if relative_path == "src/parser.py" else "0x7c",
+                    memory_id="0x2a",
+                    scope_kind="USER_PRIVATE",
+                    project_id=project_id,
+                    relative_path=relative_path,
+                    source_revision="older-global-revision",
+                    source_content_hash=source_content_hash,
+                    memory_revision=4,
+                    memory_content_hash=relation_memory_hashes[relative_path],
+                    created_at_ms=10,
+                    memory_lifecycle="ACTIVE",
+                    memory_validation="ACCEPTED",
+                    memory_content_current=self.relation_current,
+                ),
+            )
+
+        def inspect_memory(self, memory_id: str, *, scope_kind: str, owner_id: str):
+            if memory_id != "0x2a":
+                return None
+            return SimpleNamespace(
+                memory_id=memory_id,
+                owner_id=self.owner_id,
+                scope_kind=scope_kind,
+                lifecycle=self.lifecycle,
+                validation=self.validation,
+                revision=4,
+                content_hash=memory_hash,
+                content="The parser caps the item count at 100.",
+                observed_at_ms=10,
+                relevance_score=0.9,
+            )
+
+    learning = Learning()
+    service = DesktopService(
+        profile_root=profile_root,
+        profile_id="local-profile",
+        learning_factory=lambda: learning,
+    )
+    assert json.loads(service.dispatch(_request("workspace.open")))["status"] == "ok"
+    snapshot = json.loads(service.dispatch(_request("workspace.source_snapshot")))["result"]["snapshot"]
+    project_id = snapshot["identity"]["project_id"]
+
+    related_memories, relations = service._verified_file_relation_context(
+        learning,
+        "Explain the parser limit",
+        snapshot,
+        "local-profile",
+    )
+    assert [memory.memory_id for memory in related_memories] == ["0x2a"]
+    assert [(relation.relative_path, relation.source_content_hash) for relation in relations] == [
+        ("src/parser.py", source_hash)
+    ]
+    assert learning.relation_queries == [(f"project:{project_id}", "src/parser.py", source_hash, 8)]
+    context = service._compile_recalled_context(
+        learning,
+        "Explain the parser limit",
+        "local-profile",
+        source_snapshot=snapshot,
+    )
+    assert context.items[0].source_id == "0x2a"
+    assert context.items[0].dependency_coverage == 1_000_000
+    assert "[CONFIRMED FILE RELATION path=src/parser.py" in context.rendered
+    assert context.manifest["items"][0]["relations"][0]["source_content_hash"] == source_hash
+    assert learning.relation_queries[-1] == (f"project:{project_id}", "src/parser.py", source_hash, 8)
+
+    second_source = tmp_path / "profile" / "src" / "reader.py"
+    second_source.write_bytes(second_source_bytes)
+    duplicate_snapshot = {
+        **snapshot,
+        "files": [
+            *snapshot["files"],
+            {"relative_path": "src/reader.py", "content_hash": second_source_hash},
+        ],
+    }
+    with monkeypatch.context() as relation_scope:
+        relation_scope.setattr(
+            "aegis_cognition.desktop_service._ranked_source_paths_for_prompt",
+            lambda _files, _query: ["src/parser.py", "src/reader.py"],
+        )
+        duplicate_memories, duplicate_relations = service._verified_file_relation_context(
+            learning,
+            "Explain the parser limit",
+            duplicate_snapshot,
+            "local-profile",
+        )
+        duplicate_context = service._compile_recalled_context(
+            learning,
+            "Explain the parser limit",
+            "local-profile",
+            source_snapshot=duplicate_snapshot,
+        )
+    assert [memory.memory_id for memory in duplicate_memories] == ["0x2a"]
+    assert [relation.relative_path for relation in duplicate_relations] == ["src/parser.py"]
+    assert "[CONFIRMED FILE RELATION path=src/parser.py" in duplicate_context.rendered
+    assert "[CONFIRMED FILE RELATION path=src/reader.py" not in duplicate_context.rendered
+
+    learning.owner_id = "another-profile"
+    foreign_owner_memory, foreign_owner_relations = service._verified_file_relation_context(
+        learning,
+        "Explain the parser limit",
+        snapshot,
+        "local-profile",
+    )
+    assert foreign_owner_memory == ()
+    assert foreign_owner_relations == ()
+    learning.owner_id = "local-profile"
+
+    learning.relation_current = False
+    stale_memory, stale_relations = service._verified_file_relation_context(
+        learning,
+        "Explain the parser limit",
+        snapshot,
+        "local-profile",
+    )
+    assert stale_memory == ()
+    assert stale_relations == ()
+    learning.relation_current = True
+
+    learning.validation = "UNREVIEWED"
+    rejected_memory, _ = service._verified_file_relation_context(
+        learning,
+        "Explain the parser limit",
+        snapshot,
+        "local-profile",
+    )
+    assert rejected_memory == ()
+    assert learning.relation_queries[-1] == (f"project:{project_id}", "src/parser.py", source_hash, 8)
+
+    learning.validation = "ACCEPTED"
+    source.write_bytes(b"MAX_ITEMS = 200\n")
+    stale_source, _ = service._verified_file_relation_context(
+        learning,
+        "Explain the parser limit",
+        snapshot,
+        "local-profile",
+    )
+    assert stale_source == ()
+
+
+def test_live_provider_dispatch_rejects_a_linked_memory_when_source_changes_after_hydration(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+):
+    monkeypatch.delenv("AEGIS_SESSION_DB_PATH", raising=False)
+    monkeypatch.delenv("AEGIS_PROFILE_ID", raising=False)
+    source = tmp_path / "profile" / "src" / "parser.py"
+    source.parent.mkdir(parents=True)
+    original_source = b"MAX_ITEMS = 100\n"
+    source.write_bytes(original_source)
+    source_hash = hashlib.sha256(original_source).hexdigest()
+    memory_content = "The parser caps the item count at 100."
+    memory_hash = hashlib.sha256(memory_content.encode("utf-8")).hexdigest()
+    requested: list[bytes] = []
+    prompts: list[str] = []
+    manager = _FakeConversationManager()
+
+    class LocalCatalog:
+        def list_connections(self):
+            return (
+                ConnectionRecord(
+                    connection_id="local",
+                    provider_kind="openai-compatible",
+                    endpoint="http://127.0.0.1:8080/v1",
+                    protocol="chat-completions",
+                    secret_ref=None,
+                    enabled=True,
+                    revision=1,
+                    updated_at_ms=1,
+                ),
+            )
+
+    class LinkedLearning(_FakeLearning):
+        def search_memories(self, *_args: object, **_kwargs: object):
+            return ()
+
+        def inspect_memory(self, memory_id: str, *, owner_id: str, scope_kind: str, **_kwargs: object):
+            if memory_id != "0x2a":
+                return None
+            return SimpleNamespace(
+                memory_id=memory_id,
+                owner_id=owner_id,
+                scope_kind=scope_kind,
+                lifecycle="ACTIVE",
+                validation="ACCEPTED",
+                revision=4,
+                content_hash=memory_hash,
+                content=memory_content,
+                observed_at_ms=10,
+                relevance_score=0.9,
+            )
+
+        def list_current_file_relations(
+            self,
+            project_id: str,
+            relative_path: str,
+            *,
+            source_content_hash: str,
+            limit: int,
+            **_kwargs: object,
+        ):
+            if relative_path != "src/parser.py":
+                return ()
+            if source_content_hash != source_hash or limit == 0:
+                return ()
+            return (
+                SimpleNamespace(
+                    relation_id="0x7b",
+                    memory_id="0x2a",
+                    scope_kind="USER_PRIVATE",
+                    project_id=project_id,
+                    relative_path=relative_path,
+                    source_revision="prior-workspace-revision",
+                    source_content_hash=source_hash,
+                    memory_revision=4,
+                    memory_content_hash=memory_hash,
+                    created_at_ms=10,
+                    memory_lifecycle="ACTIVE",
+                    memory_validation="ACCEPTED",
+                    memory_content_current=True,
+                ),
+            )
+
+    class MutatingClient(OpenAICompatibleClient):
+        def invoke(self, prompt: str, **kwargs: object):
+            prompts.append(prompt)
+            source.write_bytes(b"MAX_ITEMS = 200\n")
+            return super().invoke(prompt, **kwargs)
+
+    def requester(_url, _headers, body, _timeout):
+        requested.append(body)
+        return ConnectionResponse(200, b'{"choices":[{"message":{"content":"answer"}}]}')
+
+    def client_factory(connection, *, model, secret_resolver=None, egress_check=None):
+        return MutatingClient(
+            connection,
+            model=model,
+            secret_resolver=secret_resolver,
+            egress_check=egress_check,
+            requester=requester,
+        )
+
+    service = DesktopService(
+        profile_root=tmp_path / "profile",
+        manager_factory=lambda: manager,
+        connection_catalog_factory=LocalCatalog,
+        learning_factory=LinkedLearning,
+        client_factory=client_factory,
+    )
+    try:
+        assert json.loads(service.dispatch(_request("workspace.open")))["status"] == "ok"
+        response = json.loads(
+            service.dispatch(
+                _request(
+                    "conversations.send",
+                    {"conversation_id": "conv-1", "message": "Explain the parser limit", "mode": "live"},
+                )
+            )
+        )
+
+        assert prompts and memory_content in prompts[0]
+        assert response["status"] == "error"
+        assert response["error"]["code"] == "SOURCE_SNAPSHOT_STALE"
+        assert requested == []
+        assert [checkpoint.state for checkpoint in manager.snapshot.checkpoints] == [
+            "PROMPT_PREPARED",
+            "PROVIDER_DISPATCH_ATTEMPTED",
+        ]
+    finally:
+        service.close()
+
+
+def _render_desktop_provider_prompt(service: DesktopService, query: str, context: object) -> str:
+    service._settings_store = lambda: SimpleNamespace(get=lambda: {})
+    service._active_skill_context = lambda _message: ""
+    prompt, _, _, _ = service._render_provider_prompt(
+        SimpleNamespace(conversation=SimpleNamespace(conversation_id="test-conversation"), turns=()),
+        query,
+        {"revision": "test-revision", "files": []},
+        context,
+    )
+    return prompt
+
+
+def test_desktop_final_prompt_includes_only_rehydrated_accepted_owner_memory(tmp_path: Path):
+    owner = "desktop-owner"
+    query = "preferred report format"
+
+    def content_hash(value: str) -> str:
+        return hashlib.sha256(value.encode("utf-8")).hexdigest()
+
+    accepted_hash = content_hash("ACCEPTED_MEMORY_SENTINEL")
+    pending_hash = content_hash("PENDING_MEMORY_SENTINEL")
+    rejected_hash = content_hash("REJECTED_MEMORY_SENTINEL")
+    foreign_hash = content_hash("FOREIGN_MEMORY_SENTINEL")
+    revoked_hash = content_hash("REVOKED_MEMORY_SENTINEL")
+    old_hash = content_hash("OLD_MEMORY_SENTINEL")
+    current_hash = content_hash("STALE_MEMORY_SENTINEL")
+    candidates = (
+        SimpleNamespace(
+            memory_id="0x11",
+            owner_id=owner,
+            scope_kind="USER_PRIVATE",
+            lifecycle="ACTIVE",
+            validation="ACCEPTED",
+            content_hash=accepted_hash,
+            content="UNTRUSTED_CANDIDATE_SENTINEL",
+        ),
+        SimpleNamespace(
+            memory_id="0x12",
+            owner_id=owner,
+            scope_kind="USER_PRIVATE",
+            lifecycle="CANDIDATE",
+            validation="UNREVIEWED",
+            content_hash=pending_hash,
+            content="PENDING_MEMORY_SENTINEL",
+        ),
+        SimpleNamespace(
+            memory_id="0x13",
+            owner_id=owner,
+            scope_kind="USER_PRIVATE",
+            lifecycle="ACTIVE",
+            validation="REJECTED",
+            content_hash=rejected_hash,
+            content="REJECTED_MEMORY_SENTINEL",
+        ),
+        SimpleNamespace(
+            memory_id="0x14",
+            owner_id="other-owner",
+            scope_kind="USER_PRIVATE",
+            lifecycle="ACTIVE",
+            validation="ACCEPTED",
+            content_hash=foreign_hash,
+            content="FOREIGN_MEMORY_SENTINEL",
+        ),
+        SimpleNamespace(
+            memory_id="0x15",
+            owner_id=owner,
+            scope_kind="USER_PRIVATE",
+            lifecycle="ACTIVE",
+            validation="ACCEPTED",
+            content_hash=revoked_hash,
+            content="REVOKED_MEMORY_SENTINEL",
+        ),
+        SimpleNamespace(
+            memory_id="0x16",
+            owner_id=owner,
+            scope_kind="USER_PRIVATE",
+            lifecycle="ACTIVE",
+            validation="ACCEPTED",
+            content_hash=old_hash,
+            content="OLD_MEMORY_SENTINEL",
+        ),
+    )
+    records = {
+        "0x11": SimpleNamespace(
+            memory_id="0x11",
+            owner_id=owner,
+            scope_kind="USER_PRIVATE",
+            lifecycle="ACTIVE",
+            validation="ACCEPTED",
+            content_hash=accepted_hash,
+            content="ACCEPTED_MEMORY_SENTINEL",
+        ),
+        "0x14": SimpleNamespace(
+            memory_id="0x14",
+            owner_id="other-owner",
+            scope_kind="USER_PRIVATE",
+            lifecycle="ACTIVE",
+            validation="ACCEPTED",
+            content_hash=foreign_hash,
+            content="FOREIGN_MEMORY_SENTINEL",
+        ),
+        "0x15": SimpleNamespace(
+            memory_id="0x15",
+            owner_id=owner,
+            scope_kind="USER_PRIVATE",
+            lifecycle="TOMBSTONED",
+            validation="ACCEPTED",
+            content_hash=revoked_hash,
+            content="REVOKED_MEMORY_SENTINEL",
+        ),
+        "0x16": SimpleNamespace(
+            memory_id="0x16",
+            owner_id=owner,
+            scope_kind="USER_PRIVATE",
+            lifecycle="ACTIVE",
+            validation="ACCEPTED",
+            content_hash=current_hash,
+            content="STALE_MEMORY_SENTINEL",
+        ),
+    }
+
+    class Learning:
+        def __init__(self) -> None:
+            self.scoped_search: tuple[object, ...] | None = None
+            self.inspected: list[str] = []
+
+        def search_past(self, _query: str, *, top_k: int):
+            del top_k
+            return SimpleNamespace(results=())
+
+        def search_past_scoped(self, query: str, *, top_k: int, scope_kind: str, owner_id: str):
+            self.scoped_search = (query, top_k, scope_kind, owner_id)
+            return SimpleNamespace(results=())
+
+        def search_memories(self, _query: str, top_k: int, *, scope_kind: str, owner_id: str):
+            assert top_k == 32
+            assert scope_kind == "USER_PRIVATE"
+            assert owner_id == owner
+            return candidates
+
+        def inspect_memory(self, memory_id: str, *, scope_kind: str, owner_id: str):
+            assert scope_kind == "USER_PRIVATE"
+            assert owner_id == owner
+            self.inspected.append(memory_id)
+            return records.get(memory_id)
+
+        def read_session_record_scoped(self, _session_id: int, *, scope_kind: str, owner_id: str):
+            assert scope_kind == "USER_PRIVATE"
+            assert owner_id == owner
+            return None
+
+    learning = Learning()
+    service = DesktopService(profile_root=tmp_path / "profile", profile_id=owner)
+
+    context = service._compile_recalled_context(learning, query, owner)
+    prompt = _render_desktop_provider_prompt(service, query, context)
+
+    assert learning.scoped_search == (query, 8, "USER_PRIVATE", owner)
+    assert learning.inspected == ["0x11", "0x14", "0x15", "0x16"]
+    assert "ACCEPTED_MEMORY_SENTINEL" in prompt
+    for denied in (
+        "PENDING_MEMORY_SENTINEL",
+        "REJECTED_MEMORY_SENTINEL",
+        "UNTRUSTED_CANDIDATE_SENTINEL",
+        "FOREIGN_MEMORY_SENTINEL",
+        "REVOKED_MEMORY_SENTINEL",
+        "OLD_MEMORY_SENTINEL",
+        "STALE_MEMORY_SENTINEL",
+    ):
+        assert denied not in prompt
+
+
+def test_desktop_scopes_session_search_before_top_k(tmp_path: Path):
+    owner = "workspace-owner"
+    query = "rank nine local fact"
+    global_candidates = tuple(
+        SimpleNamespace(
+            segment_id=index,
+            evidence_ref_hash=f"foreign-hash-{index}",
+            score=1.0,
+            tier="Candidate",
+        )
+        for index in range(1, 9)
+    )
+    owner_candidate = SimpleNamespace(
+        segment_id=9,
+        evidence_ref_hash="owner-hash",
+        score=0.8,
+        tier="Candidate",
+        global_rank=9,
+    )
+    owner_record = SimpleNamespace(
+        session_id=9,
+        content_hash="owner-hash",
+        timestamp=1_700_000_000_000,
+        scope_kind="USER_PRIVATE",
+        owner_id=owner,
+        content="OWNER_RANK_NINE_SENTINEL",
+    )
+
+    class Learning:
+        def __init__(self) -> None:
+            self.unscoped_calls = 0
+            self.scoped_search: tuple[object, ...] | None = None
+
+        def search_past(self, _query: str, *, top_k: int):
+            self.unscoped_calls += 1
+            assert top_k == 8
+            return SimpleNamespace(results=global_candidates)
+
+        def search_past_scoped(self, query: str, *, top_k: int, scope_kind: str, owner_id: str):
+            self.scoped_search = (query, top_k, scope_kind, owner_id)
+            return SimpleNamespace(results=(owner_candidate,))
+
+        def search_memories(self, _query: str, _top_k: int, **_kwargs: object):
+            return ()
+
+        def read_session_record_scoped(self, session_id: int, *, scope_kind: str, owner_id: str):
+            if session_id == 9 and scope_kind == "USER_PRIVATE" and owner_id == owner:
+                return owner_record
+            return None
+
+    learning = Learning()
+    service = DesktopService(profile_root=tmp_path / "profile", profile_id=owner)
+
+    context = service._compile_recalled_context(learning, query, owner)
+    prompt = _render_desktop_provider_prompt(service, query, context)
+
+    assert learning.unscoped_calls == 0
+    assert learning.scoped_search == (query, 8, "USER_PRIVATE", owner)
+    assert "OWNER_RANK_NINE_SENTINEL" in prompt
+    assert "FOREIGN_SESSION_SENTINEL" not in prompt
 
 
 def test_desktop_service_switch_model_requires_verified_connection_catalog(tmp_path: Path):
@@ -1422,6 +2365,23 @@ def test_desktop_service_switches_workspace_without_changing_open_contract(tmp_p
     assert Path(os.environ["AEGIS_SESSION_DB_PATH"]) == (target / ".aegis" / "state.db").resolve()
 
 
+def test_default_workspace_open_after_switch_preserves_the_active_workspace(tmp_path: Path, monkeypatch):
+    monkeypatch.delenv("AEGIS_SESSION_DB_PATH", raising=False)
+    monkeypatch.delenv("AEGIS_PROFILE_ID", raising=False)
+    service = DesktopService(profile_root=tmp_path / "profile")
+    assert json.loads(service.dispatch(_request("workspace.open")))["status"] == "ok"
+
+    target = tmp_path / "approved-project"
+    switched = json.loads(service.dispatch(_request("workspace.switch", {"workspace_path": str(target)})))
+    assert switched["status"] == "ok"
+
+    reopened = json.loads(service.dispatch(_request("workspace.open")))
+
+    assert reopened["status"] == "ok"
+    assert Path(reopened["result"]["workspace_path"]) == target.resolve()
+    assert Path(service._state_path or "") == (target / ".aegis" / "state.db").resolve()
+
+
 def test_desktop_service_registers_and_lists_imported_projects_without_copying_them(tmp_path: Path, monkeypatch):
     monkeypatch.delenv("AEGIS_SESSION_DB_PATH", raising=False)
     monkeypatch.delenv("AEGIS_PROFILE_ID", raising=False)
@@ -1457,6 +2417,54 @@ def test_desktop_service_registers_and_lists_imported_projects_without_copying_t
         item["path"] != str(first.resolve())
         for item in json.loads(service.dispatch(_request("projects.list")))["result"]["projects"]
     )
+
+
+@pytest.mark.skipif(os.name != "nt", reason="extended Windows paths are Windows-specific")
+def test_desktop_service_keeps_one_project_identity_for_extended_and_regular_paths(tmp_path: Path, monkeypatch):
+    monkeypatch.delenv("AEGIS_SESSION_DB_PATH", raising=False)
+    monkeypatch.delenv("AEGIS_PROFILE_ID", raising=False)
+    monkeypatch.delenv("AEGIS_DESKTOP_PROFILE_ROOT", raising=False)
+    profile = tmp_path / "profile"
+    project = tmp_path / "workspace"
+    project.mkdir()
+    extended_path = "\\\\?\\" + str(project.resolve())
+    assert Path(extended_path).samefile(project)
+
+    service = DesktopService(profile_root=profile, profile_id="local-profile")
+    try:
+        assert json.loads(service.dispatch(_request("workspace.open")))["status"] == "ok"
+        regular_switch = json.loads(service.dispatch(_request("workspace.switch", {"workspace_path": str(project)})))
+        assert regular_switch["status"] == "ok"
+        regular_projects = json.loads(service.dispatch(_request("projects.list")))["result"]
+
+        extended_switch = json.loads(service.dispatch(_request("workspace.switch", {"workspace_path": extended_path})))
+        assert extended_switch["status"] == "ok"
+        extended_projects = json.loads(service.dispatch(_request("projects.list")))["result"]
+
+        assert extended_projects["active_project_id"] == regular_projects["active_project_id"]
+        assert len(extended_projects["projects"]) == 1
+        assert extended_projects["projects"][0]["path"] == str(project.resolve())
+        assert extended_projects["projects"][0]["open_count"] == 2
+    finally:
+        service.close()
+
+
+@pytest.mark.skipif(os.name != "nt", reason="Windows extended paths are Windows-specific")
+def test_workspace_path_normalization_preserves_extended_length_paths():
+    components = "\\".join(["a" * 45] * 6)
+    drive_path = "D:\\" + components
+    extended_drive_path = "\\\\?\\" + drive_path
+    unc_path = "\\\\server\\share\\" + components
+    extended_unc_path = "\\\\?\\UNC\\server\\share\\" + components
+
+    assert len(drive_path) >= 260
+    assert desktop_service_module._normalize_windows_workspace_path(Path(drive_path)) == Path(extended_drive_path)
+    assert desktop_service_module._normalize_windows_workspace_path(Path(extended_drive_path)) == Path(
+        extended_drive_path
+    )
+    assert len(unc_path) >= 260
+    assert desktop_service_module._normalize_windows_workspace_path(Path(unc_path)) == Path(extended_unc_path)
+    assert desktop_service_module._normalize_windows_workspace_path(Path(extended_unc_path)) == Path(extended_unc_path)
 
 
 def test_desktop_service_clones_only_approved_public_hosts(tmp_path: Path, monkeypatch):
@@ -1513,13 +2521,77 @@ def test_desktop_service_exposes_bounded_source_snapshot(tmp_path: Path, monkeyp
     assert snapshot["files"][0]["extraction_status"] in {"EXTRACTED", "FALLBACK_HASH_ONLY"}
 
 
+def test_desktop_source_snapshot_keeps_git_identity_but_scopes_dirty_paths(tmp_path: Path, monkeypatch):
+    monkeypatch.delenv("AEGIS_SESSION_DB_PATH", raising=False)
+    monkeypatch.delenv("AEGIS_PROFILE_ID", raising=False)
+    repository = tmp_path / "repository"
+    workspace = repository / "workspace"
+    sibling = repository / "sibling"
+    workspace.mkdir(parents=True)
+    sibling.mkdir()
+    source = workspace / "main.py"
+    outside = sibling / "outside.py"
+    source.write_text("def answer():\n    return 1\n", encoding="utf-8")
+    outside.write_text("private = True\n", encoding="utf-8")
+    subprocess.run(["git", "init", "--initial-branch=main", str(repository)], check=True, capture_output=True)
+    subprocess.run(["git", "-C", str(repository), "config", "user.name", "AEGIS test"], check=True)
+    subprocess.run(["git", "-C", str(repository), "config", "user.email", "aegis@example.invalid"], check=True)
+    subprocess.run(
+        ["git", "-C", str(repository), "add", "workspace/main.py", "sibling/outside.py"],
+        check=True,
+        capture_output=True,
+    )
+    subprocess.run(
+        [
+            "git",
+            "-C",
+            str(repository),
+            "-c",
+            "commit.gpgsign=false",
+            "commit",
+            "-m",
+            "initial",
+        ],
+        check=True,
+        capture_output=True,
+    )
+    outside.write_text("private = False\n", encoding="utf-8")
+    service = DesktopService(profile_root=tmp_path / "profile")
+    try:
+        assert (
+            json.loads(service.dispatch(_request("workspace.open", {"workspace_path": str(workspace)})))["status"]
+            == "ok"
+        )
+
+        response = json.loads(service.dispatch(_request("workspace.source_snapshot")))
+
+        assert response["status"] == "ok"
+        identity = response["result"]["snapshot"]["identity"]
+        assert identity["vcs"] == "git"
+        assert identity["repository_root"] == str(repository.resolve())
+        assert identity["dirty"] is False
+        assert identity["dirty_paths"] == []
+
+        source.write_text("def answer():\n    return 2\n", encoding="utf-8")
+        (workspace / "untracked.py").write_text("value = 3\n", encoding="utf-8")
+        changed = json.loads(service.dispatch(_request("workspace.source_snapshot")))
+        changed_identity = changed["result"]["snapshot"]["identity"]
+        assert changed_identity["dirty"] is True
+        assert changed_identity["dirty_paths"] == ["main.py", "untracked.py"]
+        assert "sibling" not in json.dumps(changed_identity)
+        assert "outside.py" not in json.dumps(changed_identity)
+    finally:
+        service.close()
+
+
 def test_workspace_file_read_is_utf8_bounded_and_stays_inside_workspace(tmp_path: Path):
     workspace = tmp_path / "workspace"
     workspace.mkdir()
     source = workspace / "app.py"
     source.write_text("print('in workspace')\n", encoding="utf-8", newline="\n")
-    outside = tmp_path / "outside.txt"
-    outside.write_text("private", encoding="utf-8")
+    outside = tmp_path / "outside"
+    outside.mkdir()
+    (outside / "outside.txt").write_text("private", encoding="utf-8")
     service = DesktopService(profile_root=tmp_path / "profile")
     service._opened_root = workspace
 
@@ -1533,13 +2605,312 @@ def test_workspace_file_read_is_utf8_bounded_and_stays_inside_workspace(tmp_path
     hidden_state = json.loads(service.dispatch(_request("workspace.file_read", {"relative_path": ".aegis/state.db"})))
     assert hidden_state["error"]["code"] == "INVALID_PATH"
 
-    link = workspace / "outside-link.txt"
+    link = workspace / "outside-link"
+    if os.name == "nt":
+        created = subprocess.run(
+            ("cmd.exe", "/c", "mklink", "/J", str(link), str(outside)),
+            capture_output=True,
+            text=True,
+            timeout=5.0,
+            check=False,
+        )
+        assert created.returncode == 0, created.stderr or created.stdout
+        assert link.is_junction()
+    else:
+        link.symlink_to(outside, target_is_directory=True)
     try:
-        link.symlink_to(outside)
-    except OSError:
-        pytest.skip("symlink creation is unavailable on this Windows account")
-    linked = json.loads(service.dispatch(_request("workspace.file_read", {"relative_path": "outside-link.txt"})))
-    assert linked["error"]["code"] == "INVALID_PATH"
+        linked = json.loads(
+            service.dispatch(_request("workspace.file_read", {"relative_path": "outside-link/outside.txt"}))
+        )
+        assert linked["error"]["code"] == "INVALID_PATH"
+    finally:
+        if link.is_junction():
+            link.rmdir()
+        else:
+            link.unlink(missing_ok=True)
+
+
+@pytest.mark.skipif(sys.platform != "win32", reason="Windows path roots and os.startfile are platform-specific")
+@pytest.mark.parametrize(
+    "relative_path",
+    (
+        r"\Windows\System32\cmd.exe",
+        "/Windows/System32/cmd.exe",
+        r"C:Windows\System32\cmd.exe",
+        r"D:Windows\System32\cmd.exe",
+        r"C:\Windows\System32\cmd.exe",
+        r"\\server\share\file.txt",
+        r"\\?\C:\Windows\System32\cmd.exe",
+        r"\\.\C:\Windows\System32\cmd.exe",
+    ),
+)
+def test_workspace_open_external_rejects_windows_anchored_paths_before_os_open(
+    tmp_path: Path, monkeypatch, relative_path: str
+):
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    inside = workspace / "inside.txt"
+    inside.write_text("inside", encoding="utf-8")
+    service = DesktopService(profile_root=tmp_path / "profile")
+    service._opened_root = workspace
+    opened: list[Path] = []
+    monkeypatch.setattr(desktop_service_module.os, "startfile", lambda path: opened.append(Path(path)))
+
+    try:
+        allowed = json.loads(service.dispatch(_request("workspace.open_external", {"relative_path": "inside.txt"})))
+        blocked = json.loads(service.dispatch(_request("workspace.open_external", {"relative_path": relative_path})))
+    finally:
+        service.close()
+
+    assert allowed["status"] == "ok"
+    assert allowed["result"]["relative_path"] == "inside.txt"
+    assert opened == [inside]
+    assert blocked["status"] == "error"
+    assert blocked["error"]["code"] == "INVALID_PATH"
+    assert opened == [inside]
+
+
+@pytest.mark.skipif(sys.platform != "win32", reason="Windows path roots are platform-specific")
+def test_workspace_file_path_checks_containment_after_join_even_if_parser_returns_rooted_path(
+    tmp_path: Path, monkeypatch
+):
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    service = DesktopService(profile_root=tmp_path / "profile")
+    service._opened_root = workspace
+    monkeypatch.setattr(
+        DesktopService,
+        "_workspace_relative_path",
+        staticmethod(lambda _payload: Path(r"\Windows\System32\cmd.exe")),
+    )
+
+    try:
+        with pytest.raises(DesktopServiceError) as error:
+            service._workspace_file_path({"relative_path": "inside.txt"})
+    finally:
+        service.close()
+
+    assert error.value.code == "INVALID_PATH"
+
+
+@pytest.mark.parametrize("relative_path", (".", "./"))
+def test_workspace_relative_path_rejects_current_directory(relative_path: str):
+    with pytest.raises(DesktopServiceError) as error:
+        DesktopService._workspace_relative_path({"relative_path": relative_path})
+
+    assert error.value.code == "INVALID_PATH"
+
+
+def _replace_workspace_ancestor_with_directory_link(directory: Path, target: Path, saved_directory: Path) -> None:
+    directory.rename(saved_directory)
+    if os.name == "nt":
+        created = subprocess.run(
+            ("cmd.exe", "/c", "mklink", "/J", str(directory), str(target)),
+            capture_output=True,
+            text=True,
+            timeout=5.0,
+            check=False,
+        )
+        if created.returncode != 0:
+            saved_directory.rename(directory)
+            pytest.skip("Windows junction creation is unavailable")
+        assert directory.is_junction()
+    else:
+        directory.symlink_to(target, target_is_directory=True)
+
+
+def _restore_workspace_ancestor(directory: Path, saved_directory: Path) -> None:
+    if directory.is_junction():
+        directory.rmdir()
+    elif directory.is_symlink():
+        directory.unlink(missing_ok=True)
+    if saved_directory.exists():
+        saved_directory.rename(directory)
+
+
+def test_workspace_path_and_file_read_reject_static_link_without_resolving_target(tmp_path: Path, monkeypatch):
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    outside = tmp_path / "outside"
+    outside.mkdir()
+    (outside / "module.py").write_text("def outside(): return True\n", encoding="utf-8")
+    link = workspace / "linked"
+    if os.name == "nt":
+        created = subprocess.run(
+            ("cmd.exe", "/c", "mklink", "/J", str(link), str(outside)),
+            capture_output=True,
+            text=True,
+            timeout=5.0,
+            check=False,
+        )
+        if created.returncode != 0:
+            pytest.skip("Windows junction creation is unavailable")
+        assert link.is_junction()
+    else:
+        link.symlink_to(outside, target_is_directory=True)
+
+    service = DesktopService(profile_root=tmp_path / "profile")
+    service._opened_root = workspace
+    candidate = link / "module.py"
+    original_resolve = Path.resolve
+    resolved_candidates: list[Path] = []
+
+    def observe_resolve(path: Path, *args, **kwargs):
+        if path == candidate:
+            resolved_candidates.append(path)
+        return original_resolve(path, *args, **kwargs)
+
+    monkeypatch.setattr(Path, "resolve", observe_resolve)
+    try:
+        response = json.loads(service.dispatch(_request("workspace.file_read", {"relative_path": "linked/module.py"})))
+        with pytest.raises(DesktopServiceError):
+            service._workspace_file_path({"relative_path": "linked/module.py"})
+    finally:
+        service.close()
+        if link.is_junction():
+            link.rmdir()
+        else:
+            link.unlink(missing_ok=True)
+
+    assert response["status"] == "error"
+    assert response["error"]["code"] == "INVALID_PATH"
+    assert resolved_candidates == []
+
+
+def test_workspace_file_read_rejects_ancestor_link_swapped_before_safe_open(tmp_path: Path, monkeypatch):
+    monkeypatch.delenv("AEGIS_SESSION_DB_PATH", raising=False)
+    monkeypatch.delenv("AEGIS_PROFILE_ID", raising=False)
+    workspace = tmp_path / "workspace"
+    source_directory = workspace / "src"
+    source_directory.mkdir(parents=True)
+    (source_directory / "notes.txt").write_text("inside workspace", encoding="utf-8")
+    outside = tmp_path / "outside"
+    outside.mkdir()
+    (outside / "notes.txt").write_text("outside workspace secret", encoding="utf-8")
+    service = DesktopService(profile_root=tmp_path / "profile")
+    assert (
+        json.loads(service.dispatch(_request("workspace.open", {"workspace_path": str(workspace)})))["status"] == "ok"
+    )
+    original_reader = desktop_service_module.read_file_beneath_root
+    saved_directory = workspace / "src-original"
+    swapped = False
+
+    def swap_then_read(root: Path, relative_path: str, *, max_bytes: int):
+        nonlocal swapped
+        if relative_path == "src/notes.txt" and not swapped:
+            _replace_workspace_ancestor_with_directory_link(source_directory, outside, saved_directory)
+            swapped = True
+        return original_reader(root, relative_path, max_bytes=max_bytes)
+
+    monkeypatch.setattr(desktop_service_module, "read_file_beneath_root", swap_then_read)
+    try:
+        response = json.loads(service.dispatch(_request("workspace.file_read", {"relative_path": "src/notes.txt"})))
+    finally:
+        service.close()
+        _restore_workspace_ancestor(source_directory, saved_directory)
+
+    assert swapped
+    assert response["status"] == "error"
+    assert response["error"]["code"] == "INVALID_PATH"
+    assert "outside workspace secret" not in json.dumps(response)
+
+
+def test_provider_code_read_rejects_ancestor_link_swapped_before_safe_open_even_when_hash_matches(
+    tmp_path: Path, monkeypatch
+):
+    monkeypatch.delenv("AEGIS_SESSION_DB_PATH", raising=False)
+    monkeypatch.delenv("AEGIS_PROFILE_ID", raising=False)
+    workspace = tmp_path / "workspace"
+    source_directory = workspace / "src"
+    source_directory.mkdir(parents=True)
+    (source_directory / "module.py").write_text("def safe(): return True\n", encoding="utf-8")
+    outside = tmp_path / "outside"
+    outside.mkdir()
+    outside_bytes = b"secret = 'outside-workspace'\n"
+    (outside / "module.py").write_bytes(outside_bytes)
+    service = DesktopService(profile_root=tmp_path / "profile")
+    assert (
+        json.loads(service.dispatch(_request("workspace.open", {"workspace_path": str(workspace)})))["status"] == "ok"
+    )
+    service._source_snapshot = SimpleNamespace(
+        files=(
+            SimpleNamespace(
+                relative_path="src/module.py",
+                extraction_status="EXTRACTED",
+                content_hash=hashlib.sha256(outside_bytes).hexdigest(),
+            ),
+        )
+    )
+    original_reader = desktop_service_module.read_file_beneath_root
+    saved_directory = workspace / "src-original"
+    swapped = False
+
+    def swap_then_read(root: Path, relative_path: str, *, max_bytes: int):
+        nonlocal swapped
+        if relative_path == "src/module.py" and not swapped:
+            _replace_workspace_ancestor_with_directory_link(source_directory, outside, saved_directory)
+            swapped = True
+        return original_reader(root, relative_path, max_bytes=max_bytes)
+
+    monkeypatch.setattr(desktop_service_module, "read_file_beneath_root", swap_then_read)
+    try:
+        with pytest.raises(DesktopServiceError):
+            service._provider_code_source("src/module.py")
+    finally:
+        service.close()
+        _restore_workspace_ancestor(source_directory, saved_directory)
+
+    assert swapped
+
+
+def test_provider_code_read_rejects_unindexed_link_without_resolving_it(tmp_path: Path, monkeypatch):
+    monkeypatch.delenv("AEGIS_SESSION_DB_PATH", raising=False)
+    monkeypatch.delenv("AEGIS_PROFILE_ID", raising=False)
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    outside = tmp_path / "outside"
+    outside.mkdir()
+    (outside / "module.py").write_text("def outside(): return True\n", encoding="utf-8")
+    link = workspace / "linked"
+    if os.name == "nt":
+        created = subprocess.run(
+            ("cmd.exe", "/c", "mklink", "/J", str(link), str(outside)),
+            capture_output=True,
+            text=True,
+            timeout=5.0,
+            check=False,
+        )
+        if created.returncode != 0:
+            pytest.skip("Windows junction creation is unavailable")
+        assert link.is_junction()
+    else:
+        link.symlink_to(outside, target_is_directory=True)
+
+    service = DesktopService(profile_root=tmp_path / "profile")
+    assert (
+        json.loads(service.dispatch(_request("workspace.open", {"workspace_path": str(workspace)})))["status"] == "ok"
+    )
+    candidate = link / "module.py"
+    original_resolve = Path.resolve
+    resolved_candidates: list[Path] = []
+
+    def observe_resolve(path: Path, *args, **kwargs):
+        if path == candidate:
+            resolved_candidates.append(path)
+        return original_resolve(path, *args, **kwargs)
+
+    monkeypatch.setattr(Path, "resolve", observe_resolve)
+    try:
+        with pytest.raises(DesktopServiceError):
+            service._provider_code_source("linked/module.py")
+    finally:
+        service.close()
+        if link.is_junction():
+            link.rmdir()
+        else:
+            link.unlink(missing_ok=True)
+
+    assert resolved_candidates == []
 
 
 def test_provider_code_tools_search_read_and_redact_bounded_source(tmp_path: Path, monkeypatch):
@@ -1552,7 +2923,7 @@ def test_provider_code_tools_search_read_and_redact_bounded_source(tmp_path: Pat
         'API_KEY = "test-sk-test-key-abcdefghijklmnopqrstuvwxyz"\n'
         'API_TOKEN = "test-only-api-token-placeholder"\n'
         'ACCESS_TOKEN: str = "test-only-opaque-credential-placeholder"\n'
-        'CLIENT_SECRET = "test-prefix-\\\"tail-placeholder"\n'
+        'CLIENT_SECRET = "test-prefix-\\"tail-placeholder"\n'
         'OPENAI_API_KEY = "test-only-openai-api-key-placeholder"\n'
         'AZURE_OPENAI_API_KEY = "test-only-azure-api-key-placeholder"\n'
         'AWS_SECRET_ACCESS_KEY = "test-only-aws-secret-placeholder"\n'
@@ -1613,9 +2984,7 @@ def test_provider_code_tools_search_read_and_redact_bounded_source(tmp_path: Pat
         assert excerpt["has_more"] is True
 
         source.write_text(
-            'API_KEY = "test-sk-test-key-abcdefghijklmnopqrstuvwxyz"\n'
-            "def lookup_items():\n"
-            "    return 7\n",
+            'API_KEY = "test-sk-test-key-abcdefghijklmnopqrstuvwxyz"\ndef lookup_items():\n    return 7\n',
             encoding="utf-8",
         )
         refreshed = asyncio.run(
@@ -1726,14 +3095,27 @@ def test_workspace_changes_show_git_diff_for_modified_and_deleted_tracked_files(
         pytest.skip("Git is unavailable")
     workspace = tmp_path / "repository"
     workspace.mkdir()
-    subprocess.run([git, "init", str(workspace)], check=True, capture_output=True)
+    subprocess.run([git, "init", "--initial-branch=main", str(workspace)], check=True, capture_output=True)
     modified = workspace / "modified.py"
     deleted = workspace / "deleted.py"
     modified.write_text("value = 'before'\n", encoding="utf-8")
     deleted.write_text("value = 'remove me'\n", encoding="utf-8")
-    subprocess.run([git, "-C", str(workspace), "add", "--", "modified.py", "deleted.py"], check=True, capture_output=True)
     subprocess.run(
-        [git, "-C", str(workspace), "-c", "user.name=AEGIS test", "-c", "user.email=aegis@example.invalid", "commit", "-m", "baseline"],
+        [git, "-C", str(workspace), "add", "--", "modified.py", "deleted.py"], check=True, capture_output=True
+    )
+    subprocess.run(
+        [
+            git,
+            "-C",
+            str(workspace),
+            "-c",
+            "user.name=AEGIS test",
+            "-c",
+            "user.email=aegis@example.invalid",
+            "commit",
+            "-m",
+            "baseline",
+        ],
         check=True,
         capture_output=True,
     )
@@ -1878,10 +3260,7 @@ def test_desktop_service_discovers_portable_skills_after_shared_agent_skills(tmp
         encoding="utf-8",
     )
     (claude_root / "claude-project" / "SKILL.md").write_text(
-        "---\n"
-        "name: claude-project\n"
-        "description: Claude Code project skill\n"
-        "---\n\nClaude project body.\n",
+        "---\nname: claude-project\ndescription: Claude Code project skill\n---\n\nClaude project body.\n",
         encoding="utf-8",
     )
     (legacy_antigravity_root / "antigravity-legacy" / "SKILL.md").write_text(
@@ -1979,9 +3358,7 @@ def test_skill_resource_tool_is_read_only_bounded_and_requires_enabled_skill(tmp
         descriptor = service._extension_registry.get_tool_spec(tool_name)
         assert descriptor is not None and descriptor.effect_class == "read_only"
         catalog = json.loads(service.dispatch(_request("extensions.discover")))
-        skill_hash = next(
-            item["content_hash"] for item in catalog["result"]["skills"] if item["name"] == "research"
-        )
+        skill_hash = next(item["content_hash"] for item in catalog["result"]["skills"] if item["name"] == "research")
         enabled = json.loads(
             service.dispatch(
                 _request(
@@ -2032,8 +3409,8 @@ def test_skill_resource_tool_is_read_only_bounded_and_requires_enabled_skill(tmp
         assert desktop_service_module.PROVIDER_SKILL_READ_TOOL_NAME in definition_names
         assert tool_name in definition_names
 
-        active_prompt, stable_prefix, _ = service._render_provider_prompt(
-            SimpleNamespace(turns=()),
+        active_prompt, stable_prefix, _, _ = service._render_provider_prompt(
+            SimpleNamespace(conversation=SimpleNamespace(conversation_id="test-conversation"), turns=()),
             "Read the research reference",
             {"revision": "test", "files": []},
             SimpleNamespace(rendered=""),
@@ -2059,9 +3436,7 @@ def test_skill_resource_tool_is_read_only_bounded_and_requires_enabled_skill(tmp
         assert "Read references/guide.md when needed." in client.calls[1][1][0].outputs[0].output
         assert manager.snapshot.tool_calls[0].status == "COMPLETED"
 
-        search_tool = service._extension_registry.get_tool_spec(
-            desktop_service_module.PROVIDER_SKILL_SEARCH_TOOL_NAME
-        )
+        search_tool = service._extension_registry.get_tool_spec(desktop_service_module.PROVIDER_SKILL_SEARCH_TOOL_NAME)
         read_tool = service._extension_registry.get_tool_spec(desktop_service_module.PROVIDER_SKILL_READ_TOOL_NAME)
         assert search_tool is not None and search_tool.effect_class == "read_only"
         assert read_tool is not None and read_tool.effect_class == "read_only"
@@ -2306,9 +3681,7 @@ def test_enabled_skill_can_be_disabled_after_its_source_is_removed(tmp_path: Pat
 
         assert disabled["status"] == "ok", disabled
         record = next(
-            item
-            for item in disabled["result"]["records"]
-            if item["kind"] == "skill" and item["id"] == "research"
+            item for item in disabled["result"]["records"] if item["kind"] == "skill" and item["id"] == "research"
         )
         assert record["enabled"] is False
     finally:
@@ -2418,7 +3791,7 @@ def test_desktop_imports_wasm_tool_inactive_then_requires_approval_to_activate(t
     )
     (source / "wasm.toml").write_text(
         '[wasm]\nschema = "aegis-wasm-plugin-v1"\nmodule = "plugin.wasm"\n'
-        'fuel_limit = 10000\nmemory_pages = 8\ntimeout_ms = 1000\nmax_output_bytes = 4096\n\n'
+        "fuel_limit = 10000\nmemory_pages = 8\ntimeout_ms = 1000\nmax_output_bytes = 4096\n\n"
         '[[tool]]\nname = "compute-demo.answer"\nexport = "answer"\n'
         'description = "Return a computed answer"\n'
         'input_schema = { type = "object", properties = { value = { type = "integer" } }, required = ["value"], additionalProperties = false }\n'
@@ -2443,7 +3816,10 @@ def test_desktop_imports_wasm_tool_inactive_then_requires_approval_to_activate(t
     monkeypatch.setattr(desktop_service_module, "native_module", lambda: SimpleNamespace(WasmPlugin=Runtime))
     service = DesktopService(profile_root=tmp_path / "profile")
     try:
-        assert json.loads(service.dispatch(_request("workspace.open", {"workspace_path": str(workspace)})))["status"] == "ok"
+        assert (
+            json.loads(service.dispatch(_request("workspace.open", {"workspace_path": str(workspace)})))["status"]
+            == "ok"
+        )
         imported = json.loads(service.dispatch(_request("extensions.import_pack", {"source_path": str(source)})))
         assert imported["status"] == "ok", imported
         assert imported["result"]["wasm_tool_names"] == ["compute-demo.answer"]
@@ -2457,33 +3833,45 @@ def test_desktop_imports_wasm_tool_inactive_then_requires_approval_to_activate(t
         assert len(plugin["descriptor_hash"]) == 64
         assert not compile_calls
 
-        denied = json.loads(service.dispatch(_request("extensions.set_state", {
-            "kind": "extension",
-            "id": "compute-demo",
-            "descriptor_hash": plugin["descriptor_hash"],
-            "enabled": True,
-            "approved": False,
-            "expected_revision": 0,
-        })))
+        denied = json.loads(
+            service.dispatch(
+                _request(
+                    "extensions.set_state",
+                    {
+                        "kind": "extension",
+                        "id": "compute-demo",
+                        "descriptor_hash": plugin["descriptor_hash"],
+                        "enabled": True,
+                        "approved": False,
+                        "expected_revision": 0,
+                    },
+                )
+            )
+        )
         assert denied["status"] == "error"
         assert denied["error"]["code"] == "WASM_PLUGIN_APPROVAL_REQUIRED"
         assert not compile_calls
 
-        enabled = json.loads(service.dispatch(_request("extensions.set_state", {
-            "kind": "extension",
-            "id": "compute-demo",
-            "descriptor_hash": plugin["descriptor_hash"],
-            "enabled": True,
-            "approved": True,
-            "expected_revision": 0,
-        })))
+        enabled = json.loads(
+            service.dispatch(
+                _request(
+                    "extensions.set_state",
+                    {
+                        "kind": "extension",
+                        "id": "compute-demo",
+                        "descriptor_hash": plugin["descriptor_hash"],
+                        "enabled": True,
+                        "approved": True,
+                        "expected_revision": 0,
+                    },
+                )
+            )
+        )
         assert enabled["status"] == "ok", enabled
         assert compile_calls == [module]
         active_state = json.loads(service.dispatch(_request("extensions.state")))["result"]
         active_record = next(
-            item
-            for item in active_state["records"]
-            if item["kind"] == "extension" and item["id"] == "compute-demo"
+            item for item in active_state["records"] if item["kind"] == "extension" and item["id"] == "compute-demo"
         )
         assert active_record["approved"] is True
         assert active_record["enabled"] is True
@@ -2491,31 +3879,43 @@ def test_desktop_imports_wasm_tool_inactive_then_requires_approval_to_activate(t
         assert asyncio.run(service._extension_registry.invoke("compute-demo.answer", {"value": 41})) == {"answer": 42}
         assert runtime_calls == [41]
 
-        disabled = json.loads(service.dispatch(_request("extensions.set_state", {
-            "kind": "extension",
-            "id": "compute-demo",
-            "descriptor_hash": plugin["descriptor_hash"],
-            "enabled": False,
-            "approved": True,
-            "expected_revision": enabled["result"]["revision"],
-        })))
+        disabled = json.loads(
+            service.dispatch(
+                _request(
+                    "extensions.set_state",
+                    {
+                        "kind": "extension",
+                        "id": "compute-demo",
+                        "descriptor_hash": plugin["descriptor_hash"],
+                        "enabled": False,
+                        "approved": True,
+                        "expected_revision": enabled["result"]["revision"],
+                    },
+                )
+            )
+        )
         assert disabled["status"] == "ok"
         assert service._extension_registry.get_tool_spec("compute-demo.answer") is None
 
-        (workspace / ".aegis" / "extensions" / "compute-demo" / "plugin.wasm").write_bytes(
-            module + b"\x00\x01\x00"
-        )
+        (workspace / ".aegis" / "extensions" / "compute-demo" / "plugin.wasm").write_bytes(module + b"\x00\x01\x00")
         changed = json.loads(service.dispatch(_request("extensions.discover")))["result"]
         changed_plugin = next(item for item in changed["extensions"] if item["extension_id"] == "compute-demo")
         assert changed_plugin["descriptor_hash"] != plugin["descriptor_hash"]
-        stale = json.loads(service.dispatch(_request("extensions.set_state", {
-            "kind": "extension",
-            "id": "compute-demo",
-            "descriptor_hash": plugin["descriptor_hash"],
-            "enabled": False,
-            "approved": False,
-            "expected_revision": disabled["result"]["revision"],
-        })))
+        stale = json.loads(
+            service.dispatch(
+                _request(
+                    "extensions.set_state",
+                    {
+                        "kind": "extension",
+                        "id": "compute-demo",
+                        "descriptor_hash": plugin["descriptor_hash"],
+                        "enabled": False,
+                        "approved": False,
+                        "expected_revision": disabled["result"]["revision"],
+                    },
+                )
+            )
+        )
         assert stale["status"] == "error"
         assert stale["error"]["code"] == "CAPABILITY_CHANGED"
 
@@ -2526,20 +3926,25 @@ def test_desktop_imports_wasm_tool_inactive_then_requires_approval_to_activate(t
             for item in json.loads(service.dispatch(_request("extensions.discover")))["result"]["extensions"]
             if item["extension_id"] == "compute-demo"
         )
-        re_enabled = json.loads(service.dispatch(_request("extensions.set_state", {
-            "kind": "extension",
-            "id": "compute-demo",
-            "descriptor_hash": changed_plugin["descriptor_hash"],
-            "enabled": True,
-            "approved": True,
-            "expected_revision": disabled["result"]["revision"],
-        })))
+        re_enabled = json.loads(
+            service.dispatch(
+                _request(
+                    "extensions.set_state",
+                    {
+                        "kind": "extension",
+                        "id": "compute-demo",
+                        "descriptor_hash": changed_plugin["descriptor_hash"],
+                        "enabled": True,
+                        "approved": True,
+                        "expected_revision": disabled["result"]["revision"],
+                    },
+                )
+            )
+        )
         assert re_enabled["status"] == "ok", re_enabled
         assert compile_calls == [module, changed_module]
 
-        (workspace / ".aegis" / "extensions" / "compute-demo" / "plugin.wasm").write_bytes(
-            module + b"\x00\x02\x00"
-        )
+        (workspace / ".aegis" / "extensions" / "compute-demo" / "plugin.wasm").write_bytes(module + b"\x00\x02\x00")
         active_spec = service._extension_registry.get_tool_spec("compute-demo.answer")
         assert active_spec is not None
         stale_call = service._execute_provider_tool_batch(
@@ -2934,8 +4339,7 @@ def test_extension_pack_import_cannot_exceed_discovery_capacity(tmp_path: Path, 
         extension = extensions_root / f"existing-{index}"
         extension.mkdir(parents=True)
         (extension / "extension.toml").write_text(
-            f'[extension]\nid = "existing-{index}"\nversion = "1"\n'
-            'description = "Existing metadata"\n',
+            f'[extension]\nid = "existing-{index}"\nversion = "1"\ndescription = "Existing metadata"\n',
             encoding="utf-8",
         )
     source = tmp_path / "new-pack"
@@ -3196,10 +4600,7 @@ def test_desktop_service_imports_claude_plugin_skills_and_mcp_as_inactive_data(t
         encoding="utf-8",
     )
     (source / "skills" / "source-review" / "SKILL.md").write_text(
-        "---\n"
-        "name: source-review\n"
-        "description: Review source evidence\n"
-        "---\n\nUse verified sources.\n",
+        "---\nname: source-review\ndescription: Review source evidence\n---\n\nUse verified sources.\n",
         encoding="utf-8",
     )
 
@@ -3230,9 +4631,7 @@ def test_desktop_service_imports_claude_plugin_skills_and_mcp_as_inactive_data(t
         assert any(item["name"] == "source-review" for item in catalog["skills"])
         assert server["approved"] is False
         state = json.loads(service.dispatch(_request("extensions.state")))["result"]["records"]
-        assert not any(
-            item["kind"] == "skill" and item["id"] == "source-review" and item["enabled"] for item in state
-        )
+        assert not any(item["kind"] == "skill" and item["id"] == "source-review" and item["enabled"] for item in state)
     finally:
         service.close()
 
@@ -3299,7 +4698,10 @@ def test_desktop_service_returns_safe_session_only_mcp_setup_suggestions(tmp_pat
     )
     service = DesktopService(profile_root=tmp_path / "profile")
     try:
-        assert json.loads(service.dispatch(_request("workspace.open", {"workspace_path": str(workspace)})))["status"] == "ok"
+        assert (
+            json.loads(service.dispatch(_request("workspace.open", {"workspace_path": str(workspace)})))["status"]
+            == "ok"
+        )
         imported = json.loads(service.dispatch(_request("extensions.import_pack", {"source_path": str(source)})))
         assert imported["status"] == "ok", imported
         result = imported["result"]
@@ -3319,9 +4721,12 @@ def test_desktop_service_returns_safe_session_only_mcp_setup_suggestions(tmp_pat
             },
         ]
         assert "DO_NOT_RETURN" not in json.dumps(result)
-        catalog = json.loads(service.dispatch(_request("extensions.discover")))['result']
+        catalog = json.loads(service.dispatch(_request("extensions.discover")))["result"]
         assert all(not item["approved"] for item in catalog["mcp_servers"])
-        assert all(not item["enabled"] for item in json.loads(service.dispatch(_request("extensions.state")))['result']["records"])
+        assert all(
+            not item["enabled"]
+            for item in json.loads(service.dispatch(_request("extensions.state")))["result"]["records"]
+        )
     finally:
         service.close()
 
@@ -3714,8 +5119,8 @@ def test_desktop_cache_identity_excludes_query_specific_workspace_context(tmp_pa
             source_snapshot,
             SimpleNamespace(rendered="memory result for beta"),
         )
-        first_prompt, first_stable, first_dynamic = first
-        second_prompt, second_stable, second_dynamic = second
+        first_prompt, first_stable, first_dynamic, _ = first
+        second_prompt, second_stable, second_dynamic, _ = second
         first_plan = CachePromptPlan.from_parts(
             provider="openai",
             model="gpt-5.6-sol",
@@ -3750,7 +5155,7 @@ def test_desktop_cache_identity_excludes_query_specific_workspace_context(tmp_pa
                 for index in range(32)
             ),
         )
-        bounded_prompt, _, _ = service._render_provider_prompt(
+        bounded_prompt, _, _, _ = service._render_provider_prompt(
             long_history,
             "keep this current request intact",
             source_snapshot,
@@ -3767,6 +5172,233 @@ def test_desktop_cache_identity_excludes_query_specific_workspace_context(tmp_pa
                 source_snapshot,
                 SimpleNamespace(rendered="memory"),
             )
+    finally:
+        service.close()
+
+
+def test_desktop_prompt_deduplicates_only_exact_same_conversation_transcript_overlap(tmp_path: Path):
+    service = DesktopService(profile_root=tmp_path / "profile")
+    service._active_skill_context = lambda _message: ""
+    conversation = _FakeConversation("conv-overlap", "local-profile", "Overlap", "local", "test-model")
+    turns = (
+        _FakeTurn("conv-overlap", "turn-1", "user", "COMPLETED", "Sentinel overlap appears once.", 2),
+        _FakeTurn("conv-overlap", "turn-2", "user", "COMPLETED", "Sentinel overlap appears once.", 3),
+        _FakeTurn("conv-overlap", "turn-3", "assistant", "COMPLETED", 'The distinct quote is "blue sky".', 4),
+        _FakeTurn("conv-overlap", "turn-4", "user", "COMPLETED", "Continue from there.", 5),
+    )
+    snapshot = _FakeSnapshot(conversation, turns=turns)
+    previous_transcript = service._transcript_text(
+        _FakeSnapshot(conversation, turns=turns[:3]),
+        turns[3].content,
+    )
+    session_item = SimpleNamespace(
+        session_id=41,
+        node_id=41,
+        source_kind="session",
+        source_id="0x29",
+        content_hash="source-hash",
+        content=previous_transcript,
+        mandatory=False,
+        retention_class="condensable",
+    )
+    context = SimpleNamespace(
+        rendered=f"[AUTHORIZED HYDRATED CONTEXT]\n{previous_transcript}\n[/AUTHORIZED HYDRATED CONTEXT]",
+        items=(session_item,),
+        manifest={"items": []},
+        manifest_hash="selected-manifest-hash",
+        token_budget=4096,
+        token_count=20,
+    )
+    try:
+        prompt, _, _, inclusion = service._render_provider_prompt(
+            snapshot,
+            "What was the quote?",
+            {"revision": "source-1", "files": []},
+            context,
+        )
+
+        assert prompt.count("Sentinel overlap appears once.") == 2
+        assert prompt.count('The distinct quote is "blue sky".') == 1
+        assert inclusion["deduplicated_turn_count"] == 4
+    finally:
+        service.close()
+
+
+def test_same_conversation_overlap_bounds_each_prefix_to_transcript_window(tmp_path: Path):
+    service = DesktopService(profile_root=tmp_path / "profile")
+    conversation = _FakeConversation("conv-long-overlap", "local-profile", "Long overlap", "local", "test-model")
+    turns = tuple(
+        _FakeTurn(
+            "conv-long-overlap",
+            f"turn-{index}",
+            "user",
+            "COMPLETED",
+            f"user turn {index:03d}",
+            index + 1,
+        )
+        for index in range(100)
+    )
+    snapshot = _FakeSnapshot(conversation, turns=turns)
+    matching_index = 80
+    prior_snapshot = _FakeSnapshot(conversation, turns=turns[:matching_index])
+    transcript = service._transcript_text(prior_snapshot, turns[matching_index].content)
+    observed_prefix_sizes: list[int] = []
+    transcript_text = service._transcript_text
+
+    def record_prefix_size(candidate_snapshot: Any, pending_message: str) -> str:
+        if pending_message.startswith("user turn "):
+            observed_prefix_sizes.append(len(candidate_snapshot.turns))
+        return transcript_text(candidate_snapshot, pending_message)
+
+    service._transcript_text = record_prefix_size
+    session_item = SimpleNamespace(source_kind="session", content=transcript)
+    try:
+        overlaps = service._same_conversation_transcript_overlap(snapshot, "new question", (session_item,))
+
+        expected_start = matching_index - desktop_service_module.MAX_HISTORY_TURNS
+        assert overlaps == {turn.turn_id for turn in turns[expected_start : matching_index + 1]}
+        assert len(observed_prefix_sizes) == 100
+        assert max(observed_prefix_sizes) <= desktop_service_module.MAX_HISTORY_TURNS
+    finally:
+        service.close()
+
+
+def test_desktop_prompt_does_not_deduplicate_cross_conversation_transcripts(tmp_path: Path):
+    service = DesktopService(profile_root=tmp_path / "profile")
+    service._active_skill_context = lambda _message: ""
+    conversation = _FakeConversation("conv-current", "local-profile", "Current", "local", "test-model")
+    turn = _FakeTurn("conv-current", "turn-1", "user", "COMPLETED", "Keep this exact quote.", 2)
+    snapshot = _FakeSnapshot(conversation, turns=(turn,))
+    foreign_transcript = "conversation: conv-other\nuser: Keep this exact quote."
+    item = SimpleNamespace(
+        session_id=42,
+        node_id=42,
+        source_kind="session",
+        source_id="0x2a",
+        content_hash="foreign-hash",
+        content=foreign_transcript,
+        mandatory=False,
+        retention_class="condensable",
+    )
+    context = SimpleNamespace(
+        rendered=f"[AUTHORIZED HYDRATED CONTEXT]\n{foreign_transcript}\n[/AUTHORIZED HYDRATED CONTEXT]",
+        items=(item,),
+        manifest={"items": []},
+        manifest_hash="foreign-manifest",
+        token_budget=4096,
+        token_count=20,
+    )
+    try:
+        prompt, _, _, inclusion = service._render_provider_prompt(
+            snapshot,
+            "What should I remember?",
+            {"revision": "source-1", "files": []},
+            context,
+        )
+        assert prompt.count("Keep this exact quote.") == 2
+        assert inclusion["deduplicated_turn_count"] == 0
+    finally:
+        service.close()
+
+
+def test_desktop_prompt_inclusion_manifest_matches_63336_character_request(tmp_path: Path):
+    service = DesktopService(profile_root=tmp_path / "profile")
+    service._active_skill_context = lambda _message: ""
+    message = "🧠" * 100 + "x" * 63_236
+    content = "protected answer fragment"
+    item = SimpleNamespace(
+        session_id=43,
+        node_id=43,
+        source_kind="session",
+        source_id="0x2b",
+        content_hash="included-hash",
+        content=content,
+        mandatory=False,
+        retention_class="condensable",
+    )
+    context = SimpleNamespace(
+        rendered=f"[AUTHORIZED HYDRATED CONTEXT]\n{content}\n[/AUTHORIZED HYDRATED CONTEXT]",
+        items=(item,),
+        manifest={"items": []},
+        manifest_hash="selected-manifest-hash",
+        token_budget=4096,
+        token_count=20,
+    )
+    try:
+        prompt, _, _, inclusion = service._render_provider_prompt(
+            _FakeSnapshot(_FakeConversation("conv-budget", "local-profile", "Budget", "local", "test-model")),
+            message,
+            {"revision": "source-1", "files": []},
+            context,
+        )
+        assert len(prompt) <= MAX_PROMPT_LENGTH
+        assert inclusion["prompt_chars"] == len(prompt)
+        assert len(prompt.encode("utf-8")) > len(prompt)
+        assert prompt.endswith(f"[CURRENT USER MESSAGE]\n{message}")
+        assert inclusion["items"][0]["status"] == "INCLUDED"
+        assert content in prompt
+    finally:
+        service.close()
+
+
+def test_desktop_prompt_reports_optional_omission_and_rejects_protected_omission(tmp_path: Path):
+    service = DesktopService(profile_root=tmp_path / "profile")
+    service._active_skill_context = lambda _message: ""
+    message = "x" * 63_336
+    optional_content = "optional-source" * 512
+    optional_item = SimpleNamespace(
+        session_id=44,
+        node_id=44,
+        source_kind="session",
+        source_id="0x2c",
+        content_hash="optional-hash",
+        content=optional_content,
+        mandatory=False,
+        retention_class="condensable",
+    )
+    optional_context = SimpleNamespace(
+        rendered=optional_content,
+        items=(optional_item,),
+        manifest={"items": []},
+        manifest_hash="optional-manifest",
+        token_budget=4096,
+        token_count=20,
+    )
+    protected_context = SimpleNamespace(
+        rendered=optional_content,
+        items=(
+            SimpleNamespace(
+                **{
+                    **vars(optional_item),
+                    "mandatory": True,
+                    "retention_class": "protected",
+                }
+            ),
+        ),
+        manifest={"items": []},
+        manifest_hash="protected-manifest",
+        token_budget=4096,
+        token_count=20,
+    )
+    snapshot = _FakeSnapshot(_FakeConversation("conv-omit", "local-profile", "Omit", "local", "test-model"))
+    try:
+        prompt, _, _, inclusion = service._render_provider_prompt(
+            snapshot,
+            message,
+            {"revision": "source-1", "files": []},
+            optional_context,
+        )
+        assert len(prompt) <= MAX_PROMPT_LENGTH
+        assert inclusion["items"][0]["status"] == "OMITTED"
+        assert inclusion["items"][0]["omitted_reason"] == "PROMPT_LIMIT"
+        with pytest.raises(DesktopServiceError, match="protected context") as error:
+            service._render_provider_prompt(
+                snapshot,
+                message,
+                {"revision": "source-1", "files": []},
+                protected_context,
+            )
+        assert error.value.code == "PROTECTED_CONTEXT_OVERFLOW"
     finally:
         service.close()
 
@@ -4038,9 +5670,7 @@ def test_deactivating_mcp_preserves_approval_when_an_extension_has_the_same_id(t
     root = tmp_path / "project"
     metadata = root / ".aegis" / "mcp" / "shared" / "mcp.toml"
     metadata.parent.mkdir(parents=True)
-    metadata.write_text(
-        '[mcp]\nid = "shared"\ndescription = "Shared id"\ntransport = "stdio"\n', encoding="utf-8"
-    )
+    metadata.write_text('[mcp]\nid = "shared"\ndescription = "Shared id"\ntransport = "stdio"\n', encoding="utf-8")
     service = DesktopService(profile_root=tmp_path / "profile")
     try:
         assert json.loads(service.dispatch(_request("workspace.open", {"workspace_path": str(root)})))["status"] == "ok"
@@ -4077,9 +5707,7 @@ def test_deactivating_mcp_preserves_approval_when_an_extension_has_the_same_id(t
         )
 
         assert deactivated["status"] == "ok"
-        mcp_record = next(
-            item for item in deactivated["result"]["state"]["records"] if item["kind"] == "mcp"
-        )
+        mcp_record = next(item for item in deactivated["result"]["state"]["records"] if item["kind"] == "mcp")
         assert mcp_record["enabled"] is False
         assert mcp_record["approved"] is True
     finally:
@@ -4902,14 +6530,14 @@ def test_desktop_mcp_oauth_reports_actionable_setup_errors(
     service = DesktopService(profile_root=tmp_path / "profile")
 
     def oauth_requires_client_id(_client, _headers):
-        raise extensions_module.McpOAuthError(
-            "Enter a pre-registered OAuth Client ID.", code="client_id_required"
-        )
+        raise extensions_module.McpOAuthError("Enter a pre-registered OAuth Client ID.", code="client_id_required")
 
     def reject_unauthenticated_request(_provider, *_args, **_kwargs):
         return (
             401,
-            {"www-authenticate": 'Bearer resource_metadata="https://mcp.example/.well-known/oauth-protected-resource/mcp"'},
+            {
+                "www-authenticate": 'Bearer resource_metadata="https://mcp.example/.well-known/oauth-protected-resource/mcp"'
+            },
             b"",
         )
 
@@ -5211,18 +6839,14 @@ for line in sys.stdin:
         )
         assert activation["status"] == "ok"
 
-        catalog = json.loads(
-            service.dispatch(_request("extensions.mcp_skills_list", {"server_id": "skills-server"}))
-        )
+        catalog = json.loads(service.dispatch(_request("extensions.mcp_skills_list", {"server_id": "skills-server"})))
         assert catalog["status"] == "ok"
         skill = catalog["result"]["skills"][0]
         assert catalog["result"]["supports_skills"] is True
         assert skill["name"] == "research"
         assert skill["approved"] is False
         assert skill["enabled"] is False
-        search_tool = service._extension_registry.get_tool_spec(
-            desktop_service_module.PROVIDER_SKILL_SEARCH_TOOL_NAME
-        )
+        search_tool = service._extension_registry.get_tool_spec(desktop_service_module.PROVIDER_SKILL_SEARCH_TOOL_NAME)
         read_tool = service._extension_registry.get_tool_spec(desktop_service_module.PROVIDER_SKILL_READ_TOOL_NAME)
         resource_tool = service._extension_registry.get_tool_spec(
             desktop_service_module.PROVIDER_SKILL_RESOURCE_TOOL_NAME
@@ -5264,11 +6888,7 @@ for line in sys.stdin:
             )
         )
         assert enabled["status"] == "ok"
-        record = next(
-            item
-            for item in enabled["result"]["state"]["records"]
-            if item["id"] == skill["id"]
-        )
+        record = next(item for item in enabled["result"]["state"]["records"] if item["id"] == skill["id"])
         assert record["source_server_id"] == "skills-server"
         assert record["resource_uri"] == skill["uri"]
         assert record["skill_name"] == "research"
@@ -5342,19 +6962,13 @@ for line in sys.stdin:
         ]
 
         changed_manifest.write_text("changed", encoding="utf-8")
-        refreshed = json.loads(
-            service.dispatch(_request("extensions.mcp_skills_list", {"server_id": "skills-server"}))
-        )
+        refreshed = json.loads(service.dispatch(_request("extensions.mcp_skills_list", {"server_id": "skills-server"})))
         assert refreshed["status"] == "ok"
         changed_skill = refreshed["result"]["skills"][0]
         assert changed_skill["manifest_hash"] != skill["manifest_hash"]
         assert changed_skill["approved"] is False
         assert changed_skill["enabled"] is False
-        revoked = next(
-            item
-            for item in refreshed["result"]["state"]["records"]
-            if item["id"] == skill["id"]
-        )
+        revoked = next(item for item in refreshed["result"]["state"]["records"] if item["id"] == skill["id"])
         assert revoked["approved"] is False
         assert revoked["enabled"] is False
         assert revoked["descriptor_hash"] == changed_skill["manifest_hash"]
@@ -5400,12 +7014,8 @@ def test_enabled_mcp_skill_tools_disambiguate_same_names_by_origin_and_uri(tmp_p
         ]
         monkeypatch.setattr(service, "_enabled_remote_skill_records", lambda: tuple(records))
 
-        search_spec = service._extension_registry.get_tool_spec(
-            desktop_service_module.PROVIDER_SKILL_SEARCH_TOOL_NAME
-        )
-        read_spec = service._extension_registry.get_tool_spec(
-            desktop_service_module.PROVIDER_SKILL_READ_TOOL_NAME
-        )
+        search_spec = service._extension_registry.get_tool_spec(desktop_service_module.PROVIDER_SKILL_SEARCH_TOOL_NAME)
+        read_spec = service._extension_registry.get_tool_spec(desktop_service_module.PROVIDER_SKILL_READ_TOOL_NAME)
         assert search_spec is not None and read_spec is not None
         found = asyncio.run(
             service._extension_registry.invoke(
@@ -5448,10 +7058,7 @@ def test_enabled_mcp_skill_tools_disambiguate_same_names_by_origin_and_uri(tmp_p
             )
             assert result["origin_server_id"] == item["origin_server_id"]
             assert "Untrusted Skill content" in result["trust_notice"]
-        assert routed == [
-            (item["origin_server_id"], item["uri"])
-            for item in found["skills"]
-        ]
+        assert routed == [(item["origin_server_id"], item["uri"]) for item in found["skills"]]
     finally:
         service.close()
 
@@ -5622,6 +7229,98 @@ def test_desktop_service_live_send_uses_connection_and_persists_transcript(tmp_p
     assert observed and "use live" in observed[0][1]
     assert "[AEGIS REPOSITORY MAP" in observed[0][1]
     assert learning.indexed and "use live" in learning.indexed[0][1]
+
+
+@pytest.mark.parametrize("fail_payload_checkpoint", [False, True])
+def test_desktop_live_send_checkpoints_redacted_adapter_payload_before_dispatch(
+    tmp_path: Path, monkeypatch, fail_payload_checkpoint: bool
+):
+    monkeypatch.delenv("AEGIS_SESSION_DB_PATH", raising=False)
+    monkeypatch.delenv("AEGIS_PROFILE_ID", raising=False)
+
+    class CheckpointManager(_FakeConversationManager):
+        def checkpoint_execution(self, conversation_id: str, **kwargs):
+            if fail_payload_checkpoint and kwargs["state"] == "PROVIDER_DISPATCH_ATTEMPTED":
+                raise RuntimeError("synthetic checkpoint failure")
+            return super().checkpoint_execution(conversation_id, **kwargs)
+
+    manager = CheckpointManager()
+    requested: list[bytes] = []
+    checkpoint_at_dispatch: list[str] = []
+
+    class LocalCatalog:
+        def list_connections(self):
+            return (
+                ConnectionRecord(
+                    connection_id="local",
+                    provider_kind="openai-compatible",
+                    endpoint="http://127.0.0.1:8080/v1",
+                    protocol="chat-completions",
+                    secret_ref=None,
+                    enabled=True,
+                    revision=1,
+                    updated_at_ms=1,
+                ),
+            )
+
+    def requester(_url, _headers, body, _timeout):
+        requested.append(body)
+        checkpoint_at_dispatch.append(manager.snapshot.checkpoints[-1].state)
+        return ConnectionResponse(200, b'{"choices":[{"message":{"content":"captured answer"}}]}')
+
+    def client_factory(connection, *, model, secret_resolver=None, egress_check=None):
+        return OpenAICompatibleClient(
+            connection,
+            model=model,
+            secret_resolver=secret_resolver,
+            egress_check=egress_check,
+            requester=requester,
+        )
+
+    service = DesktopService(
+        profile_root=tmp_path / "profile",
+        manager_factory=lambda: manager,
+        connection_catalog_factory=LocalCatalog,
+        learning_factory=_FakeLearning,
+        client_factory=client_factory,
+    )
+    try:
+        assert json.loads(service.dispatch(_request("workspace.open")))["status"] == "ok"
+        response = json.loads(
+            service.dispatch(
+                _request(
+                    "conversations.send",
+                    {"conversation_id": "conv-1", "message": "private included prompt", "mode": "live"},
+                )
+            )
+        )
+
+        if fail_payload_checkpoint:
+            assert response["status"] == "error"
+            assert response["error"]["code"] == "PROVIDER_ERROR"
+            assert requested == []
+            assert checkpoint_at_dispatch == []
+            assert [checkpoint.state for checkpoint in manager.snapshot.checkpoints] == ["PROMPT_PREPARED"]
+            prepared = json.loads(manager.snapshot.checkpoints[0].continuation_json)
+            assert prepared["context_inclusion"]["status"] == "COMPOSED"
+            assert "provider_request_attempt" not in prepared
+            return
+
+        assert response["status"] == "ok"
+        assert checkpoint_at_dispatch == ["PROVIDER_DISPATCH_ATTEMPTED"]
+        assert len(checkpoint_at_dispatch[0].encode("utf-8")) <= 32
+        assert [checkpoint.sequence for checkpoint in manager.snapshot.checkpoints] == [1, 2]
+        prepared = json.loads(manager.snapshot.checkpoints[0].continuation_json)
+        dispatched = json.loads(manager.snapshot.checkpoints[1].continuation_json)
+        assert prepared["context_inclusion"]["status"] == "COMPOSED"
+        assert dispatched["provider_request_attempt"]["state"] == "DISPATCH_ATTEMPTED"
+        assert dispatched["provider_request_attempt"]["payload_sha256"] == hashlib.sha256(requested[0]).hexdigest()
+        assert dispatched["provider_request_attempt"]["payload_bytes"] == len(requested[0])
+        assert "private included prompt" not in json.dumps(
+            [checkpoint.continuation_json for checkpoint in manager.snapshot.checkpoints]
+        )
+    finally:
+        service.close()
 
 
 @pytest.mark.parametrize("decision", ["approve", "deny", "oversized", "catalog_changed"])
@@ -6742,12 +8441,8 @@ for line in sys.stdin:
             activate_payload |= {
                 "auto_run_tool_hashes": [tested_tool["mcp_descriptor_hash"]],
             }
-        unbound_activation = {
-            key: value for key, value in activate_payload.items() if key != "test_token"
-        }
-        missing_test = json.loads(
-            service.dispatch(_request("extensions.activate_mcp", unbound_activation))
-        )
+        unbound_activation = {key: value for key, value in activate_payload.items() if key != "test_token"}
+        missing_test = json.loads(service.dispatch(_request("extensions.activate_mcp", unbound_activation)))
         assert missing_test["status"] == "error"
         assert missing_test["error"]["code"] == "MCP_TEST_REQUIRED"
         assert start_log.read_text(encoding="utf-8").splitlines() == ["started"]
@@ -7584,9 +9279,9 @@ def test_ambiguous_tool_reconciliation_records_user_assertion_without_rerunning_
         },
     )
     try:
-        inspection = json.loads(
-            service.dispatch(_request("conversations.inspect", {"conversation_id": "conv-1"}))
-        )["result"]["inspection"]
+        inspection = json.loads(service.dispatch(_request("conversations.inspect", {"conversation_id": "conv-1"})))[
+            "result"
+        ]["inspection"]
         approval = inspection["approvals"][0]
         assert approval["can_reconcile"] is True
         assert approval["can_resolve"] is False
@@ -7659,9 +9354,9 @@ def test_ambiguous_tool_reconciliation_rejects_stale_or_active_conversation(tmp_
                 ],
             },
         )
-        inspection = json.loads(
-            service.dispatch(_request("conversations.inspect", {"conversation_id": "conv-1"}))
-        )["result"]["inspection"]
+        inspection = json.loads(service.dispatch(_request("conversations.inspect", {"conversation_id": "conv-1"})))[
+            "result"
+        ]["inspection"]
         assert inspection["approvals"][0]["can_reconcile"] is False
         active = json.loads(
             service.dispatch(
@@ -7680,3 +9375,480 @@ def test_ambiguous_tool_reconciliation_rejects_stale_or_active_conversation(tmp_
         assert manager.snapshot.tool_calls[0].status == "AMBIGUOUS"
     finally:
         service.close()
+
+
+def test_desktop_service_validates_memory_candidate_via_rpc(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+):
+    monkeypatch.delenv("AEGIS_SESSION_DB_PATH", raising=False)
+    monkeypatch.delenv("AEGIS_PROFILE_ID", raising=False)
+    calls: list[dict[str, object]] = []
+
+    class FakeLearning:
+        def validate_memory(
+            self,
+            memory_id: str,
+            validation: str,
+            *,
+            basis: str | None = None,
+            reason: str | None = None,
+            expected_revision: int,
+            scope_kind: str = "USER_PRIVATE",
+            owner_id: str = "local-profile",
+            subject_id: str | None = None,
+        ):
+            calls.append(
+                {
+                    "memory_id": memory_id,
+                    "validation": validation,
+                    "basis": basis,
+                    "reason": reason,
+                    "expected_revision": expected_revision,
+                    "scope_kind": scope_kind,
+                    "owner_id": owner_id,
+                    "subject_id": subject_id,
+                }
+            )
+            return {
+                "memory_id": memory_id,
+                "lifecycle": "ACTIVE" if validation == "ACCEPTED" else "CANDIDATE",
+                "validation": validation,
+                "revision": expected_revision + 1,
+            }
+
+    service = DesktopService(profile_root=tmp_path / "profile", learning_factory=FakeLearning)
+    try:
+        assert json.loads(service.dispatch(_request("workspace.open")))["status"] == "ok"
+        response = json.loads(
+            service.dispatch(
+                _request(
+                    "memory.validate",
+                    {
+                        "memory_id": "0x1234",
+                        "validation": "ACCEPTED",
+                        "basis": "USER_CONFIRMED",
+                        "expected_revision": 1,
+                    },
+                )
+            )
+        )
+        assert response["status"] == "ok"
+        assert response["result"]["result"]["lifecycle"] == "ACTIVE"
+        assert response["result"]["result"]["validation"] == "ACCEPTED"
+
+        rejected = json.loads(
+            service.dispatch(
+                _request(
+                    "memory.validate",
+                    {
+                        "memory_id": "0x1234",
+                        "validation": "REJECTED",
+                        "reason": "stale observation",
+                        "expected_revision": 2,
+                    },
+                )
+            )
+        )
+        assert rejected["status"] == "ok"
+        assert rejected["result"]["result"]["validation"] == "REJECTED"
+
+        invalid = json.loads(
+            service.dispatch(
+                _request(
+                    "memory.validate",
+                    {
+                        "memory_id": "0x1234",
+                        "validation": "ACCEPTED",
+                        "basis": "USER_CONFIRMED",
+                        "reason": "contradictory",
+                        "expected_revision": 3,
+                    },
+                )
+            )
+        )
+        assert invalid["status"] == "error"
+        assert invalid["error"]["code"] == "INVALID_ARGUMENT"
+
+        assert calls == [
+            {
+                "memory_id": "0x1234",
+                "validation": "ACCEPTED",
+                "basis": "USER_CONFIRMED",
+                "reason": None,
+                "expected_revision": 1,
+                "scope_kind": "USER_PRIVATE",
+                "owner_id": "local-profile",
+                "subject_id": None,
+            },
+            {
+                "memory_id": "0x1234",
+                "validation": "REJECTED",
+                "basis": None,
+                "reason": "stale observation",
+                "expected_revision": 2,
+                "scope_kind": "USER_PRIVATE",
+                "owner_id": "local-profile",
+                "subject_id": None,
+            },
+        ]
+    finally:
+        service.close()
+
+
+def test_desktop_service_iter_frames_uses_sentinel_for_oversized_frame(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+):
+    monkeypatch.delenv("AEGIS_SESSION_DB_PATH", raising=False)
+    monkeypatch.delenv("AEGIS_PROFILE_ID", raising=False)
+    stream = io.BytesIO(b'{"id":"1"' + (b"x" * 2048) + b"}\n")
+    frames = list(desktop_service_module._iter_frames(stream, max_frame_bytes=256))
+    assert frames == [desktop_service_module._OVERSIZED_FRAME_SENTINEL]
+
+    service = DesktopService(profile_root=tmp_path / "profile")
+    try:
+        response = json.loads(service.dispatch(frames[0]))
+        assert response["status"] == "error"
+        assert response["error"]["code"] == "FRAME_TOO_LARGE"
+    finally:
+        service.close()
+
+
+def test_agent_application_isolates_session_search_degradation_from_active_memory_recall(monkeypatch):
+    import aegis_cognition.application as application_module
+    from aegis_cognition.application import AgentApplication
+
+    events: list[tuple[str, str]] = []
+    candidate = SimpleNamespace(
+        memory_id="0x99",
+        owner_id="local-profile",
+        scope_kind="USER_PRIVATE",
+        lifecycle="ACTIVE",
+        validation="ACCEPTED",
+        content_hash="memory-hash",
+    )
+    record = SimpleNamespace(
+        memory_id="0x99",
+        owner_id="local-profile",
+        scope_kind="USER_PRIVATE",
+        lifecycle="ACTIVE",
+        validation="ACCEPTED",
+        content_hash="memory-hash",
+        content="durable fact",
+    )
+
+    class DegradedSessionLearning:
+        def search_past(self, _query: str, *, top_k: int = 3):
+            del top_k
+            raise RuntimeError("session_index_unavailable")
+
+        def search_memories(self, _query: str, **_kwargs: object):
+            return (candidate,)
+
+        def inspect_memory(self, _memory_id: str, **_kwargs: object):
+            return record
+
+    monkeypatch.setattr(application_module, "build_learning_manager", DegradedSessionLearning)
+
+    app = object.__new__(AgentApplication)
+    app.config = SimpleNamespace(options={"hydrate_memory": True, "hydrate_context": False})
+    app.correlation = "corr-1"
+    app.telemetry = SimpleNamespace(emit=lambda domain, event, **_kw: events.append((domain, event)))
+    rendered = app._retrieve_context("find durable fact")
+    assert "durable fact" in rendered
+    assert "ACTIVE MEMORY DATA" in rendered
+    assert ("memory", "retrieval_degraded") in events
+    assert ("memory", "context_hydrated") in events
+
+
+class _ScopedEgressCatalog:
+    def __init__(self) -> None:
+        self.grants: set[tuple[str, str, str, str, str]] = set()
+        self.connection = ConnectionRecord(
+            connection_id="openai-remote",
+            provider_kind="openai",
+            endpoint="https://api.openai.com/v1",
+            protocol="chat-completions",
+            secret_ref="session:secret-1",
+            enabled=True,
+            revision=1,
+            updated_at_ms=1700000000000,
+        )
+
+    def list_connections(self):
+        return (self.connection,)
+
+    def get_connection(self, connection_id: str):
+        return self.connection if connection_id == self.connection.connection_id else None
+
+    def get_egress(
+        self,
+        workspace_id: str,
+        owner_id: str,
+        connection_id: str,
+        data_class: str,
+        operation: str,
+    ):
+        if (workspace_id, owner_id, connection_id, data_class, operation) in self.grants:
+            return SimpleNamespace(revision=1)
+        return None
+
+    def grant_egress(
+        self,
+        workspace_id: str,
+        owner_id: str,
+        grant_id: str,
+        connection_id: str,
+        data_class: str,
+        operation: str,
+        **_kwargs: object,
+    ):
+        self.grants.add((workspace_id, owner_id, connection_id, data_class, operation))
+        return SimpleNamespace(revision=1)
+
+    def check_egress(
+        self,
+        workspace_id: str,
+        owner_id: str,
+        connection_id: str,
+        data_class: str,
+        operation: str,
+    ) -> bool:
+        return (workspace_id, owner_id, connection_id, data_class, operation) in self.grants
+
+
+def test_workspace_switch_rejected_while_desktop_run_is_running_or_cancelling(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
+    monkeypatch.delenv("AEGIS_SESSION_DB_PATH", raising=False)
+    monkeypatch.delenv("AEGIS_PROFILE_ID", raising=False)
+    service = DesktopService(profile_root=tmp_path / "profile")
+    ws1 = tmp_path / "workspace-1"
+    ws2 = tmp_path / "workspace-2"
+    ws1.mkdir(parents=True, exist_ok=True)
+    ws2.mkdir(parents=True, exist_ok=True)
+    service._opened_root = ws1
+    service._manager = _FakeConversationManager()
+    entered = Event()
+    cancelled_seen = Event()
+    allow_finish = Event()
+
+    def wait_for_stop(_payload, *, cancel_event):
+        entered.set()
+        assert cancel_event.wait(timeout=2)
+        cancelled_seen.set()
+        assert allow_finish.wait(timeout=2)
+        raise desktop_service_module._DesktopRunCancelled()
+
+    service._send_message = wait_for_stop
+    try:
+        started = json.loads(
+            service.dispatch(
+                _request(
+                    "runs.start",
+                    {
+                        "conversation_id": "conv-1",
+                        "message": "inspect background task",
+                        "mode": "live",
+                    },
+                )
+            )
+        )
+        assert started["status"] == "ok"
+        run = started["result"]
+        assert run["status"] == "RUNNING"
+        assert entered.wait(timeout=2)
+
+        # 1. Assert workspace.switch is rejected with WORKSPACE_BUSY while RUNNING
+        switch_running = json.loads(
+            service.dispatch(
+                _request(
+                    "workspace.switch",
+                    {"workspace_path": str(ws2)},
+                )
+            )
+        )
+        assert switch_running["status"] == "error"
+        assert switch_running["error"]["code"] == "WORKSPACE_BUSY"
+        assert "stop the active task before switching workspace" in switch_running["error"]["message"]
+
+        # 2. Cancel run -> transitions to CANCELLING
+        cancellation = json.loads(
+            service.dispatch(
+                _request(
+                    "runs.cancel",
+                    {"run_id": run["run_id"], "conversation_id": "conv-1"},
+                )
+            )
+        )
+        assert cancellation["status"] == "ok"
+        assert cancellation["result"]["status"] == "CANCELLING"
+        assert cancelled_seen.wait(timeout=2)
+
+        # 3. Assert workspace.switch is still rejected with WORKSPACE_BUSY while CANCELLING
+        switch_cancelling = json.loads(
+            service.dispatch(
+                _request(
+                    "workspace.switch",
+                    {"workspace_path": str(ws2)},
+                )
+            )
+        )
+        assert switch_cancelling["status"] == "error"
+        assert switch_cancelling["error"]["code"] == "WORKSPACE_BUSY"
+        assert "stop the active task before switching workspace" in switch_cancelling["error"]["message"]
+
+        # Now allow the background thread to finish
+        allow_finish.set()
+        state = service._desktop_runs[run["run_id"]]
+        assert state.thread is not None
+        state.thread.join(timeout=2)
+
+        inspected = json.loads(
+            service.dispatch(
+                _request(
+                    "runs.inspect",
+                    {"run_id": run["run_id"], "conversation_id": "conv-1"},
+                )
+            )
+        )
+        assert inspected["result"]["status"] == "CANCELLED"
+    finally:
+        allow_finish.set()
+        service.close()
+
+
+def test_workspace_switch_rejected_while_subagents_start_is_active(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
+    monkeypatch.delenv("AEGIS_SESSION_DB_PATH", raising=False)
+    monkeypatch.delenv("AEGIS_PROFILE_ID", raising=False)
+    _BlockingSubagentApplication.started.clear()
+    _BlockingSubagentApplication.release.clear()
+    ws1 = tmp_path / "workspace-1"
+    ws2 = tmp_path / "workspace-2"
+    ws1.mkdir(parents=True, exist_ok=True)
+    ws2.mkdir(parents=True, exist_ok=True)
+    service = DesktopService(
+        profile_root=tmp_path / "profile",
+        connection_catalog_factory=_FakeConnectionCatalog,
+        client_factory=lambda *_args, **_kwargs: _FakeSubagentClient(),
+        subagent_application_factory=_BlockingSubagentApplication,
+    )
+    start_run_id: str | None = None
+    try:
+        assert json.loads(service.dispatch(_request("workspace.open", {"workspace_path": str(ws1)})))["status"] == "ok"
+
+        response = json.loads(
+            service.dispatch(
+                _request(
+                    "subagents.start",
+                    {"task": "inspect the workspace", "connection_id": "local", "model_id": "local-model"},
+                )
+            )
+        )
+        assert response["status"] == "ok"
+        start = response["result"]
+        start_run_id = start["run_id"]
+        assert start["status"] == "RUNNING"
+        assert _BlockingSubagentApplication.started.wait(timeout=2)
+
+        # While subagent is active: workspace.switch must be rejected with WORKSPACE_BUSY
+        switch = json.loads(
+            service.dispatch(
+                _request(
+                    "workspace.switch",
+                    {"workspace_path": str(ws2)},
+                )
+            )
+        )
+        assert switch["status"] == "error"
+        assert switch["error"]["code"] == "WORKSPACE_BUSY"
+        assert "stop active subagent runs before switching workspace" in switch["error"]["message"]
+    finally:
+        _BlockingSubagentApplication.release.set()
+        if start_run_id is not None:
+            deadline = time.monotonic() + 2
+            while time.monotonic() < deadline:
+                terminal = json.loads(service.dispatch(_request("subagents.status", {"run_id": start_run_id})))
+                if terminal.get("result", {}).get("status") == "COMPLETED":
+                    break
+                time.sleep(0.01)
+        service.close()
+
+
+def test_multi_workspace_egress_grant_isolation_on_workspace_switch(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
+    monkeypatch.delenv("AEGIS_SESSION_DB_PATH", raising=False)
+    monkeypatch.delenv("AEGIS_PROFILE_ID", raising=False)
+    catalog = _ScopedEgressCatalog()
+    ws_a = tmp_path / "workspace-alpha"
+    ws_b = tmp_path / "workspace-beta"
+    ws_a.mkdir(parents=True, exist_ok=True)
+    ws_b.mkdir(parents=True, exist_ok=True)
+
+    service = DesktopService(
+        profile_root=tmp_path / "profile",
+        connection_catalog_factory=lambda: catalog,
+    )
+    try:
+        # Open Workspace A
+        open_res = json.loads(service.dispatch(_request("workspace.open", {"workspace_path": str(ws_a)})))
+        assert open_res["status"] == "ok", open_res
+        assert service._opened_root == ws_a.resolve()
+        assert workspace_scope_id(ws_a) != workspace_scope_id(ws_b)
+
+        # Initially, egress is not granted in Workspace A
+        check_a_before = service._connection_egress_check(
+            catalog, catalog.connection, "PROJECT_TEXT", "foreground_inference"
+        )
+        assert check_a_before(catalog.connection.connection_id) is False
+
+        # Grant egress for Workspace A
+        service._grant_connection_egress(catalog, catalog.connection)
+        check_a_after = service._connection_egress_check(
+            catalog, catalog.connection, "PROJECT_TEXT", "foreground_inference"
+        )
+        assert check_a_after(catalog.connection.connection_id) is True
+        check_a_meta = service._connection_egress_check(
+            catalog, catalog.connection, "MODEL_METADATA", "model_discovery"
+        )
+        assert check_a_meta(catalog.connection.connection_id) is True
+
+        # Switch to Workspace B
+        switch_res = json.loads(service.dispatch(_request("workspace.switch", {"workspace_path": str(ws_b)})))
+        assert switch_res["status"] == "ok"
+        assert service._opened_root == ws_b.resolve()
+
+        # Egress in Workspace B MUST NOT be authorized (isolated from Workspace A)
+        check_b = service._connection_egress_check(
+            catalog, catalog.connection, "PROJECT_TEXT", "foreground_inference"
+        )
+        assert check_b(catalog.connection.connection_id) is False
+        check_b_meta = service._connection_egress_check(
+            catalog, catalog.connection, "MODEL_METADATA", "model_discovery"
+        )
+        assert check_b_meta(catalog.connection.connection_id) is False
+
+        # Switch back to Workspace A: egress is still authorized for Workspace A
+        switch_back = json.loads(service.dispatch(_request("workspace.switch", {"workspace_path": str(ws_a)})))
+        assert switch_back["status"] == "ok"
+        check_a_restored = service._connection_egress_check(
+            catalog, catalog.connection, "PROJECT_TEXT", "foreground_inference"
+        )
+        assert check_a_restored(catalog.connection.connection_id) is True
+
+        # Switch to Workspace B and explicitly grant egress for Workspace B
+        switch_b_again = json.loads(service.dispatch(_request("workspace.switch", {"workspace_path": str(ws_b)})))
+        assert switch_b_again["status"] == "ok"
+        service._grant_connection_egress(catalog, catalog.connection)
+        check_b_granted = service._connection_egress_check(
+            catalog, catalog.connection, "PROJECT_TEXT", "foreground_inference"
+        )
+        assert check_b_granted(catalog.connection.connection_id) is True
+    finally:
+        service.close()
+
+

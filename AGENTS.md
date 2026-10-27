@@ -26,6 +26,12 @@
 5. Inspect the final diff and search for stale paths, accidental files, leaked
    local data, and unintended contract changes before reporting completion.
 
+### Evidence-based verification (Q13 compliance)
+
+- Never use subjective 0–10 self-scores, arbitrary quality ratings (e.g. `<9`), or unverified completion percentages to declare a task complete or to justify out-of-scope edits.
+- Every claim of success, compliance, or security must be supported by an explicit behavioral oracle, a reproducible command, and verified output on the frozen source.
+- In the absence of required environment access, credentials, or authorized verification gates, state `NOT VERIFIED` along with the exact blocker and unlock condition.
+
 ## Research, benchmark, and private data
 
 - Keep current implementation guidance, user documentation, contracts,
@@ -74,6 +80,25 @@
 - Preserve recoverable local work before any destructive cleanup or history
   operation. Do not discard dirty files, caches, fixtures, or generated state
   without evidence that they are disposable and outside active consumers.
+
+## Test quality and milestone records
+
+- Before designing or running tests, read the installed
+  `proof-driven-engineering/references/testing-quality.md`. Reuse the owning
+  suite, choose an independent behavioral oracle, and exercise the real boundary
+  required by the claim. Report skips, unavailable gates and incomplete runs.
+- Resolve the supported runtime from project metadata, lockfiles, toolchain pins,
+  and CI. Use the repository's approved runner and verify the version it selects;
+  failures under an unsupported ambient runtime are environment evidence, not
+  product regression evidence.
+- Before material test output, identify the owned temporary root, estimated
+  file/byte growth, available capacity, compatible build cache, and cleanup or
+  retention policy. Unique run names alone do not provide retention. Preserve
+  required evidence and remove only disposable data owned by the completed run.
+- At a verified milestone or handoff, update one concise Markdown record in the
+  existing private archive resolved above. Record decisions, completed checks,
+  limits, evidence pointers, cleanup disposition, and the next action. Keep
+  source tests and consumer-required guidance in their canonical locations.
 
 ## Background jobs
 

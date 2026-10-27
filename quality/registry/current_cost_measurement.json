@@ -1,5 +1,5 @@
 {
-  "artifact_hash": "6508011ab9ddd7ab2783738cfa1c37302385979a052102c0b10306004cd3c2f5",
+  "artifact_hash": "d97322080f7925f2784367fad6b4edee6e737eabbe88cd0bfc766b2d9a60f7eb",
   "legacy_wall_time_seconds": {
     "best": 57.168086,
     "median": 71.778817,
@@ -53,7 +53,7 @@
     },
     "environment_hash": "05077000fe0503d836a6c1e1cdf4d4eb6eb9b2063b998ec6439ce069abd9b1fb",
     "host_observation": {
-      "executable": "<USER_HOME>\\AEGIS-COGNITION\\.venv\\Scripts\\python.exe",
+      "executable": "python.exe",
       "machine": "AMD64",
       "os": "Windows",
       "release": "11"

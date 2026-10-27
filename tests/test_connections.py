@@ -85,21 +85,23 @@ def test_connection_catalog_rejects_empty_identifiers_before_native_call():
 def test_connection_catalog_exposes_revision_bound_egress_grants():
     bridge = MagicMock()
     bridge.aegis_grant_connection_egress.return_value = (
-        '{"record": {"grant_id": "grant-1", "connection_id": "local", '
-        '"connection_revision": 2, "data_class": "PROJECT_TEXT", '
+        '{"record": {"grant_id": "grant-1", "workspace_id": "ws-1", "owner_id": "user-1", '
+        '"connection_id": "local", "connection_revision": 2, "data_class": "PROJECT_TEXT", '
         '"operation": "foreground_inference", "expires_at_ms": 1800000000000, '
         '"revision": 1, "updated_at_ms": 1700000000000, "revoked_at_ms": null}}'
     )
     bridge.aegis_check_connection_egress.return_value = '{"allowed": true}'
     bridge.aegis_revoke_connection_egress.return_value = (
-        '{"record": {"grant_id": "grant-1", "connection_id": "local", '
-        '"connection_revision": 2, "data_class": "PROJECT_TEXT", '
+        '{"record": {"grant_id": "grant-1", "workspace_id": "ws-1", "owner_id": "user-1", '
+        '"connection_id": "local", "connection_revision": 2, "data_class": "PROJECT_TEXT", '
         '"operation": "foreground_inference", "expires_at_ms": 1800000000000, '
         '"revision": 2, "updated_at_ms": 1700000000001, "revoked_at_ms": 1700000000001}}'
     )
     catalog = ConnectionCatalog(bridge)
 
     grant = catalog.grant_egress(
+        "ws-1",
+        "user-1",
         "grant-1",
         "local",
         "PROJECT_TEXT",
@@ -108,10 +110,16 @@ def test_connection_catalog_exposes_revision_bound_egress_grants():
         timestamp=1_700_000_000_000,
     )
     assert grant.connection_revision == 2
-    assert catalog.check_egress("local", "PROJECT_TEXT", "foreground_inference", timestamp=1_700_000_000_001)
-    revoked = catalog.revoke_egress("grant-1", expected_revision=1, timestamp=1_700_000_000_001)
+    assert grant.workspace_id == "ws-1"
+    assert grant.owner_id == "user-1"
+    assert catalog.check_egress(
+        "ws-1", "user-1", "local", "PROJECT_TEXT", "foreground_inference", timestamp=1_700_000_000_001
+    )
+    revoked = catalog.revoke_egress("ws-1", "user-1", "grant-1", expected_revision=1, timestamp=1_700_000_000_001)
     assert revoked.revoked_at_ms == 1_700_000_000_001
     bridge.aegis_grant_connection_egress.assert_called_once_with(
+        "ws-1",
+        "user-1",
         "grant-1",
         "local",
         "PROJECT_TEXT",
@@ -120,6 +128,116 @@ def test_connection_catalog_exposes_revision_bound_egress_grants():
         None,
         1_700_000_000_000,
     )
+    bridge.aegis_check_connection_egress.assert_called_once_with(
+        "ws-1",
+        "user-1",
+        "local",
+        "PROJECT_TEXT",
+        "foreground_inference",
+        1_700_000_000_001,
+    )
+    bridge.aegis_revoke_connection_egress.assert_called_once_with(
+        "ws-1",
+        "user-1",
+        "grant-1",
+        1,
+        1_700_000_000_001,
+    )
+
+
+def test_connection_catalog_multi_workspace_and_owner_isolation():
+    bridge = MagicMock()
+    grants: dict[tuple[str, str, str, str, str], dict[str, object]] = {}
+
+    def mock_grant(ws, owner, grant_id, conn, data_class, op, expires, expected_rev, updated):
+        key = (ws, owner, conn, data_class, op)
+        rec = {
+            "grant_id": grant_id,
+            "workspace_id": ws,
+            "owner_id": owner,
+            "connection_id": conn,
+            "connection_revision": 1,
+            "data_class": data_class,
+            "operation": op,
+            "expires_at_ms": expires,
+            "revision": 1,
+            "updated_at_ms": updated,
+            "revoked_at_ms": None,
+        }
+        grants[key] = rec
+        return json.dumps({"schema": "aegis-egress-grant-v1", "record": rec})
+
+    def mock_check(ws, owner, conn, data_class, op, _now):
+        key = (ws, owner, conn, data_class, op)
+        rec = grants.get(key)
+        allowed = rec is not None and rec.get("revoked_at_ms") is None
+        return json.dumps({"schema": "aegis-egress-check-v1", "allowed": allowed})
+
+    bridge.aegis_grant_connection_egress.side_effect = mock_grant
+    bridge.aegis_check_connection_egress.side_effect = mock_check
+    catalog = ConnectionCatalog(bridge)
+
+    catalog.grant_egress(
+        "workspace-alpha",
+        "owner-alice",
+        "grant-alpha",
+        "openai-remote",
+        "PROJECT_TEXT",
+        "foreground_inference",
+    )
+
+    # Granted workspace and owner is allowed
+    assert catalog.check_egress(
+        "workspace-alpha",
+        "owner-alice",
+        "openai-remote",
+        "PROJECT_TEXT",
+        "foreground_inference",
+    )
+
+    # Different workspace (workspace-beta) with same owner is denied
+    assert not catalog.check_egress(
+        "workspace-beta",
+        "owner-alice",
+        "openai-remote",
+        "PROJECT_TEXT",
+        "foreground_inference",
+    )
+
+    # Same workspace (workspace-alpha) with different owner (owner-bob) is denied
+    assert not catalog.check_egress(
+        "workspace-alpha",
+        "owner-bob",
+        "openai-remote",
+        "PROJECT_TEXT",
+        "foreground_inference",
+    )
+
+    # Different workspace and different owner is denied
+    assert not catalog.check_egress(
+        "workspace-beta",
+        "owner-bob",
+        "openai-remote",
+        "PROJECT_TEXT",
+        "foreground_inference",
+    )
+
+
+def test_connection_catalog_requires_non_empty_workspace_and_owner_id():
+    catalog = ConnectionCatalog(MagicMock())
+    for bad in ("", "   "):
+        with pytest.raises(ValueError, match="workspace_id must be non-empty"):
+            catalog.check_egress(bad, "owner", "conn", "data", "op")
+        with pytest.raises(ValueError, match="owner_id must be non-empty"):
+            catalog.check_egress("ws", bad, "conn", "data", "op")
+        with pytest.raises(ValueError, match="workspace_id must be non-empty"):
+            catalog.grant_egress(bad, "owner", "g", "conn", "data", "op")
+        with pytest.raises(ValueError, match="owner_id must be non-empty"):
+            catalog.grant_egress("ws", bad, "g", "conn", "data", "op")
+        with pytest.raises(ValueError, match="workspace_id must be non-empty"):
+            catalog.revoke_egress(bad, "owner", "g", expected_revision=1)
+        with pytest.raises(ValueError, match="owner_id must be non-empty"):
+            catalog.revoke_egress("ws", bad, "g", expected_revision=1)
 
 
 def test_provider_route_checks_egress_before_invoking_a_candidate():
@@ -2776,3 +2894,102 @@ def test_remote_https_connection_requires_explicit_egress_callback():
         assert "egress grant" in str(error)
     else:
         raise AssertionError("remote HTTPS requests require an explicit egress grant")
+
+
+@pytest.mark.parametrize(
+    ("client_type", "provider_kind", "protocol", "endpoint", "response_body"),
+    (
+        (
+            OpenAICompatibleClient,
+            "openai-compatible",
+            "chat-completions",
+            "http://127.0.0.1:8765/v1",
+            b'{"choices":[{"message":{"role":"assistant","content":"ok"}}]}',
+        ),
+        (
+            XaiResponsesClient,
+            "xai",
+            "xai-responses",
+            "https://api.x.ai/v1",
+            b'{"output":[{"type":"message","role":"assistant","content":[{"type":"output_text","text":"ok"}]}]}',
+        ),
+        (
+            OpenAIResponsesClient,
+            "openai",
+            "openai-responses",
+            "https://api.openai.com/v1",
+            b'{"output":[{"type":"message","role":"assistant","content":[{"type":"output_text","text":"ok"}]}]}',
+        ),
+        (
+            AnthropicMessagesClient,
+            "anthropic",
+            "anthropic-messages",
+            "https://api.anthropic.com/v1",
+            b'{"content":[{"type":"text","text":"ok"}],"stop_reason":"end_turn"}',
+        ),
+    ),
+)
+def test_provider_adapters_capture_serialized_payload_before_requester(
+    client_type, provider_kind, protocol, endpoint, response_body
+):
+    connection = ConnectionRecord(
+        connection_id="capture-test",
+        provider_kind=provider_kind,
+        endpoint=endpoint,
+        protocol=protocol,
+        secret_ref=None,
+        enabled=True,
+        revision=1,
+        updated_at_ms=1,
+    )
+    order: list[str] = []
+    captured: list[bytes] = []
+    requested: list[bytes] = []
+
+    def requester(_url, _headers, body, _timeout):
+        order.append("requester")
+        requested.append(body)
+        return ConnectionResponse(200, response_body)
+
+    def observer(body: bytes) -> None:
+        order.append("capture")
+        captured.append(body)
+
+    client = client_type(
+        connection,
+        model="capture-model",
+        requester=requester,
+        egress_check=lambda _connection_id: True,
+    )
+    client.invoke_turn("private dispatch sentinel", _aegis_payload_observer=observer)
+
+    assert order == ["capture", "requester"]
+    assert captured == requested
+    assert b"private dispatch sentinel" in captured[0]
+
+
+def test_provider_adapter_does_not_dispatch_when_payload_checkpoint_fails():
+    connection = ConnectionRecord(
+        connection_id="capture-test",
+        provider_kind="openai-compatible",
+        endpoint="http://127.0.0.1:8765/v1",
+        protocol="chat-completions",
+        secret_ref=None,
+        enabled=True,
+        revision=1,
+        updated_at_ms=1,
+    )
+    called = False
+
+    def requester(*_args):
+        nonlocal called
+        called = True
+        return ConnectionResponse(200, b'{"choices":[{"message":{"content":"ok"}}]}')
+
+    def checkpoint_failure(_body: bytes) -> None:
+        raise RuntimeError("local checkpoint unavailable")
+
+    client = OpenAICompatibleClient(connection, model="capture-model", requester=requester)
+    with pytest.raises(RuntimeError, match="checkpoint unavailable"):
+        client.invoke("private dispatch sentinel", _aegis_payload_observer=checkpoint_failure)
+    assert called is False

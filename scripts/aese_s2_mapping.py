@@ -110,7 +110,11 @@ def _record_errors(
     if not isinstance(record.get("selection_relevant"), bool):
         errors.append("selection_relevant_missing")
     relationships = record.get("relationship_types")
-    if not isinstance(relationships, list) or not relationships or any(value not in ALLOWED_RELATIONSHIPS for value in relationships):
+    if (
+        not isinstance(relationships, list)
+        or not relationships
+        or any(value not in ALLOWED_RELATIONSHIPS for value in relationships)
+    ):
         errors.append("invalid_relationship_types")
     if record.get("unknown_dependency_policy") != "WIDEN_CONSERVATIVELY":
         errors.append("unknown_dependency_policy_not_conservative")
@@ -134,9 +138,15 @@ def build_mapping(
     inventory_values = inventory.get("items")
     graph_claim_values = graph.get("claims")
     raw_records = seed.get("records")
-    if not isinstance(inventory_values, list) or not isinstance(graph_claim_values, list) or not isinstance(raw_records, list):
+    if (
+        not isinstance(inventory_values, list)
+        or not isinstance(graph_claim_values, list)
+        or not isinstance(raw_records, list)
+    ):
         raise ValueError("S2 mapping inputs have invalid arrays")
-    inventory_ids = {str(item["stable_id"]) for item in inventory_values if isinstance(item, dict) and "stable_id" in item}
+    inventory_ids = {
+        str(item["stable_id"]) for item in inventory_values if isinstance(item, dict) and "stable_id" in item
+    }
     claim_ids = {str(item["id"]) for item in graph_claim_values if isinstance(item, dict) and "id" in item}
     tracked = _tracked_paths()
     records: list[dict[str, object]] = []
@@ -154,7 +164,9 @@ def build_mapping(
         records.append(
             {
                 **record,
-                "mapping_status": "MAPPED_MULTI" if len(cast(list[object], record.get("claim_ids", []))) > 1 else "MAPPED_EXACT",
+                "mapping_status": "MAPPED_MULTI"
+                if len(cast(list[object], record.get("claim_ids", []))) > 1
+                else "MAPPED_EXACT",
                 "verification_status": "VERIFIED" if not errors else "INVALID",
                 "verification_errors": errors,
             }
@@ -170,14 +182,22 @@ def build_mapping(
         for item in inventory_values
         if isinstance(item, dict) and item.get("stable_id") and item.get("path")
     }
-    unknown_surface_paths = sorted({inventory_paths_by_id[surface_id] for surface_id in unknown_surface_ids if surface_id in inventory_paths_by_id})
-    critical_records = [record for record in records if record.get("risk") == "CRITICAL" or record.get("security_criticality") == "CRITICAL"]
+    unknown_surface_paths = sorted(
+        {inventory_paths_by_id[surface_id] for surface_id in unknown_surface_ids if surface_id in inventory_paths_by_id}
+    )
+    critical_records = [
+        record
+        for record in records
+        if record.get("risk") == "CRITICAL" or record.get("security_criticality") == "CRITICAL"
+    ]
     high_selection_records = [
         record
         for record in records
         if record.get("selection_relevant") is True and record.get("risk") in {"CRITICAL", "HIGH"}
     ]
-    critical_complete = bool(critical_records) and all(record["verification_status"] == "VERIFIED" for record in critical_records)
+    critical_complete = bool(critical_records) and all(
+        record["verification_status"] == "VERIFIED" for record in critical_records
+    )
     high_selection_complete = bool(high_selection_records) and all(
         record["verification_status"] == "VERIFIED" for record in high_selection_records
     )
@@ -187,7 +207,9 @@ def build_mapping(
         "mode": "SHADOW",
         "selection_authority": "DISABLED",
         "source_head": str(graph.get("source_head", "UNKNOWN")),
-        "current_head": subprocess.run(["git", "rev-parse", "HEAD"], cwd=ROOT, check=True, capture_output=True, text=True).stdout.strip(),
+        "current_head": subprocess.run(
+            ["git", "rev-parse", "HEAD"], cwd=ROOT, check=True, capture_output=True, text=True
+        ).stdout.strip(),
         "inventory_source_tree_sha256": inventory.get("source_tree_sha256"),
         "claim_graph_source_tree_sha256": graph.get("source_tree_sha256"),
         "mapping_seed_hash": _hash(seed),
@@ -229,6 +251,7 @@ def main() -> int:
     parser.add_argument("--graph", type=Path, default=DEFAULT_GRAPH)
     parser.add_argument("--output", type=Path, default=DEFAULT_OUTPUT)
     args = parser.parse_args()
+
     def resolve(path: Path) -> Path:
         return path if path.is_absolute() else ROOT / path
 
@@ -236,7 +259,15 @@ def main() -> int:
     output = resolve(args.output)
     output.parent.mkdir(parents=True, exist_ok=True)
     output.write_text(json.dumps(report, indent=2, sort_keys=True) + "\n", encoding="utf-8")
-    print(json.dumps({"status": report["mapping_status"], "artifact_hash": report["artifact_hash"], "unknown_surface_count": report["unknown_surface_count"]}))
+    print(
+        json.dumps(
+            {
+                "status": report["mapping_status"],
+                "artifact_hash": report["artifact_hash"],
+                "unknown_surface_count": report["unknown_surface_count"],
+            }
+        )
+    )
     return 0 if report["mapping_status"] == "S2_FAIL_CLOSED_MAPPING_COMPLETE" and report["no_fake_mapping"] else 1
 
 

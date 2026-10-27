@@ -69,8 +69,12 @@ ALLOWED_COMMANDS = frozenset(
         "code_reuse.assess",
         "code_reuse.materialize",
         "memory.search",
+        "memory.file_relations.list",
+        "memory.file_relation.link",
+        "memory.file_relation.unlink",
         "memory.inspect",
         "memory.capture",
+        "memory.validate",
         "memory.correct",
         "memory.forget",
         "memory.restore",
@@ -153,11 +157,7 @@ def decode_request(frame: bytes | str, *, max_frame_bytes: int = MAX_FRAME_BYTES
     request_id = raw.get("request_id")
     command = raw.get("command")
     payload = raw.get("payload")
-    if (
-        isinstance(version, bool)
-        or not isinstance(version, int)
-        or version != PROTOCOL_VERSION
-    ):
+    if isinstance(version, bool) or not isinstance(version, int) or version != PROTOCOL_VERSION:
         raise DesktopProtocolError("PROTOCOL_VERSION_UNSUPPORTED", "desktop protocol version is unsupported")
     if schema != REQUEST_SCHEMA:
         raise DesktopProtocolError("INVALID_SCHEMA", "desktop request schema is unsupported")

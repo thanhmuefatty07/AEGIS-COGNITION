@@ -65,6 +65,20 @@ class ParsedTestResult:
             raise AdapterFailure("test result counts must be non-negative integers")
         if self.passed + self.failed + self.skipped + self.filtered + self.ignored > self.discovered:
             raise AdapterFailure("test result counts exceed discovered tests")
+        if self.status == "PASS" and (
+            self.discovered == 0
+            or self.passed == 0
+            or self.failed > 0
+            or self.passed + self.failed + self.skipped + self.filtered + self.ignored != self.discovered
+        ):
+            raise AdapterFailure("PASS requires at least one passed test and complete outcomes")
+        if self.status == "FAIL" and self.failed == 0:
+            raise AdapterFailure("FAIL requires at least one failed test")
+        if self.status == "ZERO_TESTS" and (
+            self.passed + self.failed > 0
+            or self.passed + self.failed + self.skipped + self.filtered + self.ignored != self.discovered
+        ):
+            raise AdapterFailure("ZERO_TESTS requires complete outcomes with no executed tests")
         if not self.detail.strip():
             raise AdapterFailure("parsed result requires a detail")
 
@@ -130,9 +144,9 @@ class GenericBoundedAdapter:
         if any(type(value) is not int or value < 0 for value in raw_counts.values()):
             return self._malformed("result counts are malformed")
         counts = cast(dict[str, int], raw_counts)
-        if counts["discovered"] == 0 and status == "PASS":
+        normalized = status.strip().upper()
+        if counts["discovered"] == 0 and normalized == "PASS":
             return self._malformed("zero tests cannot be reported as PASS")
-        normalized = status.upper()
         if normalized not in {"PASS", "FAIL", "ZERO_TESTS", "ERROR"}:
             return self._malformed("result status is unknown")
         parsed = ParsedTestResult(

@@ -80,6 +80,12 @@ pub enum RuntimeError {
     LaneAccounting(ExecutionLane),
 }
 
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum AttemptKind {
+    Initial,
+    Retry,
+}
+
 #[derive(Debug)]
 pub struct AuthoritativeRuntime {
     pub ledger: TaskLedger,
@@ -88,6 +94,19 @@ pub struct AuthoritativeRuntime {
     pending_admissions: BTreeMap<(u128, u64), RuntimeAdmission>,
     cooperative_mode: CooperativeRuntimeMode,
     cooperative_admission: Option<CooperativeAdmissionLedger>,
+}
+
+fn constrain_request_to_task_deadline(
+    request: &mut ResourceRequest,
+    task_hard_deadline_ms: Option<u64>,
+) {
+    request.deadline.deadline_ms = match (request.deadline.deadline_ms, task_hard_deadline_ms) {
+        (Some(request_deadline_ms), Some(task_deadline_ms)) => {
+            Some(request_deadline_ms.min(task_deadline_ms))
+        }
+        (None, task_deadline_ms) => task_deadline_ms,
+        (request_deadline_ms, None) => request_deadline_ms,
+    };
 }
 
 impl AuthoritativeRuntime {
@@ -211,7 +230,7 @@ impl AuthoritativeRuntime {
     pub fn submit(
         &mut self,
         task: TaskCard,
-        request: ResourceRequest,
+        mut request: ResourceRequest,
         now_ms: u64,
     ) -> Result<RuntimeAdmission, RuntimeError> {
         if task.task_id != request.task_id {
@@ -223,55 +242,122 @@ impl AuthoritativeRuntime {
         if task.status != TaskStatus::Pending {
             return Err(RuntimeError::InvalidTransition(task.status));
         }
+        constrain_request_to_task_deadline(&mut request, task.hard_deadline_ms);
         self.ledger.insert_task(task).map_err(RuntimeError::Task)?;
         self.ledger
             .transition_status(request.task_id, TaskStatus::Ready)
             .map_err(RuntimeError::Task)?;
-        self.admit_existing(request, now_ms)
+        self.admit_existing(request, now_ms, AttemptKind::Initial)
     }
 
+    /// Start or re-enter one retry attempt identified by its task and attempt IDs.
+    /// A queued attempt remains idempotent; re-entering after a retained rejection
+    /// acknowledges that result and makes a fresh admission request. Use
+    /// `poll_queued` to retrieve an outcome retained for this task by another poll.
     pub fn retry(
         &mut self,
         task_id: u128,
-        request: ResourceRequest,
+        mut request: ResourceRequest,
         now_ms: u64,
     ) -> Result<RuntimeAdmission, RuntimeError> {
         if request.task_id != task_id {
             return Err(RuntimeError::TaskRequestMismatch);
         }
-        let current_attempt = self
+        let task = self
             .ledger
             .task(task_id)
-            .ok_or(RuntimeError::Task(TaskLedgerError::MissingTask(task_id)))?
-            .attempt_id;
-        if request.attempt_id <= current_attempt {
+            .ok_or(RuntimeError::Task(TaskLedgerError::MissingTask(task_id)))?;
+        if task.status != TaskStatus::RetryWait {
+            return Err(RuntimeError::InvalidTransition(task.status));
+        }
+        if task.attempt_id.checked_add(1) != Some(request.attempt_id) {
             return Err(RuntimeError::AttemptMismatch);
         }
-        self.ledger
-            .set_attempt_id(task_id, request.attempt_id)
-            .map_err(RuntimeError::Task)?;
-        self.ledger
-            .transition_status(task_id, TaskStatus::Ready)
-            .map_err(RuntimeError::Task)?;
-        self.admit_existing(request, now_ms)
+        let hard_deadline_ms = task.hard_deadline_ms;
+        constrain_request_to_task_deadline(&mut request, hard_deadline_ms);
+        let key = (task_id, request.attempt_id);
+        if matches!(
+            self.pending_admissions.get(&key),
+            Some(RuntimeAdmission::Rejected { .. })
+        ) {
+            // The same caller is re-entering this attempt, so consume the old
+            // terminal result before evaluating the new request.
+            self.pending_admissions.remove(&key);
+        }
+        // An accepted queue entry owns this attempt until it is consumed or canceled.
+        if let Some((position, queued)) = self.admission.queued_attempt(task_id, request.attempt_id)
+        {
+            if queued == &request {
+                self.pending_admissions.remove(&key);
+                return Ok(RuntimeAdmission::Queued {
+                    position,
+                    reason: "retry attempt is already queued".to_string(),
+                });
+            }
+            return Err(RuntimeError::Resource(ResourceError::InvalidRequest(
+                "queued retry attempt already has a different resource request".to_string(),
+            )));
+        }
+        // A queued notification without a live queue entry is stale; this call
+        // consumes it and proceeds with the current request.
+        self.pending_admissions.remove(&key);
+        self.admit_existing(request, now_ms, AttemptKind::Retry)
     }
 
     fn admit_existing(
         &mut self,
         request: ResourceRequest,
         now_ms: u64,
+        attempt_kind: AttemptKind,
     ) -> Result<RuntimeAdmission, RuntimeError> {
         let lane = lane_for_work_kind(request.work_kind);
-        self.ledger
-            .validate_status_transition(request.task_id, TaskStatus::Admitted)
-            .map_err(|error| match error {
-                TaskLedgerError::InvalidStatusTransition { from, .. } => {
-                    RuntimeError::InvalidTransition(from)
+        let task = self.ledger.task(request.task_id).ok_or(RuntimeError::Task(
+            TaskLedgerError::MissingTask(request.task_id),
+        ))?;
+        match attempt_kind {
+            AttemptKind::Initial => {
+                if task.status != TaskStatus::Ready {
+                    return Err(RuntimeError::InvalidTransition(task.status));
                 }
-                other => RuntimeError::Task(other),
-            })?;
-        if !TaskStatus::Admitted.can_transition_to(TaskStatus::Running) {
-            return Err(RuntimeError::InvalidTransition(TaskStatus::Admitted));
+                if request.attempt_id != task.attempt_id {
+                    return Err(RuntimeError::AttemptMismatch);
+                }
+                self.ledger
+                    .validate_status_transition(request.task_id, TaskStatus::Admitted)
+                    .map_err(map_transition_error)?;
+                if !TaskStatus::Admitted.can_transition_to(TaskStatus::Running) {
+                    return Err(RuntimeError::InvalidTransition(TaskStatus::Admitted));
+                }
+            }
+            AttemptKind::Retry => {
+                if task.status != TaskStatus::RetryWait {
+                    return Err(RuntimeError::InvalidTransition(task.status));
+                }
+                if task.attempt_id.checked_add(1) != Some(request.attempt_id) {
+                    return Err(RuntimeError::AttemptMismatch);
+                }
+                if task
+                    .hard_deadline_ms
+                    .is_some_and(|deadline_ms| now_ms >= deadline_ms)
+                {
+                    return Ok(RuntimeAdmission::Rejected {
+                        reason: ResourceError::DeadlineExceeded,
+                    });
+                }
+                if task
+                    .retry_not_before_ms()
+                    .is_none_or(|not_before_ms| now_ms < not_before_ms)
+                {
+                    return Ok(RuntimeAdmission::Rejected {
+                        reason: ResourceError::ResourceUnavailable(
+                            "retry backoff has not elapsed".to_string(),
+                        ),
+                    });
+                }
+                self.ledger
+                    .validate_retry_start(request.task_id, request.attempt_id, now_ms)
+                    .map_err(RuntimeError::Task)?;
+            }
         }
         if !self.lanes.try_acquire(lane) {
             let position = self
@@ -286,14 +372,20 @@ impl AuthoritativeRuntime {
         let decision = self.admission.admit(request, now_ms);
         match decision {
             AdmissionDecision::Admitted(lease) => {
-                if let Err(error) = self
-                    .ledger
-                    .transition_status(lease.task_id, TaskStatus::Admitted)
-                    .and_then(|_| {
+                let transition = match attempt_kind {
+                    AttemptKind::Initial => self
+                        .ledger
+                        .transition_status(lease.task_id, TaskStatus::Admitted)
+                        .and_then(|_| {
+                            self.ledger
+                                .transition_status(lease.task_id, TaskStatus::Running)
+                        }),
+                    AttemptKind::Retry => {
                         self.ledger
-                            .transition_status(lease.task_id, TaskStatus::Running)
-                    })
-                {
+                            .start_retry_attempt(lease.task_id, lease.attempt_id, now_ms)
+                    }
+                };
+                if let Err(error) = transition {
                     let _ = self.admission.release(lease.lease_id);
                     let _ = self.lanes.release(lane);
                     return Err(RuntimeError::Task(error));
@@ -318,12 +410,25 @@ impl AuthoritativeRuntime {
         token: ResourceLeaseToken,
         outcome: RuntimeOutcome,
     ) -> Result<(), RuntimeError> {
+        self.finish_at(
+            token,
+            outcome,
+            crate::resource::unix_time_millis_for_runtime(),
+        )
+    }
+
+    fn finish_at(
+        &mut self,
+        token: ResourceLeaseToken,
+        outcome: RuntimeOutcome,
+        now_ms: u64,
+    ) -> Result<(), RuntimeError> {
         let outcome = if outcome != RuntimeOutcome::Cancelled
             && self
                 .admission
                 .inspect_token(&token)
                 .map_err(RuntimeError::Resource)?
-                .is_expired(crate::resource::unix_time_millis_for_runtime())
+                .is_expired(now_ms)
         {
             RuntimeOutcome::TimedOut
         } else {
@@ -332,14 +437,34 @@ impl AuthoritativeRuntime {
         if outcome == RuntimeOutcome::Cancelled {
             return self.cancel_and_release(token);
         }
-        let target = match outcome {
-            RuntimeOutcome::Done => TaskStatus::Done,
-            RuntimeOutcome::Failed => TaskStatus::Failed,
-            RuntimeOutcome::RetryWait => TaskStatus::RetryWait,
-            RuntimeOutcome::TimedOut => TaskStatus::TimedOut,
+        let (target, retry_not_before_ms) = match outcome {
+            RuntimeOutcome::Done => (TaskStatus::Done, None),
+            RuntimeOutcome::Failed => (TaskStatus::Failed, None),
+            RuntimeOutcome::RetryWait => {
+                let task_id = self
+                    .admission
+                    .inspect_token(&token)
+                    .map_err(RuntimeError::Resource)?
+                    .task_id;
+                let hard_deadline_ms = self
+                    .ledger
+                    .task(task_id)
+                    .ok_or(RuntimeError::Task(TaskLedgerError::MissingTask(task_id)))?
+                    .hard_deadline_ms;
+                let not_before_ms = self
+                    .ledger
+                    .retry_delay_after_current_attempt(task_id)
+                    .and_then(|delay_ms| now_ms.checked_add(delay_ms))
+                    .filter(|due_ms| hard_deadline_ms.is_none_or(|deadline| *due_ms < deadline));
+                match not_before_ms {
+                    Some(not_before_ms) => (TaskStatus::RetryWait, Some(not_before_ms)),
+                    None => (TaskStatus::Failed, None),
+                }
+            }
+            RuntimeOutcome::TimedOut => (TaskStatus::TimedOut, None),
             RuntimeOutcome::Cancelled => unreachable!("cancelled is handled above"),
         };
-        self.release_and_transition(token, target)
+        self.release_and_transition(token, target, retry_not_before_ms)
     }
 
     /// Re-attempt queued requests in FIFO order after capacity or lane state
@@ -349,60 +474,100 @@ impl AuthoritativeRuntime {
         let queued = self.admission.queued();
         let mut results = Vec::with_capacity(queued);
         for _ in 0..queued {
-            let Some(request) = self.admission.pop_queued() else {
+            let Some(request) = self.admission.peek_queued() else {
                 break;
             };
             let task_id = request.task_id;
             let attempt_id = request.attempt_id;
-            let lane = lane_for_work_kind(request.work_kind);
-            if !self.lanes.try_acquire(lane) {
-                let _ = self.admission.enqueue(request, now_ms);
-                break;
-            }
-            match self.admission.admit(request, now_ms) {
-                AdmissionDecision::Admitted(lease) => {
-                    let admission = self
-                        .ledger
-                        .transition_status(task_id, TaskStatus::Admitted)
-                        .and_then(|_| self.ledger.transition_status(task_id, TaskStatus::Running))
-                        .map(|_| RuntimeAdmission::Admitted(ResourceLeaseToken::from_lease(&lease)))
-                        .unwrap_or_else(|error| {
-                            let _ = self.admission.release(lease.lease_id);
-                            RuntimeAdmission::Rejected {
-                                reason: ResourceError::ResourceUnavailable(format!(
-                                    "queued task state could not be restored: {error:?}"
-                                )),
-                            }
-                        });
-                    if !matches!(admission, RuntimeAdmission::Admitted(_)) {
-                        let _ = self.lanes.release(lane);
-                    }
+            let attempt_kind = match self.queued_attempt_kind(request) {
+                Ok(attempt_kind) => attempt_kind,
+                Err(error) => {
+                    let Some(_request) = self.admission.pop_queued() else {
+                        break;
+                    };
                     results.push(QueuedRuntimeAdmission {
                         task_id,
                         attempt_id,
-                        admission,
+                        admission: RuntimeAdmission::Rejected {
+                            reason: ResourceError::ResourceUnavailable(format!(
+                                "queued task state could not be restored: {error:?}"
+                            )),
+                        },
                     });
+                    continue;
                 }
-                AdmissionDecision::Queued { position, reason } => {
-                    let _ = self.lanes.release(lane);
-                    results.push(QueuedRuntimeAdmission {
-                        task_id,
-                        attempt_id,
-                        admission: RuntimeAdmission::Queued { position, reason },
-                    });
-                    break;
-                }
-                AdmissionDecision::Rejected { reason } => {
-                    let _ = self.lanes.release(lane);
+            };
+            if attempt_kind == AttemptKind::Retry {
+                let task = self
+                    .ledger
+                    .task(task_id)
+                    .expect("queued retry task was validated above");
+                if task
+                    .hard_deadline_ms
+                    .is_some_and(|deadline_ms| now_ms >= deadline_ms)
+                {
+                    let Some(_request) = self.admission.pop_queued() else {
+                        break;
+                    };
+                    let transition = self.ledger.transition_status(task_id, TaskStatus::TimedOut);
+                    let reason = transition.map_or_else(
+                        |error| {
+                            ResourceError::ResourceUnavailable(format!(
+                                "expired queued retry could not be timed out: {error:?}"
+                            ))
+                        },
+                        |_| ResourceError::DeadlineExceeded,
+                    );
                     results.push(QueuedRuntimeAdmission {
                         task_id,
                         attempt_id,
                         admission: RuntimeAdmission::Rejected { reason },
                     });
+                    continue;
                 }
+                if task
+                    .retry_not_before_ms()
+                    .is_none_or(|not_before_ms| now_ms < not_before_ms)
+                {
+                    break;
+                }
+            }
+
+            let Some(request) = self.admission.pop_queued() else {
+                break;
+            };
+            let admission = self
+                .admit_existing(request, now_ms, attempt_kind)
+                .unwrap_or_else(|error| RuntimeAdmission::Rejected {
+                    reason: ResourceError::ResourceUnavailable(format!(
+                        "queued task state could not be restored: {error:?}"
+                    )),
+                });
+            let still_queued = matches!(admission, RuntimeAdmission::Queued { .. });
+            results.push(QueuedRuntimeAdmission {
+                task_id,
+                attempt_id,
+                admission,
+            });
+            if still_queued {
+                break;
             }
         }
         results
+    }
+
+    fn queued_attempt_kind(&self, request: &ResourceRequest) -> Result<AttemptKind, RuntimeError> {
+        let task = self.ledger.task(request.task_id).ok_or(RuntimeError::Task(
+            TaskLedgerError::MissingTask(request.task_id),
+        ))?;
+        match task.status {
+            TaskStatus::Ready if request.attempt_id == task.attempt_id => Ok(AttemptKind::Initial),
+            TaskStatus::RetryWait if task.attempt_id.checked_add(1) == Some(request.attempt_id) => {
+                Ok(AttemptKind::Retry)
+            }
+            TaskStatus::Ready | TaskStatus::RetryWait => Err(RuntimeError::AttemptMismatch),
+            status => Err(RuntimeError::InvalidTransition(status)),
+        }
     }
 
     /// Poll the bounded queue for one task. Other tasks admitted by the same
@@ -439,21 +604,23 @@ impl AuthoritativeRuntime {
         ) {
             return Ok(false);
         }
-        self.pending_admissions.remove(&(task_id, attempt_id));
-
         let task = self
             .ledger
             .task(task_id)
             .ok_or(RuntimeError::Task(TaskLedgerError::MissingTask(task_id)))?;
-        if task.attempt_id != attempt_id {
+        let is_initial = task.status == TaskStatus::Ready && task.attempt_id == attempt_id;
+        let is_retry = task.status == TaskStatus::RetryWait
+            && task.attempt_id.checked_add(1) == Some(attempt_id);
+        if !is_initial && !is_retry {
+            if task.attempt_id == attempt_id {
+                return Ok(false);
+            }
             return Err(RuntimeError::AttemptMismatch);
-        }
-        if task.status != TaskStatus::Ready {
-            return Ok(false);
         }
         if !self.admission.remove_queued(task_id, attempt_id) {
             return Ok(false);
         }
+        self.pending_admissions.remove(&(task_id, attempt_id));
         self.ledger
             .transition_status(task_id, TaskStatus::Cancelled)
             .map(|_| true)
@@ -466,7 +633,10 @@ impl AuthoritativeRuntime {
         let tokens = self.admission.expired_tokens(now_ms);
         let mut reclaimed = 0;
         for token in tokens {
-            if self.finish(token, RuntimeOutcome::TimedOut).is_ok() {
+            if self
+                .finish_at(token, RuntimeOutcome::TimedOut, now_ms)
+                .is_ok()
+            {
                 reclaimed += 1;
             }
         }
@@ -548,6 +718,7 @@ impl AuthoritativeRuntime {
         &mut self,
         token: ResourceLeaseToken,
         target: TaskStatus,
+        retry_not_before_ms: Option<u64>,
     ) -> Result<(), RuntimeError> {
         // Validate every mutable subsystem before changing any of them. This
         // makes duplicate, stale, and forged completion calls side-effect free.
@@ -556,14 +727,19 @@ impl AuthoritativeRuntime {
             .inspect_token(&token)
             .map_err(RuntimeError::Resource)?
             .clone();
-        self.ledger
-            .validate_status_transition(lease.task_id, target)
-            .map_err(|error| match error {
-                TaskLedgerError::InvalidStatusTransition { from, .. } => {
-                    RuntimeError::InvalidTransition(from)
-                }
-                other => RuntimeError::Task(other),
-            })?;
+        let validation = if let Some(not_before_ms) = retry_not_before_ms {
+            self.ledger
+                .validate_retry_wait(lease.task_id, not_before_ms)
+        } else {
+            self.ledger
+                .validate_status_transition(lease.task_id, target)
+        };
+        validation.map_err(|error| match error {
+            TaskLedgerError::InvalidStatusTransition { from, .. } => {
+                RuntimeError::InvalidTransition(from)
+            }
+            other => RuntimeError::Task(other),
+        })?;
         let lane = lane_for_work_kind(lease.work_kind);
         if !self.lanes.can_release(lane) {
             return Err(RuntimeError::LaneAccounting(lane));
@@ -577,9 +753,15 @@ impl AuthoritativeRuntime {
         if !self.lanes.release(lane) {
             return Err(RuntimeError::LaneAccounting(lane));
         }
-        self.ledger
-            .transition_status(lease.task_id, target)
-            .map_err(RuntimeError::Task)
+        if let Some(not_before_ms) = retry_not_before_ms {
+            self.ledger
+                .schedule_retry_wait(lease.task_id, not_before_ms)
+                .map_err(RuntimeError::Task)
+        } else {
+            self.ledger
+                .transition_status(lease.task_id, target)
+                .map_err(RuntimeError::Task)
+        }
     }
 }
 
@@ -674,6 +856,24 @@ mod tests {
         AuthoritativeRuntime::new(60_000, &profile)
     }
 
+    fn single_slot_runtime(queue_limit: usize) -> AuthoritativeRuntime {
+        let profile = crate::resource::HardwareProfile::probe();
+        let mut runtime = AuthoritativeRuntime::new(60_000, &profile);
+        runtime.admission = AdmissionController::new(
+            crate::resource::GrantedResources {
+                cpu_threads: 1,
+                host_memory_bytes: 1024,
+                accelerator_memory_bytes: 0,
+                io_in_flight: 1,
+                process_limit: 1,
+                thread_limit: 1,
+                fd_limit: 256,
+            },
+            queue_limit,
+        );
+        runtime
+    }
+
     fn request(task_id: u128, attempt_id: u64) -> ResourceRequest {
         let mut request = ResourceRequest::minimal(task_id, WorkKind::NativeTask);
         request.attempt_id = attempt_id;
@@ -737,28 +937,738 @@ mod tests {
     #[test]
     fn state_machine_supports_retry_and_fenced_attempts() {
         let mut runtime = runtime();
+        let started_at_ms = 1;
         let task = TaskCard::new(1, vec![], 0, None, None);
-        let token = match runtime.submit(task, request(1, 1), 1).unwrap() {
+        let token = match runtime.submit(task, request(1, 1), started_at_ms).unwrap() {
             RuntimeAdmission::Admitted(token) => token,
             other => panic!("expected admission, got {other:?}"),
         };
-        runtime.finish(token, RuntimeOutcome::RetryWait).unwrap();
+        runtime
+            .finish_at(token, RuntimeOutcome::RetryWait, started_at_ms)
+            .unwrap();
         assert_eq!(
             runtime.ledger.task(1).map(|task| task.status),
             Some(TaskStatus::RetryWait)
         );
-        let retry_token = match runtime.retry(1, request(1, 2), 2).unwrap() {
+        let retry_started_at_ms = started_at_ms + 2_000;
+        let retry_token = match runtime
+            .retry(1, request(1, 2), retry_started_at_ms)
+            .unwrap()
+        {
             RuntimeAdmission::Admitted(token) => token,
             other => panic!("expected retry admission, got {other:?}"),
         };
         assert_eq!(retry_token.attempt_id, 2);
         runtime
-            .finish(retry_token, RuntimeOutcome::TimedOut)
+            .finish_at(
+                retry_token,
+                RuntimeOutcome::TimedOut,
+                retry_started_at_ms + 1,
+            )
             .unwrap();
         assert_eq!(
             runtime.ledger.task(1).map(|task| task.status),
             Some(TaskStatus::TimedOut)
         );
+    }
+
+    #[test]
+    fn retry_before_backoff_is_rejected_without_mutating_runtime_state() {
+        let mut runtime = runtime();
+        let retry_started_at_ms = crate::resource::unix_time_millis_for_runtime();
+        let task = TaskCard::new(1, vec![], 0, None, None);
+        let token = match runtime
+            .submit(task, request(1, 1), retry_started_at_ms)
+            .unwrap()
+        {
+            RuntimeAdmission::Admitted(token) => token,
+            other => panic!("expected initial admission, got {other:?}"),
+        };
+        runtime
+            .finish_at(token, RuntimeOutcome::RetryWait, retry_started_at_ms)
+            .unwrap();
+
+        let before_task = runtime.ledger.task(1).cloned().unwrap();
+        let before_ledger_hash = runtime.ledger.ledger_state_hash_for_test().unwrap();
+        let before_lanes = runtime.lanes.clone();
+        let before_pending_admissions = runtime.pending_admissions.clone();
+        let before_used_resources = runtime.admission.used();
+        let before_active_leases = runtime.admission.active_leases();
+        let before_queued = runtime.admission.queued();
+        let result = runtime.retry(1, request(1, 2), retry_started_at_ms);
+
+        assert!(
+            matches!(result, Ok(RuntimeAdmission::Rejected { .. })),
+            "a retry requested before its 2-second not-before time must be rejected, got {result:?}"
+        );
+        assert_eq!(runtime.ledger.task(1), Some(&before_task));
+        assert_eq!(
+            runtime.ledger.ledger_state_hash_for_test().unwrap(),
+            before_ledger_hash
+        );
+        assert_eq!(runtime.lanes, before_lanes);
+        assert_eq!(runtime.pending_admissions, before_pending_admissions);
+        assert_eq!(runtime.admission.used(), before_used_resources);
+        assert_eq!(runtime.admission.active_leases(), before_active_leases);
+        assert_eq!(runtime.admission.queued(), before_queued);
+    }
+
+    #[test]
+    fn retry_rejects_skipped_attempt_ids_without_mutating_runtime_state() {
+        let mut runtime = runtime();
+        let now_ms = crate::resource::unix_time_millis_for_runtime();
+        let token = match runtime
+            .submit(
+                TaskCard::new(1, vec![], 0, None, None),
+                request(1, 1),
+                now_ms,
+            )
+            .unwrap()
+        {
+            RuntimeAdmission::Admitted(token) => token,
+            other => panic!("expected initial admission, got {other:?}"),
+        };
+        runtime
+            .finish_at(token, RuntimeOutcome::RetryWait, now_ms)
+            .unwrap();
+
+        let before_task = runtime.ledger.task(1).cloned().unwrap();
+        let before_ledger_hash = runtime.ledger.ledger_state_hash_for_test().unwrap();
+        let before_lanes = runtime.lanes.clone();
+        let before_pending_admissions = runtime.pending_admissions.clone();
+        let before_used_resources = runtime.admission.used();
+        let before_active_leases = runtime.admission.active_leases();
+        let before_queued = runtime.admission.queued();
+        let result = runtime.retry(1, request(1, 3), now_ms + 10_000);
+
+        assert_eq!(result, Err(RuntimeError::AttemptMismatch));
+        assert_eq!(runtime.ledger.task(1), Some(&before_task));
+        assert_eq!(
+            runtime.ledger.ledger_state_hash_for_test().unwrap(),
+            before_ledger_hash
+        );
+        assert_eq!(runtime.lanes, before_lanes);
+        assert_eq!(runtime.pending_admissions, before_pending_admissions);
+        assert_eq!(runtime.admission.used(), before_used_resources);
+        assert_eq!(runtime.admission.active_leases(), before_active_leases);
+        assert_eq!(runtime.admission.queued(), before_queued);
+    }
+
+    #[test]
+    fn rejected_retry_admission_does_not_consume_the_execution_attempt() {
+        let mut runtime = runtime();
+        runtime.admission = crate::resource::AdmissionController::new(
+            crate::resource::GrantedResources {
+                cpu_threads: 4,
+                host_memory_bytes: 4_096,
+                accelerator_memory_bytes: 0,
+                io_in_flight: 4,
+                process_limit: 4,
+                thread_limit: 4,
+                fd_limit: 256,
+            },
+            0,
+        );
+        let now_ms = crate::resource::unix_time_millis_for_runtime();
+        let token = match runtime
+            .submit(
+                TaskCard::new(1, vec![], 0, None, None),
+                request(1, 1),
+                now_ms,
+            )
+            .unwrap()
+        {
+            RuntimeAdmission::Admitted(token) => token,
+            other => panic!("expected initial admission, got {other:?}"),
+        };
+        runtime
+            .finish_at(token, RuntimeOutcome::RetryWait, now_ms)
+            .unwrap();
+
+        let before_task = runtime.ledger.task(1).cloned().unwrap();
+        let before_ledger_hash = runtime.ledger.ledger_state_hash_for_test().unwrap();
+        let before_lanes = runtime.lanes.clone();
+        let before_pending_admissions = runtime.pending_admissions.clone();
+        let before_used_resources = runtime.admission.used();
+        let before_active_leases = runtime.admission.active_leases();
+        let before_queued = runtime.admission.queued();
+        let mut impossible_request = request(1, 2);
+        impossible_request.host_memory.bytes = u64::MAX;
+        let result = runtime.retry(1, impossible_request, now_ms + 10_000);
+
+        assert!(
+            matches!(result, Ok(RuntimeAdmission::Rejected { .. })),
+            "a resource-rejected retry must not be reported as admitted or queued, got {result:?}"
+        );
+        assert_eq!(runtime.ledger.task(1), Some(&before_task));
+        assert_eq!(
+            runtime.ledger.ledger_state_hash_for_test().unwrap(),
+            before_ledger_hash
+        );
+        assert_eq!(runtime.lanes, before_lanes);
+        assert_eq!(runtime.pending_admissions, before_pending_admissions);
+        assert_eq!(runtime.admission.used(), before_used_resources);
+        assert_eq!(runtime.admission.active_leases(), before_active_leases);
+        assert_eq!(runtime.admission.queued(), before_queued);
+    }
+
+    #[test]
+    fn queued_retry_before_not_before_keeps_queue_and_state_unchanged() {
+        let mut runtime = single_slot_runtime(2);
+        let first_token = match runtime
+            .submit(
+                TaskCard::new(1, vec![], 0, None, None),
+                request(1, 1),
+                10_000,
+            )
+            .unwrap()
+        {
+            RuntimeAdmission::Admitted(token) => token,
+            other => panic!("expected initial admission, got {other:?}"),
+        };
+        runtime
+            .finish_at(first_token, RuntimeOutcome::RetryWait, 10_000)
+            .unwrap();
+        let retry_not_before_ms = runtime
+            .ledger
+            .task(1)
+            .and_then(TaskCard::retry_not_before_ms)
+            .unwrap();
+        let blocker_token = match runtime
+            .submit(
+                TaskCard::new(2, vec![], 0, None, None),
+                request(2, 1),
+                10_001,
+            )
+            .unwrap()
+        {
+            RuntimeAdmission::Admitted(token) => token,
+            other => panic!("expected capacity blocker admission, got {other:?}"),
+        };
+        assert!(matches!(
+            runtime
+                .retry(1, request(1, 2), retry_not_before_ms)
+                .unwrap(),
+            RuntimeAdmission::Queued { .. }
+        ));
+
+        let before_task = runtime.ledger.task(1).cloned().unwrap();
+        let before_ledger_hash = runtime.ledger.ledger_state_hash_for_test().unwrap();
+        let before_lanes = runtime.lanes.clone();
+        let before_pending_admissions = runtime.pending_admissions.clone();
+        let before_used_resources = runtime.admission.used();
+        let before_active_leases = runtime.admission.active_leases();
+        let before_queued = runtime.admission.queued();
+        let before_queued_request = runtime.admission.peek_queued().cloned().unwrap();
+
+        assert!(runtime.drain_queued(retry_not_before_ms - 1).is_empty());
+        assert_eq!(runtime.admission.queued(), before_queued);
+        assert_eq!(
+            runtime.admission.peek_queued(),
+            Some(&before_queued_request)
+        );
+        assert_eq!(runtime.ledger.task(1), Some(&before_task));
+        assert_eq!(
+            runtime.ledger.ledger_state_hash_for_test().unwrap(),
+            before_ledger_hash
+        );
+        assert_eq!(runtime.lanes, before_lanes);
+        assert_eq!(runtime.pending_admissions, before_pending_admissions);
+        assert_eq!(runtime.admission.used(), before_used_resources);
+        assert_eq!(runtime.admission.active_leases(), before_active_leases);
+
+        runtime
+            .finish_at(blocker_token, RuntimeOutcome::Done, retry_not_before_ms)
+            .unwrap();
+        let drained = runtime.drain_queued(retry_not_before_ms);
+        let retry_token = match drained.as_slice() {
+            [
+                QueuedRuntimeAdmission {
+                    task_id: 1,
+                    attempt_id: 2,
+                    admission: RuntimeAdmission::Admitted(token),
+                },
+            ] => token.clone(),
+            other => panic!("expected retained retry admission at its due time, got {other:?}"),
+        };
+        assert_eq!(runtime.ledger.task(1).map(|task| task.attempt_id), Some(2));
+        assert_eq!(
+            runtime.ledger.task(1).map(|task| task.status),
+            Some(TaskStatus::Running)
+        );
+        runtime
+            .finish_at(retry_token, RuntimeOutcome::Done, retry_not_before_ms + 1)
+            .unwrap();
+    }
+
+    #[test]
+    fn duplicate_queued_retry_is_idempotent_and_poll_keeps_first_result() {
+        let mut runtime = single_slot_runtime(2);
+        let first_token = match runtime
+            .submit(
+                TaskCard::new(1, vec![], 0, None, None),
+                request(1, 1),
+                10_000,
+            )
+            .unwrap()
+        {
+            RuntimeAdmission::Admitted(token) => token,
+            other => panic!("expected first task admission, got {other:?}"),
+        };
+        runtime
+            .finish_at(first_token, RuntimeOutcome::RetryWait, 10_000)
+            .unwrap();
+        let retry_at_ms = runtime
+            .ledger
+            .task(1)
+            .and_then(TaskCard::retry_not_before_ms)
+            .unwrap();
+        let blocker_token = match runtime
+            .submit(
+                TaskCard::new(2, vec![], 0, None, None),
+                request(2, 1),
+                10_001,
+            )
+            .unwrap()
+        {
+            RuntimeAdmission::Admitted(token) => token,
+            other => panic!("expected capacity blocker admission, got {other:?}"),
+        };
+
+        let first_retry = runtime.retry(1, request(1, 2), retry_at_ms);
+        let unrelated_poll = runtime.poll_queued(99, 1, retry_at_ms);
+        let duplicate_retry = runtime.retry(1, request(1, 2), retry_at_ms);
+        let mut conflicting_request = request(1, 2);
+        conflicting_request.host_memory.bytes = 2;
+        let conflicting_retry = runtime.retry(1, conflicting_request, retry_at_ms);
+        let position = |result: &Result<RuntimeAdmission, RuntimeError>| match result {
+            Ok(RuntimeAdmission::Queued { position, .. }) => Some(*position),
+            _ => None,
+        };
+        let first_position = position(&first_retry);
+        let duplicate_position = position(&duplicate_retry);
+        let conflicting_retry_rejected = matches!(
+            &conflicting_retry,
+            Err(RuntimeError::Resource(ResourceError::InvalidRequest(_)))
+        );
+        let queued_before_release = runtime.admission.queued();
+
+        runtime
+            .finish_at(blocker_token, RuntimeOutcome::Done, retry_at_ms)
+            .unwrap();
+        let first_poll = runtime.poll_queued(1, 2, retry_at_ms);
+        let repeated_poll = runtime.poll_queued(1, 2, retry_at_ms);
+
+        assert!(
+            first_position == Some(1)
+                && unrelated_poll.is_none()
+                && duplicate_position == Some(1)
+                && conflicting_retry_rejected
+                && queued_before_release == 1
+                && matches!(first_poll.as_ref(), Some(RuntimeAdmission::Admitted(_)))
+                && repeated_poll.is_none(),
+            "same retry key must share one queue entry, clear retained queue notices, reject changed requests, and retain one result; first={first_retry:?}, unrelated_poll={unrelated_poll:?}, duplicate={duplicate_retry:?}, conflict={conflicting_retry:?}, queued={queued_before_release}, first_poll={first_poll:?}, repeated_poll={repeated_poll:?}"
+        );
+    }
+
+    #[test]
+    fn retry_reentry_consumes_a_pending_rejection_before_new_admission() {
+        let mut runtime = single_slot_runtime(2);
+        let first_token = match runtime
+            .submit(
+                TaskCard::new(1, vec![], 0, None, None),
+                request(1, 1),
+                10_000,
+            )
+            .unwrap()
+        {
+            RuntimeAdmission::Admitted(token) => token,
+            other => panic!("expected initial admission, got {other:?}"),
+        };
+        runtime
+            .finish_at(first_token, RuntimeOutcome::RetryWait, 10_000)
+            .unwrap();
+        let retry_at_ms = runtime
+            .ledger
+            .task(1)
+            .and_then(TaskCard::retry_not_before_ms)
+            .unwrap();
+
+        let lane = lane_for_work_kind(WorkKind::NativeTask);
+        let mut held_lanes = 0;
+        while runtime.lanes.try_acquire(lane) {
+            held_lanes += 1;
+        }
+        assert!(
+            held_lanes > 0,
+            "the native lane must have positive capacity"
+        );
+
+        let mut expiring_retry = request(1, 2);
+        expiring_retry.deadline.deadline_ms = Some(retry_at_ms.saturating_add(1));
+        assert!(matches!(
+            runtime.retry(1, expiring_retry, retry_at_ms).unwrap(),
+            RuntimeAdmission::Queued { .. }
+        ));
+        for _ in 0..held_lanes {
+            assert!(runtime.lanes.release(lane));
+        }
+
+        let poll_time_ms = retry_at_ms.saturating_add(2);
+        assert!(runtime.poll_queued(99, 1, poll_time_ms).is_none());
+        let retry_reentry = runtime.retry(1, request(1, 2), poll_time_ms).unwrap();
+        let stale_result = runtime.poll_queued(1, 2, poll_time_ms);
+        assert!(
+            matches!(&retry_reentry, RuntimeAdmission::Admitted(_)) && stale_result.is_none(),
+            "re-entering a rejected attempt must consume its old result and return only the new admission; retry={retry_reentry:?}, stale_poll={stale_result:?}"
+        );
+        assert_eq!(runtime.admission.active_leases(), 1);
+    }
+
+    #[test]
+    fn cancelling_queued_retry_does_not_consume_an_attempt() {
+        let mut runtime = runtime();
+        let now_ms = crate::resource::unix_time_millis_for_runtime();
+        let token = match runtime
+            .submit(
+                TaskCard::new(1, vec![], 0, None, None),
+                request(1, 1),
+                now_ms,
+            )
+            .unwrap()
+        {
+            RuntimeAdmission::Admitted(token) => token,
+            other => panic!("expected initial admission, got {other:?}"),
+        };
+        runtime.finish(token, RuntimeOutcome::RetryWait).unwrap();
+
+        let lane = lane_for_work_kind(WorkKind::NativeTask);
+        let mut held_lanes = 0;
+        while runtime.lanes.try_acquire(lane) {
+            held_lanes += 1;
+        }
+        assert!(
+            held_lanes > 0,
+            "the native lane must have positive capacity"
+        );
+        let retry_now_ms = crate::resource::unix_time_millis_for_runtime() + 10_000;
+        assert!(matches!(
+            runtime.retry(1, request(1, 2), retry_now_ms).unwrap(),
+            RuntimeAdmission::Queued { .. }
+        ));
+
+        assert!(runtime.cancel_queued(1, 2).unwrap());
+
+        assert_eq!(runtime.ledger.task(1).map(|task| task.attempt_id), Some(1));
+        assert_eq!(
+            runtime.ledger.task(1).map(|task| task.status),
+            Some(TaskStatus::Cancelled)
+        );
+        assert_eq!(runtime.admission.queued(), 0);
+    }
+
+    #[test]
+    fn retry_budget_counts_the_initial_attempt_and_stops_at_three() {
+        let mut runtime = runtime();
+        let mut token = match runtime
+            .submit(TaskCard::new(1, vec![], 0, None, None), request(1, 1), 1)
+            .unwrap()
+        {
+            RuntimeAdmission::Admitted(token) => token,
+            other => panic!("expected initial admission, got {other:?}"),
+        };
+        runtime
+            .finish_at(token, RuntimeOutcome::RetryWait, 1)
+            .unwrap();
+
+        for (attempt_id, due_ms) in [(2, 2_001), (3, 6_001)] {
+            token = match runtime.retry(1, request(1, attempt_id), due_ms).unwrap() {
+                RuntimeAdmission::Admitted(token) => token,
+                other => panic!("expected attempt {attempt_id} admission, got {other:?}"),
+            };
+            runtime
+                .finish_at(token, RuntimeOutcome::RetryWait, due_ms)
+                .unwrap();
+        }
+
+        let exhausted_task = runtime.ledger.task(1).cloned().unwrap();
+        assert_eq!(exhausted_task.attempt_id, 3);
+        assert_eq!(exhausted_task.status, TaskStatus::Failed);
+        assert_eq!(runtime.admission.active_leases(), 0);
+        assert!(matches!(
+            runtime.retry(1, request(1, 4), 10_001),
+            Err(RuntimeError::InvalidTransition(TaskStatus::Failed))
+        ));
+        assert_eq!(runtime.ledger.task(1), Some(&exhausted_task));
+    }
+
+    #[test]
+    fn retry_backoff_is_two_then_four_seconds_and_due_time_is_inclusive() {
+        let mut runtime = runtime();
+        let first_attempt_started_at_ms = 10_000;
+        let token = match runtime
+            .submit(
+                TaskCard::new(1, vec![], 0, None, None),
+                request(1, 1),
+                first_attempt_started_at_ms,
+            )
+            .unwrap()
+        {
+            RuntimeAdmission::Admitted(token) => token,
+            other => panic!("expected initial admission, got {other:?}"),
+        };
+        runtime
+            .finish_at(
+                token,
+                RuntimeOutcome::RetryWait,
+                first_attempt_started_at_ms,
+            )
+            .unwrap();
+        assert_eq!(
+            runtime
+                .ledger
+                .task(1)
+                .and_then(TaskCard::retry_not_before_ms),
+            Some(first_attempt_started_at_ms + 2_000)
+        );
+        assert!(matches!(
+            runtime
+                .retry(1, request(1, 2), first_attempt_started_at_ms + 1_999)
+                .unwrap(),
+            RuntimeAdmission::Rejected { .. }
+        ));
+        let second_attempt_started_at_ms = first_attempt_started_at_ms + 2_000;
+        let token = match runtime
+            .retry(1, request(1, 2), second_attempt_started_at_ms)
+            .unwrap()
+        {
+            RuntimeAdmission::Admitted(token) => token,
+            other => panic!("retry at its exact not-before time was rejected: {other:?}"),
+        };
+
+        let second_attempt_finished_at_ms = 30_000;
+        runtime
+            .finish_at(
+                token,
+                RuntimeOutcome::RetryWait,
+                second_attempt_finished_at_ms,
+            )
+            .unwrap();
+        assert_eq!(
+            runtime
+                .ledger
+                .task(1)
+                .and_then(TaskCard::retry_not_before_ms),
+            Some(second_attempt_finished_at_ms + 4_000)
+        );
+        assert!(matches!(
+            runtime
+                .retry(1, request(1, 3), second_attempt_finished_at_ms + 3_999)
+                .unwrap(),
+            RuntimeAdmission::Rejected { .. }
+        ));
+        let third_attempt_started_at_ms = second_attempt_finished_at_ms + 4_000;
+        let token = match runtime
+            .retry(1, request(1, 3), third_attempt_started_at_ms)
+            .unwrap()
+        {
+            RuntimeAdmission::Admitted(token) => token,
+            other => panic!("retry at its exact not-before time was rejected: {other:?}"),
+        };
+        runtime
+            .finish_at(token, RuntimeOutcome::Done, third_attempt_started_at_ms)
+            .unwrap();
+    }
+
+    #[test]
+    fn retry_is_not_scheduled_when_backoff_reaches_or_exceeds_deadline() {
+        let mut runtime = runtime();
+        for (task_id, hard_deadline_ms) in [(1, 12_000), (2, 11_999)] {
+            let token = match runtime
+                .submit(
+                    TaskCard::new(task_id, vec![], 0, Some(hard_deadline_ms), None),
+                    request(task_id, 1),
+                    10_000,
+                )
+                .unwrap()
+            {
+                RuntimeAdmission::Admitted(token) => token,
+                other => panic!("expected initial task admission, got {other:?}"),
+            };
+            runtime
+                .finish_at(token, RuntimeOutcome::RetryWait, 10_000)
+                .unwrap();
+            let task = runtime.ledger.task(task_id).unwrap();
+            assert_eq!(task.status, TaskStatus::Failed);
+            assert_eq!(task.attempt_id, 1);
+            assert_eq!(task.retry_not_before_ms(), None);
+        }
+        assert_eq!(runtime.admission.active_leases(), 0);
+    }
+
+    #[test]
+    fn submit_binds_task_deadline_to_the_initial_lease() {
+        let mut runtime = runtime();
+        let now_ms = crate::resource::unix_time_millis_for_runtime();
+        let hard_deadline_ms = now_ms + 60_000;
+        let mut initial_request = request(1, 1);
+        initial_request.deadline.deadline_ms = Some(hard_deadline_ms + 60_000);
+        let task = TaskCard::new(1, vec![], 0, Some(hard_deadline_ms), None);
+
+        let token = match runtime.submit(task, initial_request, now_ms).unwrap() {
+            RuntimeAdmission::Admitted(token) => token,
+            other => panic!("expected admitted task, got {other:?}"),
+        };
+
+        assert_eq!(
+            runtime
+                .admission
+                .inspect_token(&token)
+                .unwrap()
+                .expires_at_ms,
+            Some(hard_deadline_ms)
+        );
+    }
+
+    #[test]
+    fn retry_cannot_extend_or_drop_the_task_hard_deadline() {
+        let mut runtime = runtime();
+        let now_ms = crate::resource::unix_time_millis_for_runtime();
+        let task_deadline_ms = now_ms + 120_000;
+        let mut first_request = request(1, 1);
+        first_request.deadline.deadline_ms = Some(task_deadline_ms + 60_000);
+        let task = TaskCard::new(1, vec![], 0, Some(task_deadline_ms), None);
+        let token = match runtime.submit(task, first_request, now_ms).unwrap() {
+            RuntimeAdmission::Admitted(token) => token,
+            other => panic!("expected admitted task, got {other:?}"),
+        };
+        runtime
+            .finish_at(token, RuntimeOutcome::RetryWait, now_ms)
+            .unwrap();
+
+        let mut retry_request = request(1, 2);
+        retry_request.deadline.deadline_ms = Some(task_deadline_ms + 120_000);
+        let first_retry_started_at_ms = now_ms + 2_000;
+        let retry_token = match runtime
+            .retry(1, retry_request, first_retry_started_at_ms)
+            .unwrap()
+        {
+            RuntimeAdmission::Admitted(token) => token,
+            other => panic!("expected admitted retry, got {other:?}"),
+        };
+
+        assert_eq!(
+            runtime
+                .admission
+                .inspect_token(&retry_token)
+                .unwrap()
+                .expires_at_ms,
+            Some(task_deadline_ms)
+        );
+
+        runtime
+            .finish_at(
+                retry_token,
+                RuntimeOutcome::RetryWait,
+                first_retry_started_at_ms + 1,
+            )
+            .unwrap();
+        let retry_without_deadline = request(1, 3);
+        let second_retry_started_at_ms = first_retry_started_at_ms + 1 + 4_000;
+        let retry_token = match runtime
+            .retry(1, retry_without_deadline, second_retry_started_at_ms)
+            .unwrap()
+        {
+            RuntimeAdmission::Admitted(token) => token,
+            other => panic!("expected admitted retry, got {other:?}"),
+        };
+
+        assert_eq!(
+            runtime
+                .admission
+                .inspect_token(&retry_token)
+                .unwrap()
+                .expires_at_ms,
+            Some(task_deadline_ms)
+        );
+    }
+
+    #[test]
+    fn retry_after_task_deadline_is_rejected_without_state_mutation() {
+        let mut runtime = runtime();
+        let now_ms = crate::resource::unix_time_millis_for_runtime();
+        let hard_deadline_ms = now_ms + 60_000;
+        let task = TaskCard::new(1, vec![], 0, Some(hard_deadline_ms), None);
+        let token = match runtime.submit(task, request(1, 1), now_ms).unwrap() {
+            RuntimeAdmission::Admitted(token) => token,
+            other => panic!("expected admitted task, got {other:?}"),
+        };
+
+        runtime.finish(token, RuntimeOutcome::RetryWait).unwrap();
+
+        for retry_now_ms in [hard_deadline_ms + 1, hard_deadline_ms] {
+            let before_task = runtime.ledger.task(1).cloned().unwrap();
+            let before_lanes = runtime.lanes.clone();
+            let before_pending_admissions = runtime.pending_admissions.clone();
+            let before_used_resources = runtime.admission.used();
+            let before_active_leases = runtime.admission.active_leases();
+            let before_queued = runtime.admission.queued();
+            let result = runtime.retry(1, request(1, 2), retry_now_ms);
+
+            assert_eq!(
+                result.unwrap(),
+                RuntimeAdmission::Rejected {
+                    reason: ResourceError::DeadlineExceeded,
+                }
+            );
+            assert_eq!(runtime.ledger.task(1), Some(&before_task));
+            assert_eq!(runtime.lanes, before_lanes);
+            assert_eq!(runtime.pending_admissions, before_pending_admissions);
+            assert_eq!(runtime.admission.used(), before_used_resources);
+            assert_eq!(runtime.admission.active_leases(), before_active_leases);
+            assert_eq!(runtime.admission.queued(), before_queued);
+        }
+    }
+
+    #[test]
+    fn retry_deadline_rejection_does_not_mutate_runtime_state() {
+        let mut runtime = runtime();
+        let now_ms = crate::resource::unix_time_millis_for_runtime();
+        let hard_deadline_ms = now_ms + 60_000;
+        let mut initial_request = request(1, 1);
+        initial_request.deadline.deadline_ms = Some(hard_deadline_ms);
+        let task = TaskCard::new(1, vec![], 0, Some(hard_deadline_ms), None);
+
+        let token = match runtime.submit(task, initial_request, now_ms).unwrap() {
+            RuntimeAdmission::Admitted(token) => token,
+            other => panic!("expected admitted task, got {other:?}"),
+        };
+        runtime.finish(token, RuntimeOutcome::RetryWait).unwrap();
+
+        for retry_now_ms in [hard_deadline_ms + 1, hard_deadline_ms] {
+            let before_task = runtime.ledger.task(1).cloned().unwrap();
+            let before_lanes = runtime.lanes.clone();
+            let before_pending_admissions = runtime.pending_admissions.clone();
+            let before_used_resources = runtime.admission.used();
+            let before_active_leases = runtime.admission.active_leases();
+            let before_queued = runtime.admission.queued();
+            let mut expired_request = request(1, 2);
+            expired_request.deadline.deadline_ms = Some(hard_deadline_ms);
+            let result = runtime.retry(1, expired_request, retry_now_ms);
+
+            assert_eq!(
+                result.unwrap(),
+                RuntimeAdmission::Rejected {
+                    reason: ResourceError::DeadlineExceeded,
+                }
+            );
+            assert_eq!(runtime.ledger.task(1), Some(&before_task));
+            assert_eq!(runtime.lanes, before_lanes);
+            assert_eq!(runtime.pending_admissions, before_pending_admissions);
+            assert_eq!(runtime.admission.used(), before_used_resources);
+            assert_eq!(runtime.admission.active_leases(), before_active_leases);
+            assert_eq!(runtime.admission.queued(), before_queued);
+        }
     }
 
     #[test]
@@ -775,7 +1685,7 @@ mod tests {
             Some(TaskStatus::Cancelling)
         );
         runtime
-            .release_and_transition(token, TaskStatus::Cancelled)
+            .release_and_transition(token, TaskStatus::Cancelled, None)
             .unwrap();
         assert_eq!(
             runtime.ledger.task(1).map(|task| task.status),

@@ -102,7 +102,10 @@ def test_wilson_bounds_and_decision_labels_cover_boundary_counts() -> None:
     assert _bound_decision(interval(0.10, 0.89), threshold=0.90, relation="minimum") == "INVALIDATED"
     assert _bound_decision(interval(0.01, 0.05), threshold=0.05, relation="maximum") == "VALIDATED"
     assert _bound_decision(interval(0.06, 0.90), threshold=0.05, relation="maximum") == "INVALIDATED"
-    assert _bound_decision({"lower_bound": None, "upper_bound": None}, threshold=0.90, relation="minimum") == "INCONCLUSIVE"
+    assert (
+        _bound_decision({"lower_bound": None, "upper_bound": None}, threshold=0.90, relation="minimum")
+        == "INCONCLUSIVE"
+    )
     assert _bound_decision(interval(0.0, 1.0), threshold=0.90, relation="unknown") == "INCONCLUSIVE"
 
 

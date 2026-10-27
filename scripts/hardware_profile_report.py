@@ -82,7 +82,7 @@ def _memory_snapshot() -> dict[str, Any]:
                     "source": "POSIX sysconf SC_PHYS_PAGES/SC_AVPHYS_PAGES",
                     "limitations": ["Does not prove unified GPU memory or accelerator usability."],
                 }
-        except (OSError, TypeError, ValueError):
+        except OSError, TypeError, ValueError:
             pass
 
     return {
@@ -286,8 +286,12 @@ def build_report(*, now: datetime | None = None, cwd: Path | None = None) -> dic
                 "No portable physical-core probe in this artifact",
                 ["Do not infer physical cores from logical processors."],
             ),
-            "numa": _observation(None, "UNKNOWN", "No portable NUMA probe in this artifact", ["NUMA topology was not measured."]),
-            "quota": _observation(None, "UNKNOWN", "No portable quota probe in this artifact", ["OS/container quota was not measured."]),
+            "numa": _observation(
+                None, "UNKNOWN", "No portable NUMA probe in this artifact", ["NUMA topology was not measured."]
+            ),
+            "quota": _observation(
+                None, "UNKNOWN", "No portable quota probe in this artifact", ["OS/container quota was not measured."]
+            ),
             "affinity": _affinity_observation(),
         },
         "memory": {

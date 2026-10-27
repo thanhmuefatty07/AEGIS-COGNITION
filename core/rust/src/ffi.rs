@@ -42,7 +42,7 @@ pub use connections::{
     aegis_revoke_connection, aegis_revoke_connection_egress, aegis_upsert_connection,
     aegis_upsert_model_descriptor,
 };
-pub use context::aegis_select_context_items;
+pub use context::{aegis_select_context_items, aegis_select_context_items_v2};
 pub use conversations::{
     aegis_append_conversation_part, aegis_append_conversation_turn,
     aegis_checkpoint_conversation_execution, aegis_create_conversation,
@@ -66,11 +66,13 @@ pub use lab::{
 pub use learning::{
     aegis_backup_memory_store, aegis_capture_memory, aegis_correct_memory, aegis_forget_memory,
     aegis_get_learning_stats, aegis_grant_memory_access, aegis_index_session,
-    aegis_index_session_scoped, aegis_inspect_memory, aegis_purge_memory,
-    aegis_read_session_content, aegis_read_session_content_scoped,
-    aegis_read_session_record_scoped, aegis_restore_memory, aegis_revoke_memory_access,
-    aegis_search_memories, aegis_search_past_sessions, aegis_search_past_sessions_scoped,
-    aegis_trigger_memory_nudge, aegis_validate_memory,
+    aegis_index_session_scoped, aegis_inspect_memory, aegis_link_memory_file_relation,
+    aegis_list_current_memory_file_relations, aegis_list_memory_file_relations,
+    aegis_list_memory_file_relations_page, aegis_purge_memory, aegis_read_session_content,
+    aegis_read_session_content_scoped, aegis_read_session_record_scoped, aegis_restore_memory,
+    aegis_revoke_memory_access, aegis_search_memories, aegis_search_past_sessions,
+    aegis_search_past_sessions_scoped, aegis_trigger_memory_nudge,
+    aegis_unlink_memory_file_relation, aegis_validate_memory,
 };
 pub use mmap::{
     PyMmapBridgeWriter, aegis_execute_mmap_wasm_bridge_frame, aegis_mmap_bridge_header_bytes,
@@ -427,6 +429,7 @@ pub fn aegis_nerve(_py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(aegis_record_conversation_tool_result, m)?)?;
     m.add_function(wrap_pyfunction!(aegis_reconcile_conversation_tool_call, m)?)?;
     m.add_function(wrap_pyfunction!(aegis_select_context_items, m)?)?;
+    m.add_function(wrap_pyfunction!(aegis_select_context_items_v2, m)?)?;
     m.add_function(wrap_pyfunction!(aegis_get_learning_stats, m)?)?;
     m.add_function(wrap_pyfunction!(aegis_capture_memory, m)?)?;
     m.add_function(wrap_pyfunction!(aegis_backup_memory_store, m)?)?;
@@ -436,6 +439,14 @@ pub fn aegis_nerve(_py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(aegis_revoke_memory_access, m)?)?;
     m.add_function(wrap_pyfunction!(aegis_inspect_memory, m)?)?;
     m.add_function(wrap_pyfunction!(aegis_search_memories, m)?)?;
+    m.add_function(wrap_pyfunction!(aegis_link_memory_file_relation, m)?)?;
+    m.add_function(wrap_pyfunction!(aegis_list_memory_file_relations, m)?)?;
+    m.add_function(wrap_pyfunction!(aegis_list_memory_file_relations_page, m)?)?;
+    m.add_function(wrap_pyfunction!(
+        aegis_list_current_memory_file_relations,
+        m
+    )?)?;
+    m.add_function(wrap_pyfunction!(aegis_unlink_memory_file_relation, m)?)?;
     m.add_function(wrap_pyfunction!(aegis_forget_memory, m)?)?;
     m.add_function(wrap_pyfunction!(aegis_restore_memory, m)?)?;
     m.add_function(wrap_pyfunction!(aegis_purge_memory, m)?)?;

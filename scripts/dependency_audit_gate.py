@@ -47,9 +47,7 @@ def evaluate_dependency_audit_gate(root: str | Path = ROOT) -> dict[str, Any]:
     dependencies = _all_dependencies(manifest)
     package_entries = lockfile.get("package", []) if isinstance(lockfile, dict) else []
     lock_packages = {
-        package.name: package
-        for package in (_lock_package(entry) for entry in package_entries)
-        if package is not None
+        package.name: package for package in (_lock_package(entry) for entry in package_entries) if package is not None
     }
     records = []
     checks = []
@@ -75,10 +73,7 @@ def evaluate_dependency_audit_gate(root: str | Path = ROOT) -> dict[str, Any]:
             {
                 "name": f"{dep_name}_lock_audit",
                 "ok": record["ok"],
-                "detail": (
-                    f"manifest={manifest_ok} lock={lock_ok} source={source_ok} "
-                    f"checksum={checksum_ok}"
-                ),
+                "detail": (f"manifest={manifest_ok} lock={lock_ok} source={source_ok} checksum={checksum_ok}"),
             }
         )
     checks.append(
@@ -116,7 +111,7 @@ def evaluate_dependency_audit_gate(root: str | Path = ROOT) -> dict[str, Any]:
 def _read_toml(path: Path) -> dict[str, Any]:
     try:
         return tomllib.loads(path.read_text(encoding="utf-8"))
-    except (OSError, tomllib.TOMLDecodeError):
+    except OSError, tomllib.TOMLDecodeError:
         return {}
 
 

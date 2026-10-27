@@ -30,6 +30,7 @@ def percentile(values: list[float], fraction: float) -> float:
 def rss_bytes() -> int | None:
     """Return process RSS where the host exposes a direct measurement."""
     if os.name == "nt":
+
         class MemoryCounters(ctypes.Structure):
             _fields_ = [
                 ("cb", ctypes.c_ulong),
@@ -57,7 +58,7 @@ def rss_bytes() -> int | None:
         return None
     try:
         value = int(_resource.getrusage(_resource.RUSAGE_SELF).ru_maxrss)
-    except (AttributeError, OSError, ValueError):
+    except AttributeError, OSError, ValueError:
         return None
     return value if platform.system() == "Darwin" else value * 1024
 

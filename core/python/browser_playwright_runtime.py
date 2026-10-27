@@ -71,7 +71,7 @@ def _is_disallowed_ip_literal(host: str) -> bool:
     except ValueError:
         try:
             address = ipaddress.ip_address(socket.inet_ntoa(socket.inet_aton(host)))
-        except (OSError, ValueError):
+        except OSError, ValueError:
             return False
     return bool(
         address.is_private
@@ -95,11 +95,7 @@ def _resolved_addresses(host: str) -> tuple[str, ...]:
         raise ValueError("browser egress hostname resolution failed") from exc
     addresses = tuple(
         sorted(
-            {
-                str(record[4][0])
-                for record in records
-                if len(record) > 4 and isinstance(record[4], tuple) and record[4]
-            }
+            {str(record[4][0]) for record in records if len(record) > 4 and isinstance(record[4], tuple) and record[4]}
         )
     )
     if not addresses:
@@ -110,7 +106,7 @@ def _resolved_addresses(host: str) -> tuple[str, ...]:
 def _hostname_resolution_is_safe(host: str) -> bool:
     try:
         return all(not _is_disallowed_ip_literal(address) for address in _resolved_addresses(host))
-    except (OSError, ValueError):
+    except OSError, ValueError:
         return False
 
 
@@ -252,9 +248,7 @@ async def capture_playwright_action(
     max_bytes: int = 32 * 1024 * 1024,
 ) -> BrowserRuntimeCapture:
     session = PlaywrightBrowserRuntimeSession(page=page, context=context)
-    adapter = BrowserRuntimeCollectorAdapter(
-        BrowserLiveCollectorProducer(output_root, max_bytes=max_bytes)
-    )
+    adapter = BrowserRuntimeCollectorAdapter(BrowserLiveCollectorProducer(output_root, max_bytes=max_bytes))
     return await adapter.capture_action(
         browser_session=session,
         run_id=run_id,
@@ -311,7 +305,7 @@ async def launch_playwright_session(
         for host in sorted(hosts_to_pin):
             try:
                 addresses = await asyncio.to_thread(_resolved_addresses, host)
-            except (OSError, ValueError):
+            except OSError, ValueError:
                 continue
             if any(_is_disallowed_ip_literal(address) for address in addresses):
                 continue
@@ -368,8 +362,7 @@ async def launch_playwright_session(
             resolved_safe = (
                 request_host in pinned_hosts
                 if read_only
-                else bool(parsed.hostname)
-                and await asyncio.to_thread(_hostname_resolution_is_safe, parsed.hostname)
+                else bool(parsed.hostname) and await asyncio.to_thread(_hostname_resolution_is_safe, parsed.hostname)
             )
             allowed = (
                 bool(request_host)
@@ -403,8 +396,7 @@ async def launch_playwright_session(
         )
         if cleanup_failures:
             cleanup_summary = ", ".join(
-                f"{owner_name} ({type(cleanup_error).__name__})"
-                for owner_name, cleanup_error in cleanup_failures
+                f"{owner_name} ({type(cleanup_error).__name__})" for owner_name, cleanup_error in cleanup_failures
             )
             error.add_note(f"browser initialization cleanup also failed: {cleanup_summary}")
         raise

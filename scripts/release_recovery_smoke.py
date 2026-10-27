@@ -25,7 +25,7 @@ def sha256(path: Path) -> str:
 
 
 _SCENARIO = textwrap.dedent(
-    r'''
+    r"""
     import json
 
     from aegis_cognition.lab import (
@@ -142,7 +142,7 @@ _SCENARIO = textwrap.dedent(
         or not restored.verify_event_chain()
     ):
         raise SystemExit(2)
-    ''',
+    """,
 )
 
 

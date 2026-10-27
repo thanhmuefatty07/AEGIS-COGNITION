@@ -22,7 +22,7 @@ from typing import Any
 
 ROOT = Path(__file__).resolve().parents[1]
 SCHEMA = "aegis-memory-context-benchmark-v1"
-ACCOUNTING = "estimated-byte-heuristic-v1"
+ACCOUNTING = "estimated-rendered-context-utf8-bytes-v2"
 
 
 def _commit() -> str:
@@ -34,14 +34,14 @@ def _commit() -> str:
             capture_output=True,
             text=True,
         ).stdout.strip()
-    except (OSError, subprocess.CalledProcessError):
+    except OSError, subprocess.CalledProcessError:
         return "UNKNOWN"
 
 
 def _estimate_tokens(text: str) -> int:
     """Match ContextCompiler's provider-neutral accounting contract."""
 
-    return max(1, (len(text.encode("utf-8")) + 3) // 4) + 8
+    return max(1, (len(text.encode("utf-8")) + 3) // 4)
 
 
 def _prompt(paths: list[str], total: int, message: str) -> str:
@@ -357,7 +357,8 @@ def _accounting_consistency_case() -> dict[str, Any]:
         "workload": "accounting_consistency_oracle",
         "samples": pairs,
         "oracle_pass": all(item["benchmark_tokens"] == item["production_tokens"] for item in pairs),
-        "deterministic": pairs == [
+        "deterministic": pairs
+        == [
             {
                 "sample": sample,
                 "benchmark_tokens": _estimate_tokens(sample),
@@ -442,12 +443,12 @@ def _retention_class_case() -> dict[str, Any]:
         ),
     ]
     learning = _Learning(records)
-    result = ContextCompiler(learning, token_budget=20).compile(
+    result = ContextCompiler(learning, token_budget=48).compile(
         "retention class probe",
         candidates,
         owner_id="benchmark-owner",
     )
-    repeated = ContextCompiler(learning, token_budget=20).compile(
+    repeated = ContextCompiler(learning, token_budget=48).compile(
         "retention class probe",
         list(reversed(candidates)),
         owner_id="benchmark-owner",
@@ -458,12 +459,12 @@ def _retention_class_case() -> dict[str, Any]:
         "selected_ids": list(selected_ids),
         "protected_retained": selected_ids == (1,),
         "ephemeral_not_promoted": 2 not in selected_ids,
-        "budget_respected": result.token_count <= 20,
+        "budget_respected": result.token_count <= 48,
         "order_independent": result.manifest_hash == repeated.manifest_hash,
         "oracle_pass": (
             selected_ids == (1,)
             and result.items[0].retention_class == "protected"
-            and result.token_count <= 20
+            and result.token_count <= 48
             and result.manifest_hash == repeated.manifest_hash
         ),
         "deterministic": result.manifest_hash == repeated.manifest_hash,

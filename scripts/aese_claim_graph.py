@@ -33,6 +33,7 @@ PHASE: Final[str] = "PHASE_1_CLAIM_EVIDENCE_GRAPH"
 MODE: Final[str] = "SHADOW"
 TRACEABILITY_RE: Final[re.Pattern[str]] = re.compile(r"^(?:GT96|AESE)-(\d{3})$")
 _CRITICAL_VALUES: Final[frozenset[str]] = frozenset({"CRITICAL", "HIGH", "CRITICAL_NOW", "RELEASE_CRITICAL"})
+_DEFINITION_RE: Final[re.Pattern[str]] = re.compile(r"\b(?:def|fn)\s+([A-Za-z_][A-Za-z0-9_]*)\b")
 
 
 def _sha256(value: bytes) -> str:
@@ -94,11 +95,24 @@ def _verification_symbols(value: str) -> list[str]:
     )
 
 
-def _resolve_verification_paths(value: str, sources: dict[str, str]) -> list[str]:
+def _definition_path_index(sources: dict[str, str]) -> dict[str, list[str]]:
+    paths_by_symbol: dict[str, set[str]] = {}
+    for path, source in sources.items():
+        for match in _DEFINITION_RE.finditer(source):
+            paths_by_symbol.setdefault(match.group(1), set()).add(path)
+    return {symbol: sorted(paths) for symbol, paths in paths_by_symbol.items()}
+
+
+def _resolve_verification_paths(
+    value: str,
+    sources: dict[str, str],
+    definition_paths: dict[str, list[str]] | None = None,
+) -> list[str]:
     resolved: set[str] = set(_reference_paths(value))
+    if definition_paths is None:
+        definition_paths = _definition_path_index(sources)
     for symbol in _verification_symbols(value):
-        definition = re.compile(rf"\b(?:def|fn)\s+{re.escape(symbol)}\b")
-        resolved.update(path for path, text in sources.items() if definition.search(text))
+        resolved.update(definition_paths.get(symbol, []))
     return sorted(resolved)
 
 
@@ -106,11 +120,7 @@ def _tracked_paths() -> set[str]:
     output = subprocess.run(["git", "ls-files", "-z"], cwd=ROOT, check=True, capture_output=True).stdout
     # Keep graph source loading aligned with the live checkout during unstaged
     # renames; the index can still list the pre-rename path.
-    return {
-        path
-        for path in (item.decode("utf-8") for item in output.split(b"\0") if item)
-        if (ROOT / path).is_file()
-    }
+    return {path for path in (item.decode("utf-8") for item in output.split(b"\0") if item) if (ROOT / path).is_file()}
 
 
 def _canonical_source_path(reference: str, tracked: set[str]) -> str | None:
@@ -164,7 +174,10 @@ def _parse_gt96() -> list[dict[str, str]]:
 
 
 def _surface_nodes(
-    inventory: dict[str, object], claim_rows: list[dict[str, str]], sources: dict[str, str]
+    inventory: dict[str, object],
+    claim_rows: list[dict[str, str]],
+    sources: dict[str, str],
+    definition_paths: dict[str, list[str]],
 ) -> list[dict[str, object]]:
     raw_items = inventory.get("items")
     if not isinstance(raw_items, list):
@@ -179,7 +192,7 @@ def _surface_nodes(
         # explicit repository paths or exact symbols; unresolved prose stays
         # unmapped so preflight continues to widen conservatively.
         for field in ("tests", "benchmark"):
-            for path in _resolve_verification_paths(row[field], sources):
+            for path in _resolve_verification_paths(row[field], sources, definition_paths):
                 paths_to_claims.setdefault(path, set()).add(claim_id)
     nodes: list[dict[str, object]] = []
     for item in items:
@@ -209,7 +222,10 @@ def _mapping_state(surfaces: list[dict[str, object]]) -> tuple[str, dict[str, ob
     unmapped_count = sum(1 for surface in surfaces if surface["mapping_status"] != "MAPPED_EXACT")
     criticality_keys = ("risk", "security_criticality", "release_criticality", "release_critical")
     criticality_known = all(
-        any(str(surface.get(key, "UNKNOWN")).strip().upper() not in {"", "UNKNOWN", "NONE", "NULL"} for key in criticality_keys)
+        any(
+            str(surface.get(key, "UNKNOWN")).strip().upper() not in {"", "UNKNOWN", "NONE", "NULL"}
+            for key in criticality_keys
+        )
         for surface in surfaces
     )
     high_risk = [
@@ -236,7 +252,10 @@ def _mapping_state(surfaces: list[dict[str, object]]) -> tuple[str, dict[str, ob
 
 
 def _claim_nodes(
-    claim_rows: list[dict[str, str]], tracked: set[str], sources: dict[str, str]
+    claim_rows: list[dict[str, str]],
+    tracked: set[str],
+    sources: dict[str, str],
+    definition_paths: dict[str, list[str]],
 ) -> tuple[
     list[dict[str, object]],
     list[dict[str, object]],
@@ -311,7 +330,7 @@ def _claim_nodes(
         )
         for kind, text in (("TEST_OR_PROOF", row["tests"]), ("BENCHMARK", row["benchmark"])):
             verification_id = f"AESE-{kind}-{row['id']}"
-            resolved_paths = _resolve_verification_paths(text, sources)
+            resolved_paths = _resolve_verification_paths(text, sources, definition_paths)
             verifications.append(
                 {
                     "id": verification_id,
@@ -374,8 +393,11 @@ def build_graph(inventory: dict[str, object] | None = None) -> dict[str, object]
         for path in tracked
         if Path(path).suffix.lower() in {".py", ".rs"}
     }
-    surfaces = _surface_nodes(inventory, claim_rows, sources)
-    claims, contracts, invariants, verifications, code_nodes, edges = _claim_nodes(claim_rows, tracked, sources)
+    definition_paths = _definition_path_index(sources)
+    surfaces = _surface_nodes(inventory, claim_rows, sources, definition_paths)
+    claims, contracts, invariants, verifications, code_nodes, edges = _claim_nodes(
+        claim_rows, tracked, sources, definition_paths
+    )
     blockers = _blocker_nodes()
     for surface in surfaces:
         for claim_id in cast(list[object], surface["claim_refs"]):

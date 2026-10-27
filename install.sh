@@ -1,7 +1,6 @@
 #!/usr/bin/env bash
 # AEGIS-COGNITION Linux/macOS Installer
-# All-in-one installer that uses the project's existing requirements.txt.
-# Backward-compatible with the existing `aegis` CLI (init / run).
+# All-in-one installer that builds the locked project wheel and canonical CLIs.
 #
 # Usage:
 #   curl -fsSL https://aegis-cognition.ai/install.sh | bash
@@ -11,7 +10,7 @@
 # End-to-end execution remains unverified on Linux/macOS; no platform pass is claimed.
 #
 # Flags:
-#   --skip-rust        skip rustup install + cargo build
+#   --skip-rust        skip the standalone Rust CLI build (Rust is still needed for the Python wheel)
 #   --skip-browser     skip `playwright install chromium`
 #   --python VERSION   python version for the venv (default 3.14.7)
 #   --repo URL         git URL to clone (override for forks)
@@ -110,60 +109,95 @@ else
     ok "Repo cloned at $REPO_DIR"
 fi
 
-# --- 4. venv + install from requirements.txt ----------------------------
-step "4/5" "Installing Python dependencies from requirements.txt"
-REQ="$REPO_DIR/requirements.txt"
-if [[ ! -f "$REQ" ]]; then
-    fail "requirements.txt missing at $REQ — refusing to proceed."
-    fail "Rule 3: install scripts MUST use the existing requirements.txt."
+# --- 4. Pinned Rust toolchain -------------------------------------------
+step "4/5" "Preparing the pinned Rust toolchain"
+RUST_VERSION="$(awk -F '"' '/^[[:space:]]*channel[[:space:]]*=/ { print $2; exit }' "$REPO_DIR/rust-toolchain.toml")"
+if [[ -z "$RUST_VERSION" ]]; then
+    fail "Could not read the pinned Rust channel from $REPO_DIR/rust-toolchain.toml"
     exit 1
 fi
 
-# We do NOT add platform-specific extras here: requirements.txt is canonical.
-# Voice/extras deps that misbehave on certain platforms should be removed from
-# requirements.txt (not duplicated per-installer).
-uv venv "$VENV_DIR" --python "$PY_VERSION"
-PY_BIN="$VENV_DIR/bin/python"
-uv pip install --python "$PY_BIN" -r "$REQ"
-ok "Installed deps into $VENV_DIR"
+if ! command -v cargo >/dev/null 2>&1 && ! command -v rustup >/dev/null 2>&1; then
+    curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs \
+        | sh -s -- -y --default-toolchain "$RUST_VERSION" --profile minimal
+    # shellcheck disable=SC1091
+    source "$HOME/.cargo/env"
+    ok "rustup installed"
+fi
+export PATH="$HOME/.cargo/bin:$PATH"
 
-# Optional: Playwright chromium download
-if [[ $SKIP_BROWSER -eq 0 ]] && command -v node >/dev/null 2>&1; then
-    "$PY_BIN" -m playwright install chromium || warn "playwright install failed; browser tests will not work"
-    ok "Playwright chromium installed"
-elif [[ $SKIP_BROWSER -eq 0 ]]; then
-    warn "node not on PATH; skipping `playwright install chromium`"
+if command -v rustup >/dev/null 2>&1; then
+    rustup toolchain install "$RUST_VERSION" --profile minimal --component rustfmt --component clippy
+    ok "Rust toolchain $RUST_VERSION installed/verified"
 fi
 
-# --- 5. Rust toolchain + cargo build -----------------------------------
-step "5/5" "Installing Rust toolchain and building core"
+if ! command -v cargo >/dev/null 2>&1 || ! command -v rustc >/dev/null 2>&1; then
+    fail "Rust $RUST_VERSION is required to build the native Python wheel."
+    exit 1
+fi
+RUSTC_VERSION="$(cd "$REPO_DIR" && rustc --version)"
+if [[ "$RUSTC_VERSION" != *"$RUST_VERSION"* ]]; then
+    fail "Project requires Rust $RUST_VERSION; observed: $RUSTC_VERSION"
+    exit 1
+fi
+
 if [[ $SKIP_RUST -eq 0 ]]; then
-    if ! command -v cargo >/dev/null 2>&1; then
-        curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs \
-            | sh -s -- -y --default-toolchain 1.98.1 --profile minimal
-        # shellcheck disable=SC1091
-        source "$HOME/.cargo/env"
-        ok "rustup installed"
-    else
-        ok "cargo already present: $(cargo --version)"
+    (
+        cd "$REPO_DIR"
+        cargo build --locked --release --manifest-path "$REPO_DIR/core/rust/Cargo.toml" --bin aegis-nerve-cli
+    )
+    RUST_CLI="$REPO_DIR/target/release/aegis-nerve-cli"
+    if [[ ! -x "$RUST_CLI" ]]; then
+        fail "cargo succeeded but the standalone CLI is missing at $RUST_CLI"
+        exit 1
     fi
-
-    if command -v rustup >/dev/null 2>&1; then
-        rustup toolchain install 1.98.1 --profile minimal --component rustfmt --component clippy
-        ok "Rust toolchain 1.98.1 installed/verified"
-    fi
-
-    RUST_DIR="$REPO_DIR/core/rust"
-    if [[ -d "$RUST_DIR" ]]; then
-        ( cd "$REPO_DIR" && rustc --version | grep -Eq '(^| )1\.98\.1( |$)' ) \
-            || { fail "Project requires Rust 1.98.1"; exit 1; }
-        ( cd "$REPO_DIR" && cargo build --release )
-        ok "Rust core built (release)"
-    else
-        warn "core/rust missing at $RUST_DIR — skipping cargo build"
-    fi
+    ok "Standalone Rust CLI built with Rust $RUST_VERSION"
 else
-    warn "Skipped Rust toolchain + cargo build (--skip-rust)"
+    warn "Skipped standalone Rust CLI build (--skip-rust); Rust is still required for the native Python wheel."
+fi
+
+# --- 5. Locked Python wheel and canonical entry points ------------------
+step "5/5" "Installing the locked project wheel"
+sync_args=(sync --locked --no-default-groups --no-editable --reinstall-package aegis-cognition --python "$PY_VERSION" --project "$REPO_DIR")
+if [[ $SKIP_BROWSER -eq 0 ]]; then
+    sync_args+=(--extra browser)
+fi
+UV_PROJECT_ENVIRONMENT="$VENV_DIR" uv "${sync_args[@]}"
+
+PY_BIN="$VENV_DIR/bin/python"
+AEGIS_BIN="$VENV_DIR/bin/aegis"
+DESKTOP_BIN="$VENV_DIR/bin/aegis-desktop"
+for required_path in "$PY_BIN" "$AEGIS_BIN" "$DESKTOP_BIN"; do
+    if [[ ! -x "$required_path" ]]; then
+        fail "uv sync succeeded but a required installed entry point is missing: $required_path"
+        exit 1
+    fi
+done
+"$AEGIS_BIN" version
+"$AEGIS_BIN" verify --help >/dev/null
+"$DESKTOP_BIN" --help >/dev/null
+set +e
+run_output="$("$AEGIS_BIN" run 2>&1)"
+run_exit_code=$?
+set -e
+if [[ $run_exit_code -ne 2 || "$run_output" != *"Usage: aegis run"* ]]; then
+    fail "aegis run usage smoke failed; expected exit code 2 and usage output."
+    exit 1
+fi
+ok "Installed aegis and aegis-desktop entry points passed offline smoke checks"
+
+# Explicit native extension import check from outside repository (O02)
+(
+    cd "$INSTALL_DIR"
+    "$PY_BIN" -c "import sysconfig, aegis_cognition; from aegis_cognition import aegis_nerve; platlib = sysconfig.get_path('platlib'); origin = getattr(aegis_nerve, '__file__', ''); assert origin and (origin.startswith(platlib) or 'site-packages' in origin), f'Native extension not loaded from site-packages: {origin}'; print('Native wheel verified')"
+)
+ok "Canonical native wheel imported cleanly from site-packages"
+
+if [[ $SKIP_BROWSER -eq 0 ]]; then
+    "$PY_BIN" -m playwright install chromium
+    ok "Playwright Chromium installed"
+else
+    warn "Skipped Playwright Chromium and browser extra (--skip-browser)"
 fi
 
 # --- Wrapper: `aegis` on PATH -------------------------------------------
@@ -173,9 +207,16 @@ mkdir -p "$BIN_DIR"
 cat > "$BIN_DIR/aegis" <<EOF
 #!/usr/bin/env bash
 # AEGIS-COGNITION CLI wrapper
-exec "$PY_BIN" "$REPO_DIR/core/python/aegis_cli.py" "\$@"
+exec "$AEGIS_BIN" "\$@"
 EOF
 chmod +x "$BIN_DIR/aegis"
+
+cat > "$BIN_DIR/aegis-desktop" <<EOF
+#!/usr/bin/env bash
+# AEGIS-COGNITION desktop service wrapper
+exec "$DESKTOP_BIN" "\$@"
+EOF
+chmod +x "$BIN_DIR/aegis-desktop"
 
 # Add ~/.local/bin to PATH if missing
 if [[ ":$PATH:" != *":$BIN_DIR:"* ]]; then

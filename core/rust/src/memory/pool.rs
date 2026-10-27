@@ -94,13 +94,48 @@ impl MemoryPool for SlabMemoryPool {
     }
 }
 
+/// An owned OS allocation used for page population.
+///
+/// Safe callers cannot replace the allocation metadata or keep using its
+/// storage while a background writer owns it:
+///
+/// ```compile_fail
+/// use aegis_nerve::memory::PreAllocatedBuffer;
+///
+/// let mut buffer = PreAllocatedBuffer::new(4096).unwrap();
+/// buffer.ptr = std::ptr::null_mut();
+/// ```
+///
+/// ```compile_fail
+/// use aegis_nerve::memory::PreAllocatedBuffer;
+///
+/// let buffer = PreAllocatedBuffer::new(4096).unwrap();
+/// let writer = buffer.spawn_background_population();
+/// drop(buffer);
+/// writer.join().unwrap();
+/// ```
+///
+/// Population mutates the allocation, so sharing the owner across writer
+/// threads is rejected by safe Rust:
+///
+/// ```compile_fail
+/// use aegis_nerve::memory::PreAllocatedBuffer;
+///
+/// let buffer = PreAllocatedBuffer::new(4096).unwrap();
+/// std::thread::scope(|scope| {
+///     scope.spawn(|| buffer.populate_pages());
+///     scope.spawn(|| buffer.populate_pages());
+/// });
+/// ```
 pub struct PreAllocatedBuffer {
-    pub ptr: *mut u8,
-    pub size: usize,
+    ptr: *mut u8,
+    size: usize,
 }
 
+// SAFETY: The value uniquely owns its OS allocation. Moving the owner does not
+// move the allocation, and no safe API exposes a mutable reference to its bytes.
+// It is intentionally not `Sync`, because population writes non-atomic bytes.
 unsafe impl Send for PreAllocatedBuffer {}
-unsafe impl Sync for PreAllocatedBuffer {}
 
 #[cfg(target_os = "windows")]
 mod win32 {
@@ -153,6 +188,17 @@ mod unix {
 }
 
 impl PreAllocatedBuffer {
+    /// Returns a non-owning raw pointer to the allocation's start.
+    ///
+    /// The pointer is valid only while this allocation's owner remains alive.
+    /// If ownership moves into the background worker, the worker keeps it alive
+    /// until population finishes and then drops it. Dereferencing the pointer
+    /// requires the caller to uphold its lifetime, bounds, initialization, and
+    /// synchronization invariants.
+    pub fn as_ptr(&self) -> *const u8 {
+        self.ptr as *const u8
+    }
+
     pub fn new(size: usize) -> Result<Self, &'static str> {
         if size == 0 {
             return Err("zero-sized allocation");
@@ -236,30 +282,8 @@ impl PreAllocatedBuffer {
         }
     }
 
-    pub fn spawn_background_population(&self) -> std::thread::JoinHandle<()> {
-        let ptr_val = self.ptr as usize;
-        let size = self.size;
-        std::thread::spawn(move || {
-            let ptr = ptr_val as *mut u8;
-            let page_size = 4096;
-            let mut offset = 0;
-            while offset < size {
-                // SAFETY: same as `populate_pages` above. `ptr_val` is a
-                // faithful bytewise transmission of `self.ptr` from a parent
-                // `PreAllocatedBuffer` that has not yet been dropped
-                // (consumer joins on the returned `JoinHandle` before scope
-                // ends). `offset < size` keeps writes in-bounds; the underlying
-                // region is `PROT_READ | PROT_WRITE`. Volatile write is
-                // page-population only — does not race with any concurrent
-                // reader because the buffer is in the anonymous-alloc phase
-                // before being handed off to the kernel layer that takes
-                // shared access.
-                unsafe {
-                    std::ptr::write_volatile(ptr.add(offset), 0);
-                }
-                offset += page_size;
-            }
-        })
+    pub fn spawn_background_population(self) -> std::thread::JoinHandle<()> {
+        std::thread::spawn(move || self.populate_pages())
     }
 }
 
@@ -274,8 +298,8 @@ impl Drop for PreAllocatedBuffer {
         // `new()` (line 161+) with `MEM_COMMIT | MEM_RESERVE`. `MEM_RELEASE`
         // requires a pointer that came from `VirtualAlloc` and size 0
         // (release the entire region). `self.ptr` is non-null (checked) and
-        // exclusive to this `PreAllocatedBuffer` (no aliases). After this
-        // Drop, `self.ptr` is no longer valid and the buffer goes out of scope.
+        // this value is its unique owner. Any raw pointer from `as_ptr` becomes
+        // invalid after this release.
         unsafe {
             let _ = win32::VirtualFree(self.ptr as *mut std::ffi::c_void, 0, win32::MEM_RELEASE);
         }
@@ -284,8 +308,8 @@ impl Drop for PreAllocatedBuffer {
         // SAFETY: `self.ptr` was returned by `unix::mmap` in `new()` (line 178+)
         // with `size == self.size`. `munmap` with the matching `ptr` and `size`
         // is the canonical release, removing all pages in this region. `self.ptr`
-        // is non-null (checked) and exclusively owned by this `PreAllocatedBuffer`,
-        // so no other reference can outlive the call.
+        // is non-null (checked) and this value is its unique owner. Any raw
+        // pointer from `as_ptr` becomes invalid after this release.
         unsafe {
             let _ = unix::munmap(self.ptr as *mut std::ffi::c_void, self.size);
         }

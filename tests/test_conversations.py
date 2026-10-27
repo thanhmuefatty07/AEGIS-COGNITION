@@ -162,10 +162,8 @@ def test_conversation_manager_exposes_streaming_execution_and_tool_pairing():
         '"status": "RUNNING"', '"status": "RUNNING"'
     )
     bridge.aegis_finish_conversation_execution.return_value = execution_json.replace(
-        '"status": "RUNNING", "checkpoint_seq": 1, "revision": 5, '
-        '"started_at_ms": 5, "finished_at_ms": null',
-        '"status": "COMPLETED", "checkpoint_seq": 1, "revision": 7, '
-        '"started_at_ms": 5, "finished_at_ms": 7',
+        '"status": "RUNNING", "checkpoint_seq": 1, "revision": 5, "started_at_ms": 5, "finished_at_ms": null',
+        '"status": "COMPLETED", "checkpoint_seq": 1, "revision": 7, "started_at_ms": 5, "finished_at_ms": 7',
     )
     call_json = (
         '{"record": {"call_id": "call-1", "conversation_id": "conv-1", '
@@ -179,10 +177,8 @@ def test_conversation_manager_exposes_streaming_execution_and_tool_pairing():
         '"result_turn_id": null, ',
         '"result_turn_id": "tool-1", ',
     ).replace(
-        '"result_content": null, "status": "REQUESTED", "revision": 6, '
-        '"created_at_ms": 6, "completed_at_ms": null',
-        '"result_content": "ok", "status": "COMPLETED", "revision": 8, '
-        '"created_at_ms": 6, "completed_at_ms": 8',
+        '"result_content": null, "status": "REQUESTED", "revision": 6, "created_at_ms": 6, "completed_at_ms": null',
+        '"result_content": "ok", "status": "COMPLETED", "revision": 8, "created_at_ms": 6, "completed_at_ms": 8',
     )
     manager = ConversationManager(bridge)
 

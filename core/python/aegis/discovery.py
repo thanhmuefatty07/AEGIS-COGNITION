@@ -170,7 +170,9 @@ def _request_model_page(
 ) -> dict[str, object]:
     response = requester(url, headers, timeout_seconds)
     if not isinstance(response.status, int) or isinstance(response.status, bool) or response.status != 200:
-        status_code = response.status if isinstance(response.status, int) and not isinstance(response.status, bool) else None
+        status_code = (
+            response.status if isinstance(response.status, int) and not isinstance(response.status, bool) else None
+        )
         raise DiscoveryError(f"model discovery returned HTTP {response.status}", status_code=status_code)
     if not isinstance(response.body, bytes) or len(response.body) > max_body_bytes:
         raise DiscoveryError("model discovery response exceeds the configured size limit")

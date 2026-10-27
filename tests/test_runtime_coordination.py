@@ -159,6 +159,26 @@ def test_admitted_lease_finishes_once(monkeypatch: pytest.MonkeyPatch) -> None:
     assert request["cpu"] == {"min_threads": 1, "max_threads": 1}
 
 
+def test_retry_runtime_task_uses_current_time_when_omitted(monkeypatch: pytest.MonkeyPatch) -> None:
+    calls: list[tuple[int, str, int]] = []
+
+    class RetryNative:
+        def aegis_runtime_retry(self, task_id: int, request_json: str, now_ms: int) -> str:
+            calls.append((task_id, request_json, now_ms))
+            return json.dumps({"status": "queued"})
+
+    monkeypatch.setattr(runtime, "_native_module", lambda: RetryNative())
+    monkeypatch.setattr(runtime, "_unix_time_ms", lambda: 123_456)
+
+    result = runtime.retry_runtime_task(7, {"attempt_id": 2})
+
+    assert result == {"status": "queued"}
+    assert calls == [(7, '{"attempt_id": 2}', 123_456)]
+    with pytest.raises(ValueError, match="positive integer"):
+        runtime.retry_runtime_task(7, {"attempt_id": 2}, now_ms=0)
+    assert len(calls) == 1
+
+
 def test_runtime_submission_preserves_dependency_ids(monkeypatch: pytest.MonkeyPatch) -> None:
     native = _Native(
         submit=[

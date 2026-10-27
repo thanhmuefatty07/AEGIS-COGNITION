@@ -27,7 +27,10 @@ def evaluate_cluster_loopback_gate(root: str | Path = ROOT) -> dict[str, Any]:
         _check("replay_hash_chain_valid", report.get("replay_hash_chain_valid") is True),
         _check("direct_worker_commit_rejected", report.get("direct_worker_commit_rejected") is True),
         _check("side_effect_partition_paused", report.get("side_effect_partition_paused") is True),
-        _check("logical_rtt_recorded", _positive_int(report.get("max_logical_rtt_ticks")) and _positive_int(report.get("total_logical_rtt_ticks"))),
+        _check(
+            "logical_rtt_recorded",
+            _positive_int(report.get("max_logical_rtt_ticks")) and _positive_int(report.get("total_logical_rtt_ticks")),
+        ),
         _check("candidate_result_hash_nonzero", _hash_array(report.get("candidate_result_hash"))),
         _check("replay_last_hash_nonzero", _hash_array(report.get("replay_last_hash"))),
         _check("report_hash_nonzero", _hash_array(report.get("report_hash"))),
@@ -79,7 +82,7 @@ def _hash_array(value: Any) -> bool:
 def _read_json(path: Path) -> dict[str, Any]:
     try:
         payload = json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError, UnicodeDecodeError):
+    except OSError, json.JSONDecodeError, UnicodeDecodeError:
         return {}
     return payload if isinstance(payload, dict) else {}
 

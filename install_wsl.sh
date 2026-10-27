@@ -69,9 +69,12 @@ if ! grep -qF "$MARKER" "$HOME/.bashrc" 2>/dev/null; then
 
 # AEGIS-COGNITION WSL2 PATH integration
 if command -v wslpath >/dev/null 2>&1; then
-    WIN_USER=$(powershell.exe -NoProfile -Command '$env:USERNAME' 2>/dev/null | tr -d '\r')
-    if [ -n "$WIN_USER" ]; then
-        export PATH="$PATH:/mnt/c/Users/$WIN_USER/AppData/Local/Microsoft/WindowsApps"
+    WIN_APPS_WIN=$(powershell.exe -NoProfile -Command '[System.Environment]::GetFolderPath([System.Environment+SpecialFolder]::LocalApplicationData) + "\Microsoft\WindowsApps"' 2>/dev/null | tr -d '\r')
+    if [ -n "$WIN_APPS_WIN" ]; then
+        WIN_APPS=$(wslpath "$WIN_APPS_WIN" 2>/dev/null)
+        if [ -n "$WIN_APPS" ] && [ -d "$WIN_APPS" ]; then
+            export PATH="$PATH:$WIN_APPS"
+        fi
     fi
 fi
 EOF

@@ -34,6 +34,7 @@ from aegis_cognition.lab import (
     ObservationRecord,
     SearchProgram,
     SourceRecord,
+    _rust_event_hash,
 )
 
 
@@ -281,10 +282,7 @@ def test_target_digest_is_deterministic_and_matches_native_projection_vector() -
         owner="test-author",
     )
 
-    assert target.canonical_digest() == target.canonical_digest()
-    assert target.canonical_digest() == (
-        "126fb47163792f9cf0c6ffd0daf18247294283c23d5a74fc3f35fa2046860494"
-    )
+    assert target.canonical_digest() == ("126fb47163792f9cf0c6ffd0daf18247294283c23d5a74fc3f35fa2046860494")
 
 
 def _explicit_lab_contract(*, evidence_ref: str = "test-report", minimum_sources: int = 1) -> GoalContract:
@@ -307,11 +305,8 @@ def _explicit_lab_contract(*, evidence_ref: str = "test-report", minimum_sources
     )
 
 
-def _completed_explicit_run(
-    *, evidence_ref: str = "test-report", minimum_sources: int = 1
-) -> tuple[LabRun, GoalContract]:
-    contract = _explicit_lab_contract(evidence_ref=evidence_ref, minimum_sources=minimum_sources)
-    run = LabRun(
+def _new_explicit_lab_run(contract: GoalContract) -> LabRun:
+    return LabRun(
         contract.objective,
         max_steps=4,
         external_attempt_budget=contract.budget.attempt_limit,
@@ -323,6 +318,13 @@ def _completed_explicit_run(
         recovery_reserve=40,
         trust_policy_hash=contract.policy_digest,
     )
+
+
+def _reviewing_explicit_run(
+    *, evidence_ref: str = "test-report", minimum_sources: int = 1
+) -> tuple[LabRun, GoalContract]:
+    contract = _explicit_lab_contract(evidence_ref=evidence_ref, minimum_sources=minimum_sources)
+    run = _new_explicit_lab_run(contract)
     run.add_source(
         SourceRecord(
             "test-report",
@@ -342,8 +344,9 @@ def _completed_explicit_run(
         ExperimentSpec("experiment-1", "hypothesis-1", "bounded", ("result",), ("same revision",), (1, 2, 3, 4, 5), 1)
     )
     run.add_observation(ObservationRecord("observation-1", "experiment-1", 1, 1.0, "score", "raw", "env"))
-    run.dossier(finalize=True)
-    assert run.state == "completed"
+    run.transition("researching")
+    run.transition("reviewing")
+    assert run.state == "reviewing"
     return run, contract
 
 
@@ -405,10 +408,13 @@ def test_contract_keeps_target_and_acceptance_out_of_model_text() -> None:
     assert not hasattr(contract.acceptance[0], "status")
     assert contract.contract_hash == GoalContract.from_dict(contract.to_dict()).contract_hash
     assert replace(contract, acceptance=tuple(reversed(contract.acceptance))).contract_hash == contract.contract_hash
-    assert contract.contract_hash != replace(
-        contract,
-        target=_target("different-revision"),
-    ).contract_hash
+    assert (
+        contract.contract_hash
+        != replace(
+            contract,
+            target=_target("different-revision"),
+        ).contract_hash
+    )
 
 
 def test_goal_contract_limits_reject_untrusted_wire_before_hashing() -> None:
@@ -813,9 +819,7 @@ def test_malformed_contract_fields_fail_as_contract_errors() -> None:
 @pytest.mark.parametrize(
     "mutate",
     (
-        lambda payload: payload["target"].update(
-            {"read_roots": ["C:/repo/z", "C:/repo/a"]}
-        ),
+        lambda payload: payload["target"].update({"read_roots": ["C:/repo/z", "C:/repo/a"]}),
         lambda payload: payload.update({"scope": ["write code", "read code"]}),
         lambda payload: payload.update(
             {
@@ -825,9 +829,7 @@ def test_malformed_contract_fields_fail_as_contract_errors() -> None:
                 ]
             }
         ),
-        lambda payload: payload["evidence_policy"].update(
-            {"required_record_types": ["source", "claim"]}
-        ),
+        lambda payload: payload["evidence_policy"].update({"required_record_types": ["source", "claim"]}),
     ),
 )
 def test_contract_wire_rejects_noncanonical_sequence_order(mutate) -> None:
@@ -1345,14 +1347,17 @@ def test_direct_lab_run_rejects_unsupported_record_type_policy() -> None:
 
 
 def test_independent_goal_verification_is_event_bound_and_restorable() -> None:
-    run, contract = _completed_explicit_run()
+    run, contract = _reviewing_explicit_run()
     progress = run.record_goal_verification(_verification(contract))
 
+    assert progress.lifecycle is GoalLifecycle.ACTIVE
+    assert progress.verdict is None
+    run.dossier(finalize=True)
+    progress = run.goal_progress_snapshot()
+    assert run.state == "completed"
     assert progress.lifecycle is GoalLifecycle.SETTLED
     assert progress.verdict is GoalVerdict.VERIFIED
-    verification_events = [
-        event for event in run.events if event.kind == "review_recorded"
-    ]
+    verification_events = [event for event in run.events if event.kind == "review_recorded"]
     assert len(verification_events) == 1
     assert verification_events[0].payload["record_type"] == "goal_verification"
     assert verification_events[0].payload["goal_contract_hash"] == contract.contract_hash
@@ -1368,21 +1373,213 @@ def test_independent_goal_verification_is_event_bound_and_restorable() -> None:
         LabRun.from_payload(tampered)
 
 
+def test_completed_goal_snapshot_rejects_verification_after_completion() -> None:
+    run, contract = _reviewing_explicit_run()
+    run.record_goal_verification(_verification(contract))
+    run.dossier(finalize=True)
+    payload = run.to_payload()
+    events = payload["events"]
+    verification_event_index = next(
+        index
+        for index, event in enumerate(events)
+        if event["kind"] == "review_recorded" and event["payload"].get("record_type") == "goal_verification"
+    )
+    verification_event = events.pop(verification_event_index)
+    events.append(verification_event)
+
+    previous_hash = "0" * 64
+    previous_epoch = 0
+    for sequence, event in enumerate(events, start=1):
+        state_epoch = event["state_epoch"]
+        if sequence == len(events):
+            state_epoch = max(state_epoch, previous_epoch + 1)
+        event["sequence"] = sequence
+        event["state_epoch"] = state_epoch
+        event["previous_event_hash"] = previous_hash
+        event["event_hash"] = _rust_event_hash(
+            sequence,
+            state_epoch,
+            event["kind"],
+            event["payload_hash"],
+            previous_hash,
+        )
+        previous_hash = event["event_hash"]
+        previous_epoch = state_epoch
+    payload["state_epoch"] = previous_epoch
+
+    with pytest.raises(ValueError, match="while the LabRun is reviewing"):
+        LabRun.from_payload(payload)
+
+
+def test_explicit_goal_completion_without_verification_is_rejected_atomically() -> None:
+    contract = _explicit_lab_contract()
+    run = _new_explicit_lab_run(contract)
+    run.transition("researching")
+    run.transition("reviewing")
+    before = run.to_payload()
+
+    with pytest.raises(GoalContractError, match="verification"):
+        run.transition("completed")
+
+    assert run.state == "reviewing"
+    assert run.to_payload() == before
+
+    run, _ = _reviewing_explicit_run()
+    before = run.to_payload()
+    with pytest.raises(GoalContractError, match="verification before completion"):
+        run.dossier(finalize=True)
+    assert run.state == "reviewing"
+    assert run.to_payload() == before
+
+    run, contract = _reviewing_explicit_run()
+    before = run.to_payload()
+    with pytest.raises(GoalContractError, match="required predicate"):
+        run.record_goal_verification(_verification(contract, result=False))
+    assert run.state == "reviewing"
+    assert run.to_payload() == before
+
+
+def test_incomplete_goal_verification_does_not_freeze_evidence_or_block_retry() -> None:
+    run, contract = _reviewing_explicit_run()
+    before = run.to_payload()
+
+    with pytest.raises(GoalContractError, match="complete evidence"):
+        run.record_goal_verification(_verification(contract, result=False, evidence_complete=False))
+
+    assert run.state == "reviewing"
+    assert run.to_payload() == before
+
+    run.transition("researching")
+    run.add_claim(ClaimRecord("claim-2", "Additional evidence was added.", ("test-report",), 9_000, "supported"))
+    run.transition("reviewing")
+    run.record_goal_verification(_verification(contract))
+    run.transition("completed")
+
+    assert run.state == "completed"
+
+
+def test_explicit_goal_verification_rejects_late_evidence_mutation() -> None:
+    base = _explicit_lab_contract()
+    predicate = replace(
+        base.acceptance[0],
+        evaluator="aegis.lab.record_exists",
+        inputs=("claim", "late-claim"),
+        expected_result=False,
+        evidence_refs=("test-report",),
+    )
+    contract = replace(base, acceptance=(predicate,))
+    run = _new_explicit_lab_run(contract)
+    run.add_source(
+        SourceRecord(
+            "test-report",
+            "https://example.test/report",
+            "content-hash",
+            "snapshot-hash",
+            1,
+            trust_tier=1,
+            relation="supports",
+        )
+    )
+    run.add_claim(ClaimRecord("claim-1", "The required test passed.", ("test-report",), 9_000, "supported"))
+    run.add_hypothesis(
+        HypothesisRecord("hypothesis-1", "The change satisfies the contract.", 5_000, ("test fails",), ("claim-1",))
+    )
+    run.add_experiment(
+        ExperimentSpec("experiment-1", "hypothesis-1", "bounded", ("result",), ("same revision",), (1, 2, 3, 4, 5), 1)
+    )
+    run.add_observation(ObservationRecord("observation-1", "experiment-1", 1, 1.0, "score", "raw", "env"))
+    run.transition("reviewing")
+    run.record_goal_verification(_verification(contract))
+
+    late_evidence_mutations = (
+        lambda: run.add_claim(
+            ClaimRecord(
+                "late-claim",
+                "A late record invalidates the reviewed absence.",
+                ("test-report",),
+                9_000,
+                "supported",
+            )
+        ),
+        lambda: run.add_hypothesis(
+            HypothesisRecord("hypothesis-late", "A late hypothesis.", 5_000, ("test fails",), ("claim-1",))
+        ),
+        lambda: run.add_experiment(
+            ExperimentSpec(
+                "experiment-late",
+                "hypothesis-1",
+                "bounded",
+                ("result",),
+                ("same revision",),
+                (1, 2, 3, 4, 5),
+                1,
+            )
+        ),
+        lambda: run.add_observation(
+            ObservationRecord("observation-late", "experiment-1", 2, 1.0, "score", "raw", "env")
+        ),
+    )
+    for add_evidence in late_evidence_mutations:
+        before = run.to_payload()
+        with pytest.raises(GoalContractError, match=r"evidence.*after.*verification"):
+            add_evidence()
+        assert run.to_payload() == before
+
+    run.transition("researching")
+    event_count = len(run.events)
+    with pytest.raises(GoalContractError, match=r"evidence.*after.*verification"):
+        run.add_source(
+            SourceRecord(
+                "source-late",
+                "https://example.test/late-report",
+                "late-content-hash",
+                "late-snapshot-hash",
+                2,
+                trust_tier=1,
+                relation="supports",
+            )
+        )
+    assert run.state == "researching"
+    assert len(run.events) == event_count
+    assert "source-late" not in run.sources
+    run.transition("reviewing")
+
+    assert run.state == "reviewing"
+    restored = LabRun.from_payload(run.to_payload())
+    before = restored.to_payload()
+    with pytest.raises(GoalContractError, match=r"evidence.*after.*verification"):
+        restored.add_claim(
+            ClaimRecord(
+                "late-claim",
+                "A late record invalidates the reviewed absence.",
+                ("test-report",),
+                9_000,
+                "supported",
+            )
+        )
+    assert restored.state == "reviewing"
+    assert restored.to_payload() == before
+    restored.dossier(finalize=True)
+    assert restored.state == "completed"
+
+
 def test_complete_goal_verification_requires_lab_evidence_and_source_quorum() -> None:
-    run, contract = _completed_explicit_run(evidence_ref="missing-report")
+    run, contract = _reviewing_explicit_run(evidence_ref="missing-report")
     with pytest.raises(GoalContractError, match="absent"):
         run.record_goal_verification(_verification(contract, evidence_refs=("missing-report",)))
 
-    run, contract = _completed_explicit_run(minimum_sources=2)
+    run, contract = _reviewing_explicit_run(minimum_sources=2)
     with pytest.raises(GoalContractError, match="minimum source count"):
         run.record_goal_verification(_verification(contract))
 
 
 def test_goal_verification_can_reference_retained_non_source_evidence() -> None:
-    run, contract = _completed_explicit_run(evidence_ref="claim-1")
-    progress = run.record_goal_verification(
-        _verification(contract, evidence_refs=("claim-1", "test-report"))
-    )
+    run, contract = _reviewing_explicit_run(evidence_ref="claim-1")
+    progress = run.record_goal_verification(_verification(contract, evidence_refs=("claim-1", "test-report")))
+    assert progress.lifecycle is GoalLifecycle.ACTIVE
+    assert progress.verdict is None
+    run.dossier(finalize=True)
+    progress = run.goal_progress_snapshot()
     assert progress.verdict is GoalVerdict.VERIFIED
 
 
@@ -1449,17 +1646,20 @@ def test_deterministic_lab_evaluator_links_predicates_to_retained_records() -> N
             1,
         )
     )
-    run.add_observation(
-        ObservationRecord("observation-1", "experiment-1", 1, 1.0, "score", "raw", "env")
-    )
-    run.dossier(finalize=True)
+    run.add_observation(ObservationRecord("observation-1", "experiment-1", 1, 1.0, "score", "raw", "env"))
+    run.transition("researching")
+    run.transition("reviewing")
 
     verification = run.evaluate_goal_verification()
     assert verification.verifier_id == "aegis.lab.deterministic-v1"
     assert verification.independent is False
     assert verification.evidence_complete is True
     assert verification.predicate_results == (("tests", True),)
-    assert run.record_goal_verification(verification).verdict is GoalVerdict.VERIFIED
+    progress = run.record_goal_verification(verification)
+    assert progress.verdict is None
+    assert progress.lifecycle is GoalLifecycle.ACTIVE
+    run.dossier(finalize=True)
+    assert run.goal_progress_snapshot().verdict is GoalVerdict.VERIFIED
 
 
 def test_deterministic_lab_evaluator_does_not_execute_unknown_code() -> None:
@@ -1475,7 +1675,7 @@ def test_deterministic_lab_evaluator_does_not_execute_unknown_code() -> None:
         ),
         evidence_policy=replace(base.evidence_policy, require_independent_verifier=False, trusted_verifier_ids=()),
     )
-    run, _ = _completed_explicit_run()
+    run, _ = _reviewing_explicit_run()
     with pytest.raises(GoalContractError, match="unsupported deterministic Lab evaluator"):
         run._evaluate_goal_predicate(contract.acceptance[0])
 

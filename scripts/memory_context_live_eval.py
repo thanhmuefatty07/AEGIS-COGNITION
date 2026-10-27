@@ -61,7 +61,7 @@ def _commit() -> str:
             capture_output=True,
             text=True,
         ).stdout.strip()
-    except (OSError, subprocess.CalledProcessError):
+    except OSError, subprocess.CalledProcessError:
         return "UNKNOWN"
 
 
@@ -236,13 +236,17 @@ def _compile(task: LiveTask, *, token_budget: int) -> str:
         )
         for record in records
     ]
-    return ContextCompiler(learning, token_budget=token_budget, candidate_cap=100).compile(
-        task.question,
-        candidates,
-        scope_kind="USER_PRIVATE",
-        owner_id=task.owner_id,
-        mandatory_session_ids=task.mandatory_session_ids,
-    ).rendered
+    return (
+        ContextCompiler(learning, token_budget=token_budget, candidate_cap=100)
+        .compile(
+            task.question,
+            candidates,
+            scope_kind="USER_PRIVATE",
+            owner_id=task.owner_id,
+            mandatory_session_ids=task.mandatory_session_ids,
+        )
+        .rendered
+    )
 
 
 def _messages(task: LiveTask, context: str) -> list[dict[str, str]]:
@@ -287,7 +291,7 @@ def _normalise_evidence_ids(value: Any) -> set[int]:
         try:
             text = str(item)
             result.add(int(text, 16) if text.lower().startswith("0x") else int(text))
-        except (TypeError, ValueError):
+        except TypeError, ValueError:
             continue
     return result
 
@@ -352,7 +356,11 @@ def _call(
             "Accept": "application/json",
             "Content-Type": "application/json",
             "Authorization": f"Bearer {api_key}",
-            **({"HTTP-Referer": "https://github.com/thanhmuefatty07/AEGIS-COGNITION"} if provider == "openrouter" else {}),
+            **(
+                {"HTTP-Referer": "https://github.com/thanhmuefatty07/AEGIS-COGNITION"}
+                if provider == "openrouter"
+                else {}
+            ),
         },
     )
     started = time.perf_counter()
@@ -383,7 +391,7 @@ def _call(
         return {"status": "ERROR", "http_status": status, "error": "response_too_large", "latency_ms": latency_ms}
     try:
         document = json.loads(raw.decode("utf-8"))
-    except (UnicodeDecodeError, json.JSONDecodeError):
+    except UnicodeDecodeError, json.JSONDecodeError:
         return {
             "status": "ERROR",
             "http_status": status,
@@ -423,7 +431,7 @@ def _optional_int(value: Any) -> int | None:
         return None
     try:
         return int(value) if value is not None else None
-    except (TypeError, ValueError):
+    except TypeError, ValueError:
         return None
 
 
@@ -432,7 +440,7 @@ def _optional_float(value: Any) -> float | None:
         return None
     try:
         return float(value) if value is not None else None
-    except (TypeError, ValueError):
+    except TypeError, ValueError:
         return None
 
 
@@ -452,11 +460,7 @@ def _parse_models(raw: str | None, provider: str) -> list[str]:
 
 def _selected_providers(requested: str, *, dry_run: bool) -> list[str]:
     if requested == "auto":
-        result = [
-            provider
-            for provider, env_name in PROVIDER_KEY_ENV.items()
-            if os.environ.get(env_name) or dry_run
-        ]
+        result = [provider for provider, env_name in PROVIDER_KEY_ENV.items() if os.environ.get(env_name) or dry_run]
     else:
         result = []
         for item in (item.strip() for item in requested.split(",")):
@@ -551,8 +555,7 @@ def evaluate(args: argparse.Namespace) -> dict[str, Any]:
     elif any(not item["quality_non_regression"] for item in aggregates):
         status = "QUALITY_REGRESSION"
     elif any(
-        item["paired_model_match_rate"] is not None and item["paired_model_match_rate"] < 1.0
-        for item in aggregates
+        item["paired_model_match_rate"] is not None and item["paired_model_match_rate"] < 1.0 for item in aggregates
     ):
         status = "MODEL_MISMATCH"
     elif any(not item["token_usage_complete"] for item in aggregates):
@@ -586,8 +589,7 @@ def _aggregate(provider: str, model: str, records: list[dict[str, Any]]) -> dict
     baseline = [record for record in successful if record["variant"] == "baseline"]
     bounded = [record for record in successful if record["variant"] == "bounded"]
     by_variant = {
-        (int(record["repeat"]), str(record["task_id"]), str(record["variant"])): record
-        for record in successful
+        (int(record["repeat"]), str(record["task_id"]), str(record["variant"])): record for record in successful
     }
     non_regression = []
     regressions = []

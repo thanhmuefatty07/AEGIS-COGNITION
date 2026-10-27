@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import re
 import tomllib
 from pathlib import Path
 
@@ -23,6 +24,75 @@ def check(name: str, condition: bool, detail: str) -> dict[str, object]:
     return {"name": name, "ok": condition, "detail": detail if not condition else "ok"}
 
 
+def _strip_html_comments(markdown: str) -> str:
+    segments: list[str] = []
+    cursor = 0
+    while True:
+        opening = markdown.find("<!--", cursor)
+        if opening < 0:
+            segments.append(markdown[cursor:])
+            return "".join(segments)
+        closing = markdown.find("-->", opening + 4)
+        if closing < 0:
+            segments.append(markdown[cursor:opening])
+            return "".join(segments)
+        segments.append(markdown[cursor:opening])
+        cursor = closing + 3
+
+
+def adr_has_required_sections(markdown: str) -> bool:
+    required_topics = {"migration", "security", "performance", "operations", "rollback"}
+    sections: list[tuple[set[str], str]] = []
+    heading: set[str] | None = None
+    body: list[str] = []
+    markdown = _strip_html_comments(markdown)
+    fence: str | None = None
+
+    for line in markdown.splitlines():
+        fence_match = re.match(r"^\s*(`{3,}|~{3,})", line)
+        if fence is not None:
+            if fence_match and fence_match.group(1)[0] == fence[0] and len(fence_match.group(1)) >= len(fence):
+                fence = None
+            continue
+        if fence_match:
+            fence = fence_match.group(1)
+            continue
+        heading_match = re.match(r"^(#{2,3})\s+(.+)$", line)
+        if heading_match:
+            if heading is not None:
+                sections.append((heading, "\n".join(body)))
+            heading = set(re.findall(r"[a-z]+", heading_match.group(2).casefold()))
+            body = []
+        elif heading is not None:
+            body.append(line)
+    if heading is not None:
+        sections.append((heading, "\n".join(body)))
+
+    def has_documented_content(text: str) -> bool:
+        normalized_lines = [re.sub(r"\W", "", line).casefold() for line in text.splitlines() if line.strip()]
+        placeholders = {"todo", "tbd", "na", "none", "notdocumented", "notprovided", "notapplicable"}
+        meaningful_lines = [
+            line
+            for line in normalized_lines
+            if any(character.isalnum() for character in line)
+            and line not in placeholders
+            and not line.startswith(("todo", "tbd"))
+        ]
+        if not meaningful_lines:
+            return False
+        return len(text.strip()) > 20
+
+    compound_decision = any(
+        required_topics.issubset(topics) and has_documented_content(text) for topics, text in sections
+    )
+    individual_decision = all(
+        any(topic in topics and has_documented_content(text) for topics, text in sections) for topic in required_topics
+    )
+    has_migration_decision = compound_decision or individual_decision
+    has_evidence = any("evidence" in topics and has_documented_content(text) for topics, text in sections)
+    return has_migration_decision and has_evidence
+
+
 def main() -> int:
     root_project = toml("pyproject.toml")["project"]
     root_build = toml("pyproject.toml")["build-system"]
@@ -38,21 +108,16 @@ def main() -> int:
     workspace = toml("Cargo.toml")["workspace"]
     cargo_manifests = [ROOT / member / "Cargo.toml" for member in workspace["members"]]
     maturin_includes = {
-        (entry.get("path"), entry.get("format"))
-        for entry in maturin.get("include", [])
-        if isinstance(entry, dict)
+        (entry.get("path"), entry.get("format")) for entry in maturin.get("include", []) if isinstance(entry, dict)
     }
     # The root package intentionally lists the two bridge package patterns
     # explicitly.  Accept that equivalent, narrower form as well as the
     # historical recursive glob; the narrower form avoids accidentally
     # packaging unrelated Python files under ``core``.
-    bridge_included = (
-        ("core/**/*.py", "wheel") in maturin_includes
-        or {
-            ("core/python/*.py", "wheel"),
-            ("core/python/aegis/*.py", "wheel"),
-        }.issubset(maturin_includes)
-    )
+    bridge_included = ("core/**/*.py", "wheel") in maturin_includes or {
+        ("core/python/*.py", "wheel"),
+        ("core/python/aegis/*.py", "wheel"),
+    }.issubset(maturin_includes)
 
     checks = [
         check(
@@ -127,10 +192,7 @@ def main() -> int:
         ),
         check(
             "rust_2024_workspace",
-            all(
-                'edition = "2024"' in path.read_text(encoding="utf-8")
-                for path in cargo_manifests
-            ),
+            all('edition = "2024"' in path.read_text(encoding="utf-8") for path in cargo_manifests),
             "every workspace Cargo package must use edition 2024",
         ),
         check(
@@ -142,15 +204,12 @@ def main() -> int:
         check(
             "lease_token_schema_versioned",
             token_schema.get("$id", "").endswith("lease-token-v1.json")
-            and token_schema.get("properties", {}).get("schema", {}).get("const")
-            == "aegis-resource-lease-token-v1",
+            and token_schema.get("properties", {}).get("schema", {}).get("const") == "aegis-resource-lease-token-v1",
             "lease completion must use a versioned opaque token schema",
         ),
         check(
             "no_native_cpu_targeting",
-            all(
-                "target-cpu=native" not in path.read_text(encoding="utf-8").lower() for path in cargo_manifests
-            ),
+            all("target-cpu=native" not in path.read_text(encoding="utf-8").lower() for path in cargo_manifests),
             "portable builds must not silently require host-specific CPU features",
         ),
         check("uv_lock_present", (ROOT / "uv.lock").is_file(), "uv.lock must be committed"),
@@ -209,10 +268,10 @@ def main() -> int:
         check(
             "adr_evidence_fields",
             all(
-                all(field in read(path) for field in ("## Migration, security, performance, operations, rollback", "## Evidence"))
+                adr_has_required_sections(path.read_text(encoding="utf-8"))
                 for path in (ROOT / "docs" / "adr").glob("ADR-*.md")
             ),
-            "every ADR must contain migration/security/performance/operations/rollback and evidence",
+            "every ADR must populate migration/security/performance/operations/rollback and evidence sections",
         ),
         check(
             "benchmark_claims_are_labeled",

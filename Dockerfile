@@ -1,16 +1,20 @@
-FROM rust:bookworm AS rust-builder
+FROM rust:bookworm@sha256:114c7a4425406451c2866b6aafe69fe29b1b298832db1277d411ac73c82d04d6 AS rust-builder
 
 WORKDIR /src
 COPY rust-toolchain.toml ./
 RUN RUST_VERSION=$(sed -n 's/^channel = "\([^"]*\)"/\1/p' rust-toolchain.toml) \
     && test -n "$RUST_VERSION" \
     && rustup toolchain install "$RUST_VERSION"
-COPY Cargo.toml Cargo.lock ./
+COPY Cargo.toml Cargo.lock LICENSE.txt ./
 COPY core/rust/Cargo.toml core/rust/Cargo.toml
-COPY core/rust core/rust
-RUN cargo build --locked --release --manifest-path core/rust/Cargo.toml --bin aegis-nerve-cli
+COPY core/rust/src core/rust/src
+COPY core/rust/benches core/rust/benches
+COPY core/rust/tests core/rust/tests
+COPY aegis-plugins aegis-plugins
+COPY pocs pocs
+RUN PYO3_BUILD_EXTENSION_MODULE=1 cargo build --locked --release --manifest-path core/rust/Cargo.toml --bin aegis-nerve-cli
 
-FROM python:3.14-slim AS runtime
+FROM python:3.14-slim@sha256:f85c5697265c178cc6887276c55fe16cf3d14ca35c3df6a5eab3b360534a55d2 AS runtime
 
 ENV AEGIS_TRUST_LEVEL=PROD \
     AEGIS_OPERATOR_ROOT=/var/lib/aegis \

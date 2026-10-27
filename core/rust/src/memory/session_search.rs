@@ -619,19 +619,32 @@ impl SessionSearchIndex {
         // tier EvidenceCandidateTier::LexicalBaseline.
         // We re-tier them to ColdVectorExpansion so that
         // CandidateOnlyGate treats them correctly.
-        let allowed_ids: std::collections::BTreeSet<u64> = self
-            .documents
-            .values()
-            .filter(|document| document.owner_id == owner_id && document.scope_kind == scope_kind)
-            .filter_map(|document| u64::try_from(document.session_id).ok())
-            .collect();
-        let raw_results = self
-            .inverted_index
-            .query_top_k(&terms, top_k.saturating_mul(self.documents.len().max(1)))
+        let doc_count = self.documents.len();
+        if doc_count == 0 {
+            return Vec::new();
+        }
+        let matches_scope = |segment_id: u64| -> bool {
+            self.documents
+                .get(&u128::from(segment_id))
+                .is_some_and(|doc| doc.owner_id == owner_id && doc.scope_kind == scope_kind)
+        };
+        let initial_window = top_k.saturating_mul(8).max(64).min(doc_count);
+        let initial_candidates = self.inverted_index.query_top_k(&terms, initial_window);
+        let exhausted = initial_candidates.len() < initial_window || initial_window >= doc_count;
+        let mut raw_results: Vec<_> = initial_candidates
             .into_iter()
-            .filter(|candidate| allowed_ids.contains(&candidate.segment_id))
+            .filter(|candidate| matches_scope(candidate.segment_id))
             .take(top_k)
-            .collect::<Vec<_>>();
+            .collect();
+        if raw_results.len() < top_k && !exhausted {
+            raw_results = self
+                .inverted_index
+                .query_top_k(&terms, doc_count)
+                .into_iter()
+                .filter(|candidate| matches_scope(candidate.segment_id))
+                .take(top_k)
+                .collect();
+        }
 
         raw_results
             .into_iter()

@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import ast
 import re
+import textwrap
 import uuid
 from collections.abc import Mapping
 from dataclasses import dataclass, replace
@@ -80,23 +82,426 @@ def _new_id(prefix: str) -> str:
     return f"{prefix}-{uuid.uuid4().hex}"
 
 
-def _contains_oracle(patch_text: str) -> bool:
-    return bool(
-        re.search(
-            r"\b(assert|assert!|assert_eq!|assert_ne!|expect\s*\(|should\.|to_equal\(|t\.(?:error|fatal|fail)|Assert\.|assertThat\(|assertEquals\(|assertTrue\()",
-            patch_text,
-        )
+_ORACLE_PATTERN = re.compile(
+    r"\b(assert|assert!|assert_eq!|assert_ne!|expect\s*\(|should\.|to_equal\(|t\.(?:error|fatal|fail)|Assert\.|assertThat\(|assertEquals\(|assertTrue\()"
+)
+_WEAKENING_DIRECTIVE_PATTERN = re.compile(
+    r"(?:@\s*|\b(?:pytest\.mark|pytest|unittest|it|test|describe)\s*\.\s*)(?:skip|skipIf|skipUnless|xfail)\b"
+    r"|\b(?:xfail|xskip|xdescribe|xit|xtest|TODO|FIXME)\b"
+    r"|#\s*\[\s*ignore\b",
+    flags=re.IGNORECASE,
+)
+_TAUTOLOGICAL_ORACLE_PATTERNS: tuple[re.Pattern[str], ...] = (
+    re.compile(r"\bassert\s*\(?\s*(?:True|not\s+False|1|\"[^\"]+\"|'[^']+')\s*\)?(?:\s*[,#]|$)"),
+    re.compile(r"\bassert\s+([A-Za-z0-9_.\"']+)\s*(?:==|is|<=|>=)\s*\1(?:\b|\s*[,#]|$)"),
+    re.compile(r"\bassert_eq!\s*\(\s*([^,()]+?)\s*,\s*\1\s*\)"),
+    re.compile(r"\b(?:assertEquals|assertSame)\s*\(\s*([^,()]+?)\s*,\s*\1\s*\)"),
+    re.compile(r"\bassertTrue\s*\(\s*(?:true|True|1\s*==\s*1)\s*\)"),
+    re.compile(r"\bexpect\s*\(\s*([^()]+?)\s*\)\s*\.\s*(?:toBe|toEqual|toStrictEqual)\s*\(\s*\1\s*\)"),
+)
+_RUNNER_SPOOFING_PATTERNS: tuple[re.Pattern[str], ...] = (
+    re.compile(r"\b(?:os\._exit|sys\.exit|process\.exit|std::process::exit)\s*\("),
+    re.compile(r"\bpytest\.exit\s*\("),
+    re.compile(
+        r"\b(?:--junitxml|--override-ini|PYTEST_ADDOPTS|PYTEST_PLUGINS|pytest_runtest_makereport|pytest_sessionfinish|pytest_terminal_summary)\b"
+    ),
+    re.compile(
+        r"\b(?:print|write|println!|eprintln!|console\.log)\b[^\n]*(?:test result:\s*ok\.|[1-9]\d*\s+passed\s+in\s+\d)"
+    ),
+    re.compile(
+        r"\bexcept(?:\s+[^:\n]*\b(?:AssertionError|BaseException|Exception)\b[^:\n]*)?\s*:\s*(?:pass\b|\.\.\.|return\b)"
+    ),
+    re.compile(r"\bsuppress\s*\([^)\n]*\b(?:AssertionError|BaseException|Exception)\b"),
+)
+_TEST_SLEEP_BLOAT_PATTERN = re.compile(
+    r"\b(?:time\.sleep|asyncio\.sleep)\s*\(\s*(?:[1-9]\d*(?:\.\d+)?|0\.[5-9]\d*)\s*\)"
+)
+_TEST_FN_DEF_PATTERN = re.compile(r"^\s*(?:async\s+def|def|fn)\s+(test_[A-Za-z0-9_]+)\s*\(")
+
+
+def _scrub_comments_and_strings(text: str, *, scrub_strings: bool) -> str:
+    out: list[str] = []
+    i = 0
+    n = len(text)
+    state = "CODE"
+    while i < n:
+        ch = text[i]
+        if state == "CODE":
+            if text.startswith('"""', i):
+                state = "TRIPLE_DOUBLE"
+                out.append('""' if scrub_strings else '"""')
+                i += 3
+                continue
+            if text.startswith("'''", i):
+                state = "TRIPLE_SINGLE"
+                out.append("''" if scrub_strings else "'''")
+                i += 3
+                continue
+            if text.startswith("//", i):
+                state = "LINE_COMMENT"
+                i += 2
+                continue
+            if text.startswith("/*", i):
+                state = "BLOCK_COMMENT"
+                i += 2
+                continue
+            if ch == "#":
+                state = "LINE_COMMENT"
+                i += 1
+                continue
+            if ch == '"':
+                state = "DOUBLE"
+                out.append('"')
+                i += 1
+                continue
+            if ch == "'":
+                state = "SINGLE"
+                out.append("'")
+                i += 1
+                continue
+            if ch == "`":
+                state = "BACKTICK"
+                out.append("`")
+                i += 1
+                continue
+            out.append(ch)
+            i += 1
+        elif state == "LINE_COMMENT":
+            if ch == "\n":
+                state = "CODE"
+                out.append("\n")
+            i += 1
+        elif state == "BLOCK_COMMENT":
+            if text.startswith("*/", i):
+                state = "CODE"
+                i += 2
+                continue
+            if ch == "\n":
+                out.append("\n")
+            i += 1
+        elif state == "TRIPLE_DOUBLE":
+            if ch == "\\" and i + 1 < n:
+                if not scrub_strings:
+                    out.append(text[i : i + 2])
+                i += 2
+                continue
+            if text.startswith('"""', i):
+                state = "CODE"
+                if not scrub_strings:
+                    out.append('"""')
+                i += 3
+                continue
+            if ch == "\n":
+                out.append("\n")
+            elif not scrub_strings:
+                out.append(ch)
+            i += 1
+        elif state == "TRIPLE_SINGLE":
+            if ch == "\\" and i + 1 < n:
+                if not scrub_strings:
+                    out.append(text[i : i + 2])
+                i += 2
+                continue
+            if text.startswith("'''", i):
+                state = "CODE"
+                if not scrub_strings:
+                    out.append("'''")
+                i += 3
+                continue
+            if ch == "\n":
+                out.append("\n")
+            elif not scrub_strings:
+                out.append(ch)
+            i += 1
+        elif state in ("SINGLE", "DOUBLE", "BACKTICK"):
+            quote = "'" if state == "SINGLE" else ('"' if state == "DOUBLE" else "`")
+            if ch == "\\" and i + 1 < n:
+                if not scrub_strings:
+                    out.append(text[i : i + 2])
+                i += 2
+                continue
+            if ch == quote:
+                state = "CODE"
+                out.append(quote)
+                i += 1
+                continue
+            if ch == "\n":
+                if state != "BACKTICK":
+                    state = "CODE"
+                    out.append(quote)
+                out.append("\n")
+            elif not scrub_strings:
+                out.append(ch)
+            i += 1
+    return "".join(out)
+
+
+def _extract_patch_raw_lines(patch_text: str) -> tuple[tuple[str, ...], tuple[str, ...]]:
+    raw_lines = patch_text.splitlines()
+    non_empty = [line for line in raw_lines if line.strip()]
+    has_diff_headers = any(line.startswith(("@@", "diff --git", "--- ", "+++ ")) for line in non_empty)
+    has_diff_markers = any(len(line) > 1 and line[0] in "+-" and line[1] not in "+-" for line in non_empty)
+    all_lines_valid_diff = bool(non_empty) and all(
+        line.startswith(("diff --git", "index ", "--- ", "+++ ", "@@", "+", "-", " ", "\\")) for line in non_empty
     )
+    is_unified_diff = has_diff_headers or (has_diff_markers and all_lines_valid_diff)
+    added_raw: list[str] = []
+    removed_raw: list[str] = []
+    for raw in raw_lines:
+        if raw.startswith(("diff --git", "index ", "--- ", "+++ ", "@@", "\\")):
+            continue
+        if is_unified_diff:
+            if raw.startswith("+"):
+                added_raw.append(raw[1:])
+            elif raw.startswith("-"):
+                removed_raw.append(raw[1:])
+            elif not raw.startswith(" ") and raw.strip():
+                # Malformed unprefixed line in a diff hunk is treated as added so it cannot smuggle code
+                added_raw.append(raw)
+        else:
+            added_raw.append(raw[1:] if len(raw) > 1 and raw[0] == "+" and raw[1] != "+" else raw)
+    return tuple(added_raw), tuple(removed_raw)
+
+
+def _extract_patch_code_lines(patch_text: str) -> tuple[tuple[str, ...], tuple[str, ...]]:
+    added_raw, removed_raw = _extract_patch_raw_lines(patch_text)
+    added_scrubbed = _scrub_comments_and_strings("\n".join(added_raw), scrub_strings=False)
+    removed_scrubbed = _scrub_comments_and_strings("\n".join(removed_raw), scrub_strings=False)
+    added = tuple(line.rstrip() for line in added_scrubbed.splitlines() if line.strip())
+    removed = tuple(line.rstrip() for line in removed_scrubbed.splitlines() if line.strip())
+    return added, removed
+
+
+def _analyze_python_ast_hazards(added_raw: tuple[str, ...]) -> tuple[bool, bool]:
+    source = textwrap.dedent("\n".join(added_raw)).strip()
+    if not source:
+        return False, False
+    try:
+        tree = ast.parse(source)
+    except SyntaxError:
+        return False, False
+
+    has_tautology = False
+    has_spoofing = False
+
+    def _is_pure_constant_expr(node: ast.AST) -> bool:
+        return not any(
+            isinstance(
+                child,
+                (
+                    ast.Name,
+                    ast.Call,
+                    ast.Attribute,
+                    ast.Subscript,
+                    ast.Await,
+                    ast.Yield,
+                    ast.YieldFrom,
+                    ast.NamedExpr,
+                ),
+            )
+            for child in ast.walk(node)
+        )
+
+    def _resolve_expr(node: ast.AST, aliases: dict[str, str]) -> str:
+        if isinstance(node, ast.Name):
+            return aliases.get(node.id, f"NAME:{node.id}")
+        return ast.dump(node)
+
+    def _check_statements(stmts: list[ast.stmt], parent_aliases: dict[str, str]) -> None:
+        nonlocal has_tautology
+        aliases = dict(parent_aliases)
+        for stmt in stmts:
+            if isinstance(stmt, ast.Assign) and len(stmt.targets) == 1 and isinstance(stmt.targets[0], ast.Name):
+                target_id = stmt.targets[0].id
+                if isinstance(stmt.value, ast.Name):
+                    aliases[target_id] = aliases.get(stmt.value.id, f"NAME:{stmt.value.id}")
+                elif _is_pure_constant_expr(stmt.value):
+                    aliases[target_id] = ast.dump(stmt.value)
+                else:
+                    aliases[target_id] = f"VAR:{target_id}:{id(stmt)}"
+            elif isinstance(stmt, ast.Assert):
+                if _is_pure_constant_expr(stmt.test):
+                    has_tautology = True
+                elif (
+                    isinstance(stmt.test, ast.Compare)
+                    and len(stmt.test.ops) == 1
+                    and len(stmt.test.comparators) == 1
+                    and isinstance(stmt.test.ops[0], (ast.Eq, ast.Is, ast.LtE, ast.GtE))
+                ):
+                    lhs = _resolve_expr(stmt.test.left, aliases)
+                    rhs = _resolve_expr(stmt.test.comparators[0], aliases)
+                    if lhs == rhs:
+                        has_tautology = True
+            elif isinstance(
+                stmt,
+                (
+                    ast.FunctionDef,
+                    ast.AsyncFunctionDef,
+                    ast.If,
+                    ast.For,
+                    ast.AsyncFor,
+                    ast.While,
+                    ast.With,
+                    ast.AsyncWith,
+                ),
+            ):
+                _check_statements(stmt.body, aliases)
+
+    _check_statements(tree.body, {})
+
+    exit_modules = {"sys", "os", "pytest"}
+    exit_callables = {"exit", "_exit"}
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            for alias in node.names:
+                if alias.name in {"sys", "os", "pytest"}:
+                    exit_modules.add(alias.asname or alias.name)
+        elif isinstance(node, ast.ImportFrom) and node.module in {"sys", "os", "pytest", "builtins", "posix", "nt"}:
+            for alias in node.names:
+                if alias.name in {"exit", "_exit"}:
+                    exit_callables.add(alias.asname or alias.name)
+
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Call):
+            if (
+                (
+                    isinstance(node.func, ast.Name)
+                    and node.func.id == "getattr"
+                    and len(node.args) >= 2
+                    and isinstance(node.args[0], ast.Name)
+                    and node.args[0].id in exit_modules
+                    and isinstance(node.args[1], ast.Constant)
+                    and node.args[1].value in {"exit", "_exit"}
+                )
+                or (
+                    isinstance(node.func, ast.Attribute)
+                    and node.func.attr in {"exit", "_exit"}
+                    and (
+                        (isinstance(node.func.value, ast.Name) and node.func.value.id in exit_modules)
+                        or (
+                            isinstance(node.func.value, ast.Call)
+                            and isinstance(node.func.value.func, ast.Name)
+                            and node.func.value.func.id == "__import__"
+                        )
+                    )
+                )
+                or (isinstance(node.func, ast.Name) and node.func.id in exit_callables)
+            ):
+                has_spoofing = True
+        elif isinstance(node, ast.Raise) and node.exc is not None:
+            exc = node.exc
+            if (isinstance(exc, ast.Name) and exc.id == "SystemExit") or (
+                isinstance(exc, ast.Call) and isinstance(exc.func, ast.Name) and exc.func.id == "SystemExit"
+            ):
+                has_spoofing = True
+        elif isinstance(node, ast.ExceptHandler):
+            catches_assertion = node.type is None or any(
+                isinstance(child, ast.Name) and child.id in {"AssertionError", "Exception", "BaseException"}
+                for child in ast.walk(node.type)
+            )
+            if (
+                catches_assertion
+                and node.body
+                and all(
+                    isinstance(stmt, (ast.Pass, ast.Return))
+                    or (isinstance(stmt, ast.Expr) and isinstance(stmt.value, ast.Constant))
+                    for stmt in node.body
+                )
+            ):
+                has_spoofing = True
+
+    return has_tautology, has_spoofing
+
+
+def _line_has_tautological_oracle(line: str) -> bool:
+    return any(pattern.search(line) is not None for pattern in _TAUTOLOGICAL_ORACLE_PATTERNS)
+
+
+def _contains_oracle(patch_text: str) -> bool:
+    if _contains_tautological_oracle(patch_text):
+        return False
+    added_raw, _ = _extract_patch_raw_lines(patch_text)
+    scrubbed_text = _scrub_comments_and_strings("\n".join(added_raw), scrub_strings=True)
+    return any(_ORACLE_PATTERN.search(line) for line in scrubbed_text.splitlines())
+
+
+def _contains_tautological_oracle(patch_text: str) -> bool:
+    added_lines, _ = _extract_patch_code_lines(patch_text)
+    if any(_line_has_tautological_oracle(line) for line in added_lines):
+        return True
+    added_raw, _ = _extract_patch_raw_lines(patch_text)
+    ast_tautology, _ = _analyze_python_ast_hazards(added_raw)
+    return ast_tautology
+
+
+def _contains_runner_spoofing(patch_text: str) -> bool:
+    added_lines, _ = _extract_patch_code_lines(patch_text)
+    joined = "\n".join(added_lines)
+    if any(pattern.search(joined) is not None for pattern in _RUNNER_SPOOFING_PATTERNS):
+        return True
+    added_raw, _ = _extract_patch_raw_lines(patch_text)
+    _, ast_spoofing = _analyze_python_ast_hazards(added_raw)
+    return ast_spoofing
+
+
+def _contains_test_bloat(patch_text: str) -> bool:
+    added_lines, _ = _extract_patch_code_lines(patch_text)
+    seen_test_names: set[str] = set()
+    for line in added_lines:
+        if _TEST_SLEEP_BLOAT_PATTERN.search(line):
+            return True
+        match = _TEST_FN_DEF_PATTERN.match(line)
+        if match is not None:
+            test_name = match.group(1)
+            if test_name in seen_test_names:
+                return True
+            seen_test_names.add(test_name)
+    return False
 
 
 def _contains_weakening(patch_text: str) -> bool:
-    return bool(
-        re.search(
-            r"\b(skip|xfail|xskip|xdescribe|pytest\.mark\.skip|pytest\.mark\.xfail|it\.skip|test\.skip|TODO)\b",
-            patch_text,
-            flags=re.IGNORECASE,
-        )
-    )
+    added_raw, removed_raw = _extract_patch_raw_lines(patch_text)
+    added_no_strings = _scrub_comments_and_strings("\n".join(added_raw), scrub_strings=True)
+    if _WEAKENING_DIRECTIVE_PATTERN.search(added_no_strings) or _WEAKENING_DIRECTIVE_PATTERN.search(
+        "\n".join(added_raw)
+    ):
+        return True
+    if _contains_tautological_oracle(patch_text):
+        return True
+    if _contains_runner_spoofing(patch_text):
+        return True
+    if _contains_test_bloat(patch_text):
+        return True
+    removed_no_strings = _scrub_comments_and_strings("\n".join(removed_raw), scrub_strings=True)
+    removed_oracle_count = sum(1 for line in removed_no_strings.splitlines() if _ORACLE_PATTERN.search(line))
+    added_oracle_count = sum(1 for line in added_no_strings.splitlines() if _ORACLE_PATTERN.search(line))
+    return removed_oracle_count > added_oracle_count
+
+
+def _candidate_test_hints_for_paths(changed_paths: tuple[str, ...], root_path: str) -> tuple[str, ...]:
+    hints: list[str] = []
+    root = Path(root_path) if root_path else None
+    for rel_path in changed_paths:
+        posix = Path(rel_path).as_posix()
+        lowered = posix.casefold()
+        if lowered.startswith("tests/") or "/tests/" in lowered or Path(posix).name.startswith("test_"):
+            if posix not in hints:
+                hints.append(posix)
+            continue
+        stem = Path(posix).stem
+        if not stem or stem == "__init__":
+            continue
+        candidate = f"tests/test_{stem}.py"
+        if root is not None:
+            try:
+                if (root / candidate).is_file() and candidate not in hints:
+                    hints.append(candidate)
+            except OSError:
+                pass
+            continue
+        if candidate not in hints:
+            hints.append(candidate)
+    return tuple(hints[:16])
 
 
 class VerificationFacade:
@@ -248,14 +653,30 @@ class VerificationFacade:
         revision = source_revision or record.session.current_revision
         if not revision.strip():
             raise VerificationSessionError("source revision cannot be empty")
-        stale = bool(record.session.latest_assessment_id and revision != record.session.current_revision)
-        state = SessionState.STALE.value if stale else SessionState.FEEDBACK_READY.value
+        changed = bool(paths) or revision != record.session.current_revision
+        stale = False
+        if changed:
+            stale = bool(record.receipts)
+            for run in record.runs.values():
+                if run.get("status") in {"REQUESTED", "RECEIPT_RECORDED"}:
+                    run["status"] = "STALE"
+                    run["stale_reason"] = "source_changed"
+                    stale = True
+        terminal = record.session.state in {SessionState.CANCELLED.value, SessionState.COMPLETED.value}
+        state = (
+            record.session.state
+            if terminal
+            else SessionState.STALE.value
+            if stale
+            else SessionState.FEEDBACK_READY.value
+        )
         self._update_session(record, current_revision=revision, source_revision=revision, state=state, status=state)
         decision: dict[str, object] = {
             "changed_paths": paths,
             "source_revision": revision,
-            "evidence_invalidated": stale or bool(paths),
+            "evidence_invalidated": changed,
             "scope_policy": "WIDEN_TO_RETAINED_SUITE_ON_UNKNOWN",
+            "candidate_test_hints": _candidate_test_hints_for_paths(paths, record.profile.root_path),
             "status": state,
         }
         record.feedback.append(decision)
@@ -323,6 +744,12 @@ class VerificationFacade:
             errors.append("oracle_missing")
         if weakening:
             errors.append("test_weakening_detected")
+        if _contains_tautological_oracle(proposal.patch_text):
+            errors.append("tautological_oracle_detected")
+        if _contains_runner_spoofing(proposal.patch_text):
+            errors.append("runner_spoofing_detected")
+        if _contains_test_bloat(proposal.patch_text):
+            errors.append("test_bloat_detected")
         status = "REJECTED" if errors else "CANDIDATE"
         evaluated = _rebind(
             proposal,
@@ -364,6 +791,7 @@ class VerificationFacade:
             "reason": reason,
             "source_revision": record.session.current_revision,
             "plan_hash": record.plan.plan_hash,
+            "policy_hash": record.profile.policy_hash,
             "execution_authority": self.execution_authority,
             "selection_mode": "SHADOW_ONLY",
             "receipt_ids": (),
@@ -393,17 +821,26 @@ class VerificationFacade:
         run = record.runs.get(run_id)
         if run is None:
             raise VerificationSessionError("verification run was not found")
+        if run.get("status") not in {"REQUESTED", "RECEIPT_RECORDED"}:
+            raise VerificationSessionError("verification run is cancelled, stale, or terminal")
         if not isinstance(result, Mapping):
             raise VerificationSessionError("execution result must be a mapping")
         typed_result = cast(Mapping[str, object], result)
-        raw_source_revision = typed_result.get("source_revision", record.session.current_revision)
+        raw_source_revision = typed_result.get("source_revision")
         if type(raw_source_revision) is not str or not raw_source_revision.strip():
             raise VerificationSessionError("execution result source revision is invalid")
-        if raw_source_revision != record.session.current_revision:
+        run_source_revision = run.get("source_revision")
+        if (
+            type(run_source_revision) is not str
+            or run_source_revision != record.session.current_revision
+            or raw_source_revision != run_source_revision
+            or run.get("plan_hash") != record.plan.plan_hash
+            or run.get("policy_hash", record.profile.policy_hash) != record.profile.policy_hash
+        ):
             run["status"] = "STALE"
-            run["stale_reason"] = "source_revision_mismatch"
+            run["stale_reason"] = "run_binding_mismatch"
             self._event(record, "EXECUTION_RESULT_REJECTED_STALE", {"run_id": run_id})
-            raise VerificationSessionError("execution result source revision is stale")
+            raise VerificationSessionError("execution result is stale or does not match its run binding")
 
         def text(name: str, default: str = "UNKNOWN") -> str:
             value = typed_result.get(name, default)
@@ -474,6 +911,10 @@ class VerificationFacade:
                 > counts["discovered"]
             ):
                 raise ValueError("execution result counts exceed discovered tests")
+            if status == "PASS" and (
+                exit_code != 0 or counts["passed"] < 1 or counts["failed"] > 0 or cancellation_requested
+            ):
+                raise ValueError("execution result PASS status contradicts counts or exit code")
             artifact_ids: list[str] = []
             for stream in ("stdout", "stderr"):
                 digest = typed_result.get(f"{stream}_hash")
@@ -567,6 +1008,7 @@ class VerificationFacade:
         run["receipt_ids"] = (*receipt_ids, receipt_id)
         run["status"] = "RECEIPT_RECORDED"
         run["last_result_status"] = receipt.status
+        self._update_session(record, state=SessionState.FEEDBACK_READY.value, status=SessionState.FEEDBACK_READY.value)
         self._event(
             record,
             "EXECUTION_RECEIPT_RECORDED",
@@ -602,56 +1044,93 @@ class VerificationFacade:
 
     def read_report(self, session_id: str) -> dict[str, object]:
         record = self._record(session_id)
-        receipts = tuple(record.receipts.values())
-        receipt_ids = tuple(record.receipts)
-        artifact_ids = tuple(record.artifacts)
-        if receipts:
-            statuses = {receipt.status for receipt in receipts}
+        history_receipts = tuple(record.receipts.values())
+        terminal = record.session.state in {
+            SessionState.STALE.value,
+            SessionState.CANCELLED.value,
+            SessionState.COMPLETED.value,
+        }
+        current_receipt_pairs: list[tuple[str, ExecutionReceipt]] = []
+        if not terminal:
+            for receipt_id, receipt in record.receipts.items():
+                run = record.runs.get(receipt.run_id)
+                if (
+                    run is not None
+                    and run.get("status") == "RECEIPT_RECORDED"
+                    and receipt.source_revision == record.session.current_revision
+                    and receipt.plan_hash == record.plan.plan_hash
+                    and receipt.policy_hash == record.profile.policy_hash
+                    and run.get("source_revision") == record.session.current_revision
+                    and run.get("plan_hash") == record.plan.plan_hash
+                    and run.get("policy_hash", record.profile.policy_hash) == record.profile.policy_hash
+                ):
+                    current_receipt_pairs.append((receipt_id, receipt))
+        current_receipts = tuple(receipt for _, receipt in current_receipt_pairs)
+        current_receipt_ids = tuple(receipt_id for receipt_id, _ in current_receipt_pairs)
+        current_artifact_ids = tuple(
+            dict.fromkeys(artifact_id for receipt in current_receipts for artifact_id in receipt.artifact_ids)
+        )
+        requirement_status = {requirement.requirement_id: "INCOMPLETE" for requirement in record.requirements}
+        if current_receipts:
+            statuses = {receipt.status for receipt in current_receipts}
             if statuses == {"PASS"}:
-                requirement_status = {
-                    requirement.requirement_id: "PROVISIONAL_PASS" for requirement in record.requirements
-                }
                 failure_reasons = ("evidence_promotion_disabled_shadow_mode",)
             elif statuses.intersection({"FAIL", "ERROR", "TIMEOUT", "CANCELLED", "MALFORMED", "ZERO_TESTS"}):
-                requirement_status = {requirement.requirement_id: "FAIL" for requirement in record.requirements}
                 failure_reasons = ("verification_run_not_passing",)
             else:
-                requirement_status = {requirement.requirement_id: "INCOMPLETE" for requirement in record.requirements}
                 failure_reasons = ("verification_run_incomplete",)
-            assessment_run_id = receipts[0].run_id
+            error_codes = ("receipt_obligation_binding_missing",)
+            assessment_run_id = current_receipts[0].run_id
             execution_status = "LAB_BOUND"
+        elif record.session.state == SessionState.CANCELLED.value:
+            failure_reasons = ("execution_cancelled",)
+            error_codes = ()
+            assessment_run_id = "not-executed"
+            execution_status = "CANCELLED"
+        elif history_receipts or record.session.state == SessionState.STALE.value:
+            failure_reasons = ("evidence_not_bound_to_current_inputs",)
+            error_codes = ()
+            assessment_run_id = "not-executed"
+            execution_status = "STALE"
         else:
-            requirement_status = {requirement.requirement_id: "INCOMPLETE" for requirement in record.requirements}
             failure_reasons = ("execution_not_bound_to_lab_in_vertical_slice",)
-            assessment_run_id = next(iter(record.runs), "not-executed")
+            error_codes = ()
+            assessment_run_id = "not-executed"
             execution_status = "NOT_EXECUTED"
+        assessment_payload = {
+            "session_id": session_id,
+            "source_revision": record.session.current_revision,
+            "plan_hash": record.plan.plan_hash,
+            "policy_hash": record.profile.policy_hash,
+            "run_id": assessment_run_id,
+            "requirement_status": requirement_status,
+            "receipt_ids": current_receipt_ids,
+            "artifact_ids": current_artifact_ids,
+            "error_codes": error_codes,
+            "failure_reasons": failure_reasons,
+        }
         assessment = VerificationAssessment(
             session_id=session_id,
             source_revision=record.session.current_revision,
             plan_hash=record.plan.plan_hash,
             policy_hash=record.profile.policy_hash,
-            assessment_id=_new_id("aese-assessment"),
+            assessment_id=f"aese-assessment-{canonical_hash(assessment_payload)}",
             run_id=assessment_run_id,
             requirement_status=requirement_status,
-            receipt_ids=receipt_ids,
-            artifact_ids=artifact_ids,
+            receipt_ids=current_receipt_ids,
+            artifact_ids=current_artifact_ids,
+            error_codes=error_codes,
             final_assurance=False,
             provisional=True,
             failure_reasons=failure_reasons,
         )
         assessment.validate()
-        self._update_session(
-            record,
-            latest_assessment_id=assessment.assessment_id,
-            state=SessionState.FEEDBACK_READY.value,
-            status=SessionState.FEEDBACK_READY.value,
-        )
         return {
             "session": record.session.as_dict(),
             "plan": record.plan.as_dict(),
             "assessment": assessment.as_dict(),
             "events": tuple(event.as_dict() for event in record.events),
-            "receipts": tuple(receipt.as_dict() for receipt in receipts),
+            "receipts": tuple(receipt.as_dict() for receipt in history_receipts),
             "artifacts": tuple(artifact.as_dict() for artifact in record.artifacts.values()),
             "execution": execution_status,
             "final_assurance": False,

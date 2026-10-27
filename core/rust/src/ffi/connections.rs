@@ -33,6 +33,8 @@ fn model_json(record: &crate::connections::ModelDescriptorRecord) -> serde_json:
 fn egress_json(record: &crate::connections::EgressGrantRecord) -> serde_json::Value {
     serde_json::json!({
         "grant_id": record.grant_id,
+        "workspace_id": record.workspace_id,
+        "owner_id": record.owner_id,
         "connection_id": record.connection_id,
         "connection_revision": record.connection_revision,
         "data_class": record.data_class,
@@ -47,6 +49,7 @@ fn egress_json(record: &crate::connections::EgressGrantRecord) -> serde_json::Va
 #[pyfunction]
 #[pyo3(signature = (connection_id, provider_kind, endpoint, protocol, secret_ref=None, enabled=true, expected_revision=None, updated_at_ms=0u64))]
 pub fn aegis_upsert_connection(
+    py: Python<'_>,
     connection_id: String,
     provider_kind: String,
     endpoint: String,
@@ -56,96 +59,106 @@ pub fn aegis_upsert_connection(
     expected_revision: Option<u64>,
     updated_at_ms: u64,
 ) -> PyResult<String> {
-    py_safe(move || {
-        let repository = get_connection_repository().map_err(|error| {
-            pyo3::exceptions::PyRuntimeError::new_err(format!(
-                "Connection repository init failed: {error}"
-            ))
-        })?;
-        let record = repository
-            .lock()
-            .upsert_connection(
-                &connection_id,
-                &provider_kind,
-                &endpoint,
-                &protocol,
-                secret_ref.as_deref(),
-                enabled,
-                expected_revision,
-                updated_at_ms,
-            )
-            .map_err(|error| {
-                pyo3::exceptions::PyValueError::new_err(format!(
-                    "Connection upsert failed: {error:?}"
+    py.detach(move || {
+        py_safe(move || {
+            let repository = get_connection_repository().map_err(|error| {
+                pyo3::exceptions::PyRuntimeError::new_err(format!(
+                    "Connection repository init failed: {error}"
                 ))
             })?;
-        serde_json::to_string(&serde_json::json!({
-            "schema": "aegis-connection-record-v1",
-            "status": "committed",
-            "record": connection_json(&record),
-        }))
-        .map_err(|error| {
-            pyo3::exceptions::PyRuntimeError::new_err(format!("Serialization failed: {error}"))
-        })
-    })?
+            let record = repository
+                .lock()
+                .upsert_connection(
+                    &connection_id,
+                    &provider_kind,
+                    &endpoint,
+                    &protocol,
+                    secret_ref.as_deref(),
+                    enabled,
+                    expected_revision,
+                    updated_at_ms,
+                )
+                .map_err(|error| {
+                    pyo3::exceptions::PyValueError::new_err(format!(
+                        "Connection upsert failed: {error:?}"
+                    ))
+                })?;
+            serde_json::to_string(&serde_json::json!({
+                "schema": "aegis-connection-record-v1",
+                "status": "committed",
+                "record": connection_json(&record),
+            }))
+            .map_err(|error| {
+                pyo3::exceptions::PyRuntimeError::new_err(format!("Serialization failed: {error}"))
+            })
+        })?
+    })
 }
 
 #[pyfunction]
-pub fn aegis_list_connections() -> PyResult<String> {
-    py_safe(|| {
-        let repository = get_connection_repository().map_err(|error| {
-            pyo3::exceptions::PyRuntimeError::new_err(format!(
-                "Connection repository init failed: {error}"
-            ))
-        })?;
-        let records = repository.lock().list_connections().map_err(|error| {
-            pyo3::exceptions::PyRuntimeError::new_err(format!("Connection list failed: {error:?}"))
-        })?;
-        serde_json::to_string(&serde_json::json!({
-            "schema": "aegis-connection-list-v1",
-            "count": records.len(),
-            "records": records.iter().map(connection_json).collect::<Vec<_>>(),
-        }))
-        .map_err(|error| {
-            pyo3::exceptions::PyRuntimeError::new_err(format!("Serialization failed: {error}"))
-        })
-    })?
+pub fn aegis_list_connections(py: Python<'_>) -> PyResult<String> {
+    py.detach(move || {
+        py_safe(|| {
+            let repository = get_connection_repository().map_err(|error| {
+                pyo3::exceptions::PyRuntimeError::new_err(format!(
+                    "Connection repository init failed: {error}"
+                ))
+            })?;
+            let records = repository.lock().list_connections().map_err(|error| {
+                pyo3::exceptions::PyRuntimeError::new_err(format!(
+                    "Connection list failed: {error:?}"
+                ))
+            })?;
+            serde_json::to_string(&serde_json::json!({
+                "schema": "aegis-connection-list-v1",
+                "count": records.len(),
+                "records": records.iter().map(connection_json).collect::<Vec<_>>(),
+            }))
+            .map_err(|error| {
+                pyo3::exceptions::PyRuntimeError::new_err(format!("Serialization failed: {error}"))
+            })
+        })?
+    })
 }
 
 #[pyfunction]
 pub fn aegis_revoke_connection(
+    py: Python<'_>,
     connection_id: String,
     expected_revision: u64,
     updated_at_ms: u64,
 ) -> PyResult<String> {
-    py_safe(move || {
-        let repository = get_connection_repository().map_err(|error| {
-            pyo3::exceptions::PyRuntimeError::new_err(format!(
-                "Connection repository init failed: {error}"
-            ))
-        })?;
-        let record = repository
-            .lock()
-            .revoke_connection(&connection_id, expected_revision, updated_at_ms)
-            .map_err(|error| {
-                pyo3::exceptions::PyValueError::new_err(format!(
-                    "Connection revoke failed: {error:?}"
+    py.detach(move || {
+        py_safe(move || {
+            let repository = get_connection_repository().map_err(|error| {
+                pyo3::exceptions::PyRuntimeError::new_err(format!(
+                    "Connection repository init failed: {error}"
                 ))
             })?;
-        serde_json::to_string(&serde_json::json!({
-            "schema": "aegis-connection-record-v1",
-            "status": "revoked",
-            "record": connection_json(&record),
-        }))
-        .map_err(|error| {
-            pyo3::exceptions::PyRuntimeError::new_err(format!("Serialization failed: {error}"))
-        })
-    })?
+            let record = repository
+                .lock()
+                .revoke_connection(&connection_id, expected_revision, updated_at_ms)
+                .map_err(|error| {
+                    pyo3::exceptions::PyValueError::new_err(format!(
+                        "Connection revoke failed: {error:?}"
+                    ))
+                })?;
+            serde_json::to_string(&serde_json::json!({
+                "schema": "aegis-connection-record-v1",
+                "status": "revoked",
+                "record": connection_json(&record),
+            }))
+            .map_err(|error| {
+                pyo3::exceptions::PyRuntimeError::new_err(format!("Serialization failed: {error}"))
+            })
+        })?
+    })
 }
 
 #[pyfunction]
 #[pyo3(signature = (connection_id, model_id, family=None, capabilities_json="[]".to_string(), context_limit=None, output_limit=None, source="manual".to_string(), expected_revision=None, observed_at_ms=0u64))]
 pub fn aegis_upsert_model_descriptor(
+    py: Python<'_>,
     connection_id: String,
     model_id: String,
     family: Option<String>,
@@ -156,143 +169,167 @@ pub fn aegis_upsert_model_descriptor(
     expected_revision: Option<u64>,
     observed_at_ms: u64,
 ) -> PyResult<String> {
-    py_safe(move || {
-        let capabilities: Vec<String> =
-            serde_json::from_str(&capabilities_json).map_err(|error| {
-                pyo3::exceptions::PyValueError::new_err(format!(
-                    "capabilities_json must be an array of strings: {error}"
+    py.detach(move || {
+        py_safe(move || {
+            let capabilities: Vec<String> =
+                serde_json::from_str(&capabilities_json).map_err(|error| {
+                    pyo3::exceptions::PyValueError::new_err(format!(
+                        "capabilities_json must be an array of strings: {error}"
+                    ))
+                })?;
+            let repository = get_connection_repository().map_err(|error| {
+                pyo3::exceptions::PyRuntimeError::new_err(format!(
+                    "Connection repository init failed: {error}"
                 ))
             })?;
-        let repository = get_connection_repository().map_err(|error| {
-            pyo3::exceptions::PyRuntimeError::new_err(format!(
-                "Connection repository init failed: {error}"
-            ))
-        })?;
-        let record = repository
-            .lock()
-            .upsert_model(
-                &connection_id,
-                &model_id,
-                family.as_deref(),
-                &capabilities,
-                context_limit,
-                output_limit,
-                &source,
-                expected_revision,
-                observed_at_ms,
-            )
+            let record = repository
+                .lock()
+                .upsert_model(
+                    &connection_id,
+                    &model_id,
+                    family.as_deref(),
+                    &capabilities,
+                    context_limit,
+                    output_limit,
+                    &source,
+                    expected_revision,
+                    observed_at_ms,
+                )
+                .map_err(|error| {
+                    pyo3::exceptions::PyValueError::new_err(format!(
+                        "Model descriptor upsert failed: {error:?}"
+                    ))
+                })?;
+            serde_json::to_string(&serde_json::json!({
+                "schema": "aegis-model-descriptor-v1",
+                "status": "committed",
+                "record": model_json(&record),
+            }))
             .map_err(|error| {
-                pyo3::exceptions::PyValueError::new_err(format!(
-                    "Model descriptor upsert failed: {error:?}"
-                ))
-            })?;
-        serde_json::to_string(&serde_json::json!({
-            "schema": "aegis-model-descriptor-v1",
-            "status": "committed",
-            "record": model_json(&record),
-        }))
-        .map_err(|error| {
-            pyo3::exceptions::PyRuntimeError::new_err(format!("Serialization failed: {error}"))
-        })
-    })?
+                pyo3::exceptions::PyRuntimeError::new_err(format!("Serialization failed: {error}"))
+            })
+        })?
+    })
 }
 
 #[pyfunction]
-pub fn aegis_list_model_descriptors(connection_id: String) -> PyResult<String> {
-    py_safe(move || {
-        let repository = get_connection_repository().map_err(|error| {
-            pyo3::exceptions::PyRuntimeError::new_err(format!(
-                "Connection repository init failed: {error}"
-            ))
-        })?;
-        let records = repository
-            .lock()
-            .list_models(&connection_id)
-            .map_err(|error| {
+pub fn aegis_list_model_descriptors(py: Python<'_>, connection_id: String) -> PyResult<String> {
+    py.detach(move || {
+        py_safe(move || {
+            let repository = get_connection_repository().map_err(|error| {
                 pyo3::exceptions::PyRuntimeError::new_err(format!(
-                    "Model descriptor list failed: {error:?}"
+                    "Connection repository init failed: {error}"
                 ))
             })?;
-        serde_json::to_string(&serde_json::json!({
-            "schema": "aegis-model-descriptor-list-v1",
-            "connection_id": connection_id,
-            "count": records.len(),
-            "records": records.iter().map(model_json).collect::<Vec<_>>(),
-        }))
-        .map_err(|error| {
-            pyo3::exceptions::PyRuntimeError::new_err(format!("Serialization failed: {error}"))
-        })
-    })?
+            let records = repository
+                .lock()
+                .list_models(&connection_id)
+                .map_err(|error| {
+                    pyo3::exceptions::PyRuntimeError::new_err(format!(
+                        "Model descriptor list failed: {error:?}"
+                    ))
+                })?;
+            serde_json::to_string(&serde_json::json!({
+                "schema": "aegis-model-descriptor-list-v1",
+                "connection_id": connection_id,
+                "count": records.len(),
+                "records": records.iter().map(model_json).collect::<Vec<_>>(),
+            }))
+            .map_err(|error| {
+                pyo3::exceptions::PyRuntimeError::new_err(format!("Serialization failed: {error}"))
+            })
+        })?
+    })
 }
 
 #[pyfunction]
 pub fn aegis_remove_model_descriptor(
+    py: Python<'_>,
     connection_id: String,
     model_id: String,
     expected_revision: u64,
 ) -> PyResult<String> {
-    py_safe(move || {
-        let repository = get_connection_repository().map_err(|error| {
-            pyo3::exceptions::PyRuntimeError::new_err(format!(
-                "Connection repository init failed: {error}"
-            ))
-        })?;
-        let removed = repository
-            .lock()
-            .remove_model(&connection_id, &model_id, expected_revision)
-            .map_err(|error| {
-                pyo3::exceptions::PyValueError::new_err(format!(
-                    "Model descriptor removal failed: {error:?}"
+    py.detach(move || {
+        py_safe(move || {
+            let repository = get_connection_repository().map_err(|error| {
+                pyo3::exceptions::PyRuntimeError::new_err(format!(
+                    "Connection repository init failed: {error}"
                 ))
             })?;
-        serde_json::to_string(&serde_json::json!({
-            "schema": "aegis-model-descriptor-remove-v1",
-            "connection_id": connection_id,
-            "model_id": model_id,
-            "removed": removed,
-        }))
-        .map_err(|error| {
-            pyo3::exceptions::PyRuntimeError::new_err(format!("Serialization failed: {error}"))
-        })
-    })?
+            let removed = repository
+                .lock()
+                .remove_model(&connection_id, &model_id, expected_revision)
+                .map_err(|error| {
+                    pyo3::exceptions::PyValueError::new_err(format!(
+                        "Model descriptor removal failed: {error:?}"
+                    ))
+                })?;
+            serde_json::to_string(&serde_json::json!({
+                "schema": "aegis-model-descriptor-remove-v1",
+                "connection_id": connection_id,
+                "model_id": model_id,
+                "removed": removed,
+            }))
+            .map_err(|error| {
+                pyo3::exceptions::PyRuntimeError::new_err(format!("Serialization failed: {error}"))
+            })
+        })?
+    })
 }
 
 #[pyfunction]
+#[pyo3(signature = (workspace_id, owner_id, connection_id, data_class, operation))]
 pub fn aegis_get_connection_egress(
+    py: Python<'_>,
+    workspace_id: String,
+    owner_id: String,
     connection_id: String,
     data_class: String,
     operation: String,
 ) -> PyResult<String> {
-    py_safe(move || {
-        let repository = get_connection_repository().map_err(|error| {
-            pyo3::exceptions::PyRuntimeError::new_err(format!(
-                "Connection repository init failed: {error}"
-            ))
-        })?;
-        let record = repository
-            .lock()
-            .get_egress_grant(&connection_id, &data_class, &operation)
-            .map_err(|error| {
-                pyo3::exceptions::PyValueError::new_err(format!(
-                    "Egress grant lookup failed: {error:?}"
+    py.detach(move || {
+        py_safe(move || {
+            let repository = get_connection_repository().map_err(|error| {
+                pyo3::exceptions::PyRuntimeError::new_err(format!(
+                    "Connection repository init failed: {error}"
                 ))
             })?;
-        serde_json::to_string(&serde_json::json!({
-            "schema": "aegis-egress-grant-v1",
-            "connection_id": connection_id,
-            "data_class": data_class,
-            "operation": operation,
-            "record": record.as_ref().map(egress_json),
-        }))
-        .map_err(|error| {
-            pyo3::exceptions::PyRuntimeError::new_err(format!("Serialization failed: {error}"))
-        })
-    })?
+            let record = repository
+                .lock()
+                .get_egress_grant(
+                    &workspace_id,
+                    &owner_id,
+                    &connection_id,
+                    &data_class,
+                    &operation,
+                )
+                .map_err(|error| {
+                    pyo3::exceptions::PyValueError::new_err(format!(
+                        "Egress grant lookup failed: {error:?}"
+                    ))
+                })?;
+            serde_json::to_string(&serde_json::json!({
+                "schema": "aegis-egress-grant-v1",
+                "workspace_id": workspace_id,
+                "owner_id": owner_id,
+                "connection_id": connection_id,
+                "data_class": data_class,
+                "operation": operation,
+                "record": record.as_ref().map(egress_json),
+            }))
+            .map_err(|error| {
+                pyo3::exceptions::PyRuntimeError::new_err(format!("Serialization failed: {error}"))
+            })
+        })?
+    })
 }
 
 #[pyfunction]
-#[pyo3(signature = (grant_id, connection_id, data_class, operation, expires_at_ms=None, expected_revision=None, updated_at_ms=0u64))]
+#[pyo3(signature = (workspace_id, owner_id, grant_id, connection_id, data_class, operation, expires_at_ms=None, expected_revision=None, updated_at_ms=0u64))]
 pub fn aegis_grant_connection_egress(
+    py: Python<'_>,
+    workspace_id: String,
+    owner_id: String,
     grant_id: String,
     connection_id: String,
     data_class: String,
@@ -301,95 +338,132 @@ pub fn aegis_grant_connection_egress(
     expected_revision: Option<u64>,
     updated_at_ms: u64,
 ) -> PyResult<String> {
-    py_safe(move || {
-        let repository = get_connection_repository().map_err(|error| {
-            pyo3::exceptions::PyRuntimeError::new_err(format!(
-                "Connection repository init failed: {error}"
-            ))
-        })?;
-        let record = repository
-            .lock()
-            .grant_egress(
-                &grant_id,
-                &connection_id,
-                &data_class,
-                &operation,
-                expires_at_ms,
-                expected_revision,
-                updated_at_ms,
-            )
-            .map_err(|error| {
-                pyo3::exceptions::PyValueError::new_err(format!("Egress grant failed: {error:?}"))
+    py.detach(move || {
+        py_safe(move || {
+            let repository = get_connection_repository().map_err(|error| {
+                pyo3::exceptions::PyRuntimeError::new_err(format!(
+                    "Connection repository init failed: {error}"
+                ))
             })?;
-        serde_json::to_string(&serde_json::json!({
-            "schema": "aegis-egress-grant-v1",
-            "status": "committed",
-            "record": egress_json(&record),
-        }))
-        .map_err(|error| {
-            pyo3::exceptions::PyRuntimeError::new_err(format!("Serialization failed: {error}"))
-        })
-    })?
+            let record = repository
+                .lock()
+                .grant_egress(
+                    &workspace_id,
+                    &owner_id,
+                    &grant_id,
+                    &connection_id,
+                    &data_class,
+                    &operation,
+                    expires_at_ms,
+                    expected_revision,
+                    updated_at_ms,
+                )
+                .map_err(|error| {
+                    pyo3::exceptions::PyValueError::new_err(format!(
+                        "Egress grant failed: {error:?}"
+                    ))
+                })?;
+            serde_json::to_string(&serde_json::json!({
+                "schema": "aegis-egress-grant-v1",
+                "status": "committed",
+                "record": egress_json(&record),
+            }))
+            .map_err(|error| {
+                pyo3::exceptions::PyRuntimeError::new_err(format!("Serialization failed: {error}"))
+            })
+        })?
+    })
 }
 
 #[pyfunction]
+#[pyo3(signature = (workspace_id, owner_id, grant_id, expected_revision, revoked_at_ms=0u64))]
 pub fn aegis_revoke_connection_egress(
+    py: Python<'_>,
+    workspace_id: String,
+    owner_id: String,
     grant_id: String,
     expected_revision: u64,
     revoked_at_ms: u64,
 ) -> PyResult<String> {
-    py_safe(move || {
-        let repository = get_connection_repository().map_err(|error| {
-            pyo3::exceptions::PyRuntimeError::new_err(format!(
-                "Connection repository init failed: {error}"
-            ))
-        })?;
-        let record = repository
-            .lock()
-            .revoke_egress(&grant_id, expected_revision, revoked_at_ms)
-            .map_err(|error| {
-                pyo3::exceptions::PyValueError::new_err(format!("Egress revoke failed: {error:?}"))
+    py.detach(move || {
+        py_safe(move || {
+            let repository = get_connection_repository().map_err(|error| {
+                pyo3::exceptions::PyRuntimeError::new_err(format!(
+                    "Connection repository init failed: {error}"
+                ))
             })?;
-        serde_json::to_string(&serde_json::json!({
-            "schema": "aegis-egress-grant-v1",
-            "status": "revoked",
-            "record": egress_json(&record),
-        }))
-        .map_err(|error| {
-            pyo3::exceptions::PyRuntimeError::new_err(format!("Serialization failed: {error}"))
-        })
-    })?
+            let record = repository
+                .lock()
+                .revoke_egress(
+                    &workspace_id,
+                    &owner_id,
+                    &grant_id,
+                    expected_revision,
+                    revoked_at_ms,
+                )
+                .map_err(|error| {
+                    pyo3::exceptions::PyValueError::new_err(format!(
+                        "Egress revoke failed: {error:?}"
+                    ))
+                })?;
+            serde_json::to_string(&serde_json::json!({
+                "schema": "aegis-egress-grant-v1",
+                "status": "revoked",
+                "record": egress_json(&record),
+            }))
+            .map_err(|error| {
+                pyo3::exceptions::PyRuntimeError::new_err(format!("Serialization failed: {error}"))
+            })
+        })?
+    })
 }
 
 #[pyfunction]
+#[pyo3(signature = (workspace_id, owner_id, connection_id, data_class, operation, now_ms=0u64))]
 pub fn aegis_check_connection_egress(
+    py: Python<'_>,
+    workspace_id: String,
+    owner_id: String,
     connection_id: String,
     data_class: String,
     operation: String,
     now_ms: u64,
 ) -> PyResult<String> {
-    py_safe(move || {
-        let repository = get_connection_repository().map_err(|error| {
-            pyo3::exceptions::PyRuntimeError::new_err(format!(
-                "Connection repository init failed: {error}"
-            ))
-        })?;
-        let allowed = repository
-            .lock()
-            .egress_allowed(&connection_id, &data_class, &operation, now_ms)
-            .map_err(|error| {
-                pyo3::exceptions::PyValueError::new_err(format!("Egress check failed: {error:?}"))
+    py.detach(move || {
+        py_safe(move || {
+            let repository = get_connection_repository().map_err(|error| {
+                pyo3::exceptions::PyRuntimeError::new_err(format!(
+                    "Connection repository init failed: {error}"
+                ))
             })?;
-        serde_json::to_string(&serde_json::json!({
-            "schema": "aegis-egress-check-v1",
-            "connection_id": connection_id,
-            "data_class": data_class,
-            "operation": operation,
-            "now_ms": now_ms,
-            "allowed": allowed,
-        }))
-        .map_err(|error| {
-            pyo3::exceptions::PyRuntimeError::new_err(format!("Serialization failed: {error}"))
-        })
-    })?
+            let allowed = repository
+                .lock()
+                .egress_allowed(
+                    &workspace_id,
+                    &owner_id,
+                    &connection_id,
+                    &data_class,
+                    &operation,
+                    now_ms,
+                )
+                .map_err(|error| {
+                    pyo3::exceptions::PyValueError::new_err(format!(
+                        "Egress check failed: {error:?}"
+                    ))
+                })?;
+            serde_json::to_string(&serde_json::json!({
+                "schema": "aegis-egress-check-v1",
+                "workspace_id": workspace_id,
+                "owner_id": owner_id,
+                "connection_id": connection_id,
+                "data_class": data_class,
+                "operation": operation,
+                "now_ms": now_ms,
+                "allowed": allowed,
+            }))
+            .map_err(|error| {
+                pyo3::exceptions::PyRuntimeError::new_err(format!("Serialization failed: {error}"))
+            })
+        })?
+    })
 }

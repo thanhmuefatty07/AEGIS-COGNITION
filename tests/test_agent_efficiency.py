@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import os
+import subprocess
 from pathlib import Path
 
 import pytest
@@ -62,12 +64,170 @@ def test_action_fusion_runs_command_only_after_mutation_and_rejects_inspection(t
 
 
 def test_disposable_worktree_is_removed_after_use(tmp_path: Path) -> None:
-    (tmp_path / "source.txt").write_text("source", encoding="utf-8")
-    with DisposableWorktree(tmp_path, lineage="root/child") as worktree:
+    repository = tmp_path / "plain-project"
+    repository.mkdir()
+    (repository / "source.txt").write_text("source", encoding="utf-8")
+    scratch_root = repository / ".local" / "tmp" / "worktrees"
+    created: list[Path] = []
+    with DisposableWorktree(repository, lineage="root/child") as worktree:
+        assert worktree.parent == scratch_root
         assert (worktree / "source.txt").read_text(encoding="utf-8") == "source"
         (worktree / "child.txt").write_text("child", encoding="utf-8")
+        created.append(worktree)
+        with DisposableWorktree(repository) as second_worktree:
+            assert second_worktree.parent == scratch_root
+            assert second_worktree != worktree
+            created.append(second_worktree)
+    assert all(not path.exists() for path in created)
+
+
+def _git(repository: Path, *arguments: str) -> subprocess.CompletedProcess[str]:
+    return subprocess.run(
+        ("git", "-C", str(repository), *arguments),
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+
+
+def _initialize_git_repository(repository: Path) -> None:
+    repository.mkdir(parents=True)
+    _git(repository, "init", "--initial-branch=main", "--quiet")
+    (repository / "tracked.txt").write_text("committed source\n", encoding="utf-8")
+    _git(repository, "add", "tracked.txt")
+    _git(
+        repository,
+        "-c",
+        "user.name=WP03 test",
+        "-c",
+        "user.email=wp03@example.invalid",
+        "-c",
+        "commit.gpgsign=false",
+        "commit",
+        "--quiet",
+        "-m",
+        "baseline",
+    )
+
+
+def _registered_worktree_paths(repository: Path) -> set[Path]:
+    output = _git(repository, "worktree", "list", "--porcelain").stdout
+    return {
+        Path(line.removeprefix("worktree ")).resolve() for line in output.splitlines() if line.startswith("worktree ")
+    }
+
+
+def _create_directory_link(link: Path, target: Path) -> None:
+    if os.name == "nt":
+        created = subprocess.run(
+            ("cmd.exe", "/c", "mklink", "/J", str(link), str(target)),
+            capture_output=True,
+            text=True,
+            timeout=5.0,
+            check=False,
+        )
+        assert created.returncode == 0, created.stderr or created.stdout
+        assert link.is_junction()
+        return
+
+    link.symlink_to(target, target_is_directory=True)
+    assert link.is_symlink()
+
+
+def _remove_directory_link(link: Path) -> None:
+    if link.is_junction():
+        link.rmdir()
+    else:
+        link.unlink(missing_ok=True)
+
+
+def test_disposable_git_worktree_uses_ref_without_copying_dirty_source(tmp_path: Path) -> None:
+    repository = tmp_path / "git-project"
+    _initialize_git_repository(repository)
+    (repository / "tracked.txt").write_text("dirty source\n", encoding="utf-8")
+    (repository / "untracked.txt").write_text("untracked source\n", encoding="utf-8")
+    source_status = _git(repository, "status", "--short").stdout
+    created: Path | None = None
+
+    with DisposableWorktree(repository) as worktree:
+        assert worktree.parent == repository / ".local" / "tmp" / "worktrees"
+        assert (worktree / "tracked.txt").read_text(encoding="utf-8") == "committed source\n"
+        assert not (worktree / "untracked.txt").exists()
+        assert worktree.resolve() in _registered_worktree_paths(repository)
         created = worktree
+
+    assert created is not None
     assert not created.exists()
+    assert created.resolve() not in _registered_worktree_paths(repository)
+    assert _git(repository, "status", "--short").stdout == source_status
+
+
+def test_disposable_worktree_copies_a_project_inside_an_ancestor_repository(tmp_path: Path) -> None:
+    ancestor = tmp_path / "ancestor"
+    _initialize_git_repository(ancestor)
+    project = ancestor / "workspace"
+    project.mkdir()
+    (project / "source.py").write_text("def answer(): return 42\n", encoding="utf-8")
+
+    with DisposableWorktree(project) as copy:
+        assert (copy / "source.py").is_file()
+        assert not (copy / "tracked.txt").exists()
+        assert not (copy / ".git").exists()
+
+    with pytest.raises(RuntimeError, match="requested Git ref requires"):
+        DisposableWorktree(project, ref="HEAD").__enter__()
+
+
+def test_disposable_git_worktree_cleans_up_after_body_failure(tmp_path: Path) -> None:
+    repository = tmp_path / "git-project"
+    _initialize_git_repository(repository)
+    created: Path | None = None
+
+    with pytest.raises(RuntimeError, match="synthetic body failure"), DisposableWorktree(repository) as worktree:
+        assert worktree.parent == repository / ".local" / "tmp" / "worktrees"
+        created = worktree
+        raise RuntimeError("synthetic body failure")
+
+    assert created is not None
+    assert not created.exists()
+    assert created.resolve() not in _registered_worktree_paths(repository)
+
+
+def test_disposable_worktree_rejects_redirected_scratch_root(tmp_path: Path) -> None:
+    repository = tmp_path / "project"
+    repository.mkdir()
+    outside = tmp_path / "outside"
+    outside.mkdir()
+    redirected_root = repository / ".local"
+    _create_directory_link(redirected_root, outside)
+    try:
+        with pytest.raises(ValueError), DisposableWorktree(repository):
+            pytest.fail("a redirected scratch escape must be rejected before copying")
+        assert list(outside.iterdir()) == []
+    finally:
+        _remove_directory_link(redirected_root)
+
+
+def test_disposable_worktree_does_not_fallback_when_requested_ref_is_missing(tmp_path: Path) -> None:
+    repository = tmp_path / "git-project"
+    _initialize_git_repository(repository)
+
+    with pytest.raises(RuntimeError), DisposableWorktree(repository, ref="refs/heads/does-not-exist"):
+        pytest.fail("a missing requested ref must not silently use the working tree")
+
+    assert len(_registered_worktree_paths(repository)) == 1
+    scratch = repository / ".local" / "tmp" / "worktrees"
+    assert not scratch.exists() or list(scratch.iterdir()) == []
+
+
+def test_disposable_worktree_rejects_nul_ref_before_creating_scratch(tmp_path: Path) -> None:
+    repository = tmp_path / "git-project"
+    _initialize_git_repository(repository)
+
+    with pytest.raises(ValueError, match="ref must not contain NUL"):
+        DisposableWorktree(repository, ref="HEAD\x00--help")
+
+    assert not (repository / ".local" / "tmp" / "worktrees").exists()
 
 
 def test_disposable_worktree_copy_excludes_private_local_data(tmp_path: Path) -> None:
@@ -92,17 +252,19 @@ def test_disposable_worktree_copy_excludes_private_local_data(tmp_path: Path) ->
 def test_disposable_worktree_copy_does_not_follow_symlinks(tmp_path: Path) -> None:
     repository = tmp_path / "plain-project"
     repository.mkdir()
-    outside = tmp_path / "outside-secret.txt"
-    outside.write_text("synthetic-external-value", encoding="utf-8")
-    link = repository / "linked-secret.txt"
-    try:
-        link.symlink_to(outside)
-    except OSError:
-        pytest.skip("symlink creation is unavailable on this Windows account")
+    outside = tmp_path / "outside"
+    outside.mkdir()
+    outside_secret = outside / "outside-secret.txt"
+    outside_secret.write_text("synthetic-external-value", encoding="utf-8")
+    link = repository / "linked-secrets"
+    _create_directory_link(link, outside)
 
-    with DisposableWorktree(repository) as worktree:
-        assert not (worktree / "linked-secret.txt").exists()
-        assert outside.read_text(encoding="utf-8") == "synthetic-external-value"
+    try:
+        with DisposableWorktree(repository) as worktree:
+            assert not (worktree / "linked-secrets").exists()
+            assert outside_secret.read_text(encoding="utf-8") == "synthetic-external-value"
+    finally:
+        _remove_directory_link(link)
 
 
 def test_disposable_worktree_copy_failure_removes_partial_temporary_tree(
@@ -130,6 +292,7 @@ def test_disposable_worktree_copy_failure_removes_partial_temporary_tree(
         DisposableWorktree(repository).__enter__()
 
     assert len(temporary_roots) == 1
+    assert temporary_roots[0].parent == repository / ".local" / "tmp" / "worktrees"
     assert not temporary_roots[0].exists()
 
 
@@ -153,7 +316,9 @@ def test_capability_floor_and_cost_are_separate() -> None:
 @pytest.mark.asyncio
 async def test_selective_evidence_board_feeds_root_without_transcript() -> None:
     board = AgentEvidenceBoard(max_entries=4)
-    packet = AgentResultPacket(run_id="run", task_id=1, parent_task_id=None, attempt_id=1, status="SUCCEEDED", summary="bounded evidence")
+    packet = AgentResultPacket(
+        run_id="run", task_id=1, parent_task_id=None, attempt_id=1, status="SUCCEEDED", summary="bounded evidence"
+    )
     board.publish(packet.to_message(recipient_id="root"))
     snapshot = board.snapshot()
     assert len(snapshot) == 1

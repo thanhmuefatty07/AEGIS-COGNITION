@@ -5,7 +5,7 @@ status: IN_EXECUTION
 authority: derived_from_checkout_and_evidence_manifest
 applies_to_commit: CHECKOUT_HEAD + WORKTREE_DIRTY
 created_at: 2026-08-26
-last_verified_at: 2026-09-10
+last_verified_at: 2026-10-17
 supersedes: browser-native-proposal-and-cumulative-harness-roadmap-as-execution-authority
 evidence_source: docs/architecture/not_verified_registry.json + deployment_policy.json + quality/registry
 execution_scope: current checkout; hosted parity remains separate
@@ -235,17 +235,22 @@ tranh nhau:
 | Canonical plan | `docs/architecture/AEGIS_LAB_RUNTIME_MASTER_PLAN.md` | kế hoạch triển khai Lab duy nhất | current, được cập nhật bằng evidence |
 | Normative constitution | `docs/ENGINEERING_CONSTITUTION.md` | quy tắc kỹ thuật/gate | authority; không tự thay yêu cầu người dùng |
 | Machine evidence | `docs/architecture/evidence/current.json`, `docs/architecture/not_verified_registry.json`, `docs/architecture/deployment_policy.json` | trạng thái kiểm chứng/release | machine source of truth; không sửa tay để “đóng” blocker |
-| Architecture/ADR | `docs/adr/*.md`, `docs/architecture/*.md` | hợp đồng và quyết định thành phần | tham chiếu theo scope, không phải Lab status |
+| Component contracts and ADRs | component architecture docs and ADRs not classified above | hợp đồng và quyết định của từng thành phần | authority theo scope; Lab-wide status thuộc plan này và machine evidence |
+| Scoped capability/product plans | `docs/architecture/AESE_INTEGRATED_DEVELOPMENT_CAPABILITY_PLAN.md`, `AESE_IMPLEMENTED_VERTICAL_SLICE.md`, `personal-code-map-implementation-plan.md`, `personal-diagram-workspace-design-plan.md` | proposal, contract và record của capability tương ứng | giữ authority trong scope; không thay thế Lab-wide status hoặc machine evidence |
 | Historical plans | `docs/archive/planning/agent-harness-continuation-plan.md`, `docs/archive/planning/architecture-optimization.md` | không có quyền current status | giữ lịch sử; bị plan này supersede khi nói về Lab |
 | Historical research and reports | local-only archive outside the repository | không có quyền promotion | retained as provenance only; current status comes from the tracked registry |
 | User-provided engineering constitution | `docs/ENGINEERING_CONSTITUTION.md` | canonical repository authority | external copies are references and do not override repository policy |
 
-Không phát hiện một plan-file độc lập nào khác ngoài các mục historical đã nêu
-trong lần quét này. “Trùng” về nội dung không được gộp bằng cách xóa file; file
-lịch sử vẫn tồn tại nhưng không được dùng làm current status. Việc ADR-012
-trùng số (`foundation-convergence` và `portability`) đã được xử lý bằng
-`ADR-015-portability.md` và compatibility stub giữ liên kết cũ; phần còn mở của
-B3.3 chỉ là generated view và metadata/link lint có owner rõ ràng.
+Trong phạm vi Lab Runtime, không có kế hoạch Lab-wide thứ hai được công nhận là
+current. Các kế hoạch capability/product có scope riêng được liệt kê ở trên; chúng
+là authority cho contract và gates trong scope đó, không thay thế Lab plan hoặc
+machine evidence. Trùng nội dung không tự nó là lý do xóa; tài liệu historical
+vẫn được giữ làm provenance và không được dùng làm current status. Việc trùng số ADR được giải quyết rõ ràng:
+portability có quyết định chuẩn ở `ADR-015-portability.md`.
+`ADR-012-portability.md` chỉ còn là stub giữ liên kết lịch sử.
+Foundation convergence mang số `ADR-021`.
+Phần còn mở của B3.3 chỉ là generated view và metadata/link lint
+có owner rõ ràng.
 
 ## 3. Blocker ledger — phải đóng trước khi nối quyền tự trị
 
@@ -637,7 +642,7 @@ SHA.
 
 Continuation Plan 4.100 dòng và Project Overview chứa nhiều claim lịch sử,
 future tense hoặc stale path. Browser proposal ghi “nothing implemented” dù
-collector/witness đã có một phần. ADR-012 bị trùng số.
+collector/witness đã có một phần. ADR-012 từng bị trùng số.
 
 **Gate đóng:** thêm metadata `document_id`, `type`, `status`, `authority`,
 `applies_to_commit`, `supersedes`, `last_verified`; archive proposal/report;
@@ -647,7 +652,10 @@ không cho hand-edited mega-status làm authority.
 commit-scope, status và supersedes; `document_inventory.json` phân loại các
 authority/status/user-doc scopes và historical paths; generated status view và
 metadata/link gate đã pass. Các tài liệu lịch sử vẫn được giữ nguyên để
-provenance, nhưng không còn được dùng làm current status. Quyết định portability từng mang số ADR-012 đã được chuyển sang ADR-015; đường dẫn cũ chỉ là compatibility stub. Phần còn lại của blocker này là
+provenance, nhưng không còn được dùng làm current status. Quyết định portability
+từng mang số ADR-012 đã được chuyển sang ADR-015; đường dẫn cũ chỉ còn là
+compatibility stub. Quyết định foundation convergence đã được đánh số
+ADR-021 để tránh trùng. Phần còn lại của blocker này là
 phải lặp gate trên final SHA và không để generated view bị sửa tay.
 
 ### B4 — Blocker release phụ thuộc external state
@@ -3183,7 +3191,9 @@ validator and environment digests, and the artifact self-hash remain mandatory.
 **AESE-S6 paired cost analysis (2026-09-04):** commit
 `4b3bad8f99f51f1b5ee948c6b5fdb9dcbf30a9a3` records three paired warm-cache
 runs in `quality/registry/current_cost_measurement.json` (artifact hash
-`2fa9559d52ba42e7c33fb74cac61f147b9af8692dcdbb14e6a3c5adeaf60ee55`). The
+`d97322080f7925f2784367fad6b4edee6e737eabbe88cd0bfc766b2d9a60f7eb`).
+The registry retains only the interpreter filename; historical measurements
+and their source revision are unchanged. The
 same Rust library workload measured 456 retained tests versus 14 `gt96`
 tests: legacy median/p95 **71.778817/98.718078 s**, selected
 median/p95 **1.521086/3.203918 s**, planner median/p95

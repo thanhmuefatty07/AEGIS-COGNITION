@@ -111,7 +111,9 @@ def test_mcp_oauth_partial_callback_is_bounded(monkeypatch, cancel, trickle):
             ThreadPoolExecutor(max_workers=2) as executor,
         ):
             connection.sendall(b"GET /oauth/callback HTTP/1.1\r\nHost:")
-            pending = executor.submit(callback.wait, state="expected", issuer="https://auth.example", require_issuer=False)
+            pending = executor.submit(
+                callback.wait, state="expected", issuer="https://auth.example", require_issuer=False
+            )
 
             def trickle_bytes():
                 while not stop_trickle.wait(0.05):
@@ -349,8 +351,7 @@ def test_mcp_oauth_scope_step_up_is_queued_then_explicitly_resumed_with_union():
     client = _client(exchange, store, resource_uri=resource_uri, browser_open=open_browser)
     challenge = {
         "www-authenticate": (
-            'Bearer error="insufficient_scope", scope="files:write", '
-            f'resource_metadata="{resource_metadata_url}"'
+            f'Bearer error="insufficient_scope", scope="files:write", resource_metadata="{resource_metadata_url}"'
         )
     }
     assert client.queue_step_up(challenge)
@@ -362,7 +363,11 @@ def test_mcp_oauth_scope_step_up_is_queued_then_explicitly_resumed_with_union():
     for callback_thread in callback_threads:
         callback_thread.join(timeout=2)
         assert not callback_thread.is_alive()
-    assert not any(dict(parse_qsl((body or b"").decode("ascii"))).get("grant_type") == "refresh_token" for _, _, _, body in requests if body)
+    assert not any(
+        dict(parse_qsl((body or b"").decode("ascii"))).get("grant_type") == "refresh_token"
+        for _, _, _, body in requests
+        if body
+    )
     completed = json.loads(store.values[secret_ref])
     assert completed["access_token"] == "upgraded-access"
     assert completed["requested_scopes"] == ["files:read", "offline_access", "files:write"]
@@ -611,3 +616,18 @@ def _client(
 
 def _json_response(value: dict[str, object]) -> OAuthHttpResponse:
     return OAuthHttpResponse(200, {"content-type": "application/json"}, json.dumps(value).encode("utf-8"))
+
+
+def test_mcp_http_provider_oauth_exchange_enforces_allowed_hosts():
+    from aegis_cognition.extensions import ExtensionError, McpHttpConfig, McpHttpProvider
+
+    provider = McpHttpProvider(
+        McpHttpConfig(
+            endpoint="https://mcp.example/mcp",
+            allowed_hosts=("mcp.example",),
+        )
+    )
+    with pytest.raises(ExtensionError, match="must be explicitly allowlisted"):
+        provider._mcp_oauth_exchange("https://attacker-idp.example/token", "POST", {}, b"grant_type=client_credentials", 4096)
+
+

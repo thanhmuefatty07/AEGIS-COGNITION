@@ -2,6 +2,10 @@
 
 Status: implemented as an opt-in coordination primitive; not the default `Agent` execution path yet.
 
+The accepted architecture and tradeoffs are recorded in
+[`ADR-016`](../adr/ADR-016-subagent-coordination.md); this companion describes
+the current implementation and its verification limits.
+
 ## Decision
 
 Use a manager/supervisor model. The root agent retains final synthesis. Child agents are bounded task handlers, not open-ended chatbots. A child receives one typed request and compact dependency result packets. Large observations, browser captures, source snapshots, and datasets are references to immutable artifacts rather than inline conversation history.

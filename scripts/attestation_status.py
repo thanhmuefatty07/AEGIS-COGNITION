@@ -18,7 +18,7 @@ def main() -> int:
     status = "PROVEN" if outcome == "success" else "NOT VERIFIED"
     try:
         head_sha = subprocess.check_output(["git", "rev-parse", "HEAD"], text=True).strip()
-    except (OSError, subprocess.CalledProcessError):
+    except OSError, subprocess.CalledProcessError:
         head_sha = "NOT VERIFIED"
     result = {
         "schema": "aegis-attestation-status-v1",
@@ -26,7 +26,9 @@ def main() -> int:
         "generated_at_utc": datetime.now(UTC).replace(microsecond=0).isoformat().replace("+00:00", "Z"),
         "provider_outcome": outcome,
         "status": status,
-        "reason": "provider attestation succeeded" if status == "PROVEN" else "provider capability unavailable or attestation persistence failed",
+        "reason": "provider attestation succeeded"
+        if status == "PROVEN"
+        else "provider capability unavailable or attestation persistence failed",
         "future_closure": "Run the same release workflow in a repository/provider where signed build provenance is supported, then verify subject digest.",
     }
     args.output.parent.mkdir(parents=True, exist_ok=True)

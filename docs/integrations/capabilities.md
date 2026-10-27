@@ -4,6 +4,10 @@ This document describes the local extension boundary for tools, skills, and
 MCP-backed capabilities. It is an adapter around the existing Lab runtime; it
 is not a second execution engine.
 
+The accepted architecture decision is
+[`ADR-017`](../adr/ADR-017-capability-extension-boundary.md); this guide
+describes the current implementation boundary.
+
 ## Terms and access boundary
 
 - The AEGIS harness owns discovery, validation, approval, dispatch, execution,
@@ -398,12 +402,16 @@ Wasmtime `48.0.4`, avoiding the second, older Wasmtime engine previously
 pulled in by Extism `1.30.0`. This is an exact upstream Git revision, not a
 stable Extism release. It reduces version divergence but adds a Git source and
 passed 12/12 focused WASM runtime tests in debug and release and 579/579
-`aegis-nerve` library tests in debug on Ubuntu 24.04 x86_64 with Rust 1.98.1.
+`aegis-nerve` library tests in debug on Ubuntu 24.04 x86_64 with Rust 1.99.1.
 Windows/macOS runtime parity and the Python 3.14 native-extension packaging
 path remain unverified. Replace this pin with a stable Extism release only
 after it targets the patched Wasmtime line and passes the same checks.
 Build-time and binary-size effects have not been measured. The Cargo feature
 remains optional for builds that do not package desktop WASM plugins.
+
+**Current security status:** the `48.0.4` resolution above is affected by later
+upstream advisories. Those historical test results do not establish that this
+version is currently patched; see the [current Wasmtime migration status](../architecture/WASMTIME_MIGRATION.md).
 
 Desktop live chat sends at most eight tool schemas to a provider. If more than
 eight tools are active, it exposes the built-in `aegis.tools.discover` metadata

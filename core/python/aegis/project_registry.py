@@ -113,7 +113,9 @@ class ProjectRegistry:
                 open_count=(previous.open_count + 1 if previous is not None else 1),
             )
             entries[project_id] = record
-            ordered = sorted(entries.values(), key=lambda item: (-item.last_opened_at_ms, item.path))[: self.max_projects]
+            ordered = sorted(entries.values(), key=lambda item: (-item.last_opened_at_ms, item.path))[
+                : self.max_projects
+            ]
             self._write(ordered)
             return record
 
@@ -159,12 +161,7 @@ class ProjectRegistry:
             # Status is derived from the current filesystem and is deliberately
             # not persisted.  The on-disk contract contains metadata only.
             "projects": [
-                {
-                    key: value
-                    for key, value in record.as_dict().items()
-                    if key != "status"
-                }
-                for record in records
+                {key: value for key, value in record.as_dict().items() if key != "status"} for record in records
             ],
         }
         encoded = (json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True) + "\n").encode("utf-8")

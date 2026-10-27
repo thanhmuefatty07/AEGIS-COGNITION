@@ -34,7 +34,11 @@ def evaluate_shadow_sealer_soak_gate(root: str | Path = ROOT) -> dict[str, Any]:
         _check("hot_submit_timings", _timing_window(report, "hot_submit", samples)),
         _check("hot_submit_gate", report.get("hot_submit_gate_ns") == EXPECTED_HOT_SUBMIT_GATE_NS),
         _check("hot_submit_under_gate", report.get("hot_submit_under_gate") is True),
-        _check("hot_submit_max_under_gate", _positive_int(report.get("hot_submit_max_ns")) and report.get("hot_submit_max_ns") < EXPECTED_HOT_SUBMIT_GATE_NS),
+        _check(
+            "hot_submit_max_under_gate",
+            _positive_int(report.get("hot_submit_max_ns"))
+            and report.get("hot_submit_max_ns") < EXPECTED_HOT_SUBMIT_GATE_NS,
+        ),
         _check("hot_before_cold_receipts", report.get("hot_submissions_completed_before_receipts") is True),
         _check("queued_admissions", report.get("queued_admissions") == EXPECTED_SAMPLE_COUNT),
         _check("backpressure_rejections", report.get("backpressure_rejections") == 0),
@@ -132,7 +136,7 @@ def _hash_array(value: Any) -> bool:
 def _read_json(path: Path) -> dict[str, Any]:
     try:
         payload = json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError, UnicodeDecodeError):
+    except OSError, json.JSONDecodeError, UnicodeDecodeError:
         return {}
     return payload if isinstance(payload, dict) else {}
 

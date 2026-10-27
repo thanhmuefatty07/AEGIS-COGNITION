@@ -116,11 +116,7 @@ class ConversationExecution:
             checkpoint_seq=int(data["checkpoint_seq"]),
             revision=int(data["revision"]),
             started_at_ms=int(data["started_at_ms"]),
-            finished_at_ms=(
-                int(data["finished_at_ms"])
-                if data.get("finished_at_ms") is not None
-                else None
-            ),
+            finished_at_ms=(int(data["finished_at_ms"]) if data.get("finished_at_ms") is not None else None),
         )
 
 
@@ -165,26 +161,14 @@ class ConversationToolCall:
             call_id=str(data["call_id"]),
             conversation_id=str(data["conversation_id"]),
             request_turn_id=str(data["request_turn_id"]),
-            result_turn_id=(
-                str(data["result_turn_id"])
-                if data.get("result_turn_id") is not None
-                else None
-            ),
+            result_turn_id=(str(data["result_turn_id"]) if data.get("result_turn_id") is not None else None),
             tool_name=str(data["tool_name"]),
             arguments_json=str(data["arguments_json"]),
-            result_content=(
-                str(data["result_content"])
-                if data.get("result_content") is not None
-                else None
-            ),
+            result_content=(str(data["result_content"]) if data.get("result_content") is not None else None),
             status=str(data["status"]),
             revision=int(data["revision"]),
             created_at_ms=int(data["created_at_ms"]),
-            completed_at_ms=(
-                int(data["completed_at_ms"])
-                if data.get("completed_at_ms") is not None
-                else None
-            ),
+            completed_at_ms=(int(data["completed_at_ms"]) if data.get("completed_at_ms") is not None else None),
         )
 
 
@@ -202,14 +186,10 @@ class ConversationSnapshot:
         return cls(
             conversation=ConversationRecord.from_mapping(data["conversation"]),
             turns=tuple(
-                ConversationTurn.from_mapping(item)
-                for item in data.get("turns", [])
-                if isinstance(item, dict)
+                ConversationTurn.from_mapping(item) for item in data.get("turns", []) if isinstance(item, dict)
             ),
             parts=tuple(
-                ConversationPart.from_mapping(item)
-                for item in data.get("parts", [])
-                if isinstance(item, dict)
+                ConversationPart.from_mapping(item) for item in data.get("parts", []) if isinstance(item, dict)
             ),
             executions=tuple(
                 ConversationExecution.from_mapping(item)
@@ -222,9 +202,7 @@ class ConversationSnapshot:
                 if isinstance(item, dict)
             ),
             tool_calls=tuple(
-                ConversationToolCall.from_mapping(item)
-                for item in data.get("tool_calls", [])
-                if isinstance(item, dict)
+                ConversationToolCall.from_mapping(item) for item in data.get("tool_calls", []) if isinstance(item, dict)
             ),
         )
 
@@ -273,11 +251,7 @@ class ConversationManager:
     def list(self, owner_id: str) -> tuple[ConversationRecord, ...]:
         self._require_text(owner_id, "owner_id")
         raw = json.loads(self._native.aegis_list_conversations(owner_id))
-        return tuple(
-            ConversationRecord.from_mapping(item)
-            for item in raw.get("records", [])
-            if isinstance(item, dict)
-        )
+        return tuple(ConversationRecord.from_mapping(item) for item in raw.get("records", []) if isinstance(item, dict))
 
     def read(self, conversation_id: str, *, owner_id: str) -> ConversationSnapshot:
         self._require_text(conversation_id, "conversation_id")

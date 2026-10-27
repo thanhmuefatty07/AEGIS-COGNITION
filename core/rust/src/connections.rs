@@ -63,6 +63,8 @@ pub struct ModelDescriptorRecord {
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct EgressGrantRecord {
     pub grant_id: String,
+    pub workspace_id: String,
+    pub owner_id: String,
     pub connection_id: String,
     pub connection_revision: u64,
     pub data_class: String,
@@ -111,23 +113,78 @@ impl ConnectionRepository {
                  FOREIGN KEY (connection_id) REFERENCES provider_connections(connection_id)
              );
              CREATE INDEX IF NOT EXISTS model_descriptors_connection_idx
-                 ON model_descriptors(connection_id, model_id);
-             CREATE TABLE IF NOT EXISTS connection_egress_grants (
-                 grant_id TEXT PRIMARY KEY NOT NULL,
-                 connection_id TEXT NOT NULL,
-                 connection_revision INTEGER NOT NULL,
-                 data_class TEXT NOT NULL,
-                 operation TEXT NOT NULL,
-                 expires_at_ms INTEGER,
-                 revision INTEGER NOT NULL,
-                 updated_at_ms INTEGER NOT NULL,
-                 revoked_at_ms INTEGER,
-                 UNIQUE(connection_id, data_class, operation),
-                 FOREIGN KEY (connection_id) REFERENCES provider_connections(connection_id)
-             );
-             CREATE INDEX IF NOT EXISTS connection_egress_grants_lookup_idx
-                 ON connection_egress_grants(connection_id, data_class, operation);",
+                 ON model_descriptors(connection_id, model_id);",
         )?;
+        let (table_exists, has_workspace_id) = {
+            let mut stmt = connection.prepare("PRAGMA table_info(connection_egress_grants)")?;
+            let mut rows = stmt.query([])?;
+            let mut exists = false;
+            let mut found_ws = false;
+            while let Some(row) = rows.next()? {
+                exists = true;
+                let name: String = row.get(1)?;
+                if name == "workspace_id" {
+                    found_ws = true;
+                }
+            }
+            (exists, found_ws)
+        };
+        if !table_exists {
+            connection.execute_batch(
+                "CREATE TABLE connection_egress_grants (
+                     grant_id TEXT PRIMARY KEY NOT NULL,
+                     workspace_id TEXT NOT NULL DEFAULT 'default',
+                     owner_id TEXT NOT NULL DEFAULT 'local-profile',
+                     connection_id TEXT NOT NULL,
+                     connection_revision INTEGER NOT NULL,
+                     data_class TEXT NOT NULL,
+                     operation TEXT NOT NULL,
+                     expires_at_ms INTEGER,
+                     revision INTEGER NOT NULL,
+                     updated_at_ms INTEGER NOT NULL,
+                     revoked_at_ms INTEGER,
+                     UNIQUE(workspace_id, owner_id, connection_id, data_class, operation),
+                     FOREIGN KEY (connection_id) REFERENCES provider_connections(connection_id)
+                 );
+                 CREATE INDEX IF NOT EXISTS connection_egress_grants_lookup_idx
+                     ON connection_egress_grants(workspace_id, owner_id, connection_id, data_class, operation);",
+            )?;
+        } else if !has_workspace_id {
+            connection.execute_batch(
+                "ALTER TABLE connection_egress_grants RENAME TO connection_egress_grants_old;
+                 DROP INDEX IF EXISTS connection_egress_grants_lookup_idx;
+                 CREATE TABLE connection_egress_grants (
+                     grant_id TEXT PRIMARY KEY NOT NULL,
+                     workspace_id TEXT NOT NULL DEFAULT 'default',
+                     owner_id TEXT NOT NULL DEFAULT 'local-profile',
+                     connection_id TEXT NOT NULL,
+                     connection_revision INTEGER NOT NULL,
+                     data_class TEXT NOT NULL,
+                     operation TEXT NOT NULL,
+                     expires_at_ms INTEGER,
+                     revision INTEGER NOT NULL,
+                     updated_at_ms INTEGER NOT NULL,
+                     revoked_at_ms INTEGER,
+                     UNIQUE(workspace_id, owner_id, connection_id, data_class, operation),
+                     FOREIGN KEY (connection_id) REFERENCES provider_connections(connection_id)
+                 );
+                 INSERT INTO connection_egress_grants
+                     (grant_id, workspace_id, owner_id, connection_id, connection_revision,
+                      data_class, operation, expires_at_ms, revision, updated_at_ms, revoked_at_ms)
+                 SELECT
+                     grant_id, 'default', 'local-profile', connection_id, connection_revision,
+                      data_class, operation, expires_at_ms, revision, updated_at_ms, revoked_at_ms
+                 FROM connection_egress_grants_old;
+                 DROP TABLE connection_egress_grants_old;
+                 CREATE INDEX IF NOT EXISTS connection_egress_grants_lookup_idx
+                     ON connection_egress_grants(workspace_id, owner_id, connection_id, data_class, operation);",
+            )?;
+        } else {
+            connection.execute_batch(
+                "CREATE INDEX IF NOT EXISTS connection_egress_grants_lookup_idx
+                     ON connection_egress_grants(workspace_id, owner_id, connection_id, data_class, operation);",
+            )?;
+        }
         Ok(Self { connection })
     }
 
@@ -424,6 +481,8 @@ impl ConnectionRepository {
 
     pub fn grant_egress(
         &mut self,
+        workspace_id: &str,
+        owner_id: &str,
         grant_id: &str,
         connection_id: &str,
         data_class: &str,
@@ -433,6 +492,8 @@ impl ConnectionRepository {
         updated_at_ms: u64,
     ) -> Result<EgressGrantRecord, ConnectionRepositoryError> {
         validate_egress(
+            workspace_id,
+            owner_id,
             grant_id,
             connection_id,
             data_class,
@@ -462,8 +523,8 @@ impl ConnectionRepository {
         let current: Option<i64> = transaction
             .query_row(
                 "SELECT revision FROM connection_egress_grants
-                 WHERE connection_id = ?1 AND data_class = ?2 AND operation = ?3",
-                params![connection_id, data_class, operation],
+                 WHERE workspace_id = ?1 AND owner_id = ?2 AND connection_id = ?3 AND data_class = ?4 AND operation = ?5",
+                params![workspace_id, owner_id, connection_id, data_class, operation],
                 |row| row.get(0),
             )
             .optional()?;
@@ -488,10 +549,10 @@ impl ConnectionRepository {
             ))?;
         transaction.execute(
             "INSERT INTO connection_egress_grants
-                (grant_id, connection_id, connection_revision, data_class, operation,
+                (grant_id, workspace_id, owner_id, connection_id, connection_revision, data_class, operation,
                  expires_at_ms, revision, updated_at_ms, revoked_at_ms)
-             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, NULL)
-             ON CONFLICT(connection_id, data_class, operation) DO UPDATE SET
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, NULL)
+             ON CONFLICT(workspace_id, owner_id, connection_id, data_class, operation) DO UPDATE SET
                  grant_id = excluded.grant_id,
                  connection_revision = excluded.connection_revision,
                  expires_at_ms = excluded.expires_at_ms,
@@ -500,6 +561,8 @@ impl ConnectionRepository {
                  revoked_at_ms = NULL",
             params![
                 grant_id,
+                workspace_id,
+                owner_id,
                 connection_id,
                 connection_revision,
                 data_class,
@@ -519,23 +582,25 @@ impl ConnectionRepository {
             ],
         )?;
         transaction.commit()?;
-        self.get_egress_grant(connection_id, data_class, operation)?
+        self.get_egress_grant(workspace_id, owner_id, connection_id, data_class, operation)?
             .ok_or(ConnectionRepositoryError::NotFound)
     }
 
     pub fn get_egress_grant(
         &self,
+        workspace_id: &str,
+        owner_id: &str,
         connection_id: &str,
         data_class: &str,
         operation: &str,
     ) -> Result<Option<EgressGrantRecord>, ConnectionRepositoryError> {
         self.connection
             .query_row(
-                "SELECT grant_id, connection_id, connection_revision, data_class, operation,
+                "SELECT grant_id, workspace_id, owner_id, connection_id, connection_revision, data_class, operation,
                         expires_at_ms, revision, updated_at_ms, revoked_at_ms
                  FROM connection_egress_grants
-                 WHERE connection_id = ?1 AND data_class = ?2 AND operation = ?3",
-                params![connection_id, data_class, operation],
+                 WHERE workspace_id = ?1 AND owner_id = ?2 AND connection_id = ?3 AND data_class = ?4 AND operation = ?5",
+                params![workspace_id, owner_id, connection_id, data_class, operation],
                 row_to_egress_grant,
             )
             .optional()
@@ -544,11 +609,18 @@ impl ConnectionRepository {
 
     pub fn revoke_egress(
         &mut self,
+        workspace_id: &str,
+        owner_id: &str,
         grant_id: &str,
         expected_revision: u64,
         revoked_at_ms: u64,
     ) -> Result<EgressGrantRecord, ConnectionRepositoryError> {
-        if grant_id.trim().is_empty() || grant_id.len() > MAX_GRANT_ID_BYTES || revoked_at_ms == 0 {
+        if workspace_id.trim().is_empty()
+            || owner_id.trim().is_empty()
+            || grant_id.trim().is_empty()
+            || grant_id.len() > MAX_GRANT_ID_BYTES
+            || revoked_at_ms == 0
+        {
             return Err(ConnectionRepositoryError::InvalidInput(
                 "invalid egress revocation",
             ));
@@ -556,8 +628,8 @@ impl ConnectionRepository {
         let transaction = self.connection.transaction()?;
         let current: Option<i64> = transaction
             .query_row(
-                "SELECT revision FROM connection_egress_grants WHERE grant_id = ?1",
-                params![grant_id],
+                "SELECT revision FROM connection_egress_grants WHERE workspace_id = ?1 AND owner_id = ?2 AND grant_id = ?3",
+                params![workspace_id, owner_id, grant_id],
                 |row| row.get(0),
             )
             .optional()?;
@@ -578,13 +650,15 @@ impl ConnectionRepository {
         transaction.execute(
             "UPDATE connection_egress_grants
              SET revision = ?1, revoked_at_ms = ?2, updated_at_ms = ?2
-             WHERE grant_id = ?3 AND revision = ?4",
+             WHERE workspace_id = ?3 AND owner_id = ?4 AND grant_id = ?5 AND revision = ?6",
             params![
                 i64::try_from(next_revision)
                     .map_err(|_| ConnectionRepositoryError::Conflict("revision out of range"))?,
                 i64::try_from(revoked_at_ms).map_err(|_| {
                     ConnectionRepositoryError::InvalidInput("timestamp out of range")
                 })?,
+                workspace_id,
+                owner_id,
                 grant_id,
                 i64::try_from(expected_revision)
                     .map_err(|_| ConnectionRepositoryError::Conflict("revision out of range"))?,
@@ -593,10 +667,10 @@ impl ConnectionRepository {
         transaction.commit()?;
         self.connection
             .query_row(
-                "SELECT grant_id, connection_id, connection_revision, data_class, operation,
+                "SELECT grant_id, workspace_id, owner_id, connection_id, connection_revision, data_class, operation,
                         expires_at_ms, revision, updated_at_ms, revoked_at_ms
-                 FROM connection_egress_grants WHERE grant_id = ?1",
-                params![grant_id],
+                 FROM connection_egress_grants WHERE workspace_id = ?1 AND owner_id = ?2 AND grant_id = ?3",
+                params![workspace_id, owner_id, grant_id],
                 row_to_egress_grant,
             )
             .map_err(Into::into)
@@ -604,12 +678,16 @@ impl ConnectionRepository {
 
     pub fn egress_allowed(
         &self,
+        workspace_id: &str,
+        owner_id: &str,
         connection_id: &str,
         data_class: &str,
         operation: &str,
         now_ms: u64,
     ) -> Result<bool, ConnectionRepositoryError> {
-        if connection_id.trim().is_empty()
+        if workspace_id.trim().is_empty()
+            || owner_id.trim().is_empty()
+            || connection_id.trim().is_empty()
             || data_class.trim().is_empty()
             || operation.trim().is_empty()
             || now_ms == 0
@@ -625,8 +703,8 @@ impl ConnectionRepository {
                         g.revoked_at_ms, c.enabled
                  FROM connection_egress_grants g
                  JOIN provider_connections c ON c.connection_id = g.connection_id
-                 WHERE g.connection_id = ?1 AND g.data_class = ?2 AND g.operation = ?3",
-                params![connection_id, data_class, operation],
+                 WHERE g.workspace_id = ?1 AND g.owner_id = ?2 AND g.connection_id = ?3 AND g.data_class = ?4 AND g.operation = ?5",
+                params![workspace_id, owner_id, connection_id, data_class, operation],
                 |row| {
                     Ok((
                         row.get(0)?,
@@ -806,6 +884,8 @@ fn validate_model(
 }
 
 fn validate_egress(
+    workspace_id: &str,
+    owner_id: &str,
     grant_id: &str,
     connection_id: &str,
     data_class: &str,
@@ -813,7 +893,11 @@ fn validate_egress(
     expires_at_ms: Option<u64>,
     updated_at_ms: u64,
 ) -> Result<(), ConnectionRepositoryError> {
-    if grant_id.trim().is_empty()
+    if workspace_id.trim().is_empty()
+        || workspace_id.len() > 128
+        || owner_id.trim().is_empty()
+        || owner_id.len() > 128
+        || grant_id.trim().is_empty()
         || grant_id.len() > MAX_GRANT_ID_BYTES
         || connection_id.trim().is_empty()
         || data_class.trim().is_empty()
@@ -890,19 +974,21 @@ fn row_to_model(row: &rusqlite::Row<'_>) -> rusqlite::Result<ModelDescriptorReco
 fn row_to_egress_grant(row: &rusqlite::Row<'_>) -> rusqlite::Result<EgressGrantRecord> {
     Ok(EgressGrantRecord {
         grant_id: row.get(0)?,
-        connection_id: row.get(1)?,
-        connection_revision: parse_sql_u64(row.get(2)?, 2)?,
-        data_class: row.get(3)?,
-        operation: row.get(4)?,
+        workspace_id: row.get(1)?,
+        owner_id: row.get(2)?,
+        connection_id: row.get(3)?,
+        connection_revision: parse_sql_u64(row.get(4)?, 4)?,
+        data_class: row.get(5)?,
+        operation: row.get(6)?,
         expires_at_ms: row
-            .get::<_, Option<i64>>(5)?
-            .map(|value| parse_sql_u64(value, 5))
+            .get::<_, Option<i64>>(7)?
+            .map(|value| parse_sql_u64(value, 7))
             .transpose()?,
-        revision: parse_sql_u64(row.get(6)?, 6)?,
-        updated_at_ms: parse_sql_u64(row.get(7)?, 7)?,
+        revision: parse_sql_u64(row.get(8)?, 8)?,
+        updated_at_ms: parse_sql_u64(row.get(9)?, 9)?,
         revoked_at_ms: row
-            .get::<_, Option<i64>>(8)?
-            .map(|value| parse_sql_u64(value, 8))
+            .get::<_, Option<i64>>(10)?
+            .map(|value| parse_sql_u64(value, 10))
             .transpose()?,
     })
 }
@@ -1045,6 +1131,8 @@ mod tests {
             .unwrap();
         let grant = repository
             .grant_egress(
+                "default",
+                "local-profile",
                 "grant-1",
                 "local",
                 "PROJECT_TEXT",
@@ -1055,9 +1143,13 @@ mod tests {
             )
             .unwrap();
         assert_eq!(grant.revision, 1);
+        assert_eq!(grant.workspace_id, "default");
+        assert_eq!(grant.owner_id, "local-profile");
         assert!(
             repository
                 .egress_allowed(
+                    "default",
+                    "local-profile",
                     "local",
                     "PROJECT_TEXT",
                     "foreground_inference",
@@ -1080,6 +1172,8 @@ mod tests {
         assert!(
             !repository
                 .egress_allowed(
+                    "default",
+                    "local-profile",
                     "local",
                     "PROJECT_TEXT",
                     "foreground_inference",
@@ -1088,9 +1182,220 @@ mod tests {
                 .unwrap()
         );
         let revoked = repository
-            .revoke_egress("grant-1", 1, 1_700_000_000_005)
+            .revoke_egress("default", "local-profile", "grant-1", 1, 1_700_000_000_005)
             .unwrap();
         assert_eq!(revoked.revision, 2);
         assert!(revoked.revoked_at_ms.is_some());
+    }
+
+    #[test]
+    fn egress_grants_isolated_by_workspace_and_owner() {
+        let dir = tempdir().unwrap();
+        let mut repository = ConnectionRepository::open(dir.path().join("state.db")).unwrap();
+        repository
+            .upsert_connection(
+                "local",
+                "openai-compatible",
+                "http://127.0.0.1:8080/v1",
+                "chat-completions",
+                None,
+                true,
+                None,
+                1_700_000_000_000,
+            )
+            .unwrap();
+
+        // Grant in ws-a for user-a
+        let grant_a = repository
+            .grant_egress(
+                "ws-a",
+                "user-a",
+                "grant-a",
+                "local",
+                "PROJECT_TEXT",
+                "foreground_inference",
+                Some(1_800_000_000_000),
+                None,
+                1_700_000_000_001,
+            )
+            .unwrap();
+        assert_eq!(grant_a.revision, 1);
+
+        // ws-a / user-a is allowed
+        assert!(
+            repository
+                .egress_allowed(
+                    "ws-a",
+                    "user-a",
+                    "local",
+                    "PROJECT_TEXT",
+                    "foreground_inference",
+                    1_700_000_000_002
+                )
+                .unwrap()
+        );
+
+        // Isolation: different workspace or different owner must be denied
+        assert!(
+            !repository
+                .egress_allowed(
+                    "ws-b",
+                    "user-a",
+                    "local",
+                    "PROJECT_TEXT",
+                    "foreground_inference",
+                    1_700_000_000_002
+                )
+                .unwrap()
+        );
+        assert!(
+            !repository
+                .egress_allowed(
+                    "ws-a",
+                    "user-b",
+                    "local",
+                    "PROJECT_TEXT",
+                    "foreground_inference",
+                    1_700_000_000_002
+                )
+                .unwrap()
+        );
+        assert!(
+            !repository
+                .egress_allowed(
+                    "ws-b",
+                    "user-b",
+                    "local",
+                    "PROJECT_TEXT",
+                    "foreground_inference",
+                    1_700_000_000_002
+                )
+                .unwrap()
+        );
+
+        // Cross-workspace revocation fails
+        assert!(
+            repository
+                .revoke_egress("ws-b", "user-a", "grant-a", 1, 1_700_000_000_003)
+                .is_err()
+        );
+
+        // Grant in ws-b for user-b has independent revision
+        let grant_b = repository
+            .grant_egress(
+                "ws-b",
+                "user-b",
+                "grant-b",
+                "local",
+                "PROJECT_TEXT",
+                "foreground_inference",
+                Some(1_800_000_000_000),
+                None,
+                1_700_000_000_004,
+            )
+            .unwrap();
+        assert_eq!(grant_b.revision, 1);
+
+        // Revoke grant-a in ws-a
+        let revoked_a = repository
+            .revoke_egress("ws-a", "user-a", "grant-a", 1, 1_700_000_000_005)
+            .unwrap();
+        assert_eq!(revoked_a.revision, 2);
+
+        // ws-a is now denied, but ws-b remains permitted
+        assert!(
+            !repository
+                .egress_allowed(
+                    "ws-a",
+                    "user-a",
+                    "local",
+                    "PROJECT_TEXT",
+                    "foreground_inference",
+                    1_700_000_000_006
+                )
+                .unwrap()
+        );
+        assert!(
+            repository
+                .egress_allowed(
+                    "ws-b",
+                    "user-b",
+                    "local",
+                    "PROJECT_TEXT",
+                    "foreground_inference",
+                    1_700_000_000_006
+                )
+                .unwrap()
+        );
+    }
+
+    #[test]
+    fn egress_grants_table_migrates_when_workspace_id_is_missing() {
+        let dir = tempdir().unwrap();
+        let db_path = dir.path().join("legacy.db");
+
+        // Manually create database with legacy table schema (no workspace_id / owner_id)
+        {
+            let conn = rusqlite::Connection::open(&db_path).unwrap();
+            conn.execute_batch(
+                "CREATE TABLE provider_connections (
+                     connection_id TEXT PRIMARY KEY NOT NULL,
+                     provider_kind TEXT NOT NULL,
+                     endpoint TEXT NOT NULL,
+                     protocol TEXT NOT NULL,
+                     secret_ref TEXT,
+                     enabled INTEGER NOT NULL,
+                     revision INTEGER NOT NULL,
+                     updated_at_ms INTEGER NOT NULL
+                 );
+                 CREATE TABLE connection_egress_grants (
+                     grant_id TEXT PRIMARY KEY NOT NULL,
+                     connection_id TEXT NOT NULL,
+                     connection_revision INTEGER NOT NULL,
+                     data_class TEXT NOT NULL,
+                     operation TEXT NOT NULL,
+                     expires_at_ms INTEGER,
+                     revision INTEGER NOT NULL,
+                     updated_at_ms INTEGER NOT NULL,
+                     revoked_at_ms INTEGER,
+                     UNIQUE(connection_id, data_class, operation),
+                     FOREIGN KEY (connection_id) REFERENCES provider_connections(connection_id)
+                 );
+                 INSERT INTO provider_connections VALUES
+                     ('local', 'openai-compatible', 'http://127.0.0.1:8080/v1', 'chat-completions', NULL, 1, 1, 1700000000000);
+                 INSERT INTO connection_egress_grants VALUES
+                     ('legacy-grant', 'local', 1, 'PROJECT_TEXT', 'foreground_inference', 1800000000000, 1, 1700000000000, NULL);",
+            ).unwrap();
+        }
+
+        // Open repository which should perform the migration
+        let repository = ConnectionRepository::open(&db_path).unwrap();
+        let grant = repository
+            .get_egress_grant(
+                "default",
+                "local-profile",
+                "local",
+                "PROJECT_TEXT",
+                "foreground_inference",
+            )
+            .unwrap()
+            .expect("legacy grant should be migrated");
+
+        assert_eq!(grant.grant_id, "legacy-grant");
+        assert_eq!(grant.workspace_id, "default");
+        assert_eq!(grant.owner_id, "local-profile");
+
+        assert!(
+            repository
+                .egress_allowed(
+                    "default",
+                    "local-profile",
+                    "local",
+                    "PROJECT_TEXT",
+                    "foreground_inference",
+                    1_700_000_000_001
+                )
+                .unwrap()
+        );
     }
 }

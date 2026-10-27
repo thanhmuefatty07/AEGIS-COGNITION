@@ -258,11 +258,7 @@ class AegisAdapter:
             if cache_plan is not None
             else None
         )
-        prefix_hash = (
-            selected_prefix_hash
-            if isinstance(system_context, str)
-            else None
-        )
+        prefix_hash = selected_prefix_hash if isinstance(system_context, str) else None
         usage = extract_cache_usage(usage_source)
         self.last_cache_observation = CacheObservation.now(
             provider=str(provider or self.provider or "unknown"),
@@ -489,7 +485,9 @@ class AegisAdapter:
             asyncio.get_running_loop()
         except RuntimeError:
             return asyncio.run(self.capture_browser_action_hot_first(**kwargs))
-        raise RuntimeError("capture_browser_action_hot_first_sync cannot be called while an event loop is already running")
+        raise RuntimeError(
+            "capture_browser_action_hot_first_sync cannot be called while an event loop is already running"
+        )
 
 
 Agent = AegisAdapter
@@ -506,7 +504,7 @@ def _bind_browser_action(action: Any, browser_session: Any) -> Any:
 def _accepts_browser_session(action: Any) -> bool:
     try:
         signature = inspect.signature(action)
-    except (TypeError, ValueError):
+    except TypeError, ValueError:
         return False
     for parameter in signature.parameters.values():
         if parameter.kind == inspect.Parameter.VAR_POSITIONAL:
@@ -585,6 +583,7 @@ class AegisAgent(AegisAdapter):
     """
     Friendly DX wrapper around AegisAdapter.
     """
+
     def __init__(self, *args: Any, max_retries: int = 3, **kwargs: Any) -> None:
         if not isinstance(max_retries, int) or isinstance(max_retries, bool) or max_retries < 1:
             raise ValueError("max_retries must be a positive integer")
@@ -601,7 +600,7 @@ class AegisAgent(AegisAdapter):
                 retries += 1
                 if retries >= self.max_retries:
                     raise exc
-                await asyncio.sleep(2 ** retries)
+                await asyncio.sleep(2**retries)
 
 
 try:

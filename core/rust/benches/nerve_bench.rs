@@ -192,8 +192,11 @@ fn bench_zero_copy_roundtrip(c: &mut Criterion) {
         b.iter(|| {
             let zero_copy =
                 message_to_zero_copy(black_box(&message)).expect("message should be valid");
-            let rebuilt =
-                zero_copy_to_message(black_box(&zero_copy)).expect("zero-copy should be valid");
+            // SAFETY: `zero_copy` points into the immutable `message`, which
+            // remains alive for the duration of this benchmark iteration.
+            let rebuilt = unsafe {
+                zero_copy_to_message(black_box(&zero_copy)).expect("zero-copy should be valid")
+            };
             black_box((rebuilt.header.payload_len, rebuilt.payload))
         })
     });

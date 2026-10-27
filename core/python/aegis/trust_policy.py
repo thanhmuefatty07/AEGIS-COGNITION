@@ -58,9 +58,7 @@ def trust_policy_payload(trust_level: str) -> dict[str, Any]:
 def trust_policy_hash(trust_level: str) -> str:
     """Return the canonical BLAKE2b-256 digest of a policy subject."""
 
-    encoded = json.dumps(
-        trust_policy_payload(trust_level), sort_keys=True, separators=(",", ":")
-    ).encode("utf-8")
+    encoded = json.dumps(trust_policy_payload(trust_level), sort_keys=True, separators=(",", ":")).encode("utf-8")
     return hashlib.blake2b(encoded, digest_size=32).hexdigest()
 
 

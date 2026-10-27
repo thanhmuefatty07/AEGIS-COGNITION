@@ -107,19 +107,22 @@ def evaluate_governance(root: str | Path = ROOT) -> dict:
     checks.append(
         GovernanceGateCheck(
             "e2e_scenario_gate",
-            all(stage in governance_rs or stage in tests_rs for stage in [
-                "GoalIntake",
-                "TaskPlan",
-                "ContextPack",
-                "TypedToolIr",
-                "PolicyProof",
-                "ToolExecution",
-                "EvidenceIngest",
-                "ReplayAppend",
-                "CheckpointSeal",
-                "MemoryCandidate",
-                "NextAction",
-            ])
+            all(
+                stage in governance_rs or stage in tests_rs
+                for stage in [
+                    "GoalIntake",
+                    "TaskPlan",
+                    "ContextPack",
+                    "TypedToolIr",
+                    "PolicyProof",
+                    "ToolExecution",
+                    "EvidenceIngest",
+                    "ReplayAppend",
+                    "CheckpointSeal",
+                    "MemoryCandidate",
+                    "NextAction",
+                ]
+            )
             and "E2EScenarioProof" in governance_rs
             and "governance_e2e_scenario_requires_full_goal_to_next_action_stage_chain" in tests_rs,
             "E2E scenario must cover goal->next-action with replay/evidence hashes.",
@@ -133,10 +136,7 @@ def evaluate_governance(root: str | Path = ROOT) -> dict:
         "overall_ok": failed == 0,
         "passed": passed,
         "failed": failed,
-        "checks": [
-            {"name": check.name, "ok": check.ok, "detail": check.detail}
-            for check in checks
-        ],
+        "checks": [{"name": check.name, "ok": check.ok, "detail": check.detail} for check in checks],
     }
 
 

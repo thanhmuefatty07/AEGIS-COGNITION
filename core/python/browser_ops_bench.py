@@ -179,9 +179,7 @@ class BrowserOpsBench:
     def __init__(self, output_root: str | Path, suite_name: str = "BrowserOpsBench") -> None:
         self.output_root = Path(output_root)
         self.suite_name = suite_name
-        self.adapter = BrowserRuntimeCollectorAdapter(
-            BrowserLiveCollectorProducer(self.output_root / "collector-runs")
-        )
+        self.adapter = BrowserRuntimeCollectorAdapter(BrowserLiveCollectorProducer(self.output_root / "collector-runs"))
 
     async def run_task(self, browser_session: Any, task: BrowserOpsBenchTask) -> BrowserOpsBenchTaskRecord:
         task.validate()
@@ -204,8 +202,7 @@ class BrowserOpsBench:
                 error=f"{type(exc).__name__}: {exc}",
             )
         predicate_results = tuple(
-            predicate.evaluate(capture.producer_run.artifact_paths)
-            for predicate in task.predicates
+            predicate.evaluate(capture.producer_run.artifact_paths) for predicate in task.predicates
         )
         return BrowserOpsBenchTaskRecord(
             task_id=task.task_id,

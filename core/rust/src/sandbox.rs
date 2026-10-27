@@ -259,6 +259,7 @@ pub const QUICKJS_INVOCATION_MAX_SCRIPT_BYTES: usize = 256 * 1024;
 pub const QUICKJS_LINEAR_MEMORY_PAGE_BYTES: usize = 64 * 1024;
 pub const QUICKJS_INVOCATION_PACKET_OFFSET: usize = 0;
 pub const WASMTIME_EPOCH_TICK_MS: u64 = 10;
+pub const MAX_CACHED_WASM_MODULES: usize = 64;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct QuickJsLinearMemoryPlan {
@@ -340,6 +341,11 @@ impl WasmtimeSandbox {
         let module =
             Module::new(&self.engine, payload).map_err(|_| TrapReason::InvariantViolation)?;
         let mut write_guard = self.module_cache.write();
+        if !write_guard.contains_key(&cache_key) && write_guard.len() >= MAX_CACHED_WASM_MODULES {
+            if let Some(evict_key) = write_guard.keys().next().copied() {
+                write_guard.remove(&evict_key);
+            }
+        }
         Ok(write_guard
             .entry(cache_key)
             .or_insert_with(|| module.clone())
@@ -358,6 +364,11 @@ impl WasmtimeSandbox {
             .instantiate_pre(&module)
             .map_err(|_| TrapReason::InvariantViolation)?;
         let mut write_guard = self.wasm_pre_cache.write();
+        if !write_guard.contains_key(&cache_key) && write_guard.len() >= MAX_CACHED_WASM_MODULES {
+            if let Some(evict_key) = write_guard.keys().next().copied() {
+                write_guard.remove(&evict_key);
+            }
+        }
         Ok(write_guard
             .entry(cache_key)
             .or_insert_with(|| instance_pre.clone())
@@ -393,6 +404,11 @@ impl WasmtimeSandbox {
             .instantiate_pre(&module)
             .map_err(|_| TrapReason::InvariantViolation)?;
         let mut write_guard = self.quickjs_bridge_pre_cache.write();
+        if !write_guard.contains_key(&cache_key) && write_guard.len() >= MAX_CACHED_WASM_MODULES {
+            if let Some(evict_key) = write_guard.keys().next().copied() {
+                write_guard.remove(&evict_key);
+            }
+        }
         Ok(write_guard
             .entry(cache_key)
             .or_insert_with(|| instance_pre.clone())

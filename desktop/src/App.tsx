@@ -29,6 +29,9 @@ import {
   parseConversationRecordResult,
   parseConversationSnapshot,
   parseMemorySearchResult,
+  parseMemoryFileRelationsResult,
+  parseMemoryFileRelationLinkResult,
+  parseMemoryFileRelationUnlinkResult,
   parseModelDiscoveryResult,
   parseSourceSnapshot,
   parseWorkspaceChangesResult,
@@ -70,6 +73,9 @@ import {
   type ModelDescriptor,
   type ModelCatalogState,
   type MemoryRecord,
+  type MemoryFileRelationLinkRequest,
+  type MemoryFileRelationListRequest,
+  type MemoryFileRelationUnlinkRequest,
   type SourceSnapshot,
   type WorkspaceChangesResult,
   type WorkspaceDiffResult,
@@ -84,12 +90,13 @@ import {
   type DesktopSettings,
   type CapabilityStateResult,
 } from "./protocol";
-import { deriveTaskState, interruptedDesktopRunStatus, isProjectSwitchBlocked, isTaskRunActive, shouldDrainTaskQueue, taskStateLabel } from "./task_state.js";
-import { resolveWorkbenchShortcut, workbenchCommands } from "./command_registry.js";
+import { deriveTaskState, interruptedDesktopRunStatus, isProjectSwitchBlocked, isTaskRunActive, popQueuedPromptForEdit, reorderTaskQueue, shouldDrainTaskQueue, taskStateLabel } from "./task_state.js";
+import { resolveWorkbenchShortcut, workbenchCommands, workbenchInspectorCommands } from "./command_registry.js";
 import VirtualizedTimeline from "./VirtualizedTimeline";
 import type { WorkspaceGraph } from "./workspace_graph";
 import { CapabilityIcon } from "./capability-icons";
 import AmbiguousToolCallReconciliation from "./AmbiguousToolCallReconciliation";
+import ProviderContextDisclosure, { providerDestinationHost } from "./ProviderContextDisclosure";
 import { clipboardImageFiles } from "./clipboard_images.js";
 import { findModelForConnectionAndId } from "./model_selection.js";
 import { parseExtensionPackImport } from "./mcp_setup_suggestions.js";
@@ -100,6 +107,34 @@ import {
   missingRequiredEnvironment,
 } from "./mcp_registry_selection.js";
 import aegisLogoUrl from "./assets/aegis-icon.svg";
+
+// License: INTERNAL — Clean-room motion and English locale catalog for AEGIS Desktop.
+export const AEGIS_MOTION_TOKENS = {
+  easing: "cubic-bezier(0.23, 1, 0.32, 1)",
+  pressScale: 0.97,
+  durationFastMs: 140,
+  durationNormalMs: 180,
+} as const;
+
+export const UI_LOCALE_EN = {
+  skillLoadedFromLocalHost: (skillName: string) =>
+    `Opened skill “${skillName}” from the local host.`,
+  modelCatalogStateLabel: (state: ModelCatalogState | string | undefined) =>
+    state === "CACHED"
+      ? "using cached catalog"
+      : state === "STALE"
+        ? "using stale catalog because refresh failed"
+        : state === "UNAVAILABLE"
+          ? "model catalog unavailable"
+          : "live catalog",
+  providerKeySavedNotice: (providerLabel: string, catalogNote: string) =>
+    `${providerLabel} saved the key for this session · ${catalogNote}. You can refresh models later.`,
+  providerConnectedNotice: (providerLabel: string, modelCount: number, catalogNote: string) =>
+    `${providerLabel} connected · ${modelCount} models available · ${catalogNote} · key is kept for this session only.`,
+  providerConnectFailed: "Could not connect to the provider",
+  localSkillCatalogScanned: "Scanned local skill catalog.",
+  localMcpMetadataScanned: "Scanned local MCP metadata.",
+} as const;
 
 type Destination = "chat" | "settings" | "plugins";
 type WorkTab = "files" | "changes" | "map" | "activity" | "context";
@@ -1715,7 +1750,7 @@ export default function App() {
     try {
       const result: SkillLoadResult = await desktopRequest("extensions.load_skill", { name }, parseSkillLoadResult);
       setSelectedSkillBody(result.body);
-      setExtensionNotice(`Đã mở nội dung skill “${result.skill.name}” từ host cục bộ.`);
+      setExtensionNotice(UI_LOCALE_EN.skillLoadedFromLocalHost(result.skill.name));
     } catch (reason) {
       setSelectedSkillBody(null);
       setExtensionNotice(reason instanceof Error ? reason.message : "Skill could not be loaded");
@@ -2423,18 +2458,18 @@ export default function App() {
         setMode("mock");
       }
       const catalogNote = result.model_catalog_state === "CACHED"
-        ? "dùng catalog đã cache"
+        ? UI_LOCALE_EN.modelCatalogStateLabel("CACHED")
         : result.model_catalog_state === "STALE"
-          ? "dùng catalog cũ vì làm mới thất bại"
+          ? UI_LOCALE_EN.modelCatalogStateLabel("STALE")
           : result.model_catalog_state === "UNAVAILABLE"
-            ? "chưa đọc được catalog model"
-            : "catalog mới";
+            ? UI_LOCALE_EN.modelCatalogStateLabel("UNAVAILABLE")
+            : UI_LOCALE_EN.modelCatalogStateLabel("LIVE");
       setConnectionNotice(result.discovery_error
-        ? `${result.identity.provider_label} đã lưu khóa trong phiên này · ${catalogNote}. Bạn có thể làm mới sau.`
-        : `${result.identity.provider_label} đã kết nối · ${result.models.length} model khả dụng · ${catalogNote} · khóa chỉ được giữ trong phiên này.`);
+        ? UI_LOCALE_EN.providerKeySavedNotice(result.identity.provider_label, catalogNote)
+        : UI_LOCALE_EN.providerConnectedNotice(result.identity.provider_label, result.models.length, catalogNote));
       setApiKeyDraft("");
     } catch (reason) {
-      setConnectionNotice(reason instanceof Error ? reason.message : "Không thể kết nối nhà cung cấp");
+      setConnectionNotice(reason instanceof Error ? reason.message : UI_LOCALE_EN.providerConnectFailed);
     } finally {
       setConnectionBusy(null);
     }
@@ -2634,17 +2669,41 @@ export default function App() {
         openDestination("chat");
         setWorkTab("files");
         setWorkPanelOpen(true);
-        window.requestAnimationFrame(() => searchRef.current?.focus());
+        window.requestAnimationFrame(() => {
+          (searchRef.current ?? workPanelRef.current?.querySelector<HTMLButtonElement>("#inspector-tab-files"))?.focus();
+        });
+        break;
+      case "open-changes":
+        openDestination("chat");
+        setWorkTab("changes");
+        setWorkPanelOpen(true);
+        window.requestAnimationFrame(() => {
+          workPanelRef.current?.querySelector<HTMLButtonElement>("#inspector-tab-changes")?.focus();
+        });
         break;
       case "open-map":
         openDestination("chat");
         setWorkTab("map");
         setWorkPanelOpen(true);
+        window.requestAnimationFrame(() => {
+          workPanelRef.current?.querySelector<HTMLButtonElement>("#inspector-tab-map")?.focus();
+        });
         break;
       case "open-activity":
         openDestination("chat");
         setWorkTab("activity");
         setWorkPanelOpen(true);
+        window.requestAnimationFrame(() => {
+          workPanelRef.current?.querySelector<HTMLButtonElement>("#inspector-tab-activity")?.focus();
+        });
+        break;
+      case "open-context":
+        openDestination("chat");
+        setWorkTab("context");
+        setWorkPanelOpen(true);
+        window.requestAnimationFrame(() => {
+          workPanelRef.current?.querySelector<HTMLButtonElement>("#inspector-tab-context")?.focus();
+        });
         break;
       case "send":
         void sendMessage();
@@ -2674,9 +2733,11 @@ export default function App() {
         label: command.label,
         keys: isMacOS ? command.keys.mac : command.keys.other,
       })),
-      { id: "open-files", label: "Open Project Explorer", keys: "" },
-      { id: "open-map", label: "Open Focus Graph", keys: "" },
-      { id: "open-activity", label: "Open Task Activity", keys: "" },
+      ...workbenchInspectorCommands.map((command) => ({
+        id: command.id,
+        label: command.label,
+        keys: "",
+      })),
     ].filter((command) => !query || command.label.toLocaleLowerCase().includes(query));
     const highlight = commands.length > 0 ? commandHighlight % commands.length : 0;
     return (
@@ -2772,6 +2833,26 @@ export default function App() {
     runQueueRef.current = next;
     setQueuedPrompts(next);
     if (next.length === 0) setQueuedPromptsPaused(false);
+  }
+
+  function moveQueuedPrompt(promptId: string, delta: -1 | 1) {
+    const next = reorderTaskQueue(runQueueRef.current, promptId, delta, activeConversationId, queuedPromptsPaused);
+    if (next !== runQueueRef.current) {
+      updateQueuedPrompts(next);
+    }
+  }
+
+  function editQueuedPrompt(promptId: string) {
+    const popped = popQueuedPromptForEdit(runQueueRef.current, promptId, message, pendingImages);
+    if (!popped) return;
+    updateQueuedPrompts(popped.queue);
+    setMessage(popped.message);
+    setPendingImages(popped.attachments);
+    const focusComposer = () => {
+      document.querySelector<HTMLElement>('[data-workbench-pane="composer"][role="textbox"], .chat-view [role="textbox"]')?.focus();
+    };
+    focusComposer();
+    queueMicrotask(focusComposer);
   }
 
   function enqueuePrompt(prompt: QueuedPrompt) {
@@ -3069,9 +3150,23 @@ export default function App() {
     }
   }
 
-  async function loadMemoriesForFile(node: { path: string | null }): Promise<MemoryRecord[]> {
-    if (!node.path) return [];
-    return desktopRequest("memory.search", { query: node.path, top_k: 6, scope_kind: "USER_PRIVATE" }, parseMemorySearchResult);
+  async function loadMemoriesForFile(node: { path: string | null }, query?: string): Promise<MemoryRecord[]> {
+    const searchText = (query === undefined ? node.path : query)?.trim();
+    if (!searchText) return [];
+    return desktopRequest("memory.search", { query: searchText, top_k: 6, scope_kind: "USER_PRIVATE" }, parseMemorySearchResult);
+  }
+
+  async function loadFileMemoryRelations(request: MemoryFileRelationListRequest) {
+    return desktopRequest("memory.file_relations.list", request, parseMemoryFileRelationsResult);
+  }
+
+  async function linkMemoryToFile(request: MemoryFileRelationLinkRequest) {
+    return desktopRequest("memory.file_relation.link", request, parseMemoryFileRelationLinkResult);
+  }
+
+  async function unlinkFileMemoryRelation(request: MemoryFileRelationUnlinkRequest) {
+    const result = await desktopRequest("memory.file_relation.unlink", request, parseMemoryFileRelationUnlinkResult);
+    return result.removed;
   }
 
   async function openSelectedFileExternally() {
@@ -3758,9 +3853,9 @@ export default function App() {
     const contextTokenCount = conversationInspection?.context.token_count;
     const contextTokenBudget = conversationInspection?.context.token_budget;
     const contextReadout = contextUsage === "Used"
-      ? `${contextTokenCount ?? "—"} tokens used`
+      ? `Estimated context tokens used: ${contextTokenCount ?? "—"}`
       : contextTokenBudget !== null && contextTokenBudget !== undefined && contextTokenCount !== null && contextTokenCount !== undefined
-        ? `${Math.max(0, contextTokenBudget - contextTokenCount)} tokens remaining`
+        ? `Estimated context tokens remaining: ${Math.max(0, contextTokenBudget - contextTokenCount)}`
         : "Context remaining unavailable";
 
     function renderModelControl() {
@@ -3841,6 +3936,11 @@ export default function App() {
       const approvalPending = !home && (conversationInspection?.approvals.some(
         (approval) => approval.status === "REQUESTED" || approval.status === "AMBIGUOUS",
       ) ?? false);
+      const composerConnectionId = conversation?.conversation.connection_id ?? activeConnectionId;
+      const composerProvider = connectedProviders.find((item) => item.connection_id === composerConnectionId);
+      const composerProviderLabel = composerProvider
+        ? providerLabelForKind(composerProvider.provider_kind)
+        : "selected provider";
       const taskQueue = queuedPromptsPaused ? queuedPrompts : queuedPrompts.filter((item) => item.conversationId === activeConversationId);
       return (
         <div className={home ? "home-composer-wrap" : "composer-wrap"}>
@@ -3850,6 +3950,11 @@ export default function App() {
             {taskQueue.map((item, index) => <div className="task-queue-item" key={item.id}>
               <span className="task-queue-number">{index + 1}</span>
               <span className="task-queue-copy"><small>{item.conversationId === activeConversationId ? "This task" : conversations.find((conversation) => conversation.conversation_id === item.conversationId)?.title ?? "Another task"}</small>{item.message || "Image attachment"}</span>
+              {taskQueue.length > 1 && <>
+                <button type="button" disabled={index === 0} onClick={() => moveQueuedPrompt(item.id, -1)} aria-label="Move queued message up" title="Move up"><Icon name="arrow-up" size={13} /></button>
+                <button type="button" disabled={index === taskQueue.length - 1} onClick={() => moveQueuedPrompt(item.id, 1)} aria-label="Move queued message down" title="Move down"><Icon name="chevron-down" size={13} /></button>
+              </>}
+              <button type="button" onClick={() => editQueuedPrompt(item.id)} aria-label="Edit queued message" title="Edit queued message"><Icon name="sliders" size={13} /></button>
               <button type="button" onClick={() => updateQueuedPrompts(runQueueRef.current.filter((queued) => queued.id !== item.id))} aria-label="Remove queued message" title="Remove from queue"><Icon name="close" size={13} /></button>
             </div>)}
             {queuedPromptsPaused ? <button className="task-queue-clear" type="button" onClick={() => updateQueuedPrompts([])}>Clear queued messages</button> : <p>Sent in order after the active task finishes.</p>}
@@ -3881,6 +3986,12 @@ export default function App() {
                   onKeyDown={handleComposerKeyDown}
                   onImageFiles={(files) => void addImageFiles(files)}
                   onSubmit={() => void sendMessage()}
+                />
+                <ProviderContextDisclosure
+                  active={mode === "live" && modelReady}
+                  endpoint={composerProvider?.endpoint ?? null}
+                  placement="composer"
+                  providerLabel={composerProviderLabel}
                 />
                 {pendingImages.length > 0 && <div className="composer-attachments" aria-label="Attached images">
                   {pendingImages.map((image) => <div className="composer-attachment" key={image.id}>
@@ -4119,7 +4230,7 @@ export default function App() {
           <div id="inspector-panel" className="work-panel-body" role="tabpanel" aria-labelledby={`inspector-tab-${workTab}`} tabIndex={0}>
             {workTab === "files" && (projectEmptyState ?? <div className="file-panel"><div className="panel-title"><div><span className="eyebrow">EXPLORER</span><strong>Project files</strong></div><span className="file-count">{sourceSnapshot?.files.length ?? "—"}</span></div><label className="file-search"><Icon name="search" size={14} /><input ref={searchRef} value={fileFilter} onChange={(event) => setFileFilter(event.target.value)} placeholder="Search files" aria-label="Search files" /></label><div className="file-tree">{filteredFiles.length ? renderFileTree(fileTreeRoot) : <p className="panel-empty">{fileFilter.trim() ? "No files match this search." : "No files have been indexed in this project."}</p>}</div>{selected && <div className="source-viewer"><div className="source-viewer-header"><div><span className="eyebrow">SOURCE</span><strong title={selected.relative_path}>{selected.relative_path}</strong></div><button className="settings-secondary" type="button" onClick={() => void openSelectedFileExternally()} disabled={!hasNativeWindow()} title={hasNativeWindow() ? "Open in the operating system’s default editor" : "Available in the desktop app"}>Open externally</button></div><div className="source-viewer-meta"><span>{selected.language || "Plain text"}</span><span>{selectedFileContent?.size_bytes.toLocaleString() ?? Math.round(selected.size_bytes)} bytes</span></div>{selectedFileContent?.source === "PREVIEW_ONLY" && <p className="preview-data-note" role="note">Preview only · local file contents are not available in the browser.</p>}{fileReadError ? <p className="panel-error" role="alert">{fileReadError}</p> : selectedFileContent ? <pre className="source-viewer-content" tabIndex={0} aria-label={`Source contents of ${selected.relative_path}`}>{selectedFileContent.content}</pre> : <p className="panel-empty" role="status">Opening file…</p>}{fileOpenNotice && <p className="panel-notice" role="status">{fileOpenNotice}</p>}</div>}</div>)}
             {workTab === "changes" && (projectEmptyState ?? <div className="changes-panel"><div className="panel-title"><div><span className="eyebrow">REVIEW</span><strong>Tracked changes</strong></div><button className="settings-secondary" type="button" onClick={() => { setWorkspaceChanges(null); setChangesRefreshKey((current) => current + 1); }}>Refresh</button></div><p className="changes-source-note">Compared with the current Git HEAD. Untracked files are not included.</p>{workspaceChanges?.source === "PREVIEW_ONLY" && <p className="preview-data-note" role="note">Preview only · open the desktop app to inspect local Git changes.</p>}{workspaceChanges?.truncated && <p className="panel-notice" role="status">The list is capped at 200 tracked files.</p>}{changesError ? <p className="panel-error" role="alert">{changesError}</p> : workspaceChanges ? workspaceChanges.entries.length ? <div className="changes-layout"><div className="changes-list" role="list" aria-label="Changed files">{workspaceChanges.entries.map((entry) => <button className={`changes-file ${selectedChangePath === entry.relative_path ? "active" : ""}`} key={entry.relative_path} type="button" role="listitem" onClick={() => setSelectedChangePath(entry.relative_path)}><Icon name="file" size={14} /><span>{entry.relative_path}</span></button>)}</div><section className="changes-diff" aria-label="Selected file diff"><div className="changes-diff-heading"><strong title={selectedDiff?.relative_path ?? selectedChangePath ?? ""}>{selectedDiff?.relative_path ?? selectedChangePath}</strong><span>{selectedDiff?.source}</span></div>{selectedDiff?.truncated && <p className="panel-notice" role="status">This diff is truncated at 256 KiB.</p>}{selectedDiff ? <pre tabIndex={0}>{selectedDiff.diff || "No textual diff is available for this file."}</pre> : <p className="panel-empty" role="status">Loading diff…</p>}</section></div> : <div className="panel-empty-state"><Icon name="check" /><h3>No tracked changes</h3><p>Changes to tracked files appear here for review.</p></div> : <div className="panel-empty-state" role="status"><Icon name="activity" /><h3>Reading Git changes</h3><p>Checking the current workspace against HEAD.</p></div>}</div>)}
-            {workTab === "map" && (projectEmptyState ?? <div className="map-panel">{workspaceGraph && sourceSnapshot ? <Suspense fallback={<div className="panel-empty-state" role="status"><Icon name="map" /><h3>Loading Focus Graph</h3><p>The graph feature is opening on demand.</p></div>}><WorkspaceGraphView graph={workspaceGraph} loadMemories={loadMemoriesForFile} /></Suspense> : <div className="panel-empty-state"><Icon name="map" /><h3>{graphLoading ? "Preparing Focus Graph" : "No source map yet"}</h3><p>{graphLoading ? "The local project map is being prepared." : "Reload the index to inspect this project."}</p>{!graphLoading && <button className="settings-secondary" type="button" onClick={() => void loadWorkspaceGraph(true, true)}>Reload index</button>}</div>}</div>)}
+            {workTab === "map" && (projectEmptyState ?? <div className="map-panel">{workspaceGraph && sourceSnapshot ? <Suspense fallback={<div className="panel-empty-state" role="status"><Icon name="map" /><h3>Loading Focus Graph</h3><p>The graph feature is opening on demand.</p></div>}><WorkspaceGraphView graph={workspaceGraph} loadMemories={loadMemoriesForFile} loadFileRelations={loadFileMemoryRelations} linkMemoryToFile={linkMemoryToFile} unlinkFileRelation={unlinkFileMemoryRelation} /></Suspense> : <div className="panel-empty-state"><Icon name="map" /><h3>{graphLoading ? "Preparing Focus Graph" : "No source map yet"}</h3><p>{graphLoading ? "The local project map is being prepared." : "Reload the index to inspect this project."}</p>{!graphLoading && <button className="settings-secondary" type="button" onClick={() => void loadWorkspaceGraph(true, true)}>Reload index</button>}</div>}</div>)}
             {workTab === "activity" && <div className="activity-panel"><div className="panel-title"><div><span className="eyebrow">TASK TIMELINE</span><strong>Activity</strong></div>{conversation && <span className="status-chip"><i />{selectedTaskState === "RUNNING" || selectedTaskState === "CANCELLING" ? taskStateLabel(selectedTaskState) : "Idle"}</span>}</div>{conversationInspection?.timeline.length ? <VirtualizedTimeline items={[...conversationInspection.timeline].reverse()} /> : activityItems.length ? activityItems.map((item) => <div className="activity-item" key={`${item.title}-${item.timestamp}-${item.detail}`}><span className="activity-icon"><Icon name={item.icon} size={13} /></span><div><strong>{item.title}</strong><small>{item.detail}</small></div></div>) : <div className="panel-empty-state"><Icon name="activity" /><h3>{conversationLoading ? "Loading activity" : activeConversationId ? "No activity yet" : "Follow your task"}</h3><p>{conversationError ?? (activeConversationId ? "Actions and checkpoints appear here as you work." : "Open a task to see its actions and checkpoints.")}</p></div>}</div>}
             {workTab === "context" && (
               <div className="context-panel">
@@ -4130,15 +4241,23 @@ export default function App() {
                 {conversationInspection ? (
                   <>
                     <div className="context-metrics">
-                      <div><span>Items</span><strong>{conversationInspection.context.item_count ?? 0}</strong></div>
-                      <div><span>Tokens</span><strong>{conversationInspection.context.token_count ?? "—"}</strong></div>
-                      <div><span>History</span><strong>{conversationInspection.context.history_turn_count}</strong></div>
+                      <div><span>Selected items</span><strong>{conversationInspection.context.inclusion?.selected_count ?? conversationInspection.context.item_count ?? 0}</strong></div>
+                      <div><span title="Rendered UTF-8 byte heuristic; this is not provider billing usage.">Estimated tokens</span><strong>{conversationInspection.context.token_count ?? "—"}</strong></div>
+                      <div><span>Saved history turns</span><strong>{conversationInspection.context.history_turn_count}</strong></div>
                     </div>
+                    {conversationInspection.context.inclusion && <section className="context-delivery" aria-label="Final context inclusion">
+                      <div className="context-detail"><span>Prompt length</span><code>{conversationInspection.context.inclusion.prompt_chars.toLocaleString()} / {conversationInspection.context.inclusion.prompt_limit_chars.toLocaleString()} chars</code></div>
+                      <div className="context-detail"><span>Included / omitted</span><code>{conversationInspection.context.inclusion.included_count} / {conversationInspection.context.inclusion.omitted_count}</code></div>
+                      {conversationInspection.context.inclusion.deduplicated_turn_count > 0 && <div className="context-detail"><span>Exact transcript overlap</span><code>{conversationInspection.context.inclusion.deduplicated_turn_count} turns removed</code></div>}
+                      {conversationInspection.context.inclusion.omitted_reasons.length > 0 && <p className="context-redaction" role="status">Omitted because the rendered prompt reached its local character limit.</p>}
+                      <div className="context-detail"><span>Adapter payload</span><code>{conversationInspection.context.request_attempt ? `Dispatch attempted · ${conversationInspection.context.request_attempt.payload_bytes.toLocaleString()} B · ${shortPath(conversationInspection.context.request_attempt.payload_sha256, 22)}` : "Prepared · no dispatch captured"}</code></div>
+                      {conversationInspection.context.request_attempt && <p className="context-redaction" role="status">Dispatch was attempted; provider receipt and model use are unknown.</p>}
+                    </section>}
                     <div className="context-detail"><span>Source revision</span><code>{shortPath(conversationInspection.context.source_revision, 22)}</code></div>
-                    <div className="context-detail"><span>Manifest</span><code>{shortPath(conversationInspection.context.context_manifest_hash, 22)}</code></div>
+                    <div className="context-detail"><span>Selected manifest</span><code>{shortPath(conversationInspection.context.context_manifest_hash, 22)}</code></div>
                     <div className="context-detail"><span>Selector</span><code>{conversationInspection.context.selection_backend ?? "—"}</code></div>
                     {cacheUsageSummary && <div className="context-detail"><span>Last response cache</span><code>{cacheUsageSummary}</code></div>}
-                    <p className="context-redaction">Sensitive prompt, tool arguments, and provider output remain outside this observer view.</p>
+                    <p className="context-redaction">Prompts, tool arguments, provider output, and serialized payloads remain hidden. Included context does not confirm provider receipt or model use.</p>
                   </>
                 ) : <div className="panel-empty-state"><Icon name="spark" /><h3>{conversationLoading ? "Loading context" : activeConversationId ? "Context unavailable" : "Every reply has a context"}</h3><p>{conversationError ?? (activeConversationId ? "Context appears after this conversation is loaded." : "Start or open a chat to inspect what informed its replies.")}</p></div>}
               </div>
@@ -4248,6 +4367,14 @@ export default function App() {
       && availableModels.some(
         (item) => item.connection_id === conversation.conversation.connection_id && item.model_id === conversation.conversation.model_id,
       );
+    const selectedProviderEndpoint = selectedProvider
+      ? (selectedProvider.requires_endpoint ? customProviderEndpoint.trim() || null : selectedProvider.endpoint)
+      : null;
+    const selectedProviderDestination = selectedProvider
+      ? selectedProviderEndpoint
+        ? providerDestinationHost(selectedProviderEndpoint) ?? "Destination host unavailable"
+        : "Enter a compatible endpoint below"
+      : null;
 
     const content = settingsSection === "General" ? (
       <div className="aegis-settings-stack">
@@ -4283,8 +4410,14 @@ export default function App() {
         <section className="model-section model-onboarding-section">
           <div className="model-section-heading"><div><h2>Connect a model provider</h2><p>Choose the provider first, then add its API key. AEGIS checks connected catalogs while the app is open; provider results are cached for five minutes. Use Refresh catalog to bypass the cache now.</p></div><span className="model-security-badge"><Icon name="shield" size={13} />Host boundary</span></div>
           <label className="model-key-field"><span>Provider</span><select aria-label="Provider" value={selectedProviderKind} onChange={(event) => { setSelectedProviderKind(event.target.value); setCustomProviderEndpoint(""); setConnectionNotice(null); }} disabled={connectionBusy !== null}><option value="">Choose a provider…</option>{providerChoices.map((provider) => <option key={provider.provider_kind} value={provider.provider_kind}>{provider.provider_label}</option>)}</select></label>
-          {selectedProvider && <div className="provider-selection-card" role="status"><div><strong>{selectedProvider.provider_label}</strong><span>Selected by you</span></div><small>Key destination: <strong>{selectedProvider.requires_endpoint ? customProviderEndpoint.trim() || "Enter a compatible endpoint below" : selectedProvider.endpoint}</strong></small></div>}
+          {selectedProvider && <div className="provider-selection-card" role="status"><div><strong>{selectedProvider.provider_label}</strong><span>Selected by you</span></div><small>Key destination: <strong>{selectedProviderDestination}</strong></small></div>}
           {selectedProvider?.requires_endpoint && <label className="model-key-field"><span>Compatible provider endpoint</span><input aria-label="Custom provider endpoint" aria-required value={customProviderEndpoint} onChange={(event) => { setCustomProviderEndpoint(event.target.value); setConnectionNotice(null); }} placeholder="https://…" inputMode="url" disabled={connectionBusy !== null} /></label>}
+          {selectedProvider && <ProviderContextDisclosure
+            active
+            endpoint={selectedProvider.requires_endpoint ? customProviderEndpoint.trim() || null : selectedProvider.endpoint}
+            placement="setup"
+            providerLabel={selectedProvider.provider_label}
+          />}
           <label className="model-key-field"><span>API key</span><input aria-label="API key" type="password" value={apiKeyDraft} onChange={(event) => { setApiKeyDraft(event.target.value); setConnectionNotice(null); }} placeholder="Paste API key" autoComplete="new-password" spellCheck={false} disabled={connectionBusy !== null} /></label>
           <div className="model-onboarding-actions"><button className="settings-primary" type="button" onClick={() => void connectApiKey()} disabled={!apiKeyDraft.trim() || !workspace || !selectedProvider || Boolean(selectedProvider.requires_endpoint && !customProviderEndpoint.trim()) || connectionBusy !== null}>{connectionBusy === "connect" ? "Connecting…" : "Connect & discover models"}</button></div>
           <p className="model-secret-note"><Icon name="shield" size={13} />When you connect, the key is sent to the destination shown above for model discovery and provider requests. It stays in local session memory and is not saved to the project database or application logs.</p>
@@ -4686,7 +4819,7 @@ export default function App() {
               : "Folder selection is available in the packaged desktop app."}
           </div>
         </section>
-        {(["Import from other tools", "Model configuration", "Skills", "MCP servers"] as const).map((title) => <section className="import-settings-card" key={title}><div className="import-settings-heading"><div><h2>{title}</h2><p>{title === "Import from other tools" ? "Session import is not available in this local-first build." : title === "Model configuration" ? "Find local provider and model settings." : title === "Skills" ? "Scan local skill directories." : "Scan local MCP server configurations."}</p></div>{title === "Import from other tools" ? <span className="aegis-settings-value">Not available</span> : <button type="button" onClick={() => { if (title === "Model configuration") setSettingsSection("Models"); else if (title === "Skills") { void loadExtensionCatalog(); setImportNotice("Đã quét catalog skill cục bộ."); } else { void loadMcpCatalog(); setImportNotice("Đã quét metadata MCP cục bộ."); } }}>{title === "Model configuration" ? "Open" : "Scan"}</button>}</div><div className="import-settings-empty">{title === "Skills" ? `${extensionCatalog?.skills.length ?? 0} skill(s) discovered` : title === "MCP servers" ? `${mcpCatalog?.servers.length ?? 0} MCP server(s) discovered` : title === "Import from other tools" ? "No local session importer is configured." : "Nothing scanned yet."}</div></section>)}
+        {(["Import from other tools", "Model configuration", "Skills", "MCP servers"] as const).map((title) => <section className="import-settings-card" key={title}><div className="import-settings-heading"><div><h2>{title}</h2><p>{title === "Import from other tools" ? "Session import is not available in this local-first build." : title === "Model configuration" ? "Find local provider and model settings." : title === "Skills" ? "Scan local skill directories." : "Scan local MCP server configurations."}</p></div>{title === "Import from other tools" ? <span className="aegis-settings-value">Not available</span> : <button type="button" onClick={() => { if (title === "Model configuration") setSettingsSection("Models"); else if (title === "Skills") { void loadExtensionCatalog(); setImportNotice(UI_LOCALE_EN.localSkillCatalogScanned); } else { void loadMcpCatalog(); setImportNotice(UI_LOCALE_EN.localMcpMetadataScanned); } }}>{title === "Model configuration" ? "Open" : "Scan"}</button>}</div><div className="import-settings-empty">{title === "Skills" ? `${extensionCatalog?.skills.length ?? 0} skill(s) discovered` : title === "MCP servers" ? `${mcpCatalog?.servers.length ?? 0} MCP server(s) discovered` : title === "Import from other tools" ? "No local session importer is configured." : "Nothing scanned yet."}</div></section>)}
       </div>
     ) : settingsSection === "Projects" ? (
       <div className="project-archive-page">

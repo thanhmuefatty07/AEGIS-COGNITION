@@ -79,7 +79,7 @@ npm run build
 cargo check --manifest-path src-tauri/Cargo.toml
 ```
 
-The supported local baseline is CPython 3.14.7 with Rust 1.98.1. The
+The supported local baseline is CPython 3.14.7 with Rust 1.99.1. The
 desktop sidecar uses the same Python/Rust native extension as the root package;
 the native source watcher is an invalidation hint and every request still
 performs a bounded, hash-bound source snapshot.

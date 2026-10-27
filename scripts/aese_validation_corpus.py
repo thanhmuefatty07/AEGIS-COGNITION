@@ -158,7 +158,9 @@ def _artifact_provenance(subject: object) -> dict[str, object]:
 
 
 def _inventory_path_index() -> dict[str, list[str]]:
-    inventory = json.loads((_planner.ROOT / "quality" / "registry" / "current_inventory.json").read_text(encoding="utf-8"))
+    inventory = json.loads(
+        (_planner.ROOT / "quality" / "registry" / "current_inventory.json").read_text(encoding="utf-8")
+    )
     by_path: dict[str, list[str]] = {}
     for raw_item in inventory.get("items", []):
         if isinstance(raw_item, dict) and raw_item.get("stable_id") and raw_item.get("path"):
@@ -169,7 +171,9 @@ def _inventory_path_index() -> dict[str, list[str]]:
 
 
 def _unknown_path() -> str:
-    mapping = json.loads((_planner.ROOT / "quality" / "registry" / "current_s2_mapping.json").read_text(encoding="utf-8"))
+    mapping = json.loads(
+        (_planner.ROOT / "quality" / "registry" / "current_s2_mapping.json").read_text(encoding="utf-8")
+    )
     unknown_ids = {str(value) for value in mapping.get("unknown_surface_ids", [])}
     for path, surface_ids in sorted(_inventory_path_index().items()):
         if unknown_ids.intersection(surface_ids):
@@ -284,9 +288,7 @@ def build_corpus() -> dict[str, object]:
     noncritical = [case for case in final_known_bad if case["critical"] is not True]
     noncritical_misses = [str(case["case_id"]) for case in noncritical if case["planning_target_reached"] is not True]
     false_alarms = [
-        str(case["case_id"])
-        for case in final
-        if case["label"] == "KNOWN_GOOD" and case["plan_widened"] is True
+        str(case["case_id"]) for case in final if case["label"] == "KNOWN_GOOD" and case["plan_widened"] is True
     ]
     corpus: dict[str, object] = {
         "schema": SCHEMA,
@@ -339,11 +341,7 @@ def validate_corpus(actual: dict[str, object], expected: dict[str, object]) -> l
     if set(actual) != set(expected):
         errors.append("root schema keys differ")
     volatile = {"artifact_hash", "provenance"}
-    errors.extend(
-        f"{key} differs"
-        for key in expected
-        if key not in volatile and actual.get(key) != expected.get(key)
-    )
+    errors.extend(f"{key} differs" for key in expected if key not in volatile and actual.get(key) != expected.get(key))
 
     recorded_hash = actual.get("artifact_hash")
     if recorded_hash != _stable_hash({key: value for key, value in actual.items() if key != "artifact_hash"}):
@@ -369,7 +367,13 @@ def validate_corpus(actual: dict[str, object], expected: dict[str, object]) -> l
             errors.append("provenance envelope is incomplete")
         errors.extend(
             f"provenance.{key} differs"
-            for key in ("relevant_subject_digest", "protocol_hash", "validator_hash", "environment_hash", "reuse_status")
+            for key in (
+                "relevant_subject_digest",
+                "protocol_hash",
+                "validator_hash",
+                "environment_hash",
+                "reuse_status",
+            )
             if actual_provenance.get(key) != expected_provenance.get(key)
         )
         environment = actual_provenance.get("environment")
@@ -381,7 +385,11 @@ def validate_corpus(actual: dict[str, object], expected: dict[str, object]) -> l
             errors.append("provenance.host_observation is missing")
         for key in ("artifact_source_sha", "current_head"):
             value = actual_provenance.get(key)
-            if not isinstance(value, str) or len(value) != 40 or any(character not in "0123456789abcdef" for character in value):
+            if (
+                not isinstance(value, str)
+                or len(value) != 40
+                or any(character not in "0123456789abcdef" for character in value)
+            ):
                 errors.append(f"provenance.{key} is not a commit SHA")
 
     return sorted(set(errors))
@@ -429,7 +437,7 @@ def _load_retained_paired_cost(path: Path) -> dict[str, object] | None:
 
     try:
         raw = json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError):
+    except OSError, json.JSONDecodeError:
         return None
     if type(raw) is not dict:
         return None
@@ -491,7 +499,11 @@ def build_paired_cost_measurement(
     samples = (legacy_seconds, selected_seconds, planner_seconds)
     if not samples[0] or not (len(samples[0]) == len(samples[1]) == len(samples[2])):
         raise ValueError("paired timing arrays must be non-empty and equal length")
-    if any(not isinstance(value, (int, float)) or not math.isfinite(float(value)) or float(value) < 0 for group in samples for value in group):
+    if any(
+        not isinstance(value, (int, float)) or not math.isfinite(float(value)) or float(value) < 0
+        for group in samples
+        for value in group
+    ):
         raise ValueError("paired timings must be finite non-negative numbers")
     if measurement_reused and (
         not measurement_source_sha
@@ -503,10 +515,7 @@ def build_paired_cost_measurement(
     legacy = [float(value) for value in legacy_seconds]
     selected = [float(value) for value in selected_seconds]
     planner = [float(value) for value in planner_seconds]
-    net = [
-        left - right - overhead
-        for left, right, overhead in zip(legacy, selected, planner, strict=True)
-    ]
+    net = [left - right - overhead for left, right, overhead in zip(legacy, selected, planner, strict=True)]
     result: dict[str, object] = {
         "schema": COST_SCHEMA,
         "mode": "SHADOW",
@@ -563,6 +572,7 @@ def main() -> int:
     if bool(args.legacy_seconds) or bool(args.selected_seconds) or bool(args.planner_seconds):
         if not (args.legacy_seconds and args.selected_seconds and args.planner_seconds):
             raise ValueError("all paired timing options are required together")
+
         def parse(value: str) -> list[float]:
             return [float(part) for part in value.split(",") if part.strip()]
 
@@ -579,7 +589,16 @@ def main() -> int:
     corpus_output.parent.mkdir(parents=True, exist_ok=True)
     corpus_output.write_text(json.dumps(corpus, indent=2, sort_keys=True) + "\n", encoding="utf-8")
     cost_output.write_text(json.dumps(cost, indent=2, sort_keys=True) + "\n", encoding="utf-8")
-    print(json.dumps({"corpus_status": corpus["status"], "critical_misses": corpus["metrics"]["synthetic_critical_targets_missed"], "cost_status": cost["status"]}, sort_keys=True))
+    print(
+        json.dumps(
+            {
+                "corpus_status": corpus["status"],
+                "critical_misses": corpus["metrics"]["synthetic_critical_targets_missed"],
+                "cost_status": cost["status"],
+            },
+            sort_keys=True,
+        )
+    )
     return 0
 
 

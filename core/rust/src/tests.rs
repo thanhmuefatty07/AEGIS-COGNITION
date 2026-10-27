@@ -91,6 +91,11 @@ mod tests {
     use crate::speculative::draft::{DraftTokenBatch, TargetTokenBatch};
     use crate::speculative::orchestrator::{accept_prefix, fallback_decode, speculative_decode};
     use crate::speculative::verifier::{VerificationResult, verify_target_prefix};
+    use pyo3::Python;
+
+    fn scoped_test_artifact_root() -> tempfile::TempDir {
+        tempfile::tempdir().expect("create scoped test artifact root")
+    }
 
     static FIELDS: &[FieldDescriptor] = &[
         FieldDescriptor {
@@ -1816,6 +1821,7 @@ mod tests {
 
     #[test]
     fn episodic_audit_log_writes_hash_only_arrow_ipc_stream_for_mmap_observability() {
+        let _test_artifact_root_guard = scoped_test_artifact_root();
         use arrow::ipc::reader::StreamReader;
         use memmap2::MmapOptions;
         use std::fs::OpenOptions;
@@ -1838,10 +1844,7 @@ mod tests {
             .duration_since(UNIX_EPOCH)
             .unwrap()
             .as_nanos();
-        let dir = std::env::current_dir()
-            .unwrap()
-            .join("target")
-            .join("aegis-test-artifacts");
+        let dir = _test_artifact_root_guard.path().to_path_buf();
         std::fs::create_dir_all(&dir).unwrap();
         let path = dir.join(format!("episodic-audit-{unique}.arrow"));
         let response = normalize_response(&request, "arrow trace", 5, 7, 0.9);
@@ -2300,10 +2303,10 @@ mod tests {
 
     #[test]
     fn mmap_bridge_frame_roundtrips_payload_without_copying() {
-        let dir = std::env::current_dir()
-            .unwrap()
-            .join("target")
-            .join("aegis-test-artifacts")
+        let _test_artifact_root_guard = scoped_test_artifact_root();
+        let dir = _test_artifact_root_guard
+            .path()
+            .to_path_buf()
             .join("mmap-bridge-roundtrip");
         std::fs::create_dir_all(&dir).unwrap();
         let path = dir.join("frame.aegmmap");
@@ -2331,11 +2334,72 @@ mod tests {
     }
 
     #[test]
+    fn mmap_bridge_test_artifacts_are_removed_after_the_test() {
+        let (scratch_path, child_output, artifacts_in_cwd, isolated_temp_is_empty) = {
+            let scratch = tempfile::tempdir().unwrap();
+            let scratch_path = scratch.path().to_path_buf();
+            let isolated_cwd = scratch_path.join("isolated-cwd");
+            let isolated_temp = scratch_path.join("isolated-temp");
+            std::fs::create_dir_all(&isolated_cwd).unwrap();
+            std::fs::create_dir_all(&isolated_temp).unwrap();
+
+            let child_output = std::process::Command::new(std::env::current_exe().unwrap())
+                .args([
+                    "mmap_bridge_frame_roundtrips_payload_without_copying",
+                    "--test-threads=1",
+                ])
+                .current_dir(&isolated_cwd)
+                .env("TEMP", &isolated_temp)
+                .env("TMP", &isolated_temp)
+                .env("TMPDIR", &isolated_temp)
+                .output();
+            let artifacts_in_cwd = isolated_cwd
+                .join("target")
+                .join("aegis-test-artifacts")
+                .exists();
+            let isolated_temp_is_empty =
+                std::fs::read_dir(&isolated_temp).map(|mut entries| entries.next().is_none());
+
+            (
+                scratch_path,
+                child_output,
+                artifacts_in_cwd,
+                isolated_temp_is_empty,
+            )
+        };
+
+        assert!(
+            !scratch_path.exists(),
+            "regression test scratch directory survived scope teardown"
+        );
+        let output = child_output.unwrap();
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let stderr = String::from_utf8_lossy(&output.stderr);
+
+        assert!(
+            output.status.success(),
+            "isolated mmap test failed:\nstdout:\n{stdout}\nstderr:\n{stderr}"
+        );
+        assert!(
+            stdout.contains("1 passed; 0 failed"),
+            "expected the exact mmap test to execute once:\n{stdout}"
+        );
+        assert!(
+            !artifacts_in_cwd,
+            "mmap test left persistent output under its working directory"
+        );
+        assert!(
+            isolated_temp_is_empty.unwrap(),
+            "mmap test left files in its isolated temporary directory"
+        );
+    }
+
+    #[test]
     fn mmap_bridge_frame_rejects_tamper() {
-        let dir = std::env::current_dir()
-            .unwrap()
-            .join("target")
-            .join("aegis-test-artifacts")
+        let _test_artifact_root_guard = scoped_test_artifact_root();
+        let dir = _test_artifact_root_guard
+            .path()
+            .to_path_buf()
             .join("mmap-bridge-tamper");
         std::fs::create_dir_all(&dir).unwrap();
         let path = dir.join("frame.aegmmap");
@@ -2355,21 +2419,29 @@ mod tests {
 
     #[test]
     fn mmap_bridge_ffi_writes_valid_pattern_frame() {
-        let dir = std::env::current_dir()
-            .unwrap()
-            .join("target")
-            .join("aegis-test-artifacts")
+        let _test_artifact_root_guard = scoped_test_artifact_root();
+        let dir = _test_artifact_root_guard
+            .path()
+            .to_path_buf()
             .join("mmap-bridge-ffi");
         std::fs::create_dir_all(&dir).unwrap();
         let path = dir.join("ffi-frame.aegmmap");
 
-        let (_, _, payload_offset, payload_len, payload_hash) =
-            aegis_write_mmap_bridge_pattern(path.to_string_lossy().to_string(), 51, 61, 2048)
-                .unwrap();
+        Python::initialize();
+        let (_, _, payload_offset, payload_len, payload_hash) = Python::attach(|py| {
+            aegis_write_mmap_bridge_pattern(py, path.to_string_lossy().to_string(), 51, 61, 2048)
+        })
+        .unwrap();
         assert_eq!(payload_offset as usize, MMAP_BRIDGE_HEADER_BYTES);
         assert_eq!(payload_len, 2048);
         assert_eq!(payload_hash.len(), 32);
-        assert!(aegis_validate_mmap_bridge_frame(path.to_string_lossy().to_string()).unwrap());
+        assert!(
+            Python::attach(|py| aegis_validate_mmap_bridge_frame(
+                py,
+                path.to_string_lossy().to_string()
+            ))
+            .unwrap()
+        );
         let view = open_mmap_bridge_view(&path).unwrap();
         assert_eq!(view.payload().unwrap()[0], pattern_byte(0));
         assert_eq!(view.payload().unwrap()[2047], pattern_byte(2047));
@@ -2390,7 +2462,9 @@ mod tests {
     fn zero_copy_roundtrip_rebuilds_message() {
         let message = MessageFrame::with_identity(1, 2, vec![9, 8, 7]);
         let zero_copy = message_to_zero_copy(&message).unwrap();
-        let rebuilt = zero_copy_to_message(&zero_copy).unwrap();
+        // SAFETY: `zero_copy` points into `message.payload`, which remains alive
+        // and immutable for the duration of this copy.
+        let rebuilt = unsafe { zero_copy_to_message(&zero_copy).unwrap() };
         assert!(rebuilt.is_valid());
         assert_eq!(rebuilt.payload, vec![9, 8, 7]);
     }
@@ -2415,17 +2489,8 @@ mod tests {
 
     #[test]
     fn cli_writes_replay_chaos_scorecard_artifact() {
-        use std::time::{SystemTime, UNIX_EPOCH};
-
-        let unique = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .unwrap()
-            .as_nanos();
-        let dir = std::env::current_dir()
-            .unwrap()
-            .join("target")
-            .join("aegis-test-artifacts")
-            .join(format!("cli-replay-chaos-scorecard-{unique}"));
+        let _test_artifact_root_guard = scoped_test_artifact_root();
+        let dir = _test_artifact_root_guard.path().to_path_buf();
         let artifact_path = dir.join("replay_chaos_scorecard.json");
 
         let artifact_hash = write_replay_chaos_scorecard(&artifact_path).unwrap();
@@ -2461,17 +2526,8 @@ mod tests {
 
     #[test]
     fn cli_writes_replay_endurance_report_artifact() {
-        use std::time::{SystemTime, UNIX_EPOCH};
-
-        let unique = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .unwrap()
-            .as_nanos();
-        let dir = std::env::current_dir()
-            .unwrap()
-            .join("target")
-            .join("aegis-test-artifacts")
-            .join(format!("cli-replay-endurance-report-{unique}"));
+        let _test_artifact_root_guard = scoped_test_artifact_root();
+        let dir = _test_artifact_root_guard.path().to_path_buf();
         let artifact_path = dir.join("replay_endurance_report.json");
         std::fs::create_dir_all(&dir).unwrap();
         std::fs::write(&artifact_path, b"stale").unwrap();
@@ -2914,6 +2970,26 @@ mod tests {
         assert_eq!(runtime.anchor.anchor_id, 1);
         assert_ne!(runtime.anchor.last_witness_hash, 0);
         assert!(runtime.memory.is_empty());
+    }
+
+    #[test]
+    fn runtime_repeated_payload_cache_does_not_omit_valid_messages() {
+        let mut runtime = NerveRuntime::new();
+        let payload = vec![1, 2, 3];
+
+        runtime
+            .ingest_message(MessageFrame::with_identity(1, 2, payload.clone()))
+            .unwrap();
+        let first_witness_hash = runtime.anchor.last_witness_hash;
+        assert_eq!(runtime.processed_count(), 1);
+
+        runtime
+            .ingest_message(MessageFrame::with_identity(2, 2, payload))
+            .unwrap();
+
+        assert_eq!(runtime.processed_count(), 2);
+        assert_eq!(runtime.anchor.anchor_id, 1);
+        assert_ne!(runtime.anchor.last_witness_hash, first_witness_hash);
     }
 
     #[test]
@@ -3409,7 +3485,7 @@ mod tests {
     fn test_preallocated_buffer_populates_pages_and_releases() {
         assert!(PreAllocatedBuffer::new(0).is_err());
         let buffer = PreAllocatedBuffer::new(4096).unwrap();
-        assert!(!buffer.ptr.is_null());
+        assert!(!buffer.as_ptr().is_null());
         buffer.populate_pages();
         let handle = buffer.spawn_background_population();
         handle.join().unwrap();
@@ -3501,11 +3577,11 @@ mod tests {
 
     #[test]
     fn wasmtime_executes_verified_mmap_wasm_bridge_frame() {
+        let _test_artifact_root_guard = scoped_test_artifact_root();
         use crate::sandbox::{SandboxBackendKind, WasmtimeSandbox};
-        let dir = std::env::current_dir()
-            .unwrap()
-            .join("target")
-            .join("aegis-test-artifacts")
+        let dir = _test_artifact_root_guard
+            .path()
+            .to_path_buf()
             .join("mmap-wasm-bridge-exec");
         std::fs::create_dir_all(&dir).unwrap();
         let path = dir.join("wasm-frame.aegmmap");
@@ -3530,12 +3606,12 @@ mod tests {
 
     #[test]
     fn wasmtime_rejects_tampered_mmap_wasm_bridge_frame_before_execution() {
+        let _test_artifact_root_guard = scoped_test_artifact_root();
         use crate::sandbox::WasmtimeSandbox;
         use std::io::{Seek, SeekFrom, Write};
-        let dir = std::env::current_dir()
-            .unwrap()
-            .join("target")
-            .join("aegis-test-artifacts")
+        let dir = _test_artifact_root_guard
+            .path()
+            .to_path_buf()
             .join("mmap-wasm-bridge-tamper");
         std::fs::create_dir_all(&dir).unwrap();
         let path = dir.join("wasm-frame.aegmmap");
@@ -4293,6 +4369,7 @@ mod tests {
 
     #[test]
     fn skill_admission_registry_commit_is_replay_visible_before_shift_inheritance() {
+        let _test_artifact_root_guard = scoped_test_artifact_root();
         use crate::goal_intake::GoalIntakeProof;
         use crate::physical::PhysicalWatchdog;
         use crate::replay::{
@@ -4365,10 +4442,9 @@ mod tests {
             .duration_since(UNIX_EPOCH)
             .unwrap()
             .as_nanos();
-        let dir = std::env::current_dir()
-            .unwrap()
-            .join("target")
-            .join("aegis-test-artifacts")
+        let dir = _test_artifact_root_guard
+            .path()
+            .to_path_buf()
             .join(format!("skill-admission-replay-{unique}"));
         let arrow_dir = dir.join("arrow");
         let manifest = RunEventSegmentArchive::write_ledger(&arrow_dir, 1, &ledger).unwrap();
@@ -4402,6 +4478,7 @@ mod tests {
 
     #[test]
     fn skill_admission_handoff_seals_registry_commit_to_next_action() {
+        let _test_artifact_root_guard = scoped_test_artifact_root();
         use crate::goal_intake::GoalIntakeProof;
         use crate::physical::PhysicalWatchdog;
         use crate::replay::{
@@ -4448,10 +4525,9 @@ mod tests {
             .duration_since(UNIX_EPOCH)
             .unwrap()
             .as_nanos();
-        let dir = std::env::current_dir()
-            .unwrap()
-            .join("target")
-            .join("aegis-test-artifacts")
+        let dir = _test_artifact_root_guard
+            .path()
+            .to_path_buf()
             .join(format!("skill-admission-handoff-{unique}"));
         let manifest_archive = RunEventSegmentArchive::write_ledger(&dir, 1, &ledger).unwrap();
         let handoff = RunEventSegmentArchive::seal_skill_admission_handoff(
@@ -4616,6 +4692,7 @@ mod tests {
 
     #[test]
     fn active_skill_execution_requires_replay_activation_and_admitted_wasm() {
+        let _test_artifact_root_guard = scoped_test_artifact_root();
         use crate::goal_intake::GoalIntakeProof;
         use crate::physical::PhysicalWatchdog;
         use crate::policy::{
@@ -4665,10 +4742,9 @@ mod tests {
             .duration_since(UNIX_EPOCH)
             .unwrap()
             .as_nanos();
-        let dir = std::env::current_dir()
-            .unwrap()
-            .join("target")
-            .join("aegis-test-artifacts")
+        let dir = _test_artifact_root_guard
+            .path()
+            .to_path_buf()
             .join(format!("active-skill-execution-{unique}"));
         let manifest_archive = RunEventSegmentArchive::write_ledger(&dir, 1, &ledger).unwrap();
         let handoff = RunEventSegmentArchive::seal_skill_admission_handoff(
@@ -4782,10 +4858,9 @@ mod tests {
             ),
             Err(SkillAdmissionError::SkillExecutionReplayMismatch)
         );
-        let exec_dir = std::env::current_dir()
-            .unwrap()
-            .join("target")
-            .join("aegis-test-artifacts")
+        let exec_dir = _test_artifact_root_guard
+            .path()
+            .to_path_buf()
             .join(format!("active-skill-execution-handoff-{unique}"));
         let exec_manifest = RunEventSegmentArchive::write_ledger(&exec_dir, 1, &ledger).unwrap();
         let execution_handoff = SkillRegistry::seal_skill_execution_handoff(
@@ -7528,6 +7603,40 @@ mod tests {
     }
 
     #[test]
+    fn typed_tool_ir_rejects_unsupported_schema_before_policy_allow() {
+        use crate::policy::{
+            CapabilityClass, DeterministicPolicyKernel, EvidenceContract, POLICY_RULE_INVALID_IR,
+            PolicyDecision, PolicyFacts, RiskClass, SideEffectClass, TYPED_TOOL_IR_SCHEMA_VERSION,
+            TypedToolIR,
+        };
+
+        let mut ir = TypedToolIR::new(
+            11,
+            12,
+            CapabilityClass::LocalRead,
+            SideEffectClass::None,
+            test_hash("credential"),
+            RiskClass::R1,
+            test_hash("precondition"),
+            test_hash("effect"),
+            EvidenceContract::physical(),
+            None,
+        );
+        assert_eq!(ir.schema_version, TYPED_TOOL_IR_SCHEMA_VERSION);
+        assert!(ir.is_valid());
+
+        let legacy_v1_hash = ir.canonical_hash;
+        ir.schema_version = u16::MAX;
+        assert_eq!(ir.canonical_hash, legacy_v1_hash);
+        assert!(!ir.is_valid());
+
+        let facts = PolicyFacts::new(test_hash("policy-v1"), false, false, false);
+        let trace = DeterministicPolicyKernel.evaluate(&ir, &facts);
+        assert_eq!(trace.decision, PolicyDecision::HardBlock);
+        assert_eq!(trace.matched_rule_ids, vec![POLICY_RULE_INVALID_IR]);
+    }
+
+    #[test]
     fn policy_kernel_hard_blocks_r4_without_staging_or_hitl() {
         use crate::policy::{
             CapabilityClass, DeterministicPolicyKernel, EvidenceContract,
@@ -9138,13 +9247,8 @@ mod tests {
             BrowserCollectorKind, BrowserLiveCollectorManifest, BrowserObservationPacket,
         };
         use crate::policy::SideEffectClass;
-        use std::time::{SystemTime, UNIX_EPOCH};
-
-        let unique = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .unwrap()
-            .as_nanos();
-        let dir = std::env::temp_dir().join(format!("browser-file-artifacts-{unique}"));
+        let _test_artifact_root_guard = scoped_test_artifact_root();
+        let dir = _test_artifact_root_guard.path().to_path_buf();
         std::fs::create_dir_all(&dir).unwrap();
 
         let artifact_paths = vec![
@@ -9412,13 +9516,8 @@ mod tests {
             BrowserCollectorKind, BrowserLiveCollectorArtifact, BrowserLiveCollectorRun,
             BrowserLiveCollectorRunError,
         };
-        use std::time::{SystemTime, UNIX_EPOCH};
-
-        let unique = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .unwrap()
-            .as_nanos();
-        let root = std::env::temp_dir().join(format!("browser-live-collector-run-{unique}"));
+        let _test_artifact_root_guard = scoped_test_artifact_root();
+        let root = _test_artifact_root_guard.path().to_path_buf();
         let run_id = 84;
         let action_id = 97531;
         let sequence_number = 6;
@@ -9575,18 +9674,14 @@ mod tests {
             BrowserOpsBenchVerificationProof,
         };
         use serde_json::json;
-        use std::time::{SystemTime, UNIX_EPOCH};
 
         fn write(path: &std::path::Path, bytes: &[u8]) -> String {
             std::fs::write(path, bytes).unwrap();
             path.canonicalize().unwrap().to_string_lossy().to_string()
         }
 
-        let unique = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .unwrap()
-            .as_nanos();
-        let root = std::env::temp_dir().join(format!("browser-ops-rust-verify-{unique}"));
+        let _test_artifact_root_guard = scoped_test_artifact_root();
+        let root = _test_artifact_root_guard.path().to_path_buf();
         let run_dir = root.join(
             "collector-runs/run-00000000000000000000000000000065-action-000000000000000000000000000000ca-seq-0000000000000001",
         );
@@ -9769,18 +9864,14 @@ mod tests {
             RunEventSegmentArchive, browser_ops_bench_verification_replay_binding_hash,
         };
         use serde_json::json;
-        use std::time::{SystemTime, UNIX_EPOCH};
 
         fn write(path: &std::path::Path, bytes: &[u8]) -> String {
             std::fs::write(path, bytes).unwrap();
             path.canonicalize().unwrap().to_string_lossy().to_string()
         }
 
-        let unique = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .unwrap()
-            .as_nanos();
-        let root = std::env::temp_dir().join(format!("browser-ops-replay-{unique}"));
+        let _test_artifact_root_guard = scoped_test_artifact_root();
+        let root = _test_artifact_root_guard.path().to_path_buf();
         let run_dir = root.join(
             "collector-runs/run-00000000000000000000000000000191-action-00000000000000000000000000000292-seq-0000000000000001",
         );
@@ -10009,18 +10100,14 @@ mod tests {
     fn cli_writes_browser_ops_bench_verification_report_artifact() {
         use crate::browser_witness::BrowserCollectorKind;
         use serde_json::json;
-        use std::time::{SystemTime, UNIX_EPOCH};
 
         fn write(path: &std::path::Path, bytes: &[u8]) -> String {
             std::fs::write(path, bytes).unwrap();
             path.canonicalize().unwrap().to_string_lossy().to_string()
         }
 
-        let unique = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .unwrap()
-            .as_nanos();
-        let root = std::env::temp_dir().join(format!("browser-ops-cli-report-{unique}"));
+        let _test_artifact_root_guard = scoped_test_artifact_root();
+        let root = _test_artifact_root_guard.path().to_path_buf();
         let run_dir = root.join(
             "collector-runs/run-00000000000000000000000000000321-action-00000000000000000000000000000432-seq-0000000000000001",
         );
@@ -10177,13 +10264,8 @@ mod tests {
     #[test]
     fn cli_writes_agentic_sdk_context_report_artifact() {
         use serde_json::json;
-        use std::time::{SystemTime, UNIX_EPOCH};
-
-        let unique = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .unwrap()
-            .as_nanos();
-        let root = std::env::temp_dir().join(format!("agentic-sdk-context-report-{unique}"));
+        let _test_artifact_root_guard = scoped_test_artifact_root();
+        let root = _test_artifact_root_guard.path().to_path_buf();
         let artifact_path = root.join("agentic-sdk-context-report.json");
         let artifact_hash = write_agentic_sdk_context_report(&artifact_path).unwrap();
         assert_ne!(artifact_hash, [0; 32]);
@@ -10796,6 +10878,7 @@ mod tests {
 
     #[test]
     fn run_event_seals_memory_commit_handoff_from_mmap_archive() {
+        let _test_artifact_root_guard = scoped_test_artifact_root();
         use crate::memory::frame::SemanticNode;
         use crate::replay::{
             MemoryCommitHandoffProof, NextActionKind, NextActionPacket, RunCheckpoint,
@@ -10809,10 +10892,9 @@ mod tests {
             .duration_since(UNIX_EPOCH)
             .unwrap()
             .as_nanos();
-        let dir = std::env::current_dir()
-            .unwrap()
-            .join("target")
-            .join("aegis-test-artifacts")
+        let dir = _test_artifact_root_guard
+            .path()
+            .to_path_buf()
             .join(format!("memory-commit-handoff-{unique}"));
 
         let typed_tool_ir_hash = test_hash("typed-tool-ir");
@@ -11067,6 +11149,7 @@ mod tests {
 
     #[test]
     fn tool_execution_gateway_ingests_browser_packet_as_replay_bound_tool_evidence() {
+        let _test_artifact_root_guard = scoped_test_artifact_root();
         use crate::browser_witness::{
             BrowserActionKind, BrowserActionTrace, BrowserCollectorKind, BrowserObservationPacket,
             BrowserWitnessProof,
@@ -11220,10 +11303,9 @@ mod tests {
             .duration_since(UNIX_EPOCH)
             .unwrap()
             .as_nanos();
-        let dir = std::env::current_dir()
-            .unwrap()
-            .join("target")
-            .join("aegis-test-artifacts")
+        let dir = _test_artifact_root_guard
+            .path()
+            .to_path_buf()
             .join(format!("browser-tool-gateway-replay-{unique}"));
         let manifest = RunEventSegmentArchive::write_ledger(&dir, 2, &ledger).unwrap();
         let execution_proof = ToolExecutionGateway::seal_replay_checkpoint_and_next_action(
@@ -11310,13 +11392,8 @@ mod tests {
             ToolExecutionGateway, browser_gateway_execution_proof_hash,
             browser_tool_physical_evidence_hash,
         };
-        use std::time::{SystemTime, UNIX_EPOCH};
-
-        let unique = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .unwrap()
-            .as_nanos();
-        let dir = std::env::temp_dir().join(format!("browser-gateway-file-paths-{unique}"));
+        let _test_artifact_root_guard = scoped_test_artifact_root();
+        let dir = _test_artifact_root_guard.path().to_path_buf();
         std::fs::create_dir_all(&dir).unwrap();
         let artifacts = vec![
             (
@@ -11557,12 +11634,8 @@ mod tests {
             BrowserArtifactFilePathRef::from_path(kind, path).unwrap()
         }
 
-        let unique = test_hash("browser-live-manifest-dir");
-        let dir = std::env::temp_dir().join(format!(
-            "aegis-browser-live-manifest-{:02x}{:02x}",
-            unique[0], unique[1]
-        ));
-        let _ = fs::remove_dir_all(&dir);
+        let _test_artifact_root_guard = scoped_test_artifact_root();
+        let dir = _test_artifact_root_guard.path().to_path_buf();
         fs::create_dir_all(&dir).unwrap();
         let path_refs = vec![
             write_artifact(
@@ -11814,12 +11887,8 @@ mod tests {
             BrowserArtifactFilePathRef::from_path(kind, path).unwrap()
         }
 
-        let unique = test_hash("browser-plan-file-dir");
-        let dir = std::env::temp_dir().join(format!(
-            "aegis-browser-plan-file-{:02x}{:02x}",
-            unique[0], unique[1]
-        ));
-        let _ = fs::remove_dir_all(&dir);
+        let _test_artifact_root_guard = scoped_test_artifact_root();
+        let dir = _test_artifact_root_guard.path().to_path_buf();
         fs::create_dir_all(&dir).unwrap();
         let path_refs = vec![
             write_artifact(
@@ -12144,6 +12213,7 @@ mod tests {
 
     #[test]
     fn tool_execution_gateway_seals_checkpoint_and_next_action_from_replay_proof() {
+        let _test_artifact_root_guard = scoped_test_artifact_root();
         use crate::policy::{
             CapabilityClass, DeterministicPolicyKernel, EvidenceContract, PolicyDecision,
             PolicyFacts, RiskClass, SideEffectClass, TypedToolIR,
@@ -12157,10 +12227,9 @@ mod tests {
             .duration_since(UNIX_EPOCH)
             .unwrap()
             .as_nanos();
-        let dir = std::env::current_dir()
-            .unwrap()
-            .join("target")
-            .join("aegis-test-artifacts")
+        let dir = _test_artifact_root_guard
+            .path()
+            .to_path_buf()
             .join(format!("tool-execution-replay-proof-{unique}"));
 
         let ir = TypedToolIR::new(
@@ -12236,6 +12305,7 @@ mod tests {
 
     #[test]
     fn tool_execution_gateway_seals_next_action_with_archived_task_selection_proof() {
+        let _test_artifact_root_guard = scoped_test_artifact_root();
         use crate::policy::{
             CapabilityClass, DeterministicPolicyKernel, EvidenceContract, PolicyDecision,
             PolicyFacts, RiskClass, SideEffectClass, TypedToolIR,
@@ -12275,10 +12345,9 @@ mod tests {
             .duration_since(UNIX_EPOCH)
             .unwrap()
             .as_nanos();
-        let dir = std::env::current_dir()
-            .unwrap()
-            .join("target")
-            .join("aegis-test-artifacts")
+        let dir = _test_artifact_root_guard
+            .path()
+            .to_path_buf()
             .join(format!("tool-task-selection-proof-{unique}"));
 
         let mut ledger = RunEventLedger::new(128);
@@ -12456,6 +12525,7 @@ mod tests {
 
     #[test]
     fn tool_execution_gateway_commits_replay_proven_output_to_cognifold() {
+        let _test_artifact_root_guard = scoped_test_artifact_root();
         use crate::memory::fold::CogniFoldStore;
         use crate::physical::{BacktrackSignal, PhysicalWatchdog, TrapReason};
         use crate::policy::{
@@ -12471,10 +12541,9 @@ mod tests {
             .duration_since(UNIX_EPOCH)
             .unwrap()
             .as_nanos();
-        let dir = std::env::current_dir()
-            .unwrap()
-            .join("target")
-            .join("aegis-test-artifacts")
+        let dir = _test_artifact_root_guard
+            .path()
+            .to_path_buf()
             .join(format!("tool-memory-commit-proof-{unique}"));
 
         let ir = TypedToolIR::new(
@@ -12615,6 +12684,7 @@ mod tests {
 
     #[test]
     fn tool_execution_gateway_rejects_failed_tool_output_memory_commit() {
+        let _test_artifact_root_guard = scoped_test_artifact_root();
         use crate::memory::fold::CogniFoldStore;
         use crate::physical::{BacktrackSignal, PhysicalWatchdog, TrapReason};
         use crate::policy::{
@@ -12630,10 +12700,9 @@ mod tests {
             .duration_since(UNIX_EPOCH)
             .unwrap()
             .as_nanos();
-        let dir = std::env::current_dir()
-            .unwrap()
-            .join("target")
-            .join("aegis-test-artifacts")
+        let dir = _test_artifact_root_guard
+            .path()
+            .to_path_buf()
             .join(format!("tool-failed-memory-commit-proof-{unique}"));
 
         let ir = TypedToolIR::new(
@@ -12772,6 +12841,7 @@ mod tests {
 
     #[test]
     fn run_event_records_browser_observation_packet_across_replay_segments() {
+        let _test_artifact_root_guard = scoped_test_artifact_root();
         use crate::browser_witness::{
             BrowserActionKind, BrowserActionTrace, BrowserCollectorKind, BrowserObservationPacket,
             BrowserWitnessProof,
@@ -12911,10 +12981,9 @@ mod tests {
             .duration_since(UNIX_EPOCH)
             .unwrap()
             .as_nanos();
-        let dir = std::env::current_dir()
-            .unwrap()
-            .join("target")
-            .join("aegis-test-artifacts")
+        let dir = _test_artifact_root_guard
+            .path()
+            .to_path_buf()
             .join(format!("browser-observation-packet-replay-{unique}"));
         let manifest = RunEventSegmentArchive::write_ledger(&dir, 1, &ledger).unwrap();
         let audit_proof =
@@ -12991,7 +13060,7 @@ mod tests {
             BinaryRunEventSegment, ReplayLedgerError, RunEventKind, RunEventLedger,
             RunEventSegmentArchive,
         };
-        use std::time::{SystemTime, UNIX_EPOCH};
+        let _test_artifact_root_guard = scoped_test_artifact_root();
 
         let epoch_hash = test_hash("agentic-replay-epoch");
         let mut lexical = HotLexicalIndex::new(epoch_hash).unwrap();
@@ -13062,11 +13131,7 @@ mod tests {
             Err(AgenticEvidenceProgramError::FuelExceeded)
         );
 
-        let unique = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .unwrap()
-            .as_nanos();
-        let dir = std::env::temp_dir().join(format!("agentic-evidence-replay-{unique}"));
+        let dir = _test_artifact_root_guard.path().to_path_buf();
         let manifest = RunEventSegmentArchive::write_ledger(&dir, 2, &ledger).unwrap();
         let recovered = RunEventSegmentArchive::read_ledger_mmap(&dir, &manifest).unwrap();
         assert_eq!(recovered.events(), ledger.events());
@@ -13079,6 +13144,7 @@ mod tests {
 
     #[test]
     fn agentic_evidence_sdk_run_replay_handoff_binds_manifest_record_and_capsule() {
+        let _test_artifact_root_guard = scoped_test_artifact_root();
         use crate::evidence_index::{
             AgenticEvidenceProgram, AgenticEvidenceProgramStep, AgenticEvidenceSdk,
             HotBitmapFilter, HotEvidenceIndex, HotLexicalIndex, SortedEvidenceSet,
@@ -13178,10 +13244,9 @@ mod tests {
             .duration_since(UNIX_EPOCH)
             .unwrap()
             .as_nanos();
-        let root = std::env::current_dir()
-            .unwrap()
-            .join("target")
-            .join("aegis-test-artifacts")
+        let root = _test_artifact_root_guard
+            .path()
+            .to_path_buf()
             .join(format!("agentic-sdk-run-handoff-{unique}"));
         let archive_dir = root.join("archive");
         let manifest = RunEventSegmentArchive::write_ledger(&archive_dir, 2, &ledger).unwrap();
@@ -13243,6 +13308,7 @@ mod tests {
 
     #[test]
     fn context_pack_requires_sdk_run_handoff_before_agentic_sdk_candidates_inherit() {
+        let _test_artifact_root_guard = scoped_test_artifact_root();
         use crate::context::{
             ContextGovernor, ContextGovernorConfig, ContextNode, ContextNodeKind,
         };
@@ -13306,10 +13372,9 @@ mod tests {
             .duration_since(UNIX_EPOCH)
             .unwrap()
             .as_nanos();
-        let archive_dir = std::env::current_dir()
-            .unwrap()
-            .join("target")
-            .join("aegis-test-artifacts")
+        let archive_dir = _test_artifact_root_guard
+            .path()
+            .to_path_buf()
             .join(format!("context-sdk-run-handoff-{unique}"));
         let manifest = RunEventSegmentArchive::write_ledger(&archive_dir, 2, &ledger).unwrap();
         let handoff = RunEventSegmentArchive::seal_agentic_evidence_sdk_run_handoff(
@@ -13563,6 +13628,7 @@ mod tests {
 
     #[test]
     fn run_event_records_context_pack_candidate_proof_after_context_pack() {
+        let _test_artifact_root_guard = scoped_test_artifact_root();
         use crate::context::{
             ContextGovernor, ContextGovernorConfig, ContextNode, ContextNodeKind,
         };
@@ -13617,10 +13683,9 @@ mod tests {
             .duration_since(UNIX_EPOCH)
             .unwrap()
             .as_nanos();
-        let dir = std::env::current_dir()
-            .unwrap()
-            .join("target")
-            .join("aegis-test-artifacts")
+        let dir = _test_artifact_root_guard
+            .path()
+            .to_path_buf()
             .join(format!("context-pack-candidate-proof-{unique}"));
         let manifest = RunEventSegmentArchive::write_ledger(&dir, 2, &ledger).unwrap();
         let archived = RunEventSegmentArchive::read_ledger_mmap(&dir, &manifest).unwrap();
@@ -13646,6 +13711,7 @@ mod tests {
 
     #[test]
     fn run_event_records_goal_intake_before_context_and_replay_scans() {
+        let _test_artifact_root_guard = scoped_test_artifact_root();
         use crate::replay::{
             BinaryRunEventSegment, ReplayLedgerError, RunEventKind, RunEventLedger,
             RunEventSegmentArchive, goal_intake_replay_binding_hash,
@@ -13678,10 +13744,9 @@ mod tests {
             .duration_since(UNIX_EPOCH)
             .unwrap()
             .as_nanos();
-        let dir = std::env::current_dir()
-            .unwrap()
-            .join("target")
-            .join("aegis-test-artifacts")
+        let dir = _test_artifact_root_guard
+            .path()
+            .to_path_buf()
             .join(format!("goal-intake-replay-{unique}"));
         let manifest = RunEventSegmentArchive::write_ledger(&dir, 1, &ledger).unwrap();
         let audit_proof =
@@ -13706,6 +13771,7 @@ mod tests {
 
     #[test]
     fn run_event_records_task_selection_proof_across_replay_segments() {
+        let _test_artifact_root_guard = scoped_test_artifact_root();
         use crate::replay::{
             BinaryRunEventSegment, ReplayLedgerError, RunEventKind, RunEventLedger,
             RunEventSegmentArchive,
@@ -13739,10 +13805,9 @@ mod tests {
             .duration_since(UNIX_EPOCH)
             .unwrap()
             .as_nanos();
-        let dir = std::env::current_dir()
-            .unwrap()
-            .join("target")
-            .join("aegis-test-artifacts")
+        let dir = _test_artifact_root_guard
+            .path()
+            .to_path_buf()
             .join(format!("task-selection-proof-{unique}"));
         let manifest = RunEventSegmentArchive::write_ledger(&dir, 1, &ledger).unwrap();
         let audit_proof =
@@ -13938,6 +14003,7 @@ mod tests {
 
     #[test]
     fn run_event_arrow_stream_roundtrips_hash_chain() {
+        let _test_artifact_root_guard = scoped_test_artifact_root();
         use crate::context::ContextFoldRecord;
         use crate::replay::{ArrowRunEventStream, RunEventLedger};
         use std::time::{SystemTime, UNIX_EPOCH};
@@ -13946,10 +14012,7 @@ mod tests {
             .duration_since(UNIX_EPOCH)
             .unwrap()
             .as_nanos();
-        let dir = std::env::current_dir()
-            .unwrap()
-            .join("target")
-            .join("aegis-test-artifacts");
+        let dir = _test_artifact_root_guard.path().to_path_buf();
         std::fs::create_dir_all(&dir).unwrap();
         let path = dir.join(format!("run-events-{unique}.arrow"));
 
@@ -14013,6 +14076,7 @@ mod tests {
 
     #[test]
     fn binary_run_event_segment_mmap_roundtrips_fixed_records() {
+        let _test_artifact_root_guard = scoped_test_artifact_root();
         use crate::context::ContextFoldRecord;
         use crate::replay::{BinaryRunEventSegment, RunEventLedger};
         use std::time::{SystemTime, UNIX_EPOCH};
@@ -14021,10 +14085,7 @@ mod tests {
             .duration_since(UNIX_EPOCH)
             .unwrap()
             .as_nanos();
-        let dir = std::env::current_dir()
-            .unwrap()
-            .join("target")
-            .join("aegis-test-artifacts");
+        let dir = _test_artifact_root_guard.path().to_path_buf();
         std::fs::create_dir_all(&dir).unwrap();
         let path = dir.join(format!("run-events-{unique}.bin"));
 
@@ -14089,6 +14150,7 @@ mod tests {
 
     #[test]
     fn tool_completion_evidence_roundtrips_segmented_arrow_and_binary_mmap() {
+        let _test_artifact_root_guard = scoped_test_artifact_root();
         use crate::replay::{
             BinaryRunEventSegment, RunEventKind, RunEventLedger, RunEventSegmentArchive,
             SegmentedArrowAuditStream, ToolExecutionEvidence, ToolExecutionStatus,
@@ -14100,10 +14162,9 @@ mod tests {
             .duration_since(UNIX_EPOCH)
             .unwrap()
             .as_nanos();
-        let dir = std::env::current_dir()
-            .unwrap()
-            .join("target")
-            .join("aegis-test-artifacts")
+        let dir = _test_artifact_root_guard
+            .path()
+            .to_path_buf()
             .join(format!("tool-completion-replay-{unique}"));
         let arrow_dir = dir.join("arrow");
         let binary_path = dir.join("run-events.bin");
@@ -14165,6 +14226,7 @@ mod tests {
 
     #[test]
     fn binary_run_event_segment_verify_mmap_scans_without_materializing() {
+        let _test_artifact_root_guard = scoped_test_artifact_root();
         use crate::replay::{BinaryRunEventSegment, RunEventLedger};
         use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -14172,10 +14234,7 @@ mod tests {
             .duration_since(UNIX_EPOCH)
             .unwrap()
             .as_nanos();
-        let dir = std::env::current_dir()
-            .unwrap()
-            .join("target")
-            .join("aegis-test-artifacts");
+        let dir = _test_artifact_root_guard.path().to_path_buf();
         std::fs::create_dir_all(&dir).unwrap();
         let path = dir.join(format!("run-events-scan-{unique}.bin"));
 
@@ -14216,6 +14275,7 @@ mod tests {
 
     #[test]
     fn binary_run_event_segment_rejects_bad_header_schema() {
+        let _test_artifact_root_guard = scoped_test_artifact_root();
         use crate::replay::{BinaryRunEventSegment, RunEventLedger};
         use std::io::{Seek, SeekFrom, Write};
         use std::time::{SystemTime, UNIX_EPOCH};
@@ -14224,10 +14284,7 @@ mod tests {
             .duration_since(UNIX_EPOCH)
             .unwrap()
             .as_nanos();
-        let dir = std::env::current_dir()
-            .unwrap()
-            .join("target")
-            .join("aegis-test-artifacts");
+        let dir = _test_artifact_root_guard.path().to_path_buf();
         std::fs::create_dir_all(&dir).unwrap();
 
         let mut ledger = RunEventLedger::new(215);
@@ -14265,6 +14322,7 @@ mod tests {
 
     #[test]
     fn binary_run_event_segment_rejects_tamper() {
+        let _test_artifact_root_guard = scoped_test_artifact_root();
         use crate::replay::{BinaryRunEventSegment, RunEventLedger};
         use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -14272,10 +14330,7 @@ mod tests {
             .duration_since(UNIX_EPOCH)
             .unwrap()
             .as_nanos();
-        let dir = std::env::current_dir()
-            .unwrap()
-            .join("target")
-            .join("aegis-test-artifacts");
+        let dir = _test_artifact_root_guard.path().to_path_buf();
         std::fs::create_dir_all(&dir).unwrap();
         let path = dir.join(format!("run-events-tamper-{unique}.bin"));
 
@@ -14300,6 +14355,7 @@ mod tests {
 
     #[test]
     fn binary_run_event_segment_recovers_last_valid_prefix_after_tail_damage() {
+        let _test_artifact_root_guard = scoped_test_artifact_root();
         use crate::replay::{BinaryRunEventSegment, RunEventLedger};
         use std::io::{Seek, SeekFrom, Write};
         use std::time::{SystemTime, UNIX_EPOCH};
@@ -14308,10 +14364,7 @@ mod tests {
             .duration_since(UNIX_EPOCH)
             .unwrap()
             .as_nanos();
-        let dir = std::env::current_dir()
-            .unwrap()
-            .join("target")
-            .join("aegis-test-artifacts");
+        let dir = _test_artifact_root_guard.path().to_path_buf();
         std::fs::create_dir_all(&dir).unwrap();
 
         let mut ledger = RunEventLedger::new(216);
@@ -14387,6 +14440,7 @@ mod tests {
 
     #[test]
     fn run_event_segment_archive_recovers_manifest_chain() {
+        let _test_artifact_root_guard = scoped_test_artifact_root();
         use crate::replay::{RunEventLedger, RunEventSegmentArchive};
         use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -14394,10 +14448,9 @@ mod tests {
             .duration_since(UNIX_EPOCH)
             .unwrap()
             .as_nanos();
-        let dir = std::env::current_dir()
-            .unwrap()
-            .join("target")
-            .join("aegis-test-artifacts")
+        let dir = _test_artifact_root_guard
+            .path()
+            .to_path_buf()
             .join(format!("run-event-segments-{unique}"));
 
         let mut ledger = RunEventLedger::new(303);
@@ -14450,6 +14503,7 @@ mod tests {
 
     #[test]
     fn run_event_segment_archive_recovers_with_mmap_reader() {
+        let _test_artifact_root_guard = scoped_test_artifact_root();
         use crate::replay::{RunEventLedger, RunEventSegmentArchive};
         use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -14457,10 +14511,9 @@ mod tests {
             .duration_since(UNIX_EPOCH)
             .unwrap()
             .as_nanos();
-        let dir = std::env::current_dir()
-            .unwrap()
-            .join("target")
-            .join("aegis-test-artifacts")
+        let dir = _test_artifact_root_guard
+            .path()
+            .to_path_buf()
             .join(format!("run-event-mmap-segments-{unique}"));
 
         let mut ledger = RunEventLedger::new(404);
@@ -14487,6 +14540,7 @@ mod tests {
 
     #[test]
     fn run_event_segment_archive_reports_mmap_materialization_evidence() {
+        let _test_artifact_root_guard = scoped_test_artifact_root();
         use crate::replay::{RunEventLedger, RunEventSegmentArchive};
         use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -14494,10 +14548,9 @@ mod tests {
             .duration_since(UNIX_EPOCH)
             .unwrap()
             .as_nanos();
-        let dir = std::env::current_dir()
-            .unwrap()
-            .join("target")
-            .join("aegis-test-artifacts")
+        let dir = _test_artifact_root_guard
+            .path()
+            .to_path_buf()
             .join(format!("run-event-mmap-evidence-{unique}"));
 
         let mut ledger = RunEventLedger::new(454);
@@ -14529,6 +14582,7 @@ mod tests {
 
     #[test]
     fn run_event_segment_archive_writes_one_arrow_batch_per_segment() {
+        let _test_artifact_root_guard = scoped_test_artifact_root();
         use crate::replay::{RunEventLedger, RunEventSegmentArchive};
         use arrow::ipc::reader::StreamReader;
         use std::fs::File;
@@ -14538,10 +14592,9 @@ mod tests {
             .duration_since(UNIX_EPOCH)
             .unwrap()
             .as_nanos();
-        let dir = std::env::current_dir()
-            .unwrap()
-            .join("target")
-            .join("aegis-test-artifacts")
+        let dir = _test_artifact_root_guard
+            .path()
+            .to_path_buf()
             .join(format!("run-event-arrow-batched-segments-{unique}"));
 
         let mut ledger = RunEventLedger::new(455);
@@ -14584,6 +14637,7 @@ mod tests {
 
     #[test]
     fn run_event_segment_archive_recovers_last_valid_prefix_after_missing_tail() {
+        let _test_artifact_root_guard = scoped_test_artifact_root();
         use crate::replay::{RunEventLedger, RunEventSegmentArchive};
         use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -14591,10 +14645,9 @@ mod tests {
             .duration_since(UNIX_EPOCH)
             .unwrap()
             .as_nanos();
-        let dir = std::env::current_dir()
-            .unwrap()
-            .join("target")
-            .join("aegis-test-artifacts")
+        let dir = _test_artifact_root_guard
+            .path()
+            .to_path_buf()
             .join(format!("run-event-crash-recovery-{unique}"));
 
         let mut ledger = RunEventLedger::new(505);
@@ -14641,6 +14694,7 @@ mod tests {
 
     #[test]
     fn run_event_segment_archive_recovers_manifest_from_sealed_segments() {
+        let _test_artifact_root_guard = scoped_test_artifact_root();
         use crate::replay::{RunEventLedger, RunEventSegmentArchive};
         use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -14648,10 +14702,9 @@ mod tests {
             .duration_since(UNIX_EPOCH)
             .unwrap()
             .as_nanos();
-        let dir = std::env::current_dir()
-            .unwrap()
-            .join("target")
-            .join("aegis-test-artifacts")
+        let dir = _test_artifact_root_guard
+            .path()
+            .to_path_buf()
             .join(format!("run-event-sealed-manifest-recovery-{unique}"));
 
         let mut ledger = RunEventLedger::new(506);
@@ -14699,6 +14752,7 @@ mod tests {
 
     #[test]
     fn run_event_segment_archive_recovers_manifest_prefix_without_tail_manifest() {
+        let _test_artifact_root_guard = scoped_test_artifact_root();
         use crate::replay::{RunEventLedger, RunEventSegmentArchive};
         use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -14706,10 +14760,9 @@ mod tests {
             .duration_since(UNIX_EPOCH)
             .unwrap()
             .as_nanos();
-        let dir = std::env::current_dir()
-            .unwrap()
-            .join("target")
-            .join("aegis-test-artifacts")
+        let dir = _test_artifact_root_guard
+            .path()
+            .to_path_buf()
             .join(format!("run-event-physical-prefix-recovery-{unique}"));
 
         let mut ledger = RunEventLedger::new(507);
@@ -14764,6 +14817,7 @@ mod tests {
 
     #[test]
     fn run_event_segment_archive_physical_manifest_scan_stops_at_corrupt_segment() {
+        let _test_artifact_root_guard = scoped_test_artifact_root();
         use crate::replay::{RunEventLedger, RunEventSegmentArchive};
         use std::io::{Seek, SeekFrom, Write};
         use std::time::{SystemTime, UNIX_EPOCH};
@@ -14772,10 +14826,9 @@ mod tests {
             .duration_since(UNIX_EPOCH)
             .unwrap()
             .as_nanos();
-        let dir = std::env::current_dir()
-            .unwrap()
-            .join("target")
-            .join("aegis-test-artifacts")
+        let dir = _test_artifact_root_guard
+            .path()
+            .to_path_buf()
             .join(format!("run-event-physical-corrupt-recovery-{unique}"));
 
         let mut ledger = RunEventLedger::new(508);
@@ -14837,6 +14890,7 @@ mod tests {
 
     #[test]
     fn segmented_arrow_audit_stream_rolls_segments_and_binds_files() {
+        let _test_artifact_root_guard = scoped_test_artifact_root();
         use crate::replay::{RunEventLedger, RunEventSegmentArchive, SegmentedArrowAuditStream};
         use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -14844,10 +14898,9 @@ mod tests {
             .duration_since(UNIX_EPOCH)
             .unwrap()
             .as_nanos();
-        let dir = std::env::current_dir()
-            .unwrap()
-            .join("target")
-            .join("aegis-test-artifacts")
+        let dir = _test_artifact_root_guard
+            .path()
+            .to_path_buf()
             .join(format!("segmented-arrow-audit-stream-{unique}"));
 
         let mut ledger = RunEventLedger::new(515);
@@ -14939,6 +14992,7 @@ mod tests {
 
     #[test]
     fn segmented_arrow_audit_proof_rejects_manifest_with_fake_semantic_chain() {
+        let _test_artifact_root_guard = scoped_test_artifact_root();
         use crate::replay::{RunEventLedger, RunEventSegmentArchive, RunEventSegmentManifest};
         use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -14946,10 +15000,9 @@ mod tests {
             .duration_since(UNIX_EPOCH)
             .unwrap()
             .as_nanos();
-        let dir = std::env::current_dir()
-            .unwrap()
-            .join("target")
-            .join("aegis-test-artifacts")
+        let dir = _test_artifact_root_guard
+            .path()
+            .to_path_buf()
             .join(format!("segmented-arrow-forged-manifest-{unique}"));
 
         let mut ledger = RunEventLedger::new(519);
@@ -14979,6 +15032,7 @@ mod tests {
 
     #[test]
     fn run_event_segment_archive_proves_two_pass_replay_determinism() {
+        let _test_artifact_root_guard = scoped_test_artifact_root();
         use crate::replay::{RunEventLedger, RunEventSegmentArchive};
         use std::io::{Seek, SeekFrom, Write};
         use std::time::{SystemTime, UNIX_EPOCH};
@@ -14987,10 +15041,9 @@ mod tests {
             .duration_since(UNIX_EPOCH)
             .unwrap()
             .as_nanos();
-        let dir = std::env::current_dir()
-            .unwrap()
-            .join("target")
-            .join("aegis-test-artifacts")
+        let dir = _test_artifact_root_guard
+            .path()
+            .to_path_buf()
             .join(format!("replay-determinism-proof-{unique}"));
 
         let mut ledger = RunEventLedger::new(520);
@@ -15058,6 +15111,7 @@ mod tests {
 
     #[test]
     fn run_checkpoint_binds_next_action_packet_to_replay_proof() {
+        let _test_artifact_root_guard = scoped_test_artifact_root();
         use crate::replay::{
             NextActionKind, NextActionPacket, RunCheckpoint, RunEventLedger, RunEventSegmentArchive,
         };
@@ -15067,10 +15121,9 @@ mod tests {
             .duration_since(UNIX_EPOCH)
             .unwrap()
             .as_nanos();
-        let dir = std::env::current_dir()
-            .unwrap()
-            .join("target")
-            .join("aegis-test-artifacts")
+        let dir = _test_artifact_root_guard
+            .path()
+            .to_path_buf()
             .join(format!("run-checkpoint-next-action-{unique}"));
 
         let mut ledger = RunEventLedger::new(521);
@@ -15141,6 +15194,7 @@ mod tests {
 
     #[test]
     fn segmented_arrow_audit_stream_enforces_single_writer_and_append_only_segments() {
+        let _test_artifact_root_guard = scoped_test_artifact_root();
         use crate::replay::{RunEventLedger, SegmentedArrowAuditStream};
         use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -15148,10 +15202,9 @@ mod tests {
             .duration_since(UNIX_EPOCH)
             .unwrap()
             .as_nanos();
-        let dir = std::env::current_dir()
-            .unwrap()
-            .join("target")
-            .join("aegis-test-artifacts")
+        let dir = _test_artifact_root_guard
+            .path()
+            .to_path_buf()
             .join(format!("segmented-arrow-single-writer-{unique}"));
 
         let mut ledger = RunEventLedger::new(518);
@@ -15184,6 +15237,7 @@ mod tests {
 
     #[test]
     fn segmented_arrow_audit_stream_refuses_existing_segment_path() {
+        let _test_artifact_root_guard = scoped_test_artifact_root();
         use crate::replay::{RunEventLedger, RunEventSegmentArchive, SegmentedArrowAuditStream};
         use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -15191,10 +15245,9 @@ mod tests {
             .duration_since(UNIX_EPOCH)
             .unwrap()
             .as_nanos();
-        let dir = std::env::current_dir()
-            .unwrap()
-            .join("target")
-            .join("aegis-test-artifacts")
+        let dir = _test_artifact_root_guard
+            .path()
+            .to_path_buf()
             .join(format!("segmented-arrow-existing-path-{unique}"));
         std::fs::create_dir_all(&dir).unwrap();
 
@@ -15217,6 +15270,7 @@ mod tests {
 
     #[test]
     fn segmented_arrow_audit_stream_rejects_physical_file_tamper() {
+        let _test_artifact_root_guard = scoped_test_artifact_root();
         use crate::replay::{RunEventLedger, RunEventSegmentArchive, SegmentedArrowAuditStream};
         use std::io::{Seek, SeekFrom, Write};
         use std::time::{SystemTime, UNIX_EPOCH};
@@ -15225,10 +15279,9 @@ mod tests {
             .duration_since(UNIX_EPOCH)
             .unwrap()
             .as_nanos();
-        let dir = std::env::current_dir()
-            .unwrap()
-            .join("target")
-            .join("aegis-test-artifacts")
+        let dir = _test_artifact_root_guard
+            .path()
+            .to_path_buf()
             .join(format!("segmented-arrow-audit-tamper-{unique}"));
 
         let mut ledger = RunEventLedger::new(516);
@@ -15276,6 +15329,7 @@ mod tests {
 
     #[test]
     fn segmented_arrow_audit_cache_rechecks_physical_file_evidence_before_hit() {
+        let _test_artifact_root_guard = scoped_test_artifact_root();
         use crate::replay::{RunEventLedger, RunEventSegmentArchive};
         use std::io::{Seek, SeekFrom, Write};
         use std::time::{SystemTime, UNIX_EPOCH};
@@ -15284,10 +15338,9 @@ mod tests {
             .duration_since(UNIX_EPOCH)
             .unwrap()
             .as_nanos();
-        let dir = std::env::current_dir()
-            .unwrap()
-            .join("target")
-            .join("aegis-test-artifacts")
+        let dir = _test_artifact_root_guard
+            .path()
+            .to_path_buf()
             .join(format!("segmented-arrow-cache-tamper-{unique}"));
 
         let mut ledger = RunEventLedger::new(524);
@@ -15326,6 +15379,7 @@ mod tests {
 
     #[test]
     fn segmented_arrow_audit_stream_rejects_missing_or_tampered_commit_sidecar() {
+        let _test_artifact_root_guard = scoped_test_artifact_root();
         use crate::replay::{RunEventLedger, RunEventSegmentArchive};
         use std::io::{Seek, SeekFrom, Write};
         use std::time::{SystemTime, UNIX_EPOCH};
@@ -15334,10 +15388,9 @@ mod tests {
             .duration_since(UNIX_EPOCH)
             .unwrap()
             .as_nanos();
-        let missing_dir = std::env::current_dir()
-            .unwrap()
-            .join("target")
-            .join("aegis-test-artifacts")
+        let missing_dir = _test_artifact_root_guard
+            .path()
+            .to_path_buf()
             .join(format!("segmented-arrow-missing-commit-{unique}"));
 
         let mut ledger = RunEventLedger::new(523);
@@ -15371,10 +15424,9 @@ mod tests {
                 .is_err()
         );
 
-        let tampered_dir = std::env::current_dir()
-            .unwrap()
-            .join("target")
-            .join("aegis-test-artifacts")
+        let tampered_dir = _test_artifact_root_guard
+            .path()
+            .to_path_buf()
             .join(format!("segmented-arrow-tampered-commit-{unique}"));
         let tampered_manifest = RunEventSegmentArchive::write_ledger(&tampered_dir, 1, &ledger)
             .expect("write tampered-sidecar source");
@@ -15414,6 +15466,7 @@ mod tests {
 
     #[test]
     fn segmented_arrow_audit_stream_rejects_missing_replay_prerequisite() {
+        let _test_artifact_root_guard = scoped_test_artifact_root();
         use crate::replay::{RunEvent, SegmentedArrowAuditStream};
         use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -15421,10 +15474,9 @@ mod tests {
             .duration_since(UNIX_EPOCH)
             .unwrap()
             .as_nanos();
-        let dir = std::env::current_dir()
-            .unwrap()
-            .join("target")
-            .join("aegis-test-artifacts")
+        let dir = _test_artifact_root_guard
+            .path()
+            .to_path_buf()
             .join(format!("segmented-arrow-audit-prereq-{unique}"));
         let mut stream = SegmentedArrowAuditStream::create(&dir, 517, 2).unwrap();
         let orphan_response = RunEvent::llm_response_received(
@@ -15443,6 +15495,7 @@ mod tests {
 
     #[test]
     fn run_event_segment_archive_compacts_to_binary_segment_crash_safely() {
+        let _test_artifact_root_guard = scoped_test_artifact_root();
         use crate::replay::{BinaryRunEventSegment, RunEventLedger, RunEventSegmentArchive};
         use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -15450,10 +15503,9 @@ mod tests {
             .duration_since(UNIX_EPOCH)
             .unwrap()
             .as_nanos();
-        let dir = std::env::current_dir()
-            .unwrap()
-            .join("target")
-            .join("aegis-test-artifacts")
+        let dir = _test_artifact_root_guard
+            .path()
+            .to_path_buf()
             .join(format!("run-event-compaction-{unique}"));
 
         let mut ledger = RunEventLedger::new(519);
@@ -15508,6 +15560,7 @@ mod tests {
 
     #[test]
     fn replay_chaos_bench_recovers_seeded_crash_points() {
+        let _test_artifact_root_guard = scoped_test_artifact_root();
         use crate::policy::HarnessBenchScorecard;
         use crate::replay::{
             ReplayChaosBench, RunEventLedger, ToolExecutionEvidence, ToolExecutionStatus,
@@ -15519,10 +15572,9 @@ mod tests {
             .duration_since(UNIX_EPOCH)
             .unwrap()
             .as_nanos();
-        let dir = std::env::current_dir()
-            .unwrap()
-            .join("target")
-            .join("aegis-test-artifacts")
+        let dir = _test_artifact_root_guard
+            .path()
+            .to_path_buf()
             .join(format!("replay-chaos-bench-{unique}"));
 
         let mut ledger = RunEventLedger::new(606);
@@ -15642,6 +15694,7 @@ mod tests {
 
     #[test]
     fn replay_chaos_bench_sweeps_event_boundaries() {
+        let _test_artifact_root_guard = scoped_test_artifact_root();
         use crate::replay::{ReplayChaosBench, RunEventLedger};
         use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -15649,10 +15702,9 @@ mod tests {
             .duration_since(UNIX_EPOCH)
             .unwrap()
             .as_nanos();
-        let dir = std::env::current_dir()
-            .unwrap()
-            .join("target")
-            .join("aegis-test-artifacts")
+        let dir = _test_artifact_root_guard
+            .path()
+            .to_path_buf()
             .join(format!("replay-event-boundary-sweep-{unique}"));
 
         let mut ledger = RunEventLedger::new(707);
@@ -15699,6 +15751,7 @@ mod tests {
 
     #[test]
     fn replay_chaos_bench_sweeps_approval_boundaries() {
+        let _test_artifact_root_guard = scoped_test_artifact_root();
         use crate::replay::{ReplayChaosBench, RunEventKind, RunEventLedger};
         use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -15706,10 +15759,9 @@ mod tests {
             .duration_since(UNIX_EPOCH)
             .unwrap()
             .as_nanos();
-        let dir = std::env::current_dir()
-            .unwrap()
-            .join("target")
-            .join("aegis-test-artifacts")
+        let dir = _test_artifact_root_guard
+            .path()
+            .to_path_buf()
             .join(format!("replay-approval-boundary-sweep-{unique}"));
 
         let mut ledger = RunEventLedger::new(808);
@@ -15778,6 +15830,7 @@ mod tests {
 
     #[test]
     fn replay_endurance_bench_proves_accelerated_100h_mmap_recovery() {
+        let _test_artifact_root_guard = scoped_test_artifact_root();
         use crate::replay::ReplayEnduranceBench;
         use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -15785,10 +15838,9 @@ mod tests {
             .duration_since(UNIX_EPOCH)
             .unwrap()
             .as_nanos();
-        let dir = std::env::current_dir()
-            .unwrap()
-            .join("target")
-            .join("aegis-test-artifacts")
+        let dir = _test_artifact_root_guard
+            .path()
+            .to_path_buf()
             .join(format!("replay-endurance-100h-{unique}"));
 
         let report = ReplayEnduranceBench::run_accelerated_100h_proof(&dir)
@@ -15832,6 +15884,7 @@ mod tests {
 
     #[test]
     fn replay_endurance_bench_rejects_uncheckpointed_tail_recovery() {
+        let _test_artifact_root_guard = scoped_test_artifact_root();
         use crate::replay::ReplayEnduranceBench;
         use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -15839,10 +15892,9 @@ mod tests {
             .duration_since(UNIX_EPOCH)
             .unwrap()
             .as_nanos();
-        let dir = std::env::current_dir()
-            .unwrap()
-            .join("target")
-            .join("aegis-test-artifacts")
+        let dir = _test_artifact_root_guard
+            .path()
+            .to_path_buf()
             .join(format!("replay-endurance-reject-{unique}"));
 
         let result = ReplayEnduranceBench::run_accelerated_proof(
@@ -15946,10 +15998,14 @@ mod tests {
 
     #[test]
     fn hot_engine_ffi_commit_returns_gateway_contract() {
+        Python::initialize();
         let payload = b"friendly gateway evidence".to_vec();
         let artifact_hash = aegis_hot_hash(payload.clone()).unwrap();
         let response: serde_json::Value = serde_json::from_str(
-            &aegis_hot_commit(payload, Some("DEV".to_string()), None, None).unwrap(),
+            &Python::attach(|py| {
+                aegis_hot_commit(py, payload, Some("DEV".to_string()), None, None)
+            })
+            .unwrap(),
         )
         .unwrap();
 
@@ -15966,12 +16022,16 @@ mod tests {
 
     #[test]
     fn hot_engine_ffi_batch_commit_returns_single_arena_contract() {
+        Python::initialize();
         let payloads = vec![
             b"browser-dom-before".to_vec(),
             b"browser-screenshot-after".to_vec(),
         ];
         let response: serde_json::Value = serde_json::from_str(
-            &aegis_hot_commit_batch(payloads, Some("DEV".to_string()), None, None).unwrap(),
+            &Python::attach(|py| {
+                aegis_hot_commit_batch(py, payloads, Some("DEV".to_string()), None, None)
+            })
+            .unwrap(),
         )
         .unwrap();
 
@@ -16001,13 +16061,8 @@ mod tests {
             AsyncShadowSealer, InMemoryEvidenceArena, TrustLevel, shadow_seal_batch_hash,
             simd_blake3_hash,
         };
-        use std::time::{SystemTime, UNIX_EPOCH};
-
-        let unique = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .unwrap()
-            .as_nanos();
-        let dir = std::env::temp_dir().join(format!("aegis-shadow-sealer-{unique}"));
+        let _test_artifact_root_guard = scoped_test_artifact_root();
+        let dir = _test_artifact_root_guard.path().to_path_buf();
         let arena = InMemoryEvidenceArena::new(TrustLevel::Prod, 1024 * 1024, 1024 * 1024);
         let payload = b"\x89PNG-aegis-hot-arena-screenshot";
         let handle = arena.commit(payload).unwrap();
@@ -16084,6 +16139,7 @@ mod tests {
 
     #[test]
     fn shadow_seal_batch_is_replay_visible_in_segmented_arrow_cold_ledger() {
+        let _test_artifact_root_guard = scoped_test_artifact_root();
         use crate::hot_engine::{AsyncShadowSealer, InMemoryEvidenceArena, TrustLevel};
         use crate::replay::{
             ReplayLedgerError, RunEventKind, RunEventLedger, RunEventSegmentArchive,
@@ -16095,10 +16151,9 @@ mod tests {
             .duration_since(UNIX_EPOCH)
             .unwrap()
             .as_nanos();
-        let dir = std::env::current_dir()
-            .unwrap()
-            .join("target")
-            .join("aegis-test-artifacts")
+        let dir = _test_artifact_root_guard
+            .path()
+            .to_path_buf()
             .join(format!("shadow-seal-replay-{unique}"));
         let seal_dir = dir.join("shadow-seals");
 

@@ -1998,7 +1998,7 @@ impl LabController {
     pub fn from_snapshot_json(snapshot: &str) -> Result<Self, LabError> {
         let controller: Self =
             serde_json::from_str(snapshot).map_err(|_| LabError::InvalidEvent)?;
-        controller.runtime.validate_snapshot()?;
+        controller.runtime.validate_snapshot_contents()?;
         if controller.steps > controller.runtime.mission().max_steps
             || !controller.external_attempt_budget_valid()
             || !controller.budget.snapshot_valid()
@@ -2148,6 +2148,11 @@ impl LabController {
             {
                 return Err(LabError::InvalidTransition);
             }
+            if next_state == LabRunState::Completed
+                && !self.goal_completion_evidence_is_successful()
+            {
+                return Err(LabError::InvalidTransition);
+            }
             self.runtime.state = next_state;
         }
         match event.kind {
@@ -2205,6 +2210,18 @@ impl LabController {
             return Err(LabError::InvalidEvent);
         }
         self.validate_projection_event(&event)?;
+        let is_goal_verification = event.kind == LabEventKind::ReviewRecorded
+            && payload
+                .as_object()
+                .and_then(|object| object.get("record_type"))
+                .and_then(serde_json::Value::as_str)
+                == Some("goal_verification");
+        if self.runtime.mission().goal_contract_json.is_some()
+            && is_goal_verification
+            && self.runtime.state != LabRunState::Reviewing
+        {
+            return Err(LabError::InvalidTransition);
+        }
         if !self.projection_state_allows(event.kind) {
             return Err(LabError::InvalidTransition);
         }
@@ -2225,6 +2242,11 @@ impl LabController {
                 return Err(LabError::InvalidEvent);
             };
             if self.runtime.state != next_state && !self.runtime.state.can_transition_to(next_state)
+            {
+                return Err(LabError::InvalidTransition);
+            }
+            if next_state == LabRunState::Completed
+                && !self.goal_completion_evidence_is_successful()
             {
                 return Err(LabError::InvalidTransition);
             }
@@ -3487,96 +3509,7 @@ impl LabController {
                     return Err(LabError::InvalidRecord);
                 }
             }
-            LabEventKind::ReviewRecorded => {
-                if object
-                    .get("record_type")
-                    .and_then(serde_json::Value::as_str)
-                    == Some("goal_verification")
-                {
-                    let verification = object
-                        .get("verification")
-                        .and_then(serde_json::Value::as_object)
-                        .ok_or(LabError::InvalidRecord)?;
-                    if !has_exact_json_keys(
-                        verification,
-                        &[
-                            "schema",
-                            "contract_hash",
-                            "generation",
-                            "verifier_id",
-                            "independent",
-                            "predicate_results",
-                            "evidence_refs",
-                            "evidence_complete",
-                            "verification_hash",
-                        ],
-                    ) || verification
-                        .get("schema")
-                        .and_then(serde_json::Value::as_str)
-                        != Some("aegis-goal-verification-v1")
-                        || verification
-                            .get("contract_hash")
-                            .and_then(serde_json::Value::as_str)
-                            .is_none_or(|value| !is_hex_digest(value))
-                        || verification
-                            .get("generation")
-                            .and_then(serde_json::Value::as_u64)
-                            == Some(0)
-                        || verification
-                            .get("verifier_id")
-                            .and_then(serde_json::Value::as_str)
-                            .is_none_or(|value| value.trim().is_empty())
-                        || verification
-                            .get("independent")
-                            .and_then(serde_json::Value::as_bool)
-                            .is_none()
-                        || verification
-                            .get("evidence_complete")
-                            .and_then(serde_json::Value::as_bool)
-                            .is_none()
-                        || verification
-                            .get("verification_hash")
-                            .and_then(serde_json::Value::as_str)
-                            .is_none_or(|value| !is_hex_digest(value))
-                    {
-                        return Err(LabError::InvalidRecord);
-                    }
-                    let predicate_results = verification
-                        .get("predicate_results")
-                        .and_then(serde_json::Value::as_array)
-                        .ok_or(LabError::InvalidRecord)?;
-                    if predicate_results.iter().any(|item| {
-                        let Some(pair) = item.as_array() else {
-                            return true;
-                        };
-                        pair.len() != 2
-                            || pair[0].as_str().is_none_or(|value| value.trim().is_empty())
-                            || pair[1].as_bool().is_none()
-                    }) {
-                        return Err(LabError::InvalidRecord);
-                    }
-                    let evidence_refs = verification
-                        .get("evidence_refs")
-                        .and_then(serde_json::Value::as_array)
-                        .ok_or(LabError::InvalidRecord)?;
-                    if evidence_refs
-                        .iter()
-                        .any(|item| item.as_str().is_none_or(|value| value.trim().is_empty()))
-                    {
-                        return Err(LabError::InvalidRecord);
-                    }
-                    let supplied_hash = verification
-                        .get("verification_hash")
-                        .and_then(serde_json::Value::as_str)
-                        .ok_or(LabError::InvalidRecord)?;
-                    let mut unsigned = verification.clone();
-                    unsigned.remove("verification_hash");
-                    if supplied_hash != digest_hex(goal_verification_hash(&unsigned)) {
-                        return Err(LabError::InvalidRecord);
-                    }
-                    self.validate_goal_verification_contract(verification)?;
-                }
-            }
+            LabEventKind::ReviewRecorded => self.validate_goal_verification_record(object)?,
             LabEventKind::SecurityEventRecorded
             | LabEventKind::BlockerRecorded
             | LabEventKind::BlockerResolved
@@ -3590,6 +3523,101 @@ impl LabController {
             _ => {}
         }
         Ok(())
+    }
+
+    fn validate_goal_verification_record(
+        &self,
+        object: &serde_json::Map<String, serde_json::Value>,
+    ) -> Result<(), LabError> {
+        if object
+            .get("record_type")
+            .and_then(serde_json::Value::as_str)
+            != Some("goal_verification")
+        {
+            return Ok(());
+        }
+        let verification = object
+            .get("verification")
+            .and_then(serde_json::Value::as_object)
+            .ok_or(LabError::InvalidRecord)?;
+        if !has_exact_json_keys(
+            verification,
+            &[
+                "schema",
+                "contract_hash",
+                "generation",
+                "verifier_id",
+                "independent",
+                "predicate_results",
+                "evidence_refs",
+                "evidence_complete",
+                "verification_hash",
+            ],
+        ) || verification
+            .get("schema")
+            .and_then(serde_json::Value::as_str)
+            != Some("aegis-goal-verification-v1")
+            || verification
+                .get("contract_hash")
+                .and_then(serde_json::Value::as_str)
+                .is_none_or(|value| !is_hex_digest(value))
+            || verification
+                .get("generation")
+                .and_then(serde_json::Value::as_u64)
+                == Some(0)
+            || verification
+                .get("verifier_id")
+                .and_then(serde_json::Value::as_str)
+                .is_none_or(|value| value.trim().is_empty())
+            || verification
+                .get("independent")
+                .and_then(serde_json::Value::as_bool)
+                .is_none()
+            || verification
+                .get("evidence_complete")
+                .and_then(serde_json::Value::as_bool)
+                .is_none()
+            || verification
+                .get("verification_hash")
+                .and_then(serde_json::Value::as_str)
+                .is_none_or(|value| !is_hex_digest(value))
+        {
+            return Err(LabError::InvalidRecord);
+        }
+        let predicate_results = verification
+            .get("predicate_results")
+            .and_then(serde_json::Value::as_array)
+            .ok_or(LabError::InvalidRecord)?;
+        if predicate_results.iter().any(|item| {
+            let Some(pair) = item.as_array() else {
+                return true;
+            };
+            pair.len() != 2
+                || pair[0].as_str().is_none_or(|value| value.trim().is_empty())
+                || pair[1].as_bool().is_none()
+        }) {
+            return Err(LabError::InvalidRecord);
+        }
+        let evidence_refs = verification
+            .get("evidence_refs")
+            .and_then(serde_json::Value::as_array)
+            .ok_or(LabError::InvalidRecord)?;
+        if evidence_refs
+            .iter()
+            .any(|item| item.as_str().is_none_or(|value| value.trim().is_empty()))
+        {
+            return Err(LabError::InvalidRecord);
+        }
+        let supplied_hash = verification
+            .get("verification_hash")
+            .and_then(serde_json::Value::as_str)
+            .ok_or(LabError::InvalidRecord)?;
+        let mut unsigned = verification.clone();
+        unsigned.remove("verification_hash");
+        if supplied_hash != digest_hex(goal_verification_hash(&unsigned)) {
+            return Err(LabError::InvalidRecord);
+        }
+        self.validate_goal_verification_contract(verification)
     }
 
     fn validate_goal_verification_contract(
@@ -3679,6 +3707,7 @@ impl LabController {
             .and_then(serde_json::Value::as_array)
             .ok_or(LabError::InvalidRecord)?;
         let mut result_ids = BTreeSet::new();
+        let mut passing_result_ids = BTreeSet::new();
         for raw_result in results {
             let pair = raw_result.as_array().ok_or(LabError::InvalidRecord)?;
             if pair.len() != 2 || pair[1].as_bool().is_none() {
@@ -3692,6 +3721,9 @@ impl LabController {
                 || !result_ids.insert(predicate_id.to_string())
             {
                 return Err(LabError::InvalidRecord);
+            }
+            if pair[1].as_bool() == Some(true) {
+                passing_result_ids.insert(predicate_id.to_string());
             }
         }
         let evidence_refs = verification
@@ -3712,6 +3744,9 @@ impl LabController {
             .get("evidence_complete")
             .and_then(serde_json::Value::as_bool)
             .ok_or(LabError::InvalidRecord)?;
+        if !evidence_complete {
+            return Err(LabError::InvalidRecord);
+        }
         if evidence_complete {
             for record_type in &required_record_types {
                 let present = match record_type.as_str() {
@@ -3740,6 +3775,7 @@ impl LabController {
                 }
             }
             if !required_predicates.is_subset(&result_ids)
+                || !required_predicates.is_subset(&passing_result_ids)
                 || !required_evidence.is_subset(&evidence_ids)
             {
                 return Err(LabError::InvalidRecord);
@@ -4183,6 +4219,118 @@ impl LabController {
         })
     }
 
+    fn goal_completion_evidence_is_successful(&self) -> bool {
+        if self.runtime.mission().goal_contract_json.is_none() {
+            return true;
+        }
+        let completed_sequence = if self.runtime.state == LabRunState::Completed {
+            let Some(sequence) = self.runtime.events.iter().rev().find_map(|event| {
+                if event.kind != LabEventKind::StateChanged {
+                    return None;
+                }
+                let runtime_completion =
+                    event.payload_hash == canonical_hash(&LabRunState::Completed);
+                let projection_completion = self
+                    .projection_payloads
+                    .get(&event.sequence)
+                    .and_then(serde_json::Value::as_object)
+                    .and_then(|payload| payload.get("state"))
+                    .and_then(serde_json::Value::as_str)
+                    == Some("completed");
+                (runtime_completion || projection_completion).then_some(event.sequence)
+            }) else {
+                return false;
+            };
+            Some(sequence)
+        } else {
+            None
+        };
+        let Some((event, payload)) = self.runtime.events.iter().rev().find_map(|event| {
+            if event.kind != LabEventKind::ReviewRecorded {
+                return None;
+            }
+            let payload = self.projection_payloads.get(&event.sequence)?;
+            let is_goal_verification =
+                payload.as_object()?.get("record_type")?.as_str() == Some("goal_verification");
+            is_goal_verification.then_some((event, payload))
+        }) else {
+            return false;
+        };
+        if completed_sequence.is_some_and(|sequence| event.sequence >= sequence) {
+            return false;
+        }
+        if !self.goal_verification_was_recorded_while_reviewing(event.sequence) {
+            return false;
+        }
+        let Some(object) = payload.as_object() else {
+            return false;
+        };
+        if event.payload_hash != projection_payload_hash(payload)
+            || self.validate_goal_verification_record(object).is_err()
+            || self.validate_projection_binding(event, payload).is_err()
+        {
+            return false;
+        }
+        payload
+            .as_object()
+            .and_then(|object| object.get("verification"))
+            .and_then(serde_json::Value::as_object)
+            .and_then(|verification| verification.get("evidence_complete"))
+            .and_then(serde_json::Value::as_bool)
+            == Some(true)
+    }
+
+    fn goal_verification_was_recorded_while_reviewing(&self, sequence: u64) -> bool {
+        let mut state = LabRunState::Planned;
+        for event in self
+            .runtime
+            .events
+            .iter()
+            .take_while(|event| event.sequence < sequence)
+        {
+            if event.kind != LabEventKind::StateChanged {
+                continue;
+            }
+            let projected_state = self
+                .projection_payloads
+                .get(&event.sequence)
+                .and_then(serde_json::Value::as_object)
+                .and_then(|payload| payload.get("state"))
+                .and_then(serde_json::Value::as_str)
+                .and_then(|value| match value {
+                    "planned" => Some(LabRunState::Planned),
+                    "researching" => Some(LabRunState::Researching),
+                    "experimenting" => Some(LabRunState::Experimenting),
+                    "reviewing" => Some(LabRunState::Reviewing),
+                    "completed" => Some(LabRunState::Completed),
+                    "blocked" => Some(LabRunState::Blocked),
+                    "aborted" => Some(LabRunState::Aborted),
+                    _ => None,
+                });
+            let next_state = projected_state.or_else(|| {
+                [
+                    LabRunState::Planned,
+                    LabRunState::Researching,
+                    LabRunState::Experimenting,
+                    LabRunState::Reviewing,
+                    LabRunState::Completed,
+                    LabRunState::Blocked,
+                    LabRunState::Aborted,
+                ]
+                .into_iter()
+                .find(|candidate| event.payload_hash == canonical_hash(candidate))
+            });
+            let Some(next_state) = next_state else {
+                return false;
+            };
+            if state != next_state && !state.can_transition_to(next_state) {
+                return false;
+            }
+            state = next_state;
+        }
+        state == LabRunState::Reviewing
+    }
+
     fn validate_projection_snapshot(&self) -> Result<(), LabError> {
         if self
             .projection_sources
@@ -4393,6 +4541,11 @@ impl LabController {
         {
             return Err(LabError::InvalidEvent);
         }
+        if self.runtime.state == LabRunState::Completed
+            && !self.goal_completion_evidence_is_successful()
+        {
+            return Err(LabError::InvalidEvent);
+        }
         Ok(())
     }
 
@@ -4415,6 +4568,12 @@ impl LabController {
     }
 
     pub fn transition(&mut self, next: LabRunState) -> Result<(), LabError> {
+        if next == LabRunState::Completed {
+            if !self.goal_completion_evidence_is_successful() {
+                return Err(LabError::InvalidTransition);
+            }
+            return self.runtime.transition_after_completion_gate(next);
+        }
         self.runtime.transition(next)
     }
 
@@ -4450,10 +4609,13 @@ impl LabController {
     }
 
     pub fn review_and_complete(&mut self) -> Result<(), LabError> {
+        if !self.goal_completion_evidence_is_successful() {
+            return Err(LabError::InvalidTransition);
+        }
         if !self.finalization.finalizer_allowed() {
             return Err(LabError::InvalidTransition);
         }
-        self.runtime.review_and_complete()
+        self.runtime.review_and_complete_after_completion_gate()
     }
 }
 
@@ -4526,6 +4688,14 @@ impl LabRuntime {
     }
 
     fn validate_snapshot(&self) -> Result<(), LabError> {
+        self.validate_snapshot_contents()?;
+        if self.state == LabRunState::Completed && self.mission.goal_contract_json.is_some() {
+            return Err(LabError::InvalidEvent);
+        }
+        Ok(())
+    }
+
+    fn validate_snapshot_contents(&self) -> Result<(), LabError> {
         self.mission.validate()?;
         if !verify_event_chain(&self.events) {
             return Err(LabError::InvalidEvent);
@@ -4592,6 +4762,13 @@ impl LabRuntime {
     }
 
     pub fn transition(&mut self, next: LabRunState) -> Result<(), LabError> {
+        if next == LabRunState::Completed && self.mission.goal_contract_json.is_some() {
+            return Err(LabError::InvalidTransition);
+        }
+        self.transition_after_completion_gate(next)
+    }
+
+    fn transition_after_completion_gate(&mut self, next: LabRunState) -> Result<(), LabError> {
         if self.state == next {
             return Ok(());
         }
@@ -4742,6 +4919,13 @@ impl LabRuntime {
     }
 
     pub fn review_and_complete(&mut self) -> Result<(), LabError> {
+        if self.mission.goal_contract_json.is_some() {
+            return Err(LabError::InvalidTransition);
+        }
+        self.review_and_complete_after_completion_gate()
+    }
+
+    fn review_and_complete_after_completion_gate(&mut self) -> Result<(), LabError> {
         if self.hypotheses.is_empty()
             || self.experiments.is_empty()
             || self.observations.is_empty()
@@ -4773,7 +4957,7 @@ impl LabRuntime {
         if self.state != LabRunState::Reviewing {
             self.transition(LabRunState::Reviewing)?;
         }
-        self.transition(LabRunState::Completed)
+        self.transition_after_completion_gate(LabRunState::Completed)
     }
 
     pub fn manifest(&self) -> LabRunManifest {
@@ -5042,6 +5226,95 @@ mod tests {
             .unwrap()
             .insert("contract_hash".to_string(), serde_json::json!(digest_hex));
         (serde_json::to_string(&definition).unwrap(), digest)
+    }
+
+    fn explicit_goal_mission() -> LabMissionSpec {
+        let (contract_json, contract_hash) = explicit_goal_contract_json();
+        let mut mission = mission();
+        mission.max_external_attempts = Some(20);
+        mission.contract_hash = contract_hash;
+        mission.goal_contract_json = Some(contract_json);
+        mission
+    }
+
+    fn append_projection_record_for_test(
+        controller: &mut LabController,
+        kind: LabEventKind,
+        payload: serde_json::Value,
+        projection_state: Option<LabRunState>,
+    ) -> Result<(), LabError> {
+        let sequence = controller.runtime.events.len() as u64 + 1;
+        let state_epoch = controller.runtime.state_epoch.saturating_add(1);
+        let previous = controller
+            .runtime
+            .events
+            .last()
+            .map(|event| event.event_hash)
+            .unwrap_or([0; 32]);
+        let event = LabEvent::new(
+            sequence,
+            state_epoch,
+            kind,
+            projection_payload_hash(&payload),
+            previous,
+        );
+        controller.admit_projection_record(
+            event,
+            &serde_json::to_string(&payload).unwrap(),
+            projection_state,
+        )
+    }
+
+    fn goal_verification_payload(
+        contract_json: &str,
+        contract_hash: [u8; 32],
+        required_predicate_passed: bool,
+    ) -> serde_json::Value {
+        let contract: serde_json::Value = serde_json::from_str(contract_json).unwrap();
+        let target_digest = digest_hex(projection_payload_hash(&contract["target"]));
+        let mut verification = serde_json::json!({
+            "schema": "aegis-goal-verification-v1",
+            "contract_hash": digest_hex(contract_hash),
+            "generation": 1,
+            "verifier_id": "independent-verifier",
+            "independent": true,
+            "predicate_results": [["reproducible-result", required_predicate_passed]],
+            "evidence_refs": ["source-1"],
+            "evidence_complete": true
+        });
+        let verification_hash = goal_verification_hash(verification.as_object().unwrap());
+        verification["verification_hash"] = serde_json::json!(digest_hex(verification_hash));
+        serde_json::json!({
+            "record_type": "goal_verification",
+            "goal_id": "goal-1",
+            "goal_generation": 1,
+            "goal_contract_hash": digest_hex(contract_hash),
+            "target_digest": target_digest,
+            "verification": verification
+        })
+    }
+
+    fn source_projection_payload() -> serde_json::Value {
+        serde_json::json!({
+            "source_id": "source-1",
+            "uri": "https://example.invalid/source",
+            "content_hash": "11".repeat(32),
+            "snapshot_hash": "22".repeat(32),
+            "retrieved_at_ms": 1,
+            "trust_tier": 1,
+            "extractor": "fixture",
+            "provenance_cluster": "fixture"
+        })
+    }
+
+    fn reseal_goal_verification_payload(payload: &mut serde_json::Value) {
+        let verification = payload["verification"].as_object_mut().unwrap();
+        verification.remove("verification_hash");
+        let verification_hash = goal_verification_hash(verification);
+        verification.insert(
+            "verification_hash".to_string(),
+            serde_json::json!(digest_hex(verification_hash)),
+        );
     }
 
     fn explicit_execution_binding(contract_json: &str, mission_id: &str) -> serde_json::Value {
@@ -5759,15 +6032,20 @@ mod tests {
                 .validate_projection_payload(LabEventKind::ReviewRecorded, &payload)
                 .is_ok()
         );
+        let mut failed_required = payload.clone();
+        failed_required["verification"]["predicate_results"] =
+            serde_json::json!([["reproducible-result", false]]);
+        reseal_goal_verification_payload(&mut failed_required);
+        assert_eq!(
+            controller.validate_projection_payload(LabEventKind::ReviewRecorded, &failed_required),
+            Err(LabError::InvalidRecord)
+        );
         let mut untrusted = payload.clone();
         untrusted["verification"]["verifier_id"] = serde_json::json!("untrusted-verifier");
-        let untrusted_hash = goal_verification_hash(untrusted["verification"].as_object().unwrap());
-        untrusted["verification"]["verification_hash"] =
-            serde_json::json!(digest_hex(untrusted_hash));
-        assert!(
-            controller
-                .validate_projection_payload(LabEventKind::ReviewRecorded, &untrusted)
-                .is_err()
+        reseal_goal_verification_payload(&mut untrusted);
+        assert_eq!(
+            controller.validate_projection_payload(LabEventKind::ReviewRecorded, &untrusted),
+            Err(LabError::InvalidRecord)
         );
         let mut malformed = payload;
         malformed["verification"]["evidence_refs"] = serde_json::json!([1]);
@@ -5775,6 +6053,366 @@ mod tests {
             controller
                 .validate_projection_payload(LabEventKind::ReviewRecorded, &malformed)
                 .is_err()
+        );
+    }
+
+    #[test]
+    fn native_explicit_goal_completion_requires_successful_retained_verification() {
+        let (contract_json, contract_hash) = explicit_goal_contract_json();
+        let mut runtime = LabRuntime::new(explicit_goal_mission()).unwrap();
+        for next in [
+            LabRunState::Researching,
+            LabRunState::Experimenting,
+            LabRunState::Reviewing,
+        ] {
+            runtime.transition(next).unwrap();
+        }
+        let before_runtime_completion = runtime.snapshot_json().unwrap();
+        assert_eq!(
+            runtime.transition(LabRunState::Completed),
+            Err(LabError::InvalidTransition)
+        );
+        assert_eq!(runtime.snapshot_json().unwrap(), before_runtime_completion);
+        assert_eq!(
+            runtime.review_and_complete(),
+            Err(LabError::InvalidTransition)
+        );
+        assert_eq!(runtime.snapshot_json().unwrap(), before_runtime_completion);
+
+        let mut direct = LabController::new(explicit_goal_mission()).unwrap();
+        for next in [
+            LabRunState::Researching,
+            LabRunState::Experimenting,
+            LabRunState::Reviewing,
+        ] {
+            direct.transition(next).unwrap();
+        }
+        let before_direct_completion = direct.snapshot_json().unwrap();
+        assert_eq!(
+            direct.transition(LabRunState::Completed),
+            Err(LabError::InvalidTransition)
+        );
+        assert_eq!(direct.snapshot_json().unwrap(), before_direct_completion);
+
+        let mut hash_only = LabController::new(explicit_goal_mission()).unwrap();
+        for next in [
+            LabRunState::Researching,
+            LabRunState::Experimenting,
+            LabRunState::Reviewing,
+        ] {
+            hash_only.transition(next).unwrap();
+        }
+        let previous = hash_only.runtime.events.last().unwrap().event_hash;
+        let event = LabEvent::new(
+            hash_only.runtime.events.len() as u64 + 1,
+            hash_only.runtime.state_epoch + 1,
+            LabEventKind::StateChanged,
+            [21; 32],
+            previous,
+        );
+        let before_hash_only_completion = hash_only.snapshot_json().unwrap();
+        assert_eq!(
+            hash_only.admit_projection_event(event, Some(LabRunState::Completed)),
+            Err(LabError::InvalidTransition)
+        );
+        assert_eq!(
+            hash_only.snapshot_json().unwrap(),
+            before_hash_only_completion
+        );
+
+        let mut typed = LabController::new(explicit_goal_mission()).unwrap();
+        for next in [
+            LabRunState::Researching,
+            LabRunState::Experimenting,
+            LabRunState::Reviewing,
+        ] {
+            typed.transition(next).unwrap();
+        }
+        let before_typed_completion = typed.snapshot_json().unwrap();
+        assert_eq!(
+            append_projection_record_for_test(
+                &mut typed,
+                LabEventKind::StateChanged,
+                serde_json::json!({"state": "completed"}),
+                Some(LabRunState::Completed),
+            ),
+            Err(LabError::InvalidTransition)
+        );
+        assert_eq!(typed.snapshot_json().unwrap(), before_typed_completion);
+
+        let mut review = LabController::new(explicit_goal_mission()).unwrap();
+        for next in [
+            LabRunState::Researching,
+            LabRunState::Experimenting,
+            LabRunState::Reviewing,
+        ] {
+            review.transition(next).unwrap();
+        }
+        review.begin_finalization().unwrap();
+        let before_review_completion = review.snapshot_json().unwrap();
+        assert_eq!(
+            review.review_and_complete(),
+            Err(LabError::InvalidTransition)
+        );
+        assert_eq!(review.snapshot_json().unwrap(), before_review_completion);
+
+        let mut incomplete = LabController::new(explicit_goal_mission()).unwrap();
+        incomplete.transition(LabRunState::Researching).unwrap();
+        append_projection_record_for_test(
+            &mut incomplete,
+            LabEventKind::SourceCaptured,
+            source_projection_payload(),
+            None,
+        )
+        .unwrap();
+        let before_early_verification = incomplete.snapshot_json().unwrap();
+        assert_eq!(
+            append_projection_record_for_test(
+                &mut incomplete,
+                LabEventKind::ReviewRecorded,
+                goal_verification_payload(&contract_json, contract_hash, true),
+                None,
+            ),
+            Err(LabError::InvalidTransition)
+        );
+        assert_eq!(
+            incomplete.snapshot_json().unwrap(),
+            before_early_verification
+        );
+        incomplete.transition(LabRunState::Experimenting).unwrap();
+        incomplete.transition(LabRunState::Reviewing).unwrap();
+        let mut incomplete_verification =
+            goal_verification_payload(&contract_json, contract_hash, false);
+        incomplete_verification["verification"]["evidence_complete"] = serde_json::json!(false);
+        reseal_goal_verification_payload(&mut incomplete_verification);
+        let before_incomplete_verification = incomplete.snapshot_json().unwrap();
+        assert_eq!(
+            append_projection_record_for_test(
+                &mut incomplete,
+                LabEventKind::ReviewRecorded,
+                incomplete_verification,
+                None,
+            ),
+            Err(LabError::InvalidRecord)
+        );
+        assert_eq!(
+            incomplete.snapshot_json().unwrap(),
+            before_incomplete_verification
+        );
+        append_projection_record_for_test(
+            &mut incomplete,
+            LabEventKind::ReviewRecorded,
+            goal_verification_payload(&contract_json, contract_hash, true),
+            None,
+        )
+        .unwrap();
+        incomplete.transition(LabRunState::Completed).unwrap();
+        assert_eq!(incomplete.runtime().state(), LabRunState::Completed);
+
+        let mut verified = LabController::new(explicit_goal_mission()).unwrap();
+        verified.transition(LabRunState::Researching).unwrap();
+        append_projection_record_for_test(
+            &mut verified,
+            LabEventKind::SourceCaptured,
+            source_projection_payload(),
+            None,
+        )
+        .unwrap();
+        verified.transition(LabRunState::Experimenting).unwrap();
+        verified.transition(LabRunState::Reviewing).unwrap();
+        append_projection_record_for_test(
+            &mut verified,
+            LabEventKind::ReviewRecorded,
+            goal_verification_payload(&contract_json, contract_hash, true),
+            None,
+        )
+        .unwrap();
+        verified.transition(LabRunState::Completed).unwrap();
+        assert_eq!(verified.runtime().state(), LabRunState::Completed);
+        let before_post_completion_verification = verified.snapshot_json().unwrap();
+        assert_eq!(
+            append_projection_record_for_test(
+                &mut verified,
+                LabEventKind::ReviewRecorded,
+                goal_verification_payload(&contract_json, contract_hash, true),
+                None,
+            ),
+            Err(LabError::InvalidTransition)
+        );
+        assert_eq!(
+            verified.snapshot_json().unwrap(),
+            before_post_completion_verification
+        );
+
+        let mut legacy = LabRuntime::new(mission()).unwrap();
+        for next in [
+            LabRunState::Researching,
+            LabRunState::Experimenting,
+            LabRunState::Reviewing,
+            LabRunState::Completed,
+        ] {
+            legacy.transition(next).unwrap();
+        }
+        assert_eq!(legacy.state(), LabRunState::Completed);
+    }
+
+    #[test]
+    fn native_completed_explicit_goal_snapshots_require_retained_verification() {
+        let mut controller = LabController::new(explicit_goal_mission()).unwrap();
+        controller.record_source(source()).unwrap();
+        controller
+            .record_claim(ClaimRecord {
+                claim_id: "claim-1".to_string(),
+                statement: "the source supports the hypothesis".to_string(),
+                source_ids: vec!["source-1".to_string()],
+                confidence_bps: 7_500,
+                status: ClaimStatus::Supported,
+            })
+            .unwrap();
+        controller
+            .record_hypothesis(HypothesisRecord {
+                hypothesis_id: "hypothesis-1".to_string(),
+                statement: "the result is reproducible".to_string(),
+                prior_bps: 5_000,
+                falsifiers: vec!["a conflicting measurement".to_string()],
+                supporting_claim_ids: vec!["claim-1".to_string()],
+                contradicting_claim_ids: vec![],
+            })
+            .unwrap();
+        controller
+            .schedule_experiment(ExperimentSpec {
+                experiment_id: "experiment-1".to_string(),
+                hypothesis_id: "hypothesis-1".to_string(),
+                design: "single deterministic fixture".to_string(),
+                variables: vec!["input".to_string()],
+                controls: vec!["fixed baseline".to_string()],
+                preregistered_seeds: vec![1, 2, 3, 4, 5],
+                expected_observations: 1,
+                measurement_unit: "score".to_string(),
+                uncertainty_required: false,
+                min_clean_replicates: 0,
+            })
+            .unwrap();
+        controller
+            .record_observation(ObservationRecord {
+                observation_id: "observation-1".to_string(),
+                experiment_id: "experiment-1".to_string(),
+                seed: 1,
+                measurement: 1.0,
+                unit: "score".to_string(),
+                raw_artifact_hash: [31; 32],
+                environment_hash: [32; 32],
+                valid: true,
+                uncertainty: None,
+                replication_of: None,
+                operator_id: "fixture".to_string(),
+                clean: true,
+                epistemic_status: "OBSERVED".to_string(),
+            })
+            .unwrap();
+        let mut early_verification = controller.clone();
+        controller.transition(LabRunState::Reviewing).unwrap();
+
+        let mut verified = controller.clone();
+        let (contract_json, contract_hash) = explicit_goal_contract_json();
+        append_projection_record_for_test(
+            &mut verified,
+            LabEventKind::ReviewRecorded,
+            goal_verification_payload(&contract_json, contract_hash, true),
+            None,
+        )
+        .unwrap();
+        verified.begin_finalization().unwrap();
+        verified.review_and_complete().unwrap();
+        let verified_snapshot = verified.snapshot_json().unwrap();
+        assert_eq!(
+            LabController::from_snapshot_json(&verified_snapshot)
+                .unwrap()
+                .runtime()
+                .state(),
+            LabRunState::Completed
+        );
+
+        controller.runtime.state = LabRunState::Completed;
+        controller.runtime.state_epoch = controller.runtime.state_epoch.saturating_add(1);
+        controller.runtime.append_event(
+            LabEventKind::StateChanged,
+            canonical_hash(&LabRunState::Completed),
+        );
+
+        let runtime_snapshot = controller.runtime.snapshot_json().unwrap();
+        assert_eq!(
+            LabRuntime::from_snapshot_json(&runtime_snapshot).err(),
+            Some(LabError::InvalidEvent)
+        );
+        let controller_snapshot = controller.snapshot_json().unwrap();
+        assert_eq!(
+            LabController::from_snapshot_json(&controller_snapshot).err(),
+            Some(LabError::InvalidEvent)
+        );
+
+        let mut out_of_order = controller.clone();
+        let payload = goal_verification_payload(&contract_json, contract_hash, true);
+        let sequence = out_of_order.runtime.events.len() as u64 + 1;
+        let state_epoch = out_of_order.runtime.state_epoch.saturating_add(1);
+        let previous = out_of_order
+            .runtime
+            .events
+            .last()
+            .map(|event| event.event_hash)
+            .unwrap_or([0; 32]);
+        let event = LabEvent::new(
+            sequence,
+            state_epoch,
+            LabEventKind::ReviewRecorded,
+            projection_payload_hash(&payload),
+            previous,
+        );
+        out_of_order.runtime.state_epoch = state_epoch;
+        out_of_order.runtime.events.push(event);
+        out_of_order.projection_payloads.insert(sequence, payload);
+
+        let out_of_order_snapshot = out_of_order.snapshot_json().unwrap();
+        assert_eq!(
+            LabController::from_snapshot_json(&out_of_order_snapshot).err(),
+            Some(LabError::InvalidEvent)
+        );
+
+        let payload = goal_verification_payload(&contract_json, contract_hash, true);
+        let sequence = early_verification.runtime.events.len() as u64 + 1;
+        let state_epoch = early_verification.runtime.state_epoch.saturating_add(1);
+        let previous = early_verification
+            .runtime
+            .events
+            .last()
+            .map(|event| event.event_hash)
+            .unwrap_or([0; 32]);
+        let event = LabEvent::new(
+            sequence,
+            state_epoch,
+            LabEventKind::ReviewRecorded,
+            projection_payload_hash(&payload),
+            previous,
+        );
+        early_verification.runtime.state_epoch = state_epoch;
+        early_verification.runtime.events.push(event);
+        early_verification
+            .projection_payloads
+            .insert(sequence, payload);
+        early_verification
+            .transition(LabRunState::Reviewing)
+            .unwrap();
+        early_verification.runtime.state = LabRunState::Completed;
+        early_verification.runtime.state_epoch =
+            early_verification.runtime.state_epoch.saturating_add(1);
+        early_verification.runtime.append_event(
+            LabEventKind::StateChanged,
+            canonical_hash(&LabRunState::Completed),
+        );
+        let early_verification_snapshot = early_verification.snapshot_json().unwrap();
+        assert_eq!(
+            LabController::from_snapshot_json(&early_verification_snapshot).err(),
+            Some(LabError::InvalidEvent)
         );
     }
 

@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import atexit
 import os
+import shutil
 import tomllib
 from contextlib import suppress
 from dataclasses import dataclass
@@ -174,6 +176,25 @@ def resolve_trust_level(config: Mapping[str, Any], override: str | None = None) 
     else:
         selected = os.environ.get("AEGIS_TRUST_LEVEL") or "DEV"
     return selected.strip().upper()
+
+
+_pytest_replay_dir: list[Path] = []
+
+
+def resolve_lab_replay_directory() -> str:
+    """Resolve the default Lab replay directory without leaking pytest runs into CWD."""
+
+    configured = os.environ.get("AEGIS_LAB_REPLAY_DIR", "").strip()
+    if configured:
+        return configured
+    if "PYTEST_CURRENT_TEST" in os.environ or "PYTEST_VERSION" in os.environ:
+        if not _pytest_replay_dir or not _pytest_replay_dir[0].exists():
+            ephemeral = Path(tempfile.mkdtemp(prefix="aegis-pytest-lab-replay-"))
+            atexit.register(shutil.rmtree, ephemeral, ignore_errors=True)
+            _pytest_replay_dir.clear()
+            _pytest_replay_dir.append(ephemeral)
+        return str(_pytest_replay_dir[0])
+    return str(Path.cwd() / ".aegis" / "lab-replay")
 
 
 @dataclass(frozen=True)

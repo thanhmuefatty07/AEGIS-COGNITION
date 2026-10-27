@@ -19,7 +19,6 @@ import platform
 import re
 import subprocess
 import sys
-import tempfile
 import time
 from contextlib import suppress
 from pathlib import Path
@@ -27,6 +26,8 @@ from statistics import median
 from typing import Any
 
 import blake3
+
+from aegis_cognition.agent_efficiency import managed_scratch_dir
 
 from scripts.mmap_stream_buffer_benchmark import rss_bytes
 
@@ -186,7 +187,7 @@ def worker_main(mode: str, payload_len: int, done_path: Path) -> int:
 
 
 def measure_one(mode: str, payload_len: int) -> dict[str, Any]:
-    with tempfile.TemporaryDirectory(prefix=f"aegis-hot-buffer-{mode}-") as directory:
+    with managed_scratch_dir("benchmarks", prefix=f"aegis-hot-buffer-{mode}-") as directory:
         done_path = Path(directory) / "done.json"
         process = subprocess.Popen(
             [

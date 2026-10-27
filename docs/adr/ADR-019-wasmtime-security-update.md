@@ -2,8 +2,12 @@
 
 ## Status
 
-Accepted (2026-10-03); dependency/advisory gates pass, runtime verification
-remains pending.
+Historical decision accepted 2026-10-03. The `48.0.4` pin was affected by the
+2026-10-14 [RUSTSEC-2026-0364 advisory](https://rustsec.org/advisories/RUSTSEC-2026-0364.html)
+and the separate [RUSTSEC-2026-0359 / GHSA-wjc8-633q-pwxr advisory](https://github.com/bytecodealliance/wasmtime/security/advisories/GHSA-wjc8-633q-pwxr).
+See the [current Wasmtime migration status](../architecture/WASMTIME_MIGRATION.md).
+Evidence below records the 2026-10-03 state only; it does not establish the
+current advisory state or runtime behavior.
 
 ## Context
 

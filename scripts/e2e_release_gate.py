@@ -45,11 +45,23 @@ def _load_e2e_dependencies() -> None:
     bindings = {
         "evaluate_cluster_loopback_gate": ("scripts.cluster_loopback_gate", "evaluate_cluster_loopback_gate"),
         "build_deployment_manifest": ("scripts.deployment_manifest", "build_deployment_manifest"),
-        "evaluate_dynamic_provider_fallback_gate": ("scripts.dynamic_provider_fallback_gate", "evaluate_dynamic_provider_fallback_gate"),
-        "evaluate_external_deployment_smoke_gate": ("scripts.external_deployment_smoke_gate", "evaluate_external_deployment_smoke_gate"),
-        "write_external_deployment_smoke_capture": ("scripts.external_deployment_smoke_gate", "write_external_deployment_smoke_capture"),
+        "evaluate_dynamic_provider_fallback_gate": (
+            "scripts.dynamic_provider_fallback_gate",
+            "evaluate_dynamic_provider_fallback_gate",
+        ),
+        "evaluate_external_deployment_smoke_gate": (
+            "scripts.external_deployment_smoke_gate",
+            "evaluate_external_deployment_smoke_gate",
+        ),
+        "write_external_deployment_smoke_capture": (
+            "scripts.external_deployment_smoke_gate",
+            "write_external_deployment_smoke_capture",
+        ),
         "evaluate_hot_browser_shadow_gate": ("scripts.hot_browser_shadow_gate", "evaluate_hot_browser_shadow_gate"),
-        "evaluate_production_packaging_smoke_gate": ("scripts.production_packaging_smoke_gate", "evaluate_production_packaging_smoke_gate"),
+        "evaluate_production_packaging_smoke_gate": (
+            "scripts.production_packaging_smoke_gate",
+            "evaluate_production_packaging_smoke_gate",
+        ),
         "evaluate_quickjs_cold_start_gate": ("scripts.quickjs_cold_start_gate", "evaluate_quickjs_cold_start_gate"),
         "evaluate_shadow_sealer_soak_gate": ("scripts.shadow_sealer_soak_gate", "evaluate_shadow_sealer_soak_gate"),
         "evaluate_supply_chain_gate": ("scripts.supply_chain_gate", "evaluate_supply_chain_gate"),
@@ -121,7 +133,10 @@ STAGE_REQUIREMENTS: dict[str, tuple[tuple[str, tuple[str, ...]], ...]] = {
         ("dynamic_provider_fallback_gate_report.json", ("artifact_sha256",)),
         ("dynamic_provider_fallback_gate_report.json", ("dynamic_provider_fallback_evidence", "fallback_used")),
         ("dynamic_provider_fallback_gate_report.json", ("dynamic_provider_fallback_evidence", "downgraded_model")),
-        ("dynamic_provider_fallback_gate_report.json", ("dynamic_provider_fallback_evidence", "throttled_provider_count")),
+        (
+            "dynamic_provider_fallback_gate_report.json",
+            ("dynamic_provider_fallback_evidence", "throttled_provider_count"),
+        ),
         ("dynamic_provider_fallback_gate_report.json", ("dynamic_provider_fallback_evidence", "latency_under_gate")),
         ("dynamic_provider_fallback_gate_report.json", ("live_provider_429_soak_admission", "schema")),
         ("dynamic_provider_fallback_gate_report.json", ("live_provider_429_soak_admission", "expected_capture_path")),
@@ -143,13 +158,19 @@ STAGE_REQUIREMENTS: dict[str, tuple[tuple[str, tuple[str, ...]], ...]] = {
         ("hot_browser_shadow_gate_report.json", ("hot_browser_shadow_evidence", "shadow_seal_replay_recorded")),
         ("hot_browser_shadow_gate_report.json", ("hot_browser_shadow_evidence", "shadow_arrow_archive_recovered")),
         ("hot_browser_shadow_gate_report.json", ("hot_browser_shadow_evidence", "shadow_arrow_archive_replay_matches")),
-        ("hot_browser_shadow_gate_report.json", ("hot_browser_shadow_evidence", "shadow_arrow_archive_contains_shadow_seal")),
+        (
+            "hot_browser_shadow_gate_report.json",
+            ("hot_browser_shadow_evidence", "shadow_arrow_archive_contains_shadow_seal"),
+        ),
         ("hot_browser_shadow_gate_report.json", ("hot_browser_shadow_evidence", "no_file_roundtrip_on_hot_path")),
         ("shadow_sealer_soak_gate_report.json", ("overall_ok",)),
         ("shadow_sealer_soak_gate_report.json", ("artifact_sha256",)),
         ("shadow_sealer_soak_gate_report.json", ("shadow_sealer_soak_evidence", "sample_count")),
         ("shadow_sealer_soak_gate_report.json", ("shadow_sealer_soak_evidence", "hot_submit_under_gate")),
-        ("shadow_sealer_soak_gate_report.json", ("shadow_sealer_soak_evidence", "hot_submissions_completed_before_receipts")),
+        (
+            "shadow_sealer_soak_gate_report.json",
+            ("shadow_sealer_soak_evidence", "hot_submissions_completed_before_receipts"),
+        ),
         ("shadow_sealer_soak_gate_report.json", ("shadow_sealer_soak_evidence", "cold_payload_files_materialized")),
         ("shadow_sealer_soak_gate_report.json", ("shadow_sealer_soak_evidence", "cold_payload_file_hashes_match")),
         ("shadow_sealer_soak_gate_report.json", ("shadow_sealer_soak_evidence", "cold_payload_sync_requested")),
@@ -241,7 +262,10 @@ STAGE_REQUIREMENTS: dict[str, tuple[tuple[str, tuple[str, ...]], ...]] = {
         ("external_deployment_smoke_gate_report.json", ("local_operator_health_hash",)),
         ("external_deployment_smoke_gate_report.json", ("external_health_hash",)),
         ("external_deployment_smoke_gate_report.json", ("external_deployment_smoke_admission", "schema")),
-        ("external_deployment_smoke_gate_report.json", ("external_deployment_smoke_admission", "expected_capture_path")),
+        (
+            "external_deployment_smoke_gate_report.json",
+            ("external_deployment_smoke_admission", "expected_capture_path"),
+        ),
         ("external_deployment_smoke_gate_report.json", ("external_deployment_smoke_admission_hash",)),
         # The legacy ``external_deployment_smoke_admission_missing`` field
         # remains disclosure-only;
@@ -362,10 +386,7 @@ def evaluate_e2e_release_gate(root: str | Path = ROOT) -> dict[str, Any]:
         name: _read_json_artifact(artifacts_dir / name)
         for name in sorted({artifact for checks in STAGE_REQUIREMENTS.values() for artifact, _ in checks})
     }
-    stage_checks = tuple(
-        _evaluate_stage(stage, payloads, artifacts_dir)
-        for stage in STAGES
-    )
+    stage_checks = tuple(_evaluate_stage(stage, payloads, artifacts_dir) for stage in STAGES)
     passed = sum(1 for check in stage_checks if check.status == "PASS")
     failed = sum(1 for check in stage_checks if check.status == "FAIL")
     not_verified = sum(1 for check in stage_checks if check.status == "NOT VERIFIED")
@@ -387,9 +408,7 @@ def evaluate_e2e_release_gate(root: str | Path = ROOT) -> dict[str, Any]:
         "failed": failed,
         "not_verified": not_verified,
         "verification_complete": not_verified == 0,
-        "gate_status": (
-            "FAILED" if failed else "INCOMPLETE / NOT VERIFIED" if not_verified else "PASS"
-        ),
+        "gate_status": ("FAILED" if failed else "INCOMPLETE / NOT VERIFIED" if not_verified else "PASS"),
         "overall_ok": failed == 0 and not_verified == 0,
         "production_deployable": production_deployable,
         "production_blockers": production_blockers,
@@ -440,10 +459,7 @@ def _evaluate_stage(
             witnesses.append(value)
         else:
             missing.append(ref)
-    artifact_digests = {
-        artifact_name: _file_hash(artifacts_dir / artifact_name)
-        for artifact_name, _ in requirements
-    }
+    artifact_digests = {artifact_name: _file_hash(artifacts_dir / artifact_name) for artifact_name, _ in requirements}
     digest = _stable_hash(
         {
             "stage": stage,
@@ -499,7 +515,7 @@ def _known_unavailable_reason(stage: str, payloads: dict[str, dict[str, Any]]) -
 def _read_json_artifact(path: Path) -> dict[str, Any]:
     try:
         payload = json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError, UnicodeDecodeError):
+    except OSError, json.JSONDecodeError, UnicodeDecodeError:
         return {}
     return payload if isinstance(payload, dict) else {}
 
@@ -512,11 +528,7 @@ def _select(payload: Any, selector: tuple[str, ...]) -> Any:
             continue
         if isinstance(node, list):
             node = next(
-                (
-                    item
-                    for item in node
-                    if isinstance(item, dict) and item.get("name") == key
-                ),
+                (item for item in node if isinstance(item, dict) and item.get("name") == key),
                 None,
             )
             continue

@@ -8,6 +8,12 @@ version = "0.1.0"
 description = "Python bridge contracts for AEGIS-COGNITION"
 license = {text = "Proprietary - All Rights Reserved"}
 requires-python = ">=3.14,<3.16"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.14",
+    "Programming Language :: Python :: 3.15",
+    "Programming Language :: Rust",
+]
 dependencies = [
     "pyyaml>=6.0",
     "python-dotenv>=1.0.0"

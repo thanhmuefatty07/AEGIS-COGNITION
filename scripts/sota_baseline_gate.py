@@ -16,9 +16,7 @@ SOTA_SPEEDUP_THRESHOLD = 10.0
 BASELINE_EVENT_COUNT = 8_002
 BASELINE_OBSERVATION_BYTES = 4_096
 BASELINE_ROUNDS = 3
-BASELINE_TRAJECTORY_PATH = (
-    ROOT / "target" / "aegis-sota-baseline" / "framework-json-trajectory.json"
-)
+BASELINE_TRAJECTORY_PATH = ROOT / "target" / "aegis-sota-baseline" / "framework-json-trajectory.json"
 BASELINE_FRAMEWORK_SURFACE = [
     "LangGraph-style thread checkpoint JSON",
     "OpenHands-style event stream JSON",
@@ -52,7 +50,7 @@ def _criterion_estimate_ns(root: Path, name: str) -> float | None:
     path = root / "target" / "criterion" / name / "new" / "estimates.json"
     try:
         data = json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError):
+    except OSError, json.JSONDecodeError:
         return None
     estimate = data.get("slope") or data.get("mean") or data.get("median")
     if not estimate or "point_estimate" not in estimate:
@@ -64,9 +62,7 @@ def _cargo_env() -> dict:
     env = os.environ.copy()
     py_root = Path(sys.executable).parent
     env["PYO3_PYTHON"] = sys.executable
-    env["PATH"] = os.pathsep.join(
-        [str(py_root), str(py_root / "DLLs"), str(py_root / "libs"), env.get("PATH", "")]
-    )
+    env["PATH"] = os.pathsep.join([str(py_root), str(py_root / "DLLs"), str(py_root / "libs"), env.get("PATH", "")])
     env.setdefault("RUSTFLAGS", "-C debuginfo=0")
     return env
 
@@ -144,14 +140,8 @@ def evaluate_sota_baseline(root: str | Path = ROOT) -> SotaBaselineReport:
     BASELINE_TRAJECTORY_PATH.parent.mkdir(parents=True, exist_ok=True)
     BASELINE_TRAJECTORY_PATH.write_bytes(payload)
     baseline_payload_hash = _blake3_hex(root_path, payload)
-    baseline_estimate_ns, logical_hash, deterministic_digest_ok = _measure_framework_json_replay_ns(
-        payload
-    )
-    speedup = (
-        baseline_estimate_ns / aegis_estimate_ns
-        if aegis_estimate_ns and aegis_estimate_ns > 0
-        else None
-    )
+    baseline_estimate_ns, logical_hash, deterministic_digest_ok = _measure_framework_json_replay_ns(payload)
+    speedup = baseline_estimate_ns / aegis_estimate_ns if aegis_estimate_ns and aegis_estimate_ns > 0 else None
     evidence = {
         "aegis_benchmark_name": AEGIS_REPLAY_BENCHMARK_NAME,
         "baseline_event_count": BASELINE_EVENT_COUNT,

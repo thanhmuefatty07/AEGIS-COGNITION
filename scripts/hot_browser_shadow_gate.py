@@ -24,20 +24,32 @@ def evaluate_hot_browser_shadow_gate(root: str | Path = ROOT) -> dict[str, Any]:
         _check("artifact_count", report.get("artifact_count") == 8),
         _check("hot_commit_count", report.get("hot_commit_count") == 8),
         _check("all_browser_artifact_kinds_present", _browser_artifact_kinds_present(artifacts)),
-        _check("total_bytes_bound", _positive_int(report.get("total_artifact_bytes")) and report.get("total_artifact_bytes") == _artifact_total_bytes(artifacts)),
+        _check(
+            "total_bytes_bound",
+            _positive_int(report.get("total_artifact_bytes"))
+            and report.get("total_artifact_bytes") == _artifact_total_bytes(artifacts),
+        ),
         _check("hot_timings_recorded", _timing_window(report, "hot_commit", samples)),
-        _check("arena_live_bytes_after_hot", report.get("arena_live_bytes_after_hot") == report.get("total_artifact_bytes")),
+        _check(
+            "arena_live_bytes_after_hot", report.get("arena_live_bytes_after_hot") == report.get("total_artifact_bytes")
+        ),
         _check("arena_live_slots_after_hot", report.get("arena_live_slots_after_hot") == 8),
         _check("arena_total_commits", report.get("arena_total_commits") == 8),
         _check("hot_before_cold_receipt", report.get("hot_commit_completed_before_first_cold_receipt") is True),
         _check("shadow_sealer_nonblocking_admission", report.get("shadow_sealer_nonblocking_admission") is True),
-        _check("shadow_sealer_queue_depth", _positive_int(report.get("shadow_sealer_queue_depth")) and report.get("shadow_sealer_queue_depth") >= 8),
+        _check(
+            "shadow_sealer_queue_depth",
+            _positive_int(report.get("shadow_sealer_queue_depth")) and report.get("shadow_sealer_queue_depth") >= 8,
+        ),
         _check("shadow_sealer_queued_admissions", report.get("shadow_sealer_queued_admissions") == 8),
         _check("shadow_sealer_backpressure_rejections", report.get("shadow_sealer_backpressure_rejections") == 0),
         _check("cold_seal_receipt_count", report.get("cold_seal_receipt_count") == 8),
         _check("cold_seal_total_bytes", report.get("cold_seal_total_bytes") == report.get("total_artifact_bytes")),
         _check("cold_files_materialized_flag", report.get("cold_files_materialized") is True),
-        _check("cold_files_exist_on_disk", _cold_files_exist(seal_dir, report.get("cold_seal_receipt_count"), report.get("cold_seal_total_bytes"))),
+        _check(
+            "cold_files_exist_on_disk",
+            _cold_files_exist(seal_dir, report.get("cold_seal_receipt_count"), report.get("cold_seal_total_bytes")),
+        ),
         _check("shadow_receipts_valid", report.get("shadow_receipts_valid") is True),
         _check("shadow_batch_hash_nonzero", _hash_array(report.get("shadow_batch_hash"))),
         _check("shadow_batch_valid", report.get("shadow_batch_valid") is True),
@@ -46,15 +58,34 @@ def evaluate_hot_browser_shadow_gate(root: str | Path = ROOT) -> dict[str, Any]:
         _check("shadow_seal_replay_recorded", report.get("shadow_seal_replay_recorded") is True),
         _check("replay_last_hash_nonzero", _hash_array(report.get("replay_last_hash"))),
         _check("shadow_arrow_archive_segment_count", report.get("shadow_arrow_archive_segment_count") == 2),
-        _check("shadow_arrow_archive_event_count", report.get("shadow_arrow_archive_event_count") == report.get("replay_event_count")),
-        _check("shadow_arrow_archive_manifest_hash_nonzero", _hash_array(report.get("shadow_arrow_archive_manifest_hash"))),
-        _check("shadow_arrow_archive_audit_proof_hash_nonzero", _hash_array(report.get("shadow_arrow_archive_audit_proof_hash"))),
-        _check("shadow_arrow_archive_segment_witness_hash_nonzero", _hash_array(report.get("shadow_arrow_archive_segment_witness_hash"))),
-        _check("shadow_arrow_archive_mmap_evidence_hash_nonzero", _hash_array(report.get("shadow_arrow_archive_mmap_evidence_hash"))),
-        _check("shadow_arrow_archive_determinism_proof_hash_nonzero", _hash_array(report.get("shadow_arrow_archive_determinism_proof_hash"))),
+        _check(
+            "shadow_arrow_archive_event_count",
+            report.get("shadow_arrow_archive_event_count") == report.get("replay_event_count"),
+        ),
+        _check(
+            "shadow_arrow_archive_manifest_hash_nonzero", _hash_array(report.get("shadow_arrow_archive_manifest_hash"))
+        ),
+        _check(
+            "shadow_arrow_archive_audit_proof_hash_nonzero",
+            _hash_array(report.get("shadow_arrow_archive_audit_proof_hash")),
+        ),
+        _check(
+            "shadow_arrow_archive_segment_witness_hash_nonzero",
+            _hash_array(report.get("shadow_arrow_archive_segment_witness_hash")),
+        ),
+        _check(
+            "shadow_arrow_archive_mmap_evidence_hash_nonzero",
+            _hash_array(report.get("shadow_arrow_archive_mmap_evidence_hash")),
+        ),
+        _check(
+            "shadow_arrow_archive_determinism_proof_hash_nonzero",
+            _hash_array(report.get("shadow_arrow_archive_determinism_proof_hash")),
+        ),
         _check("shadow_arrow_archive_recovered", report.get("shadow_arrow_archive_recovered") is True),
         _check("shadow_arrow_archive_replay_matches", report.get("shadow_arrow_archive_replay_matches") is True),
-        _check("shadow_arrow_archive_contains_shadow_seal", report.get("shadow_arrow_archive_contains_shadow_seal") is True),
+        _check(
+            "shadow_arrow_archive_contains_shadow_seal", report.get("shadow_arrow_archive_contains_shadow_seal") is True
+        ),
         _check("hot_artifact_batch_hash_nonzero", _hash_array(report.get("hot_artifact_batch_hash"))),
         _check("artifact_hashes_nonzero", _artifact_hashes_valid(artifacts)),
         _check("no_file_roundtrip_on_hot_path", report.get("no_file_roundtrip_on_hot_path") is True),
@@ -187,7 +218,7 @@ def _hash_array(value: Any) -> bool:
 def _read_json(path: Path) -> dict[str, Any]:
     try:
         payload = json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError, UnicodeDecodeError):
+    except OSError, json.JSONDecodeError, UnicodeDecodeError:
         return {}
     return payload if isinstance(payload, dict) else {}
 

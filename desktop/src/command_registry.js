@@ -11,6 +11,14 @@ export const workbenchCommands = Object.freeze([
   { id: "focus-previous-pane", label: "Focus Previous Pane", keys: { mac: "⇧F6", other: "Shift+F6" } },
 ]);
 
+export const workbenchInspectorCommands = Object.freeze([
+  { id: "open-files", label: "Open Project Explorer", tab: "files" },
+  { id: "open-changes", label: "Open Tracked Changes", tab: "changes" },
+  { id: "open-map", label: "Open Focus Graph", tab: "map" },
+  { id: "open-activity", label: "Open Task Activity", tab: "activity" },
+  { id: "open-context", label: "Open Context Cockpit", tab: "context" },
+]);
+
 export function resolveWorkbenchShortcut(event, platform = "") {
   const key = String(event.key ?? "").toLowerCase();
   const mac = /mac|iphone|ipad/i.test(platform);

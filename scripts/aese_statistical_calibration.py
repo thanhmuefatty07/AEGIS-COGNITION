@@ -55,19 +55,79 @@ class FamilyDefinition:
 FAMILIES: Final[tuple[FamilyDefinition, ...]] = (
     FamilyDefinition("iid_gaussian", "CANDIDATE_IN_DOMAIN", "gaussian", 1.0, 0.5, "independent finite-variance normal"),
     FamilyDefinition("log_normal", "CANDIDATE_IN_DOMAIN", "lognormal", 0.0, 0.4, "positive skew with finite mean"),
-    FamilyDefinition("gamma_skewed_positive", "CANDIDATE_IN_DOMAIN", "gamma", 2.0, 0.75, "positive skew with shape two"),
-    FamilyDefinition("heavy_tail", "OUT_OF_DOMAIN", "student_t", 0.0, 1.0, "Student-t with one-and-a-half degrees of freedom; variance is not finite"),
-    FamilyDefinition("mixture_bimodal", "CANDIDATE_IN_DOMAIN", "mixture", 0.0, 1.0, "two finite-variance Gaussian modes"),
-    FamilyDefinition("heteroscedastic", "CANDIDATE_IN_DOMAIN", "heteroscedastic", 1.0, 0.4, "independent observations with changing variance"),
-    FamilyDefinition("ar1_positive", "OUT_OF_DOMAIN", "ar1_positive", 1.0, 0.3, "AR(1) positive serial dependence", unstable_expected=True),
-    FamilyDefinition("ar1_negative", "OUT_OF_DOMAIN", "ar1_negative", 1.0, 0.3, "AR(1) negative serial dependence", unstable_expected=True),
-    FamilyDefinition("slow_drift", "OUT_OF_DOMAIN", "slow_drift", 1.0, 0.4, "slow deterministic drift", unstable_expected=True),
-    FamilyDefinition("linear_trend", "OUT_OF_DOMAIN", "linear_trend", 1.0, 0.5, "linear deterministic trend", unstable_expected=True),
-    FamilyDefinition("step_change", "OUT_OF_DOMAIN", "step_change", 1.0, 0.5, "mid-run level step", unstable_expected=True),
-    FamilyDefinition("change_point", "OUT_OF_DOMAIN", "change_point", 1.0, 0.5, "late level change point", unstable_expected=True),
-    FamilyDefinition("bursty_contamination", "OUT_OF_DOMAIN", "bursty_contamination", 1.0, 0.5, "short bursts with an explicit contamination flag", contaminated_expected=True),
-    FamilyDefinition("rare_extreme_outlier", "OUT_OF_DOMAIN", "rare_extreme_outlier", 1.0, 0.5, "one latent extreme outlier without a flag", contaminated_expected=True),
-    FamilyDefinition("near_zero_mean", "CANDIDATE_IN_DOMAIN", "gaussian", 0.0, 1e-5, "small finite-variance mean near zero"),
+    FamilyDefinition(
+        "gamma_skewed_positive", "CANDIDATE_IN_DOMAIN", "gamma", 2.0, 0.75, "positive skew with shape two"
+    ),
+    FamilyDefinition(
+        "heavy_tail",
+        "OUT_OF_DOMAIN",
+        "student_t",
+        0.0,
+        1.0,
+        "Student-t with one-and-a-half degrees of freedom; variance is not finite",
+    ),
+    FamilyDefinition(
+        "mixture_bimodal", "CANDIDATE_IN_DOMAIN", "mixture", 0.0, 1.0, "two finite-variance Gaussian modes"
+    ),
+    FamilyDefinition(
+        "heteroscedastic",
+        "CANDIDATE_IN_DOMAIN",
+        "heteroscedastic",
+        1.0,
+        0.4,
+        "independent observations with changing variance",
+    ),
+    FamilyDefinition(
+        "ar1_positive",
+        "OUT_OF_DOMAIN",
+        "ar1_positive",
+        1.0,
+        0.3,
+        "AR(1) positive serial dependence",
+        unstable_expected=True,
+    ),
+    FamilyDefinition(
+        "ar1_negative",
+        "OUT_OF_DOMAIN",
+        "ar1_negative",
+        1.0,
+        0.3,
+        "AR(1) negative serial dependence",
+        unstable_expected=True,
+    ),
+    FamilyDefinition(
+        "slow_drift", "OUT_OF_DOMAIN", "slow_drift", 1.0, 0.4, "slow deterministic drift", unstable_expected=True
+    ),
+    FamilyDefinition(
+        "linear_trend", "OUT_OF_DOMAIN", "linear_trend", 1.0, 0.5, "linear deterministic trend", unstable_expected=True
+    ),
+    FamilyDefinition(
+        "step_change", "OUT_OF_DOMAIN", "step_change", 1.0, 0.5, "mid-run level step", unstable_expected=True
+    ),
+    FamilyDefinition(
+        "change_point", "OUT_OF_DOMAIN", "change_point", 1.0, 0.5, "late level change point", unstable_expected=True
+    ),
+    FamilyDefinition(
+        "bursty_contamination",
+        "OUT_OF_DOMAIN",
+        "bursty_contamination",
+        1.0,
+        0.5,
+        "short bursts with an explicit contamination flag",
+        contaminated_expected=True,
+    ),
+    FamilyDefinition(
+        "rare_extreme_outlier",
+        "OUT_OF_DOMAIN",
+        "rare_extreme_outlier",
+        1.0,
+        0.5,
+        "one latent extreme outlier without a flag",
+        contaminated_expected=True,
+    ),
+    FamilyDefinition(
+        "near_zero_mean", "CANDIDATE_IN_DOMAIN", "gaussian", 0.0, 1e-5, "small finite-variance mean near zero"
+    ),
     FamilyDefinition("large_magnitude", "CANDIDATE_IN_DOMAIN", "gaussian", 1e9, 1e6, "large finite-magnitude values"),
     FamilyDefinition("small_variance", "CANDIDATE_IN_DOMAIN", "gaussian", 10.0, 1e-3, "small but non-zero variance"),
     FamilyDefinition("high_variance", "CANDIDATE_IN_DOMAIN", "gaussian", 10.0, 10.0, "high finite variance"),
@@ -92,9 +152,7 @@ PROTOCOL_VARIANTS: Final[tuple[ProtocolVariant, ...]] = (
     ProtocolVariant("strict_alpha", 5, 36, 3, 45, 0.01, 0.10),
     ProtocolVariant("wide_budget", 2, 40, 10, 90, 0.10, 0.02),
 )
-VARIANT_BY_ID: Final[dict[str, ProtocolVariant]] = {
-    variant.variant_id: variant for variant in PROTOCOL_VARIANTS
-}
+VARIANT_BY_ID: Final[dict[str, ProtocolVariant]] = {variant.variant_id: variant for variant in PROTOCOL_VARIANTS}
 
 
 def _hash(value: object) -> str:
@@ -111,7 +169,7 @@ def _git_value(*arguments: str) -> str:
             capture_output=True,
             text=True,
         )
-    except (OSError, subprocess.CalledProcessError):
+    except OSError, subprocess.CalledProcessError:
         return "NOT_AVAILABLE"
     # An empty stdout is a valid result for ``git status --porcelain`` and
     # therefore means a clean worktree, not an unavailable Git invocation.
@@ -221,7 +279,9 @@ def _generate_series(
             value = center + family.scale * numerator / denominator
         elif kind == "mixture":
             location = -family.scale if rng.random() < 0.65 else 2.0 * family.scale
-            value = center + rng.gauss(location - (0.65 * (-family.scale) + 0.35 * (2.0 * family.scale)), family.scale * 0.25)
+            value = center + rng.gauss(
+                location - (0.65 * (-family.scale) + 0.35 * (2.0 * family.scale)), family.scale * 0.25
+            )
         elif kind == "heteroscedastic":
             changing_scale = family.scale * (0.25 + 1.75 * index / max(count - 1, 1))
             value = rng.gauss(center, changing_scale)
@@ -367,12 +427,7 @@ def _wilson_bounds(
         denominator = 1.0 + z_squared / trials
         center = (proportion + z_squared / (2.0 * trials)) / denominator
         half_width = (
-            z
-            * math.sqrt(
-                proportion * (1.0 - proportion) / trials
-                + z_squared / (4.0 * trials * trials)
-            )
-            / denominator
+            z * math.sqrt(proportion * (1.0 - proportion) / trials + z_squared / (4.0 * trials * trials)) / denominator
         )
         lower = max(0.0, center - half_width)
         upper = min(1.0, center + half_width)
@@ -452,10 +507,7 @@ def _run_trial(
     warmups = tuple(generated[: variant.warmup_count])
     observations = generated[variant.warmup_count :]
     planned_centers = centers[variant.warmup_count :]
-    null_centers = [
-        _family_center(family, index, total_count)
-        for index in range(variant.warmup_count, total_count)
-    ]
+    null_centers = [_family_center(family, index, total_count) for index in range(variant.warmup_count, total_count)]
     true_estimand = sum(planned_centers) / len(planned_centers)
     baseline = sum(null_centers) / len(null_centers)
     consumed = 0
@@ -852,7 +904,9 @@ def run_calibration(
 
     contamination_trials = [trial for trial in all_trials if FAMILY_BY_NAME[str(trial["family"])].contaminated_expected]
     unstable_trials = [trial for trial in all_trials if FAMILY_BY_NAME[str(trial["family"])].unstable_expected]
-    candidate_families = [name for name in selected_family_names if FAMILY_BY_NAME[name].domain == "CANDIDATE_IN_DOMAIN"]
+    candidate_families = [
+        name for name in selected_family_names if FAMILY_BY_NAME[name].domain == "CANDIDATE_IN_DOMAIN"
+    ]
     overall_status = (
         "LOCALLY_CALIBRATED_WITHIN_DECLARED_DOMAIN"
         if candidate_families

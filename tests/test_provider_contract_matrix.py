@@ -368,9 +368,7 @@ def test_each_provider_runs_an_offline_inference_through_its_protocol_adapter(sp
 
     system_context = "offline system contract"
     gateway = AegisAdapter(llm=client, provider=spec.provider_kind, model=_TEST_MODEL)
-    result = asyncio.run(
-        gateway.ainvoke_with_usage(_TEST_PROMPT, system_context=system_context, max_output_tokens=73)
-    )
+    result = asyncio.run(gateway.ainvoke_with_usage(_TEST_PROMPT, system_context=system_context, max_output_tokens=73))
     assert result.output == "offline answer"
     assert result.usage["input_tokens"] == (65 if spec.protocol == "anthropic-messages" else 100)
     assert result.usage["output_tokens"] == 8

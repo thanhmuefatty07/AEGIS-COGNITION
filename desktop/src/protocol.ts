@@ -61,6 +61,9 @@ export type DesktopCommand =
   | "code_reuse.assess"
   | "code_reuse.materialize"
   | "memory.search"
+  | "memory.file_relations.list"
+  | "memory.file_relation.link"
+  | "memory.file_relation.unlink"
   | "memory.inspect"
   | "memory.capture"
   | "memory.correct"
@@ -657,6 +660,26 @@ export type ConversationInspection = {
     item_count: number | null;
     selection_backend: string | null;
     history_turn_count: number;
+    inclusion?: {
+      schema: "aegis-context-inclusion-inspection-v1";
+      status: string;
+      manifest_sha256: string;
+      prompt_chars: number;
+      prompt_limit_chars: number;
+      selected_count: number;
+      included_count: number;
+      omitted_count: number;
+      omitted_reasons: string[];
+      deduplicated_turn_count: number;
+    } | null;
+    request_attempt?: {
+      schema: "aegis-provider-request-attempt-inspection-v1";
+      ordinal: number;
+      state: string;
+      payload_sha256: string;
+      payload_bytes: number;
+    } | null;
+    request_attempt_count?: number;
     sensitive_content: "REDACTED";
   };
   timeline: Array<{
@@ -797,6 +820,54 @@ export type MemoryRecord = {
   validation_basis?: string | null;
   validation_reason?: string | null;
   memory_kind: string;
+};
+
+export type MemoryFileRelation = {
+  relation_id: string;
+  memory_id: string;
+  scope_kind: string;
+  project_id: string;
+  relative_path: string;
+  source_revision: string;
+  source_content_hash: string;
+  memory_revision: number;
+  memory_content_hash: string;
+  created_at_ms: number;
+  memory_lifecycle: string;
+  memory_validation: string;
+  memory_content_current: boolean;
+};
+
+export type MemoryFileRelationCursor = string;
+
+export type MemoryFileRelationPage = {
+  relations: MemoryFileRelation[];
+  next_cursor: MemoryFileRelationCursor | null;
+};
+
+export type MemoryFileRelationLinkRequest = {
+  project_id: string;
+  source_revision: string;
+  relative_path: string;
+  source_content_hash: string;
+  memory_id: string;
+  scope_kind: string;
+  memory_revision: number;
+  memory_content_hash: string;
+};
+
+export type MemoryFileRelationListRequest = {
+  project_id: string;
+  relative_path: string;
+  limit?: number;
+  cursor?: MemoryFileRelationCursor;
+};
+
+export type MemoryFileRelationUnlinkRequest = {
+  relation_id: string;
+  project_id: string;
+  relative_path: string;
+  scope_kind: string;
 };
 
 export type VerificationSession = {
@@ -1249,6 +1320,10 @@ export function parseConversationInspection(value: unknown): ConversationInspect
     || !Array.isArray(inspection.timeline)
     || !Array.isArray(inspection.approvals)
     || inspection.context.sensitive_content !== "REDACTED"
+    || !isOptionalContextInspectionField(inspection.context, "inclusion", isContextInclusionInspection)
+    || !isOptionalContextInspectionField(inspection.context, "request_attempt", isProviderRequestAttemptInspection)
+    || (inspection.context.request_attempt_count !== undefined
+      && !isNonnegativeSafeInteger(inspection.context.request_attempt_count))
     || !inspection.timeline.every(isRecord)
     || !inspection.approvals.every((approval) => isRecord(approval)
       && typeof approval.approval_id === "string"
@@ -2060,6 +2135,40 @@ export function parseMemorySearchResult(value: unknown): MemoryRecord[] {
   return value.records as MemoryRecord[];
 }
 
+export function parseMemoryFileRelationsResult(value: unknown): MemoryFileRelationPage {
+  if (!isRecord(value) || !Array.isArray(value.relations) || !value.relations.every(isMemoryFileRelation)) {
+    throw new Error("Desktop service returned invalid file-memory relations");
+  }
+  const rawCursor = value.next_cursor;
+  if (rawCursor === undefined || rawCursor === null) {
+    return { relations: value.relations, next_cursor: null };
+  }
+  if (typeof rawCursor !== "string"
+    || rawCursor.length === 0
+    || rawCursor.length > 512
+    || value.relations.length === 0) {
+    throw new Error("Desktop service returned an invalid file-memory relation cursor");
+  }
+  return {
+    relations: value.relations,
+    next_cursor: rawCursor,
+  };
+}
+
+export function parseMemoryFileRelationLinkResult(value: unknown): MemoryFileRelation {
+  if (!isRecord(value) || !isMemoryFileRelation(value.relation)) {
+    throw new Error("Desktop service returned an invalid file-memory relation");
+  }
+  return value.relation;
+}
+
+export function parseMemoryFileRelationUnlinkResult(value: unknown): { removed: boolean } {
+  if (!isRecord(value) || typeof value.removed !== "boolean") {
+    throw new Error("Desktop service returned an invalid file-memory relation unlink result");
+  }
+  return { removed: value.removed };
+}
+
 export function parseEmptyResult(value: unknown): Record<string, unknown> {
   if (!isRecord(value)) throw new Error("Desktop service returned an invalid command result");
   return value;
@@ -2075,6 +2184,43 @@ function isNullableString(value: unknown): value is string | null {
 
 function isNonnegativeSafeInteger(value: unknown): value is number {
   return typeof value === "number" && Number.isSafeInteger(value) && value >= 0;
+}
+
+function isOptionalContextInspectionField(
+  context: Record<string, unknown>,
+  key: string,
+  validate: (value: unknown) => boolean,
+): boolean {
+  const value = context[key];
+  return value === undefined || value === null || validate(value);
+}
+
+function isContextInclusionInspection(value: unknown): boolean {
+  if (!isRecord(value)) return false;
+  return value.schema === "aegis-context-inclusion-inspection-v1"
+    && value.status === "COMPOSED"
+    && typeof value.manifest_sha256 === "string"
+    && /^[0-9a-f]{64}$/.test(value.manifest_sha256)
+    && isNonnegativeSafeInteger(value.prompt_chars)
+    && isNonnegativeSafeInteger(value.prompt_limit_chars)
+    && isNonnegativeSafeInteger(value.selected_count)
+    && isNonnegativeSafeInteger(value.included_count)
+    && isNonnegativeSafeInteger(value.omitted_count)
+    && value.included_count + value.omitted_count === value.selected_count
+    && isStringArray(value.omitted_reasons)
+    && isNonnegativeSafeInteger(value.deduplicated_turn_count);
+}
+
+function isProviderRequestAttemptInspection(value: unknown): boolean {
+  return isRecord(value)
+    && value.schema === "aegis-provider-request-attempt-inspection-v1"
+    && isNonnegativeSafeInteger(value.ordinal)
+    && value.ordinal > 0
+    && value.state === "DISPATCH_ATTEMPTED"
+    && typeof value.payload_sha256 === "string"
+    && /^[0-9a-f]{64}$/.test(value.payload_sha256)
+    && isNonnegativeSafeInteger(value.payload_bytes)
+    && value.payload_bytes > 0;
 }
 
 function isModelCatalogState(value: unknown): value is ModelCatalogState {
@@ -2118,6 +2264,36 @@ function isMemoryRecord(value: unknown): value is MemoryRecord {
     && (value.validation_basis === undefined || isNullableString(value.validation_basis))
     && (value.validation_reason === undefined || isNullableString(value.validation_reason))
     && typeof value.memory_kind === "string";
+}
+
+function isMemoryFileRelation(value: unknown): value is MemoryFileRelation {
+  return isRecord(value)
+    && !Object.hasOwn(value, "owner_id")
+    && typeof value.relation_id === "string"
+    && /^0x[0-9a-f]+$/.test(value.relation_id)
+    && typeof value.memory_id === "string"
+    && /^0x[0-9a-f]+$/.test(value.memory_id)
+    && typeof value.scope_kind === "string"
+    && value.scope_kind.length > 0
+    && typeof value.project_id === "string"
+    && value.project_id.length > 0
+    && typeof value.relative_path === "string"
+    && value.relative_path.length > 0
+    && typeof value.source_revision === "string"
+    && value.source_revision.length > 0
+    && typeof value.source_content_hash === "string"
+    && /^[0-9a-f]{64}$/.test(value.source_content_hash)
+    && typeof value.memory_revision === "number"
+    && Number.isSafeInteger(value.memory_revision)
+    && value.memory_revision > 0
+    && typeof value.memory_content_hash === "string"
+    && /^[0-9a-f]{64}$/.test(value.memory_content_hash)
+    && isNonnegativeSafeInteger(value.created_at_ms)
+    && typeof value.memory_lifecycle === "string"
+    && value.memory_lifecycle.length > 0
+    && typeof value.memory_validation === "string"
+    && value.memory_validation.length > 0
+    && typeof value.memory_content_current === "boolean";
 }
 
 function parseConversationRecord(value: unknown): Conversation {

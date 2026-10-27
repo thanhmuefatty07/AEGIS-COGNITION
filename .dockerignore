@@ -1,23 +1,30 @@
-.git
-.local
-.venv
-.ruff_cache
-.agents
-.codex
-.cursor
-.serena
-.sixth
-.aegis
-.cursorrules
-.pytest_cache
-target
-artifacts/
-.env
-.env.*
+# Keep local state, caches, credentials, and generated output out of every
+# build context path, including nested package directories.
+**/.git
+**/.local
+**/.venv
+**/.ruff_cache
+**/.agents
+**/.codex
+**/.cursor
+**/.serena
+**/.sixth
+**/.aegis
+**/.cursorrules
+**/.pytest_cache
+**/target
+core/rust/target_check
+core/rust/target_plan_check
+# Exclude contents of other generated target_* directories without masking
+# ordinary source files whose names start with target_.
+**/target_*/*/**
+**/artifacts
+**/.env
+**/.env.*
 !.env.example
-*.pem
-*.key
-*.p12
-*.pfx
-__pycache__
-*.pyc
+**/*.pem
+**/*.key
+**/*.p12
+**/*.pfx
+**/__pycache__
+**/*.pyc

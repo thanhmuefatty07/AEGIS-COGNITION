@@ -39,7 +39,12 @@ def test_call_parses_provider_usage_and_keeps_endpoint_allowlisted(monkeypatch: 
     payload = json.dumps(
         {
             "model": "test/model:free",
-            "choices": [{"message": {"content": '{"answer":"4096","evidence_ids":[1],"unknown":false}'}, "finish_reason": "stop"}],
+            "choices": [
+                {
+                    "message": {"content": '{"answer":"4096","evidence_ids":[1],"unknown":false}'},
+                    "finish_reason": "stop",
+                }
+            ],
             "usage": {"prompt_tokens": 123, "completion_tokens": 9, "total_tokens": 132, "cost": 0},
         }
     ).encode()

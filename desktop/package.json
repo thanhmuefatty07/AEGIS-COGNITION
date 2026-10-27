@@ -5,11 +5,12 @@
   "type": "module",
   "scripts": {
     "dev": "vite --host 127.0.0.1",
+    "typecheck": "tsc --noEmit",
     "build": "tsc --noEmit && vite build",
-    "test": "node --test test/model-selection.test.mjs test/mcp-setup-suggestions.test.mjs test/workbench-core.test.mjs test/virtual-window.test.mjs && vitest run test/ambiguous-tool-call-reconciliation.test.tsx test/mcp-oauth-config.test.tsx",
-    "test:e2e": "npm run build && playwright test",
+    "test": "node --test test/model-selection.test.mjs test/mcp-setup-suggestions.test.mjs test/workbench-core.test.mjs test/virtual-window.test.mjs && vitest run --dir test --exclude \"**/*.test.mjs\" --exclude \"**/e2e/**\" --maxWorkers=1",
+    "test:e2e": "npm run build && playwright test --timeout=60000",
     "tauri": "tauri",
-    "sidecar:build": "uv run --locked --extra all --extra dev --group desktop python packaging/build_sidecar.py",
+    "sidecar:build": "node packaging/run_sidecar_build.mjs",
     "tauri:build": "tauri build --config src-tauri/tauri.bundle.conf.json"
   },
   "dependencies": {

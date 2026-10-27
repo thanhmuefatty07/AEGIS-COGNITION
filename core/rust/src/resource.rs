@@ -5,12 +5,12 @@
 //! [`ResourceController`] trait; unsupported enforcement is reported explicitly.
 
 use serde::{Deserialize, Serialize};
-use std::collections::{BTreeMap, BTreeSet, VecDeque};
+use std::collections::{BTreeMap, BTreeSet, HashSet, VecDeque};
 use std::sync::{
     Arc,
     atomic::{AtomicBool, Ordering},
 };
-use std::time::{SystemTime, UNIX_EPOCH};
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 pub const RESOURCE_CONTRACT_SCHEMA_V1: &str = "aegis-resource-contract-v1";
 pub const LEASE_TOKEN_SCHEMA_V1: &str = "aegis-resource-lease-token-v1";
@@ -1576,6 +1576,22 @@ impl ResourceLease {
             .is_some_and(|deadline| now_ms >= deadline)
     }
 
+    pub(crate) fn remaining_execution_budget(
+        &self,
+        now_ms: u64,
+    ) -> Result<Option<Duration>, ResourceError> {
+        let Some(deadline) = self.expires_at_ms else {
+            return Ok(None);
+        };
+        // Lease timestamps have millisecond precision; reserve one tick so a
+        // rounded duration cannot run past the absolute deadline.
+        let remaining_ms = deadline.saturating_sub(now_ms).saturating_sub(1);
+        if remaining_ms == 0 {
+            return Err(ResourceError::DeadlineExceeded);
+        }
+        Ok(Some(Duration::from_millis(remaining_ms)))
+    }
+
     pub fn cancel(&self) {
         self.cancelled.store(true, Ordering::Release);
     }
@@ -1592,6 +1608,7 @@ pub struct AdmissionController {
     used: GrantedResources,
     queue_limit: usize,
     queued_requests: VecDeque<ResourceRequest>,
+    queued_attempts: HashSet<(TaskId, u64)>,
     next_lease_id: LeaseId,
     generation: u64,
     active: BTreeMap<LeaseId, ResourceLease>,
@@ -1630,6 +1647,7 @@ impl AdmissionController {
             },
             queue_limit,
             queued_requests: VecDeque::new(),
+            queued_attempts: HashSet::new(),
             next_lease_id: 1,
             generation: 0,
             active: BTreeMap::new(),
@@ -2112,14 +2130,30 @@ impl AdmissionController {
         self.memory_pressure_state = next;
     }
 
+    /// Queue one request per task attempt. An identical repeat is idempotent;
+    /// reusing the attempt key with different resource requirements is rejected.
     pub fn enqueue(
         &mut self,
         request: ResourceRequest,
         now_ms: u64,
     ) -> Result<usize, ResourceError> {
         request.validate(now_ms)?;
+        if let Some((position, queued)) = self.queued_attempt(request.task_id, request.attempt_id) {
+            if queued == &request {
+                return Ok(position);
+            }
+            return Err(ResourceError::InvalidRequest(
+                "queued task attempt already has a different resource request".to_string(),
+            ));
+        }
         if self.queued_requests.len() >= self.queue_limit {
             return Err(ResourceError::ResourceExhausted);
+        }
+        let key = (request.task_id, request.attempt_id);
+        if !self.queued_attempts.insert(key) {
+            return Err(ResourceError::ResourceUnavailable(
+                "queued attempt index is inconsistent".to_string(),
+            ));
         }
         self.queued_requests.push_back(request);
         Ok(self.queued_requests.len())
@@ -2269,7 +2303,29 @@ impl AdmissionController {
     /// retry admission after releasing capacity. The controller does not
     /// spawn or execute work implicitly.
     pub fn pop_queued(&mut self) -> Option<ResourceRequest> {
-        self.queued_requests.pop_front()
+        let request = self.queued_requests.pop_front()?;
+        self.queued_attempts
+            .remove(&(request.task_id, request.attempt_id));
+        Some(request)
+    }
+
+    pub fn peek_queued(&self) -> Option<&ResourceRequest> {
+        self.queued_requests.front()
+    }
+
+    pub(crate) fn queued_attempt(
+        &self,
+        task_id: TaskId,
+        attempt_id: u64,
+    ) -> Option<(usize, &ResourceRequest)> {
+        if !self.queued_attempts.contains(&(task_id, attempt_id)) {
+            return None;
+        }
+        self.queued_requests
+            .iter()
+            .enumerate()
+            .find(|(_, request)| request.task_id == task_id && request.attempt_id == attempt_id)
+            .map(|(index, request)| (index + 1, request))
     }
 
     /// Remove one queued attempt without touching an admitted lease.
@@ -2281,7 +2337,11 @@ impl AdmissionController {
         let before = self.queued_requests.len();
         self.queued_requests
             .retain(|request| request.task_id != task_id || request.attempt_id != attempt_id);
-        self.queued_requests.len() != before
+        let removed = self.queued_requests.len() != before;
+        if removed {
+            self.queued_attempts.remove(&(task_id, attempt_id));
+        }
+        removed
     }
 }
 
@@ -2447,13 +2507,42 @@ pub trait ResourceController: Send + Sync {
             enforcement: self.capabilities(),
         })
     }
+    /// Attach an already-created process for compatibility with callers that
+    /// manage their own launch lifecycle. The process may have executed before
+    /// attachment; use `spawn_in_scope` when execution must be contained from
+    /// its first instruction.
     fn apply_to_process(&self, _lease: &ResourceLease, _pid: u32) -> Result<(), ResourceError> {
         Err(ResourceError::UnsupportedControl(
             "controller does not expose process attachment".to_string(),
         ))
     }
+    /// Spawn a command only after the lease's hard limits contain it.
+    ///
+    /// An implementation must keep untrusted child code from executing until
+    /// the process is attached to the lease (for example, by using a pre-exec
+    /// hook or a suspended process). On failure, it must leave no child
+    /// running. It must reject leases without remaining execution budget before
+    /// setup and recheck immediately before the child can execute. The caller
+    /// releases the scope created for this lease.
+    /// Command configuration is trusted; ownership prevents platform launch
+    /// flags or pre-exec hooks from leaking into a later launch.
+    fn spawn_in_scope(
+        &self,
+        _lease: &ResourceLease,
+        _command: std::process::Command,
+    ) -> Result<std::process::Child, ResourceError> {
+        Err(ResourceError::UnsupportedControl(
+            "controller does not provide pre-execution process containment".to_string(),
+        ))
+    }
     fn release_scope(&self, _lease: &ResourceLease) -> Result<(), ResourceError> {
         Ok(())
+    }
+    /// Confirm that no process or descendant remains in this live scope.
+    fn scope_is_empty(&self, _lease: &ResourceLease) -> Result<bool, ResourceError> {
+        Err(ResourceError::UnsupportedControl(
+            "controller does not expose scope population".to_string(),
+        ))
     }
     fn terminate(&self, lease: &ResourceLease) -> Result<(), ResourceError>;
 }
@@ -2908,6 +2997,27 @@ mod tests {
             request.validate(0),
             Err(ResourceError::InvalidRequest(_))
         ));
+    }
+
+    #[test]
+    fn queue_deduplicates_attempts_without_replacing_the_request() {
+        let mut controller = AdmissionController::new(capacity(), 1);
+        let request = ResourceRequest::minimal(7, WorkKind::NativeTask);
+
+        assert_eq!(controller.enqueue(request.clone(), 10), Ok(1));
+        assert_eq!(controller.enqueue(request.clone(), 10), Ok(1));
+
+        let mut conflicting_request = request.clone();
+        conflicting_request.host_memory.bytes = 2;
+        assert!(matches!(
+            controller.enqueue(conflicting_request, 10),
+            Err(ResourceError::InvalidRequest(_))
+        ));
+        assert_eq!(controller.queued(), 1);
+        assert_eq!(controller.pop_queued(), Some(request.clone()));
+        assert_eq!(controller.enqueue(request.clone(), 10), Ok(1));
+        assert!(controller.remove_queued(7, request.attempt_id));
+        assert_eq!(controller.enqueue(request.clone(), 10), Ok(1));
     }
 
     #[test]

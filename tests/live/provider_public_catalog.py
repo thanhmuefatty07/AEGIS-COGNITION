@@ -1,7 +1,7 @@
 """Opt-in live checks for model-catalog auth boundaries; no API credentials are used.
 
 Set AEGIS_TEST_PROVIDER_NO_KEY_SMOKE=1 in the shell, then run:
-    uv run pytest tests/test_provider_public_catalog_live.py -q
+    uv run pytest tests/live/provider_public_catalog.py -q
 """
 
 from __future__ import annotations
@@ -118,8 +118,6 @@ def test_live_no_key_catalog_behavior_is_exact_and_credential_free(spec: Provide
     if spec.provider_kind == "openrouter":
         assert 1 <= len(requests) <= discovery.MAX_OPENROUTER_MODELS_PAGES
         offsets = [dict(parse_qsl(urlsplit(url).query)).get("offset") for url, _headers, _timeout in requests]
-        assert offsets == [
-            str(index * discovery.OPENROUTER_MODELS_PAGE_SIZE) for index in range(len(requests))
-        ]
+        assert offsets == [str(index * discovery.OPENROUTER_MODELS_PAGE_SIZE) for index in range(len(requests))]
     else:
         assert len(requests) == 1, "anonymous checks must call only the selected provider's catalog endpoint"

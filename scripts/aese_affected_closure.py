@@ -87,7 +87,7 @@ def _git_ref(ref: str) -> str:
             capture_output=True,
             text=True,
         ).stdout.strip()
-    except (OSError, subprocess.CalledProcessError):
+    except OSError, subprocess.CalledProcessError:
         return "NOT_AVAILABLE"
 
 
@@ -154,15 +154,52 @@ def _declared_edges(mapping: dict[str, object]) -> list[dict[str, str]]:
             _edge("pyproject.toml", "aegis_cognition/aese.py", "PACKAGE", "aegis-cognition"),
             _edge("pyproject.toml", "tests/test_aese_primitives.py", "CONFIG", "[tool.pytest"),
             _edge("core/rust/src/main.rs", "core/rust/src/cli/mod.rs", "ENTRY_POINT", "fn main"),
-            _edge("scripts/aese_inventory.py", "quality/registry/current_inventory.json", "GENERATOR", "current_inventory.json"),
-            _edge("scripts/aese_claim_graph.py", "quality/registry/current_claim_graph.json", "GENERATOR", "current_claim_graph.json"),
-            _edge("scripts/aese_s2_mapping.py", "quality/registry/current_s2_mapping.json", "GENERATOR", "current_s2_mapping.json"),
-            _edge("scripts/aese_inventory.py", "quality/registry/current_inventory.json", "VALIDATOR", "validate_inventory"),
-            _edge("scripts/aese_claim_graph.py", "quality/registry/current_claim_graph.json", "VALIDATOR", "validate_graph"),
-            _edge("scripts/aese_preflight.py", "quality/registry/current_inventory.json", "VALIDATOR", "build_inventory"),
+            _edge(
+                "scripts/aese_inventory.py",
+                "quality/registry/current_inventory.json",
+                "GENERATOR",
+                "current_inventory.json",
+            ),
+            _edge(
+                "scripts/aese_claim_graph.py",
+                "quality/registry/current_claim_graph.json",
+                "GENERATOR",
+                "current_claim_graph.json",
+            ),
+            _edge(
+                "scripts/aese_s2_mapping.py",
+                "quality/registry/current_s2_mapping.json",
+                "GENERATOR",
+                "current_s2_mapping.json",
+            ),
+            _edge(
+                "scripts/aese_inventory.py",
+                "quality/registry/current_inventory.json",
+                "VALIDATOR",
+                "validate_inventory",
+            ),
+            _edge(
+                "scripts/aese_claim_graph.py",
+                "quality/registry/current_claim_graph.json",
+                "VALIDATOR",
+                "validate_graph",
+            ),
+            _edge(
+                "scripts/aese_preflight.py", "quality/registry/current_inventory.json", "VALIDATOR", "build_inventory"
+            ),
             _edge("scripts/aese_preflight.py", "quality/registry/current_claim_graph.json", "VALIDATOR", "build_graph"),
-            _edge("scripts/evidence_consistency_gate.py", "quality/registry/current_inventory.json", "VALIDATOR", "registry"),
-            _edge("scripts/aese_statistical_calibration.py", "tests/test_aese_statistical_calibration.py", "TEST", "run_calibration"),
+            _edge(
+                "scripts/evidence_consistency_gate.py",
+                "quality/registry/current_inventory.json",
+                "VALIDATOR",
+                "registry",
+            ),
+            _edge(
+                "scripts/aese_statistical_calibration.py",
+                "tests/test_aese_statistical_calibration.py",
+                "TEST",
+                "run_calibration",
+            ),
             _edge(".github/workflows/ci.yml", "tests/test_aese_primitives.py", "WORKFLOW", "pytest tests"),
             _edge(".github/workflows/ci.yml", "core/rust/src/gt96.rs", "WORKFLOW", "cargo test"),
             _edge("scripts/aese_preflight.py", "scripts/aese_claim_graph.py", "CALL", "build_graph()"),
@@ -173,7 +210,9 @@ def _declared_edges(mapping: dict[str, object]) -> list[dict[str, str]]:
     return [deduplicated[key] for key in sorted(deduplicated)]
 
 
-def _path_set(inventory: dict[str, object], graph: dict[str, object], edges: list[dict[str, str]]) -> tuple[set[str], set[str]]:
+def _path_set(
+    inventory: dict[str, object], graph: dict[str, object], edges: list[dict[str, str]]
+) -> tuple[set[str], set[str]]:
     known: set[str] = set()
     retained: set[str] = set()
     items = inventory.get("items", [])
@@ -236,9 +275,7 @@ def _surface_dependency_snapshot(
             if surface_id in inventory_ids and record.get("verification_status") == "VERIFIED":
                 mapped_ids.add(surface_id)
 
-    declared_unknown = {
-        str(value) for value in mapping.get("unknown_surface_ids", []) if isinstance(value, str)
-    }
+    declared_unknown = {str(value) for value in mapping.get("unknown_surface_ids", []) if isinstance(value, str)}
     unknown_ids = (inventory_ids - mapped_ids) | (declared_unknown & inventory_ids)
     unknown_paths = sorted(path for path, ids in path_to_ids.items() if set(ids) & unknown_ids)
     for ids in path_to_ids.values():
@@ -275,7 +312,7 @@ def _dynamic_edge_paths(paths: list[str]) -> list[str]:
             continue
         try:
             text = absolute.read_text(encoding="utf-8")
-        except (OSError, UnicodeError):
+        except OSError, UnicodeError:
             dynamic.append(path)
             continue
         if any(marker in text for marker in _DYNAMIC_MARKERS):
@@ -287,7 +324,10 @@ def _adjacency(edges: list[dict[str, str]]) -> dict[str, list[dict[str, str]]]:
     adjacency: dict[str, list[dict[str, str]]] = {}
     for edge in edges:
         adjacency.setdefault(edge["from"], []).append(edge)
-    return {path: sorted(values, key=lambda item: (item["to"], item["type"], item["evidence"])) for path, values in adjacency.items()}
+    return {
+        path: sorted(values, key=lambda item: (item["to"], item["type"], item["evidence"]))
+        for path, values in adjacency.items()
+    }
 
 
 def _reach(seed_paths: list[str], adjacency: dict[str, list[dict[str, str]]]) -> tuple[list[str], list[dict[str, str]]]:
@@ -302,7 +342,9 @@ def _reach(seed_paths: list[str], adjacency: dict[str, list[dict[str, str]]]) ->
             if target not in visited:
                 visited.add(target)
                 queue.append(target)
-    return sorted(visited), sorted(traversed, key=lambda item: (item["from"], item["to"], item["type"], item["evidence"]))
+    return sorted(visited), sorted(
+        traversed, key=lambda item: (item["from"], item["to"], item["type"], item["evidence"])
+    )
 
 
 def _critical_audit(mapping: dict[str, object], adjacency: dict[str, list[dict[str, str]]]) -> dict[str, object]:
@@ -324,7 +366,9 @@ def _critical_audit(mapping: dict[str, object], adjacency: dict[str, list[dict[s
         if type(raw_record) is not dict:
             continue
         record = cast(dict[str, object], raw_record)
-        values = {str(record.get(key, "UNKNOWN")).upper() for key in ("risk", "security_criticality", "release_criticality")}
+        values = {
+            str(record.get(key, "UNKNOWN")).upper() for key in ("risk", "security_criticality", "release_criticality")
+        }
         if not values.intersection(CRITICAL_VALUES):
             continue
         surface_id = str(record.get("surface_id", "UNKNOWN_SURFACE"))
@@ -355,8 +399,12 @@ def _critical_audit(mapping: dict[str, object], adjacency: dict[str, list[dict[s
     }
 
 
-def build_closure(changed_paths: list[str] | tuple[str, ...] = (), mapping_path: Path = DEFAULT_MAPPING) -> dict[str, object]:
-    inventory = _inventory.build_inventory()
+def build_closure(
+    changed_paths: list[str] | tuple[str, ...] = (),
+    mapping_path: Path = DEFAULT_MAPPING,
+    inventory: dict[str, object] | None = None,
+) -> dict[str, object]:
+    inventory = _inventory.build_inventory() if inventory is None else inventory
     graph = _claim_graph.build_graph(inventory=inventory)
     mapping = _load_json(mapping_path)
     edges = _declared_edges(mapping)
@@ -366,9 +414,7 @@ def build_closure(changed_paths: list[str] | tuple[str, ...] = (), mapping_path:
     )
     paths = sorted({_normalize(path) for path in changed_paths if path.strip()})
     dynamic_paths = _dynamic_edge_paths(paths)
-    path_dependency_states = _path_dependency_states(
-        paths, path_to_ids, unknown_surface_ids, set(dynamic_paths)
-    )
+    path_dependency_states = _path_dependency_states(paths, path_to_ids, unknown_surface_ids, set(dynamic_paths))
     unknown_repository_paths = sorted(path for path in paths if path not in path_to_ids)
     unknown_paths = unknown_repository_paths
     changed_unmapped_surface_ids = sorted(
@@ -383,12 +429,7 @@ def build_closure(changed_paths: list[str] | tuple[str, ...] = (), mapping_path:
     )
     adjacency = _adjacency(edges)
     reached_paths, traversed_edges = _reach(paths, adjacency)
-    widened = bool(
-        unknown_repository_paths
-        or dynamic_paths
-        or changed_unmapped_surface_paths
-        or not paths
-    )
+    widened = bool(unknown_repository_paths or dynamic_paths or changed_unmapped_surface_paths or not paths)
     if widened:
         closure_paths = sorted(retained_paths)
         traversed_edges = []
@@ -491,11 +532,7 @@ def validate_closure(actual: dict[str, object], expected: dict[str, object]) -> 
     # stable closure inputs/outputs must not.  Keep the provenance in the
     # artifact and verify its own content hash independently.
     volatile = {"artifact_hash", "source_head", "provenance"}
-    errors.extend(
-        f"{key} differs"
-        for key in expected
-        if key not in volatile and actual.get(key) != expected.get(key)
-    )
+    errors.extend(f"{key} differs" for key in expected if key not in volatile and actual.get(key) != expected.get(key))
     recorded_hash = actual.get("artifact_hash")
     recomputed_hash = _stable_hash({key: value for key, value in actual.items() if key != "artifact_hash"})
     if recorded_hash != recomputed_hash:

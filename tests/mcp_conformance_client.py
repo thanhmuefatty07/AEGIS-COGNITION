@@ -11,6 +11,7 @@ from urllib.parse import urlsplit
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
+
 async def _run(server_url: str, scenario: str) -> None:
     endpoint = urlsplit(server_url)
     if endpoint.scheme != "http" or endpoint.hostname not in {"localhost", "127.0.0.1", "::1"}:

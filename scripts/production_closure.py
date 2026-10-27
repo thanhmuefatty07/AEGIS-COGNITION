@@ -45,7 +45,9 @@ def build_production_closure_workflow(
     after_ids = _active_blocker_ids(after_readiness_report) if after_readiness_report is not None else before_ids
     closed_ids = sorted(set(before_ids) - set(after_ids))
     results = command_results or []
-    command_failure_count = sum(1 for result in results if result.get("returncode") != 0 or result.get("timed_out") is True)
+    command_failure_count = sum(
+        1 for result in results if result.get("returncode") != 0 or result.get("timed_out") is True
+    )
     payload = {
         "schema": SCHEMA,
         "truth_claim": False,
@@ -135,7 +137,9 @@ def write_production_closure_workflow_report(
 ) -> dict[str, Any]:
     root_path = Path(root)
     report = run_production_closure_workflow(root_path, execute=execute, timeout_seconds=timeout_seconds)
-    target = report_path if report_path is not None else root_path / "artifacts" / "production_closure_workflow_report.json"
+    target = (
+        report_path if report_path is not None else root_path / "artifacts" / "production_closure_workflow_report.json"
+    )
     target.parent.mkdir(parents=True, exist_ok=True)
     target.write_text(json.dumps(report, indent=2, sort_keys=True), encoding="utf-8")
     return report

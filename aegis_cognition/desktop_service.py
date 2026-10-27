@@ -44,6 +44,7 @@ from urllib.parse import urlsplit, urlunsplit
 
 from .config import trust_policy_hash
 from .application import AgentApplication
+from .rag import RAGManager
 from .browser_adapters import build_readonly_browser_handler, playwright_browser_available
 from .code_reuse import (
     CodeReuseError,
@@ -88,6 +89,8 @@ from .extensions import (
     _normalized_search_fields,
     _search_terms,
     _score_normalized_fields,
+    attach_untrusted_target_provenance,
+    compact_mcp_tool_schema,
     discover_extension_manifests,
     discover_mcp_server_specs,
     discover_wasm_plugin_descriptors,
@@ -129,21 +132,27 @@ except ImportError:
 
 try:
     from core.python.aegis.code_intelligence import (
+        MAX_FILE_BYTES,
         BoundedSnapshotWatcher,
         CodeIntelligenceError,
         NativeSnapshotWatcher,
+        SourceFileReadError,
         SourceMapper,
         SourceSnapshot,
         build_repository_map,
+        read_file_beneath_root,
     )
 except ImportError:
     from aegis.code_intelligence import (  # type: ignore[import-not-found]
+        MAX_FILE_BYTES,
         BoundedSnapshotWatcher,
         CodeIntelligenceError,
         NativeSnapshotWatcher,
+        SourceFileReadError,
         SourceMapper,
         SourceSnapshot,
         build_repository_map,
+        read_file_beneath_root,
     )
 
 try:
@@ -168,10 +177,15 @@ try:
         reasoning_efforts_for_model,
         supports_vision_for_model,
     )
-    from core.python.aegis.context_compiler import ContextCompiler
     from core.python.aegis.conversations import ConversationManager, ConversationToolCall
     from core.python.aegis.desktop_projection import build_conversation_inspection, build_subagent_graph
-    from core.python.aegis.learning import LearningManager
+    from core.python.aegis.learning import (
+        DEFAULT_FILE_RELATION_PAGE_SIZE,
+        MAX_FILE_RELATION_CONTEXT_RESULTS,
+        MAX_FILE_RELATION_PAGE_SIZE,
+        LearningManager,
+        MemoryFileRelationCursor,
+    )
     from core.python.aegis.project_registry import ProjectRegistry, ProjectRegistryError, project_id_for_path
     from core.python.aegis.provider_identity import identify_api_key
     from core.python.aegis.provider_models import is_reasoning_effort_value
@@ -223,13 +237,18 @@ except ImportError:
         reasoning_efforts_for_model,
         supports_vision_for_model,
     )
-    from aegis.context_compiler import ContextCompiler  # type: ignore[import-not-found]
     from aegis.conversations import (  # type: ignore[import-not-found]
         ConversationManager,
         ConversationToolCall,
     )
     from aegis.desktop_projection import build_conversation_inspection, build_subagent_graph  # type: ignore[import-not-found]
-    from aegis.learning import LearningManager  # type: ignore[import-not-found]
+    from aegis.learning import (  # type: ignore[import-not-found]
+        DEFAULT_FILE_RELATION_PAGE_SIZE,
+        MAX_FILE_RELATION_CONTEXT_RESULTS,
+        MAX_FILE_RELATION_PAGE_SIZE,
+        LearningManager,
+        MemoryFileRelationCursor,
+    )
     from aegis.project_registry import ProjectRegistry, ProjectRegistryError, project_id_for_path  # type: ignore[import-not-found]
     from aegis.provider_identity import identify_api_key  # type: ignore[import-not-found]
     from aegis.provider_models import is_reasoning_effort_value  # type: ignore[import-not-found]
@@ -264,6 +283,9 @@ except ImportError:
 READY_SCHEMA = "aegis-desktop-ready-v1"
 SERVICE_VERSION_FALLBACK = "0.1.0"
 MAX_PATH_LENGTH = 4096
+_WINDOWS_MAX_PATH_LENGTH = 260
+MAX_MEMORY_RELATION_CURSOR_LENGTH = 512
+_MEMORY_RELATION_CURSOR_PREFIX = "mfr1_"
 MAX_DESKTOP_SOURCE_FILE_BYTES = 1_048_576
 MAX_DESKTOP_CHANGE_DIFF_BYTES = 262_144
 MAX_DESKTOP_CHANGED_FILES = 200
@@ -305,6 +327,7 @@ _DESKTOP_PROVIDER_SYSTEM_CONTEXT = (
 )
 MAX_SOURCE_FILES_IN_PROMPT = 64
 MAX_BASELINE_SOURCE_FILES_IN_PROMPT = 16
+MAX_FILE_RELATION_CONTEXT_PATHS = 8
 MAX_SUBAGENT_TASK_CHARS = 64 * 1024
 MAX_SUBAGENT_RESULT_CHARS = 16 * 1024
 MAX_SUBAGENT_TASKS = 64
@@ -361,6 +384,30 @@ _AGENT_CODE_CREDENTIAL_TOKEN = re.compile(
 _SCP_GIT_SOURCE = re.compile(r"^git@([A-Za-z0-9.-]+):([A-Za-z0-9._/-]+)$")
 _CLONE_HOSTS = frozenset({"bitbucket.org", "codeberg.org", "github.com", "gitlab.com"})
 _REPOSITORY_NAME = re.compile(r"^[A-Za-z0-9._][A-Za-z0-9._-]*$")
+
+
+def _normalize_windows_workspace_path(path: Path) -> Path:
+    if os.name != "nt":
+        return path
+
+    value = os.fspath(path)
+    if value[:8].casefold() == "\\\\?\\unc\\":
+        ordinary_path = "\\\\" + value[8:]
+    elif value.startswith("\\\\?\\"):
+        candidate = value[4:]
+        if len(candidate) < 3 or candidate[1] != ":" or candidate[2] != "\\":
+            return path
+        ordinary_path = candidate
+    else:
+        ordinary_path = value
+
+    if len(ordinary_path) < _WINDOWS_MAX_PATH_LENGTH:
+        return Path(ordinary_path)
+    if ordinary_path.startswith("\\\\"):
+        return Path("\\\\?\\UNC\\" + ordinary_path[2:])
+    if len(ordinary_path) >= 3 and ordinary_path[1] == ":" and ordinary_path[2] == "\\":
+        return Path("\\\\?\\" + ordinary_path)
+    return path
 
 
 def _agent_code_path_allowed(relative_path: str) -> bool:
@@ -486,6 +533,10 @@ class _PendingProviderToolApproval:
     approved_code_source_hash: str | None
     context_manifest_hash: str
     prompt_hash: str
+    context_inclusion: Mapping[str, object]
+    request_payload_observer: Callable[[bytes], None] | None
+    revision_state: list[int]
+    checkpoint_sequence: list[int]
     tool_history: tuple[ProviderToolExchange, ...]
     provider_turn_scope: _ProviderToolTurnScope
     provider_turn: ProviderTurn
@@ -1232,6 +1283,144 @@ def _require_top_k(payload: Mapping[str, Any]) -> int:
     return value
 
 
+def _memory_relation_cursor_binding(
+    *,
+    owner_id: str,
+    scope_kind: str,
+    project_id: str,
+    relative_path: str,
+) -> str:
+    query = json.dumps([owner_id, scope_kind, project_id, relative_path], separators=(",", ":"), ensure_ascii=True)
+    return hashlib.sha256(query.encode("ascii")).hexdigest()
+
+
+def _encode_memory_relation_cursor(
+    cursor: MemoryFileRelationCursor,
+    cursor_key: bytes,
+    *,
+    owner_id: str,
+    scope_kind: str,
+    project_id: str,
+    relative_path: str,
+) -> str:
+    unsigned_payload = {
+        "version": 1,
+        "binding": _memory_relation_cursor_binding(
+            owner_id=owner_id,
+            scope_kind=scope_kind,
+            project_id=project_id,
+            relative_path=relative_path,
+        ),
+        "created_at_ms": cursor.created_at_ms,
+        "relation_id": cursor.relation_id,
+    }
+    unsigned_bytes = json.dumps(unsigned_payload, sort_keys=True, separators=(",", ":")).encode("ascii")
+    payload = json.dumps(
+        {
+            **unsigned_payload,
+            "mac": hmac.new(
+                cursor_key, b"aegis-memory-file-relation-cursor-v1\x00" + unsigned_bytes, hashlib.sha256
+            ).hexdigest(),
+        },
+        sort_keys=True,
+        separators=(",", ":"),
+    ).encode("ascii")
+    token = _MEMORY_RELATION_CURSOR_PREFIX + base64.urlsafe_b64encode(payload).decode("ascii").rstrip("=")
+    if len(token) > MAX_MEMORY_RELATION_CURSOR_LENGTH:
+        raise RuntimeError("encoded memory relation cursor exceeded its bound")
+    return token
+
+
+def _decode_memory_relation_cursor(
+    token: object,
+    cursor_key: bytes,
+    *,
+    owner_id: str,
+    scope_kind: str,
+    project_id: str,
+    relative_path: str,
+) -> MemoryFileRelationCursor:
+    error = DesktopServiceError("INVALID_ARGUMENT", "cursor is invalid for this relation query")
+    if (
+        not isinstance(token, str)
+        or not token.isascii()
+        or len(token) <= len(_MEMORY_RELATION_CURSOR_PREFIX)
+        or len(token) > MAX_MEMORY_RELATION_CURSOR_LENGTH
+        or not token.startswith(_MEMORY_RELATION_CURSOR_PREFIX)
+    ):
+        raise error
+    encoded = token[len(_MEMORY_RELATION_CURSOR_PREFIX) :]
+    if re.fullmatch(r"[A-Za-z0-9_-]+", encoded) is None:
+        raise error
+    try:
+        payload_bytes = base64.b64decode(encoded + "=" * (-len(encoded) % 4), altchars=b"-_", validate=True)
+        payload: object = json.loads(payload_bytes.decode("ascii"))
+    except binascii.Error, UnicodeDecodeError, ValueError:
+        raise error from None
+    expected_keys = {"version", "binding", "created_at_ms", "relation_id", "mac"}
+    if not _is_string_object_dict(payload):
+        raise error
+    version = payload.get("version")
+    binding = payload.get("binding")
+    created_at_ms = payload.get("created_at_ms")
+    relation_id = payload.get("relation_id")
+    mac = payload.get("mac")
+    expected_binding = _memory_relation_cursor_binding(
+        owner_id=owner_id,
+        scope_kind=scope_kind,
+        project_id=project_id,
+        relative_path=relative_path,
+    )
+    if (
+        set(payload) != expected_keys
+        or type(version) is not int
+        or version != 1
+        or type(created_at_ms) is not int
+        or not 1 <= created_at_ms <= 0x7FFFFFFFFFFFFFFF
+        or not isinstance(relation_id, str)
+        or not isinstance(binding, str)
+        or re.fullmatch(r"[0-9a-f]{64}", binding) is None
+        or not isinstance(mac, str)
+        or re.fullmatch(r"[0-9a-f]{64}", mac) is None
+        or not hmac.compare_digest(binding, expected_binding)
+    ):
+        raise error
+    unsigned_payload: dict[str, object] = {
+        "version": version,
+        "binding": binding,
+        "created_at_ms": created_at_ms,
+        "relation_id": relation_id,
+    }
+    unsigned_bytes = json.dumps(unsigned_payload, sort_keys=True, separators=(",", ":")).encode("ascii")
+    expected_mac = hmac.new(
+        cursor_key,
+        b"aegis-memory-file-relation-cursor-v1\x00" + unsigned_bytes,
+        hashlib.sha256,
+    ).hexdigest()
+    if not hmac.compare_digest(mac, expected_mac):
+        raise error
+    try:
+        cursor = MemoryFileRelationCursor(
+            created_at_ms=created_at_ms,
+            relation_id=relation_id,
+        )
+    except TypeError, ValueError:
+        raise error from None
+    if (
+        _encode_memory_relation_cursor(
+            cursor,
+            cursor_key,
+            owner_id=owner_id,
+            scope_kind=scope_kind,
+            project_id=project_id,
+            relative_path=relative_path,
+        )
+        != token
+    ):
+        raise error
+    return cursor
+
+
 def _json_value(value: object) -> object:
     if is_dataclass(value) and not isinstance(value, type):
         fields = cast(dict[str, object], asdict(value))
@@ -1320,6 +1509,27 @@ def _select_source_paths_for_prompt(file_records: list[dict[str, Any]], message:
     )
     if len(paths) <= MAX_SOURCE_FILES_IN_PROMPT:
         return paths
+    relevant = _ranked_source_paths_for_prompt(file_records, message)
+    baseline = paths[:MAX_BASELINE_SOURCE_FILES_IN_PROMPT]
+    selected: list[str] = []
+    for path in [*relevant, *baseline]:
+        if path not in selected:
+            selected.append(path)
+        if len(selected) == MAX_SOURCE_FILES_IN_PROMPT:
+            break
+    return selected
+
+
+def _ranked_source_paths_for_prompt(file_records: Sequence[Mapping[str, object]], message: str) -> list[str]:
+    """Return only paths with a positive lexical match to the current request."""
+
+    paths = sorted(
+        {
+            str(item.get("relative_path", "")).strip()
+            for item in file_records
+            if str(item.get("relative_path", "")).strip()
+        }
+    )
     stop_words = {
         "the",
         "and",
@@ -1340,6 +1550,8 @@ def _select_source_paths_for_prompt(file_records: list[dict[str, Any]], message:
         "how",
     }
     terms = {term for term in re.findall(r"[a-z0-9_]{3,}", message.casefold()) if term not in stop_words}
+    if not terms:
+        return []
     scored = sorted(
         (
             sum(1 for term in terms if term in path.casefold()),
@@ -1347,15 +1559,7 @@ def _select_source_paths_for_prompt(file_records: list[dict[str, Any]], message:
         )
         for path in paths
     )
-    relevant = [path for score, path in sorted(scored, key=lambda item: (-item[0], item[1])) if score > 0]
-    baseline = paths[:MAX_BASELINE_SOURCE_FILES_IN_PROMPT]
-    selected: list[str] = []
-    for path in [*relevant, *baseline]:
-        if path not in selected:
-            selected.append(path)
-        if len(selected) == MAX_SOURCE_FILES_IN_PROMPT:
-            break
-    return selected
+    return [path for score, path in sorted(scored, key=lambda item: (-item[0], item[1])) if score > 0]
 
 
 class _McpRuntime:
@@ -1923,6 +2127,7 @@ class DesktopService:
         self._manager: Any | None = None
         self._connections: Any | None = None
         self._learning: Any | None = None
+        self._memory_relation_cursor_key = secrets.token_bytes(32)
         self._session_secrets: dict[str, str] = {}
         self._session_connection_refs: dict[str, str] = {}
         self._session_secret_lock = threading.RLock()
@@ -1940,6 +2145,12 @@ class DesktopService:
         self._extension_registry = ExtensionRegistry()
         self._wasm_activation_lock = threading.RLock()
         self._active_wasm_plugin_hashes: dict[str, str] = {}
+        self._wasm_plugin_descriptor_cache: (
+            tuple[tuple[tuple[str, int, int, bool, bytes], ...], tuple[WasmPluginDescriptor, ...]] | None
+        ) = None
+        self._enabled_skill_catalog_cache: tuple[tuple[Any, ...], SkillCatalog, tuple[SkillDescriptor, ...]] | None = (
+            None
+        )
         self._mcp_skill_resource_cache: OrderedDict[tuple[str, str, str, str, str, str, int], bytes] = OrderedDict()
         self._mcp_skill_resource_cache_bytes = 0
         self._mcp_skill_resource_cache_lock = threading.RLock()
@@ -2573,8 +2784,12 @@ class DesktopService:
             "code_reuse.assess": self._assess_code_reuse,
             "code_reuse.materialize": self._materialize_code_reuse,
             "memory.search": self._search_memories,
+            "memory.file_relations.list": self._list_memory_file_relations,
+            "memory.file_relation.link": self._link_memory_file_relation,
+            "memory.file_relation.unlink": self._unlink_memory_file_relation,
             "memory.inspect": self._inspect_memory,
             "memory.capture": self._capture_memory,
+            "memory.validate": self._validate_memory,
             "memory.correct": self._correct_memory,
             "memory.forget": self._forget_memory,
             "memory.restore": self._restore_memory,
@@ -2654,6 +2869,8 @@ class DesktopService:
         self._active_wasm_plugin_hashes.clear()
 
     def _open_workspace(self, payload: dict[str, Any]) -> Mapping[str, Any]:
+        if self._opened_root is not None and payload.get("workspace_path") is None:
+            return self._workspace_snapshot({})
         root = self._workspace_root(payload)
         if self._opened_root is not None and root != self._opened_root:
             raise DesktopServiceError("WORKSPACE_ALREADY_OPEN", "the service already owns another workspace")
@@ -2684,7 +2901,7 @@ class DesktopService:
                 or "\x00" in requested
             ):
                 raise DesktopServiceError("INVALID_ARGUMENT", "workspace_path must be a bounded path")
-            return Path(requested).expanduser().resolve()
+            return _normalize_windows_workspace_path(Path(requested).expanduser().resolve())
         return self.profile_root.resolve()
 
     def _subagent_states(self) -> tuple[_SubagentRunState, ...]:
@@ -2916,6 +3133,19 @@ class DesktopService:
         self._source_snapshot = self._source_mapper.snapshot(self._source_snapshot, watcher=watcher)
         return {"snapshot": _json_value(self._source_snapshot)}
 
+    @staticmethod
+    def _workspace_relative_path(payload: Mapping[str, Any]) -> Path:
+        raw_path = _require_text(payload, "relative_path", max_length=MAX_PATH_LENGTH)
+        relative = Path(raw_path)
+        if (
+            relative.anchor
+            or relative.drive
+            or not relative.parts
+            or any(part in {".", "..", ".git", ".aegis"} for part in relative.parts)
+        ):
+            raise DesktopServiceError("INVALID_PATH", "relative_path must identify a visible workspace file")
+        return relative
+
     def _workspace_file_path(
         self,
         payload: Mapping[str, Any],
@@ -2923,36 +3153,56 @@ class DesktopService:
         require_exists: bool = True,
     ) -> tuple[Path, str]:
         self._require_open()
-        raw_path = _require_text(payload, "relative_path", max_length=MAX_PATH_LENGTH)
-        relative = Path(raw_path)
-        if relative.is_absolute() or any(part in {".", "..", ".git", ".aegis"} for part in relative.parts):
-            raise DesktopServiceError("INVALID_PATH", "relative_path must identify a visible workspace file")
+        relative = self._workspace_relative_path(payload)
         root = (self._opened_root or self.profile_root).resolve(strict=True)
         candidate = root / relative
         try:
-            resolved = candidate.resolve(strict=require_exists)
-        except (OSError, RuntimeError) as error:
-            raise DesktopServiceError("FILE_NOT_FOUND", "workspace file is unavailable") from error
-        if not resolved.is_relative_to(root) or (require_exists and not resolved.is_file()):
-            raise DesktopServiceError("INVALID_PATH", "relative_path must identify a file inside this workspace")
-        cursor = candidate
-        while cursor != root and cursor != cursor.parent:
+            candidate.relative_to(root)
+        except ValueError as error:
+            raise DesktopServiceError(
+                "INVALID_PATH", "relative_path must identify a file inside this workspace"
+            ) from error
+        cursor = root
+        for index, part in enumerate(relative.parts):
+            cursor /= part
+            try:
+                metadata = cursor.lstat()
+            except (FileNotFoundError, NotADirectoryError) as error:
+                if require_exists:
+                    raise DesktopServiceError("FILE_NOT_FOUND", "workspace file is unavailable") from error
+                break
+            except (OSError, RuntimeError) as error:
+                raise DesktopServiceError("FILE_NOT_FOUND", "workspace file is unavailable") from error
             if _is_link_or_junction(cursor):
                 raise DesktopServiceError("INVALID_PATH", "workspace links cannot be opened from this surface")
-            cursor = cursor.parent
-        normalized = resolved.relative_to(root).as_posix()
-        return resolved, normalized
+            if index < len(relative.parts) - 1 and not stat.S_ISDIR(metadata.st_mode):
+                raise DesktopServiceError("FILE_NOT_FOUND", "workspace file is unavailable")
+            if index == len(relative.parts) - 1 and require_exists and not stat.S_ISREG(metadata.st_mode):
+                raise DesktopServiceError("INVALID_PATH", "relative_path must identify a file inside this workspace")
+        return candidate, relative.as_posix()
 
     def _workspace_file_read(self, payload: dict[str, Any]) -> Mapping[str, Any]:
-        path, relative_path = self._workspace_file_path(payload)
+        self._require_open()
+        if self._opened_root is None:
+            raise DesktopServiceError("WORKSPACE_NOT_OPEN", "open a workspace before using it")
+        relative_path = self._workspace_relative_path(payload).as_posix()
         try:
-            stat_result = path.stat()
-            if stat_result.st_size > MAX_DESKTOP_SOURCE_FILE_BYTES:
-                raise DesktopServiceError("FILE_TOO_LARGE", "workspace files larger than 1 MiB are not shown here")
-            raw = path.read_bytes()
-        except DesktopServiceError:
-            raise
-        except OSError as error:
+            stat_result, raw = read_file_beneath_root(
+                self._opened_root,
+                relative_path,
+                max_bytes=MAX_DESKTOP_SOURCE_FILE_BYTES,
+            )
+        except SourceFileReadError as error:
+            if error.reason == "too_large":
+                raise DesktopServiceError(
+                    "FILE_TOO_LARGE", "workspace files larger than 1 MiB are not shown here"
+                ) from error
+            if error.reason in {"unsafe_path", "unsupported"}:
+                raise DesktopServiceError(
+                    "INVALID_PATH", "workspace links cannot be opened from this surface"
+                ) from error
+            if error.reason in {"stat_error", "unavailable"}:
+                raise DesktopServiceError("FILE_NOT_FOUND", "workspace file is unavailable") from error
             raise DesktopServiceError("FILE_UNAVAILABLE", "workspace file could not be read") from error
         if b"\x00" in raw:
             raise DesktopServiceError("BINARY_FILE", "binary workspace files cannot be shown as source text")
@@ -3286,9 +3536,15 @@ class DesktopService:
     ) -> Callable[[str], bool]:
         if self._is_loopback_endpoint(str(connection.endpoint)):
             return lambda _connection_id: True
+        opened_root = getattr(self, "_opened_root", None)
+        workspace_id = workspace_scope_id(opened_root) if opened_root is not None else "default"
+        owner_id = getattr(self, "_active_owner_id", None) or "local-profile"
 
         def check(connection_id: str) -> bool:
-            return bool(catalog.check_egress(connection_id, data_class, operation))
+            try:
+                return bool(catalog.check_egress(workspace_id, owner_id, connection_id, data_class, operation))
+            except TypeError:
+                return bool(catalog.check_egress(connection_id, data_class, operation))
 
         return check
 
@@ -3299,15 +3555,36 @@ class DesktopService:
         grant = getattr(catalog, "grant_egress", None)
         if not callable(grant):
             raise DesktopServiceError("EGRESS_UNAVAILABLE", "the connection egress adapter is unavailable")
+        opened_root = getattr(self, "_opened_root", None)
+        workspace_id = workspace_scope_id(opened_root) if opened_root is not None else "default"
+        owner_id = getattr(self, "_active_owner_id", None) or "local-profile"
         for data_class, operation in (("MODEL_METADATA", "model_discovery"), ("PROJECT_TEXT", "foreground_inference")):
-            existing = get_grant(connection.connection_id, data_class, operation) if callable(get_grant) else None
-            grant(
-                f"desktop-{connection.connection_id}-{operation}",
-                connection.connection_id,
-                data_class,
-                operation,
-                expected_revision=(getattr(existing, "revision", None) if existing is not None else None),
-            )
+            existing = None
+            if callable(get_grant):
+                try:
+                    existing = get_grant(workspace_id, owner_id, connection.connection_id, data_class, operation)
+                except TypeError:
+                    existing = get_grant(connection.connection_id, data_class, operation)
+            grant_id = f"desktop-{connection.connection_id}-{operation}"
+            expected_rev = getattr(existing, "revision", None) if existing is not None else None
+            try:
+                grant(
+                    workspace_id,
+                    owner_id,
+                    grant_id,
+                    connection.connection_id,
+                    data_class,
+                    operation,
+                    expected_revision=expected_rev,
+                )
+            except TypeError:
+                grant(
+                    grant_id,
+                    connection.connection_id,
+                    data_class,
+                    operation,
+                    expected_revision=expected_rev,
+                )
 
     def _identify_connection(self, payload: dict[str, Any]) -> Mapping[str, Any]:
         identity = identify_api_key(_require_api_key(payload))
@@ -4672,6 +4949,67 @@ class DesktopService:
                 self._active_wasm_plugin_hashes.pop(extension_id, None)
                 self._extension_registry.unregister(extension_id)
 
+    @staticmethod
+    def _roots_discovery_fingerprint(
+        roots: Sequence[Path],
+        *,
+        max_depth: int = 6,
+        max_files: int = MAX_EXTENSION_FILES,
+    ) -> tuple[tuple[str, int, int, bool, bytes], ...]:
+        entries: list[tuple[str, int, int, bool, bytes]] = []
+        for root in roots:
+            try:
+                resolved = root.expanduser()
+                root_stat = resolved.lstat()
+            except OSError:
+                entries.append((str(root), -1, -1, False, b""))
+                continue
+            entries.append((str(resolved), root_stat.st_mtime_ns, root_stat.st_size, True, b""))
+            if not stat.S_ISDIR(root_stat.st_mode) or stat.S_ISLNK(root_stat.st_mode):
+                continue
+            stack: list[tuple[Path, int]] = [(resolved, 0)]
+            while stack and len(entries) < max_files * 2:
+                current, depth = stack.pop()
+                try:
+                    with os.scandir(current) as it:
+                        children = sorted(it, key=lambda entry: entry.name)
+                except OSError:
+                    continue
+                for child in children:
+                    try:
+                        st = child.stat(follow_symlinks=False)
+                    except OSError:
+                        continue
+                    is_dir = stat.S_ISDIR(st.st_mode) and not stat.S_ISLNK(st.st_mode)
+                    digest = b""
+                    if (
+                        not is_dir
+                        and not stat.S_ISLNK(st.st_mode)
+                        and (child.name in {"extension.toml", "wasm.toml", "SKILL.md"} or child.name.endswith(".wasm"))
+                        and st.st_size <= MAX_WASM_PLUGIN_BYTES
+                    ):
+                        with suppress(OSError), open(child.path, "rb") as handle:
+                            head = handle.read(4096)
+                            if st.st_size > 4096:
+                                handle.seek(max(4096, st.st_size - 4096))
+                                tail = handle.read(4096)
+                            else:
+                                tail = b""
+                            digest = hashlib.blake2b(head + tail, digest_size=8).digest()
+                    entries.append((child.path, st.st_mtime_ns, st.st_size, is_dir, digest))
+                    if is_dir and depth < max_depth:
+                        stack.append((Path(child.path), depth + 1))
+        return tuple(entries)
+
+    def _discover_wasm_plugins_cached(self, extension_roots: Sequence[Path]) -> tuple[WasmPluginDescriptor, ...]:
+        fingerprint = self._roots_discovery_fingerprint(extension_roots)
+        cached = self._wasm_plugin_descriptor_cache
+        if cached is not None and cached[0] == fingerprint:
+            return cached[1]
+        descriptors = discover_wasm_plugin_descriptors(extension_roots, max_files=MAX_EXTENSION_FILES)
+        self._wasm_plugin_descriptor_cache = (fingerprint, descriptors)
+        return descriptors
+
     def _reconcile_wasm_plugin_before_invoke(self, extension_id: str) -> None:
         with self._wasm_activation_lock:
             if extension_id not in self._active_wasm_plugin_hashes:
@@ -4679,7 +5017,7 @@ class DesktopService:
             try:
                 state = self._capability_state_store().get()
                 extension_roots, _, _ = self._extension_roots()
-                descriptors = discover_wasm_plugin_descriptors(extension_roots, max_files=MAX_EXTENSION_FILES)
+                descriptors = self._discover_wasm_plugins_cached(extension_roots)
             except CapabilityStateError as error:
                 raise DesktopServiceError(
                     "CAPABILITY_STATE_UNAVAILABLE", "extension runtime state could not be read"
@@ -4789,7 +5127,7 @@ class DesktopService:
     def _find_wasm_plugin(self, extension_id: str) -> WasmPluginDescriptor | None:
         extension_roots, _, _ = self._extension_roots()
         try:
-            descriptors = discover_wasm_plugin_descriptors(extension_roots, max_files=MAX_EXTENSION_FILES)
+            descriptors = self._discover_wasm_plugins_cached(extension_roots)
         except ExtensionError as error:
             raise DesktopServiceError(
                 "WASM_PLUGIN_DISCOVERY_FAILED", "WASM plugin metadata could not be verified"
@@ -5868,7 +6206,8 @@ class DesktopService:
             expected_revision=expected_revision,
         )
         current_revision = int(turn.revision)
-        revision_state = [current_revision]
+        revision_state = pending.revision_state
+        revision_state[0] = current_revision
         if decision == "deny":
             tool_status = "REJECTED"
             result_value: object = {"error": "The user declined this tool call; it was not run."}
@@ -5963,6 +6302,7 @@ class DesktopService:
             result_value=result_value,
             status=tool_status,
             expected_revision=current_revision,
+            untrusted_target=pending.tool_name.startswith("mcp."),
         )
         pending.current_revision = current_revision
         revision_state[0] = current_revision
@@ -5995,8 +6335,11 @@ class DesktopService:
                 source_revision=pending.source_revision,
                 context_manifest_hash=pending.context_manifest_hash,
                 prompt_hash=pending.prompt_hash,
+                context_inclusion=pending.context_inclusion,
+                request_payload_observer=pending.request_payload_observer,
                 expected_revision=current_revision,
                 revision_state=revision_state,
+                checkpoint_sequence=pending.checkpoint_sequence,
                 initial_tool_history=tool_history,
                 start_round=pending.round_index + 1,
                 total_calls=pending.total_calls,
@@ -6265,6 +6608,7 @@ class DesktopService:
                             }
                         ],
                         provider_turn_scope=scope,
+                        parent_runtime_lease_held=True,
                     )
                 except Exception:
                     return context.failure(
@@ -6764,14 +7108,25 @@ class DesktopService:
     def _provider_code_source(self, relative_path: str) -> tuple[SourceSnapshot, Any, str, bytes]:
         if not _agent_code_path_allowed(relative_path):
             raise DesktopServiceError("CODE_PATH_REJECTED", "credential and secret-like paths are not readable here")
+        requested_path = Path(relative_path)
+        if (
+            requested_path.is_absolute()
+            or requested_path.drive
+            or any(
+                part.casefold() in {".", "..", ".git", ".aegis"} for part in relative_path.replace("\\", "/").split("/")
+            )
+        ):
+            raise DesktopServiceError("INVALID_PATH", "relative_path must identify a visible workspace file")
+        requested_key = os.path.normcase(requested_path.as_posix())
         snapshot = self._reuse_snapshot()
+        source_mapper = self._source_mapper
+        if source_mapper is None:
+            raise DesktopServiceError("SOURCE_MAPPER_UNAVAILABLE", "the local source mapper is unavailable")
         for attempt in range(2):
-            path, canonical_path = self._workspace_file_path({"relative_path": relative_path})
-            if not _agent_code_path_allowed(canonical_path):
-                raise DesktopServiceError(
-                    "CODE_PATH_REJECTED", "credential and secret-like paths are not readable here"
-                )
-            record = next((item for item in snapshot.files if item.relative_path == canonical_path), None)
+            record = next(
+                (item for item in snapshot.files if os.path.normcase(item.relative_path) == requested_key),
+                None,
+            )
             if record is None:
                 if attempt == 0:
                     self._workspace_source_snapshot({})
@@ -6781,22 +7136,36 @@ class DesktopService:
                     "CODE_SOURCE_UNAVAILABLE",
                     "only indexed Python, Rust, TypeScript, and JavaScript source is readable",
                 )
+            canonical_path = record.relative_path
+            if not _agent_code_path_allowed(canonical_path):
+                raise DesktopServiceError(
+                    "CODE_PATH_REJECTED", "credential and secret-like paths are not readable here"
+                )
             if record.extraction_status != "EXTRACTED" or record.content_hash is None:
                 raise DesktopServiceError(
                     "CODE_SOURCE_UNAVAILABLE",
                     "only indexed Python, Rust, TypeScript, and JavaScript source is readable",
                 )
             try:
-                stat_result = path.stat()
-                if stat_result.st_size > MAX_DESKTOP_SOURCE_FILE_BYTES:
-                    raise DesktopServiceError("FILE_TOO_LARGE", "source files larger than 1 MiB are not readable here")
-                raw = path.read_bytes()
-            except DesktopServiceError:
-                raise
-            except OSError as error:
+                _, raw = read_file_beneath_root(
+                    source_mapper.root,
+                    canonical_path,
+                    max_bytes=MAX_DESKTOP_SOURCE_FILE_BYTES,
+                )
+            except SourceFileReadError as error:
+                if error.reason == "too_large":
+                    raise DesktopServiceError(
+                        "FILE_TOO_LARGE", "source files larger than 1 MiB are not readable here"
+                    ) from error
+                if error.reason == "changed" and attempt == 0:
+                    self._workspace_source_snapshot({})
+                    snapshot = self._reuse_snapshot()
+                    continue
+                if error.reason == "changed":
+                    raise DesktopServiceError(
+                        "SOURCE_SNAPSHOT_STALE", "source changed while it was being read; retry the tool"
+                    ) from error
                 raise DesktopServiceError("FILE_UNAVAILABLE", "workspace source could not be read") from error
-            if len(raw) > MAX_DESKTOP_SOURCE_FILE_BYTES:
-                raise DesktopServiceError("FILE_TOO_LARGE", "source files larger than 1 MiB are not readable here")
             if hashlib.sha256(raw).hexdigest() == record.content_hash:
                 return snapshot, record, canonical_path, raw
             if attempt == 0:
@@ -7564,6 +7933,7 @@ class DesktopService:
         learning = self._learning_for_request()
         transcript = self._transcript_text(snapshot, message)
         session_id = self._transcript_session_id(conversation_id, snapshot.conversation.revision + 1)
+        context = self._compile_recalled_context(learning, message, owner_id, source_snapshot=source_snapshot)
         try:
             learning.index_session_scoped(
                 session_id,
@@ -7576,7 +7946,6 @@ class DesktopService:
                 "MEMORY_PERSISTENCE_FAILED", "conversation source could not be persisted"
             ) from error
 
-        context = self._compile_recalled_context(learning, message, owner_id)
         client = self._provider_client(connection, model_id, model_descriptor)
         model_capabilities = getattr(model_descriptor, "capabilities", ())
         skills_via_tools = (
@@ -7585,7 +7954,7 @@ class DesktopService:
             and callable(getattr(client, "invoke_turn", None))
             and bool(self._enabled_skill_hashes())
         )
-        prompt, stable_prefix, dynamic_suffix = self._render_provider_prompt(
+        prompt, stable_prefix, dynamic_suffix, context_inclusion = self._render_provider_prompt(
             snapshot,
             message,
             source_snapshot,
@@ -7646,7 +8015,7 @@ class DesktopService:
                 owner_id=owner_id,
                 execution_id=execution.execution_id,
                 sequence=1,
-                state="REQUEST_STARTED",
+                state="PROMPT_PREPARED",
                 continuation_json=json.dumps(
                     {
                         "schema": "aegis-desktop-provider-continuation-v1",
@@ -7657,6 +8026,7 @@ class DesktopService:
                         "context_item_count": len(context.items),
                         "context_selection_backend": context.manifest.get("selection_backend"),
                         "prompt_hash": hashlib.sha256(prompt.encode("utf-8")).hexdigest(),
+                        "context_inclusion": context_inclusion,
                     },
                     sort_keys=True,
                     separators=(",", ":"),
@@ -7666,10 +8036,89 @@ class DesktopService:
             checkpoint_revision = int(getattr(checkpoint_record, "revision", 0))
 
         revision_state = [checkpoint_revision]
+        checkpoint_sequence = [1 if callable(checkpoint) else 0]
+        attempt_ordinal = [0]
+        expected_file_relations = {
+            (self._memory_relation_id(item.source_id), relative_path, source_hash.lower())
+            for item in context.items
+            for relative_path, source_hash in item.file_relations
+        }
+
+        def checkpoint_provider_payload(body: bytes) -> None:
+            if callable(checkpoint):
+                attempt_ordinal[0] += 1
+                next_sequence = checkpoint_sequence[0] + 1
+                attempt = {
+                    "schema": "aegis-provider-request-attempt-v1",
+                    "attempt_id": f"{execution.execution_id}:provider:{attempt_ordinal[0]}",
+                    "ordinal": attempt_ordinal[0],
+                    "state": "DISPATCH_ATTEMPTED",
+                    "payload_sha256": hashlib.sha256(body).hexdigest(),
+                    "payload_bytes": len(body),
+                }
+                continuation = {
+                    "schema": "aegis-desktop-provider-continuation-v1",
+                    "source_revision": source_revision,
+                    "context_manifest_hash": context.manifest_hash,
+                    "context_token_budget": context.token_budget,
+                    "context_token_count": context.token_count,
+                    "context_item_count": len(context.items),
+                    "context_selection_backend": context.manifest.get("selection_backend"),
+                    "prompt_hash": hashlib.sha256(prompt.encode("utf-8")).hexdigest(),
+                    "context_inclusion": context_inclusion,
+                    "provider_request_attempt": attempt,
+                }
+                checkpoint_record = checkpoint(
+                    conversation_id,
+                    owner_id=owner_id,
+                    execution_id=execution.execution_id,
+                    sequence=next_sequence,
+                    state="PROVIDER_DISPATCH_ATTEMPTED",
+                    continuation_json=json.dumps(
+                        continuation,
+                        sort_keys=True,
+                        separators=(",", ":"),
+                        ensure_ascii=False,
+                    ),
+                    expected_revision=revision_state[0],
+                )
+                checkpoint_sequence[0] = next_sequence
+                revision_state[0] = int(getattr(checkpoint_record, "revision", revision_state[0]))
+
+            if expected_file_relations:
+                _, current_relations = self._verified_file_relation_context(
+                    learning,
+                    message,
+                    source_snapshot,
+                    owner_id,
+                )
+                current_file_relations = {
+                    (
+                        self._memory_relation_id(getattr(relation, "memory_id", "")),
+                        str(getattr(relation, "relative_path", "")),
+                        str(getattr(relation, "source_content_hash", "")).lower(),
+                    )
+                    for relation in current_relations
+                }
+                if not expected_file_relations.issubset(current_file_relations):
+                    raise DesktopServiceError(
+                        "SOURCE_SNAPSHOT_STALE",
+                        "a confirmed memory source changed before provider dispatch",
+                    )
+
+        request_payload_observer = (
+            checkpoint_provider_payload if getattr(client, "supports_request_payload_capture", False) is True else None
+        )
+
         pending_approval: _PendingProviderToolApproval | None = None
         try:
             if cancel_event is not None and cancel_event.is_set():
                 raise _DesktopRunCancelled()
+            if expected_file_relations and request_payload_observer is None:
+                raise DesktopServiceError(
+                    "PROVIDER_ERROR",
+                    "provider adapter cannot revalidate confirmed memory sources before dispatch",
+                )
             tool_catalog_revision = self._extension_registry.catalog_revision
             provider_tools, descriptor_hashes = self._provider_tool_definitions(message, model_descriptor)
             invoke_turn = getattr(client, "invoke_turn", None)
@@ -7699,6 +8148,9 @@ class DesktopService:
                     prompt_hash=hashlib.sha256(prompt.encode("utf-8")).hexdigest(),
                     expected_revision=checkpoint_revision,
                     revision_state=revision_state,
+                    checkpoint_sequence=checkpoint_sequence,
+                    request_payload_observer=request_payload_observer,
+                    context_inclusion=context_inclusion,
                     tool_catalog_revision=tool_catalog_revision,
                     cancel_event=cancel_event,
                 )
@@ -7724,6 +8176,7 @@ class DesktopService:
                         cache_options,
                         attachments=attachments,
                         usage_observer=provider_usage_reports.append,
+                        request_payload_observer=request_payload_observer,
                     )
                 if cancel_event is not None and cancel_event.is_set():
                     raise _DesktopRunCancelled()
@@ -7731,6 +8184,7 @@ class DesktopService:
                 pending_approval = output
             elif not isinstance(output, str) or not output.strip():
                 raise RuntimeError("provider returned empty text")
+            checkpoint_revision = revision_state[0]
         except _DesktopRunCancelled:
             checkpoint_revision = revision_state[0]
             manager.finish_execution(
@@ -7750,7 +8204,10 @@ class DesktopService:
                 status="FAILED",
                 expected_revision=checkpoint_revision,
             )
-            if isinstance(error, DesktopServiceError) and error.code == "PROVIDER_TOOL_ARGUMENTS_TOO_LARGE":
+            if isinstance(error, DesktopServiceError) and error.code in {
+                "PROVIDER_TOOL_ARGUMENTS_TOO_LARGE",
+                "SOURCE_SNAPSHOT_STALE",
+            }:
                 raise error
             raise DesktopServiceError("PROVIDER_ERROR", "live provider request failed") from error
 
@@ -7902,9 +8359,19 @@ class DesktopService:
         egress_check: Callable[[str], bool] | None = None
         if parsed.hostname not in {"localhost", "127.0.0.1", "::1"}:
             catalog = self._connections_for_request()
+            opened_root = getattr(self, "_opened_root", None)
+            workspace_id = workspace_scope_id(opened_root) if opened_root is not None else "default"
+            owner_id = getattr(self, "_active_owner_id", None) or "local-profile"
 
             def check_egress(connection_key: str) -> bool:
-                return bool(catalog.check_egress(connection_key, "PROJECT_TEXT", "foreground_inference"))
+                try:
+                    return bool(
+                        catalog.check_egress(
+                            workspace_id, owner_id, connection_key, "PROJECT_TEXT", "foreground_inference"
+                        )
+                    )
+                except TypeError:
+                    return bool(catalog.check_egress(connection_key, "PROJECT_TEXT", "foreground_inference"))
 
             egress_check = check_egress
         secret_resolver = self._secret_store().resolve
@@ -7982,6 +8449,7 @@ class DesktopService:
         *,
         attachments: list[dict[str, str]] | None = None,
         usage_observer: Callable[[Mapping[str, object]], None] | None = None,
+        request_payload_observer: Callable[[bytes], None] | None = None,
     ) -> Any:
         invoke = getattr(client, "invoke", None)
         if not callable(invoke):
@@ -8001,6 +8469,8 @@ class DesktopService:
             kwargs.update(cache_options)
         if usage_observer is not None and getattr(client, "supports_usage_observer", False) is True:
             kwargs["_aegis_usage_observer"] = usage_observer
+        if request_payload_observer is not None and getattr(client, "supports_request_payload_capture", False) is True:
+            kwargs["_aegis_payload_observer"] = request_payload_observer
         if accepts_kwargs or any(name in parameters for name in kwargs):
             supported_kwargs = (
                 kwargs if accepts_kwargs else {name: value for name, value in kwargs.items() if name in parameters}
@@ -8013,7 +8483,7 @@ class DesktopService:
         return ProviderToolDefinition(
             name=spec.name,
             description=spec.description,
-            input_schema=dict(spec.input_schema),
+            input_schema=compact_mcp_tool_schema(spec.input_schema),
         )
 
     def _provider_tool_discovery_specs(
@@ -8158,6 +8628,7 @@ class DesktopService:
         cache_options: Mapping[str, object] | None,
         attachments: list[dict[str, str]] | None,
         usage_observer: Callable[[Mapping[str, object]], None] | None,
+        request_payload_observer: Callable[[bytes], None] | None = None,
     ) -> ProviderTurn:
         invoke = getattr(client, "invoke_turn", None)
         if not callable(invoke):
@@ -8184,6 +8655,8 @@ class DesktopService:
             kwargs.update(cache_options)
         if usage_observer is not None and getattr(client, "supports_usage_observer", False) is True:
             kwargs["_aegis_usage_observer"] = usage_observer
+        if request_payload_observer is not None and getattr(client, "supports_request_payload_capture", False) is True:
+            kwargs["_aegis_payload_observer"] = request_payload_observer
         if not accepts_kwargs and not {"tools", "tool_history", "system_context"}.issubset(parameters):
             raise DesktopServiceError(
                 "PROVIDER_TOOL_CALL_UNSUPPORTED",
@@ -8198,18 +8671,35 @@ class DesktopService:
         return result
 
     @staticmethod
-    def _provider_tool_output_text(value: object) -> str:
-        encoded = json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":"), allow_nan=False)
+    def _provider_tool_output_text(
+        value: object,
+        *,
+        untrusted_target: bool = True,
+        source: str = "analysis_target",
+    ) -> str:
+        payload = (
+            attach_untrusted_target_provenance(value, untrusted_content=True, source=source)
+            if untrusted_target
+            else value
+        )
+        encoded = json.dumps(payload, ensure_ascii=False, sort_keys=True, separators=(",", ":"), allow_nan=False)
         raw = encoded.encode("utf-8")
         if len(raw) <= MAX_DESKTOP_TOOL_RESULT_BYTES:
             return encoded
+        truncated_payload: dict[str, object] = {
+            "truncated": True,
+            "original_bytes": len(raw),
+            "sha256": hashlib.sha256(raw).hexdigest(),
+            "preview": encoded[:8_192],
+        }
+        if untrusted_target:
+            truncated_payload = attach_untrusted_target_provenance(
+                truncated_payload,
+                untrusted_content=True,
+                source=source,
+            )
         return json.dumps(
-            {
-                "truncated": True,
-                "original_bytes": len(raw),
-                "sha256": hashlib.sha256(raw).hexdigest(),
-                "preview": encoded[:8_192],
-            },
+            truncated_payload,
             ensure_ascii=False,
             sort_keys=True,
             separators=(",", ":"),
@@ -8224,6 +8714,7 @@ class DesktopService:
         requests: list[dict[str, Any]],
         approved_effect_class: str | None = None,
         provider_turn_scope: _ProviderToolTurnScope | None = None,
+        parent_runtime_lease_held: bool = False,
     ) -> LabToolBatchResult:
         approved_effects = {"local_reversible", "state_write", "external_write", "destructive"}
         if approved_effect_class is not None:
@@ -8300,11 +8791,12 @@ class DesktopService:
             identity = f"{execution_id}:{conversation_id}:{call_id}:{attempt}"
             task_id = int.from_bytes(hashlib.blake2b(identity.encode("utf-8"), digest_size=16).digest(), "big") or 1
             side_effect_class = "ReadOnly" if effect_class in {"read_only", "compute"} else "ExternalSideEffect"
-            # The dispatcher waits for child work; each child acquires its own
-            # runtime lease, so reserving a lane here can deadlock at capacity one.
+            # Dispatchers wait on child leases; delegated workers already hold
+            # the parent Agent lease for this tool call. Duplicating a lease
+            # here can exhaust the runtime queue at capacity one.
             runtime_guard = (
                 nullcontext()
-                if name == PROVIDER_SUBAGENT_TOOL_NAME
+                if name == PROVIDER_SUBAGENT_TOOL_NAME or parent_runtime_lease_held
                 else coordinated_runtime_task_sync(
                     task_id=task_id,
                     work_kind="Tool",
@@ -8408,8 +8900,12 @@ class DesktopService:
         result_value: object,
         status: str,
         expected_revision: int,
+        untrusted_target: bool = False,
     ) -> tuple[ProviderToolOutput, int]:
-        result_text = DesktopService._provider_tool_output_text(result_value)
+        result_text = DesktopService._provider_tool_output_text(
+            result_value,
+            untrusted_target=untrusted_target,
+        )
         result_status = "COMPLETED" if status == "SUCCESS" else "FAILED"
         if _is_string_object_mapping(result_value) and result_value.get("isError") is True:
             result_status = "FAILED"
@@ -8455,8 +8951,11 @@ class DesktopService:
         source_revision: str,
         context_manifest_hash: str,
         prompt_hash: str,
+        context_inclusion: Mapping[str, object],
+        request_payload_observer: Callable[[bytes], None] | None,
         expected_revision: int,
         revision_state: list[int],
+        checkpoint_sequence: list[int],
         initial_tool_history: tuple[ProviderToolExchange, ...] = (),
         start_round: int = 0,
         total_calls: int = 0,
@@ -8538,7 +9037,9 @@ class DesktopService:
                     cache_options=cache_options,
                     attachments=attachments,
                     usage_observer=usage_observer,
+                    request_payload_observer=request_payload_observer,
                 )
+            current_revision = revision_state[0]
             if cancel_event is not None and cancel_event.is_set():
                 raise _DesktopRunCancelled()
             if not provider_turn.tool_calls:
@@ -8695,7 +9196,14 @@ class DesktopService:
                             if type(query) is str:
                                 for spec in self._provider_tool_discovery_specs(query, scope=provider_turn_scope):
                                     discovered_specs.setdefault(spec.name, spec)
-                result_text = self._provider_tool_output_text(result_value)
+                spec = call_specs.get(call.call_id)
+                is_mcp_target_tool = (
+                    spec is not None and spec.extension_id.startswith("mcp.")
+                ) or call.name.startswith("mcp.")
+                result_text = self._provider_tool_output_text(
+                    result_value,
+                    untrusted_target=is_mcp_target_tool,
+                )
                 tool_turn = manager.append_turn(
                     conversation_id,
                     owner_id=owner_id,
@@ -8724,7 +9232,6 @@ class DesktopService:
                 current_revision = int(record.revision)
                 revision_state[0] = current_revision
                 provider_output_text = result_text
-                spec = call_specs.get(call.call_id)
                 if result_status == "COMPLETED" and spec is not None and spec.effect_class in safe_effects:
                     result_bytes = result_text.encode("utf-8")
                     if len(result_bytes) >= MIN_DUPLICATE_TOOL_OUTPUT_REFERENCE_BYTES:
@@ -8789,6 +9296,7 @@ class DesktopService:
                 "source_revision": source_revision,
                 "context_manifest_hash": context_manifest_hash,
                 "prompt_hash": prompt_hash,
+                "context_inclusion": context_inclusion,
                 "completed_tool_rounds": round_index + 1,
                 "completed_tool_calls": total_calls + len(provider_turn.tool_calls),
                 "pending_approval_call_hash": (
@@ -8804,7 +9312,7 @@ class DesktopService:
                 conversation_id,
                 owner_id=owner_id,
                 execution_id=execution.execution_id,
-                sequence=round_index + 2,
+                sequence=checkpoint_sequence[0] + 1,
                 state="TOOL_APPROVAL_WAITING" if approval_call is not None else "TOOL_ROUND_COMPLETED",
                 continuation_json=json.dumps(
                     round_checkpoint,
@@ -8815,6 +9323,7 @@ class DesktopService:
                 expected_revision=current_revision,
             )
             current_revision = int(checkpoint.revision)
+            checkpoint_sequence[0] += 1
             revision_state[0] = current_revision
             if approval_call is not None:
                 pending_spec = call_specs[approval_call.call_id]
@@ -8840,6 +9349,10 @@ class DesktopService:
                         approved_code_source_hash=approval_code_source_hash,
                         context_manifest_hash=context_manifest_hash,
                         prompt_hash=prompt_hash,
+                        context_inclusion=context_inclusion,
+                        request_payload_observer=request_payload_observer,
+                        revision_state=revision_state,
+                        checkpoint_sequence=checkpoint_sequence,
                         tool_history=tuple(tool_history),
                         provider_turn_scope=provider_turn_scope,
                         provider_turn=provider_turn,
@@ -8862,14 +9375,187 @@ class DesktopService:
 
         raise RuntimeError("provider tool loop exited without a final answer")
 
-    def _compile_recalled_context(self, learning: Any, query: str, owner_id: str) -> Any:
-        candidates = learning.search_past(query, top_k=8).results
-        return ContextCompiler(learning, token_budget=4096, candidate_cap=8).compile(
-            query,
-            candidates,
+    def _compile_recalled_context(
+        self,
+        learning: Any,
+        query: str,
+        owner_id: str,
+        *,
+        source_snapshot: Mapping[str, Any] | None = None,
+    ) -> Any:
+        rag = RAGManager(
+            learning_manager=learning,
+            top_k=8,
             scope_kind="USER_PRIVATE",
             owner_id=owner_id,
         )
+        if source_snapshot is None:
+            return rag.compile_context(
+                query,
+                scope_kind="USER_PRIVATE",
+                owner_id=owner_id,
+                token_budget=4096,
+            )
+
+        active_memories = list(rag.retrieve_active_memories(query))
+        related_memories, verified_relations = self._verified_file_relation_context(
+            learning,
+            query,
+            source_snapshot,
+            owner_id,
+        )
+        related_ids = {self._memory_relation_id(getattr(memory, "memory_id", "")) for memory in related_memories}
+        active_memories = [
+            *related_memories,
+            *(
+                memory
+                for memory in active_memories
+                if self._memory_relation_id(getattr(memory, "memory_id", "")) not in related_ids
+            ),
+        ]
+        return rag.compile_context(
+            query,
+            scope_kind="USER_PRIVATE",
+            owner_id=owner_id,
+            token_budget=4096,
+            active_memories=active_memories,
+            verified_file_relations=verified_relations,
+        )
+
+    @staticmethod
+    def _memory_relation_id(value: object) -> int:
+        text = str(value).strip()
+        try:
+            return int(text[2:], 16) if text.startswith("0x") else int(text)
+        except ValueError:
+            return 0
+
+    def _verified_file_relation_context(
+        self,
+        learning: Any,
+        query: str,
+        source_snapshot: Mapping[str, Any],
+        owner_id: str,
+    ) -> tuple[tuple[Any, ...], tuple[Any, ...]]:
+        """Hydrate only confirmed links whose exact endpoints remain current and authorized."""
+
+        if self._opened_root is None or self._source_mapper is None or self._source_snapshot is None:
+            return (), ()
+        raw_identity: object = source_snapshot.get("identity")
+        if not _is_string_object_dict(raw_identity):
+            return (), ()
+        project_id = raw_identity.get("project_id")
+        if (
+            not isinstance(project_id, str)
+            or not project_id
+            or self._source_snapshot.identity.project_id != project_id
+            or Path(self._source_snapshot.identity.root).resolve() != self._opened_root.resolve()
+        ):
+            return (), ()
+        relation_project_id = f"project:{project_id}"
+
+        raw_files: object = source_snapshot.get("files")
+        file_records: list[dict[str, object]] = []
+        if isinstance(raw_files, list):
+            file_records.extend(item for item in cast(list[object], raw_files) if _is_string_object_dict(item))
+        file_hashes = {
+            str(item.get("relative_path", "")): str(item.get("content_hash", "")).lower()
+            for item in file_records
+            if isinstance(item.get("relative_path"), str) and isinstance(item.get("content_hash"), str)
+        }
+        paths = _ranked_source_paths_for_prompt(file_records, query)[:MAX_FILE_RELATION_CONTEXT_PATHS]
+        list_current_relations = getattr(learning, "list_current_file_relations", None)
+        inspect_memory = getattr(learning, "inspect_memory", None)
+        if not callable(list_current_relations) or not callable(inspect_memory):
+            return (), ()
+
+        related_memories: list[Any] = []
+        verified_relations: list[Any] = []
+        verified_memory_hashes: dict[int, str] = {}
+        for relative_path in paths:
+            expected_hash = file_hashes.get(relative_path, "")
+            if len(expected_hash) != 64 or any(character not in "0123456789abcdef" for character in expected_hash):
+                continue
+            try:
+                _, source_bytes = read_file_beneath_root(
+                    self._opened_root,
+                    relative_path,
+                    max_bytes=MAX_FILE_BYTES,
+                )
+            except SourceFileReadError:
+                continue
+            if hashlib.sha256(source_bytes).hexdigest() != expected_hash:
+                continue
+            remaining = MAX_FILE_RELATION_CONTEXT_RESULTS - len(verified_relations)
+            if remaining <= 0:
+                return tuple(related_memories), tuple(verified_relations)
+            try:
+                raw_relations: object = list_current_relations(
+                    relation_project_id,
+                    relative_path,
+                    source_content_hash=expected_hash,
+                    limit=remaining,
+                    scope_kind="USER_PRIVATE",
+                    owner_id=owner_id,
+                )
+            except AttributeError, ImportError, RuntimeError, TypeError, ValueError:
+                continue
+            if not isinstance(raw_relations, (tuple, list)):
+                continue
+            relation_records = cast(Sequence[object], raw_relations)
+            if len(relation_records) > remaining:
+                continue
+            ordered_relations = sorted(
+                (relation for relation in relation_records if relation is not None),
+                key=lambda relation: (
+                    int(getattr(relation, "created_at_ms", 0) or 0),
+                    str(getattr(relation, "relation_id", "")),
+                ),
+            )
+            for relation in ordered_relations:
+                memory_id = self._memory_relation_id(getattr(relation, "memory_id", ""))
+                relation_hash = str(getattr(relation, "source_content_hash", "")).lower()
+                relation_memory_hash = str(getattr(relation, "memory_content_hash", "")).lower()
+                if (
+                    memory_id <= 0
+                    or getattr(relation, "project_id", None) != relation_project_id
+                    or getattr(relation, "relative_path", None) != relative_path
+                    or getattr(relation, "scope_kind", None) != "USER_PRIVATE"
+                    or relation_hash != expected_hash
+                    or getattr(relation, "memory_content_current", False) is not True
+                    or str(getattr(relation, "memory_lifecycle", "")).upper() != "ACTIVE"
+                    or str(getattr(relation, "memory_validation", "")).upper() != "ACCEPTED"
+                ):
+                    continue
+                if memory_id not in verified_memory_hashes:
+                    try:
+                        memory: object = inspect_memory(
+                            str(getattr(relation, "memory_id", "")),
+                            scope_kind="USER_PRIVATE",
+                            owner_id=owner_id,
+                        )
+                    except AttributeError, ImportError, RuntimeError, TypeError, ValueError:
+                        continue
+                    if (
+                        memory is None
+                        or self._memory_relation_id(getattr(memory, "memory_id", "")) != memory_id
+                        or getattr(memory, "owner_id", None) != owner_id
+                        or getattr(memory, "scope_kind", None) != "USER_PRIVATE"
+                        or str(getattr(memory, "lifecycle", "")).upper() != "ACTIVE"
+                        or str(getattr(memory, "validation", "")).upper() != "ACCEPTED"
+                        or not isinstance(getattr(memory, "content", None), str)
+                        or not getattr(memory, "content", "").strip()
+                        or str(getattr(memory, "content_hash", "")).lower() != relation_memory_hash
+                    ):
+                        continue
+                    verified_memory_hashes[memory_id] = relation_memory_hash
+                    related_memories.append(memory)
+                elif verified_memory_hashes[memory_id] != relation_memory_hash:
+                    continue
+                verified_relations.append(relation)
+                if len(verified_relations) >= MAX_FILE_RELATION_CONTEXT_RESULTS:
+                    return tuple(related_memories), tuple(verified_relations)
+        return tuple(related_memories), tuple(verified_relations)
 
     def _render_provider_prompt(
         self,
@@ -8879,12 +9565,12 @@ class DesktopService:
         context: Any,
         *,
         skills_via_tools: bool = False,
-    ) -> tuple[str, str, str]:
-        history: list[str] = []
+    ) -> tuple[str, str, str, dict[str, object]]:
+        history: list[tuple[str, str]] = []
         for turn in snapshot.turns[-MAX_HISTORY_TURNS:]:
             content = turn.content.strip()
             if content:
-                history.append(f"{turn.role}: {content[:8192]}")
+                history.append((turn.turn_id, f"{turn.role}: {content[:8192]}"))
         raw_files: object = source_snapshot.get("files", [])
         raw_file_items = cast(list[object], raw_files) if isinstance(raw_files, list) else []
         file_records: list[dict[str, Any]] = [
@@ -8961,20 +9647,48 @@ class DesktopService:
         source_section = f"[AEGIS LOCAL WORKSPACE CONTEXT]\n{source_context}"
         memory_section = f"[RECALLED AUTHORIZED CONTEXT]\n{context.rendered or '(none)'}"
         optional_sections: dict[str, str] = {}
-        for name, section in (("source", source_section), ("memory", memory_section)):
+        raw_context_items = getattr(context, "items", ())
+        context_items = (
+            tuple(cast(Sequence[object], raw_context_items)) if isinstance(raw_context_items, list | tuple) else ()
+        )
+        has_protected_context = any(
+            bool(getattr(item, "mandatory", False)) or getattr(item, "retention_class", None) == "protected"
+            for item in context_items
+        )
+        section_order = (
+            (("memory", memory_section), ("source", source_section))
+            if has_protected_context
+            else (("source", source_section), ("memory", memory_section))
+        )
+        for name, section in section_order:
             if len(section) + 1 <= remaining:
                 optional_sections[name] = section
                 remaining -= len(section) + 1
 
+        if has_protected_context and "memory" not in optional_sections:
+            raise DesktopServiceError(
+                "PROTECTED_CONTEXT_OVERFLOW",
+                "protected context cannot fit within the final prompt limit",
+            )
+
+        overlapping_turn_ids: set[str] = (
+            self._same_conversation_transcript_overlap(snapshot, message, context_items)
+            if "memory" in optional_sections
+            else set()
+        )
+        history_turn_ids = {turn_id for turn_id, _ in history}
+        deduplicated_turn_count = len(overlapping_turn_ids.intersection(history_turn_ids))
+        history = [entry for entry in history if entry[0] not in overlapping_turn_ids]
+
         history_header = "[PERSISTED CONVERSATION]"
-        selected_history: list[str] = []
+        selected_history: list[tuple[str, str]] = []
         for turn in reversed(history):
             candidate = [turn, *selected_history]
             omitted = len(history) - len(candidate)
             history_parts = [history_header]
             if omitted:
                 history_parts.append(f"[{omitted} older conversation turns omitted due to prompt limit]")
-            history_parts.extend(candidate)
+            history_parts.extend(line for _, line in candidate)
             if len("\n".join(history_parts)) + 1 > remaining:
                 break
             selected_history = candidate
@@ -8983,7 +9697,7 @@ class DesktopService:
             history_parts = [history_header]
             if omitted:
                 history_parts.append(f"[{omitted} older conversation turns omitted due to prompt limit]")
-            history_parts.extend(selected_history)
+            history_parts.extend(line for _, line in selected_history)
             optional_sections["history"] = "\n".join(history_parts)
 
         dynamic_parts = [turn_context]
@@ -8996,7 +9710,85 @@ class DesktopService:
         dynamic_parts.append(current_message)
         dynamic_suffix = "\n".join(dynamic_parts)
         prompt = f"{stable_prefix}\n{dynamic_suffix}"
-        return prompt, stable_prefix, dynamic_suffix
+        if len(prompt) > MAX_PROMPT_LENGTH:
+            raise DesktopServiceError("PROMPT_TOO_LARGE", "the rendered provider prompt exceeds the local limit")
+
+        memory_included = "memory" in optional_sections
+        inclusion_items: list[dict[str, object]] = []
+        for item in context_items:
+            source_id = getattr(item, "source_id", None)
+            source_id_digest = (
+                hashlib.sha256(str(source_id).encode("utf-8")).hexdigest() if source_id is not None else None
+            )
+            inclusion_items.append(
+                {
+                    "source_kind": str(getattr(item, "source_kind", "unknown")),
+                    "source_id_sha256": source_id_digest,
+                    "content_hash": str(getattr(item, "content_hash", ""))[:128],
+                    "status": "INCLUDED" if memory_included else "OMITTED",
+                    "omitted_reason": None if memory_included else "PROMPT_LIMIT",
+                }
+            )
+        inclusion_manifest: dict[str, object] = {
+            "schema": "aegis-context-inclusion-manifest-v1",
+            "status": "COMPOSED",
+            "selected_manifest_hash": str(getattr(context, "manifest_hash", ""))[:128] or None,
+            "prompt_hash": hashlib.sha256(prompt.encode("utf-8")).hexdigest(),
+            "prompt_chars": len(prompt),
+            "prompt_limit_chars": MAX_PROMPT_LENGTH,
+            "prompt_accounting": "unicode-code-points-v1",
+            "selected_count": len(context_items),
+            "included_count": sum(item["status"] == "INCLUDED" for item in inclusion_items),
+            "omitted_count": sum(item["status"] == "OMITTED" for item in inclusion_items),
+            "deduplicated_turn_count": deduplicated_turn_count,
+            "items": inclusion_items,
+        }
+        inclusion_hash = hashlib.sha256(
+            json.dumps(
+                inclusion_manifest,
+                sort_keys=True,
+                separators=(",", ":"),
+                ensure_ascii=False,
+                allow_nan=False,
+            ).encode("utf-8")
+        ).hexdigest()
+        inclusion_manifest["manifest_sha256"] = inclusion_hash
+        return prompt, stable_prefix, dynamic_suffix, inclusion_manifest
+
+    def _same_conversation_transcript_overlap(
+        self,
+        snapshot: Any,
+        message: str,
+        context_items: tuple[object, ...],
+    ) -> set[str]:
+        session_transcripts = [
+            content
+            for item in context_items
+            if getattr(item, "source_kind", None) == "session"
+            and isinstance((content := getattr(item, "content", None)), str)
+            and content
+        ]
+        if not session_transcripts:
+            return set()
+
+        turns = tuple(snapshot.turns)
+        overlaps: set[str] = set()
+        current_ids = {turn.turn_id for turn in turns[-MAX_HISTORY_TURNS:] if turn.content.strip()}
+        current_transcript = self._transcript_text(snapshot, message)
+
+        for content in session_transcripts:
+            if content == current_transcript:
+                overlaps.update(current_ids)
+            for index, turn in enumerate(turns):
+                if turn.role != "user" or not turn.content.strip():
+                    continue
+                prefix_turns = turns[max(0, index - MAX_HISTORY_TURNS) : index]
+                prior_snapshot = SimpleNamespace(conversation=snapshot.conversation, turns=prefix_turns)
+                if content != self._transcript_text(prior_snapshot, turn.content):
+                    continue
+                included_turns = (*prefix_turns[-MAX_HISTORY_TURNS:], turn)
+                overlaps.update(candidate.turn_id for candidate in included_turns if candidate.content.strip())
+        return overlaps
 
     def _enabled_skill_hashes(self) -> dict[str, str]:
         state = self._capability_state_store().get()
@@ -9020,12 +9812,20 @@ class DesktopService:
         if not enabled:
             return SkillCatalog(), ()
         _, skill_roots, _ = self._extension_roots()
-        catalog = SkillCatalog.discover(
-            skill_roots,
-            max_files=MAX_EXTENSION_FILES,
-            max_depth=6,
-            max_bytes=MAX_SKILL_BODY_BYTES,
-        )
+        fingerprint = self._roots_discovery_fingerprint(skill_roots, max_depth=6)
+        cache_key = (fingerprint, tuple(sorted(enabled.items())))
+        cached = self._enabled_skill_catalog_cache
+        if cached is not None and cached[0] == cache_key:
+            return cached[1], cached[2]
+        if cached is not None and cached[0][0] == fingerprint:
+            catalog = cached[1]
+        else:
+            catalog = SkillCatalog.discover(
+                skill_roots,
+                max_files=MAX_EXTENSION_FILES,
+                max_depth=6,
+                max_bytes=MAX_SKILL_BODY_BYTES,
+            )
         active: list[SkillDescriptor] = []
         for descriptor in catalog.list():
             expected_hash = enabled.get(descriptor.name)
@@ -9034,7 +9834,9 @@ class DesktopService:
             if expected_hash != descriptor.content_hash:
                 raise DesktopServiceError("SKILL_CHANGED", f"enabled skill changed: {descriptor.name}")
             active.append(descriptor)
-        return catalog, tuple(active)
+        active_tuple = tuple(active)
+        self._enabled_skill_catalog_cache = (cache_key, catalog, active_tuple)
+        return catalog, active_tuple
 
     def _enabled_remote_skill_records(self) -> tuple[Mapping[str, object], ...]:
         try:
@@ -9491,6 +10293,174 @@ class DesktopService:
         ).digest()
         return int.from_bytes(digest[:8], "big") or 1
 
+    def _memory_file_relation_path(
+        self,
+        payload: Mapping[str, Any],
+        *,
+        require_exists: bool = True,
+    ) -> tuple[str, str]:
+        self._require_open()
+        if self._opened_root is None or self._source_mapper is None:
+            raise DesktopServiceError("WORKSPACE_NOT_OPEN", "open a workspace before using it")
+        requested_project = _require_text(payload, "project_id", max_length=128)
+        identity = (
+            self._source_snapshot.identity if self._source_snapshot is not None else self._source_mapper.identity()
+        )
+        if Path(identity.root).resolve() != self._opened_root.resolve():
+            raise DesktopServiceError("SOURCE_MAPPER_UNAVAILABLE", "the source mapper is bound to another workspace")
+        active_project = identity.project_id
+        relation_project = f"project:{active_project}"
+        if requested_project not in {active_project, relation_project}:
+            raise DesktopServiceError("PROJECT_SCOPE_FORBIDDEN", "project_id must match the active workspace")
+        requested_path = _require_text(payload, "relative_path", max_length=MAX_PATH_LENGTH)
+        if "\\" in requested_path:
+            raise DesktopServiceError("INVALID_PATH", "relative_path must use normalized forward slashes")
+        _, relative_path = self._workspace_file_path(payload, require_exists=require_exists)
+        if relative_path != requested_path:
+            raise DesktopServiceError("INVALID_PATH", "relative_path must be normalized")
+        return relation_project, relative_path
+
+    @staticmethod
+    def _memory_relation_scope(payload: Mapping[str, Any]) -> str:
+        scope_kind = payload.get("scope_kind", "USER_PRIVATE")
+        if not isinstance(scope_kind, str) or not scope_kind.strip() or len(scope_kind) > 64:
+            raise DesktopServiceError("INVALID_ARGUMENT", "scope_kind must be a bounded non-empty string")
+        return scope_kind
+
+    def _list_memory_file_relations(self, payload: dict[str, Any]) -> Mapping[str, Any]:
+        owner_id = self._owner(payload)
+        project_id, relative_path = self._memory_file_relation_path(payload, require_exists=False)
+        limit = payload.get("limit", DEFAULT_FILE_RELATION_PAGE_SIZE)
+        if type(limit) is not int or not 1 <= limit <= MAX_FILE_RELATION_PAGE_SIZE:
+            raise DesktopServiceError(
+                "INVALID_ARGUMENT",
+                f"limit must be an integer between 1 and {MAX_FILE_RELATION_PAGE_SIZE}",
+            )
+        raw_cursor = payload.get("cursor")
+        scope_kind = self._memory_relation_scope(payload)
+        cursor = (
+            None
+            if raw_cursor is None
+            else _decode_memory_relation_cursor(
+                raw_cursor,
+                self._memory_relation_cursor_key,
+                owner_id=owner_id,
+                scope_kind=scope_kind,
+                project_id=project_id,
+                relative_path=relative_path,
+            )
+        )
+        page = self._learning_for_request().list_file_relations_page(
+            project_id,
+            relative_path,
+            limit=limit,
+            cursor=cursor,
+            scope_kind=scope_kind,
+            owner_id=owner_id,
+        )
+        return {
+            "relations": _json_value(page.relations),
+            "next_cursor": (
+                None
+                if page.next_cursor is None
+                else _encode_memory_relation_cursor(
+                    page.next_cursor,
+                    self._memory_relation_cursor_key,
+                    owner_id=owner_id,
+                    scope_kind=scope_kind,
+                    project_id=project_id,
+                    relative_path=relative_path,
+                )
+            ),
+        }
+
+    def _link_memory_file_relation(self, payload: dict[str, Any]) -> Mapping[str, Any]:
+        owner_id = self._owner(payload)
+        project_id, relative_path = self._memory_file_relation_path(payload)
+        self._workspace_source_snapshot({})
+        snapshot = self._source_snapshot
+        if snapshot is None or f"project:{snapshot.identity.project_id}" != project_id or snapshot.overflowed:
+            raise DesktopServiceError("SOURCE_SNAPSHOT_STALE", "the current workspace snapshot is incomplete")
+        source_file = next((item for item in snapshot.files if item.relative_path == relative_path), None)
+        expected_revision = _require_text(payload, "source_revision", max_length=256)
+        expected_source_hash = _require_text(payload, "source_content_hash", max_length=64).lower()
+        if (
+            source_file is None
+            or source_file.content_hash is None
+            or snapshot.revision != expected_revision
+            or source_file.content_hash.casefold() != expected_source_hash
+        ):
+            raise DesktopServiceError("SOURCE_SNAPSHOT_STALE", "the selected file changed; refresh and confirm again")
+        if self._opened_root is None:
+            raise DesktopServiceError("WORKSPACE_NOT_OPEN", "open a workspace before using it")
+        try:
+            _stat_result, source_bytes = read_file_beneath_root(
+                self._opened_root,
+                relative_path,
+                max_bytes=MAX_FILE_BYTES,
+            )
+        except SourceFileReadError as error:
+            code = "FILE_TOO_LARGE" if error.reason == "too_large" else "SOURCE_SNAPSHOT_STALE"
+            message = (
+                "workspace source files larger than 2 MiB cannot be linked"
+                if error.reason == "too_large"
+                else "the selected file is no longer available"
+            )
+            raise DesktopServiceError(code, message) from error
+        if hashlib.sha256(source_bytes).hexdigest() != expected_source_hash:
+            raise DesktopServiceError("SOURCE_SNAPSHOT_STALE", "the selected file changed; refresh and confirm again")
+
+        scope_kind = self._memory_relation_scope(payload)
+        memory_id = _require_text(payload, "memory_id", max_length=128)
+        memory_revision = _require_revision(payload, "memory_revision")
+        if memory_revision < 1:
+            raise DesktopServiceError("INVALID_ARGUMENT", "memory_revision must be positive")
+        memory_hash = _require_text(payload, "memory_content_hash", max_length=64).lower()
+        memory = self._learning_for_request().inspect_memory(
+            memory_id,
+            scope_kind=scope_kind,
+            owner_id=owner_id,
+        )
+        if memory is None:
+            raise DesktopServiceError("MEMORY_NOT_FOUND", "the selected memory is unavailable")
+        if getattr(memory, "owner_id", None) != owner_id or getattr(memory, "scope_kind", None) != scope_kind:
+            raise DesktopServiceError("MEMORY_SCOPE_FORBIDDEN", "the selected memory is outside the active scope")
+        if (
+            getattr(memory, "lifecycle", None) not in {"CANDIDATE", "ACTIVE"}
+            or getattr(memory, "validation", None) not in {"UNREVIEWED", "ACCEPTED"}
+            or getattr(memory, "content", None) is None
+            or getattr(memory, "content_hash", None) is None
+        ):
+            raise DesktopServiceError("MEMORY_NOT_LINKABLE", "the selected memory is not eligible for recall")
+        if getattr(memory, "revision", None) != memory_revision or str(memory.content_hash).casefold() != memory_hash:
+            raise DesktopServiceError("MEMORY_STALE", "the selected memory changed; refresh and confirm again")
+
+        relation = self._learning_for_request().link_file_relation(
+            uuid.uuid4().int,
+            memory_id,
+            project_id=project_id,
+            relative_path=relative_path,
+            source_revision=expected_revision,
+            source_content_hash=expected_source_hash,
+            memory_revision=memory_revision,
+            memory_content_hash=memory_hash,
+            scope_kind=scope_kind,
+            owner_id=owner_id,
+        )
+        return {"relation": _json_value(relation)}
+
+    def _unlink_memory_file_relation(self, payload: dict[str, Any]) -> Mapping[str, Any]:
+        owner_id = self._owner(payload)
+        project_id, relative_path = self._memory_file_relation_path(payload, require_exists=False)
+        removed = self._learning_for_request().unlink_file_relation(
+            _require_text(payload, "relation_id", max_length=128),
+            project_id=project_id,
+            relative_path=relative_path,
+            scope_kind=self._memory_relation_scope(payload),
+            owner_id=owner_id,
+        )
+        return {"removed": removed}
+
     def _search_memories(self, payload: dict[str, Any]) -> Mapping[str, Any]:
         owner_id = self._owner(payload)
         learning = self._learning_for_request()
@@ -9529,6 +10499,49 @@ class DesktopService:
             )
         }
 
+    def _validate_memory(self, payload: dict[str, Any]) -> Mapping[str, Any]:
+        owner_id = self._owner(payload)
+        memory_id = _require_text(payload, "memory_id", max_length=128)
+        validation = _require_text(payload, "validation", max_length=32).upper()
+        if validation not in {"ACCEPTED", "REJECTED", "QUARANTINED"}:
+            raise DesktopServiceError(
+                "INVALID_ARGUMENT",
+                "validation must be ACCEPTED, REJECTED, or QUARANTINED",
+            )
+        basis = _require_text(payload, "basis", max_length=16 * 1024) if payload.get("basis") is not None else None
+        reason = _require_text(payload, "reason", max_length=16 * 1024) if payload.get("reason") is not None else None
+        if validation == "ACCEPTED":
+            if basis is None:
+                raise DesktopServiceError("INVALID_ARGUMENT", "ACCEPTED memory validation requires a basis")
+            if reason is not None:
+                raise DesktopServiceError(
+                    "INVALID_ARGUMENT",
+                    "ACCEPTED memory validation must not include a rejection or quarantine reason",
+                )
+        else:
+            if reason is None:
+                raise DesktopServiceError("INVALID_ARGUMENT", f"{validation} memory validation requires a reason")
+            if basis is not None:
+                raise DesktopServiceError(
+                    "INVALID_ARGUMENT",
+                    "only ACCEPTED memory validation may include a basis",
+                )
+        expected_revision = _require_revision(payload)
+        try:
+            result = self._learning_for_request().validate_memory(
+                memory_id,
+                validation,
+                basis=basis,
+                reason=reason,
+                expected_revision=expected_revision,
+                scope_kind=str(payload.get("scope_kind", "USER_PRIVATE")),
+                owner_id=owner_id,
+                subject_id=(str(payload["subject_id"]) if payload.get("subject_id") is not None else None),
+            )
+        except ValueError as error:
+            raise DesktopServiceError("INVALID_ARGUMENT", str(error)) from error
+        return {"result": result}
+
     def _correct_memory(self, payload: dict[str, Any]) -> Mapping[str, Any]:
         owner_id = self._owner(payload)
         return {
@@ -9563,6 +10576,11 @@ class DesktopService:
         )
 
     def dispatch(self, frame: bytes | str) -> bytes:
+        if frame == _OVERSIZED_FRAME_SENTINEL:
+            return encode_response(
+                "invalid",
+                error=DesktopProtocolError("FRAME_TOO_LARGE", "desktop frame exceeds the configured limit"),
+            )
         return self._router.dispatch(frame)
 
     def _ready_frame(self) -> bytes:
@@ -9597,15 +10615,19 @@ class DesktopService:
         return 0
 
 
+_OVERSIZED_FRAME_SENTINEL = b"\x00__AEGIS_FRAME_TOO_LARGE__"
+
+
 def _iter_frames(stream: Any, *, max_frame_bytes: int) -> Iterator[bytes]:
+    drain_chunk = min(max_frame_bytes + 2, 64 * 1024)
     while True:
         frame = stream.readline(max_frame_bytes + 2)
         if not frame:
             return
         if len(frame) > max_frame_bytes + 1 or (len(frame) == max_frame_bytes + 1 and not frame.endswith(b"\n")):
-            yield b"{}" + b" " * (max_frame_bytes + 1)
+            yield _OVERSIZED_FRAME_SENTINEL
             while frame and not frame.endswith(b"\n"):
-                frame = stream.readline(max_frame_bytes + 2)
+                frame = stream.readline(drain_chunk)
             continue
         yield frame.rstrip(b"\r\n")
 

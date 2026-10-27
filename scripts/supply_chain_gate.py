@@ -77,9 +77,7 @@ def evaluate_supply_chain_gate(root: str | Path = ROOT) -> dict[str, Any]:
     rust_manifest = _read_toml(root_path / "core" / "rust" / "Cargo.toml")
     python_manifest = _read_toml(root_path / "pyproject.toml")
     packages = tuple(
-        package
-        for package in (_cargo_package(entry) for entry in cargo_lock.get("package", []))
-        if package is not None
+        package for package in (_cargo_package(entry) for entry in cargo_lock.get("package", [])) if package is not None
     )
     rust_direct = _dependency_names(_all_dependencies(rust_manifest))
     python_direct = tuple(str(dep) for dep in python_manifest.get("project", {}).get("dependencies", []))
@@ -116,9 +114,15 @@ def evaluate_supply_chain_gate(root: str | Path = ROOT) -> dict[str, Any]:
         _check("network_features_gated", wasi["network_features_gated"]),
         _check("release_attestation_state_recorded", release_attestation["attestation_state_recorded"]),
         _check("release_attestation_subject_hash_bound", _nonzero_hex(release_attestation["expected_subject_hash"])),
-        _check("release_attestation_evidence_hash_bound", _nonzero_hex(release_attestation["release_attestation_evidence_hash"])),
+        _check(
+            "release_attestation_evidence_hash_bound",
+            _nonzero_hex(release_attestation["release_attestation_evidence_hash"]),
+        ),
         _check("release_attestation_admission_valid", release_attestation["status"] in {"missing", "verified"}),
-        _check("external_attestation_gap_disclosed", external_signed_attestation_present or release_attestation["status"] == "missing"),
+        _check(
+            "external_attestation_gap_disclosed",
+            external_signed_attestation_present or release_attestation["status"] == "missing",
+        ),
     )
     payload = {
         "suite_name": "AEGIS Supply Chain Gate",
@@ -174,8 +178,7 @@ def _all_dependencies(manifest: dict[str, Any]) -> dict[str, Any]:
 
 def _provenance(root_path: Path) -> dict[str, Any]:
     files = tuple(
-        {"path": path, "hash": _file_hash(root_path / path)}
-        for path in RUST_PROVENANCE_FILES + PYTHON_PROVENANCE_FILES
+        {"path": path, "hash": _file_hash(root_path / path)} for path in RUST_PROVENANCE_FILES + PYTHON_PROVENANCE_FILES
     )
     payload = {
         "schema": "aegis-source-provenance-index-v1",
@@ -189,30 +192,21 @@ def _wasi_deny_evidence(root_path: Path) -> dict[str, Any]:
     cargo_text = _read_text(root_path / "core" / "rust" / "Cargo.toml")
     sandbox_text = _read_text(root_path / "core" / "rust" / "src" / "sandbox.rs")
     runtime_sources = "\n".join(
-        _read_text(path)
-        for glob in RUNTIME_SOURCE_GLOBS
-        for path in sorted(root_path.glob(glob))
-        if path.is_file()
+        _read_text(path) for glob in RUNTIME_SOURCE_GLOBS for path in sorted(root_path.glob(glob)) if path.is_file()
     )
     forbidden_dependency_patterns = tuple(
-        pattern
-        for pattern in FORBIDDEN_WASI_PATTERNS
-        if pattern.lower() in cargo_text.lower()
+        pattern for pattern in FORBIDDEN_WASI_PATTERNS if pattern.lower() in cargo_text.lower()
     )
     forbidden_runtime_patterns = tuple(
-        pattern
-        for pattern in FORBIDDEN_WASI_PATTERNS
-        if pattern.lower() in runtime_sources.lower()
+        pattern for pattern in FORBIDDEN_WASI_PATTERNS if pattern.lower() in runtime_sources.lower()
     )
     return {
         "schema": "aegis-wasi-deny-by-default-evidence-v1",
         "forbidden_dependency_patterns": forbidden_dependency_patterns,
         "forbidden_runtime_patterns": forbidden_runtime_patterns,
         "wasmtime_fuel_enabled": "consume_fuel(true)" in sandbox_text,
-        "wasmtime_epoch_enabled": "epoch_interruption(true)" in sandbox_text
-        and "set_epoch_deadline" in sandbox_text,
-        "wasmtime_memory_limited": "StoreLimitsBuilder::new()" in sandbox_text
-        and ".memory_size(" in sandbox_text,
+        "wasmtime_epoch_enabled": "epoch_interruption(true)" in sandbox_text and "set_epoch_deadline" in sandbox_text,
+        "wasmtime_memory_limited": "StoreLimitsBuilder::new()" in sandbox_text and ".memory_size(" in sandbox_text,
         "sandbox_network_isolated": "network_isolated: true" in sandbox_text
         and "self.network_isolated" in sandbox_text,
         "default_features_empty": "default = []" in cargo_text,
@@ -381,7 +375,7 @@ def _check(name: str, ok: bool) -> dict[str, Any]:
 def _read_toml(path: Path) -> dict[str, Any]:
     try:
         payload = tomllib.loads(path.read_text(encoding="utf-8"))
-    except (OSError, tomllib.TOMLDecodeError):
+    except OSError, tomllib.TOMLDecodeError:
         return {}
     return payload if isinstance(payload, dict) else {}
 
@@ -396,7 +390,7 @@ def _read_text(path: Path) -> str:
 def _read_json(path: Path) -> dict[str, Any]:
     try:
         payload = json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError, UnicodeDecodeError):
+    except OSError, json.JSONDecodeError, UnicodeDecodeError:
         return {}
     return payload if isinstance(payload, dict) else {}
 

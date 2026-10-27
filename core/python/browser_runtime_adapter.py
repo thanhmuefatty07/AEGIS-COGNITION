@@ -272,8 +272,7 @@ def publish_hot_browser_evidence(
     publisher: Callable[[bytes], Any],
 ) -> HotBrowserEvidenceBatch:
     commits = tuple(
-        _hot_commit_from_record(artifact.kind, artifact.bytes, publisher(artifact.bytes))
-        for artifact in artifacts
+        _hot_commit_from_record(artifact.kind, artifact.bytes, publisher(artifact.bytes)) for artifact in artifacts
     )
     total_bytes = sum(commit.byte_len for commit in commits)
     digest_payload = {
@@ -521,9 +520,7 @@ async def _capture_screenshot(browser_session: Any, page: Any) -> bytes:
             raw = await _maybe_await(screenshot())
         return _normalize_screenshot(raw)
     if hasattr(browser_session, "get_browser_state_summary"):
-        summary = await _maybe_await(
-            browser_session.get_browser_state_summary(include_screenshot=True)
-        )
+        summary = await _maybe_await(browser_session.get_browser_state_summary(include_screenshot=True))
         if hasattr(summary, "screenshot"):
             return _normalize_screenshot(summary.screenshot)
     raise BrowserRuntimeCaptureError("browser runtime did not expose a screenshot")

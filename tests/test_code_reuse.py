@@ -18,6 +18,11 @@ except ImportError:
     from aegis.code_intelligence import SourceMapper  # type: ignore[import-not-found]
 
 
+@pytest.fixture(autouse=True)
+def _isolate_temporary_git_discovery(tmp_path, monkeypatch):
+    monkeypatch.setenv("GIT_CEILING_DIRECTORIES", str(tmp_path.parent))
+
+
 def test_reuse_candidate_is_snapshot_bound_and_exact_materialization_is_explicit(tmp_path) -> None:
     source = tmp_path / "source.py"
     source.write_text("def answer():\n    return 42\n", encoding="utf-8")
@@ -107,9 +112,7 @@ def test_exact_materialization_enforces_snippet_byte_quota_without_prior_assessm
 def test_reuse_does_not_claim_unimplemented_patch_or_retrieval_savings(tmp_path) -> None:
     source = tmp_path / "source.py"
     source.write_text("value = 1\n", encoding="utf-8")
-    candidate = build_local_reuse_candidate(
-        SourceMapper(tmp_path).snapshot(), "source.py", start_line=1, end_line=1
-    )
+    candidate = build_local_reuse_candidate(SourceMapper(tmp_path).snapshot(), "source.py", start_line=1, end_line=1)
 
     assessment = assess_code_reuse(
         candidate,

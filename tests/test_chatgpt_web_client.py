@@ -49,18 +49,23 @@ def test_chatgpt_web_client_maps_responses_output_and_drops_orchestration_metada
             return SimpleNamespace(output_text="bridge reply")
 
     client = ChatGPTWebClient(client=SimpleNamespace(responses=Responses()))
-    assert client.invoke(
-        "hello",
-        system_context="be concise",
-        mode="lab",
-        max_output_tokens=256,
-    ) == "bridge reply"
-    assert calls == [{
-        "model": "chatgpt-web/high",
-        "input": "hello",
-        "max_output_tokens": 256,
-        "instructions": "be concise",
-    }]
+    assert (
+        client.invoke(
+            "hello",
+            system_context="be concise",
+            mode="lab",
+            max_output_tokens=256,
+        )
+        == "bridge reply"
+    )
+    assert calls == [
+        {
+            "model": "chatgpt-web/high",
+            "input": "hello",
+            "max_output_tokens": 256,
+            "instructions": "be concise",
+        }
+    ]
 
 
 def test_chatgpt_web_client_forwards_explicit_prompt_cache_controls() -> None:
@@ -72,11 +77,14 @@ def test_chatgpt_web_client_forwards_explicit_prompt_cache_controls() -> None:
             return SimpleNamespace(output_text="bridge reply")
 
     client = ChatGPTWebClient(client=SimpleNamespace(responses=Responses()))
-    assert client.invoke(
-        "hello",
-        prompt_cache_key="aegis-cache-test",
-        prompt_cache_options={"mode": "implicit", "ttl": "30m"},
-    ) == "bridge reply"
+    assert (
+        client.invoke(
+            "hello",
+            prompt_cache_key="aegis-cache-test",
+            prompt_cache_options={"mode": "implicit", "ttl": "30m"},
+        )
+        == "bridge reply"
+    )
     assert calls[0]["prompt_cache_key"] == "aegis-cache-test"
     assert calls[0]["prompt_cache_options"] == {"mode": "implicit", "ttl": "30m"}
 

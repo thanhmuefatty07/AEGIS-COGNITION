@@ -27,7 +27,6 @@ repository entry point.
 - [`tutorials/`](tutorials/): task-oriented guides.
 - [`integrations/`](integrations/): provider and plugin integration notes.
 - [`troubleshooting/`](troubleshooting/): common failures and remedies.
-- [`crystallized/`](crystallized/): design notes, not release or performance proof.
 
 ## Historical records
 

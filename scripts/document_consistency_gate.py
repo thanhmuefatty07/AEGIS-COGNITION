@@ -37,6 +37,8 @@ SKIP_DIRS = {
     "target",
     "artifacts",
     "node_modules",
+    ".pytest_cache",
+    "test-results",
     "__pycache__",
 }
 SKIP_SCHEMES = ("http://", "https://", "mailto:", "file:")
@@ -125,13 +127,13 @@ def _scoped_documents(root: Path, inventory: dict[str, Any]) -> tuple[dict[str, 
                 continue
         documents[relative].update(raw_override)
     ids: dict[str, str] = {}
+    adr_numbers: dict[str, str] = {}
     for relative, metadata in documents.items():
         path = root / relative
         if not path.is_file():
             errors.append(f"document inventory path does not exist: {relative}")
         missing_keys = [
-            key for key in REQUIRED_METADATA
-            if not isinstance(metadata.get(key), str) or not str(metadata[key]).strip()
+            key for key in REQUIRED_METADATA if not isinstance(metadata.get(key), str) or not str(metadata[key]).strip()
         ]
         errors.extend(f"document metadata {key} missing: {relative}" for key in missing_keys)
         identifier = str(metadata.get("document_id", ""))
@@ -139,7 +141,20 @@ def _scoped_documents(root: Path, inventory: dict[str, Any]) -> tuple[dict[str, 
         if previous is not None:
             errors.append(f"duplicate document_id {identifier}: {previous} and {relative}")
         ids[identifier] = relative
-    historical = inventory.get("historical_paths", ())
+        if (
+            metadata.get("document_type") == "architecture_decision_record"
+            and metadata.get("authority") != "compatibility_stub"
+        ):
+            match = re.match(r"^ADR-(\d{3})-", path.name, re.IGNORECASE)
+            if match is not None:
+                number = match.group(1)
+                previous = adr_numbers.get(number)
+                if previous is not None:
+                    errors.append(f"duplicate ADR number {number}: {previous} and {relative}")
+                else:
+                    adr_numbers[number] = relative
+    historical_paths: set[str] = set()
+    historical = inventory.get("historical_paths")
     if not isinstance(historical, list):
         errors.append("historical_paths must be an array")
     else:
@@ -148,21 +163,49 @@ def _scoped_documents(root: Path, inventory: dict[str, Any]) -> tuple[dict[str, 
             if not isinstance(raw_path, str) or not raw_path.strip():
                 errors.append("historical path must be a non-empty string")
                 continue
+            if raw_path in historical_paths:
+                errors.append(f"historical path is listed more than once: {raw_path}")
+                continue
+            historical_paths.add(raw_path)
             path = root / raw_path
             if not path.is_file():
                 errors.append(f"historical path does not exist: {raw_path}")
             if raw_path in documents:
                 errors.append(f"path is both current and historical: {raw_path}")
+    unscoped_paths: set[str] = set()
+    unscoped = inventory.get("unscoped_paths")
+    if not isinstance(unscoped, list):
+        errors.append("unscoped_paths must be an array")
+    else:
+        for raw_value in cast(list[Any], unscoped):
+            raw_path = raw_value
+            if not isinstance(raw_path, str) or not raw_path.strip():
+                errors.append("unscoped path must be a non-empty string")
+                continue
+            if raw_path in unscoped_paths:
+                errors.append(f"unscoped path is listed more than once: {raw_path}")
+                continue
+            unscoped_paths.add(raw_path)
+            path = root / raw_path
+            if not path.is_file():
+                errors.append(f"unscoped path does not exist: {raw_path}")
+            if path.suffix.lower() != ".md":
+                errors.append(f"unscoped path is not Markdown: {raw_path}")
+            if raw_path in documents:
+                errors.append(f"path is both current and unscoped: {raw_path}")
+            if raw_path in historical_paths:
+                errors.append(f"path is both historical and unscoped: {raw_path}")
+    classified_paths = set(documents) | historical_paths | unscoped_paths
+    for path in _markdown_files(root):
+        relative = _relative(path, root)
+        if relative not in classified_paths:
+            errors.append(f"document inventory Markdown path is not classified: {relative}")
     return documents, errors
 
 
 def _markdown_files(root: Path) -> Iterable[Path]:
     for directory, dirnames, filenames in os.walk(root):
-        dirnames[:] = [
-            name
-            for name in dirnames
-            if name not in SKIP_DIRS and not name.startswith(".venv-")
-        ]
+        dirnames[:] = [name for name in dirnames if name not in SKIP_DIRS and not name.startswith(".venv-")]
         for filename in filenames:
             if filename.lower().endswith(".md"):
                 yield Path(directory) / filename
@@ -209,9 +252,11 @@ def generate_status_view(root: Path) -> str:
             if isinstance(registry_id, str) and registry_id.strip():
                 policy_by_registry[registry_id] = (policy_id, bool(raw_blocker.get("blocks_production")))
     raw_non_blocking = policy.get("non_blocking_registry_ids", ())
-    non_blocking: set[str] = {
-        item for item in cast(list[Any], raw_non_blocking) if isinstance(item, str)
-    } if isinstance(raw_non_blocking, list) else set()
+    non_blocking: set[str] = (
+        {item for item in cast(list[Any], raw_non_blocking) if isinstance(item, str)}
+        if isinstance(raw_non_blocking, list)
+        else set()
+    )
     rows: list[str] = []
     typed_entries = cast(list[Any], entries)
     for raw_value in sorted(
@@ -258,7 +303,7 @@ def generate_status_view(root: Path) -> str:
 def validate_inventory(root: Path = ROOT) -> list[str]:
     inventory = _load(root / INVENTORY.relative_to(ROOT))
     errors: list[str] = []
-    if inventory.get("schema") != "aegis-document-inventory-v1":
+    if inventory.get("schema") != "aegis-document-inventory-v2":
         errors.append("document inventory schema is invalid")
     source = inventory.get("source_of_truth")
     if source != "docs/architecture/AEGIS_LAB_RUNTIME_MASTER_PLAN.md":
@@ -292,7 +337,11 @@ def validate_inventory(root: Path = ROOT) -> list[str]:
                 key, value = line.split(":", 1)
                 key = key.strip()
                 value = value.strip().strip('"')
-                if key in REQUIRED_METADATA and value and value != str(documents["docs/architecture/AEGIS_LAB_RUNTIME_MASTER_PLAN.md"].get(key, "")):
+                if (
+                    key in REQUIRED_METADATA
+                    and value
+                    and value != str(documents["docs/architecture/AEGIS_LAB_RUNTIME_MASTER_PLAN.md"].get(key, ""))
+                ):
                     errors.append(f"canonical plan metadata drift for {key}: {value}")
     return errors
 

@@ -63,7 +63,7 @@ describe("MCP OAuth setup guidance", () => {
       render(<App />);
       await screen.findByRole("heading", { name: "What are you working on?" });
       fireEvent.click(screen.getByRole("button", { name: "Settings" }));
-      fireEvent.click(screen.getByRole("button", { name: "MCP", exact: true }));
+      fireEvent.click(screen.getByRole("button", { name: "MCP" }));
 
       const enableButton = await screen.findByRole("button", { name: "Enable tools" });
       expect(enableButton.hasAttribute("disabled")).toBe(true);
@@ -129,7 +129,7 @@ describe("MCP OAuth setup guidance", () => {
       render(<App />);
       await screen.findByRole("heading", { name: "What are you working on?" });
       fireEvent.click(screen.getByRole("button", { name: "Settings" }));
-      fireEvent.click(screen.getByRole("button", { name: "MCP", exact: true }));
+      fireEvent.click(screen.getByRole("button", { name: "MCP" }));
 
       const clientId = await screen.findByLabelText("OAuth Client ID (only if requested)");
       expect(clientId.getAttribute("placeholder")).toBe("Leave blank for automatic registration");

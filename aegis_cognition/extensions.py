@@ -146,6 +146,7 @@ _JSON_SCHEMA_MAP_SCHEMA_KEYWORDS = frozenset(
 
 _NAME_PATTERN = re.compile(r"[a-z0-9][a-z0-9._-]{0,127}\Z")
 _SKILL_NAME_PATTERN = re.compile(r"[a-z0-9]+(?:-[a-z0-9]+)*\Z")
+_ENV_VAR_NAME_PATTERN = re.compile(r"[A-Za-z_][A-Za-z0-9_]{0,127}\Z")
 _EFFECT_CLASSES = frozenset(
     {
         "read_only",
@@ -1068,7 +1069,7 @@ class ToolSpec:
         )
 
     def summary(self) -> dict[str, object]:
-        self.validate()
+        descriptor_hash = self.descriptor_hash
         return {
             "schema": TOOL_DESCRIPTOR_SCHEMA_V1,
             "name": self.name,
@@ -1076,7 +1077,7 @@ class ToolSpec:
             "effect_class": self.effect_class,
             "capabilities": list(self.capabilities),
             "extension_id": self.extension_id,
-            "descriptor_hash": self.descriptor_hash,
+            "descriptor_hash": descriptor_hash,
         }
 
 
@@ -1125,7 +1126,7 @@ class ExtensionManifest:
         )
 
     def summary(self) -> dict[str, object]:
-        self.validate()
+        manifest_hash = self.manifest_hash
         return {
             "schema": EXTENSION_MANIFEST_SCHEMA_V1,
             "extension_id": self.extension_id,
@@ -1136,7 +1137,7 @@ class ExtensionManifest:
             "skill_names": list(self.skill_names),
             "source": self.source,
             "trusted": self.trusted,
-            "manifest_hash": self.manifest_hash,
+            "manifest_hash": manifest_hash,
         }
 
 
@@ -1324,12 +1325,15 @@ def _iter_skill_text_lines(text: str) -> Iterator[str]:
         yield text[start:]
 
 
+_SKILL_BINARY_CONTROL_RE = re.compile(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f-\x9f]")
+
+
 def _skill_text_page(relative_path: str, raw: bytes, *, start_line: int, max_lines: int) -> dict[str, object]:
     try:
         text = raw.decode("utf-8")
     except UnicodeDecodeError as error:
         raise ExtensionError("skill resource must be UTF-8 text") from error
-    if any((ord(char) < 32 and char not in "\t\r\n") or 0x7F <= ord(char) < 0xA0 for char in text):
+    if _SKILL_BINARY_CONTROL_RE.search(text) is not None:
         raise ExtensionError("skill resource contains binary control characters")
 
     selected: list[str] = []
@@ -1366,6 +1370,7 @@ class SkillCatalog:
 
     def __init__(self, descriptors: Iterable[SkillDescriptor] = ()) -> None:
         self._descriptors: dict[str, SkillDescriptor] = {}
+        self._normalized_fields: dict[str, tuple[str, ...]] = {}
         for descriptor in descriptors:
             self.register(descriptor)
 
@@ -1374,6 +1379,9 @@ class SkillCatalog:
         if descriptor.name in self._descriptors:
             raise ExtensionError(f"skill name already registered: {descriptor.name}")
         self._descriptors[descriptor.name] = descriptor
+        self._normalized_fields[descriptor.name] = _normalized_search_fields(
+            (descriptor.name, descriptor.description, *descriptor.keywords)
+        )
 
     @classmethod
     def discover(
@@ -1451,13 +1459,18 @@ class SkillCatalog:
         if not query_terms:
             return ()
         ranked: list[tuple[int, SkillDescriptor]] = []
-        for descriptor in self._descriptors.values():
-            score = _skill_relevance_score(
-                task,
-                descriptor.name,
-                descriptor.description,
-                descriptor.keywords,
-                query_terms=query_terms,
+        for name, descriptor in self._descriptors.items():
+            fields = self._normalized_fields.get(name)
+            score = (
+                _score_normalized_fields(query_terms, fields)
+                if fields is not None
+                else _skill_relevance_score(
+                    task,
+                    descriptor.name,
+                    descriptor.description,
+                    descriptor.keywords,
+                    query_terms=query_terms,
+                )
             )
             if score:
                 ranked.append((score, descriptor))
@@ -3586,12 +3599,26 @@ class _WindowsMcpJobObject:
     """Own an approved MCP process tree and stop it when the handle closes."""
 
     _JOB_OBJECT_EXTENDED_LIMIT_INFORMATION = 9
+    _JOB_OBJECT_LIMIT_PROCESS_MEMORY = 0x00000100
+    _JOB_OBJECT_LIMIT_JOB_MEMORY = 0x00000200
     _JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE = 0x00002000
+    _DEFAULT_PROCESS_MEMORY_LIMIT = 512 * 1024 * 1024
+    _DEFAULT_JOB_MEMORY_LIMIT = 1024 * 1024 * 1024
     _PROCESS_ACCESS = 0x0001 | 0x0100
 
-    def __init__(self, process_id: int) -> None:
+    def __init__(
+        self,
+        process_id: int,
+        *,
+        process_memory_limit: int = _DEFAULT_PROCESS_MEMORY_LIMIT,
+        job_memory_limit: int = _DEFAULT_JOB_MEMORY_LIMIT,
+    ) -> None:
         if type(process_id) is not int or process_id <= 0:
             raise ValueError("MCP process id must be positive")
+        if type(process_memory_limit) is not int or process_memory_limit <= 0:
+            raise ValueError("MCP process memory limit must be positive")
+        if type(job_memory_limit) is not int or job_memory_limit < process_memory_limit:
+            raise ValueError("MCP job memory limit must be at least the process memory limit")
         kernel32_loader = getattr(ctypes, "WinDLL", None)
         if not callable(kernel32_loader):
             raise OSError("Windows Job Objects are unavailable on this platform")
@@ -3617,7 +3644,13 @@ class _WindowsMcpJobObject:
             raise self._last_error("CreateJobObjectW")
         try:
             limits = _McpJobObjectExtendedLimitInformation()
-            limits.basic_limit_information.limit_flags = self._JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE
+            limits.basic_limit_information.limit_flags = (
+                self._JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE
+                | self._JOB_OBJECT_LIMIT_PROCESS_MEMORY
+                | self._JOB_OBJECT_LIMIT_JOB_MEMORY
+            )
+            limits.process_memory_limit = process_memory_limit
+            limits.job_memory_limit = job_memory_limit
             if not set_information(
                 handle,
                 self._JOB_OBJECT_EXTENDED_LIMIT_INFORMATION,
@@ -3638,6 +3671,8 @@ class _WindowsMcpJobObject:
             raise
         self._kernel32 = kernel32
         self._handle: int | None = handle
+        self.process_memory_limit = process_memory_limit
+        self.job_memory_limit = job_memory_limit
 
     @staticmethod
     def _last_error(operation: str) -> OSError:
@@ -3656,13 +3691,19 @@ class _WindowsMcpJobObject:
 
 async def _terminate_mcp_process_group(process_group_id: int) -> None:
     """Stop POSIX MCP descendants without affecting other application processes."""
+    raw_killpg = getattr(os, "killpg", None)
+    sigterm = getattr(signal, "SIGTERM", None)
+    sigkill = getattr(signal, "SIGKILL", None)
+    if not callable(raw_killpg) or not isinstance(sigterm, int) or not isinstance(sigkill, int):
+        raise OSError("POSIX process-group termination is unavailable")
+    killpg = cast(Callable[[int, int], None], raw_killpg)
     try:
-        os.killpg(process_group_id, signal.SIGTERM)
+        killpg(process_group_id, sigterm)
     except ProcessLookupError:
         return
     await asyncio.sleep(0.1)
     with suppress(ProcessLookupError):
-        os.killpg(process_group_id, signal.SIGKILL)
+        killpg(process_group_id, sigkill)
 
 
 class McpStdioProvider:
@@ -3703,6 +3744,7 @@ class McpStdioProvider:
         self._next_request_id = 1
         self._stderr_task: asyncio.Task[None] | None = None
         self._stderr_buffer = bytearray()
+        self._stderr_chunks: deque[str] = deque(maxlen=64)
         self._stdout_buffer = bytearray()
         self._known_resource_uris: frozenset[str] = frozenset()
         self._known_resource_templates: dict[str, McpResourceTemplateDescriptor] = {}
@@ -3766,6 +3808,8 @@ class McpStdioProvider:
             else:
                 self._process_group_id = process.pid
             self._stdout_buffer.clear()
+            self._stderr_buffer.clear()
+            self._stderr_chunks.clear()
             self._reader_error = None
             self._stderr_task = asyncio.create_task(self._drain_stderr(), name="aegis-mcp-stderr")
             self._reader_task = asyncio.create_task(self._read_responses(), name="aegis-mcp-stdout")
@@ -3773,14 +3817,28 @@ class McpStdioProvider:
                 self._protocol_mode = "modern"
                 self._negotiated_protocol = _MCP_CURRENT_PROTOCOL_VERSION
                 discovery: object = None
+                startup_rpc_timeout = max(
+                    float(self.config.request_timeout_seconds),
+                    float(self.config.startup_timeout_seconds),
+                )
                 try:
-                    discovery = await self._request("server/discover", {}, ensure_started=False)
+                    discovery = await self._request(
+                        "server/discover",
+                        {},
+                        ensure_started=False,
+                        timeout_seconds=startup_rpc_timeout,
+                    )
                 except _McpRpcError as error:
                     if error.code in _MCP_MODERN_ERROR_CODES:
                         if error.code != -32022 or _mcp_supported_version(error.data) is None:
                             raise
                         self._negotiated_protocol = _mcp_supported_version(error.data)
-                        discovery = await self._request("server/discover", {}, ensure_started=False)
+                        discovery = await self._request(
+                            "server/discover",
+                            {},
+                            ensure_started=False,
+                            timeout_seconds=startup_rpc_timeout,
+                        )
                     elif error.code == -32601:
                         self._protocol_mode = "legacy"
                     else:
@@ -3808,6 +3866,7 @@ class McpStdioProvider:
                             },
                         },
                         ensure_started=False,
+                        timeout_seconds=startup_rpc_timeout,
                     )
                     if not isinstance(initialization, Mapping):
                         raise ExtensionError("MCP stdio initialize result must be an object")
@@ -4192,6 +4251,7 @@ class McpStdioProvider:
         ensure_started: bool = True,
         response_byte_limit: int | None = None,
         concurrent_read_only: bool = False,
+        timeout_seconds: float | None = None,
     ) -> object:
         self._assert_loop()
         if type(concurrent_read_only) is not bool:
@@ -4211,7 +4271,10 @@ class McpStdioProvider:
         if concurrent_read_only and response_limit > self.config.max_message_bytes:
             raise ExtensionError("large MCP responses cannot be read concurrently")
         loop = asyncio.get_running_loop()
-        deadline = loop.time() + float(self.config.request_timeout_seconds)
+        effective_timeout = (
+            float(self.config.request_timeout_seconds) if timeout_seconds is None else float(timeout_seconds)
+        )
+        deadline = loop.time() + effective_timeout
         request_params = dict(params)
         try:
             async with asyncio.timeout_at(deadline):
@@ -4267,7 +4330,7 @@ class McpStdioProvider:
     async def _read_responses(self) -> None:
         try:
             while not self._closed:
-                message = await self._read_message(self._active_response_limit, wait_forever=True)
+                message = await self._read_message(wait_forever=True)
                 if message.get("jsonrpc") != "2.0":
                     raise ExtensionError("MCP response has an invalid JSON-RPC version")
                 method = message.get("method")
@@ -4382,13 +4445,14 @@ class McpStdioProvider:
         process = self._process
         if process is None or process.stdout is None:
             raise ExtensionError("MCP stdio server is not running")
-        message_limit = self.config.max_message_bytes if max_bytes is None else max_bytes
-        if type(message_limit) is not int or not 1 <= message_limit <= MAX_MCP_SKILL_RESOURCE_MESSAGE_BYTES:
+        base_limit = self.config.max_message_bytes if max_bytes is None else max_bytes
+        if type(base_limit) is not int or not 1 <= base_limit <= MAX_MCP_SKILL_RESOURCE_MESSAGE_BYTES:
             raise ExtensionError("MCP response byte limit is invalid")
         loop = asyncio.get_running_loop()
         response_deadline = loop.time() + float(self.config.request_timeout_seconds) if deadline is None else deadline
         try:
             while True:
+                message_limit = max(base_limit, self._active_response_limit) if max_bytes is None else base_limit
                 newline = self._stdout_buffer.find(b"\n")
                 if newline >= 0:
                     if newline > message_limit:
@@ -4450,6 +4514,7 @@ class McpStdioProvider:
             chunk = await process.stderr.read(4_096)
             if not chunk:
                 return
+            self._stderr_chunks.append(chunk.decode("utf-8", errors="replace"))
             self._stderr_buffer.extend(chunk)
             if len(self._stderr_buffer) > self.config.max_stderr_bytes:
                 del self._stderr_buffer[: len(self._stderr_buffer) - self.config.max_stderr_bytes]
@@ -4457,6 +4522,10 @@ class McpStdioProvider:
     @property
     def stderr_snapshot(self) -> str:
         return self._stderr_buffer.decode("utf-8", errors="replace")
+
+    @property
+    def stderr_chunks(self) -> tuple[str, ...]:
+        return tuple(self._stderr_chunks)
 
 
 @dataclass(frozen=True, slots=True)
@@ -6111,6 +6180,10 @@ class McpHttpProvider:
             raise ExtensionError("MCP OAuth endpoint URL is invalid") from error
         if parsed.scheme != "https" or host is None or parsed.username is not None or parsed.password is not None:
             raise ExtensionError("MCP OAuth endpoints must use HTTPS without URL credentials")
+        normalized_host = host.casefold().rstrip(".")
+        allowed = {item.strip().casefold().rstrip(".") for item in self.config.allowed_hosts if item.strip()}
+        if normalized_host not in allowed:
+            raise ExtensionError("MCP OAuth endpoint host must be explicitly allowlisted")
         if method not in {"GET", "POST"}:
             raise ExtensionError("MCP OAuth HTTP method is unsupported")
         if type(max_response_bytes) is not int or not 1 <= max_response_bytes <= 1024 * 1024:
@@ -6243,6 +6316,7 @@ class _ToolRegistration:
     output_validator: Callable[[object], None] | None
     serial_lock: CrossLoopAsyncLock | None = None
     sync_serial_lock: threading.Lock | None = None
+    normalized_search_fields: tuple[str, ...] = ()
 
 
 class ExtensionRegistry:
@@ -6482,6 +6556,7 @@ class ExtensionRegistry:
                         if spec.concurrency == "serial" and not inspect.iscoroutinefunction(handler)
                         else None
                     ),
+                    normalized_search_fields=_normalized_search_fields((spec.name, spec.description)),
                 )
             self._catalog_revision += 1
 
@@ -6561,16 +6636,21 @@ class ExtensionRegistry:
             return None if registration is None else registration.spec
 
     def ranked_tools(self, *, task: str | None = None) -> tuple[ToolSpec, ...]:
-        specs = list(self.tools())
+        with self._lock:
+            registrations = [self._tools[name] for name in sorted(self._tools)]
         if task:
             query_terms = _search_terms(task)
-            specs.sort(
-                key=lambda spec: (
-                    -_score_normalized_fields(query_terms, _normalized_search_fields((spec.name, spec.description))),
-                    spec.name,
+            registrations.sort(
+                key=lambda reg: (
+                    -_score_normalized_fields(
+                        query_terms,
+                        reg.normalized_search_fields
+                        or _normalized_search_fields((reg.spec.name, reg.spec.description)),
+                    ),
+                    reg.spec.name,
                 )
             )
-        return tuple(specs)
+        return tuple(reg.spec for reg in registrations)
 
     def describe(self, *, task: str | None = None, limit: int = 32) -> tuple[dict[str, object], ...]:
         if type(limit) is not int or not 0 <= limit <= self._max_tools:
@@ -6639,17 +6719,18 @@ class ExtensionRegistry:
             revision = self._catalog_revision
             if expected_revision is not None and expected_revision != revision:
                 raise ToolExecutionError("tool catalog changed since search results were produced")
-            specs = tuple(registration.spec for registration in self._tools.values())
+            registrations = tuple(self._tools.values())
 
         terms = _search_terms(query)
         ranked: list[tuple[int, str, ToolSpec]] = []
         hidden_names = {SKILL_READ_TOOL_NAME, TOOL_SCHEMA_READ_TOOL_NAME, TOOL_SEARCH_TOOL_NAME}
-        for spec in specs:
+        for reg in registrations:
+            spec = reg.spec
             if spec.name in hidden_names:
                 continue
             score = _score_normalized_fields(
                 terms,
-                _normalized_search_fields((spec.name, spec.description)),
+                reg.normalized_search_fields or _normalized_search_fields((spec.name, spec.description)),
             )
             if score:
                 ranked.append((-score, spec.name, spec))
@@ -7378,19 +7459,779 @@ def _skill_frontmatter(raw: bytes) -> tuple[str, str, str, tuple[str, ...]] | No
     return name, description, version, keywords
 
 
+MAX_MCP_TOOL_SCHEMA_SERIALIZED_CHARS = 16_000
+MAX_MCP_TOOL_SCHEMA_REFS = 32
+
+DEFAULT_UNTRUSTED_TARGET_PROVENANCE: dict[str, object] = {
+    "untrusted_content": True,
+    "source": "analysis_target",
+}
+
+SUPPORTED_MCP_HARNESSES: tuple[str, ...] = (
+    "antigravity",
+    "claude_code",
+    "claude_desktop",
+    "codex",
+    "cursor",
+    "dsh",
+    "omp",
+    "pi",
+)
+
+
+def count_json_schema_refs(schema: object) -> int:
+    """Count total JSON Schema $ref occurrences across a nested schema."""
+    if isinstance(schema, Mapping):
+        typed_map = cast(Mapping[object, object], schema)
+        count = 1 if "$ref" in typed_map and type(typed_map.get("$ref")) is str else 0
+        for value in typed_map.values():
+            count += count_json_schema_refs(value)
+        return count
+    if isinstance(schema, (list, tuple)):
+        return sum(count_json_schema_refs(item) for item in cast(Sequence[object], schema))
+    return 0
+
+
+def _serialize_schema_compact(schema: Mapping[str, Any]) -> str:
+    return json.dumps(schema, ensure_ascii=False, sort_keys=True, separators=(",", ":"), allow_nan=False)
+
+
+def validate_mcp_tool_schema_budget(
+    schema: Mapping[str, Any],
+    *,
+    max_serialized_chars: int = MAX_MCP_TOOL_SCHEMA_SERIALIZED_CHARS,
+    max_refs: int = MAX_MCP_TOOL_SCHEMA_REFS,
+) -> dict[str, int]:
+    """Validate that an MCP tool schema stays within serialized character and $ref budgets."""
+    if not isinstance(cast(object, schema), Mapping):
+        raise ExtensionError("MCP tool schema must be a mapping")
+    if type(max_serialized_chars) is not int or max_serialized_chars <= 0:
+        raise ValueError("max_serialized_chars must be a positive integer")
+    if type(max_refs) is not int or max_refs < 0:
+        raise ValueError("max_refs must be a non-negative integer")
+    try:
+        serialized = _serialize_schema_compact(schema)
+    except (TypeError, ValueError) as error:
+        raise ExtensionError("MCP tool schema is not valid JSON") from error
+    serialized_chars = len(serialized)
+    ref_count = count_json_schema_refs(schema)
+    if serialized_chars > max_serialized_chars:
+        raise ExtensionError(
+            f"MCP tool schema exceeds serialized character budget ({serialized_chars} > {max_serialized_chars})"
+        )
+    if ref_count > max_refs:
+        raise ExtensionError(f"MCP tool schema exceeds $ref budget ({ref_count} > {max_refs})")
+    return {
+        "serialized_chars": serialized_chars,
+        "ref_count": ref_count,
+    }
+
+
+def _strip_excess_schema_refs(node: object, remaining_refs: list[int]) -> object:
+    if isinstance(node, Mapping):
+        typed_map = cast(Mapping[object, object], node)
+        if "$ref" in typed_map and type(typed_map.get("$ref")) is str:
+            if remaining_refs[0] > 0:
+                remaining_refs[0] -= 1
+                result: dict[str, object] = {}
+                for key, value in typed_map.items():
+                    if type(key) is str:
+                        result[key] = _strip_excess_schema_refs(value, remaining_refs)
+                return result
+            fallback: dict[str, object] = {"type": "object"}
+            description = typed_map.get("description")
+            if type(description) is str and description.strip():
+                fallback["description"] = description.strip()[:160]
+            return fallback
+        cleaned: dict[str, object] = {}
+        for key, value in typed_map.items():
+            if type(key) is not str:
+                continue
+            cleaned[key] = _strip_excess_schema_refs(value, remaining_refs)
+        return cleaned
+    if isinstance(node, (list, tuple)):
+        return [_strip_excess_schema_refs(item, remaining_refs) for item in cast(Sequence[object], node)]
+    return node
+
+
+def _prune_schema_annotations(node: object, *, max_description_chars: int, drop_defs: bool) -> object:
+    if isinstance(node, Mapping):
+        typed_map = cast(Mapping[object, object], node)
+        cleaned: dict[str, object] = {}
+        for key, value in typed_map.items():
+            if type(key) is not str:
+                continue
+            if key in {"examples", "default", "title", "$comment", "deprecated", "readOnly", "writeOnly"}:
+                continue
+            if drop_defs and key in {"$defs", "definitions"}:
+                continue
+            if key == "description" and type(value) is str:
+                if max_description_chars > 0:
+                    trimmed = value.strip()[:max_description_chars]
+                    if trimmed:
+                        cleaned[key] = trimmed
+                continue
+            cleaned[key] = _prune_schema_annotations(
+                value,
+                max_description_chars=max_description_chars,
+                drop_defs=drop_defs,
+            )
+        return cleaned
+    if isinstance(node, (list, tuple)):
+        return [
+            _prune_schema_annotations(
+                item,
+                max_description_chars=max_description_chars,
+                drop_defs=drop_defs,
+            )
+            for item in cast(Sequence[object], node)
+        ]
+    return node
+
+
+def compact_mcp_tool_schema(
+    schema: Mapping[str, Any],
+    *,
+    max_serialized_chars: int = MAX_MCP_TOOL_SCHEMA_SERIALIZED_CHARS,
+    max_refs: int = MAX_MCP_TOOL_SCHEMA_REFS,
+) -> dict[str, Any]:
+    """Compact an MCP tool input schema so it respects serialized char and $ref budgets."""
+    if not isinstance(cast(object, schema), Mapping):
+        raise ExtensionError("MCP tool schema must be a mapping")
+    if type(max_serialized_chars) is not int or max_serialized_chars <= 0:
+        raise ValueError("max_serialized_chars must be a positive integer")
+    if type(max_refs) is not int or max_refs < 0:
+        raise ValueError("max_refs must be a non-negative integer")
+
+    working: dict[str, Any] = json.loads(_serialize_schema_compact(schema))
+    if count_json_schema_refs(working) > max_refs:
+        budget = [max_refs]
+        working = cast(dict[str, Any], _strip_excess_schema_refs(working, budget))
+        if count_json_schema_refs(working) > max_refs:
+            working.pop("$defs", None)
+            working.pop("definitions", None)
+            budget = [max_refs]
+            working = cast(dict[str, Any], _strip_excess_schema_refs(working, budget))
+
+    if len(_serialize_schema_compact(working)) <= max_serialized_chars:
+        return working
+
+    for max_desc, drop_defs in ((160, False), (64, True), (0, True)):
+        candidate = cast(
+            dict[str, Any],
+            _prune_schema_annotations(working, max_description_chars=max_desc, drop_defs=drop_defs),
+        )
+        if count_json_schema_refs(candidate) > max_refs:
+            budget = [max_refs]
+            candidate = cast(dict[str, Any], _strip_excess_schema_refs(candidate, budget))
+        if len(_serialize_schema_compact(candidate)) <= max_serialized_chars:
+            return candidate
+        working = candidate
+
+    # Final structural fallback preserving top-level object contract and required keys
+    minimal: dict[str, Any] = {"type": working.get("type", "object")}
+    if minimal["type"] != "object":
+        minimal["type"] = "object"
+    raw_required = working.get("required")
+    kept_required: list[str] = []
+    if isinstance(raw_required, list):
+        for item in cast(list[object], raw_required):
+            if type(item) is str and len(kept_required) < 32:
+                kept_required.append(item)
+    raw_props = working.get("properties")
+    if isinstance(raw_props, Mapping):
+        compact_props: dict[str, Any] = {}
+        for prop_name, prop_schema in cast(Mapping[object, object], raw_props).items():
+            if type(prop_name) is not str:
+                continue
+            typed_prop_schema = cast(Mapping[str, object], prop_schema) if isinstance(prop_schema, Mapping) else None
+            raw_prop_type = typed_prop_schema.get("type") if typed_prop_schema is not None else None
+            prop_type: str | None = raw_prop_type if type(raw_prop_type) is str else None
+            entry: dict[str, Any] = {"type": prop_type} if prop_type else {}
+            compact_props[prop_name] = entry
+            minimal["properties"] = compact_props
+            if kept_required:
+                minimal["required"] = [req for req in kept_required if req in compact_props]
+            if len(_serialize_schema_compact(minimal)) > max_serialized_chars:
+                compact_props.pop(prop_name, None)
+                if kept_required:
+                    minimal["required"] = [req for req in kept_required if req in compact_props]
+                break
+    if "additionalProperties" in working and type(working["additionalProperties"]) is bool:
+        candidate_minimal = {**minimal, "additionalProperties": working["additionalProperties"]}
+        if len(_serialize_schema_compact(candidate_minimal)) <= max_serialized_chars:
+            minimal = candidate_minimal
+    if len(_serialize_schema_compact(minimal)) > max_serialized_chars:
+        return {"type": "object"}
+    return minimal
+
+
+def attach_untrusted_target_provenance(
+    payload: object,
+    *,
+    untrusted_content: bool = True,
+    source: str = "analysis_target",
+) -> dict[str, object]:
+    """Attach default-on _meta.provenance marking target-derived MCP/tool payloads as untrusted."""
+    if type(untrusted_content) is not bool:
+        raise TypeError("untrusted_content must be a boolean")
+    if type(source) is not str or not source.strip():
+        raise ValueError("source must be a non-empty string")
+    normalized_source = source.strip()
+
+    if isinstance(payload, Mapping) and all(type(key) is str for key in cast(Mapping[object, object], payload)):
+        envelope: dict[str, object] = dict(cast(Mapping[str, object], payload))
+    else:
+        envelope = {"content": payload}
+
+    existing_meta = envelope.get("_meta")
+    if isinstance(existing_meta, Mapping) and all(
+        type(key) is str for key in cast(Mapping[object, object], existing_meta)
+    ):
+        meta_dict: dict[str, object] = dict(cast(Mapping[str, object], existing_meta))
+    else:
+        meta_dict = {}
+
+    existing_provenance = meta_dict.get("provenance")
+    if isinstance(existing_provenance, Mapping) and all(
+        type(key) is str for key in cast(Mapping[object, object], existing_provenance)
+    ):
+        provenance_dict: dict[str, object] = dict(cast(Mapping[str, object], existing_provenance))
+    else:
+        provenance_dict = {}
+
+    provenance_dict["untrusted_content"] = untrusted_content
+    provenance_dict["source"] = normalized_source
+    meta_dict["provenance"] = provenance_dict
+    envelope["_meta"] = meta_dict
+    return envelope
+
+
+def make_untrusted_mcp_error_response(
+    message: str,
+    *,
+    code: str | int | None = None,
+    source: str = "analysis_target",
+) -> dict[str, object]:
+    """Create a structured MCP error payload with default-on untrusted target provenance."""
+    if type(message) is not str or not message.strip():
+        raise ValueError("error message must be a non-empty string")
+    trimmed = message.strip()[:1_024]
+    error_body: dict[str, object] = {"message": trimmed}
+    if code is not None:
+        if type(code) not in {str, int}:
+            raise TypeError("error code must be a string or integer")
+        error_body["code"] = code
+    return attach_untrusted_target_provenance(
+        {
+            "isError": True,
+            "error": error_body,
+            "content": [{"type": "text", "text": trimmed}],
+        },
+        untrusted_content=True,
+        source=source,
+    )
+
+
+@dataclass(frozen=True, slots=True)
+class CordisJsTag:
+    """Lossless representation of a Cordis !!js YAML scalar node without evaluating code."""
+
+    tag: str
+    value: str
+    style: str | None = None
+
+
+_MAX_CORDIS_YAML_BYTES = 512 * 1024
+_MAX_YAML_COMPOSED_NODES = 4_096
+_MAX_YAML_COMPOSE_DEPTH = 32
+_MAX_YAML_ALIASES = 32
+
+
+class _BoundedYamlSafeLoader(yaml.SafeLoader):
+    def __init__(self, stream: Any) -> None:
+        super().__init__(stream)
+        self._composed_nodes = 0
+        self._compose_depth = 0
+        self._alias_count = 0
+
+    def compose_node(self, parent: Any, index: Any) -> Any:
+        loader_any: Any = self
+        if bool(loader_any.check_event(yaml.AliasEvent)):
+            self._alias_count += 1
+            if self._alias_count > _MAX_YAML_ALIASES:
+                raise yaml.YAMLError("YAML alias count exceeds safety bound")
+        self._composed_nodes += 1
+        if self._composed_nodes > _MAX_YAML_COMPOSED_NODES:
+            raise yaml.YAMLError("YAML node count exceeds safety bound")
+        self._compose_depth += 1
+        if self._compose_depth > _MAX_YAML_COMPOSE_DEPTH:
+            raise yaml.YAMLError("YAML nesting depth exceeds safety bound")
+        try:
+            return super().compose_node(parent, index)
+        finally:
+            self._compose_depth -= 1
+
+
+class _CordisPreservingSafeLoader(_BoundedYamlSafeLoader):
+    pass
+
+
+def _construct_cordis_js_tag(
+    loader: _CordisPreservingSafeLoader,
+    tag_suffix: str,
+    node: yaml.Node,
+) -> CordisJsTag:
+    if not isinstance(node, yaml.ScalarNode):
+        raise yaml.constructor.ConstructorError(
+            None,
+            None,
+            f"expected a scalar node for Cordis JS tag {node.tag!r}",
+            node.start_mark,
+        )
+    full_tag = f"tag:yaml.org,2002:js{tag_suffix}"
+    preserved_style = node.style if node.style in {">", "|"} else None
+    return CordisJsTag(
+        tag=full_tag,
+        value=loader.construct_scalar(node),
+        style=preserved_style,
+    )
+
+
+def _construct_short_js_tag(
+    loader: _CordisPreservingSafeLoader,
+    node: yaml.Node,
+) -> CordisJsTag:
+    return _construct_cordis_js_tag(loader, "", node)
+
+
+cast(Any, _CordisPreservingSafeLoader).add_multi_constructor("tag:yaml.org,2002:js", _construct_cordis_js_tag)
+cast(Any, _CordisPreservingSafeLoader).add_multi_constructor("!js", _construct_cordis_js_tag)
+_CordisPreservingSafeLoader.add_constructor("!js", _construct_short_js_tag)
+
+
+class _CordisPreservingSafeDumper(yaml.SafeDumper):
+    pass
+
+
+def _represent_cordis_js_tag(dumper: _CordisPreservingSafeDumper, data: CordisJsTag) -> yaml.ScalarNode:
+    tag = data.tag
+    if tag in {"tag:yaml.org,2002:js", "!js", "!!js"}:
+        emit_tag = "tag:yaml.org,2002:js"
+    elif tag.startswith("!!js/"):
+        emit_tag = f"tag:yaml.org,2002:js/{tag[len('!!js/') :]}"
+    else:
+        emit_tag = tag
+    return cast(yaml.ScalarNode, cast(Any, dumper).represent_scalar(emit_tag, data.value, style=data.style))
+
+
+_CordisPreservingSafeDumper.add_representer(CordisJsTag, _represent_cordis_js_tag)
+
+
+def load_cordis_yaml_preserving_js_tags(raw_yaml: str) -> dict[str, object]:
+    """Parse Cordis dsh.yml content safely while preserving !!js tags as CordisJsTag nodes."""
+    if type(raw_yaml) is not str:
+        raise ExtensionError("Cordis YAML content must be a string")
+    if len(raw_yaml.encode("utf-8")) > _MAX_CORDIS_YAML_BYTES:
+        raise ExtensionError("Cordis YAML content exceeds the 512 KiB size limit")
+    try:
+        loaded: object = yaml.load(raw_yaml, Loader=_CordisPreservingSafeLoader)
+    except (yaml.YAMLError, RecursionError) as error:
+        raise ExtensionError("Cordis YAML configuration could not be parsed") from error
+    if loaded is None:
+        return {}
+    if not isinstance(loaded, Mapping) or any(type(key) is not str for key in cast(Mapping[object, object], loaded)):
+        raise ExtensionError("Cordis YAML root must be a string-keyed mapping")
+    return dict(cast(Mapping[str, object], loaded))
+
+
+def dump_cordis_yaml_preserving_js_tags(document: Mapping[str, object]) -> str:
+    """Serialize a Cordis YAML document back to text while preserving !!js tags."""
+    if not isinstance(cast(object, document), Mapping):
+        raise ExtensionError("Cordis YAML document must be a mapping")
+    try:
+        return yaml.dump(
+            dict(document),
+            Dumper=_CordisPreservingSafeDumper,
+            sort_keys=False,
+            allow_unicode=True,
+        )
+    except yaml.YAMLError as error:
+        raise ExtensionError("Cordis YAML configuration could not be serialized") from error
+
+
+@dataclass(frozen=True, slots=True)
+class McpHarnessServerEntry:
+    """Normalized MCP server configuration discovered from an external agent harness."""
+
+    harness: str
+    server_id: str
+    transport: str
+    description: str
+    command: tuple[str, ...] = ()
+    endpoint: str | None = None
+    environment_names: tuple[str, ...] = ()
+    source_path: str = ""
+
+    def to_server_spec(self) -> McpServerSpec:
+        env_specs = tuple(
+            McpEnvironmentVariableSpec(
+                name=name,
+                is_required=True,
+                is_secret=True,
+                description=f"Imported from {self.harness} MCP configuration",
+            )
+            for name in self.environment_names
+        )
+        spec = McpServerSpec(
+            server_id=self.server_id,
+            description=self.description,
+            transport=self.transport,
+            source=self.source_path or f"<harness:{self.harness}>",
+            environment_variables=env_specs,
+        )
+        spec.validate()
+        return spec
+
+    def summary(self) -> dict[str, object]:
+        result: dict[str, object] = {
+            "harness": self.harness,
+            "server_id": self.server_id,
+            "transport": self.transport,
+            "description": self.description,
+            "environment_names": list(self.environment_names),
+            "source_path": self.source_path,
+        }
+        if self.command:
+            result["command"] = list(self.command)
+        if self.endpoint is not None:
+            result["endpoint"] = self.endpoint
+        return result
+
+
+def resolve_mcp_harness_config_paths(
+    harness: str,
+    *,
+    home: Path | None = None,
+    workspace: Path | None = None,
+    env: Mapping[str, str] | None = None,
+    os_name: str | None = None,
+) -> tuple[Path, ...]:
+    """Return candidate configuration file paths for a supported MCP harness.
+
+    Includes Windows MSIX virtualized package path resolution for Claude Desktop
+    under ``%LOCALAPPDATA%\\Packages\\Claude_*\\LocalCache\\Roaming\\Claude\\claude_desktop_config.json``.
+    """
+    if type(harness) is not str:
+        raise ExtensionError("MCP harness name must be a string")
+    normalized = harness.strip().casefold()
+    if normalized not in SUPPORTED_MCP_HARNESSES:
+        raise ExtensionError(f"unsupported MCP harness: {harness!r}")
+
+    resolved_home = home if home is not None else Path.home()
+    resolved_env = env if env is not None else os.environ
+    resolved_os = os_name if os_name is not None else os.name
+    candidates: list[Path] = []
+
+    if normalized == "antigravity":
+        candidates.append(resolved_home / ".gemini" / "antigravity" / "mcp_config.json")
+        if workspace is not None:
+            candidates.append(workspace / ".gemini" / "antigravity" / "mcp_config.json")
+    elif normalized == "codex":
+        candidates.append(resolved_home / ".codex" / "config.toml")
+        if workspace is not None:
+            candidates.append(workspace / ".codex" / "config.toml")
+    elif normalized == "claude_code":
+        candidates.append(resolved_home / ".claude.json")
+        if workspace is not None:
+            candidates.append(workspace / ".mcp.json")
+    elif normalized == "claude_desktop":
+        if resolved_os == "nt":
+            appdata_raw = resolved_env.get("APPDATA")
+            appdata = Path(appdata_raw) if appdata_raw else (resolved_home / "AppData" / "Roaming")
+            localappdata_raw = resolved_env.get("LOCALAPPDATA")
+            localappdata = Path(localappdata_raw) if localappdata_raw else (resolved_home / "AppData" / "Local")
+            packages_dir = localappdata / "Packages"
+            try:
+                if packages_dir.is_dir():
+                    msix_dirs = sorted(
+                        (
+                            entry
+                            for entry in packages_dir.iterdir()
+                            if entry.name.startswith("Claude_") and entry.is_dir()
+                        ),
+                        key=lambda item: item.name,
+                    )
+                    candidates.extend(
+                        msix_dir / "LocalCache" / "Roaming" / "Claude" / "claude_desktop_config.json"
+                        for msix_dir in msix_dirs
+                    )
+            except OSError:
+                pass
+            candidates.append(appdata / "Claude" / "claude_desktop_config.json")
+        else:
+            candidates.append(
+                resolved_home / "Library" / "Application Support" / "Claude" / "claude_desktop_config.json"
+            )
+            candidates.append(resolved_home / ".config" / "Claude" / "claude_desktop_config.json")
+    elif normalized == "cursor":
+        candidates.append(resolved_home / ".cursor" / "mcp.json")
+        if workspace is not None:
+            candidates.append(workspace / ".cursor" / "mcp.json")
+    elif normalized == "dsh":
+        candidates.append(resolved_home / ".dsh" / "dsh.yml")
+        if workspace is not None:
+            candidates.append(workspace / "dsh.yml")
+    elif normalized == "pi":
+        candidates.append(resolved_home / ".pi" / "agent" / "mcp.json")
+        if workspace is not None:
+            candidates.append(workspace / ".pi" / "agent" / "mcp.json")
+    elif normalized == "omp":
+        candidates.append(resolved_home / ".omp" / "agent" / "config.yml")
+        if workspace is not None:
+            candidates.append(workspace / ".omp" / "agent" / "config.yml")
+
+    deduped: list[Path] = []
+    seen: set[str] = set()
+    for path in candidates:
+        key = str(path)
+        if key not in seen:
+            seen.add(key)
+            deduped.append(path)
+    return tuple(deduped)
+
+
+def _sanitize_harness_server_id(raw_id: str) -> str:
+    cleaned = re.sub(r"[^a-z0-9._-]+", "-", raw_id.strip().casefold()).strip("-._")
+    if not cleaned:
+        raise ExtensionError("MCP harness server id is empty")
+    if not cleaned[0].isalnum():
+        cleaned = f"s-{cleaned}"
+    return cleaned[:64]
+
+
+def _is_valid_harness_http_endpoint(raw_url: str) -> bool:
+    candidate = raw_url.strip()
+    if (
+        not candidate
+        or len(candidate) > 2_048
+        or any(ord(ch) < 0x20 or ord(ch) == 0x7F or ch.isspace() for ch in candidate)
+    ):
+        return False
+    try:
+        parsed = urlsplit(candidate)
+        _ = parsed.port
+    except ValueError:
+        return False
+    if parsed.scheme not in {"http", "https"} or not parsed.hostname:
+        return False
+    return not (parsed.username is not None or parsed.password is not None or parsed.fragment)
+
+
+def _extract_harness_servers_mapping(root: Mapping[str, object], harness: str) -> Mapping[str, object]:
+    for key in ("mcpServers", "mcp_servers", "servers"):
+        candidate = root.get(key)
+        if isinstance(candidate, Mapping) and all(type(k) is str for k in cast(Mapping[object, object], candidate)):
+            return cast(Mapping[str, object], candidate)
+    if harness == "dsh":
+        plugins = root.get("plugins")
+        if isinstance(plugins, Mapping):
+            typed_plugins = cast(Mapping[object, object], plugins)
+            for subkey in ("mcp", "mcpServers", "mcp_servers"):
+                nested = typed_plugins.get(subkey)
+                if isinstance(nested, Mapping):
+                    nested_map = cast(Mapping[object, object], nested)
+                    inner_servers = nested_map.get("servers", nested_map.get("mcpServers", nested_map))
+                    if isinstance(inner_servers, Mapping) and all(
+                        type(k) is str for k in cast(Mapping[object, object], inner_servers)
+                    ):
+                        return cast(Mapping[str, object], inner_servers)
+    return {}
+
+
+def parse_mcp_harness_config(
+    harness: str,
+    content: str,
+    *,
+    source_path: str = "<memory>",
+) -> tuple[McpHarnessServerEntry, ...]:
+    """Parse an external harness MCP config (JSON, TOML, or YAML) into normalized server entries."""
+    if type(harness) is not str:
+        raise ExtensionError("MCP harness name must be a string")
+    normalized_harness = harness.strip().casefold()
+    if normalized_harness not in SUPPORTED_MCP_HARNESSES:
+        raise ExtensionError(f"unsupported MCP harness: {harness!r}")
+    if type(content) is not str:
+        raise ExtensionError("MCP harness configuration content must be a string")
+    if len(content.encode("utf-8")) > 512 * 1024:
+        raise ExtensionError("MCP harness configuration exceeds the 512 KiB size limit")
+
+    root: Mapping[str, object]
+    if normalized_harness in {"antigravity", "claude_code", "claude_desktop", "cursor", "pi"}:
+        try:
+            parsed_json: object = json.loads(content)
+        except ValueError as error:
+            raise ExtensionError(f"{normalized_harness} MCP JSON configuration is invalid") from error
+        if not isinstance(parsed_json, Mapping) or any(
+            type(k) is not str for k in cast(Mapping[object, object], parsed_json)
+        ):
+            raise ExtensionError(f"{normalized_harness} MCP JSON root must be an object")
+        root = cast(Mapping[str, object], parsed_json)
+    elif normalized_harness == "codex":
+        try:
+            root = tomllib.loads(content)
+        except tomllib.TOMLDecodeError as error:
+            raise ExtensionError("codex config.toml could not be parsed") from error
+    elif normalized_harness == "dsh":
+        root = load_cordis_yaml_preserving_js_tags(content)
+    else:
+        try:
+            parsed_yaml: object = yaml.load(content, Loader=_BoundedYamlSafeLoader)
+        except (yaml.YAMLError, RecursionError) as error:
+            raise ExtensionError(f"{normalized_harness} YAML configuration is invalid") from error
+        if parsed_yaml is None:
+            root = {}
+        elif isinstance(parsed_yaml, Mapping) and all(
+            type(k) is str for k in cast(Mapping[object, object], parsed_yaml)
+        ):
+            root = cast(Mapping[str, object], parsed_yaml)
+        else:
+            raise ExtensionError(f"{normalized_harness} YAML root must be a mapping")
+
+    servers_map = _extract_harness_servers_mapping(root, normalized_harness)
+    entries: dict[str, McpHarnessServerEntry] = {}
+    for raw_id, raw_entry in servers_map.items():
+        if not isinstance(raw_entry, Mapping):
+            continue
+        entry_map = cast(Mapping[str, object], raw_entry)
+        if entry_map.get("disabled") is True or entry_map.get("enabled") is False:
+            continue
+        try:
+            server_id = _sanitize_harness_server_id(raw_id)
+        except ExtensionError:
+            continue
+        raw_command = entry_map.get("command")
+        raw_args = entry_map.get("args", [])
+        raw_url = entry_map.get("url", entry_map.get("endpoint", entry_map.get("serverUrl")))
+        raw_type = entry_map.get("type", entry_map.get("transport"))
+
+        command_tuple: tuple[str, ...] = ()
+        endpoint: str | None = None
+        if type(raw_command) is str and raw_command.strip() and "\x00" not in raw_command:
+            cmd_list = [raw_command.strip()]
+            if isinstance(raw_args, list):
+                cmd_list.extend(
+                    arg
+                    for arg in cast(list[object], raw_args)[:31]
+                    if type(arg) is str and arg.strip() and "\x00" not in arg
+                )
+            command_tuple = tuple(cmd_list)
+            transport = "stdio"
+        elif isinstance(raw_command, list) and raw_command:
+            cmd_list = [
+                item.strip()
+                for item in cast(list[object], raw_command)[:32]
+                if type(item) is str and item.strip() and "\x00" not in item
+            ]
+            if not cmd_list:
+                continue
+            command_tuple = tuple(cmd_list)
+            transport = "stdio"
+        elif type(raw_url) is str and raw_url.strip():
+            if not _is_valid_harness_http_endpoint(raw_url):
+                continue
+            endpoint = raw_url.strip()
+            transport = "streamable-http"
+        elif type(raw_type) is str and raw_type.strip().casefold() in {"stdio", "streamable-http", "http", "sse"}:
+            t_norm = raw_type.strip().casefold()
+            transport = "stdio" if t_norm == "stdio" else "streamable-http"
+        else:
+            continue
+
+        raw_env = entry_map.get("env", entry_map.get("environment", {}))
+        env_names: list[str] = []
+        if isinstance(raw_env, Mapping):
+            env_names.extend(
+                env_key
+                for env_key in cast(Mapping[object, object], raw_env)
+                if type(env_key) is str and _ENV_VAR_NAME_PATTERN.fullmatch(env_key)
+            )
+
+        raw_desc = entry_map.get("description")
+        description = (
+            raw_desc.strip()[:512]
+            if type(raw_desc) is str and raw_desc.strip() and "\x00" not in raw_desc
+            else f"Discovered from {normalized_harness} MCP configuration ({server_id})"
+        )
+        entries[server_id] = McpHarnessServerEntry(
+            harness=normalized_harness,
+            server_id=server_id,
+            transport=transport,
+            description=description,
+            command=command_tuple,
+            endpoint=endpoint,
+            environment_names=tuple(sorted(set(env_names))),
+            source_path=source_path,
+        )
+
+    return tuple(entries[key] for key in sorted(entries))
+
+
+def discover_harness_mcp_servers(
+    harnesses: Sequence[str] = SUPPORTED_MCP_HARNESSES,
+    *,
+    home: Path | None = None,
+    workspace: Path | None = None,
+    env: Mapping[str, str] | None = None,
+    os_name: str | None = None,
+) -> tuple[McpHarnessServerEntry, ...]:
+    """Discover MCP server configurations across the requested external agent harnesses."""
+    discovered: list[McpHarnessServerEntry] = []
+    for harness in harnesses:
+        paths = resolve_mcp_harness_config_paths(
+            harness,
+            home=home,
+            workspace=workspace,
+            env=env,
+            os_name=os_name,
+        )
+        for path in paths:
+            try:
+                if _is_link_or_junction(path):
+                    continue
+            except OSError:
+                continue
+            raw_bytes = _read_bounded_metadata(path, 512 * 1024)
+            if raw_bytes is None:
+                continue
+            try:
+                content = raw_bytes.decode("utf-8")
+                entries = parse_mcp_harness_config(harness, content, source_path=str(path))
+            except OSError, UnicodeDecodeError, ExtensionError:
+                continue
+            discovered.extend(entries)
+    return tuple(discovered)
+
+
 __all__ = [
+    "DEFAULT_UNTRUSTED_TARGET_PROVENANCE",
     "EXTENSION_MANIFEST_SCHEMA_V1",
+    "MAX_MCP_TOOL_SCHEMA_REFS",
+    "MAX_MCP_TOOL_SCHEMA_SERIALIZED_CHARS",
     "MAX_WASM_PLUGIN_BYTES",
     "MCP_SERVER_SCHEMA_V1",
     "MCP_SKILLS_EXTENSION_ID",
     "SKILL_DESCRIPTOR_SCHEMA_V1",
+    "SUPPORTED_MCP_HARNESSES",
     "TOOL_DESCRIPTOR_SCHEMA_V1",
     "WASM_PLUGIN_SCHEMA_V1",
+    "CordisJsTag",
     "ExtensionError",
     "ExtensionManifest",
     "ExtensionNotFound",
     "ExtensionRegistry",
     "McpEnvironmentVariableSpec",
+    "McpHarnessServerEntry",
     "McpHttpConfig",
     "McpHttpProvider",
     "McpResourceTemplateDescriptor",
@@ -7409,10 +8250,20 @@ __all__ = [
     "ToolSpec",
     "WasmPluginDescriptor",
     "WasmPluginTool",
+    "attach_untrusted_target_provenance",
+    "compact_mcp_tool_schema",
+    "count_json_schema_refs",
     "discover_extension_manifests",
+    "discover_harness_mcp_servers",
     "discover_mcp_server_specs",
     "discover_wasm_plugin_descriptors",
+    "dump_cordis_yaml_preserving_js_tags",
+    "load_cordis_yaml_preserving_js_tags",
+    "make_untrusted_mcp_error_response",
     "parse_mcp_environment_variables",
+    "parse_mcp_harness_config",
     "read_wasm_plugin_module",
+    "resolve_mcp_harness_config_paths",
     "search_mcp_registry",
+    "validate_mcp_tool_schema_budget",
 ]

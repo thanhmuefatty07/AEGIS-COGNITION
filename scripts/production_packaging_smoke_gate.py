@@ -46,9 +46,7 @@ def evaluate_production_packaging_smoke_gate(root: str | Path = ROOT) -> dict[st
         _cargo_env(),
         timeout_seconds=600,
     )
-    rust_cli_path = root_path / "target" / "debug" / (
-        "aegis-nerve-cli.exe" if os.name == "nt" else "aegis-nerve-cli"
-    )
+    rust_cli_path = root_path / "target" / "debug" / ("aegis-nerve-cli.exe" if os.name == "nt" else "aegis-nerve-cli")
     if rust_cli_build["returncode"] == 0:
         rust_cli_smoke = _run_command(
             [str(rust_cli_path)],
@@ -62,9 +60,7 @@ def evaluate_production_packaging_smoke_gate(root: str | Path = ROOT) -> dict[st
             "returncode": -1,
             "stdout_tail": "",
             "stderr_tail": f"build failed: {rust_cli_build['stderr_tail']}",
-            "command_hash": _stable_hash(
-                {"command": [str(rust_cli_path)], "build": rust_cli_build}
-            ),
+            "command_hash": _stable_hash({"command": [str(rust_cli_path)], "build": rust_cli_build}),
         }
     rust_cli_smoke["build"] = rust_cli_build
     friendly_gateway = _friendly_gateway_dev_smoke()
@@ -105,8 +101,7 @@ def evaluate_production_packaging_smoke_gate(root: str | Path = ROOT) -> dict[st
         _check("root_project_name", root_pyproject.get("project", {}).get("name") == "aegis-cognition"),
         _check(
             "root_aegis_console_script_is_canonical",
-            root_pyproject.get("project", {}).get("scripts", {}).get("aegis")
-            == "aegis_cognition.cli:main",
+            root_pyproject.get("project", {}).get("scripts", {}).get("aegis") == "aegis_cognition.cli:main",
         ),
         _check(
             "python_support_policy_aligned",
@@ -114,7 +109,9 @@ def evaluate_production_packaging_smoke_gate(root: str | Path = ROOT) -> dict[st
             and core_pyproject.get("project", {}).get("requires-python") == ">=3.14,<3.16",
         ),
         _check("core_python_pyproject_present", bool(core_pyproject)),
-        _check("core_python_project_name", core_pyproject.get("project", {}).get("name") == "aegis-cognition-core-python"),
+        _check(
+            "core_python_project_name", core_pyproject.get("project", {}).get("name") == "aegis-cognition-core-python"
+        ),
         _check(
             "core_bridge_does_not_claim_aegis_console_script",
             "aegis" not in core_pyproject.get("project", {}).get("scripts", {}),
@@ -355,7 +352,7 @@ def _check(name: str, ok: bool) -> dict[str, Any]:
 def _read_toml(path: Path) -> dict[str, Any]:
     try:
         return tomllib.loads(path.read_text(encoding="utf-8"))
-    except (OSError, tomllib.TOMLDecodeError):
+    except OSError, tomllib.TOMLDecodeError:
         return {}
 
 

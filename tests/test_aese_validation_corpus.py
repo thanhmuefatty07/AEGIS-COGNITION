@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import json
-from pathlib import Path
+from pathlib import Path, PureWindowsPath
 
 import pytest
 import scripts.aese_validation_corpus as validation_corpus
@@ -101,6 +101,8 @@ def test_recorded_cost_ledger_retains_paired_exploratory_measurement() -> None:
     assert cost["net_saving_seconds"]["median_saving"] > 0
     assert set(cost["net_saving_seconds"]) == {"sample_count", "samples", "min_saving", "median_saving", "max_saving"}
     assert cost["savings_claim"] == "LOCAL_EXPLORATORY_ONLY"
+    executable = cost["provenance"]["host_observation"]["executable"]
+    assert PureWindowsPath(executable).name == executable, "retained provenance must not publish a host-local path"
 
 
 def test_retained_cost_loader_rejects_tamper_without_timings(tmp_path) -> None:

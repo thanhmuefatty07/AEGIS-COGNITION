@@ -56,6 +56,7 @@ def message_identity(message: MessageFrame) -> MessageIdentity:
 def generate_skeleton(code: str) -> str:
     try:
         import aegis_nerve
+
         return aegis_nerve.aegis_harness_generate_skeleton(code)
     except ImportError:
         # Simple regex fallback to strip implementation bodies
@@ -63,23 +64,24 @@ def generate_skeleton(code: str) -> str:
         in_fn = False
         brace_count = 0
         for line in code.splitlines():
-            if 'fn ' in line:
+            if "fn " in line:
                 in_fn = True
                 brace_count = 0
-                parts = line.split('{')
-                lines.append(parts[0] + '{ todo!() }')
+                parts = line.split("{")
+                lines.append(parts[0] + "{ todo!() }")
             elif in_fn:
-                brace_count += line.count('{') - line.count('}')
+                brace_count += line.count("{") - line.count("}")
                 if brace_count <= 0:
                     in_fn = False
             else:
                 lines.append(line)
-        return '\n'.join(lines)
+        return "\n".join(lines)
 
 
 def analyze_compile_errors(logs: str) -> list[str]:
     try:
         import aegis_nerve
+
         return aegis_nerve.aegis_harness_analyze_errors(logs)
     except ImportError:
         return [

@@ -7,11 +7,7 @@ from pathlib import Path
 
 
 COLLECTOR_PATH = (
-    Path(__file__).resolve().parents[1]
-    / "docs"
-    / "architecture"
-    / "design-closure"
-    / "design_closure_collect.py"
+    Path(__file__).resolve().parents[1] / "docs" / "architecture" / "design-closure" / "design_closure_collect.py"
 )
 
 

@@ -14,12 +14,13 @@ import json
 import os
 import platform
 import statistics
-import tempfile
 import time
 from contextlib import suppress
 import tracemalloc
 from pathlib import Path
 from typing import Any, Literal
+
+from aegis_cognition.agent_efficiency import managed_scratch_dir
 
 Mode = Literal["ram", "spill"]
 MIN_PAYLOAD_BYTES = 4 * 1024
@@ -31,13 +32,9 @@ CHUNK_BYTES = 64 * 1024
 
 def _validate(payload_bytes: int, iterations: int) -> None:
     if type(payload_bytes) is not int or not MIN_PAYLOAD_BYTES <= payload_bytes <= MAX_PAYLOAD_BYTES:
-        raise ValueError(
-            f"payload_bytes must be an integer in [{MIN_PAYLOAD_BYTES}, {MAX_PAYLOAD_BYTES}]"
-        )
+        raise ValueError(f"payload_bytes must be an integer in [{MIN_PAYLOAD_BYTES}, {MAX_PAYLOAD_BYTES}]")
     if type(iterations) is not int or not MIN_ITERATIONS <= iterations <= MAX_ITERATIONS:
-        raise ValueError(
-            f"iterations must be an integer in [{MIN_ITERATIONS}, {MAX_ITERATIONS}]"
-        )
+        raise ValueError(f"iterations must be an integer in [{MIN_ITERATIONS}, {MAX_ITERATIONS}]")
 
 
 def _payload(size: int) -> bytes:
@@ -117,7 +114,7 @@ def _rss_bytes() -> int | None:
         import resource
 
         value = int(resource.getrusage(resource.RUSAGE_SELF).ru_maxrss)
-    except (AttributeError, ImportError, OSError, ValueError):
+    except AttributeError, ImportError, OSError, ValueError:
         return None
     return value if platform.system() == "Darwin" else value * 1024
 
@@ -199,7 +196,7 @@ def run_benchmark(
     payload = _payload(payload_bytes)
     expected = _ram_path(payload).hex()
     modes: list[Mode] = ["ram", "spill"] if mode == "both" else [mode]
-    with tempfile.TemporaryDirectory(prefix="aegis-cooperative-") as directory:
+    with managed_scratch_dir("benchmarks", prefix="aegis-cooperative-") as directory:
         results = [_measure_mode(item, payload, iterations, directory) for item in modes]
         temp_files_remaining = any(Path(directory).iterdir())
     all_correct = all(item["correctness_digest"] == expected for item in results)

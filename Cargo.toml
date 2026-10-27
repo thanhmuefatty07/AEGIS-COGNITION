@@ -23,7 +23,7 @@ default-members = [
 resolver = "3"
 
 [workspace.package]
-rust-version = "1.98"
+rust-version = "1.99"
 
 [profile.test]
 debug = 0

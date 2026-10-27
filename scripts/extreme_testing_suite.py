@@ -1,4 +1,4 @@
-     #!/usr/bin/env python3
+#!/usr/bin/env python3
 """
 AEGIS-COGNITION: Extreme Load, Chaos & Adversarial Testing Suite
 ================================================================
@@ -32,6 +32,7 @@ RUST_DIR = ROOT / "core" / "rust"
 # ═══════════════════════════════════════════════════════════════════
 # PHASE 1: INSTRUMENTATION & METRICS
 # ═══════════════════════════════════════════════════════════════════
+
 
 class MetricsCollector:
     """Collects system and application metrics during testing."""
@@ -75,6 +76,7 @@ metrics = MetricsCollector()
 # PHASE 2: MACRO LOAD & SOAK TESTING
 # ═══════════════════════════════════════════════════════════════════
 
+
 class LoadTestRunner:
     """Tests Hot Engine throughput ceiling and Cold Ledger backpressure."""
 
@@ -104,8 +106,8 @@ class LoadTestRunner:
             "num_payloads": total_ops,
             "total_s": round(elapsed, 4),
             "throughput_ops_per_sec": round(total_ops / elapsed, 1),
-            "latency_p50_ns": latencies[len(latencies)//2],
-            "latency_p99_ns": latencies[len(latencies)*99//100],
+            "latency_p50_ns": latencies[len(latencies) // 2],
+            "latency_p99_ns": latencies[len(latencies) * 99 // 100],
             "latency_max_ns": latencies[-1],
             "avg_latency_ns": round(sum(latencies) / len(latencies)),
             "hot_path_blocked": latencies[-1] > 5_000,
@@ -120,6 +122,7 @@ class LoadTestRunner:
         metrics.sample("memory_soak_start", {"duration_s": duration_seconds})
 
         import psutil
+
         process = psutil.Process()
         rss_samples = []
         payload = os.urandom(4096)
@@ -133,11 +136,13 @@ class LoadTestRunner:
 
             if count % 1000 == 0:
                 rss = process.memory_info().rss / (1024 * 1024)
-                rss_samples.append({
-                    "elapsed": time.perf_counter() - start,
-                    "rss_mb": round(rss, 2),
-                    "ops": count,
-                })
+                rss_samples.append(
+                    {
+                        "elapsed": time.perf_counter() - start,
+                        "rss_mb": round(rss, 2),
+                        "ops": count,
+                    }
+                )
 
         elapsed = time.perf_counter() - start
 
@@ -156,13 +161,16 @@ class LoadTestRunner:
             "rss_end_mb": rss_samples[-1]["rss_mb"] if rss_samples else 0,
             "rss_growth_mb_per_hour": round(rss_growth, 2),
             "memory_leak_suspected": rss_growth > 10,  # >10MB/hour = leak
-            "rss_samples": rss_samples[::max(1, len(rss_samples)//10)],  # Decimated
+            "rss_samples": rss_samples[:: max(1, len(rss_samples) // 10)],  # Decimated
         }
 
-        metrics.sample("memory_soak_end", {
-            "rss_growth": rss_growth,
-            "leak": rss_growth > 10,
-        })
+        metrics.sample(
+            "memory_soak_end",
+            {
+                "rss_growth": rss_growth,
+                "leak": rss_growth > 10,
+            },
+        )
         self.results["memory_soak"] = result
         return result
 
@@ -170,6 +178,7 @@ class LoadTestRunner:
 # ═══════════════════════════════════════════════════════════════════
 # PHASE 3: ADVERSARIAL FUZZING
 # ═══════════════════════════════════════════════════════════════════
+
 
 class FuzzingRunner:
     """Tests FFI boundaries, WASM sandbox, malformed payloads."""
@@ -192,23 +201,23 @@ class FuzzingRunner:
             ("max_64kb", 65536, None),
             ("max_1mb", 1_048_576, None),
             ("oversized_100mb", 100_000_000, None),
-            ("all_zeros", 4096, lambda b: b'\x00' * 4096),
-            ("all_0xff", 4096, lambda b: b'\xff' * 4096),
-            ("magic_corrupt", 128, lambda b: b'\x00' * 128),
-            ("unicode_bomb", 256, lambda b: '\ufeFF'.encode() * 85),
-            ("null_bytes_only", 512, lambda b: b'\x00' * 512),
-            ("format_string", 128, lambda b: b'%s%s%s%n%x' * 20),
+            ("all_zeros", 4096, lambda b: b"\x00" * 4096),
+            ("all_0xff", 4096, lambda b: b"\xff" * 4096),
+            ("magic_corrupt", 128, lambda b: b"\x00" * 128),
+            ("unicode_bomb", 256, lambda b: "\ufeff".encode() * 85),
+            ("null_bytes_only", 512, lambda b: b"\x00" * 512),
+            ("format_string", 128, lambda b: b"%s%s%s%n%x" * 20),
         ]
 
         for name, size, modifier in test_cases:
             try:
                 test_file = self.tmpdir / f"fuzz_mmap_{name}.bin"
-                data = modifier(b'') if modifier else os.urandom(max(1, size))
+                data = modifier(b"") if modifier else os.urandom(max(1, size))
 
                 test_file.write_bytes(data)
 
                 # Try mmap read
-                with open(test_file, 'rb') as f:
+                with open(test_file, "rb") as f:
                     try:
                         m = mmap.mmap(f.fileno(), 0, access=mmap.ACCESS_READ)
                         if len(data) > 0:
@@ -239,18 +248,20 @@ class FuzzingRunner:
         results = []
 
         # Valid minimal WASM
-        minimal_wasm = (
-            b'\x00asm\x01\x00\x00\x00'  # magic + version
-        )
+        minimal_wasm = b"\x00asm\x01\x00\x00\x00"  # magic + version
 
         test_modules = [
             ("valid_minimal", minimal_wasm, "expected_pass"),
-            ("empty", b'', "expected_fail"),
-            ("just_magic", b'\x00asm', "expected_fail"),
-            ("infinite_loop", b'\x00asm\x01\x00\x00\x00' + b'\x03\x02\x01\x00' + b'\x0a\x06\x01\x04\x00\x03\x40\x0c\x00\x0b\x0b', "test_fuel_epoch"),
+            ("empty", b"", "expected_fail"),
+            ("just_magic", b"\x00asm", "expected_fail"),
+            (
+                "infinite_loop",
+                b"\x00asm\x01\x00\x00\x00" + b"\x03\x02\x01\x00" + b"\x0a\x06\x01\x04\x00\x03\x40\x0c\x00\x0b\x0b",
+                "test_fuel_epoch",
+            ),
             ("large_module_10mb", os.urandom(10_000_000), "expected_fail"),
             ("garbage", os.urandom(1024), "expected_fail"),
-            ("null_100kb", b'\x00' * 100_000, "expected_fail"),
+            ("null_100kb", b"\x00" * 100_000, "expected_fail"),
         ]
 
         for name, wasm_bytes, expected in test_modules:
@@ -260,6 +271,7 @@ class FuzzingRunner:
                 # Try loading via wasmtime Python binding
                 try:
                     from wasmtime import Engine, Module
+
                     engine = Engine()
                     if expected == "expected_fail":
                         try:
@@ -290,10 +302,10 @@ class FuzzingRunner:
         """Simulate FFI boundary attacks with Python bridge."""
         attacks = [
             ("exact_frame", _build_valid_mmap_frame(4096)),
-            ("truncated_header", b'\x00' * 40),
+            ("truncated_header", b"\x00" * 40),
             ("oversized_payload_len", _build_malformed_frame(2**63)),
             ("negative_payload_len", _build_malformed_frame(-1)),
-            ("unaligned_payload", b'\x00' * 113),  # Not 64-byte aligned
+            ("unaligned_payload", b"\x00" * 113),  # Not 64-byte aligned
         ]
 
         findings = []
@@ -301,14 +313,20 @@ class FuzzingRunner:
             test_file = self.tmpdir / f"ffi_{name}.bin"
             test_file.write_bytes(payload)
             try:
-                with open(test_file, 'rb') as f:
+                with open(test_file, "rb") as f:
                     m = mmap.mmap(f.fileno(), 0, access=mmap.ACCESS_READ)
                     if len(payload) >= 112:
                         _ = bytes(m[:112])
                     m.close()
                 findings.append({"case": name, "result": "accepted", "severity": "INFO"})
             except Exception as e:
-                findings.append({"case": name, "result": f"rejected: {type(e).__name__}", "severity": "PASS" if "rejected" in str(e) else "HIGH"})
+                findings.append(
+                    {
+                        "case": name,
+                        "result": f"rejected: {type(e).__name__}",
+                        "severity": "PASS" if "rejected" in str(e) else "HIGH",
+                    }
+                )
 
         crashes = [f for f in findings if f["severity"] in ("CRITICAL", "HIGH")]
         result = {
@@ -325,12 +343,12 @@ class FuzzingRunner:
 def _build_valid_mmap_frame(payload_size: int) -> bytes:
     """Build a syntactically valid mmap bridge frame for AEGIS."""
     header = bytearray(112)
-    header[0:4] = b'AEG1'  # magic
-    header[4:8] = (1).to_bytes(4, 'little')  # version
-    header[8:12] = (112).to_bytes(4, 'little')  # header_bytes
+    header[0:4] = b"AEG1"  # magic
+    header[4:8] = (1).to_bytes(4, "little")  # version
+    header[8:12] = (112).to_bytes(4, "little")  # header_bytes
     # schema_id, schema_version, alignment, message_id, session_id = 0
-    header[64:72] = (112).to_bytes(8, 'little')  # payload_offset
-    header[72:80] = payload_size.to_bytes(8, 'little')  # payload_len
+    header[64:72] = (112).to_bytes(8, "little")  # payload_offset
+    header[72:80] = payload_size.to_bytes(8, "little")  # payload_len
     # payload_blake3 at bytes 80..112
     payload = os.urandom(payload_size)
     h = hashlib.blake2b(payload, digest_size=32).digest()
@@ -341,19 +359,20 @@ def _build_valid_mmap_frame(payload_size: int) -> bytes:
 def _build_malformed_frame(fake_len: int) -> bytes:
     """Build a frame with an oversized/malformed payload_len."""
     header = bytearray(112)
-    header[0:4] = b'AEG1'
-    header[4:8] = (1).to_bytes(4, 'little')
-    header[8:12] = (112).to_bytes(4, 'little')
-    header[64:72] = (112).to_bytes(8, 'little')
+    header[0:4] = b"AEG1"
+    header[4:8] = (1).to_bytes(4, "little")
+    header[8:12] = (112).to_bytes(4, "little")
+    header[64:72] = (112).to_bytes(8, "little")
     if fake_len < 0:
         fake_len = 2**63 + fake_len
-    header[72:80] = fake_len.to_bytes(8, 'little', signed=True)
+    header[72:80] = fake_len.to_bytes(8, "little", signed=True)
     return bytes(header)
 
 
 # ═══════════════════════════════════════════════════════════════════
 # PHASE 4: CHAOS ENGINEERING
 # ═══════════════════════════════════════════════════════════════════
+
 
 class ChaosRunner:
     """Tests system resilience: SIGKILL, disk full, I/O throttling."""
@@ -383,8 +402,7 @@ for i in range(1000):
 
         # Start child
         proc = subprocess.Popen(
-            [sys.executable, str(child_script)],
-            stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True
+            [sys.executable, str(child_script)], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True
         )
 
         # Wait for ready signal
@@ -440,6 +458,7 @@ for i in range(1000):
 # PHASE 5: SECURITY RED TEAM
 # ═══════════════════════════════════════════════════════════════════
 
+
 class SecurityRunner:
     """Tests cryptographic integrity, manifest injection, trust bypass."""
 
@@ -475,12 +494,14 @@ class SecurityRunner:
         }
 
         if not detected:
-            self.vulnerabilities.append({
-                "id": "SEC-001",
-                "title": "Crypto Tampering Not Detected",
-                "severity": "CRITICAL",
-                "description": "Flipping 1 byte in sealed artifact did not change the hash",
-            })
+            self.vulnerabilities.append(
+                {
+                    "id": "SEC-001",
+                    "title": "Crypto Tampering Not Detected",
+                    "severity": "CRITICAL",
+                    "description": "Flipping 1 byte in sealed artifact did not change the hash",
+                }
+            )
 
         self.results["crypto_tamper"] = result
         return result
@@ -503,17 +524,15 @@ class SecurityRunner:
         for path in traversal_attempts:
             normalized = Path(path)
             is_dangerous = (
-                ".." in path or
-                path.startswith("/etc") or
-                path.startswith("C:") or
-                "\x00" in path or
-                len(path) > 4096
+                ".." in path or path.startswith("/etc") or path.startswith("C:") or "\x00" in path or len(path) > 4096
             )
-            findings.append({
-                "attempt": path[:80],
-                "dangerous": is_dangerous,
-                "would_escape": ".." in str(normalized),
-            })
+            findings.append(
+                {
+                    "attempt": path[:80],
+                    "dangerous": is_dangerous,
+                    "would_escape": ".." in str(normalized),
+                }
+            )
 
         dangerous = [f for f in findings if f["dangerous"] and not f["would_escape"]]
         result = {
@@ -526,12 +545,14 @@ class SecurityRunner:
         }
 
         if dangerous:
-            self.vulnerabilities.append({
-                "id": "SEC-002",
-                "title": "Path Traversal Possible",
-                "severity": "CRITICAL",
-                "description": f"Path traversal detected in {len(dangerous)} payloads",
-            })
+            self.vulnerabilities.append(
+                {
+                    "id": "SEC-002",
+                    "title": "Path Traversal Possible",
+                    "severity": "CRITICAL",
+                    "description": f"Path traversal detected in {len(dangerous)} payloads",
+                }
+            )
 
         self.results["path_traversal"] = result
         return result
@@ -549,11 +570,13 @@ class SecurityRunner:
             bypassed = False
             if level == "PROD" and not attempt.get("evidence_present"):
                 bypassed = True  # PROD should fail-closed without evidence
-            findings.append({
-                "scenario": name,
-                "trust_level": level,
-                "bypass_possible": bypassed,
-            })
+            findings.append(
+                {
+                    "scenario": name,
+                    "trust_level": level,
+                    "bypass_possible": bypassed,
+                }
+            )
 
         result = {
             "test": "trust_level_bypass",
@@ -567,6 +590,7 @@ class SecurityRunner:
 # ═══════════════════════════════════════════════════════════════════
 # REPORT GENERATOR
 # ═══════════════════════════════════════════════════════════════════
+
 
 def generate_report(all_results: dict, total_duration: float) -> str:
     """Generate the final Extreme Testing & Chaos Report."""
@@ -713,10 +737,10 @@ def generate_report(all_results: dict, total_duration: float) -> str:
 
     for v in vulns:
         report += f"""
-### {v.get('id', 'BUG')}: {v.get('title', 'Unknown')}
-- **Severity**: {v.get('severity', 'Unknown')}
-- **Description**: {v.get('description', v.get('error', 'N/A'))}
-- **Location**: {v.get('case', 'N/A')}
+### {v.get("id", "BUG")}: {v.get("title", "Unknown")}
+- **Severity**: {v.get("severity", "Unknown")}
+- **Description**: {v.get("description", v.get("error", "N/A"))}
+- **Location**: {v.get("case", "N/A")}
 """
 
     if not vulns:
@@ -742,6 +766,7 @@ def generate_report(all_results: dict, total_duration: float) -> str:
 
 
 # ═══════════════════════════════════════════════════════════════════
+
 
 def main():
     parser = argparse.ArgumentParser(description="AEGIS Extreme Testing Suite")

@@ -28,6 +28,7 @@ from dataclasses import asdict, dataclass, replace
 from enum import StrEnum
 from hashlib import blake2b
 from html.parser import HTMLParser
+from multiprocessing.connection import wait as wait_connections
 from pathlib import Path
 from types import MappingProxyType
 from typing import Any, ClassVar, cast
@@ -37,7 +38,7 @@ from urllib.parse import urlparse
 from blake3 import blake3
 
 from .benchmark import BenchmarkProtocolV2, EnvironmentFingerprint, evaluate_benchmark
-from .config import trust_policy_hash as _canonical_trust_policy_hash
+from .config import resolve_lab_replay_directory, trust_policy_hash as _canonical_trust_policy_hash
 from .extensions import ExtensionRegistry
 from .goal_contract import (
     AcceptancePredicate,
@@ -53,6 +54,7 @@ from .goal_contract import (
     external_side_effect_key,
     projection_payload_digest,
 )
+from .verification.execution import process_execution_cell_scope
 
 
 def _hash(value: Any) -> str:
@@ -60,16 +62,96 @@ def _hash(value: Any) -> str:
     return blake2b(payload, digest_size=32).hexdigest()
 
 
-def _signal_process_group(pid: int, signal_number: int) -> None:
-    """Signal a POSIX process group when the current platform exposes it."""
+def _wait_for_process_exit_without_reaping(process: Any, timeout: float) -> None:
+    """Wait on the process sentinel without releasing its process-group ID."""
 
-    getpgid = cast(Callable[[int], int] | None, getattr(os, "getpgid", None))
-    killpg = cast(Callable[[int, int], None] | None, getattr(os, "killpg", None))
-    if getpgid is None or killpg is None:
-        return
-    with contextlib.suppress(OSError, ProcessLookupError):
-        if getpgid(pid) == pid:
-            killpg(pid, signal_number)
+    with contextlib.suppress(OSError, ValueError):
+        wait_connections((process.sentinel,), timeout=timeout)
+
+
+def _process_child_is_waitable(process: Any, pid: int) -> bool:
+    """Return whether this process object still owns the numeric PID."""
+
+    waitid = cast(Callable[[int, int, int], Any] | None, getattr(os, "waitid", None))
+    pid_type = getattr(os, "P_PID", None)
+    flags = tuple(getattr(os, name, None) for name in ("WEXITED", "WNOHANG", "WNOWAIT"))
+    if waitid is None or type(pid_type) is not int or any(type(flag) is not int for flag in flags):
+        return bool(process.is_alive())
+    options = cast(int, flags[0]) | cast(int, flags[1]) | cast(int, flags[2])
+    try:
+        result = waitid(pid_type, pid, options)
+    except ChildProcessError:
+        return False
+    except OSError, ValueError:
+        return bool(process.is_alive())
+    return result is None or getattr(result, "si_pid", None) in (0, pid)
+
+
+def _process_execution_cell_popen(process: Any) -> Any:
+    """Keep a POSIX worker's process-group ID reserved until final teardown."""
+
+    factory = cast(Callable[[Any], Any], process._aegis_popen_factory)
+    del process._aegis_popen_factory
+    del process._Popen
+    popen = factory(process)
+    waitid = cast(Callable[[int, int, int], Any] | None, getattr(os, "waitid", None))
+    pid_type = getattr(os, "P_PID", None)
+    flags = tuple(getattr(os, name, None) for name in ("WEXITED", "WNOHANG", "WNOWAIT"))
+    exit_codes = tuple(getattr(os, name, None) for name in ("CLD_EXITED", "CLD_KILLED", "CLD_DUMPED"))
+    options = (
+        cast(int, flags[0]) | cast(int, flags[1]) | cast(int, flags[2])
+        if waitid is not None and type(pid_type) is int and all(type(flag) is int for flag in flags)
+        else None
+    )
+    original_poll = popen.poll
+    original_join = process.join
+    process._aegis_reap_allowed = False
+
+    def poll_without_reaping(_flag: int = 0) -> int | None:
+        if popen.returncode is not None:
+            return popen.returncode
+        if waitid is None or options is None or type(pid_type) is not int:
+            return None
+        pid = popen.pid
+        if type(pid) is not int or pid <= 0:
+            return None
+        try:
+            result = waitid(pid_type, pid, options)
+        except ChildProcessError, OSError, ValueError:
+            return None
+        if result is None or getattr(result, "si_pid", None) != pid:
+            return None
+        code = getattr(result, "si_code", None)
+        status = getattr(result, "si_status", None)
+        if type(status) is not int or any(type(flag) is not int for flag in exit_codes):
+            return None
+        if code == exit_codes[0]:
+            return status
+        if code in exit_codes[1:]:
+            return -status
+        return None
+
+    def join_and_reap(timeout: float | None = None) -> Any:
+        if not process._aegis_reap_allowed:
+            # Public joins may wait, but only cell teardown may reap after it
+            # has sent the final process-group signal.
+            try:
+                ready = wait_connections((popen.sentinel,), timeout=timeout)
+            except OSError, ValueError:
+                return None
+            if not ready:
+                return None
+            return original_join(timeout=0.0)
+        # Reaping is permitted only after the cell has completed group cleanup.
+        popen.poll = original_poll
+        try:
+            return original_join(timeout)
+        finally:
+            popen.poll = poll_without_reaping
+
+    popen.poll = poll_without_reaping
+    process.join = join_and_reap
+    return popen
 
 
 def _is_finite_number(value: Any) -> bool:
@@ -3595,6 +3677,7 @@ class LabRun:
         self._native_mission: dict[str, Any] | None = None
         self._native_mission_hash: str | None = None
         self._native_finalization_started = False
+        self._goal_verification_recorded = False
         if goal_contract is None:
             goal_contract = GoalContract(
                 goal_id=self.mission_id,
@@ -5129,15 +5212,27 @@ class LabRun:
         """Recover the single verifier receipt from the append-only event log."""
 
         verification: GoalVerification | None = None
+        verification_sequence: int | None = None
+        completion_sequence: int | None = None
+        lifecycle_state = "planned"
         for event in self.events:
+            raw_event_payload: Any = event.payload
+            if event.kind == "state_changed" and isinstance(raw_event_payload, dict):
+                state_payload = cast(dict[str, Any], raw_event_payload)
+                next_state = state_payload.get("state")
+                if isinstance(next_state, str):
+                    lifecycle_state = next_state
+                if lifecycle_state == "completed":
+                    completion_sequence = event.sequence
             if event.kind != "review_recorded":
                 continue
-            payload = event.payload
-            if not isinstance(payload, dict):
+            if not isinstance(raw_event_payload, dict):
                 continue
-            typed_payload = cast(dict[str, Any], payload)
+            typed_payload = cast(dict[str, Any], raw_event_payload)
             if typed_payload.get("record_type") != "goal_verification":
                 continue
+            if lifecycle_state != "reviewing":
+                raise ValueError("goal verification must be recorded while the LabRun is reviewing")
             self._validate_goal_event_binding(typed_payload)
             raw_verification = typed_payload.get("verification")
             if not isinstance(raw_verification, dict):
@@ -5151,19 +5246,39 @@ class LabRun:
             if verification is not None:
                 raise ValueError("goal verification is recorded more than once")
             verification = candidate
+            verification_sequence = event.sequence
+        if self.goal_contract.has_explicit_acceptance and self.state == "completed":
+            if completion_sequence is None or verification_sequence is None:
+                raise ValueError("completed explicit-goal LabRun requires retained verification before completion")
+            if verification_sequence >= completion_sequence:
+                raise ValueError("goal verification must precede the completion event")
         return verification
+
+    def _goal_verification_is_successful(self) -> bool:
+        """Return whether the retained receipt passes every required predicate."""
+
+        verification = self._goal_verification_from_events()
+        if verification is None or not verification.evidence_complete:
+            return False
+        required_predicates = tuple(
+            predicate.predicate_id for predicate in self.goal_contract.acceptance if predicate.required
+        )
+        results = dict(verification.predicate_results)
+        return bool(required_predicates) and all(
+            results.get(predicate_id) is True for predicate_id in required_predicates
+        )
 
     def goal_progress_snapshot(self) -> GoalProgress:
         """Project LabRun lifecycle and any verifier receipt into GoalProgress.
 
         ``LabRun.state`` remains the compatibility reducer's source of truth.
-        A verdict is visible only when an independent, contract-bound receipt
-        has been appended to the event log after execution completed.
+        A contract-bound receipt can be admitted during review; its verdict is
+        visible only after execution completes.
         """
 
         verification = self._goal_verification_from_events()
-        if verification is not None and self.state != "completed":
-            raise ValueError("goal verification requires a completed LabRun")
+        if verification is not None and self.state not in {"reviewing", "completed", "blocked", "aborted"}:
+            raise ValueError("goal verification requires a LabRun in review or a terminal lifecycle")
         progress = GoalProgress.from_contract(self.goal_contract)
         if self.state == "planned":
             return progress
@@ -5202,16 +5317,26 @@ class LabRun:
         raise ValueError(f"cannot project unknown LabRun state: {self.state}")
 
     def record_goal_verification(self, verification: GoalVerification) -> GoalProgress:
-        """Append one independent verifier receipt after Lab execution completes."""
+        """Append one verifier receipt while the LabRun is under review."""
 
         if not self.goal_contract.has_explicit_acceptance:
             raise GoalContractError("goal verification requires an explicit acceptance contract")
-        if self.state != "completed":
-            raise GoalContractError("goal verification requires a completed LabRun")
+        if self.state != "reviewing":
+            raise GoalContractError("goal verification requires a LabRun in reviewing state")
         if type(verification) is not GoalVerification:
             raise TypeError("goal verification must be GoalVerification")
         verification.validate_against(self.goal_contract)
+        if not verification.evidence_complete:
+            raise GoalContractError("goal verification requires complete evidence before it can be recorded")
         self._validate_goal_verification_evidence(verification)
+        if verification.evidence_complete:
+            results = dict(verification.predicate_results)
+            if any(
+                results.get(predicate.predicate_id) is not True
+                for predicate in self.goal_contract.acceptance
+                if predicate.required
+            ):
+                raise GoalContractError("complete goal verification must pass every required predicate")
         if self._goal_verification_from_events() is not None:
             raise GoalContractError("goal verification is already recorded")
         snapshot = self._projection_snapshot()
@@ -5238,8 +5363,8 @@ class LabRun:
 
         if not self.goal_contract.has_explicit_acceptance:
             raise GoalContractError("automatic goal evaluation requires explicit acceptance")
-        if self.state != "completed":
-            raise GoalContractError("automatic goal evaluation requires a completed LabRun")
+        if self.state != "reviewing":
+            raise GoalContractError("automatic goal evaluation requires a LabRun in reviewing state")
         if self.goal_contract.evidence_policy.require_independent_verifier:
             raise GoalContractError("automatic Lab evaluation cannot satisfy an independent-verifier policy")
         results: list[tuple[str, bool]] = []
@@ -5570,6 +5695,10 @@ class LabRun:
             raise
         self.events.append(candidate)
         event = self.events[-1]
+        if kind == "review_recorded" and isinstance(canonical_payload, dict):
+            typed_canonical = cast(dict[str, Any], canonical_payload)
+            if typed_canonical.get("record_type") == "goal_verification":
+                self._goal_verification_recorded = True
         for listener in tuple(self._event_listeners):
             listener(event)
 
@@ -5910,6 +6039,12 @@ class LabRun:
             return
         if state not in allowed.get(self.state, set[str]()):
             raise ValueError(f"invalid lab transition {self.state}->{state}")
+        if (
+            state == "completed"
+            and self.goal_contract.has_explicit_acceptance
+            and not self._goal_verification_is_successful()
+        ):
+            raise GoalContractError("explicit goal completion requires a retained successful verification")
         snapshot = self._projection_snapshot()
         self._validate_native_transition(self.state, state)
 
@@ -5961,9 +6096,16 @@ class LabRun:
             status="SUCCESS",
         )
 
+    def _ensure_goal_evidence_mutable(self) -> None:
+        """Freeze explicit-goal evidence after its single review receipt."""
+
+        if self.goal_contract.has_explicit_acceptance and self._goal_verification_recorded:
+            raise GoalContractError("goal evidence cannot change after verification is recorded")
+
     def add_source(self, source: SourceRecord) -> None:
         if self.state not in {"planned", "researching"}:
             raise ValueError(f"cannot add source in state {self.state}")
+        self._ensure_goal_evidence_mutable()
         if type(source) is not SourceRecord:
             raise ValueError("invalid or duplicate source record")
         try:
@@ -5990,6 +6132,7 @@ class LabRun:
     def add_claim(self, claim: ClaimRecord) -> None:
         if self.state not in {"researching", "experimenting", "reviewing"}:
             raise ValueError(f"cannot add claim in state {self.state}")
+        self._ensure_goal_evidence_mutable()
         if type(claim) is not ClaimRecord:
             raise ValueError("claim must cite known sources and have bounded confidence")
         try:
@@ -6014,6 +6157,7 @@ class LabRun:
     def add_hypothesis(self, hypothesis: HypothesisRecord) -> None:
         if self.state not in {"researching", "experimenting", "reviewing"}:
             raise ValueError(f"cannot add hypothesis in state {self.state}")
+        self._ensure_goal_evidence_mutable()
         if type(hypothesis) is not HypothesisRecord:
             raise ValueError("hypothesis must include falsifiers and known claim links")
         try:
@@ -6044,6 +6188,7 @@ class LabRun:
     def add_experiment(self, experiment: ExperimentSpec) -> None:
         if self.state not in {"researching", "experimenting", "reviewing"}:
             raise ValueError(f"cannot add experiment in state {self.state}")
+        self._ensure_goal_evidence_mutable()
         experiment.validate()
         if experiment.hypothesis_id not in self.hypotheses or experiment.experiment_id in self.experiments:
             raise ValueError("experiment requires controls and at least five preregistered seeds")
@@ -6066,6 +6211,7 @@ class LabRun:
     def add_observation(self, observation: ObservationRecord) -> None:
         if self.state not in {"experimenting", "reviewing"}:
             raise ValueError(f"cannot add observation in state {self.state}")
+        self._ensure_goal_evidence_mutable()
         observation.validate()
         experiment = self.experiments.get(observation.experiment_id)
         if experiment is None or observation.observation_id in self.observations:
@@ -6530,6 +6676,10 @@ class LabRun:
             if combined_blockers and self.state not in {"blocked", "aborted"}:
                 self.transition("blocked")
             elif not combined_blockers and self.state != "completed":
+                if self.goal_contract.has_explicit_acceptance and not self._goal_verification_is_successful():
+                    raise GoalContractError(
+                        "explicit goal finalization requires a retained successful verification before completion"
+                    )
                 self.begin_finalization()
                 if self.state != "reviewing":
                     self.transition("reviewing")
@@ -8478,11 +8628,19 @@ class LabRun:
         if goal_verification_events:
             if not self.goal_contract.has_explicit_acceptance:
                 raise ValueError("goal verification event requires an explicit acceptance contract")
-            if self.state != "completed" or len(goal_verification_events) != 1:
-                raise ValueError("goal verification event is not uniquely bound to completion")
+            if self.state not in {"reviewing", "completed", "blocked", "aborted"} or len(goal_verification_events) != 1:
+                raise ValueError("goal verification event is not uniquely bound to a review lifecycle")
             # Re-parse the nested receipt during restore instead of trusting
-            # the already-derived GoalProgress snapshot.
+            # the already-derived GoalProgress snapshot. The event reducer
+            # also checks that review preceded completion.
             self._goal_verification_from_events()
+            self._goal_verification_recorded = True
+        if (
+            self.state == "completed"
+            and self.goal_contract.has_explicit_acceptance
+            and not self._goal_verification_is_successful()
+        ):
+            raise ValueError("completed explicit-goal LabRun lacks a successful pre-completion verification")
 
     def _event_chain_authority(self) -> str:
         """Report native verification without making it a hidden dependency."""
@@ -8710,22 +8868,28 @@ class LabMissionSpec:
 
 def _process_execution_worker(
     connection: Any,
-    runner: Any,
+    runner: Callable[..., Any],
     args: tuple[Any, ...],
     kwargs: dict[str, Any],
 ) -> None:
     """Execute one picklable edge runner outside the Lab event-loop process."""
 
-    # Give the worker its own process group where the platform supports it.
-    # A timeout/cancellation can then contain subprocess descendants without
-    # ever targeting the parent Lab process group.
-    if os.name != "nt" and hasattr(os, "setsid"):
-        with contextlib.suppress(OSError):
-            os.setsid()
     try:
-        result = runner(*args, **kwargs)
-        if inspect.isawaitable(result):
-            result = asyncio.run(cast(Coroutine[Any, Any, Any], result))
+        # Containment must be established before invoking the runner. If the
+        # platform cannot isolate the worker, do not run its external effects
+        # in the parent Lab process group.
+        if os.name != "nt":
+            setsid = cast(Callable[[], None] | None, getattr(os, "setsid", None))
+            if setsid is None:
+                raise RuntimeError("POSIX process execution requires session isolation")
+            setsid()
+        connection.send(("READY",))
+        if connection.recv() != ("ACK",):
+            raise RuntimeError("process execution worker did not receive its containment acknowledgment")
+        with process_execution_cell_scope():
+            result = runner(*args, **kwargs)
+            if inspect.isawaitable(result):
+                result = asyncio.run(cast(Coroutine[Any, Any, Any], result))
         connection.send(("SUCCESS", result))
     except BaseException as exc:  # pragma: no cover - exercised in child process
         with contextlib.suppress(BaseException):
@@ -8737,15 +8901,131 @@ def _process_execution_worker(
             connection.close()
 
 
+class _WindowsCellJob:
+    """Windows Job Object ensuring ProcessExecutionCell children and descendants terminate on close."""
+
+    _JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE = 0x00002000
+    _JOB_OBJECT_EXTENDED_LIMIT_INFORMATION = 9
+    _PROCESS_ACCESS = 0x0001 | 0x0100  # PROCESS_TERMINATE | PROCESS_SET_QUOTA
+
+    def __init__(self) -> None:
+        import ctypes
+        from ctypes import wintypes
+
+        self._ctypes = ctypes
+        kernel32_loader = getattr(ctypes, "WinDLL", None)
+        if not callable(kernel32_loader):
+            raise OSError("Windows Job Objects are unavailable on this platform")
+        self._kernel32: Any = kernel32_loader("kernel32", use_last_error=True)
+
+        class BasicLimitInformation(ctypes.Structure):
+            _fields_ = [
+                ("PerProcessUserTimeLimit", ctypes.c_longlong),
+                ("PerJobUserTimeLimit", ctypes.c_longlong),
+                ("LimitFlags", wintypes.DWORD),
+                ("MinimumWorkingSetSize", ctypes.c_size_t),
+                ("MaximumWorkingSetSize", ctypes.c_size_t),
+                ("ActiveProcessLimit", wintypes.DWORD),
+                ("Affinity", ctypes.c_size_t),
+                ("PriorityClass", wintypes.DWORD),
+                ("SchedulingClass", wintypes.DWORD),
+            ]
+
+        class IoCounters(ctypes.Structure):
+            _fields_ = [
+                ("ReadOperationCount", ctypes.c_ulonglong),
+                ("WriteOperationCount", ctypes.c_ulonglong),
+                ("OtherOperationCount", ctypes.c_ulonglong),
+                ("ReadTransferCount", ctypes.c_ulonglong),
+                ("WriteTransferCount", ctypes.c_ulonglong),
+                ("OtherTransferCount", ctypes.c_ulonglong),
+            ]
+
+        class ExtendedLimitInformation(ctypes.Structure):
+            _fields_ = [
+                ("BasicLimitInformation", BasicLimitInformation),
+                ("IoInfo", IoCounters),
+                ("ProcessMemoryLimit", ctypes.c_size_t),
+                ("JobMemoryLimit", ctypes.c_size_t),
+                ("PeakProcessMemoryUsed", ctypes.c_size_t),
+                ("PeakJobMemoryUsed", ctypes.c_size_t),
+            ]
+
+        self._ExtendedLimitInformation = ExtendedLimitInformation
+        self._handle: Any | None = None
+
+        self._kernel32.CreateJobObjectW.argtypes = [ctypes.c_void_p, wintypes.LPCWSTR]
+        self._kernel32.CreateJobObjectW.restype = wintypes.HANDLE
+        self._kernel32.SetInformationJobObject.argtypes = [
+            wintypes.HANDLE,
+            ctypes.c_int,
+            ctypes.c_void_p,
+            wintypes.DWORD,
+        ]
+        self._kernel32.SetInformationJobObject.restype = wintypes.BOOL
+        self._kernel32.OpenProcess.argtypes = [wintypes.DWORD, wintypes.BOOL, wintypes.DWORD]
+        self._kernel32.OpenProcess.restype = wintypes.HANDLE
+        self._kernel32.AssignProcessToJobObject.argtypes = [wintypes.HANDLE, wintypes.HANDLE]
+        self._kernel32.AssignProcessToJobObject.restype = wintypes.BOOL
+        self._kernel32.TerminateJobObject.argtypes = [wintypes.HANDLE, wintypes.UINT]
+        self._kernel32.TerminateJobObject.restype = wintypes.BOOL
+        self._kernel32.CloseHandle.argtypes = [wintypes.HANDLE]
+        self._kernel32.CloseHandle.restype = wintypes.BOOL
+
+        ctypes.set_last_error(0)
+        handle = self._kernel32.CreateJobObjectW(None, None)
+        if not handle:
+            error = ctypes.get_last_error()
+            raise ctypes.WinError(error)
+        self._handle = handle
+
+        limits = ExtendedLimitInformation()
+        limits.BasicLimitInformation.LimitFlags = self._JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE
+        if not self._kernel32.SetInformationJobObject(
+            self._handle,
+            self._JOB_OBJECT_EXTENDED_LIMIT_INFORMATION,
+            ctypes.byref(limits),
+            ctypes.sizeof(limits),
+        ):
+            error = ctypes.get_last_error()
+            self.close()
+            raise ctypes.WinError(error)
+
+    def assign_process(self, pid: int) -> bool:
+        if self._handle is None or type(pid) is not int or pid <= 0:
+            return False
+        process_handle = self._kernel32.OpenProcess(self._PROCESS_ACCESS, False, pid)
+        if not process_handle:
+            return False
+        try:
+            return bool(self._kernel32.AssignProcessToJobObject(self._handle, process_handle))
+        finally:
+            self._kernel32.CloseHandle(process_handle)
+
+    def terminate(self) -> bool:
+        if self._handle is None:
+            return False
+        return bool(self._kernel32.TerminateJobObject(self._handle, 1))
+
+    def close(self) -> bool:
+        if self._handle is None:
+            return True
+        result = bool(self._kernel32.CloseHandle(self._handle))
+        self._handle = None
+        return result
+
+
 class ProcessExecutionCell:
     """Run one picklable adapter in a killable child process.
 
     This is an opt-in local isolation cell. It bounds wall time and ensures a
     Python adapter that ignores cancellation cannot keep the Lab event loop
-    alive. The worker gets a private process group on POSIX and Windows
-    termination uses the scoped ``taskkill /T`` tree operation when available;
-    memory/resource quotas and independent cross-platform Job Object/cgroup
-    evidence still require the external platform evidence recorded in the plan.
+    alive. The worker gets a private session/process group on POSIX, and its
+    verification subprocesses inherit that group so teardown contains ordinary
+    descendants. Windows termination attaches a kernel Job Object with
+    ``JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE (0x00002000)`` to atomically terminate
+    the child process tree on close/cancellation, complemented by scoped
+    ``taskkill /T`` tree fallback.
     """
 
     def __init__(
@@ -8767,10 +9047,13 @@ class ProcessExecutionCell:
         available_methods = multiprocessing.get_all_start_methods()
         if type(start_method) is not str or start_method not in available_methods:
             raise ValueError("process execution start method is unavailable")
+        if os.name != "nt" and start_method == "forkserver":
+            raise ValueError("forkserver is incompatible with POSIX process-group cleanup")
         self.runner = runner
         self.timeout_seconds = float(timeout_seconds)
         self.start_method = start_method
         self._active_process: Any | None = None
+        self._active_job: Any | None = None
 
     @property
     def active_pid(self) -> int | None:
@@ -8783,26 +9066,66 @@ class ProcessExecutionCell:
         if process is None:
             return
         pid = getattr(process, "pid", None)
+        job = getattr(process, "_aegis_job", None)
         try:
-            if process.is_alive():
-                if type(pid) is int and pid > 0 and os.name == "nt":
-                    taskkill = shutil.which("taskkill")
-                    if taskkill is not None:
-                        with contextlib.suppress(OSError, subprocess.TimeoutExpired):
-                            subprocess.run(
-                                [taskkill, "/PID", str(pid), "/T", "/F"],
-                                check=False,
-                                capture_output=True,
-                                timeout=2.0,
-                            )
-                elif type(pid) is int and pid > 0 and os.name != "nt":
-                    _signal_process_group(pid, signal.SIGTERM)
-                process.terminate()
-                process.join(timeout=1.0)
-                if process.is_alive() and hasattr(process, "kill"):
-                    if type(pid) is int and pid > 0 and os.name != "nt":
-                        _signal_process_group(pid, signal.SIGKILL)
-                    process.kill()
+            if os.name == "nt":
+                if job is not None:
+                    with contextlib.suppress(Exception):
+                        job.terminate()
+                    with contextlib.suppress(Exception):
+                        job.close()
+                    with contextlib.suppress(Exception):
+                        process._aegis_job = None
+                if process.is_alive():
+                    if type(pid) is int and pid > 0:
+                        taskkill = shutil.which("taskkill")
+                        if taskkill is not None:
+                            with contextlib.suppress(OSError, subprocess.TimeoutExpired):
+                                subprocess.run(
+                                    [taskkill, "/PID", str(pid), "/T", "/F"],
+                                    check=False,
+                                    capture_output=True,
+                                    timeout=2.0,
+                                )
+                    process.terminate()
+                    process.join(timeout=1.0)
+                    if process.is_alive() and hasattr(process, "kill"):
+                        process.kill()
+                        process.join(timeout=1.0)
+                return
+            if type(pid) is int and pid > 0:
+                if not _process_child_is_waitable(process, pid):
+                    return
+                group_leader = False
+                with contextlib.suppress(OSError):
+                    group_leader = os.getpgid(pid) == pid and os.getsid(pid) == pid
+                if group_leader:
+                    group_term_sent = False
+                    with contextlib.suppress(OSError):
+                        os.killpg(pid, signal.SIGTERM)
+                        group_term_sent = True
+                    if not group_term_sent and _process_child_is_waitable(process, pid):
+                        with contextlib.suppress(OSError):
+                            process.terminate()
+                    _wait_for_process_exit_without_reaping(process, timeout=1.0)
+                    # Do not reap the group leader until after this final kill:
+                    # its PID cannot be recycled while it remains our child.
+                    if _process_child_is_waitable(process, pid):
+                        with contextlib.suppress(OSError):
+                            os.killpg(pid, signal.SIGKILL)
+                    if hasattr(process, "_aegis_reap_allowed"):
+                        process._aegis_reap_allowed = True
+                    process.join(timeout=1.0)
+                    if process.is_alive() and _process_child_is_waitable(process, pid) and hasattr(process, "kill"):
+                        process.kill()
+                        process.join(timeout=1.0)
+                else:
+                    process.terminate()
+                    _wait_for_process_exit_without_reaping(process, timeout=1.0)
+                    if process.is_alive() and _process_child_is_waitable(process, pid) and hasattr(process, "kill"):
+                        process.kill()
+                    if hasattr(process, "_aegis_reap_allowed"):
+                        process._aegis_reap_allowed = True
                     process.join(timeout=1.0)
         except AssertionError, OSError:
             # A process that failed before start or already exited is already
@@ -8812,49 +9135,71 @@ class ProcessExecutionCell:
     async def __call__(self, *args: Any, **kwargs: Any) -> Any:
         if self._active_process is not None:
             raise RuntimeError("process execution cell is busy")
+        deadline = time.monotonic() + self.timeout_seconds
         context: Any = multiprocessing.get_context(self.start_method)
-        parent, child = context.Pipe(duplex=False)
+        parent, child = context.Pipe(duplex=True)
         process: Any = context.Process(
             target=_process_execution_worker,
             args=(child, self.runner, tuple(args), dict(kwargs)),
             name="aegis-lab-process-cell",
         )
         process.daemon = True
+        job: Any | None = None
+        if os.name == "nt":
+            with contextlib.suppress(Exception):
+                job = _WindowsCellJob()
+                self._active_job = job
+        if os.name != "nt":
+            # BaseProcess.start() calls _cleanup(), which polls tracked Popen
+            # objects. On POSIX Popen.poll() uses waitpid() and reaps the worker,
+            # freeing its PID before this cell has sent the final group kill.
+            process._aegis_popen_factory = context.Process._Popen
+            process._Popen = _process_execution_cell_popen
         started = False
         self._active_process = process
         try:
+            if time.monotonic() >= deadline:
+                raise TimeoutError("process execution cell timed out")
             process.start()
             started = True
+            process._aegis_job = job
             child.close()
-            deadline = time.monotonic() + self.timeout_seconds
+            if job is not None and getattr(process, "pid", None):
+                with contextlib.suppress(Exception):
+                    job.assign_process(process.pid)
             while True:
+                remaining = deadline - time.monotonic()
+                if remaining <= 0:
+                    raise TimeoutError("process execution cell timed out")
                 if parent.poll():
                     raw_message: Any = parent.recv()
                     if not isinstance(raw_message, tuple):
                         raise RuntimeError("process execution runner returned an invalid message")
                     message = cast(tuple[Any, ...], raw_message)
+                    if time.monotonic() >= deadline:
+                        raise TimeoutError("process execution cell timed out")
+                    if message == ("READY",):
+                        parent.send(("ACK",))
+                        continue
                     if message and message[0] == "SUCCESS":
                         return message[1]
                     if len(message) >= 3 and message[0] == "ERROR":
                         raise RuntimeError(f"process execution runner failed: {message[1]}: {message[2]}")
                     raise RuntimeError("process execution runner returned an invalid message")
-                if not process.is_alive():
-                    process.join()
+                if wait_connections((process.sentinel,), timeout=0):
                     raise RuntimeError("process execution runner exited without a result")
-                remaining = deadline - time.monotonic()
-                if remaining <= 0:
-                    self._terminate_process(process)
-                    raise TimeoutError("process execution cell timed out")
                 await asyncio.sleep(min(0.02, max(0.001, remaining)))
         except asyncio.CancelledError:
-            if started:
-                self._terminate_process(process)
             raise
         finally:
             if started:
                 self._terminate_process(process)
                 with contextlib.suppress(AssertionError):
                     process.join(timeout=1.0)
+            if job is not None:
+                with contextlib.suppress(Exception):
+                    job.close()
+                self._active_job = None
             with contextlib.suppress(OSError, ValueError):
                 child.close()
             with contextlib.suppress(OSError, ValueError):
@@ -9400,10 +9745,7 @@ class Lab:
         )
         merged["lab_goal_contract_explicit"] = spec.goal_contract is not None
         if self.policy.replay_archive:
-            default_replay_directory = self.policy.replay_directory or os.environ.get(
-                "AEGIS_LAB_REPLAY_DIR",
-                str(Path.cwd() / ".aegis" / "lab-replay"),
-            )
+            default_replay_directory = self.policy.replay_directory or resolve_lab_replay_directory()
             merged.setdefault("lab_replay_directory", default_replay_directory)
         raw_browser = merged.pop("browser", False)
         if type(raw_browser) is not bool:
@@ -10937,10 +11279,14 @@ class LabApplication:
         remaining = _MAX_CONTROLLER_TOOL_RESULT_CONTEXT_BYTES
         items: list[dict[str, object]] = []
         for outcome in reversed(outcomes):
+            result = outcome.result
+            if isinstance(result, dict) and "collected_test_ids" in result:
+                typed_result = cast(dict[str, Any], result)
+                result = {k: v for k, v in typed_result.items() if k != "collected_test_ids"}
             item: dict[str, object] = {
                 "call_id": outcome.call_id,
                 "status": outcome.status,
-                "result": outcome.result,
+                "result": result,
             }
             try:
                 encoded = json.dumps(item, ensure_ascii=False, sort_keys=True, allow_nan=False).encode("utf-8")
@@ -10951,7 +11297,7 @@ class LabApplication:
                     "call_id": outcome.call_id,
                     "status": outcome.status,
                     "result_omitted": True,
-                    "result_sha256": _hash(outcome.result),
+                    "result_sha256": _hash(result),
                 }
                 encoded = json.dumps(item, ensure_ascii=False, sort_keys=True, allow_nan=False).encode("utf-8")
                 if len(encoded) > remaining:

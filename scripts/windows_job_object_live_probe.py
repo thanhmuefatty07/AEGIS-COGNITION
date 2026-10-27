@@ -136,7 +136,13 @@ def probe(output: Path | None = None) -> dict[str, object]:
     kernel32.AssignProcessToJobObject.restype = ctypes.c_int
     kernel32.IsProcessInJob.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.POINTER(ctypes.c_int)]
     kernel32.IsProcessInJob.restype = ctypes.c_int
-    kernel32.QueryInformationJobObject.argtypes = [ctypes.c_void_p, ctypes.c_int, ctypes.c_void_p, ctypes.c_ulong, ctypes.POINTER(ctypes.c_ulong)]
+    kernel32.QueryInformationJobObject.argtypes = [
+        ctypes.c_void_p,
+        ctypes.c_int,
+        ctypes.c_void_p,
+        ctypes.c_ulong,
+        ctypes.POINTER(ctypes.c_ulong),
+    ]
     kernel32.QueryInformationJobObject.restype = ctypes.c_int
     kernel32.TerminateJobObject.argtypes = [ctypes.c_void_p, ctypes.c_uint]
     kernel32.TerminateJobObject.restype = ctypes.c_int
@@ -155,9 +161,7 @@ def probe(output: Path | None = None) -> dict[str, object]:
     try:
         limits = ExtendedLimitInformation()
         limits.basic_limit_information.limit_flags = (
-            JOB_OBJECT_LIMIT_PROCESS_MEMORY
-            | JOB_OBJECT_LIMIT_ACTIVE_PROCESS
-            | JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE
+            JOB_OBJECT_LIMIT_PROCESS_MEMORY | JOB_OBJECT_LIMIT_ACTIVE_PROCESS | JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE
         )
         limits.basic_limit_information.active_process_limit = 1
         limits.process_memory_limit = 128 * 1024 * 1024
@@ -238,9 +242,7 @@ def probe(output: Path | None = None) -> dict[str, object]:
                     pressure_child_command(), stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
                 )
                 assigned_pressure = bool(
-                    kernel32.AssignProcessToJobObject(
-                        pressure_job, ctypes.c_void_p(pressure_child._handle)
-                    )
+                    kernel32.AssignProcessToJobObject(pressure_job, ctypes.c_void_p(pressure_child._handle))
                 )
                 report["checks"]["memory_pressure_child_assigned"] = assigned_pressure
                 if assigned_pressure:
@@ -266,8 +268,7 @@ def probe(output: Path | None = None) -> dict[str, object]:
                     )
                     pressure_terminated = pressure_child.poll() is not None
                     report["checks"]["memory_pressure_process_terminated_by_job"] = (
-                        pressure_terminated
-                        and after.total_terminated_processes > baseline.total_terminated_processes
+                        pressure_terminated and after.total_terminated_processes > baseline.total_terminated_processes
                     )
                     report["checks"]["memory_pressure_kill_observed"] = report["checks"][
                         "memory_pressure_process_terminated_by_job"
@@ -290,9 +291,7 @@ def probe(output: Path | None = None) -> dict[str, object]:
             "deadline_cancellation_observed",
         ]
         report["status"] = (
-            "PARTIALLY LIVE VERIFIED"
-            if all(checks.get(name) is True for name in required)
-            else "NOT VERIFIED"
+            "PARTIALLY LIVE VERIFIED" if all(checks.get(name) is True for name in required) else "NOT VERIFIED"
         )
         if report["status"] != "PARTIALLY LIVE VERIFIED":
             report["reason"] = "one or more live Job Object checks did not pass"

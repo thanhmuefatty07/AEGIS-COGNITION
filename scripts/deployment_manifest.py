@@ -556,21 +556,16 @@ def build_deployment_manifest(root: str | Path) -> DeploymentManifest:
     python_bridge_ready = (root_path / "core" / "python" / "bridge.py").exists()
     rust_core_ready = (root_path / "core" / "rust" / "src" / "lib.rs").exists()
     packaging_ready = (root_path / "pyproject.toml").exists() and python_bridge_ready and rust_core_ready
-    service_surface_ready = (
-        (root_path / "scripts" / "run_checks.py").exists()
-        and (root_path / "core" / "python" / "service.py").exists()
-    )
+    service_surface_ready = (root_path / "scripts" / "run_checks.py").exists() and (
+        root_path / "core" / "python" / "service.py"
+    ).exists()
     operator_api_ready = (root_path / "core" / "python" / "operator_api.py").exists()
-    cargo_manifest_ready = (
-        (root_path / "Cargo.toml").exists()
-        and (root_path / "core" / "rust" / "Cargo.toml").exists()
-    )
+    cargo_manifest_ready = (root_path / "Cargo.toml").exists() and (root_path / "core" / "rust" / "Cargo.toml").exists()
     docs_ready = (root_path / "docs" / "README.md").is_file()
     artifacts_dir_ready = artifacts_dir.is_dir()
 
     artifact_hashes = {
-        artifact_name: _file_hash(artifacts_dir / artifact_name)
-        for artifact_name in REQUIRED_RELEASE_ARTIFACTS
+        artifact_name: _file_hash(artifacts_dir / artifact_name) for artifact_name in REQUIRED_RELEASE_ARTIFACTS
     }
     packaging_smoke_gate = _read_json(artifacts_dir / "production_packaging_smoke_gate_report.json")
     production_packaging_smoke_present = (
@@ -594,17 +589,12 @@ def build_deployment_manifest(root: str | Path) -> DeploymentManifest:
     container_image_attestation_present = (
         external_deployment_smoke_gate.get("container_image_attestation_present") is True
     )
-    external_deployment_smoke_present = (
-        external_deployment_smoke_gate.get("external_deployment_smoke_present") is True
-    )
+    external_deployment_smoke_present = external_deployment_smoke_gate.get("external_deployment_smoke_present") is True
     non_core_commit_authority_count = sum(
-        1
-        for boundary in SERVICE_BOUNDARIES
-        if boundary["name"] != "aegis-core" and boundary["can_commit_replay"]
+        1 for boundary in SERVICE_BOUNDARIES if boundary["name"] != "aegis-core" and boundary["can_commit_replay"]
     )
     topology_cannot_weaken_policy = all(
-        boundary["policy_window_required"] and not boundary["policy_bypass_allowed"]
-        for boundary in SERVICE_BOUNDARIES
+        boundary["policy_window_required"] and not boundary["policy_bypass_allowed"] for boundary in SERVICE_BOUNDARIES
     )
     remote_workers_candidate_only = all(
         boundary["candidate_only"] and not boundary["can_commit_replay"]
@@ -636,10 +626,14 @@ def build_deployment_manifest(root: str | Path) -> DeploymentManifest:
     active_production_blockers = _active_production_blockers(
         blockers=production_blockers,
         external_signed_attestation_present=external_signed_attestation_present,
-        real_multi_node_cluster_present=tcp_cluster_soak_gate.get("real_multi_node_cluster_test_present") is True,
+        real_multi_node_cluster_present=(
+            tcp_cluster_soak_gate.get("truth_claim") is True
+            and tcp_cluster_soak_gate.get("real_multi_node_cluster_test_present") is True
+        ),
         full_quickjs_interpreter_present=(
             quickjs_cold_start_gate.get("real_quickjs_interpreter_cold_start_present") is True
-            or quickjs_cold_start_gate.get("quickjs_cold_start_evidence", {}).get("full_quickjs_interpreter_present") is True
+            or quickjs_cold_start_gate.get("quickjs_cold_start_evidence", {}).get("full_quickjs_interpreter_present")
+            is True
         ),
         live_provider_traffic_present=dynamic_provider_fallback_gate.get("live_provider_traffic_present") is True,
         external_deployment_smoke_present=external_deployment_smoke_present,
@@ -766,7 +760,9 @@ def build_deployment_manifest(root: str | Path) -> DeploymentManifest:
         _check("production_packaging_smoke_present", production_packaging_smoke_present),
         _check("external_deployment_smoke_gate_bound", _nonzero_hex(external_deployment_smoke_hash)),
         _check("topology_contract_hash_bound", _nonzero_hex(topology_contract_hash)),
-        _check("topology_contract_schema_bound", topology_contract.get("schema") == "aegis-deployment-topology-contract-v1"),
+        _check(
+            "topology_contract_schema_bound", topology_contract.get("schema") == "aegis-deployment-topology-contract-v1"
+        ),
         _check("required_release_artifacts_hashed", all(artifact_hashes.values())),
         _check("release_manifest_hash_bound", _nonzero_hex(release_manifest_hash)),
         _check("production_status_consistent", production_deployable == (len(active_production_blockers) == 0)),
@@ -895,9 +891,7 @@ def _single_writer_placement_enforced(
     nodes: tuple[dict[str, Any], ...],
 ) -> bool:
     writer_placements = [
-        placement
-        for placement in placements
-        if placement["state_writer"] or placement["can_commit_replay"]
+        placement for placement in placements if placement["state_writer"] or placement["can_commit_replay"]
     ]
     writer_nodes = [node for node in nodes if node["commit_authority"]]
     return (
@@ -928,13 +922,17 @@ def _network_edges_candidate_only(edges: tuple[dict[str, Any], ...]) -> bool:
 def _durable_storage_defined(volumes: tuple[dict[str, Any], ...]) -> bool:
     by_name = {volume["name"]: volume for volume in volumes}
     required = ("replay-ledger", "shadow-seals", "evidence-artifacts")
-    return all(
-        name in by_name
-        and by_name[name]["owner_service"] == "aegis-core"
-        and by_name[name]["fsync_required"]
-        and by_name[name]["encrypted_at_rest_required"]
-        for name in required
-    ) and by_name["replay-ledger"]["append_only"] and by_name["shadow-seals"]["append_only"]
+    return (
+        all(
+            name in by_name
+            and by_name[name]["owner_service"] == "aegis-core"
+            and by_name[name]["fsync_required"]
+            and by_name[name]["encrypted_at_rest_required"]
+            for name in required
+        )
+        and by_name["replay-ledger"]["append_only"]
+        and by_name["shadow-seals"]["append_only"]
+    )
 
 
 def _topology_contract_materialized(contract: dict[str, Any]) -> bool:
@@ -975,11 +973,7 @@ def _topology_contract_materialized(contract: dict[str, Any]) -> bool:
         and all(key in contract for key in required_top_level)
         and all(key in invariants for key in required_invariants)
         and invariants.get("non_core_commit_authority_count") == 0
-        and all(
-            invariants.get(key) is True
-            for key in required_invariants
-            if key != "non_core_commit_authority_count"
-        )
+        and all(invariants.get(key) is True for key in required_invariants if key != "non_core_commit_authority_count")
     )
 
 
@@ -1028,7 +1022,9 @@ def _load_deployment_policy(root_path: Path) -> tuple[tuple[dict[str, Any], ...]
     registry_path = root_path / NOT_VERIFIED_REGISTRY_RELATIVE_PATH
     policy = _read_json(policy_path)
     blockers_value = policy.get("blockers")
-    blockers = tuple(item for item in blockers_value if isinstance(item, dict)) if isinstance(blockers_value, list) else ()
+    blockers = (
+        tuple(item for item in blockers_value if isinstance(item, dict)) if isinstance(blockers_value, list) else ()
+    )
     if not blockers:
         blockers = PRODUCTION_BLOCKERS
     registry = _read_json(registry_path)
@@ -1070,12 +1066,16 @@ def _production_blockers_declared(
         for registry_id in blocker.get("registry_ids", [])
         if isinstance(registry_id, str)
     }
-    return bool(observed_ids) and len(observed_ids) == len(blockers) and all(
-        blocker["blocks_production"] is True
-        and blocker["evidence_artifact"] in artifact_names
-        and referenced_registry_ids
-        and set(blocker.get("registry_ids", [])) <= registry_ids
-        for blocker in blockers
+    return (
+        bool(observed_ids)
+        and len(observed_ids) == len(blockers)
+        and all(
+            blocker["blocks_production"] is True
+            and blocker["evidence_artifact"] in artifact_names
+            and referenced_registry_ids
+            and set(blocker.get("registry_ids", [])) <= registry_ids
+            for blocker in blockers
+        )
     )
 
 
@@ -1133,7 +1133,7 @@ def _config_layers(root_path: Path) -> tuple[dict[str, str], ...]:
 def _read_json(path: Path) -> dict[str, Any]:
     try:
         payload = json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError, UnicodeDecodeError):
+    except OSError, json.JSONDecodeError, UnicodeDecodeError:
         return {}
     return payload if isinstance(payload, dict) else {}
 

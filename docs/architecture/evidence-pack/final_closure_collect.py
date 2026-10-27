@@ -6,7 +6,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[3]
 OUT = Path(__file__).resolve().parent
-TEMP_ROOT = Path(os.environ.get("TEMP", "C:/Windows/Temp")) / "aegis-final-design-closure"
+TEMP_ROOT = Path(os.environ.get("TEMP", str(ROOT / ".local" / "tmp"))) / "aegis-final-design-closure"
 VERSION = "aegis-final-design-closure-v1"
 GENERATED = datetime.now(timezone.utc).isoformat()
 

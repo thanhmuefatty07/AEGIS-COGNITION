@@ -107,12 +107,10 @@ def _approval_argument_preview(arguments: Mapping[str, object]) -> list[dict[str
         elif value is None or type(value) in (bool, int, float):
             try:
                 encoded = json.dumps(value, ensure_ascii=False, allow_nan=False)
-            except (TypeError, ValueError):
+            except TypeError, ValueError:
                 display_value = "REDACTED"
             else:
-                display_value = (
-                    encoded if len(encoded) <= _MAX_APPROVAL_VALUE_CHARS else "REDACTED"
-                )
+                display_value = encoded if len(encoded) <= _MAX_APPROVAL_VALUE_CHARS else "REDACTED"
         else:
             display_value = "REDACTED"
         preview.append({"key": key[:128], "value": display_value})
@@ -121,15 +119,117 @@ def _approval_argument_preview(arguments: Mapping[str, object]) -> list[dict[str
     return preview
 
 
+def _project_context_inclusion(value: object) -> dict[str, object] | None:
+    if not isinstance(value, Mapping) or value.get("schema") != "aegis-context-inclusion-manifest-v1":
+        return None
+    raw_items = value.get("items")
+    if not isinstance(raw_items, list) or len(raw_items) > 100:
+        return None
+    included = 0
+    omitted = 0
+    reasons: set[str] = set()
+    for item in raw_items:
+        if not isinstance(item, Mapping):
+            return None
+        status = item.get("status")
+        if status == "INCLUDED":
+            included += 1
+        elif status == "OMITTED":
+            omitted += 1
+            reason = item.get("omitted_reason")
+            if reason not in {"PROMPT_LIMIT"}:
+                return None
+            reasons.add(str(reason))
+        else:
+            return None
+    prompt_chars = _positive_int(value.get("prompt_chars"))
+    prompt_limit_chars = _positive_int(value.get("prompt_limit_chars"))
+    manifest_hash = _text(value.get("manifest_sha256"), limit=64).lower()
+    if (
+        value.get("status") != "COMPOSED"
+        or prompt_chars is None
+        or prompt_limit_chars is None
+        or len(manifest_hash) != 64
+        or any(character not in "0123456789abcdef" for character in manifest_hash)
+    ):
+        return None
+    return {
+        "schema": "aegis-context-inclusion-inspection-v1",
+        "status": "COMPOSED",
+        "manifest_sha256": manifest_hash,
+        "prompt_chars": prompt_chars,
+        "prompt_limit_chars": prompt_limit_chars,
+        "selected_count": len(raw_items),
+        "included_count": included,
+        "omitted_count": omitted,
+        "omitted_reasons": sorted(reasons),
+        "deduplicated_turn_count": _positive_int(value.get("deduplicated_turn_count")) or 0,
+    }
+
+
+def _project_provider_attempt(value: object) -> dict[str, object] | None:
+    if not isinstance(value, Mapping) or value.get("schema") != "aegis-provider-request-attempt-v1":
+        return None
+    ordinal = _positive_int(value.get("ordinal"))
+    payload_bytes = _positive_int(value.get("payload_bytes"))
+    payload_hash = _text(value.get("payload_sha256"), limit=64).lower()
+    if (
+        value.get("state") != "DISPATCH_ATTEMPTED"
+        or ordinal is None
+        or ordinal < 1
+        or payload_bytes is None
+        or payload_bytes < 1
+        or len(payload_hash) != 64
+        or any(character not in "0123456789abcdef" for character in payload_hash)
+    ):
+        return None
+    return {
+        "schema": "aegis-provider-request-attempt-inspection-v1",
+        "ordinal": ordinal,
+        "state": "DISPATCH_ATTEMPTED",
+        "payload_sha256": payload_hash,
+        "payload_bytes": payload_bytes,
+    }
+
+
 def _context_from_snapshot(snapshot: ConversationSnapshot, source_revision: str | None) -> dict[str, object]:
     latest: dict[str, object] = {}
-    for checkpoint in snapshot.checkpoints:
+    latest_inclusion: dict[str, object] | None = None
+    latest_attempt: dict[str, object] | None = None
+    request_attempt_count = 0
+    latest_execution_id: str | None = None
+    latest_assistant_turn = max(
+        (turn for turn in snapshot.turns if turn.role == "assistant"),
+        key=lambda turn: (turn.ordinal, turn.turn_id),
+        default=None,
+    )
+    if latest_assistant_turn is not None:
+        execution_by_id = {execution.execution_id: execution for execution in snapshot.executions}
+        selected_execution = execution_by_id.get(latest_assistant_turn.execution_id or "")
+        if selected_execution is not None and selected_execution.turn_id == latest_assistant_turn.turn_id:
+            latest_execution_id = selected_execution.execution_id
+        elif latest_assistant_turn.execution_id is None:
+            executions_for_turn = [
+                execution for execution in snapshot.executions if execution.turn_id == latest_assistant_turn.turn_id
+            ]
+            if len(executions_for_turn) == 1:
+                latest_execution_id = executions_for_turn[0].execution_id
+    for checkpoint in sorted(snapshot.checkpoints, key=lambda item: item.sequence):
+        if latest_execution_id is None or checkpoint.execution_id != latest_execution_id:
+            continue
         try:
             decoded = json.loads(checkpoint.continuation_json)
-        except (TypeError, ValueError):
+        except TypeError, ValueError:
             continue
         if isinstance(decoded, dict):
-            latest = decoded
+            latest.update({key: item for key, item in decoded.items() if item is not None})
+            inclusion = _project_context_inclusion(decoded.get("context_inclusion"))
+            if inclusion is not None:
+                latest_inclusion = inclusion
+            attempt = _project_provider_attempt(decoded.get("provider_request_attempt"))
+            if attempt is not None:
+                latest_attempt = attempt
+                request_attempt_count += 1
 
     def value(key: str) -> object:
         candidate = latest.get(key)
@@ -140,7 +240,7 @@ def _context_from_snapshot(snapshot: ConversationSnapshot, source_revision: str 
     captured_revision = _text(value("source_revision"), limit=256) or source_revision
     return {
         "schema": "aegis-desktop-context-inspection-v1",
-        "status": "AVAILABLE" if manifest_hash else "NOT_CAPTURED",
+        "status": "COMPOSED" if latest_inclusion is not None else "AVAILABLE" if manifest_hash else "NOT_CAPTURED",
         "source_revision": captured_revision,
         "context_manifest_hash": manifest_hash or None,
         "prompt_hash": prompt_hash or None,
@@ -148,6 +248,9 @@ def _context_from_snapshot(snapshot: ConversationSnapshot, source_revision: str 
         "token_count": _positive_int(value("context_token_count")),
         "item_count": _positive_int(value("context_item_count")),
         "selection_backend": _text(value("context_selection_backend"), limit=128) or None,
+        "inclusion": latest_inclusion,
+        "request_attempt": latest_attempt,
+        "request_attempt_count": request_attempt_count,
         "history_turn_count": len(snapshot.turns),
         "sensitive_content": "REDACTED",
     }
@@ -226,7 +329,7 @@ def _pending_approvals(snapshot: ConversationSnapshot) -> list[dict[str, object]
         argument_preview: list[dict[str, str]] = []
         try:
             arguments = json.loads(call.arguments_json)
-        except (TypeError, ValueError):
+        except TypeError, ValueError:
             arguments = None
         if isinstance(arguments, dict):
             argument_keys = sorted(str(key)[:128] for key in arguments)[:32]
@@ -318,27 +421,20 @@ def build_subagent_graph(
             node["status"] = "RUNNING"
             node["role"] = _text(payload_map.get("role"), limit=128)
             node["dependencies"] = [
-                item for item in payload_map.get("dependency_ids", [])
-                if type(item) is int and item > 0
+                item for item in payload_map.get("dependency_ids", []) if type(item) is int and item > 0
             ][:64]
             node["capabilities"] = [
-                _text(item, limit=128)
-                for item in payload_map.get("capabilities", [])
-                if isinstance(item, str)
+                _text(item, limit=128) for item in payload_map.get("capabilities", []) if isinstance(item, str)
             ][:64]
             node["side_effect_class"] = _text(payload_map.get("side_effect_class"), limit=128)
         elif kind == "TASK_RESULT":
             node["status"] = _text(payload_map.get("status"), limit=64) or "COMPLETED"
             node["summary"] = _text(payload_map.get("summary"), limit=512)
             node["uncertainty"] = [
-                _text(item, limit=256)
-                for item in payload_map.get("uncertainty", [])
-                if isinstance(item, str)
+                _text(item, limit=256) for item in payload_map.get("uncertainty", []) if isinstance(item, str)
             ][:16]
             node["blockers"] = [
-                _text(item, limit=256)
-                for item in payload_map.get("blockers", [])
-                if isinstance(item, str)
+                _text(item, limit=256) for item in payload_map.get("blockers", []) if isinstance(item, str)
             ][:16]
 
     ordered = sorted(nodes.values(), key=lambda node: int(node["task_id"]))

@@ -120,12 +120,13 @@ def supports_vision_for_model(model: Any) -> bool:
     # Older catalogs used to persist ``input:image`` together with the
     # name-only ``vision:inferred`` marker.  Treat that legacy combination as
     # unverified until the next authenticated catalog refresh replaces it.
-    if "vision:inferred" in capabilities and "vision" not in capabilities and "capability:provider-profile" not in capabilities:
+    if (
+        "vision:inferred" in capabilities
+        and "vision" not in capabilities
+        and "capability:provider-profile" not in capabilities
+    ):
         return False
-    return any(
-        marker in capabilities
-        for marker in ("vision", "input:image", "image", "multimodal")
-    )
+    return any(marker in capabilities for marker in ("vision", "input:image", "image", "multimodal"))
 
 
 def max_image_inputs_for_model(model: Any) -> int | None:
@@ -152,6 +153,8 @@ def input_modalities_for_model(model: Any) -> tuple[str, ...]:
 @dataclass(frozen=True)
 class EgressGrant:
     grant_id: str
+    workspace_id: str
+    owner_id: str
     connection_id: str
     connection_revision: int
     data_class: str
@@ -165,6 +168,8 @@ class EgressGrant:
     def from_mapping(cls, data: dict[str, Any]) -> EgressGrant:
         return cls(
             grant_id=str(data["grant_id"]),
+            workspace_id=str(data.get("workspace_id", "default")),
+            owner_id=str(data.get("owner_id", "local-profile")),
             connection_id=str(data["connection_id"]),
             connection_revision=int(data["connection_revision"]),
             data_class=str(data["data_class"]),
@@ -221,11 +226,7 @@ class ConnectionCatalog:
 
     def list_connections(self) -> tuple[ConnectionRecord, ...]:
         raw = json.loads(self._native.aegis_list_connections())
-        return tuple(
-            ConnectionRecord.from_mapping(item)
-            for item in raw.get("records", [])
-            if isinstance(item, dict)
-        )
+        return tuple(ConnectionRecord.from_mapping(item) for item in raw.get("records", []) if isinstance(item, dict))
 
     def discover_models(
         self,
@@ -369,93 +370,213 @@ class ConnectionCatalog:
     def list_models(self, connection_id: str) -> tuple[ModelDescriptor, ...]:
         self._require_text(connection_id, "connection_id")
         raw = json.loads(self._native.aegis_list_model_descriptors(connection_id))
-        return tuple(
-            ModelDescriptor.from_mapping(item)
-            for item in raw.get("records", [])
-            if isinstance(item, dict)
-        )
+        return tuple(ModelDescriptor.from_mapping(item) for item in raw.get("records", []) if isinstance(item, dict))
 
     def get_egress(
         self,
+        workspace_id: str,
+        owner_id: str,
         connection_id: str,
-        data_class: str,
-        operation: str,
+        data_class: str | None = None,
+        operation: str | None = None,
     ) -> EgressGrant | None:
         """Read one grant so a reconnect can update it with its revision."""
 
+        if data_class is None and operation is None:
+            actual_workspace_id = "default"
+            actual_owner_id = "local-profile"
+            actual_connection_id = workspace_id
+            actual_data_class = owner_id
+            actual_operation = connection_id
+        else:
+            if data_class is None or operation is None:
+                raise TypeError("get_egress requires either 3 or 5 positional arguments")
+            actual_workspace_id = workspace_id
+            actual_owner_id = owner_id
+            actual_connection_id = connection_id
+            actual_data_class = data_class
+            actual_operation = operation
+
         for value, name in (
-            (connection_id, "connection_id"),
-            (data_class, "data_class"),
-            (operation, "operation"),
+            (actual_workspace_id, "workspace_id"),
+            (actual_owner_id, "owner_id"),
+            (actual_connection_id, "connection_id"),
+            (actual_data_class, "data_class"),
+            (actual_operation, "operation"),
         ):
             self._require_text(value, name)
-        raw = self._native.aegis_get_connection_egress(connection_id, data_class, operation)
+        try:
+            raw = self._native.aegis_get_connection_egress(
+                actual_workspace_id, actual_owner_id, actual_connection_id, actual_data_class, actual_operation
+            )
+        except TypeError:
+            raw = self._native.aegis_get_connection_egress(actual_connection_id, actual_data_class, actual_operation)
         record = json.loads(raw).get("record")
         return EgressGrant.from_mapping(record) if isinstance(record, dict) else None
 
     def grant_egress(
         self,
+        workspace_id: str,
+        owner_id: str,
         grant_id: str,
         connection_id: str,
-        data_class: str,
-        operation: str,
+        data_class: str | None = None,
+        operation: str | None = None,
         *,
         expires_at_ms: int | None = None,
         expected_revision: int | None = None,
         timestamp: int | None = None,
     ) -> EgressGrant:
+        if data_class is None and operation is None:
+            actual_workspace_id = "default"
+            actual_owner_id = "local-profile"
+            actual_grant_id = workspace_id
+            actual_connection_id = owner_id
+            actual_data_class = grant_id
+            actual_operation = connection_id
+        else:
+            if data_class is None or operation is None:
+                raise TypeError("grant_egress requires either 4 or 6 positional arguments")
+            actual_workspace_id = workspace_id
+            actual_owner_id = owner_id
+            actual_grant_id = grant_id
+            actual_connection_id = connection_id
+            actual_data_class = data_class
+            actual_operation = operation
+
         for value, name in (
-            (grant_id, "grant_id"),
-            (connection_id, "connection_id"),
-            (data_class, "data_class"),
-            (operation, "operation"),
+            (actual_workspace_id, "workspace_id"),
+            (actual_owner_id, "owner_id"),
+            (actual_grant_id, "grant_id"),
+            (actual_connection_id, "connection_id"),
+            (actual_data_class, "data_class"),
+            (actual_operation, "operation"),
         ):
             self._require_text(value, name)
         event_time = int(time.time() * 1000) if timestamp is None else int(timestamp)
-        raw = self._native.aegis_grant_connection_egress(
-            grant_id,
-            connection_id,
-            data_class,
-            operation,
-            expires_at_ms,
-            expected_revision,
-            event_time,
-        )
+        try:
+            raw = self._native.aegis_grant_connection_egress(
+                actual_workspace_id,
+                actual_owner_id,
+                actual_grant_id,
+                actual_connection_id,
+                actual_data_class,
+                actual_operation,
+                expires_at_ms,
+                expected_revision,
+                event_time,
+            )
+        except TypeError as error:
+            if actual_workspace_id != "default" or actual_owner_id != "local-profile":
+                raise RuntimeError("Native bridge does not support scoped connection egress grant") from error
+            raw = self._native.aegis_grant_connection_egress(
+                actual_grant_id,
+                actual_connection_id,
+                actual_data_class,
+                actual_operation,
+                expires_at_ms,
+                expected_revision,
+                event_time,
+            )
         return EgressGrant.from_mapping(json.loads(raw)["record"])
 
     def revoke_egress(
         self,
-        grant_id: str,
+        workspace_id: str,
+        owner_id: str | None = None,
+        grant_id: str | None = None,
         *,
         expected_revision: int,
         timestamp: int | None = None,
     ) -> EgressGrant:
-        self._require_text(grant_id, "grant_id")
+        if owner_id is None and grant_id is None:
+            actual_workspace_id = "default"
+            actual_owner_id = "local-profile"
+            actual_grant_id = workspace_id
+        else:
+            if owner_id is None or grant_id is None:
+                raise TypeError("revoke_egress requires either 1 or 3 positional arguments")
+            actual_workspace_id = workspace_id
+            actual_owner_id = owner_id
+            actual_grant_id = grant_id
+
+        for value, name in (
+            (actual_workspace_id, "workspace_id"),
+            (actual_owner_id, "owner_id"),
+            (actual_grant_id, "grant_id"),
+        ):
+            self._require_text(value, name)
         event_time = int(time.time() * 1000) if timestamp is None else int(timestamp)
-        raw = self._native.aegis_revoke_connection_egress(grant_id, int(expected_revision), event_time)
+        try:
+            raw = self._native.aegis_revoke_connection_egress(
+                actual_workspace_id,
+                actual_owner_id,
+                actual_grant_id,
+                int(expected_revision),
+                event_time,
+            )
+        except TypeError as error:
+            if actual_workspace_id != "default" or actual_owner_id != "local-profile":
+                raise RuntimeError("Native bridge does not support scoped connection egress revoke") from error
+            raw = self._native.aegis_revoke_connection_egress(
+                actual_grant_id,
+                int(expected_revision),
+                event_time,
+            )
         return EgressGrant.from_mapping(json.loads(raw)["record"])
 
     def check_egress(
         self,
+        workspace_id: str,
+        owner_id: str,
         connection_id: str,
-        data_class: str,
-        operation: str,
+        data_class: str | None = None,
+        operation: str | None = None,
         *,
         timestamp: int | None = None,
     ) -> bool:
+        if data_class is None and operation is None:
+            actual_workspace_id = "default"
+            actual_owner_id = "local-profile"
+            actual_connection_id = workspace_id
+            actual_data_class = owner_id
+            actual_operation = connection_id
+        else:
+            if data_class is None or operation is None:
+                raise TypeError("check_egress requires either 3 or 5 positional arguments")
+            actual_workspace_id = workspace_id
+            actual_owner_id = owner_id
+            actual_connection_id = connection_id
+            actual_data_class = data_class
+            actual_operation = operation
+
         for value, name in (
-            (connection_id, "connection_id"),
-            (data_class, "data_class"),
-            (operation, "operation"),
+            (actual_workspace_id, "workspace_id"),
+            (actual_owner_id, "owner_id"),
+            (actual_connection_id, "connection_id"),
+            (actual_data_class, "data_class"),
+            (actual_operation, "operation"),
         ):
             self._require_text(value, name)
         event_time = int(time.time() * 1000) if timestamp is None else int(timestamp)
-        raw = self._native.aegis_check_connection_egress(
-            connection_id,
-            data_class,
-            operation,
-            event_time,
-        )
+        try:
+            raw = self._native.aegis_check_connection_egress(
+                actual_workspace_id,
+                actual_owner_id,
+                actual_connection_id,
+                actual_data_class,
+                actual_operation,
+                event_time,
+            )
+        except TypeError as error:
+            if actual_workspace_id != "default" or actual_owner_id != "local-profile":
+                raise RuntimeError("Native bridge does not support scoped connection egress check") from error
+            raw = self._native.aegis_check_connection_egress(
+                actual_connection_id,
+                actual_data_class,
+                actual_operation,
+                event_time,
+            )
         return bool(json.loads(raw)["allowed"])
 
     @staticmethod

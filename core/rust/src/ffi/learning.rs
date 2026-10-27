@@ -8,7 +8,10 @@ use super::{
 };
 use crate::memory::MemoryNudgeProvenance;
 use crate::memory::nudge::{MAX_MEMORY_CANDIDATE_BYTES, MemoryCandidate, MemoryNudgeSystem};
-use crate::memory::repository::DEFAULT_MEMORY_KIND;
+use crate::memory::repository::{
+    DEFAULT_MEMORY_KIND, MAX_FILE_RELATION_CONTEXT_RESULTS, MAX_FILE_RELATION_PAGE_SIZE,
+    MemoryFileRelationCursor,
+};
 use blake3::Hasher;
 use pyo3::prelude::*;
 use std::path::PathBuf;
@@ -225,9 +228,363 @@ fn memory_view_json(view: &crate::memory::repository::MemoryRecordView) -> serde
     })
 }
 
+fn memory_file_relation_json(
+    view: &crate::memory::repository::MemoryFileRelationView,
+) -> serde_json::Value {
+    serde_json::json!({
+        "relation_id": format!("0x{:x}", view.relation_id),
+        "memory_id": format!("0x{:x}", view.memory_id),
+        "scope_kind": view.scope_kind,
+        "project_id": view.project_id,
+        "relative_path": view.relative_path,
+        "source_revision": view.source_revision,
+        "source_content_hash": hex32(&view.source_content_hash),
+        "memory_revision": view.memory_revision,
+        "memory_content_hash": hex32(&view.memory_content_hash),
+        "created_at_ms": view.created_at_ms,
+        "memory_lifecycle": view.memory_lifecycle,
+        "memory_validation": view.memory_validation,
+        "memory_content_current": view.memory_content_current,
+    })
+}
+
+fn parse_memory_digest(value: &str, name: &str) -> PyResult<[u8; 32]> {
+    if value.len() != 64 || !value.is_ascii() {
+        return Err(pyo3::exceptions::PyValueError::new_err(format!(
+            "{name} must be a 64-character hexadecimal digest"
+        )));
+    }
+    let mut digest = [0_u8; 32];
+    let (pairs, remainder) = value.as_bytes().as_chunks::<2>();
+    debug_assert!(remainder.is_empty());
+    for (index, pair) in pairs.iter().enumerate() {
+        let pair = std::str::from_utf8(pair).map_err(|_| {
+            pyo3::exceptions::PyValueError::new_err(format!(
+                "{name} must be a 64-character hexadecimal digest"
+            ))
+        })?;
+        digest[index] = u8::from_str_radix(pair, 16).map_err(|_| {
+            pyo3::exceptions::PyValueError::new_err(format!(
+                "{name} must be a 64-character hexadecimal digest"
+            ))
+        })?;
+    }
+    Ok(digest)
+}
+
+#[pyfunction]
+#[pyo3(signature = (relation_id, memory_id, project_id, relative_path, source_revision, source_content_hash, memory_revision, memory_content_hash, timestamp, scope_kind=None, owner_id=None, subject_id=None))]
+pub fn aegis_link_memory_file_relation(
+    py: Python<'_>,
+    relation_id: u128,
+    memory_id: u128,
+    project_id: String,
+    relative_path: String,
+    source_revision: String,
+    source_content_hash: String,
+    memory_revision: u64,
+    memory_content_hash: String,
+    timestamp: u64,
+    scope_kind: Option<String>,
+    owner_id: Option<String>,
+    subject_id: Option<String>,
+) -> PyResult<String> {
+    py.detach(move || {
+        py_safe(move || {
+            let owner_id = memory_owner(owner_id)?;
+            let scope_kind = memory_scope(scope_kind)?;
+            let subject_id = memory_subject(subject_id, &owner_id)?;
+            let source_content_hash =
+                parse_memory_digest(&source_content_hash, "source_content_hash")?;
+            let memory_content_hash =
+                parse_memory_digest(&memory_content_hash, "memory_content_hash")?;
+            let repository = get_memory_repository().map_err(|error| {
+                pyo3::exceptions::PyRuntimeError::new_err(format!(
+                    "Memory repository init failed: {error}"
+                ))
+            })?;
+            let relation = repository
+                .lock()
+                .link_file_relation_as(
+                    relation_id,
+                    memory_id,
+                    &subject_id,
+                    &owner_id,
+                    &scope_kind,
+                    &project_id,
+                    &relative_path,
+                    &source_revision,
+                    source_content_hash,
+                    memory_revision,
+                    memory_content_hash,
+                    timestamp,
+                )
+                .map_err(|error| {
+                    pyo3::exceptions::PyValueError::new_err(format!(
+                        "Memory file relation link failed: {error:?}"
+                    ))
+                })?;
+            serde_json::to_string(&serde_json::json!({
+                "schema": "aegis-memory-file-relation-v1",
+                "relation": memory_file_relation_json(&relation),
+            }))
+            .map_err(|error| {
+                pyo3::exceptions::PyRuntimeError::new_err(format!("Serialization failed: {error}"))
+            })
+        })?
+    })
+}
+
+#[pyfunction]
+#[pyo3(signature = (project_id, relative_path, scope_kind=None, owner_id=None, subject_id=None))]
+pub fn aegis_list_memory_file_relations(
+    py: Python<'_>,
+    project_id: String,
+    relative_path: String,
+    scope_kind: Option<String>,
+    owner_id: Option<String>,
+    subject_id: Option<String>,
+) -> PyResult<String> {
+    py.detach(move || {
+        py_safe(move || {
+            let owner_id = memory_owner(owner_id)?;
+            let scope_kind = memory_scope(scope_kind)?;
+            let subject_id = memory_subject(subject_id, &owner_id)?;
+            let repository = get_memory_repository().map_err(|error| {
+                pyo3::exceptions::PyRuntimeError::new_err(format!(
+                    "Memory repository init failed: {error}"
+                ))
+            })?;
+            let relations = repository
+                .lock()
+                .list_file_relations_as(
+                    &subject_id,
+                    &owner_id,
+                    &scope_kind,
+                    &project_id,
+                    &relative_path,
+                )
+                .map_err(|error| {
+                    pyo3::exceptions::PyValueError::new_err(format!(
+                        "Memory file relation list failed: {error:?}"
+                    ))
+                })?;
+            let relations = relations
+                .iter()
+                .map(memory_file_relation_json)
+                .collect::<Vec<_>>();
+            serde_json::to_string(&serde_json::json!({
+                "schema": "aegis-memory-file-relations-v1",
+                "relations": relations,
+            }))
+            .map_err(|error| {
+                pyo3::exceptions::PyRuntimeError::new_err(format!("Serialization failed: {error}"))
+            })
+        })?
+    })
+}
+
+#[pyfunction]
+#[pyo3(signature = (project_id, relative_path, limit, after_created_at_ms=None, after_relation_id=None, scope_kind=None, owner_id=None, subject_id=None))]
+pub fn aegis_list_memory_file_relations_page(
+    py: Python<'_>,
+    project_id: String,
+    relative_path: String,
+    limit: usize,
+    after_created_at_ms: Option<u64>,
+    after_relation_id: Option<u128>,
+    scope_kind: Option<String>,
+    owner_id: Option<String>,
+    subject_id: Option<String>,
+) -> PyResult<String> {
+    py.detach(move || {
+        py_safe(move || {
+            if !(1..=MAX_FILE_RELATION_PAGE_SIZE).contains(&limit) {
+                return Err(pyo3::exceptions::PyValueError::new_err(format!(
+                    "file relation page limit must be between 1 and {MAX_FILE_RELATION_PAGE_SIZE}"
+                )));
+            }
+            let cursor = match (after_created_at_ms, after_relation_id) {
+                (None, None) => None,
+                (Some(created_at_ms), Some(relation_id))
+                    if created_at_ms > 0 && relation_id > 0 =>
+                {
+                    Some(MemoryFileRelationCursor {
+                        created_at_ms,
+                        relation_id,
+                    })
+                }
+                (Some(_), Some(_)) => {
+                    return Err(pyo3::exceptions::PyValueError::new_err(
+                        "file relation page cursor values must be positive",
+                    ));
+                }
+                _ => {
+                    return Err(pyo3::exceptions::PyValueError::new_err(
+                        "file relation page cursor fields must be supplied together",
+                    ));
+                }
+            };
+            let owner_id = memory_owner(owner_id)?;
+            let scope_kind = memory_scope(scope_kind)?;
+            let subject_id = memory_subject(subject_id, &owner_id)?;
+            let repository = get_memory_repository().map_err(|error| {
+                pyo3::exceptions::PyRuntimeError::new_err(format!(
+                    "Memory repository init failed: {error}"
+                ))
+            })?;
+            let page = repository
+                .lock()
+                .list_file_relations_page_as(
+                    &subject_id,
+                    &owner_id,
+                    &scope_kind,
+                    &project_id,
+                    &relative_path,
+                    limit,
+                    cursor,
+                )
+                .map_err(|error| {
+                    pyo3::exceptions::PyValueError::new_err(format!(
+                        "Memory file relation page failed: {error:?}"
+                    ))
+                })?;
+            let relations = page
+                .relations
+                .iter()
+                .map(memory_file_relation_json)
+                .collect::<Vec<_>>();
+            let next_cursor = page.next_cursor.map(|cursor| {
+                serde_json::json!({
+                    "created_at_ms": cursor.created_at_ms,
+                    "relation_id": format!("0x{:x}", cursor.relation_id),
+                })
+            });
+            serde_json::to_string(&serde_json::json!({
+                "schema": "aegis-memory-file-relation-page-v1",
+                "relations": relations,
+                "next_cursor": next_cursor,
+            }))
+            .map_err(|error| {
+                pyo3::exceptions::PyRuntimeError::new_err(format!("Serialization failed: {error}"))
+            })
+        })?
+    })
+}
+
+#[pyfunction]
+#[pyo3(signature = (project_id, relative_path, source_content_hash, limit, scope_kind=None, owner_id=None, subject_id=None))]
+pub fn aegis_list_current_memory_file_relations(
+    py: Python<'_>,
+    project_id: String,
+    relative_path: String,
+    source_content_hash: String,
+    limit: usize,
+    scope_kind: Option<String>,
+    owner_id: Option<String>,
+    subject_id: Option<String>,
+) -> PyResult<String> {
+    py.detach(move || {
+        py_safe(move || {
+            if limit > MAX_FILE_RELATION_CONTEXT_RESULTS {
+                return Err(pyo3::exceptions::PyValueError::new_err(format!(
+                    "file relation context limit exceeds maximum of {MAX_FILE_RELATION_CONTEXT_RESULTS}"
+                )));
+            }
+            let source_content_hash =
+                parse_memory_digest(&source_content_hash, "source content hash")?;
+            let owner_id = memory_owner(owner_id)?;
+            let scope_kind = memory_scope(scope_kind)?;
+            let subject_id = memory_subject(subject_id, &owner_id)?;
+            let repository = get_memory_repository().map_err(|error| {
+                pyo3::exceptions::PyRuntimeError::new_err(format!(
+                    "Memory repository init failed: {error}"
+                ))
+            })?;
+            let relations = repository
+                .lock()
+                .list_current_file_relations_for_context_as(
+                    &subject_id,
+                    &owner_id,
+                    &scope_kind,
+                    &project_id,
+                    &relative_path,
+                    &source_content_hash,
+                    limit,
+                )
+                .map_err(|error| {
+                    pyo3::exceptions::PyValueError::new_err(format!(
+                        "Current memory file relation list failed: {error:?}"
+                    ))
+                })?;
+            let relations = relations
+                .iter()
+                .map(memory_file_relation_json)
+                .collect::<Vec<_>>();
+            serde_json::to_string(&serde_json::json!({
+                "schema": "aegis-memory-file-relations-v1",
+                "relations": relations,
+            }))
+            .map_err(|error| {
+                pyo3::exceptions::PyRuntimeError::new_err(format!("Serialization failed: {error}"))
+            })
+        })?
+    })
+}
+
+#[pyfunction]
+#[pyo3(signature = (relation_id, project_id, relative_path, timestamp, scope_kind=None, owner_id=None, subject_id=None))]
+pub fn aegis_unlink_memory_file_relation(
+    py: Python<'_>,
+    relation_id: u128,
+    project_id: String,
+    relative_path: String,
+    timestamp: u64,
+    scope_kind: Option<String>,
+    owner_id: Option<String>,
+    subject_id: Option<String>,
+) -> PyResult<String> {
+    py.detach(move || {
+        py_safe(move || {
+            let owner_id = memory_owner(owner_id)?;
+            let scope_kind = memory_scope(scope_kind)?;
+            let subject_id = memory_subject(subject_id, &owner_id)?;
+            let repository = get_memory_repository().map_err(|error| {
+                pyo3::exceptions::PyRuntimeError::new_err(format!(
+                    "Memory repository init failed: {error}"
+                ))
+            })?;
+            let removed = repository
+                .lock()
+                .unlink_file_relation_as(
+                    relation_id,
+                    &subject_id,
+                    &owner_id,
+                    &scope_kind,
+                    &project_id,
+                    &relative_path,
+                    timestamp,
+                )
+                .map_err(|error| {
+                    pyo3::exceptions::PyValueError::new_err(format!(
+                        "Memory file relation unlink failed: {error:?}"
+                    ))
+                })?;
+            serde_json::to_string(&serde_json::json!({
+                "schema": "aegis-memory-file-relation-unlink-v1",
+                "removed": removed,
+            }))
+            .map_err(|error| {
+                pyo3::exceptions::PyRuntimeError::new_err(format!("Serialization failed: {error}"))
+            })
+        })?
+    })
+}
+
 #[pyfunction]
 #[pyo3(signature = (memory_id, content, timestamp, request_id, scope_kind=None, owner_id=None, subject_id=None, memory_kind=None))]
 pub fn aegis_capture_memory(
+    py: Python<'_>,
     memory_id: u128,
     content: String,
     timestamp: u64,
@@ -237,187 +594,200 @@ pub fn aegis_capture_memory(
     subject_id: Option<String>,
     memory_kind: Option<String>,
 ) -> PyResult<String> {
-    py_safe(move || {
-        let owner_id = memory_owner(owner_id)?;
-        let scope_kind = memory_scope(scope_kind)?;
-        let subject_id = memory_subject(subject_id, &owner_id)?;
-        let memory_kind = memory_kind.unwrap_or_else(|| DEFAULT_MEMORY_KIND.to_string());
-        let repository = get_memory_repository().map_err(|error| {
-            pyo3::exceptions::PyRuntimeError::new_err(format!(
-                "Memory repository init failed: {error}"
-            ))
-        })?;
-        let outcome = match repository.lock().capture_with_kind_as(
-            memory_id,
-            &subject_id,
-            &owner_id,
-            &scope_kind,
-            &memory_kind,
-            &content,
-            timestamp,
-            request_id,
-        ) {
-            Ok(outcome) => outcome,
-            Err(crate::memory::repository::MemoryRepositoryError::CommittedIndexPending {
-                memory_id: committed_memory_id,
-                ..
-            }) => {
-                return serde_json::to_string(&serde_json::json!({
-                    "schema": "aegis-memory-capture-v1",
-                    "status": "committed_index_pending",
-                    "memory_id": format!("0x{:x}", committed_memory_id),
-                    "owner_id": owner_id,
-                    "scope_kind": scope_kind,
-                    "memory_kind": memory_kind,
-                    "lifecycle": "CANDIDATE",
-                    "validation": "UNREVIEWED",
-                    "index_pending": true,
-                }))
-                .map_err(|error| {
-                    pyo3::exceptions::PyRuntimeError::new_err(format!(
-                        "Serialization failed: {error}"
-                    ))
-                });
-            }
-            Err(error) => {
-                return Err(pyo3::exceptions::PyRuntimeError::new_err(format!(
-                    "Memory capture failed: {error:?}"
-                )));
-            }
-        };
-        serde_json::to_string(&serde_json::json!({
-            "schema": "aegis-memory-capture-v1",
-            "status": if outcome.index_pending {
-                "committed_index_pending"
-            } else if outcome.created {
-                "committed"
-            } else {
-                "replayed"
-            },
-            "memory_id": format!("0x{:x}", memory_id),
-            "owner_id": owner_id,
-            "scope_kind": scope_kind,
-            "memory_kind": memory_kind,
-            "lifecycle": "CANDIDATE",
-            "validation": "UNREVIEWED",
-            "content_hash": hex32(&outcome.content_hash),
-            "index_pending": outcome.index_pending,
-        }))
-        .map_err(|error| {
-            pyo3::exceptions::PyRuntimeError::new_err(format!("Serialization failed: {error}"))
-        })
-    })?
+    py.detach(move || {
+        py_safe(move || {
+            let owner_id = memory_owner(owner_id)?;
+            let scope_kind = memory_scope(scope_kind)?;
+            let subject_id = memory_subject(subject_id, &owner_id)?;
+            let memory_kind = memory_kind.unwrap_or_else(|| DEFAULT_MEMORY_KIND.to_string());
+            let repository = get_memory_repository().map_err(|error| {
+                pyo3::exceptions::PyRuntimeError::new_err(format!(
+                    "Memory repository init failed: {error}"
+                ))
+            })?;
+            let outcome = match repository.lock().capture_with_kind_as(
+                memory_id,
+                &subject_id,
+                &owner_id,
+                &scope_kind,
+                &memory_kind,
+                &content,
+                timestamp,
+                request_id,
+            ) {
+                Ok(outcome) => outcome,
+                Err(crate::memory::repository::MemoryRepositoryError::CommittedIndexPending {
+                    memory_id: committed_memory_id,
+                    ..
+                }) => {
+                    return serde_json::to_string(&serde_json::json!({
+                        "schema": "aegis-memory-capture-v1",
+                        "status": "committed_index_pending",
+                        "memory_id": format!("0x{:x}", committed_memory_id),
+                        "owner_id": owner_id,
+                        "scope_kind": scope_kind,
+                        "memory_kind": memory_kind,
+                        "lifecycle": "CANDIDATE",
+                        "validation": "UNREVIEWED",
+                        "index_pending": true,
+                    }))
+                    .map_err(|error| {
+                        pyo3::exceptions::PyRuntimeError::new_err(format!(
+                            "Serialization failed: {error}"
+                        ))
+                    });
+                }
+                Err(error) => {
+                    return Err(pyo3::exceptions::PyRuntimeError::new_err(format!(
+                        "Memory capture failed: {error:?}"
+                    )));
+                }
+            };
+            serde_json::to_string(&serde_json::json!({
+                "schema": "aegis-memory-capture-v1",
+                "status": if outcome.index_pending {
+                    "committed_index_pending"
+                } else if outcome.created {
+                    "committed"
+                } else {
+                    "replayed"
+                },
+                "memory_id": format!("0x{:x}", memory_id),
+                "owner_id": owner_id,
+                "scope_kind": scope_kind,
+                "memory_kind": memory_kind,
+                "lifecycle": "CANDIDATE",
+                "validation": "UNREVIEWED",
+                "content_hash": hex32(&outcome.content_hash),
+                "index_pending": outcome.index_pending,
+            }))
+            .map_err(|error| {
+                pyo3::exceptions::PyRuntimeError::new_err(format!("Serialization failed: {error}"))
+            })
+        })?
+    })
 }
 
 #[pyfunction]
 #[pyo3(signature = (memory_id, scope_kind=None, owner_id=None, subject_id=None))]
 pub fn aegis_inspect_memory(
+    py: Python<'_>,
     memory_id: u128,
     scope_kind: Option<String>,
     owner_id: Option<String>,
     subject_id: Option<String>,
 ) -> PyResult<String> {
-    py_safe(move || {
-        let owner_id = memory_owner(owner_id)?;
-        let scope_kind = memory_scope(scope_kind)?;
-        let subject_id = memory_subject(subject_id, &owner_id)?;
-        let repository = get_memory_repository().map_err(|error| {
-            pyo3::exceptions::PyRuntimeError::new_err(format!(
-                "Memory repository init failed: {error}"
-            ))
-        })?;
-        let view = repository
-            .lock()
-            .inspect_as(memory_id, &subject_id, &owner_id, &scope_kind)
-            .map_err(|error| {
+    py.detach(move || {
+        py_safe(move || {
+            let owner_id = memory_owner(owner_id)?;
+            let scope_kind = memory_scope(scope_kind)?;
+            let subject_id = memory_subject(subject_id, &owner_id)?;
+            let repository = get_memory_repository().map_err(|error| {
                 pyo3::exceptions::PyRuntimeError::new_err(format!(
-                    "Memory inspect failed: {error:?}"
+                    "Memory repository init failed: {error}"
                 ))
             })?;
-        serde_json::to_string(&serde_json::json!({
-            "schema": "aegis-memory-record-v1",
-            "found": view.is_some(),
-            "record": view.as_ref().map(memory_view_json),
-        }))
-        .map_err(|error| {
-            pyo3::exceptions::PyRuntimeError::new_err(format!("Serialization failed: {error}"))
-        })
-    })?
+            let view = repository
+                .lock()
+                .inspect_as(memory_id, &subject_id, &owner_id, &scope_kind)
+                .map_err(|error| {
+                    pyo3::exceptions::PyRuntimeError::new_err(format!(
+                        "Memory inspect failed: {error:?}"
+                    ))
+                })?;
+            serde_json::to_string(&serde_json::json!({
+                "schema": "aegis-memory-record-v1",
+                "found": view.is_some(),
+                "record": view.as_ref().map(memory_view_json),
+            }))
+            .map_err(|error| {
+                pyo3::exceptions::PyRuntimeError::new_err(format!("Serialization failed: {error}"))
+            })
+        })?
+    })
 }
 
 #[pyfunction]
 #[pyo3(signature = (query, top_k=5usize, scope_kind=None, owner_id=None, subject_id=None))]
 pub fn aegis_search_memories(
+    py: Python<'_>,
     query: String,
     top_k: usize,
     scope_kind: Option<String>,
     owner_id: Option<String>,
     subject_id: Option<String>,
 ) -> PyResult<String> {
-    py_safe(move || {
-        let owner_id = memory_owner(owner_id)?;
-        let scope_kind = memory_scope(scope_kind)?;
-        let subject_id = memory_subject(subject_id, &owner_id)?;
-        let repository = get_memory_repository().map_err(|error| {
-            pyo3::exceptions::PyRuntimeError::new_err(format!(
-                "Memory repository init failed: {error}"
-            ))
-        })?;
-        let records = repository
-            .lock()
-            .search_candidates_as(&query, &subject_id, &owner_id, &scope_kind, top_k)
-            .map_err(|error| {
-                pyo3::exceptions::PyValueError::new_err(format!("Memory search failed: {error:?}"))
+    py.detach(move || {
+        py_safe(move || {
+            let owner_id = memory_owner(owner_id)?;
+            let scope_kind = memory_scope(scope_kind)?;
+            let subject_id = memory_subject(subject_id, &owner_id)?;
+            let repository = get_memory_repository().map_err(|error| {
+                pyo3::exceptions::PyRuntimeError::new_err(format!(
+                    "Memory repository init failed: {error}"
+                ))
             })?;
-        let results = records.iter().map(memory_view_json).collect::<Vec<_>>();
-        serde_json::to_string(&serde_json::json!({
-            "schema": "aegis-memory-search-result-v1",
-            "query": query,
-            "top_k": top_k,
-            "count": results.len(),
-            "results": results,
-            "gate": "CandidateOnly",
-        }))
-        .map_err(|error| {
-            pyo3::exceptions::PyRuntimeError::new_err(format!("Serialization failed: {error}"))
-        })
-    })?
+            let records = repository
+                .lock()
+                .search_candidates_as(&query, &subject_id, &owner_id, &scope_kind, top_k)
+                .map_err(|error| {
+                    pyo3::exceptions::PyValueError::new_err(format!(
+                        "Memory search failed: {error:?}"
+                    ))
+                })?;
+            let results = records.iter().map(memory_view_json).collect::<Vec<_>>();
+            serde_json::to_string(&serde_json::json!({
+                "schema": "aegis-memory-search-result-v1",
+                "query": query,
+                "top_k": top_k,
+                "count": results.len(),
+                "results": results,
+                "gate": "CandidateOnly",
+            }))
+            .map_err(|error| {
+                pyo3::exceptions::PyRuntimeError::new_err(format!("Serialization failed: {error}"))
+            })
+        })?
+    })
 }
 
 #[pyfunction]
-pub fn aegis_backup_memory_store(destination: String) -> PyResult<String> {
-    py_safe(move || {
-        if destination.trim().is_empty() {
-            return Err(pyo3::exceptions::PyValueError::new_err(
-                "destination must be non-empty",
-            ));
-        }
-        let repository = get_memory_repository().map_err(|error| {
-            pyo3::exceptions::PyRuntimeError::new_err(format!(
-                "Memory repository init failed: {error}"
-            ))
-        })?;
-        repository
-            .lock()
-            .backup_to(PathBuf::from(&destination))
-            .map_err(|error| {
+pub fn aegis_backup_memory_store(py: Python<'_>, destination: String) -> PyResult<String> {
+    py.detach(move || {
+        py_safe(move || {
+            if destination.trim().is_empty() {
+                return Err(pyo3::exceptions::PyValueError::new_err(
+                    "destination must be non-empty",
+                ));
+            }
+            let repository = get_memory_repository().map_err(|error| {
                 pyo3::exceptions::PyRuntimeError::new_err(format!(
-                    "Memory backup failed: {error:?}"
+                    "Memory repository init failed: {error}"
                 ))
             })?;
-        serde_json::to_string(&serde_json::json!({
-            "schema": "aegis-memory-backup-v1",
-            "status": "committed",
-            "destination": destination,
-        }))
-        .map_err(|error| {
-            pyo3::exceptions::PyRuntimeError::new_err(format!("Serialization failed: {error}"))
-        })
-    })?
+            repository
+                .lock()
+                .backup_to(PathBuf::from(&destination))
+                .map_err(|error| {
+                    pyo3::exceptions::PyRuntimeError::new_err(format!(
+                        "Memory backup failed: {error:?}"
+                    ))
+                })?;
+            serde_json::to_string(&serde_json::json!({
+                "schema": "aegis-memory-backup-v1",
+                "status": "committed",
+                "destination": destination,
+            }))
+            .map_err(|error| {
+                pyo3::exceptions::PyRuntimeError::new_err(format!("Serialization failed: {error}"))
+            })
+        })?
+    })
 }
 
 #[pyfunction]
 pub fn aegis_grant_memory_access(
+    py: Python<'_>,
     subject_id: String,
     owner_id: String,
     scope_kind: String,
@@ -427,93 +797,101 @@ pub fn aegis_grant_memory_access(
     expected_revision: Option<u64>,
     updated_at_ms: u64,
 ) -> PyResult<String> {
-    py_safe(move || {
-        let repository = get_memory_repository().map_err(|error| {
-            pyo3::exceptions::PyRuntimeError::new_err(format!(
-                "Memory repository init failed: {error}"
-            ))
-        })?;
-        let actor_id = session_profile_id();
-        let revision = repository
-            .lock()
-            .grant_access_as(
-                &actor_id,
-                &subject_id,
-                &owner_id,
-                &scope_kind,
-                can_read,
-                can_write,
-                expires_at_ms,
-                expected_revision,
-                updated_at_ms,
-            )
-            .map_err(|error| {
-                pyo3::exceptions::PyRuntimeError::new_err(format!("Memory grant failed: {error:?}"))
+    py.detach(move || {
+        py_safe(move || {
+            let repository = get_memory_repository().map_err(|error| {
+                pyo3::exceptions::PyRuntimeError::new_err(format!(
+                    "Memory repository init failed: {error}"
+                ))
             })?;
-        serde_json::to_string(&serde_json::json!({
-            "schema": "aegis-memory-grant-v1",
-            "status": "committed",
-            "subject_id": subject_id,
-            "owner_id": owner_id,
-            "scope_kind": scope_kind,
-            "can_read": can_read,
-            "can_write": can_write,
-            "revision": revision,
-            "expires_at_ms": expires_at_ms,
-        }))
-        .map_err(|error| {
-            pyo3::exceptions::PyRuntimeError::new_err(format!("Serialization failed: {error}"))
-        })
-    })?
+            let actor_id = session_profile_id();
+            let revision = repository
+                .lock()
+                .grant_access_as(
+                    &actor_id,
+                    &subject_id,
+                    &owner_id,
+                    &scope_kind,
+                    can_read,
+                    can_write,
+                    expires_at_ms,
+                    expected_revision,
+                    updated_at_ms,
+                )
+                .map_err(|error| {
+                    pyo3::exceptions::PyRuntimeError::new_err(format!(
+                        "Memory grant failed: {error:?}"
+                    ))
+                })?;
+            serde_json::to_string(&serde_json::json!({
+                "schema": "aegis-memory-grant-v1",
+                "status": "committed",
+                "subject_id": subject_id,
+                "owner_id": owner_id,
+                "scope_kind": scope_kind,
+                "can_read": can_read,
+                "can_write": can_write,
+                "revision": revision,
+                "expires_at_ms": expires_at_ms,
+            }))
+            .map_err(|error| {
+                pyo3::exceptions::PyRuntimeError::new_err(format!("Serialization failed: {error}"))
+            })
+        })?
+    })
 }
 
 #[pyfunction]
 pub fn aegis_revoke_memory_access(
+    py: Python<'_>,
     subject_id: String,
     owner_id: String,
     scope_kind: String,
     expected_revision: u64,
     revoked_at_ms: u64,
 ) -> PyResult<String> {
-    py_safe(move || {
-        let repository = get_memory_repository().map_err(|error| {
-            pyo3::exceptions::PyRuntimeError::new_err(format!(
-                "Memory repository init failed: {error}"
-            ))
-        })?;
-        let actor_id = session_profile_id();
-        let revision = repository
-            .lock()
-            .revoke_access_as(
-                &actor_id,
-                &subject_id,
-                &owner_id,
-                &scope_kind,
-                expected_revision,
-                revoked_at_ms,
-            )
-            .map_err(|error| {
+    py.detach(move || {
+        py_safe(move || {
+            let repository = get_memory_repository().map_err(|error| {
                 pyo3::exceptions::PyRuntimeError::new_err(format!(
-                    "Memory revoke failed: {error:?}"
+                    "Memory repository init failed: {error}"
                 ))
             })?;
-        serde_json::to_string(&serde_json::json!({
-            "schema": "aegis-memory-grant-v1",
-            "status": "revoked",
-            "subject_id": subject_id,
-            "owner_id": owner_id,
-            "scope_kind": scope_kind,
-            "revision": revision,
-        }))
-        .map_err(|error| {
-            pyo3::exceptions::PyRuntimeError::new_err(format!("Serialization failed: {error}"))
-        })
-    })?
+            let actor_id = session_profile_id();
+            let revision = repository
+                .lock()
+                .revoke_access_as(
+                    &actor_id,
+                    &subject_id,
+                    &owner_id,
+                    &scope_kind,
+                    expected_revision,
+                    revoked_at_ms,
+                )
+                .map_err(|error| {
+                    pyo3::exceptions::PyRuntimeError::new_err(format!(
+                        "Memory revoke failed: {error:?}"
+                    ))
+                })?;
+            serde_json::to_string(&serde_json::json!({
+                "schema": "aegis-memory-grant-v1",
+                "status": "revoked",
+                "subject_id": subject_id,
+                "owner_id": owner_id,
+                "scope_kind": scope_kind,
+                "revision": revision,
+            }))
+            .map_err(|error| {
+                pyo3::exceptions::PyRuntimeError::new_err(format!("Serialization failed: {error}"))
+            })
+        })?
+    })
 }
 
 #[pyfunction]
 #[pyo3(signature = (memory_id, request_id, timestamp, scope_kind=None, owner_id=None, subject_id=None, expected_revision=None))]
 pub fn aegis_forget_memory(
+    py: Python<'_>,
     memory_id: u128,
     request_id: u128,
     timestamp: u64,
@@ -522,21 +900,24 @@ pub fn aegis_forget_memory(
     subject_id: Option<String>,
     expected_revision: Option<u64>,
 ) -> PyResult<String> {
-    memory_transition(
-        memory_id,
-        request_id,
-        timestamp,
-        scope_kind,
-        owner_id,
-        subject_id,
-        expected_revision,
-        "forget",
-    )
+    py.detach(move || {
+        memory_transition(
+            memory_id,
+            request_id,
+            timestamp,
+            scope_kind,
+            owner_id,
+            subject_id,
+            expected_revision,
+            "forget",
+        )
+    })
 }
 
 #[pyfunction]
 #[pyo3(signature = (memory_id, content, expected_revision, request_id, timestamp, scope_kind=None, owner_id=None, subject_id=None))]
 pub fn aegis_correct_memory(
+    py: Python<'_>,
     memory_id: u128,
     content: String,
     expected_revision: u64,
@@ -546,51 +927,54 @@ pub fn aegis_correct_memory(
     owner_id: Option<String>,
     subject_id: Option<String>,
 ) -> PyResult<String> {
-    py_safe(move || {
-        let owner_id = memory_owner(owner_id)?;
-        let scope_kind = memory_scope(scope_kind)?;
-        let subject_id = memory_subject(subject_id, &owner_id)?;
-        let repository = get_memory_repository().map_err(|error| {
-            pyo3::exceptions::PyRuntimeError::new_err(format!(
-                "Memory repository init failed: {error}"
-            ))
-        })?;
-        let revision = repository
-            .lock()
-            .correct_as(
-                memory_id,
-                &subject_id,
-                &owner_id,
-                &scope_kind,
-                &content,
-                expected_revision,
-                request_id,
-                timestamp,
-            )
-            .map_err(|error| {
+    py.detach(move || {
+        py_safe(move || {
+            let owner_id = memory_owner(owner_id)?;
+            let scope_kind = memory_scope(scope_kind)?;
+            let subject_id = memory_subject(subject_id, &owner_id)?;
+            let repository = get_memory_repository().map_err(|error| {
                 pyo3::exceptions::PyRuntimeError::new_err(format!(
-                    "Memory correction failed: {error:?}"
+                    "Memory repository init failed: {error}"
                 ))
             })?;
-        serde_json::to_string(&serde_json::json!({
-            "schema": "aegis-memory-correction-v1",
-            "status": "committed",
-            "memory_id": format!("0x{:x}", memory_id),
-            "owner_id": owner_id,
-            "scope_kind": scope_kind,
-            "revision": revision,
-            "lifecycle": "CANDIDATE",
-            "validation": "UNREVIEWED",
-        }))
-        .map_err(|error| {
-            pyo3::exceptions::PyRuntimeError::new_err(format!("Serialization failed: {error}"))
-        })
-    })?
+            let revision = repository
+                .lock()
+                .correct_as(
+                    memory_id,
+                    &subject_id,
+                    &owner_id,
+                    &scope_kind,
+                    &content,
+                    expected_revision,
+                    request_id,
+                    timestamp,
+                )
+                .map_err(|error| {
+                    pyo3::exceptions::PyRuntimeError::new_err(format!(
+                        "Memory correction failed: {error:?}"
+                    ))
+                })?;
+            serde_json::to_string(&serde_json::json!({
+                "schema": "aegis-memory-correction-v1",
+                "status": "committed",
+                "memory_id": format!("0x{:x}", memory_id),
+                "owner_id": owner_id,
+                "scope_kind": scope_kind,
+                "revision": revision,
+                "lifecycle": "CANDIDATE",
+                "validation": "UNREVIEWED",
+            }))
+            .map_err(|error| {
+                pyo3::exceptions::PyRuntimeError::new_err(format!("Serialization failed: {error}"))
+            })
+        })?
+    })
 }
 
 #[pyfunction]
 #[pyo3(signature = (memory_id, validation, basis=None, reason=None, expected_revision=0u64, request_id=0u128, timestamp=0u64, scope_kind=None, owner_id=None, subject_id=None))]
 pub fn aegis_validate_memory(
+    py: Python<'_>,
     memory_id: u128,
     validation: String,
     basis: Option<String>,
@@ -602,60 +986,63 @@ pub fn aegis_validate_memory(
     owner_id: Option<String>,
     subject_id: Option<String>,
 ) -> PyResult<String> {
-    py_safe(move || {
-        let owner_id = memory_owner(owner_id)?;
-        let scope_kind = memory_scope(scope_kind)?;
-        let subject_id = memory_subject(subject_id, &owner_id)?;
-        let repository = get_memory_repository().map_err(|error| {
-            pyo3::exceptions::PyRuntimeError::new_err(format!(
-                "Memory repository init failed: {error}"
-            ))
-        })?;
-        let revision = repository
-            .lock()
-            .validate_as(
-                memory_id,
-                &subject_id,
-                &owner_id,
-                &scope_kind,
-                &validation,
-                basis.as_deref(),
-                reason.as_deref(),
-                expected_revision,
-                request_id,
-                timestamp,
-            )
-            .map_err(|error| {
-                pyo3::exceptions::PyValueError::new_err(format!(
-                    "Memory validation failed: {error:?}"
+    py.detach(move || {
+        py_safe(move || {
+            let owner_id = memory_owner(owner_id)?;
+            let scope_kind = memory_scope(scope_kind)?;
+            let subject_id = memory_subject(subject_id, &owner_id)?;
+            let repository = get_memory_repository().map_err(|error| {
+                pyo3::exceptions::PyRuntimeError::new_err(format!(
+                    "Memory repository init failed: {error}"
                 ))
             })?;
-        let lifecycle = if validation == "ACCEPTED" {
-            "ACTIVE"
-        } else {
-            "CANDIDATE"
-        };
-        serde_json::to_string(&serde_json::json!({
-            "schema": "aegis-memory-validation-v1",
-            "status": "committed",
-            "memory_id": format!("0x{:x}", memory_id),
-            "owner_id": owner_id,
-            "scope_kind": scope_kind,
-            "lifecycle": lifecycle,
-            "validation": validation,
-            "validation_basis": basis,
-            "validation_reason": reason,
-            "revision": revision,
-        }))
-        .map_err(|error| {
-            pyo3::exceptions::PyRuntimeError::new_err(format!("Serialization failed: {error}"))
-        })
-    })?
+            let revision = repository
+                .lock()
+                .validate_as(
+                    memory_id,
+                    &subject_id,
+                    &owner_id,
+                    &scope_kind,
+                    &validation,
+                    basis.as_deref(),
+                    reason.as_deref(),
+                    expected_revision,
+                    request_id,
+                    timestamp,
+                )
+                .map_err(|error| {
+                    pyo3::exceptions::PyValueError::new_err(format!(
+                        "Memory validation failed: {error:?}"
+                    ))
+                })?;
+            let lifecycle = if validation == "ACCEPTED" {
+                "ACTIVE"
+            } else {
+                "CANDIDATE"
+            };
+            serde_json::to_string(&serde_json::json!({
+                "schema": "aegis-memory-validation-v1",
+                "status": "committed",
+                "memory_id": format!("0x{:x}", memory_id),
+                "owner_id": owner_id,
+                "scope_kind": scope_kind,
+                "lifecycle": lifecycle,
+                "validation": validation,
+                "validation_basis": basis,
+                "validation_reason": reason,
+                "revision": revision,
+            }))
+            .map_err(|error| {
+                pyo3::exceptions::PyRuntimeError::new_err(format!("Serialization failed: {error}"))
+            })
+        })?
+    })
 }
 
 #[pyfunction]
 #[pyo3(signature = (memory_id, request_id, timestamp, scope_kind=None, owner_id=None, subject_id=None, expected_revision=None))]
 pub fn aegis_restore_memory(
+    py: Python<'_>,
     memory_id: u128,
     request_id: u128,
     timestamp: u64,
@@ -664,21 +1051,24 @@ pub fn aegis_restore_memory(
     subject_id: Option<String>,
     expected_revision: Option<u64>,
 ) -> PyResult<String> {
-    memory_transition(
-        memory_id,
-        request_id,
-        timestamp,
-        scope_kind,
-        owner_id,
-        subject_id,
-        expected_revision,
-        "restore",
-    )
+    py.detach(move || {
+        memory_transition(
+            memory_id,
+            request_id,
+            timestamp,
+            scope_kind,
+            owner_id,
+            subject_id,
+            expected_revision,
+            "restore",
+        )
+    })
 }
 
 #[pyfunction]
 #[pyo3(signature = (memory_id, request_id, timestamp, scope_kind=None, owner_id=None, subject_id=None, expected_revision=None))]
 pub fn aegis_purge_memory(
+    py: Python<'_>,
     memory_id: u128,
     request_id: u128,
     timestamp: u64,
@@ -687,16 +1077,18 @@ pub fn aegis_purge_memory(
     subject_id: Option<String>,
     expected_revision: Option<u64>,
 ) -> PyResult<String> {
-    memory_transition(
-        memory_id,
-        request_id,
-        timestamp,
-        scope_kind,
-        owner_id,
-        subject_id,
-        expected_revision,
-        "purge",
-    )
+    py.detach(move || {
+        memory_transition(
+            memory_id,
+            request_id,
+            timestamp,
+            scope_kind,
+            owner_id,
+            subject_id,
+            expected_revision,
+            "purge",
+        )
+    })
 }
 
 fn memory_transition(
@@ -785,8 +1177,7 @@ fn memory_transition(
 /// These stats are computed live from the Rust LearningLedger and
 /// in-memory indices — no filesystem round-trip.
 #[pyfunction]
-#[pyo3(signature = (ledger_json, _skill_registry_stats_json=String::new(), search_index_count=0u64, user_model_count=0u64))]
-pub fn aegis_get_learning_stats(
+fn get_learning_stats_inner(
     ledger_json: String,
     _skill_registry_stats_json: String,
     search_index_count: u64,
@@ -859,9 +1250,28 @@ pub fn aegis_get_learning_stats(
     })?
 }
 
+#[pyfunction]
+#[pyo3(signature = (ledger_json, _skill_registry_stats_json=String::new(), search_index_count=0u64, user_model_count=0u64))]
+pub fn aegis_get_learning_stats(
+    py: Python<'_>,
+    ledger_json: String,
+    _skill_registry_stats_json: String,
+    search_index_count: u64,
+    user_model_count: u64,
+) -> PyResult<String> {
+    py.detach(move || {
+        get_learning_stats_inner(
+            ledger_json,
+            _skill_registry_stats_json,
+            search_index_count,
+            user_model_count,
+        )
+    })
+}
+
 #[cfg(test)]
 mod tests {
-    use super::aegis_get_learning_stats;
+    use super::get_learning_stats_inner as aegis_get_learning_stats;
 
     #[test]
     fn learning_stats_rejects_oversized_ledger_before_json_parse() {
@@ -901,6 +1311,7 @@ mod tests {
 #[pyfunction]
 #[pyo3(signature = (session_id_str, nudge_id=0u128, candidate_count=0usize, candidates_json=None, relevance_threshold=0.7f32, scope_kind=None, owner_id=None))]
 pub fn aegis_trigger_memory_nudge(
+    py: Python<'_>,
     session_id_str: String,
     nudge_id: u128,
     candidate_count: usize,
@@ -909,172 +1320,182 @@ pub fn aegis_trigger_memory_nudge(
     scope_kind: Option<String>,
     owner_id: Option<String>,
 ) -> PyResult<String> {
-    py_safe(move || {
-        let session_id = parse_session_id(&session_id_str)?;
-        let Some(candidates_json) = candidates_json else {
-            let ack = serde_json::json!({
-                "schema": "aegis-memory-nudge-status-v2",
-                "status": "not_executed",
-                "candidate_only": true,
-                "durable_commit": false,
-                "session_id": format!("0x{:x}", session_id),
-                "nudge_id": nudge_id,
-                "candidate_count": candidate_count,
-                "message": "Candidate nudge validated by the compatibility bridge; no background queue or durable commit was executed.",
-            });
-            return serde_json::to_string(&ack).map_err(|error| {
-                pyo3::exceptions::PyRuntimeError::new_err(format!("Serialization failed: {error}"))
-            });
-        };
-        if nudge_id == 0 {
-            return Err(pyo3::exceptions::PyValueError::new_err(
-                "nudge_id must be non-zero when candidates are supplied",
-            ));
-        }
-        if !relevance_threshold.is_finite() || !(0.0..=1.0).contains(&relevance_threshold) {
-            return Err(pyo3::exceptions::PyValueError::new_err(
-                "relevance_threshold must be between 0 and 1",
-            ));
-        }
-        let raw_candidates = parse_nudge_candidates(&candidates_json, session_id)?;
-        if candidate_count != 0 && candidate_count != raw_candidates.len() {
-            return Err(pyo3::exceptions::PyValueError::new_err(
-                "candidate_count does not match the candidate payload",
-            ));
-        }
-        let owner_id = memory_owner(owner_id)?;
-        let scope_kind = memory_scope(scope_kind)?;
-        let ledger = get_session_ledger().map_err(|error| {
-            pyo3::exceptions::PyRuntimeError::new_err(format!(
-                "Learning ledger init failed: {error}"
-            ))
-        })?;
-        let nudge = MemoryNudgeSystem::new(relevance_threshold).periodic_nudge(
-            nudge_id,
-            session_id,
-            raw_candidates,
-            &mut ledger.lock(),
-            None,
-        );
-        let nudge = match nudge {
-            Ok(nudge) => nudge,
-            Err(crate::memory::nudge::MemoryError::EmptyCandidates) => {
+    py.detach(move || {
+        py_safe(move || {
+            let session_id = parse_session_id(&session_id_str)?;
+            let Some(candidates_json) = candidates_json else {
                 let ack = serde_json::json!({
-                    "schema": "aegis-memory-nudge-status-v3",
-                    "status": "no_candidates",
+                    "schema": "aegis-memory-nudge-status-v2",
+                    "status": "not_executed",
                     "candidate_only": true,
                     "durable_commit": false,
-                    "durable_candidate_commit": false,
                     "session_id": format!("0x{:x}", session_id),
                     "nudge_id": nudge_id,
-                    "candidate_count": 0,
-                    "message": "No candidate met the relevance threshold.",
+                    "candidate_count": candidate_count,
+                    "message": "Candidate nudge validated by the compatibility bridge; no background queue or durable commit was executed.",
                 });
                 return serde_json::to_string(&ack).map_err(|error| {
                     pyo3::exceptions::PyRuntimeError::new_err(format!(
                         "Serialization failed: {error}"
                     ))
                 });
-            }
-            Err(error) => {
-                return Err(pyo3::exceptions::PyValueError::new_err(format!(
-                    "Memory nudge validation failed: {error:?}"
-                )));
-            }
-        };
-        let repository = get_memory_repository().map_err(|error| {
-            pyo3::exceptions::PyRuntimeError::new_err(format!(
-                "Memory repository init failed: {error}"
-            ))
-        })?;
-        let mut repository = repository.lock();
-        let mut staged = 0usize;
-        let mut replayed = 0usize;
-        let mut index_pending = 0usize;
-        let mut errors = Vec::new();
-        for (ordinal, candidate) in nudge.candidates.iter().enumerate() {
-            let memory_id = derive_nudge_component_id(
-                b"memory",
-                nudge_id,
-                session_id,
-                candidate.content_hash,
-                ordinal,
-                &owner_id,
-                &scope_kind,
-            );
-            let request_id = derive_nudge_component_id(
-                b"request",
-                nudge_id,
-                session_id,
-                candidate.content_hash,
-                ordinal,
-                &owner_id,
-                &scope_kind,
-            );
-            let provenance = MemoryNudgeProvenance {
-                source_session_id: candidate.source_session_id,
-                nudge_id,
-                nudge_hash: nudge.nudge_hash,
-                candidate_hash: candidate.content_hash,
-                relevance_score_micros: (f64::from(candidate.relevance_score) * 1_000_000.0).round()
-                    as u32,
             };
-            match repository.capture_nudged_candidate(
-                memory_id,
-                &owner_id,
-                &owner_id,
-                &scope_kind,
-                DEFAULT_MEMORY_KIND,
-                &candidate.content,
-                nudge.timestamp,
-                request_id,
-                &provenance,
-            ) {
-                Ok(outcome) if outcome.created => staged += 1,
-                Ok(_) => replayed += 1,
-                Err(crate::memory::repository::MemoryRepositoryError::CommittedIndexPending {
-                    ..
-                }) => {
-                    staged += 1;
-                    index_pending += 1;
-                }
-                Err(error) => errors.push(format!("candidate {ordinal}: {error:?}")),
+            if nudge_id == 0 {
+                return Err(pyo3::exceptions::PyValueError::new_err(
+                    "nudge_id must be non-zero when candidates are supplied",
+                ));
             }
-        }
-        let persisted = staged + replayed;
-        let status = if errors.is_empty() {
-            "committed"
-        } else if persisted > 0 {
-            "partial"
-        } else {
-            "failed"
-        };
-        let ack = serde_json::json!({
-            "schema": "aegis-memory-nudge-status-v3",
-            "status": status,
-            "candidate_only": true,
-            "durable_commit": false,
-            "durable_candidate_commit": persisted > 0,
-            "activation": "requires_explicit_validation",
-            "session_id": format!("0x{:x}", session_id),
-            "nudge_id": nudge_id,
-            "nudge_hash": hex32(&nudge.nudge_hash),
-            "candidate_count": nudge.candidates.len(),
-            "staged_count": staged,
-            "replayed_count": replayed,
-            "index_pending_count": index_pending,
-            "errors": errors,
-        });
-        serde_json::to_string(&ack).map_err(|error| {
-            pyo3::exceptions::PyRuntimeError::new_err(format!("Serialization failed: {error}"))
-        })
-    })?
+            if !relevance_threshold.is_finite() || !(0.0..=1.0).contains(&relevance_threshold) {
+                return Err(pyo3::exceptions::PyValueError::new_err(
+                    "relevance_threshold must be between 0 and 1",
+                ));
+            }
+            let raw_candidates = parse_nudge_candidates(&candidates_json, session_id)?;
+            if candidate_count != 0 && candidate_count != raw_candidates.len() {
+                return Err(pyo3::exceptions::PyValueError::new_err(
+                    "candidate_count does not match the candidate payload",
+                ));
+            }
+            let owner_id = memory_owner(owner_id)?;
+            let scope_kind = memory_scope(scope_kind)?;
+            let ledger = get_session_ledger().map_err(|error| {
+                pyo3::exceptions::PyRuntimeError::new_err(format!(
+                    "Learning ledger init failed: {error}"
+                ))
+            })?;
+            let nudge = MemoryNudgeSystem::new(relevance_threshold).periodic_nudge(
+                nudge_id,
+                session_id,
+                raw_candidates,
+                &mut ledger.lock(),
+                None,
+            );
+            let nudge = match nudge {
+                Ok(nudge) => nudge,
+                Err(crate::memory::nudge::MemoryError::EmptyCandidates) => {
+                    let ack = serde_json::json!({
+                        "schema": "aegis-memory-nudge-status-v3",
+                        "status": "no_candidates",
+                        "candidate_only": true,
+                        "durable_commit": false,
+                        "durable_candidate_commit": false,
+                        "session_id": format!("0x{:x}", session_id),
+                        "nudge_id": nudge_id,
+                        "candidate_count": 0,
+                        "message": "No candidate met the relevance threshold.",
+                    });
+                    return serde_json::to_string(&ack).map_err(|error| {
+                        pyo3::exceptions::PyRuntimeError::new_err(format!(
+                            "Serialization failed: {error}"
+                        ))
+                    });
+                }
+                Err(error) => {
+                    return Err(pyo3::exceptions::PyValueError::new_err(format!(
+                        "Memory nudge validation failed: {error:?}"
+                    )));
+                }
+            };
+            let repository = get_memory_repository().map_err(|error| {
+                pyo3::exceptions::PyRuntimeError::new_err(format!(
+                    "Memory repository init failed: {error}"
+                ))
+            })?;
+            let mut repository = repository.lock();
+            let mut staged = 0usize;
+            let mut replayed = 0usize;
+            let mut index_pending = 0usize;
+            let mut errors = Vec::new();
+            for (ordinal, candidate) in nudge.candidates.iter().enumerate() {
+                let memory_id = derive_nudge_component_id(
+                    b"memory",
+                    nudge_id,
+                    session_id,
+                    candidate.content_hash,
+                    ordinal,
+                    &owner_id,
+                    &scope_kind,
+                );
+                let request_id = derive_nudge_component_id(
+                    b"request",
+                    nudge_id,
+                    session_id,
+                    candidate.content_hash,
+                    ordinal,
+                    &owner_id,
+                    &scope_kind,
+                );
+                let provenance = MemoryNudgeProvenance {
+                    source_session_id: candidate.source_session_id,
+                    nudge_id,
+                    nudge_hash: nudge.nudge_hash,
+                    candidate_hash: candidate.content_hash,
+                    relevance_score_micros: (f64::from(candidate.relevance_score) * 1_000_000.0)
+                        .round() as u32,
+                };
+                match repository.capture_nudged_candidate(
+                    memory_id,
+                    &owner_id,
+                    &owner_id,
+                    &scope_kind,
+                    DEFAULT_MEMORY_KIND,
+                    &candidate.content,
+                    nudge.timestamp,
+                    request_id,
+                    &provenance,
+                ) {
+                    Ok(outcome) if outcome.created => staged += 1,
+                    Ok(_) => replayed += 1,
+                    Err(crate::memory::repository::MemoryRepositoryError::CommittedIndexPending {
+                        ..
+                    }) => {
+                        staged += 1;
+                        index_pending += 1;
+                    }
+                    Err(error) => errors.push(format!("candidate {ordinal}: {error:?}")),
+                }
+            }
+            let persisted = staged + replayed;
+            let status = if errors.is_empty() {
+                "committed"
+            } else if persisted > 0 {
+                "partial"
+            } else {
+                "failed"
+            };
+            let ack = serde_json::json!({
+                "schema": "aegis-memory-nudge-status-v3",
+                "status": status,
+                "candidate_only": true,
+                "durable_commit": false,
+                "durable_candidate_commit": persisted > 0,
+                "activation": "requires_explicit_validation",
+                "session_id": format!("0x{:x}", session_id),
+                "nudge_id": nudge_id,
+                "nudge_hash": hex32(&nudge.nudge_hash),
+                "candidate_count": nudge.candidates.len(),
+                "staged_count": staged,
+                "replayed_count": replayed,
+                "index_pending_count": index_pending,
+                "errors": errors,
+            });
+            serde_json::to_string(&ack).map_err(|error| {
+                pyo3::exceptions::PyRuntimeError::new_err(format!("Serialization failed: {error}"))
+            })
+        })?
+    })
 }
 
 /// Index a session transcript for cross-session recall and return its content hash.
 #[pyfunction]
-pub fn aegis_index_session(session_id: u128, content: String, timestamp: u64) -> PyResult<String> {
+pub fn aegis_index_session(
+    py: Python<'_>,
+    session_id: u128,
+    content: String,
+    timestamp: u64,
+) -> PyResult<String> {
     aegis_index_session_scoped(
+        py,
         session_id,
         content,
         timestamp,
@@ -1087,40 +1508,43 @@ pub fn aegis_index_session(session_id: u128, content: String, timestamp: u64) ->
 /// again by the Rust storage owner; it is not a UI-provided permission grant.
 #[pyfunction]
 pub fn aegis_index_session_scoped(
+    py: Python<'_>,
     session_id: u128,
     content: String,
     timestamp: u64,
     scope_kind: String,
     owner_id: String,
 ) -> PyResult<String> {
-    py_safe(move || {
-        let index = get_session_index().map_err(|error| {
-            pyo3::exceptions::PyRuntimeError::new_err(format!(
-                "Session index init failed: {error:?}"
-            ))
-        })?;
-        let mut index = index.lock();
-        let session_ledger = get_session_ledger().map_err(|error| {
-            pyo3::exceptions::PyRuntimeError::new_err(format!(
-                "Session ledger init failed: {error:?}"
-            ))
-        })?;
-        let mut ledger = session_ledger.lock();
-        let content_hash = index
-            .index_session_durable_scoped(
-                session_id,
-                &content,
-                timestamp,
-                &scope_kind,
-                &owner_id,
-                &mut ledger,
-                None,
-            )
-            .map_err(|err| {
-                pyo3::exceptions::PyRuntimeError::new_err(format!("Index failed: {:?}", err))
+    py.detach(move || {
+        py_safe(move || {
+            let index = get_session_index().map_err(|error| {
+                pyo3::exceptions::PyRuntimeError::new_err(format!(
+                    "Session index init failed: {error:?}"
+                ))
             })?;
-        Ok(hex32(&content_hash))
-    })?
+            let mut index = index.lock();
+            let session_ledger = get_session_ledger().map_err(|error| {
+                pyo3::exceptions::PyRuntimeError::new_err(format!(
+                    "Session ledger init failed: {error:?}"
+                ))
+            })?;
+            let mut ledger = session_ledger.lock();
+            let content_hash = index
+                .index_session_durable_scoped(
+                    session_id,
+                    &content,
+                    timestamp,
+                    &scope_kind,
+                    &owner_id,
+                    &mut ledger,
+                    None,
+                )
+                .map_err(|err| {
+                    pyo3::exceptions::PyRuntimeError::new_err(format!("Index failed: {:?}", err))
+                })?;
+            Ok(hex32(&content_hash))
+        })?
+    })
 }
 
 /// Read the authoritative transcript for a session. Search results alone
@@ -1128,35 +1552,39 @@ pub fn aegis_index_session_scoped(
 #[pyfunction]
 #[pyo3(signature = (session_id, owner_id=None))]
 pub fn aegis_read_session_content(
+    py: Python<'_>,
     session_id: u128,
     owner_id: Option<String>,
 ) -> PyResult<Option<String>> {
-    aegis_read_session_content_scoped(session_id, "USER_PRIVATE".to_string(), owner_id)
+    aegis_read_session_content_scoped(py, session_id, "USER_PRIVATE".to_string(), owner_id)
 }
 
 #[pyfunction]
 #[pyo3(signature = (session_id, scope_kind="USER_PRIVATE".to_string(), owner_id=None))]
 pub fn aegis_read_session_content_scoped(
+    py: Python<'_>,
     session_id: u128,
     scope_kind: String,
     owner_id: Option<String>,
 ) -> PyResult<Option<String>> {
-    py_safe(move || {
-        let owner_id = owner_id.unwrap_or_else(session_profile_id);
-        let index = get_session_index().map_err(|error| {
-            pyo3::exceptions::PyRuntimeError::new_err(format!(
-                "Session index init failed: {error:?}"
-            ))
-        })?;
-        index
-            .lock()
-            .read_session_content_scoped(session_id, &scope_kind, &owner_id)
-            .map_err(|error| {
+    py.detach(move || {
+        py_safe(move || {
+            let owner_id = owner_id.unwrap_or_else(session_profile_id);
+            let index = get_session_index().map_err(|error| {
                 pyo3::exceptions::PyRuntimeError::new_err(format!(
-                    "Session hydration failed: {error:?}"
+                    "Session index init failed: {error:?}"
                 ))
-            })
-    })?
+            })?;
+            index
+                .lock()
+                .read_session_content_scoped(session_id, &scope_kind, &owner_id)
+                .map_err(|error| {
+                    pyo3::exceptions::PyRuntimeError::new_err(format!(
+                        "Session hydration failed: {error:?}"
+                    ))
+                })
+        })?
+    })
 }
 
 /// Read one authorized session source together with its immutable revision
@@ -1164,44 +1592,47 @@ pub fn aegis_read_session_content_scoped(
 #[pyfunction]
 #[pyo3(signature = (session_id, scope_kind="USER_PRIVATE".to_string(), owner_id=None))]
 pub fn aegis_read_session_record_scoped(
+    py: Python<'_>,
     session_id: u128,
     scope_kind: String,
     owner_id: Option<String>,
 ) -> PyResult<Option<String>> {
-    py_safe(move || {
-        let owner_id = memory_owner(owner_id)?;
-        let scope_kind = memory_scope(Some(scope_kind))?;
-        let index = get_session_index().map_err(|error| {
-            pyo3::exceptions::PyRuntimeError::new_err(format!(
-                "Session index init failed: {error:?}"
-            ))
-        })?;
-        let record = index
-            .lock()
-            .read_session_record_scoped(session_id, &scope_kind, &owner_id)
-            .map_err(|error| {
+    py.detach(move || {
+        py_safe(move || {
+            let owner_id = memory_owner(owner_id)?;
+            let scope_kind = memory_scope(Some(scope_kind))?;
+            let index = get_session_index().map_err(|error| {
                 pyo3::exceptions::PyRuntimeError::new_err(format!(
-                    "Session source read failed: {error:?}"
+                    "Session index init failed: {error:?}"
                 ))
             })?;
-        record
-            .map(|source| {
-                serde_json::to_string(&serde_json::json!({
-                    "session_id": format!("0x{:x}", source.document.session_id),
-                    "content_hash": hex32(&source.document.content_hash),
-                    "timestamp": source.document.timestamp,
-                    "scope_kind": source.document.scope_kind,
-                    "owner_id": source.document.owner_id,
-                    "content": source.content,
-                }))
+            let record = index
+                .lock()
+                .read_session_record_scoped(session_id, &scope_kind, &owner_id)
                 .map_err(|error| {
                     pyo3::exceptions::PyRuntimeError::new_err(format!(
-                        "Serialization failed: {error}"
+                        "Session source read failed: {error:?}"
                     ))
+                })?;
+            record
+                .map(|source| {
+                    serde_json::to_string(&serde_json::json!({
+                        "session_id": format!("0x{:x}", source.document.session_id),
+                        "content_hash": hex32(&source.document.content_hash),
+                        "timestamp": source.document.timestamp,
+                        "scope_kind": source.document.scope_kind,
+                        "owner_id": source.document.owner_id,
+                        "content": source.content,
+                    }))
+                    .map_err(|error| {
+                        pyo3::exceptions::PyRuntimeError::new_err(format!(
+                            "Serialization failed: {error}"
+                        ))
+                    })
                 })
-            })
-            .transpose()
-    })?
+                .transpose()
+        })?
+    })
 }
 
 /// Search past sessions and return cryptographically-bound candidate refs.
@@ -1220,8 +1651,9 @@ pub fn aegis_read_session_record_scoped(
 /// and cannot be used as PhysicalWitness or PolicyApproval.
 #[pyfunction]
 #[pyo3(signature = (query, top_k=5usize))]
-pub fn aegis_search_past_sessions(query: String, top_k: usize) -> PyResult<String> {
+pub fn aegis_search_past_sessions(py: Python<'_>, query: String, top_k: usize) -> PyResult<String> {
     aegis_search_past_sessions_scoped(
+        py,
         query,
         top_k,
         "USER_PRIVATE".to_string(),
@@ -1234,64 +1666,67 @@ pub fn aegis_search_past_sessions(query: String, top_k: usize) -> PyResult<Strin
 #[pyfunction]
 #[pyo3(signature = (query, top_k=5usize, scope_kind="USER_PRIVATE".to_string(), owner_id=None))]
 pub fn aegis_search_past_sessions_scoped(
+    py: Python<'_>,
     query: String,
     top_k: usize,
     scope_kind: String,
     owner_id: Option<String>,
 ) -> PyResult<String> {
-    py_safe(move || {
-        if query.len() > 64 * 1024 {
-            return Err(pyo3::exceptions::PyValueError::new_err(
-                "query exceeds the bounded session search size",
-            ));
-        }
-        if query.trim().is_empty() {
-            return Err(pyo3::exceptions::PyValueError::new_err(
-                "query must be non-empty",
-            ));
-        }
+    py.detach(move || {
+        py_safe(move || {
+            if query.len() > 64 * 1024 {
+                return Err(pyo3::exceptions::PyValueError::new_err(
+                    "query exceeds the bounded session search size",
+                ));
+            }
+            if query.trim().is_empty() {
+                return Err(pyo3::exceptions::PyValueError::new_err(
+                    "query must be non-empty",
+                ));
+            }
 
-        if top_k == 0 || top_k > 100 {
-            return Err(pyo3::exceptions::PyValueError::new_err(
-                "top_k must be between 1 and 100",
-            ));
-        }
+            if top_k == 0 || top_k > 100 {
+                return Err(pyo3::exceptions::PyValueError::new_err(
+                    "top_k must be between 1 and 100",
+                ));
+            }
 
-        let session_index = get_session_index().map_err(|error| {
-            pyo3::exceptions::PyRuntimeError::new_err(format!(
-                "Session index init failed: {error:?}"
-            ))
-        })?;
-        let index = session_index.lock();
-        let owner_id = memory_owner(owner_id)?;
-        let scope_kind = memory_scope(Some(scope_kind))?;
-        let candidates = index.search_sessions_scoped(&query, top_k, &scope_kind, &owner_id);
+            let session_index = get_session_index().map_err(|error| {
+                pyo3::exceptions::PyRuntimeError::new_err(format!(
+                    "Session index init failed: {error:?}"
+                ))
+            })?;
+            let index = session_index.lock();
+            let owner_id = memory_owner(owner_id)?;
+            let scope_kind = memory_scope(Some(scope_kind))?;
+            let candidates = index.search_sessions_scoped(&query, top_k, &scope_kind, &owner_id);
 
-        let results: Vec<serde_json::Value> = candidates
-            .iter()
-            .map(|c| {
-                serde_json::json!({
-                    "evidence_ref_hash": hex32(&c.evidence_ref_hash),
-                    "segment_id": c.segment_id,
-                    "tier": "ColdVectorExpansion",
-                    "score": (c.score_quantized as f64) / (crate::evidence_index::CANDIDATE_SCORE_PPM_MAX as f64),
-                    "epoch_hash": hex32(&c.index_epoch_hash),
+            let results: Vec<serde_json::Value> = candidates
+                .iter()
+                .map(|c| {
+                    serde_json::json!({
+                        "evidence_ref_hash": hex32(&c.evidence_ref_hash),
+                        "segment_id": c.segment_id,
+                        "tier": "ColdVectorExpansion",
+                        "score": (c.score_quantized as f64) / (crate::evidence_index::CANDIDATE_SCORE_PPM_MAX as f64),
+                        "epoch_hash": hex32(&c.index_epoch_hash),
+                    })
                 })
+                .collect();
+
+            let envelope = serde_json::json!({
+                "schema": "aegis-session-search-result-v1",
+                "query": query,
+                "top_k": top_k,
+                "count": results.len(),
+                "results": results,
+                "tier": "ColdVectorExpansion",
+                "gate": "CandidateOnly",
+            });
+
+            serde_json::to_string(&envelope).map_err(|e| {
+                pyo3::exceptions::PyRuntimeError::new_err(format!("Serialization failed: {}", e))
             })
-            .collect();
-
-        let envelope = serde_json::json!({
-            "schema": "aegis-session-search-result-v1",
-            "query": query,
-            "top_k": top_k,
-            "count": results.len(),
-            "results": results,
-            "tier": "ColdVectorExpansion",
-            "gate": "CandidateOnly",
-        });
-
-        serde_json::to_string(&envelope).map_err(|e| {
-            pyo3::exceptions::PyRuntimeError::new_err(format!("Serialization failed: {}", e))
-        })
-    })?
+        })?
+    })
 }

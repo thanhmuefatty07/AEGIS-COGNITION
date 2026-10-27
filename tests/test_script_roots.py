@@ -20,9 +20,7 @@ SCRIPT_ROOTS = (
 
 
 @pytest.mark.parametrize(("script_name", "root_name"), SCRIPT_ROOTS)
-def test_script_root_follows_relocated_checkout(
-    tmp_path: Path, script_name: str, root_name: str
-) -> None:
+def test_script_root_follows_relocated_checkout(tmp_path: Path, script_name: str, root_name: str) -> None:
     relocated_root = tmp_path / "relocated checkout"
     relocated_scripts = relocated_root / "scripts"
     relocated_scripts.mkdir(parents=True)
@@ -36,6 +34,7 @@ def test_script_root_follows_relocated_checkout(
     )
     completed = subprocess.run(
         [sys.executable, "-c", probe, str(script_path)],
+        cwd=tmp_path,
         check=True,
         capture_output=True,
         text=True,

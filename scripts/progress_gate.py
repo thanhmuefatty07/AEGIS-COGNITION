@@ -59,7 +59,11 @@ DOMAINS: tuple[Domain, ...] = (
         8,
         (
             ("browser_ops_report", "run_checks_report.json", ("browser_ops_bench_verification_report", "overall_ok")),
-            ("browser_live_bench", "benchmark_gate_report.json", ("checks", "browser_action_plan_live_manifest_gateway_ingest", "ok")),
+            (
+                "browser_live_bench",
+                "benchmark_gate_report.json",
+                ("checks", "browser_action_plan_live_manifest_gateway_ingest", "ok"),
+            ),
         ),
     ),
     Domain(
@@ -67,21 +71,77 @@ DOMAINS: tuple[Domain, ...] = (
         10,
         (
             ("hot_browser_shadow_gate", "hot_browser_shadow_gate_report.json", ("overall_ok",)),
-            ("hot_artifact_count", "hot_browser_shadow_gate_report.json", ("hot_browser_shadow_evidence", "artifact_count")),
-            ("hot_commit_count", "hot_browser_shadow_gate_report.json", ("hot_browser_shadow_evidence", "hot_commit_count")),
-            ("cold_seal_receipts", "hot_browser_shadow_gate_report.json", ("hot_browser_shadow_evidence", "cold_seal_receipt_count")),
-            ("shadow_replay_recorded", "hot_browser_shadow_gate_report.json", ("hot_browser_shadow_evidence", "shadow_seal_replay_recorded")),
-            ("shadow_arrow_archive_recovered", "hot_browser_shadow_gate_report.json", ("hot_browser_shadow_evidence", "shadow_arrow_archive_recovered")),
-            ("shadow_arrow_archive_replay_matches", "hot_browser_shadow_gate_report.json", ("hot_browser_shadow_evidence", "shadow_arrow_archive_replay_matches")),
-            ("shadow_arrow_archive_contains_shadow_seal", "hot_browser_shadow_gate_report.json", ("hot_browser_shadow_evidence", "shadow_arrow_archive_contains_shadow_seal")),
-            ("hot_no_file_roundtrip", "hot_browser_shadow_gate_report.json", ("hot_browser_shadow_evidence", "no_file_roundtrip_on_hot_path")),
+            (
+                "hot_artifact_count",
+                "hot_browser_shadow_gate_report.json",
+                ("hot_browser_shadow_evidence", "artifact_count"),
+            ),
+            (
+                "hot_commit_count",
+                "hot_browser_shadow_gate_report.json",
+                ("hot_browser_shadow_evidence", "hot_commit_count"),
+            ),
+            (
+                "cold_seal_receipts",
+                "hot_browser_shadow_gate_report.json",
+                ("hot_browser_shadow_evidence", "cold_seal_receipt_count"),
+            ),
+            (
+                "shadow_replay_recorded",
+                "hot_browser_shadow_gate_report.json",
+                ("hot_browser_shadow_evidence", "shadow_seal_replay_recorded"),
+            ),
+            (
+                "shadow_arrow_archive_recovered",
+                "hot_browser_shadow_gate_report.json",
+                ("hot_browser_shadow_evidence", "shadow_arrow_archive_recovered"),
+            ),
+            (
+                "shadow_arrow_archive_replay_matches",
+                "hot_browser_shadow_gate_report.json",
+                ("hot_browser_shadow_evidence", "shadow_arrow_archive_replay_matches"),
+            ),
+            (
+                "shadow_arrow_archive_contains_shadow_seal",
+                "hot_browser_shadow_gate_report.json",
+                ("hot_browser_shadow_evidence", "shadow_arrow_archive_contains_shadow_seal"),
+            ),
+            (
+                "hot_no_file_roundtrip",
+                "hot_browser_shadow_gate_report.json",
+                ("hot_browser_shadow_evidence", "no_file_roundtrip_on_hot_path"),
+            ),
             ("shadow_sealer_soak_gate", "shadow_sealer_soak_gate_report.json", ("overall_ok",)),
-            ("shadow_sealer_soak_samples", "shadow_sealer_soak_gate_report.json", ("shadow_sealer_soak_evidence", "sample_count")),
-            ("shadow_sealer_hot_submit_under_gate", "shadow_sealer_soak_gate_report.json", ("shadow_sealer_soak_evidence", "hot_submit_under_gate")),
-            ("shadow_sealer_hot_before_cold", "shadow_sealer_soak_gate_report.json", ("shadow_sealer_soak_evidence", "hot_submissions_completed_before_receipts")),
-            ("shadow_sealer_cold_files_materialized", "shadow_sealer_soak_gate_report.json", ("shadow_sealer_soak_evidence", "cold_payload_files_materialized")),
-            ("shadow_sealer_cold_hashes_match", "shadow_sealer_soak_gate_report.json", ("shadow_sealer_soak_evidence", "cold_payload_file_hashes_match")),
-            ("shadow_sealer_payload_sync_requested", "shadow_sealer_soak_gate_report.json", ("shadow_sealer_soak_evidence", "cold_payload_sync_requested")),
+            (
+                "shadow_sealer_soak_samples",
+                "shadow_sealer_soak_gate_report.json",
+                ("shadow_sealer_soak_evidence", "sample_count"),
+            ),
+            (
+                "shadow_sealer_hot_submit_under_gate",
+                "shadow_sealer_soak_gate_report.json",
+                ("shadow_sealer_soak_evidence", "hot_submit_under_gate"),
+            ),
+            (
+                "shadow_sealer_hot_before_cold",
+                "shadow_sealer_soak_gate_report.json",
+                ("shadow_sealer_soak_evidence", "hot_submissions_completed_before_receipts"),
+            ),
+            (
+                "shadow_sealer_cold_files_materialized",
+                "shadow_sealer_soak_gate_report.json",
+                ("shadow_sealer_soak_evidence", "cold_payload_files_materialized"),
+            ),
+            (
+                "shadow_sealer_cold_hashes_match",
+                "shadow_sealer_soak_gate_report.json",
+                ("shadow_sealer_soak_evidence", "cold_payload_file_hashes_match"),
+            ),
+            (
+                "shadow_sealer_payload_sync_requested",
+                "shadow_sealer_soak_gate_report.json",
+                ("shadow_sealer_soak_evidence", "cold_payload_sync_requested"),
+            ),
         ),
     ),
     Domain(
@@ -91,7 +151,11 @@ DOMAINS: tuple[Domain, ...] = (
             ("provider_route_gate", "provider_route_gate_report.json", ("overall_ok",)),
             ("provider_route_checks", "provider_route_gate_report.json", ("passed",)),
             ("dynamic_provider_fallback_gate", "dynamic_provider_fallback_gate_report.json", ("overall_ok",)),
-            ("dynamic_provider_latency", "dynamic_provider_fallback_gate_report.json", ("dynamic_provider_fallback_evidence", "latency_under_gate")),
+            (
+                "dynamic_provider_latency",
+                "dynamic_provider_fallback_gate_report.json",
+                ("dynamic_provider_fallback_evidence", "latency_under_gate"),
+            ),
             (
                 "dynamic_provider_live_429_admission_schema",
                 "dynamic_provider_fallback_gate_report.json",
@@ -107,7 +171,11 @@ DOMAINS: tuple[Domain, ...] = (
                 "dynamic_provider_fallback_gate_report.json",
                 ("live_provider_429_soak_capture_missing_or_valid",),
             ),
-            ("dynamic_provider_live_state", "dynamic_provider_fallback_gate_report.json", ("live_provider_429_soak_state_recorded",)),
+            (
+                "dynamic_provider_live_state",
+                "dynamic_provider_fallback_gate_report.json",
+                ("live_provider_429_soak_state_recorded",),
+            ),
             ("constitution_runtime", "constitution_audit_report.json", ("overall_ok",)),
         ),
     ),
@@ -116,7 +184,11 @@ DOMAINS: tuple[Domain, ...] = (
         8,
         (
             ("pav_memory_bench", "benchmark_gate_report.json", ("checks", "pav_ast_distance_registered", "ok")),
-            ("skill_admission_bench", "benchmark_gate_report.json", ("checks", "skill_admission_record_validate", "ok")),
+            (
+                "skill_admission_bench",
+                "benchmark_gate_report.json",
+                ("checks", "skill_admission_record_validate", "ok"),
+            ),
         ),
     ),
     Domain(
@@ -151,7 +223,11 @@ DOMAINS: tuple[Domain, ...] = (
         "operator_product_surface",
         8,
         (
-            ("operator_api_contract", "constitution_audit_report.json", ("checks", "python_operator_evidence_api", "ok")),
+            (
+                "operator_api_contract",
+                "constitution_audit_report.json",
+                ("checks", "python_operator_evidence_api", "ok"),
+            ),
             ("e2e_gate", "e2e_release_gate_report.json", ("overall_ok",)),
         ),
     ),
@@ -181,8 +257,16 @@ DOMAINS: tuple[Domain, ...] = (
             ),
             ("topology_no_policy_weaken", "deployment_manifest_report.json", ("topology_cannot_weaken_policy",)),
             ("remote_workers_candidate_only", "deployment_manifest_report.json", ("remote_workers_candidate_only",)),
-            ("service_placements_cover_boundaries", "deployment_manifest_report.json", ("service_placements_cover_boundaries",)),
-            ("single_writer_placement_enforced", "deployment_manifest_report.json", ("single_writer_placement_enforced",)),
+            (
+                "service_placements_cover_boundaries",
+                "deployment_manifest_report.json",
+                ("service_placements_cover_boundaries",),
+            ),
+            (
+                "single_writer_placement_enforced",
+                "deployment_manifest_report.json",
+                ("single_writer_placement_enforced",),
+            ),
             ("network_edges_candidate_only", "deployment_manifest_report.json", ("network_edges_candidate_only",)),
             ("durable_storage_defined", "deployment_manifest_report.json", ("durable_storage_defined",)),
             (
@@ -210,7 +294,11 @@ DOMAINS: tuple[Domain, ...] = (
                 "production_packaging_smoke_gate_report.json",
                 ("production_packaging_smoke_present",),
             ),
-            ("production_packaging_smoke_hash", "production_packaging_smoke_gate_report.json", ("smoke_evidence_hash",)),
+            (
+                "production_packaging_smoke_hash",
+                "production_packaging_smoke_gate_report.json",
+                ("smoke_evidence_hash",),
+            ),
             ("external_deployment_smoke_gate", "external_deployment_smoke_gate_report.json", ("overall_ok",)),
             (
                 "external_deployment_smoke_evidence_hash",
@@ -264,10 +352,26 @@ DOMAINS: tuple[Domain, ...] = (
         8,
         (
             ("cluster_loopback_gate", "cluster_loopback_gate_report.json", ("overall_ok",)),
-            ("cluster_worker_count", "cluster_loopback_gate_report.json", ("loopback_cluster_evidence", "worker_count")),
-            ("cluster_work_items", "cluster_loopback_gate_report.json", ("loopback_cluster_evidence", "work_item_count")),
-            ("cluster_rtt", "cluster_loopback_gate_report.json", ("loopback_cluster_evidence", "max_logical_rtt_ticks")),
-            ("multi_node_gap", "cluster_loopback_gate_report.json", ("production_cluster_release_blocked_without_real_multi_node_soak",)),
+            (
+                "cluster_worker_count",
+                "cluster_loopback_gate_report.json",
+                ("loopback_cluster_evidence", "worker_count"),
+            ),
+            (
+                "cluster_work_items",
+                "cluster_loopback_gate_report.json",
+                ("loopback_cluster_evidence", "work_item_count"),
+            ),
+            (
+                "cluster_rtt",
+                "cluster_loopback_gate_report.json",
+                ("loopback_cluster_evidence", "max_logical_rtt_ticks"),
+            ),
+            (
+                "multi_node_gap",
+                "cluster_loopback_gate_report.json",
+                ("production_cluster_release_blocked_without_real_multi_node_soak",),
+            ),
         ),
     ),
     Domain(
@@ -277,11 +381,31 @@ DOMAINS: tuple[Domain, ...] = (
             ("tcp_cluster_soak_gate", "tcp_cluster_soak_gate_report.json", ("overall_ok",)),
             ("tcp_worker_count", "tcp_cluster_soak_gate_report.json", ("tcp_cluster_soak_evidence", "worker_count")),
             ("tcp_work_items", "tcp_cluster_soak_gate_report.json", ("tcp_cluster_soak_evidence", "work_item_count")),
-            ("tcp_worker_connections", "tcp_cluster_soak_gate_report.json", ("tcp_cluster_soak_evidence", "tcp_worker_connections")),
-            ("tcp_round_trips", "tcp_cluster_soak_gate_report.json", ("tcp_cluster_soak_evidence", "tcp_round_trip_count")),
-            ("tcp_payload_sent", "tcp_cluster_soak_gate_report.json", ("tcp_cluster_soak_evidence", "tcp_payload_bytes_sent")),
-            ("real_multi_machine_admission_schema", "tcp_cluster_soak_gate_report.json", ("real_multi_machine_cluster_admission", "schema")),
-            ("real_multi_machine_admission_hash", "tcp_cluster_soak_gate_report.json", ("real_multi_machine_cluster_admission_hash",)),
+            (
+                "tcp_worker_connections",
+                "tcp_cluster_soak_gate_report.json",
+                ("tcp_cluster_soak_evidence", "tcp_worker_connections"),
+            ),
+            (
+                "tcp_round_trips",
+                "tcp_cluster_soak_gate_report.json",
+                ("tcp_cluster_soak_evidence", "tcp_round_trip_count"),
+            ),
+            (
+                "tcp_payload_sent",
+                "tcp_cluster_soak_gate_report.json",
+                ("tcp_cluster_soak_evidence", "tcp_payload_bytes_sent"),
+            ),
+            (
+                "real_multi_machine_admission_schema",
+                "tcp_cluster_soak_gate_report.json",
+                ("real_multi_machine_cluster_admission", "schema"),
+            ),
+            (
+                "real_multi_machine_admission_hash",
+                "tcp_cluster_soak_gate_report.json",
+                ("real_multi_machine_cluster_admission_hash",),
+            ),
             (
                 "real_multi_machine_capture_missing_or_valid",
                 "tcp_cluster_soak_gate_report.json",
@@ -295,17 +419,41 @@ DOMAINS: tuple[Domain, ...] = (
         8,
         (
             ("quickjs_cold_start_gate", "quickjs_cold_start_gate_report.json", ("overall_ok",)),
-            ("quickjs_sample_count", "quickjs_cold_start_gate_report.json", ("quickjs_cold_start_evidence", "sample_count")),
-            ("quickjs_cold_total", "quickjs_cold_start_gate_report.json", ("quickjs_cold_start_evidence", "cold_start_total_ns")),
-            ("quickjs_warm_total", "quickjs_cold_start_gate_report.json", ("quickjs_cold_start_evidence", "warm_cached_total_ns")),
-            ("quickjs_full_interpreter_admission_schema", "quickjs_cold_start_gate_report.json", ("full_interpreter_admission", "schema")),
-            ("quickjs_full_interpreter_admission_hash", "quickjs_cold_start_gate_report.json", ("full_interpreter_admission_hash",)),
+            (
+                "quickjs_sample_count",
+                "quickjs_cold_start_gate_report.json",
+                ("quickjs_cold_start_evidence", "sample_count"),
+            ),
+            (
+                "quickjs_cold_total",
+                "quickjs_cold_start_gate_report.json",
+                ("quickjs_cold_start_evidence", "cold_start_total_ns"),
+            ),
+            (
+                "quickjs_warm_total",
+                "quickjs_cold_start_gate_report.json",
+                ("quickjs_cold_start_evidence", "warm_cached_total_ns"),
+            ),
+            (
+                "quickjs_full_interpreter_admission_schema",
+                "quickjs_cold_start_gate_report.json",
+                ("full_interpreter_admission", "schema"),
+            ),
+            (
+                "quickjs_full_interpreter_admission_hash",
+                "quickjs_cold_start_gate_report.json",
+                ("full_interpreter_admission_hash",),
+            ),
             (
                 "quickjs_full_interpreter_semantic_capture_missing_or_valid",
                 "quickjs_cold_start_gate_report.json",
                 ("full_interpreter_semantic_capture_missing_or_valid",),
             ),
-            ("quickjs_full_interpreter_state", "quickjs_cold_start_gate_report.json", ("full_interpreter_state_recorded",)),
+            (
+                "quickjs_full_interpreter_state",
+                "quickjs_cold_start_gate_report.json",
+                ("full_interpreter_state_recorded",),
+            ),
         ),
     ),
     Domain(
@@ -329,9 +477,7 @@ def evaluate_progress_gate(
     root_path = Path(root)
     artifacts_dir = root_path / "artifacts"
     payloads = {
-        artifact: _read_json(artifacts_dir / artifact)
-        for domain in DOMAINS
-        for _, artifact, _ in domain.checks
+        artifact: _read_json(artifacts_dir / artifact) for domain in DOMAINS for _, artifact, _ in domain.checks
     }
     if run_checks_payload is not None:
         payloads["run_checks_report.json"] = run_checks_payload
@@ -366,11 +512,7 @@ def evaluate_progress_gate(
             }
         )
     overall_readiness_ppm = 0 if total_weight == 0 else weighted_score // total_weight
-    all_checks_passed = total_weight > 0 and all(
-        check["ok"]
-        for report in domain_reports
-        for check in report["checks"]
-    )
+    all_checks_passed = total_weight > 0 and all(check["ok"] for report in domain_reports for check in report["checks"])
     payload = {
         "suite_name": "AEGIS Progress Gate",
         "schema": "aegis-progress-gate-report-v1",
@@ -430,7 +572,7 @@ def _get_path(payload: dict[str, Any], path: tuple[str, ...]) -> Any:
 def _read_json(path: Path) -> dict[str, Any]:
     try:
         payload = json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, UnicodeDecodeError, json.JSONDecodeError):
+    except OSError, UnicodeDecodeError, json.JSONDecodeError:
         return {}
     return payload if isinstance(payload, dict) else {}
 

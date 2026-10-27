@@ -52,7 +52,7 @@ def _criterion_estimate_ns(root: Path, name: str) -> float | None:
     path = root / "target" / "criterion" / name / "new" / "estimates.json"
     try:
         data = json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError):
+    except OSError, json.JSONDecodeError:
         return None
     estimate = data.get("slope") or data.get("mean") or data.get("median")
     if not estimate or "point_estimate" not in estimate:
@@ -64,9 +64,7 @@ def _cargo_env() -> dict:
     env = os.environ.copy()
     py_root = Path(sys.executable).parent
     env["PYO3_PYTHON"] = sys.executable
-    env["PATH"] = os.pathsep.join(
-        [str(py_root), str(py_root / "DLLs"), str(py_root / "libs"), env.get("PATH", "")]
-    )
+    env["PATH"] = os.pathsep.join([str(py_root), str(py_root / "DLLs"), str(py_root / "libs"), env.get("PATH", "")])
     env.setdefault("RUSTFLAGS", "-C debuginfo=0")
     return env
 
@@ -97,7 +95,7 @@ def _git_commit(path: Path) -> str | None:
             check=True,
             text=True,
         )
-    except (OSError, subprocess.CalledProcessError):
+    except OSError, subprocess.CalledProcessError:
         return None
     return result.stdout.strip()
 
@@ -178,10 +176,7 @@ def _connect_hermes_state_db(path: Path) -> sqlite3.Connection:
 
 
 def _content(session_id: str, msg_idx: int, size: int) -> str:
-    prefix = (
-        f"session={session_id} message={msg_idx:05d} "
-        "policy replay witness checkpoint recovery browser evidence "
-    )
+    prefix = f"session={session_id} message={msg_idx:05d} policy replay witness checkpoint recovery browser evidence "
     if len(prefix) >= size:
         return prefix[:size]
     return prefix + ("x" * (size - len(prefix)))
@@ -428,11 +423,7 @@ def evaluate_hermes_session_recovery_baseline(
     baseline_db_hash = _blake3_hex(root_path, db_bytes)
     recovered_payload_hash = _blake3_hex(root_path, recovered_payload)
     aegis_estimate_ns = _criterion_estimate_ns(root_path, AEGIS_BINARY_RECOVERY_BENCHMARK_NAME)
-    speedup = (
-        baseline_estimate_ns / aegis_estimate_ns
-        if aegis_estimate_ns and aegis_estimate_ns > 0
-        else None
-    )
+    speedup = baseline_estimate_ns / aegis_estimate_ns if aegis_estimate_ns and aegis_estimate_ns > 0 else None
     source_refs = _source_refs(root_path)
     evidence = {
         "aegis_benchmark_name": AEGIS_BINARY_RECOVERY_BENCHMARK_NAME,
@@ -477,9 +468,7 @@ def evaluate_hermes_session_recovery_baseline(
     gate_predicates = {
         "criterion_estimate_present": aegis_estimate_ns is not None,
         "speedup_present": speedup is not None,
-        "speedup_threshold_met": (
-            speedup is not None and speedup >= HERMES_SESSION_RECOVERY_SPEEDUP_THRESHOLD
-        ),
+        "speedup_threshold_met": (speedup is not None and speedup >= HERMES_SESSION_RECOVERY_SPEEDUP_THRESHOLD),
         "baseline_digest_deterministic": deterministic_digest_ok,
         "recovered_message_count_exact": recovered_message_count == BASELINE_RECOVERY_MESSAGES,
         "lineage_hops_exact": lineage_hops == 1,

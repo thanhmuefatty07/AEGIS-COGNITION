@@ -101,10 +101,15 @@ def test_tool_call_turn_and_provider_specific_history_round_trip(protocol: str):
                 }
             ]
         }
-        second = {"choices": [{"message": {"role": "assistant", "content": "Evidence found."}, "finish_reason": "stop"}]}
+        second = {
+            "choices": [{"message": {"role": "assistant", "content": "Evidence found."}, "finish_reason": "stop"}]
+        }
     elif protocol == "anthropic-messages":
         first = {
-            "content": [{"type": "text", "text": "I will search."}, {"type": "tool_use", "id": "toolu-1", "name": alias, "input": {"query": "rust"}}],
+            "content": [
+                {"type": "text", "text": "I will search."},
+                {"type": "tool_use", "id": "toolu-1", "name": alias, "input": {"query": "rust"}},
+            ],
             "stop_reason": "tool_use",
         }
         second = {"content": [{"type": "text", "text": "Evidence found."}], "stop_reason": "end_turn"}
@@ -123,7 +128,13 @@ def test_tool_call_turn_and_provider_specific_history_round_trip(protocol: str):
             "status": "completed",
         }
         second = {
-            "output": [{"type": "message", "role": "assistant", "content": [{"type": "output_text", "text": "Evidence found."}]}],
+            "output": [
+                {
+                    "type": "message",
+                    "role": "assistant",
+                    "content": [{"type": "output_text", "text": "Evidence found."}],
+                }
+            ],
             "status": "completed",
         }
     requests: list[dict[str, object]] = []

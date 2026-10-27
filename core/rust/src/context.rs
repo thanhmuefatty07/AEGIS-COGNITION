@@ -10,6 +10,9 @@ use std::collections::{BTreeMap, BTreeSet};
 
 pub type ContextNodeId = u128;
 
+const MAX_CONFIRMED_FILE_MEMORY_RELATIONS: usize = 8;
+const FILE_MEMORY_RELATION_SUPPORT_UTILITY: u64 = 1_000_000;
+
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum ContextNodeKind {
     Task,
@@ -69,6 +72,14 @@ pub struct ContextPack {
     pub activation_node_count: usize,
 }
 
+/// A confirmed edge from a non-selectable active file root to a memory item.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct ConfirmedFileMemoryRelation {
+    pub relation_id: u128,
+    pub file_node_id: ContextNodeId,
+    pub memory_node_id: ContextNodeId,
+}
+
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct ContextFoldRecord {
     pub active_task_id: ContextNodeId,
@@ -113,6 +124,7 @@ pub trait AgenticEvidenceSdkRunHandoffBinding {
 pub enum ContextGovernorError {
     InvalidConfig,
     InvalidNode(ContextNodeId),
+    InvalidRelation,
     InvalidFoldRecord,
     InvalidCandidateEvidenceProof,
     CandidateEvidenceGate(CandidateOnlyGateError),
@@ -281,6 +293,66 @@ impl ContextGovernor {
         &self,
         required_node_ids: &[ContextNodeId],
     ) -> Result<ContextPack, ContextGovernorError> {
+        self.build_hydrated_context_pack_with_relation_support(required_node_ids, &BTreeSet::new())
+    }
+
+    /// Select hydrated nodes using verified typed file-to-memory edges.
+    /// File roots remain virtual provenance anchors and are never inserted into
+    /// the candidate set, charged against tokens, or returned in the pack.
+    pub fn build_hydrated_context_pack_with_file_relations(
+        &self,
+        active_file_node_ids: &[ContextNodeId],
+        relations: &[ConfirmedFileMemoryRelation],
+        required_node_ids: &[ContextNodeId],
+    ) -> Result<ContextPack, ContextGovernorError> {
+        if active_file_node_ids.len() > MAX_CONFIRMED_FILE_MEMORY_RELATIONS
+            || relations.len() > MAX_CONFIRMED_FILE_MEMORY_RELATIONS
+        {
+            return Err(ContextGovernorError::InvalidRelation);
+        }
+        let mut active_file_ids = BTreeSet::new();
+        for file_node_id in active_file_node_ids {
+            if *file_node_id == 0
+                || self.nodes.contains_key(file_node_id)
+                || !active_file_ids.insert(*file_node_id)
+            {
+                return Err(ContextGovernorError::InvalidRelation);
+            }
+        }
+        let mut relation_ids = BTreeSet::new();
+        let mut relation_file_ids = BTreeSet::new();
+        let mut related_memory_ids = BTreeSet::new();
+        for relation in relations {
+            if relation.relation_id == 0
+                || relation.file_node_id == 0
+                || !relation_ids.insert(relation.relation_id)
+                || !active_file_ids.contains(&relation.file_node_id)
+            {
+                return Err(ContextGovernorError::InvalidRelation);
+            }
+            let Some(memory) = self.nodes.get(&relation.memory_node_id) else {
+                return Err(ContextGovernorError::InvalidRelation);
+            };
+            if memory.kind != ContextNodeKind::Memory {
+                return Err(ContextGovernorError::InvalidRelation);
+            }
+            relation_file_ids.insert(relation.file_node_id);
+            related_memory_ids.insert(relation.memory_node_id);
+        }
+        if relation_file_ids != active_file_ids {
+            return Err(ContextGovernorError::InvalidRelation);
+        }
+        self.build_hydrated_context_pack_with_relation_support(
+            required_node_ids,
+            &related_memory_ids,
+        )
+    }
+
+    fn build_hydrated_context_pack_with_relation_support(
+        &self,
+        required_node_ids: &[ContextNodeId],
+        related_memory_ids: &BTreeSet<ContextNodeId>,
+    ) -> Result<ContextPack, ContextGovernorError> {
         let required = canonical_ids(required_node_ids);
         for node_id in &required {
             if !self.nodes.contains_key(node_id) {
@@ -304,18 +376,31 @@ impl ContextGovernor {
             .filter(|node_id| protected.binary_search(node_id).is_err())
             .filter_map(|node_id| self.nodes.get(node_id))
             .collect();
-        candidates.sort_by(|left, right| candidate_order(left, right));
+        candidates.sort_by(|left, right| {
+            candidate_order_with_file_relation_support(left, right, related_memory_ids)
+        });
         for candidate in candidates {
             if token_count.saturating_add(candidate.token_cost) <= self.config.token_budget {
                 token_count += candidate.token_cost;
                 selected.push(candidate.node_id);
             }
         }
-        self.local_swap_improve(&protected, &activated_ids, &mut selected, &mut token_count);
+        self.local_swap_improve_with_file_relation_support(
+            &protected,
+            &activated_ids,
+            &mut selected,
+            &mut token_count,
+            related_memory_ids,
+        );
         selected.sort_unstable();
         let utility_score = selected
             .iter()
-            .map(|node_id| self.nodes[node_id].deterministic_utility())
+            .map(|node_id| {
+                context_node_utility_with_file_relation_support(
+                    &self.nodes[node_id],
+                    related_memory_ids,
+                )
+            })
             .sum();
         let digest = context_pack_digest(&selected, token_count, utility_score);
         Ok(ContextPack {
@@ -585,6 +670,23 @@ impl ContextGovernor {
         selected: &mut Vec<ContextNodeId>,
         token_count: &mut u32,
     ) {
+        self.local_swap_improve_with_file_relation_support(
+            required,
+            activated_ids,
+            selected,
+            token_count,
+            &BTreeSet::new(),
+        );
+    }
+
+    fn local_swap_improve_with_file_relation_support(
+        &self,
+        required: &[ContextNodeId],
+        activated_ids: &[ContextNodeId],
+        selected: &mut Vec<ContextNodeId>,
+        token_count: &mut u32,
+        related_memory_ids: &BTreeSet<ContextNodeId>,
+    ) {
         let mut selected_lookup = selected.clone();
         selected_lookup.sort_unstable();
         let mut candidates: Vec<&ContextNode> = activated_ids
@@ -592,10 +694,13 @@ impl ContextGovernor {
             .filter(|node_id| selected_lookup.binary_search(node_id).is_err())
             .filter_map(|node_id| self.nodes.get(node_id))
             .collect();
-        candidates.sort_by(|left, right| candidate_order(left, right));
+        candidates.sort_by(|left, right| {
+            candidate_order_with_file_relation_support(left, right, related_memory_ids)
+        });
 
         for candidate in candidates {
-            let candidate_utility = candidate.deterministic_utility();
+            let candidate_utility =
+                context_node_utility_with_file_relation_support(candidate, related_memory_ids);
             let mut removable_index = 0usize;
             while removable_index < selected.len() {
                 let removable_id = selected[removable_index];
@@ -613,7 +718,12 @@ impl ContextGovernor {
                     removable_index += 1;
                     continue;
                 }
-                if candidate_utility <= removable.deterministic_utility() {
+                if candidate_utility
+                    <= context_node_utility_with_file_relation_support(
+                        removable,
+                        related_memory_ids,
+                    )
+                {
                     removable_index += 1;
                     continue;
                 }
@@ -1105,6 +1215,41 @@ fn candidate_order(left: &ContextNode, right: &ContextNode) -> Ordering {
         })
 }
 
+fn candidate_order_with_file_relation_support(
+    left: &ContextNode,
+    right: &ContextNode,
+    related_memory_ids: &BTreeSet<ContextNodeId>,
+) -> Ordering {
+    retention_rank(left.retention_class)
+        .cmp(&retention_rank(right.retention_class))
+        .then_with(|| {
+            let left_utility =
+                context_node_utility_with_file_relation_support(left, related_memory_ids);
+            let right_utility =
+                context_node_utility_with_file_relation_support(right, related_memory_ids);
+            right_utility
+                .saturating_mul(left.token_cost as u64)
+                .cmp(&left_utility.saturating_mul(right.token_cost as u64))
+                .then_with(|| right_utility.cmp(&left_utility))
+                .then_with(|| left.token_cost.cmp(&right.token_cost))
+                .then_with(|| left.node_id.cmp(&right.node_id))
+        })
+}
+
+fn context_node_utility_with_file_relation_support(
+    node: &ContextNode,
+    related_memory_ids: &BTreeSet<ContextNodeId>,
+) -> u64 {
+    let relation_support =
+        if node.kind == ContextNodeKind::Memory && related_memory_ids.contains(&node.node_id) {
+            FILE_MEMORY_RELATION_SUPPORT_UTILITY
+        } else {
+            0
+        };
+    node.deterministic_utility()
+        .saturating_add(relation_support)
+}
+
 fn retention_rank(class: ContextRetentionClass) -> u8 {
     match class {
         ContextRetentionClass::Protected => 0,
@@ -1351,4 +1496,74 @@ fn context_pack_digest(
     hasher.update(&token_count.to_le_bytes());
     hasher.update(&utility_score.to_le_bytes());
     *hasher.finalize().as_bytes()
+}
+
+#[cfg(test)]
+mod confirmed_file_memory_relation_tests {
+    use super::{
+        ConfirmedFileMemoryRelation, ContextGovernor, ContextGovernorConfig, ContextGovernorError,
+        ContextNode, ContextNodeKind,
+    };
+
+    #[test]
+    fn typed_file_memory_edges_change_selection_without_becoming_candidates() {
+        let mut governor =
+            ContextGovernor::new(ContextGovernorConfig::bounded(5, 128)).expect("valid selector");
+        for node_id in [1, 2] {
+            governor
+                .insert_node(ContextNode::new(
+                    node_id,
+                    ContextNodeKind::Memory,
+                    5,
+                    500_000,
+                    0,
+                    0,
+                ))
+                .expect("memory candidate inserts");
+        }
+        let relations = [
+            ConfirmedFileMemoryRelation {
+                relation_id: 0x91,
+                file_node_id: 0xf00,
+                memory_node_id: 2,
+            },
+            ConfirmedFileMemoryRelation {
+                relation_id: 0x92,
+                file_node_id: 0xf00,
+                memory_node_id: 2,
+            },
+        ];
+
+        let unlinked = governor
+            .build_hydrated_context_pack(&[])
+            .expect("legacy selection succeeds");
+        let linked = governor
+            .build_hydrated_context_pack_with_file_relations(&[0xf00], &relations, &[])
+            .expect("typed relation selection succeeds");
+
+        assert_eq!(unlinked.node_ids, vec![1]);
+        assert_eq!(linked.node_ids, vec![2]);
+        assert_eq!(linked.token_count, 5);
+        assert_eq!(linked.activation_node_count, 2);
+        assert_eq!(linked.utility_score, 1_500_000);
+    }
+
+    #[test]
+    fn typed_file_memory_edges_reject_missing_roots_and_non_memory_targets() {
+        let mut governor =
+            ContextGovernor::new(ContextGovernorConfig::bounded(5, 128)).expect("valid selector");
+        governor
+            .insert_node(ContextNode::new(1, ContextNodeKind::Task, 1, 500_000, 0, 0))
+            .expect("task candidate inserts");
+        let wrong_kind = [ConfirmedFileMemoryRelation {
+            relation_id: 0x91,
+            file_node_id: 0xf00,
+            memory_node_id: 1,
+        }];
+
+        assert_eq!(
+            governor.build_hydrated_context_pack_with_file_relations(&[0xf00], &wrong_kind, &[]),
+            Err(ContextGovernorError::InvalidRelation)
+        );
+    }
 }

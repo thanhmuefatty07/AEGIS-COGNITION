@@ -48,8 +48,8 @@ def _validator_hash() -> str:
     return hashlib.sha256(Path(__file__).read_bytes().replace(b"\r\n", b"\n")).hexdigest()
 
 
-def _items() -> list[dict[str, object]]:
-    inventory = _inventory.build_inventory()
+def _items(inventory: dict[str, object] | None = None) -> list[dict[str, object]]:
+    inventory = _inventory.build_inventory() if inventory is None else inventory
     values = inventory.get("items", [])
     return [cast(dict[str, object], value) for value in values if isinstance(value, dict)]
 
@@ -65,19 +65,23 @@ def _critical_item_ids(items: list[dict[str, object]], mapping_path: Path = _clo
             if not isinstance(raw_record, dict):
                 continue
             record = cast(dict[str, object], raw_record)
-            values = {str(record.get(key, "UNKNOWN")).upper() for key in ("risk", "security_criticality", "release_criticality")}
+            values = {
+                str(record.get(key, "UNKNOWN")).upper()
+                for key in ("risk", "security_criticality", "release_criticality")
+            }
             if values.intersection(_closure.CRITICAL_VALUES):
                 subjects = record.get("test_subjects", [])
                 if isinstance(subjects, list):
                     critical_paths.update(_closure._subject_path(str(subject)) for subject in subjects)
-    return {
-        str(item["stable_id"])
-        for item in items
-        if _normalize(str(item["path"])) in critical_paths
-    }
+    return {str(item["stable_id"]) for item in items if _normalize(str(item["path"])) in critical_paths}
 
 
-def _confusion_matrix(selected_ids: set[str], legacy_results: dict[str, str] | None, critical_ids: set[str]) -> dict[str, object]:
+def _confusion_matrix(
+    selected_ids: set[str],
+    legacy_results: dict[str, str] | None,
+    critical_ids: set[str],
+    items: list[dict[str, object]],
+) -> dict[str, object]:
     if legacy_results is None:
         return {
             "status": "NOT_MEASURED",
@@ -88,7 +92,7 @@ def _confusion_matrix(selected_ids: set[str], legacy_results: dict[str, str] | N
                 "AESE_SKIPPED_FAILED": 0,
             },
             "critical_false_negatives": [],
-            "unobserved_item_count": len(_items()),
+            "unobserved_item_count": len(items),
         }
     counts = {
         "AESE_SELECTED_FAILED": 0,
@@ -110,7 +114,7 @@ def _confusion_matrix(selected_ids: set[str], legacy_results: dict[str, str] | N
         "status": "MEASURED_FROM_EXPLICIT_LEGACY_RESULTS",
         "counts": counts,
         "critical_false_negatives": sorted(critical_false_negatives),
-        "unobserved_item_count": len(set(item["stable_id"] for item in _items()) - set(legacy_results)),
+        "unobserved_item_count": len(set(item["stable_id"] for item in items) - set(legacy_results)),
     }
 
 
@@ -137,8 +141,9 @@ def build_shadow_plan(
     mapping_path: Path = _closure.DEFAULT_MAPPING,
 ) -> dict[str, object]:
     normalized_paths = sorted({_normalize(path) for path in changed_paths if path.strip()})
-    closure = _closure.build_closure(normalized_paths, mapping_path)
-    items = _items()
+    inventory = _inventory.build_inventory()
+    closure = _closure.build_closure(normalized_paths, mapping_path, inventory=inventory)
+    items = _items(inventory)
     closure_paths = set(cast(list[str], closure["closure_paths"]))
     widened = bool(closure["plan_widened"])
     critical_audit = cast(dict[str, object], closure["critical_audit"])
@@ -182,11 +187,9 @@ def build_shadow_plan(
         }
         for path in external_paths
     ]
-    confusion = _confusion_matrix(selected_ids, legacy_results, critical_ids)
+    confusion = _confusion_matrix(selected_ids, legacy_results, critical_ids, items)
     critical_false_negatives = cast(list[str], confusion["critical_false_negatives"])
-    observed_status = _observed_critical_false_negative_status(
-        legacy_results, critical_ids, critical_false_negatives
-    )
+    observed_status = _observed_critical_false_negative_status(legacy_results, critical_ids, critical_false_negatives)
     structural_status = str(critical_audit.get("structural_critical_reachability_status", "UNKNOWN"))
     plan: dict[str, object] = {
         "schema": SCHEMA,
@@ -233,7 +236,7 @@ def build_shadow_plan(
         "critical_false_negative_status": observed_status,
         "execution": "NOT_EXECUTED",
         "provenance": {
-            "source_sha": str(_inventory.build_inventory()["source_head"]),
+            "source_sha": str(inventory["source_head"]),
             "closure_artifact_hash": closure["artifact_hash"],
             "validator_hash": _validator_hash(),
             "environment_hash": _stable_hash(
@@ -272,7 +275,9 @@ def validate_shadow_plan(actual: dict[str, object], expected: dict[str, object])
         for key in expected
         if key not in {"artifact_hash", "provenance"} and actual.get(key) != expected.get(key)
     )
-    if actual.get("artifact_hash") != _stable_hash({key: value for key, value in actual.items() if key != "artifact_hash"}):
+    if actual.get("artifact_hash") != _stable_hash(
+        {key: value for key, value in actual.items() if key != "artifact_hash"}
+    ):
         errors.append("artifact_hash is not self-consistent")
     if actual.get("execution") != "NOT_EXECUTED":
         errors.append("shadow planner execution is not disabled")
@@ -280,7 +285,10 @@ def validate_shadow_plan(actual: dict[str, object], expected: dict[str, object])
         errors.append("unknown decision state")
     if actual.get("observed_critical_false_negative_status") == "COMPLETE_ZERO":
         errors.append("observed false-negative status uses an unscoped zero")
-    if actual.get("observed_critical_false_negative_status") == "NOT_MEASURED" and actual.get("confusion_matrix", {}).get("status") != "NOT_MEASURED":  # type: ignore[union-attr]
+    if (
+        actual.get("observed_critical_false_negative_status") == "NOT_MEASURED"
+        and actual.get("confusion_matrix", {}).get("status") != "NOT_MEASURED"
+    ):  # type: ignore[union-attr]
         errors.append("observed status is inconsistent with confusion matrix")
     if actual.get("structural_critical_reachability_status") != "COMPLETE_ZERO_MAPPED_SCOPE":
         errors.append("structural critical reachability scope is not complete")

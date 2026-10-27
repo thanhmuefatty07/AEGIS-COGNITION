@@ -16,6 +16,11 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
+if __package__:
+    from .suite_evidence import suite_execution_valid
+else:
+    from suite_evidence import suite_execution_valid
+
 ROOT = Path(__file__).resolve().parents[1]
 MANIFEST = ROOT / "docs" / "architecture" / "evidence" / "current.json"
 NOT_VERIFIED_REGISTRY = ROOT / "docs" / "architecture" / "not_verified_registry.json"
@@ -60,9 +65,7 @@ def registry_ids() -> set[str]:
     return {
         str(entry["id"])
         for entry in raw_entries
-        if isinstance(entry, dict)
-        and isinstance(entry.get("id"), str)
-        and entry["id"].strip()
+        if isinstance(entry, dict) and isinstance(entry.get("id"), str) and entry["id"].strip()
     }
 
 
@@ -95,22 +98,39 @@ def registry_markdown_statuses(path: Path | None = None) -> dict[str, str]:
     return statuses
 
 
-def gt96_markdown_statuses(path: Path | None = None) -> dict[str, str]:
-    """Read GT96 status cells for machine-to-human drift detection."""
+def gt96_markdown_fields(path: Path) -> dict[str, dict[str, str]]:
+    """Read GT96 status fields by their table headers, not column position."""
 
-    target = path or (ROOT / "docs" / "architecture" / "GT96_TRACEABILITY.md")
     try:
-        text = target.read_text(encoding="utf-8")
+        text = path.read_text(encoding="utf-8")
     except OSError:
         return {}
-    statuses: dict[str, str] = {}
+    fields: dict[str, dict[str, str]] = {}
+    id_index: int | None = None
+    status_index: int | None = None
+    evidence_class_index: int | None = None
     for line in text.splitlines():
-        if not line.lstrip().startswith("| GT96-"):
+        if not line.lstrip().startswith("|"):
             continue
         cells = [cell.strip() for cell in line.strip().strip("|").split("|")]
-        if len(cells) >= 2 and GT96_ID_RE.fullmatch(f"| {cells[0]} |"):
-            statuses[cells[0]] = cells[-1]
-    return statuses
+        headers = [cell.casefold() for cell in cells]
+        if "id" in headers and "status" in headers:
+            id_index = headers.index("id")
+            status_index = headers.index("status")
+            evidence_class_index = headers.index("evidence class") if "evidence class" in headers else None
+            continue
+        if id_index is None or status_index is None or not cells:
+            continue
+        if id_index >= len(cells) or status_index >= len(cells):
+            continue
+        requirement_id = cells[id_index]
+        if not GT96_ID_RE.fullmatch(f"| {requirement_id} |"):
+            continue
+        row = {"status": cells[status_index]}
+        if evidence_class_index is not None and evidence_class_index < len(cells):
+            row["evidence_class"] = cells[evidence_class_index]
+        fields[requirement_id] = row
+    return fields
 
 
 def validate_registry_parity(manifest: dict[str, Any]) -> list[str]:
@@ -133,6 +153,10 @@ def validate_registry_parity(manifest: dict[str, Any]) -> list[str]:
         policy = load_manifest(DEPLOYMENT_POLICY)
     except (OSError, ValueError, json.JSONDecodeError) as error:
         return [f"registry authority unreadable: {error}"]
+    if registry.get("schema") != "aegis-not-verified-registry-v1":
+        errors.append("not-verified registry schema must be aegis-not-verified-registry-v1")
+    if policy.get("schema") != "aegis-deployment-policy-v1":
+        errors.append("deployment policy schema must be aegis-deployment-policy-v1")
     raw_entries = registry.get("entries")
     registry_ids: set[str] = set()
     registry_statuses: dict[str, str] = {}
@@ -149,9 +173,7 @@ def validate_registry_parity(manifest: dict[str, Any]) -> list[str]:
             registry_ids.add(registry_id)
             if isinstance(entry.get("status"), str) and entry["status"].strip():
                 registry_statuses[registry_id] = str(entry["status"]).strip()
-    manifest_ids = {
-        item for item in manifest.get("not_verified_ids", ()) if isinstance(item, str)
-    }
+    manifest_ids = {item for item in manifest.get("not_verified_ids", ()) if isinstance(item, str)}
     if manifest_ids != registry_ids:
         errors.append(
             "evidence manifest not_verified_ids do not match registry: "
@@ -175,14 +197,10 @@ def validate_registry_parity(manifest: dict[str, Any]) -> list[str]:
                 if isinstance(registry_id, str) and registry_id.strip():
                     policy_ids.add(registry_id)
     if not policy_ids.issubset(registry_ids):
-        errors.append(
-            "deployment policy references unknown registry IDs: "
-            f"{sorted(policy_ids - registry_ids)}"
-        )
+        errors.append(f"deployment policy references unknown registry IDs: {sorted(policy_ids - registry_ids)}")
     if not policy_ids.issubset(manifest_ids):
         errors.append(
-            "deployment policy registry IDs are missing from evidence manifest: "
-            f"{sorted(policy_ids - manifest_ids)}"
+            f"deployment policy registry IDs are missing from evidence manifest: {sorted(policy_ids - manifest_ids)}"
         )
 
     # The Markdown view is intentionally non-authoritative, but it must still
@@ -208,44 +226,66 @@ def validate_registry_parity(manifest: dict[str, Any]) -> list[str]:
                 if registry_statuses.get(registry_id) != markdown_statuses.get(registry_id)
             )
             if status_mismatches:
-                errors.append(
-                    "NOT_VERIFIED_REGISTRY.md statuses do not match registry: "
-                    f"{status_mismatches}"
-                )
+                errors.append(f"NOT_VERIFIED_REGISTRY.md statuses do not match registry: {status_mismatches}")
 
-        # GT96 has its own requirement matrix. Compare its human status cells
-        # to the tracked machine manifest, while leaving generated checkout
-        # evidence free to derive release-scoped status separately.
+        # GT96 has summary and detail matrices. Keep their status and evidence
+        # class cells aligned with the tracked machine manifest, while leaving
+        # generated checkout evidence free to derive release-scoped status.
         tracked_manifest_path = ROOT / "docs" / "architecture" / "evidence" / "current.json"
         if tracked_manifest_path.is_file():
             try:
                 tracked_manifest = load_manifest(tracked_manifest_path)
-            except (OSError, ValueError, json.JSONDecodeError):
+            except OSError, ValueError, json.JSONDecodeError:
                 tracked_manifest = {}
             tracked_requirements = tracked_manifest.get("requirements", ())
-            tracked_statuses = {
-                str(item["id"]): str(item["status"]).strip()
+            gt96_requirements = [
+                item
                 for item in tracked_requirements
                 if isinstance(item, dict)
                 and isinstance(item.get("id"), str)
-                and item["id"].startswith("GT96-")
-                and isinstance(item.get("status"), str)
-                and item["status"].strip()
-            }
-            gt96_statuses = gt96_markdown_statuses(
-                ROOT / "docs" / "architecture" / "GT96_TRACEABILITY.md"
-            )
-            if tracked_statuses and len(gt96_statuses) == len(tracked_statuses):
-                gt96_mismatches = sorted(
-                    requirement_id
-                    for requirement_id in tracked_statuses
-                    if tracked_statuses.get(requirement_id) != gt96_statuses.get(requirement_id)
-                )
-                if gt96_mismatches:
-                    errors.append(
-                        "GT96_TRACEABILITY.md statuses do not match current evidence: "
-                        f"{gt96_mismatches}"
+                and GT96_ID_RE.fullmatch(f"| {item['id']} |")
+            ]
+            if gt96_requirements:
+                tracked_ids = {str(item["id"]) for item in gt96_requirements}
+                tracked_statuses = {
+                    str(item["id"]): str(item["status"]).strip()
+                    for item in gt96_requirements
+                    if isinstance(item.get("status"), str) and item["status"].strip()
+                }
+                tracked_evidence_classes = {
+                    str(item["id"]): str(item["evidence_class"]).strip()
+                    for item in gt96_requirements
+                    if isinstance(item.get("evidence_class"), str) and item["evidence_class"].strip()
+                }
+                missing_status_ids = sorted(tracked_ids - set(tracked_statuses))
+                if missing_status_ids:
+                    errors.append(f"current evidence GT96 statuses are missing: {missing_status_ids}")
+                missing_class_ids = sorted(tracked_ids - set(tracked_evidence_classes))
+                if missing_class_ids:
+                    errors.append(f"current evidence GT96 evidence classes are missing: {missing_class_ids}")
+                for filename in ("GT96_TRACEABILITY.md", "GT96_TRACEABILITY_DETAIL.md"):
+                    document_path = ROOT / "docs" / "architecture" / filename
+                    document_rows = gt96_markdown_fields(document_path)
+                    document_ids = set(document_rows)
+                    if document_ids != tracked_ids:
+                        errors.append(
+                            f"{filename} IDs do not match current evidence: "
+                            f"missing={sorted(tracked_ids - document_ids)}, extra={sorted(document_ids - tracked_ids)}"
+                        )
+                    status_mismatches = sorted(
+                        requirement_id
+                        for requirement_id, status in tracked_statuses.items()
+                        if document_rows.get(requirement_id, {}).get("status") != status
                     )
+                    if status_mismatches:
+                        errors.append(f"{filename} statuses do not match current evidence: {status_mismatches}")
+                    class_mismatches = sorted(
+                        requirement_id
+                        for requirement_id, evidence_class in tracked_evidence_classes.items()
+                        if document_rows.get(requirement_id, {}).get("evidence_class") != evidence_class
+                    )
+                    if class_mismatches:
+                        errors.append(f"{filename} evidence classes do not match current evidence: {class_mismatches}")
 
     # A deployment policy is allowed to block only the release-critical subset,
     # but omission must be explicit.  When the policy declares the companion
@@ -267,10 +307,7 @@ def validate_registry_parity(manifest: dict[str, Any]) -> list[str]:
                 )
             overlap = sorted(policy_ids & non_blocking_ids)
             if overlap:
-                errors.append(
-                    "deployment policy blocking and non-blocking IDs overlap: "
-                    f"{overlap}"
-                )
+                errors.append(f"deployment policy blocking and non-blocking IDs overlap: {overlap}")
             covered = policy_ids | non_blocking_ids
             if covered != registry_ids:
                 errors.append(
@@ -290,7 +327,7 @@ def load_suite_artifacts(root: Path, expected_head: str) -> dict[str, dict[str, 
     for path in sorted(suite_dir.glob("*.json")):
         try:
             candidate = load_manifest(path)
-        except (OSError, ValueError, json.JSONDecodeError):
+        except OSError, ValueError, json.JSONDecodeError:
             continue
         if candidate.get("schema") != "aegis-suite-evidence-v1":
             continue
@@ -313,14 +350,23 @@ def suite_artifact_release_eligible(candidate: dict[str, Any]) -> bool:
     """Accept suite evidence only when its result and provenance are complete."""
     return (
         candidate.get("schema") == "aegis-suite-evidence-v1"
+        and suite_execution_valid(candidate)
         and candidate.get("status") == "PROVEN"
         and candidate.get("release_eligible") is True
         and type(candidate.get("exit_code")) is int
         and candidate["exit_code"] == 0
         and type(candidate.get("discovered")) is int
         and candidate["discovered"] > 0
+        and type(candidate.get("passed")) is int
+        and candidate["passed"] > 0
         and type(candidate.get("failed")) is int
         and candidate["failed"] == 0
+        and type(candidate.get("ignored")) is int
+        and candidate["ignored"] >= 0
+        and type(candidate.get("skipped")) is int
+        and candidate["skipped"] >= 0
+        and candidate["discovered"]
+        == candidate["passed"] + candidate["failed"] + candidate["ignored"] + candidate["skipped"]
         and type(candidate.get("timed_out")) is bool
         and candidate["timed_out"] is False
         and candidate.get("termination") == "EXITED"
@@ -351,9 +397,7 @@ def find_suite_artifact(suite_artifacts: dict[str, dict[str, Any]], name: str) -
     return None
 
 
-def suite_artifact_ownership_conflicted(
-    candidate: dict[str, Any], suite_artifacts: dict[str, dict[str, Any]]
-) -> bool:
+def suite_artifact_ownership_conflicted(candidate: dict[str, Any], suite_artifacts: dict[str, dict[str, Any]]) -> bool:
     """Reject competing eligible identities for one gate instead of guessing."""
     if not suite_artifact_release_eligible(candidate):
         return True
@@ -392,7 +436,7 @@ def materialize_for_head(template: dict[str, Any], expected_head: str) -> dict[s
     manifest["generated_at_utc"] = datetime.now(UTC).replace(microsecond=0).isoformat().replace("+00:00", "Z")
     try:
         manifest["not_verified_ids"] = sorted(registry_ids())
-    except (OSError, ValueError, json.JSONDecodeError):
+    except OSError, ValueError, json.JSONDecodeError:
         # Keep generation deterministic and let validation emit the precise
         # registry-authority error instead of silently retaining stale IDs.
         manifest["not_verified_ids"] = []
@@ -438,6 +482,11 @@ def materialize_for_head(template: dict[str, Any], expected_head: str) -> dict[s
             if source and not suite_artifact_ownership_conflicted(source, suite_artifacts):
                 for field in (
                     "command",
+                    "command_argv",
+                    "executed_command_argv",
+                    "count_source",
+                    "runner_report_sha256",
+                    "runner_report_bytes",
                     "worktree_status",
                     "worktree_sha256",
                     "timestamp_utc",
@@ -449,6 +498,7 @@ def materialize_for_head(template: dict[str, Any], expected_head: str) -> dict[s
                     "failed",
                     "ignored",
                     "filtered",
+                    "skipped",
                     "status",
                     "exit_code",
                     "timeout_seconds",
@@ -494,9 +544,7 @@ def materialize_for_head(template: dict[str, Any], expected_head: str) -> dict[s
             requirement["final_sha"] = expected_head
             evidence_ids = requirement.get("evidence_ids", [])
             referenced = [evidence_by_id.get(evidence_id) for evidence_id in evidence_ids]
-            proven = bool(referenced) and all(
-                entry and entry.get("status") in CURRENT_STATUSES for entry in referenced
-            )
+            proven = bool(referenced) and all(entry and entry.get("status") in CURRENT_STATUSES for entry in referenced)
             if proven:
                 requirement["status"] = "PROVEN"
                 requirement["evidence_class"] = "PROVEN"
@@ -573,12 +621,11 @@ def validate_manifest(
                 for field in ("priority", "implementation", "closure", "evidence_class", "status", "final_sha")
                 if not isinstance(requirement.get(field), str) or not requirement.get(field)
             ]
-            errors.extend(
-                f"remediation[{requirement_id or index}] lacks {field}"
-                for field in missing_fields
-            )
+            errors.extend(f"remediation[{requirement_id or index}] lacks {field}" for field in missing_fields)
             if requirement.get("status") not in REMEDIATION_STATUSES:
-                errors.append(f"remediation[{requirement_id or index}] has unsupported status {requirement.get('status')!r}")
+                errors.append(
+                    f"remediation[{requirement_id or index}] has unsupported status {requirement.get('status')!r}"
+                )
             if requirement.get("evidence_class") not in REMEDIATION_STATUSES:
                 errors.append(
                     f"remediation[{requirement_id or index}] has unsupported evidence class {requirement.get('evidence_class')!r}"
@@ -591,7 +638,9 @@ def validate_manifest(
     gt96_ids = {
         requirement.get("id")
         for requirement in requirements
-        if isinstance(requirement, dict) and isinstance(requirement.get("id"), str) and requirement["id"].startswith("GT96-")
+        if isinstance(requirement, dict)
+        and isinstance(requirement.get("id"), str)
+        and requirement["id"].startswith("GT96-")
     }
     detail_path = ROOT / "docs" / "architecture" / "GT96_TRACEABILITY_DETAIL.md"
     if not detail_path.is_file():

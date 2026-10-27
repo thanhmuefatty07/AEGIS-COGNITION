@@ -16,7 +16,6 @@ import os
 import platform
 import subprocess
 import sys
-import tempfile
 import threading
 import time
 from collections.abc import Callable
@@ -24,6 +23,8 @@ from contextlib import suppress
 from pathlib import Path
 from statistics import median
 from typing import Any
+
+from aegis_cognition.agent_efficiency import managed_scratch_dir
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -535,7 +536,7 @@ def summarize(mode: str, payload_len: int, rows: list[dict[str, object]]) -> dic
 
 def measure_payload(payload_len: int, repetitions: int, file_chunk_bytes: int) -> list[dict[str, object]]:
     rows_by_mode: dict[str, list[dict[str, object]]] = {mode: [] for mode in MODES}
-    with tempfile.TemporaryDirectory(prefix="aegis-mmap-buffer-") as directory:
+    with managed_scratch_dir("benchmarks", prefix="aegis-mmap-buffer-") as directory:
         root = Path(directory)
         for repetition in range(repetitions):
             for sequence_position in range(len(MODES)):

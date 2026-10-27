@@ -53,9 +53,7 @@ def _cargo_env() -> dict:
     env = os.environ.copy()
     py_root = Path(sys.executable).parent
     env["PYO3_PYTHON"] = sys.executable
-    env["PATH"] = os.pathsep.join(
-        [str(py_root), str(py_root / "DLLs"), str(py_root / "libs"), env.get("PATH", "")]
-    )
+    env["PATH"] = os.pathsep.join([str(py_root), str(py_root / "DLLs"), str(py_root / "libs"), env.get("PATH", "")])
     env.setdefault("RUSTFLAGS", "-C debuginfo=0")
     return env
 
@@ -86,7 +84,7 @@ def _git_commit(path: Path) -> str | None:
             check=True,
             text=True,
         )
-    except (OSError, subprocess.CalledProcessError):
+    except OSError, subprocess.CalledProcessError:
         return None
     return result.stdout.strip()
 
@@ -228,15 +226,9 @@ def evaluate_hermes_rpc_baseline(root: str | Path = ROOT) -> HermesRpcBaselineRe
     mmap_payload = _pattern_payload(BASELINE_PAYLOAD_BYTES)
     _write_synthetic_mmap_frame(BASELINE_MMAP_PATH, mmap_payload)
 
-    baseline_estimate_ns, logical_hash, hydrated_count, deterministic_digest_ok = _measure_json_rpc_context_ns(
-        frames
-    )
+    baseline_estimate_ns, logical_hash, hydrated_count, deterministic_digest_ok = _measure_json_rpc_context_ns(frames)
     aegis_estimate_ns = _measure_mmap_payload_view_ns(BASELINE_MMAP_PATH)
-    speedup = (
-        baseline_estimate_ns / aegis_estimate_ns
-        if aegis_estimate_ns and aegis_estimate_ns > 0
-        else None
-    )
+    speedup = baseline_estimate_ns / aegis_estimate_ns if aegis_estimate_ns and aegis_estimate_ns > 0 else None
     aegis_mmap_overhead_percent = (
         (aegis_estimate_ns / baseline_estimate_ns) * 100.0 if baseline_estimate_ns > 0 else None
     )

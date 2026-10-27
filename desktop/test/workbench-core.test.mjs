@@ -1,7 +1,8 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import test from "node:test";
-import { resolveWorkbenchShortcut } from "../src/command_registry.js";
-import { deriveTaskState, interruptedDesktopRunStatus, isProjectSwitchBlocked, isTaskRunActive, shouldDrainTaskQueue } from "../src/task_state.js";
+import { resolveWorkbenchShortcut, workbenchInspectorCommands } from "../src/command_registry.js";
+import { deriveTaskState, interruptedDesktopRunStatus, isProjectSwitchBlocked, isTaskRunActive, popQueuedPromptForEdit, reorderTaskQueue, shouldDrainTaskQueue } from "../src/task_state.js";
 
 test("task state gives host run and approval status precedence over the last completed turn", () => {
   const snapshot = {
@@ -68,6 +69,42 @@ test("a paused task queue waits for review after the prior run becomes unavailab
   assert.equal(shouldDrainTaskQueue("", 0, false, false), false);
 });
 
+test("reorderTaskQueue swaps visible items for the active conversation while preserving interleaved multi-conversation positions", () => {
+  const queue = [
+    { id: "a-1", conversationId: "conv-a", message: "First A", attachments: [] },
+    { id: "b-1", conversationId: "conv-b", message: "Only B", attachments: [] },
+    { id: "a-2", conversationId: "conv-a", message: "Second A", attachments: [] },
+  ];
+  const swappedActive = reorderTaskQueue(queue, "a-2", -1, "conv-a", false);
+  assert.deepEqual(swappedActive.map((item) => item.id), ["a-2", "b-1", "a-1"]);
+  assert.equal(reorderTaskQueue(queue, "a-1", -1, "conv-a", false), queue);
+  assert.equal(reorderTaskQueue(queue, "a-2", 1, "conv-a", false), queue);
+
+  const swappedPaused = reorderTaskQueue(queue, "b-1", -1, "conv-a", true);
+  assert.deepEqual(swappedPaused.map((item) => item.id), ["b-1", "a-1", "a-2"]);
+});
+
+test("popQueuedPromptForEdit preserves unsent composer drafts and deduplicates attachments", () => {
+  const queue = [
+    { id: "q-1", conversationId: "conv-a", message: "Queued prompt", attachments: [{ id: "img-1", name: "a.png" }] },
+    { id: "q-2", conversationId: "conv-a", message: "Second prompt", attachments: [] },
+  ];
+  const emptyComposerPop = popQueuedPromptForEdit(queue, "q-1", "", []);
+  assert.equal(emptyComposerPop?.message, "Queued prompt");
+  assert.deepEqual(emptyComposerPop?.attachments.map((item) => item.id), ["img-1"]);
+  assert.deepEqual(emptyComposerPop?.queue.map((item) => item.id), ["q-2"]);
+
+  const draftPreservedPop = popQueuedPromptForEdit(
+    queue,
+    "q-1",
+    "Unsent composer note",
+    [{ id: "img-1", name: "a.png" }, { id: "img-2", name: "b.png" }],
+  );
+  assert.equal(draftPreservedPop?.message, "Queued prompt\n\nUnsent composer note");
+  assert.deepEqual(draftPreservedPop?.attachments.map((item) => item.id), ["img-1", "img-2"]);
+  assert.equal(popQueuedPromptForEdit(queue, "missing", "draft", []), null);
+});
+
 test("project switching stays blocked while any background task is active", () => {
   assert.equal(isProjectSwitchBlocked(false, true), true);
   assert.equal(isProjectSwitchBlocked(true, false), true);
@@ -90,4 +127,34 @@ test("workbench shortcuts use platform primary modifiers and preserve modifier b
   assert.equal(shortcut("b", { metaKey: true }), null);
   assert.equal(shortcut("b", { ctrlKey: true, altKey: true }), null);
   assert.equal(resolveWorkbenchShortcut({ key: "b", ctrlKey: false, metaKey: true, shiftKey: false, altKey: false }, "MacIntel"), "toggle-navigator");
+  assert.deepEqual(
+    workbenchInspectorCommands.map((command) => ({ id: command.id, label: command.label, tab: command.tab })),
+    [
+      { id: "open-files", label: "Open Project Explorer", tab: "files" },
+      { id: "open-changes", label: "Open Tracked Changes", tab: "changes" },
+      { id: "open-map", label: "Open Focus Graph", tab: "map" },
+      { id: "open-activity", label: "Open Task Activity", tab: "activity" },
+      { id: "open-context", label: "Open Context Cockpit", tab: "context" },
+    ],
+  );
 });
+
+test("workbench v2 reduced-motion stylesheet targets root attribute and interactive controls", () => {
+  const css = readFileSync(new URL("../src/desktop-workbench-v2.css", import.meta.url), "utf8");
+  const reducedMotionIndex = css.indexOf("@media (prefers-reduced-motion: reduce)");
+  assert.notEqual(reducedMotionIndex, -1);
+  const reducedMotionBlock = css.slice(reducedMotionIndex);
+  assert.equal(reducedMotionBlock.includes('.app-frame[data-workbench-v2="true"]'), false);
+  for (const selector of [
+    ':root[data-workbench-v2="true"] .sidebar-nav-item',
+    ".run-stop-button",
+    ".task-queue-item button",
+    ".command-palette-results button",
+    ".changes-file",
+    ".graph-view-switch button",
+    ".graph-edge",
+  ]) {
+    assert.equal(reducedMotionBlock.includes(selector), true, `missing reduced-motion selector: ${selector}`);
+  }
+});
+

@@ -170,6 +170,45 @@ def test_active_memory_is_hydrated_only_after_authorized_inspect(monkeypatch) ->
     )
 
 
+def test_active_memory_still_hydrates_when_session_search_degrades(monkeypatch) -> None:
+    candidate = SimpleNamespace(
+        memory_id="0x9",
+        owner_id="local-profile",
+        scope_kind="USER_PRIVATE",
+        lifecycle="ACTIVE",
+        validation="ACCEPTED",
+        content_hash="memory-hash",
+    )
+    record = SimpleNamespace(
+        memory_id="0x9",
+        owner_id="local-profile",
+        scope_kind="USER_PRIVATE",
+        lifecycle="ACTIVE",
+        validation="ACCEPTED",
+        content_hash="memory-hash",
+        content="user prefers concise reports",
+    )
+    manager = Mock()
+    manager.search_past.side_effect = RuntimeError("session search degraded")
+    manager.search_memories.return_value = (candidate,)
+    manager.inspect_memory.return_value = record
+    monkeypatch.setattr("aegis_cognition.application.build_learning_manager", lambda: manager)
+    telemetry = RuntimeTelemetry()
+
+    application = AgentApplication(
+        SimpleNamespace(options={"top_k": 3}),
+        telemetry=telemetry,
+    )
+
+    context = application._retrieve_context("report preference")
+
+    assert "user prefers concise reports" in context
+    assert "ACTIVE MEMORY DATA" in context
+    outcomes = {(event["kind"], event["outcome"]) for event in telemetry.snapshot()["events"]}
+    assert ("memory", "retrieval_degraded") in outcomes
+    assert ("memory", "context_hydrated") in outcomes
+
+
 def test_active_memory_search_does_not_hydrate_candidate_content():
     candidate = SimpleNamespace(
         memory_id="0xa",
@@ -307,9 +346,7 @@ def test_completed_run_hides_and_stages_model_memory_proposals(monkeypatch) -> N
                 task="remember task",
                 output={
                     "answer": "done",
-                    "_aegis_memory_proposals": [
-                        {"content": "user prefers concise reports", "relevance_score": 0.92}
-                    ],
+                    "_aegis_memory_proposals": [{"content": "user prefers concise reports", "relevance_score": 0.92}],
                 },
                 trust_level="DEV",
                 provider="test",
