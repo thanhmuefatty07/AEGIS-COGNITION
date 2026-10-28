@@ -6,10 +6,10 @@ certification or a claim of compliance with the full text of any standard.
 
 | Standard/framework | Application in AEGIS | Repository evidence | Verification state |
 |---|---|---|---|
-| ISO/IEC 25010:2023 | Map quality attributes to the release scorecard and measurable gates. | `docs/architecture/TRACEABILITY.md`, benchmark protocol, CI gates | PROVEN mapping; release score values remain evidence-dependent |
+| ISO/IEC 25010:2023 | Map quality attributes to the release scorecard and measurable gates. | `docs/architecture/GT96_TRACEABILITY.md`, benchmark protocol, CI gates | PROVEN mapping; release score values remain evidence-dependent |
 | ISO/IEC/IEEE 42010:2022 | Record architecture concerns, decisions, trust boundaries, interfaces, and failure boundaries. | `docs/architecture/README.md`, `docs/adr/` | PROVEN |
 | ISO/IEC/IEEE 12207:2026 | Keep build, test, release, operate, maintain, rollback, and evidence workflows explicit. | `.github/workflows/`, `docs/architecture/BASELINE.md`, ADR evidence sections | PROVEN workflow definition; production operation evidence is NOT VERIFIED |
-| ISO/IEC/IEEE 29148:2018 | Express requirements as traceable acceptance criteria with assumptions and invariants. | `docs/architecture/TRACEABILITY.md`, versioned JSON schemas, Rust tests | PROVEN |
+| ISO/IEC/IEEE 29148:2018 | Express requirements as traceable acceptance criteria with assumptions and invariants. | `docs/architecture/GT96_TRACEABILITY.md`, versioned JSON schemas, Rust tests | PROVEN |
 | ISO/IEC/IEEE 29119-1/2/3 | Separate fast, compatibility, deep, and release test processes and retain reports. | `.github/workflows/`, `docs/architecture/TESTING_AND_EVIDENCE.md` | PROVEN process; deep/release runs are NOT VERIFIED until executed |
 | NIST SP 800-218 SSDF 1.1 | Apply secure design, dependency, secret, review, provenance, and vulnerability gates. | `scripts/dependency_audit_gate.py`, `scripts/supply_chain_gate.py`, `scripts/secret_scan.py` | PROVEN internal gates; external signed release attestation is NOT VERIFIED |
 | OWASP ASVS 5.0.0 | Use as the future API/control-plane security checklist; current scope is local runtime and operator evidence. | `docs/architecture/SECURITY_AND_OPERATIONS.md` | APPLICABLE; web/API coverage is NOT VERIFIED |

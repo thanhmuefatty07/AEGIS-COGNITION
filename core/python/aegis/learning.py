@@ -667,18 +667,14 @@ class LearningManager:
                     ):
                         records_by_id.setdefault(rec.memory_id, rec)
         if not records_by_id and hasattr(self._native, "aegis_list_memories"):
-            raw = json.loads(
-                self._native.aegis_list_memories(scope_kind, owner_id, subject_id, "ACTIVE")
-            )
+            raw = json.loads(self._native.aegis_list_memories(scope_kind, owner_id, subject_id, "ACTIVE"))
             items = raw.get("memories", raw.get("results", []))
             for item in items:
                 if isinstance(item, dict):
                     rec = MemoryRecord.from_mapping(
                         {
                             **item,
-                            "memory_kind": item.get(
-                                "memory_kind", item.get("category", "SEMANTIC_FACT")
-                            ),
+                            "memory_kind": item.get("memory_kind", item.get("category", "SEMANTIC_FACT")),
                         }
                     )
                     records_by_id.setdefault(rec.memory_id, rec)
@@ -692,8 +688,7 @@ class LearningManager:
         eligible: list[MemoryRecord] = [
             rec
             for rec in records_by_id.values()
-            if rec.lifecycle == "ACTIVE"
-            and rec.validation in {"ACCEPTED", "UNREVIEWED"}
+            if rec.lifecycle == "ACTIVE" and rec.validation in {"ACCEPTED", "UNREVIEWED"}
         ]
         eligible.sort(
             key=lambda rec: (

@@ -541,6 +541,42 @@ def test_manual_ci_dispatch_runs_all_lanes(tmp_path: Path) -> None:
     }
 
 
+@pytest.mark.parametrize("event", ("push", "pull_request"))
+def test_change_classifier_falls_back_to_all_lanes_when_before_or_base_sha_is_unreachable(
+    tmp_path: Path, event: str
+) -> None:
+    subprocess.run(["git", "init", "--initial-branch=main", "-q"], cwd=tmp_path, check=True)
+    subprocess.run(["git", "config", "user.name", "CI Contract Test"], cwd=tmp_path, check=True)
+    subprocess.run(["git", "config", "user.email", "ci-contract@example.invalid"], cwd=tmp_path, check=True)
+    (tmp_path / "README.md").write_text("# Docs only\n", encoding="utf-8")
+    head = _git_commit(tmp_path, "docs: initial")
+    unreachable_sha = "cec871e1edef63a29e570eccc7f7d2ac763be8f9"
+
+    actual = _run_change_classifier(
+        tmp_path,
+        event,
+        head,
+        before=unreachable_sha if event == "push" else "",
+        base=unreachable_sha if event == "pull_request" else "",
+    )
+
+    assert actual == {
+        "runtime": "true",
+        "documentation": "true",
+        "authority": "true",
+    }
+
+
+def test_deep_workflow_advisory_audit_passes_deny_toml_ignore_flags_without_cargo_audit_dotfile() -> None:
+    workflow = yaml.safe_load((ROOT / ".github" / "workflows" / "deep.yml").read_text(encoding="utf-8"))
+    steps = workflow["jobs"]["security-and-replay"]["steps"]
+    advisory = next(step for step in steps if step.get("name") == "Advisory audit")
+    assert 'cargo audit "${IGNORE_FLAGS[@]}"' in advisory["run"]
+    assert not (ROOT / ".cargo" / "audit.toml").exists()
+    deny_ignores = tomllib.loads((ROOT / "deny.toml").read_text(encoding="utf-8"))["advisories"]["ignore"]
+    assert deny_ignores
+
+
 @pytest.mark.parametrize(
     ("authority", "expected_schema"),
     (

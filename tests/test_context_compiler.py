@@ -467,4 +467,3 @@ def test_context_compiler_neutralizes_delimiter_tags_in_rendered_content():
     assert "[\u200b/SOURCE]" in result.rendered
     assert "[\u200b/AUTHORIZED HYDRATED CONTEXT]" in result.rendered
     assert "[\u200bCONFIRMED FILE RELATION" in result.rendered
-

@@ -323,9 +323,7 @@ def test_oracle_inside_string_literal_or_multiline_comment_is_rejected(
         "def test_const_math():\n    assert 1 + 1 == 2\n",
     ],
 )
-def test_ast_aliased_and_constant_tautologies_are_rejected(
-    tmp_path: Path, ast_tautology_patch: str
-) -> None:
+def test_ast_aliased_and_constant_tautologies_are_rejected(tmp_path: Path, ast_tautology_patch: str) -> None:
     facade, session_id = _session(tmp_path)
     proposal = facade.propose_test_change(session_id, ast_tautology_patch, ["tests/test_feature.py"])
     evaluated = facade.evaluate_test_change(session_id, proposal.proposal_id)
@@ -341,9 +339,7 @@ def test_ast_aliased_and_constant_tautologies_are_rejected(
         'def test_import_exit():\n    __import__("os")._exit(0)\n    assert result == 3\n',
     ],
 )
-def test_hybrid_diff_smuggling_and_dynamic_runner_spoofing_are_rejected(
-    tmp_path: Path, smuggled_patch: str
-) -> None:
+def test_hybrid_diff_smuggling_and_dynamic_runner_spoofing_are_rejected(tmp_path: Path, smuggled_patch: str) -> None:
     facade, session_id = _session(tmp_path)
     proposal = facade.propose_test_change(session_id, smuggled_patch, ["tests/test_feature.py"])
     evaluated = facade.evaluate_test_change(session_id, proposal.proposal_id)
@@ -409,6 +405,3 @@ def test_net_assertion_reduction_is_rejected_as_weakening(tmp_path: Path) -> Non
     evaluated = facade.evaluate_test_change(session_id, proposal.proposal_id)
     assert evaluated.status == "REJECTED"
     assert "test_weakening_detected" in evaluated.error_codes
-
-
-

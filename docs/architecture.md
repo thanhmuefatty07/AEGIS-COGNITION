@@ -11,11 +11,7 @@ Supporting contracts and evidence views:
 - [`NOT_VERIFIED_REGISTRY.md`](architecture/NOT_VERIFIED_REGISTRY.md)
 - [`evidence/current.json`](architecture/evidence/current.json)
 
-Historical snapshots retained for provenance:
-
-- [`TRACEABILITY.md`](architecture/TRACEABILITY.md) (architecture v1)
-- [`VERIFICATION_BASELINE.md`](architecture/VERIFICATION_BASELINE.md) (pre-remediation)
-
-Historical proposals and reports are provenance only; they do not override the
-canonical plan or machine-readable evidence registry.
+Historical proposals, pre-remediation verification baselines, and architecture v1
+traceability snapshots are retained in the private archive for provenance only;
+they do not override the canonical plan or machine-readable evidence registry.
 

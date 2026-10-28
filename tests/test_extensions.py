@@ -4739,5 +4739,3 @@ def test_cordis_and_harness_yaml_reject_alias_and_depth_bombs_and_unsafe_urls() 
     )
     entries = parse_mcp_harness_config("cursor", unsafe_url_cfg)
     assert [entry.server_id for entry in entries] == ["safe-url"]
-
-

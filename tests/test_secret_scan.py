@@ -292,4 +292,3 @@ def test_secret_scan_staged_file_respects_exempt_fixture_allowlist(tmp_path: Pat
 
     assert secret_scan.scan_staged_file("tests/test_provider_contract_matrix.py", repository) == []
     assert secret_scan.scan_staged_file("production.py", repository) == [("credential_assignment", 1)]
-

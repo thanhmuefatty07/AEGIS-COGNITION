@@ -236,8 +236,8 @@ tranh nhau:
 | Normative constitution | `docs/ENGINEERING_CONSTITUTION.md` | quy tắc kỹ thuật/gate | authority; không tự thay yêu cầu người dùng |
 | Machine evidence | `docs/architecture/evidence/current.json`, `docs/architecture/not_verified_registry.json`, `docs/architecture/deployment_policy.json` | trạng thái kiểm chứng/release | machine source of truth; không sửa tay để “đóng” blocker |
 | Component contracts and ADRs | component architecture docs and ADRs not classified above | hợp đồng và quyết định của từng thành phần | authority theo scope; Lab-wide status thuộc plan này và machine evidence |
-| Scoped capability/product plans | `docs/architecture/AESE_IMPLEMENTED_VERTICAL_SLICE.md`, `docs/design/desktop-workbench.md` (proposal plans retained in private planning archive) | contract và record của capability tương ứng | giữ authority trong scope; không thay thế Lab-wide status hoặc machine evidence |
-| Historical plans | `docs/archive/planning/agent-harness-continuation-plan.md`, `docs/archive/planning/architecture-optimization.md` | không có quyền current status | giữ lịch sử; bị plan này supersede khi nói về Lab |
+| Scoped capability/product plans | `docs/architecture/AESE_IMPLEMENTED_VERTICAL_SLICE.md` (desktop workbench and proposal plans retained in private planning archive) | contract và record của capability tương ứng | giữ authority trong scope; không thay thế Lab-wide status hoặc machine evidence |
+| Historical plans | `docs/archive/legacy/ownership.md` (superseded planning records retained in private archive) | không có quyền current status | giữ lịch sử; bị plan này supersede khi nói về Lab |
 | Historical research and reports | local-only archive outside the repository | không có quyền promotion | retained as provenance only; current status comes from the tracked registry |
 | User-provided engineering constitution | `docs/ENGINEERING_CONSTITUTION.md` | canonical repository authority | external copies are references and do not override repository policy |
 
@@ -247,7 +247,6 @@ là authority cho contract và gates trong scope đó, không thay thế Lab pla
 machine evidence. Trùng nội dung không tự nó là lý do xóa; tài liệu historical
 vẫn được giữ làm provenance và không được dùng làm current status. Việc trùng số ADR được giải quyết rõ ràng:
 portability có quyết định chuẩn ở `ADR-015-portability.md`.
-`ADR-012-portability.md` chỉ còn là stub giữ liên kết lịch sử.
 Foundation convergence mang số `ADR-021`.
 Phần còn mở của B3.3 chỉ là generated view và metadata/link lint
 có owner rõ ràng.

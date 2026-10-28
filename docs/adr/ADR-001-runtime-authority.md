@@ -43,4 +43,4 @@ reversion without fencing tests.
 
 ## Evidence
 
-`core/rust/src/runtime.rs` integration tests and `docs/architecture/TRACEABILITY.md`.
+`core/rust/src/runtime.rs` integration tests and `docs/architecture/GT96_TRACEABILITY.md`.

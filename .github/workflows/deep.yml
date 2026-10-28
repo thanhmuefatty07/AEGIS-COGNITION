@@ -440,7 +440,9 @@ jobs:
       - name: Install cargo-audit
         run: cargo install cargo-audit --version 0.22.0 --locked
       - name: Advisory audit
-        run: cargo audit
+        run: |
+          mapfile -t IGNORE_FLAGS < <(python -B -c 'import pathlib, sys, tomllib; data = tomllib.loads(pathlib.Path("deny.toml").read_text(encoding="utf-8")); items = data.get("advisories", {}).get("ignore", []); sys.stdout.buffer.write("".join(f"--ignore={item}\n" for item in items).encode("utf-8"))')
+          cargo audit "${IGNORE_FLAGS[@]}"
       - name: Repository gates
         run: |
           python scripts/architecture_fitness.py

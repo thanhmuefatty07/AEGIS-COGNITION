@@ -9,4 +9,4 @@ For interface changes in this package:
 - Cover Home, an active conversation, the work-panel tabs, Utilities, and every Settings section. At minimum, inspect the 640×480 app minimum, 1280×800, and 1920×1080; test each UI-size preset and both light/dark appearances for clipping, unintended wrapping, and reachable controls.
 - Compare pixels only with a supplied or approved Figma/screenshot baseline. Without one, report concrete visual observations and do not claim pixel parity. Browser preview does not establish packaged/native rendering.
 - Keep the current React/CSS system unless a demonstrated behavior or accessibility gap justifies a component-library or styling dependency. Check the installed version's official docs before adopting a library API.
-- Record concise changes and decisive visual/accessibility evidence in `../docs/design/desktop-workbench.md`; mark remaining limits `NOT VERIFIED`.
+- Record concise changes and decisive visual/accessibility evidence in the private archive (`docs/design/desktop-workbench.md`) and promote only verified summaries to `../docs/architecture/VERIFICATION_INDEX.md`; mark remaining limits `NOT VERIFIED`.

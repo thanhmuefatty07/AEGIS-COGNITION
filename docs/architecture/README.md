@@ -93,9 +93,8 @@ documents do not promote test-skipping, evidence promotion, or release status.
 
 ## Memory Agent and Living Workspace
 
-[`desktop-workbench.md`](../design/desktop-workbench.md) records current UI
-behavior, workspace projection contracts, and dated evidence, while the initial
-Personal Code Map and Personal Diagram Workspace design plans are retained in
+The desktop workbench design record (`desktop-workbench.md`), along with the initial
+Personal Code Map and Personal Diagram Workspace design plans, is retained in
 the private planning archive. Use the current tracked authorities and the
 verification index for product behavior and measured claims; historical research
 and planning captures do not define the current contract.

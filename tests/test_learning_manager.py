@@ -785,5 +785,3 @@ def test_learning_manager_select_adaptive_user_memories_hydrates_candidate_only_
     assert selected[0].relevance_score == 0.85
     # Only the top-ranked ACTIVE candidate (0x20) needed hydration to satisfy top_k=1
     assert inspected_ids == [0x20]
-
-

@@ -628,6 +628,6 @@ def test_mcp_http_provider_oauth_exchange_enforces_allowed_hosts():
         )
     )
     with pytest.raises(ExtensionError, match="must be explicitly allowlisted"):
-        provider._mcp_oauth_exchange("https://attacker-idp.example/token", "POST", {}, b"grant_type=client_credentials", 4096)
-
-
+        provider._mcp_oauth_exchange(
+            "https://attacker-idp.example/token", "POST", {}, b"grant_type=client_credentials", 4096
+        )

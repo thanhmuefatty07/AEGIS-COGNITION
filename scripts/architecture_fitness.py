@@ -216,8 +216,8 @@ def main() -> int:
         check(
             "traceability_matrix",
             all(
-                marker in read("docs/architecture/TRACEABILITY.md")
-                for marker in ("AUTH-001", "FFI-001", "OS-001", "WASM-001", "PERF-001")
+                marker in read("docs/architecture/GT96_TRACEABILITY.md")
+                for marker in ("GT96-001", "GT96-012", "GT96-014", "GT96-024", "GT96-033", "AESE-001")
             ),
             "architecture requirements must map to implementation and evidence",
         ),

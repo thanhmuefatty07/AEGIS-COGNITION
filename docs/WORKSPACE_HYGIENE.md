@@ -72,7 +72,7 @@ Use the existing language convention for new source (`snake_case` for Python and
 Rust modules) and clear lower-case names for new documentation. Do not add names
 such as `r2`, `r3`, `r4`, `current-final`, or timestamped sibling directories to
 represent retries; put run identity, date, and revision in structured evidence
-metadata instead. Do not use `Hermes`, `crypto`, `external-app`, or another product
+metadata instead. Do not use `Hermes`, `crypto`, or another external product
 name for AEGIS source or output. Hermes references remain only where a comparator
 or historical research document explicitly requires that name.
 
