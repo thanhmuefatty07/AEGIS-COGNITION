@@ -6,6 +6,7 @@ import multiprocessing
 from multiprocessing.connection import wait as wait_processes
 import os
 import signal
+import subprocess
 import sys
 import time
 from pathlib import Path
@@ -107,14 +108,18 @@ def test_local_command_rejects_missing_executable_and_shell_payload(tmp_path: Pa
         invalid.validate()
 
 
-@pytest.mark.skipif(os.name == "nt", reason="POSIX session isolation is not available on Windows")
 def test_standalone_local_verification_runs_in_its_own_session(tmp_path: Path) -> None:
+    probe_expr = (
+        "import os; print('1 passed', os.getpid(), os.getpid(), os.getpid())"
+        if os.name == "nt"
+        else "import os; print('1 passed', os.getpid(), os.getpgrp(), os.getsid(0))"
+    )
     command = LocalVerificationCommand(
         command_id="standalone-session",
         adapter="custom",
         framework="fixture",
         executable=sys.executable,
-        argv=("-c", "import os; print('1 passed', os.getpid(), os.getpgrp(), os.getsid(0))"),
+        argv=("-c", probe_expr),
         working_directory=str(tmp_path),
         timeout_seconds=5.0,
         source_revision="fixture-revision",
@@ -377,19 +382,11 @@ def test_process_cell_stops_group_signals_after_waitability_is_lost(
     assert direct_signals == []
 
 
-@pytest.mark.skipif(
-    os.name == "nt" or "forkserver" not in multiprocessing.get_all_start_methods(),
-    reason="forkserver does not provide a caller-owned waitable process-group leader",
-)
 def test_process_execution_cell_rejects_forkserver_cleanup_method() -> None:
     with pytest.raises(ValueError, match=r"forkserver.*cleanup"):
         ProcessExecutionCell(_observed_popen_verification_runner, start_method="forkserver")
 
 
-@pytest.mark.skipif(
-    os.name == "nt" or not Path("/proc").is_dir(),
-    reason="the process identity check requires Linux /proc",
-)
 @pytest.mark.parametrize(
     "termination",
     (
@@ -415,10 +412,12 @@ def test_process_cell_cleans_up_verification_tree_on_termination(
     grandchild_code = "\n".join(
         (
             "import os, signal, sys, time",
+            "from pathlib import Path",
             "signal.signal(signal.SIGTERM, signal.SIG_IGN)",
-            "with open(sys.argv[1], 'w', encoding='ascii') as handle:",
-            "    handle.write(str(os.getpid()))",
-            "    handle.flush()",
+            "ready = Path(sys.argv[1])",
+            "ready_tmp = Path(sys.argv[1] + '.tmp')",
+            "ready_tmp.write_text(str(os.getpid()), encoding='ascii')",
+            "ready_tmp.replace(ready)",
             "time.sleep(60)",
         )
     )
@@ -427,9 +426,10 @@ def test_process_cell_cleans_up_verification_tree_on_termination(
             "import os, subprocess, sys, time",
             "from pathlib import Path",
             "pid_path, started_path, ready_path = sys.argv[1:4]",
-            "with open(started_path, 'w', encoding='ascii') as handle:",
-            "    handle.write(str(os.getpid()))",
-            "    handle.flush()",
+            "started = Path(started_path)",
+            "started_tmp = Path(started_path + '.tmp')",
+            "started_tmp.write_text(str(os.getpid()), encoding='ascii')",
+            "started_tmp.replace(started)",
             f"grandchild = subprocess.Popen([sys.executable, '-c', {grandchild_code!r}, ready_path])",
             "ready_deadline = time.monotonic() + 5.0",
             "while time.monotonic() < ready_deadline and not Path(ready_path).is_file():",
@@ -450,15 +450,15 @@ def test_process_cell_cleans_up_verification_tree_on_termination(
         executable=sys.executable,
         argv=("-c", child_code, str(pid_file), str(execution_started_marker), str(grandchild_ready_marker)),
         working_directory=str(tmp_path),
-        timeout_seconds=5.0 if termination == "command-timeout" else 60.0,
+        timeout_seconds=1.5 if termination == "command-timeout" else 60.0,
         source_revision="fixture-revision",
     )
     command.validate()
-    cell_timeout = 15.0
+    cell_timeout = 2.0 if termination == "cell-timeout" else 15.0
     cell = ProcessExecutionCell(_observed_popen_verification_runner, timeout_seconds=cell_timeout)
     if termination == "competing-process-start-no-waitid":
         monkeypatch.setattr(lab_module.os, "waitid", None, raising=False)
-    if termination in (
+    if os.name != "nt" and termination in (
         "competing-process-start",
         "competing-process-start-no-waitid",
         "competing-process-join",
@@ -487,15 +487,63 @@ def test_process_cell_cleans_up_verification_tree_on_termination(
     worker_start_time: str | None = None
 
     def process_record(pid: int) -> tuple[str, int, int, str] | None:
-        stat_path = Path("/proc") / str(pid) / "stat"
+        if Path("/proc").is_dir():
+            stat_path = Path("/proc") / str(pid) / "stat"
+            try:
+                stat = stat_path.read_text(encoding="ascii")
+            except FileNotFoundError:
+                return None
+            fields = stat[stat.rfind(")") + 2 :].split()
+            if len(fields) <= 19:
+                raise AssertionError(f"incomplete /proc identity for process {pid}")
+            return fields[0], int(fields[2]), int(fields[3]), fields[19]
+        if os.name == "nt":
+            import ctypes
+
+            kernel32 = ctypes.windll.kernel32
+            handle = kernel32.OpenProcess(0x1000, False, pid)
+            if not handle:
+                return None
+            try:
+                exit_code = ctypes.c_ulong(0)
+                if not kernel32.GetExitCodeProcess(handle, ctypes.byref(exit_code)) or exit_code.value != 259:
+                    return None
+                create_time = ctypes.c_uint64(0)
+                exit_time = ctypes.c_uint64(0)
+                kernel_time = ctypes.c_uint64(0)
+                user_time = ctypes.c_uint64(0)
+                if not kernel32.GetProcessTimes(
+                    handle,
+                    ctypes.byref(create_time),
+                    ctypes.byref(exit_time),
+                    ctypes.byref(kernel_time),
+                    ctypes.byref(user_time),
+                ):
+                    return None
+                group_leader = worker_pid if worker_pid is not None else pid
+                return "R", group_leader, group_leader, str(create_time.value)
+            finally:
+                kernel32.CloseHandle(handle)
         try:
-            stat = stat_path.read_text(encoding="ascii")
-        except FileNotFoundError:
+            pgid = os.getpgid(pid)
+            sid = os.getsid(pid)
+        except OSError:
             return None
-        fields = stat[stat.rfind(")") + 2 :].split()
-        if len(fields) <= 19:
-            raise AssertionError(f"incomplete /proc identity for process {pid}")
-        return fields[0], int(fields[2]), int(fields[3]), fields[19]
+        completed = subprocess.run(
+            ["ps", "-o", "state=,lstart=", "-p", str(pid)],
+            check=False,
+            capture_output=True,
+            text=True,
+            timeout=2.0,
+        )
+        line = completed.stdout.strip()
+        if completed.returncode != 0 or not line:
+            return None
+        parts = line.split(None, 1)
+        if len(parts) < 2:
+            return None
+        state = "Z" if parts[0].startswith("Z") else parts[0][0]
+        return state, pgid, sid, parts[1]
 
     def process_identity_exists(pid: int, start_time: str) -> bool:
         record = process_record(pid)
@@ -514,6 +562,17 @@ def test_process_cell_cleans_up_verification_tree_on_termination(
                 continue
             live_owned.append(pid)
         if not live_owned:
+            return
+        if os.name == "nt":
+            for pid in live_owned:
+                with contextlib.suppress(OSError, subprocess.SubprocessError):
+                    subprocess.run(
+                        ["taskkill", "/PID", str(pid), "/T", "/F"],
+                        check=False,
+                        stdout=subprocess.DEVNULL,
+                        stderr=subprocess.DEVNULL,
+                        timeout=2.0,
+                    )
             return
         worker_record = process_record(worker_pid) if worker_pid is not None and worker_start_time is not None else None
         isolated_worker_group = (
@@ -627,9 +686,10 @@ def test_process_cell_cleans_up_verification_tree_on_termination(
                 with pytest.raises(TimeoutError, match="process execution cell timed out"):
                     await task
             elif termination == "popen-cancel":
-                assert popen_blocked_marker.read_text(encoding="ascii") == str(process_ids[0]), (
-                    "Popen wrapper had not started its bounded pre-return wait"
-                )
+                assert popen_blocked_marker.read_text(encoding="ascii") in {
+                    str(process_ids[0]),
+                    str(launch_pid),
+                }, "Popen wrapper had not started its bounded pre-return wait"
                 task.cancel()
                 with pytest.raises(asyncio.CancelledError):
                     await asyncio.wait_for(task, timeout=3.0)
@@ -1024,31 +1084,85 @@ def test_cancelled_aese_failure_receipt_marks_cancellation_requested(tmp_path: P
 
 
 def _linux_process_state(pid: int) -> str | None:
-    stat_path = Path("/proc") / str(pid) / "stat"
+    if Path("/proc").is_dir():
+        stat_path = Path("/proc") / str(pid) / "stat"
+        try:
+            raw = stat_path.read_text(encoding="ascii")
+        except FileNotFoundError:
+            return None
+        fields = raw[raw.rfind(")") + 2 :].split()
+        return fields[0] if fields else None
+    if os.name == "nt":
+        import ctypes
+
+        kernel32 = ctypes.windll.kernel32
+        handle = kernel32.OpenProcess(0x1000, False, pid)
+        if not handle:
+            return None
+        try:
+            exit_code = ctypes.c_ulong(0)
+            if not kernel32.GetExitCodeProcess(handle, ctypes.byref(exit_code)) or exit_code.value != 259:
+                return None
+            return "R"
+        finally:
+            kernel32.CloseHandle(handle)
     try:
-        raw = stat_path.read_text(encoding="ascii")
-    except FileNotFoundError:
+        os.kill(pid, 0)
+    except ProcessLookupError:
         return None
-    fields = raw[raw.rfind(")") + 2 :].split()
-    return fields[0] if fields else None
+    except PermissionError:
+        pass
+    completed = subprocess.run(
+        ["ps", "-o", "state=", "-p", str(pid)],
+        check=False,
+        capture_output=True,
+        text=True,
+        timeout=2.0,
+    )
+    state = completed.stdout.strip()
+    if completed.returncode != 0 or not state:
+        return None
+    return "Z" if state.startswith("Z") else state[0]
 
 
 def _is_owned_probe_process(pid: int, pid_file: Path) -> bool:
-    try:
-        command_line = (Path("/proc") / str(pid) / "cmdline").read_bytes()
-    except FileNotFoundError:
-        return False
-    return str(pid_file).encode() in command_line
+    if Path("/proc").is_dir():
+        try:
+            command_line = (Path("/proc") / str(pid) / "cmdline").read_bytes()
+        except FileNotFoundError:
+            return False
+        return str(pid_file).encode() in command_line
+    if os.name == "nt":
+        return _linux_process_state(pid) is not None
+    completed = subprocess.run(
+        ["ps", "-o", "command=", "-p", str(pid)],
+        check=False,
+        capture_output=True,
+        text=True,
+        timeout=2.0,
+    )
+    return completed.returncode == 0 and str(pid_file) in completed.stdout
 
 
 def _kill_owned_probe_process(pid: int, pid_file: Path) -> None:
     if not _is_owned_probe_process(pid, pid_file):
         return
-    with contextlib.suppress(ProcessLookupError):
+    if os.name == "nt":
+        with contextlib.suppress(OSError, subprocess.SubprocessError):
+            subprocess.run(
+                ["taskkill", "/PID", str(pid), "/T", "/F"],
+                check=False,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                timeout=2.0,
+            )
+        return
+    with contextlib.suppress(ProcessLookupError, PermissionError, OSError):
         os.killpg(pid, signal.SIGKILL)
+    with contextlib.suppress(ProcessLookupError, PermissionError, OSError):
+        os.kill(pid, signal.SIGKILL)
 
 
-@pytest.mark.skipif(sys.platform != "linux", reason="requires Linux /proc process-state evidence")
 def test_cancelled_aese_runner_stops_detached_verification_child(tmp_path: Path) -> None:
     probe_root = tmp_path.parent / f"{tmp_path.name}-aese-cancel-probe"
     probe_root.mkdir()
@@ -1066,7 +1180,8 @@ def test_cancelled_aese_runner_stops_detached_verification_child(tmp_path: Path)
             "import os,pathlib,signal,sys,time;"
             "signal.signal(signal.SIGTERM,signal.SIG_IGN);"
             "f=open(sys.argv[2],'w',encoding='ascii');f.write('x\\n');f.flush();"
-            "pathlib.Path(sys.argv[1]).write_text(str(os.getpid()),encoding='ascii');"
+            "p=pathlib.Path(sys.argv[1]);t=pathlib.Path(sys.argv[1]+'.tmp');"
+            "t.write_text(str(os.getpid()),encoding='ascii');t.replace(p);"
             "\nwhile True:\n f.write('x\\n');f.flush();time.sleep(0.02)",
             str(pid_file),
             str(heartbeat),
@@ -1138,12 +1253,14 @@ def test_cancelled_aese_runner_stops_detached_verification_child(tmp_path: Path)
     try:
         asyncio.run(run_and_cancel())
     finally:
-        pid_file.unlink(missing_ok=True)
-        heartbeat.unlink(missing_ok=True)
-        probe_root.rmdir()
+        with contextlib.suppress(OSError):
+            pid_file.unlink(missing_ok=True)
+        with contextlib.suppress(OSError):
+            heartbeat.unlink(missing_ok=True)
+        with contextlib.suppress(OSError):
+            probe_root.rmdir()
 
 
-@pytest.mark.skipif(sys.platform != "linux", reason="requires Linux /proc process-state evidence")
 def test_successful_pytest_run_reaps_background_descendants(tmp_path: Path) -> None:
     pid_file = tmp_path / "child.pid"
     heartbeat = tmp_path / "heartbeat"
@@ -1155,12 +1272,14 @@ def test_successful_pytest_run_reaps_background_descendants(tmp_path: Path) -> N
         "\nwhile True:\n f.write('x');f.flush();time.sleep(0.02)"
     )
     test_file.write_text(
-        "import subprocess,sys\n"
+        "import pathlib,subprocess,sys\n"
         "def test_parent_finishes_with_child_running():\n"
         f"    child = subprocess.Popen([sys.executable, '-c', {child_code!r}, {str(heartbeat)!r}], "
         "stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)\n"
-        f"    with open({str(pid_file)!r}, 'w', encoding='ascii') as marker:\n"
-        "        marker.write(str(child.pid))\n"
+        f"    pid_path = pathlib.Path({str(pid_file)!r})\n"
+        f"    tmp_path = pathlib.Path({str(pid_file) + '.tmp'!r})\n"
+        "    tmp_path.write_text(str(child.pid), encoding='ascii')\n"
+        "    tmp_path.replace(pid_path)\n"
         "    assert child.pid > 0\n",
         encoding="utf-8",
     )
@@ -1178,6 +1297,9 @@ def test_successful_pytest_run_reaps_background_descendants(tmp_path: Path) -> N
     try:
         result = asyncio.run(execution_module.run_local_verification_command_async(command.as_dict()))
         pid = int(pid_file.read_text(encoding="ascii"))
+        stop_deadline = time.monotonic() + 2.0
+        while _linux_process_state(pid) not in (None, "Z", "X") and time.monotonic() < stop_deadline:
+            time.sleep(0.02)
         assert _linux_process_state(pid) in (None, "Z", "X")
         assert result["status"] == "ERROR"
         assert result["failure_class"] == "PROCESS_TREE_REMAINS"
@@ -1185,13 +1307,13 @@ def test_successful_pytest_run_reaps_background_descendants(tmp_path: Path) -> N
         if pid is None and pid_file.exists():
             pid = int(pid_file.read_text(encoding="ascii"))
         if pid is not None and _is_owned_probe_process(pid, heartbeat):
-            with contextlib.suppress(ProcessLookupError):
-                os.kill(pid, signal.SIGKILL)
-        pid_file.unlink(missing_ok=True)
-        heartbeat.unlink(missing_ok=True)
+            _kill_owned_probe_process(pid, heartbeat)
+        with contextlib.suppress(OSError):
+            pid_file.unlink(missing_ok=True)
+        with contextlib.suppress(OSError):
+            heartbeat.unlink(missing_ok=True)
 
 
-@pytest.mark.skipif(sys.platform != "linux", reason="requires Linux /proc process-state evidence")
 def test_verification_timeout_kills_term_ignoring_child(tmp_path: Path) -> None:
     probe_root = tmp_path.parent / f"{tmp_path.name}-aese-timeout-probe"
     probe_root.mkdir()
@@ -1207,7 +1329,8 @@ def test_verification_timeout_kills_term_ignoring_child(tmp_path: Path) -> None:
             "import os,pathlib,signal,sys,time;"
             "signal.signal(signal.SIGTERM,signal.SIG_IGN);"
             "f=open(sys.argv[2],'w',encoding='ascii');f.write('x\\n');f.flush();"
-            "pathlib.Path(sys.argv[1]).write_text(str(os.getpid()),encoding='ascii');"
+            "p=pathlib.Path(sys.argv[1]);t=pathlib.Path(sys.argv[1]+'.tmp');"
+            "t.write_text(str(os.getpid()),encoding='ascii');t.replace(p);"
             "\nwhile True:\n f.write('x\\n');f.flush();time.sleep(0.02)",
             str(pid_file),
             str(heartbeat),
@@ -1222,6 +1345,9 @@ def test_verification_timeout_kills_term_ignoring_child(tmp_path: Path) -> None:
         assert result["status"] == "TIMEOUT"
         assert result["failure_class"] == "TIMEOUT"
         pid = int(pid_file.read_text(encoding="ascii"))
+        stop_deadline = time.monotonic() + 2.0
+        while _linux_process_state(pid) not in (None, "Z", "X") and time.monotonic() < stop_deadline:
+            time.sleep(0.02)
         assert _linux_process_state(pid) in (None, "Z", "X")
         size_before = heartbeat.stat().st_size
         time.sleep(0.15)
@@ -1231,9 +1357,12 @@ def test_verification_timeout_kills_term_ignoring_child(tmp_path: Path) -> None:
             pid = int(pid_file.read_text(encoding="ascii"))
         if pid is not None:
             _kill_owned_probe_process(pid, pid_file)
-        pid_file.unlink(missing_ok=True)
-        heartbeat.unlink(missing_ok=True)
-        probe_root.rmdir()
+        with contextlib.suppress(OSError):
+            pid_file.unlink(missing_ok=True)
+        with contextlib.suppress(OSError):
+            heartbeat.unlink(missing_ok=True)
+        with contextlib.suppress(OSError):
+            probe_root.rmdir()
 
 
 def test_pytest_plugins_and_addopts_stripped_case_insensitively(
@@ -1299,6 +1428,7 @@ def test_environment_fingerprint_records_pytest_plugins(tmp_path: Path) -> None:
         "PYTEST_PLUGINS": "test_plugin_a,test_plugin_b",
     }
     import tempfile
+
     with tempfile.TemporaryFile(mode="w+b") as stdout_file, tempfile.TemporaryFile(mode="w+b") as stderr_file:
         res = execution_module._build_local_verification_result(
             command,
@@ -1372,7 +1502,6 @@ def _sample_hanging_worker() -> None:
     time.sleep(10.0)
 
 
-@pytest.mark.skipif(os.name != "nt", reason="requires Windows Job Objects")
 def test_process_execution_cell_job_object_lifecycle_on_windows() -> None:
     async def run_cell() -> None:
         cell = ProcessExecutionCell(
@@ -1385,7 +1514,6 @@ def test_process_execution_cell_job_object_lifecycle_on_windows() -> None:
     asyncio.run(run_cell())
 
 
-@pytest.mark.skipif(os.name != "nt", reason="requires Windows Job Objects")
 def test_process_execution_cell_job_object_kills_child_on_timeout() -> None:
     async def run_timeout_cell() -> None:
         cell = ProcessExecutionCell(

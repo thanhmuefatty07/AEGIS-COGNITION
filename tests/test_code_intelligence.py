@@ -327,21 +327,41 @@ def test_external_directory_link_is_not_followed(tmp_path):
     assert not any(record.relative_path.startswith("outside/") for record in snapshot.files)
 
 
-def test_external_file_symlink_is_not_followed(tmp_path):
+def test_external_file_symlink_is_not_followed(tmp_path, monkeypatch):
     workspace = tmp_path / "workspace"
     workspace.mkdir()
     outside = tmp_path / "outside.py"
     outside.write_text("secret = True\n", encoding="utf-8")
     link = workspace / "outside.py"
+    created_symlink = False
     try:
         link.symlink_to(outside)
-    except (OSError, NotImplementedError) as error:
-        pytest.skip(f"file symlink creation unavailable: {error}")
+        created_symlink = True
+    except OSError, NotImplementedError:
+        original_scandir = code_intelligence_module._scandir_directory
+
+        @contextmanager
+        def scandir_with_reparse_entry(path):
+            if Path(path) == workspace:
+                yield iter(
+                    (
+                        code_intelligence_module._WindowsScandirEntry(
+                            "outside.py",
+                            getattr(code_intelligence_module.stat_module, "FILE_ATTRIBUTE_REPARSE_POINT", 0x400),
+                        ),
+                    )
+                )
+                return
+            with original_scandir(path) as entries:
+                yield entries
+
+        monkeypatch.setattr(code_intelligence_module, "_scandir_directory", scandir_with_reparse_entry)
 
     try:
         snapshot = SourceMapper(workspace).snapshot()
     finally:
-        link.unlink(missing_ok=True)
+        if created_symlink:
+            link.unlink(missing_ok=True)
 
     assert not any(record.relative_path == "outside.py" for record in snapshot.files)
 
@@ -362,8 +382,7 @@ def test_source_mapper_rejects_reparse_entries_without_following_targets(tmp_pat
             timeout=5.0,
             check=False,
         )
-        if created.returncode != 0:
-            pytest.skip("Windows junction creation is unavailable")
+        assert created.returncode == 0
         assert link.is_junction()
     else:
         link.symlink_to(outside, target_is_directory=True)
@@ -382,7 +401,7 @@ def test_source_mapper_rejects_reparse_entries_without_following_targets(tmp_pat
             return self._entry.is_dir(follow_symlinks=follow_symlinks)
 
         def stat(self, *, follow_symlinks=True):
-            if Path(self._entry.path) == link:
+            if Path(self._entry.path) == link or self.name == link.name:
                 link_follow_arguments.append(follow_symlinks)
             return self._entry.stat(follow_symlinks=follow_symlinks)
 
@@ -438,8 +457,7 @@ def test_project_identity_omits_dirty_sources_beneath_reparse_entries(tmp_path, 
             timeout=5.0,
             check=False,
         )
-        if created.returncode != 0:
-            pytest.skip("Windows junction creation is unavailable")
+        assert created.returncode == 0
         assert link.is_junction()
     else:
         link.symlink_to(outside, target_is_directory=True)
@@ -472,7 +490,6 @@ def test_project_identity_omits_dirty_sources_beneath_reparse_entries(tmp_path, 
     assert identity.dirty_paths == ("inside.py",)
 
 
-@pytest.mark.skipif(os.name != "nt", reason="reproduces a Windows junction replacement during directory scan")
 def test_source_mapper_does_not_publish_names_from_directory_replaced_by_junction(tmp_path, monkeypatch):
     workspace = tmp_path / "workspace"
     source_directory = workspace / "src"
@@ -484,8 +501,8 @@ def test_source_mapper_does_not_publish_names_from_directory_replaced_by_junctio
         "def private_customer_export(): return 'sensitive'\n", encoding="utf-8"
     )
     saved_directory = workspace / "src-original"
-    original_scandir = os.scandir
     original_open_directory = code_intelligence_module._windows_open_directory_handle if os.name == "nt" else None
+    original_open_posix = code_intelligence_module._open_posix_directory if os.name != "nt" else None
     attempted = False
     swapped = False
     blocked = False
@@ -499,31 +516,35 @@ def test_source_mapper_does_not_publish_names_from_directory_replaced_by_junctio
             except OSError:
                 blocked = True
             else:
-                created = subprocess.run(
-                    ("cmd.exe", "/c", "mklink", "/J", str(source_directory), str(outside)),
-                    capture_output=True,
-                    text=True,
-                    timeout=5.0,
-                    check=False,
-                )
-                if created.returncode != 0:
-                    saved_directory.rename(source_directory)
-                    pytest.skip("Windows junction creation is unavailable")
+                if os.name == "nt":
+                    created = subprocess.run(
+                        ("cmd.exe", "/c", "mklink", "/J", str(source_directory), str(outside)),
+                        capture_output=True,
+                        text=True,
+                        timeout=5.0,
+                        check=False,
+                    )
+                    assert created.returncode == 0
+                else:
+                    source_directory.symlink_to(outside, target_is_directory=True)
                 swapped = True
-
-    def replace_with_junction(path):
-        swap_if_needed(path)
-        return original_scandir(path)
 
     if os.name == "nt":
 
         def replace_before_native_open(path):
             swap_if_needed(path)
+            assert original_open_directory is not None
             return original_open_directory(path)
 
         monkeypatch.setattr(code_intelligence_module, "_windows_open_directory_handle", replace_before_native_open)
     else:
-        monkeypatch.setattr(code_intelligence_module.os, "scandir", replace_with_junction)
+
+        def replace_before_posix_open(path):
+            swap_if_needed(path)
+            assert original_open_posix is not None
+            return original_open_posix(path)
+
+        monkeypatch.setattr(code_intelligence_module, "_open_posix_directory", replace_before_posix_open)
     try:
         snapshot = SourceMapper(workspace).snapshot()
         repository_map = build_repository_map(snapshot, query="private customer export", token_budget=512)
@@ -547,7 +568,6 @@ def test_source_mapper_does_not_publish_names_from_directory_replaced_by_junctio
     assert "PRIVATE_CUSTOMER_EXPORT.py" not in repository_map.rendered
 
 
-@pytest.mark.skipif(os.name != "nt", reason="reproduces a Windows ancestor junction swap after enumeration")
 def test_source_mapper_does_not_path_check_child_after_ancestor_replaced_by_junction(tmp_path, monkeypatch):
     workspace = tmp_path / "workspace"
     source_directory = workspace / "src"
@@ -571,16 +591,17 @@ def test_source_mapper_does_not_path_check_child_after_ancestor_replaced_by_junc
             yield entries
         if Path(path) == source_directory and not swapped:
             source_directory.rename(saved_directory)
-            created = subprocess.run(
-                ("cmd.exe", "/c", "mklink", "/J", str(source_directory), str(outside)),
-                capture_output=True,
-                text=True,
-                timeout=5.0,
-                check=False,
-            )
-            if created.returncode != 0:
-                saved_directory.rename(source_directory)
-                pytest.skip("Windows junction creation is unavailable")
+            if os.name == "nt":
+                created = subprocess.run(
+                    ("cmd.exe", "/c", "mklink", "/J", str(source_directory), str(outside)),
+                    capture_output=True,
+                    text=True,
+                    timeout=5.0,
+                    check=False,
+                )
+                assert created.returncode == 0
+            else:
+                source_directory.symlink_to(outside, target_is_directory=True)
             swapped = True
 
     def record_path_is_symlink(path):
@@ -603,6 +624,8 @@ def test_source_mapper_does_not_path_check_child_after_ancestor_replaced_by_junc
         link = workspace / "src"
         if link.is_junction():
             link.rmdir()
+        elif link.is_symlink():
+            link.unlink(missing_ok=True)
         if saved_directory.exists():
             saved_directory.rename(source_directory)
 
@@ -610,7 +633,6 @@ def test_source_mapper_does_not_path_check_child_after_ancestor_replaced_by_junc
     assert path_checks_after_swap == []
 
 
-@pytest.mark.skipif(os.name != "nt", reason="parses the Windows directory information buffer")
 def test_windows_directory_entries_reject_empty_filename_in_directory_record():
     import ctypes
 
@@ -626,7 +648,6 @@ def test_windows_directory_entries_reject_empty_filename_in_directory_record():
             ctypes.c_uint32.from_address(base + 56).value = 0x10  # FILE_ATTRIBUTE_DIRECTORY
             ctypes.c_uint32.from_address(base + 60).value = 0  # FileNameLength
             return True
-        ctypes.set_last_error(18)  # ERROR_NO_MORE_FILES
         return False
 
     with pytest.raises(OSError, match="directory entry name length"):
@@ -637,9 +658,11 @@ def test_windows_directory_entries_reject_empty_filename_in_directory_record():
 
 @pytest.mark.parametrize(
     ("attributes", "expected"),
-    ((0x10, False), (0x10 | code_intelligence_module.stat_module.FILE_ATTRIBUTE_REPARSE_POINT, True)),
+    (
+        (0x10, False),
+        (0x10 | getattr(code_intelligence_module.stat_module, "FILE_ATTRIBUTE_REPARSE_POINT", 0x400), True),
+    ),
 )
-@pytest.mark.skipif(os.name != "nt", reason="uses Windows handle metadata")
 def test_windows_reparse_detection_uses_file_attributes_supported_by_fat_volumes(attributes, expected):
     import ctypes
     from ctypes import wintypes
@@ -648,7 +671,6 @@ def test_windows_reparse_detection_uses_file_attributes_supported_by_fat_volumes
     information_calls = []
 
     def unsupported_file_attribute_tag_info(*_args):
-        ctypes.set_last_error(87)
         return False
 
     def get_file_information(actual_handle, information):
@@ -662,13 +684,24 @@ def test_windows_reparse_detection_uses_file_attributes_supported_by_fat_volumes
     assert information_calls == [handle]
 
 
-@pytest.mark.skipif(os.name != "nt", reason="checks Windows directory scanning before reparse resolution")
 def test_windows_scandir_rejects_reparse_path_before_resolving_target(tmp_path, monkeypatch):
     workspace = tmp_path / "workspace"
     workspace.mkdir()
     outside = tmp_path / "outside"
     outside.mkdir()
     link = workspace / "linked"
+    if os.name != "nt":
+        link.symlink_to(outside, target_is_directory=True)
+        try:
+            with (
+                pytest.raises(OSError),
+                code_intelligence_module._scandir_directory(link) as entries,
+            ):
+                list(entries)
+        finally:
+            link.unlink(missing_ok=True)
+        return
+
     created = subprocess.run(
         ("cmd.exe", "/c", "mklink", "/J", str(link), str(outside)),
         capture_output=True,
@@ -676,8 +709,7 @@ def test_windows_scandir_rejects_reparse_path_before_resolving_target(tmp_path, 
         timeout=5.0,
         check=False,
     )
-    if created.returncode != 0:
-        pytest.skip("Windows junction creation is unavailable")
+    assert created.returncode == 0
 
     api = code_intelligence_module._windows_final_path_api()
     original_get_final_path = api[1]
@@ -766,9 +798,7 @@ def test_source_mapper_rejects_ancestor_junction_swapped_before_open(tmp_path, m
                 timeout=5.0,
                 check=False,
             )
-            if created.returncode != 0:
-                saved_directory.rename(source_directory)
-                pytest.skip("Windows junction creation is unavailable")
+            assert created.returncode == 0
         else:
             source_directory.symlink_to(outside, target_is_directory=True)
         swapped = True
@@ -811,7 +841,6 @@ def test_source_mapper_rejects_ancestor_junction_swapped_before_open(tmp_path, m
     assert not any(hashlib.sha256(outside_bytes).hexdigest() == record.content_hash for record in snapshot.files)
 
 
-@pytest.mark.skipif(os.name != "nt", reason="checks Windows no-reparse open behavior")
 def test_source_reader_blocks_reparse_ancestor_at_native_open(tmp_path, monkeypatch):
     import ctypes
     from ctypes import wintypes
@@ -822,6 +851,27 @@ def test_source_reader_blocks_reparse_ancestor_at_native_open(tmp_path, monkeypa
     outside.mkdir()
     (outside / "module.py").write_text("secret = 'outside-workspace'\n", encoding="utf-8")
     source_directory = workspace / "src"
+    if os.name != "nt":
+        source_directory.symlink_to(outside, target_is_directory=True)
+        original_os_open = os.open
+        opened_names: list[tuple[str, int]] = []
+
+        def record_posix_open(path, flags, *args, **kwargs):
+            opened_names.append((str(path), int(flags)))
+            return original_os_open(path, flags, *args, **kwargs)
+
+        monkeypatch.setattr(code_intelligence_module.os, "open", record_posix_open)
+        try:
+            with pytest.raises(code_intelligence_module.SourceFileReadError) as raised:
+                code_intelligence_module.read_file_beneath_root(workspace, "src/module.py", max_bytes=256)
+        finally:
+            source_directory.unlink(missing_ok=True)
+
+        assert raised.value.reason == "unsafe_path"
+        assert any(name == "src" and (flags & getattr(os, "O_NOFOLLOW", 0)) for name, flags in opened_names)
+        assert not any(name == "module.py" for name, _flags in opened_names)
+        return
+
     created = subprocess.run(
         ("cmd.exe", "/c", "mklink", "/J", str(source_directory), str(outside)),
         capture_output=True,
@@ -829,8 +879,7 @@ def test_source_reader_blocks_reparse_ancestor_at_native_open(tmp_path, monkeypa
         timeout=5.0,
         check=False,
     )
-    if created.returncode != 0:
-        pytest.skip("Windows junction creation is unavailable")
+    assert created.returncode == 0
 
     class UnicodeString(ctypes.Structure):
         _fields_ = (
@@ -924,47 +973,97 @@ def test_windows_nt_path_rejects_device_or_unrooted_workspace_namespaces(path):
 
 
 @pytest.mark.parametrize("fail_stage", ("file_handle_close", "root_handle_close"))
-@pytest.mark.skipif(os.name != "nt", reason="checks Windows native-handle cleanup")
 def test_windows_source_open_attempts_all_cleanup_and_closes_transferred_descriptor(tmp_path, monkeypatch, fail_stage):
     import ctypes
-    import msvcrt
+    import sys
 
     source = tmp_path / "source.py"
     source.write_text("value = 1\n", encoding="utf-8")
-    api = code_intelligence_module._windows_final_path_api()
-    close_handle = api[3]
     close_attempts = []
+    transferred_descriptors = []
 
-    def fail_one_close(handle):
-        close_attempts.append(handle.value)
-        result = close_handle(handle)
-        if len(close_attempts) == 1:
-            ctypes.set_last_error(5)
-            return False
-        return result
+    if os.name == "nt":
+        import msvcrt
 
-    if fail_stage == "root_handle_close":
-        real_open_osfhandle = msvcrt.open_osfhandle
-        transferred_descriptors = []
+        api = code_intelligence_module._windows_final_path_api()
+        close_handle = api[3]
 
-        def capture_transferred_descriptor(handle, flags):
-            descriptor = real_open_osfhandle(handle, flags)
-            transferred_descriptors.append(descriptor)
-            return descriptor
+        def fail_one_close(handle):
+            close_attempts.append(handle.value)
+            result = close_handle(handle)
+            if len(close_attempts) == 1:
+                ctypes.set_last_error(5)
+                return False
+            return result
 
-        monkeypatch.setattr(msvcrt, "open_osfhandle", capture_transferred_descriptor)
+        if fail_stage == "root_handle_close":
+            real_open_osfhandle = msvcrt.open_osfhandle
+
+            def capture_transferred_descriptor(handle, flags):
+                descriptor = real_open_osfhandle(handle, flags)
+                transferred_descriptors.append(descriptor)
+                return descriptor
+
+            monkeypatch.setattr(msvcrt, "open_osfhandle", capture_transferred_descriptor)
+        else:
+
+            def fail_descriptor_transfer(_handle, _flags):
+                raise OSError("forced descriptor conversion failure")
+
+            monkeypatch.setattr(msvcrt, "open_osfhandle", fail_descriptor_transfer)
+
+        monkeypatch.setattr(
+            code_intelligence_module,
+            "_windows_final_path_api",
+            lambda: (*api[:3], fail_one_close, api[4], api[5]),
+        )
     else:
+        from ctypes import wintypes
 
-        def fail_descriptor_transfer(_handle, _flags):
-            raise OSError("forced descriptor conversion failure")
+        next_handle = 100
 
-        monkeypatch.setattr(msvcrt, "open_osfhandle", fail_descriptor_transfer)
+        def fake_create_file(handle_ptr, *_args):
+            nonlocal next_handle
+            next_handle += 1
+            ctypes.cast(handle_ptr, ctypes.POINTER(wintypes.HANDLE)).contents.value = next_handle
+            return 0
 
-    monkeypatch.setattr(
-        code_intelligence_module,
-        "_windows_final_path_api",
-        lambda: (*api[:3], fail_one_close, api[4], api[5]),
-    )
+        def fake_get_final_path(_handle, buffer, capacity, _flags):
+            text = str(tmp_path)
+            buffer.value = text
+            return len(text)
+
+        def fake_get_file_info(_handle, info_ptr):
+            ctypes.cast(info_ptr, ctypes.POINTER(wintypes.DWORD)).contents.value = 0x10
+            return True
+
+        def fail_one_close_posix(handle):
+            close_attempts.append(handle.value)
+            return len(close_attempts) != 1
+
+        if fail_stage == "root_handle_close":
+
+            def open_osfhandle_posix(_handle, _flags):
+                fd = os.open(source, os.O_RDONLY)
+                transferred_descriptors.append(fd)
+                return fd
+        else:
+
+            def open_osfhandle_posix(_handle, _flags):
+                raise OSError("forced descriptor conversion failure")
+
+        monkeypatch.setitem(sys.modules, "msvcrt", SimpleNamespace(open_osfhandle=open_osfhandle_posix))
+        monkeypatch.setattr(code_intelligence_module, "_windows_nt_path", lambda path: "\\??\\" + str(path))
+        monkeypatch.setattr(
+            code_intelligence_module,
+            "_windows_nt_file_api",
+            lambda: (fake_create_file, lambda _status: 5),
+        )
+        monkeypatch.setattr(
+            code_intelligence_module,
+            "_windows_final_path_api",
+            lambda: (None, fake_get_final_path, None, fail_one_close_posix, None, fake_get_file_info),
+        )
 
     with pytest.raises(OSError):
         code_intelligence_module._windows_open_file_beneath_root(tmp_path, (source.name,))
@@ -978,7 +1077,6 @@ def test_windows_source_open_attempts_all_cleanup_and_closes_transferred_descrip
             os.fstat(transferred_descriptors[0])
 
 
-@pytest.mark.skipif(os.name != "nt", reason="checks Windows no-reparse workspace-root open behavior")
 def test_source_reader_does_not_open_workspace_root_through_ancestor_junction(tmp_path, monkeypatch):
     parent = tmp_path / "workspace-parent"
     workspace = parent / "workspace"
@@ -989,6 +1087,28 @@ def test_source_reader_does_not_open_workspace_root_through_ancestor_junction(tm
     (outside_workspace / "source.py").write_text("secret = 'outside-workspace'\n", encoding="utf-8")
     moved_parent = tmp_path / "workspace-parent-original"
     parent.rename(moved_parent)
+    if os.name != "nt":
+        opened_names: list[str] = []
+        original_os_open = os.open
+
+        def record_posix_open(path, flags, *args, **kwargs):
+            opened_names.append(str(path))
+            return original_os_open(path, flags, *args, **kwargs)
+
+        monkeypatch.setattr(code_intelligence_module.os, "open", record_posix_open)
+        try:
+            parent.symlink_to(outside, target_is_directory=True)
+            with pytest.raises(code_intelligence_module.SourceFileReadError) as raised:
+                code_intelligence_module.read_file_beneath_root(workspace, "source.py", max_bytes=256)
+        finally:
+            parent.unlink(missing_ok=True)
+            if moved_parent.exists():
+                moved_parent.rename(parent)
+
+        assert raised.value.reason == "unsafe_path"
+        assert "source.py" not in opened_names
+        return
+
     observed_handle_paths = []
     original_final_path = code_intelligence_module._windows_final_handle_path
 
@@ -1006,8 +1126,7 @@ def test_source_reader_does_not_open_workspace_root_through_ancestor_junction(tm
             timeout=5.0,
             check=False,
         )
-        if created.returncode != 0:
-            pytest.skip("Windows junction creation is unavailable")
+        assert created.returncode == 0
 
         with pytest.raises(code_intelligence_module.SourceFileReadError) as raised:
             code_intelligence_module.read_file_beneath_root(workspace, "source.py", max_bytes=256)
@@ -1025,7 +1144,6 @@ def test_source_reader_does_not_open_workspace_root_through_ancestor_junction(tm
 
 
 @pytest.mark.parametrize("path_verification_fails", (False, True))
-@pytest.mark.skipif(os.name != "nt", reason="checks byte accounting after a Windows handle moves")
 def test_source_reader_accounts_bytes_when_post_read_path_verification_fails(
     tmp_path, monkeypatch, path_verification_fails
 ):
@@ -1034,7 +1152,19 @@ def test_source_reader_accounts_bytes_when_post_read_path_verification_fails(
     source = workspace / "source.py"
     content = b"source payload for path-check regression\n"
     source.write_bytes(content)
-    actual_handle_path = code_intelligence_module._windows_handle_path
+    if os.name != "nt":
+        real_open = os.open
+        monkeypatch.setattr(code_intelligence_module.os, "name", "nt")
+        monkeypatch.setattr(
+            code_intelligence_module,
+            "_windows_open_file_beneath_root",
+            lambda root, parts: real_open(root.joinpath(*parts), os.O_RDONLY),
+        )
+
+        def actual_handle_path(_fd: int) -> str:
+            return str(source)
+    else:
+        actual_handle_path = code_intelligence_module._windows_handle_path
     handle_path_checks = 0
 
     def report_moved_path(file_descriptor):
@@ -1056,19 +1186,17 @@ def test_source_reader_accounts_bytes_when_post_read_path_verification_fails(
 
 
 def test_native_watcher_emits_relative_event(tmp_path):
-    try:
-        watcher = NativeSnapshotWatcher(tmp_path, max_events=32)
-    except (ImportError, OSError, RuntimeError) as error:
-        pytest.skip(f"native watcher unavailable: {error}")
+    watcher = NativeSnapshotWatcher(tmp_path, max_events=32)
     try:
         source = tmp_path / "watched.py"
         source.write_text("value = 1\n", encoding="utf-8")
         events = ()
-        for _ in range(20):
+        for attempt in range(30):
             time.sleep(0.1)
             events = watcher.poll().drain()
-            if events:
+            if any(event.path == "watched.py" for event in events):
                 break
+            source.write_text(f"value = {attempt + 2}\n", encoding="utf-8")
         assert any(event.path == "watched.py" for event in events)
     finally:
         watcher.close()

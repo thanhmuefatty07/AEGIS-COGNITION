@@ -599,6 +599,7 @@ class AgentApplication:
             raise VerificationSessionError("AESE local command is not an admitted command")
         lab_run = kwargs.get("run")
         try:
+            raw_result: object
             if os.name == "nt":
                 runner = ProcessExecutionCell(
                     run_local_verification_command,
@@ -606,7 +607,7 @@ class AgentApplication:
                 )
                 raw_result = await runner(command.as_dict())
             else:
-                raw_result = await run_local_verification_command_async(command.as_dict())
+                raw_result = cast(object, await run_local_verification_command_async(command.as_dict()))
             if not isinstance(raw_result, Mapping):
                 raise VerificationSessionError("AESE local runner returned a malformed result")
             result = dict(cast(Mapping[str, object], raw_result))

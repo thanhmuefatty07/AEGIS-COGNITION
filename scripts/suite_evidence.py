@@ -15,6 +15,7 @@ import shlex
 import signal
 import subprocess
 import sys
+import sysconfig
 import tempfile
 import tomllib
 from datetime import UTC, datetime
@@ -635,13 +636,19 @@ def suite_execution_valid(candidate: Mapping[str, object]) -> bool:
         return executed == argv
     report_hash = candidate.get("runner_report_sha256")
     report_bytes = candidate.get("runner_report_bytes")
+    if type(executed) is not list or executed[: len(argv)] != argv:
+        return False
+    suffix = executed[len(argv) :]
+    valid_pytest_suffix = (
+        len(suffix) == 6 and suffix[:-1] == ["-o", "junit_family=xunit2", "-o", "junit_logging=no", "--junitxml"]
+    ) or (
+        len(suffix) == 8
+        and suffix[:-1] == ["-o", "addopts=", "-o", "junit_family=xunit2", "-o", "junit_logging=no", "--junitxml"]
+    )
     return (
-        type(executed) is list
-        and len(executed) == len(argv) + 6
-        and executed[: len(argv)] == argv
-        and executed[-6:-1] == ["-o", "junit_family=xunit2", "-o", "junit_logging=no", "--junitxml"]
-        and isinstance(executed[-1], str)
-        and bool(executed[-1])
+        valid_pytest_suffix
+        and isinstance(suffix[-1], str)
+        and bool(suffix[-1])
         and isinstance(report_hash, str)
         and re.fullmatch(r"[0-9a-f]{64}", report_hash) is not None
         and type(report_bytes) is int
@@ -1022,6 +1029,27 @@ def run_command(command: list[str], timeout_seconds: int) -> tuple[str, str, int
         for bad_key in list(sanitized_env):
             if bad_key.casefold() in ("pytest_addopts", "pytest_plugins"):
                 sanitized_env.pop(bad_key, None)
+        pathsep = getattr(os, "pathsep", ":")
+        lib_dirs: list[str] = []
+        for candidate in (
+            sysconfig.get_config_var("LIBDIR"),
+            str(Path(sys.base_prefix) / "lib"),
+            str(Path(sys.prefix) / "lib"),
+            str(Path(sys.base_prefix)),
+        ):
+            if isinstance(candidate, str) and candidate:
+                with suppress(OSError):
+                    resolved = str(Path(candidate).expanduser().resolve())
+                    if Path(resolved).is_dir() and resolved not in lib_dirs:
+                        lib_dirs.append(resolved)
+        if lib_dirs:
+            if sys.platform == "darwin":
+                for var in ("DYLD_LIBRARY_PATH", "DYLD_FALLBACK_LIBRARY_PATH"):
+                    existing = sanitized_env.get(var, "")
+                    sanitized_env[var] = pathsep.join([*lib_dirs, *([existing] if existing else [])])
+            elif os.name != "nt":
+                existing = sanitized_env.get("LD_LIBRARY_PATH", "")
+                sanitized_env["LD_LIBRARY_PATH"] = pathsep.join([*lib_dirs, *([existing] if existing else [])])
 
     result: tuple[str, str, int, bool] | None = None
     try:
@@ -1060,6 +1088,11 @@ def run_command(command: list[str], timeout_seconds: int) -> tuple[str, str, int
                         process.wait(timeout=0.5)
                 result = _capture_text(stdout), _capture_text(stderr), 124, True
             else:
+                if os.name != "nt" and isinstance(process, subprocess.Popen):
+                    killpg = getattr(os, "killpg", None)
+                    if killpg is not None:
+                        with suppress(OSError):
+                            killpg(process.pid, signal.SIGKILL)
                 result = _capture_text(stdout), _capture_text(stderr), process.returncode, False
     finally:
         if windows_job is not None and not windows_job.close():
@@ -1100,11 +1133,10 @@ def _terminate_process_tree(process: subprocess.Popen[str]) -> None:
         with suppress(OSError):
             process.kill()
         return
-    try:
+    with suppress(subprocess.TimeoutExpired):
         process.wait(timeout=0.5)
-    except subprocess.TimeoutExpired:
-        with suppress(OSError):
-            os.killpg(process.pid, signal.SIGKILL)
+    with suppress(OSError):
+        os.killpg(process.pid, signal.SIGKILL)
 
 
 @contextmanager

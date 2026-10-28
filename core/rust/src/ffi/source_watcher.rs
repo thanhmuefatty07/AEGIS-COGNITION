@@ -84,6 +84,14 @@ fn enqueue(state: &Arc<Mutex<WatchState>>, root: &Path, event: notify::Result<Ev
     };
     let kind = format!("{:?}", event.kind);
     for path in event.paths {
+        let absolute = if path.is_absolute() {
+            path.to_path_buf()
+        } else {
+            root.join(&path)
+        };
+        if absolute == root {
+            continue;
+        }
         let Some(relative) = relative_event_path(root, &path) else {
             state.overflowed = true;
             continue;

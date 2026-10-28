@@ -305,13 +305,17 @@ def _windows_open_file_beneath_root(root_path: Path, parts: tuple[str, ...]) -> 
         if file_handle.value and descriptor is None:
             try:
                 if not api[3](file_handle):  # type: ignore[operator]
-                    cleanup_error = ctypes.WinError(ctypes.get_last_error())
+                    get_last_error = getattr(ctypes, "get_last_error", lambda: 5)
+                    win_error = getattr(ctypes, "WinError", OSError)
+                    cleanup_error = win_error(get_last_error())
             except Exception as error:
                 cleanup_error = error
         if root_handle.value:
             try:
                 if not api[3](root_handle):  # type: ignore[operator]
-                    root_close_error = ctypes.WinError(ctypes.get_last_error())
+                    get_last_error = getattr(ctypes, "get_last_error", lambda: 5)
+                    win_error = getattr(ctypes, "WinError", OSError)
+                    root_close_error = win_error(get_last_error())
                     if cleanup_error is None:
                         cleanup_error = root_close_error
             except Exception as error:
@@ -460,22 +464,20 @@ def _windows_open_directory_handle(path: Path) -> object:
 
 
 def _windows_directory_entries(handle: object, api: tuple[object, ...]) -> Iterator[_DirectoryEntry]:
-    from ctypes import wintypes
-
     class FileFullDirectoryInfo(ctypes.Structure):
         _fields_ = (
-            ("NextEntryOffset", wintypes.DWORD),
-            ("FileIndex", wintypes.DWORD),
-            ("CreationTime", ctypes.c_longlong),
-            ("LastAccessTime", ctypes.c_longlong),
-            ("LastWriteTime", ctypes.c_longlong),
-            ("ChangeTime", ctypes.c_longlong),
-            ("EndOfFile", ctypes.c_longlong),
-            ("AllocationSize", ctypes.c_longlong),
-            ("FileAttributes", wintypes.DWORD),
-            ("FileNameLength", wintypes.DWORD),
-            ("EaSize", wintypes.DWORD),
-            ("FileName", wintypes.WCHAR * 1),
+            ("NextEntryOffset", ctypes.c_uint32),
+            ("FileIndex", ctypes.c_uint32),
+            ("CreationTime", ctypes.c_int64),
+            ("LastAccessTime", ctypes.c_int64),
+            ("LastWriteTime", ctypes.c_int64),
+            ("ChangeTime", ctypes.c_int64),
+            ("EndOfFile", ctypes.c_int64),
+            ("AllocationSize", ctypes.c_int64),
+            ("FileAttributes", ctypes.c_uint32),
+            ("FileNameLength", ctypes.c_uint32),
+            ("EaSize", ctypes.c_uint32),
+            ("FileName", ctypes.c_uint16 * 1),
         )
 
     buffer_size = 64 * 1024
@@ -485,11 +487,13 @@ def _windows_directory_entries(handle: object, api: tuple[object, ...]) -> Itera
     filename_offset = FileFullDirectoryInfo.FileName.offset
 
     while True:
-        if not api[4](handle, 0xE, buffer_pointer, buffer_size):  # FileFullDirectoryInfo
-            error = ctypes.get_last_error()
+        if not api[4](handle, 0xE, buffer_pointer, buffer_size):  # type: ignore[operator]
+            get_last_error = getattr(ctypes, "get_last_error", lambda: 18)
+            error = get_last_error()
             if error == 18:  # ERROR_NO_MORE_FILES
                 return
-            raise ctypes.WinError(error)
+            win_error = getattr(ctypes, "WinError", OSError)
+            raise win_error(error)
 
         offset = 0
         entries_in_buffer = 0

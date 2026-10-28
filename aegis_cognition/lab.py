@@ -8912,7 +8912,7 @@ class _WindowsCellJob:
         import ctypes
         from ctypes import wintypes
 
-        self._ctypes = ctypes
+        self._ctypes: Any = ctypes
         kernel32_loader = getattr(ctypes, "WinDLL", None)
         if not callable(kernel32_loader):
             raise OSError("Windows Job Objects are unavailable on this platform")
@@ -8972,11 +8972,11 @@ class _WindowsCellJob:
         self._kernel32.CloseHandle.argtypes = [wintypes.HANDLE]
         self._kernel32.CloseHandle.restype = wintypes.BOOL
 
-        ctypes.set_last_error(0)
+        self._ctypes.set_last_error(0)
         handle = self._kernel32.CreateJobObjectW(None, None)
         if not handle:
-            error = ctypes.get_last_error()
-            raise ctypes.WinError(error)
+            error = int(self._ctypes.get_last_error())
+            raise self._ctypes.WinError(error)
         self._handle = handle
 
         limits = ExtendedLimitInformation()
@@ -8987,9 +8987,9 @@ class _WindowsCellJob:
             ctypes.byref(limits),
             ctypes.sizeof(limits),
         ):
-            error = ctypes.get_last_error()
+            error = int(self._ctypes.get_last_error())
             self.close()
-            raise ctypes.WinError(error)
+            raise self._ctypes.WinError(error)
 
     def assign_process(self, pid: int) -> bool:
         if self._handle is None or type(pid) is not int or pid <= 0:
@@ -9044,11 +9044,11 @@ class ProcessExecutionCell:
             or float(timeout_seconds) <= 0
         ):
             raise ValueError("process execution timeout must be finite and positive")
+        if start_method == "forkserver":
+            raise ValueError("forkserver is incompatible with POSIX process-group cleanup")
         available_methods = multiprocessing.get_all_start_methods()
         if type(start_method) is not str or start_method not in available_methods:
             raise ValueError("process execution start method is unavailable")
-        if os.name != "nt" and start_method == "forkserver":
-            raise ValueError("forkserver is incompatible with POSIX process-group cleanup")
         self.runner = runner
         self.timeout_seconds = float(timeout_seconds)
         self.start_method = start_method

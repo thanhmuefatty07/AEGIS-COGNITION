@@ -19,6 +19,7 @@ import shutil
 import signal
 import subprocess
 import sys
+import sysconfig
 import tempfile
 import threading
 import time
@@ -520,14 +521,28 @@ def _python_runtime_dll_directory() -> Path | None:
     """Find the active Python runtime directory for native extension loads."""
 
     major_minor = f"{sys.version_info.major}{sys.version_info.minor}"
-    dll_names = (f"python{major_minor}.dll", f"python{major_minor}t.dll")
-    candidates = (
+    dot_major_minor = f"{sys.version_info.major}.{sys.version_info.minor}"
+    dll_names = (
+        f"python{major_minor}.dll",
+        f"python{major_minor}t.dll",
+        f"libpython{dot_major_minor}.dylib",
+        f"libpython{dot_major_minor}t.dylib",
+        f"libpython{dot_major_minor}.so",
+        f"libpython{dot_major_minor}t.so",
+        f"libpython{dot_major_minor}.so.1.0",
+    )
+    raw_candidates = [
         Path(sys.base_prefix),
         Path(sys.prefix),
+        Path(sys.base_prefix) / "lib",
+        Path(sys.prefix) / "lib",
         Path(sys.executable).parent,
         Path(sys.executable).parent.parent,
-    )
-    for candidate in dict.fromkeys(path.expanduser().resolve() for path in candidates):
+    ]
+    libdir = sysconfig.get_config_var("LIBDIR")
+    if isinstance(libdir, str) and libdir:
+        raw_candidates.insert(0, Path(libdir))
+    for candidate in dict.fromkeys(path.expanduser().resolve() for path in raw_candidates):
         if any((candidate / dll_name).is_file() for dll_name in dll_names):
             return candidate
     return None
@@ -771,6 +786,17 @@ def _verification_environment(command: LocalVerificationCommand, *, is_pytest: b
         if python_runtime is not None:
             inherited_path = environment.get("PATH", "")
             environment["PATH"] = os.pathsep.join(value for value in (str(python_runtime), inherited_path) if value)
+            if sys.platform == "darwin":
+                for variable in ("DYLD_LIBRARY_PATH", "DYLD_FALLBACK_LIBRARY_PATH"):
+                    inherited = environment.get(variable, "")
+                    environment[variable] = os.pathsep.join(
+                        value for value in (str(python_runtime), inherited) if value
+                    )
+            elif os.name != "nt":
+                inherited = environment.get("LD_LIBRARY_PATH", "")
+                environment["LD_LIBRARY_PATH"] = os.pathsep.join(
+                    value for value in (str(python_runtime), inherited) if value
+                )
     return environment
 
 
@@ -813,6 +839,7 @@ def _build_local_verification_result(
     timed_out: bool,
     output_limited: bool,
     output_capture_failed: bool,
+    process_tree_remains: bool = False,
     return_code: int | None,
     execution_argv: tuple[str, ...],
     stdout_file: Any,
@@ -854,6 +881,10 @@ def _build_local_verification_result(
         status = "ERROR"
         failure_class = "OUTPUT_CAPTURE_FAILED"
         detail = "verification output could not be captured completely"
+    elif process_tree_remains:
+        status = "ERROR"
+        failure_class = "PROCESS_TREE_REMAINS"
+        detail = "verification command left background processes running"
     elif not (is_pytest or is_cargo):
         status = "ERROR"
         failure_class = "UNSUPPORTED_RESULT_FORMAT"
@@ -944,6 +975,249 @@ def _build_local_verification_result(
     }
 
 
+def _windows_process_creation_filetime(pid: int, *, require_active: bool = True) -> int | None:
+    if os.name != "nt" or pid <= 0:
+        return None
+    import ctypes
+    from ctypes import wintypes
+
+    class FileTime(ctypes.Structure):
+        _fields_ = [("dwLowDateTime", wintypes.DWORD), ("dwHighDateTime", wintypes.DWORD)]
+
+    kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+    handle = kernel32.OpenProcess(0x1000, False, pid)
+    if not handle:
+        return None
+    try:
+        if require_active:
+            exit_code = wintypes.DWORD()
+            if not kernel32.GetExitCodeProcess(handle, ctypes.byref(exit_code)) or exit_code.value != 259:
+                return None
+        creation = FileTime()
+        exit_time = FileTime()
+        kernel_time = FileTime()
+        user_time = FileTime()
+        if not kernel32.GetProcessTimes(
+            handle,
+            ctypes.byref(creation),
+            ctypes.byref(exit_time),
+            ctypes.byref(kernel_time),
+            ctypes.byref(user_time),
+        ):
+            return None
+        return (int(creation.dwHighDateTime) << 32) | int(creation.dwLowDateTime)
+    finally:
+        kernel32.CloseHandle(handle)
+
+
+class _WindowsVerificationJob:
+    def __init__(self) -> None:
+        self._handle: int = 0
+        if os.name != "nt":
+            return
+        import ctypes
+        from ctypes import wintypes
+
+        kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+        kernel32.CreateJobObjectW.argtypes = [wintypes.LPVOID, wintypes.LPCWSTR]
+        kernel32.CreateJobObjectW.restype = wintypes.HANDLE
+        handle = kernel32.CreateJobObjectW(None, None)
+        if handle:
+            self._handle = int(handle)
+
+    def assign_tree(self, root_pid: int) -> None:
+        if os.name != "nt" or not self._handle or root_pid <= 0:
+            return
+        import ctypes
+        from ctypes import wintypes
+
+        class ProcessEntry32W(ctypes.Structure):
+            _fields_ = [
+                ("dwSize", wintypes.DWORD),
+                ("cntUsage", wintypes.DWORD),
+                ("th32ProcessID", wintypes.DWORD),
+                ("th32DefaultHeapID", ctypes.c_size_t),
+                ("th32ModuleID", wintypes.DWORD),
+                ("cntThreads", wintypes.DWORD),
+                ("th32ParentProcessID", wintypes.DWORD),
+                ("pcPriClassBase", ctypes.c_long),
+                ("dwFlags", wintypes.DWORD),
+                ("szExeFile", wintypes.WCHAR * 260),
+            ]
+
+        kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+        kernel32.OpenProcess.argtypes = [wintypes.DWORD, wintypes.BOOL, wintypes.DWORD]
+        kernel32.OpenProcess.restype = wintypes.HANDLE
+        kernel32.AssignProcessToJobObject.argtypes = [wintypes.HANDLE, wintypes.HANDLE]
+        kernel32.AssignProcessToJobObject.restype = wintypes.BOOL
+        kernel32.CloseHandle.argtypes = [wintypes.HANDLE]
+        kernel32.CloseHandle.restype = wintypes.BOOL
+
+        def _assign_single(pid: int) -> None:
+            proc_handle = kernel32.OpenProcess(0x0100 | 0x0001 | 0x1000, False, pid)
+            if not proc_handle:
+                return
+            try:
+                kernel32.AssignProcessToJobObject(wintypes.HANDLE(self._handle), proc_handle)
+            finally:
+                kernel32.CloseHandle(proc_handle)
+
+        _assign_single(root_pid)
+        snapshot = kernel32.CreateToolhelp32Snapshot(0x00000002, 0)
+        if snapshot == wintypes.HANDLE(-1).value or not snapshot:
+            return
+        children_by_parent: dict[int, list[int]] = {}
+        try:
+            entry = ProcessEntry32W()
+            entry.dwSize = ctypes.sizeof(ProcessEntry32W)
+            has_entry = bool(kernel32.Process32FirstW(snapshot, ctypes.byref(entry)))
+            while has_entry:
+                pid = int(entry.th32ProcessID)
+                parent_pid = int(entry.th32ParentProcessID)
+                if pid > 0 and pid != root_pid:
+                    children_by_parent.setdefault(parent_pid, []).append(pid)
+                has_entry = bool(kernel32.Process32NextW(snapshot, ctypes.byref(entry)))
+        finally:
+            kernel32.CloseHandle(snapshot)
+        queue = list(children_by_parent.get(root_pid, ()))
+        seen: set[int] = set()
+        while queue:
+            candidate = queue.pop(0)
+            if candidate in seen:
+                continue
+            seen.add(candidate)
+            _assign_single(candidate)
+            queue.extend(children_by_parent.get(candidate, ()))
+
+    def reap_remaining_descendants(self, *, exclude_pid: int = 0) -> bool:
+        if os.name != "nt" or not self._handle:
+            return False
+        import ctypes
+        from ctypes import wintypes
+
+        class JobObjectBasicProcessIdList(ctypes.Structure):
+            _fields_ = [
+                ("NumberOfAssignedProcesses", wintypes.DWORD),
+                ("NumberOfProcessIdsInList", wintypes.DWORD),
+                ("ProcessIdList", ctypes.c_size_t * 512),
+            ]
+
+        kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+        kernel32.QueryInformationJobObject.argtypes = [
+            wintypes.HANDLE,
+            ctypes.c_int,
+            wintypes.LPVOID,
+            wintypes.DWORD,
+            wintypes.LPDWORD,
+        ]
+        kernel32.QueryInformationJobObject.restype = wintypes.BOOL
+        info = JobObjectBasicProcessIdList()
+        if not kernel32.QueryInformationJobObject(
+            wintypes.HANDLE(self._handle),
+            3,
+            ctypes.byref(info),
+            ctypes.sizeof(info),
+            None,
+        ):
+            return False
+        count = min(int(info.NumberOfProcessIdsInList), 512)
+        remaining: list[int] = []
+        for idx in range(count):
+            pid = int(info.ProcessIdList[idx])
+            if (
+                pid > 0
+                and pid != exclude_pid
+                and _windows_process_creation_filetime(pid, require_active=True) is not None
+            ):
+                remaining.append(pid)
+        if not remaining:
+            return False
+        self.close()
+        return True
+
+    def close(self) -> None:
+        if os.name != "nt" or not self._handle:
+            return
+        import ctypes
+        from ctypes import wintypes
+
+        kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+        kernel32.TerminateJobObject.argtypes = [wintypes.HANDLE, wintypes.UINT]
+        kernel32.TerminateJobObject.restype = wintypes.BOOL
+        kernel32.CloseHandle.argtypes = [wintypes.HANDLE]
+        kernel32.CloseHandle.restype = wintypes.BOOL
+        handle = self._handle
+        self._handle = 0
+        try:
+            kernel32.TerminateJobObject(wintypes.HANDLE(handle), 1)
+        finally:
+            kernel32.CloseHandle(wintypes.HANDLE(handle))
+
+
+def _windows_reap_remaining_descendants(root_pid: int, min_creation_filetime: int) -> bool:
+    if os.name != "nt" or root_pid <= 0:
+        return False
+    import ctypes
+    from ctypes import wintypes
+
+    class ProcessEntry32W(ctypes.Structure):
+        _fields_ = [
+            ("dwSize", wintypes.DWORD),
+            ("cntUsage", wintypes.DWORD),
+            ("th32ProcessID", wintypes.DWORD),
+            ("th32DefaultHeapID", ctypes.c_size_t),
+            ("th32ModuleID", wintypes.DWORD),
+            ("cntThreads", wintypes.DWORD),
+            ("th32ParentProcessID", wintypes.DWORD),
+            ("pcPriClassBase", ctypes.c_long),
+            ("dwFlags", wintypes.DWORD),
+            ("szExeFile", wintypes.WCHAR * 260),
+        ]
+
+    kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+    snapshot = kernel32.CreateToolhelp32Snapshot(0x00000002, 0)
+    if snapshot == wintypes.HANDLE(-1).value or not snapshot:
+        return False
+    children_by_parent: dict[int, list[int]] = {}
+    try:
+        entry = ProcessEntry32W()
+        entry.dwSize = ctypes.sizeof(ProcessEntry32W)
+        has_entry = bool(kernel32.Process32FirstW(snapshot, ctypes.byref(entry)))
+        while has_entry:
+            pid = int(entry.th32ProcessID)
+            parent_pid = int(entry.th32ParentProcessID)
+            if pid > 0 and pid != root_pid:
+                children_by_parent.setdefault(parent_pid, []).append(pid)
+            has_entry = bool(kernel32.Process32NextW(snapshot, ctypes.byref(entry)))
+    finally:
+        kernel32.CloseHandle(snapshot)
+
+    queue = list(children_by_parent.get(root_pid, ()))
+    seen: set[int] = set()
+    live_descendants: list[int] = []
+    while queue:
+        candidate = queue.pop(0)
+        if candidate in seen:
+            continue
+        seen.add(candidate)
+        creation_time = _windows_process_creation_filetime(candidate, require_active=True)
+        if creation_time is not None and creation_time >= min_creation_filetime:
+            live_descendants.append(candidate)
+            queue.extend(children_by_parent.get(candidate, ()))
+
+    if not live_descendants:
+        return False
+    for pid in reversed(live_descendants):
+        handle = kernel32.OpenProcess(0x0001 | 0x00100000, False, pid)
+        if handle:
+            try:
+                kernel32.TerminateProcess(handle, 1)
+                kernel32.WaitForSingleObject(handle, 2000)
+            finally:
+                kernel32.CloseHandle(handle)
+    return True
+
+
 def _posix_process_group_exists(process_group_id: int) -> bool:
     killpg: Callable[[int, int], None] | None = getattr(os, "killpg", None)
     if killpg is None:
@@ -991,6 +1265,7 @@ async def _terminate_async_child(process: asyncio.subprocess.Process) -> None:
         if process.returncode is None:
             process.kill()
             await process.wait()
+        await asyncio.to_thread(_windows_reap_remaining_descendants, process_id, 0)
         return
 
     killpg: Callable[[int, int], None] | None = getattr(os, "killpg", None)
@@ -1039,6 +1314,7 @@ async def _build_local_verification_result_async(
     timed_out: bool,
     output_limited: bool,
     output_capture_failed: bool,
+    process_tree_remains: bool = False,
     return_code: int | None,
     execution_argv: tuple[str, ...],
     stdout_file: Any,
@@ -1056,6 +1332,7 @@ async def _build_local_verification_result_async(
             timed_out=timed_out,
             output_limited=output_limited,
             output_capture_failed=output_capture_failed,
+            process_tree_remains=process_tree_remains,
             return_code=return_code,
             execution_argv=execution_argv,
             stdout_file=stdout_file,
@@ -1105,95 +1382,112 @@ async def run_local_verification_command_async(payload: object) -> dict[str, obj
                     creationflags=creationflags,
                 )
             )
+            win_job = _WindowsVerificationJob()
             try:
-                process = await asyncio.shield(creation)
-            except asyncio.CancelledError:
-                process = await _await_task_to_completion(creation)
-                await _terminate_async_child_resilient(process)
-                raise
+                try:
+                    process = await asyncio.shield(creation)
+                except asyncio.CancelledError:
+                    process = await _await_task_to_completion(creation)
+                    await _terminate_async_child_resilient(process)
+                    raise
 
-            timed_out = False
-            output_limited = False
-            output_capture_failed = False
-            return_code: int | None = None
-            if process.stdout is None or process.stderr is None:
-                await _terminate_async_child_resilient(process)
-                raise RuntimeError("verification output pipes were not created")
-            capture_tasks = (
-                asyncio.create_task(
-                    _capture_async_pipe(
-                        process.stdout,
-                        stream="stdout",
-                        capture=capture,
-                        limit_reached=output_limit_reached,
-                    )
-                ),
-                asyncio.create_task(
-                    _capture_async_pipe(
-                        process.stderr,
-                        stream="stderr",
-                        capture=capture,
-                        limit_reached=output_limit_reached,
-                    )
-                ),
-            )
-            process_wait = asyncio.create_task(process.wait())
-            limit_wait = asyncio.create_task(output_limit_reached.wait())
-            try:
-                completed, _ = await asyncio.wait(
-                    (process_wait, limit_wait),
-                    timeout=float(command.timeout_seconds),
-                    return_when=asyncio.FIRST_COMPLETED,
+                win_job.assign_tree(process.pid)
+                leader_creation_time = _windows_process_creation_filetime(process.pid, require_active=False) or 0
+                timed_out = False
+                output_limited = False
+                output_capture_failed = False
+                process_tree_remains = False
+                return_code: int | None = None
+                if process.stdout is None or process.stderr is None:
+                    await _terminate_async_child_resilient(process)
+                    raise RuntimeError("verification output pipes were not created")
+                capture_tasks = (
+                    asyncio.create_task(
+                        _capture_async_pipe(
+                            process.stdout,
+                            stream="stdout",
+                            capture=capture,
+                            limit_reached=output_limit_reached,
+                        )
+                    ),
+                    asyncio.create_task(
+                        _capture_async_pipe(
+                            process.stderr,
+                            stream="stderr",
+                            capture=capture,
+                            limit_reached=output_limit_reached,
+                        )
+                    ),
                 )
-                if not completed:
-                    timed_out = True
-                    await _terminate_async_child_resilient(process)
-                elif output_limit_reached.is_set():
-                    output_limited = capture.exceeded
-                    await _terminate_async_child_resilient(process)
-                else:
-                    return_code = process_wait.result()
+                process_wait = asyncio.create_task(process.wait())
+                limit_wait = asyncio.create_task(output_limit_reached.wait())
+                try:
+                    completed, _ = await asyncio.wait(
+                        (process_wait, limit_wait),
+                        timeout=float(command.timeout_seconds),
+                        return_when=asyncio.FIRST_COMPLETED,
+                    )
+                    if not completed:
+                        timed_out = True
+                        await _terminate_async_child_resilient(process)
+                    elif output_limit_reached.is_set():
+                        output_limited = capture.exceeded
+                        await _terminate_async_child_resilient(process)
+                    else:
+                        return_code = process_wait.result()
+                        if os.name == "nt":
+                            job_reaped = win_job.reap_remaining_descendants(exclude_pid=process.pid)
+                            snap_reaped = await asyncio.to_thread(
+                                _windows_reap_remaining_descendants, process.pid, leader_creation_time
+                            )
+                            process_tree_remains = job_reaped or snap_reaped
+                        elif not _PROCESS_EXECUTION_CELL_ACTIVE.get() and _posix_process_group_exists(process.pid):
+                            process_tree_remains = True
+                            await _terminate_async_child_resilient(process)
 
-                _, pending_capture = await asyncio.wait(
-                    capture_tasks,
-                    timeout=2.0,
-                    return_when=asyncio.ALL_COMPLETED,
-                )
-                if pending_capture:
-                    output_capture_failed = True
+                    _, pending_capture = await asyncio.wait(
+                        capture_tasks,
+                        timeout=2.0,
+                        return_when=asyncio.ALL_COMPLETED,
+                    )
+                    if pending_capture:
+                        output_capture_failed = True
+                        await _terminate_async_child_resilient(process)
+                        for task in pending_capture:
+                            task.cancel()
+                        await asyncio.gather(*pending_capture, return_exceptions=True)
+                    output_limited = output_limited or capture.exceeded
+                    output_capture_failed = output_capture_failed or capture.failed
+                    return_code = process.returncode if return_code is None else return_code
+                    return await _build_local_verification_result_async(
+                        command,
+                        root=root,
+                        is_pytest=is_pytest,
+                        environment=environment,
+                        started_at=started_at,
+                        timed_out=timed_out,
+                        output_limited=output_limited,
+                        output_capture_failed=output_capture_failed,
+                        process_tree_remains=process_tree_remains,
+                        return_code=return_code,
+                        execution_argv=execution_argv,
+                        stdout_file=stdout_file,
+                        stderr_file=stderr_file,
+                        report_path=report_path,
+                    )
+                except asyncio.CancelledError:
                     await _terminate_async_child_resilient(process)
-                    for task in pending_capture:
-                        task.cancel()
-                    await asyncio.gather(*pending_capture, return_exceptions=True)
-                output_limited = output_limited or capture.exceeded
-                output_capture_failed = output_capture_failed or capture.failed
-                return_code = process.returncode if return_code is None else return_code
-                return await _build_local_verification_result_async(
-                    command,
-                    root=root,
-                    is_pytest=is_pytest,
-                    environment=environment,
-                    started_at=started_at,
-                    timed_out=timed_out,
-                    output_limited=output_limited,
-                    output_capture_failed=output_capture_failed,
-                    return_code=return_code,
-                    execution_argv=execution_argv,
-                    stdout_file=stdout_file,
-                    stderr_file=stderr_file,
-                    report_path=report_path,
-                )
-            except asyncio.CancelledError:
-                await _terminate_async_child_resilient(process)
-                raise
-            except Exception:
-                await _terminate_async_child_resilient(process)
-                raise
+                    raise
+                except Exception:
+                    await _terminate_async_child_resilient(process)
+                    raise
+                finally:
+                    for task in (process_wait, limit_wait):
+                        if not task.done():
+                            task.cancel()
+                    await asyncio.gather(process_wait, limit_wait, return_exceptions=True)
             finally:
-                for task in (process_wait, limit_wait):
-                    if not task.done():
-                        task.cancel()
-                await asyncio.gather(process_wait, limit_wait, return_exceptions=True)
+                win_job.close()
 
 
 def run_local_verification_command(payload: object) -> dict[str, object]:
@@ -1210,6 +1504,7 @@ def run_local_verification_command(payload: object) -> dict[str, object]:
     environment = _verification_environment(command, is_pytest=is_pytest)
     started_at = _utc_now()
     timed_out = False
+    process_tree_remains = False
     return_code: int | None = None
     report_context = (
         managed_scratch_dir("verification", prefix="aese-pytest-report-") if is_pytest else contextlib.nullcontext(None)
@@ -1227,73 +1522,87 @@ def run_local_verification_command(payload: object) -> dict[str, object]:
             process_options: dict[str, Any] = {}
             if os.name != "nt":
                 process_options["start_new_session"] = not _PROCESS_EXECUTION_CELL_ACTIVE.get()
-            process = subprocess.Popen(
-                [command.executable, *execution_argv],
-                cwd=root,
-                env=environment,
-                stdin=subprocess.DEVNULL,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                shell=False,
-                creationflags=creationflags,
-                **process_options,
-            )
-            if process.stdout is None or process.stderr is None:
-                _terminate_child(process)
-                raise RuntimeError("verification output pipes were not created")
-            capture_threads = (
-                threading.Thread(
-                    target=_capture_sync_pipe,
-                    args=(process.stdout,),
-                    kwargs={"stream": "stdout", "capture": capture, "limit_reached": output_limit_reached},
-                    daemon=True,
-                ),
-                threading.Thread(
-                    target=_capture_sync_pipe,
-                    args=(process.stderr,),
-                    kwargs={"stream": "stderr", "capture": capture, "limit_reached": output_limit_reached},
-                    daemon=True,
-                ),
-            )
-            for thread in capture_threads:
-                thread.start()
-            deadline = time.monotonic() + float(command.timeout_seconds)
-            while True:
-                if output_limit_reached.is_set():
-                    break
-                remaining = deadline - time.monotonic()
-                if remaining <= 0:
-                    timed_out = True
-                    break
-                try:
-                    return_code = process.wait(timeout=min(0.02, remaining))
-                    break
-                except subprocess.TimeoutExpired:
-                    continue
-            if timed_out or output_limit_reached.is_set():
-                _terminate_child(process)
-                with contextlib.suppress(subprocess.TimeoutExpired):
-                    process.wait(timeout=2.0)
-            for thread in capture_threads:
-                thread.join(timeout=2.0)
-            output_capture_failed = any(thread.is_alive() for thread in capture_threads) or capture.failed
-            output_limited = capture.exceeded
-            return_code = process.returncode if return_code is None else return_code
-            result = _build_local_verification_result(
-                command,
-                root=root,
-                is_pytest=is_pytest,
-                environment=environment,
-                started_at=started_at,
-                timed_out=timed_out,
-                output_limited=output_limited,
-                output_capture_failed=output_capture_failed,
-                return_code=return_code,
-                execution_argv=execution_argv,
-                stdout_file=stdout_file,
-                stderr_file=stderr_file,
-                report_path=report_path,
-            )
+            win_job = _WindowsVerificationJob()
+            try:
+                process = subprocess.Popen(
+                    [command.executable, *execution_argv],
+                    cwd=root,
+                    env=environment,
+                    stdin=subprocess.DEVNULL,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    shell=False,
+                    creationflags=creationflags,
+                    **process_options,
+                )
+                win_job.assign_tree(process.pid)
+                leader_creation_time = _windows_process_creation_filetime(process.pid, require_active=False) or 0
+                if process.stdout is None or process.stderr is None:
+                    _terminate_child(process)
+                    raise RuntimeError("verification output pipes were not created")
+                capture_threads = (
+                    threading.Thread(
+                        target=_capture_sync_pipe,
+                        args=(process.stdout,),
+                        kwargs={"stream": "stdout", "capture": capture, "limit_reached": output_limit_reached},
+                        daemon=True,
+                    ),
+                    threading.Thread(
+                        target=_capture_sync_pipe,
+                        args=(process.stderr,),
+                        kwargs={"stream": "stderr", "capture": capture, "limit_reached": output_limit_reached},
+                        daemon=True,
+                    ),
+                )
+                for thread in capture_threads:
+                    thread.start()
+                deadline = time.monotonic() + float(command.timeout_seconds)
+                while True:
+                    if output_limit_reached.is_set():
+                        break
+                    remaining = deadline - time.monotonic()
+                    if remaining <= 0:
+                        timed_out = True
+                        break
+                    try:
+                        return_code = process.wait(timeout=min(0.02, remaining))
+                        break
+                    except subprocess.TimeoutExpired:
+                        continue
+                if timed_out or output_limit_reached.is_set():
+                    _terminate_child(process)
+                    with contextlib.suppress(subprocess.TimeoutExpired):
+                        process.wait(timeout=2.0)
+                elif os.name == "nt":
+                    job_reaped = win_job.reap_remaining_descendants(exclude_pid=process.pid)
+                    snap_reaped = _windows_reap_remaining_descendants(process.pid, leader_creation_time)
+                    process_tree_remains = job_reaped or snap_reaped
+                elif not _PROCESS_EXECUTION_CELL_ACTIVE.get() and _posix_process_group_exists(process.pid):
+                    process_tree_remains = True
+                    _terminate_child(process)
+                for thread in capture_threads:
+                    thread.join(timeout=2.0)
+                output_capture_failed = any(thread.is_alive() for thread in capture_threads) or capture.failed
+                output_limited = capture.exceeded
+                return_code = process.returncode if return_code is None else return_code
+                result = _build_local_verification_result(
+                    command,
+                    root=root,
+                    is_pytest=is_pytest,
+                    environment=environment,
+                    started_at=started_at,
+                    timed_out=timed_out,
+                    output_limited=output_limited,
+                    output_capture_failed=output_capture_failed,
+                    process_tree_remains=process_tree_remains,
+                    return_code=return_code,
+                    execution_argv=execution_argv,
+                    stdout_file=stdout_file,
+                    stderr_file=stderr_file,
+                    report_path=report_path,
+                )
+            finally:
+                win_job.close()
     return result
 
 

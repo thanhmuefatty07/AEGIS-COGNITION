@@ -318,16 +318,25 @@ mod tests {
         let module = wat::parse_str(
             r#"(module
                 (func (export "spin") (result i32)
-                    (local $value i64)
-                    (local $divisor i64)
-                    (local.set $value (i64.const 123456789))
-                    (local.set $divisor (i64.const 3))
+                    (local $value f64)
+                    (local.set $value (f64.const 123456789.0))
                     (loop $again
                         (local.set $value
-                            (i64.div_s (i64.add (local.get $value) (i64.const 12345))
-                                (local.get $divisor)))
-                        (local.set $divisor
-                            (i64.add (i64.and (local.get $value) (i64.const 31)) (i64.const 1)))
+                            (f64.add
+                                (f64.sqrt (f64.sqrt (f64.sqrt (f64.sqrt (local.get $value)))))
+                                (f64.const 1000.0)))
+                        (local.set $value
+                            (f64.add
+                                (f64.sqrt (f64.sqrt (f64.sqrt (f64.sqrt (local.get $value)))))
+                                (f64.const 1000.0)))
+                        (local.set $value
+                            (f64.add
+                                (f64.sqrt (f64.sqrt (f64.sqrt (f64.sqrt (local.get $value)))))
+                                (f64.const 1000.0)))
+                        (local.set $value
+                            (f64.add
+                                (f64.sqrt (f64.sqrt (f64.sqrt (f64.sqrt (local.get $value)))))
+                                (f64.const 1000.0)))
                         (br $again))
                     (i32.const 0))
             )"#,

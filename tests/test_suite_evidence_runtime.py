@@ -1,13 +1,10 @@
 from __future__ import annotations
 
-import os
 import subprocess
 import sys
 import time
 from pathlib import Path
 from types import SimpleNamespace
-
-import pytest
 
 from scripts import suite_evidence
 
@@ -117,7 +114,6 @@ def test_run_command_does_not_claim_success_when_windows_job_close_fails(monkeyp
     assert job.terminate_calls == 1
 
 
-@pytest.mark.skipif(os.name != "nt", reason="Windows process-tree cleanup is platform-specific")
 def test_run_command_terminates_descendant_when_leader_exits(tmp_path: Path) -> None:
     ready_file = tmp_path / "descendant.ready"
     late_file = tmp_path / "descendant.late"
@@ -126,7 +122,10 @@ def test_run_command_terminates_descendant_when_leader_exits(tmp_path: Path) -> 
     child_script.write_text(
         "import sys, time\n"
         "from pathlib import Path\n"
-        "Path(sys.argv[1]).write_text('ready', encoding='ascii')\n"
+        "target = Path(sys.argv[1])\n"
+        "tmp = target.with_suffix('.tmp')\n"
+        "tmp.write_text('ready', encoding='ascii')\n"
+        "tmp.replace(target)\n"
         "time.sleep(2)\n"
         "Path(sys.argv[2]).write_text('late', encoding='ascii')\n",
         encoding="utf-8",
@@ -160,7 +159,6 @@ def test_run_command_terminates_descendant_when_leader_exits(tmp_path: Path) -> 
     assert not late_file.exists(), "a descendant must not outlive a successfully completed command"
 
 
-@pytest.mark.skipif(os.name != "nt", reason="Windows process-tree cleanup is platform-specific")
 def test_run_command_terminates_descendant_when_command_times_out(tmp_path: Path) -> None:
     ready_file = tmp_path / "timeout-descendant.ready"
     late_file = tmp_path / "timeout-descendant.late"
@@ -169,7 +167,10 @@ def test_run_command_terminates_descendant_when_command_times_out(tmp_path: Path
     child_script.write_text(
         "import sys, time\n"
         "from pathlib import Path\n"
-        "Path(sys.argv[1]).write_text('ready', encoding='ascii')\n"
+        "target = Path(sys.argv[1])\n"
+        "tmp = target.with_suffix('.tmp')\n"
+        "tmp.write_text('ready', encoding='ascii')\n"
+        "tmp.replace(target)\n"
         "time.sleep(5)\n"
         "Path(sys.argv[2]).write_text('late', encoding='ascii')\n",
         encoding="utf-8",

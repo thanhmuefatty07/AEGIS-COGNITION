@@ -37,7 +37,7 @@ from collections.abc import Awaitable, Callable, Iterator, Mapping, Sequence
 from contextlib import nullcontext, suppress
 from contextvars import ContextVar
 from dataclasses import asdict, dataclass, field, is_dataclass
-from pathlib import Path
+from pathlib import Path, PureWindowsPath
 from types import SimpleNamespace
 from typing import Any, TextIO, TypeGuard, cast
 from urllib.parse import urlsplit, urlunsplit
@@ -3137,9 +3137,12 @@ class DesktopService:
     def _workspace_relative_path(payload: Mapping[str, Any]) -> Path:
         raw_path = _require_text(payload, "relative_path", max_length=MAX_PATH_LENGTH)
         relative = Path(raw_path)
+        win_relative = PureWindowsPath(raw_path)
         if (
             relative.anchor
             or relative.drive
+            or win_relative.anchor
+            or win_relative.drive
             or not relative.parts
             or any(part in {".", "..", ".git", ".aegis"} for part in relative.parts)
         ):
@@ -3155,8 +3158,11 @@ class DesktopService:
         self._require_open()
         relative = self._workspace_relative_path(payload)
         root = (self._opened_root or self.profile_root).resolve(strict=True)
+        win_relative = PureWindowsPath(str(relative))
         candidate = root / relative
         try:
+            if win_relative.anchor or win_relative.drive:
+                raise ValueError("Windows-anchored path is not relative")
             candidate.relative_to(root)
         except ValueError as error:
             raise DesktopServiceError(

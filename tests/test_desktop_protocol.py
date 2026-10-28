@@ -2419,7 +2419,6 @@ def test_desktop_service_registers_and_lists_imported_projects_without_copying_t
     )
 
 
-@pytest.mark.skipif(os.name != "nt", reason="extended Windows paths are Windows-specific")
 def test_desktop_service_keeps_one_project_identity_for_extended_and_regular_paths(tmp_path: Path, monkeypatch):
     monkeypatch.delenv("AEGIS_SESSION_DB_PATH", raising=False)
     monkeypatch.delenv("AEGIS_PROFILE_ID", raising=False)
@@ -2427,7 +2426,7 @@ def test_desktop_service_keeps_one_project_identity_for_extended_and_regular_pat
     profile = tmp_path / "profile"
     project = tmp_path / "workspace"
     project.mkdir()
-    extended_path = "\\\\?\\" + str(project.resolve())
+    extended_path = ("\\\\?\\" + str(project.resolve())) if os.name == "nt" else (str(project.resolve()) + "/.")
     assert Path(extended_path).samefile(project)
 
     service = DesktopService(profile_root=profile, profile_id="local-profile")
@@ -2449,8 +2448,8 @@ def test_desktop_service_keeps_one_project_identity_for_extended_and_regular_pat
         service.close()
 
 
-@pytest.mark.skipif(os.name != "nt", reason="Windows extended paths are Windows-specific")
-def test_workspace_path_normalization_preserves_extended_length_paths():
+def test_workspace_path_normalization_preserves_extended_length_paths(monkeypatch):
+    monkeypatch.setattr(desktop_service_module.os, "name", "nt")
     components = "\\".join(["a" * 45] * 6)
     drive_path = "D:\\" + components
     extended_drive_path = "\\\\?\\" + drive_path
@@ -2630,7 +2629,6 @@ def test_workspace_file_read_is_utf8_bounded_and_stays_inside_workspace(tmp_path
             link.unlink(missing_ok=True)
 
 
-@pytest.mark.skipif(sys.platform != "win32", reason="Windows path roots and os.startfile are platform-specific")
 @pytest.mark.parametrize(
     "relative_path",
     (
@@ -2654,7 +2652,8 @@ def test_workspace_open_external_rejects_windows_anchored_paths_before_os_open(
     service = DesktopService(profile_root=tmp_path / "profile")
     service._opened_root = workspace
     opened: list[Path] = []
-    monkeypatch.setattr(desktop_service_module.os, "startfile", lambda path: opened.append(Path(path)))
+    monkeypatch.setattr(desktop_service_module.sys, "platform", "win32")
+    monkeypatch.setattr(desktop_service_module.os, "startfile", lambda path: opened.append(Path(path)), raising=False)
 
     try:
         allowed = json.loads(service.dispatch(_request("workspace.open_external", {"relative_path": "inside.txt"})))
@@ -2670,7 +2669,6 @@ def test_workspace_open_external_rejects_windows_anchored_paths_before_os_open(
     assert opened == [inside]
 
 
-@pytest.mark.skipif(sys.platform != "win32", reason="Windows path roots are platform-specific")
 def test_workspace_file_path_checks_containment_after_join_even_if_parser_returns_rooted_path(
     tmp_path: Path, monkeypatch
 ):
@@ -9719,9 +9717,7 @@ def test_workspace_switch_rejected_while_desktop_run_is_running_or_cancelling(
         service.close()
 
 
-def test_workspace_switch_rejected_while_subagents_start_is_active(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-):
+def test_workspace_switch_rejected_while_subagents_start_is_active(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
     monkeypatch.delenv("AEGIS_SESSION_DB_PATH", raising=False)
     monkeypatch.delenv("AEGIS_PROFILE_ID", raising=False)
     _BlockingSubagentApplication.started.clear()
@@ -9778,9 +9774,7 @@ def test_workspace_switch_rejected_while_subagents_start_is_active(
         service.close()
 
 
-def test_multi_workspace_egress_grant_isolation_on_workspace_switch(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-):
+def test_multi_workspace_egress_grant_isolation_on_workspace_switch(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
     monkeypatch.delenv("AEGIS_SESSION_DB_PATH", raising=False)
     monkeypatch.delenv("AEGIS_PROFILE_ID", raising=False)
     catalog = _ScopedEgressCatalog()
@@ -9823,9 +9817,7 @@ def test_multi_workspace_egress_grant_isolation_on_workspace_switch(
         assert service._opened_root == ws_b.resolve()
 
         # Egress in Workspace B MUST NOT be authorized (isolated from Workspace A)
-        check_b = service._connection_egress_check(
-            catalog, catalog.connection, "PROJECT_TEXT", "foreground_inference"
-        )
+        check_b = service._connection_egress_check(catalog, catalog.connection, "PROJECT_TEXT", "foreground_inference")
         assert check_b(catalog.connection.connection_id) is False
         check_b_meta = service._connection_egress_check(
             catalog, catalog.connection, "MODEL_METADATA", "model_discovery"
@@ -9850,5 +9842,3 @@ def test_multi_workspace_egress_grant_isolation_on_workspace_switch(
         assert check_b_granted(catalog.connection.connection_id) is True
     finally:
         service.close()
-
-
