@@ -9097,8 +9097,10 @@ class ProcessExecutionCell:
                 if not _process_child_is_waitable(process, pid):
                     return
                 group_leader = False
-                with contextlib.suppress(OSError):
+                try:
                     group_leader = os.getpgid(pid) == pid and os.getsid(pid) == pid
+                except OSError:
+                    group_leader = bool(getattr(process, "_aegis_group_leader", False))
                 if group_leader:
                     group_term_sent = False
                     with contextlib.suppress(OSError):
@@ -9179,6 +9181,8 @@ class ProcessExecutionCell:
                     if time.monotonic() >= deadline:
                         raise TimeoutError("process execution cell timed out")
                     if message == ("READY",):
+                        if os.name != "nt":
+                            process._aegis_group_leader = True
                         parent.send(("ACK",))
                         continue
                     if message and message[0] == "SUCCESS":

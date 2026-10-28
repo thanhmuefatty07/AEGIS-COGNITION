@@ -25,7 +25,7 @@ def test_windows_kill_fallback_handles_taskkill_timeout(monkeypatch) -> None:
         assert command[:3] == ["taskkill", "/PID", str(process.pid)]
         raise subprocess.TimeoutExpired(command, kwargs["timeout"])
 
-    monkeypatch.setattr(suite_evidence.os, "name", "nt")
+    monkeypatch.setattr(suite_evidence, "os", SimpleNamespace(name="nt"))
     monkeypatch.setattr(suite_evidence.subprocess, "run", timeout_taskkill)
 
     suite_evidence._terminate_process_tree(process)

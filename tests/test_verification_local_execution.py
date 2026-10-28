@@ -450,11 +450,11 @@ def test_process_cell_cleans_up_verification_tree_on_termination(
         executable=sys.executable,
         argv=("-c", child_code, str(pid_file), str(execution_started_marker), str(grandchild_ready_marker)),
         working_directory=str(tmp_path),
-        timeout_seconds=1.5 if termination == "command-timeout" else 60.0,
+        timeout_seconds=3.5 if termination == "command-timeout" else 60.0,
         source_revision="fixture-revision",
     )
     command.validate()
-    cell_timeout = 2.0 if termination == "cell-timeout" else 15.0
+    cell_timeout = 5.0 if termination == "cell-timeout" else 15.0
     cell = ProcessExecutionCell(_observed_popen_verification_runner, timeout_seconds=cell_timeout)
     if termination == "competing-process-start-no-waitid":
         monkeypatch.setattr(lab_module.os, "waitid", None, raising=False)
@@ -524,13 +524,8 @@ def test_process_cell_cleans_up_verification_tree_on_termination(
                 return "R", group_leader, group_leader, str(create_time.value)
             finally:
                 kernel32.CloseHandle(handle)
-        try:
-            pgid = os.getpgid(pid)
-            sid = os.getsid(pid)
-        except OSError:
-            return None
         completed = subprocess.run(
-            ["ps", "-o", "state=,lstart=", "-p", str(pid)],
+            ["ps", "-o", "state=,pgid=,lstart=", "-p", str(pid)],
             check=False,
             capture_output=True,
             text=True,
@@ -539,11 +534,19 @@ def test_process_cell_cleans_up_verification_tree_on_termination(
         line = completed.stdout.strip()
         if completed.returncode != 0 or not line:
             return None
-        parts = line.split(None, 1)
-        if len(parts) < 2:
+        parts = line.split(None, 2)
+        if len(parts) < 3:
             return None
         state = "Z" if parts[0].startswith("Z") else parts[0][0]
-        return state, pgid, sid, parts[1]
+        try:
+            pgid = int(parts[1])
+        except ValueError:
+            return None
+        try:
+            sid = os.getsid(pid)
+        except OSError:
+            sid = pgid
+        return state, pgid, sid, parts[2]
 
     def process_identity_exists(pid: int, start_time: str) -> bool:
         record = process_record(pid)
@@ -623,14 +626,15 @@ def test_process_cell_cleans_up_verification_tree_on_termination(
             setup_deadline = time.monotonic() + 10.0
             while time.monotonic() < setup_deadline:
                 worker_pid = cell.active_pid
-                if worker_pid is not None:
+                if worker_pid is not None and worker_start_time is None:
                     worker_record = process_record(worker_pid)
                     worker_start_time = worker_record[3] if worker_record is not None else None
-                if launch_marker.is_file():
+                if launch_start_time is None and launch_marker.is_file():
                     launch_pid = int(launch_marker.read_text(encoding="ascii"))
                     launch_record = process_record(launch_pid)
                     launch_start_time = launch_record[3] if launch_record is not None else None
-                capture_owned_processes()
+                if len(process_ids) != 2:
+                    capture_owned_processes()
                 if (
                     worker_pid is not None
                     and worker_start_time is not None

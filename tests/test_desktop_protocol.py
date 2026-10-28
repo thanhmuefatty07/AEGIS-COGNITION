@@ -2449,7 +2449,7 @@ def test_desktop_service_keeps_one_project_identity_for_extended_and_regular_pat
 
 
 def test_workspace_path_normalization_preserves_extended_length_paths(monkeypatch):
-    monkeypatch.setattr(desktop_service_module.os, "name", "nt")
+    monkeypatch.setattr(desktop_service_module, "os", SimpleNamespace(**{**os.__dict__, "name": "nt"}))
     components = "\\".join(["a" * 45] * 6)
     drive_path = "D:\\" + components
     extended_drive_path = "\\\\?\\" + drive_path
@@ -2652,8 +2652,12 @@ def test_workspace_open_external_rejects_windows_anchored_paths_before_os_open(
     service = DesktopService(profile_root=tmp_path / "profile")
     service._opened_root = workspace
     opened: list[Path] = []
-    monkeypatch.setattr(desktop_service_module.sys, "platform", "win32")
-    monkeypatch.setattr(desktop_service_module.os, "startfile", lambda path: opened.append(Path(path)), raising=False)
+    monkeypatch.setattr(desktop_service_module, "sys", SimpleNamespace(**{**sys.__dict__, "platform": "win32"}))
+    monkeypatch.setattr(
+        desktop_service_module,
+        "os",
+        SimpleNamespace(**{**os.__dict__, "startfile": lambda path: opened.append(Path(path))}),
+    )
 
     try:
         allowed = json.loads(service.dispatch(_request("workspace.open_external", {"relative_path": "inside.txt"})))
@@ -2663,10 +2667,10 @@ def test_workspace_open_external_rejects_windows_anchored_paths_before_os_open(
 
     assert allowed["status"] == "ok"
     assert allowed["result"]["relative_path"] == "inside.txt"
-    assert opened == [inside]
+    assert opened == [inside.resolve()]
     assert blocked["status"] == "error"
     assert blocked["error"]["code"] == "INVALID_PATH"
-    assert opened == [inside]
+    assert opened == [inside.resolve()]
 
 
 def test_workspace_file_path_checks_containment_after_join_even_if_parser_returns_rooted_path(
