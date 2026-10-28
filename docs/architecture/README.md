@@ -85,32 +85,24 @@ plan, contracts, ADRs, and tracked verification registry.
 
 ## AESE capability
 
-`AESE_INTEGRATED_DEVELOPMENT_CAPABILITY_PLAN.md` is the proposed capability
-plan; `AESE_IMPLEMENTED_VERTICAL_SLICE.md` records the implemented slice and
-its limits. That slice remains shadow-only and uses existing Lab execution
-authority; these documents do not promote test-skipping, evidence promotion, or
-release status.
+[`AESE_IMPLEMENTED_VERTICAL_SLICE.md`](AESE_IMPLEMENTED_VERTICAL_SLICE.md)
+records the implemented slice of the integrated AESE capability and its limits;
+the initial capability proposal is retained in the private planning archive.
+That slice remains shadow-only and uses existing Lab execution authority; these
+documents do not promote test-skipping, evidence promotion, or release status.
 
 ## Memory Agent and Living Workspace
 
-The product contract, implementation sequence, and acceptance gates are in the
-Personal Code Map plan below. The Personal Diagram Workspace plan resolves its
-layout decisions, while
 [`desktop-workbench.md`](../design/desktop-workbench.md) records current UI
-behavior and dated evidence. Use those current authorities and the verification
-index for product behavior and measured claims; historical research captures do
-not define the current contract.
+behavior, workspace projection contracts, and dated evidence, while the initial
+Personal Code Map and Personal Diagram Workspace design plans are retained in
+the private planning archive. Use the current tracked authorities and the
+verification index for product behavior and measured claims; historical research
+and planning captures do not define the current contract.
 
 The subagent decision and protocol are recorded in
 [`AGENT_SUBAGENT_RUNTIME_DESIGN.md`](AGENT_SUBAGENT_RUNTIME_DESIGN.md) and
 [`ADR-016-subagent-coordination.md`](../adr/ADR-016-subagent-coordination.md).
-
-The proposed personal code-map workspace, its use cases, source retrieval,
-agent controls, implementation sequence and acceptance gates are in
-[`personal-code-map-implementation-plan.md`](personal-code-map-implementation-plan.md).
-The project-map-first layout revision, actor avatars, interaction contracts and
-design-only sketches are in
-[`personal-diagram-workspace-design-plan.md`](personal-diagram-workspace-design-plan.md).
 Exploratory images, prototypes and exports are archived outside this public repository;
 product behavior and token savings require implementation and measurement.
 

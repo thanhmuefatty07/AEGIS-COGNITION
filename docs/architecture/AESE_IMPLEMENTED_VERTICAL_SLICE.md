@@ -1,9 +1,9 @@
 # AESE integrated capability — implemented vertical slice
 
 This document records what is implemented in the first safe vertical slice
-of the integrated AESE capability. It complements
-`AESE_INTEGRATED_DEVELOPMENT_CAPABILITY_PLAN.md`; it does not promote any
-shadow decision into execution authority.
+of the integrated AESE capability (initial proposal archived in the private
+planning archive); it does not promote any shadow decision into execution
+authority.
 
 ## Runtime boundary
 

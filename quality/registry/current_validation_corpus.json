@@ -1,5 +1,5 @@
 {
-  "artifact_hash": "30dc1d636ac8290b1fc4263e210f5075aa90d70fd732dbfc8aaa7394cefd4b99",
+  "artifact_hash": "3e64d886c6a689fdca08039d2a7ef33a6ca48b3775979906f2f98aefeb6b4f4c",
   "development_corpus": [
     {
       "case_id": "DEV-GT96-GOOD",
@@ -332,17 +332,17 @@
   },
   "mode": "SHADOW",
   "provenance": {
-    "artifact_source_sha": "7e36551a1d8fd98f284da922b55829e2e1c7fffc",
-    "current_head": "7e36551a1d8fd98f284da922b55829e2e1c7fffc",
+    "artifact_source_sha": "4f9e849c3b852936002499511ab79d63b7ee7719",
+    "current_head": "4f9e849c3b852936002499511ab79d63b7ee7719",
     "environment": {
       "requires_python": ">=3.14,<3.16"
     },
     "environment_hash": "05077000fe0503d836a6c1e1cdf4d4eb6eb9b2063b998ec6439ce069abd9b1fb",
     "host_observation": {
-      "executable": "python.exe",
-      "machine": "AMD64",
-      "os": "Windows",
-      "release": "11"
+      "executable": "python",
+      "machine": "x86_64",
+      "os": "Linux",
+      "release": "7.0.0-1014-gcp"
     },
     "protocol_hash": "NOT_APPLICABLE",
     "relevant_subject_digest": "3a93e305b9b06458779d0444cc74cc35617d16f4b4f42cc830f2f9ee12c21f37",

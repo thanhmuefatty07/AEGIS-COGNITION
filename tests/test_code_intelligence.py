@@ -770,7 +770,12 @@ def test_source_mapper_checks_opened_file_identity_before_reading(tmp_path, monk
 
         monkeypatch.setattr(code_intelligence_module, "_windows_open_file_beneath_root", redirect_windows_open)
     else:
-        monkeypatch.setattr(os, "open", redirect_open)
+        monkeypatch.setattr(code_intelligence_module.os, "open", redirect_open)
+        monkeypatch.setattr(
+            code_intelligence_module.os,
+            "supports_dir_fd",
+            os.supports_dir_fd | {redirect_open},
+        )
     try:
         snapshot = SourceMapper(tmp_path).snapshot()
     finally:
@@ -1577,7 +1582,7 @@ def test_oversized_and_unreadable_inputs_do_not_consume_source_content_budget(tm
     open_file = os.open
 
     def fail_unreadable(path, flags, *args, **kwargs):
-        if path == unreadable:
+        if Path(path) == unreadable or (str(path) == unreadable.name and kwargs.get("dir_fd") is not None):
             raise PermissionError(f"access denied: {path}")
         return open_file(path, flags, *args, **kwargs)
 
@@ -1591,7 +1596,12 @@ def test_oversized_and_unreadable_inputs_do_not_consume_source_content_budget(tm
 
         monkeypatch.setattr(code_intelligence_module, "_windows_open_file_beneath_root", fail_unreadable_windows)
     else:
-        monkeypatch.setattr(os, "open", fail_unreadable)
+        monkeypatch.setattr(code_intelligence_module.os, "open", fail_unreadable)
+        monkeypatch.setattr(
+            code_intelligence_module.os,
+            "supports_dir_fd",
+            os.supports_dir_fd | {fail_unreadable},
+        )
     snapshot = SourceMapper(tmp_path, max_file_bytes=64, max_total_bytes=64).snapshot()
 
     records = {record.relative_path: record for record in snapshot.files}

@@ -59,7 +59,6 @@
     "desktop/THIRD_PARTY_NOTICES.md",
     "docs/WORKSPACE_HYGIENE.md",
     "docs/archive/README.md",
-    "docs/design/desktop-ui-source-map.md",
     "docs/design/desktop-workbench.md",
     "docs/integrations/aegis-plugins.md",
     "docs/integrations/capabilities.md",

@@ -491,7 +491,7 @@ def test_process_cell_cleans_up_verification_tree_on_termination(
             stat_path = Path("/proc") / str(pid) / "stat"
             try:
                 stat = stat_path.read_text(encoding="ascii")
-            except FileNotFoundError:
+            except (FileNotFoundError, ProcessLookupError):
                 return None
             fields = stat[stat.rfind(")") + 2 :].split()
             if len(fields) <= 19:
@@ -1092,7 +1092,7 @@ def _linux_process_state(pid: int) -> str | None:
         stat_path = Path("/proc") / str(pid) / "stat"
         try:
             raw = stat_path.read_text(encoding="ascii")
-        except FileNotFoundError:
+        except (FileNotFoundError, ProcessLookupError):
             return None
         fields = raw[raw.rfind(")") + 2 :].split()
         return fields[0] if fields else None
@@ -1133,7 +1133,7 @@ def _is_owned_probe_process(pid: int, pid_file: Path) -> bool:
     if Path("/proc").is_dir():
         try:
             command_line = (Path("/proc") / str(pid) / "cmdline").read_bytes()
-        except FileNotFoundError:
+        except (FileNotFoundError, ProcessLookupError):
             return False
         return str(pid_file).encode() in command_line
     if os.name == "nt":
