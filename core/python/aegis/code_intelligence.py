@@ -1048,6 +1048,8 @@ class SourceMapper:
                 yield from flush_candidates()
                 raise _SourceTraversalLimit
             entries: list[_DirectoryEntry] = []
+            dirnames: list[str] = []
+            filenames: list[str] = []
             entry_limit_reached = False
             try:
                 with _scandir_directory(directory) as iterator:
@@ -1057,6 +1059,25 @@ class SourceMapper:
                             entry_limit_reached = True
                             break
                         entries.append(entry)
+                    if not entry_limit_reached:
+                        entries.sort(key=lambda entry: entry.name)
+                        for entry in entries:
+                            try:
+                                entry_stat = entry.stat(follow_symlinks=False)
+                            except OSError as error:
+                                if isinstance(error, FileNotFoundError):
+                                    is_directory = False
+                                else:
+                                    raise
+                            else:
+                                reparse_attribute = getattr(stat_module, "FILE_ATTRIBUTE_REPARSE_POINT", 0)
+                                is_reparse_point = stat_module.S_ISLNK(entry_stat.st_mode) or bool(
+                                    getattr(entry_stat, "st_file_attributes", 0) & reparse_attribute
+                                )
+                                if is_reparse_point:
+                                    continue
+                                is_directory = stat_module.S_ISDIR(entry_stat.st_mode)
+                            (dirnames if is_directory else filenames).append(entry.name)
             except OSError as error:
                 yield from flush_candidates()
                 raise _SourceTraversalLimit from error
@@ -1065,27 +1086,6 @@ class SourceMapper:
                 if not use_git_ignore:
                     raise CodeIntelligenceError("source ignore policy could not be evaluated")
                 raise _SourceTraversalLimit
-            entries.sort(key=lambda entry: entry.name)
-            dirnames: list[str] = []
-            filenames: list[str] = []
-            for entry in entries:
-                try:
-                    entry_stat = entry.stat(follow_symlinks=False)
-                except OSError as error:
-                    if isinstance(error, FileNotFoundError):
-                        is_directory = False
-                    else:
-                        yield from flush_candidates()
-                        raise _SourceTraversalLimit from error
-                else:
-                    reparse_attribute = getattr(stat_module, "FILE_ATTRIBUTE_REPARSE_POINT", 0)
-                    is_reparse_point = stat_module.S_ISLNK(entry_stat.st_mode) or bool(
-                        getattr(entry_stat, "st_file_attributes", 0) & reparse_attribute
-                    )
-                    if is_reparse_point:
-                        continue
-                    is_directory = stat_module.S_ISDIR(entry_stat.st_mode)
-                (dirnames if is_directory else filenames).append(entry.name)
             if not use_git_ignore and ".gitignore" in filenames:
                 raise CodeIntelligenceError("source ignore policy requires a Git worktree")
             dirnames[:] = [name for name in dirnames if name.casefold() not in IGNORED_DIRECTORIES]

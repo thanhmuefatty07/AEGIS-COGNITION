@@ -396,12 +396,12 @@ def test_source_mapper_rejects_reparse_entries_without_following_targets(tmp_pat
             self.name = entry.name
 
         def is_dir(self, *, follow_symlinks=True):
-            if Path(self._entry.path) == link:
+            if self.name == link.name:
                 link_follow_arguments.append(follow_symlinks)
             return self._entry.is_dir(follow_symlinks=follow_symlinks)
 
         def stat(self, *, follow_symlinks=True):
-            if Path(self._entry.path) == link or self.name == link.name:
+            if self.name == link.name:
                 link_follow_arguments.append(follow_symlinks)
             return self._entry.stat(follow_symlinks=follow_symlinks)
 
@@ -416,12 +416,22 @@ def test_source_mapper_rejects_reparse_entries_without_following_targets(tmp_pat
     else:
         original_scandir = os.scandir
 
-        @contextmanager
-        def observed_scandir(path):
-            with original_scandir(path) as entries:
-                yield (ObservedEntry(entry) for entry in entries)
+        class ObservedScandir:
+            def __init__(self, path):
+                self._inner = original_scandir(path)
 
-        monkeypatch.setattr(code_intelligence_module.os, "scandir", observed_scandir)
+            def __enter__(self):
+                self._inner.__enter__()
+                return self
+
+            def __exit__(self, *args):
+                return self._inner.__exit__(*args)
+
+            def __iter__(self):
+                for entry in self._inner:
+                    yield ObservedEntry(entry)
+
+        monkeypatch.setattr(code_intelligence_module.os, "scandir", ObservedScandir)
     try:
         snapshot = SourceMapper(workspace).snapshot()
     finally:
@@ -808,8 +818,13 @@ def test_source_mapper_rejects_ancestor_junction_swapped_before_open(tmp_path, m
             swap_ancestor()
         return original_stat(path, *args, **kwargs)
 
+    src_opens = 0
+
     def redirect_ancestor_before_open(path, flags, *args, **kwargs):
-        if not swapped and (Path(path) == source or str(path) == "src"):
+        nonlocal src_opens
+        if str(path) == "src":
+            src_opens += 1
+        if not swapped and (Path(path) == source or (str(path) == "src" and src_opens >= 2)):
             swap_ancestor()
         return open_file(path, flags, *args, **kwargs)
 
@@ -825,6 +840,11 @@ def test_source_mapper_rejects_ancestor_junction_swapped_before_open(tmp_path, m
     else:
         monkeypatch.setattr(Path, "stat", redirect_metadata_before_stat)
         monkeypatch.setattr(code_intelligence_module.os, "open", redirect_ancestor_before_open)
+        monkeypatch.setattr(
+            code_intelligence_module.os,
+            "supports_dir_fd",
+            os.supports_dir_fd | {redirect_ancestor_before_open},
+        )
     try:
         snapshot = SourceMapper(workspace).snapshot()
     finally:
@@ -861,6 +881,11 @@ def test_source_reader_blocks_reparse_ancestor_at_native_open(tmp_path, monkeypa
             return original_os_open(path, flags, *args, **kwargs)
 
         monkeypatch.setattr(code_intelligence_module.os, "open", record_posix_open)
+        monkeypatch.setattr(
+            code_intelligence_module.os,
+            "supports_dir_fd",
+            os.supports_dir_fd | {record_posix_open},
+        )
         try:
             with pytest.raises(code_intelligence_module.SourceFileReadError) as raised:
                 code_intelligence_module.read_file_beneath_root(workspace, "src/module.py", max_bytes=256)
@@ -1096,6 +1121,11 @@ def test_source_reader_does_not_open_workspace_root_through_ancestor_junction(tm
             return original_os_open(path, flags, *args, **kwargs)
 
         monkeypatch.setattr(code_intelligence_module.os, "open", record_posix_open)
+        monkeypatch.setattr(
+            code_intelligence_module.os,
+            "supports_dir_fd",
+            os.supports_dir_fd | {record_posix_open},
+        )
         try:
             parent.symlink_to(outside, target_is_directory=True)
             with pytest.raises(code_intelligence_module.SourceFileReadError) as raised:
@@ -1154,7 +1184,11 @@ def test_source_reader_accounts_bytes_when_post_read_path_verification_fails(
     source.write_bytes(content)
     if os.name != "nt":
         real_open = os.open
-        monkeypatch.setattr(code_intelligence_module.os, "name", "nt")
+        monkeypatch.setattr(
+            code_intelligence_module,
+            "os",
+            SimpleNamespace(**{**os.__dict__, "name": "nt"}),
+        )
         monkeypatch.setattr(
             code_intelligence_module,
             "_windows_open_file_beneath_root",
