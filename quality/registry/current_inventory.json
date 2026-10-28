@@ -9290,13 +9290,13 @@
     "inventoried_items": 244,
     "missing_scopes": 0,
     "represented_paths": 215,
-    "tracked_files": 590,
+    "tracked_files": 591,
     "workflow_jobs": 29
   },
   "scope_policy": "tracked_files_only; native runners remain authoritative",
-  "source_head": "4f9e849c3b852936002499511ab79d63b7ee7719",
-  "source_tree_sha256": "8c9985cd9412b4f4abae437071f22d38464221b890dda05578cec7146191d79d",
+  "source_head": "39516ba9946e5c505daaacd45407b9d86c39480d",
+  "source_tree_sha256": "258ea9dbfcdef4f456408215ab19361dc3ab2f92fb9f303695918b89fa0035d9",
   "status": "INVENTORY_COMPLETE_DISPOSITIONS_RETAINED_MAPPING_PENDING",
-  "worktree_epoch": "0ffe9764f1bb212f71102aaa83f6d135b6f5d98b86f0fa322a984984d310dd92",
+  "worktree_epoch": "a0bce68dc9d6d546d3c81be1dfde5cbb9cc5c8e320a379c048c7908b69bd71e2",
   "worktree_status": "DIRTY"
 }

@@ -2,7 +2,7 @@
   "affected_test_paths": [
     "core/rust/src/gt96.rs"
   ],
-  "artifact_hash": "2e8cfdad5705c4731377b01bd97b1cec6c7c5520977a20a3ae15d63610fd3f43",
+  "artifact_hash": "2f50a53f41d671efb08c97e4c435e714b6afa9a1291eed6c6f8e7f5b06fda346",
   "changed_paths": [
     "core/rust/src/gt96.rs"
   ],
@@ -311,26 +311,26 @@
   "phase": "PHASE_3_DETERMINISTIC_AFFECTED_CLOSURE",
   "plan_widened": false,
   "provenance": {
-    "claim_graph_source_tree_sha256": "c71882bc5e8621bf3e91cedb1573525e84d8091c4da23f281fd75f9b770da1f0",
+    "claim_graph_source_tree_sha256": "264b0a5622da1ec878ea4483342ed567e0bb25d6f53925d2e049d28d36a094c3",
     "claim_scope": "LOCAL_CHECKOUT_ONLY",
     "edge_digest": "2b47a62553191c763ba1542f9191284cc583f47c9ec205130a6d14530c64e65b",
     "environment": {
-      "executable": "python",
+      "executable": "python.exe",
       "implementation": "CPython",
-      "machine": "x86_64",
-      "os": "Linux",
+      "machine": "AMD64",
+      "os": "Windows",
       "python": "3.14.7",
-      "release": "7.0.0-1014-gcp"
+      "release": "11"
     },
     "evidence_class": "PLANNING_ONLY",
-    "inventory_source_tree_sha256": "8c9985cd9412b4f4abae437071f22d38464221b890dda05578cec7146191d79d",
-    "mapping_artifact_hash": "6d35683df791994cb505e8d93d442f7df72d7c473cf3dd793e5a678b2497ab6c",
-    "origin_main_sha": "NOT_AVAILABLE",
+    "inventory_source_tree_sha256": "258ea9dbfcdef4f456408215ab19361dc3ab2f92fb9f303695918b89fa0035d9",
+    "mapping_artifact_hash": "39da901d3e9cb2c6b127133bfd91ae4ea3f051f5c7ecd84c0dede3693b1f3d8d",
+    "origin_main_sha": "131562cf5b8426dc9829964a9b75b46559a44d95",
     "promotion": "DISABLED_IN_SHADOW",
-    "source_sha": "4f9e849c3b852936002499511ab79d63b7ee7719",
+    "source_sha": "39516ba9946e5c505daaacd45407b9d86c39480d",
     "validator": "scripts/aese_affected_closure.py"
   },
-  "reproducible_hash": "b8c830b8be4404e21877c009bf57a1d6da9ceb745734eefec5d4edd4deba345d",
+  "reproducible_hash": "bfdac73e9c4b8f156e2a7d2ca0344f5f52f47b125eb68321f4b3023ea4f4926c",
   "schema": "aese-affected-closure-v1",
   "shadow_selection": {
     "authority": "RETAINED_LEGACY_AUTHORITY",
@@ -341,8 +341,8 @@
     ],
     "would_skip_item_ids": []
   },
-  "source_head": "4f9e849c3b852936002499511ab79d63b7ee7719",
-  "source_tree_sha256": "c71882bc5e8621bf3e91cedb1573525e84d8091c4da23f281fd75f9b770da1f0",
+  "source_head": "39516ba9946e5c505daaacd45407b9d86c39480d",
+  "source_tree_sha256": "264b0a5622da1ec878ea4483342ed567e0bb25d6f53925d2e049d28d36a094c3",
   "status": "AFFECTED_CLOSURE_PLAN_ONLY_SELECTION_DISABLED",
   "traversed_edges": [
     {

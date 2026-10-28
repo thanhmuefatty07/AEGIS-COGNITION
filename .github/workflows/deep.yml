@@ -538,7 +538,7 @@ jobs:
             status_log="artifacts/fuzz/${target}.status"
 
             set +e
-            cargo fuzz run "$target" -- -max_total_time=900 -print_final_stats=1 \
+            cargo fuzz run "$target" -- -max_total_time=${{ github.event_name == 'schedule' && 900 || 60 }} -print_final_stats=1 \
               > "$stdout_log" 2> "$stderr_log"
             status=$?
             set -e
