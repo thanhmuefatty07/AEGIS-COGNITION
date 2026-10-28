@@ -131,6 +131,18 @@ _SCENARIO = textwrap.dedent(
         del result, run
         return {"status": "COMMITTED"}
 
+    resource_policy = {
+        "schema": "aegis-execution-cell-resource-policy-v1",
+        "cpu_time_limit_ms": 1000,
+        "memory_bytes": 64 * 1024 * 1024,
+        "process_limit": 1,
+        "thread_limit": 1,
+        "fd_limit": 256,
+        "input_bytes": 1024,
+        "output_bytes": 4096,
+        "timeout_ms": 5000,
+    }
+
     execution_cells = {
         "context-retrieval": ExecutionCellBinding(
             cell_id="context-retrieval",
@@ -138,6 +150,8 @@ _SCENARIO = textwrap.dedent(
             runner=context_retriever,
             capabilities=("read_only",),
             effect_classes=("read_only",),
+            backend_kind="python-local",
+            resource_policy=resource_policy,
         ),
         "search-program": ExecutionCellBinding(
             cell_id="search-program",
@@ -145,6 +159,8 @@ _SCENARIO = textwrap.dedent(
             runner=SearchProgramExecutor(query_provider=provider),
             capabilities=("network_read",),
             effect_classes=("network_read", "read_only", "compute"),
+            backend_kind="python-local",
+            resource_policy=resource_policy,
         ),
         "browser-runtime": ExecutionCellBinding(
             cell_id="browser-runtime",
@@ -152,6 +168,8 @@ _SCENARIO = textwrap.dedent(
             runner=RuntimeAdapter(),
             capabilities=("network_read",),
             effect_classes=("network_read",),
+            backend_kind="python-local",
+            resource_policy=resource_policy,
         ),
         "python-experiment": ExecutionCellBinding(
             cell_id="python-experiment",
@@ -159,6 +177,8 @@ _SCENARIO = textwrap.dedent(
             runner=experiment_runner,
             capabilities=("compute",),
             effect_classes=("compute",),
+            backend_kind="python-local",
+            resource_policy=resource_policy,
         ),
         "simulation-cell": ExecutionCellBinding(
             cell_id="simulation-cell",
@@ -166,6 +186,8 @@ _SCENARIO = textwrap.dedent(
             runner=simulation_runner,
             capabilities=("compute",),
             effect_classes=("compute",),
+            backend_kind="python-local",
+            resource_policy=resource_policy,
         ),
         "post-completion-effect": ExecutionCellBinding(
             cell_id="post-completion-effect",
@@ -173,6 +195,8 @@ _SCENARIO = textwrap.dedent(
             runner=post_completion_effect,
             capabilities=("memory_write",),
             effect_classes=("memory_write",),
+            backend_kind="python-local",
+            resource_policy=resource_policy,
         ),
     }
 
