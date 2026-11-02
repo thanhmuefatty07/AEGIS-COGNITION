@@ -348,10 +348,17 @@ def _parse_pytest_junit_report(report_path: Path) -> _PytestJUnitSummary:
     report_size = len(payload)
     if not payload:
         raise ValueError("JUnit report is empty")
-    if b"<!DOCTYPE" in payload or b"<!ENTITY" in payload:
+    if payload.startswith((b"\xff\xfe", b"\xfe\xff", b"\x00<", b"<\x00")):
+        raise ValueError("JUnit report must be UTF-8 XML")
+    try:
+        xml_text = payload.decode("utf-8")
+    except UnicodeDecodeError as error:
+        raise ValueError("JUnit report is not valid UTF-8 XML") from error
+    lowered_xml = xml_text.casefold()
+    if "<!doctype" in lowered_xml or "<!entity" in lowered_xml:
         raise ValueError("JUnit report declarations are unsupported")
     try:
-        root = ElementTree.fromstring(payload)
+        root = ElementTree.fromstring(xml_text)
     except ElementTree.ParseError as error:
         raise ValueError("JUnit report is malformed XML") from error
     if _xml_local_name(root.tag) not in {"testsuite", "testsuites"}:
@@ -773,9 +780,25 @@ def _terminate_child(process: subprocess.Popen[Any]) -> None:
             process.kill()
 
 
+_SCRUBBED_VERIFICATION_ENV_KEYS: frozenset[str] = frozenset(
+    {
+        "ld_preload",
+        "ld_audit",
+        "dyld_insert_libraries",
+        "pythonstartup",
+        "pythoninspect",
+        "rustc_wrapper",
+        "cargo_build_rustc_wrapper",
+    }
+)
+
+
 def _verification_environment(command: LocalVerificationCommand, *, is_pytest: bool) -> dict[str, str]:
     environment = os.environ.copy()
     environment.update(dict(command.environment))
+    for key in tuple(environment):
+        if key.casefold() in _SCRUBBED_VERIFICATION_ENV_KEYS:
+            environment.pop(key, None)
     if is_pytest:
         # Test selection belongs in the validated command argv, not ambient environment.
         for key in tuple(environment):

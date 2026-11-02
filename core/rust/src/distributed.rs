@@ -421,6 +421,13 @@ impl SingleWriterRunLog {
         if let Some(existing) = self.committed.get(&commit_key) {
             return Ok(SingleWriterAdmission::Duplicate(existing.clone()));
         }
+        if self
+            .committed
+            .values()
+            .any(|proof| proof.idempotency_key == envelope.idempotency_key)
+        {
+            return Err(DistributedRuntimeError::ArtifactMismatch);
+        }
         let appended = ledger
             .append_cluster_candidate_accepted(
                 envelope.work_id,

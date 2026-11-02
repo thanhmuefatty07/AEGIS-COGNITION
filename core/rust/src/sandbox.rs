@@ -289,6 +289,8 @@ impl WasmtimeSandbox {
         wasm_config.consume_fuel(true);
         wasm_config.epoch_interruption(true);
         wasm_config.native_unwind_info(true);
+        wasm_config.wasm_multi_memory(false);
+        wasm_config.wasm_memory64(false);
         let engine = Engine::new(&wasm_config).map_err(|_| TrapReason::InvariantViolation)?;
         let epoch_ticker = EpochTicker::try_new(&engine)?;
         let quickjs_bridge_linker =
@@ -315,6 +317,8 @@ impl WasmtimeSandbox {
         wasm_config.consume_fuel(true);
         wasm_config.epoch_interruption(true);
         wasm_config.native_unwind_info(true);
+        wasm_config.wasm_multi_memory(false);
+        wasm_config.wasm_memory64(false);
         let engine = Engine::new(&wasm_config).map_err(|_| TrapReason::InvariantViolation)?;
         let epoch_ticker = EpochTicker::try_new(&engine)?;
         Ok(Self {
@@ -423,13 +427,18 @@ impl WasmtimeSandbox {
         if fuel_limit == 0 {
             return Err(TrapReason::FuelExhausted);
         }
-        if !is_wasm_binary(payload) {
+        if payload.len() > 16 * 1024 * 1024 || !is_wasm_binary(payload) {
             return Err(TrapReason::InvariantViolation);
         }
 
         let engine = &self.engine;
         let memory_bytes = memory_limit_bytes(self.config.max_memory_pages, 65536)?;
-        let limits = StoreLimitsBuilder::new().memory_size(memory_bytes).build();
+        let limits = StoreLimitsBuilder::new()
+            .memory_size(memory_bytes)
+            .memories(1)
+            .tables(1)
+            .table_elements(65_536)
+            .build();
         let mut store = Store::new(engine, LimiterState { limits });
         store.limiter(|state| &mut state.limits);
 
@@ -490,10 +499,14 @@ impl WasmtimeSandbox {
     ) -> Result<SandboxResult, TrapReason> {
         let view = crate::bridge_mmap::open_mmap_bridge_view(path)
             .map_err(|_| TrapReason::InvariantViolation)?;
-        self.execute_wasm_binary(
-            view.payload().map_err(|_| TrapReason::InvariantViolation)?,
-            fuel_limit,
-        )
+        let payload = view
+            .payload()
+            .map_err(|_| TrapReason::InvariantViolation)?
+            .to_vec();
+        if crate::physical::blake3_digest(&payload) != view.header().payload_blake3 {
+            return Err(TrapReason::InvariantViolation);
+        }
+        self.execute_wasm_binary(&payload, fuel_limit)
     }
 
     pub fn execute_quickjs_invocation_bridge(

@@ -1,5 +1,6 @@
 import hashlib
 import json
+import sys
 import tomllib
 from dataclasses import dataclass
 from pathlib import Path
@@ -71,7 +72,7 @@ class CargoPackage:
         return payload
 
 
-def evaluate_supply_chain_gate(root: str | Path = ROOT) -> dict[str, Any]:
+def evaluate_supply_chain_gate(root: str | Path = ROOT, *, require_external_attestation: bool = False) -> dict[str, Any]:
     root_path = Path(root)
     cargo_lock = _read_toml(root_path / "Cargo.lock")
     rust_manifest = _read_toml(root_path / "core" / "rust" / "Cargo.toml")
@@ -122,6 +123,16 @@ def evaluate_supply_chain_gate(root: str | Path = ROOT) -> dict[str, Any]:
         _check(
             "external_attestation_gap_disclosed",
             external_signed_attestation_present or release_attestation["status"] == "missing",
+        ),
+        *(
+            (
+                _check(
+                    "external_signed_attestation_required",
+                    external_signed_attestation_present and release_attestation["status"] == "verified",
+                ),
+            )
+            if require_external_attestation
+            else ()
         ),
     )
     payload = {
@@ -417,8 +428,10 @@ def _stable_hash(payload: Any) -> str:
     return hashlib.sha256(encoded).hexdigest()
 
 
-def main() -> int:
-    report = evaluate_supply_chain_gate(ROOT)
+def main(argv: list[str] | None = None) -> int:
+    args = list(sys.argv[1:] if argv is None else argv)
+    require_external = "--require-external-attestation" in args
+    report = evaluate_supply_chain_gate(ROOT, require_external_attestation=require_external)
     ARTIFACTS_DIR.mkdir(parents=True, exist_ok=True)
     REPORT_PATH.write_text(json.dumps(report, indent=2, sort_keys=True), encoding="utf-8")
     print(json.dumps(report, indent=2, sort_keys=True))

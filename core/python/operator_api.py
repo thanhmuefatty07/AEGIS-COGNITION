@@ -6,6 +6,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import json
 import os
 from pathlib import Path
+import stat
 from typing import Any
 from urllib.parse import urlparse
 
@@ -15,6 +16,19 @@ HEALTH_SCHEMA = "aegis-operator-health-v1"
 PRODUCTION_CLOSURE_SCHEMA = "aegis-operator-production-closure-v1"
 OPERATOR_VERIFIER = "rust-replay-and-artifact-gates"
 PYTHON_OPERATOR_ROLE = "read-only-operator-summary"
+MAX_OPERATOR_ARTIFACT_BYTES = 16 * 1024 * 1024
+DEFAULT_ALLOWED_OPERATOR_HOSTS: frozenset[str] = frozenset(
+    {
+        "127.0.0.1",
+        "localhost",
+        "::1",
+        "[::1]",
+        "0.0.0.0",
+        "aegis-operator-api",
+        "operator-api",
+        "testserver",
+    }
+)
 
 DEFAULT_OPERATOR_ARTIFACTS: tuple[str, ...] = (
     "run_checks_report.json",
@@ -183,18 +197,45 @@ class OperatorEvidenceApi:
         )
 
 
+def _validate_regular_artifact_file(path: Path, artifacts_dir: Path) -> tuple[Path | None, int, str]:
+    try:
+        if artifacts_dir.is_symlink() or path.is_symlink():
+            return None, 0, "symlink artifact rejected"
+        resolved_dir = artifacts_dir.resolve(strict=False)
+        resolved = path.resolve(strict=False)
+        if not resolved.is_relative_to(resolved_dir):
+            return None, 0, "artifact path escapes artifacts_dir"
+        st = path.lstat()
+    except FileNotFoundError:
+        return None, 0, "missing artifact"
+    except OSError as exc:
+        return None, 0, str(exc)
+    if not stat.S_ISREG(st.st_mode):
+        return None, 0, "non-regular artifact file rejected"
+    if st.st_size > MAX_OPERATOR_ARTIFACT_BYTES:
+        return resolved, int(st.st_size), f"artifact exceeds maximum size ({MAX_OPERATOR_ARTIFACT_BYTES} bytes)"
+    return resolved, int(st.st_size), ""
+
+
 def _production_closure_response(root: Path) -> tuple[int, dict[str, Any]]:
-    path = root / "artifacts" / "production_closure_workflow_report.json"
-    if not path.exists():
+    artifacts_dir = Path(root).resolve() / "artifacts"
+    path = artifacts_dir / "production_closure_workflow_report.json"
+    resolved, _byte_len, validation_error = _validate_regular_artifact_file(path, artifacts_dir)
+    if resolved is None or validation_error:
+        error_msg = (
+            "missing production closure workflow artifact"
+            if validation_error == "missing artifact"
+            else f"invalid production closure workflow artifact: {validation_error}"
+        )
         return 503, {
             "schema": PRODUCTION_CLOSURE_SCHEMA,
             "truth_claim": False,
             "overall_ok": False,
-            "error": "missing production closure workflow artifact",
+            "error": error_msg,
         }
     try:
-        payload = json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError, UnicodeDecodeError) as exc:
+        payload = json.loads(resolved.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError, UnicodeDecodeError, RecursionError) as exc:
         return 503, {
             "schema": PRODUCTION_CLOSURE_SCHEMA,
             "truth_claim": False,
@@ -220,7 +261,7 @@ def _production_closure_response(root: Path) -> tuple[int, dict[str, Any]]:
         for step in safe_steps
         if step.get("ready_to_execute") is not True and str(step.get("blocker_id", ""))
     ]
-    artifact_digest = _digest_file(path)
+    artifact_digest = _digest_file(resolved)
     return 200, {
         "schema": PRODUCTION_CLOSURE_SCHEMA,
         "truth_claim": False,
@@ -246,7 +287,8 @@ def build_operator_evidence_snapshot(
     root_path = Path(root).resolve()
     artifacts_dir = root_path / "artifacts"
     summaries = tuple(
-        _summarize_report_artifact(artifacts_dir / artifact_name, artifact_name) for artifact_name in artifact_names
+        _summarize_report_artifact(artifacts_dir / artifact_name, artifact_name, artifacts_dir=artifacts_dir)
+        for artifact_name in artifact_names
     )
     missing = tuple(summary.logical_name for summary in summaries if not summary.exists)
     required_gate_names = {
@@ -289,10 +331,52 @@ def _safe_int(value: Any) -> int:
     return 0
 
 
+def _is_allowed_operator_host(host_header: str | None) -> bool:
+    if host_header is None:
+        return True
+    raw = host_header.strip().lower()
+    if not raw:
+        return False
+    if raw.startswith("["):
+        bracket_end = raw.find("]")
+        if bracket_end == -1:
+            return False
+        hostname = raw[: bracket_end + 1]
+    else:
+        hostname = raw.split(":", 1)[0].strip()
+    extra_hosts = {
+        item.strip().lower()
+        for item in os.environ.get("AEGIS_OPERATOR_ALLOWED_HOSTS", "").split(",")
+        if item.strip()
+    }
+    if hostname in DEFAULT_ALLOWED_OPERATOR_HOSTS or hostname in extra_hosts:
+        return True
+    return hostname.startswith("aegis-operator-api.") and (
+        hostname.endswith(".svc") or hostname.endswith(".svc.cluster.local")
+    )
+
+
+class _OperatorThreadingHTTPServer(ThreadingHTTPServer):
+    daemon_threads = True
+    allow_reuse_address = True
+
+
 def build_operator_http_handler(api: OperatorEvidenceApi) -> type[BaseHTTPRequestHandler]:
     class OperatorEvidenceRequestHandler(BaseHTTPRequestHandler):
+        timeout = 5.0
+
         def do_GET(self) -> None:
-            response = api.handle_get(self.path)
+            if not _is_allowed_operator_host(self.headers.get("Host")):
+                response = _json_response(
+                    403,
+                    {
+                        "schema": "aegis-operator-api-error-v1",
+                        "truth_claim": False,
+                        "error": "forbidden host header",
+                    },
+                )
+            else:
+                response = api.handle_get(self.path)
             self.send_response(response.status)
             self.send_header("Content-Type", response.content_type)
             self.send_header("Content-Length", str(len(response.body)))
@@ -311,15 +395,21 @@ def serve_operator_evidence_api(
     port: int = 8765,
 ) -> ThreadingHTTPServer:
     api = OperatorEvidenceApi(root)
-    return ThreadingHTTPServer((host, port), build_operator_http_handler(api))
+    return _OperatorThreadingHTTPServer((host, port), build_operator_http_handler(api))
 
 
-def _summarize_report_artifact(path: Path, logical_name: str) -> OperatorArtifactSummary:
-    resolved = path.resolve()
-    if not resolved.exists():
+def _summarize_report_artifact(
+    path: Path,
+    logical_name: str,
+    *,
+    artifacts_dir: Path | None = None,
+) -> OperatorArtifactSummary:
+    effective_dir = artifacts_dir if artifacts_dir is not None else path.parent
+    resolved, byte_len, validation_error = _validate_regular_artifact_file(path, effective_dir)
+    if resolved is None:
         return OperatorArtifactSummary(
             logical_name=logical_name,
-            path=str(resolved),
+            path=str(path.resolve(strict=False)),
             exists=False,
             byte_len=0,
             digest=None,
@@ -331,20 +421,37 @@ def _summarize_report_artifact(path: Path, logical_name: str) -> OperatorArtifac
             check_count=None,
             hash_field_count=0,
             nonzero_hash_field_count=0,
-            error="missing artifact",
+            error=validation_error or "missing artifact",
         )
-
-    try:
-        digest = _digest_file(resolved)
-        byte_len = resolved.stat().st_size
-        payload = json.loads(resolved.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError, UnicodeDecodeError) as exc:
+    if validation_error:
         return OperatorArtifactSummary(
             logical_name=logical_name,
             path=str(resolved),
             exists=True,
-            byte_len=resolved.stat().st_size if resolved.exists() else 0,
-            digest=_digest_file(resolved) if resolved.exists() else None,
+            byte_len=byte_len,
+            digest=None,
+            json_ok=False,
+            schema="",
+            observed_ok=None,
+            passed=None,
+            failed=None,
+            check_count=None,
+            hash_field_count=0,
+            nonzero_hash_field_count=0,
+            error=validation_error,
+        )
+
+    digest: EvidenceDigest | None = None
+    try:
+        digest = _digest_file(resolved)
+        payload = json.loads(resolved.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError, UnicodeDecodeError, RecursionError) as exc:
+        return OperatorArtifactSummary(
+            logical_name=logical_name,
+            path=str(resolved),
+            exists=True,
+            byte_len=byte_len,
+            digest=digest,
             json_ok=False,
             schema="",
             observed_ok=None,
@@ -434,9 +541,9 @@ def _extract_check_count(payload: Any) -> int | None:
 def _count_hash_fields(value: Any) -> tuple[int, int]:
     total = 0
     nonzero = 0
-
-    def walk(node: Any, key_hint: str = "") -> None:
-        nonlocal total, nonzero
+    stack: list[Any] = [value]
+    while stack:
+        node = stack.pop()
         if isinstance(node, dict):
             for key, child in node.items():
                 child_key = str(key)
@@ -444,12 +551,10 @@ def _count_hash_fields(value: Any) -> tuple[int, int]:
                     total += 1
                     if _is_nonzero_hash_value(child):
                         nonzero += 1
-                walk(child, child_key)
+                if isinstance(child, (dict, list)):
+                    stack.append(child)
         elif isinstance(node, list):
-            for child in node:
-                walk(child, key_hint)
-
-    walk(value)
+            stack.extend(child for child in node if isinstance(child, (dict, list)))
     return total, nonzero
 
 

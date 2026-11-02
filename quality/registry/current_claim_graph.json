@@ -1138,8 +1138,8 @@
     "future_obligations": 20,
     "invariants": 46,
     "mapped_surfaces": 23,
-    "surfaces": 256,
-    "unmapped_surfaces": 233,
+    "surfaces": 257,
+    "unmapped_surfaces": 234,
     "unmapped_verifications": 35,
     "unresolved_code_references": 0,
     "verifications": 92
@@ -4391,13 +4391,13 @@
     "all_surfaces_mapped": false,
     "critical_high_risk_mapped": false,
     "criticality_known": false,
-    "unmapped_surface_count": 233
+    "unmapped_surface_count": 234
   },
   "mode": "SHADOW",
   "phase": "PHASE_1_CLAIM_EVIDENCE_GRAPH",
   "schema": "aese-shadow-claim-evidence-graph-v1",
-  "source_head": "18ce8395e5c5658c7677fd80d14be24ef586df98",
-  "source_tree_sha256": "89453dc5fc0474871d412d68c563c466e280ff58149d37c47efad4262e354959",
+  "source_head": "d8b3a9e9bfd08ff11402b62b552a85e9898f9388",
+  "source_tree_sha256": "683add69415793830dcb3ae2d9f8c23a04281986fa30825c8340c51e92474c76",
   "status": "SHADOW_GRAPH_PARTIAL_MAPPING_SELECTION_DISABLED",
   "surfaces": [
     {
@@ -5331,6 +5331,19 @@
       "kind": "PYTHON_TEST",
       "mapping_status": "NOT_MAPPED",
       "path": "tests/test_challenger_m8_3_distributed_services.py",
+      "release_critical": "UNKNOWN",
+      "release_criticality": "UNKNOWN",
+      "risk": "UNKNOWN",
+      "security_criticality": "UNKNOWN",
+      "target": null,
+      "unknown_dependency_policy": "INVALIDATE_CONSERVATIVELY"
+    },
+    {
+      "claim_refs": [],
+      "id": "AESE-PYTHON_TEST-49668D157E115233",
+      "kind": "PYTHON_TEST",
+      "mapping_status": "NOT_MAPPED",
+      "path": "tests/test_security_audit_remediations.py",
       "release_critical": "UNKNOWN",
       "release_criticality": "UNKNOWN",
       "risk": "UNKNOWN",
@@ -8689,6 +8702,6 @@
       "source_id": "AESE-011"
     }
   ],
-  "worktree_epoch": "55b3bde0ee1432fa9c3a4c64e62bef447e4d83a44d2811390f9677b3cf5615a3",
+  "worktree_epoch": "deb8324a917d8f1fd390baff385a8e5c71579d76f322cde2ae2b2597a792fa1c",
   "worktree_status": "DIRTY"
 }

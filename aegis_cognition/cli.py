@@ -145,7 +145,7 @@ def _cmd_init() -> None:
     print()
 
     config_dir = Path.home() / ".aegis"
-    config_dir.mkdir(parents=True, exist_ok=True)
+    config_dir.mkdir(parents=True, exist_ok=True, mode=0o700)
 
     # Step 1: Provider
     print("  [1/3] Choose your LLM provider:")

@@ -30,7 +30,8 @@ COPY scripts scripts
 COPY --from=rust-builder /src/target/release/aegis-nerve-cli /usr/local/bin/aegis-nerve-cli
 
 RUN mkdir -p /var/lib/aegis/artifacts /var/lib/aegis/replay /var/lib/aegis/shadow-seals \
-    && chown -R aegis:aegis /opt/aegis /var/lib/aegis
+    && chown -R aegis:aegis /var/lib/aegis \
+    && chmod -R a+rX /opt/aegis
 
 USER aegis
 EXPOSE 8765

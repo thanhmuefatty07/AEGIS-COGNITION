@@ -93,14 +93,24 @@ impl VisitMut for GuardrailVisitor {
     fn visit_path_mut(&mut self, i: &mut syn::Path) {
         for segment in &i.segments {
             let seg_str = segment.ident.to_string().to_lowercase();
-            if seg_str == "remove_dir_all" || seg_str == "remove_file" {
+            if seg_str == "remove_dir_all" || seg_str == "remove_file" || seg_str == "command" {
                 self.violation = Some(InvariantViolation::DestructiveFilesystem);
             }
-            if seg_str == "tcpstream" || seg_str == "connect" {
+            if seg_str == "tcpstream" || seg_str == "udpsocket" || seg_str == "connect" {
                 self.violation = Some(InvariantViolation::NetworkBypass);
             }
         }
         syn::visit_mut::visit_path_mut(self, i);
+    }
+
+    fn visit_macro_mut(&mut self, i: &mut syn::Macro) {
+        if let Some(last) = i.path.segments.last() {
+            let mac_name = last.ident.to_string().to_lowercase();
+            if mac_name == "asm" || mac_name == "global_asm" {
+                self.violation = Some(InvariantViolation::DestructiveFilesystem);
+            }
+        }
+        syn::visit_mut::visit_macro_mut(self, i);
     }
 }
 

@@ -230,11 +230,17 @@ class RedditRssQueryProvider:
             self.timeout_seconds,
             self.max_bytes,
         )
-        lowered = payload.lower()
-        if b"<!doctype" in lowered or b"<!entity" in lowered:
+        if payload.startswith((b"\xff\xfe", b"\xfe\xff", b"\x00<", b"<\x00")):
+            raise ResearchAdapterError("Reddit RSS response must be UTF-8 XML")
+        try:
+            xml_text = payload.decode("utf-8")
+        except UnicodeDecodeError as error:
+            raise ResearchAdapterError("Reddit RSS response is not valid UTF-8 XML") from error
+        lowered = xml_text.casefold()
+        if "<!doctype" in lowered or "<!entity" in lowered:
             raise ResearchAdapterError("Reddit RSS document contains a disallowed DTD/entity declaration")
         try:
-            root = ET.fromstring(payload)
+            root = ET.fromstring(xml_text)
         except ET.ParseError as error:
             raise ResearchAdapterError("Reddit RSS response is not valid XML") from error
         retrieved_at_ms = max(1, int(time.time() * 1000))
@@ -356,7 +362,7 @@ class XAppOnlyQueryProvider:
         )
         try:
             decoded = json.loads(payload)
-        except (UnicodeDecodeError, json.JSONDecodeError) as error:
+        except (UnicodeDecodeError, json.JSONDecodeError, RecursionError) as error:
             raise ResearchAdapterError("X API response is not valid JSON") from error
         if type(decoded) is not dict:
             raise ResearchAdapterError("X API response must be a JSON object")

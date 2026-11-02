@@ -8731,6 +8731,7 @@ fn publish_synced_artifact_temp(temp_path: &Path, path: &Path) -> Result<(), &'s
 }
 
 fn synced_artifact_temp_path(path: &Path) -> PathBuf {
+    static NEXT_TEMP_SEQ: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(1);
     let mut file_name = path
         .file_name()
         .unwrap_or_else(|| std::ffi::OsStr::new("artifact"))
@@ -8738,7 +8739,8 @@ fn synced_artifact_temp_path(path: &Path) -> PathBuf {
     let unique = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
         .map_or(0, |duration| duration.as_nanos());
-    file_name.push(format!(".tmp-{}-{unique}", std::process::id()));
+    let seq = NEXT_TEMP_SEQ.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+    file_name.push(format!(".tmp-{}-{unique}-{seq}", std::process::id()));
     path.with_file_name(file_name)
 }
 

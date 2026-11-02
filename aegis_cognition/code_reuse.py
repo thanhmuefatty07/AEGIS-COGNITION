@@ -48,9 +48,32 @@ def _bounded_text(value: object, name: str, limit: int = 4_096) -> str:
     return value.strip()
 
 
+def _is_link_or_junction(path: Path) -> bool:
+    if path.is_symlink():
+        return True
+    is_junction = getattr(path, "is_junction", None)
+    return bool(callable(is_junction) and is_junction())
+
+
 def _inside(root: Path, candidate: Path) -> Path:
-    resolved_root = root.expanduser().resolve()
-    resolved_candidate = candidate.expanduser().resolve()
+    expanded_root = root.expanduser()
+    expanded_candidate = candidate.expanduser()
+    if _is_link_or_junction(expanded_candidate):
+        raise CodeReuseError("symlink source files are not reusable")
+    resolved_root = expanded_root.resolve()
+    current = expanded_candidate
+    while True:
+        if _is_link_or_junction(current):
+            raise CodeReuseError("symlink source files are not reusable")
+        try:
+            if current.resolve() == resolved_root:
+                break
+        except OSError:
+            pass
+        if current.parent == current:
+            break
+        current = current.parent
+    resolved_candidate = expanded_candidate.resolve()
     try:
         resolved_candidate.relative_to(resolved_root)
     except ValueError as error:

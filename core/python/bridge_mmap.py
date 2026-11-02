@@ -124,6 +124,8 @@ class MmapBridgeHeader:
             return False
         if self.message_id <= 0 or self.session_id <= 0 or self.payload_len <= 0:
             return False
+        if len(self.payload_blake3) != 32 or self.payload_blake3 == b"\x00" * 32:
+            return False
         if self.payload_offset % MMAP_BRIDGE_PAYLOAD_ALIGNMENT != 0:
             return False
         return self.header_bytes <= self.payload_offset <= mapped_len and (
@@ -135,23 +137,34 @@ class MmapBridgeFrame:
     def __init__(self, path: str | Path) -> None:
         self.path = Path(path)
         self._file: BinaryIO = self.path.open("rb")
-        self._mmap = mmap.mmap(self._file.fileno(), 0, access=mmap.ACCESS_READ)
-        self.header = _decode_header(self._mmap[:MMAP_BRIDGE_HEADER_BYTES])
-        if not self.header.is_valid(len(self._mmap)):
+        self._mmap: mmap.mmap | None = None
+        try:
+            self._mmap = mmap.mmap(self._file.fileno(), 0, access=mmap.ACCESS_READ)
+            self.header = _decode_header(self._mmap[:MMAP_BRIDGE_HEADER_BYTES])
+            if not self.header.is_valid(len(self._mmap)):
+                raise ValueError("invalid mmap bridge frame")
+        except BaseException:
             self.close()
-            raise ValueError("invalid mmap bridge frame")
+            raise
 
     def payload_view(self) -> memoryview:
+        assert self._mmap is not None
         start = self.header.payload_offset
         end = start + self.header.payload_len
         return memoryview(self._mmap)[start:end]
 
     def first_payload_byte(self) -> int:
+        assert self._mmap is not None
         return self._mmap[self.header.payload_offset]
 
     def close(self) -> None:
-        self._mmap.close()
-        self._file.close()
+        if getattr(self, "_mmap", None) is not None:
+            try:
+                self._mmap.close()  # type: ignore[union-attr]
+            finally:
+                self._mmap = None
+        if getattr(self, "_file", None) is not None:
+            self._file.close()
 
     def __enter__(self) -> MmapBridgeFrame:
         return self

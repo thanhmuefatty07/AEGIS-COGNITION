@@ -53,17 +53,13 @@ impl PyMmapBridgeWriter {
         }
         let readonly = payload.readonly();
         // SAFETY: PyBuffer validated a one-byte C-contiguous export above;
-        // the exporter is kept alive by `payload`, and the slice is consumed
-        // synchronously before the buffer is released or the pointer drops.
-        let payload = unsafe { std::slice::from_raw_parts(payload_ptr.cast::<u8>(), payload_len) };
+        // we copy into `owned` while holding the GIL so a read-only memoryview
+        // over a mutable bytearray cannot be mutated concurrently across py.detach().
+        let owned = unsafe { std::slice::from_raw_parts(payload_ptr.cast::<u8>(), payload_len) }.to_vec();
         let result = if readonly {
-            // A read-only export cannot be mutated through the Python buffer
-            // protocol while this call is detached. Mutable buffers retain
-            // the GIL below so callers can safely reuse them only after the
-            // synchronous write returns.
-            py.detach(|| writer.write(payload))
+            py.detach(|| writer.write(&owned))
         } else {
-            writer.write(payload)
+            writer.write(&owned)
         };
         result.map_err(pyo3::exceptions::PyValueError::new_err)
     }

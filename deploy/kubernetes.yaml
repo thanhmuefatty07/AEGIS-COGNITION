@@ -53,6 +53,7 @@ spec:
         app: aegis-core
         aegis.role: single-writer-core
     spec:
+      automountServiceAccountToken: false
       securityContext:
         runAsNonRoot: true
         seccompProfile:
@@ -69,6 +70,13 @@ spec:
               value: /var/lib/aegis
             - name: AEGIS_ARTIFACTS_DIR
               value: /var/lib/aegis/artifacts
+          resources:
+            requests:
+              cpu: "250m"
+              memory: "256Mi"
+            limits:
+              cpu: "2000m"
+              memory: "2Gi"
           volumeMounts:
             - name: replay-ledger
               mountPath: /var/lib/aegis/replay
@@ -108,6 +116,7 @@ spec:
         app: aegis-operator-api
         aegis.role: read-only-operator-surface
     spec:
+      automountServiceAccountToken: false
       securityContext:
         runAsNonRoot: true
         seccompProfile:
@@ -127,6 +136,13 @@ spec:
               value: /var/lib/aegis
             - name: AEGIS_ARTIFACTS_DIR
               value: /var/lib/aegis/artifacts
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "128Mi"
+            limits:
+              cpu: "500m"
+              memory: "512Mi"
           volumeMounts:
             - name: evidence-artifacts
               mountPath: /var/lib/aegis/artifacts
@@ -161,6 +177,7 @@ spec:
         app: aegis-remote-worker
         aegis.role: candidate-only-worker
     spec:
+      automountServiceAccountToken: false
       securityContext:
         runAsNonRoot: true
         seccompProfile:
@@ -175,6 +192,13 @@ spec:
               value: PROD
             - name: AEGIS_WORKER_MODE
               value: candidate-only
+          resources:
+            requests:
+              cpu: "250m"
+              memory: "256Mi"
+            limits:
+              cpu: "1000m"
+              memory: "1Gi"
           securityContext:
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: true
@@ -194,3 +218,34 @@ spec:
     - name: http
       port: 8765
       targetPort: http
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: aegis-default-deny
+  namespace: aegis-cognition
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+    - Egress
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: aegis-operator-api-ingress
+  namespace: aegis-cognition
+spec:
+  podSelector:
+    matchLabels:
+      app: aegis-operator-api
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app: aegis-core
+      ports:
+        - protocol: TCP
+          port: 8765

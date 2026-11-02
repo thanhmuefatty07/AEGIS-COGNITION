@@ -191,6 +191,7 @@ impl ExecutionLanes {
                 ));
             }
             let mut command = Command::new(program);
+            scrub_untrusted_command_environment(&mut command);
             command
                 .args(args)
                 .stdin(Stdio::null())
@@ -325,6 +326,42 @@ impl ExecutionLanes {
             ));
         }
         result
+    }
+}
+
+fn scrub_untrusted_command_environment(command: &mut Command) {
+    const DANGEROUS_EXACT_VARS: &[&str] = &[
+        "LD_PRELOAD",
+        "LD_AUDIT",
+        "DYLD_INSERT_LIBRARIES",
+        "DYLD_LIBRARY_PATH",
+        "PYTHONSTARTUP",
+        "PYTHONPATH",
+        "PYTHONINSPECT",
+        "RUSTC_WRAPPER",
+        "CARGO_BUILD_RUSTC_WRAPPER",
+        "AEGIS_PRIVATE_ARCHIVE",
+        "AEGIS_SESSION_DB_PATH",
+    ];
+    for key in DANGEROUS_EXACT_VARS {
+        command.env_remove(key);
+    }
+    for (key, _) in std::env::vars_os() {
+        let Some(name) = key.to_str() else {
+            continue;
+        };
+        let upper = name.to_ascii_uppercase();
+        if upper.ends_with("_API_KEY")
+            || upper.ends_with("_SECRET")
+            || upper.ends_with("_TOKEN")
+            || upper.ends_with("_PASSWORD")
+            || upper.ends_with("_CREDENTIAL")
+            || DANGEROUS_EXACT_VARS
+                .iter()
+                .any(|blocked| upper == *blocked)
+        {
+            command.env_remove(&key);
+        }
     }
 }
 

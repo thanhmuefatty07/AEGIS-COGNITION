@@ -221,8 +221,7 @@ impl InMemoryEvidenceArena {
             return Err(HotEngineError::OversizedArtifact);
         }
 
-        let artifact_hash = simd_blake3_hash(bytes);
-        self.commit_arc(Arc::new(bytes.to_vec()), artifact_hash)
+        self.commit_owned(bytes.to_vec())
     }
 
     /// Commit an owned payload without copying it into a second payload allocation.

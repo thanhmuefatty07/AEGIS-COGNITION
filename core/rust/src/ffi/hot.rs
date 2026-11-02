@@ -95,18 +95,19 @@ pub fn aegis_hot_commit_buffer(
             ));
         }
         // SAFETY: the buffer is C-contiguous and remains exported by `payload`
-        // until this function returns; the slice is consumed synchronously and
-        // the pointer never escapes the call.
-        let bytes = unsafe { std::slice::from_raw_parts(payload_ptr.cast::<u8>(), payload_len) };
+        // while the GIL is held; we copy into `owned` before detaching the GIL
+        // because a read-only `memoryview` over a mutable `bytearray` can still
+        // be mutated from another Python thread once the GIL is released.
+        let owned = unsafe { std::slice::from_raw_parts(payload_ptr.cast::<u8>(), payload_len) }.to_vec();
         let arena = crate::hot_engine::InMemoryEvidenceArena::new(
             trust_level,
             max_live_bytes.unwrap_or(64 * 1024 * 1024),
             max_artifact_bytes.unwrap_or(16 * 1024 * 1024),
         );
         let result = if payload.readonly() {
-            py.detach(|| arena.commit(bytes))
+            py.detach(move || arena.commit_owned(owned))
         } else {
-            arena.commit(bytes)
+            arena.commit_owned(owned)
         };
         let handle =
             result.map_err(|err| pyo3::exceptions::PyRuntimeError::new_err(format!("{err:?}")))?;

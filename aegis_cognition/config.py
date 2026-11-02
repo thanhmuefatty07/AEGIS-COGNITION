@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import atexit
+import math
 import os
+import re
 import shutil
 import tomllib
 from contextlib import suppress
@@ -58,10 +60,23 @@ def redact_config(config: Mapping[str, Any]) -> dict[str, Any]:
     return {str(key): redact_value(str(key), value) for key, value in config.items()}
 
 
+_TOML_BARE_KEY_RE = re.compile(r"^[A-Za-z0-9_-]+$")
+
+
+def _validate_toml_key(key: str) -> str:
+    if not isinstance(key, str) or not _TOML_BARE_KEY_RE.fullmatch(key):
+        raise TypeError(f"invalid TOML key: {key!r}")
+    return key
+
+
 def _toml_literal(value: Any) -> str:
     if isinstance(value, bool):
         return "true" if value else "false"
-    if isinstance(value, (int, float)) and not isinstance(value, bool):
+    if isinstance(value, int) and not isinstance(value, bool):
+        return str(value)
+    if isinstance(value, float):
+        if not math.isfinite(value):
+            raise TypeError(f"unsupported non-finite TOML float: {value!r}")
         return str(value)
     if isinstance(value, str):
         return json.dumps(value, ensure_ascii=False)
@@ -78,10 +93,14 @@ def render_toml(config: Mapping[str, Any]) -> str:
 
     def render_section(section: Mapping[str, Any], prefix: str | None = None) -> None:
         scalars: list[tuple[str, Any]] = [
-            (str(key), value) for key, value in section.items() if not isinstance(value, Mapping)
+            (_validate_toml_key(str(key)), value)
+            for key, value in section.items()
+            if not isinstance(value, Mapping)
         ]
         nested: list[tuple[str, Mapping[str, Any]]] = [
-            (str(key), cast(Mapping[str, Any], value)) for key, value in section.items() if isinstance(value, Mapping)
+            (_validate_toml_key(str(key)), cast(Mapping[str, Any], value))
+            for key, value in section.items()
+            if isinstance(value, Mapping)
         ]
         if prefix is not None:
             if lines and lines[-1] != "":
@@ -99,7 +118,9 @@ def render_toml(config: Mapping[str, Any]) -> str:
 def save_config(config: Mapping[str, Any], path: Path = CONFIG_FILE) -> None:
     """Persist configuration atomically and apply a user-only mode where supported."""
 
-    path.parent.mkdir(parents=True, exist_ok=True)
+    path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
+    with suppress(OSError):
+        path.parent.chmod(0o700)
     temporary_path: Path | None = None
     try:
         with tempfile.NamedTemporaryFile(
@@ -117,6 +138,8 @@ def save_config(config: Mapping[str, Any], path: Path = CONFIG_FILE) -> None:
         with suppress(OSError):
             temporary_path.chmod(0o600)
         os.replace(temporary_path, path)
+        with suppress(OSError):
+            path.chmod(0o600)
         temporary_path = None
     finally:
         if temporary_path is not None:

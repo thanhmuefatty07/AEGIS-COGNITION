@@ -245,6 +245,7 @@ mod linux {
             let name = CString::new(name).map_err(|error| {
                 ResourceError::InvalidRequest(format!("invalid cgroup scope name: {error}"))
             })?;
+            // SAFETY: `self.root_directory` is an open directory fd and `name` is a NUL-terminated CString.
             if unsafe { libc::mkdirat(self.root_directory.as_raw_fd(), name.as_ptr(), 0o755) } == -1
             {
                 return Err(io_error(io::Error::last_os_error()));
@@ -317,6 +318,8 @@ mod linux {
             let processes = open_control(&scope.directory, "cgroup.procs", libc::O_WRONLY)?;
             let descriptor = processes.as_raw_fd();
             let child_lease = lease.clone();
+            // SAFETY: The pre_exec hook uses only async-signal-safe syscalls (clock_gettime, write)
+            // and pre-allocated values before execve.
             unsafe {
                 use std::os::unix::process::CommandExt;
                 command.pre_exec(move || {
@@ -371,6 +374,8 @@ mod linux {
     }
 
     fn verify_cgroup2(descriptor: RawFd) -> Result<(), ResourceError> {
+        // SAFETY: `libc::statfs` is a plain-old-data C struct valid when zero-initialized,
+        // and `descriptor` is an open file descriptor.
         let mut details = unsafe { std::mem::zeroed::<libc::statfs>() };
         if unsafe { libc::fstatfs(descriptor, &mut details) } == -1 {
             return Err(io_error(io::Error::last_os_error()));
@@ -384,6 +389,7 @@ mod linux {
     }
 
     fn open_at(directory: RawFd, name: &CString, flags: libc::c_int) -> io::Result<File> {
+        // SAFETY: `directory` is an open directory fd and `name` is a valid CString.
         let descriptor = unsafe {
             libc::openat(
                 directory,
@@ -394,6 +400,7 @@ mod linux {
         if descriptor == -1 {
             return Err(io::Error::last_os_error());
         }
+        // SAFETY: `descriptor` is a newly opened, valid file descriptor owned exclusively here.
         Ok(unsafe { File::from_raw_fd(descriptor) })
     }
 
@@ -782,9 +789,10 @@ mod windows {
         }
     }
 
-    // Job handles are kernel objects; the map is protected by `jobs` and each
-    // lease receives an independent job so termination cannot affect siblings.
+    // SAFETY: Job handles are thread-safe OS kernel objects; all map access is
+    // serialized by `self.jobs: Mutex<...>` and each lease owns an independent job.
     unsafe impl Send for WindowsJobObjectController {}
+    // SAFETY: Shared references only access `self.jobs` through `parking_lot::Mutex`.
     unsafe impl Sync for WindowsJobObjectController {}
 
     impl ResourceController for WindowsJobObjectController {
