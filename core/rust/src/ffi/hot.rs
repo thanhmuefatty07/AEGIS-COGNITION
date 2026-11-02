@@ -105,7 +105,7 @@ pub fn aegis_hot_commit_buffer(
             max_artifact_bytes.unwrap_or(16 * 1024 * 1024),
         );
         let result = if payload.readonly() {
-            py.detach(move || arena.commit_owned(owned))
+            py.detach(|| arena.commit_owned(owned))
         } else {
             arena.commit_owned(owned)
         };

@@ -137,6 +137,7 @@ class GCPSpotOrchestrator:
             ".agents",
             "node_modules",
             ".local",
+            "desktop",
         }
 
         def _filter(tarinfo: tarfile.TarInfo) -> tarfile.TarInfo | None:

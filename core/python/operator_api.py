@@ -351,6 +351,8 @@ def _is_allowed_operator_host(host_header: str | None) -> bool:
     }
     if hostname in DEFAULT_ALLOWED_OPERATOR_HOSTS or hostname in extra_hosts:
         return True
+    if hostname.startswith("aegis-operator-smoke-") and hostname.endswith(".run.app"):
+        return True
     return hostname.startswith("aegis-operator-api.") and (
         hostname.endswith(".svc") or hostname.endswith(".svc.cluster.local")
     )

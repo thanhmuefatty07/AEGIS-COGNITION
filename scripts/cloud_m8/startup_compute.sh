@@ -204,6 +204,25 @@ docker info --format '{{json .}}' > "${EVIDENCE_DIR}/docker_daemon_info.json" 2>
 # Run native Rust cgroup probe
 cargo test -p aegis-nerve --test linux_cgroup_native_probe -- --ignored > /tmp/cgroup_native.log 2>&1 || true
 
+# Run Rust library unit & property tests (Phase P4 L1-L5)
+echo "[+] [P4-L1-L5] Running aegis-nerve Rust library unit & property tests..."
+if cargo test -p aegis-nerve --lib --no-default-features > "${EVIDENCE_DIR}/rust_lib_tests.log" 2>&1; then
+    RUST_LIB_STATUS="PASS"
+    RUST_LIB_VERIFIED=true
+else
+    RUST_LIB_STATUS="FAILED"
+    RUST_LIB_VERIFIED=false
+fi
+cat <<EOF > "${EVIDENCE_DIR}/rust_lib_test_receipt.json"
+{
+  "schema": "aegis-rust-lib-test-receipt-v1",
+  "truth_claim": false,
+  "status": "${RUST_LIB_STATUS}",
+  "verified": ${RUST_LIB_VERIFIED},
+  "verified_at_utc": "$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+}
+EOF
+
 if [ -f "scripts/linux_cgroup_live_probe.py" ]; then
     if ! python3 scripts/linux_cgroup_live_probe.py --output "${NV001_RECEIPT}"; then
         echo "[!] NV-001 exited with non-zero code. Generating fail-closed receipt."
@@ -436,6 +455,23 @@ fi
 echo "[+] [NV-017] Running QuickJS cold start gate..."
 NV017_RECEIPT="${EVIDENCE_DIR}/quickjs_full_interpreter_cold_start_capture.json"
 if [ -f "scripts/quickjs_cold_start_gate.py" ]; then
+    if [ -f "artifacts/quickjs_full_interpreter.wasm" ]; then
+        if ! command -v wasmtime &>/dev/null; then
+            curl https://wasmtime.dev/install.sh -sSf | bash || true
+            export PATH="/root/.wasmtime/bin:${PATH}"
+            ln -sf /root/.wasmtime/bin/wasmtime /usr/local/bin/wasmtime 2>/dev/null || true
+        fi
+        if command -v wasmtime &>/dev/null; then
+            cat << 'EOF_QJS' > /usr/local/bin/qjs-wasm-runner
+#!/usr/bin/env bash
+set -euo pipefail
+exec wasmtime run "$1" "$(cat "$2")"
+EOF_QJS
+            chmod +x /usr/local/bin/qjs-wasm-runner
+            export AEGIS_QUICKJS_WASM_PATH="${WORKSPACE}/artifacts/quickjs_full_interpreter.wasm"
+            export AEGIS_QUICKJS_FULL_INTERPRETER_RUNNER_JSON='["/usr/local/bin/qjs-wasm-runner", "{runtime}", "{script}"]'
+        fi
+    fi
     python3 scripts/quickjs_cold_start_gate.py --write-capture || true
     python3 scripts/quickjs_cold_start_gate.py || true
     if [ -f "artifacts/quickjs_full_interpreter_cold_start_capture.json" ]; then

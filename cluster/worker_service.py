@@ -31,8 +31,8 @@ import sys
 from typing import Any
 
 
-MACHINE_ID = os.environ.get("AEGIS_WORKER_ID", "unnamed-worker")
-PORT = int(os.environ.get("AEGIS_WORKER_PORT", "9000"))
+MACHINE_ID = os.environ.get("AEGIS_WORKER_ID", "unnamed-worker").strip()
+PORT = int(os.environ.get("AEGIS_WORKER_PORT", "9000").strip())
 MAX_REQUEST_BYTES = 64 * 1024
 SCHEMA_REQUEST = "aegis-real-cluster-worker-request-v1"
 SCHEMA_RESPONSE = "aegis-real-cluster-worker-response-v1"
@@ -134,6 +134,7 @@ class ClusterWorkerHandler(socketserver.StreamRequestHandler):
         )
         with contextlib.suppress(BrokenPipeError, ConnectionResetError, OSError):
             self.wfile.write(body)
+            self.wfile.flush()
 
 
 class ThreadedTCPServer(socketserver.ThreadingMixIn, socketserver.TCPServer):

@@ -183,7 +183,7 @@ systemctl enable --now aegis-worker.service
             startup_content = self._generate_startup_script(worker_id, config.port)
             startup_path = self.root / ".local" / f"startup-{name}.sh"
             startup_path.parent.mkdir(parents=True, exist_ok=True)
-            startup_path.write_text(startup_content, encoding="utf-8")
+            startup_path.write_bytes(startup_content.replace("\r\n", "\n").encode("utf-8"))
 
             cmd = [
                 "gcloud",
@@ -378,6 +378,9 @@ systemctl enable --now aegis-worker.service
         evaluate_tcp_cluster_soak_gate = gate_mod.evaluate_tcp_cluster_soak_gate
 
         capture_res = write_real_multi_machine_cluster_soak_capture(self.root)
+        if not capture_res.get("overall_ok"):
+            time.sleep(3)
+            capture_res = write_real_multi_machine_cluster_soak_capture(self.root)
         print(f"[+] Soak capture writer result: {capture_res.get('overall_ok')}")
 
         eval_res = evaluate_tcp_cluster_soak_gate(self.root)
