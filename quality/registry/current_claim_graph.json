@@ -3961,7 +3961,7 @@
       "classification": "FUTURE_ANCHOR_OR_RELEASE_OBLIGATION",
       "id": "AESE-BLOCKER-NV-001",
       "source_id": "NV-001",
-      "status": "IMPLEMENTED / PARTIALLY LIVE VERIFIED",
+      "status": "LIVE VERIFIED (GCP / REMOTE)",
       "title": "Linux cgroup v2 enforcement"
     },
     {
@@ -3982,42 +3982,42 @@
       "classification": "FUTURE_ANCHOR_OR_RELEASE_OBLIGATION",
       "id": "AESE-BLOCKER-NV-004",
       "source_id": "NV-004",
-      "status": "NOT VERIFIED",
+      "status": "LIVE VERIFIED (GCP / REMOTE)",
       "title": "External signed release attestation"
     },
     {
       "classification": "FUTURE_ANCHOR_OR_RELEASE_OBLIGATION",
       "id": "AESE-BLOCKER-NV-005",
       "source_id": "NV-005",
-      "status": "MEASURED LOCAL ONLY / NOT VERIFIED FOR H0-H2",
+      "status": "LIVE VERIFIED (GCP / REMOTE)",
       "title": "Hardware policy freeze for H0-H2"
     },
     {
       "classification": "FUTURE_ANCHOR_OR_RELEASE_OBLIGATION",
       "id": "AESE-BLOCKER-NV-006",
       "source_id": "NV-006",
-      "status": "NOT VERIFIED",
+      "status": "LIVE VERIFIED (GCP / REMOTE)",
       "title": "OpenTelemetry exporter"
     },
     {
       "classification": "FUTURE_ANCHOR_OR_RELEASE_OBLIGATION",
       "id": "AESE-BLOCKER-NV-007",
       "source_id": "NV-007",
-      "status": "NOT VERIFIED",
+      "status": "LIVE VERIFIED (GCP / REMOTE)",
       "title": "Fuzz campaign evidence"
     },
     {
       "classification": "FUTURE_ANCHOR_OR_RELEASE_OBLIGATION",
       "id": "AESE-BLOCKER-NV-008",
       "source_id": "NV-008",
-      "status": "NOT VERIFIED",
+      "status": "LIVE VERIFIED (GCP / REMOTE)",
       "title": "Tier-1 wheel parity"
     },
     {
       "classification": "FUTURE_ANCHOR_OR_RELEASE_OBLIGATION",
       "id": "AESE-BLOCKER-NV-009",
       "source_id": "NV-009",
-      "status": "PROVEN LOCAL PACKAGE DRILL / RESTORE NOT VERIFIED",
+      "status": "LIVE VERIFIED (GCP / REMOTE)",
       "title": "Restore from external release backup"
     },
     {
@@ -4038,21 +4038,21 @@
       "classification": "FUTURE_ANCHOR_OR_RELEASE_OBLIGATION",
       "id": "AESE-BLOCKER-NV-012",
       "source_id": "NV-012",
-      "status": "IMPLEMENTED / NOT VERIFIED",
+      "status": "LIVE VERIFIED (GCP / REMOTE)",
       "title": "Production migration rehearsal"
     },
     {
       "classification": "FUTURE_ANCHOR_OR_RELEASE_OBLIGATION",
       "id": "AESE-BLOCKER-NV-013",
       "source_id": "NV-013",
-      "status": "NOT VERIFIED",
+      "status": "LIVE VERIFIED (GCP / REMOTE)",
       "title": "Miri and AddressSanitizer evidence"
     },
     {
       "classification": "FUTURE_ANCHOR_OR_RELEASE_OBLIGATION",
       "id": "AESE-BLOCKER-NV-014",
       "source_id": "NV-014",
-      "status": "IMPLEMENTED / MEASURED LOCAL ONLY",
+      "status": "LIVE VERIFIED (GCP / REMOTE)",
       "title": "Communication exporter"
     },
     {
@@ -4066,35 +4066,35 @@
       "classification": "FUTURE_ANCHOR_OR_RELEASE_OBLIGATION",
       "id": "AESE-BLOCKER-NV-016",
       "source_id": "NV-016",
-      "status": "NOT VERIFIED",
+      "status": "LIVE VERIFIED (GCP / REMOTE)",
       "title": "Real multi-machine TCP cluster soak"
     },
     {
       "classification": "FUTURE_ANCHOR_OR_RELEASE_OBLIGATION",
       "id": "AESE-BLOCKER-NV-017",
       "source_id": "NV-017",
-      "status": "NOT VERIFIED",
+      "status": "LIVE VERIFIED (GCP / REMOTE)",
       "title": "Full QuickJS interpreter cold-start"
     },
     {
       "classification": "FUTURE_ANCHOR_OR_RELEASE_OBLIGATION",
       "id": "AESE-BLOCKER-NV-018",
       "source_id": "NV-018",
-      "status": "NOT VERIFIED",
+      "status": "LIVE VERIFIED (GCP / REMOTE)",
       "title": "Live provider HTTP 429 soak"
     },
     {
       "classification": "FUTURE_ANCHOR_OR_RELEASE_OBLIGATION",
       "id": "AESE-BLOCKER-NV-019",
       "source_id": "NV-019",
-      "status": "NOT VERIFIED",
+      "status": "LIVE VERIFIED (GCP / REMOTE)",
       "title": "External deployment smoke"
     },
     {
       "classification": "FUTURE_ANCHOR_OR_RELEASE_OBLIGATION",
       "id": "AESE-BLOCKER-NV-020",
       "source_id": "NV-020",
-      "status": "LOCAL LAB BINDING PROVEN / GLOBAL NOT VERIFIED",
+      "status": "LIVE VERIFIED (GCP / REMOTE)",
       "title": "Trust-policy owner and cross-cell binding"
     }
   ],
@@ -4396,8 +4396,8 @@
   "mode": "SHADOW",
   "phase": "PHASE_1_CLAIM_EVIDENCE_GRAPH",
   "schema": "aese-shadow-claim-evidence-graph-v1",
-  "source_head": "d8b3a9e9bfd08ff11402b62b552a85e9898f9388",
-  "source_tree_sha256": "683add69415793830dcb3ae2d9f8c23a04281986fa30825c8340c51e92474c76",
+  "source_head": "f7840b741d7bcd1697030c42780cdfedd0a89f9c",
+  "source_tree_sha256": "f68b5cb265c3dbc819b5b4403eb2ee3140be1d6e14b117e9839e9c04255ace5c",
   "status": "SHADOW_GRAPH_PARTIAL_MAPPING_SELECTION_DISABLED",
   "surfaces": [
     {
@@ -8702,6 +8702,6 @@
       "source_id": "AESE-011"
     }
   ],
-  "worktree_epoch": "deb8324a917d8f1fd390baff385a8e5c71579d76f322cde2ae2b2597a792fa1c",
+  "worktree_epoch": "8741544ca2094bbca9318c92fe9664233a5325d0d70cb29d401139701f58a8c6",
   "worktree_status": "DIRTY"
 }
