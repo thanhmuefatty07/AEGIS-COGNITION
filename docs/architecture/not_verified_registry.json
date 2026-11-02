@@ -7,7 +7,7 @@
       "title": "Linux cgroup v2 enforcement",
       "status": "LIVE VERIFIED (GCP / REMOTE)",
       "closing_evidence_id": "EV-NV-001-EDB83D620B407565",
-      "closing_commit": "f7840b741d7bcd1697030c42780cdfedd0a89f9c",
+      "closing_commit": "ba81aee37d492a2c9056d31f4614e46ae4955f4a",
       "closing_date": "2026-11-02",
       "receipt_path": "artifacts/linux_cgroup_live_receipt.json",
       "receipt_sha256": "edb83d620b407565b0238672bcbfdbeb666d22171acc4c2b2c3908afde902c9d"
@@ -26,18 +26,18 @@
       "id": "NV-004",
       "title": "External signed release attestation",
       "status": "LIVE VERIFIED (GCP / REMOTE)",
-      "closing_evidence_id": "EV-NV-004-96EC1E75A2074CE0",
-      "closing_commit": "f7840b741d7bcd1697030c42780cdfedd0a89f9c",
+      "closing_evidence_id": "EV-NV-004-63A339C32777F03A",
+      "closing_commit": "ba81aee37d492a2c9056d31f4614e46ae4955f4a",
       "closing_date": "2026-11-02",
       "receipt_path": "artifacts/nv004_attestation_receipt.json",
-      "receipt_sha256": "96ec1e75a2074ce066e9fe981c98438300d0ec17ccb69c7368f820adc3f41348"
+      "receipt_sha256": "63a339c32777f03a67c10a7fc576e78101b9f417f7b0f44c0af75f3e8718f4e6"
     },
     {
       "id": "NV-005",
       "title": "Hardware policy freeze for H0-H2",
       "status": "LIVE VERIFIED (GCP / REMOTE)",
       "closing_evidence_id": "EV-NV-005-8BBD6EF31DA7AE55",
-      "closing_commit": "f7840b741d7bcd1697030c42780cdfedd0a89f9c",
+      "closing_commit": "ba81aee37d492a2c9056d31f4614e46ae4955f4a",
       "closing_date": "2026-11-02",
       "receipt_path": "artifacts/resource_policy_H2_receipt.json",
       "receipt_sha256": "8bbd6ef31da7ae554f90f3a7f12ba6354fc436eb217ef527b99218970b037a1c",
@@ -53,7 +53,7 @@
       "title": "OpenTelemetry exporter",
       "status": "LIVE VERIFIED (GCP / REMOTE)",
       "closing_evidence_id": "EV-NV-006-969CBD0BB93E403A",
-      "closing_commit": "f7840b741d7bcd1697030c42780cdfedd0a89f9c",
+      "closing_commit": "ba81aee37d492a2c9056d31f4614e46ae4955f4a",
       "closing_date": "2026-11-02",
       "receipt_path": "artifacts/otlp_exporter_receipt.json",
       "receipt_sha256": "969cbd0bb93e403a9f2d50118a9abdb1253f62b589765f21050f20e0b33ddefb"
@@ -63,7 +63,7 @@
       "title": "Fuzz campaign evidence",
       "status": "LIVE VERIFIED (GCP / REMOTE)",
       "closing_evidence_id": "EV-NV-007-C9CE3A7EC8C89F0D",
-      "closing_commit": "f7840b741d7bcd1697030c42780cdfedd0a89f9c",
+      "closing_commit": "ba81aee37d492a2c9056d31f4614e46ae4955f4a",
       "closing_date": "2026-11-02",
       "receipt_path": "artifacts/fuzz_campaign_receipt.json",
       "receipt_sha256": "c9ce3a7ec8c89f0df588a147c8796f8462ee3d5af5b7f9d754e4cdac50400ead"
@@ -73,14 +73,14 @@
       "title": "Tier-1 wheel parity",
       "status": "LIVE VERIFIED (GCP / REMOTE)",
       "closing_evidence_id": "EV-NV-008-66466897268A2DB1",
-      "closing_commit": "f7840b741d7bcd1697030c42780cdfedd0a89f9c",
+      "closing_commit": "ba81aee37d492a2c9056d31f4614e46ae4955f4a",
       "closing_date": "2026-11-02",
       "receipt_path": "artifacts/wheel_parity_linux_receipt.json",
       "receipt_sha256": "66466897268a2db183248923b9a7344d8e585a321c3038ad88d0699242e3e1b8",
       "additional_receipts": [
         {
           "receipt_path": "artifacts/wheel_parity_macos_receipt.json",
-          "receipt_sha256": "d20664250455f626d8ee08ce739f6244ed47f6f88e5c742ce283f7e1395c3d57"
+          "receipt_sha256": "1fba63d2bb11bf2971b113744cdcd1578b74072daf118df0e87243c4a87cffda"
         }
       ]
     },
@@ -88,11 +88,11 @@
       "id": "NV-009",
       "title": "Restore from external release backup",
       "status": "LIVE VERIFIED (GCP / REMOTE)",
-      "closing_evidence_id": "EV-NV-009-B66CE75E6029E8B6",
-      "closing_commit": "f7840b741d7bcd1697030c42780cdfedd0a89f9c",
+      "closing_evidence_id": "EV-NV-009-0A8AB3B38D224EF4",
+      "closing_commit": "ba81aee37d492a2c9056d31f4614e46ae4955f4a",
       "closing_date": "2026-11-02",
       "receipt_path": "artifacts/restore_backup_drill_receipt.json",
-      "receipt_sha256": "b66ce75e6029e8b69cf5a1ab17b4c5e9ce811ee49f47bed1a17e36a189d33be3"
+      "receipt_sha256": "0a8ab3b38d224ef4dc10ec0d542eaa8f15fb5697787cf9e83a0f797aa185bd6b"
     },
     {
       "id": "NV-010",
@@ -108,18 +108,18 @@
       "id": "NV-012",
       "title": "Production migration rehearsal",
       "status": "LIVE VERIFIED (GCP / REMOTE)",
-      "closing_evidence_id": "EV-NV-012-485D61D8B5E1B095",
-      "closing_commit": "f7840b741d7bcd1697030c42780cdfedd0a89f9c",
+      "closing_evidence_id": "EV-NV-012-517B8060A90A1658",
+      "closing_commit": "ba81aee37d492a2c9056d31f4614e46ae4955f4a",
       "closing_date": "2026-11-02",
       "receipt_path": "artifacts/schema_migration_rehearsal_receipt.json",
-      "receipt_sha256": "485d61d8b5e1b095ff0e1bc59e2bd0ff4692425ed2cf7bc274dced02cfe428d7"
+      "receipt_sha256": "517b8060a90a165894ef314a999ca9414a539a6e6107fa890438b393f17c4ca5"
     },
     {
       "id": "NV-013",
       "title": "Miri and AddressSanitizer evidence",
       "status": "LIVE VERIFIED (GCP / REMOTE)",
       "closing_evidence_id": "EV-NV-013-1E7FCF878ACF5D9B",
-      "closing_commit": "f7840b741d7bcd1697030c42780cdfedd0a89f9c",
+      "closing_commit": "ba81aee37d492a2c9056d31f4614e46ae4955f4a",
       "closing_date": "2026-11-02",
       "receipt_path": "artifacts/miri_asan_receipt.json",
       "receipt_sha256": "1e7fcf878acf5d9b3908ea632f21d4d790504d03467965762e22fa08029a83ef"
@@ -129,7 +129,7 @@
       "title": "Communication exporter",
       "status": "LIVE VERIFIED (GCP / REMOTE)",
       "closing_evidence_id": "EV-NV-014-1E86B97C8B8C9C77",
-      "closing_commit": "f7840b741d7bcd1697030c42780cdfedd0a89f9c",
+      "closing_commit": "ba81aee37d492a2c9056d31f4614e46ae4955f4a",
       "closing_date": "2026-11-02",
       "receipt_path": "artifacts/communication_payload_receipt.json",
       "receipt_sha256": "1e86b97c8b8c9c771b408624ba00f696c999d297f4e15ae8e366b02d52515e5e"
@@ -144,7 +144,7 @@
       "title": "Real multi-machine TCP cluster soak",
       "status": "LIVE VERIFIED (GCP / REMOTE)",
       "closing_evidence_id": "EV-NV-016-A12C804CE7699426",
-      "closing_commit": "f7840b741d7bcd1697030c42780cdfedd0a89f9c",
+      "closing_commit": "ba81aee37d492a2c9056d31f4614e46ae4955f4a",
       "closing_date": "2026-11-02",
       "receipt_path": "artifacts/tcp_cluster_soak_gate_report.json",
       "receipt_sha256": "a12c804ce7699426cbf74d65f5a746da948126879b15f4114619847a5b3e525a"
@@ -154,7 +154,7 @@
       "title": "Full QuickJS interpreter cold-start",
       "status": "LIVE VERIFIED (GCP / REMOTE)",
       "closing_evidence_id": "EV-NV-017-39037C483D37939A",
-      "closing_commit": "f7840b741d7bcd1697030c42780cdfedd0a89f9c",
+      "closing_commit": "ba81aee37d492a2c9056d31f4614e46ae4955f4a",
       "closing_date": "2026-11-02",
       "receipt_path": "artifacts/quickjs_full_interpreter_cold_start_capture.json",
       "receipt_sha256": "39037c483d37939a1b384086f0e3ee7fa4546d173bc880e301d0b1f697b91eb0"
@@ -164,7 +164,7 @@
       "title": "Live provider HTTP 429 soak",
       "status": "LIVE VERIFIED (GCP / REMOTE)",
       "closing_evidence_id": "EV-NV-018-CD024173382A86FB",
-      "closing_commit": "f7840b741d7bcd1697030c42780cdfedd0a89f9c",
+      "closing_commit": "ba81aee37d492a2c9056d31f4614e46ae4955f4a",
       "closing_date": "2026-11-02",
       "receipt_path": "artifacts/live_provider_429_soak_capture.json",
       "receipt_sha256": "cd024173382a86fbc67c5b04734bc3dceb042cb6e0862ec8c10dbce9005cf308"
@@ -174,7 +174,7 @@
       "title": "External deployment smoke",
       "status": "LIVE VERIFIED (GCP / REMOTE)",
       "closing_evidence_id": "EV-NV-019-5BAB454BEBD18ACC",
-      "closing_commit": "f7840b741d7bcd1697030c42780cdfedd0a89f9c",
+      "closing_commit": "ba81aee37d492a2c9056d31f4614e46ae4955f4a",
       "closing_date": "2026-11-02",
       "receipt_path": "artifacts/external_deployment_smoke_capture.json",
       "receipt_sha256": "5bab454bebd18acc879c1567cdc4da07431f87ce5acacc9a5467d8c5b6f27da1"
@@ -184,7 +184,7 @@
       "title": "Trust-policy owner and cross-cell binding",
       "status": "LIVE VERIFIED (GCP / REMOTE)",
       "closing_evidence_id": "EV-NV-020-F315058804D1C597",
-      "closing_commit": "f7840b741d7bcd1697030c42780cdfedd0a89f9c",
+      "closing_commit": "ba81aee37d492a2c9056d31f4614e46ae4955f4a",
       "closing_date": "2026-11-02",
       "receipt_path": "artifacts/trust_policy_hash_receipt.json",
       "receipt_sha256": "f315058804d1c597599c6a2a529ec1a7876b062424ec09cba0c0ef2625ff8303"
