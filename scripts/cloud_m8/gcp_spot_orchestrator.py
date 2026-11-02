@@ -144,9 +144,12 @@ class GCPSpotOrchestrator:
             for ex in exclude_dirs:
                 if ex in parts:
                     return None
-            if tarinfo.name.endswith(".pyc") or tarinfo.name.endswith(".lock"):
-                if "uv.lock" not in tarinfo.name and "Cargo.lock" not in tarinfo.name:
-                    return None
+            if (
+                (tarinfo.name.endswith(".pyc") or tarinfo.name.endswith(".lock"))
+                and "uv.lock" not in tarinfo.name
+                and "Cargo.lock" not in tarinfo.name
+            ):
+                return None
             return tarinfo
 
         with tarfile.open(output_tar, "w:gz") as tar:
@@ -175,7 +178,7 @@ class GCPSpotOrchestrator:
             f"gcs_bucket={config.gcs_bucket}",
             f"tier={config.tier}",
             f"run_id={config.run_id}",
-            f"task=verification",
+            "task=verification",
         ]
         cmd = [
             "gcloud",
@@ -276,7 +279,7 @@ class GCPSpotOrchestrator:
                 check=False,
             )
             if res.returncode == 0:
-                print(f"[+] Completion sentinel detected!")
+                print("[+] Completion sentinel detected!")
                 return True
             time.sleep(poll_interval)
 

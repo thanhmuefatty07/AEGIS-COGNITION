@@ -6,8 +6,8 @@ and dry-run orchestration without incurring cloud spend or heavy compute.
 
 from __future__ import annotations
 
+import contextlib
 import hashlib
-import io
 import json
 import subprocess
 import sys
@@ -20,19 +20,21 @@ ROOT = Path(__file__).resolve().parents[2]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from scripts.cloud_m8.cloud_run_services import CloudRunConfig, CloudRunServices
-from scripts.cloud_m8.gcp_spot_orchestrator import (
-    DEFAULT_ZONE,
+from scripts.cloud_m8.cloud_run_services import CloudRunConfig, CloudRunServices  # noqa: E402
+from scripts.cloud_m8.gcp_spot_orchestrator import (  # noqa: E402
     LABEL_ATTRIBUTION,
     GCPSpotOrchestrator,
     SpotVMConfig,
 )
-from scripts.cloud_m8.nv004_attestation_generator import (
+from scripts.cloud_m8.nv004_attestation_generator import (  # noqa: E402
     generate_attestation_hashes,
     generate_nv004_receipts,
 )
-from scripts.cloud_m8.tcp_cluster_orchestrator import ClusterConfig, TCPClusterOrchestrator
-from scripts.cloud_m8.track2_orchestrator import Track2Orchestrator
+from scripts.cloud_m8.tcp_cluster_orchestrator import (  # noqa: E402
+    ClusterConfig,
+    TCPClusterOrchestrator,
+)
+from scripts.cloud_m8.track2_orchestrator import Track2Orchestrator  # noqa: E402
 
 
 def get_artifacts_hashes(artifacts_dir: Path = ROOT / "artifacts") -> dict[str, str]:
@@ -98,10 +100,8 @@ class TestCloudM8Packaging(unittest.TestCase):
         self.tmp_path = Path(self.tmp_dir.name)
 
     def tearDown(self) -> None:
-        try:
+        with contextlib.suppress(Exception):
             self.tmp_dir.cleanup()
-        except Exception:
-            pass
 
     def test_spot_vm_config_and_command(self) -> None:
         """Verifies Spot VM parameters match strict cloud requirements."""
@@ -247,7 +247,7 @@ class TestCloudM8Packaging(unittest.TestCase):
 
         # Empty tarball (0 members)
         empty_tar = self.tmp_path / "empty_backup.tar.gz"
-        with tarfile.open(empty_tar, "w:gz") as tar:
+        with tarfile.open(empty_tar, "w:gz"):
             pass
         r_empty = orch.generate_nv009_restore_drill(backup_archive=empty_tar, dry_run=False)
         self.assertEqual(r_empty["status"], "FAIL_CLOSED (CORRUPT ARCHIVE)")

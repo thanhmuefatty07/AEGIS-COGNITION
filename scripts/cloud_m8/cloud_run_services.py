@@ -411,9 +411,9 @@ CMD ["python", "server.py"]
         traces_url = f"{otlp_url.rstrip('/')}/v1/traces"
         print(f"[+] Emitting live OTLP telemetry to {traces_url}...")
 
-        trace_id = hashlib.md5(f"aegis-trace-{now_utc}".encode("utf-8")).hexdigest()
-        parent_span_id = hashlib.sha256(f"parent-{now_utc}".encode("utf-8")).hexdigest()[:16]
-        child_span_id = hashlib.sha256(f"child-{now_utc}".encode("utf-8")).hexdigest()[:16]
+        trace_id = hashlib.md5(f"aegis-trace-{now_utc}".encode()).hexdigest()
+        parent_span_id = hashlib.sha256(f"parent-{now_utc}".encode()).hexdigest()[:16]
+        child_span_id = hashlib.sha256(f"child-{now_utc}".encode()).hexdigest()[:16]
 
         payload = {
             "resourceSpans": [

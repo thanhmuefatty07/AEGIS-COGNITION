@@ -11,7 +11,6 @@ Adversarially validates:
 
 from __future__ import annotations
 
-import hashlib
 import ipaddress
 import json
 import re
@@ -21,6 +20,7 @@ import sys
 import types
 import unittest
 from pathlib import Path
+from typing import Any
 
 ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
@@ -176,7 +176,7 @@ class TestChallengerM83DistributedServices(unittest.TestCase):
         self.assertTrue(all(c["ok"] for c in checks))
 
         # Re-evaluate live using the evaluator function
-        evaluate_fn = getattr(tcp_cluster_soak_gate, "evaluate_tcp_cluster_soak_gate")
+        evaluate_fn = tcp_cluster_soak_gate.evaluate_tcp_cluster_soak_gate
         eval_res = evaluate_fn(ROOT)
         self.assertTrue(eval_res.get("overall_ok"))
         self.assertEqual(eval_res.get("failed"), 0)
@@ -275,7 +275,7 @@ class TestChallengerM83DistributedServices(unittest.TestCase):
         self.assertTrue(all(c["ok"] for c in checks))
 
         # Re-evaluate live using the evaluator function
-        evaluate_fn = getattr(dynamic_provider_fallback_gate, "evaluate_dynamic_provider_fallback_gate")
+        evaluate_fn = dynamic_provider_fallback_gate.evaluate_dynamic_provider_fallback_gate
         eval_res = evaluate_fn(ROOT)
         self.assertTrue(eval_res.get("overall_ok"))
         self.assertEqual(eval_res.get("failed"), 0)

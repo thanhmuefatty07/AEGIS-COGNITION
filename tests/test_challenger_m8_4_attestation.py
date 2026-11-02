@@ -21,22 +21,21 @@ Adversarially stress-tests:
 
 from __future__ import annotations
 
+import contextlib
 import copy
 import hashlib
 import json
-import os
 import shutil
 import sys
 import tempfile
 import unittest
 from pathlib import Path
-from typing import Any
 
 ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from scripts.supply_chain_gate import (
+from scripts.supply_chain_gate import (  # noqa: E402
     evaluate_supply_chain_gate,
     write_release_signed_attestation_artifacts,
 )
@@ -93,10 +92,8 @@ class TestChallengerM84Attestation(unittest.TestCase):
 
     @classmethod
     def tearDownClass(cls) -> None:
-        try:
+        with contextlib.suppress(Exception):
             cls.sandbox_dir.cleanup()
-        except Exception:
-            pass
 
         # Global Zero-Drift assertion on canonical ROOT / artifacts
         final_canonical_hashes = get_artifacts_hashes(ROOT / "artifacts")

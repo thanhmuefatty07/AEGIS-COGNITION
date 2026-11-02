@@ -128,7 +128,7 @@ def main() -> None:
         "profile_label": args.profile,
         "profile_label_is_not_hardware_proof": not args.proven,
         "iterations": args.iterations,
-        "verified": True if args.proven else False,
+        "verified": bool(args.proven),
         "status": "PROVEN" if args.proven else "MEASURED_LOCAL_ONLY",
         "workload": {
             "payload_class": "64-byte admission-shaped CPU primitive",

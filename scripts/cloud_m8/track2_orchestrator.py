@@ -268,15 +268,17 @@ class Track2Orchestrator:
                     if resp.status == 200:
                         data = json.loads(resp.read().decode("utf-8"))
                         runs = data.get("workflow_runs", [])
-                        for r in runs:
-                            matrix_runs.append({
+                        matrix_runs.extend(
+                            {
                                 "workflow": r.get("name"),
                                 "run_id": r.get("id"),
                                 "head_sha": r.get("head_sha"),
                                 "status": r.get("status"),
                                 "conclusion": r.get("conclusion"),
                                 "html_url": r.get("html_url"),
-                            })
+                            }
+                            for r in runs
+                        )
                         if matrix_runs and all(
                             r.get("status") == "completed" and r.get("conclusion") == "success"
                             for r in matrix_runs
@@ -478,10 +480,8 @@ class Track2Orchestrator:
 
         for search_dir in (self.root / "dist", self.artifacts_dir):
             if search_dir.is_dir():
-                for whl in search_dir.glob("*macos*.whl"):
-                    candidate_paths.append(whl)
-                for whl in search_dir.glob("*macosx*.whl"):
-                    candidate_paths.append(whl)
+                candidate_paths.extend(search_dir.glob("*macos*.whl"))
+                candidate_paths.extend(search_dir.glob("*macosx*.whl"))
 
         verified_wheel: Path | None = None
         for p in candidate_paths:
@@ -507,7 +507,7 @@ class Track2Orchestrator:
                 "dry_run": False,
             }
             receipt_path.write_text(json.dumps(receipt, indent=2, sort_keys=True) + "\n", encoding="utf-8")
-            print(f"[!] Fail-closed: NV-008-M macOS wheel not found.")
+            print("[!] Fail-closed: NV-008-M macOS wheel not found.")
             return receipt
 
         wheel_bytes = verified_wheel.read_bytes()

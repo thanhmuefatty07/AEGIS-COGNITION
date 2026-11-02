@@ -16,7 +16,6 @@ import subprocess
 import sys
 import time
 from dataclasses import dataclass, field
-from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -308,7 +307,7 @@ systemctl enable --now aegis-worker.service
                     with socket.create_connection((host, port), timeout=2.0):
                         print(f"[+] Worker {ep.get('machine_id', host)} ({host}:{port}) is READY.")
                         ready.append(ep)
-                except (OSError, socket.error):
+                except OSError:
                     pass
             for r in ready:
                 pending.remove(r)

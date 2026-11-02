@@ -15,7 +15,6 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
-import os
 import sys
 from datetime import UTC, datetime
 from pathlib import Path
@@ -53,7 +52,7 @@ def generate_attestation_hashes(
     identity: str = "https://github.com/AEGIS-COGNITION/actions/release-attestation@v1",
 ) -> tuple[str, str, str]:
     """Generates deterministic cryptographic hashes bound to the subject and verifier identity."""
-    salt = f"aegis-slsa-v1.0-cosign-rekor:{identity}:{subject_hash}".encode("utf-8")
+    salt = f"aegis-slsa-v1.0-cosign-rekor:{identity}:{subject_hash}".encode()
     sig_bundle_hash = hashlib.sha256(b"bundle:" + salt).hexdigest()
     rekor_log_entry_hash = hashlib.sha256(b"rekor:" + salt).hexdigest()
     cert_id_hash = hashlib.sha256(b"fulcio-cert:" + salt).hexdigest()
