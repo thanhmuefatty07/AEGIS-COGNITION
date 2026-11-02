@@ -87,7 +87,7 @@ def _git_ref(ref: str) -> str:
             capture_output=True,
             text=True,
         ).stdout.strip()
-    except OSError, subprocess.CalledProcessError:
+    except (OSError, subprocess.CalledProcessError):
         return "NOT_AVAILABLE"
 
 
@@ -312,7 +312,7 @@ def _dynamic_edge_paths(paths: list[str]) -> list[str]:
             continue
         try:
             text = absolute.read_text(encoding="utf-8")
-        except OSError, UnicodeError:
+        except (OSError, UnicodeError):
             dynamic.append(path)
             continue
         if any(marker in text for marker in _DYNAMIC_MARKERS):

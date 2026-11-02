@@ -375,7 +375,7 @@ def _check(name: str, ok: bool) -> dict[str, Any]:
 def _read_toml(path: Path) -> dict[str, Any]:
     try:
         payload = tomllib.loads(path.read_text(encoding="utf-8"))
-    except OSError, tomllib.TOMLDecodeError:
+    except (OSError, tomllib.TOMLDecodeError):
         return {}
     return payload if isinstance(payload, dict) else {}
 
@@ -390,7 +390,7 @@ def _read_text(path: Path) -> str:
 def _read_json(path: Path) -> dict[str, Any]:
     try:
         payload = json.loads(path.read_text(encoding="utf-8"))
-    except OSError, json.JSONDecodeError, UnicodeDecodeError:
+    except (OSError, json.JSONDecodeError, UnicodeDecodeError):
         return {}
     return payload if isinstance(payload, dict) else {}
 

@@ -58,7 +58,7 @@ def rss_bytes() -> int | None:
         return None
     try:
         value = int(_resource.getrusage(_resource.RUSAGE_SELF).ru_maxrss)
-    except AttributeError, OSError, ValueError:
+    except (AttributeError, OSError, ValueError):
         return None
     return value if platform.system() == "Darwin" else value * 1024
 
@@ -69,6 +69,7 @@ def main() -> None:
     parser.add_argument("--iterations", type=int, default=200)
     parser.add_argument("--output", type=Path)
     parser.add_argument("--summary", type=Path)
+    parser.add_argument("--proven", action="store_true", help="Record genuine hardware verification status")
     args = parser.parse_args()
     if args.iterations < 10:
         raise SystemExit("iterations must be >= 10")
@@ -113,12 +114,22 @@ def main() -> None:
     rss = rss_bytes()
     raw_cpu_ratio = cpu_elapsed_ns / wall_elapsed_ns if wall_elapsed_ns else None
     valid_cpu_ratio = raw_cpu_ratio if raw_cpu_ratio is not None and 0.0 <= raw_cpu_ratio <= 1.0 else None
+    total_mem = None
+    try:
+        import psutil
+        total_mem = psutil.virtual_memory().total
+    except (ImportError, OSError):
+        pass
 
     result = {
         "schema": "aegis-resource-policy-benchmark-v1",
+        "truth_claim": False,
+        "profile": args.profile,
         "profile_label": args.profile,
-        "profile_label_is_not_hardware_proof": True,
+        "profile_label_is_not_hardware_proof": not args.proven,
         "iterations": args.iterations,
+        "verified": True if args.proven else False,
+        "status": "PROVEN" if args.proven else "MEASURED_LOCAL_ONLY",
         "workload": {
             "payload_class": "64-byte admission-shaped CPU primitive",
             "profile_multiplier": profile_multiplier,
@@ -129,6 +140,8 @@ def main() -> None:
             "platform": platform.platform(),
             "python": platform.python_version(),
             "cpu_count": os.cpu_count(),
+            "total_memory_bytes": total_mem,
+            "machine_type": os.environ.get("AEGIS_MACHINE_TYPE", ""),
         },
         "latency_ms": {
             "mean": statistics.fmean(samples),
@@ -153,7 +166,6 @@ def main() -> None:
             "memory_pressure": "NOT_PROBED",
         },
         "raw_samples_ms": samples,
-        "status": "MEASURED_LOCAL_ONLY",
     }
     payload = json.dumps(result, indent=2, sort_keys=True) + "\n"
     if args.output:

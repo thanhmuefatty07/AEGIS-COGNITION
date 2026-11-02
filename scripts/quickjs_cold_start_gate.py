@@ -587,7 +587,7 @@ def _admission_state_bound(admission: dict[str, Any]) -> bool:
 def _read_json(path: Path) -> dict[str, Any]:
     try:
         payload = json.loads(path.read_text(encoding="utf-8"))
-    except OSError, json.JSONDecodeError, UnicodeDecodeError:
+    except (OSError, json.JSONDecodeError, UnicodeDecodeError):
         return {}
     return payload if isinstance(payload, dict) else {}
 
@@ -608,7 +608,7 @@ def _read_capture(path: Path) -> tuple[dict[str, Any], bool, bytes, str]:
         return {}, True, capture_bytes, "empty"
     try:
         payload = json.loads(capture_bytes.decode("utf-8"))
-    except UnicodeDecodeError, json.JSONDecodeError:
+    except (UnicodeDecodeError, json.JSONDecodeError):
         return {}, True, capture_bytes, "invalid-json"
     if not isinstance(payload, dict):
         return {}, True, capture_bytes, "non-object"

@@ -437,7 +437,7 @@ def _load_retained_paired_cost(path: Path) -> dict[str, object] | None:
 
     try:
         raw = json.loads(path.read_text(encoding="utf-8"))
-    except OSError, json.JSONDecodeError:
+    except (OSError, json.JSONDecodeError):
         return None
     if type(raw) is not dict:
         return None

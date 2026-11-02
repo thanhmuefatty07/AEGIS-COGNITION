@@ -16,10 +16,14 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-if __package__:
-    from .suite_evidence import suite_execution_valid
-else:
-    from suite_evidence import suite_execution_valid
+try:
+    if __package__:
+        from .suite_evidence import suite_execution_valid
+    else:
+        from suite_evidence import suite_execution_valid
+except (ImportError, SyntaxError):
+    def suite_execution_valid(candidate: Any) -> bool:
+        return False
 
 ROOT = Path(__file__).resolve().parents[1]
 MANIFEST = ROOT / "docs" / "architecture" / "evidence" / "current.json"
@@ -235,7 +239,7 @@ def validate_registry_parity(manifest: dict[str, Any]) -> list[str]:
         if tracked_manifest_path.is_file():
             try:
                 tracked_manifest = load_manifest(tracked_manifest_path)
-            except OSError, ValueError, json.JSONDecodeError:
+            except (OSError, ValueError, json.JSONDecodeError):
                 tracked_manifest = {}
             tracked_requirements = tracked_manifest.get("requirements", ())
             gt96_requirements = [
@@ -327,7 +331,7 @@ def load_suite_artifacts(root: Path, expected_head: str) -> dict[str, dict[str, 
     for path in sorted(suite_dir.glob("*.json")):
         try:
             candidate = load_manifest(path)
-        except OSError, ValueError, json.JSONDecodeError:
+        except (OSError, ValueError, json.JSONDecodeError):
             continue
         if candidate.get("schema") != "aegis-suite-evidence-v1":
             continue
@@ -436,7 +440,7 @@ def materialize_for_head(template: dict[str, Any], expected_head: str) -> dict[s
     manifest["generated_at_utc"] = datetime.now(UTC).replace(microsecond=0).isoformat().replace("+00:00", "Z")
     try:
         manifest["not_verified_ids"] = sorted(registry_ids())
-    except OSError, ValueError, json.JSONDecodeError:
+    except (OSError, ValueError, json.JSONDecodeError):
         # Keep generation deterministic and let validation emit the precise
         # registry-authority error instead of silently retaining stale IDs.
         manifest["not_verified_ids"] = []
