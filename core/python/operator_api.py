@@ -314,29 +314,6 @@ def serve_operator_evidence_api(
     return ThreadingHTTPServer((host, port), build_operator_http_handler(api))
 
 
-def create_app(root: str | Path | None = None) -> Any:
-    from starlette.applications import Starlette
-    from starlette.requests import Request
-    from starlette.responses import Response
-    from starlette.routing import Route
-
-    resolved_root = resolve_operator_root(root)
-    api = OperatorEvidenceApi(resolved_root)
-
-    async def _handle_route(request: Request) -> Response:
-        res = api.handle_get(request.url.path)
-        return Response(content=res.body, status_code=res.status, media_type=res.content_type)
-
-    routes = [
-        Route("/", _handle_route, methods=["GET"]),
-        Route("/health", _handle_route, methods=["GET"]),
-        Route("/snapshot", _handle_route, methods=["GET"]),
-        Route("/artifacts", _handle_route, methods=["GET"]),
-        Route("/production-closure", _handle_route, methods=["GET"]),
-    ]
-    return Starlette(routes=routes)
-
-
 def _summarize_report_artifact(path: Path, logical_name: str) -> OperatorArtifactSummary:
     resolved = path.resolve()
     if not resolved.exists():

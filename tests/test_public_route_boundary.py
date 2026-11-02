@@ -1,9 +1,8 @@
 from __future__ import annotations
 
-import asyncio
 import json
+import threading
 from pathlib import Path
-from typing import Any
 
 import httpx
 import pytest
@@ -13,17 +12,21 @@ from core.python.operator_api import (
     HEALTH_SCHEMA,
     PRODUCTION_CLOSURE_SCHEMA,
     SNAPSHOT_SCHEMA,
-    create_app,
+    serve_operator_evidence_api,
 )
 
 
-def _asgi_get(app: Any, path: str) -> httpx.Response:
-    async def _request() -> httpx.Response:
-        transport = httpx.ASGITransport(app=app)
-        async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as client:
-            return await client.get(path)
-
-    return asyncio.run(_request())
+def _http_get(root: Path, path: str) -> httpx.Response:
+    server = serve_operator_evidence_api(root, host="127.0.0.1", port=0)
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    try:
+        host, port = server.server_address[:2]
+        return httpx.get(f"http://{host}:{port}{path}", timeout=5.0)
+    finally:
+        server.shutdown()
+        thread.join(timeout=5.0)
+        server.server_close()
 
 
 def test_cli_version_subcommand(capsys: pytest.CaptureFixture[str]) -> None:
@@ -90,8 +93,7 @@ def test_cli_verify_dry_run_subcommand_rejects_invalid_configuration(
 
 
 def test_operator_api_health_endpoint(tmp_path: Path) -> None:
-    app = create_app(tmp_path)
-    response = _asgi_get(app, "/health")
+    response = _http_get(tmp_path, "/health")
     assert response.status_code == 200
     data = response.json()
     assert data.get("status") == "ok"
@@ -100,8 +102,7 @@ def test_operator_api_health_endpoint(tmp_path: Path) -> None:
 
 
 def test_operator_api_snapshot_endpoint(tmp_path: Path) -> None:
-    app = create_app(tmp_path)
-    response = _asgi_get(app, "/snapshot")
+    response = _http_get(tmp_path, "/snapshot")
     assert response.status_code == 200
     data = response.json()
     assert data.get("schema") == SNAPSHOT_SCHEMA
@@ -110,8 +111,7 @@ def test_operator_api_snapshot_endpoint(tmp_path: Path) -> None:
 
 
 def test_operator_api_artifacts_endpoint(tmp_path: Path) -> None:
-    app = create_app(tmp_path)
-    response = _asgi_get(app, "/artifacts")
+    response = _http_get(tmp_path, "/artifacts")
     assert response.status_code == 200
     data = response.json()
     assert data.get("schema") == "aegis-operator-artifact-index-v1"
@@ -120,8 +120,7 @@ def test_operator_api_artifacts_endpoint(tmp_path: Path) -> None:
 
 
 def test_operator_api_production_closure_endpoint_missing_artifact(tmp_path: Path) -> None:
-    app = create_app(tmp_path)
-    response = _asgi_get(app, "/production-closure")
+    response = _http_get(tmp_path, "/production-closure")
     assert response.status_code == 503
     data = response.json()
     assert data.get("schema") == PRODUCTION_CLOSURE_SCHEMA
@@ -152,8 +151,7 @@ def test_operator_api_production_closure_endpoint_valid_artifact(tmp_path: Path)
     }
     report_file.write_text(json.dumps(report_payload), encoding="utf-8")
 
-    app = create_app(tmp_path)
-    response = _asgi_get(app, "/production-closure")
+    response = _http_get(tmp_path, "/production-closure")
     assert response.status_code == 200
     data = response.json()
     assert data.get("schema") == PRODUCTION_CLOSURE_SCHEMA

@@ -1,0 +1,1514 @@
+{
+  "artifact_hash": "64e2cbb2f2d3aa758761bd0587b2415fba6516c933e90dfdc06fa7f2bd65fe83",
+  "layer_hierarchy": [
+    "L0_core_rust",
+    "L1_ffi_bridge",
+    "L2_python_sdk",
+    "L3_surfaces"
+  ],
+  "overlap_resolutions": [
+    {
+      "adr": "docs/adr/ADR-022-operator-api-single-server.md",
+      "canonical_owner": "core/python/operator_api.py (serve_operator_evidence_api / ThreadingHTTPServer)",
+      "domain": "Operator API HTTP Server",
+      "resolution": "Removed duplicate Starlette ASGI server (create_app); tests/test_public_route_boundary.py exercises the real ThreadingHTTPServer over loopback HTTP sockets (ADR-022)."
+    },
+    {
+      "adr": "docs/adr/ADR-023-execution-boundary.md",
+      "canonical_owner": "core/rust/src/execution.rs (OS sandbox & CPU/IO/Accelerator lanes) vs aegis_cognition/verification/execution.py (bounded test-runner argv builder & JUnit/Cargo parser)",
+      "domain": "Execution Lanes vs Local Verification Command Builder",
+      "resolution": "Strict separation of responsibilities: verification/execution.py constructs bounded test commands and parses test reports inside ProcessExecutionCell scopes; core/rust/src/execution.rs owns OS process isolation and execution lanes (ADR-023)."
+    },
+    {
+      "adr": "docs/adr/ADR-024-lab-authority-boundary.md",
+      "canonical_owner": "core/rust/src/lab.rs (deterministic LabController state machine) vs aegis_cognition/lab.py (Python developer SDK, cells, and unit registry)",
+      "domain": "Lab State Authority vs Python Lab SDK Fa\u00e7ade",
+      "resolution": "core/rust/src/lab.rs is the single state & hash-chain authority exposed via core/rust/src/ffi/lab.rs; aegis_cognition/lab.py owns high-level Python cell ergonomics and delegates state transitions to Rust (ADR-024)."
+    },
+    {
+      "adr": "docs/adr/ADR-021-foundation-convergence.md",
+      "canonical_owner": "core/rust/src/{conversations,connections,learning,evidence_index,bridge_mmap}.rs",
+      "domain": "Core Gateway Adapters (conversations, connections, learning, evidence, mmap_bridge)",
+      "resolution": "core/python/aegis/*.py modules are thin typed Python DTO/FFI adapters over core/rust/src/ffi/*.rs (ADR-005, ADR-021)."
+    }
+  ],
+  "python_sdk_capabilities": [
+    {
+      "adapter_or_facade_paths": [
+        "aegis_cognition/__init__.py"
+      ],
+      "canonical_owner": "aegis_cognition/_public_exports.py",
+      "capability_id": "CAP-PY-PUBLIC-EXPORTS",
+      "consumers": [
+        "aegis_cognition/cli.py",
+        "tests/test_public_route_boundary.py"
+      ],
+      "domain": "Package Version & Root Public Symbol Table",
+      "layer": "L2_python_sdk",
+      "owning_tests": [
+        "tests/test_public_route_boundary.py"
+      ],
+      "performance_budget": "O(1) version lookup",
+      "public_symbols": [
+        "version"
+      ],
+      "symbol_count": 1
+    },
+    {
+      "adapter_or_facade_paths": [
+        "aegis_cognition/_public_exports.py"
+      ],
+      "canonical_owner": "aegis_cognition/aese.py",
+      "capability_id": "CAP-PY-AESE-MODEL",
+      "consumers": [
+        "scripts/aese_claim_graph.py",
+        "scripts/aese_validation_corpus.py"
+      ],
+      "domain": "AESE Adaptive Measurement, Cross-Hardware Prediction & Evidence Ledger",
+      "layer": "L2_python_sdk",
+      "owning_tests": [
+        "tests/test_aese_inventory.py",
+        "tests/test_aese_claim_graph.py"
+      ],
+      "performance_budget": "Anchor selection & cross-hardware analytic prediction <= 5 ms",
+      "public_symbols": [
+        "AdaptiveMeasurementResult",
+        "AdaptiveMeasurementSession",
+        "AdaptiveMeasurementSpec",
+        "AnalyticPredictionModel",
+        "AnchorCandidate",
+        "AnchorObservation",
+        "AnchorSelectionPlan",
+        "CoverageVector",
+        "EVIDENCE_CLASSES",
+        "EVIDENCE_STATUSES",
+        "EvidenceLedger",
+        "EvidenceLedgerEntry",
+        "HardwareCapabilityVector",
+        "PredictionResult",
+        "SimulationEvidence",
+        "WorkloadSignature",
+        "evaluate_adaptive_measurement",
+        "predict_cross_hardware",
+        "select_anchor_plan"
+      ],
+      "symbol_count": 19
+    },
+    {
+      "adapter_or_facade_paths": [
+        "aegis_cognition/__init__.py",
+        "aegis_cognition/_public_exports.py"
+      ],
+      "canonical_owner": "aegis_cognition/agent.py",
+      "capability_id": "CAP-PY-AGENT",
+      "consumers": [
+        "aegis_cognition/cli.py",
+        "aegis_cognition/application.py",
+        "tests/test_public_route_boundary.py"
+      ],
+      "domain": "Friendly Gateway Agent & Single-Call Entrypoint",
+      "layer": "L2_python_sdk",
+      "owning_tests": [
+        "tests/test_public_route_boundary.py",
+        "core/python/tests.py"
+      ],
+      "performance_budget": "Agent initialization <= 5 ms; zero blocking network I/O during construction",
+      "public_symbols": [
+        "Agent",
+        "run"
+      ],
+      "symbol_count": 2
+    },
+    {
+      "adapter_or_facade_paths": [
+        "aegis_cognition/_public_exports.py"
+      ],
+      "canonical_owner": "aegis_cognition/agent_efficiency.py",
+      "capability_id": "CAP-PY-AGENT-EFFICIENCY",
+      "consumers": [
+        "aegis_cognition/verification/execution.py",
+        "aegis_cognition/agent.py"
+      ],
+      "domain": "Observation Projection, Action Fusion, Capability Floor & Disposable Worktrees",
+      "layer": "L2_python_sdk",
+      "owning_tests": [
+        "tests/test_agent_efficiency.py"
+      ],
+      "performance_budget": "Evidence-preserving reduction <= 5 ms per observation pack",
+      "public_symbols": [
+        "ActionFusion",
+        "ActionFusionResult",
+        "CapabilityEvaluation",
+        "DisposableWorktree",
+        "EvidencePreservingReducer",
+        "EvidenceReceipt",
+        "EvidenceReduction",
+        "ObservationPack",
+        "ObservationProjection",
+        "evaluate_capability_floor"
+      ],
+      "symbol_count": 10
+    },
+    {
+      "adapter_or_facade_paths": [
+        "aegis_cognition/_public_exports.py"
+      ],
+      "canonical_owner": "aegis_cognition/benchmark.py",
+      "capability_id": "CAP-PY-BENCHMARK",
+      "consumers": [
+        "scripts/benchmark_gate.py",
+        "aegis-plugins/aegis-bench"
+      ],
+      "domain": "Benchmark Protocol v2, Trial Recording & Statistical Evaluation",
+      "layer": "L2_python_sdk",
+      "owning_tests": [
+        "tests/test_benchmark_protocol.py"
+      ],
+      "performance_budget": "Bootstrap CI & protocol validation <= 25 ms per 100 trials",
+      "public_symbols": [
+        "BenchmarkProtocolV2",
+        "BenchmarkResultV2",
+        "BenchmarkTrialRecord",
+        "EnvironmentFingerprint",
+        "evaluate_benchmark"
+      ],
+      "symbol_count": 5
+    },
+    {
+      "adapter_or_facade_paths": [
+        "aegis_cognition/_public_exports.py"
+      ],
+      "canonical_owner": "aegis_cognition/code_reuse.py",
+      "capability_id": "CAP-PY-CODE-REUSE",
+      "consumers": [
+        "aegis_cognition/verification/facade.py"
+      ],
+      "domain": "Verified Code Reuse Assessment & Exact Artifact Materialization",
+      "layer": "L2_python_sdk",
+      "owning_tests": [
+        "tests/test_code_reuse.py"
+      ],
+      "performance_budget": "Reuse candidate hash & license verification <= 5 ms per file",
+      "public_symbols": [
+        "CODE_REUSE_SCHEMA_V1",
+        "CodeReuseAssessment",
+        "CodeReuseCandidate",
+        "CodeReuseError",
+        "CodeReusePolicy",
+        "CodeReuseReceipt",
+        "assess_code_reuse",
+        "build_local_reuse_candidate",
+        "materialize_exact"
+      ],
+      "symbol_count": 9
+    },
+    {
+      "adapter_or_facade_paths": [
+        "aegis_cognition/_public_exports.py"
+      ],
+      "canonical_owner": "aegis_cognition/extensions.py",
+      "capability_id": "CAP-PY-EXTENSIONS",
+      "consumers": [
+        "aegis_cognition/desktop_service.py",
+        "aegis_cognition/lab.py"
+      ],
+      "domain": "Extension Manifest Discovery, MCP Stdio/HTTP Providers & Skill Catalog",
+      "layer": "L2_python_sdk",
+      "owning_tests": [
+        "tests/test_extensions.py",
+        "tests/test_mcp_resources_and_vision.py"
+      ],
+      "performance_budget": "Manifest discovery & schema validation <= 10 ms per extension directory",
+      "public_symbols": [
+        "EXTENSION_MANIFEST_SCHEMA_V1",
+        "ExtensionError",
+        "ExtensionManifest",
+        "ExtensionNotFound",
+        "ExtensionRegistry",
+        "MCP_SERVER_SCHEMA_V1",
+        "McpHttpConfig",
+        "McpHttpProvider",
+        "McpResourceDescriptor",
+        "McpResourceTemplateDescriptor",
+        "McpResourceToolProvider",
+        "McpServerSpec",
+        "McpStdioConfig",
+        "McpStdioProvider",
+        "McpToolDescriptor",
+        "McpToolProvider",
+        "SKILL_DESCRIPTOR_SCHEMA_V1",
+        "SkillCatalog",
+        "SkillDescriptor",
+        "TOOL_DESCRIPTOR_SCHEMA_V1",
+        "ToolExecutionError",
+        "ToolSpec",
+        "discover_extension_manifests"
+      ],
+      "symbol_count": 23
+    },
+    {
+      "adapter_or_facade_paths": [
+        "aegis_cognition/_public_exports.py"
+      ],
+      "canonical_owner": "aegis_cognition/goal_contract.py",
+      "capability_id": "CAP-PY-GOAL-CONTRACT",
+      "consumers": [
+        "aegis_cognition/agent.py",
+        "core/rust/src/goal_intake.rs"
+      ],
+      "domain": "Goal Contracts, Acceptance Predicates, Budgets & Side-Effect Idempotency Keys",
+      "layer": "L2_python_sdk",
+      "owning_tests": [
+        "tests/test_goal_contract.py"
+      ],
+      "performance_budget": "Contract validation & predicate evaluation <= 1 ms",
+      "public_symbols": [
+        "AcceptancePredicate",
+        "DEFAULT_GOAL_CONTRACT_LIMITS",
+        "EvidencePolicy",
+        "GoalBudgetContract",
+        "GoalContract",
+        "GoalContractError",
+        "GoalContractLimits",
+        "GoalLifecycle",
+        "GoalProgress",
+        "GoalVerdict",
+        "GoalVerification",
+        "StaleGoalGeneration",
+        "TargetDescriptor",
+        "external_side_effect_key"
+      ],
+      "symbol_count": 14
+    },
+    {
+      "adapter_or_facade_paths": [
+        "aegis_cognition/_public_exports.py",
+        "core/rust/src/ffi/lab.rs"
+      ],
+      "canonical_owner": "aegis_cognition/lab.py",
+      "capability_id": "CAP-PY-LAB-SDK",
+      "consumers": [
+        "aegis_cognition/verification/facade.py",
+        "aegis_cognition/desktop_service.py"
+      ],
+      "domain": "Python Lab Orchestration Fa\u00e7ade, Simulation/Electrical/Process Cells & Unit Registry",
+      "layer": "L2_python_sdk",
+      "owning_tests": [
+        "tests/test_lab_platform.py",
+        "tests/test_lab_scientific_Computing.py"
+      ],
+      "performance_budget": "Cell dispatch overhead <= 2 ms; deterministic state transitions delegated to core/rust/src/lab.rs",
+      "public_symbols": [
+        "AdaptiveController",
+        "AuthorityMode",
+        "BrowserObserverView",
+        "CalibrationResult",
+        "DEFAULT_UNIT_REGISTRY",
+        "ElectricalSignalCell",
+        "ElectricalSignalResult",
+        "ElectricalSignalSpec",
+        "ExecutionCellBinding",
+        "ExecutionCellRegistry",
+        "ExternalSideEffectLease",
+        "Lab",
+        "LabApplication",
+        "LabBudget",
+        "LabDossier",
+        "LabMissionSpec",
+        "LabPolicy",
+        "LabSession",
+        "ODEIntegrationResult",
+        "PhysicalConstraint",
+        "ProcessExecutionCell",
+        "ReplayWriterLease",
+        "SearchOperation",
+        "SearchProgram",
+        "SearchProgramExecutor",
+        "SimulationCell",
+        "SimulationSpec",
+        "SkillAdmission",
+        "SkillAdmissionError",
+        "SkillExecutionReceipt",
+        "SkillManifest",
+        "SkillRegistry",
+        "UnitDefinition",
+        "UnitRegistry",
+        "calibrate_simulation"
+      ],
+      "symbol_count": 35
+    },
+    {
+      "adapter_or_facade_paths": [
+        "aegis_cognition/_public_exports.py"
+      ],
+      "canonical_owner": "aegis_cognition/metrics.py",
+      "capability_id": "CAP-PY-METRICS",
+      "consumers": [
+        "aegis_cognition/agent.py",
+        "aegis_cognition/observability.py"
+      ],
+      "domain": "Runtime Metrics Collector & Summary Export",
+      "layer": "L2_python_sdk",
+      "owning_tests": [
+        "core/python/tests.py"
+      ],
+      "performance_budget": "Metric increment/observation <= 50 us",
+      "public_symbols": [
+        "RuntimeMetrics"
+      ],
+      "symbol_count": 1
+    },
+    {
+      "adapter_or_facade_paths": [
+        "aegis_cognition/_public_exports.py",
+        "core/rust/src/telemetry.rs"
+      ],
+      "canonical_owner": "aegis_cognition/observability.py",
+      "capability_id": "CAP-PY-OBSERVABILITY",
+      "consumers": [
+        "aegis_cognition/agent.py",
+        "scripts/otel_trace_exporter_gate.py"
+      ],
+      "domain": "Correlation Context & Runtime Telemetry Bridge",
+      "layer": "L2_python_sdk",
+      "owning_tests": [
+        "tests/test_observability.py"
+      ],
+      "performance_budget": "Span emission & JSONL serialization <= 500 us",
+      "public_symbols": [
+        "CorrelationContext",
+        "RuntimeTelemetry"
+      ],
+      "symbol_count": 2
+    },
+    {
+      "adapter_or_facade_paths": [
+        "aegis_cognition/_public_exports.py"
+      ],
+      "canonical_owner": "aegis_cognition/research_adapters.py",
+      "capability_id": "CAP-PY-RESEARCH-ADAPTERS",
+      "consumers": [
+        "aegis_cognition/subagents.py"
+      ],
+      "domain": "Public Research Routing (X App-Only & Reddit RSS Query Providers)",
+      "layer": "L2_python_sdk",
+      "owning_tests": [
+        "tests/test_research_vision_adapters.py"
+      ],
+      "performance_budget": "Bounded HTTP response parsing <= 10 ms per feed payload",
+      "public_symbols": [
+        "PublicResearchRouter",
+        "REDDIT_RSS_HOST",
+        "RESEARCH_ADAPTER_SCHEMA_V1",
+        "RedditRssQueryProvider",
+        "ResearchAdapterError",
+        "ResearchSourceUnavailable",
+        "XAppOnlyQueryProvider",
+        "build_public_research_handler"
+      ],
+      "symbol_count": 8
+    },
+    {
+      "adapter_or_facade_paths": [
+        "aegis_cognition/_public_exports.py",
+        "core/rust/src/ffi/runtime.rs",
+        "core/rust/src/runtime.rs",
+        "core/rust/src/placement.rs"
+      ],
+      "canonical_owner": "aegis_cognition/runtime.py",
+      "capability_id": "CAP-PY-RUNTIME-BRIDGE",
+      "consumers": [
+        "aegis_cognition/lab.py",
+        "scripts/resource_policy_benchmark.py"
+      ],
+      "domain": "Python Runtime Resource & Cooperative Placement FFI Fa\u00e7ade",
+      "layer": "L1_ffi_bridge",
+      "owning_tests": [
+        "tests/test_resource_runtime.py"
+      ],
+      "performance_budget": "Admission & lease token round-trip <= 1 ms",
+      "public_symbols": [
+        "admit_cooperative_placement",
+        "calibrate_placement",
+        "cooperative_placement_preview",
+        "cooperative_placement_preview_with_calibration",
+        "execution_lanes",
+        "finish_runtime_lease",
+        "hardware_profile",
+        "observe_runtime_resources",
+        "placement_capabilities",
+        "placement_plan",
+        "placement_plan_with_calibration",
+        "placement_resource_request",
+        "release_cooperative_placement",
+        "resource_contract_version",
+        "resource_usage_sample",
+        "submit_placement_task",
+        "submit_runtime_task"
+      ],
+      "symbol_count": 17
+    },
+    {
+      "adapter_or_facade_paths": [
+        "aegis_cognition/_public_exports.py"
+      ],
+      "canonical_owner": "aegis_cognition/subagents.py",
+      "capability_id": "CAP-PY-SUBAGENTS",
+      "consumers": [
+        "aegis_cognition/agent.py",
+        "core/rust/src/agent_coordination.rs"
+      ],
+      "domain": "Multi-Agent Coordination, Mailboxes, Evidence Board & Supervisor",
+      "layer": "L2_python_sdk",
+      "owning_tests": [
+        "tests/test_subagents.py",
+        "tests/test_dynamic_subagent_spawning.py"
+      ],
+      "performance_budget": "Plan DAG validation <= 2 ms per 32-node graph; bounded mailbox journal reads",
+      "public_symbols": [
+        "AGENT_COORDINATION_SCHEMA_V1",
+        "AGENT_GRAPH_SCHEMA_V1",
+        "AGENT_MESSAGE_SCHEMA_V1",
+        "AGENT_PLAN_SCHEMA_V1",
+        "AGENT_RESULT_SCHEMA_V1",
+        "AgentArtifactRef",
+        "AgentClaim",
+        "AgentCoordinationError",
+        "AgentEvidenceBoard",
+        "AgentHandler",
+        "AgentHandlerRegistration",
+        "AgentMailbox",
+        "AgentMailboxDelivery",
+        "AgentMailboxWorkResult",
+        "AgentMailboxWorker",
+        "AgentMessage",
+        "AgentMessageJournal",
+        "AgentMessageJournalEntry",
+        "AgentMessageJournalRead",
+        "AgentPeerMessageError",
+        "AgentPeerQuestion",
+        "AgentPlanProposal",
+        "AgentResultPacket",
+        "AgentSupervisor",
+        "AgentSupervisorResult",
+        "AgentTaskBlueprint",
+        "AgentTaskContext",
+        "AgentTaskSpec",
+        "DynamicPlanBinder",
+        "DynamicPlanSpawner",
+        "build_model_subagent_handler",
+        "build_root_synthesizer",
+        "parse_agent_plan",
+        "validate_agent_graph",
+        "validate_agent_graph_locally"
+      ],
+      "symbol_count": 35
+    },
+    {
+      "adapter_or_facade_paths": [
+        "aegis_cognition/_public_exports.py",
+        "aegis_cognition/verification/contracts.py",
+        "aegis_cognition/verification/facade.py",
+        "aegis_cognition/verification/execution.py",
+        "aegis_cognition/verification/session.py"
+      ],
+      "canonical_owner": "aegis_cognition/verification/__init__.py",
+      "capability_id": "CAP-PY-VERIFICATION",
+      "consumers": [
+        "aegis_cognition/cli.py",
+        "aegis_cognition/lab.py"
+      ],
+      "domain": "Development Verification Sessions, Project Profiling & Local Test Execution",
+      "layer": "L2_python_sdk",
+      "owning_tests": [
+        "tests/test_verification_session.py"
+      ],
+      "performance_budget": "Command argv construction <= 5 ms; output capture bounded to 8 MiB",
+      "public_symbols": [
+        "AgentImplementationPacket",
+        "ArtifactReference",
+        "ContractValidationError",
+        "DevelopmentVerificationSession",
+        "ExecutionReceipt",
+        "ProjectProfile",
+        "TestChangeProposal",
+        "TestDescriptor",
+        "VerificationAssessment",
+        "VerificationEvent",
+        "VerificationFacade",
+        "VerificationPlan",
+        "VerificationRequirement",
+        "VerificationSessionError"
+      ],
+      "symbol_count": 14
+    },
+    {
+      "adapter_or_facade_paths": [
+        "aegis_cognition/_public_exports.py"
+      ],
+      "canonical_owner": "aegis_cognition/vision_adapters.py",
+      "capability_id": "CAP-PY-VISION-ADAPTERS",
+      "consumers": [
+        "aegis_cognition/subagents.py"
+      ],
+      "domain": "Browser Capture & Vision Observation Subagent Adapters",
+      "layer": "L2_python_sdk",
+      "owning_tests": [
+        "tests/test_research_vision_adapters.py",
+        "tests/test_mcp_resources_and_vision.py"
+      ],
+      "performance_budget": "Image digest & observation envelope validation <= 5 ms",
+      "public_symbols": [
+        "BrowserCaptureProvider",
+        "VISION_ADAPTER_SCHEMA_V1",
+        "VisionAdapterError",
+        "VisionImage",
+        "VisionInvoker",
+        "VisionObservation",
+        "VisionObservationProvider",
+        "build_browser_vision_handler",
+        "build_vision_subagent_handler"
+      ],
+      "symbol_count": 9
+    },
+    {
+      "adapter_or_facade_paths": [
+        "aegis_cognition/_public_exports.py"
+      ],
+      "canonical_owner": "core/python/aegis/cache_economics.py",
+      "capability_id": "CAP-PY-CACHE-ECONOMICS",
+      "consumers": [
+        "aegis_cognition/agent.py",
+        "core/python/aegis/provider.py"
+      ],
+      "domain": "Prompt Cache Pricing, Prefix Hashing & Economic Context Compaction",
+      "layer": "L2_python_sdk",
+      "owning_tests": [
+        "tests/test_cache_economics.py"
+      ],
+      "performance_budget": "Prefix hashing & cache cost estimation <= 1 ms per prompt plan",
+      "public_symbols": [
+        "CACHE_PROMPT_SCHEMA_V1",
+        "CacheCostEstimate",
+        "CacheObservation",
+        "CachePricing",
+        "CachePromptPlan",
+        "CacheUsage",
+        "ContextCompactionDecision",
+        "EconomicContextCompaction",
+        "estimate_cache_cost",
+        "extract_cache_usage",
+        "stable_prefix_hash"
+      ],
+      "symbol_count": 11
+    }
+  ],
+  "rust_core_capabilities": [
+    {
+      "canonical_owner": "core/rust/src/agent_coordination.rs",
+      "capability_id": "CAP-RS-AGENT-COORDINATION",
+      "consumers": [
+        "core/rust/src/ffi/mod.rs",
+        "aegis_cognition/subagents.py"
+      ],
+      "domain": "Rust Multi-Agent Graph & Message Validator",
+      "layer": "L0_core_rust",
+      "module": "agent_coordination",
+      "owning_tests": [
+        "core/rust/src/tests.rs"
+      ],
+      "performance_budget": "Deterministic execution; zero unbounded allocation on hot path"
+    },
+    {
+      "canonical_owner": "core/rust/src/bridge_mmap.rs",
+      "capability_id": "CAP-RS-BRIDGE-MMAP",
+      "consumers": [
+        "core/rust/src/ffi/bridge.rs",
+        "core/python/aegis/mmap_bridge.py"
+      ],
+      "domain": "Zero-Copy Shared-Memory Mmap Ring Buffer Bridge",
+      "layer": "L0_core_rust",
+      "module": "bridge_mmap",
+      "owning_tests": [
+        "core/rust/src/tests.rs"
+      ],
+      "performance_budget": "Deterministic execution; zero unbounded allocation on hot path"
+    },
+    {
+      "canonical_owner": "core/rust/src/browser_witness.rs",
+      "capability_id": "CAP-RS-BROWSER-WITNESS",
+      "consumers": [
+        "core/rust/src/ffi/mod.rs",
+        "aegis-plugins/aegis-browser"
+      ],
+      "domain": "Cryptographic Browser DOM/Action Witness Verification",
+      "layer": "L0_core_rust",
+      "module": "browser_witness",
+      "owning_tests": [
+        "core/rust/src/tests.rs"
+      ],
+      "performance_budget": "Deterministic execution; zero unbounded allocation on hot path"
+    },
+    {
+      "canonical_owner": "core/rust/src/circuit_breaker.rs",
+      "capability_id": "CAP-RS-CIRCUIT-BREAKER",
+      "consumers": [
+        "core/rust/src/tool_gateway.rs",
+        "core/rust/src/llm.rs"
+      ],
+      "domain": "Provider & Tool Fault Isolation Circuit Breaker",
+      "layer": "L0_core_rust",
+      "module": "circuit_breaker",
+      "owning_tests": [
+        "core/rust/src/tests.rs"
+      ],
+      "performance_budget": "Deterministic execution; zero unbounded allocation on hot path"
+    },
+    {
+      "canonical_owner": "core/rust/src/cli/mod.rs",
+      "capability_id": "CAP-RS-CLI",
+      "consumers": [
+        "core/rust/src/bin/aegis_nerve_cli.rs",
+        "Dockerfile"
+      ],
+      "domain": "Native Rust CLI (`aegis-nerve-cli`) & Gate Runner",
+      "layer": "L3_surfaces",
+      "module": "cli",
+      "owning_tests": [
+        "core/rust/src/tests.rs"
+      ],
+      "performance_budget": "Deterministic execution; zero unbounded allocation on hot path"
+    },
+    {
+      "canonical_owner": "core/rust/src/connections.rs",
+      "capability_id": "CAP-RS-CONNECTIONS",
+      "consumers": [
+        "core/rust/src/ffi/connections.rs",
+        "core/python/aegis/connections.py"
+      ],
+      "domain": "Authenticated Peer & Provider Connection Registry",
+      "layer": "L0_core_rust",
+      "module": "connections",
+      "owning_tests": [
+        "core/rust/src/tests.rs"
+      ],
+      "performance_budget": "Deterministic execution; zero unbounded allocation on hot path"
+    },
+    {
+      "canonical_owner": "core/rust/src/context.rs",
+      "capability_id": "CAP-RS-CONTEXT",
+      "consumers": [
+        "core/rust/src/orchestrator.rs",
+        "core/rust/src/runtime.rs"
+      ],
+      "domain": "Deterministic Execution Context & Token Budget Window",
+      "layer": "L0_core_rust",
+      "module": "context",
+      "owning_tests": [
+        "core/rust/src/tests.rs"
+      ],
+      "performance_budget": "Deterministic execution; zero unbounded allocation on hot path"
+    },
+    {
+      "canonical_owner": "core/rust/src/conversations.rs",
+      "capability_id": "CAP-RS-CONVERSATIONS",
+      "consumers": [
+        "core/rust/src/ffi/conversations.rs",
+        "core/python/aegis/conversations.py"
+      ],
+      "domain": "Immutable Conversation Turn & Hash-Chain Ledger",
+      "layer": "L0_core_rust",
+      "module": "conversations",
+      "owning_tests": [
+        "core/rust/src/tests.rs"
+      ],
+      "performance_budget": "Deterministic execution; zero unbounded allocation on hot path"
+    },
+    {
+      "canonical_owner": "core/rust/src/descriptor.rs",
+      "capability_id": "CAP-RS-DESCRIPTOR",
+      "consumers": [
+        "core/rust/src/schema.rs",
+        "core/rust/src/skill_registry.rs"
+      ],
+      "domain": "Canonical Capability & Schema Descriptor Hashing",
+      "layer": "L0_core_rust",
+      "module": "descriptor",
+      "owning_tests": [
+        "core/rust/src/tests.rs"
+      ],
+      "performance_budget": "Deterministic execution; zero unbounded allocation on hot path"
+    },
+    {
+      "canonical_owner": "core/rust/src/distributed.rs",
+      "capability_id": "CAP-RS-DISTRIBUTED",
+      "consumers": [
+        "cluster/worker_service.py",
+        "scripts/distributed_cluster_soak_gate.py"
+      ],
+      "domain": "Single-Writer Distributed Cluster Lease & Candidate Verification",
+      "layer": "L0_core_rust",
+      "module": "distributed",
+      "owning_tests": [
+        "core/rust/src/tests.rs"
+      ],
+      "performance_budget": "Deterministic execution; zero unbounded allocation on hot path"
+    },
+    {
+      "canonical_owner": "core/rust/src/eac/mod.rs",
+      "capability_id": "CAP-RS-EAC",
+      "consumers": [
+        "core/rust/src/replay.rs",
+        "core/rust/src/hot_engine.rs"
+      ],
+      "domain": "Evidence-Authenticated Computation (EAC) Proof Certificates",
+      "layer": "L0_core_rust",
+      "module": "eac",
+      "owning_tests": [
+        "core/rust/src/tests.rs"
+      ],
+      "performance_budget": "Deterministic execution; zero unbounded allocation on hot path"
+    },
+    {
+      "canonical_owner": "core/rust/src/evidence_index.rs",
+      "capability_id": "CAP-RS-EVIDENCE-INDEX",
+      "consumers": [
+        "core/rust/src/ffi/evidence.rs",
+        "core/python/aegis/evidence.py"
+      ],
+      "domain": "Content-Addressable Evidence Index & Merkle Digests",
+      "layer": "L0_core_rust",
+      "module": "evidence_index",
+      "owning_tests": [
+        "core/rust/src/tests.rs"
+      ],
+      "performance_budget": "Deterministic execution; zero unbounded allocation on hot path"
+    },
+    {
+      "canonical_owner": "core/rust/src/execution.rs",
+      "capability_id": "CAP-RS-EXECUTION",
+      "consumers": [
+        "core/rust/src/runtime.rs",
+        "aegis_cognition/runtime.py"
+      ],
+      "domain": "OS-Enforced Execution Lanes (Rayon CPU, Tokio I/O, Accelerator, Sandbox)",
+      "layer": "L0_core_rust",
+      "module": "execution",
+      "owning_tests": [
+        "core/rust/src/tests.rs"
+      ],
+      "performance_budget": "Deterministic execution; zero unbounded allocation on hot path"
+    },
+    {
+      "canonical_owner": "core/rust/src/ffi.rs",
+      "capability_id": "CAP-RS-FFI",
+      "consumers": [
+        "aegis_cognition/runtime.py",
+        "core/python/aegis_adapter.py"
+      ],
+      "domain": "PyO3 Native Boundary (`aegis_nerve`) Exposing Rust Authorities to Python",
+      "layer": "L1_ffi_bridge",
+      "module": "ffi",
+      "owning_tests": [
+        "core/rust/src/tests.rs"
+      ],
+      "performance_budget": "Deterministic execution; zero unbounded allocation on hot path"
+    },
+    {
+      "canonical_owner": "core/rust/src/goal_intake.rs",
+      "capability_id": "CAP-RS-GOAL-INTAKE",
+      "consumers": [
+        "aegis_cognition/goal_contract.py",
+        "core/rust/src/orchestrator.rs"
+      ],
+      "domain": "Goal Intake Validation & Budget Enforcement",
+      "layer": "L0_core_rust",
+      "module": "goal_intake",
+      "owning_tests": [
+        "core/rust/src/tests.rs"
+      ],
+      "performance_budget": "Deterministic execution; zero unbounded allocation on hot path"
+    },
+    {
+      "canonical_owner": "core/rust/src/governance.rs",
+      "capability_id": "CAP-RS-GOVERNANCE",
+      "consumers": [
+        "core/rust/src/policy.rs",
+        "core/rust/src/guardrail.rs"
+      ],
+      "domain": "Constitutional Policy & Trust-Tier Governance Authority",
+      "layer": "L0_core_rust",
+      "module": "governance",
+      "owning_tests": [
+        "core/rust/src/tests.rs"
+      ],
+      "performance_budget": "Deterministic execution; zero unbounded allocation on hot path"
+    },
+    {
+      "canonical_owner": "core/rust/src/gt96.rs",
+      "capability_id": "CAP-RS-GT96",
+      "consumers": [
+        "scripts/aese_affected_closure.py",
+        "docs/architecture/GT96_TRACEABILITY.md"
+      ],
+      "domain": "GT96 Hardware/Runtime Traceability & Determinism Invariants",
+      "layer": "L0_core_rust",
+      "module": "gt96",
+      "owning_tests": [
+        "core/rust/src/tests.rs"
+      ],
+      "performance_budget": "Deterministic execution; zero unbounded allocation on hot path"
+    },
+    {
+      "canonical_owner": "core/rust/src/guardrail.rs",
+      "capability_id": "CAP-RS-GUARDRAIL",
+      "consumers": [
+        "core/rust/src/tool_gateway.rs",
+        "core/rust/src/governance.rs"
+      ],
+      "domain": "Input/Output Safety Guardrails & Secret/PII Interception",
+      "layer": "L0_core_rust",
+      "module": "guardrail",
+      "owning_tests": [
+        "core/rust/src/tests.rs"
+      ],
+      "performance_budget": "Deterministic execution; zero unbounded allocation on hot path"
+    },
+    {
+      "canonical_owner": "core/rust/src/harness.rs",
+      "capability_id": "CAP-RS-HARNESS",
+      "consumers": [
+        "core/rust/src/tests.rs",
+        "scripts/run_checks.py"
+      ],
+      "domain": "Deterministic Verification & Replay Test Harness",
+      "layer": "L0_core_rust",
+      "module": "harness",
+      "owning_tests": [
+        "core/rust/src/tests.rs"
+      ],
+      "performance_budget": "Deterministic execution; zero unbounded allocation on hot path"
+    },
+    {
+      "canonical_owner": "core/rust/src/hot_engine.rs",
+      "capability_id": "CAP-RS-HOT-ENGINE",
+      "consumers": [
+        "core/rust/src/replay.rs",
+        "scripts/constitution_audit.py"
+      ],
+      "domain": "Orthogonal Hot-Path Evidence Arena & Async Shadow Sealer",
+      "layer": "L0_core_rust",
+      "module": "hot_engine",
+      "owning_tests": [
+        "core/rust/src/tests.rs"
+      ],
+      "performance_budget": "Deterministic execution; zero unbounded allocation on hot path"
+    },
+    {
+      "canonical_owner": "core/rust/src/integrations.rs",
+      "capability_id": "CAP-RS-INTEGRATIONS",
+      "consumers": [
+        "core/rust/src/tool_gateway.rs",
+        "aegis_cognition/extensions.py"
+      ],
+      "domain": "External Tool & Provider Protocol Integration Seams",
+      "layer": "L0_core_rust",
+      "module": "integrations",
+      "owning_tests": [
+        "core/rust/src/tests.rs"
+      ],
+      "performance_budget": "Deterministic execution; zero unbounded allocation on hot path"
+    },
+    {
+      "canonical_owner": "core/rust/src/ipc.rs",
+      "capability_id": "CAP-RS-IPC",
+      "consumers": [
+        "core/rust/src/bridge_mmap.rs",
+        "desktop/src-tauri/src/main.rs"
+      ],
+      "domain": "Framed Length-Prefixed IPC Transport & Channel Guards",
+      "layer": "L0_core_rust",
+      "module": "ipc",
+      "owning_tests": [
+        "core/rust/src/tests.rs"
+      ],
+      "performance_budget": "Deterministic execution; zero unbounded allocation on hot path"
+    },
+    {
+      "canonical_owner": "core/rust/src/lab.rs",
+      "capability_id": "CAP-RS-LAB",
+      "consumers": [
+        "core/rust/src/ffi/lab.rs",
+        "aegis_cognition/lab.py"
+      ],
+      "domain": "Canonical Deterministic LabController State Machine & Event Hash-Chain",
+      "layer": "L0_core_rust",
+      "module": "lab",
+      "owning_tests": [
+        "core/rust/src/tests.rs"
+      ],
+      "performance_budget": "Deterministic execution; zero unbounded allocation on hot path"
+    },
+    {
+      "canonical_owner": "core/rust/src/layout.rs",
+      "capability_id": "CAP-RS-LAYOUT",
+      "consumers": [
+        "core/rust/src/shm.rs",
+        "core/rust/src/bridge_mmap.rs"
+      ],
+      "domain": "Memory Layout & Cache-Line Alignment Primitives",
+      "layer": "L0_core_rust",
+      "module": "layout",
+      "owning_tests": [
+        "core/rust/src/tests.rs"
+      ],
+      "performance_budget": "Deterministic execution; zero unbounded allocation on hot path"
+    },
+    {
+      "canonical_owner": "core/rust/src/learning/mod.rs",
+      "capability_id": "CAP-RS-LEARNING",
+      "consumers": [
+        "core/rust/src/ffi/learning.rs",
+        "core/python/aegis/learning.py"
+      ],
+      "domain": "Bounded Episodic Learning & Skill Promotion Authority",
+      "layer": "L0_core_rust",
+      "module": "learning",
+      "owning_tests": [
+        "core/rust/src/tests.rs"
+      ],
+      "performance_budget": "Deterministic execution; zero unbounded allocation on hot path"
+    },
+    {
+      "canonical_owner": "core/rust/src/licensing.rs",
+      "capability_id": "CAP-RS-LICENSING",
+      "consumers": [
+        "scripts/supply_chain_gate.py",
+        "aegis_cognition/code_reuse.py"
+      ],
+      "domain": "Third-Party License & Attribution Compliance Verifier",
+      "layer": "L0_core_rust",
+      "module": "licensing",
+      "owning_tests": [
+        "core/rust/src/tests.rs"
+      ],
+      "performance_budget": "Deterministic execution; zero unbounded allocation on hot path"
+    },
+    {
+      "canonical_owner": "core/rust/src/llm.rs",
+      "capability_id": "CAP-RS-LLM",
+      "consumers": [
+        "core/python/aegis/provider.py",
+        "scripts/live_provider_429_soak_gate.py"
+      ],
+      "domain": "LLM Provider Routing, Retry/Fallback & Token Accounting",
+      "layer": "L0_core_rust",
+      "module": "llm",
+      "owning_tests": [
+        "core/rust/src/tests.rs"
+      ],
+      "performance_budget": "Deterministic execution; zero unbounded allocation on hot path"
+    },
+    {
+      "canonical_owner": "core/rust/src/memory/mod.rs",
+      "capability_id": "CAP-RS-MEMORY",
+      "consumers": [
+        "core/rust/src/context.rs",
+        "core/rust/src/learning.rs"
+      ],
+      "domain": "Tiered Working/Episodic Memory Store & Retrieval Index",
+      "layer": "L0_core_rust",
+      "module": "memory",
+      "owning_tests": [
+        "core/rust/src/tests.rs"
+      ],
+      "performance_budget": "Deterministic execution; zero unbounded allocation on hot path"
+    },
+    {
+      "canonical_owner": "core/rust/src/message.rs",
+      "capability_id": "CAP-RS-MESSAGE",
+      "consumers": [
+        "core/rust/src/bridge_mmap.rs",
+        "core/rust/src/ipc.rs"
+      ],
+      "domain": "Wire-Format Message Framing, Checksums & Schema Validation",
+      "layer": "L0_core_rust",
+      "module": "message",
+      "owning_tests": [
+        "core/rust/src/tests.rs"
+      ],
+      "performance_budget": "Deterministic execution; zero unbounded allocation on hot path"
+    },
+    {
+      "canonical_owner": "core/rust/src/mvcc.rs",
+      "capability_id": "CAP-RS-MVCC",
+      "consumers": [
+        "core/rust/src/memory.rs",
+        "core/rust/src/task_ledger.rs"
+      ],
+      "domain": "Multi-Version Concurrency Control Snapshot Isolation Store",
+      "layer": "L0_core_rust",
+      "module": "mvcc",
+      "owning_tests": [
+        "core/rust/src/tests.rs"
+      ],
+      "performance_budget": "Deterministic execution; zero unbounded allocation on hot path"
+    },
+    {
+      "canonical_owner": "core/rust/src/orchestrator.rs",
+      "capability_id": "CAP-RS-ORCHESTRATOR",
+      "consumers": [
+        "core/rust/src/runtime.rs",
+        "aegis_cognition/agent.py"
+      ],
+      "domain": "Core Agent Turn Orchestrator & Lease Coordinator",
+      "layer": "L0_core_rust",
+      "module": "orchestrator",
+      "owning_tests": [
+        "core/rust/src/tests.rs"
+      ],
+      "performance_budget": "Deterministic execution; zero unbounded allocation on hot path"
+    },
+    {
+      "canonical_owner": "core/rust/src/physical.rs",
+      "capability_id": "CAP-RS-PHYSICAL",
+      "consumers": [
+        "core/rust/src/lab.rs",
+        "aegis_cognition/lab.py"
+      ],
+      "domain": "Physical Unit Dimensional Analysis & ODE Constraint Verifier",
+      "layer": "L0_core_rust",
+      "module": "physical",
+      "owning_tests": [
+        "core/rust/src/tests.rs"
+      ],
+      "performance_budget": "Deterministic execution; zero unbounded allocation on hot path"
+    },
+    {
+      "canonical_owner": "core/rust/src/placement.rs",
+      "capability_id": "CAP-RS-PLACEMENT",
+      "consumers": [
+        "core/rust/src/runtime.rs",
+        "aegis_cognition/runtime.py"
+      ],
+      "domain": "Hardware-Aware Cooperative Task Placement & Calibration",
+      "layer": "L0_core_rust",
+      "module": "placement",
+      "owning_tests": [
+        "core/rust/src/tests.rs"
+      ],
+      "performance_budget": "Deterministic execution; zero unbounded allocation on hot path"
+    },
+    {
+      "canonical_owner": "core/rust/src/policy.rs",
+      "capability_id": "CAP-RS-POLICY",
+      "consumers": [
+        "core/rust/src/resource.rs",
+        "core/rust/src/governance.rs"
+      ],
+      "domain": "Execution & Resource Policy Evaluation Engine",
+      "layer": "L0_core_rust",
+      "module": "policy",
+      "owning_tests": [
+        "core/rust/src/tests.rs"
+      ],
+      "performance_budget": "Deterministic execution; zero unbounded allocation on hot path"
+    },
+    {
+      "canonical_owner": "core/rust/src/replay.rs",
+      "capability_id": "CAP-RS-REPLAY",
+      "consumers": [
+        "core/rust/src/hot_engine.rs",
+        "scripts/replay_endurance_gate.py"
+      ],
+      "domain": "Cryptographic Replay Ledger, Endurance & Chaos Verification",
+      "layer": "L0_core_rust",
+      "module": "replay",
+      "owning_tests": [
+        "core/rust/src/tests.rs"
+      ],
+      "performance_budget": "Deterministic execution; zero unbounded allocation on hot path"
+    },
+    {
+      "canonical_owner": "core/rust/src/resource.rs",
+      "capability_id": "CAP-RS-RESOURCE",
+      "consumers": [
+        "core/rust/src/runtime.rs",
+        "schemas/resource-contract-v1.json"
+      ],
+      "domain": "Resource Contract Admission, Capacity Feedback & Lease Tokens",
+      "layer": "L0_core_rust",
+      "module": "resource",
+      "owning_tests": [
+        "core/rust/src/tests.rs"
+      ],
+      "performance_budget": "Deterministic execution; zero unbounded allocation on hot path"
+    },
+    {
+      "canonical_owner": "core/rust/src/resource_platform.rs",
+      "capability_id": "CAP-RS-RESOURCE-PLATFORM",
+      "consumers": [
+        "core/rust/src/execution.rs",
+        "core/rust/src/resource.rs"
+      ],
+      "domain": "OS-Level Resource Enforcement (Linux cgroup v2/rlimit, Windows Job Objects, macOS rlimit)",
+      "layer": "L0_core_rust",
+      "module": "resource_platform",
+      "owning_tests": [
+        "core/rust/src/tests.rs"
+      ],
+      "performance_budget": "Deterministic execution; zero unbounded allocation on hot path"
+    },
+    {
+      "canonical_owner": "core/rust/src/runtime.rs",
+      "capability_id": "CAP-RS-RUNTIME",
+      "consumers": [
+        "core/rust/src/ffi/runtime.rs",
+        "aegis_cognition/runtime.py"
+      ],
+      "domain": "Runtime Lease Scheduler, Queue Draining & Expiration Reaper",
+      "layer": "L0_core_rust",
+      "module": "runtime",
+      "owning_tests": [
+        "core/rust/src/tests.rs"
+      ],
+      "performance_budget": "Deterministic execution; zero unbounded allocation on hot path"
+    },
+    {
+      "canonical_owner": "core/rust/src/sac.rs",
+      "capability_id": "CAP-RS-SAC",
+      "consumers": [
+        "core/rust/src/replay.rs",
+        "core/rust/src/governance.rs"
+      ],
+      "domain": "Self-Auditing Contract (SAC) State Invariant Checker",
+      "layer": "L0_core_rust",
+      "module": "sac",
+      "owning_tests": [
+        "core/rust/src/tests.rs"
+      ],
+      "performance_budget": "Deterministic execution; zero unbounded allocation on hot path"
+    },
+    {
+      "canonical_owner": "core/rust/src/sandbox.rs",
+      "capability_id": "CAP-RS-SANDBOX",
+      "consumers": [
+        "core/rust/src/execution.rs",
+        "aegis-plugins/aegis-sandbox"
+      ],
+      "domain": "Untrusted Process & Filesystem/Network Isolation Policy",
+      "layer": "L0_core_rust",
+      "module": "sandbox",
+      "owning_tests": [
+        "core/rust/src/tests.rs"
+      ],
+      "performance_budget": "Deterministic execution; zero unbounded allocation on hot path"
+    },
+    {
+      "canonical_owner": "core/rust/src/schema.rs",
+      "capability_id": "CAP-RS-SCHEMA",
+      "consumers": [
+        "schemas/resource-contract-v1.json",
+        "schemas/lease-token-v1.json"
+      ],
+      "domain": "JSON Schema & Wire Contract Registry",
+      "layer": "L0_core_rust",
+      "module": "schema",
+      "owning_tests": [
+        "core/rust/src/tests.rs"
+      ],
+      "performance_budget": "Deterministic execution; zero unbounded allocation on hot path"
+    },
+    {
+      "canonical_owner": "core/rust/src/shm.rs",
+      "capability_id": "CAP-RS-SHM",
+      "consumers": [
+        "core/rust/src/bridge_mmap.rs",
+        "core/rust/src/layout.rs"
+      ],
+      "domain": "POSIX/Windows Shared Memory Segment Lifecycle",
+      "layer": "L0_core_rust",
+      "module": "shm",
+      "owning_tests": [
+        "core/rust/src/tests.rs"
+      ],
+      "performance_budget": "Deterministic execution; zero unbounded allocation on hot path"
+    },
+    {
+      "canonical_owner": "core/rust/src/skill_registry.rs",
+      "capability_id": "CAP-RS-SKILL-REGISTRY",
+      "consumers": [
+        "aegis_cognition/lab.py",
+        "aegis-plugins/aegis-skills"
+      ],
+      "domain": "Verified Skill Manifest Admission & Digest Registry",
+      "layer": "L0_core_rust",
+      "module": "skill_registry",
+      "owning_tests": [
+        "core/rust/src/tests.rs"
+      ],
+      "performance_budget": "Deterministic execution; zero unbounded allocation on hot path"
+    },
+    {
+      "canonical_owner": "core/rust/src/speculative/mod.rs",
+      "capability_id": "CAP-RS-SPECULATIVE",
+      "consumers": [
+        "core/rust/src/mvcc.rs",
+        "core/rust/src/orchestrator.rs"
+      ],
+      "domain": "Speculative Execution Branching & Rollback Guard",
+      "layer": "L0_core_rust",
+      "module": "speculative",
+      "owning_tests": [
+        "core/rust/src/tests.rs"
+      ],
+      "performance_budget": "Deterministic execution; zero unbounded allocation on hot path"
+    },
+    {
+      "canonical_owner": "core/rust/src/task_ledger.rs",
+      "capability_id": "CAP-RS-TASK-LEDGER",
+      "consumers": [
+        "core/rust/src/orchestrator.rs",
+        "core/rust/src/replay.rs"
+      ],
+      "domain": "Durable Task State Machine & Audit Trail",
+      "layer": "L0_core_rust",
+      "module": "task_ledger",
+      "owning_tests": [
+        "core/rust/src/tests.rs"
+      ],
+      "performance_budget": "Deterministic execution; zero unbounded allocation on hot path"
+    },
+    {
+      "canonical_owner": "core/rust/src/telemetry.rs",
+      "capability_id": "CAP-RS-TELEMETRY",
+      "consumers": [
+        "aegis_cognition/observability.py",
+        "schemas/runtime-telemetry-v1.json"
+      ],
+      "domain": "Structured Runtime Telemetry & OpenTelemetry Span Export",
+      "layer": "L0_core_rust",
+      "module": "telemetry",
+      "owning_tests": [
+        "core/rust/src/tests.rs"
+      ],
+      "performance_budget": "Deterministic execution; zero unbounded allocation on hot path"
+    },
+    {
+      "canonical_owner": "core/rust/src/tool_gateway.rs",
+      "capability_id": "CAP-RS-TOOL-GATEWAY",
+      "consumers": [
+        "aegis_cognition/extensions.py",
+        "core/rust/src/sandbox.rs"
+      ],
+      "domain": "Capability-Gated Tool Invocation Gateway",
+      "layer": "L0_core_rust",
+      "module": "tool_gateway",
+      "owning_tests": [
+        "core/rust/src/tests.rs"
+      ],
+      "performance_budget": "Deterministic execution; zero unbounded allocation on hot path"
+    },
+    {
+      "canonical_owner": "core/rust/src/wasm_plugins.rs",
+      "capability_id": "CAP-RS-WASM-PLUGINS",
+      "consumers": [
+        "core/rust/src/tool_gateway.rs",
+        "scripts/quickjs_cold_start_gate.py"
+      ],
+      "domain": "Wasmtime 48.0.4 Fuel- & Memory-Bounded Guest Plugin Host",
+      "layer": "L0_core_rust",
+      "module": "wasm_plugins",
+      "owning_tests": [
+        "core/rust/src/tests.rs"
+      ],
+      "performance_budget": "Deterministic execution; zero unbounded allocation on hot path"
+    }
+  ],
+  "schema": "aegis-capability-ownership-v1",
+  "summary": {
+    "duplicate_canonical_owner_count": 0,
+    "python_owner_module_count": 17,
+    "python_public_export_count": 215,
+    "rust_public_module_count": 48,
+    "surface_capability_count": 4,
+    "unmapped_export_count": 0,
+    "workspace_plugin_crate_count": 6
+  },
+  "surface_capabilities": [
+    {
+      "canonical_owner": "aegis_cognition/cli.py",
+      "capability_id": "CAP-SURF-PYTHON-CLI",
+      "commands": [
+        "init",
+        "run",
+        "examples",
+        "version",
+        "config",
+        "verify"
+      ],
+      "consumers": [
+        "pyproject.toml",
+        "tests/test_public_route_boundary.py"
+      ],
+      "layer": "L3_surfaces",
+      "owning_tests": [
+        "tests/test_public_route_boundary.py"
+      ],
+      "performance_budget": "CLI `--help` / `version` / `--dry-run` <= 100 ms",
+      "surface": "Python CLI (`aegis`)"
+    },
+    {
+      "canonical_owner": "core/rust/src/cli/mod.rs",
+      "capability_id": "CAP-SURF-RUST-CLI",
+      "commands": [
+        "gate-runner",
+        "replay-verify",
+        "worker"
+      ],
+      "consumers": [
+        "Dockerfile",
+        "deploy/docker-compose.yml",
+        "deploy/kubernetes.yaml"
+      ],
+      "layer": "L3_surfaces",
+      "owning_tests": [
+        "core/rust/src/tests.rs"
+      ],
+      "performance_budget": "Cold start <= 25 ms",
+      "surface": "Native Rust CLI (`aegis-nerve-cli`)"
+    },
+    {
+      "canonical_owner": "core/python/operator_api.py",
+      "capability_id": "CAP-SURF-OPERATOR-API",
+      "consumers": [
+        "Dockerfile",
+        "deploy/docker-compose.yml",
+        "deploy/kubernetes.yaml",
+        "scripts/external_deployment_smoke_gate.py"
+      ],
+      "entrypoint": "core/python/operator_api_server.py",
+      "healthcheck": "core/python/operator_api_healthcheck.py",
+      "layer": "L3_surfaces",
+      "owning_tests": [
+        "tests/test_public_route_boundary.py",
+        "tests/test_operator_api_healthcheck.py",
+        "core/python/tests.py"
+      ],
+      "performance_budget": "GET /health <= 50 ms; bounded 64 KiB health response; single HTTP server authority (ThreadingHTTPServer)",
+      "routes": [
+        "/",
+        "/health",
+        "/snapshot",
+        "/artifacts",
+        "/production-closure"
+      ],
+      "surface": "Read-Only Operator Evidence HTTP API"
+    },
+    {
+      "adapter_or_facade_paths": [
+        "desktop/src-tauri/src/main.rs"
+      ],
+      "canonical_owner": "aegis_cognition/desktop_service.py",
+      "capability_id": "CAP-SURF-DESKTOP-SERVICE",
+      "consumers": [
+        "desktop/src-tauri/src/main.rs",
+        "tests/test_desktop_protocol.py"
+      ],
+      "layer": "L3_surfaces",
+      "owning_tests": [
+        "tests/test_desktop_protocol.py",
+        "tests/test_desktop_shell.py"
+      ],
+      "performance_budget": "Frame parse & dispatch <= 10 ms per RPC request",
+      "surface": "Desktop Backend JSON-RPC Service & Tauri Host"
+    }
+  ],
+  "truth_claim": false,
+  "workspace_plugin_capabilities": [
+    {
+      "canonical_owner": "aegis-plugins/aegis-bench/src/lib.rs",
+      "capability_id": "CAP-PLUGIN-AEGIS-BENCH",
+      "consumers": [
+        "docs/integrations/aegis-plugins.md",
+        "Cargo.toml"
+      ],
+      "crate": "aegis-bench",
+      "layer": "L0_core_rust",
+      "owning_tests": [
+        "aegis-plugins/aegis-bench/src/lib.rs"
+      ],
+      "role": "Standalone reusable Rust workspace crate (contract/library seam; runtime enforcement owned by core/rust and aegis_cognition)"
+    },
+    {
+      "canonical_owner": "aegis-plugins/aegis-browser/src/lib.rs",
+      "capability_id": "CAP-PLUGIN-AEGIS-BROWSER",
+      "consumers": [
+        "docs/integrations/aegis-plugins.md",
+        "Cargo.toml"
+      ],
+      "crate": "aegis-browser",
+      "layer": "L0_core_rust",
+      "owning_tests": [
+        "aegis-plugins/aegis-browser/src/lib.rs"
+      ],
+      "role": "Standalone reusable Rust workspace crate (contract/library seam; runtime enforcement owned by core/rust and aegis_cognition)"
+    },
+    {
+      "canonical_owner": "aegis-plugins/aegis-evidence/src/lib.rs",
+      "capability_id": "CAP-PLUGIN-AEGIS-EVIDENCE",
+      "consumers": [
+        "docs/integrations/aegis-plugins.md",
+        "Cargo.toml"
+      ],
+      "crate": "aegis-evidence",
+      "layer": "L0_core_rust",
+      "owning_tests": [
+        "aegis-plugins/aegis-evidence/src/lib.rs"
+      ],
+      "role": "Standalone reusable Rust workspace crate (contract/library seam; runtime enforcement owned by core/rust and aegis_cognition)"
+    },
+    {
+      "canonical_owner": "aegis-plugins/aegis-sandbox/src/lib.rs",
+      "capability_id": "CAP-PLUGIN-AEGIS-SANDBOX",
+      "consumers": [
+        "docs/integrations/aegis-plugins.md",
+        "Cargo.toml"
+      ],
+      "crate": "aegis-sandbox",
+      "layer": "L0_core_rust",
+      "owning_tests": [
+        "aegis-plugins/aegis-sandbox/src/lib.rs"
+      ],
+      "role": "Standalone reusable Rust workspace crate (contract/library seam; runtime enforcement owned by core/rust and aegis_cognition)"
+    },
+    {
+      "canonical_owner": "aegis-plugins/aegis-search-sdk/src/lib.rs",
+      "capability_id": "CAP-PLUGIN-AEGIS-SEARCH-SDK",
+      "consumers": [
+        "docs/integrations/aegis-plugins.md",
+        "Cargo.toml"
+      ],
+      "crate": "aegis-search-sdk",
+      "layer": "L0_core_rust",
+      "owning_tests": [
+        "aegis-plugins/aegis-search-sdk/src/lib.rs"
+      ],
+      "role": "Standalone reusable Rust workspace crate (contract/library seam; runtime enforcement owned by core/rust and aegis_cognition)"
+    },
+    {
+      "canonical_owner": "aegis-plugins/aegis-skills/src/lib.rs",
+      "capability_id": "CAP-PLUGIN-AEGIS-SKILLS",
+      "consumers": [
+        "docs/integrations/aegis-plugins.md",
+        "Cargo.toml"
+      ],
+      "crate": "aegis-skills",
+      "layer": "L0_core_rust",
+      "owning_tests": [
+        "aegis-plugins/aegis-skills/src/lib.rs"
+      ],
+      "role": "Standalone reusable Rust workspace crate (contract/library seam; runtime enforcement owned by core/rust and aegis_cognition)"
+    }
+  ]
+}

@@ -1138,8 +1138,8 @@
     "future_obligations": 20,
     "invariants": 46,
     "mapped_surfaces": 23,
-    "surfaces": 255,
-    "unmapped_surfaces": 232,
+    "surfaces": 256,
+    "unmapped_surfaces": 233,
     "unmapped_verifications": 35,
     "unresolved_code_references": 0,
     "verifications": 92
@@ -4391,13 +4391,13 @@
     "all_surfaces_mapped": false,
     "critical_high_risk_mapped": false,
     "criticality_known": false,
-    "unmapped_surface_count": 232
+    "unmapped_surface_count": 233
   },
   "mode": "SHADOW",
   "phase": "PHASE_1_CLAIM_EVIDENCE_GRAPH",
   "schema": "aese-shadow-claim-evidence-graph-v1",
-  "source_head": "f7660c805a5b9ae3f0a9924eada52804e3217fcd",
-  "source_tree_sha256": "47d0d7f4dddd163eed8260216577e25f6238f28be07607f3c019e5f731436f6f",
+  "source_head": "18ce8395e5c5658c7677fd80d14be24ef586df98",
+  "source_tree_sha256": "89453dc5fc0474871d412d68c563c466e280ff58149d37c47efad4262e354959",
   "status": "SHADOW_GRAPH_PARTIAL_MAPPING_SELECTION_DISABLED",
   "surfaces": [
     {
@@ -7000,6 +7000,19 @@
     },
     {
       "claim_refs": [],
+      "id": "AESE-SCRIPT_OR_GATE-27017B6ABD29EF8D",
+      "kind": "SCRIPT_OR_GATE",
+      "mapping_status": "NOT_MAPPED",
+      "path": "scripts/generate_capability_ownership.py",
+      "release_critical": "UNKNOWN",
+      "release_criticality": "UNKNOWN",
+      "risk": "UNKNOWN",
+      "security_criticality": "UNKNOWN",
+      "target": null,
+      "unknown_dependency_policy": "INVALIDATE_CONSERVATIVELY"
+    },
+    {
+      "claim_refs": [],
       "id": "AESE-SCRIPT_OR_GATE-2974F2FBD2B1A186",
       "kind": "SCRIPT_OR_GATE",
       "mapping_status": "NOT_MAPPED",
@@ -8676,6 +8689,6 @@
       "source_id": "AESE-011"
     }
   ],
-  "worktree_epoch": "1e4bffb8676aa3c9f01b729b87a91abd6186110a69cc5ac06b75da01b14a13f9",
+  "worktree_epoch": "55b3bde0ee1432fa9c3a4c64e62bef447e4d83a44d2811390f9677b3cf5615a3",
   "worktree_status": "DIRTY"
 }

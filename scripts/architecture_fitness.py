@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
+import ast
 import json
 import re
 import tomllib
 from pathlib import Path
 
+from generate_capability_ownership import build_ownership_payload, render_markdown
 from rust_toolchain import derived_minimum, read_channel
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -91,6 +93,56 @@ def adr_has_required_sections(markdown: str) -> bool:
     has_migration_decision = compound_decision or individual_decision
     has_evidence = any("evidence" in topics and has_documented_content(text) for topics, text in sections)
     return has_migration_decision and has_evidence
+
+
+def _capability_ownership_ok() -> bool:
+    json_path = ROOT / "docs" / "architecture" / "capability_ownership.json"
+    md_path = ROOT / "docs" / "architecture" / "CAPABILITY_OWNERSHIP.md"
+    if not json_path.is_file() or not md_path.is_file():
+        return False
+    try:
+        expected = build_ownership_payload()
+        expected_json = json.dumps(expected, indent=2, sort_keys=True) + "\n"
+        expected_md = render_markdown(expected)
+        return (
+            json_path.read_text(encoding="utf-8") == expected_json
+            and md_path.read_text(encoding="utf-8") == expected_md
+            and expected["summary"]["unmapped_export_count"] == 0
+            and expected["summary"]["duplicate_canonical_owner_count"] == 0
+        )
+    except Exception:
+        return False
+
+
+def _layer_import_direction_ok() -> bool:
+    for path in (ROOT / "core" / "python").rglob("*.py"):
+        if path.name == "tests.py":
+            continue
+        tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Import):
+                for alias in node.names:
+                    if alias.name.startswith("desktop"):
+                        return False
+                    if alias.name.startswith("aegis_cognition") and alias.name != "aegis_cognition.aegis_nerve":
+                        return False
+            elif isinstance(node, ast.ImportFrom) and node.module:
+                if node.module.startswith("desktop"):
+                    return False
+                if node.module == "aegis_cognition":
+                    if any(alias.name != "aegis_nerve" for alias in node.names):
+                        return False
+                elif node.module.startswith("aegis_cognition.") and node.module != "aegis_cognition.aegis_nerve":
+                    return False
+    for path in (ROOT / "aegis_cognition").rglob("*.py"):
+        tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Import):
+                if any(alias.name.startswith("desktop") for alias in node.names):
+                    return False
+            elif isinstance(node, ast.ImportFrom) and node.module and node.module.startswith("desktop"):
+                return False
+    return True
 
 
 def main() -> int:
@@ -310,6 +362,35 @@ def main() -> int:
             and not (ROOT / "core/rust/AEGIS-COGNITION").exists()
             and (ROOT / "docs/archive/legacy/ownership.md").is_file(),
             "historical copies belong in docs/archive/legacy; nested project trees must stay absent",
+        ),
+        check(
+            "capability_ownership_verified",
+            _capability_ownership_ok(),
+            "docs/architecture/capability_ownership.json and CAPABILITY_OWNERSHIP.md must map 100% of public exports without drift",
+        ),
+        check(
+            "operator_api_single_server",
+            "def serve_operator_evidence_api(" in read("core/python/operator_api.py")
+            and "def create_app(" not in read("core/python/operator_api.py")
+            and "starlette" not in read("core/python/operator_api.py"),
+            "Operator Evidence API must have a single HTTP server implementation (ThreadingHTTPServer)",
+        ),
+        check(
+            "layer_import_direction",
+            _layer_import_direction_ok(),
+            "core/python must not import L2 aegis_cognition SDK modules (except aegis_nerve), and neither may import desktop",
+        ),
+        check(
+            "deduplication_and_boundary_adrs",
+            all(
+                (ROOT / path).is_file()
+                for path in (
+                    "docs/adr/ADR-022-operator-api-single-server.md",
+                    "docs/adr/ADR-023-execution-boundary.md",
+                    "docs/adr/ADR-024-lab-authority-boundary.md",
+                )
+            ),
+            "ADR-022, ADR-023, and ADR-024 must govern the Operator API, Execution, and Lab boundaries",
         ),
     ]
 
