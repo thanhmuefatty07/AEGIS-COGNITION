@@ -2673,6 +2673,78 @@ def test_workspace_open_external_rejects_windows_anchored_paths_before_os_open(
     assert opened == [inside.resolve()]
 
 
+@pytest.mark.parametrize(
+    "dangerous_name",
+    (
+        "payload.exe",
+        "script.bat",
+        "runner.cmd",
+        "legacy.com",
+        "install.ps1",
+        "macro.vbs",
+        "encoded.vbe",
+        "wscript.js",
+        "encoded.jse",
+        "job.wsf",
+        "settings.wsh",
+        "snapin.msc",
+        "package.msi",
+        "patch.msp",
+        "saver.scr",
+        "app.hta",
+        "panel.cpl",
+        "archive.jar",
+        "shortcut.lnk",
+        "launcher.url",
+        "program.pif",
+        "registry.reg",
+        "AppBundle.app",
+        "run.command",
+        "entry.desktop",
+        "Action.workflow",
+    ),
+)
+def test_workspace_open_external_rejects_executable_and_launcher_extensions(
+    tmp_path: Path, monkeypatch, dangerous_name: str
+):
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    safe_files = [
+        workspace / "README.md",
+        workspace / "main.py",
+        workspace / "index.ts",
+    ]
+    for safe_file in safe_files:
+        safe_file.write_text("# Safe source\n", encoding="utf-8")
+    dangerous_file = workspace / dangerous_name
+    dangerous_file.write_text("echo pwned\n", encoding="utf-8")
+    service = DesktopService(profile_root=tmp_path / "profile")
+    service._opened_root = workspace
+    opened: list[Path] = []
+    monkeypatch.setattr(desktop_service_module, "sys", SimpleNamespace(**{**sys.__dict__, "platform": "win32"}))
+    monkeypatch.setattr(
+        desktop_service_module,
+        "os",
+        SimpleNamespace(**{**os.__dict__, "startfile": lambda path: opened.append(Path(path))}),
+    )
+
+    try:
+        for safe_file in safe_files:
+            allowed = json.loads(
+                service.dispatch(_request("workspace.open_external", {"relative_path": safe_file.name}))
+            )
+            assert allowed["status"] == "ok"
+        blocked = json.loads(service.dispatch(_request("workspace.open_external", {"relative_path": dangerous_name})))
+    finally:
+        service.close()
+
+    expected_opened = [safe_file.resolve() for safe_file in safe_files]
+    assert opened == expected_opened
+    assert blocked["status"] == "error"
+    assert blocked["error"]["code"] == "INVALID_ARGUMENT"
+    assert opened == expected_opened
+
+
 def test_workspace_file_path_checks_containment_after_join_even_if_parser_returns_rooted_path(
     tmp_path: Path, monkeypatch
 ):

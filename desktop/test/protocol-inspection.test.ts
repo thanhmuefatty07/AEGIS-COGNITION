@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { parseConversationInspection } from "../src/protocol";
+import {
+  findMcpRegistrySetupOption,
+  getMcpRegistrySetupOptions,
+  getSelectedMcpAutoRunHashes,
+  missingRequiredEnvironment,
+} from "../src/mcp_registry_selection.js";
+import { escapeBidirectionalControls, parseConversationInspection } from "../src/protocol";
 
 type InspectionFixture = {
   schema: string;
@@ -111,4 +117,83 @@ describe("conversation inspection protocol", () => {
       "Desktop service returned an invalid conversation inspection",
     );
   });
+
+  it("neutralizes Trojan Source bidirectional Unicode controls in approval previews", () => {
+    expect(escapeBidirectionalControls("file_\u202Etxt.exe\u202C")).toBe("file_\\u202Etxt.exe\\u202C");
+
+    const inspection = legacyInspection();
+    inspection.approvals = [
+      {
+        approval_id: "approval-bidi-1",
+        tool_name: "shell\u202E_safe",
+        status: "PENDING",
+        risk: "MUTATING",
+        argument_keys: ["cmd", "flag"],
+        argument_preview: [
+          { key: "cmd\u202E", value: "invoice_\u202Egpj.exe\u202C" },
+          { key: "flag", value: "\u2066normal\u2069" },
+        ],
+        arguments: "REDACTED",
+        result: "REDACTED",
+        can_resolve: true,
+        can_reconcile: false,
+        effect_class: "EXTERNAL_MUTATION",
+      },
+    ];
+
+    const parsed = parseConversationInspection(inspection);
+    expect(parsed.approvals[0]?.tool_name).toBe("shell\\u202E_safe");
+    expect(parsed.approvals[0]?.argument_preview).toEqual([
+      { key: "cmd\\u202E", value: "invoice_\\u202Egpj.exe\\u202C" },
+      { key: "flag", value: "\\u2066normal\\u2069" },
+    ]);
+  });
+
+  it("ignores Object.prototype keys in MCP registry setup options and required environment checks", () => {
+    const serverWithPrototypeKeys = {
+      name: "test/server",
+      title: "Test Server",
+      version: "1.0.0",
+      description: "Test MCP registry server",
+      packages: [
+        {
+          registry_type: "__proto__",
+          identifier: "evil-pkg",
+          version: "1.0.0",
+          transport: "stdio" as const,
+          runtime_hint: "npx",
+          required_environment: [],
+          environment_variables: [],
+        },
+        {
+          registry_type: "constructor",
+          identifier: "ctor-pkg",
+          version: "1.0.0",
+          transport: "stdio" as const,
+          runtime_hint: "npx",
+          required_environment: [],
+          environment_variables: [],
+        },
+      ],
+      remotes: [],
+    };
+    const options = getMcpRegistrySetupOptions(serverWithPrototypeKeys);
+    expect(options).toHaveLength(2);
+    expect(findMcpRegistrySetupOption(serverWithPrototypeKeys, "toString")).toBeUndefined();
+    expect(missingRequiredEnvironment(["toString", "__proto__", "API_KEY"], { API_KEY: "set" })).toEqual([
+      "toString",
+      "__proto__",
+    ]);
+    expect(
+      getSelectedMcpAutoRunHashes(
+        [
+          { mcp_descriptor_hash: "toString", read_only_candidate: true },
+          { mcp_descriptor_hash: "valid_hash", read_only_candidate: true },
+        ],
+        { valid_hash: true },
+      ),
+    ).toEqual(["valid_hash"]);
+  });
 });
+
+

@@ -365,7 +365,10 @@ systemctl enable --now aegis-worker.service
         # Ensure artifacts/tcp_cluster_soak_report.json exists
         soak_report_file = self.artifacts_dir / "tcp_cluster_soak_report.json"
         if not soak_report_file.exists():
-            archive_base = os.environ.get("AEGIS_PRIVATE_ARCHIVE", "D:/AEGIS-COGNITION.local-private")
+            pointer = ROOT / ".local" / "private-archive.path"
+            archive_base = os.environ.get("AEGIS_PRIVATE_ARCHIVE") or (
+                pointer.read_text(encoding="utf-8").strip() if pointer.is_file() else str(ROOT / ".local" / "private-archive")
+            )
             archive_fallback = Path(archive_base) / "20261028-wave4-verification" / "tier1-gcp" / "tcp_cluster_soak_report.json"
             if archive_fallback.is_file():
                 soak_report_file.write_bytes(archive_fallback.read_bytes())

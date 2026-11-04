@@ -3286,8 +3286,47 @@ class DesktopService:
             "source": "git diff HEAD",
         }
 
+    _DANGEROUS_EXTERNAL_OPEN_EXTENSIONS: frozenset[str] = frozenset(
+        {
+            ".exe",
+            ".bat",
+            ".cmd",
+            ".com",
+            ".ps1",
+            ".vbs",
+            ".vbe",
+            ".js",
+            ".jse",
+            ".wsf",
+            ".wsh",
+            ".msc",
+            ".msi",
+            ".msp",
+            ".scr",
+            ".hta",
+            ".cpl",
+            ".jar",
+            ".lnk",
+            ".url",
+            ".pif",
+            ".reg",
+            ".app",
+            ".command",
+            ".desktop",
+            ".workflow",
+        }
+    )
+
     def _workspace_open_external(self, payload: dict[str, Any]) -> Mapping[str, Any]:
         path, relative_path = self._workspace_file_path(payload)
+        normalized_suffix = Path(path.name.rstrip(". ")).suffix.lower() or path.suffix.lower()
+        if normalized_suffix in self._DANGEROUS_EXTERNAL_OPEN_EXTENSIONS or any(
+            Path(part.rstrip(". ")).suffix.lower() in {".app", ".workflow"} for part in Path(relative_path).parts
+        ):
+            raise DesktopServiceError(
+                "INVALID_ARGUMENT",
+                f"opening executable or launcher file '{relative_path}' externally is not permitted",
+            )
         try:
             if sys.platform == "win32":
                 os.startfile(path)  # type: ignore[attr-defined]

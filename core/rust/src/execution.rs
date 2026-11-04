@@ -356,9 +356,7 @@ fn scrub_untrusted_command_environment(command: &mut Command) {
             || upper.ends_with("_TOKEN")
             || upper.ends_with("_PASSWORD")
             || upper.ends_with("_CREDENTIAL")
-            || DANGEROUS_EXACT_VARS
-                .iter()
-                .any(|blocked| upper == *blocked)
+            || DANGEROUS_EXACT_VARS.iter().any(|blocked| upper == *blocked)
         {
             command.env_remove(&key);
         }

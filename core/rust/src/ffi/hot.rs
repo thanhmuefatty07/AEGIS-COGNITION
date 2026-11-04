@@ -98,7 +98,8 @@ pub fn aegis_hot_commit_buffer(
         // while the GIL is held; we copy into `owned` before detaching the GIL
         // because a read-only `memoryview` over a mutable `bytearray` can still
         // be mutated from another Python thread once the GIL is released.
-        let owned = unsafe { std::slice::from_raw_parts(payload_ptr.cast::<u8>(), payload_len) }.to_vec();
+        let owned =
+            unsafe { std::slice::from_raw_parts(payload_ptr.cast::<u8>(), payload_len) }.to_vec();
         let arena = crate::hot_engine::InMemoryEvidenceArena::new(
             trust_level,
             max_live_bytes.unwrap_or(64 * 1024 * 1024),

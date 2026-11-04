@@ -342,7 +342,7 @@ jobs:
 
   desktop-build:
     name: Desktop graph build (${{ matrix.os }})
-    needs: change-scope
+    needs: [change-scope, tier1-platform-smoke]
     if: ${{ !cancelled() && (needs.change-scope.result != 'success' || needs.change-scope.outputs.runtime == 'true') }}
     runs-on: ${{ matrix.os }}
     timeout-minutes: 45
@@ -350,6 +350,7 @@ jobs:
       UV_PYTHON: '3.14.7'
     strategy:
       fail-fast: false
+      max-parallel: 2
       matrix:
         os: [ubuntu-latest, windows-latest, macos-14]
     steps:
@@ -426,7 +427,7 @@ jobs:
 
   cross-platform-full-suite:
     name: Full Python suite (${{ matrix.os }})
-    needs: change-scope
+    needs: [change-scope, tier1-platform-smoke]
     if: ${{ !cancelled() && (needs.change-scope.result != 'success' || needs.change-scope.outputs.runtime == 'true') }}
     runs-on: ${{ matrix.os }}
     timeout-minutes: 30
@@ -545,7 +546,7 @@ jobs:
 
   wheel-parity:
     name: Tier-1 wheel parity (${{ matrix.os }})
-    needs: change-scope
+    needs: [change-scope, tier1-platform-smoke]
     if: ${{ !cancelled() && (needs.change-scope.result != 'success' || needs.change-scope.outputs.runtime == 'true') }}
     runs-on: ${{ matrix.os }}
     timeout-minutes: 30
@@ -553,6 +554,7 @@ jobs:
       UV_PYTHON: ${{ matrix.python-version }}
     strategy:
       fail-fast: false
+      max-parallel: 2
       matrix:
         include:
           - os: ubuntu-latest

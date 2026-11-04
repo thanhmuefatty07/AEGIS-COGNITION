@@ -22,7 +22,7 @@ export function getMcpRegistrySetupOptions(server) {
       transport: "stdio",
       packageInfo,
       remote: null,
-      label: `${packageInfo.registry_type} · ${packageInfo.identifier}@${packageInfo.version}${packageInfo.runtime_hint ? ` · ${packageInfo.runtime_hint}` : ""}`,
+      label: `${packageInfo.registry_type} · ${packageInfo.identifier}@${packageInfo.version}${packageInfo.runtime_hint ? ` (${packageInfo.runtime_hint})` : ""}`,
     });
   });
   server.remotes.forEach((remote, index) => {
@@ -79,6 +79,10 @@ export function missingRequiredEnvironment(names, values) {
  */
 export function getSelectedMcpAutoRunHashes(tools, selectedByHash) {
   return [...new Set(tools
-    .filter((tool) => tool.read_only_candidate && selectedByHash[tool.mcp_descriptor_hash] === true)
+    .filter((tool) =>
+      tool.read_only_candidate &&
+      Boolean(selectedByHash) &&
+      Object.prototype.hasOwnProperty.call(selectedByHash, tool.mcp_descriptor_hash) &&
+      selectedByHash[tool.mcp_descriptor_hash] === true)
     .map((tool) => tool.mcp_descriptor_hash))].sort();
 }

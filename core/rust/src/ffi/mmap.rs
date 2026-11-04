@@ -55,7 +55,8 @@ impl PyMmapBridgeWriter {
         // SAFETY: PyBuffer validated a one-byte C-contiguous export above;
         // we copy into `owned` while holding the GIL so a read-only memoryview
         // over a mutable bytearray cannot be mutated concurrently across py.detach().
-        let owned = unsafe { std::slice::from_raw_parts(payload_ptr.cast::<u8>(), payload_len) }.to_vec();
+        let owned =
+            unsafe { std::slice::from_raw_parts(payload_ptr.cast::<u8>(), payload_len) }.to_vec();
         let result = if readonly {
             py.detach(|| writer.write(&owned))
         } else {

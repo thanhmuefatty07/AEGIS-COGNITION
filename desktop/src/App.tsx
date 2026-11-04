@@ -22,6 +22,7 @@ import {
   parseProjectRemove,
   parseConversationList,
   parseConversationInspection,
+  escapeBidirectionalControls,
   parseConversationSendResult,
   parseDesktopRunStatus,
   parseApprovalResolutionResult,
@@ -94,7 +95,7 @@ import { deriveTaskState, interruptedDesktopRunStatus, isProjectSwitchBlocked, i
 import { resolveWorkbenchShortcut, workbenchCommands, workbenchInspectorCommands } from "./command_registry.js";
 import VirtualizedTimeline from "./VirtualizedTimeline";
 import type { WorkspaceGraph } from "./workspace_graph";
-import { CapabilityIcon } from "./capability-icons";
+import { AegisBrandMark, CapabilityIcon } from "./capability-icons";
 import AmbiguousToolCallReconciliation from "./AmbiguousToolCallReconciliation";
 import ProviderContextDisclosure, { providerDestinationHost } from "./ProviderContextDisclosure";
 import { clipboardImageFiles } from "./clipboard_images.js";
@@ -106,7 +107,6 @@ import {
   getSelectedMcpAutoRunHashes,
   missingRequiredEnvironment,
 } from "./mcp_registry_selection.js";
-import aegisLogoUrl from "./assets/aegis-icon.svg";
 
 // License: INTERNAL — Clean-room motion and English locale catalog for AEGIS Desktop.
 export const AEGIS_MOTION_TOKENS = {
@@ -130,7 +130,7 @@ export const UI_LOCALE_EN = {
   providerKeySavedNotice: (providerLabel: string, catalogNote: string) =>
     `${providerLabel} saved the key for this session · ${catalogNote}. You can refresh models later.`,
   providerConnectedNotice: (providerLabel: string, modelCount: number, catalogNote: string) =>
-    `${providerLabel} connected · ${modelCount} models available · ${catalogNote} · key is kept for this session only.`,
+    `${providerLabel} connected (${modelCount} models available, ${catalogNote}) — key is kept for this session only.`,
   providerConnectFailed: "Could not connect to the provider",
   localSkillCatalogScanned: "Scanned local skill catalog.",
   localMcpMetadataScanned: "Scanned local MCP metadata.",
@@ -361,10 +361,18 @@ type IconName =
   | "new-project"
   | "branch"
   | "extensions"
+  | "workflow"
   | "settings"
   | "panel"
   | "more"
+  | "cpu"
   | "spark"
+  | "layers"
+  | "blocks"
+  | "skill"
+  | "utilities"
+  | "terminal"
+  | "radio"
   | "attach"
   | "arrow-up"
   | "check"
@@ -388,23 +396,27 @@ type IconName =
   | "download"
   | "info"
   | "refresh"
-   | "sort"
-   | "clock"
-   | "minimize"
+  | "sort"
+  | "clock"
+  | "minimize"
   | "maximize"
   | "restore"
   | "close";
 
-function Icon({ name, size = 16 }: { name: IconName; size?: number }) {
-  return <CapabilityIcon name={name} size={size} />;
+function Icon({
+  name,
+  size = 16,
+  state,
+}: {
+  name: IconName;
+  size?: number;
+  state?: "idle" | "active" | "loading";
+}) {
+  return <CapabilityIcon name={name} size={size} state={state} />;
 }
 
 function AegisBrandLogo() {
-  const [assetFailed, setAssetFailed] = useState(false);
-  if (assetFailed) {
-    return <span className="brand-logo aegis-brand-logo-fallback" aria-hidden="true">A</span>;
-  }
-  return <img className="brand-logo aegis-brand-logo" src={aegisLogoUrl} alt="" width="22" height="21" aria-hidden="true" draggable={false} onError={() => setAssetFailed(true)} />;
+  return <AegisBrandMark size={20} />;
 }
 
 type SettingsSelectOption = {
@@ -509,7 +521,7 @@ function SettingsSelect({
                 <strong>{option.label}</strong>
                 {option.description && <small>{option.description}</small>}
               </span>
-              {option.value === value && <Icon name="check" size={13} />}
+              {option.value === value && <Icon name="check" size={14} />}
             </button>
           ))}
         </div>
@@ -529,13 +541,37 @@ type ComposerInputProps = {
   onSubmit: () => void;
 };
 
+function setContentEditableCaretOffset(element: HTMLElement, targetOffset: number) {
+  if (typeof window === "undefined") return;
+  const selection = window.getSelection();
+  if (!selection) return;
+  const textNode = element.firstChild;
+  const range = document.createRange();
+  if (textNode && textNode.nodeType === Node.TEXT_NODE) {
+    const length = textNode.textContent?.length ?? 0;
+    const clamped = Math.max(0, Math.min(length, targetOffset));
+    range.setStart(textNode, clamped);
+    range.collapse(true);
+  } else {
+    range.selectNodeContents(element);
+    range.collapse(false);
+  }
+  selection.removeAllRanges();
+  selection.addRange(range);
+}
+
 /** Keep the AEGIS send callback at the composer boundary. */
 function ComposerInput({ value, placeholder, disabled, enterToSend, onChange, onKeyDown, onImageFiles, onSubmit }: ComposerInputProps) {
   const inputRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const element = inputRef.current;
-    if (element && element.textContent !== value) element.textContent = value;
+    if (element && element.textContent !== value) {
+      element.textContent = value;
+      if (typeof window !== "undefined" && document.activeElement === element && value.length > 0) {
+        setContentEditableCaretOffset(element, value.length);
+      }
+    }
   }, [value]);
 
   return (
@@ -560,19 +596,40 @@ function ComposerInput({ value, placeholder, disabled, enterToSend, onChange, on
           onInput={(event) => onChange(event.currentTarget.textContent ?? "")}
           onPaste={(event: ReactClipboardEvent<HTMLDivElement>) => {
             const files = clipboardImageFiles(event.clipboardData);
+            const pastedText = event.clipboardData.getData("text/plain");
             if (files.length > 0) {
               event.preventDefault();
               onImageFiles?.(files);
-              const pastedText = event.clipboardData.getData("text/plain");
               if (pastedText) {
-                // Read the DOM value at paste time. React state can lag one
-                // input event behind in a contentEditable surface, and using
-                // the captured prop could overwrite text typed immediately
-                // before the image was pasted.
                 const currentText = event.currentTarget.textContent ?? value;
                 const separator = currentText.length > 0 && !/\s$/.test(currentText) ? "\n" : "";
                 onChange(`${currentText}${separator}${pastedText}`);
               }
+              return;
+            }
+            event.preventDefault();
+            if (pastedText) {
+              const element = event.currentTarget;
+              const currentText = element.textContent ?? value;
+              const selection = typeof window !== "undefined" ? window.getSelection() : null;
+              let nextText = `${currentText}${pastedText}`;
+              let nextCaretOffset = nextText.length;
+              if (selection && selection.rangeCount > 0 && element.contains(selection.getRangeAt(0).startContainer)) {
+                const range = selection.getRangeAt(0);
+                const preRange = document.createRange();
+                preRange.selectNodeContents(element);
+                preRange.setEnd(range.startContainer, range.startOffset);
+                const startOffset = preRange.toString().length;
+                const postRange = document.createRange();
+                postRange.selectNodeContents(element);
+                postRange.setEnd(range.endContainer, range.endOffset);
+                const endOffset = postRange.toString().length;
+                nextText = `${currentText.slice(0, startOffset)}${pastedText}${currentText.slice(endOffset)}`;
+                nextCaretOffset = startOffset + pastedText.length;
+              }
+              element.textContent = nextText;
+              setContentEditableCaretOffset(element, nextCaretOffset);
+              onChange(nextText);
             }
           }}
           onDragOver={(event: ReactDragEvent<HTMLDivElement>) => {
@@ -648,7 +705,7 @@ function ComposerAutocomplete({
         )}
       </div>
       <div className="composer-ac-footer">
-        <span>↑↓ navigate · Enter select · Esc close</span>
+        <span className="meta-inline-list"><span>↑↓ navigate</span><span>Enter select</span><span>Esc close</span></span>
         <span>{mode === "file" ? "Workspace files" : "AEGIS commands"}</span>
       </div>
     </div>
@@ -755,6 +812,7 @@ export default function App() {
   const [parallelWorkersEnabled, setParallelWorkersEnabled] = useState(true);
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [searchHighlight, setSearchHighlight] = useState(0);
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
   const [commandSearchQuery, setCommandSearchQuery] = useState("");
   const [commandHighlight, setCommandHighlight] = useState(0);
@@ -828,6 +886,7 @@ export default function App() {
     .join(",");
   const searchRef = useRef<HTMLInputElement>(null);
   const globalSearchRef = useRef<HTMLInputElement>(null);
+  const searchOpenerRef = useRef<HTMLElement | null>(null);
   const commandPaletteInputRef = useRef<HTMLInputElement>(null);
   const commandPaletteOpenerRef = useRef<HTMLElement | null>(null);
   const projectSwitcherInputRef = useRef<HTMLInputElement>(null);
@@ -846,8 +905,12 @@ export default function App() {
   const changesDiffRevision = useRef(0);
   const runQueueRef = useRef<QueuedPrompt[]>([]);
   const runQueueDrainRef = useRef(false);
+  const sendingInFlightRef = useRef(false);
+  const composerAutocompleteTriggerRangeRef = useRef<{ start: number; end: number } | null>(null);
   const activeConversationIdRef = useRef(activeConversationId);
   activeConversationIdRef.current = activeConversationId;
+  const latestConversationRef = useRef(conversation);
+  latestConversationRef.current = conversation;
   const sidebarResizeRef = useRef<{ pointerId: number; startX: number; startWidth: number; currentWidth: number; handle: HTMLDivElement } | null>(null);
   const workPanelResizeRef = useRef<{ pointerId: number; startX: number; startWidth: number; currentWidth: number; handle: HTMLDivElement } | null>(null);
 
@@ -918,8 +981,11 @@ export default function App() {
     const onShortcut = (event: KeyboardEvent) => {
       if (event.defaultPrevented) return;
       if (event.key === "Escape") {
+        if (sidebarResizeRef.current) finishSidebarResize(true);
+        if (workPanelResizeRef.current) finishWorkPanelResize(true);
         setCommandPaletteOpen(false);
         setSearchOpen(false);
+        setHomeActionsOpen(false);
         setSessionSortOpen(false);
         setSessionMenuOpen(null);
         setProjectMenuOpen(false);
@@ -978,7 +1044,8 @@ export default function App() {
       }
       if (!hasPrimaryModifier(event)) return;
       const key = event.key.toLowerCase();
-      if (key === "k") {
+      if (key === "k" || (key === "f" && !event.shiftKey && !event.altKey)) {
+        event.preventDefault();
         openQuickOpen();
       } else if (key === "j") {
         event.preventDefault();
@@ -1097,6 +1164,16 @@ export default function App() {
   }, [commandPaletteOpen]);
 
   useEffect(() => {
+    if (searchOpen) {
+      const frame = window.requestAnimationFrame(() => globalSearchRef.current?.focus());
+      return () => window.cancelAnimationFrame(frame);
+    }
+    const opener = searchOpenerRef.current;
+    searchOpenerRef.current = null;
+    if (opener?.isConnected && opener.getClientRects().length > 0 && !opener.closest("[inert]")) opener.focus();
+  }, [searchOpen]);
+
+  useEffect(() => {
     if (viewportWidth <= 1100) {
       setSidebarCollapsed(true);
       setWorkPanelOpen(false);
@@ -1114,7 +1191,11 @@ export default function App() {
   useEffect(() => {
     if (sidebarResizing) document.documentElement.dataset.sidebarResizing = "true";
     else delete document.documentElement.dataset.sidebarResizing;
+    if (!sidebarResizing) return () => { delete document.documentElement.dataset.sidebarResizing; };
+    const onCancel = () => finishSidebarResize(true);
+    window.addEventListener("blur", onCancel);
     return () => {
+      window.removeEventListener("blur", onCancel);
       delete document.documentElement.dataset.sidebarResizing;
     };
   }, [sidebarResizing]);
@@ -1122,7 +1203,11 @@ export default function App() {
   useEffect(() => {
     if (workPanelResizing) document.documentElement.dataset.workPanelResizing = "true";
     else delete document.documentElement.dataset.workPanelResizing;
+    if (!workPanelResizing) return () => { delete document.documentElement.dataset.workPanelResizing; };
+    const onCancel = () => finishWorkPanelResize(true);
+    window.addEventListener("blur", onCancel);
     return () => {
+      window.removeEventListener("blur", onCancel);
       delete document.documentElement.dataset.workPanelResizing;
     };
   }, [workPanelResizing]);
@@ -1130,6 +1215,7 @@ export default function App() {
   useEffect(() => {
     setCapabilityNotice(null);
     setInstructionsNotice(null);
+    setProjectSwitcherOpen(false);
     document.querySelector<HTMLElement>(".settings-content")?.scrollTo(0, 0);
   }, [settingsSection]);
 
@@ -1138,11 +1224,47 @@ export default function App() {
     projectSwitcherInputRef.current?.focus();
     const onPointerDown = (event: PointerEvent) => {
       const target = event.target as Element | null;
-      if (!target?.closest(".project-switcher-trigger, .home-project-switcher-menu")) setProjectSwitcherOpen(false);
+      if (
+        !target?.closest(".project-switcher-trigger, .home-project-switcher-menu, .composer-under-action")
+        && (!projectSwitcherOpenerRef.current || !(target && projectSwitcherOpenerRef.current.contains(target)))
+      ) {
+        setProjectSwitcherOpen(false);
+      }
+    };
+    const onReposition = () => {
+      if (projectSwitcherOpenerRef.current) {
+        setProjectSwitcherPosition(projectSwitcherPositionFor(projectSwitcherOpenerRef.current));
+      }
+    };
+    window.addEventListener("pointerdown", onPointerDown);
+    window.addEventListener("resize", onReposition);
+    window.addEventListener("scroll", onReposition, true);
+    return () => {
+      window.removeEventListener("pointerdown", onPointerDown);
+      window.removeEventListener("resize", onReposition);
+      window.removeEventListener("scroll", onReposition, true);
+    };
+  }, [projectSwitcherOpen, projectSwitcherView, sidebarWidth, sidebarCollapsed]);
+
+  useEffect(() => {
+    if (!sessionMenuOpen) return;
+    const onPointerDown = (event: PointerEvent) => {
+      const target = event.target as Element | null;
+      if (!target?.closest(".session-row-action, .session-row-menu")) setSessionMenuOpen(null);
     };
     window.addEventListener("pointerdown", onPointerDown);
     return () => window.removeEventListener("pointerdown", onPointerDown);
-  }, [projectSwitcherOpen, projectSwitcherView]);
+  }, [sessionMenuOpen]);
+
+  useEffect(() => {
+    if (!homeActionsOpen) return;
+    const onPointerDown = (event: PointerEvent) => {
+      const target = event.target as Element | null;
+      if (!target?.closest(".composer-enhance-btn, .home-actions-menu")) setHomeActionsOpen(false);
+    };
+    window.addEventListener("pointerdown", onPointerDown);
+    return () => window.removeEventListener("pointerdown", onPointerDown);
+  }, [homeActionsOpen]);
 
   useEffect(() => {
     if (!composerMenuOpen) return;
@@ -1878,12 +2000,12 @@ export default function App() {
       }));
       if (selected) {
         const hint = [
-          `Unverified directory metadata: ${selected.name} · ${selected.version}`,
-          packageInfo ? `Selected package: ${packageInfo.registry_type} ${packageInfo.identifier}@${packageInfo.version}${packageInfo.runtime_hint ? ` · runtime hint ${packageInfo.runtime_hint}` : ""}` : "",
+          `Unverified directory metadata: ${selected.name} (${selected.version})`,
+          packageInfo ? `Selected package: ${packageInfo.registry_type} ${packageInfo.identifier}@${packageInfo.version}${packageInfo.runtime_hint ? ` (runtime hint ${packageInfo.runtime_hint})` : ""}` : "",
           remote ? `Selected remote: ${selectedOption?.label ?? "remote endpoint"}` : "",
           requiredInputs.length > 0 ? `Required environment names: ${requiredInputs.join(", ")}` : "",
           remote?.requires_headers ? "The remote entry declares headers; provide any credentials yourself in session-only settings." : "",
-        ].filter(Boolean).join(" · ");
+        ].filter(Boolean).join(" — ");
         setMcpRegistryHints((current) => ({ ...current, [result.server_id]: hint }));
       }
       setMcpRegistrySelection(null);
@@ -2440,13 +2562,14 @@ export default function App() {
       setConnectionMode("api-key");
       if (result.models[0]) {
         const selected = result.models[0];
-        if (conversation) {
-          const switched = await switchConversationModel(selected, result.models, true);
+        const latestConversation = latestConversationRef.current;
+        if (latestConversation) {
+          const switched = await switchConversationModel(selected, result.models, true, latestConversation);
           if (!switched) {
             // Keep the canonical conversation/model pair authoritative.  A
             // failed switch must not leave the renderer claiming Live while
             // the backend would still invoke the old preview model.
-            setModelId(conversation.conversation.model_id);
+            setModelId((latestConversationRef.current ?? latestConversation).conversation.model_id);
             setMode("mock");
           }
         } else {
@@ -2580,6 +2703,7 @@ export default function App() {
     model: ModelDescriptor,
     catalog: ModelDescriptor[] = availableModels,
     allowFreshConnection = false,
+    targetConversation: ConversationSnapshot | null = latestConversationRef.current ?? conversation,
   ): Promise<boolean> {
     if ((!allowFreshConnection && !connectionSaved) || !catalog.some((item) => item.connection_id === model.connection_id && item.model_id === model.model_id) || busy || subagentBusy || hasPendingToolApproval) return false;
     if (pendingImages.length > 0 && !model.supports_vision) {
@@ -2591,7 +2715,7 @@ export default function App() {
       setError(`This model accepts up to ${imageLimit} images. Remove extra images before switching.`);
       return false;
     }
-    if (!conversation) {
+    if (!targetConversation) {
       const selectedConnection = connectedProviders.find((item) => item.connection_id === model.connection_id);
       setModelId(model.model_id);
       setActiveConnectionId(model.connection_id);
@@ -2604,10 +2728,10 @@ export default function App() {
     try {
       setError(null);
       const record = await desktopRequest("conversations.switch_model", {
-        conversation_id: conversation.conversation.conversation_id,
+        conversation_id: targetConversation.conversation.conversation_id,
         connection_id: model.connection_id,
         model_id: model.model_id,
-        expected_revision: conversation.conversation.revision,
+        expected_revision: targetConversation.conversation.revision,
       }, parseConversationRecordResult);
       setConversation((current) => current ? { ...current, conversation: record } : current);
       setConversations((current) => current.map((item) => item.conversation_id === record.conversation_id ? record : item));
@@ -2642,27 +2766,51 @@ export default function App() {
   }
 
   function openQuickOpen() {
+    if (!searchOpen) {
+      searchOpenerRef.current = commandPaletteOpenerRef.current
+        ?? (document.activeElement instanceof HTMLElement ? document.activeElement : null);
+    }
     setCommandPaletteOpen(false);
     setSearchQuery("");
+    setSearchHighlight(0);
     setSearchOpen(true);
     window.requestAnimationFrame(() => globalSearchRef.current?.focus());
   }
 
   function executeWorkbenchCommand(commandId: string) {
+    const opener = commandPaletteOpenerRef.current;
     commandPaletteOpenerRef.current = null;
     setCommandPaletteOpen(false);
+    const restoreOpenerFocus = () => {
+      window.requestAnimationFrame(() => {
+        if (opener?.isConnected && opener.getClientRects().length > 0 && !opener.closest("[inert]")) {
+          opener.focus();
+          return;
+        }
+        const fallback = document.querySelector<HTMLElement>(".composer-input")
+          ?? document.querySelector<HTMLElement>(".settings-nav button:not([disabled]), .app-frame button:not([disabled]), .app-frame input:not([disabled])");
+        fallback?.focus();
+      });
+    };
     switch (commandId) {
       case "command-palette":
         openCommandPalette();
         break;
       case "quick-open":
+        searchOpenerRef.current = opener;
         openQuickOpen();
         break;
       case "new-task":
         startNewTask();
+        window.requestAnimationFrame(() => {
+          const composerEl = document.querySelector<HTMLElement>(".composer-input");
+          if (composerEl) composerEl.focus();
+          else restoreOpenerFocus();
+        });
         break;
       case "toggle-navigator":
         setSidebarCollapsed((current) => !current);
+        restoreOpenerFocus();
         break;
       case "find-in-project":
       case "open-files":
@@ -2707,13 +2855,18 @@ export default function App() {
         break;
       case "send":
         void sendMessage();
+        restoreOpenerFocus();
         break;
       case "stop-task":
         if (activeDesktopRun) void cancelDesktopRun(activeDesktopRun);
         else if (subagentRunId) void cancelSubagents();
+        restoreOpenerFocus();
         break;
       case "preferences":
         openDestination("settings");
+        window.requestAnimationFrame(() => {
+          (document.querySelector<HTMLElement>(".settings-nav button.active, .settings-nav button:not([disabled])") ?? opener)?.focus();
+        });
         break;
       case "focus-next-pane":
         moveFocusToWorkbenchPane(false);
@@ -2740,6 +2893,7 @@ export default function App() {
       })),
     ].filter((command) => !query || command.label.toLocaleLowerCase().includes(query));
     const highlight = commands.length > 0 ? commandHighlight % commands.length : 0;
+    const activeOptionId = commands[highlight] ? `command-palette-option-${commands[highlight].id}` : undefined;
     return (
       <div className="command-palette-backdrop" onMouseDown={(event) => {
         if (event.target === event.currentTarget) setCommandPaletteOpen(false);
@@ -2777,12 +2931,13 @@ export default function App() {
           }}
         >
           <label className="command-palette-search">
-            <Icon name="search" size={16} />
+            <Icon name="search" size={14} />
             <input
               ref={commandPaletteInputRef}
               role="combobox"
               aria-expanded="true"
               aria-controls="workbench-command-results"
+              aria-activedescendant={activeOptionId}
               aria-label="Search commands"
               placeholder="Type a command…"
               value={commandSearchQuery}
@@ -2792,6 +2947,7 @@ export default function App() {
           </label>
           <div id="workbench-command-results" className="command-palette-results" role="listbox" aria-label="Commands">
             {commands.map((command, index) => <button
+              id={`command-palette-option-${command.id}`}
               key={command.id}
               type="button"
               role="option"
@@ -3069,6 +3225,7 @@ export default function App() {
   }
 
   async function sendMessage() {
+    if (sendingInFlightRef.current) return;
     const text = message.trim();
     if (imageProcessingRef.current) {
       setError("Wait for the attached image to finish preparing before sending.");
@@ -3095,58 +3252,66 @@ export default function App() {
       setError("The selected model has no verified image-input capability. Choose an image-capable model first.");
       return;
     }
-    let conversationId = activeConversationId;
-    if (!conversationId) conversationId = await createConversation(text || "Image task");
-    if (!conversationId) return;
-    const selectedReasoning = reasoningSelectionForModel(selectedModel, thinkingMode);
-    const prompt: QueuedPrompt = {
-      id: crypto.randomUUID(),
-      conversationId,
-      message: text,
-      mode,
-      reasoningEffort: selectedReasoning === "Auto" ? "auto" : selectedReasoning,
-      attachments: [...pendingImages],
-    };
-    if (!workbenchV2Enabled) {
-      setBusy(true);
-      try {
-        setError(null);
-        const result = await desktopRequest("conversations.send", {
-          conversation_id: conversationId,
-          message: text,
-          mode,
-          reasoning_effort: prompt.reasoningEffort,
-          attachments: prompt.attachments.map((item) => ({ name: item.name, mime_type: item.mimeType, data: item.data })),
-        }, parseConversationSendResult);
+    sendingInFlightRef.current = true;
+    try {
+      let conversationId = activeConversationIdRef.current ?? activeConversationId;
+      if (!conversationId) {
+        conversationId = await createConversation(text || "Image task");
+        if (conversationId) activeConversationIdRef.current = conversationId;
+      }
+      if (!conversationId) return;
+      const selectedReasoning = reasoningSelectionForModel(selectedModel, thinkingMode);
+      const prompt: QueuedPrompt = {
+        id: crypto.randomUUID(),
+        conversationId,
+        message: text,
+        mode,
+        reasoningEffort: selectedReasoning === "Auto" ? "auto" : selectedReasoning,
+        attachments: [...pendingImages],
+      };
+      if (!workbenchV2Enabled) {
+        setBusy(true);
+        try {
+          setError(null);
+          const result = await desktopRequest("conversations.send", {
+            conversation_id: conversationId,
+            message: text,
+            mode,
+            reasoning_effort: prompt.reasoningEffort,
+            attachments: prompt.attachments.map((item) => ({ name: item.name, mime_type: item.mimeType, data: item.data })),
+          }, parseConversationSendResult);
+          setMessage("");
+          setPendingImages([]);
+          setConversation(result.snapshot);
+          const inspection = await desktopRequest("conversations.inspect", { conversation_id: conversationId }, parseConversationInspection);
+          setConversationInspection(inspection);
+          void loadConversations();
+        } catch (reason) {
+          setError(describeError(reason, "The message could not be sent"));
+        } finally {
+          setBusy(false);
+        }
+        return;
+      }
+      if (activeDesktopRun) {
+        if (enqueuePrompt(prompt)) {
+          setMessage("");
+          setPendingImages([]);
+        }
+        return;
+      }
+      if (hasPendingToolApproval) {
+        setError("Resolve the pending approval before starting another task message.");
+        return;
+      }
+      if (await startDesktopRun(prompt)) {
         setMessage("");
         setPendingImages([]);
-        setConversation(result.snapshot);
-        const inspection = await desktopRequest("conversations.inspect", { conversation_id: conversationId }, parseConversationInspection);
-        setConversationInspection(inspection);
+        await loadConversation(conversationId, true);
         void loadConversations();
-      } catch (reason) {
-        setError(describeError(reason, "The message could not be sent"));
-      } finally {
-        setBusy(false);
       }
-      return;
-    }
-    if (activeDesktopRun) {
-      if (enqueuePrompt(prompt)) {
-        setMessage("");
-        setPendingImages([]);
-      }
-      return;
-    }
-    if (hasPendingToolApproval) {
-      setError("Resolve the pending approval before starting another task message.");
-      return;
-    }
-    if (await startDesktopRun(prompt)) {
-      setMessage("");
-      setPendingImages([]);
-      await loadConversation(conversationId, true);
-      void loadConversations();
+    } finally {
+      sendingInFlightRef.current = false;
     }
   }
 
@@ -3232,6 +3397,7 @@ export default function App() {
   }
 
   function closeComposerAutocomplete() {
+    composerAutocompleteTriggerRangeRef.current = null;
     setComposerAutocompleteMode(null);
     setComposerAutocompleteQuery("");
     setComposerAutocompleteHighlight(0);
@@ -3239,17 +3405,54 @@ export default function App() {
 
   function handleComposerChange(value: string) {
     setMessage(value);
-    const trigger = /(^|\s)([\/@])([^\s]*)$/.exec(value);
+    let caretOffset = value.length;
+    if (typeof window !== "undefined") {
+      const root = document.querySelector<HTMLElement>(".composer-input");
+      const selection = window.getSelection();
+      if (root && selection && selection.rangeCount > 0 && root.contains(selection.getRangeAt(0).endContainer)) {
+        const range = selection.getRangeAt(0);
+        const prefixRange = document.createRange();
+        prefixRange.selectNodeContents(root);
+        prefixRange.setEnd(range.endContainer, range.endOffset);
+        caretOffset = Math.max(0, Math.min(value.length, prefixRange.toString().length));
+      }
+    }
+    const textBeforeCaret = value.slice(0, caretOffset);
+    const slashTrigger = /(^|\s)(\/)([^\s]*)$/.exec(textBeforeCaret);
+    const fileTrigger = /(^|[\s([{<"'`])(@)([^\s)\]}]*)$/.exec(textBeforeCaret);
+    const trigger = slashTrigger ?? fileTrigger;
     if (!trigger) {
       closeComposerAutocomplete();
       return;
     }
+    const start = trigger.index + trigger[1].length;
+    composerAutocompleteTriggerRangeRef.current = { start, end: caretOffset };
     setComposerAutocompleteMode(trigger[2] === "/" ? "slash" : "file");
     setComposerAutocompleteQuery(trigger[3] ?? "");
     setComposerAutocompleteHighlight(0);
   }
 
   function acceptComposerSuggestion(item: ComposerSuggestion) {
+    const range = composerAutocompleteTriggerRangeRef.current;
+    if (range) {
+      const prefix = message.slice(0, range.start);
+      const suffix = message.slice(range.end);
+      const insert = item.insertText.endsWith(" ") && suffix.startsWith(" ")
+        ? item.insertText.slice(0, -1)
+        : item.insertText;
+      const nextMessage = `${prefix}${insert}${suffix}`;
+      const nextCaretOffset = prefix.length + insert.length;
+      if (typeof document !== "undefined") {
+        const root = document.querySelector<HTMLElement>(".composer-input");
+        if (root) {
+          root.textContent = nextMessage;
+          setContentEditableCaretOffset(root, nextCaretOffset);
+        }
+      }
+      setMessage(nextMessage);
+      closeComposerAutocomplete();
+      return;
+    }
     const trigger = /(^|\s)([\/@])([^\s]*)$/.exec(message);
     const start = trigger?.index === undefined ? message.length : trigger.index + trigger[1].length;
     setMessage(`${message.slice(0, start)}${item.insertText}`);
@@ -3312,6 +3515,7 @@ export default function App() {
       const commands: ComposerSuggestion[] = [
         { mode: "slash", value: "summarize", label: "/summarize", detail: "Summarize this workspace", icon: "spark", insertText: "Summarize this workspace" },
         { mode: "slash", value: "inspect", label: "/inspect", detail: "Inspect the current project", icon: "search", insertText: "Inspect the current project" },
+        { mode: "slash", value: "focus", label: "/focus", detail: "Inspect the Focus Graph", icon: "map", insertText: "Inspect the Focus Graph" },
         { mode: "slash", value: "workers", label: "/workers", detail: "Run parallel workers", icon: "extensions", insertText: "Run parallel workers" },
         { mode: "slash", value: "files", label: "/files", detail: "Open project files", icon: "files", insertText: "Inspect the project files" },
       ];
@@ -3391,6 +3595,7 @@ export default function App() {
     setDestination(next);
     if (viewportWidth <= 1100) setSidebarCollapsed(true);
     setSearchOpen(false);
+    setProjectSwitcherOpen(false);
     setSessionSortOpen(false);
     setSessionMenuOpen(null);
     setCapabilityNotice(null);
@@ -3535,53 +3740,87 @@ export default function App() {
     if (!searchOpen) return null;
     const query = searchQuery.trim().toLocaleLowerCase();
     const matches = (value: string) => !query || value.toLocaleLowerCase().includes(query);
+    const messageResults = query
+      ? (conversation?.turns ?? []).filter((turn) => matches(turn.content)).slice(0, 6)
+      : [];
     const sessionResults = conversations.filter((item) => !isUnstartedConversation(item) && matches(item.title)).slice(0, 6);
     const fileResults = (sourceSnapshot?.files ?? []).filter((item) => matches(item.relative_path)).slice(0, 8);
     const destinations: Array<[string, string, IconName]> = [
       ["Settings", "settings", "settings"],
-      ["Utilities", "plugins", "plug"],
+      ["Utilities", "plugins", "utilities"],
     ];
-    const settings: Array<[string, string]> = [
-      ["General", "General appearance and network"],
-      ["AI", "Agent defaults and permissions"],
-      ["Shortcuts", "Keyboard shortcuts"],
-      ["Instructions", "Global agent instructions"],
-      ["Models", "Model configuration"],
-      ["Skills", "Local skills"],
-      ["MCP", "MCP servers"],
-      ["Subagents", "Parallel workers"],
+    const settings: Array<[string, string, IconName]> = [
+      ["General", "Appearance, font size, and workbench", "sliders"],
+      ["AI", "Agent defaults and permissions", "cpu"],
+      ["Shortcuts", "Keyboard shortcuts", "keyboard"],
+      ["Instructions", "Global agent instructions", "files"],
+      ["Models", "Model configuration", "layers"],
+      ["Skills", "Local skills", "skill"],
+      ["MCP", "MCP servers", "server"],
+      ["Plugins", "Installed extensions", "blocks"],
+      ["Subagents", "Parallel workers", "bot"],
+      ["Import", "Config and session import", "download"],
+      ["Projects", "Archived projects", "folder"],
+      ["Remote Hosts", "SSH and remote workspaces", "globe"],
+      ["Info", "Version and runtime details", "info"],
     ];
     const pageResults = destinations.filter(([label]) => matches(label));
     const settingResults = settings.filter(([label, description]) => matches(`${label} ${description}`));
-    const hasResults = sessionResults.length > 0 || fileResults.length > 0 || pageResults.length > 0 || settingResults.length > 0;
+    const hasResults = messageResults.length > 0 || sessionResults.length > 0 || fileResults.length > 0 || pageResults.length > 0 || settingResults.length > 0;
+    const totalOptions = 1 + sessionResults.length + messageResults.length + fileResults.length + pageResults.length + settingResults.length;
+    const noMatchQuery = Boolean(query) && !hasResults && !"new chat".includes(query);
+    const activeIdx = noMatchQuery ? -1 : Math.min(searchHighlight, Math.max(0, totalOptions - 1));
+    let optionCounter = 0;
+    const nextOptionProps = () => {
+      const idx = optionCounter++;
+      return {
+        id: `search-result-option-${idx}`,
+        className: `search-item${idx === activeIdx ? " active is-active" : ""}`,
+        "aria-selected": idx === activeIdx,
+        onMouseEnter: () => setSearchHighlight(idx),
+      };
+    };
+    const newChatProps = nextOptionProps();
     return (
       <div className="search-overlay" onClick={() => setSearchOpen(false)}>
-        <div className="search-dialog" role="dialog" aria-modal="true" aria-label="Search" onClick={(event) => event.stopPropagation()} onKeyDown={(event) => {
+        <div className="search-dialog search-card" role="dialog" aria-modal="true" aria-label="Search" onClick={(event) => event.stopPropagation()} onKeyDown={(event) => {
           if (event.key === "Escape") {
             event.preventDefault();
             setSearchOpen(false);
             return;
           }
+          if (event.key === "Tab") {
+            const controls = Array.from(event.currentTarget.querySelectorAll<HTMLElement>("input:not([disabled]),button:not([disabled])"));
+            const first = controls[0];
+            const last = controls.at(-1);
+            if (event.shiftKey && document.activeElement === first) {
+              event.preventDefault();
+              last?.focus();
+            } else if (!event.shiftKey && document.activeElement === last) {
+              event.preventDefault();
+              first?.focus();
+            }
+            return;
+          }
           if (event.key !== "ArrowDown" && event.key !== "ArrowUp") return;
           event.preventDefault();
-          const items = Array.from(document.querySelectorAll<HTMLButtonElement>("#aegis-search-results .search-item"));
-          if (!items.length) return;
-          const focusedIndex = items.indexOf(document.activeElement as HTMLButtonElement);
-          const activeIndex = items.findIndex((item) => item.classList.contains("active"));
-          const currentIndex = focusedIndex >= 0 ? focusedIndex : Math.max(activeIndex, 0);
-          const nextIndex = event.key === "ArrowDown"
-            ? (currentIndex + 1) % items.length
-            : (currentIndex - 1 + items.length) % items.length;
-          items.forEach((item, index) => item.classList.toggle("active", index === nextIndex));
-          items[nextIndex]?.focus();
+          if (totalOptions <= 0 || noMatchQuery) return;
+          setSearchHighlight((current) => {
+            const clamped = Math.min(Math.max(0, current), totalOptions - 1);
+            return event.key === "ArrowDown"
+              ? (clamped + 1) % totalOptions
+              : (clamped - 1 + totalOptions) % totalOptions;
+          });
+          globalSearchRef.current?.focus();
         }}>
-          <div className="search-input-row"><Icon name="search" size={16} /><input ref={globalSearchRef} className="search-input" role="combobox" aria-expanded="true" aria-controls="aegis-search-results" aria-label="Search" placeholder="Search sessions, files, pages, and settings…" value={searchQuery} maxLength={500} autoFocus spellCheck={false} onChange={(event) => setSearchQuery(event.target.value)} onKeyDown={(event) => { if (event.key === "Escape") { event.preventDefault(); setSearchOpen(false); } else if (event.key === "Enter") { event.preventDefault(); document.querySelector<HTMLButtonElement>("#aegis-search-results .search-item.active")?.click(); } }} /></div>
+          <div className="search-input-row"><Icon name="search" size={14} /><input ref={globalSearchRef} className="search-input" role="combobox" aria-expanded="true" aria-controls="aegis-search-results" aria-activedescendant={activeIdx >= 0 ? `search-result-option-${activeIdx}` : undefined} aria-label="Search" placeholder="Search sessions, files, pages, and settings…" value={searchQuery} maxLength={500} autoFocus spellCheck={false} onChange={(event) => { const next = event.target.value; setSearchQuery(next); setSearchHighlight(next.trim() ? 1 : 0); }} onKeyDown={(event) => { if (event.key === "Escape") { event.preventDefault(); setSearchOpen(false); } else if (event.key === "Enter") { event.preventDefault(); document.querySelector<HTMLButtonElement>("#aegis-search-results .search-item.active")?.click(); } }} /></div>
           <div id="aegis-search-results" className="search-results" role="listbox" aria-label="Search results">
-            <button className="search-item active" type="button" role="option" disabled={!workspace || conversationActionBusy || projectSwitcherBusy} onClick={startNewTask}><Icon name="new-chat" size={15} /><span className="search-item-title">New chat</span></button>
-            {sessionResults.length > 0 && <><div className="search-group-label">Sessions</div>{sessionResults.map((item) => <button className="search-item" type="button" role="option" key={item.conversation_id} onClick={() => chooseSearchResult("conversation", item.conversation_id)}><Icon name="new-chat" size={15} /><span className="search-item-title">{displaySessionTitle(item.title)}</span><span className="search-item-meta">{formatTime(item.updated_at_ms)}</span></button>)}</>}
-            {fileResults.length > 0 && <><div className="search-group-label">Files</div>{fileResults.map((item) => <button className="search-item" type="button" role="option" key={item.relative_path} onClick={() => chooseSearchResult("file", item.relative_path)}><Icon name="file" size={15} /><span className="search-item-title">{item.relative_path}</span><span className="search-item-meta">{item.language || "file"}</span></button>)}</>}
-            {pageResults.length > 0 && <><div className="search-group-label">Pages</div>{pageResults.map(([label, value, icon]) => <button className="search-item" type="button" role="option" key={value} onClick={() => chooseSearchResult("destination", value)}><Icon name={icon} size={15} /><span className="search-item-title">{label}</span></button>)}</>}
-            {settingResults.length > 0 && <><div className="search-group-label">Settings</div>{settingResults.map(([label, description]) => <button className="search-item" type="button" role="option" key={label} onClick={() => chooseSearchResult("setting", label)}><Icon name="settings" size={15} /><span className="search-item-title">{label}</span><span className="search-item-meta">{description}</span></button>)}</>}
+            <button {...newChatProps} type="button" role="option" disabled={!workspace || conversationActionBusy || projectSwitcherBusy} onClick={startNewTask}><Icon name="new-chat" size={14} /><span className="search-item-title">New chat</span></button>
+            {sessionResults.length > 0 && <><div className="search-group-label">Sessions</div>{sessionResults.map((item) => { const optionProps = nextOptionProps(); return <button {...optionProps} type="button" role="option" key={item.conversation_id} onClick={() => chooseSearchResult("conversation", item.conversation_id)}><Icon name="new-chat" size={14} /><span className="search-item-title">{displaySessionTitle(item.title)}</span><span className="search-item-meta">{formatTime(item.updated_at_ms)}</span></button>; })}</>}
+            {messageResults.length > 0 && <><div className="search-group-label">Messages</div>{messageResults.map((turn) => { const optionProps = nextOptionProps(); return <button {...optionProps} type="button" role="option" key={`msg-${turn.turn_id}`} onClick={() => { setSearchOpen(false); openDestination("chat"); window.requestAnimationFrame(() => { document.getElementById(`turn-${turn.turn_id}`)?.scrollIntoView?.({ block: "center" }); }); }}><Icon name="sessions" size={14} /><span className="search-item-title">{shortPath(turn.content.replace(/\s+/g, " ").trim(), 68)}</span><span className="search-item-meta">{turn.role === "user" ? "You" : "AEGIS"}</span></button>; })}</>}
+            {fileResults.length > 0 && <><div className="search-group-label">Files</div>{fileResults.map((item) => { const optionProps = nextOptionProps(); return <button {...optionProps} type="button" role="option" key={item.relative_path} onClick={() => chooseSearchResult("file", item.relative_path)}><Icon name="file" size={14} /><span className="search-item-title">{item.relative_path}</span><span className="search-item-meta">{item.language || "file"}</span></button>; })}</>}
+            {pageResults.length > 0 && <><div className="search-group-label">Pages</div>{pageResults.map(([label, value, icon]) => { const optionProps = nextOptionProps(); return <button {...optionProps} type="button" role="option" key={value} onClick={() => chooseSearchResult("destination", value)}><Icon name={icon} size={14} /><span className="search-item-title">{label}</span></button>; })}</>}
+            {settingResults.length > 0 && <><div className="search-group-label">Settings</div>{settingResults.map(([label, description, icon]) => { const optionProps = nextOptionProps(); return <button {...optionProps} type="button" role="option" key={label} onClick={() => chooseSearchResult("setting", label)}><Icon name={icon} size={14} /><span className="search-item-title">{label}</span><span className="search-item-meta">{description}</span></button>; })}</>}
             {!hasResults && query && <div className="search-empty">No matching results</div>}
           </div>
         </div>
@@ -3595,9 +3834,16 @@ export default function App() {
     const menuHeight = Math.min(420, Math.max(0, window.innerHeight - 24));
     const maxLeft = Math.max(12, window.innerWidth - menuWidth - 12);
     const maxTop = Math.max(12, window.innerHeight - menuHeight - 12);
+    const fromSidebar = Boolean(trigger.closest(".sidebar")) && !sidebarCollapsed;
+    const preferredLeft = fromSidebar && bounds.right + 8 + menuWidth <= window.innerWidth - 12
+      ? bounds.right + 8
+      : bounds.left;
+    const preferredTop = !fromSidebar && bounds.bottom + 8 + menuHeight > window.innerHeight - 12 && bounds.top - 8 - menuHeight >= 12
+      ? bounds.top - menuHeight - 8
+      : bounds.bottom + 8;
     return {
-      left: Math.max(12, Math.min(Math.max(bounds.right + 8, sidebarWidth + 8), maxLeft)),
-      top: Math.max(12, Math.min(bounds.bottom + 8, maxTop)),
+      left: Math.max(12, Math.min(preferredLeft, maxLeft)),
+      top: Math.max(12, Math.min(preferredTop, maxTop)),
     };
   }
 
@@ -3649,7 +3895,7 @@ export default function App() {
             <span className="home-project-switcher-item-name">Clone project</span>
           </button>
           <label className="home-project-switcher-search">
-            <Icon name="branch" size={13} />
+            <Icon name="branch" size={14} />
             <span className="sr-only">Repository URL</span>
             <input
               ref={projectSwitcherInputRef}
@@ -3669,7 +3915,7 @@ export default function App() {
           </button>
         </div> : <>
           <label className="home-project-switcher-search">
-            <Icon name="search" size={13} />
+            <Icon name="search" size={14} />
             <input
               ref={projectSwitcherInputRef}
               value={projectSwitcherQuery}
@@ -3715,7 +3961,7 @@ export default function App() {
           <span className="session-info"><strong className="thread-item-title">{displaySessionTitle(item.title)}</strong><small>{formatTime(item.updated_at_ms)}</small></span>
           {showTaskState && <span className={`task-state-badge task-state-${taskState.toLocaleLowerCase()}`}>{taskStateLabel(taskState)}</span>}
         </button>
-        <button className="session-row-action thread-item-more" type="button" disabled={conversationActionBusy || projectSwitcherBusy} onClick={() => setSessionMenuOpen((current) => current === item.conversation_id ? null : item.conversation_id)} aria-label={`More actions for ${displaySessionTitle(item.title)}`} title="More actions"><Icon name="more" size={14} /></button>
+        <button className="session-row-action thread-item-more" type="button" disabled={conversationActionBusy || projectSwitcherBusy} onClick={() => setSessionMenuOpen((current) => current === item.conversation_id ? null : item.conversation_id)} aria-label={`More actions for ${displaySessionTitle(item.title)}`} title="More actions"><Icon name="more" size={16} /></button>
         {sessionMenuOpen === item.conversation_id && <div className="session-row-menu" role="menu">
           <button type="button" role="menuitem" onClick={() => void inspectConversation(item.conversation_id, "activity")}>Open activity</button>
           <button type="button" role="menuitem" onClick={() => void inspectConversation(item.conversation_id, "context")}>Inspect context</button>
@@ -3730,23 +3976,23 @@ export default function App() {
             {!sidebarCollapsed && <span>AEGIS</span>}
           </button>
           <div className="sidebar-header-actions no-drag">
-            {!sidebarCollapsed && <button className="sidebar-toolbar-button sidebar-header-action" type="button" onClick={() => { setSearchQuery(""); setSearchOpen(true); window.requestAnimationFrame(() => globalSearchRef.current?.focus()); }} aria-label="Search" title="Search"><Icon name="search" size={16} /></button>}
-            {sidebarCollapsed && <button className="new-task compact-new-task" type="button" onClick={startNewTask} disabled={!workspace || conversationActionBusy || projectSwitcherBusy} aria-label="New chat" title="New chat"><Icon name="plus" size={15} /></button>}
-            <button className="sidebar-toggle" type="button" onClick={() => setSidebarCollapsed((current) => !current)} aria-label="Toggle sidebar"><Icon name="sidebar" size={15} /></button>
+            {!sidebarCollapsed && <button className="sidebar-toolbar-button sidebar-header-action" type="button" onClick={() => openQuickOpen()} aria-label="Search" title="Search"><Icon name="search" size={16} /></button>}
+            {sidebarCollapsed && <button className="new-task compact-new-task" type="button" onClick={startNewTask} disabled={!workspace || conversationActionBusy || projectSwitcherBusy} aria-label="New chat" title="New chat"><Icon name="plus" size={16} /></button>}
+            <button className="sidebar-toggle" type="button" onClick={() => setSidebarCollapsed((current) => !current)} aria-label="Toggle sidebar"><Icon name="sidebar" size={16} /></button>
           </div>
         </div>
         <div className="sidebar-body sidebar-scroll no-drag">
           {!sidebarCollapsed && <nav className="reference-primary-nav" aria-label="Primary navigation">
-            <button className="reference-nav-item new-chat-command" type="button" onClick={startNewTask} disabled={!workspace || conversationActionBusy || projectSwitcherBusy}><span className="reference-nav-icon"><Icon name="new-chat" size={17} /></span><span>New chat</span></button>
-            <button className={`reference-nav-item ${destination === "plugins" ? "active" : ""}`} type="button" onClick={() => openDestination("plugins")}><span className="reference-nav-icon"><Icon name="plug" size={17} /></span><span>Utilities</span></button>
+            <button className="reference-nav-item new-chat-command" type="button" onClick={startNewTask} disabled={!workspace || conversationActionBusy || projectSwitcherBusy}><span className="reference-nav-icon"><Icon name="new-chat" size={14} /></span><span>New chat</span></button>
+            <button className={`reference-nav-item ${destination === "plugins" ? "active" : ""}`} type="button" onClick={() => openDestination("plugins")}><span className="reference-nav-icon"><Icon name="utilities" size={14} /></span><span>Utilities</span></button>
           </nav>}
           <div className="sidebar-group project-group">
-            {!sidebarCollapsed && <div className="sidebar-list-toolbar sidebar-label-with-action" data-sidebar-section="projects"><span className="sidebar-list-label sidebar-label">Project</span><span className="project-switcher-anchor"><button ref={projectSwitcherTriggerRef} className="sidebar-toolbar-button project-switcher-trigger" type="button" onClick={(event) => toggleProjectSwitcher(event.currentTarget)} aria-label={activeProjectId ? "Switch project" : "Choose project"} aria-haspopup="menu" aria-expanded={projectSwitcherOpen} title={activeProjectId ? "Switch project" : "Choose project"}><Icon name="new-project" size={14} /></button></span></div>}
+            {!sidebarCollapsed && <div className="sidebar-list-toolbar sidebar-label-with-action" data-sidebar-section="projects"><span className="sidebar-list-label sidebar-label">Project</span><span className="project-switcher-anchor"><button ref={projectSwitcherTriggerRef} className="sidebar-toolbar-button project-switcher-trigger" type="button" onClick={(event) => toggleProjectSwitcher(event.currentTarget)} aria-label={activeProjectId ? "Switch project" : "Choose project"} aria-haspopup="menu" aria-expanded={projectSwitcherOpen} title={activeProjectId ? "Switch project" : "Choose project"}><Icon name="new-project" size={16} /></button></span></div>}
             {activeProjectId ? <div className="project-row-wrap sidebar-session-group-header">
               <button className="project-row sidebar-session-group-title project-switcher-trigger" type="button" onClick={(event) => toggleProjectSwitcher(event.currentTarget)} title={activeProjectPath ?? "Switch project"} aria-haspopup="menu" aria-expanded={projectSwitcherOpen}>
-                <span className="project-chevron"><Icon name="chevron-down" size={13} /></span><span className="project-icon"><Icon name="folder" size={14} /></span>{!sidebarCollapsed && <><span className="project-name">{activeProjectName ?? "Project"}</span><span className="project-active-dot" aria-label="Active" title="Active" /></>}
+                <span className="project-chevron"><Icon name="chevron-down" size={12} /></span><span className="project-icon"><Icon name="folder" size={14} /></span>{!sidebarCollapsed && <span className="project-name">{activeProjectName ?? "Project"}</span>}
               </button>
-              {!sidebarCollapsed && <span className="project-menu-anchor"><button className="project-row-action project-menu-button" type="button" onClick={() => setProjectMenuOpen((current) => !current)} aria-label="More project actions" aria-haspopup="menu" aria-expanded={projectMenuOpen} title="More project actions"><Icon name="more" size={14} /></button>{projectMenuOpen && <div className="project-row-menu" role="menu"><span className="sidebar-mini-menu-title">Project actions</span><button type="button" role="menuitem" onClick={() => { setProjectMenuOpen(false); openProjectSwitcher(projectSwitcherTriggerRef.current); }}>Switch project</button><button type="button" role="menuitem" onClick={() => { setProjectMenuOpen(false); setSettingsSection("Projects"); openDestination("settings"); }}>Project settings</button></div>}</span>}
+              {!sidebarCollapsed && <span className="project-menu-anchor"><button className="project-row-action project-menu-button" type="button" onClick={() => setProjectMenuOpen((current) => !current)} aria-label="More project actions" aria-haspopup="menu" aria-expanded={projectMenuOpen} title="More project actions"><Icon name="more" size={16} /></button>{projectMenuOpen && <div className="project-row-menu" role="menu"><span className="sidebar-mini-menu-title">Project actions</span><button type="button" role="menuitem" onClick={() => { setProjectMenuOpen(false); openProjectSwitcher(projectSwitcherTriggerRef.current); }}>Switch project</button><button type="button" role="menuitem" onClick={() => { setProjectMenuOpen(false); setSettingsSection("Projects"); openDestination("settings"); }}>Project settings</button></div>}</span>}
             </div> : !sidebarCollapsed && <button className="project-row project-row-empty" type="button" onClick={(event) => toggleProjectSwitcher(event.currentTarget)} aria-haspopup="menu" aria-expanded={projectSwitcherOpen}><Icon name="folder" size={14} /><span>Choose a project</span></button>}
           </div>
           <div className="sidebar-group project-group sidebar-session-group">
@@ -3756,8 +4002,8 @@ export default function App() {
         </div>
         <div className="sidebar-footer sidebar-bottom no-drag">
           <div className="footer-actions">
-            <button className={`footer-action utility-row ${destination === "settings" ? "active" : ""}`} type="button" onClick={() => openDestination("settings")} title="Settings" aria-label="Settings"><span><Icon name="settings" size={15} /></span>{!sidebarCollapsed && <span className="utility-label">Settings</span>}</button>
-            {sidebarCollapsed && <button className={`footer-action utility-row ${destination === "plugins" ? "active" : ""}`} type="button" onClick={() => openDestination("plugins")} title="Utilities" aria-label="Utilities"><span><Icon name="plug" size={15} /></span></button>}
+            <button className={`footer-action utility-row ${destination === "settings" ? "active" : ""}`} type="button" onClick={() => openDestination("settings")} title="Settings" aria-label="Settings"><span><Icon name="settings" size={14} /></span>{!sidebarCollapsed && <span className="utility-label">Settings</span>}</button>
+            {sidebarCollapsed && <button className={`footer-action utility-row ${destination === "plugins" ? "active" : ""}`} type="button" onClick={() => openDestination("plugins")} title="Utilities" aria-label="Utilities"><span><Icon name="utilities" size={14} /></span></button>}
           </div>
           {!sidebarCollapsed && <div className="footer-build sidebar-version" aria-hidden="true" />}
         </div>
@@ -3806,7 +4052,7 @@ export default function App() {
       return (
         <article className="subagent-live" aria-label="Live subagent activity">
           <div className="subagent-result-header">
-            <div><span className="eyebrow">LIVE WORKFLOW</span><strong>{status}</strong></div>
+            <div><span className="eyebrow">Live workflow</span><strong>{status}</strong></div>
             <div className="subagent-live-actions"><span className="status-chip"><i /> {subagentEvents.length} events</span>{status === "RUNNING" && <button className="subagent-cancel" type="button" onClick={() => void cancelSubagents()}>Stop</button>}</div>
           </div>
           <div className="subagent-event-list">
@@ -3820,7 +4066,7 @@ export default function App() {
             })}
           </div>
           {subagentGraph && subagentGraph.nodes.length > 0 && <div className="subagent-graph" aria-label="Subagent task graph">
-            <div className="eyebrow">TASK GRAPH</div>
+            <div className="eyebrow">Task graph</div>
             {subagentGraph.nodes.map((node) => <div className="subagent-graph-row" key={node.task_id}><span className={`worker-dot ${node.status.toLowerCase()}`} /><strong>Worker {node.task_id}</strong><span>{node.role || "task"}</span><em>{node.status}</em></div>)}
           </div>}
         </article>
@@ -3867,7 +4113,7 @@ export default function App() {
             onClick={() => { setSettingsSection("Models"); openDestination("settings"); }}
             title={!connectionSaved ? "Open Models to connect a provider" : "Open Models to load a verified model catalog"}
           >
-            <Icon name="bot" size={14} />
+            <Icon name="layers" size={14} />
             <span className="ct-model-label">{!connectionSaved ? "Connect provider" : "Load models"}</span>
             <Icon name="chevron-right" size={12} />
           </button>
@@ -3901,30 +4147,30 @@ export default function App() {
       return (
         <div className="composer-menu-anchor ct-model-control">
           <button className={`ct-model-button ${composerMenuOpen === "model" ? "active" : ""}`} type="button" onClick={() => void openComposerModelMenu()} aria-haspopup="menu" aria-expanded={composerMenuOpen === "model"} title={`${selectedModel ? modelId : "Choose model"} · ${reasoningLabel(visibleThinkingMode)}`}>
-            <Icon name="bot" size={14} /><span className="ct-model-label">{selectedModel ? modelId : "Choose model"}</span><span className="ct-model-reasoning">{reasoningLabel(visibleThinkingMode)}</span><Icon name="chevron-down" size={12} />
+            <Icon name="layers" size={14} /><span className="ct-model-label">{selectedModel ? modelId : "Choose model"}</span><span className="ct-model-reasoning">{reasoningLabel(visibleThinkingMode)}</span><Icon name="chevron-down" size={12} />
           </button>
           {composerMenuOpen === "model" && <div className="composer-menu composer-model-menu composer-model-thinking-menu ct-model-menu" role="menu" aria-label="Model and reasoning">
             {composerModelView === "root" ? <div className="composer-menu-root">
-              <button className="composer-menu-entry" type="button" role="menuitem" aria-haspopup="menu" onClick={() => setComposerModelView("model")}><Icon name="bot" size={14} /><span className="composer-menu-entry-label">Model</span><span className="composer-menu-entry-value" title={modelId}>{modelId}</span><Icon name="chevron-right" size={14} /></button>
-              <button className="composer-menu-entry" type="button" role="menuitem" aria-haspopup="menu" onClick={() => setComposerModelView("thinking")}><Icon name="spark" size={14} /><span className="composer-menu-entry-label">Reasoning</span><span className="composer-menu-entry-value">{reasoningLabel(visibleThinkingMode)}</span><Icon name="chevron-right" size={14} /></button>
+              <button className="composer-menu-entry" type="button" role="menuitem" aria-haspopup="menu" onClick={() => setComposerModelView("model")}><Icon name="layers" size={14} /><span className="composer-menu-entry-label">Model</span><span className="composer-menu-entry-value" title={modelId}>{modelId}</span><Icon name="chevron-right" size={14} /></button>
+              <button className="composer-menu-entry" type="button" role="menuitem" aria-haspopup="menu" onClick={() => setComposerModelView("thinking")}><Icon name="cpu" size={14} /><span className="composer-menu-entry-label">Reasoning</span><span className="composer-menu-entry-value">{reasoningLabel(visibleThinkingMode)}</span><Icon name="chevron-right" size={14} /></button>
             </div> : <>
               <button className="composer-menu-back" type="button" role="menuitem" onClick={() => setComposerModelView("root")}><Icon name="chevron-left" size={14} /><span>{composerModelView === "model" ? "Model" : "Reasoning"}</span></button>
               <div className="composer-menu-separator" />
               {composerModelView === "model" ? <>
-                <label className="composer-model-search"><Icon name="search" size={13} /><input value={composerModelQuery} onChange={(event) => setComposerModelQuery(event.target.value)} placeholder="Search models" aria-label="Search models" /></label>
+                <label className="composer-model-search"><Icon name="search" size={14} /><input value={composerModelQuery} onChange={(event) => setComposerModelQuery(event.target.value)} placeholder="Search models" aria-label="Search models" /></label>
                 <div className="composer-model-list">
                   {filteredModelOptions.map((model) => {
                     const selected = model.connection_id === (conversation?.conversation.connection_id ?? activeConnectionId)
                       && model.model_id === modelId;
                     const provider = connectedProviders.find((item) => item.connection_id === model.connection_id);
-                    return <button key={`${model.connection_id}:${model.model_id}`} type="button" role="menuitemradio" aria-checked={selected} className={selected ? "active" : ""} onClick={() => void switchConversationModel(model)}><span className="composer-model-option-main"><span className="truncate">{model.model_id}</span><span className="composer-model-option-meta">{provider?.provider_kind ?? model.family ?? "Provider model"} · {model.supports_vision ? "image" : "image unverified"} · {model.reasoning_efforts.length > 0 ? "reasoning" : "effort unverified"}</span></span>{selected && <Icon name="check" size={13} />}</button>;
+                    return <button key={`${model.connection_id}:${model.model_id}`} type="button" role="menuitemradio" aria-checked={selected} className={selected ? "active" : ""} onClick={() => void switchConversationModel(model)}><span className="composer-model-option-main"><span className="truncate">{model.model_id}</span><span className="composer-model-option-meta meta-inline-list"><span>{provider?.provider_kind ?? model.family ?? "Provider model"}</span><span>{model.supports_vision ? "image" : "image unverified"}</span><span>{model.reasoning_efforts.length > 0 ? "reasoning" : "effort unverified"}</span></span></span>{selected && <Icon name="check" size={14} />}</button>;
                   })}
                   {filteredModelOptions.length === 0 && <div className="composer-model-empty">No matching models</div>}
                 </div>
-                <button className="composer-menu-secondary" type="button" role="menuitem" onClick={() => { setComposerMenuOpen(null); setComposerModelView("root"); setDestination("settings"); setSettingsSection("Models"); }}>Configure model<Icon name="chevron-right" size={13} /></button>
+                <button className="composer-menu-secondary" type="button" role="menuitem" onClick={() => { setComposerMenuOpen(null); setComposerModelView("root"); setDestination("settings"); setSettingsSection("Models"); }}>Configure model<Icon name="chevron-right" size={14} /></button>
               </> : <>
                 <div className="composer-thinking-heading">Reasoning effort</div>
-                <div className="composer-thinking-list">{supportedThinking.map((level) => <button key={level} className={`composer-plus-item ${visibleThinkingMode === level ? "active" : ""}`} type="button" role="menuitemradio" aria-checked={visibleThinkingMode === level} onClick={() => { void setThinkingMode(level); void saveSettingsPatch({ thinking_default: level }); setComposerMenuOpen(null); setComposerModelView("root"); }}>{reasoningLabel(level)}{visibleThinkingMode === level && <Icon name="check" size={13} />}</button>)}</div>
+                <div className="composer-thinking-list">{supportedThinking.map((level) => <button key={level} className={`composer-plus-item ${visibleThinkingMode === level ? "active" : ""}`} type="button" role="menuitemradio" aria-checked={visibleThinkingMode === level} onClick={() => { void setThinkingMode(level); void saveSettingsPatch({ thinking_default: level }); setComposerMenuOpen(null); setComposerModelView("root"); }}>{reasoningLabel(level)}{visibleThinkingMode === level && <Icon name="check" size={14} />}</button>)}</div>
               </>}
             </>}
           </div>}
@@ -3944,18 +4190,18 @@ export default function App() {
       const taskQueue = queuedPromptsPaused ? queuedPrompts : queuedPrompts.filter((item) => item.conversationId === activeConversationId);
       return (
         <div className={home ? "home-composer-wrap" : "composer-wrap"}>
-          {home && homeActionsOpen && <div className="home-actions-menu" role="menu" aria-label="Workspace actions"><button type="button" role="menuitem" disabled={!activeProjectId} onClick={() => { setHomeActionsOpen(false); setMessage("Summarize this workspace"); }}><Icon name="spark" size={14} /><span>Summarize workspace</span></button><button type="button" role="menuitem" disabled={!activeProjectId} onClick={() => { setHomeActionsOpen(false); setMessage("Inspect the current project"); }}><Icon name="search" size={14} /><span>Inspect project</span></button></div>}
+          {home && homeActionsOpen && <div className="home-actions-menu" role="menu" aria-label="Workspace actions"><button type="button" role="menuitem" disabled={!activeProjectId} onClick={() => { setHomeActionsOpen(false); setMessage("Summarize this workspace"); }}><Icon name="files" size={14} /><span>Summarize workspace</span></button><button type="button" role="menuitem" disabled={!activeProjectId} onClick={() => { setHomeActionsOpen(false); setMessage("Inspect the current project"); }}><Icon name="search" size={14} /><span>Inspect project</span></button></div>}
           {taskQueue.length > 0 && <div className={`task-queue ${queuedPromptsPaused ? "is-paused" : ""}`} aria-label="Queued task messages">
             {queuedPromptsPaused && <div className="task-queue-paused" role="status"><strong>Queue paused for review</strong><span>The previous task status is unavailable. These messages were not started; copy any you still need into a new task or clear the queue.</span></div>}
             {taskQueue.map((item, index) => <div className="task-queue-item" key={item.id}>
               <span className="task-queue-number">{index + 1}</span>
               <span className="task-queue-copy"><small>{item.conversationId === activeConversationId ? "This task" : conversations.find((conversation) => conversation.conversation_id === item.conversationId)?.title ?? "Another task"}</small>{item.message || "Image attachment"}</span>
               {taskQueue.length > 1 && <>
-                <button type="button" disabled={index === 0} onClick={() => moveQueuedPrompt(item.id, -1)} aria-label="Move queued message up" title="Move up"><Icon name="arrow-up" size={13} /></button>
-                <button type="button" disabled={index === taskQueue.length - 1} onClick={() => moveQueuedPrompt(item.id, 1)} aria-label="Move queued message down" title="Move down"><Icon name="chevron-down" size={13} /></button>
+                <button type="button" disabled={index === 0} onClick={() => moveQueuedPrompt(item.id, -1)} aria-label="Move queued message up" title="Move up"><Icon name="arrow-up" size={14} /></button>
+                <button type="button" disabled={index === taskQueue.length - 1} onClick={() => moveQueuedPrompt(item.id, 1)} aria-label="Move queued message down" title="Move down"><Icon name="chevron-down" size={14} /></button>
               </>}
-              <button type="button" onClick={() => editQueuedPrompt(item.id)} aria-label="Edit queued message" title="Edit queued message"><Icon name="sliders" size={13} /></button>
-              <button type="button" onClick={() => updateQueuedPrompts(runQueueRef.current.filter((queued) => queued.id !== item.id))} aria-label="Remove queued message" title="Remove from queue"><Icon name="close" size={13} /></button>
+              <button type="button" onClick={() => editQueuedPrompt(item.id)} aria-label="Edit queued message" title="Edit queued message"><Icon name="sliders" size={14} /></button>
+              <button type="button" onClick={() => updateQueuedPrompts(runQueueRef.current.filter((queued) => queued.id !== item.id))} aria-label="Remove queued message" title="Remove from queue"><Icon name="close" size={14} /></button>
             </div>)}
             {queuedPromptsPaused ? <button className="task-queue-clear" type="button" onClick={() => updateQueuedPrompts([])}>Clear queued messages</button> : <p>Sent in order after the active task finishes.</p>}
           </div>}
@@ -3997,36 +4243,36 @@ export default function App() {
                   {pendingImages.map((image) => <div className="composer-attachment" key={image.id}>
                     <img className="composer-attachment-thumb" src={image.dataUrl} alt="" />
                     <span title={image.name}>{image.name}</span>
-                    <button type="button" className="composer-attachment-remove" onClick={() => removePendingImage(image.id)} aria-label={"Remove " + image.name} title="Remove image">×</button>
+                    <button type="button" className="composer-attachment-remove" onClick={() => removePendingImage(image.id)} aria-label={"Remove " + image.name} title="Remove image"><Icon name="close" size={12} /></button>
                   </div>)}
                 </div>}
                 <div className="composer-toolbar">
                   <div className="composer-left">
                     <div className="composer-plus"><button className="icon-btn icon-btn-square composer-tool" type="button" onClick={() => imageInputRef.current?.click()} aria-label="Attach image" title={imageInputReady ? "Attach image" : "Choose an image-capable model first"} disabled={conversationActionBusy || projectSwitcherBusy || approvalPending || !imageInputReady}><Icon name="plus" size={16} /></button></div>
-                    {modelReady ? <button className="icon-btn mode-chip composer-mode-chip" type="button" onClick={() => { if (mode === "mock" && pendingImages.length > 0 && !selectedModelForComposer?.supports_vision) { setError("Choose an image-capable model before enabling live mode with an image attached."); return; } setComposerMenuOpen(null); setMode(mode === "mock" ? "live" : "mock"); }} aria-label={`Execution mode · ${mode === "mock" ? "demo" : "live provider"}`} title={mode === "mock" ? "Demo · simulated replies. Switch to Live" : "Live provider · switch to Demo"}><span className="composer-mode-chip-face"><Icon name="shield" size={14} /><span className="composer-mode-chip-label text-sm">{mode === "mock" ? "Demo" : "Live"}</span></span></button> : <span className="mode-chip composer-mode-chip composer-mode-chip-static" title="Demo uses simulated replies. Connect a provider to use a live model."><span className="composer-mode-chip-face"><Icon name="shield" size={14} /><span className="composer-mode-chip-label text-sm">{mode === "mock" ? "Demo" : "Live unavailable"}</span></span></span>}
+                    {modelReady ? <button className="icon-btn mode-chip composer-mode-chip" type="button" onClick={() => { if (mode === "mock" && pendingImages.length > 0 && !selectedModelForComposer?.supports_vision) { setError("Choose an image-capable model before enabling live mode with an image attached."); return; } setComposerMenuOpen(null); setMode(mode === "mock" ? "live" : "mock"); }} aria-label={`Execution mode · ${mode === "mock" ? "demo" : "live provider"}`} title={mode === "mock" ? "Demo · simulated replies. Switch to Live" : "Live provider · switch to Demo"}><span className="composer-mode-chip-face"><Icon name="terminal" size={14} /><span className="composer-mode-chip-label text-sm">{mode === "mock" ? "Demo" : "Live"}</span></span></button> : <span className="mode-chip composer-mode-chip composer-mode-chip-static" title="Demo uses simulated replies. Connect a provider to use a live model."><span className="composer-mode-chip-face"><Icon name="terminal" size={14} /><span className="composer-mode-chip-label text-sm">{mode === "mock" ? "Demo" : "Live unavailable"}</span></span></span>}
                     <div className="composer-menu-anchor composer-permission-anchor">
                       <button className={`icon-btn permission-chip ${composerMenuOpen === "permission" ? "active" : ""}`} type="button" onClick={() => setComposerMenuOpen((current) => current === "permission" ? null : "permission")} aria-haspopup="listbox" aria-expanded={composerMenuOpen === "permission"} aria-label={`Local access · ${permissionMode}`} title="Choose local access level"><Icon name="shield" size={14} /><span>{permissionLabels[permissionMode]}</span><Icon name="chevron-down" size={12} /></button>
                       {composerMenuOpen === "permission" && <div className="composer-menu composer-permission-menu" role="listbox" aria-label="Local access level">
                         <div className="composer-permission-heading">Local access</div>
-                        {permissionOptions.map((option) => <button key={option.value} type="button" role="option" aria-selected={option.value === permissionMode} className={option.value === permissionMode ? "active" : ""} onClick={() => { void saveSettingsPatch({ permission_mode: option.value as DesktopSettings["permission_mode"] }); setComposerMenuOpen(null); }}><span className="composer-permission-copy"><strong>{option.label}</strong><small>{option.description}</small></span>{option.value === permissionMode && <Icon name="check" size={13} />}</button>)}
+                        {permissionOptions.map((option) => <button key={option.value} type="button" role="option" aria-selected={option.value === permissionMode} className={option.value === permissionMode ? "active" : ""} onClick={() => { void saveSettingsPatch({ permission_mode: option.value as DesktopSettings["permission_mode"] }); setComposerMenuOpen(null); }}><span className="composer-permission-copy"><strong>{option.label}</strong><small>{option.description}</small></span>{option.value === permissionMode && <Icon name="check" size={14} />}</button>)}
                         <div className="composer-permission-note">Only the selected project is in scope. Destructive deletion is not available from the desktop host.</div>
                       </div>}
                     </div>
                     <div className="composer-model-slot">{renderModelControl()}</div>
                   </div>
                   <div className="composer-right">
-                    <button className="icon-btn composer-tool composer-enhance-btn" type="button" onClick={() => conversation?.turns.length ? void runSubagents() : setHomeActionsOpen((current) => !current)} disabled={conversation?.turns.length ? mode !== "live" || conversationActionBusy || conversationLoading || approvalPending || !runtimeReady || !modelReady || !activeConversationId || !parallelWorkersEnabled : !activeProjectId || conversationActionBusy} aria-label={conversation?.turns.length ? "Run parallel workers" : "Workspace actions"} aria-expanded={conversation?.turns.length ? undefined : homeActionsOpen} title={conversation?.turns.length ? "Run parallel workers with your live model" : "Workspace actions"}><Icon name="spark" size={15} /></button>
+                    <button className="icon-btn composer-tool composer-enhance-btn" type="button" onClick={() => conversation?.turns.length ? void runSubagents() : setHomeActionsOpen((current) => !current)} disabled={conversation?.turns.length ? mode !== "live" || conversationActionBusy || conversationLoading || approvalPending || !runtimeReady || !modelReady || !activeConversationId || !parallelWorkersEnabled : !activeProjectId || conversationActionBusy} aria-label={conversation?.turns.length ? "Run parallel workers" : "Workspace actions"} aria-expanded={conversation?.turns.length ? undefined : homeActionsOpen} title={conversation?.turns.length ? "Run parallel workers with your live model" : "Workspace actions"}><Icon name="workflow" size={16} /></button>
                     {activeDesktopRun && activeDesktopRun.status !== "WAITING_PERMISSION" && <button className="run-stop-button" type="button" onClick={() => void cancelDesktopRun(activeDesktopRun)} disabled={activeDesktopRun.status === "CANCELLING" || !activeDesktopRun.cancel_supported} aria-label={activeDesktopRun.status === "CANCELLING" ? "Stop requested" : "Stop active task"} title={activeDesktopRun.status === "CANCELLING" ? "Waiting for a safe stop point" : "Request a safe stop"}>{activeDesktopRun.status === "CANCELLING" ? "Stopping…" : "Stop"}</button>}
                     <button className="send-btn send-button" type="button" onClick={() => void sendMessage()} aria-label={imageProcessing ? "Preparing image" : activeDesktopRun ? "Queue message" : "Send message"} title={imageProcessing ? "Preparing image…" : activeDesktopRun ? "Queue after the active task" : "Send message"} aria-busy={imageProcessing} disabled={conversationActionBusy || projectSwitcherBusy || conversationLoading || Boolean(conversationError) || imageProcessing || (!message.trim() && pendingImages.length === 0) || !workspace}>{busy || subagentBusy ? <span className="send-loading" /> : <Icon name={activeDesktopRun ? "plus" : "arrow-up"} size={16} />}</button>
                   </div>
                 </div>
               </div>
               <div className="composer-status" aria-label="Workspace environment">
-                <button className="composer-under-action" type="button" onClick={(event) => toggleProjectSwitcher(event.currentTarget)} aria-haspopup="menu" aria-expanded={projectSwitcherOpen}><Icon name="folder" size={15} /><span>{activeProjectName ?? "Choose project"}</span></button>
+                <button className="composer-under-action" type="button" onClick={(event) => toggleProjectSwitcher(event.currentTarget)} aria-haspopup="menu" aria-expanded={projectSwitcherOpen}><Icon name="folder" size={14} /><span>{activeProjectName ?? "Choose project"}</span></button>
                 <span className="composer-under-spacer" />
-                {activeDesktopRun ? <span className="composer-working-status" role="status"><ThinkingOrb state="working" size={20} aria-hidden="true" /><span>{taskStateLabel(activeDesktopRun.status)}</span></span> : busy || subagentBusy ? <span className="composer-working-status" role="status"><ThinkingOrb state="working" size={20} aria-hidden="true" /><span>{subagentBusy ? "Workers starting" : "Starting task"}</span></span> : <span className="composer-runtime-state"><Icon name="server" size={13} /><span>{runtimeReady ? "Local" : "Opening runtime"}</span>{sourceSnapshot?.identity.branch && <span className="branch-status"><Icon name="branch" size={11} />{shortPath(sourceSnapshot.identity.branch, 24)}</span>}</span>}
+                {activeDesktopRun ? <span className="composer-working-status" role="status"><ThinkingOrb state="working" size={20} aria-hidden="true" /><span>{taskStateLabel(activeDesktopRun.status)}</span></span> : busy || subagentBusy ? <span className="composer-working-status" role="status"><ThinkingOrb state="working" size={20} aria-hidden="true" /><span>{subagentBusy ? "Workers starting" : "Starting task"}</span></span> : <span className="composer-runtime-state"><Icon name="server" size={12} /><span>{runtimeReady ? "Local" : "Opening runtime"}</span>{sourceSnapshot?.identity.branch && <span className="branch-status"><Icon name="branch" size={12} />{shortPath(sourceSnapshot.identity.branch, 24)}</span>}</span>}
               </div>
-              {mode === "mock" && <p className="composer-mode-note">Demo replies are simulated. Connect a provider for live AI.</p>}
+              {!home && mode === "mock" && <p className="composer-mode-note">Demo replies are simulated. Connect a provider for live AI.</p>}
             </div>
           </div>
         </div>
@@ -4040,7 +4286,7 @@ export default function App() {
         <header className={`conversation-topbar${sidebarCollapsed ? " ct-collapsed" : ""}${workPanelOpen ? " ct-work-panel-open" : ""}`} data-tauri-drag-region="true" role="toolbar" aria-label="Conversation">
           <div className="ct-left">
             <div className="ct-lead" aria-hidden={!sidebarCollapsed}>
-              <button className="ct-icon-btn" type="button" tabIndex={sidebarCollapsed ? undefined : -1} onClick={() => setSidebarCollapsed(false)} aria-label="Expand sidebar" title="Expand sidebar"><Icon name="sidebar" size={15} /></button>
+              <button className="ct-icon-btn" type="button" tabIndex={sidebarCollapsed ? undefined : -1} onClick={() => setSidebarCollapsed(false)} aria-label="Expand sidebar" title="Expand sidebar"><Icon name="sidebar" size={16} /></button>
             </div>
           <div className="ct-title-wrap" title={homeProjectName ? `${homeProjectName} · ${displayActiveTitle}` : displayActiveTitle}>
             <span className="ct-title">{topbarTitle}</span>
@@ -4049,10 +4295,10 @@ export default function App() {
           </div>
           <div className="ct-right">
             <div className="ct-actions">
-              {homeProjectName && <span className="ct-project-label" title={homeProjectName}><Icon name="folder" size={13} />{homeProjectName}</span>}
+              {homeProjectName && <span className="ct-project-label" title={homeProjectName}><Icon name="folder" size={12} />{homeProjectName}</span>}
               <button className="ct-detail-button" type="button" onClick={() => { setWorkTab("context"); setWorkPanelOpen((current) => !current); }} aria-expanded={workPanelOpen} title={activeProjectName ? "Show project details" : "Show chat details"}><Icon name="panel" size={14} /><span>Details</span></button>
-              <button className="ct-icon-btn" type="button" onClick={startNewTask} disabled={!workspace || conversationActionBusy || projectSwitcherBusy} aria-label="New chat" title="New chat"><Icon name="new-chat" size={15} /></button>
-              <button className="ct-icon-btn" type="button" onClick={() => { setSearchQuery(""); setSearchOpen(true); window.requestAnimationFrame(() => globalSearchRef.current?.focus()); }} aria-label="Search" title="Search"><Icon name="search" size={15} /></button>
+              <button className="ct-icon-btn" type="button" onClick={startNewTask} disabled={!workspace || conversationActionBusy || projectSwitcherBusy} aria-label="New chat" title="New chat"><Icon name="new-chat" size={16} /></button>
+              <button className="ct-icon-btn" type="button" onClick={() => openQuickOpen()} aria-label="Search" title="Search"><Icon name="search" size={16} /></button>
             </div>
           </div>
         </header>
@@ -4063,16 +4309,17 @@ export default function App() {
               <div className="home-scroll">
               <div className="home-stack-inner">
                 <div className="empty-hero">
-                  <span className="eyebrow">YOUR WORKSPACE</span>
                   <h1>What are you working on?</h1>
                   <p>Describe a task. AEGIS keeps its progress, project files, approvals, and reviewable changes close at hand.</p>
                 </div>
                 {renderComposer(true)}
-                <div className="home-readiness"><Icon name={modelReady ? "check" : "info"} size={14} /><span>{modelReady ? "Your model is ready." : "Try Demo now, or connect your preferred AI model."}{!activeProjectId && " A project is optional."}</span></div>
-                <div className="home-quick-actions" aria-label="Getting started">
-                  <button className="home-quick-action" type="button" onClick={(event) => { if (activeProjectId) { setWorkTab("files"); setWorkPanelOpen(true); } else toggleProjectSwitcher(event.currentTarget); }}><Icon name="folder" size={17} /><span className="home-action-copy"><strong>{activeProjectId ? "Browse project" : "Open a project"}</strong><small>{activeProjectId ? "Files and source map" : "Bring your files into scope"}</small></span><Icon name="chevron-right" size={14} /></button>
-                  <button className="home-quick-action" type="button" onClick={() => { setSettingsSection("Models"); openDestination("settings"); }}><Icon name="bot" size={17} /><span className="home-action-copy"><strong>{modelReady ? "Manage models" : "Connect a model"}</strong><small>Your provider, your choice</small></span><Icon name="chevron-right" size={14} /></button>
-                  <button className="home-quick-action" type="button" onClick={() => openDestination("plugins")}><Icon name="plug" size={17} /><span className="home-action-copy"><strong>Explore utilities</strong><small>Skills and local capabilities</small></span><Icon name="chevron-right" size={14} /></button>
+                <div className="home-footer-bar">
+                  <div className="home-readiness"><Icon name={modelReady ? "check" : "info"} size={14} /><span>{modelReady ? "Live model ready." : "Demo replies are simulated."}</span></div>
+                  <div className="home-quick-actions" aria-label="Getting started">
+                    <button className="home-quick-action" type="button" onClick={(event) => { if (activeProjectId) { setWorkTab("files"); setWorkPanelOpen(true); } else toggleProjectSwitcher(event.currentTarget); }}><Icon name="folder" size={14} /><span>{activeProjectId ? "Browse project" : "Open a project"}</span></button>
+                    <button className="home-quick-action" type="button" onClick={() => { setSettingsSection("Models"); openDestination("settings"); }}><Icon name="layers" size={14} /><span>{modelReady ? "Manage models" : "Connect a model"}</span></button>
+                    <button className="home-quick-action" type="button" onClick={() => openDestination("plugins")}><Icon name="utilities" size={14} /><span>Explore utilities</span></button>
+                  </div>
                 </div>
               </div>
             </div>
@@ -4082,22 +4329,22 @@ export default function App() {
             <div className="chat-scroll thread-surface">
               <div className="chat-column">
                 {conversationLoading && <div className="panel-empty-state" role="status"><h3>Opening conversation</h3><p>Loading messages and their context.</p></div>}
-                {conversationError && <div className="panel-empty-state" role="alert"><h3>Unable to open this chat</h3><p>{conversationError}</p><button className="settings-secondary" type="button" onClick={() => activeConversationId && void loadConversation(activeConversationId)}>Try again</button></div>}
-                {conversation && <div className="chat-intro"><div className="intro-mark"><Icon name="spark" size={17} /></div><div><strong>{mode === "mock" ? "Demo conversation" : "Live conversation"}</strong><span>{mode === "mock" ? "Replies are simulated" : "Using your provider"} · {conversationInspection?.context.item_count ?? 0} context items · {contextReadout}</span></div><span className="context-chip">{runtimeReady ? "Local" : "Opening"}</span></div>}
-                {conversation && selectedTaskState === "INTERRUPTED" && <div className="task-interrupted-banner" role="status"><div><strong>This task was interrupted.</strong><span>Its previous run is no longer active. Start a new task with the last user message to continue.</span></div><button className="settings-secondary" type="button" onClick={() => { const previousMessage = [...conversation.turns].reverse().find((turn) => turn.role === "user")?.content ?? ""; startNewTask(); setMessage(previousMessage); }}>Start a new task</button></div>}
+                {conversationError && <div className="panel-empty-state" role="alert"><h3>Unable to open this chat</h3><p>{conversationError}</p><button className="settings-secondary" type="button" onClick={() => activeConversationId && void loadConversation(activeConversationId)}><Icon name="refresh" size={14} />Try again</button></div>}
+                {conversation && <div className="chat-intro"><div className="intro-mark"><Icon name="cpu" size={18} /></div><div><strong>{mode === "mock" ? "Demo conversation" : "Live conversation"}</strong><span className="meta-inline-list"><span>{mode === "mock" ? "Replies are simulated" : "Using your provider"}</span><span>{conversationInspection?.context.item_count ?? 0} context items</span><span>{contextReadout}</span></span></div><span className="context-chip">{runtimeReady ? "Local" : "Opening"}</span></div>}
+                {conversation && selectedTaskState === "INTERRUPTED" && <div className="task-interrupted-banner" role="status"><div><strong>This task was interrupted.</strong><span>Its previous run is no longer active. Start a new task with the last user message to continue.</span></div><button className="settings-secondary" type="button" onClick={() => { const previousMessage = [...conversation.turns].reverse().find((turn) => turn.role === "user")?.content ?? ""; startNewTask(); setMessage(previousMessage); }}><Icon name="plus" size={14} />Start a new task</button></div>}
                 {renderSubagentActivity()}
-                {subagentResult && <article className="subagent-result" aria-label="Subagent run result"><div className="subagent-result-header"><div><span className="eyebrow">PARALLEL RUN</span><strong>{subagentResult.status}</strong></div><span className="status-chip"><i /> {subagentResult.child_results.length} workers</span></div><p>{subagentResult.root_output}</p><div className="subagent-workers">{subagentResult.child_results.map((worker) => <span className={`worker-chip ${worker.status.toLowerCase()}`} key={`${worker.task_id}-${worker.packet_hash}`}><i />Worker {worker.task_id} · {worker.status}</span>)}</div><small>Graph {shortPath(subagentResult.graph_hash, 18)} · {subagentResult.graph_authority}</small></article>}
+                {subagentResult && <article className="subagent-result" aria-label="Subagent run result"><div className="subagent-result-header"><div><span className="eyebrow">Parallel run</span><strong>{subagentResult.status}</strong></div><span className="status-chip"><i /> {subagentResult.child_results.length} workers</span></div><p>{subagentResult.root_output}</p><div className="subagent-workers">{subagentResult.child_results.map((worker) => <span className={`worker-chip ${worker.status.toLowerCase()}`} key={`${worker.task_id}-${worker.packet_hash}`}><i />Worker {worker.task_id} · {worker.status}</span>)}</div><small>Graph {shortPath(subagentResult.graph_hash, 18)} · {subagentResult.graph_authority}</small></article>}
                 {reconciliationNotice && <p className="approval-reconciliation-feedback" role="status">{reconciliationNotice}</p>}
                 {conversationInspection?.approvals.map((approval) => <article className="approval-card" key={approval.approval_id} aria-label={approval.status === "AMBIGUOUS" ? "External action outcome unclear" : "Approval required"}>
-                  <div><span className="eyebrow">REVIEW REQUIRED</span><strong>{approval.tool_name}</strong></div>
+                  <div><span className="eyebrow">Review required</span><strong>{escapeBidirectionalControls(approval.tool_name)}</strong></div>
                   <span className="status-chip warning"><i />{approval.status}</span>
                   <p>{approval.status === "AMBIGUOUS"
                     ? "The previous session ended before the result was confirmed. The action may or may not have happened; AEGIS will not run it again automatically."
                     : "This action is paused. Review the safe argument preview, then approve this call once or decline it."}</p>
                   {approval.argument_preview.length > 0 && <div className="approval-arguments" aria-label="Safe argument preview">
-                    {approval.argument_preview.map((item, index) => <div key={`${item.key}-${index}`}><code>{item.key}</code><span>{item.value}</span></div>)}
+                    {approval.argument_preview.map((item, index) => <div key={`${item.key}-${index}`}><code>{escapeBidirectionalControls(item.key)}</code><span dir="auto">{escapeBidirectionalControls(item.value)}</span></div>)}
                   </div>}
-                  <small>Effect {approval.effect_class.replaceAll("_", " ")} · {approval.argument_keys.length} argument keys · sensitive values hidden</small>
+                  <small className="meta-inline-list"><span>Effect {approval.effect_class.replaceAll("_", " ")}</span><span>{approval.argument_keys.length} argument keys</span><span>sensitive values hidden</span></small>
                   {approval.can_resolve && <div className="approval-actions">
                     <button type="button" className="approval-decline" disabled={busy || approvalBusyId !== null} onClick={() => void resolveToolApproval(approval.approval_id, "deny")}>Decline</button>
                     <button type="button" className="approval-approve" disabled={busy || approvalBusyId !== null} onClick={() => void resolveToolApproval(approval.approval_id, "approve")}>{approvalBusyId === approval.approval_id ? "Working…" : "Run once"}</button>
@@ -4110,7 +4357,7 @@ export default function App() {
                   {!approval.can_resolve && approval.status !== "AMBIGUOUS" && <small>This request is no longer actionable in the current session. Refresh the conversation before continuing.</small>}
                 </article>)}
                 {conversation?.turns.map((turn) => (
-                  <article className={`message-row ${turn.role}`} key={turn.turn_id}>
+                  <article className={`message-row ${turn.role}`} id={`turn-${turn.turn_id}`} key={turn.turn_id}>
                     <div className="message-avatar">{turn.role === "user" ? "Y" : "A"}</div>
                     <div className="message-content"><div className="message-meta"><strong>{turn.role === "user" ? "You" : "AEGIS"}</strong><span>r{turn.revision}</span></div>{renderTurnContent(turn)}</div>
                   </article>
@@ -4128,7 +4375,7 @@ export default function App() {
     const selected = sourceSnapshot?.files.find((file) => file.relative_path === selectedFile);
     const selectedDiff = selectedChangeDiff;
     const cacheUsageSummary = lastPromptCacheUsage
-      ? `${lastPromptCacheUsage.cache_status} · ${lastPromptCacheUsage.cached_read_tokens.toLocaleString()} read · ${lastPromptCacheUsage.cache_write_tokens.toLocaleString()} written · ${lastPromptCacheUsage.provider_input_tokens.toLocaleString()} provider input`
+      ? `${lastPromptCacheUsage.cache_status} (${lastPromptCacheUsage.cached_read_tokens.toLocaleString()} read, ${lastPromptCacheUsage.cache_write_tokens.toLocaleString()} written, ${lastPromptCacheUsage.provider_input_tokens.toLocaleString()} provider input)`
       : null;
     const workTabLabels: Record<WorkTab, string> = {
       files: "Files",
@@ -4137,9 +4384,9 @@ export default function App() {
       activity: "Activity",
       context: "Context",
     };
-    const projectEmptyState = !activeProjectId ? <div className="panel-empty-state"><Icon name="folder" /><h3>Bring a project into scope</h3><p>Choose a project to explore its files and source map. You can chat without one.</p><button className="settings-secondary" type="button" onClick={(event) => toggleProjectSwitcher(event.currentTarget)}>Choose project</button></div>
-      : graphLoading ? <div className="panel-empty-state" role="status"><Icon name="refresh" /><h3>Reading project files</h3><p>The local index is opening.</p></div>
-      : graphError ? <div className="panel-empty-state" role="alert"><Icon name="info" /><h3>Unable to read this project</h3><p>{graphError}</p><button className="settings-secondary" type="button" onClick={() => void loadWorkspaceGraph(true)}>Try again</button></div> : null;
+    const projectEmptyState = !activeProjectId ? <div className="panel-empty-state"><Icon name="folder" size={14} /><h3>Bring a project into scope</h3><p>Choose a project to explore its files and source map.</p><button className="settings-secondary" type="button" onClick={(event) => toggleProjectSwitcher(event.currentTarget)}><Icon name="folder" size={14} />Choose project</button></div>
+      : graphLoading ? <div className="panel-empty-state" role="status"><Icon name="refresh" size={14} state="loading" /><h3>Reading project files</h3><p>Opening local index…</p></div>
+      : graphError ? <div className="panel-empty-state" role="alert"><Icon name="info" size={14} /><h3>Unable to read this project</h3><p>{graphError}</p><button className="settings-secondary" type="button" onClick={() => void loadWorkspaceGraph(true)}><Icon name="refresh" size={14} />Try again</button></div> : null;
     type FileTreeFolder = {
       folders: Map<string, FileTreeFolder>;
       files: SourceSnapshot["files"];
@@ -4225,17 +4472,17 @@ export default function App() {
             }}>
               {(Object.keys(workTabLabels) as WorkTab[]).filter((tab) => workbenchV2Enabled || tab !== "changes").map((tab) => <button key={tab} id={`inspector-tab-${tab}`} className={`work-panel-tab-button ${tab === workTab ? "active" : ""}`} type="button" role="tab" aria-selected={tab === workTab} aria-controls="inspector-panel" tabIndex={tab === workTab ? 0 : -1} onClick={() => setWorkTab(tab)}><span>{workTabLabels[tab]}</span></button>)}
             </div>
-            <button className="work-panel-close no-drag" type="button" onClick={() => setWorkPanelOpen(false)} aria-label="Close details" title="Close details"><Icon name="close" size={15} /></button>
+            <button className="work-panel-close no-drag" type="button" onClick={() => setWorkPanelOpen(false)} aria-label="Close details" title="Close details"><Icon name="close" size={16} /></button>
           </div>
           <div id="inspector-panel" className="work-panel-body" role="tabpanel" aria-labelledby={`inspector-tab-${workTab}`} tabIndex={0}>
-            {workTab === "files" && (projectEmptyState ?? <div className="file-panel"><div className="panel-title"><div><span className="eyebrow">EXPLORER</span><strong>Project files</strong></div><span className="file-count">{sourceSnapshot?.files.length ?? "—"}</span></div><label className="file-search"><Icon name="search" size={14} /><input ref={searchRef} value={fileFilter} onChange={(event) => setFileFilter(event.target.value)} placeholder="Search files" aria-label="Search files" /></label><div className="file-tree">{filteredFiles.length ? renderFileTree(fileTreeRoot) : <p className="panel-empty">{fileFilter.trim() ? "No files match this search." : "No files have been indexed in this project."}</p>}</div>{selected && <div className="source-viewer"><div className="source-viewer-header"><div><span className="eyebrow">SOURCE</span><strong title={selected.relative_path}>{selected.relative_path}</strong></div><button className="settings-secondary" type="button" onClick={() => void openSelectedFileExternally()} disabled={!hasNativeWindow()} title={hasNativeWindow() ? "Open in the operating system’s default editor" : "Available in the desktop app"}>Open externally</button></div><div className="source-viewer-meta"><span>{selected.language || "Plain text"}</span><span>{selectedFileContent?.size_bytes.toLocaleString() ?? Math.round(selected.size_bytes)} bytes</span></div>{selectedFileContent?.source === "PREVIEW_ONLY" && <p className="preview-data-note" role="note">Preview only · local file contents are not available in the browser.</p>}{fileReadError ? <p className="panel-error" role="alert">{fileReadError}</p> : selectedFileContent ? <pre className="source-viewer-content" tabIndex={0} aria-label={`Source contents of ${selected.relative_path}`}>{selectedFileContent.content}</pre> : <p className="panel-empty" role="status">Opening file…</p>}{fileOpenNotice && <p className="panel-notice" role="status">{fileOpenNotice}</p>}</div>}</div>)}
-            {workTab === "changes" && (projectEmptyState ?? <div className="changes-panel"><div className="panel-title"><div><span className="eyebrow">REVIEW</span><strong>Tracked changes</strong></div><button className="settings-secondary" type="button" onClick={() => { setWorkspaceChanges(null); setChangesRefreshKey((current) => current + 1); }}>Refresh</button></div><p className="changes-source-note">Compared with the current Git HEAD. Untracked files are not included.</p>{workspaceChanges?.source === "PREVIEW_ONLY" && <p className="preview-data-note" role="note">Preview only · open the desktop app to inspect local Git changes.</p>}{workspaceChanges?.truncated && <p className="panel-notice" role="status">The list is capped at 200 tracked files.</p>}{changesError ? <p className="panel-error" role="alert">{changesError}</p> : workspaceChanges ? workspaceChanges.entries.length ? <div className="changes-layout"><div className="changes-list" role="list" aria-label="Changed files">{workspaceChanges.entries.map((entry) => <button className={`changes-file ${selectedChangePath === entry.relative_path ? "active" : ""}`} key={entry.relative_path} type="button" role="listitem" onClick={() => setSelectedChangePath(entry.relative_path)}><Icon name="file" size={14} /><span>{entry.relative_path}</span></button>)}</div><section className="changes-diff" aria-label="Selected file diff"><div className="changes-diff-heading"><strong title={selectedDiff?.relative_path ?? selectedChangePath ?? ""}>{selectedDiff?.relative_path ?? selectedChangePath}</strong><span>{selectedDiff?.source}</span></div>{selectedDiff?.truncated && <p className="panel-notice" role="status">This diff is truncated at 256 KiB.</p>}{selectedDiff ? <pre tabIndex={0}>{selectedDiff.diff || "No textual diff is available for this file."}</pre> : <p className="panel-empty" role="status">Loading diff…</p>}</section></div> : <div className="panel-empty-state"><Icon name="check" /><h3>No tracked changes</h3><p>Changes to tracked files appear here for review.</p></div> : <div className="panel-empty-state" role="status"><Icon name="activity" /><h3>Reading Git changes</h3><p>Checking the current workspace against HEAD.</p></div>}</div>)}
-            {workTab === "map" && (projectEmptyState ?? <div className="map-panel">{workspaceGraph && sourceSnapshot ? <Suspense fallback={<div className="panel-empty-state" role="status"><Icon name="map" /><h3>Loading Focus Graph</h3><p>The graph feature is opening on demand.</p></div>}><WorkspaceGraphView graph={workspaceGraph} loadMemories={loadMemoriesForFile} loadFileRelations={loadFileMemoryRelations} linkMemoryToFile={linkMemoryToFile} unlinkFileRelation={unlinkFileMemoryRelation} /></Suspense> : <div className="panel-empty-state"><Icon name="map" /><h3>{graphLoading ? "Preparing Focus Graph" : "No source map yet"}</h3><p>{graphLoading ? "The local project map is being prepared." : "Reload the index to inspect this project."}</p>{!graphLoading && <button className="settings-secondary" type="button" onClick={() => void loadWorkspaceGraph(true, true)}>Reload index</button>}</div>}</div>)}
-            {workTab === "activity" && <div className="activity-panel"><div className="panel-title"><div><span className="eyebrow">TASK TIMELINE</span><strong>Activity</strong></div>{conversation && <span className="status-chip"><i />{selectedTaskState === "RUNNING" || selectedTaskState === "CANCELLING" ? taskStateLabel(selectedTaskState) : "Idle"}</span>}</div>{conversationInspection?.timeline.length ? <VirtualizedTimeline items={[...conversationInspection.timeline].reverse()} /> : activityItems.length ? activityItems.map((item) => <div className="activity-item" key={`${item.title}-${item.timestamp}-${item.detail}`}><span className="activity-icon"><Icon name={item.icon} size={13} /></span><div><strong>{item.title}</strong><small>{item.detail}</small></div></div>) : <div className="panel-empty-state"><Icon name="activity" /><h3>{conversationLoading ? "Loading activity" : activeConversationId ? "No activity yet" : "Follow your task"}</h3><p>{conversationError ?? (activeConversationId ? "Actions and checkpoints appear here as you work." : "Open a task to see its actions and checkpoints.")}</p></div>}</div>}
+            {workTab === "files" && (projectEmptyState ?? <div className="file-panel"><div className="panel-title"><div><span className="eyebrow">Explorer</span><strong>Project files</strong></div><span className="file-count">{sourceSnapshot?.files.length ?? "—"}</span></div><label className="file-search"><Icon name="search" size={14} /><input ref={searchRef} value={fileFilter} onChange={(event) => setFileFilter(event.target.value)} placeholder="Search files" aria-label="Search files" /></label><div className="file-tree">{filteredFiles.length ? renderFileTree(fileTreeRoot) : <p className="panel-empty">{fileFilter.trim() ? "No files match this search." : "No files have been indexed in this project."}</p>}</div>{selected && <div className="source-viewer"><div className="source-viewer-header"><div><span className="eyebrow">Source</span><strong title={selected.relative_path}>{selected.relative_path}</strong></div><button className="settings-secondary" type="button" onClick={() => void openSelectedFileExternally()} disabled={!hasNativeWindow()} title={hasNativeWindow() ? "Open in the operating system’s default editor" : "Available in the desktop app"}><Icon name="external" size={14} />Open externally</button></div><div className="source-viewer-meta"><span>{selected.language || "Plain text"}</span><span>{selectedFileContent?.size_bytes.toLocaleString() ?? Math.round(selected.size_bytes)} bytes</span></div>{selectedFileContent?.source === "PREVIEW_ONLY" && <p className="preview-data-note" role="note">Preview only · local file contents are not available in the browser.</p>}{fileReadError ? <p className="panel-error" role="alert">{fileReadError}</p> : selectedFileContent ? <pre className="source-viewer-content" tabIndex={0} aria-label={`Source contents of ${selected.relative_path}`}>{selectedFileContent.content}</pre> : <p className="panel-empty" role="status">Opening file…</p>}{fileOpenNotice && <p className="panel-notice" role="status">{fileOpenNotice}</p>}</div>}</div>)}
+            {workTab === "changes" && (projectEmptyState ?? <div className="changes-panel"><div className="panel-title"><div><span className="eyebrow">Review</span><strong>Tracked changes</strong></div><button className="settings-secondary" type="button" onClick={() => { setWorkspaceChanges(null); setChangesRefreshKey((current) => current + 1); }}><Icon name="refresh" size={14} />Refresh</button></div><p className="changes-source-note">Compared with the current Git HEAD. Untracked files are not included.</p>{workspaceChanges?.source === "PREVIEW_ONLY" && <p className="preview-data-note" role="note">Preview only · open the desktop app to inspect local Git changes.</p>}{workspaceChanges?.truncated && <p className="panel-notice" role="status">The list is capped at 200 tracked files.</p>}{changesError ? <p className="panel-error" role="alert">{changesError}</p> : workspaceChanges ? workspaceChanges.entries.length ? <div className="changes-layout"><div className="changes-list" role="list" aria-label="Changed files">{workspaceChanges.entries.map((entry) => <button className={`changes-file ${selectedChangePath === entry.relative_path ? "active" : ""}`} key={entry.relative_path} type="button" role="listitem" onClick={() => setSelectedChangePath(entry.relative_path)}><Icon name="file" size={14} /><span>{entry.relative_path}</span></button>)}</div><section className="changes-diff" aria-label="Selected file diff"><div className="changes-diff-heading"><strong title={selectedDiff?.relative_path ?? selectedChangePath ?? ""}>{selectedDiff?.relative_path ?? selectedChangePath}</strong><span>{selectedDiff?.source}</span></div>{selectedDiff?.truncated && <p className="panel-notice" role="status">This diff is truncated at 256 KiB.</p>}{selectedDiff ? <pre tabIndex={0}>{selectedDiff.diff || "No textual diff is available for this file."}</pre> : <p className="panel-empty" role="status">Loading diff…</p>}</section></div> : <div className="panel-empty-state"><Icon name="check" size={14} /><span>No tracked changes against HEAD.</span></div> : <div className="panel-empty-state" role="status"><Icon name="refresh" size={14} state="loading" /><span>Checking workspace against HEAD…</span></div>}</div>)}
+            {workTab === "map" && (projectEmptyState ?? <div className="map-panel">{workspaceGraph && sourceSnapshot ? <Suspense fallback={<div className="panel-empty-state" role="status"><Icon name="refresh" size={14} state="loading" /><span>Loading Focus Graph…</span></div>}><WorkspaceGraphView graph={workspaceGraph} loadMemories={loadMemoriesForFile} loadFileRelations={loadFileMemoryRelations} linkMemoryToFile={linkMemoryToFile} unlinkFileRelation={unlinkFileMemoryRelation} /></Suspense> : <div className="panel-empty-state"><Icon name="map" size={14} /><span>{graphLoading ? "Preparing local source map…" : "No source map indexed yet."}</span>{!graphLoading && <button className="settings-secondary" type="button" onClick={() => void loadWorkspaceGraph(true, true)}><Icon name="refresh" size={14} state={graphLoading ? "loading" : "idle"} />Reload index</button>}</div>}</div>)}
+            {workTab === "activity" && <div className="activity-panel"><div className="panel-title"><div><span className="eyebrow">Task timeline</span><strong>Activity</strong></div>{conversation && <span className="status-chip"><i />{selectedTaskState === "RUNNING" || selectedTaskState === "CANCELLING" ? taskStateLabel(selectedTaskState) : "Idle"}</span>}</div>{conversationInspection?.timeline.length ? <VirtualizedTimeline items={[...conversationInspection.timeline].reverse()} /> : activityItems.length ? activityItems.map((item) => <div className="activity-item" key={`${item.title}-${item.timestamp}-${item.detail}`}><span className="activity-icon"><Icon name={item.icon} size={14} /></span><div><strong>{item.title}</strong><small>{item.detail}</small></div></div>) : <div className="panel-empty-state"><Icon name="activity" size={14} /><span>{conversationError ?? (conversationLoading ? "Loading activity…" : activeConversationId ? "No activity recorded yet." : "Open a chat to inspect its timeline.")}</span></div>}</div>}
             {workTab === "context" && (
               <div className="context-panel">
                 <div className="panel-title">
-                  <div><span className="eyebrow">CONTEXT COCKPIT</span><strong>What AEGIS used</strong></div>
+                  <div><span className="eyebrow">Context cockpit</span><strong>What AEGIS used</strong></div>
                   <span className="status-chip">{conversationInspection?.context.status ?? "Unknown"}</span>
                 </div>
                 {conversationInspection ? (
@@ -4250,7 +4497,7 @@ export default function App() {
                       <div className="context-detail"><span>Included / omitted</span><code>{conversationInspection.context.inclusion.included_count} / {conversationInspection.context.inclusion.omitted_count}</code></div>
                       {conversationInspection.context.inclusion.deduplicated_turn_count > 0 && <div className="context-detail"><span>Exact transcript overlap</span><code>{conversationInspection.context.inclusion.deduplicated_turn_count} turns removed</code></div>}
                       {conversationInspection.context.inclusion.omitted_reasons.length > 0 && <p className="context-redaction" role="status">Omitted because the rendered prompt reached its local character limit.</p>}
-                      <div className="context-detail"><span>Adapter payload</span><code>{conversationInspection.context.request_attempt ? `Dispatch attempted · ${conversationInspection.context.request_attempt.payload_bytes.toLocaleString()} B · ${shortPath(conversationInspection.context.request_attempt.payload_sha256, 22)}` : "Prepared · no dispatch captured"}</code></div>
+                      <div className="context-detail"><span>Adapter payload</span><code>{conversationInspection.context.request_attempt ? `Dispatch attempted (${conversationInspection.context.request_attempt.payload_bytes.toLocaleString()} B) · ${shortPath(conversationInspection.context.request_attempt.payload_sha256, 22)}` : "Prepared · no dispatch captured"}</code></div>
                       {conversationInspection.context.request_attempt && <p className="context-redaction" role="status">Dispatch was attempted; provider receipt and model use are unknown.</p>}
                     </section>}
                     <div className="context-detail"><span>Source revision</span><code>{shortPath(conversationInspection.context.source_revision, 22)}</code></div>
@@ -4259,7 +4506,7 @@ export default function App() {
                     {cacheUsageSummary && <div className="context-detail"><span>Last response cache</span><code>{cacheUsageSummary}</code></div>}
                     <p className="context-redaction">Prompts, tool arguments, provider output, and serialized payloads remain hidden. Included context does not confirm provider receipt or model use.</p>
                   </>
-                ) : <div className="panel-empty-state"><Icon name="spark" /><h3>{conversationLoading ? "Loading context" : activeConversationId ? "Context unavailable" : "Every reply has a context"}</h3><p>{conversationError ?? (activeConversationId ? "Context appears after this conversation is loaded." : "Start or open a chat to inspect what informed its replies.")}</p></div>}
+                ) : <div className="panel-empty-state"><Icon name="layers" size={14} /><span>{conversationError ?? (conversationLoading ? "Loading context…" : activeConversationId ? "Context manifest loads with the active chat." : "Open a chat to inspect its context manifest.")}</span></div>}
               </div>
             )}
           </div>
@@ -4270,21 +4517,21 @@ export default function App() {
 
   function renderSettings() {
     const groups = [
-      { label: "Preferences", items: [["General", "sliders"], ["AI", "spark"], ["Shortcuts", "keyboard"]] },
-      { label: "Agent", items: [["Instructions", "file"], ["Models", "bot"], ["Skills", "plug"], ["MCP", "server"], ["Plugins", "plug"], ["Subagents", "bot"]] },
+      { label: "Preferences", items: [["General", "sliders"], ["AI", "cpu"], ["Shortcuts", "keyboard"]] },
+      { label: "Agent", items: [["Instructions", "files"], ["Models", "layers"], ["Skills", "skill"], ["MCP", "server"], ["Plugins", "blocks"], ["Subagents", "bot"]] },
       { label: "Workspace", items: [["Import", "download"], ["Projects", "folder"]] },
       { label: "System", items: [["Remote Hosts", "globe"], ["Info", "info"]] },
     ] as const;
 
     const icons: Record<string, IconName> = {
       General: "sliders",
-      AI: "spark",
+      AI: "cpu",
       Shortcuts: "keyboard",
-      Instructions: "file",
-      Models: "bot",
-      Skills: "plug",
+      Instructions: "files",
+      Models: "layers",
+      Skills: "skill",
       MCP: "server",
-      Plugins: "plug",
+      Plugins: "blocks",
       Subagents: "bot",
       Import: "download",
       Projects: "folder",
@@ -4404,11 +4651,11 @@ export default function App() {
     ) : settingsSection === "Shortcuts" ? (
       <div className="shortcut-settings-page"><section className="shortcut-settings-card"><div className="shortcut-settings-header"><div><h2>Keyboard shortcuts</h2><p>Shortcuts come from the Workbench command registry.</p></div></div>{workbenchCommands.map((command) => <div className="shortcut-settings-row" key={command.id}><div><strong>{command.label}</strong><span>{SHORTCUT_DESCRIPTIONS[command.id]}</span></div><span className="shortcut-settings-binding">{isMacOS ? command.keys.mac : command.keys.other}</span></div>)}<div className="shortcut-settings-row"><div><strong>Send message</strong><span>Submit the current composer prompt.</span></div><span className="shortcut-settings-binding">{enterToSend ? "Enter" : `${primaryShortcutPrefix}Enter`}</span></div></section></div>
     ) : settingsSection === "Instructions" ? (
-      <div className="instruction-settings-page"><section className="instruction-settings-card"><div className="instruction-settings-heading"><div><h2>Global instructions</h2><p>Instructions applied to new AEGIS conversations.</p><span>Stored in the local profile; secrets and provider responses are excluded.</span></div><span className="instruction-file-label">profile instructions</span></div><textarea value={instructionsDraft} onChange={(event) => { setInstructionsDraft(event.target.value); setInstructionsNotice(null); }} aria-label="Global instructions" spellCheck={false} /><div className="instruction-settings-actions"><button className="settings-primary" type="button" onClick={() => void saveSettingsPatch({ instructions: instructionsDraft }, () => setInstructionsNotice("Instructions saved to the local profile."))}>Save instructions</button>{instructionsNotice && <span role="status">{instructionsNotice}</span>}</div></section></div>
+      <div className="instruction-settings-page"><section className="instruction-settings-card"><div className="instruction-settings-heading"><div><h2>Global instructions</h2><p>Instructions applied to new AEGIS conversations.</p><span>Stored in the local profile; secrets and provider responses are excluded.</span></div><span className="instruction-file-label">profile instructions</span></div><textarea value={instructionsDraft} onChange={(event) => { setInstructionsDraft(event.target.value); setInstructionsNotice(null); }} aria-label="Global instructions" spellCheck={false} /><div className="instruction-settings-actions"><button className="settings-primary" type="button" onClick={() => void saveSettingsPatch({ instructions: instructionsDraft }, () => setInstructionsNotice("Instructions saved to the local profile."))}><Icon name="check" size={14} state={instructionsNotice ? "active" : "idle"} />Save instructions</button>{instructionsNotice && <span role="status">{instructionsNotice}</span>}</div></section></div>
     ) : settingsSection === "Models" ? (
       <div className="model-configuration-page">
         <section className="model-section model-onboarding-section">
-          <div className="model-section-heading"><div><h2>Connect a model provider</h2><p>Choose the provider first, then add its API key. AEGIS checks connected catalogs while the app is open; provider results are cached for five minutes. Use Refresh catalog to bypass the cache now.</p></div><span className="model-security-badge"><Icon name="shield" size={13} />Host boundary</span></div>
+          <div className="model-section-heading"><div><h2>Connect a model provider</h2><p>Choose the provider first, then add its API key. AEGIS checks connected catalogs while the app is open; provider results are cached for five minutes. Use Refresh catalog to bypass the cache now.</p></div><span className="model-security-badge"><Icon name="shield" size={12} />Host boundary</span></div>
           <label className="model-key-field"><span>Provider</span><select aria-label="Provider" value={selectedProviderKind} onChange={(event) => { setSelectedProviderKind(event.target.value); setCustomProviderEndpoint(""); setConnectionNotice(null); }} disabled={connectionBusy !== null}><option value="">Choose a provider…</option>{providerChoices.map((provider) => <option key={provider.provider_kind} value={provider.provider_kind}>{provider.provider_label}</option>)}</select></label>
           {selectedProvider && <div className="provider-selection-card" role="status"><div><strong>{selectedProvider.provider_label}</strong><span>Selected by you</span></div><small>Key destination: <strong>{selectedProviderDestination}</strong></small></div>}
           {selectedProvider?.requires_endpoint && <label className="model-key-field"><span>Compatible provider endpoint</span><input aria-label="Custom provider endpoint" aria-required value={customProviderEndpoint} onChange={(event) => { setCustomProviderEndpoint(event.target.value); setConnectionNotice(null); }} placeholder="https://…" inputMode="url" disabled={connectionBusy !== null} /></label>}
@@ -4419,13 +4666,13 @@ export default function App() {
             providerLabel={selectedProvider.provider_label}
           />}
           <label className="model-key-field"><span>API key</span><input aria-label="API key" type="password" value={apiKeyDraft} onChange={(event) => { setApiKeyDraft(event.target.value); setConnectionNotice(null); }} placeholder="Paste API key" autoComplete="new-password" spellCheck={false} disabled={connectionBusy !== null} /></label>
-          <div className="model-onboarding-actions"><button className="settings-primary" type="button" onClick={() => void connectApiKey()} disabled={!apiKeyDraft.trim() || !workspace || !selectedProvider || Boolean(selectedProvider.requires_endpoint && !customProviderEndpoint.trim()) || connectionBusy !== null}>{connectionBusy === "connect" ? "Connecting…" : "Connect & discover models"}</button></div>
-          <p className="model-secret-note"><Icon name="shield" size={13} />When you connect, the key is sent to the destination shown above for model discovery and provider requests. It stays in local session memory and is not saved to the project database or application logs.</p>
+          <div className="model-onboarding-actions"><button className="settings-primary" type="button" onClick={() => void connectApiKey()} disabled={!apiKeyDraft.trim() || !workspace || !selectedProvider || Boolean(selectedProvider.requires_endpoint && !customProviderEndpoint.trim()) || connectionBusy !== null}><Icon name="plug" size={14} state={connectionBusy === "connect" ? "loading" : "idle"} />{connectionBusy === "connect" ? "Connecting…" : "Connect & discover models"}</button></div>
+          <p className="model-secret-note"><Icon name="shield" size={12} />When you connect, the key is sent to the destination shown above for model discovery and provider requests. It stays in local session memory and is not saved to the project database or application logs.</p>
           {connectionNotice && <div className="model-connection-notice" role="status">{connectionNotice}</div>}
         </section>
-        <section className="model-section"><h2>Defaults</h2><div className="model-default-row"><div><strong>Default model</strong><span>{activeModelVerified ? conversation?.conversation.model_id : "No model selected"}</span></div>{!activeModelVerified && <button className="settings-secondary" type="button" onClick={() => { setSettingsSection("Models"); setConnectionNotice(connectionSaved ? "Choose a verified model for this conversation." : "Paste an API key to load the provider model catalog."); }}>Configure provider</button>}</div><p className="model-section-note">The selected model must come from the authenticated provider catalog. Manual model IDs are disabled so the UI cannot advertise an unverified model.</p></section>
+        <section className="model-section"><h2>Defaults</h2><div className="model-default-row"><div><strong>Default model</strong><span>{activeModelVerified ? conversation?.conversation.model_id : "No model selected"}</span></div>{!activeModelVerified && <button className="settings-secondary" type="button" onClick={() => { setSettingsSection("Models"); setConnectionNotice(connectionSaved ? "Choose a verified model for this conversation." : "Paste an API key to load the provider model catalog."); }}><Icon name="sliders" size={14} />Configure provider</button>}</div><p className="model-section-note">The selected model must come from the authenticated provider catalog. Manual model IDs are disabled so the UI cannot advertise an unverified model.</p></section>
         <section className="model-section">
-          <div className="model-section-heading"><h2>Connected providers <span>{connectedProviders.length}</span></h2></div>
+          <div className="model-section-heading"><h2>Connected providers {connectedProviders.length > 0 && <span>{connectedProviders.length}</span>}</h2></div>
           {connectedProviders.length === 0
             ? <div className="model-vendor-empty">Connect an API key above to load models available to that account.</div>
             : connectedProviders.map((provider) => {
@@ -4442,20 +4689,20 @@ export default function App() {
                   ? <>
                     <span className="model-provider-state">Clears this session key</span>
                     <button type="button" disabled={connectionBusy !== null} onClick={() => setDisconnectConfirmationId(null)}>Cancel</button>
-                    <button type="button" disabled={connectionBusy !== null} aria-label={`Confirm disconnect ${providerLabelForKind(provider.provider_kind)}`} onClick={() => void disconnectProvider(provider)}>{connectionBusy === "disconnect" ? "Disconnecting…" : "Disconnect"}</button>
+                    <button type="button" disabled={connectionBusy !== null} aria-label={`Confirm disconnect ${providerLabelForKind(provider.provider_kind)}`} onClick={() => void disconnectProvider(provider)}><Icon name="close" size={14} state={connectionBusy === "disconnect" ? "loading" : "idle"} />{connectionBusy === "disconnect" ? "Disconnecting…" : "Disconnect"}</button>
                   </>
-                  : <button type="button" disabled={connectionBusy !== null} aria-label={`Disconnect ${providerLabelForKind(provider.provider_kind)}`} onClick={() => setDisconnectConfirmationId(provider.connection_id)}>Disconnect</button>}
+                  : <button type="button" disabled={connectionBusy !== null} aria-label={`Disconnect ${providerLabelForKind(provider.provider_kind)}`} onClick={() => setDisconnectConfirmationId(provider.connection_id)}><Icon name="close" size={14} />Disconnect</button>}
               </div>;
             })}
         </section>
-        <div className="model-catalog-row"><span>{availableModels.length > 0 ? `${availableModels.length} model${availableModels.length === 1 ? "" : "s"} · ${modelCatalogState.toLocaleLowerCase()} catalog` : "No model catalog loaded"}</span><button type="button" onClick={() => void refreshModelCatalog()} disabled={connectionBusy !== null || !connectionSaved}><Icon name="refresh" size={14} />Refresh catalog</button></div>
+        <div className="model-catalog-row"><span>{availableModels.length > 0 ? `${availableModels.length} model${availableModels.length === 1 ? "" : "s"} · ${modelCatalogState.toLocaleLowerCase()} catalog` : "No model catalog loaded"}</span><button type="button" onClick={() => void refreshModelCatalog()} disabled={connectionBusy !== null || !connectionSaved}><Icon name="refresh" size={14} state={connectionBusy === "connect" ? "loading" : "idle"} />Refresh catalog</button></div>
         {availableModels.length > 0 && <section className="model-catalog-list" aria-label="Verified models">
           {availableModels.map((model) => {
             const selected = conversation?.conversation.connection_id === model.connection_id && conversation.conversation.model_id === model.model_id;
-            const modelReasoning = model.reasoning_efforts.length > 0 ? model.reasoning_efforts.join(" · ") : "No verified effort levels";
+            const modelReasoning = model.reasoning_efforts.length > 0 ? model.reasoning_efforts.join(", ") : "No verified effort levels";
             return <div className={`model-catalog-item ${selected ? "active" : ""}`} key={`${model.connection_id}:${model.model_id}`}>
-              <div className="model-catalog-item-copy"><strong>{model.model_id}</strong><span>{model.family || "Provider model"} · {model.supports_vision ? "Text + image" : "Image input not verified"} · Reasoning: {modelReasoning}</span></div>
-              <button className="settings-secondary" type="button" disabled={selected || connectionBusy !== null || busy || subagentBusy} onClick={() => void switchConversationModel(model)}>{selected ? "Selected" : "Use model"}</button>
+              <div className="model-catalog-item-copy"><strong>{model.model_id}</strong><span className="meta-inline-list"><span>{model.family || "Provider model"}</span><span>{model.supports_vision ? "Text + image" : "Image input not verified"}</span><span>Reasoning: {modelReasoning}</span></span></div>
+              <button className="settings-secondary" type="button" disabled={selected || connectionBusy !== null || busy || subagentBusy} onClick={() => void switchConversationModel(model)}><Icon name={selected ? "check" : "arrow-up"} size={14} state={selected ? "active" : "idle"} />{selected ? "Selected" : "Use model"}</button>
             </div>;
           })}
           <p className="model-section-note">Only capabilities returned or conservatively verified for this provider endpoint are shown. Models without an exact reasoning contract stay on Auto.</p>
@@ -4466,36 +4713,39 @@ export default function App() {
         <div className="capability-settings-toolbar">
           <label><Icon name="search" size={14} /><input value={capabilityQuery} onChange={(event) => setCapabilityQuery(event.target.value)} placeholder="Search skills" aria-label="Search skills" /></label>
           <div>
-            <button className="settings-secondary" type="button" onClick={() => void importSkillFolder()} disabled={extensionBusy || !hasNativeWindow()}>Import skill</button>
-            <button className="settings-primary" type="button" onClick={() => void loadExtensionCatalog()} disabled={extensionBusy}><Icon name="refresh" size={14} />{extensionBusy ? "Scanning…" : "Scan local skills"}</button>
+            <button className="settings-secondary" type="button" onClick={() => void importSkillFolder()} disabled={extensionBusy || !hasNativeWindow()}><Icon name="skill" size={14} />Import skill</button>
+            <button className="settings-primary" type="button" onClick={() => void loadExtensionCatalog()} disabled={extensionBusy}><Icon name="refresh" size={14} state={extensionBusy ? "loading" : "idle"} />{extensionBusy ? "Scanning…" : "Scan local skills"}</button>
           </div>
         </div>
-        <p className="capability-settings-help">Choose a folder containing SKILL.md. Visible skill files are copied into this project; hidden files such as .env and .git are skipped. The skill stays disabled until enabled, and bundled scripts are never run by import.</p>
-        <div className="capability-settings-group"><div className="capability-settings-group-heading"><strong>Discovered skills</strong><span>{visibleSkills.length}</span></div>{visibleSkills.length > 0 ? visibleSkills.map((skill) => { const state = capabilityRecordFor("skill", skill.name); return <div className="capability-settings-row" key={skill.name}><span className="capability-settings-glyph"><Icon name="plug" size={15} /></span><div><strong>{skill.name}</strong><span>{skill.description}</span><small>{skill.version} · sha256 {skill.content_hash.slice(0, 12)} · {state?.enabled ? "Enabled" : "Available"}</small></div><button type="button" onClick={() => void setCapabilityActivation("skill", skill.name, skill.content_hash, !state?.enabled, false)}>{state?.enabled ? "Disable" : "Enable"}</button><button type="button" onClick={() => { setSelectedSkill(skill.name); void loadSkillBody(skill.name); }}>{skillLoadBusy && selectedSkill === skill.name ? "Opening…" : "View details"} <Icon name="chevron-right" size={13} /></button></div>; }) : <div className="capability-settings-empty"><Icon name="plug" size={18} /><strong>No local skills discovered</strong><span>Place a bounded SKILL.md in a supported project or profile skills folder, then scan again.</span></div>}</div>
+        <p className="capability-settings-help">The skill stays disabled until enabled, and bundled scripts are never run by import.</p>
+        <div className="capability-settings-group"><div className="capability-settings-group-heading"><strong>Discovered skills</strong>{visibleSkills.length > 0 && <span>{visibleSkills.length}</span>}</div>{visibleSkills.length > 0 ? visibleSkills.map((skill) => { const state = capabilityRecordFor("skill", skill.name); return <div className="capability-settings-row" key={skill.name}><span className="capability-settings-glyph"><Icon name="skill" size={16} /></span><div><strong>{skill.name}</strong><span>{skill.description}</span><small className="meta-inline-list"><span>{skill.version}</span><span>sha256 {skill.content_hash.slice(0, 12)}</span><span>{state?.enabled ? "Enabled" : "Available"}</span></small></div><button type="button" onClick={() => void setCapabilityActivation("skill", skill.name, skill.content_hash, !state?.enabled, false)}><Icon name={state?.enabled ? "close" : "check"} size={14} state={state?.enabled ? "active" : "idle"} />{state?.enabled ? "Disable" : "Enable"}</button><button type="button" onClick={() => { setSelectedSkill(skill.name); void loadSkillBody(skill.name); }}>{skillLoadBusy && selectedSkill === skill.name ? "Opening…" : "View details"} <Icon name="chevron-right" size={14} state={skillLoadBusy && selectedSkill === skill.name ? "loading" : "idle"} /></button></div>; }) : <div className="capability-settings-empty"><span>No local skills found. Add a <code>SKILL.md</code> to a project or profile skills folder, then scan.</span></div>}</div>
         {extensionNotice && <div className="capability-settings-notice" role="status">{extensionNotice}</div>}
       </div>
     ) : settingsSection === "Plugins" ? (
-      <div className="aegis-settings-stack"><section className="aegis-settings-group"><h2>Utilities</h2><div className="aegis-settings-card"><div className="aegis-settings-empty"><Icon name="plug" size={18} /><div><strong>Local capability catalog</strong><span>Inspect connected skills, plugins, and MCP metadata.</span></div><button className="settings-primary" type="button" onClick={() => openDestination("plugins")}>Open utilities</button></div></div></section></div>
+      <div className="aegis-settings-stack"><section className="aegis-settings-group"><h2>Utilities</h2><div className="aegis-settings-card"><div className="aegis-settings-row"><div><strong>Local capability catalog</strong><span>Inspect connected skills, plugins, and MCP metadata.</span></div><button className="settings-primary" type="button" onClick={() => openDestination("plugins")}><Icon name="utilities" size={14} />Open utilities</button></div></div></section></div>
     ) : settingsSection === "MCP" ? (
       <div className="capability-settings-page">
         <div className="capability-settings-toolbar">
           <label><Icon name="search" size={14} /><input value={capabilityQuery} onChange={(event) => setCapabilityQuery(event.target.value)} placeholder="Search MCP servers" aria-label="Search MCP servers" /></label>
-          <div><button className="settings-secondary" type="button" onClick={() => { if (mcpAddOpen) { setMcpRegistrySelection(null); setMcpRegistryChoice(""); } setMcpAddOpen(!mcpAddOpen); }}>{mcpAddOpen ? "Cancel" : "Add MCP metadata"}</button><button className="settings-primary" type="button" onClick={() => void loadMcpCatalog()} disabled={extensionBusy}><Icon name="refresh" size={14} />{extensionBusy ? "Scanning…" : "Scan local MCP"}</button></div>
+          <div><button className="settings-secondary" type="button" onClick={() => { if (mcpAddOpen) { setMcpRegistrySelection(null); setMcpRegistryChoice(""); } setMcpAddOpen(!mcpAddOpen); }}><Icon name={mcpAddOpen ? "close" : "plus"} size={14} />{mcpAddOpen ? "Cancel" : "Add MCP metadata"}</button><button className="settings-primary" type="button" onClick={() => void loadMcpCatalog()} disabled={extensionBusy}><Icon name="refresh" size={14} state={extensionBusy ? "loading" : "idle"} />{extensionBusy ? "Scanning…" : "Scan local MCP"}</button></div>
         </div>
         <section className="mcp-registry-search" aria-labelledby="mcp-registry-title">
-          <div className="mcp-registry-search-heading"><div><h2 id="mcp-registry-title">Public MCP directory</h2><p>Search the official public directory. No API key or browser cookies are sent. Entries are untrusted metadata; nothing is installed or started. Direct internet access is required; proxy-only networks may block lookup.</p></div></div>
+          <div className="mcp-registry-search-heading"><div><h2 id="mcp-registry-title">Public MCP directory</h2><p>Search the official public directory (read-only metadata; nothing is installed or started).</p></div></div>
           <form className="mcp-registry-search-form" aria-busy={mcpRegistryBusy} onSubmit={(event) => { event.preventDefault(); void searchMcpRegistry(); }}>
-            <input
-              aria-label="Search the public MCP directory"
-              disabled={mcpRegistryBusy}
-              value={mcpRegistryQuery}
-              onChange={(event) => { setMcpRegistryQuery(event.target.value); setMcpRegistryResults(null); setCapabilityNotice(null); }}
-              placeholder="Search public MCP servers"
-            />
-            <button className="settings-secondary" type="submit" disabled={mcpRegistryBusy}>{mcpRegistryBusy ? "Searching…" : "Search directory"}</button>
+            <label className="mcp-registry-search-input">
+              <Icon name="search" size={14} />
+              <input
+                aria-label="Search the public MCP directory"
+                disabled={mcpRegistryBusy}
+                value={mcpRegistryQuery}
+                onChange={(event) => { setMcpRegistryQuery(event.target.value); setMcpRegistryResults(null); setCapabilityNotice(null); }}
+                placeholder="Search public MCP servers"
+              />
+            </label>
+            <button className="settings-secondary" type="submit" disabled={mcpRegistryBusy}><Icon name="search" size={14} state={mcpRegistryBusy ? "loading" : "idle"} />{mcpRegistryBusy ? "Searching…" : "Search directory"}</button>
           </form>
           {mcpRegistryResults && <div className="mcp-registry-results">
-            <div className="mcp-registry-results-heading" role="status"><strong>Results for “{mcpRegistryResults.query}”</strong><span>{mcpRegistryResults.servers.length}</span></div>
+            <div className="mcp-registry-results-heading" role="status"><strong>Results for “{mcpRegistryResults.query}”</strong>{mcpRegistryResults.servers.length > 0 && <span>{mcpRegistryResults.servers.length}</span>}</div>
             {mcpRegistryResults.servers.length > 0 ? mcpRegistryResults.servers.map((server) => {
               const setupOptions = getMcpRegistrySetupOptions(server);
               const stdioCount = setupOptions.filter((option) => option.kind === "package").length;
@@ -4512,10 +4762,10 @@ export default function App() {
                   {server.description && <p>{server.description}</p>}
                   <small>{availableOptions || "No supported transport details"}</small>
                 </div>
-                <button className="settings-secondary" type="button" aria-label={`Review ${setupOptions.length} setup option${setupOptions.length === 1 ? "" : "s"} for ${server.name}`} disabled={!hasSetup} onClick={() => prepareMcpRegistryEntry(server)}>Review setup options</button>
+                <button className="settings-secondary" type="button" aria-label={`Review ${setupOptions.length} setup option${setupOptions.length === 1 ? "" : "s"} for ${server.name}`} disabled={!hasSetup} onClick={() => prepareMcpRegistryEntry(server)}><Icon name="sliders" size={14} />Review setup options</button>
               </article>;
             }) : <p className="mcp-registry-empty">No matching public servers on this page.</p>}
-            {mcpRegistryResults.next_cursor && <button className="settings-secondary mcp-registry-more" type="button" disabled={mcpRegistryBusy} onClick={() => void searchMcpRegistry(mcpRegistryResults.next_cursor ?? undefined)}>{mcpRegistryBusy ? "Loading…" : "Load more"}</button>}
+            {mcpRegistryResults.next_cursor && <button className="settings-secondary mcp-registry-more" type="button" disabled={mcpRegistryBusy} onClick={() => void searchMcpRegistry(mcpRegistryResults.next_cursor ?? undefined)}><Icon name="chevron-down" size={14} state={mcpRegistryBusy ? "loading" : "idle"} />{mcpRegistryBusy ? "Loading…" : "Load more"}</button>}
           </div>}
         </section>
         {mcpAddOpen && <section className="mcp-add-card">
@@ -4534,11 +4784,11 @@ export default function App() {
           <label><span>Server id</span><input value={mcpNewId} onChange={(event) => setMcpNewId(event.target.value)} placeholder="my-server" /></label>
           <label><span>Description</span><input value={mcpNewDescription} onChange={(event) => setMcpNewDescription(event.target.value)} placeholder="What this server does" /></label>
           {!mcpRegistrySelection && <label><span>Transport</span><select value={mcpNewTransport} onChange={(event) => setMcpNewTransport(event.target.value as "stdio" | "streamable-http")}><option value="stdio">Local command (stdio)</option><option value="streamable-http">Remote HTTPS</option></select></label>}
-          <button className="settings-primary" type="button" onClick={() => void addMcpMetadata()} disabled={extensionBusy || (mcpRegistrySelection !== null && !mcpRegistryChoice)}>{extensionBusy ? "Adding…" : "Add metadata"}</button>
+          <button className="settings-primary" type="button" onClick={() => void addMcpMetadata()} disabled={extensionBusy || (mcpRegistrySelection !== null && !mcpRegistryChoice)}><Icon name="plus" size={14} state={extensionBusy ? "loading" : "idle"} />{extensionBusy ? "Adding…" : "Add metadata"}</button>
         </section>}
-        <p className="capability-settings-help">Metadata discovery is read-only. Approve a server first, then configure its local command or HTTPS endpoint. Transport settings stay in this session and are never written to the project. Local stdio commands run with your account’s normal file and network permissions; AEGIS does not sandbox them. Review the command and arguments before enabling.</p>
+        <p className="capability-settings-help">Discovery is read-only. Approve a server first, then configure its session-only transport.</p>
         <div className="capability-settings-group">
-          <div className="capability-settings-group-heading"><strong>Discovered servers</strong><span>{visibleMcpServers.length}</span></div>
+          <div className="capability-settings-group-heading"><strong>Discovered servers</strong>{visibleMcpServers.length > 0 && <span>{visibleMcpServers.length}</span>}</div>
           {visibleMcpServers.length > 0 ? visibleMcpServers.map((server) => {
             const state = capabilityRecordFor("mcp", server.server_id);
             const draft = mcpDrafts[server.server_id] ?? emptyMcpDraft;
@@ -4552,7 +4802,7 @@ export default function App() {
             const readOnlyToolCount = testResult?.tools.filter((tool) => tool.read_only_candidate).length ?? 0;
             const selectedAutoRunTools = mcpAutoRunReadOnly[server.server_id] ?? {};
             return <div className="capability-settings-row mcp-capability-row" key={server.server_id}>
-              <span className="capability-settings-glyph"><Icon name="server" size={15} /></span>
+              <span className="capability-settings-glyph"><Icon name="server" size={16} /></span>
               <div className="mcp-capability-copy"><strong>{server.server_id}</strong><span>{server.description}</span><small>{server.transport} · {active ? "Active" : approved ? "Approved" : "Approval required"}</small>{mcpRegistryHints[server.server_id] && <small>{mcpRegistryHints[server.server_id]}</small>}</div>
               <div className="mcp-capability-actions">
                 <button type="button" disabled={active || busy} onClick={() => void setCapabilityActivation("mcp", server.server_id, server.descriptor_hash, false, !approved)}>{approved ? active ? "Stop first" : "Revoke approval" : "Approve metadata"}</button>
@@ -4566,7 +4816,7 @@ export default function App() {
                       <p className="mcp-environment-note">Connection values stay in memory for this app session. Directory defaults and saved secrets are never used.</p>
                       <div className="mcp-environment-fields">
                         {environmentVariables.map((item) => <label key={item.name}>
-                          <span>{item.name} · {item.is_required ? "Required" : "Optional"}{item.is_secret ? " · Secret" : ""}</span>
+                          <span>{item.name} ({item.is_required ? "Required" : "Optional"}{item.is_secret ? ", Secret" : ""})</span>
                           {item.description && <small>{item.description}</small>}
                           <input
                             type={item.is_secret ? "password" : "text"}
@@ -4601,11 +4851,11 @@ export default function App() {
                   <div className="mcp-config-actions">
                     {readOnlyToolCount > 0 && <p className="mcp-readonly-grant-note">Auto-run is off by default. Choose each tool below; its read-only label is the server’s claim, not a verified guarantee.</p>}
                     {!testResult && <p className="mcp-config-explainer" role="note">Test this exact connection before enabling. Any configuration change clears the test and requires another check.</p>}
-                    <button className="settings-secondary" type="button" disabled={busy || mcpTestBusy !== null} onClick={() => void testMcpConnection(server)}>{mcpTestBusy === server.server_id ? "Testing…" : "Test connection"}</button>
-                    <button className="settings-primary" type="button" disabled={busy || mcpTestBusy !== null || !testResult} onClick={() => void activateMcp(server)}>{busy ? "Starting…" : "Enable tools"}</button>
+                    <button className="settings-secondary" type="button" disabled={busy || mcpTestBusy !== null} onClick={() => void testMcpConnection(server)}><Icon name="activity" size={14} state={mcpTestBusy === server.server_id ? "loading" : "idle"} />{mcpTestBusy === server.server_id ? "Testing…" : "Test connection"}</button>
+                    <button className="settings-primary" type="button" disabled={busy || mcpTestBusy !== null || !testResult} onClick={() => void activateMcp(server)}><Icon name="check" size={14} state={busy ? "loading" : "idle"} />{busy ? "Starting…" : "Enable tools"}</button>
                   </div>
                 </div>}
-                {active && <button className="settings-secondary" type="button" disabled={busy} onClick={() => void deactivateMcp(server)}>{busy ? "Stopping…" : "Stop server"}</button>}
+                {active && <button className="settings-secondary" type="button" disabled={busy} onClick={() => void deactivateMcp(server)}><Icon name="close" size={14} state={busy ? "loading" : "idle"} />{busy ? "Stopping…" : "Stop server"}</button>}
                 {testResult && <div className="mcp-test-tool-list" role="group" aria-label="MCP tool permissions">
                   <strong>Available capabilities · up to 64</strong>
                   {testResult.tools.map((tool) => {
@@ -4725,20 +4975,20 @@ export default function App() {
                             const saved = capabilityState?.records.find((item) => item.kind === "skill" && item.id === skill.id);
                             const rowBusy = mcpSkillBusyId === skill.id;
                             const status = skill.dynamic
-                              ? "Dynamic content · approval unavailable"
+                              ? "Dynamic content (approval unavailable)"
                               : !active
-                                ? "Server stopped · cached metadata"
+                                ? "Server stopped (cached metadata)"
                                 : skill.enabled
                                   ? "Enabled"
                                   : skill.approved
-                                    ? "Approved · disabled"
+                                    ? "Approved (disabled)"
                                     : "Approval required";
                             return <div className="mcp-skill-row" key={skill.id}>
                               <div className="mcp-skill-copy">
                                 <strong>{skill.name}</strong>
                                 <span>{skill.description || "No description provided by server."}</span>
                                 <small className="mcp-skill-uri" title={skill.uri}>{skill.uri}</small>
-                                <small>{status} · {skill.resource_count === null ? "dynamic files" : skill.resource_count + (skill.resource_count === 1 ? " file" : " files")}{skill.manifest_hash ? " · sha256 " + skill.manifest_hash.slice(0, 12) : ""}</small>
+                                <small className="meta-inline-list"><span>{status}</span><span>{skill.resource_count === null ? "dynamic files" : skill.resource_count + (skill.resource_count === 1 ? " file" : " files")}</span>{skill.manifest_hash && <span>sha256 {skill.manifest_hash.slice(0, 12)}</span>}</small>
                               </div>
                               <div className="mcp-skill-actions">
                                 {skill.dynamic
@@ -4781,19 +5031,19 @@ export default function App() {
                 </section>}
               </div>
             </div>;
-          }) : <div className="capability-settings-empty"><Icon name="server" size={18} /><strong>No local MCP servers discovered</strong><span>Discovery reads metadata only. It never starts a process or sends a network request.</span></div>}
+          }) : <div className="capability-settings-empty"><span>No local MCP servers configured. Search the directory above or add server metadata to begin.</span></div>}
         </div>
         {capabilityNotice && <div className="capability-settings-notice" role="status">{capabilityNotice}</div>}
       </div>
     ) : settingsSection === "Subagents" ? (
       <div className="capability-settings-page">
-        <div className="aegis-settings-card">{row("Parallel workers", "Allow worker runs from an active conversation. A connected model is required.", <button className={`settings-toggle ${parallelWorkersEnabled ? "on" : ""}`} type="button" role="switch" aria-checked={parallelWorkersEnabled} aria-label="Enable parallel workers" onClick={() => void saveSettingsPatch({ parallel_workers_enabled: !parallelWorkersEnabled })}><span /></button>)}</div>
+        <div className="aegis-settings-card"><div className="aegis-settings-row"><div><strong>Parallel workers</strong><span>Allow worker runs from an active conversation. A connected model is required.</span></div><button className={`settings-toggle ${parallelWorkersEnabled ? "on" : ""}`} type="button" role="switch" aria-checked={parallelWorkersEnabled} aria-label="Enable parallel workers" onClick={() => void saveSettingsPatch({ parallel_workers_enabled: !parallelWorkersEnabled })}><span /></button></div></div>
         <div className="capability-settings-toolbar"><label><Icon name="search" size={14} /><input value={capabilityQuery} onChange={(event) => setCapabilityQuery(event.target.value)} placeholder="Search subagents" aria-label="Search subagents" /></label></div>
-        <div className="capability-settings-group"><div className="capability-settings-group-heading"><strong>Built-in workers</strong><span>{visibleSubagents.length}</span></div>{visibleSubagents.map(([name, description, role]) => <div className="capability-settings-row" key={name}><span className="capability-settings-glyph"><Icon name="bot" size={15} /></span><div><strong>{name}</strong><span>{description}</span><small>AEGIS local · {role} · run-scoped</small></div><span className="extension-scope-chip">Built-in</span></div>)}</div>
+        <div className="capability-settings-group"><div className="capability-settings-group-heading"><strong>Built-in workers</strong>{visibleSubagents.length > 0 && <span>{visibleSubagents.length}</span>}</div>{visibleSubagents.length > 0 ? visibleSubagents.map(([name, description, role]) => <div className="capability-settings-row" key={name}><span className="capability-settings-glyph"><Icon name="bot" size={16} /></span><div><strong>{name}</strong><span>{description}</span><small className="meta-inline-list"><span>AEGIS local</span><span>{role}</span><span>run-scoped</span></small></div><span className="extension-scope-chip">Built-in</span></div>) : <div className="capability-settings-empty"><span>No subagents match this search.</span></div>}</div>
         {capabilityNotice && <div className="capability-settings-notice" role="status">{capabilityNotice}</div>}
       </div>
     ) : settingsSection === "Remote Hosts" ? (
-      <div className="remote-hosts-settings-page"><section className="aegis-settings-group"><h2>Remote hosts</h2><div className="aegis-settings-card"><div className="aegis-settings-empty"><Icon name="globe" size={18} /><div><strong>Pair a remote AEGIS host</strong><span>Remote execution is intentionally disabled until a host adapter is connected.</span></div><span className="aegis-settings-value">Not connected</span></div></div></section><div className="capability-settings-notice" role="status">Remote host pairing is not connected to the local host yet.</div></div>
+      <div className="remote-hosts-settings-page"><section className="aegis-settings-group"><h2>Remote hosts</h2><div className="aegis-settings-card"><div className="aegis-settings-row"><div><strong>Pair a remote AEGIS host</strong><span>Remote execution is disabled until a host adapter is connected.</span></div><span className="aegis-settings-value">Not connected</span></div></div></section></div>
     ) : settingsSection === "Info" ? (
       <div className="aegis-settings-stack"><section className="aegis-settings-group"><h2>Application</h2><div className="aegis-settings-card">
         {row("AEGIS", "Local desktop agent.", "Local")}
@@ -4810,7 +5060,7 @@ export default function App() {
               <p>Choose a folder on this device. AEGIS opens it in place and adds it to Projects; it does not copy or upload the folder.</p>
             </div>
             <button type="button" onClick={() => void openWorkspacePicker()} disabled={projectSwitcherBusy || !hasNativeWindow()}>
-              <Icon name="folder" size={14} />{projectSwitcherBusy ? "Opening…" : "Choose folder"}
+              <Icon name="folder" size={14} state={projectSwitcherBusy ? "loading" : "idle"} />{projectSwitcherBusy ? "Opening…" : "Choose folder"}
             </button>
           </div>
           <div className="import-settings-empty">
@@ -4819,7 +5069,7 @@ export default function App() {
               : "Folder selection is available in the packaged desktop app."}
           </div>
         </section>
-        {(["Import from other tools", "Model configuration", "Skills", "MCP servers"] as const).map((title) => <section className="import-settings-card" key={title}><div className="import-settings-heading"><div><h2>{title}</h2><p>{title === "Import from other tools" ? "Session import is not available in this local-first build." : title === "Model configuration" ? "Find local provider and model settings." : title === "Skills" ? "Scan local skill directories." : "Scan local MCP server configurations."}</p></div>{title === "Import from other tools" ? <span className="aegis-settings-value">Not available</span> : <button type="button" onClick={() => { if (title === "Model configuration") setSettingsSection("Models"); else if (title === "Skills") { void loadExtensionCatalog(); setImportNotice(UI_LOCALE_EN.localSkillCatalogScanned); } else { void loadMcpCatalog(); setImportNotice(UI_LOCALE_EN.localMcpMetadataScanned); } }}>{title === "Model configuration" ? "Open" : "Scan"}</button>}</div><div className="import-settings-empty">{title === "Skills" ? `${extensionCatalog?.skills.length ?? 0} skill(s) discovered` : title === "MCP servers" ? `${mcpCatalog?.servers.length ?? 0} MCP server(s) discovered` : title === "Import from other tools" ? "No local session importer is configured." : "Nothing scanned yet."}</div></section>)}
+        {(["Import from other tools", "Model configuration", "Skills", "MCP servers"] as const).map((title) => <section className="import-settings-card" key={title}><div className="import-settings-heading"><div><h2>{title}</h2><p>{title === "Import from other tools" ? "Session import is not available in this local-first build." : title === "Model configuration" ? "Find local provider and model settings." : title === "Skills" ? "Scan local skill directories." : "Scan local MCP server configurations."}</p></div>{title === "Import from other tools" ? <span className="aegis-settings-value">Not available</span> : <button type="button" disabled={title !== "Model configuration" && extensionBusy} onClick={() => { if (title === "Model configuration") setSettingsSection("Models"); else if (title === "Skills") { void loadExtensionCatalog(); setImportNotice(UI_LOCALE_EN.localSkillCatalogScanned); } else { void loadMcpCatalog(); setImportNotice(UI_LOCALE_EN.localMcpMetadataScanned); } }}><Icon name={title === "Model configuration" ? "sliders" : "refresh"} size={14} state={title !== "Model configuration" && extensionBusy ? "loading" : "idle"} />{title === "Model configuration" ? "Open" : "Scan"}</button>}</div><div className="import-settings-empty">{title === "Skills" ? (extensionCatalog?.skills.length ? `${extensionCatalog.skills.length} local ${extensionCatalog.skills.length === 1 ? "skill" : "skills"} discovered.` : "No local skills discovered yet. Scan after adding a SKILL.md.") : title === "MCP servers" ? (mcpCatalog?.servers.length ? `${mcpCatalog.servers.length} local MCP ${mcpCatalog.servers.length === 1 ? "server" : "servers"} discovered.` : "No local MCP servers discovered yet. Scan or add metadata in MCP.") : title === "Import from other tools" ? "No local session importer is configured." : "Configure local and remote provider endpoints in Models."}</div></section>)}
       </div>
     ) : settingsSection === "Projects" ? (
       <div className="project-archive-page">
@@ -4829,25 +5079,25 @@ export default function App() {
             {(["Recent", "Name"] as const).map((sort) => <button key={sort} className={projectSort === sort ? "active" : ""} type="button" onClick={() => setProjectSort(sort)}>{sort}</button>)}
           </div>
           <label className="project-search-control"><Icon name="search" size={14} /><input value={projectFilter} onChange={(event) => setProjectFilter(event.target.value)} placeholder="Search projects" aria-label="Search projects" /></label>
-          <button className="project-add-button" type="button" onClick={() => void openWorkspacePicker()}><Icon name="plus" size={14} />Add project</button>
+          <button className="project-add-button" type="button" aria-haspopup={!hasNativeWindow() ? "menu" : undefined} aria-expanded={!hasNativeWindow() ? projectSwitcherOpen : undefined} onClick={(event) => hasNativeWindow() ? void openWorkspacePicker() : toggleProjectSwitcher(event.currentTarget)}><Icon name="plus" size={14} />Add project</button>
         </div>
-        <div className="project-archive-label">ALL PROJECTS <span>{visibleProjectArchive.length}</span></div>
+        <div className="project-archive-label">All projects {visibleProjectArchive.length > 0 && <span>{visibleProjectArchive.length}</span>}</div>
         {visibleProjectArchive.length > 0 ? <div className="project-archive-list">{visibleProjectArchive.map((project) => {
           const isCurrent = project.project_id === activeProjectId;
           const sessionCount = sidebarConversations.length;
           const sessionLabel = isCurrent ? `${sessionCount} chat${sessionCount === 1 ? "" : "s"}` : "Open to view chats";
           return <div className={`project-archive-row ${isCurrent ? "is-current" : ""}`} key={project.project_id}>
             <button className="project-archive-open" type="button" disabled={project.status === "MISSING" || projectSwitcherBusy || projectSwitchBlocked} onClick={() => void switchWorkspace(project.path)} aria-label={`Open ${project.name}`}>
-              <span className="project-archive-chevron"><Icon name="chevron-right" size={15} /></span><span className="project-archive-icon"><Icon name="folder" size={18} /></span><span className="project-archive-main"><strong>{project.name}</strong><span>{shortPath(project.path, 66)} · {sessionLabel}</span></span>
+              <span className="project-archive-chevron"><Icon name="chevron-right" size={14} /></span><span className="project-archive-icon"><Icon name="folder" size={16} /></span><span className="project-archive-main"><strong>{project.name}</strong><span>{shortPath(project.path, 66)} · {sessionLabel}</span></span>
             </button>
             <span className="project-archive-status">{project.status === "MISSING" ? "Missing" : isCurrent ? "Open" : "Available"}</span>
             <span className="project-archive-time">{projectSort === "Recent" ? formatTime(project.last_opened_at_ms) : project.name}</span>
-            {!isCurrent && project.project_id.startsWith("project:") && <button className="project-archive-remove" type="button" onClick={() => void removeProject(project.project_id)} aria-label={`Remove ${project.name} from projects`} title="Remove from project list">Remove</button>}
+            {!isCurrent && project.project_id.startsWith("project:") && <button className="project-archive-remove" type="button" onClick={() => void removeProject(project.project_id)} aria-label={`Remove ${project.name} from projects`} title="Remove from project list"><Icon name="close" size={14} />Remove</button>}
           </div>;
-        })}</div> : <div className="project-archive-empty"><Icon name="folder" size={18} /><strong>{normalizedProjectFilter ? "No projects found" : "No projects yet"}</strong><span>{normalizedProjectFilter ? "Try another search." : "Add a project to see it here."}</span></div>}
+        })}</div> : <div className="project-archive-empty"><span>{normalizedProjectFilter ? "No matching projects. Try another search." : "No projects yet. Add a project folder above to begin."}</span></div>}
       </div>
     ) : (
-      <div className="aegis-settings-stack"><section className="aegis-settings-group"><h2>{settingsSection}</h2><div className="aegis-settings-card"><div className="aegis-settings-empty"><Icon name={icons[settingsSection] ?? "info"} size={18} /><div><strong>{settingsSection === "Projects" ? shortPath(workspace?.workspace_path, 42) : "AEGIS local workspace"}</strong><span>{settingsSection === "Projects" ? "Project state is owned by the local host." : "This destination is available in the local-first shell."}</span></div>{settingsSection === "Projects" && <span className="aegis-settings-value">{sourceSnapshot?.files.length ?? "—"} files</span>}</div></div></section></div>
+      <div className="aegis-settings-stack"><section className="aegis-settings-group"><h2>{settingsSection}</h2><div className="aegis-settings-card"><div className="aegis-settings-row"><div><strong>{settingsSection === "Projects" ? shortPath(workspace?.workspace_path, 42) : "AEGIS local workspace"}</strong><span>{settingsSection === "Projects" ? "Project state is owned by the local host." : "This destination is available in the local-first shell."}</span></div>{settingsSection === "Projects" && <span className="aegis-settings-value">{sourceSnapshot?.files.length ?? "—"} files</span>}</div></div></section></div>
     );
 
     return <main className="destination-page settings-page"><aside className="settings-nav" aria-label="Settings sections"><div className="settings-nav-scroll"><button className="settings-back" type="button" onClick={() => openDestination("chat")}><Icon name="chevron-left" size={14} />Back to app</button><label className="settings-search"><Icon name="search" size={14} /><input value={settingsQuery} onChange={(event) => setSettingsQuery(event.target.value)} placeholder="Search settings…" aria-label="Search settings" /></label>{visibleGroups.map((group) => <div className="settings-nav-block" key={group.label}><span className="settings-nav-group">{group.label}</span>{group.items.map(([section]) => <button className={settingsSection === section ? "active" : ""} key={section} type="button" onClick={() => setSettingsSection(section)}><span className="settings-nav-item-label"><Icon name={icons[section]} size={14} />{section}</span></button>)}</div>)}{settingsSearch && visibleGroups.length === 0 && <p className="settings-search-empty">No matching settings</p>}</div></aside><section className="settings-content"><div className="settings-content-inner"><h1 className="settings-section-title">{settingsTitle}</h1>{content}</div></section></main>;
@@ -4858,7 +5108,7 @@ export default function App() {
       if (title === "Source map") return "map";
       if (title === "Memory") return "shield";
       if (title === "Conversations") return "sessions";
-      if (title === "Provider adapter") return "server";
+      if (title === "Provider adapter") return "layers";
       if (title === "Browser research" || title === "Reddit adapter") return "search";
       if (title === "Vision capture") return "files";
       if (title === "Code reuse") return "file";
@@ -4895,6 +5145,11 @@ export default function App() {
     const cards = installedCards;
     const isConfigured = (status: string) => status === "Available" || status === "Ready" || status === "Enabled";
     const readyCount = installedCards.filter(([, , status]) => isConfigured(status)).length;
+    const discoveredSummaryParts = [
+      extensionCatalog?.skills.length ? `${extensionCatalog.skills.length} ${extensionCatalog.skills.length === 1 ? "skill" : "skills"}` : null,
+      extensionCatalog?.extensions.length ? `${extensionCatalog.extensions.length} ${extensionCatalog.extensions.length === 1 ? "plugin" : "plugins"}` : null,
+      mcpCatalog?.servers.length ? `${mcpCatalog.servers.length} MCP` : null,
+    ].filter((part): part is string => Boolean(part));
     const normalizedExtensionQuery = extensionQuery.trim().toLocaleLowerCase();
     const visibleCards = cards.filter(([title, description]) => !normalizedExtensionQuery || `${title} ${description}`.toLocaleLowerCase().includes(normalizedExtensionQuery));
     const selected = cards.find(([title]) => title === selectedSkill);
@@ -4916,38 +5171,34 @@ export default function App() {
       else { openDestination("chat"); if (target === "map" || target === "memory") { setWorkTab("map"); setWorkPanelOpen(true); } }
     };
     const renderInstalledRow = ([title, description, status, target]: string[]) => <div className={`extension-installed-row ${isConfigured(status) ? "active" : "attention"}`} key={`${target}:${title}`}>
-      <span className="extension-installed-glyph"><Icon name={target === "mcp" ? "server" : target === "skill" || target === "extension" ? "plug" : extensionIcon(title)} size={15} /></span>
-      <div className="extension-installed-copy"><div className="extension-installed-title"><strong>{title}</strong><span className="extension-local-tag">{status}</span></div><p className="extension-installed-note">{description}</p>{target === "extension" && (() => { const plugin = extensionCatalog?.extensions.find((item) => item.extension_id === title && item.wasm_plugin === true); return plugin ? <div className="extension-installed-details">Compute-only WASM · {plugin.tool_names.length} tool(s) · no direct network or file access · SHA-256 {plugin.module_sha256?.slice(0, 12) ?? "unavailable"}</div> : <div className="extension-installed-details">Metadata only; no executable tools are attached.</div>; })()}{target === "mcp" && <div className="extension-installed-details">{status === "Enabled" ? "Tools enabled. Check the server connection in MCP settings." : status === "Approved" ? "Approved for setup. Configure and test the connection in MCP settings." : "Review this server in MCP settings before enabling its tools."}</div>}</div>
-      <div className="extension-installed-actions"><span className="extension-scope-chip">Local</span>{target === "extension" && (() => { const plugin = extensionCatalog?.extensions.find((item) => item.extension_id === title && item.wasm_plugin === true); const hash = plugin?.descriptor_hash; if (!plugin || !hash) return null; const record = capabilityState?.records.find((item) => item.kind === "extension" && item.id === title && item.descriptor_hash === hash); const approved = record?.approved === true; const enabled = approved && record?.enabled === true; const changeState = (nextEnabled: boolean, nextApproved: boolean) => void setCapabilityActivation("extension", title, hash, nextEnabled, nextApproved); return <><button type="button" onClick={() => changeState(!enabled, true)}>{enabled ? "Disable" : approved ? "Enable" : "Approve & enable"}</button>{approved && !enabled && <button type="button" onClick={() => changeState(false, false)}>Revoke</button>}</>; })()}<button type="button" disabled={target === "chat" && !workspace?.open} onClick={() => openCapability(title, target, status)}>{target === "extension" || target === "skill" && status === "Enabled" ? "Details" : (target === "map" || target === "memory") && !activeProjectId ? "Choose project" : target === "models" || target === "subagents" || target === "mcp" || target === "skill" ? isConfigured(status) ? "Manage" : "Set up" : "Open"}</button><button className="extension-row-more" type="button" onClick={() => showDetails(title, target)} aria-label={`Details for ${title}`} title="Details"><Icon name="more" size={15} /></button></div>
+      <span className="extension-installed-glyph"><Icon name={target === "mcp" ? "server" : target === "skill" ? "skill" : target === "extension" ? "blocks" : extensionIcon(title)} size={16} /></span>
+      <div className="extension-installed-copy"><div className="extension-installed-title"><strong>{title}</strong><span className="extension-local-tag">{status}</span></div><p className="extension-installed-note">{description}</p>{target === "extension" && (() => { const plugin = extensionCatalog?.extensions.find((item) => item.extension_id === title && item.wasm_plugin === true); return plugin ? <div className="extension-installed-details meta-inline-list"><span>Compute-only WASM</span><span>{plugin.tool_names.length} {plugin.tool_names.length === 1 ? "tool" : "tools"}</span><span>no direct network or file access</span><span>SHA-256 {plugin.module_sha256?.slice(0, 12) ?? "unavailable"}</span></div> : <div className="extension-installed-details">Metadata only; no executable tools are attached.</div>; })()}{target === "mcp" && <div className="extension-installed-details">{status === "Enabled" ? "Tools enabled. Check the server connection in MCP settings." : status === "Approved" ? "Approved for setup. Configure and test the connection in MCP settings." : "Review this server in MCP settings before enabling its tools."}</div>}</div>
+      <div className="extension-installed-actions"><span className="extension-scope-chip">Local</span>{target === "extension" && (() => { const plugin = extensionCatalog?.extensions.find((item) => item.extension_id === title && item.wasm_plugin === true); const hash = plugin?.descriptor_hash; if (!plugin || !hash) return null; const record = capabilityState?.records.find((item) => item.kind === "extension" && item.id === title && item.descriptor_hash === hash); const approved = record?.approved === true; const enabled = approved && record?.enabled === true; const changeState = (nextEnabled: boolean, nextApproved: boolean) => void setCapabilityActivation("extension", title, hash, nextEnabled, nextApproved); return <><button type="button" onClick={() => changeState(!enabled, true)}><Icon name={enabled ? "close" : "check"} size={14} state={enabled ? "active" : "idle"} />{enabled ? "Disable" : approved ? "Enable" : "Approve & enable"}</button>{approved && !enabled && <button type="button" onClick={() => changeState(false, false)}>Revoke</button>}</>; })()}<button type="button" disabled={target === "chat" && !workspace?.open} onClick={() => openCapability(title, target, status)}><Icon name={target === "extension" || target === "skill" && status === "Enabled" ? "info" : (target === "map" || target === "memory") && !activeProjectId ? "folder" : target === "models" || target === "subagents" || target === "mcp" || target === "skill" ? "sliders" : "arrow-up"} size={14} />{target === "extension" || target === "skill" && status === "Enabled" ? "Details" : (target === "map" || target === "memory") && !activeProjectId ? "Choose project" : target === "models" || target === "subagents" || target === "mcp" || target === "skill" ? isConfigured(status) ? "Manage" : "Set up" : "Open"}</button><button className="extension-row-more" type="button" onClick={() => showDetails(title, target)} aria-label={`Details for ${title}`} title="Details"><Icon name="more" size={16} /></button></div>
     </div>;
     return (
       <main className="destination-page extensions-page">
         <header className="destination-header extension-header">
           <div className="extension-heading">
-            {sidebarCollapsed ? <button className="icon-btn" type="button" onClick={() => setSidebarCollapsed(false)} aria-label="Open navigation" title="Open navigation"><Icon name="sidebar" size={18} /></button> : <span className="extension-page-icon"><Icon name="plug" size={18} /></span>}
+            {sidebarCollapsed && <button className="icon-btn" type="button" onClick={() => setSidebarCollapsed(false)} aria-label="Open navigation" title="Open navigation"><Icon name="sidebar" size={16} /></button>}
             <div><h1>Utilities</h1></div>
           </div>
           <div className="extension-actions">
-            <button className="settings-secondary" type="button" onClick={() => void importCapabilityPack("folder")} disabled={extensionBusy || !hasNativeWindow()}>Import folder</button>
-            <button className="settings-secondary" type="button" onClick={() => void importCapabilityPack("archive")} disabled={extensionBusy || !hasNativeWindow()}>Import ZIP</button>
-            <button className="settings-secondary" type="button" onClick={() => void importSkillFolder()} disabled={extensionBusy || !hasNativeWindow()}>Import skill</button>
-            <button className="primary-extension-action" type="button" onClick={() => void loadExtensionCatalog()} disabled={extensionBusy}><Icon name="refresh" size={14} />{extensionBusy ? "Scanning…" : "Scan local catalog"}</button>
+            <button className="settings-secondary" type="button" onClick={() => void importCapabilityPack("folder")} disabled={extensionBusy || !hasNativeWindow()}><Icon name="folder" size={14} />Import folder</button>
+            <button className="settings-secondary" type="button" onClick={() => void importCapabilityPack("archive")} disabled={extensionBusy || !hasNativeWindow()}><Icon name="download" size={14} />Import ZIP</button>
+            <button className="settings-secondary" type="button" onClick={() => void importSkillFolder()} disabled={extensionBusy || !hasNativeWindow()}><Icon name="skill" size={14} />Import skill</button>
+            <button className="primary-extension-action" type="button" onClick={() => void loadExtensionCatalog()} disabled={extensionBusy}><Icon name="refresh" size={14} state={extensionBusy ? "loading" : "idle"} />{extensionBusy ? "Scanning…" : "Scan local catalog"}</button>
           </div>
         </header>
-        <p className="capability-settings-help">Import copies and validates files without running code. Review skills and server permissions before enabling tools.</p>
+        <p className="capability-settings-help">Import copies and validates files without running code.</p>
         {extensionNotice && <div className="extension-notice" role="status">{extensionNotice}</div>}
-        <div className="extension-ready-banner">
-          <div><span className="ready-mark"><Icon name="check" size={16} /></span><strong>{readyCount} local {readyCount === 1 ? "capability" : "capabilities"} available or enabled</strong></div>
-          <button type="button" onClick={() => openSetup("Models")}>Model setup</button>
-        </div>
         <div className="extension-toolbar">
-          <div className="extension-local-summary"><strong>Local capabilities</strong><span>{extensionCatalog?.skills.length ?? 0} skills · {extensionCatalog?.extensions.length ?? 0} plugin manifests · {mcpCatalog?.servers.length ?? 0} MCP metadata</span></div>
+          <div className="extension-local-summary"><strong>Local capabilities</strong><span className="meta-inline-list"><span>{readyCount} {readyCount === 1 ? "capability" : "capabilities"} ready</span>{discoveredSummaryParts.map((part) => <span key={part}>{part}</span>)}</span></div>
           <label className="extension-search"><Icon name="search" size={14} /><input value={extensionQuery} onChange={(event) => setExtensionQuery(event.target.value)} placeholder="Search local capabilities" aria-label="Search local capabilities" /></label>
         </div>
-        {selected && <article className="skill-detail"><div><span className="eyebrow">CAPABILITY DETAILS</span><h2>{selected[0]}</h2><p>{selected[1]}</p><small>{selected[2]}</small>{selected[3] === "skill" && selectedSkillBody && <pre className="skill-detail-body">{selectedSkillBody}</pre>}</div><button type="button" onClick={() => { setSelectedSkill(null); setSelectedSkillBody(null); }} aria-label="Close capability details">Close</button></article>}
+        {selected && <article className="skill-detail"><div><span className="eyebrow">Capability details</span><h2>{selected[0]}</h2><p>{selected[1]}</p><small>{selected[2]}</small>{selected[3] === "skill" && selectedSkillBody && <pre className="skill-detail-body">{selectedSkillBody}</pre>}</div><button type="button" onClick={() => { setSelectedSkill(null); setSelectedSkillBody(null); }} aria-label="Close capability details"><Icon name="close" size={14} />Close</button></article>}
         <div className="extension-installed-list">
-          {setupCards.length > 0 && <section className="extension-installed-group"><div className="extension-installed-group-label">SETUP AND DETAILS <span>{setupCards.length}</span></div>{setupCards.map(renderInstalledRow)}</section>}
-          {readyCards.length > 0 && <section className="extension-installed-group"><div className="extension-installed-group-label">AVAILABLE AND ENABLED <span>{readyCards.length}</span></div>{readyCards.map(renderInstalledRow)}</section>}
+          {setupCards.length > 0 && <section className="extension-installed-group"><div className="extension-installed-group-label">Setup and details <span>{setupCards.length}</span></div>{setupCards.map(renderInstalledRow)}</section>}
+          {readyCards.length > 0 && <section className="extension-installed-group"><div className="extension-installed-group-label">Available and enabled <span>{readyCards.length}</span></div>{readyCards.map(renderInstalledRow)}</section>}
           {visibleCards.length === 0 && <div className="extension-installed-empty">No matching capabilities</div>}
         </div>
       </main>
@@ -4959,7 +5210,7 @@ export default function App() {
   return <div style={shellStyle} className={`app-frame ${destination !== "chat" ? "destination-frame" : ""} ${destination === "settings" ? "settings-frame" : ""} ${sidebarCollapsed ? "sidebar-is-collapsed" : ""} ${workPanelOpen && destination === "chat" ? "work-panel-open" : ""}`}>
     {destination !== "settings" && !sidebarCollapsed && renderSidebar()}
     {projectSwitcherOpen && typeof document !== "undefined" && createPortal(renderProjectSwitcherMenu("home-project-switcher-menu project-switcher-popover", projectSwitcherPosition), document.body)}
-    {destination === "chat" ? <>{renderConversation()}{workPanelOpen && renderWorkPanel()}{!workPanelOpen && !activeConversationId && <button className="app-work-panel-toggle no-drag" type="button" onClick={() => setWorkPanelOpen(true)} aria-label="Open project details" aria-expanded={false} title="Open project details"><Icon name="panel" size={15} /></button>}</> : destination === "settings" ? renderSettings() : renderExtensions()}
+    {destination === "chat" ? <>{renderConversation()}{workPanelOpen && renderWorkPanel()}{!workPanelOpen && !activeConversationId && <button className="app-work-panel-toggle no-drag" type="button" onClick={() => setWorkPanelOpen(true)} aria-label="Open project details" aria-expanded={false} title="Open project details"><Icon name="panel" size={16} /></button>}</> : destination === "settings" ? renderSettings() : renderExtensions()}
     {renderCommandPalette()}
     {renderSearchOverlay()}
   </div>;

@@ -47,10 +47,10 @@ export default function VirtualizedTimeline({ items }: { items: TimelineItem[] }
               key={item.event_id}
               style={{ top: index * ROW_HEIGHT, height: ROW_HEIGHT }}
             >
-              <span className="activity-icon"><CapabilityIcon name={item.status === "COMPLETED" ? "check" : "activity"} size={13} /></span>
+              <span className="activity-icon"><CapabilityIcon name={item.status === "COMPLETED" ? "check" : "activity"} size={14} /></span>
               <div>
-                <strong>{item.title} · {item.status}</strong>
-                <small>{item.detail}</small>
+                <strong title={item.title}>{item.title} · {item.status}</strong>
+                <small title={item.detail}>{item.detail}</small>
               </div>
             </article>
           );

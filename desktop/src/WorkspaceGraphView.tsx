@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
+import { CapabilityIcon } from "./capability-icons";
 import type {
   MemoryFileRelation,
   MemoryFileRelationCursor,
@@ -514,7 +515,23 @@ export default function WorkspaceGraphView({ graph, loadMemories, loadFileRelati
     }
   }
   function panCanvas(event: KeyboardEvent<HTMLDivElement>) {
-    if (event.target !== event.currentTarget) return;
+    const target = event.target as HTMLElement | null;
+    if (target && ["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName)) return;
+    if (event.key === "+" || event.key === "=") {
+      event.preventDefault();
+      changeZoom(ZOOM_STEP);
+      return;
+    }
+    if (event.key === "-" || event.key === "_") {
+      event.preventDefault();
+      changeZoom(-ZOOM_STEP);
+      return;
+    }
+    if (event.key === "0" || event.key === "f" || event.key === "F") {
+      event.preventDefault();
+      fitWidth();
+      return;
+    }
     const step = Math.max(80, Math.round(event.currentTarget.clientWidth * 0.75));
     const directions: Record<string, [number, number]> = {
       ArrowDown: [0, step],
@@ -609,8 +626,8 @@ export default function WorkspaceGraphView({ graph, loadMemories, loadFileRelati
         </select>
         <span className="graph-count">Showing {visibleCount} of {filteredFiles.length} matching projected files · {graph.stats.snapshot_files} in source snapshot</span>
         <div className="graph-view-switch" role="group" aria-label="Map display">
-          <button type="button" aria-pressed={viewMode === "graph"} onClick={() => setViewMode("graph")}>Graph</button>
-          <button type="button" aria-pressed={viewMode === "list"} onClick={() => setViewMode("list")}>List</button>
+          <button type="button" aria-pressed={viewMode === "graph"} onClick={() => setViewMode("graph")}><CapabilityIcon name="map" size={14} /><span>Graph</span></button>
+          <button type="button" aria-pressed={viewMode === "list"} onClick={() => setViewMode("list")}><CapabilityIcon name="files" size={14} /><span>List</span></button>
         </div>
       </div>
       {!selected && filteredFiles.length > 0 && (
@@ -626,17 +643,17 @@ export default function WorkspaceGraphView({ graph, loadMemories, loadFileRelati
       {viewMode === "graph" ? <div className="graph-layout">
         <div className="graph-canvas-column">
           <div className="graph-navigation-controls" role="group" aria-label="Graph size and navigation">
-            <button type="button" onClick={() => changeZoom(-ZOOM_STEP)} disabled={zoom <= MIN_ZOOM} aria-label="Zoom out">−</button>
+            <button type="button" onClick={() => changeZoom(-ZOOM_STEP)} disabled={zoom <= MIN_ZOOM} aria-label="Zoom out"><CapabilityIcon name="minimize" size={14} /></button>
             <output aria-live="polite" aria-label="Graph zoom">{Math.round(zoom * 100)}%</output>
-            <button type="button" onClick={() => changeZoom(ZOOM_STEP)} disabled={zoom >= MAX_ZOOM} aria-label="Zoom in">+</button>
-            <button type="button" onClick={fitWidth}>Fit width</button>
+            <button type="button" onClick={() => changeZoom(ZOOM_STEP)} disabled={zoom >= MAX_ZOOM} aria-label="Zoom in"><CapabilityIcon name="plus" size={14} /></button>
+            <button type="button" onClick={fitWidth}><CapabilityIcon name="restore" size={14} /><span>Fit width</span></button>
           </div>
           <div
             className="graph-canvas-wrap"
             ref={canvasViewport}
             role="region"
             aria-label="Project graph canvas"
-            aria-keyshortcuts="ArrowUp ArrowDown ArrowLeft ArrowRight"
+            aria-keyshortcuts="ArrowUp ArrowDown ArrowLeft ArrowRight + - 0 f"
             tabIndex={0}
             onKeyDown={panCanvas}
           >
@@ -841,11 +858,11 @@ function Inspector({
                   </div>
                   <p>Project <code>{relation.project_id}</code> · owner ID hidden (enforced by local memory service)</p>
                   <p>File <code>{relation.relative_path}</code> · source {relation.source_revision}</p>
-                  <p>Memory r{relation.memory_revision} · {relation.memory_lifecycle.toLocaleLowerCase()} · {relation.memory_validation.toLocaleLowerCase()}</p>
+                  <p className="meta-inline-list"><span>Memory r{relation.memory_revision}</span><span>{relation.memory_lifecycle.toLocaleLowerCase()}</span><span>{relation.memory_validation.toLocaleLowerCase()}</span></p>
                   <p>Saved file hash <code>{relation.source_content_hash}</code></p>
                   <p>Saved memory hash <code>{relation.memory_content_hash}</code></p>
                     <button type="button" className="memory-relation-remove" aria-label={`Remove only relation ${relation.relation_id}`} disabled={relationActionId !== null || relationsBusy || relationsLoadingMore} onClick={() => onRemoveRelation({ relation_id: relation.relation_id, project_id: relation.project_id, relative_path: relation.relative_path, scope_kind: relation.scope_kind })}>
-                    {relationActionId === actionId ? "Removing…" : "Remove link"}
+                    <CapabilityIcon name="close" size={14} /><span>{relationActionId === actionId ? "Removing…" : "Remove link"}</span>
                   </button>
                 </li>;
               })}</ul> : relationServiceAvailable ? <p className="muted">No saved file-memory links for this file.</p> : <p className="muted">Saved file-memory links are unavailable in this view.</p>}
@@ -859,7 +876,7 @@ function Inspector({
                 aria-controls="saved-file-memory-relations"
                 disabled={relationsLoadingMore || relationActionId !== null}
                 onClick={onRestartRelations}
-              >Restart saved relation history</button>}
+              ><CapabilityIcon name="refresh" size={14} /><span>Restart saved relation history</span></button>}
             </>}
             {relationsPageAnnouncement && <p className="muted" role="status" aria-live="polite">{relationsPageAnnouncement}</p>}
             {relationsLoadingMore && <p className="muted" role="status">Loading saved relations…</p>}
@@ -869,7 +886,7 @@ function Inspector({
               aria-controls="saved-file-memory-relations"
               disabled={relationsLoadingMore || relationActionId !== null}
               onClick={onLoadMoreRelations}
-            >{relationsLoadingMore ? "Loading saved relations…" : "Load more saved relations"}</button>}
+            ><CapabilityIcon name={relationsLoadingMore ? "refresh" : "chevron-down"} size={14} state={relationsLoadingMore ? "loading" : "idle"} /><span>{relationsLoadingMore ? "Loading saved relations…" : "Load more saved relations"}</span></button>}
           </div>
         )}
       </section>
@@ -888,7 +905,7 @@ function Inspector({
             onChange={(event) => onMemoryQueryChange(event.target.value)}
             disabled={memoryBusy}
           />
-          <button type="submit" disabled={memoryBusy || !memoryQuery.trim()}>Search memories</button>
+          <button type="submit" disabled={memoryBusy || !memoryQuery.trim()}><CapabilityIcon name="search" size={14} state={memoryBusy ? "loading" : "idle"} /><span>Search memories</span></button>
         </div>
       </form>}
       {memorySource?.source_state === "stale" && <p className="graph-notice" role="status">This file path is marked stale in the source snapshot. Search results remain candidates only.</p>}
@@ -919,7 +936,7 @@ function Inspector({
               && isFileRelationEligible(memory)
               && existingRelation === null);
             return <li key={memory.memory_id}>
-              <div><strong>Candidate · {memory.memory_kind.replaceAll("_", " ").toLocaleLowerCase()}</strong><span>{memory.lifecycle.toLocaleLowerCase()} · {memory.validation.toLocaleLowerCase()} · r{memory.revision}</span></div>
+              <div><strong>Candidate · {memory.memory_kind.replaceAll("_", " ").toLocaleLowerCase()}</strong><span className="meta-inline-list"><span>{memory.lifecycle.toLocaleLowerCase()}</span><span>{memory.validation.toLocaleLowerCase()}</span><span>r{memory.revision}</span></span></div>
               <p>Record <code>{memory.memory_id}</code> · {memory.scope_kind}</p>
               <p>Record hash <code>{memory.content_hash ?? "Unavailable"}</code></p>
               <p>{memory.content?.slice(0, 220) || "(metadata-only record)"}</p>
@@ -935,7 +952,7 @@ function Inspector({
                 disabled={relationActionId !== null || relationsBusy || relationsLoadingMore}
                 onClick={() => onSaveRelation(memory)}
               >
-                {relationActionId === `link:${memory.memory_id}` ? "Saving…" : `Save link to ${candidateSource!.source_path}`}
+                <CapabilityIcon name="plus" size={14} /><span>{relationActionId === `link:${memory.memory_id}` ? "Saving…" : `Save link to ${candidateSource!.source_path}`}</span>
               </button>}
             </li>;
           })}

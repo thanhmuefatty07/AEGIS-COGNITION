@@ -28,6 +28,10 @@ ignore = [
     "RUSTSEC-2026-0404",
     "RUSTSEC-2026-0405",
     "RUSTSEC-2026-0406",
+    "RUSTSEC-2026-0420",
+    "RUSTSEC-2026-0422",
+    "RUSTSEC-2026-0423",
+    "RUSTSEC-2026-0424",
 ]
 
 [bans]

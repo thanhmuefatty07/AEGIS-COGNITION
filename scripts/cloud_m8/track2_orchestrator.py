@@ -368,9 +368,14 @@ class Track2Orchestrator:
             if cand.is_file():
                 probe_file = cand
         else:
+            pointer = ROOT / ".local" / "private-archive.path"
+            archive_base = Path(
+                os.environ.get("AEGIS_PRIVATE_ARCHIVE")
+                or (pointer.read_text(encoding="utf-8").strip() if pointer.is_file() else str(ROOT / ".local" / "private-archive"))
+            )
             candidates = [
-                Path("D:/AEGIS-COGNITION.local-private/20261028-wave4-verification/tier2-gha/tier2-macos-14/macos_capability_probe.json"),
-                Path("D:/AEGIS-COGNITION.local-private/20261028-wave4-verification/tier2-gha/macos_capability_probe.json"),
+                archive_base / "20261028-wave4-verification/tier2-gha/tier2-macos-14/macos_capability_probe.json",
+                archive_base / "20261028-wave4-verification/tier2-gha/macos_capability_probe.json",
             ]
             for cand in candidates:
                 if cand.is_file():
@@ -579,10 +584,15 @@ class Track2Orchestrator:
         elif os.environ.get("AEGIS_BACKUP_ARCHIVE"):
             archive_path = Path(os.environ["AEGIS_BACKUP_ARCHIVE"])
         else:
+            pointer = ROOT / ".local" / "private-archive.path"
+            archive_base = Path(
+                os.environ.get("AEGIS_PRIVATE_ARCHIVE")
+                or (pointer.read_text(encoding="utf-8").strip() if pointer.is_file() else str(ROOT / ".local" / "private-archive"))
+            )
             candidates = [
                 self.root / ".local" / "repo-m8-1793226160.tar.gz",
-                Path("D:/AEGIS-COGNITION.local-private/audits/m8-artifacts-20261029/workspace-artifacts/.local/repo-m8-1793226160.tar.gz"),
-                Path("D:/AEGIS-COGNITION.local-private/repo-m8-1793226160.tar.gz"),
+                archive_base / "audits/m8-artifacts-20261029/workspace-artifacts/.local/repo-m8-1793226160.tar.gz",
+                archive_base / "repo-m8-1793226160.tar.gz",
             ]
             for cand in candidates:
                 if cand.is_file():

@@ -9,7 +9,7 @@ Coordinates all M8 verification stages:
 5. Track 2 receipts: Branch protection (NV-010), Remote CI (NV-015), macOS controls (NV-003, NV-008-M), drills (NV-009, NV-012)
 6. Collects all 18 receipts, updates docs/architecture/not_verified_registry.json
 7. Regenerates the 6 AESE derived registries in strict topological order
-8. Syncs evidence to the private archive (D:\\AEGIS-COGNITION.local-private\\ or .local/private-archive/)
+8. Syncs evidence to the private archive (AEGIS_PRIVATE_ARCHIVE or .local/private-archive.path)
 """
 
 from __future__ import annotations
@@ -98,9 +98,6 @@ def resolve_private_archive() -> Path:
     env_target = os.environ.get("AEGIS_PRIVATE_ARCHIVE", "").strip()
     if env_target:
         return Path(env_target)
-    drive_d = Path("D:/AEGIS-COGNITION.local-private")
-    if drive_d.exists():
-        return drive_d
     local_pointer = ROOT / ".local" / "private-archive.path"
     if local_pointer.is_file():
         try:

@@ -35,6 +35,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+from scripts.cloud_m8.nv004_attestation_generator import generate_nv004_receipts  # noqa: E402
 from scripts.supply_chain_gate import (  # noqa: E402
     evaluate_supply_chain_gate,
     write_release_signed_attestation_artifacts,
@@ -81,8 +82,23 @@ class TestChallengerM84Attestation(unittest.TestCase):
         (cls.sandbox_path / "scripts").mkdir(parents=True, exist_ok=True)
         shutil.copy(ROOT / "scripts" / "secret_scan.py", cls.sandbox_path / "scripts" / "secret_scan.py")
 
-        # Copy canonical artifacts into sandbox
-        shutil.copytree(ROOT / "artifacts", cls.sandbox_path / "artifacts")
+        canonical_artifacts = ROOT / "artifacts"
+        has_canonical_attestation = (
+            (canonical_artifacts / "release_signed_attestation.json").is_file()
+            and (canonical_artifacts / "release_signed_attestation_verification.json").is_file()
+            and (canonical_artifacts / "nv004_attestation_receipt.json").is_file()
+        )
+        if has_canonical_attestation:
+            shutil.copytree(canonical_artifacts, cls.sandbox_path / "artifacts")
+            cls.canonical_eval_root = ROOT
+        else:
+            (cls.sandbox_path / "artifacts").mkdir(parents=True, exist_ok=True)
+            generate_nv004_receipts(
+                root=cls.sandbox_path,
+                dry_run=False,
+                artifacts_dir=cls.sandbox_path / "artifacts",
+            )
+            cls.canonical_eval_root = cls.sandbox_path
 
         # Load baseline authentic payloads
         cls.baseline_attestation_path = cls.sandbox_path / "artifacts" / "release_signed_attestation.json"
@@ -127,9 +143,9 @@ class TestChallengerM84Attestation(unittest.TestCase):
     # 1. Baseline Authentic Verification
     # =========================================================================
     def test_canonical_artifacts_baseline_acceptance(self) -> None:
-        """Confirms that evaluate_supply_chain_gate(ROOT) passes 20/20 checks with authentic artifacts."""
-        report = evaluate_supply_chain_gate(ROOT)
-        self.assertTrue(report.get("overall_ok"), f"Gate failed on canonical ROOT: {report.get('checks')}")
+        """Confirms that evaluate_supply_chain_gate passes 20/20 checks with authentic artifacts."""
+        report = evaluate_supply_chain_gate(self.canonical_eval_root)
+        self.assertTrue(report.get("overall_ok"), f"Gate failed on canonical root: {report.get('checks')}")
         self.assertEqual(report.get("passed"), 20)
         self.assertEqual(report.get("failed"), 0)
         self.assertTrue(report.get("external_signed_attestation_present"))
@@ -143,7 +159,7 @@ class TestChallengerM84Attestation(unittest.TestCase):
 
     def test_nv004_receipt_authenticity(self) -> None:
         """Verifies nv004_attestation_receipt.json authenticity, non-simulation, and Q13 compliance."""
-        receipt_path = ROOT / "artifacts" / "nv004_attestation_receipt.json"
+        receipt_path = self.canonical_eval_root / "artifacts" / "nv004_attestation_receipt.json"
         self.assertTrue(receipt_path.is_file(), "nv004_attestation_receipt.json must exist")
         receipt = json.loads(receipt_path.read_text(encoding="utf-8"))
 

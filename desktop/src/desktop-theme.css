@@ -61,63 +61,65 @@ body {
   /* Keep the root tied to the native viewport; compensating its width for zoom
      makes the desktop shell underfill and clips Settings at small sizes. */
   width: 100%;
-  min-height: var(--aegis-viewport-height);
+  height: var(--aegis-viewport-height, 100vh);
+  min-height: var(--aegis-viewport-height, 100vh);
+  max-height: var(--aegis-viewport-height, 100vh);
   zoom: var(--aegis-ui-scale);
   max-width: 100%;
   overflow-x: hidden;
 }
 
 :root[data-theme="light"] {
-  --surface-0: #f6f7f9;
+  --surface-0: #f7f8fa;
   --surface-1: #ffffff;
-  --surface-2: #edf0f4;
-  --surface-3: #e2e7ef;
-  --surface-inset: #f1f3f7;
-  --sidebar-surface: #edf0f4;
-  --text-primary: #20242d;
-  --text-secondary: #525a68;
-  --text-muted: #565f6e;
-  --text-faint: #565f6e;
-  --line: #dde2ea;
-  --line-soft: #e7eaf0;
-  --line-strong: #cbd3e0;
-  --hover: #e3e8f0;
-  --active: #e9eeff;
-  --accent: #3157cd;
-  --accent-contrast: #3157cd;
+  --surface-2: #eef0f4;
+  --surface-3: #e3e6ec;
+  --surface-inset: #f2f4f7;
+  --sidebar-surface: #eff1f5;
+  --text-primary: #111318;
+  --text-secondary: #3f4652;
+  --text-muted: #555e6d;
+  --text-faint: #555e6d;
+  --line: #d9dde5;
+  --line-soft: #e6e9ef;
+  --line-strong: #bcc3d0;
+  --hover: #e5e8ef;
+  --active: #e2e6ee;
+  --accent: #14171f;
+  --accent-contrast: #111318;
   --accent-on: #ffffff;
-  --focus-ring: #3157cd;
-  --success: #1f7c54;
-  --warning: #94630b;
-  --error: #b83b38;
-  --error-soft: #fcf0ef;
+  --focus-ring: #14171f;
+  --success: #1b744d;
+  --warning: #8c5d08;
+  --error: #b43431;
+  --error-soft: #fcefee;
 }
 
 :root[data-theme="light"] .sidebar .brand-mark {
-  color: #1a1c1f;
+  color: #111318;
 }
 
 :root[data-theme="dark"],
 :root:not([data-theme="light"]) {
-  --surface-0: #171a20;
-  --surface-1: #1d222a;
-  --surface-2: #262d37;
-  --surface-3: #303947;
-  --surface-inset: #151920;
-  --sidebar-surface: #13161b;
-  --text-primary: #eceff4;
-  --text-secondary: #b0bac9;
-  --text-muted: #8894a7;
-  --text-faint: #b0bac9;
-  --line: #333a45;
-  --line-soft: #29303b;
-  --line-strong: #465165;
-  --hover: #252c37;
-  --active: #242e4c;
-  --accent: #8ba4ff;
-  --accent-contrast: #a7baff;
-  --accent-on: #171a20;
-  --focus-ring: #8ba4ff;
+  --surface-0: #111317;
+  --surface-1: #171a20;
+  --surface-2: #20242c;
+  --surface-3: #2a303b;
+  --surface-inset: #0e1014;
+  --sidebar-surface: #0d0f13;
+  --text-primary: #f3f5f8;
+  --text-secondary: #c4cad4;
+  --text-muted: #949eae;
+  --text-faint: #b4bcc8;
+  --line: #2b313c;
+  --line-soft: #222730;
+  --line-strong: #3e4756;
+  --hover: #1e232b;
+  --active: #252b35;
+  --accent: #f3f5f8;
+  --accent-contrast: #ffffff;
+  --accent-on: #111317;
+  --focus-ring: #d8dee9;
   --success: #79c99c;
   --warning: #e4bd73;
   --error: #f09590;
@@ -127,7 +129,7 @@ body {
 .app-frame,
 .app-frame.destination-frame {
   grid-template-columns: var(--aegis-sidebar-width) minmax(0, 1fr);
-  min-height: calc(100vh / var(--aegis-ui-scale));
+  min-height: var(--aegis-viewport-height, calc(100vh / var(--aegis-ui-scale)));
   background: var(--surface-0);
 }
 
@@ -167,7 +169,6 @@ body {
 .brand-mark svg {
   width: 16px;
   height: 16px;
-  stroke-width: 1.55;
 }
 
 .brand-copy strong {
@@ -180,7 +181,7 @@ body {
 .brand-copy span {
   color: var(--text-faint);
   font-size: 11px;
-  letter-spacing: .08em;
+  letter-spacing: -0.005em;
 }
 
 .sidebar-toggle,
@@ -236,7 +237,7 @@ body {
   color: var(--text-muted);
   font-size: 12px;
   font-weight: 500;
-  letter-spacing: .02em;
+  letter-spacing: -0.005em;
 }
 
 .sidebar-label-with-action {
@@ -248,8 +249,8 @@ body {
 
 .sidebar-label-with-action .new-task {
   display: grid;
-  width: 24px;
-  min-height: 24px;
+  width: 28px;
+  min-height: 28px;
   margin: -2px 0 0;
   place-items: center;
   padding: 0;
@@ -258,6 +259,7 @@ body {
 .sidebar-count {
   color: var(--text-faint);
   font-weight: 400;
+  font-variant-numeric: tabular-nums;
 }
 
 .sidebar-nav,
@@ -318,9 +320,11 @@ body {
 .session-row-action,
 .project-row-action {
   display: grid;
-  width: 24px;
-  height: 24px;
-  flex: 0 0 24px;
+  width: 28px;
+  height: 28px;
+  min-width: 28px;
+  min-height: 28px;
+  flex: 0 0 28px;
   place-items: center;
   border-radius: 50%;
   color: var(--text-muted);
@@ -781,9 +785,13 @@ body {
 }
 
 .composer-attachment-remove {
-  width: 20px;
-  height: 20px;
-  flex: 0 0 auto;
+  display: inline-grid;
+  width: 28px;
+  height: 28px;
+  min-width: 28px;
+  min-height: 28px;
+  flex: 0 0 28px;
+  place-items: center;
   border: 0;
   border-radius: 50%;
   color: var(--text-muted);
@@ -1431,7 +1439,7 @@ body {
 .search-dialog {
   display: flex;
   width: min(100%, 620px);
-  max-height: min(460px, 100%);
+  max-height: min(484px, calc(100vh - 96px));
   flex-direction: column;
   overflow: hidden;
   border: 1px solid var(--line);
@@ -1465,7 +1473,7 @@ body {
 .search-results {
   min-height: 0;
   overflow-y: auto;
-  padding: 6px;
+  padding: 6px 6px 10px;
 }
 
 .search-group-label {
@@ -1543,8 +1551,10 @@ body {
 
 .sidebar-toolbar-button {
   display: grid;
-  width: 24px;
-  height: 24px;
+  width: 28px;
+  height: 28px;
+  min-width: 28px;
+  min-height: 28px;
   place-items: center;
   border-radius: 50%;
   color: var(--text-muted);
@@ -1683,8 +1693,9 @@ body {
 .sidebar-mini-menu-title {
   padding: 6px 8px 5px;
   color: var(--text-muted);
-  font-size: 11px;
-  font-weight: 600;
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: -0.005em;
 }
 
 .sidebar-mini-menu button {
@@ -1716,11 +1727,10 @@ body {
 
 .brand-mark svg {
   color: var(--text-primary);
-  stroke-width: 1.55;
 }
 
 .brand-copy strong {
-  letter-spacing: .02em;
+  letter-spacing: -0.005em;
 }
 
 .environment-option.active {
@@ -1988,8 +1998,8 @@ body {
   min-width: 0;
 }
 
-.aegis-settings-row strong,
-.aegis-settings-row span {
+.aegis-settings-row > div > strong,
+.aegis-settings-row > div > span {
   display: block;
 }
 
@@ -2009,18 +2019,21 @@ body {
 .aegis-settings-row > button,
 .aegis-settings-value {
   display: inline-flex;
-  min-width: 118px;
-  min-height: 38px;
+  min-width: 96px;
+  min-height: 36px;
+  height: 36px;
   flex: 0 0 auto;
   align-items: center;
   justify-content: center;
   gap: 9px;
-  border: 0;
-  border-radius: 18px;
-  padding: 0 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 0 12px;
   color: var(--text-secondary);
   background: var(--surface-2);
   font-size: 12px;
+  font-weight: 500;
+  line-height: 1;
   text-align: center;
 }
 
@@ -2030,7 +2043,7 @@ body {
 }
 
 .aegis-settings-value {
-  background: transparent;
+  background: var(--surface-2);
 }
 
 .aegis-settings-value input {
@@ -2272,18 +2285,18 @@ body {
   flex: 1;
 }
 
-.aegis-settings-empty strong,
-.aegis-settings-empty span {
+.aegis-settings-empty > div > strong,
+.aegis-settings-empty > div > span {
   display: block;
 }
 
-.aegis-settings-empty strong {
+.aegis-settings-empty > div > strong {
   color: var(--text-primary);
   font-size: 14px;
   font-weight: 500;
 }
 
-.aegis-settings-empty span {
+.aegis-settings-empty > div > span {
   margin-top: 5px;
   color: var(--text-muted);
   font-size: 12px;
@@ -2314,29 +2327,34 @@ body {
 .project-sort-control,
 .project-search-control {
   display: inline-flex;
-  height: 34px;
+  height: 36px;
   align-items: center;
-  border-radius: 18px;
+  border-radius: 8px;
   background: var(--surface-2);
 }
 
 .project-sort-control {
   gap: 2px;
+  border: 1px solid var(--line);
+  background: var(--surface-1);
   padding: 2px;
 }
 
 .project-sort-control button {
   min-height: 30px;
-  border-radius: 15px;
+  height: 30px;
+  border-radius: 6px;
   padding: 0 12px;
   color: var(--text-muted);
   background: transparent;
   font-size: 12px;
+  font-weight: 500;
 }
 
 .project-sort-control button.active {
   color: var(--text-primary);
   background: var(--surface-3);
+  box-shadow: inset 0 0 0 1px var(--line-strong);
 }
 
 .project-search-control {
@@ -2377,9 +2395,10 @@ body {
 }
 
 .project-archive-label {
-  color: var(--text-secondary);
-  font-size: 11px;
-  letter-spacing: .06em;
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: -0.005em;
 }
 
 .project-archive-label span {
@@ -2392,11 +2411,13 @@ body {
   color: var(--text-muted);
   background: var(--surface-2);
   letter-spacing: 0;
+  font-variant-numeric: tabular-nums;
 }
 
 .project-archive-list,
 .project-archive-empty {
-  border-radius: 18px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
   background: var(--surface-1);
 }
 
@@ -2439,8 +2460,10 @@ body {
   display: inline-flex;
   min-height: 28px;
   align-items: center;
+  gap: 5px;
   justify-self: end;
   border: 0;
+  border-radius: 6px;
   padding: 6px 8px;
   color: var(--text-muted);
   background: transparent;
@@ -2474,7 +2497,7 @@ body {
 }
 
 .project-archive-remove:hover {
-  color: var(--danger, #ef8f8f);
+  color: var(--error);
 }
 
 .project-archive-chevron {
@@ -2705,7 +2728,7 @@ body {
 }
 
 .model-provider-state.active {
-  color: var(--success, #57c98a);
+  color: var(--success);
 }
 
 .model-vendor-empty {
@@ -3035,24 +3058,23 @@ body {
   flex: 1;
 }
 
-.shortcut-settings-row strong,
-.shortcut-settings-row span,
-.capability-settings-row strong,
-.capability-settings-row span,
-.capability-settings-row small {
+.shortcut-settings-row > div > strong,
+.shortcut-settings-row > div > span,
+.capability-settings-row > div > strong,
+.capability-settings-row > div > span {
   display: block;
 }
 
-.shortcut-settings-row strong,
-.capability-settings-row strong {
+.shortcut-settings-row > div > strong,
+.capability-settings-row > div > strong {
   color: var(--text-primary);
   font-size: 13px;
   font-weight: 500;
 }
 
-.shortcut-settings-row span,
-.capability-settings-row div span,
-.capability-settings-row small {
+.shortcut-settings-row > div > span,
+.capability-settings-row > div > span,
+.capability-settings-row > div > small {
   margin-top: 4px;
   color: var(--text-muted);
   font-size: 11px;
@@ -3179,10 +3201,11 @@ body {
 .capability-settings-group-heading {
   min-height: 44px;
   padding: 0 18px;
-  color: var(--text-secondary);
-  font-size: 11px;
-  letter-spacing: .05em;
-  text-transform: uppercase;
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: -0.005em;
+  text-transform: none;
 }
 
 .capability-settings-group-heading span {
@@ -3194,6 +3217,7 @@ body {
   color: var(--text-muted);
   background: var(--surface-2);
   letter-spacing: 0;
+  font-variant-numeric: tabular-nums;
 }
 
 .capability-settings-glyph {
@@ -3458,9 +3482,11 @@ body {
   max-height: 220px;
   overflow: auto;
   box-sizing: border-box;
-  padding: 9px 10px;
-  border: 1px solid var(--line-soft);
-  border-radius: 9px;
+  padding: 10px 0 0;
+  border: 0;
+  border-top: 1px solid var(--line);
+  border-radius: 0;
+  background: transparent;
   color: var(--text-secondary);
   font-size: 11px;
 }
@@ -3471,10 +3497,11 @@ body {
   gap: 8px;
   width: 100%;
   box-sizing: border-box;
-  padding: 10px;
-  border: 1px solid var(--line-soft);
-  border-radius: 10px;
-  background: var(--surface-0);
+  padding: 10px 0 0;
+  border: 0;
+  border-top: 1px solid var(--line);
+  border-radius: 0;
+  background: transparent;
 }
 
 .mcp-prompt-heading {
@@ -3530,10 +3557,11 @@ body {
   align-items: center;
   gap: 8px 12px;
   min-width: 0;
-  padding: 9px;
-  border: 1px solid var(--line-soft);
-  border-radius: 9px;
-  background: var(--surface-1);
+  padding: 10px 0 0;
+  border: 0;
+  border-top: 1px solid var(--line);
+  border-radius: 0;
+  background: transparent;
 }
 
 .mcp-skill-copy {
@@ -3581,9 +3609,11 @@ body {
   display: grid;
   gap: 8px;
   min-width: 0;
-  padding: 9px;
-  border: 1px solid var(--line-soft);
-  border-radius: 9px;
+  padding: 10px 0 0;
+  border: 0;
+  border-top: 1px solid var(--line);
+  border-radius: 0;
+  background: transparent;
 }
 
 .mcp-prompt-card summary {
@@ -3612,9 +3642,11 @@ body {
 }
 
 .mcp-prompt-preview {
-  padding: 8px;
-  border-radius: 8px;
-  background: var(--surface-1);
+  padding: 10px 0 0;
+  border: 0;
+  border-top: 1px solid var(--line);
+  border-radius: 0;
+  background: transparent;
 }
 
 .mcp-prompt-preview p,
@@ -3888,9 +3920,9 @@ body {
   align-items: center;
   gap: 7px;
   color: var(--text-muted);
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 500;
-  letter-spacing: .08em;
+  letter-spacing: -0.005em;
 }
 
 .extension-installed-group-label span {
@@ -3903,6 +3935,7 @@ body {
   background: var(--surface-2);
   font-size: 11px;
   letter-spacing: 0;
+  font-variant-numeric: tabular-nums;
 }
 
 .extension-installed-row {
@@ -3987,12 +4020,19 @@ body {
 
 .extension-scope-chip,
 .extension-installed-actions > button:not(.extension-row-more) {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
   min-height: 32px;
-  border-radius: 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
   padding: 0 11px;
   color: var(--text-secondary);
   background: var(--surface-2);
   font-size: 11px;
+  font-weight: 500;
+  line-height: 1;
 }
 
 .extension-installed-actions > button:not(.extension-row-more):hover {
@@ -4533,22 +4573,25 @@ body {
   position: absolute;
   inset-block: 0;
   left: 50%;
-  width: 1px;
+  width: 2px;
   content: "";
   background: transparent;
-  transform: translateX(-50%);
-  transition: width var(--fast) var(--ease), background var(--fast) var(--ease);
+  transform: translateX(-50%) scaleX(0.5);
+  transition: background-color 120ms ease, transform 120ms ease, opacity 120ms ease;
 }
 
 .work-panel-resize:hover::after,
+.work-panel-resize:focus::after,
 .work-panel-resize:focus-visible::after,
 .work-panel-resize.is-resizing::after {
-  width: 2px;
+  transform: translateX(-50%) scaleX(1);
   background: color-mix(in oklab, var(--text-primary) 48%, transparent);
 }
 
+.work-panel-resize:focus,
 .work-panel-resize:focus-visible {
-  outline: none;
+  outline: 2px solid var(--focus-ring);
+  outline-offset: -2px;
 }
 
 :root[data-work-panel-resizing="true"],
@@ -4652,15 +4695,19 @@ body {
 }
 
 .sidebar-resize-handle:hover::after,
+.sidebar-resize-handle:focus::after,
 .sidebar-resize-handle:focus-visible::after,
 .sidebar-resize-handle.is-resizing::after {
   opacity: 1;
 }
 
+.sidebar-resize-handle:focus,
 .sidebar-resize-handle:focus-visible {
-  outline: none;
+  outline: 2px solid var(--focus-ring);
+  outline-offset: -2px;
 }
 
+.sidebar-resize-handle:focus::after,
 .sidebar-resize-handle:focus-visible::after,
 .sidebar-resize-handle.is-resizing::after {
   background: var(--accent);
@@ -4877,12 +4924,13 @@ body {
   position: absolute;
   top: 0;
   bottom: 0;
-  left: -24px;
+  left: 12px;
   display: flex;
   align-items: center;
   opacity: 0;
   pointer-events: none;
-  transition: left var(--normal) var(--ease), opacity var(--normal) var(--ease);
+  transform: translateX(-36px);
+  transition: transform 180ms cubic-bezier(0.22, 1, 0.36, 1), opacity 140ms ease;
 }
 
 .conversation-topbar.ct-collapsed {
@@ -4893,6 +4941,7 @@ body {
   left: 12px;
   opacity: 1;
   pointer-events: auto;
+  transform: translateX(0);
 }
 
 .conversation-topbar .ct-lead > .ct-icon-btn {
@@ -4910,14 +4959,6 @@ body {
 
 .app-frame.work-panel-open .app-work-panel-toggle {
   right: calc(var(--work-width) + 12px);
-}
-
-.work-panel-actions {
-  display: inline-flex;
-  flex: 0 0 auto;
-  align-items: center;
-  gap: 2px;
-  margin-left: auto;
 }
 
 .work-panel-toggle {
@@ -4969,7 +5010,7 @@ body {
   height: 21px;
   border-radius: 4px;
   padding: 2px;
-  background: #fff;
+  background: var(--surface-0);
   object-fit: contain;
   pointer-events: none;
 }
@@ -4980,8 +5021,8 @@ body {
   height: 21px;
   place-items: center;
   border-radius: 4px;
-  color: #111;
-  background: #fff;
+  color: var(--text-primary);
+  background: var(--surface-0);
   font-size: 13px;
   font-weight: 700;
   line-height: 1;
@@ -5028,44 +5069,15 @@ body {
   overflow: visible;
 }
 
-.work-tab-active-wrap {
-  position: relative;
-  min-width: 0;
-}
-
-.work-tab-active {
-  display: inline-flex;
-  max-width: 180px;
-  height: 28px;
-  align-items: center;
-  gap: 6px;
-  border-radius: var(--aegis-radius-row);
-  padding: 0 8px;
-  color: var(--text-primary);
-  background: var(--hover);
-  font-size: 11px;
-  font-weight: 500;
-}
-
-.work-tab-active:hover,
-.work-tab-active[aria-expanded="true"] {
-  background: var(--active);
-}
-
-.work-tab-active-label {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
 /* reference desktop closes the active resource from the tab itself. Keep the AEGIS tab
    switcher, but move its close affordance into the same quiet tab strip. */
 .work-panel-tab-close {
   display: inline-flex;
-  width: 24px;
-  height: 24px;
-  flex: 0 0 24px;
+  width: 28px;
+  height: 28px;
+  min-width: 28px;
+  min-height: 28px;
+  flex: 0 0 28px;
   align-items: center;
   justify-content: center;
   border-radius: var(--aegis-radius-row);
@@ -5084,82 +5096,6 @@ body {
 .work-panel-tab-close:focus-visible {
   outline: 2px solid var(--line-strong);
   outline-offset: -2px;
-}
-
-.work-tab-menu {
-  position: absolute;
-  top: 32px;
-  left: 0;
-  z-index: 60;
-  display: grid;
-  min-width: 180px;
-  gap: 2px;
-  padding: 4px;
-  border: 1px solid var(--line-strong);
-  border-radius: var(--aegis-radius-row);
-  background: var(--surface-2);
-  box-shadow: 0 12px 30px rgba(0, 0, 0, .28);
-}
-
-.work-tab-menu button {
-  display: flex;
-  min-height: 30px;
-  align-items: center;
-  gap: 8px;
-  border-radius: 8px;
-  padding: 0 9px;
-  color: var(--text-secondary);
-  background: transparent;
-  text-align: left;
-  font-size: 11px;
-}
-
-.work-tab-menu button:hover,
-.work-tab-menu button.active {
-  color: var(--text-primary);
-  background: var(--hover);
-}
-
-.work-tab-menu button.active::after {
-  width: 5px;
-  height: 5px;
-  margin-left: auto;
-  border-radius: 50%;
-  content: "";
-  background: var(--text-primary);
-}
-
-.work-panel-actions {
-  display: inline-flex;
-  flex: 0 0 auto;
-  align-items: center;
-  gap: 2px;
-  margin-left: auto;
-}
-
-.work-panel-actions .panel-more,
-.work-panel-actions .work-panel-toggle {
-  flex: 0 0 28px;
-}
-
-/* The header now follows the reference desktop's tab-strip/body layering while the active tab
-   menu remains AEGIS-owned. */
-.work-panel-tab-strip-wrap {
-  display: flex;
-  min-width: 0;
-  flex: 1 1 auto;
-  align-items: center;
-  overflow: visible;
-}
-
-.work-panel-tab-strip {
-  display: flex;
-  min-width: 0;
-  max-width: 100%;
-  height: 32px;
-  flex: 1 1 auto;
-  align-items: center;
-  overflow: visible;
 }
 
 .work-panel-tab {
@@ -5196,6 +5132,7 @@ body {
 .work-panel-body {
   position: relative;
   display: flex;
+  min-width: 0;
   min-height: 0;
   flex: 1;
   flex-direction: column;
@@ -5206,6 +5143,7 @@ body {
    visible rows now use the same folder/file primitive and row rhythm. */
 .file-panel {
   display: flex;
+  min-width: 0;
   min-height: 0;
   flex: 1;
   flex-direction: column;
@@ -5296,10 +5234,10 @@ body {
 .composer-permission-heading {
   padding: 6px 10px 5px;
   color: var(--text-muted);
-  font-size: 11px;
-  font-weight: 650;
-  letter-spacing: .08em;
-  text-transform: uppercase;
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: -0.005em;
+  text-transform: none;
 }
 
 .composer-permission-menu > button {
@@ -5502,10 +5440,11 @@ body {
 
 .composer-menu-heading {
   padding: 5px 8px 6px;
-  color: var(--text-faint);
-  font-size: 11px;
-  letter-spacing: .06em;
-  text-transform: uppercase;
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: -0.005em;
+  text-transform: none;
 }
 
 .composer-menu button {
@@ -5708,8 +5647,9 @@ body {
 /* Workbench visual system: task navigation, a readable canvas, and scoped tools. */
 .app-frame {
   position: relative;
-  height: calc(100vh / var(--aegis-ui-scale));
+  height: var(--aegis-viewport-height, calc(100vh / var(--aegis-ui-scale)));
   min-height: 0;
+  max-height: var(--aegis-viewport-height, calc(100vh / var(--aegis-ui-scale)));
   padding: 0;
   overflow: hidden;
   background: var(--surface-0);
@@ -5744,7 +5684,7 @@ body {
   color: var(--text-primary);
   font-size: 14px;
   font-weight: 600;
-  letter-spacing: .035em;
+  letter-spacing: -0.005em;
 }
 
 .sidebar-brand .brand .aegis-brand-logo {
@@ -5858,10 +5798,10 @@ body {
 .sidebar-list-toolbar .sidebar-label,
 .sidebar-list-toolbar .sidebar-list-label {
   padding: 0;
-  color: var(--text-secondary);
+  color: var(--text-muted);
   font-size: 12px;
   font-weight: 500;
-  letter-spacing: .015em;
+  letter-spacing: -0.005em;
   text-transform: none;
 }
 
@@ -5925,25 +5865,6 @@ body {
   flex-direction: column;
   gap: 2px;
   padding: 0;
-}
-
-.sidebar-session-group-body.project {
-  display: grid;
-  grid-template-rows: 1fr;
-  margin-left: 12px;
-  padding-left: 8px;
-  transition: grid-template-rows var(--normal) var(--ease);
-}
-
-.sidebar-session-group-body.project.collapsed {
-  grid-template-rows: 0fr;
-  pointer-events: none;
-}
-
-.sidebar-session-group-clip {
-  min-width: 0;
-  min-height: 0;
-  overflow: hidden;
 }
 
 .session-row {
@@ -6085,10 +6006,11 @@ body {
 }
 
 .empty-hero .eyebrow {
-  color: var(--text-secondary);
+  color: var(--text-muted);
   font-size: 12px;
   font-weight: 500;
-  letter-spacing: .05em;
+  letter-spacing: -0.005em;
+  text-transform: none;
 }
 
 .home-main-content .empty-hero h1 {
@@ -6274,12 +6196,12 @@ body {
 }
 
 .provider-context-disclosure {
-  border: 1px solid var(--line);
-  border-left: 3px solid var(--warning);
+  border: 1px solid color-mix(in srgb, var(--warning) 32%, var(--line));
+  border-left-width: 1px;
   border-radius: var(--radius-xs);
   padding: 8px 10px;
   color: var(--text-primary);
-  background: var(--surface-2);
+  background: color-mix(in srgb, var(--warning) 6%, var(--surface-2));
   font-size: 12px;
   line-height: 1.5;
   overflow-wrap: anywhere;
@@ -6496,13 +6418,13 @@ body {
   min-height: 64px;
   align-items: center;
   gap: 12px;
-  border: 0;
-  border-radius: 8px;
-  padding: 8px 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 10px 14px;
   color: var(--text-secondary);
-  background: transparent;
+  background: var(--surface-1);
   text-align: left;
-  transition: border-color var(--fast) var(--ease), background-color var(--fast) var(--ease);
+  transition: border-color var(--fast) var(--ease), background-color var(--fast) var(--ease), transform var(--fast) var(--ease);
 }
 
 .home-quick-action > svg {
@@ -6513,7 +6435,7 @@ body {
 
 .home-quick-action:hover {
   border-color: var(--line-strong);
-  background: var(--surface-1);
+  background: var(--surface-2);
 }
 
 .home-action-copy {
@@ -6605,6 +6527,9 @@ body {
 }
 
 .work-panel {
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
   border-left: 1px solid var(--line);
   background: var(--surface-1);
 }
@@ -6612,9 +6537,9 @@ body {
 .work-panel-header {
   height: auto;
   min-height: var(--aegis-toolbar-height);
-  gap: 8px;
+  gap: 3px;
   border-bottom: 1px solid var(--line);
-  padding: 8px;
+  padding: 6px 5px;
 }
 
 .work-panel-direct-tabs {
@@ -6622,22 +6547,25 @@ body {
   min-width: 0;
   flex: 1;
   align-items: center;
-  gap: 2px;
+  gap: 1px;
   overflow-x: auto;
   scrollbar-width: none;
 }
 
 .work-panel-direct-tabs .work-panel-tab-button {
   min-width: 0;
-  height: 36px;
-  flex: 1 1 0;
+  height: 32px;
+  flex: 1 1 auto;
   justify-content: center;
   gap: 0;
-  border-radius: 8px;
-  padding: 0 4px;
+  border-radius: 7px;
+  padding: 0 5px;
   color: var(--text-secondary);
   background: transparent;
-  font-size: 12px;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
 }
 
 .work-panel-direct-tabs .work-panel-tab-button:hover {
@@ -6648,15 +6576,15 @@ body {
 .work-panel-direct-tabs .work-panel-tab-button.active {
   color: var(--accent-contrast);
   background: var(--active);
-  font-weight: 500;
+  font-weight: 600;
 }
 
 .work-panel-header > button,
 .work-panel-header .work-panel-close {
-  width: 32px;
-  height: 36px;
+  width: 28px;
+  height: 32px;
   flex: 0 0 auto;
-  border-radius: 8px;
+  border-radius: 7px;
   color: var(--text-secondary);
   background: transparent;
 }
@@ -6733,46 +6661,50 @@ body {
 
 .panel-empty-state {
   display: flex;
-  min-height: 220px;
-  flex: 1;
+  min-height: 36px;
+  flex: 0 0 auto;
   align-items: center;
-  justify-content: center;
-  flex-direction: column;
-  gap: 12px;
-  padding: 32px 24px;
-  color: var(--text-secondary);
-  text-align: center;
+  justify-content: flex-start;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 10px 4px;
+  color: var(--text-muted);
+  font-size: 12.5px;
+  line-height: 1.45;
+  text-align: left;
 }
 
 .panel-empty-state > svg {
-  width: 32px;
-  height: 32px;
   color: var(--text-muted);
 }
 
 .panel-empty-state h3 {
   margin: 0;
   color: var(--text-primary);
-  font-size: 15px;
+  font-size: 12.5px;
   font-weight: 500;
 }
 
-.panel-empty-state p {
-  max-width: 30ch;
+.panel-empty-state p,
+.panel-empty-state span {
+  flex: 1 1 160px;
+  min-width: 0;
+  max-width: none;
   margin: 0;
-  color: var(--text-secondary);
-  font-size: 12px;
-  line-height: 1.6;
+  color: var(--text-muted);
+  font-size: 12.5px;
+  line-height: 1.45;
 }
 
 .panel-empty-state button {
-  min-height: 36px;
+  min-height: 32px;
+  margin-left: auto;
   border: 1px solid var(--line);
   border-radius: 8px;
-  padding: 0 12px;
+  padding: 0 10px;
   color: var(--text-primary);
   background: var(--surface-2);
-  font-size: 13px;
+  font-size: 12px;
 }
 
 .panel-empty-state button:hover {
@@ -6875,7 +6807,6 @@ body {
   font-weight: 500;
 }
 
-.aegis-settings-row span,
 .aegis-settings-row > div > span {
   color: var(--text-secondary);
   font-size: 12px;
@@ -6898,8 +6829,7 @@ body {
 .home-project-switcher-menu,
 .project-row-menu,
 .session-row-menu,
-.search-dialog,
-.work-tab-menu {
+.search-dialog {
   border-color: var(--line);
   border-radius: 12px;
   color: var(--text-primary);
@@ -6966,10 +6896,12 @@ body {
   margin: 0;
   border-bottom: 1px solid var(--line);
   padding: 12px 16px;
-  color: var(--text-secondary);
+  color: var(--text-muted);
   background: var(--surface-2);
   font-size: 12px;
-  letter-spacing: .035em;
+  font-weight: 500;
+  letter-spacing: -0.005em;
+  text-transform: none;
 }
 
 .extension-installed-row {
@@ -7029,11 +6961,54 @@ body {
   background: color-mix(in srgb, var(--warning) 12%, var(--surface-1));
 }
 
+.meta-inline-list {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.meta-inline-list > span + span::before {
+  content: "";
+  display: inline-block;
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: 0.45;
+  margin-right: 8px;
+  vertical-align: middle;
+}
+
 button:focus-visible,
 input:focus-visible,
+select:focus-visible,
 textarea:focus-visible,
-[tabindex="0"]:focus-visible {
-  outline-color: var(--focus-ring);
+summary:focus-visible,
+[role="button"]:focus-visible,
+[role="tab"]:focus-visible,
+[role="menuitem"]:focus-visible,
+[role="option"]:focus-visible,
+[role="separator"]:focus-visible,
+[contenteditable="true"]:focus-visible,
+[tabindex="0"]:focus-visible,
+.composer-input:focus-visible,
+.settings-search input:focus-visible,
+.aegis-settings-value input:focus-visible,
+.project-search-control input:focus-visible,
+.model-editor input:focus-visible,
+.instruction-settings-editor textarea:focus-visible,
+.capability-settings-toolbar > label input:focus-visible,
+.mcp-registry-search-form input:focus-visible,
+.mcp-add-card input:focus-visible,
+.mcp-add-card select:focus-visible,
+.mcp-config-fields input:focus-visible,
+.mcp-config-fields textarea:focus-visible,
+.home-project-switcher-search input:focus-visible,
+.composer-model-search input:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+  transition-duration: 0s;
 }
 
 @media (max-width: 1180px) {
@@ -7269,6 +7244,834 @@ textarea:focus-visible,
   }
 }
 
+.activity-badge,
+.work-panel-tab-count,
+.task-status-bar,
+.graph-status-strip,
+.trace-row,
+.usage-card,
+.task-state-badge,
+.search-item-meta,
+.source-viewer-meta {
+  font-variant-numeric: tabular-nums;
+}
+
+/* ============================================================================
+ * Hallmark v2.0 + Impeccable v4.8 + animate-ui v2.4 Synchronization Layer
+ * Architectural monochrome surfaces, synchronized 36px/32px & 8px control
+ * geometry, full-viewport Settings layout, compact Home footer actions, quiet
+ * single-line empty states, and state-driven icon micro-animations (using
+ * transform & opacity only — zero layout transitions).
+ * ========================================================================== */
+
+/* 1. Reductive Brand Mark Geometry & Quiet Sidebar Brand Button Primitive */
+.aegis-brand-mark,
+.sidebar-brand .brand .aegis-brand-logo,
+.home-collapsed-nav .aegis-brand-logo {
+  display: block;
+  width: 20px;
+  height: 20px;
+  border-radius: 0;
+  background: transparent;
+  color: var(--text-primary);
+  padding: 0;
+  box-shadow: none;
+  flex-shrink: 0;
+  transform-origin: center;
+  transition:
+    transform 180ms cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 150ms ease;
+}
+
+.home-collapsed-nav .aegis-brand-logo {
+  width: 18px;
+  height: 18px;
+}
+
+.sidebar-brand .brand {
+  display: inline-flex;
+  min-width: 0;
+  height: 32px;
+  min-height: 32px;
+  align-items: center;
+  gap: 8px;
+  border: 0;
+  border-radius: 8px;
+  padding: 0 8px 0 6px;
+  color: var(--text-primary);
+  background: transparent;
+  box-shadow: none;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: -0.005em;
+  transition:
+    transform 140ms cubic-bezier(0.22, 1, 0.36, 1),
+    background-color 140ms ease,
+    border-color 140ms ease,
+    color 140ms ease,
+    opacity 140ms ease;
+}
+
+.sidebar-brand .brand:hover:not(:disabled) {
+  color: var(--text-primary);
+  background: var(--hover);
+}
+
+.sidebar-brand .brand:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+button:hover:not(:disabled) .aegis-brand-logo,
+button:focus-visible:not(:disabled) .aegis-brand-logo {
+  transform: scale(1.06);
+}
+
+/* 2. Full-Viewport Settings Layout (Eliminates 24px bottom row gap across all scales) */
+.settings-frame .destination-page,
+.settings-frame .settings-page {
+  grid-column: 1 / -1;
+  grid-template-rows: minmax(0, 1fr);
+  height: 100%;
+  min-height: 0;
+  max-height: 100%;
+  overflow: hidden;
+  align-items: stretch;
+}
+
+.settings-frame .settings-nav,
+.settings-page .settings-nav,
+.settings-page .settings-content {
+  grid-row: 1;
+  height: 100%;
+  min-height: 0;
+  max-height: 100%;
+  align-self: stretch;
+}
+
+@media (max-width: 520px) {
+  .settings-frame .destination-page,
+  .settings-frame .settings-page {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto minmax(0, 1fr);
+  }
+
+  .settings-frame .settings-nav,
+  .settings-page .settings-nav {
+    grid-column: 1;
+    grid-row: 1;
+    height: auto;
+    max-height: none;
+  }
+
+  .settings-page .settings-content {
+    grid-column: 1;
+    grid-row: 2;
+    height: 100%;
+    min-height: 0;
+  }
+}
+
+/* 3. Eliminate Residual Indigo/Periwinkle Tints in Active & Focus States */
+:root[data-theme="dark"] .sidebar-nav .nav-item.active,
+:root:not([data-theme="light"]) .sidebar-nav .nav-item.active,
+:root[data-theme="dark"] .reference-nav-item.active,
+:root:not([data-theme="light"]) .reference-nav-item.active,
+:root[data-theme="dark"] .settings-nav button.active,
+:root:not([data-theme="light"]) .settings-nav button.active,
+:root[data-theme="dark"] .work-panel-tab-button.active,
+:root:not([data-theme="light"]) .work-panel-tab-button.active {
+  color: var(--text-primary);
+  background: var(--active);
+  box-shadow: inset 0 0 0 1px var(--line-strong);
+}
+
+:root[data-theme="light"] .sidebar-nav .nav-item.active,
+:root[data-theme="light"] .reference-nav-item.active,
+:root[data-theme="light"] .settings-nav button.active,
+:root[data-theme="light"] .work-panel-tab-button.active {
+  color: var(--text-primary);
+  background: var(--active);
+  box-shadow: inset 0 0 0 1px var(--line-strong);
+}
+
+.sidebar-nav .nav-item.active > svg,
+.reference-nav-item.active > svg,
+.settings-nav button.active > svg,
+.settings-nav button.active .settings-nav-item-label > svg,
+.work-panel-tab-button.active > svg {
+  color: var(--text-primary);
+  opacity: 1;
+}
+
+:root[data-theme="dark"] .composer-shell:focus-within,
+:root:not([data-theme="light"]) .composer-shell:focus-within,
+:root[data-theme="light"] .composer-shell:focus-within {
+  border-color: var(--line-strong);
+  box-shadow: 0 0 0 2px var(--active);
+}
+
+/* 4. Compact Home Footer Bar (Replaces template 3-card grid & duplicate helper note) */
+.home-footer-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px 16px;
+  padding: 2px 2px 0;
+  background: transparent;
+  border: 0;
+}
+
+.home-readiness {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.home-readiness > svg {
+  margin-top: 0;
+  color: var(--text-muted);
+}
+
+.home-quick-actions {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+}
+
+.home-quick-action {
+  display: inline-flex;
+  min-width: 0;
+  min-height: 32px;
+  height: 32px;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 0 10px;
+  color: var(--text-secondary);
+  background: transparent;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1;
+  white-space: nowrap;
+  transition:
+    transform 140ms cubic-bezier(0.22, 1, 0.36, 1),
+    background-color 140ms ease,
+    border-color 140ms ease,
+    color 140ms ease;
+}
+
+.home-quick-action:hover:not(:disabled) {
+  color: var(--text-primary);
+  background: var(--surface-1);
+  border-color: var(--line-strong);
+}
+
+:root[data-theme="dark"] .home-quick-action > svg,
+:root:not([data-theme="light"]) .home-quick-action > svg,
+:root[data-theme="light"] .home-quick-action > svg,
+:root[data-theme="dark"] .home-quick-action > svg:first-child,
+:root:not([data-theme="light"]) .home-quick-action > svg:first-child,
+:root[data-theme="light"] .home-quick-action > svg:first-child {
+  width: 14px;
+  height: 14px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  color: currentColor;
+  background: transparent;
+  box-shadow: none;
+}
+
+/* 5. Synchronized Primary, Secondary, Ghost & Icon Button System (36px/32px & 8px radius) */
+.settings-secondary,
+button.settings-secondary,
+.mcp-capability-actions > button:not(.settings-primary),
+.mcp-config-actions button:not(.settings-primary),
+.mcp-skill-actions button:not(.settings-primary),
+.mcp-prompt-heading button:not(.settings-primary),
+.mcp-prompt-card > button:not(.settings-primary),
+.capability-settings-row > button:not(.settings-primary),
+.extension-installed-actions > button:not(.extension-row-more):not(.settings-primary),
+.model-default-row button:not(.settings-primary),
+.model-section-heading button:not(.settings-primary),
+.model-provider-row > button:not(.settings-primary),
+.model-catalog-row button:not(.settings-primary),
+.import-settings-heading button:not(.settings-primary),
+.extension-ready-banner > button:not(.settings-primary) {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: 36px;
+  height: 36px;
+  padding: 0 13px;
+  border-radius: 8px;
+  border: 1px solid var(--line-strong);
+  background: var(--surface-2);
+  color: var(--text-primary);
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1;
+  white-space: nowrap;
+  transition:
+    transform 140ms cubic-bezier(0.22, 1, 0.36, 1),
+    background-color 140ms ease,
+    border-color 140ms ease,
+    color 140ms ease,
+    opacity 140ms ease;
+}
+
+.settings-secondary:hover:not(:disabled),
+button.settings-secondary:hover:not(:disabled),
+.mcp-capability-actions > button:not(.settings-primary):hover:not(:disabled),
+.mcp-config-actions button:not(.settings-primary):hover:not(:disabled),
+.mcp-skill-actions button:not(.settings-primary):hover:not(:disabled),
+.mcp-prompt-heading button:not(.settings-primary):hover:not(:disabled),
+.mcp-prompt-card > button:not(.settings-primary):hover:not(:disabled),
+.capability-settings-row > button:not(.settings-primary):hover:not(:disabled),
+.extension-installed-actions > button:not(.extension-row-more):not(.settings-primary):hover:not(:disabled),
+.model-default-row button:not(.settings-primary):hover:not(:disabled),
+.model-section-heading button:not(.settings-primary):hover:not(:disabled),
+.model-provider-row > button:not(.settings-primary):hover:not(:disabled),
+.model-catalog-row button:not(.settings-primary):hover:not(:disabled),
+.import-settings-heading button:not(.settings-primary):hover:not(:disabled),
+.extension-ready-banner > button:not(.settings-primary):hover:not(:disabled) {
+  background: var(--surface-3);
+  border-color: var(--text-muted);
+  color: var(--text-primary);
+}
+
+.settings-primary,
+button.settings-primary,
+.instruction-settings-actions button.settings-primary,
+.aegis-settings-row button.settings-primary,
+.model-onboarding-actions button.settings-primary,
+.capability-settings-toolbar button.settings-primary,
+.mcp-add-card button.settings-primary,
+.mcp-capability-actions button.settings-primary,
+.mcp-config-actions button.settings-primary,
+.mcp-skill-actions button.settings-primary,
+.mcp-prompt-panel button.settings-primary,
+.capability-settings-row > button.settings-primary,
+.primary-extension-action,
+.project-add-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: 36px;
+  height: 36px;
+  padding: 0 14px;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  background: var(--text-primary);
+  color: var(--surface-0);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1;
+  white-space: nowrap;
+  transition:
+    transform 140ms cubic-bezier(0.22, 1, 0.36, 1),
+    background-color 140ms ease,
+    border-color 140ms ease,
+    color 140ms ease,
+    opacity 140ms ease;
+}
+
+.settings-primary:hover:not(:disabled),
+button.settings-primary:hover:not(:disabled),
+.instruction-settings-actions button.settings-primary:hover:not(:disabled),
+.aegis-settings-row button.settings-primary:hover:not(:disabled),
+.model-onboarding-actions button.settings-primary:hover:not(:disabled),
+.capability-settings-toolbar button.settings-primary:hover:not(:disabled),
+.mcp-add-card button.settings-primary:hover:not(:disabled),
+.mcp-capability-actions button.settings-primary:hover:not(:disabled),
+.mcp-config-actions button.settings-primary:hover:not(:disabled),
+.mcp-skill-actions button.settings-primary:hover:not(:disabled),
+.mcp-prompt-panel button.settings-primary:hover:not(:disabled),
+.capability-settings-row > button.settings-primary:hover:not(:disabled),
+.primary-extension-action:hover:not(:disabled),
+.project-add-button:hover:not(:disabled) {
+  background: var(--text-primary);
+  color: var(--surface-0);
+  opacity: 0.92;
+}
+
+/* Unified 8px radius across all icon buttons & send button (no mixed circles/10px) */
+.icon-btn,
+.ct-icon-btn,
+.topbar-icon,
+.sidebar-toggle,
+.sidebar-header-action,
+.sidebar-toolbar-button,
+.sidebar-brand .brand,
+.composer-tool,
+.composer-enhance-btn,
+.home-composer-wrap .composer-plus .composer-tool,
+.home-composer-wrap .composer-enhance-btn,
+.send-button,
+.home-composer-wrap .send-button,
+.extension-row-more,
+.panel-more,
+.work-panel-header > button,
+.work-panel-header .work-panel-close,
+.session-row-action,
+.project-row-action,
+.search-close {
+  border-radius: 8px;
+  transition:
+    transform 140ms cubic-bezier(0.22, 1, 0.36, 1),
+    background-color 140ms ease,
+    border-color 140ms ease,
+    color 140ms ease,
+    opacity 140ms ease;
+}
+
+/* Ensure disabled secondary & primary buttons maintain >= 5.5:1 legible contrast */
+.settings-secondary:disabled,
+button.settings-secondary:disabled,
+.mcp-capability-actions > button:disabled,
+.mcp-config-actions button:disabled,
+.mcp-skill-actions button:disabled,
+.mcp-prompt-heading button:disabled,
+.mcp-prompt-card > button:disabled,
+.capability-settings-row > button:disabled,
+.extension-installed-actions > button:disabled,
+.model-default-row button:disabled,
+.model-section-heading button:disabled,
+.model-provider-row > button:disabled,
+.model-catalog-row button:disabled,
+.import-settings-heading button:disabled,
+.settings-primary:disabled,
+button.settings-primary:disabled,
+.instruction-settings-actions button.settings-primary:disabled,
+.aegis-settings-row button.settings-primary:disabled,
+.model-onboarding-actions button.settings-primary:disabled,
+.capability-settings-toolbar button.settings-primary:disabled,
+.mcp-add-card button.settings-primary:disabled,
+.mcp-capability-actions button.settings-primary:disabled,
+.mcp-config-actions button.settings-primary:disabled,
+.mcp-skill-actions button.settings-primary:disabled,
+.mcp-prompt-panel button.settings-primary:disabled,
+.primary-extension-action:disabled,
+.project-add-button:disabled {
+  opacity: 1;
+  background: var(--surface-1);
+  color: var(--text-muted);
+  border: 1px solid var(--line);
+  cursor: not-allowed;
+}
+
+/* Tactile press feedback across all interactive buttons */
+button:active:not(:disabled),
+[role="button"]:active:not(:disabled),
+[role="tab"]:active:not(:disabled),
+[role="menuitem"]:active:not(:disabled) {
+  transform: scale(0.98);
+}
+
+/* 6. Unified 36px / 8px Search & Toolbar Input System */
+.extension-header {
+  padding: 32px 36px 14px;
+}
+
+.extension-toolbar {
+  padding: 0 36px 16px;
+}
+
+.map-panel .graph-meta,
+.work-panel .graph-meta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+:root[data-theme="dark"] .work-panel .graph-node,
+:root:not([data-theme="light"]) .work-panel .graph-node,
+:root[data-theme="light"] .work-panel .graph-node {
+  border-color: var(--line-strong);
+  color: var(--text-secondary);
+  background: var(--surface-1);
+  box-shadow: none;
+}
+
+:root[data-theme="dark"] .work-panel .graph-node:hover,
+:root:not([data-theme="light"]) .work-panel .graph-node:hover,
+:root[data-theme="light"] .work-panel .graph-node:hover,
+:root[data-theme="dark"] .work-panel .graph-node:focus-visible,
+:root:not([data-theme="light"]) .work-panel .graph-node:focus-visible,
+:root[data-theme="light"] .work-panel .graph-node:focus-visible {
+  border-color: var(--text-muted);
+}
+
+:root[data-theme="dark"] .work-panel .graph-node.selected,
+:root:not([data-theme="light"]) .work-panel .graph-node.selected,
+:root[data-theme="light"] .work-panel .graph-node.selected {
+  border-color: var(--text-primary);
+  color: var(--text-primary);
+  background: var(--active);
+}
+
+:root[data-theme="dark"] .work-panel .graph-node-kind,
+:root:not([data-theme="light"]) .work-panel .graph-node-kind,
+:root[data-theme="light"] .work-panel .graph-node-kind,
+:root[data-theme="dark"] .work-panel .graph-node-path,
+:root:not([data-theme="light"]) .work-panel .graph-node-path,
+:root[data-theme="light"] .work-panel .graph-node-path,
+:root[data-theme="dark"] .work-panel .graph-node-foot,
+:root:not([data-theme="light"]) .work-panel .graph-node-foot,
+:root[data-theme="light"] .work-panel .graph-node-foot {
+  color: var(--text-muted);
+}
+
+:root[data-theme="dark"] .work-panel .graph-canvas-wrap,
+:root:not([data-theme="light"]) .work-panel .graph-canvas-wrap,
+:root[data-theme="light"] .work-panel .graph-canvas-wrap,
+.work-panel .graph-toolbar select,
+.work-panel .graph-navigation-controls button {
+  border-color: var(--line-strong);
+  color: var(--text-primary);
+  background: var(--surface-inset);
+}
+
+.work-panel .graph-navigation-controls button:hover:not(:disabled) {
+  border-color: var(--text-muted);
+  background: var(--surface-2);
+}
+
+.work-panel .graph-navigation-controls output {
+  color: var(--text-muted);
+}
+
+:root[data-theme="dark"] .work-panel .graph-canvas,
+:root:not([data-theme="light"]) .work-panel .graph-canvas,
+:root[data-theme="light"] .work-panel .graph-canvas {
+  background-image: linear-gradient(var(--line-soft) 1px, transparent 1px), linear-gradient(90deg, var(--line-soft) 1px, transparent 1px);
+}
+
+.capability-settings-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.capability-settings-toolbar > div,
+.extension-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.capability-settings-toolbar > label,
+.mcp-registry-search-input,
+.settings-search,
+.project-search-control,
+.extension-search,
+.file-search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 36px;
+  height: 36px;
+  padding: 0 11px;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  background: var(--surface-inset);
+  color: var(--text-muted);
+  transition:
+    border-color 140ms ease,
+    background-color 140ms ease,
+    color 140ms ease;
+}
+
+.capability-settings-toolbar > label:focus-within,
+.mcp-registry-search-input:focus-within,
+.settings-search:focus-within,
+.project-search-control:focus-within,
+.extension-search:focus-within,
+.file-search:focus-within,
+.home-project-switcher-search:focus-within,
+.composer-model-search:focus-within {
+  border-color: var(--line-strong);
+  background: var(--surface-1);
+  color: var(--text-primary);
+  box-shadow: 0 0 0 2px var(--active);
+}
+
+.search-input-row:focus-within {
+  border-bottom-color: var(--line-strong);
+  background: var(--surface-2);
+}
+
+.capability-settings-toolbar > label input,
+.mcp-registry-search-input input,
+.settings-search input,
+.project-search-control input,
+.extension-search input,
+.file-search input {
+  width: 100%;
+  height: 100%;
+  border: 0;
+  outline: none;
+  background: transparent;
+  color: var(--text-primary);
+  font-size: 13px;
+}
+
+.search-input-row input.search-input:focus-visible,
+.capability-settings-toolbar > label input:focus-visible,
+.mcp-registry-search-input input:focus-visible,
+.settings-search input:focus-visible,
+.project-search-control input:focus-visible,
+.extension-search input:focus-visible,
+.file-search input:focus-visible,
+.home-project-switcher-search input:focus-visible,
+.composer-model-search input:focus-visible {
+  outline: 1px solid transparent;
+  outline-offset: 0;
+  box-shadow: none;
+}
+
+.mcp-registry-search-form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+}
+
+.model-key-field select,
+.mcp-add-card select,
+.graph-toolbar select {
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%238a8a93' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 11px center;
+  padding-right: 32px;
+}
+
+.graph-navigation-controls button,
+.graph-memory-search button,
+.graph-memory-actions button,
+.graph-saved-relations-more button,
+.skill-detail > button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+}
+
+.composer-attachment-remove {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* 7. Synchronized Settings Card Containers & Empty-State Alignment */
+.shortcut-settings-card,
+.instruction-settings-card,
+.capability-settings-group,
+.import-settings-card,
+.model-default-row,
+.model-provider-row,
+.model-vendor-empty,
+.model-catalog-row,
+.model-catalog-item,
+.mcp-registry-search,
+.mcp-add-card {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface-1);
+}
+
+.model-catalog-item:hover {
+  border-color: var(--line-strong);
+  background: var(--surface-2);
+}
+
+.capability-settings-help {
+  margin: 0;
+  padding: 0 2px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 12px;
+  line-height: 1.45;
+  max-width: none;
+}
+
+.capability-settings-empty,
+.aegis-settings-empty,
+.project-archive-empty {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 8px;
+  min-height: 44px;
+  padding: 12px 16px;
+  color: var(--text-muted);
+  font-size: 12.5px;
+  line-height: 1.4;
+  text-align: left;
+}
+
+.capability-settings-group > .capability-settings-empty {
+  border-top: 1px solid var(--line-soft);
+  padding: 14px 18px;
+}
+
+.capability-settings-empty > span,
+.aegis-settings-empty > span,
+.project-archive-empty > span {
+  max-width: none;
+  color: var(--text-muted);
+  font-size: 12.5px;
+  font-weight: 400;
+  line-height: 1.4;
+}
+
+.settings-nav-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: var(--line-strong) transparent;
+}
+
+/* 8. Clean-Room animate-ui Icon Micro-Animations (Transform & Opacity Only) */
+.aegis-capability-icon {
+  flex-shrink: 0;
+  stroke-width: 1.75;
+  transform-origin: center;
+  transition:
+    transform 180ms cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 150ms ease;
+}
+
+.aegis-capability-icon[data-icon-size="12"] {
+  width: 12px;
+  height: 12px;
+}
+
+.aegis-capability-icon[data-icon-size="14"] {
+  width: 14px;
+  height: 14px;
+}
+
+.aegis-capability-icon[data-icon-size="16"] {
+  width: 16px;
+  height: 16px;
+}
+
+.aegis-capability-icon[data-icon-size="18"] {
+  width: 18px;
+  height: 18px;
+}
+
+@keyframes aegis-icon-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.aegis-capability-icon[data-icon-state="loading"],
+button[aria-busy="true"] .aegis-capability-icon[data-animate-ui-icon="spin"] {
+  animation: aegis-icon-spin 900ms linear infinite;
+}
+
+button:hover:not(:disabled) .aegis-capability-icon[data-animate-ui-icon="spin"]:not([data-icon-state="loading"]),
+button:focus-visible:not(:disabled) .aegis-capability-icon[data-animate-ui-icon="spin"]:not([data-icon-state="loading"]) {
+  transform: rotate(180deg);
+}
+
+button:hover:not(:disabled) .aegis-capability-icon[data-animate-ui-icon="gear"],
+button:focus-visible:not(:disabled) .aegis-capability-icon[data-animate-ui-icon="gear"] {
+  transform: rotate(45deg);
+}
+
+button:hover:not(:disabled) .aegis-capability-icon[data-animate-ui-icon="quarter-turn"],
+button:focus-visible:not(:disabled) .aegis-capability-icon[data-animate-ui-icon="quarter-turn"] {
+  transform: rotate(90deg) scale(1.06);
+}
+
+button:hover:not(:disabled) .aegis-capability-icon[data-animate-ui-icon="nudge-up"],
+button:focus-visible:not(:disabled) .aegis-capability-icon[data-animate-ui-icon="nudge-up"] {
+  transform: translateY(-2px);
+}
+
+button:active:not(:disabled) .aegis-capability-icon[data-animate-ui-icon="nudge-up"] {
+  transform: translateY(-3.5px) scale(0.95);
+}
+
+button:hover:not(:disabled) .aegis-capability-icon[data-animate-ui-icon="nudge-down"],
+button:focus-visible:not(:disabled) .aegis-capability-icon[data-animate-ui-icon="nudge-down"] {
+  transform: translateY(2px);
+}
+
+button[aria-expanded="true"] .aegis-capability-icon[data-capability-icon="chevron-down"],
+[role="button"][aria-expanded="true"] .aegis-capability-icon[data-capability-icon="chevron-down"] {
+  transform: rotate(180deg);
+}
+
+button:hover:not(:disabled) .aegis-capability-icon[data-animate-ui-icon="nudge-right"],
+button:focus-visible:not(:disabled) .aegis-capability-icon[data-animate-ui-icon="nudge-right"] {
+  transform: translateX(2.5px);
+}
+
+button:hover:not(:disabled) .aegis-capability-icon[data-animate-ui-icon="nudge-left"],
+button:focus-visible:not(:disabled) .aegis-capability-icon[data-animate-ui-icon="nudge-left"] {
+  transform: translateX(-2.5px);
+}
+
+button:hover:not(:disabled) .aegis-capability-icon[data-animate-ui-icon="search-tilt"],
+button:focus-visible:not(:disabled) .aegis-capability-icon[data-animate-ui-icon="search-tilt"],
+label:hover .aegis-capability-icon[data-animate-ui-icon="search-tilt"],
+label:focus-within .aegis-capability-icon[data-animate-ui-icon="search-tilt"] {
+  transform: scale(1.08) rotate(-8deg);
+}
+
+button:hover:not(:disabled) .aegis-capability-icon[data-animate-ui-icon="panel-left"],
+button:focus-visible:not(:disabled) .aegis-capability-icon[data-animate-ui-icon="panel-left"] {
+  transform: translateX(-1.5px) scale(1.04);
+}
+
+button:hover:not(:disabled) .aegis-capability-icon[data-animate-ui-icon="panel-right"],
+button:focus-visible:not(:disabled) .aegis-capability-icon[data-animate-ui-icon="panel-right"] {
+  transform: translateX(1.5px) scale(1.04);
+}
+
+button:hover:not(:disabled) .aegis-capability-icon[data-animate-ui-icon="lift"],
+button:focus-visible:not(:disabled) .aegis-capability-icon[data-animate-ui-icon="lift"],
+[role="tab"]:hover:not(:disabled) .aegis-capability-icon[data-animate-ui-icon="lift"],
+[role="menuitem"]:hover:not(:disabled) .aegis-capability-icon[data-animate-ui-icon="lift"],
+[role="option"]:hover:not(:disabled) .aegis-capability-icon[data-animate-ui-icon="lift"] {
+  transform: translateY(-1.5px) scale(1.05);
+}
+
+button:hover:not(:disabled) .aegis-capability-icon[data-animate-ui-icon="scale"],
+button:focus-visible:not(:disabled) .aegis-capability-icon[data-animate-ui-icon="scale"],
+[role="tab"]:hover:not(:disabled) .aegis-capability-icon[data-animate-ui-icon="scale"],
+[role="menuitem"]:hover:not(:disabled) .aegis-capability-icon[data-animate-ui-icon="scale"],
+[role="option"]:hover:not(:disabled) .aegis-capability-icon[data-animate-ui-icon="scale"] {
+  transform: scale(1.08);
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
@@ -7277,5 +8080,16 @@ textarea:focus-visible,
     animation-duration: .01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: .01ms !important;
+  }
+
+  .aegis-capability-icon,
+  button:hover:not(:disabled) .aegis-capability-icon,
+  button:focus-visible:not(:disabled) .aegis-capability-icon,
+  button:active:not(:disabled) .aegis-capability-icon,
+  label:hover .aegis-capability-icon,
+  label:focus-within .aegis-capability-icon {
+    animation: none !important;
+    transition: none !important;
+    transform: none !important;
   }
 }

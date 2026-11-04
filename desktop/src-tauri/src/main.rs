@@ -309,12 +309,26 @@ impl Drop for SidecarClient {
     }
 }
 
+const MAIN_WINDOW_LABEL: &str = "main";
+
+fn validate_ipc_caller_window_label(label: &str) -> Result<(), String> {
+    if label == MAIN_WINDOW_LABEL {
+        Ok(())
+    } else {
+        Err(format!(
+            "unauthorized IPC caller window label '{label}'; only '{MAIN_WINDOW_LABEL}' is permitted"
+        ))
+    }
+}
+
 #[tauri::command]
 fn desktop_request(
+    window: tauri::Window,
     state: State<'_, Mutex<SidecarClient>>,
     authority: State<'_, Mutex<WorkspaceAuthority>>,
     frame: String,
 ) -> Result<String, String> {
+    validate_ipc_caller_window_label(window.label())?;
     let authority_guard = authority
         .lock()
         .map_err(|_| "workspace authority is poisoned".to_string())?;
@@ -363,8 +377,10 @@ fn authorize_workspace_request(frame: &str, authority: &WorkspaceAuthority) -> R
 
 #[tauri::command]
 fn pick_workspace(
+    window: tauri::Window,
     authority: State<'_, Mutex<WorkspaceAuthority>>,
 ) -> Result<Option<String>, String> {
+    validate_ipc_caller_window_label(window.label())?;
     let Some(path) = rfd::FileDialog::new()
         .set_title("Open project")
         .pick_folder()
@@ -378,7 +394,11 @@ fn pick_workspace(
 }
 
 #[tauri::command]
-fn pick_and_import_skill(state: State<'_, Mutex<SidecarClient>>) -> Result<Option<String>, String> {
+fn pick_and_import_skill(
+    window: tauri::Window,
+    state: State<'_, Mutex<SidecarClient>>,
+) -> Result<Option<String>, String> {
+    validate_ipc_caller_window_label(window.label())?;
     let Some(path) = rfd::FileDialog::new()
         .set_title("Import a skill folder containing SKILL.md")
         .pick_folder()
@@ -426,8 +446,10 @@ fn pick_and_import_skill(state: State<'_, Mutex<SidecarClient>>) -> Result<Optio
 
 #[tauri::command]
 fn pick_and_import_extension_pack(
+    window: tauri::Window,
     state: State<'_, Mutex<SidecarClient>>,
 ) -> Result<Option<Value>, String> {
+    validate_ipc_caller_window_label(window.label())?;
     let Some(path) = rfd::FileDialog::new()
         .set_title("Import a capability pack containing extension.toml")
         .pick_folder()
@@ -439,8 +461,10 @@ fn pick_and_import_extension_pack(
 
 #[tauri::command]
 fn pick_and_import_extension_archive(
+    window: tauri::Window,
     state: State<'_, Mutex<SidecarClient>>,
 ) -> Result<Option<Value>, String> {
+    validate_ipc_caller_window_label(window.label())?;
     let Some(path) = rfd::FileDialog::new()
         .add_filter("ZIP package", &["zip"])
         .set_title("Import a capability pack from a ZIP file")
@@ -494,9 +518,11 @@ fn import_extension_pack_path(
 
 #[tauri::command]
 fn approve_workspace_path(
+    window: tauri::Window,
     authority: State<'_, Mutex<WorkspaceAuthority>>,
     path: String,
 ) -> Result<String, String> {
+    validate_ipc_caller_window_label(window.label())?;
     let requested = canonical_directory(Path::new(&path), "project activation")?;
     {
         let authority = authority
@@ -543,9 +569,9 @@ fn main() {
 #[cfg(test)]
 mod tests {
     use super::{
-        authorize_workspace_request, read_bounded_json_line, wait_for_service_exit, Value,
-        WorkspaceAuthority, BUNDLED_SERVICE_NAME, MAX_FRAME_BYTES, READY_SCHEMA,
-        SERVICE_SHUTDOWN_GRACE,
+        authorize_workspace_request, read_bounded_json_line, validate_ipc_caller_window_label,
+        wait_for_service_exit, Value, WorkspaceAuthority, BUNDLED_SERVICE_NAME, MAX_FRAME_BYTES,
+        READY_SCHEMA, SERVICE_SHUTDOWN_GRACE,
     };
     use std::collections::HashSet;
     use std::fs;
@@ -792,5 +818,16 @@ mod tests {
             "desktop service response exceeded the frame limit"
         );
     }
+
+    #[test]
+    fn ipc_caller_window_label_validation_accepts_only_main_window() {
+        assert!(validate_ipc_caller_window_label("main").is_ok());
+        for rejected in ["", "secondary", "main ", "MAIN", "devtools"] {
+            let error = validate_ipc_caller_window_label(rejected)
+                .expect_err("non-main window label must be rejected");
+            assert!(error.contains("unauthorized IPC caller window label"), "{error}");
+        }
+    }
 }
+
 

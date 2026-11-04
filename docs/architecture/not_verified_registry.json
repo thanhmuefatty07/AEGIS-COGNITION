@@ -26,11 +26,11 @@
       "id": "NV-004",
       "title": "External signed release attestation",
       "status": "LIVE VERIFIED (GCP / REMOTE)",
-      "closing_evidence_id": "EV-NV-004-63A339C32777F03A",
+      "closing_evidence_id": "EV-NV-004-798E00291BD10694",
       "closing_commit": "ba81aee37d492a2c9056d31f4614e46ae4955f4a",
-      "closing_date": "2026-11-02",
+      "closing_date": "2026-11-04",
       "receipt_path": "artifacts/nv004_attestation_receipt.json",
-      "receipt_sha256": "63a339c32777f03a67c10a7fc576e78101b9f417f7b0f44c0af75f3e8718f4e6"
+      "receipt_sha256": "798e00291bd106949ea068f9ac71c6118725db0affca6b0ade026079eded562c"
     },
     {
       "id": "NV-005",

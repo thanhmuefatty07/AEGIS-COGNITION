@@ -294,7 +294,7 @@ describe("workspace graph memory search candidates", () => {
     fireEvent.click(screen.getByRole("button", { name: /agent\.py/ }));
     expect(await screen.findByText("0x2a")).toBeDefined();
     expect(screen.getByText(/USER_PRIVATE/)).toBeDefined();
-    expect(screen.getByText(/active.*accepted.*r4/i)).toBeDefined();
+    expect(screen.getByText((_, element) => element?.classList.contains("meta-inline-list") === true && /active.*accepted.*r4/i.test(element.textContent ?? ""))).toBeDefined();
     expect(screen.queryByText("private-owner")).toBeNull();
     fireEvent.click(screen.getByText("Source and memory provenance"));
     expect(screen.getByText("revision-a")).toBeDefined();
@@ -480,11 +480,11 @@ describe("confirmed file-memory relations", () => {
     />);
     fireEvent.click(screen.getByRole("button", { name: /agent\.py/ }));
 
-    expect(await screen.findByText(/candidate · unreviewed · r4/i)).toBeDefined();
+    expect(await screen.findByText((_, element) => element?.classList.contains("meta-inline-list") === true && /candidate.*unreviewed.*r4/i.test(element.textContent ?? ""))).toBeDefined();
     fireEvent.click(await screen.findByRole("button", { name: "Save link from 0x2a to src/agent.py" }));
 
     expect(await screen.findByText("Current")).toBeDefined();
-    expect(screen.getByText(/candidate · unreviewed · r4/i)).toBeDefined();
+    expect(screen.getAllByText((_, element) => element?.classList.contains("meta-inline-list") === true && /candidate.*unreviewed.*r4/i.test(element.textContent ?? "")).length).toBeGreaterThan(0);
     expect(linkMemoryToFile).toHaveBeenCalledWith({
       project_id: "project:project-a",
       source_revision: "revision-a",

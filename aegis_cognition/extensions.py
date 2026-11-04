@@ -2512,7 +2512,7 @@ class _YamlLoaderMethods(Protocol):
     def construct_object(self, node: object, deep: bool = False) -> object: ...
 
 
-_MAX_YAML_COMPOSED_NODES = 1_024
+_MAX_SKILL_YAML_COMPOSED_NODES = 1_024
 
 
 class _UniqueKeySafeLoader(yaml.SafeLoader):
@@ -2521,15 +2521,13 @@ class _UniqueKeySafeLoader(yaml.SafeLoader):
         self._composed_nodes = 0
 
     def compose_node(self, parent: Any, index: Any) -> Any:
-        if self.check_event(yaml.AliasEvent):
-            raise yaml.composer.ComposerError(None, None, "YAML aliases are not supported in skill frontmatter", None)
+        loader_any: Any = self
+        if bool(loader_any.check_event(yaml.AliasEvent)):
+            raise yaml.YAMLError("YAML aliases are not supported in skill frontmatter")
         self._composed_nodes += 1
-        if self._composed_nodes > _MAX_YAML_COMPOSED_NODES:
-            raise yaml.composer.ComposerError(
-                None,
-                None,
-                f"YAML frontmatter exceeds maximum composed node count ({_MAX_YAML_COMPOSED_NODES})",
-                None,
+        if self._composed_nodes > _MAX_SKILL_YAML_COMPOSED_NODES:
+            raise yaml.YAMLError(
+                f"YAML frontmatter exceeds maximum composed node count ({_MAX_SKILL_YAML_COMPOSED_NODES})"
             )
         return super().compose_node(parent, index)
 

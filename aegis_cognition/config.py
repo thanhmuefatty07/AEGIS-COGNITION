@@ -64,7 +64,7 @@ _TOML_BARE_KEY_RE = re.compile(r"^[A-Za-z0-9_-]+$")
 
 
 def _validate_toml_key(key: str) -> str:
-    if not isinstance(key, str) or not _TOML_BARE_KEY_RE.fullmatch(key):
+    if not _TOML_BARE_KEY_RE.fullmatch(key):
         raise TypeError(f"invalid TOML key: {key!r}")
     return key
 
@@ -93,9 +93,7 @@ def render_toml(config: Mapping[str, Any]) -> str:
 
     def render_section(section: Mapping[str, Any], prefix: str | None = None) -> None:
         scalars: list[tuple[str, Any]] = [
-            (_validate_toml_key(str(key)), value)
-            for key, value in section.items()
-            if not isinstance(value, Mapping)
+            (_validate_toml_key(str(key)), value) for key, value in section.items() if not isinstance(value, Mapping)
         ]
         nested: list[tuple[str, Mapping[str, Any]]] = [
             (_validate_toml_key(str(key)), cast(Mapping[str, Any], value))

@@ -1310,6 +1310,15 @@ export function parseToolCallReconciliationResult(value: unknown): ToolCallRecon
   };
 }
 
+const BIDI_CONTROL_PATTERN = /[\u061C\u200E\u200F\u202A-\u202E\u2066-\u2069]/g;
+
+export function escapeBidirectionalControls(value: string): string {
+  return value.replace(BIDI_CONTROL_PATTERN, (char) => {
+    const hex = char.charCodeAt(0).toString(16).toUpperCase().padStart(4, "0");
+    return `\\u${hex}`;
+  });
+}
+
 export function parseConversationInspection(value: unknown): ConversationInspection {
   const inspection = isRecord(value) && isRecord(value.inspection) ? value.inspection : value;
   if (!isRecord(inspection)
@@ -1343,7 +1352,18 @@ export function parseConversationInspection(value: unknown): ConversationInspect
       && typeof approval.effect_class === "string")) {
     throw new Error("Desktop service returned an invalid conversation inspection");
   }
-  return inspection as unknown as ConversationInspection;
+  const typed = inspection as unknown as ConversationInspection;
+  return {
+    ...typed,
+    approvals: typed.approvals.map((approval) => ({
+      ...approval,
+      tool_name: escapeBidirectionalControls(approval.tool_name),
+      argument_preview: approval.argument_preview.map((item) => ({
+        key: escapeBidirectionalControls(item.key),
+        value: escapeBidirectionalControls(item.value),
+      })),
+    })),
+  };
 }
 
 export function parseConversationList(value: unknown): Conversation[] {

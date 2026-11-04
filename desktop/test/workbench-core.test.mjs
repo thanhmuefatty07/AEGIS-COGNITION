@@ -1,5 +1,7 @@
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync, statSync } from "node:fs";
+import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 import test from "node:test";
 import { resolveWorkbenchShortcut, workbenchInspectorCommands } from "../src/command_registry.js";
 import { deriveTaskState, interruptedDesktopRunStatus, isProjectSwitchBlocked, isTaskRunActive, popQueuedPromptForEdit, reorderTaskQueue, shouldDrainTaskQueue } from "../src/task_state.js";
@@ -155,6 +157,141 @@ test("workbench v2 reduced-motion stylesheet targets root attribute and interact
     ".graph-edge",
   ]) {
     assert.equal(reducedMotionBlock.includes(selector), true, `missing reduced-motion selector: ${selector}`);
+  }
+});
+
+test("capability icon registry assigns animate-ui motion archetypes without Sparkles slop and brand mark uses single-path reductive monolith", () => {
+  const iconSource = readFileSync(new URL("../src/capability-icons.tsx", import.meta.url), "utf8");
+  assert.equal(iconSource.includes("Sparkles"), false, "capability-icons.tsx must not import Sparkles AI-slop icon");
+  assert.equal(iconSource.includes("data-animate-ui-icon"), true, "CapabilityIcon must expose data-animate-ui-icon");
+  assert.equal(iconSource.includes("data-icon-context"), true, "CapabilityIcon must expose data-icon-context");
+
+  const expectedMonolithPath =
+    "M32 4L56 16V28C56 44 44 52 32 60C20 52 8 44 8 28V16ZM32 12L16 20V28C16 32 16 36 20 40L32 24L44 40C48 36 48 32 48 28V20ZM32 36L24 48L32 52L40 48Z";
+  assert.equal(iconSource.includes(expectedMonolithPath), true, "capability-icons.tsx must define the pixel-grid-aligned Aegis Greek Shield path");
+  const pathNumbers = expectedMonolithPath.match(/\d+/g)?.map(Number) ?? [];
+  assert.equal(pathNumbers.length > 0 && pathNumbers.every((n) => n % 4 === 0), true, "Every coordinate in AEGIS_BRAND_PATH must be a multiple of 4 so 16x16 lands on exact integer pixels");
+
+  assert.equal(iconSource.includes('fill="currentColor"'), true, "In-app AegisBrandMark must use currentColor so it follows dark/light themes");
+
+  const svgSource = readFileSync(new URL("../src/assets/aegis-icon.svg", import.meta.url), "utf8");
+  assert.equal(svgSource.includes('viewBox="0 0 64 64"'), true, "aegis-icon.svg must use 64x64 geometric grid");
+  assert.equal(svgSource.includes(expectedMonolithPath), true, "aegis-icon.svg must contain the single-path Aegis Tectonic Bastion");
+  assert.equal(svgSource.includes("@media (prefers-color-scheme: dark)"), true, "aegis-icon.svg must embed prefers-color-scheme: dark for dark browser/OS tab bars");
+  assert.equal(svgSource.includes("#0B0B0D") && svgSource.includes("#FAFAFC"), true, "aegis-icon.svg must define #0B0B0D light and #FAFAFC dark fills");
+  assert.equal(svgSource.includes("<rect"), false, "aegis-icon.svg must not contain a rounded-square background box");
+  assert.equal((svgSource.match(/<path\b/g) ?? []).length, 1, "aegis-icon.svg must consist of a single reductive <path>");
+
+  const indexHtml = readFileSync(new URL("../index.html", import.meta.url), "utf8");
+  assert.equal(indexHtml.includes('href="/src/assets/aegis-icon.svg"'), true, "index.html must link /src/assets/aegis-icon.svg as its favicon");
+
+  const iconsBlockMatch = iconSource.match(/const icons:\s*Record<string,\s*LucideIcon>\s*=\s*\{([\s\S]*?)\};/);
+  const archetypesBlockMatch = iconSource.match(/export const ICON_MOTION_ARCHETYPES:\s*Record<string,\s*IconMotionArchetype>\s*=\s*\{([\s\S]*?)\};/);
+  assert.notEqual(iconsBlockMatch, null);
+  assert.notEqual(archetypesBlockMatch, null);
+  const parseKeys = (block) =>
+    [...block.matchAll(/^\s*(?:"([^"]+)"|([a-zA-Z0-9_-]+))\s*:/gm)].map((m) => m[1] ?? m[2]);
+  const iconKeys = parseKeys(iconsBlockMatch[1]);
+  const archetypeKeys = new Set(parseKeys(archetypesBlockMatch[1]));
+  assert.deepEqual(
+    iconKeys.filter((k) => !archetypeKeys.has(k)),
+    [],
+    "Every registered icon in capability-icons.tsx must have an explicit ICON_MOTION_ARCHETYPES entry",
+  );
+
+  const themeSource = readFileSync(new URL("../src/desktop-theme.css", import.meta.url), "utf8").replace(/\r\n/g, "\n");
+  const stylesSource = readFileSync(new URL("../src/styles.css", import.meta.url), "utf8").replace(/\r\n/g, "\n");
+  assert.equal(
+    themeSource.includes(".aegis-settings-row span {\n  display: block;"),
+    false,
+    "desktop-theme.css must not use unscoped .aegis-settings-row span { display: block } that breaks .aegis-settings-value",
+  );
+  assert.equal(
+    themeSource.includes(".settings-frame .destination-page,\n.settings-frame .settings-page {\n  grid-column: 1 / -1;\n  grid-template-rows: minmax(0, 1fr);"),
+    true,
+    "desktop-theme.css must collapse .settings-frame .destination-page to a single 1fr row so Settings fills 100% of viewport height",
+  );
+  assert.equal(
+    /\.panel-empty-state\s*>\s*svg\s*\{[^}]*width:\s*32px/.test(themeSource),
+    false,
+    "desktop-theme.css must not override .panel-empty-state > svg to 32px",
+  );
+  assert.equal(
+    themeSource.includes(".sidebar-brand .brand {\n  display: inline-flex;\n  min-width: 0;\n  height: 32px;\n  min-height: 32px;\n  align-items: center;\n  gap: 8px;\n  border: 0;\n  border-radius: 8px;\n  padding: 0 8px 0 6px;\n  color: var(--text-primary);\n  background: transparent;"),
+    true,
+    "desktop-theme.css must keep .sidebar-brand .brand quiet at rest (background: transparent) and synchronized with the 32px/8px sidebar icon button primitive",
+  );
+  assert.equal(
+    /stroke-width:\s*(?:1\.5|1\.55|2)\b/.test(themeSource) || /stroke-width:\s*(?:1\.5|1\.55|2)\b/.test(stylesSource),
+    false,
+    "CSS must not override icon stroke-width away from canonical 1.75",
+  );
+  for (const legacyGreenHex of ["#1b221e", "#141a16", "#3c4c40", "#a8c4ac", "#287847", "#8aa28e", "#315139", "#151d17", "#304635"]) {
+    assert.equal(
+      stylesSource.toLowerCase().includes(legacyGreenHex),
+      false,
+      `styles.css must not contain legacy sage-green color ${legacyGreenHex}`,
+    );
+  }
+  assert.equal(
+    themeSource.includes(".shortcut-settings-card,\n.instruction-settings-card,\n.capability-settings-group,\n.import-settings-card,\n.model-default-row,\n.model-provider-row,\n.model-vendor-empty,\n.model-catalog-row,\n.model-catalog-item,\n.mcp-registry-search,\n.mcp-add-card {\n  border: 1px solid var(--line);\n  border-radius: 12px;\n  background: var(--surface-1);\n}"),
+    true,
+    "desktop-theme.css must synchronize all Settings card containers to 1px solid var(--line) and 12px border-radius",
+  );
+  const appSource = readFileSync(new URL("../src/App.tsx", import.meta.url), "utf8");
+  assert.equal(
+    appSource.includes("General appearance and network"),
+    false,
+    "App.tsx global search must not contain stale 'General appearance and network' copy",
+  );
+  for (const section of ["General", "AI", "Shortcuts", "Instructions", "Models", "Skills", "MCP", "Plugins", "Subagents", "Import", "Projects", "Remote Hosts", "Info"]) {
+    assert.equal(
+      new RegExp(`\\["${section}",\\s*"[^"]+",\\s*"[a-z-]+"\\]`).test(appSource),
+      true,
+      `App.tsx global search must index Settings section ${section} with description and icon`,
+    );
+  }
+});
+
+test("zero raw lucide-react icons or non-canonical icon sizes are rendered outside capability-icons.tsx", () => {
+  const srcRoot = fileURLToPath(new URL("../src", import.meta.url));
+  const collectSourceFiles = (dir) => {
+    const entries = readdirSync(dir);
+    const files = [];
+    for (const entry of entries) {
+      const fullPath = join(dir, entry);
+      if (statSync(fullPath).isDirectory()) {
+        files.push(...collectSourceFiles(fullPath));
+      } else if (/\.(ts|tsx)$/.test(entry)) {
+        files.push(fullPath);
+      }
+    }
+    return files;
+  };
+
+  const files = collectSourceFiles(srcRoot);
+  const allowedSizes = new Set(["12", "14", "16", "18"]);
+
+  for (const file of files) {
+    const content = readFileSync(file, "utf8");
+    const isPrimitiveFile = file.endsWith("capability-icons.tsx");
+
+    if (!isPrimitiveFile) {
+      assert.equal(
+        /from\s+["']lucide-react["']/.test(content),
+        false,
+        `Raw lucide-react import found outside capability-icons.tsx in ${file}`,
+      );
+    }
+
+    const sizeMatches = content.matchAll(/<(?:Icon|CapabilityIcon)\b[^>]*\bsize=\{(\d+)\}/g);
+    for (const match of sizeMatches) {
+      assert.equal(
+        allowedSizes.has(match[1]),
+        true,
+        `Non-canonical icon size={${match[1]}} in ${file}; expected one of 12, 14, 16, 18`,
+      );
+    }
   }
 });
 
