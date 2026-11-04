@@ -1,5 +1,5 @@
 {
-  "artifact_hash": "e85963a93a8c30a1c415cf8b85a9a1d2453808fd52eef8e0e231d9c96f9ddbb3",
+  "artifact_hash": "20177d6f2eb1541fc85cf274454d1b7ecac73585639e3b4415100c61e6d0b4e6",
   "development_corpus": [
     {
       "case_id": "DEV-GT96-GOOD",
@@ -332,8 +332,8 @@
   },
   "mode": "SHADOW",
   "provenance": {
-    "artifact_source_sha": "4e38f3bbcc03e94387fd050328237f93a64895b3",
-    "current_head": "4e38f3bbcc03e94387fd050328237f93a64895b3",
+    "artifact_source_sha": "daa39a76ba0aa18605b826bc0d30eb0efdd1bc89",
+    "current_head": "daa39a76ba0aa18605b826bc0d30eb0efdd1bc89",
     "environment": {
       "requires_python": ">=3.14,<3.16"
     },

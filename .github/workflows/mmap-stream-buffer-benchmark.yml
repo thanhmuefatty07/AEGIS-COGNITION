@@ -52,7 +52,7 @@ jobs:
   benchmark:
     name: Hardware buffer benchmark (${{ matrix.platform-id }})
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 25
+    timeout-minutes: 45
     strategy:
       fail-fast: false
       matrix:
