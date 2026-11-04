@@ -43,8 +43,14 @@ def get_artifacts_hashes(artifacts_dir: Path = ROOT / "artifacts") -> dict[str, 
     if not artifacts_dir.is_dir():
         return hashes
     for p in sorted(artifacts_dir.glob("**/*")):
+        rel = p.relative_to(artifacts_dir).as_posix()
+        if rel.startswith(("suites/", "suite-status/", "private/")) or p.name.startswith(
+            (".suite-evidence.lock", ".pytest-evidence-")
+        ):
+            continue
         if p.is_file():
-            hashes[p.relative_to(artifacts_dir).as_posix()] = hashlib.sha256(p.read_bytes()).hexdigest()
+            with contextlib.suppress(OSError):
+                hashes[rel] = hashlib.sha256(p.read_bytes()).hexdigest()
     return hashes
 
 

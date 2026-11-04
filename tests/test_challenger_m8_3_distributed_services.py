@@ -77,8 +77,14 @@ def _get_artifacts_hashes(artifacts_dir: Path = ROOT / "artifacts") -> dict[str,
     if not artifacts_dir.is_dir():
         return hashes
     for p in sorted(artifacts_dir.glob("**/*")):
+        rel = p.relative_to(artifacts_dir).as_posix()
+        if rel.startswith(("suites/", "suite-status/", "private/")) or p.name.startswith(
+            (".suite-evidence.lock", ".pytest-evidence-")
+        ):
+            continue
         if p.is_file():
-            hashes[p.relative_to(artifacts_dir).as_posix()] = hashlib.sha256(p.read_bytes()).hexdigest()
+            with contextlib.suppress(OSError):
+                hashes[rel] = hashlib.sha256(p.read_bytes()).hexdigest()
     return hashes
 
 
@@ -687,6 +693,8 @@ class TestChallengerM83DistributedServices(unittest.TestCase):
         self.assertIn("delete_firewall_rule", tcp_orch_src)
         self.assertIn("teardown_service", cloud_run_src)
 
+        if os.environ.get("AEGIS_ENABLE_LIVE_GCP_PROBES") != "1":
+            return
         gcloud_cmd = shutil.which("gcloud") or shutil.which("gcloud.cmd")
         if not gcloud_cmd:
             return

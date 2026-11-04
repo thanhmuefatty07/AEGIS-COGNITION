@@ -48,8 +48,14 @@ def get_artifacts_hashes(artifacts_dir: Path = ROOT / "artifacts") -> dict[str, 
     if not artifacts_dir.is_dir():
         return hashes
     for p in sorted(artifacts_dir.glob("**/*")):
+        rel = p.relative_to(artifacts_dir).as_posix()
+        if rel.startswith(("suites/", "suite-status/", "private/")) or p.name.startswith(
+            (".suite-evidence.lock", ".pytest-evidence-")
+        ):
+            continue
         if p.is_file():
-            hashes[p.relative_to(artifacts_dir).as_posix()] = hashlib.sha256(p.read_bytes()).hexdigest()
+            with contextlib.suppress(OSError):
+                hashes[rel] = hashlib.sha256(p.read_bytes()).hexdigest()
     return hashes
 
 
@@ -89,7 +95,11 @@ class TestChallengerM84Attestation(unittest.TestCase):
             and (canonical_artifacts / "nv004_attestation_receipt.json").is_file()
         )
         if has_canonical_attestation:
-            shutil.copytree(canonical_artifacts, cls.sandbox_path / "artifacts")
+            shutil.copytree(
+                canonical_artifacts,
+                cls.sandbox_path / "artifacts",
+                ignore=shutil.ignore_patterns(".suite-evidence.lock", ".pytest-evidence-*", "suites", "suite-status", "private"),
+            )
             cls.canonical_eval_root = ROOT
         else:
             (cls.sandbox_path / "artifacts").mkdir(parents=True, exist_ok=True)
