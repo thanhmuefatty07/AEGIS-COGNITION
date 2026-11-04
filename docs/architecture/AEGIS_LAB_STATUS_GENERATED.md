@@ -9,7 +9,7 @@ machine-readable registry remains authoritative.
 |---|---|---|---|---|
 | NV-001 | Linux cgroup v2 enforcement | LIVE VERIFIED (GCP / REMOTE) | NO | non_blocking_registry_ids |
 | NV-002 | Windows Job Object live process enforcement | IMPLEMENTED / PARTIALLY LIVE VERIFIED | NO | non_blocking_registry_ids |
-| NV-003 | macOS resource enforcement | NOT VERIFIED | NO | non_blocking_registry_ids |
+| NV-003 | macOS resource enforcement | LIVE VERIFIED (GCP / REMOTE) | NO | non_blocking_registry_ids |
 | NV-004 | External signed release attestation | LIVE VERIFIED (GCP / REMOTE) | YES | external_signed_attestation_missing |
 | NV-005 | Hardware policy freeze for H0-H2 | LIVE VERIFIED (GCP / REMOTE) | NO | non_blocking_registry_ids |
 | NV-006 | OpenTelemetry exporter | LIVE VERIFIED (GCP / REMOTE) | NO | non_blocking_registry_ids |

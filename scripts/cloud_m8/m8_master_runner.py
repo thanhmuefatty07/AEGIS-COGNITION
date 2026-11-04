@@ -446,9 +446,12 @@ class M8MasterRunner:
             if not script_path.is_file():
                 print(f"[!] Script {script_name} not found. Skipping.")
                 continue
-            print(f"[+] Executing: {sys.executable} {script_name}...")
+            cmd = [sys.executable, str(script_path)]
+            if script_name in {"scripts/aese_affected_closure.py", "scripts/aese_shadow_planner.py"}:
+                cmd.extend(["--path", "core/rust/src/gt96.rs"])
+            print(f"[+] Executing: {' '.join(cmd)}...")
             res = subprocess.run(
-                [sys.executable, str(script_path)],
+                cmd,
                 cwd=self.root,
                 check=False,
                 capture_output=True,

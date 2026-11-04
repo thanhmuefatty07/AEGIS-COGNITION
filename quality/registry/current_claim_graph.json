@@ -3975,7 +3975,7 @@
       "classification": "FUTURE_ANCHOR_OR_RELEASE_OBLIGATION",
       "id": "AESE-BLOCKER-NV-003",
       "source_id": "NV-003",
-      "status": "NOT VERIFIED",
+      "status": "LIVE VERIFIED (GCP / REMOTE)",
       "title": "macOS resource enforcement"
     },
     {
@@ -4396,8 +4396,8 @@
   "mode": "SHADOW",
   "phase": "PHASE_1_CLAIM_EVIDENCE_GRAPH",
   "schema": "aese-shadow-claim-evidence-graph-v1",
-  "source_head": "05afbc4d2209f51dcec19e8320ed8ec4d69ac5b3",
-  "source_tree_sha256": "4a91d3a12ede836c012708123a014f0112d3040fd8fcc705ff020429a5390338",
+  "source_head": "6c5ed1e6fe3247d2833b67d68e33dedb0c2e42e0",
+  "source_tree_sha256": "3746ef50de9634a924c73b15e60b79a5e23bcebeff31f317cadea0bed5d416e3",
   "status": "SHADOW_GRAPH_PARTIAL_MAPPING_SELECTION_DISABLED",
   "surfaces": [
     {
@@ -8702,6 +8702,6 @@
       "source_id": "AESE-011"
     }
   ],
-  "worktree_epoch": "2ce96e2eef2753b60d1c421f01b101082c7287c2131e24b5ac20e4d4d8c7f7d1",
+  "worktree_epoch": "09c2fb736121b742417ffa829dedceb5751e3833588b1c24bad4433e16cd9fa6",
   "worktree_status": "DIRTY"
 }
