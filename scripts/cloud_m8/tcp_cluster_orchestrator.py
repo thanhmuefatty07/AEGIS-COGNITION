@@ -177,13 +177,19 @@ systemctl enable --now aegis-worker.service
     ) -> list[dict[str, Any]]:
         """Provisions N e2-micro Spot VMs as cluster workers."""
         workers = tracked_workers if tracked_workers is not None else []
+        local_dir = (
+            self.artifacts_dir / ".local"
+            if self.artifacts_dir.resolve() != (self.root / "artifacts").resolve()
+            else self.root / ".local"
+        )
         for i in range(config.worker_count):
             name = config.worker_name(i)
             worker_id = f"worker-{i + 1}"
             startup_content = self._generate_startup_script(worker_id, config.port)
-            startup_path = self.root / ".local" / f"startup-{name}.sh"
-            startup_path.parent.mkdir(parents=True, exist_ok=True)
-            startup_path.write_bytes(startup_content.replace("\r\n", "\n").encode("utf-8"))
+            startup_path = local_dir / f"startup-{name}.sh"
+            if not dry_run:
+                startup_path.parent.mkdir(parents=True, exist_ok=True)
+                startup_path.write_bytes(startup_content.replace("\r\n", "\n").encode("utf-8"))
 
             cmd = [
                 "gcloud",

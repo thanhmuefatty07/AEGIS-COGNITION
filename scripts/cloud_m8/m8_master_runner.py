@@ -306,6 +306,28 @@ class M8MasterRunner:
         except Exception:
             return "UNKNOWN_HEAD"
 
+    @staticmethod
+    def _is_receipt_live_verified(receipt_path: Path) -> bool:
+        try:
+            receipt_json = json.loads(receipt_path.read_text(encoding="utf-8"))
+        except Exception:
+            return False
+        if not isinstance(receipt_json, dict):
+            return False
+        status = str(receipt_json.get("status", ""))
+        return not (
+            receipt_json.get("dry_run") is True
+            or receipt_json.get("truth_claim") is not False
+            or receipt_json.get("verified") is False
+            or status in {
+                "NOT VERIFIED",
+                "SIMULATED / DRY RUN",
+                "FAIL_CLOSED (NO MACOS WHEEL FOUND)",
+                "FAILED",
+            }
+            or status.startswith(("NOT VERIFIED", "FAIL_CLOSED", "SIMULATED"))
+        )
+
     def update_not_verified_registry(self, dry_run: bool = False) -> Path | None:
         """Updates not_verified_registry.json marking verified gates with full closing metadata.
 
@@ -339,25 +361,9 @@ class M8MasterRunner:
                 continue
 
             # In live mode, ensure receipts are authentic and not simulation mocks
-            if not dry_run:
-                try:
-                    receipt_json = json.loads(primary_path.read_text(encoding="utf-8"))
-                    if (
-                        receipt_json.get("dry_run") is True
-                        or receipt_json.get("truth_claim") is not False
-                        or receipt_json.get("verified") is False
-                        or receipt_json.get("status") in {
-                            "NOT VERIFIED",
-                            "SIMULATED / DRY RUN",
-                            "FAIL_CLOSED (NO MACOS WHEEL FOUND)",
-                            "FAILED",
-                        }
-                    ):
-                        print(f"  [-] {eid:8}: Receipt {primary_file} has dry_run flags, unverified status, or invalid truth_claim. Skipping live closure.")
-                        continue
-                except Exception as err:
-                    print(f"  [-] {eid:8}: Failed parsing {primary_file}: {err}. Skipping.")
-                    continue
+            if not dry_run and not self._is_receipt_live_verified(primary_path):
+                print(f"  [-] {eid:8}: Receipt {primary_file} has dry_run flags, unverified status, or invalid truth_claim. Skipping live closure.")
+                continue
 
             receipt_bytes = primary_path.read_bytes()
             receipt_sha256 = hashlib.sha256(receipt_bytes).hexdigest()
@@ -374,7 +380,7 @@ class M8MasterRunner:
                 additional = []
                 for sec_file in receipt_files[1:]:
                     sec_path = self.artifacts_dir / sec_file
-                    if sec_path.is_file():
+                    if sec_path.is_file() and (dry_run or self._is_receipt_live_verified(sec_path)):
                         sec_sha = hashlib.sha256(sec_path.read_bytes()).hexdigest()
                         additional.append({
                             "receipt_path": f"artifacts/{sec_file}",
@@ -382,6 +388,8 @@ class M8MasterRunner:
                         })
                 if additional:
                     entry["additional_receipts"] = additional
+                else:
+                    entry.pop("additional_receipts", None)
 
             updated_count += 1
             print(f"  [+] {eid:8} -> {entry['status']} ({evidence_id})")
@@ -389,11 +397,21 @@ class M8MasterRunner:
         new_content = json.dumps(registry, indent=2, sort_keys=False) + "\n"
 
         if dry_run:
-            preview_dir = self.root / ".local" / "tmp"
+            local_base = (
+                self.artifacts_dir / ".local"
+                if self.artifacts_dir.resolve() != (self.root / "artifacts").resolve()
+                else self.root / ".local"
+            )
+            preview_dir = local_base / "tmp"
             preview_dir.mkdir(parents=True, exist_ok=True)
             preview_file = preview_dir / "dry_run_registry_preview.json"
             preview_file.write_text(new_content, encoding="utf-8")
-            print(f"\n[+] Dry-run active: Preview written to {preview_file.relative_to(self.root).as_posix()}.")
+            preview_display = (
+                preview_file.relative_to(self.root).as_posix()
+                if preview_file.is_relative_to(self.root)
+                else str(preview_file)
+            )
+            print(f"\n[+] Dry-run active: Preview written to {preview_display}.")
             print(f"[+] Tracked file {self.not_verified_registry.relative_to(self.root).as_posix()} preserved intact.")
 
             # Show diff preview

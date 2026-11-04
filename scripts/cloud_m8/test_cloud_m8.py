@@ -81,25 +81,25 @@ class TestCloudM8Packaging(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
         cls.suite_initial_artifacts_hashes = get_artifacts_hashes(ROOT / "artifacts")
+        cls.suite_initial_local_hashes = get_artifacts_hashes(ROOT / ".local")
 
     @classmethod
     def tearDownClass(cls) -> None:
-        suite_final_artifacts_hashes = get_artifacts_hashes(ROOT / "artifacts")
-        modified = [
-            k
-            for k in suite_final_artifacts_hashes
-            if k in cls.suite_initial_artifacts_hashes
-            and suite_final_artifacts_hashes[k] != cls.suite_initial_artifacts_hashes[k]
-        ]
-        created = [k for k in suite_final_artifacts_hashes if k not in cls.suite_initial_artifacts_hashes]
-        deleted = [k for k in cls.suite_initial_artifacts_hashes if k not in suite_final_artifacts_hashes]
-        if modified or created or deleted:
-            raise AssertionError(
-                f"Global TestSuite Zero-Drift Violation: ROOT/artifacts was modified during TestCloudM8Packaging execution!\n"
-                f"Modified ({len(modified)}): {modified}\n"
-                f"Created ({len(created)}): {created}\n"
-                f"Deleted ({len(deleted)}): {deleted}"
-            )
+        for label, path, initial in (
+            ("ROOT/artifacts", ROOT / "artifacts", cls.suite_initial_artifacts_hashes),
+            ("ROOT/.local", ROOT / ".local", cls.suite_initial_local_hashes),
+        ):
+            final = get_artifacts_hashes(path)
+            modified = [k for k in final if k in initial and final[k] != initial[k]]
+            created = [k for k in final if k not in initial]
+            deleted = [k for k in initial if k not in final]
+            if modified or created or deleted:
+                raise AssertionError(
+                    f"Global TestSuite Zero-Drift Violation: {label} was modified during TestCloudM8Packaging execution!\n"
+                    f"Modified ({len(modified)}): {modified}\n"
+                    f"Created ({len(created)}): {created}\n"
+                    f"Deleted ({len(deleted)}): {deleted}"
+                )
 
     def setUp(self) -> None:
         self.tmp_dir = tempfile.TemporaryDirectory(ignore_cleanup_errors=True)
@@ -135,6 +135,7 @@ class TestCloudM8Packaging(unittest.TestCase):
         result = orch.execute_stage(config, dry_run=True)
         self.assertEqual(result["status"], "COMPLETED")
         self.assertEqual(result["tier"], "h2")
+        self.assertFalse((self.tmp_path / ".local").exists())
 
     def test_tcp_cluster_dry_run(self) -> None:
         """Verifies multi-machine TCP cluster soak orchestration in dry-run mode."""
@@ -145,6 +146,7 @@ class TestCloudM8Packaging(unittest.TestCase):
         result = orch.execute_soak(config, dry_run=True)
         self.assertEqual(result["status"], "PASS")
         self.assertEqual(len(result["endpoints"]), 3)
+        self.assertFalse((self.tmp_path / ".local").exists())
 
     def test_cloud_run_services_dry_run(self) -> None:
         """Verifies Cloud Run service deployments in dry-run mode."""
@@ -158,6 +160,7 @@ class TestCloudM8Packaging(unittest.TestCase):
         self.assertEqual(results["nv006"]["status"], "SIMULATED / DRY RUN")
         self.assertFalse(results["nv006"]["verified"])
         self.assertEqual(results["nv006"]["events_emitted"], 0)
+        self.assertFalse((self.tmp_path / ".local").exists())
 
     def test_nv004_attestation_hashes(self) -> None:
         """Verifies deterministic cryptographic hashes for SLSA/Cosign/Rekor."""
@@ -184,12 +187,163 @@ class TestCloudM8Packaging(unittest.TestCase):
             self.assertTrue(results[key]["dry_run"])
 
     def test_track2_wheel_live_fail_closed(self) -> None:
-        """Verifies that live mode fails closed if no wheel binary is found."""
+        """Verifies that live mode fails closed if no wheel binary is found or wheel is 0 bytes."""
         orch = Track2Orchestrator(self.tmp_path)
         receipt = orch.generate_nv008m_macos_wheel(wheel_path="/nonexistent/dummy.whl", dry_run=False)
         self.assertEqual(receipt["status"], "FAIL_CLOSED (NO MACOS WHEEL FOUND)")
         self.assertFalse(receipt["verified"])
         self.assertIsNone(receipt["wheel_sha256"])
+
+        zero_wheel = self.tmp_path / "aegis_cognition-0.1.0-cp314-cp314-macosx_14_0_arm64.whl"
+        zero_wheel.write_bytes(b"")
+        r_zero = orch.generate_nv008m_macos_wheel(wheel_path=zero_wheel, dry_run=False)
+        self.assertEqual(r_zero["status"], "FAIL_CLOSED (NO MACOS WHEEL FOUND)")
+        self.assertFalse(r_zero["verified"])
+
+        valid_wheel = self.tmp_path / "aegis_cognition-0.1.0-cp314-cp314-macosx_14_0_arm64.whl"
+        wheel_bytes = b"PK\x03\x04dummy-macos-arm64-wheel-payload"
+        valid_wheel.write_bytes(wheel_bytes)
+        r_valid = orch.generate_nv008m_macos_wheel(wheel_path=valid_wheel, dry_run=False)
+        self.assertEqual(r_valid["status"], "PROVEN")
+        self.assertTrue(r_valid["verified"])
+        self.assertFalse(r_valid["truth_claim"])
+        self.assertFalse(r_valid["dry_run"])
+        self.assertEqual(r_valid["wheel_sha256"], hashlib.sha256(wheel_bytes).hexdigest())
+        self.assertEqual(r_valid["wheel_size_bytes"], len(wheel_bytes))
+
+    def test_track2_nv003_macos_capability_verification_and_fail_closed(self) -> None:
+        """Verifies NV-003 macOS capability receipt sets verified=True only on valid cooperative live probe."""
+        isolated_artifacts = self.tmp_path / "artifacts"
+        isolated_artifacts.mkdir(parents=True, exist_ok=True)
+        orch = Track2Orchestrator(self.tmp_path, artifacts_dir=isolated_artifacts)
+
+        # 1. Valid live macOS probe report -> verified=True
+        valid_probe = self.tmp_path / "macos_probe_valid.json"
+        valid_probe.write_text(
+            json.dumps({
+                "schema": "aegis-macos-capability-probe-v1",
+                "platform": "macOS-15.0-arm64-arm-64bit-Mach-O",
+                "implementation": "core/rust/src/resource_platform.rs::MacosCooperativeController",
+                "status": "COOPERATIVE LIVE VERIFIED",
+                "checks": {
+                    "cooperative_cancellation_observed": True,
+                    "cooperative_termination_observed": True,
+                },
+                "kernel_enforcement_claim": False,
+            }),
+            encoding="utf-8",
+        )
+        r_ok = orch.generate_nv003_macos_capability(probe_receipt=valid_probe, dry_run=False)
+        self.assertEqual(r_ok["status"], "COOPERATIVE LIVE VERIFIED")
+        self.assertTrue(r_ok["verified"])
+        self.assertFalse(r_ok["truth_claim"])
+        self.assertFalse(r_ok["kernel_enforcement_claim"])
+
+        # 2. Probe with failed check -> verified=False
+        failed_probe = self.tmp_path / "macos_probe_failed_check.json"
+        failed_probe.write_text(
+            json.dumps({
+                "schema": "aegis-macos-capability-probe-v1",
+                "status": "COOPERATIVE LIVE VERIFIED",
+                "checks": {
+                    "cooperative_cancellation_observed": True,
+                    "cooperative_termination_observed": False,
+                },
+                "kernel_enforcement_claim": False,
+            }),
+            encoding="utf-8",
+        )
+        r_fail_check = orch.generate_nv003_macos_capability(probe_receipt=failed_probe, dry_run=False)
+        self.assertFalse(r_fail_check["verified"])
+
+        # 3. Corrupt JSON probe -> FAIL_CLOSED (CORRUPT PROBE RECEIPT) & verified=False
+        corrupt_probe = self.tmp_path / "macos_probe_corrupt.json"
+        corrupt_probe.write_text("{corrupt_json", encoding="utf-8")
+        r_corrupt = orch.generate_nv003_macos_capability(probe_receipt=corrupt_probe, dry_run=False)
+        self.assertEqual(r_corrupt["status"], "FAIL_CLOSED (CORRUPT PROBE RECEIPT)")
+        self.assertFalse(r_corrupt["verified"])
+
+    def test_master_runner_secondary_receipt_validation(self) -> None:
+        """Verifies update_not_verified_registry filters out unverified secondary receipts in live mode."""
+        from scripts.cloud_m8.m8_master_runner import M8MasterRunner
+
+        isolated_root = self.tmp_path / "repo"
+        (isolated_root / "docs" / "architecture").mkdir(parents=True, exist_ok=True)
+        isolated_artifacts = isolated_root / "artifacts"
+        isolated_artifacts.mkdir(parents=True, exist_ok=True)
+
+        reg_path = isolated_root / "docs" / "architecture" / "not_verified_registry.json"
+        reg_path.write_text(
+            json.dumps({
+                "schema": "aegis-not-verified-registry-v1",
+                "truth_claim": False,
+                "entries": [
+                    {"id": "NV-003", "title": "macOS resource enforcement", "status": "NOT VERIFIED"},
+                    {"id": "NV-008", "title": "Tier-1 wheel parity", "status": "NOT VERIFIED"},
+                ],
+            }),
+            encoding="utf-8",
+        )
+
+        # Write verified primary NV-003 and NV-008-L, but fail-closed NV-008-M
+        (isolated_artifacts / "macos_capability_receipt.json").write_text(
+            json.dumps({
+                "schema": "aegis-macos-capability-probe-v1",
+                "truth_claim": False,
+                "status": "COOPERATIVE LIVE VERIFIED",
+                "verified": True,
+                "dry_run": False,
+            }),
+            encoding="utf-8",
+        )
+        (isolated_artifacts / "wheel_parity_linux_receipt.json").write_text(
+            json.dumps({
+                "schema": "aegis-wheel-parity-receipt-v1",
+                "truth_claim": False,
+                "status": "PROVEN",
+                "verified": True,
+                "dry_run": False,
+            }),
+            encoding="utf-8",
+        )
+        (isolated_artifacts / "wheel_parity_macos_receipt.json").write_text(
+            json.dumps({
+                "schema": "aegis-wheel-parity-receipt-v1",
+                "truth_claim": False,
+                "status": "FAIL_CLOSED (NO MACOS WHEEL FOUND)",
+                "verified": False,
+                "dry_run": False,
+            }),
+            encoding="utf-8",
+        )
+
+        runner = M8MasterRunner(isolated_root, artifacts_dir=isolated_artifacts)
+        runner.update_not_verified_registry(dry_run=False)
+        updated = json.loads(reg_path.read_text(encoding="utf-8"))
+        entries_by_id = {e["id"]: e for e in updated["entries"]}
+        self.assertEqual(entries_by_id["NV-003"]["status"], "LIVE VERIFIED (GCP / REMOTE)")
+        self.assertEqual(entries_by_id["NV-008"]["status"], "LIVE VERIFIED (GCP / REMOTE)")
+        self.assertNotIn("additional_receipts", entries_by_id["NV-008"])
+
+        # Now mark NV-008-M as PROVEN and verified=True -> must attach to additional_receipts
+        (isolated_artifacts / "wheel_parity_macos_receipt.json").write_text(
+            json.dumps({
+                "schema": "aegis-wheel-parity-receipt-v1",
+                "truth_claim": False,
+                "status": "PROVEN",
+                "verified": True,
+                "dry_run": False,
+            }),
+            encoding="utf-8",
+        )
+        runner.update_not_verified_registry(dry_run=False)
+        updated2 = json.loads(reg_path.read_text(encoding="utf-8"))
+        entries_by_id2 = {e["id"]: e for e in updated2["entries"]}
+        self.assertIn("additional_receipts", entries_by_id2["NV-008"])
+        self.assertEqual(
+            entries_by_id2["NV-008"]["additional_receipts"][0]["receipt_path"],
+            "artifacts/wheel_parity_macos_receipt.json",
+        )
 
     def test_track2_nv009_restore_drill_corrupt_archive_fail_closed(self) -> None:
         """Verifies NV-009 restore drill fails closed when presented with corrupted archive bytes."""
@@ -384,34 +538,41 @@ class TestCloudM8Packaging(unittest.TestCase):
 
         orig_content = runner.not_verified_registry.read_text(encoding="utf-8")
         preview_path = runner.update_not_verified_registry(dry_run=True)
+        try:
+            # Must return the preview path in .local/tmp/
+            self.assertIsNotNone(preview_path)
+            self.assertTrue(preview_path.is_file())
+            self.assertIn(".local", str(preview_path))
 
-        # Must return the preview path in .local/tmp/
-        self.assertIsNotNone(preview_path)
-        self.assertTrue(preview_path.is_file())
-        self.assertIn(".local", str(preview_path))
+            # Canonical file on disk must be completely untouched
+            after_content = runner.not_verified_registry.read_text(encoding="utf-8")
+            self.assertEqual(orig_content, after_content)
 
-        # Canonical file on disk must be completely untouched
-        after_content = runner.not_verified_registry.read_text(encoding="utf-8")
-        self.assertEqual(orig_content, after_content)
-
-        # Verify preview schema and metadata fields
-        preview_data = json.loads(preview_path.read_text(encoding="utf-8"))
-        for entry in preview_data.get("entries", []):
-            eid = entry.get("id")
-            if eid in {"NV-002", "NV-011"}:
-                continue
-            if entry.get("status") == "LIVE VERIFIED (GCP / REMOTE)":
-                self.assertIn("closing_evidence_id", entry)
-                self.assertIn("closing_commit", entry)
-                self.assertIn("closing_date", entry)
-                self.assertIn("receipt_path", entry)
-                self.assertIn("receipt_sha256", entry)
-                self.assertTrue(entry["closing_evidence_id"].startswith(f"EV-{eid}-"))
+            # Verify preview schema and metadata fields
+            preview_data = json.loads(preview_path.read_text(encoding="utf-8"))
+            for entry in preview_data.get("entries", []):
+                eid = entry.get("id")
+                if eid in {"NV-002", "NV-011"}:
+                    continue
+                if entry.get("status") == "LIVE VERIFIED (GCP / REMOTE)":
+                    self.assertIn("closing_evidence_id", entry)
+                    self.assertIn("closing_commit", entry)
+                    self.assertIn("closing_date", entry)
+                    self.assertIn("receipt_path", entry)
+                    self.assertIn("receipt_sha256", entry)
+                    self.assertTrue(entry["closing_evidence_id"].startswith(f"EV-{eid}-"))
+        finally:
+            if preview_path is not None and preview_path.is_file():
+                preview_path.unlink(missing_ok=True)
+                with contextlib.suppress(OSError):
+                    preview_path.parent.rmdir()
 
     def test_cli_dry_run_commands(self) -> None:
         """Subprocess tests checking CLI entry points with --help and --dry-run in isolated temp directory."""
         canonical_artifacts = ROOT / "artifacts"
+        canonical_local = ROOT / ".local"
         before_hashes = get_artifacts_hashes(canonical_artifacts)
+        before_local_hashes = get_artifacts_hashes(canonical_local)
 
         isolated_artifacts = self.tmp_path / "artifacts"
         isolated_artifacts.mkdir(parents=True, exist_ok=True)
@@ -433,7 +594,7 @@ class TestCloudM8Packaging(unittest.TestCase):
         ]
         for script, extra_args in scripts:
             res = subprocess.run(
-                [sys.executable, str(ROOT / script), *extra_args],
+                [sys.executable, "-B", str(ROOT / script), *extra_args],
                 cwd=ROOT,
                 check=False,
                 capture_output=True,
@@ -453,11 +614,21 @@ class TestCloudM8Packaging(unittest.TestCase):
             after_hashes,
             context="test_cli_dry_run_commands",
         )
+        after_local_hashes = get_artifacts_hashes(canonical_local)
+        assert_zero_directory_drift(
+            self,
+            canonical_local,
+            before_local_hashes,
+            after_local_hashes,
+            context="test_cli_dry_run_commands (.local)",
+        )
 
     def test_artifacts_directory_immutability(self) -> None:
         """Dedicated test ensuring all orchestrators and stages preserve canonical artifacts/ with zero disk drift."""
         canonical_artifacts = ROOT / "artifacts"
+        canonical_local = ROOT / ".local"
         before_hashes = get_artifacts_hashes(canonical_artifacts)
+        before_local_hashes = get_artifacts_hashes(canonical_local)
 
         isolated_artifacts = self.tmp_path / "immutability_artifacts"
         isolated_artifacts.mkdir(parents=True, exist_ok=True)
@@ -489,6 +660,14 @@ class TestCloudM8Packaging(unittest.TestCase):
             before_hashes,
             after_hashes,
             context="test_artifacts_directory_immutability",
+        )
+        after_local_hashes = get_artifacts_hashes(canonical_local)
+        assert_zero_directory_drift(
+            self,
+            canonical_local,
+            before_local_hashes,
+            after_local_hashes,
+            context="test_artifacts_directory_immutability (.local)",
         )
 
 

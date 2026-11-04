@@ -318,6 +318,7 @@ class Track2Orchestrator:
     # --------------------------------------------------------------------------
     def generate_nv003_macos_capability(
         self,
+        probe_receipt: Path | str | None = None,
         dry_run: bool = False,
     ) -> dict[str, Any]:
         """Runs or materializes macOS cooperative capability probe."""
@@ -357,23 +358,28 @@ class Track2Orchestrator:
                 print(f"[+] Written NV-003 macOS Capability Receipt to {receipt_path} (status={receipt['status']})")
             return receipt
 
-        if platform.system() == "Darwin":
-            from scripts.macos_capability_probe import probe
-            probe_report = probe(output=receipt_path)
-            return probe_report
-
+        probe_data: dict[str, Any] | None = None
         probe_file: Path | None = None
-        if os.environ.get("AEGIS_MACOS_PROBE_RECEIPT"):
+        if probe_receipt is not None:
+            cand = Path(probe_receipt)
+            if cand.is_file():
+                probe_file = cand
+        elif os.environ.get("AEGIS_MACOS_PROBE_RECEIPT"):
             cand = Path(os.environ["AEGIS_MACOS_PROBE_RECEIPT"])
             if cand.is_file():
                 probe_file = cand
-        else:
+        elif platform.system() == "Darwin":
+            from scripts.macos_capability_probe import probe
+            probe_data = dict(probe(output=None))
+        elif self.root.resolve() == ROOT.resolve():
             pointer = ROOT / ".local" / "private-archive.path"
             archive_base = Path(
                 os.environ.get("AEGIS_PRIVATE_ARCHIVE")
                 or (pointer.read_text(encoding="utf-8").strip() if pointer.is_file() else str(ROOT / ".local" / "private-archive"))
             )
             candidates = [
+                archive_base / "20261104-macos-verification/macos-14.json",
+                archive_base / "20261104-macos-verification/macos_capability_probe.json",
                 archive_base / "20261028-wave4-verification/tier2-gha/tier2-macos-14/macos_capability_probe.json",
                 archive_base / "20261028-wave4-verification/tier2-gha/macos_capability_probe.json",
             ]
@@ -384,44 +390,86 @@ class Track2Orchestrator:
 
         if probe_file and probe_file.is_file():
             try:
-                probe_data = json.loads(probe_file.read_text(encoding="utf-8"))
+                loaded = json.loads(probe_file.read_text(encoding="utf-8"))
+                if not isinstance(loaded, dict):
+                    raise ValueError("Probe receipt JSON is not an object")
+                probe_data = loaded
+            except Exception as exc:
+                print(f"[-] Failed reading external probe receipt {probe_file}: {exc}")
                 receipt = {
                     "schema": "aegis-macos-capability-probe-v1",
                     "truth_claim": False,
                     "nv_id": "NV-003",
                     "title": "macOS resource enforcement",
-                    "status": probe_data.get("status", "COOPERATIVE LIVE VERIFIED"),
+                    "status": "FAIL_CLOSED (CORRUPT PROBE RECEIPT)",
                     "verified": False,
-                    "reason": probe_data.get(
-                        "reason",
-                        "macOS lane verifies cooperative cancellation only; kernel-equivalent limits remain unclaimed",
-                    ),
-                    "platform": probe_data.get("platform", "macOS-14.8.9-arm64-arm-64bit-Mach-O"),
-                    "implementation": probe_data.get(
-                        "implementation",
-                        "core/rust/src/resource_platform.rs::MacosCooperativeController",
-                    ),
-                    "capability_level": probe_data.get("capability_level", {
+                    "reason": f"macOS capability probe receipt failed integrity check: {exc}",
+                    "platform": platform.platform(),
+                    "implementation": "core/rust/src/resource_platform.rs::MacosCooperativeController",
+                    "capability_level": {
                         "cpu": "MEASUREMENT_ONLY",
                         "memory": "MEASUREMENT_ONLY",
                         "process_count": "MEASUREMENT_ONLY",
                         "thread_count": "MEASUREMENT_ONLY",
                         "io": "MEASUREMENT_ONLY",
                         "termination": "COOPERATIVE_ONLY",
-                    }),
-                    "checks": probe_data.get("checks", {
-                        "cooperative_cancellation_observed": True,
-                        "cooperative_termination_observed": True,
-                    }),
+                    },
+                    "checks": {
+                        "cooperative_cancellation_observed": False,
+                        "cooperative_termination_observed": False,
+                    },
                     "kernel_enforcement_claim": False,
                     "verified_at_utc": now_utc,
                     "dry_run": False,
                 }
                 receipt_path.write_text(json.dumps(receipt, indent=2, sort_keys=True) + "\n", encoding="utf-8")
-                print(f"[+] Written NV-003 macOS Capability Receipt to {receipt_path} (status={receipt['status']})")
                 return receipt
-            except Exception as exc:
-                print(f"[-] Failed reading external probe receipt {probe_file}: {exc}")
+
+        if probe_data is not None:
+            raw_checks = probe_data.get("checks")
+            checks_dict = raw_checks if isinstance(raw_checks, dict) else {}
+            status_val = str(probe_data.get("status", "NOT VERIFIED"))
+            is_verified = (
+                status_val == "COOPERATIVE LIVE VERIFIED"
+                and checks_dict.get("cooperative_cancellation_observed") is True
+                and checks_dict.get("cooperative_termination_observed") is True
+                and probe_data.get("kernel_enforcement_claim") is False
+            )
+            receipt = {
+                "schema": "aegis-macos-capability-probe-v1",
+                "truth_claim": False,
+                "nv_id": "NV-003",
+                "title": "macOS resource enforcement",
+                "status": status_val,
+                "verified": is_verified,
+                "reason": probe_data.get(
+                    "reason",
+                    "macOS lane verifies cooperative cancellation only; kernel-equivalent limits remain unclaimed",
+                ),
+                "platform": probe_data.get("platform", "macOS-14.8.9-arm64-arm-64bit-Mach-O"),
+                "implementation": probe_data.get(
+                    "implementation",
+                    "core/rust/src/resource_platform.rs::MacosCooperativeController",
+                ),
+                "capability_level": probe_data.get("capability_level", {
+                    "cpu": "MEASUREMENT_ONLY",
+                    "memory": "MEASUREMENT_ONLY",
+                    "process_count": "MEASUREMENT_ONLY",
+                    "thread_count": "MEASUREMENT_ONLY",
+                    "io": "MEASUREMENT_ONLY",
+                    "termination": "COOPERATIVE_ONLY",
+                }),
+                "checks": {
+                    "cooperative_cancellation_observed": bool(checks_dict.get("cooperative_cancellation_observed")),
+                    "cooperative_termination_observed": bool(checks_dict.get("cooperative_termination_observed")),
+                },
+                "kernel_enforcement_claim": False,
+                "verified_at_utc": now_utc,
+                "dry_run": False,
+            }
+            receipt_path.write_text(json.dumps(receipt, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+            print(f"[+] Written NV-003 macOS Capability Receipt to {receipt_path} (status={receipt['status']}, verified={is_verified})")
+            return receipt
 
         receipt = {
             "schema": "aegis-macos-capability-probe-v1",
@@ -477,20 +525,30 @@ class Track2Orchestrator:
 
         # Live mode: discover and verify real wheel binary on disk
         candidate_paths: list[Path] = []
-        if wheel_path:
+        if wheel_path is not None:
             candidate_paths.append(Path(wheel_path))
-        env_wheel = os.environ.get("AEGIS_MACOS_WHEEL_PATH")
-        if env_wheel:
-            candidate_paths.append(Path(env_wheel))
-
-        for search_dir in (self.root / "dist", self.artifacts_dir):
-            if search_dir.is_dir():
-                candidate_paths.extend(search_dir.glob("*macos*.whl"))
-                candidate_paths.extend(search_dir.glob("*macosx*.whl"))
+        else:
+            env_wheel = os.environ.get("AEGIS_MACOS_WHEEL_PATH")
+            if env_wheel:
+                candidate_paths.append(Path(env_wheel))
+            for search_dir in (self.root / "dist", self.artifacts_dir):
+                if search_dir.is_dir():
+                    candidate_paths.extend(sorted(search_dir.glob("*macos*.whl")))
+                    candidate_paths.extend(sorted(search_dir.glob("*macosx*.whl")))
+            if self.root.resolve() == ROOT.resolve():
+                pointer = ROOT / ".local" / "private-archive.path"
+                archive_base = Path(
+                    os.environ.get("AEGIS_PRIVATE_ARCHIVE")
+                    or (pointer.read_text(encoding="utf-8").strip() if pointer.is_file() else str(ROOT / ".local" / "private-archive"))
+                )
+                archive_dist = archive_base / "20261104-macos-verification" / "dist"
+                if archive_dist.is_dir():
+                    candidate_paths.extend(sorted(archive_dist.glob("*macosx*.whl")))
+                    candidate_paths.extend(sorted(archive_dist.glob("*macos*.whl")))
 
         verified_wheel: Path | None = None
         for p in candidate_paths:
-            if p.is_file():
+            if p.is_file() and p.stat().st_size > 0:
                 verified_wheel = p
                 break
 

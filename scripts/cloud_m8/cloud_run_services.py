@@ -50,6 +50,12 @@ class CloudRunServices:
         self.artifacts_dir = Path(artifacts_dir) if artifacts_dir is not None else (root / "artifacts")
         self.artifacts_dir.mkdir(parents=True, exist_ok=True)
 
+    @property
+    def _local_dir(self) -> Path:
+        if self.artifacts_dir.resolve() != (self.root / "artifacts").resolve():
+            return self.artifacts_dir / ".local"
+        return self.root / ".local"
+
     def _run_cmd(
         self,
         cmd: list[str],
@@ -107,7 +113,7 @@ class CloudRunServices:
     # 1. NV-018: Mock 429 LLM Server
     # --------------------------------------------------------------------------
     def _stage_mock_429_service(self) -> Path:
-        staging_dir = self.root / ".local" / "cloud_run_staging" / "mock_429"
+        staging_dir = self._local_dir / "cloud_run_staging" / "mock_429"
         staging_dir.mkdir(parents=True, exist_ok=True)
         server_py = staging_dir / "server.py"
         server_py.write_text("""import os
@@ -169,8 +175,16 @@ CMD ["python", "server.py"]
     ) -> str:
         """Deploys lightweight mock 429 service to Cloud Run."""
         service_name = f"aegis-mock-429-{config.run_id}"
-        staging_dir = self._stage_mock_429_service()
-        rel_staging = staging_dir.relative_to(self.root).as_posix()
+        staging_dir = (
+            self._local_dir / "cloud_run_staging" / "mock_429"
+            if dry_run
+            else self._stage_mock_429_service()
+        )
+        rel_staging = (
+            staging_dir.relative_to(self.root).as_posix()
+            if staging_dir.is_relative_to(self.root)
+            else staging_dir.as_posix()
+        )
         cmd = [
             "gcloud",
             "run",
@@ -282,7 +296,7 @@ CMD ["python", "server.py"]
     # 2. NV-006: OTLP Collector Service
     # --------------------------------------------------------------------------
     def _stage_otlp_collector(self) -> Path:
-        staging_dir = self.root / ".local" / "cloud_run_staging" / "otlp_collector"
+        staging_dir = self._local_dir / "cloud_run_staging" / "otlp_collector"
         staging_dir.mkdir(parents=True, exist_ok=True)
         server_py = staging_dir / "server.py"
         server_py.write_text("""import os
@@ -336,8 +350,16 @@ CMD ["python", "server.py"]
     ) -> str:
         """Deploys an OTLP HTTP receiver service to Cloud Run."""
         service_name = f"aegis-otlp-collector-{config.run_id}"
-        staging_dir = self._stage_otlp_collector()
-        rel_staging = staging_dir.relative_to(self.root).as_posix()
+        staging_dir = (
+            self._local_dir / "cloud_run_staging" / "otlp_collector"
+            if dry_run
+            else self._stage_otlp_collector()
+        )
+        rel_staging = (
+            staging_dir.relative_to(self.root).as_posix()
+            if staging_dir.is_relative_to(self.root)
+            else staging_dir.as_posix()
+        )
         cmd = [
             "gcloud",
             "run",
@@ -531,7 +553,7 @@ CMD ["python", "server.py"]
     # 3. NV-019: External Deployment Smoke
     # --------------------------------------------------------------------------
     def _stage_operator_api_service(self) -> Path:
-        staging_dir = self.root / ".local" / "cloud_run_staging" / "operator_api"
+        staging_dir = self._local_dir / "cloud_run_staging" / "operator_api"
         staging_dir.mkdir(parents=True, exist_ok=True)
 
         op_api_src = self.root / "core" / "python" / "operator_api.py"
@@ -571,8 +593,16 @@ CMD ["python", "server.py"]
     ) -> str:
         """Deploys operator API service serving /health for smoke validation."""
         service_name = f"aegis-operator-smoke-{config.run_id}"
-        staging_dir = self._stage_operator_api_service()
-        rel_staging = staging_dir.relative_to(self.root).as_posix()
+        staging_dir = (
+            self._local_dir / "cloud_run_staging" / "operator_api"
+            if dry_run
+            else self._stage_operator_api_service()
+        )
+        rel_staging = (
+            staging_dir.relative_to(self.root).as_posix()
+            if staging_dir.is_relative_to(self.root)
+            else staging_dir.as_posix()
+        )
         cmd = [
             "gcloud",
             "run",

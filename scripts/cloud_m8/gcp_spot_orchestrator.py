@@ -354,9 +354,14 @@ class GCPSpotOrchestrator:
         if not ok and not dry_run:
             raise RuntimeError(f"GCP Authentication check failed: {auth_detail}")
 
-        archive_path = self.root / ".local" / f"repo-{config.run_id}.tar.gz"
-        archive_path.parent.mkdir(parents=True, exist_ok=True)
+        local_dir = (
+            self.artifacts_dir / ".local"
+            if self.artifacts_dir.resolve() != (self.root / "artifacts").resolve()
+            else self.root / ".local"
+        )
+        archive_path = local_dir / f"repo-{config.run_id}.tar.gz"
         if not dry_run:
+            archive_path.parent.mkdir(parents=True, exist_ok=True)
             print(f"[+] Packaging repository to {archive_path}...")
             self.package_repository(archive_path)
             if config.gcs_bucket:
