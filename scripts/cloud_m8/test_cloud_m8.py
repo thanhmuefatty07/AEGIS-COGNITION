@@ -9,11 +9,13 @@ from __future__ import annotations
 import contextlib
 import hashlib
 import json
+import os
 import subprocess
 import sys
 import tarfile
 import tempfile
 import unittest
+import zipfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -187,7 +189,7 @@ class TestCloudM8Packaging(unittest.TestCase):
             self.assertTrue(results[key]["dry_run"])
 
     def test_track2_wheel_live_fail_closed(self) -> None:
-        """Verifies that live mode fails closed if no wheel binary is found or wheel is 0 bytes."""
+        """Verifies that live mode fails closed if wheel is missing, 0 bytes, truncated/corrupt, or empty ZIP."""
         orch = Track2Orchestrator(self.tmp_path)
         receipt = orch.generate_nv008m_macos_wheel(wheel_path="/nonexistent/dummy.whl", dry_run=False)
         self.assertEqual(receipt["status"], "FAIL_CLOSED (NO MACOS WHEEL FOUND)")
@@ -200,9 +202,30 @@ class TestCloudM8Packaging(unittest.TestCase):
         self.assertEqual(r_zero["status"], "FAIL_CLOSED (NO MACOS WHEEL FOUND)")
         self.assertFalse(r_zero["verified"])
 
+        # Truncated/corrupt ZIP archive must fail closed
+        truncated_wheel = self.tmp_path / "truncated_macosx_14_0_arm64.whl"
+        truncated_bytes = b"PK\x03\x04dummy-macos-arm64-wheel-payload"
+        truncated_wheel.write_bytes(truncated_bytes)
+        r_trunc = orch.generate_nv008m_macos_wheel(wheel_path=truncated_wheel, dry_run=False)
+        self.assertEqual(r_trunc["status"], "FAIL_CLOSED (CORRUPT WHEEL ARCHIVE)")
+        self.assertFalse(r_trunc["verified"])
+        self.assertFalse(r_trunc["truth_claim"])
+        self.assertEqual(r_trunc["wheel_sha256"], hashlib.sha256(truncated_bytes).hexdigest())
+
+        # Empty ZIP archive (0 members) must fail closed
+        empty_zip_wheel = self.tmp_path / "empty_macosx_14_0_arm64.whl"
+        with zipfile.ZipFile(empty_zip_wheel, "w"):
+            pass
+        r_empty_zip = orch.generate_nv008m_macos_wheel(wheel_path=empty_zip_wheel, dry_run=False)
+        self.assertEqual(r_empty_zip["status"], "FAIL_CLOSED (CORRUPT WHEEL ARCHIVE)")
+        self.assertFalse(r_empty_zip["verified"])
+
+        # Authentic valid ZIP wheel archive must pass with PROVEN
         valid_wheel = self.tmp_path / "aegis_cognition-0.1.0-cp314-cp314-macosx_14_0_arm64.whl"
-        wheel_bytes = b"PK\x03\x04dummy-macos-arm64-wheel-payload"
-        valid_wheel.write_bytes(wheel_bytes)
+        with zipfile.ZipFile(valid_wheel, "w", compression=zipfile.ZIP_DEFLATED) as zf:
+            zf.writestr("aegis_cognition-0.1.0.dist-info/WHEEL", "Wheel-Version: 1.0\nTag: cp314-cp314-macosx_14_0_arm64\n")
+            zf.writestr("aegis_cognition/aegis_nerve.cpython-314-darwin.so", b"\xcf\xfa\xed\xfemach-o-binary")
+        wheel_bytes = valid_wheel.read_bytes()
         r_valid = orch.generate_nv008m_macos_wheel(wheel_path=valid_wheel, dry_run=False)
         self.assertEqual(r_valid["status"], "PROVEN")
         self.assertTrue(r_valid["verified"])
@@ -239,7 +262,7 @@ class TestCloudM8Packaging(unittest.TestCase):
         self.assertFalse(r_ok["truth_claim"])
         self.assertFalse(r_ok["kernel_enforcement_claim"])
 
-        # 2. Probe with failed check -> verified=False
+        # 2. Probe with failed check -> verified=False and fail-closed status
         failed_probe = self.tmp_path / "macos_probe_failed_check.json"
         failed_probe.write_text(
             json.dumps({
@@ -255,8 +278,44 @@ class TestCloudM8Packaging(unittest.TestCase):
         )
         r_fail_check = orch.generate_nv003_macos_capability(probe_receipt=failed_probe, dry_run=False)
         self.assertFalse(r_fail_check["verified"])
+        self.assertEqual(r_fail_check["status"], "FAIL_CLOSED (INVALID PROBE CLAIMS)")
 
-        # 3. Corrupt JSON probe -> FAIL_CLOSED (CORRUPT PROBE RECEIPT) & verified=False
+        # 3. Tampered probe claiming kernel_enforcement_claim=True via AEGIS_MACOS_PROBE_RECEIPT -> fail-closed
+        tampered_probe = self.tmp_path / "macos_probe_tampered_kernel_claim.json"
+        tampered_probe.write_text(
+            json.dumps({
+                "schema": "aegis-macos-capability-probe-v1",
+                "status": "COOPERATIVE LIVE VERIFIED",
+                "checks": {
+                    "cooperative_cancellation_observed": True,
+                    "cooperative_termination_observed": True,
+                },
+                "kernel_enforcement_claim": True,
+            }),
+            encoding="utf-8",
+        )
+        prev_env = os.environ.get("AEGIS_MACOS_PROBE_RECEIPT")
+        try:
+            os.environ["AEGIS_MACOS_PROBE_RECEIPT"] = str(tampered_probe)
+            r_tampered = orch.generate_nv003_macos_capability(dry_run=False)
+        finally:
+            if prev_env is None:
+                os.environ.pop("AEGIS_MACOS_PROBE_RECEIPT", None)
+            else:
+                os.environ["AEGIS_MACOS_PROBE_RECEIPT"] = prev_env
+        self.assertFalse(r_tampered["verified"])
+        self.assertEqual(r_tampered["status"], "FAIL_CLOSED (INVALID PROBE CLAIMS)")
+        self.assertFalse(r_tampered["kernel_enforcement_claim"])
+
+        # 4. Nonexistent explicit probe_receipt -> NOT VERIFIED (PROBE RECEIPT NOT FOUND)
+        r_missing = orch.generate_nv003_macos_capability(
+            probe_receipt=self.tmp_path / "does_not_exist_probe.json",
+            dry_run=False,
+        )
+        self.assertFalse(r_missing["verified"])
+        self.assertEqual(r_missing["status"], "NOT VERIFIED (PROBE RECEIPT NOT FOUND)")
+
+        # 5. Corrupt JSON probe -> FAIL_CLOSED (CORRUPT PROBE RECEIPT) & verified=False
         corrupt_probe = self.tmp_path / "macos_probe_corrupt.json"
         corrupt_probe.write_text("{corrupt_json", encoding="utf-8")
         r_corrupt = orch.generate_nv003_macos_capability(probe_receipt=corrupt_probe, dry_run=False)
@@ -324,6 +383,22 @@ class TestCloudM8Packaging(unittest.TestCase):
         self.assertEqual(entries_by_id["NV-003"]["status"], "LIVE VERIFIED (GCP / REMOTE)")
         self.assertEqual(entries_by_id["NV-008"]["status"], "LIVE VERIFIED (GCP / REMOTE)")
         self.assertNotIn("additional_receipts", entries_by_id["NV-008"])
+
+        # Secondary receipt with verified=None must still be rejected
+        (isolated_artifacts / "wheel_parity_macos_receipt.json").write_text(
+            json.dumps({
+                "schema": "aegis-wheel-parity-receipt-v1",
+                "truth_claim": False,
+                "status": "PROVEN",
+                "verified": None,
+                "dry_run": False,
+            }),
+            encoding="utf-8",
+        )
+        runner.update_not_verified_registry(dry_run=False)
+        updated_none = json.loads(reg_path.read_text(encoding="utf-8"))
+        entries_none = {e["id"]: e for e in updated_none["entries"]}
+        self.assertNotIn("additional_receipts", entries_none["NV-008"])
 
         # Now mark NV-008-M as PROVEN and verified=True -> must attach to additional_receipts
         (isolated_artifacts / "wheel_parity_macos_receipt.json").write_text(

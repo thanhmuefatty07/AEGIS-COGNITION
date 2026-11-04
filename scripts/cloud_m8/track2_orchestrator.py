@@ -23,6 +23,7 @@ import sys
 import tarfile
 import urllib.error
 import urllib.request
+import zipfile
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -360,14 +361,15 @@ class Track2Orchestrator:
 
         probe_data: dict[str, Any] | None = None
         probe_file: Path | None = None
+        explicit_probe_path: Path | None = None
         if probe_receipt is not None:
-            cand = Path(probe_receipt)
-            if cand.is_file():
-                probe_file = cand
+            explicit_probe_path = Path(probe_receipt)
+            if explicit_probe_path.is_file():
+                probe_file = explicit_probe_path
         elif os.environ.get("AEGIS_MACOS_PROBE_RECEIPT"):
-            cand = Path(os.environ["AEGIS_MACOS_PROBE_RECEIPT"])
-            if cand.is_file():
-                probe_file = cand
+            explicit_probe_path = Path(os.environ["AEGIS_MACOS_PROBE_RECEIPT"])
+            if explicit_probe_path.is_file():
+                probe_file = explicit_probe_path
         elif platform.system() == "Darwin":
             from scripts.macos_capability_probe import probe
             probe_data = dict(probe(output=None))
@@ -387,6 +389,37 @@ class Track2Orchestrator:
                 if cand.is_file():
                     probe_file = cand
                     break
+
+        if explicit_probe_path is not None and probe_file is None:
+            receipt = {
+                "schema": "aegis-macos-capability-probe-v1",
+                "truth_claim": False,
+                "nv_id": "NV-003",
+                "title": "macOS resource enforcement",
+                "status": "NOT VERIFIED (PROBE RECEIPT NOT FOUND)",
+                "verified": False,
+                "reason": f"Specified macOS capability probe receipt does not exist: {explicit_probe_path}",
+                "platform": platform.platform(),
+                "implementation": "core/rust/src/resource_platform.rs::MacosCooperativeController",
+                "capability_level": {
+                    "cpu": "MEASUREMENT_ONLY",
+                    "memory": "MEASUREMENT_ONLY",
+                    "process_count": "MEASUREMENT_ONLY",
+                    "thread_count": "MEASUREMENT_ONLY",
+                    "io": "MEASUREMENT_ONLY",
+                    "termination": "COOPERATIVE_ONLY",
+                },
+                "checks": {
+                    "cooperative_cancellation_observed": False,
+                    "cooperative_termination_observed": False,
+                },
+                "kernel_enforcement_claim": False,
+                "verified_at_utc": now_utc,
+                "dry_run": False,
+            }
+            receipt_path.write_text(json.dumps(receipt, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+            print(f"[+] Written NV-003 macOS Capability Receipt to {receipt_path} (status={receipt['status']})")
+            return receipt
 
         if probe_file and probe_file.is_file():
             try:
@@ -435,17 +468,24 @@ class Track2Orchestrator:
                 and checks_dict.get("cooperative_termination_observed") is True
                 and probe_data.get("kernel_enforcement_claim") is False
             )
+            effective_status = (
+                status_val
+                if is_verified
+                else "FAIL_CLOSED (INVALID PROBE CLAIMS)"
+            )
+            default_reason = (
+                "macOS lane verifies cooperative cancellation only; kernel-equivalent limits remain unclaimed"
+                if is_verified
+                else "Fail-closed: macOS capability probe failed required cooperative checks or claimed kernel enforcement"
+            )
             receipt = {
                 "schema": "aegis-macos-capability-probe-v1",
                 "truth_claim": False,
                 "nv_id": "NV-003",
                 "title": "macOS resource enforcement",
-                "status": status_val,
+                "status": effective_status,
                 "verified": is_verified,
-                "reason": probe_data.get(
-                    "reason",
-                    "macOS lane verifies cooperative cancellation only; kernel-equivalent limits remain unclaimed",
-                ),
+                "reason": probe_data.get("reason", default_reason) if is_verified else default_reason,
                 "platform": probe_data.get("platform", "macOS-14.8.9-arm64-arm-64bit-Mach-O"),
                 "implementation": probe_data.get(
                     "implementation",
@@ -460,8 +500,8 @@ class Track2Orchestrator:
                     "termination": "COOPERATIVE_ONLY",
                 }),
                 "checks": {
-                    "cooperative_cancellation_observed": bool(checks_dict.get("cooperative_cancellation_observed")),
-                    "cooperative_termination_observed": bool(checks_dict.get("cooperative_termination_observed")),
+                    "cooperative_cancellation_observed": bool(checks_dict.get("cooperative_cancellation_observed") is True),
+                    "cooperative_termination_observed": bool(checks_dict.get("cooperative_termination_observed") is True),
                 },
                 "kernel_enforcement_claim": False,
                 "verified_at_utc": now_utc,
@@ -579,6 +619,35 @@ class Track2Orchestrator:
             "arm64" in verified_wheel.name.lower() and "x86_64" in verified_wheel.name.lower()
         )
 
+        try:
+            with zipfile.ZipFile(io.BytesIO(wheel_bytes), "r") as zf:
+                names = zf.namelist()
+                if not names:
+                    raise ValueError("Wheel ZIP archive contains zero entries")
+                bad_member = zf.testzip()
+                if bad_member is not None:
+                    raise ValueError(f"Corrupt ZIP member in wheel: {bad_member}")
+        except Exception as exc:
+            receipt = {
+                "schema": "aegis-wheel-parity-receipt-v1",
+                "truth_claim": False,
+                "nv_id": "NV-008",
+                "platform": "macOS aarch64 (Apple Silicon) & x86_64",
+                "wheel_filename": verified_wheel.name,
+                "wheel_sha256": actual_sha256,
+                "wheel_size_bytes": len(wheel_bytes),
+                "universal2_support": False,
+                "verified": False,
+                "status": "FAIL_CLOSED (CORRUPT WHEEL ARCHIVE)",
+                "reason": f"macOS wheel archive failed ZIP integrity check: {exc}",
+                "python_target": "CPython 3.14.7",
+                "verified_at_utc": now_utc,
+                "dry_run": False,
+            }
+            receipt_path.write_text(json.dumps(receipt, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+            print(f"[!] Fail-closed: NV-008-M macOS wheel corrupt ({exc}).")
+            return receipt
+
         receipt = {
             "schema": "aegis-wheel-parity-receipt-v1",
             "truth_claim": False,
@@ -641,7 +710,7 @@ class Track2Orchestrator:
             archive_path = Path(backup_archive)
         elif os.environ.get("AEGIS_BACKUP_ARCHIVE"):
             archive_path = Path(os.environ["AEGIS_BACKUP_ARCHIVE"])
-        else:
+        elif self.root.resolve() == ROOT.resolve():
             pointer = ROOT / ".local" / "private-archive.path"
             archive_base = Path(
                 os.environ.get("AEGIS_PRIVATE_ARCHIVE")
@@ -651,6 +720,9 @@ class Track2Orchestrator:
                 self.root / ".local" / "repo-m8-1793226160.tar.gz",
                 archive_base / "audits/m8-artifacts-20261029/workspace-artifacts/.local/repo-m8-1793226160.tar.gz",
                 archive_base / "repo-m8-1793226160.tar.gz",
+                archive_base / "bundles/evidence-spot-1793226160.tar.gz",
+                archive_base / "20261103-p5-verification/evidence-aegis-spot-h2-m8-1793656560.tar.gz",
+                archive_base / "20261104-macos-verification/macos_evidence_bundle.tar.gz",
             ]
             for cand in candidates:
                 if cand.is_file():

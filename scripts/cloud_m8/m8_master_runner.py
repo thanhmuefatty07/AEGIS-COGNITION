@@ -314,11 +314,15 @@ class M8MasterRunner:
             return False
         if not isinstance(receipt_json, dict):
             return False
+        schema = receipt_json.get("schema")
+        if not isinstance(schema, str) or not schema.strip():
+            return False
         status = str(receipt_json.get("status", ""))
         return not (
             receipt_json.get("dry_run") is True
             or receipt_json.get("truth_claim") is not False
-            or receipt_json.get("verified") is False
+            or ("verified" in receipt_json and receipt_json.get("verified") is not True)
+            or ("overall_ok" in receipt_json and receipt_json.get("overall_ok") is not True)
             or status in {
                 "NOT VERIFIED",
                 "SIMULATED / DRY RUN",
