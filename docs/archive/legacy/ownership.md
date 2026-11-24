@@ -6,8 +6,9 @@ This directory is a historical artifact, not an implementation tree.
   `core/rust`, `core/python`, `aegis_cognition`, `schemas`, and `scripts`.
 - The historical transformation report is preserved in the private archive; it
   is not a current implementation authority.
-- Rust and website snapshots here preserve historical source; they are outside
-  the Cargo workspace and current runtime. Do not develop them here.
+- Historical Rust and website snapshots from the former nested trees are
+  preserved in the private archive; they are outside the Cargo workspace and
+  current runtime.
 - New code, tests, manifests, workflows, and operational scripts belong in the
   canonical implementation paths.
 - The architecture fitness gate rejects recreation of either former nested

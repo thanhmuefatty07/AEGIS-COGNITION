@@ -7,8 +7,9 @@ do not establish current release readiness. Existing evidence JSON retains
 original paths and hashes as historical records; active gate inputs and current
 captures stay with their consumers until they are no longer needed.
 
-The former `AEGIS-COGNITION/` and `core/rust/AEGIS-COGNITION/` trees are in
-`legacy/`. Historical planning is in `planning/`; external comparator research
+The former `AEGIS-COGNITION/` and `core/rust/AEGIS-COGNITION/` trees are recorded in
+[`legacy/ownership.md`](legacy/ownership.md). Historical planning documents are
+retained in the external private archive; external comparator research
 and gate implementations are kept under
 `scripts/research/comparators/external/`.
 Historical licensing or business-model wording in this archive is superseded and
@@ -34,7 +35,7 @@ can delete the selected basetemp, so never point it at a shared directory,
 the repository root, or a user directory. Default system temporary directories
 remain acceptable when no explicit basetemp is supplied.
 
-Prior cleanup quarantine is retained in `.local/quarantine/cleanup-20260909/`.
-Its manifests describe original locations before this relocation. Moving the
-quarantine groups files for recovery; it does not reclaim disk space. Retention
-and permanent deletion require checking which evidence remains useful.
+Prior cleanup quarantine snapshots and their original-location manifests are
+retained in the external private archive resolved via `AEGIS_PRIVATE_ARCHIVE`
+or `.local/private-archive.path`. Retention and permanent deletion require
+checking which evidence remains useful.
