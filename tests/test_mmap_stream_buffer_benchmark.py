@@ -4,7 +4,8 @@ from __future__ import annotations
 
 import ctypes
 import json
-import os
+import sys
+import types
 from pathlib import Path
 from typing import ClassVar
 
@@ -45,7 +46,6 @@ def _fake_results(
     ]
 
 
-@pytest.mark.skipif(os.name != "nt", reason="Windows GetProcessMemoryInfo PeakWorkingSetSize contract")
 def test_windows_peak_rss_uses_peak_working_set_size_not_current_wss(monkeypatch: pytest.MonkeyPatch) -> None:
     class FakeKernel32:
         class OpenProcess:
@@ -83,7 +83,15 @@ def test_windows_peak_rss_uses_peak_working_set_size_not_current_wss(monkeypatch
     def fake_windll(name: str, **_kwargs: object) -> object:
         return FakeKernel32 if name == "kernel32" else FakePsapi
 
+    fake_wintypes = types.ModuleType("ctypes.wintypes")
+    monkeypatch.setattr(fake_wintypes, "DWORD", ctypes.c_uint32, raising=False)
+    monkeypatch.setattr(fake_wintypes, "BOOL", ctypes.c_int, raising=False)
+    monkeypatch.setattr(fake_wintypes, "HANDLE", ctypes.c_void_p, raising=False)
+
+    monkeypatch.setitem(sys.modules, "ctypes.wintypes", fake_wintypes)
+    monkeypatch.setattr(ctypes, "wintypes", fake_wintypes, raising=False)
     monkeypatch.setattr(ctypes, "WinDLL", fake_windll, raising=False)
+    monkeypatch.setattr(bench.os, "name", "nt")
 
     assert bench._windows_peak_rss_bytes(4242) == 64 * 1024 * 1024
     assert bench._windows_rss_bytes(4242) == 64 * 1024 * 1024

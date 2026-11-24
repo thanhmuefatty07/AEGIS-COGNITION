@@ -31,6 +31,20 @@ test("task state follows the newest persisted execution and distinguishes interr
   assert.equal(deriveTaskState({ turns: [{ role: "assistant", status: "WAITING_APPROVAL", revision: 1 }] }), "WAITING_PERMISSION");
 });
 
+test("task state breaks identical started_at_ms execution ties by higher revision", () => {
+  const snapshot = {
+    turns: [
+      { role: "assistant", status: "CANCELLED", revision: 3 },
+      { role: "assistant", status: "COMPLETED", revision: 6 },
+    ],
+    executions: [
+      { status: "CANCELLED", started_at_ms: 1000, revision: 3 },
+      { status: "COMPLETED", started_at_ms: 1000, revision: 6 },
+    ],
+  };
+  assert.equal(deriveTaskState(snapshot), "COMPLETED");
+});
+
 test("a missing host run is shown as interrupted and stops active polling", () => {
   const run = {
     schema: "aegis-desktop-run-status-v1",

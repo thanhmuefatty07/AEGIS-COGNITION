@@ -86,10 +86,13 @@ export function deriveTaskState(snapshot, run = null, approvalPending = false) {
   if (run && activeRunStatuses.has(run.status)) return run.status;
   if (approvalPending) return "WAITING_PERMISSION";
   const executions = snapshot?.executions ?? [];
-  const latestExecution = executions.reduce(
-    (latest, item) => !latest || item.started_at_ms > latest.started_at_ms ? item : latest,
-    null,
-  );
+  const latestExecution = executions.reduce((latest, item) => {
+    if (!latest) return item;
+    if (item.started_at_ms !== latest.started_at_ms) {
+      return item.started_at_ms > latest.started_at_ms ? item : latest;
+    }
+    return (item.revision ?? 0) >= (latest.revision ?? 0) ? item : latest;
+  }, null);
   if (latestExecution) {
     if (latestExecution.status === "RUNNING" || latestExecution.status === "CANCELLING") return "INTERRUPTED";
     if (latestExecution.status === "WAITING_APPROVAL") return "WAITING_PERMISSION";

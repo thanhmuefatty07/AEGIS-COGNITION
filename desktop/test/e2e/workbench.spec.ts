@@ -197,8 +197,9 @@ test("active tasks remain steerable, queue in order, and distinguish stop reques
 
   await stopButton.click();
   await expect(page.getByRole("button", { name: "Stop requested", exact: true })).toBeVisible();
-  await page.clock.runFor(2_000);
+  await page.clock.runFor(500);
   await expect(page.getByText("Task stopped by the user.", { exact: true })).toBeVisible();
+  await page.clock.resume();
   await expect(page.getByText("Preview response: I received “Then summarize the result”.", { exact: true })).toBeVisible();
   await expect(page.getByRole("toolbar", { name: "Conversation" }).getByText("Completed", { exact: true })).toBeVisible();
 });
