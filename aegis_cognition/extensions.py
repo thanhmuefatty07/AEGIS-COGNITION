@@ -42,7 +42,7 @@ from urllib.parse import SplitResult, unquote, urlencode, urlsplit
 from collections.abc import AsyncGenerator, AsyncIterator, Awaitable, Callable, Iterable, Iterator, Mapping, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path, PurePosixPath
-from typing import Any, Protocol, cast
+from typing import Any, Literal, Protocol, cast
 from uritemplate import URITemplate, expand as expand_uri_template, variables as uri_template_variables
 from uritemplate.variable import VariableValue as UriTemplateVariableValue
 
@@ -3489,6 +3489,13 @@ _MCP_RESOURCE_READ_TOOL = "aegis_resources_read"
 _MCP_RESOURCE_TEMPLATE_SEARCH_TOOL = "aegis_resources_templates_search"
 _MCP_RESOURCE_TEMPLATE_READ_TOOL = "aegis_resources_template_read"
 
+MCP_INTEROP_PROTOCOL_VERSIONS: tuple[str, ...] = (
+    "2025-11-25",
+    "2025-06-18",
+    "2025-03-26",
+    "2024-11-05",
+)
+
 
 @dataclass(frozen=True, slots=True)
 class McpStdioConfig:
@@ -3498,6 +3505,8 @@ class McpStdioConfig:
     cwd: str | None = None
     environment: tuple[tuple[str, str], ...] = ()
     protocol_version: str = "2025-11-25"
+    accepted_protocol_versions: tuple[str, ...] | None = None
+    handshake_mode: Literal["auto", "initialize-first"] = "auto"
     client_name: str = "aegis-cognition"
     client_version: str = "0.1.0"
     startup_timeout_seconds: float = 10.0
@@ -3529,6 +3538,13 @@ class McpStdioConfig:
             keys.add(key.casefold())
             _bounded_text(value, "MCP stdio environment value", 8_192)
         _bounded_text(self.protocol_version, "MCP protocol version", 128)
+        if self.accepted_protocol_versions is not None:
+            if type(self.accepted_protocol_versions) not in (tuple, list) or not self.accepted_protocol_versions:
+                raise ExtensionError("MCP accepted_protocol_versions must be a non-empty sequence")
+            for ver in self.accepted_protocol_versions:
+                _bounded_text(ver, "MCP accepted protocol version", 128)
+        if self.handshake_mode not in {"auto", "initialize-first"}:
+            raise ExtensionError("MCP handshake_mode must be 'auto' or 'initialize-first'")
         _bounded_text(self.client_name, "MCP client name", 128)
         _bounded_text(self.client_version, "MCP client version", 128)
         for value, label in (
@@ -3830,35 +3846,36 @@ class McpStdioProvider:
             self._stderr_task = asyncio.create_task(self._drain_stderr(), name="aegis-mcp-stderr")
             self._reader_task = asyncio.create_task(self._read_responses(), name="aegis-mcp-stdout")
             try:
-                self._protocol_mode = "modern"
+                self._protocol_mode = "legacy" if self.config.handshake_mode == "initialize-first" else "modern"
                 self._negotiated_protocol = _MCP_CURRENT_PROTOCOL_VERSION
                 discovery: object = None
                 startup_rpc_timeout = max(
                     float(self.config.request_timeout_seconds),
                     float(self.config.startup_timeout_seconds),
                 )
-                try:
-                    discovery = await self._request(
-                        "server/discover",
-                        {},
-                        ensure_started=False,
-                        timeout_seconds=startup_rpc_timeout,
-                    )
-                except _McpRpcError as error:
-                    if error.code in _MCP_MODERN_ERROR_CODES:
-                        if error.code != -32022 or _mcp_supported_version(error.data) is None:
-                            raise
-                        self._negotiated_protocol = _mcp_supported_version(error.data)
+                if self._protocol_mode == "modern":
+                    try:
                         discovery = await self._request(
                             "server/discover",
                             {},
                             ensure_started=False,
                             timeout_seconds=startup_rpc_timeout,
                         )
-                    elif error.code == -32601:
-                        self._protocol_mode = "legacy"
-                    else:
-                        raise
+                    except _McpRpcError as error:
+                        if error.code in _MCP_MODERN_ERROR_CODES:
+                            if error.code != -32022 or _mcp_supported_version(error.data) is None:
+                                raise
+                            self._negotiated_protocol = _mcp_supported_version(error.data)
+                            discovery = await self._request(
+                                "server/discover",
+                                {},
+                                ensure_started=False,
+                                timeout_seconds=startup_rpc_timeout,
+                            )
+                        elif error.code == -32601:
+                            self._protocol_mode = "legacy"
+                        else:
+                            raise
 
                 if self._protocol_mode == "modern":
                     self._negotiated_protocol = _mcp_discovered_version(discovery)
@@ -3888,8 +3905,14 @@ class McpStdioProvider:
                         raise ExtensionError("MCP stdio initialize result must be an object")
                     typed_initialization = cast(Mapping[str, object], initialization)
                     raw_version = typed_initialization.get("protocolVersion")
-                    if type(raw_version) is not str or raw_version != self.config.protocol_version:
+                    allowed_versions = (
+                        frozenset(self.config.accepted_protocol_versions)
+                        if self.config.accepted_protocol_versions is not None
+                        else frozenset({self.config.protocol_version})
+                    )
+                    if type(raw_version) is not str or raw_version not in allowed_versions:
                         raise ExtensionError("MCP stdio server selected an unsupported protocol version")
+                    self._negotiated_protocol = raw_version
                     self._supports_resources = _mcp_declares_resources(typed_initialization)
                     self._supports_resource_templates = self._supports_resources
                     self._supports_prompts = _mcp_declares_prompts(typed_initialization)
@@ -4571,6 +4594,8 @@ class McpHttpConfig:
     headers: tuple[tuple[str, str], ...] = ()
     allow_local: bool = False
     protocol_version: str = "2025-11-25"
+    accepted_protocol_versions: tuple[str, ...] | None = None
+    handshake_mode: Literal["auto", "initialize-first"] = "auto"
     client_name: str = "aegis-cognition"
     client_version: str = "0.1.0"
     connect_timeout_seconds: float = 10.0
@@ -4636,6 +4661,13 @@ class McpHttpConfig:
         if type(self.allow_local) is not bool:
             raise ExtensionError("MCP HTTP allow_local must be boolean")
         _bounded_text(self.protocol_version, "MCP protocol version", 128)
+        if self.accepted_protocol_versions is not None:
+            if type(self.accepted_protocol_versions) not in (tuple, list) or not self.accepted_protocol_versions:
+                raise ExtensionError("MCP HTTP accepted_protocol_versions must be a non-empty sequence")
+            for ver in self.accepted_protocol_versions:
+                _bounded_text(ver, "MCP HTTP accepted protocol version", 128)
+        if self.handshake_mode not in {"auto", "initialize-first"}:
+            raise ExtensionError("MCP HTTP handshake_mode must be 'auto' or 'initialize-first'")
         _bounded_text(self.client_name, "MCP HTTP client name", 128)
         _bounded_text(self.client_version, "MCP HTTP client version", 128)
         for value, label in (
@@ -5084,31 +5116,32 @@ class McpHttpProvider:
                     if resumed_step_up:
                         self._oauth_interactive_allowed = False
                         self._set_oauth_authenticated(True)
-            self._modern = True
+            self._modern = self.config.handshake_mode != "initialize-first"
             self._negotiated_protocol = _MCP_CURRENT_PROTOCOL_VERSION
             discovery: object = None
             try:
-                try:
-                    discovery, _ = await self._request_initial_discovery()
-                except _McpRpcError as error:
-                    if error.code == -32022:
-                        selected = _mcp_supported_version(error.data)
-                        if selected is None:
-                            raise ExtensionError(
-                                "MCP server supports no protocol version implemented by this host"
-                            ) from error
-                        self._negotiated_protocol = selected
+                if self._modern:
+                    try:
                         discovery, _ = await self._request_initial_discovery()
-                    elif error.code in _MCP_MODERN_ERROR_CODES:
-                        raise
-                    elif error.http_status == 400:
+                    except _McpRpcError as error:
+                        if error.code == -32022:
+                            selected = _mcp_supported_version(error.data)
+                            if selected is None:
+                                raise ExtensionError(
+                                    "MCP server supports no protocol version implemented by this host"
+                                ) from error
+                            self._negotiated_protocol = selected
+                            discovery, _ = await self._request_initial_discovery()
+                        elif error.code in _MCP_MODERN_ERROR_CODES:
+                            raise
+                        elif error.code == -32601 or error.http_status == 400:
+                            self._modern = False
+                        else:
+                            raise
+                    except _McpHttpStatusError as error:
+                        if error.status != 400:
+                            raise
                         self._modern = False
-                    else:
-                        raise
-                except _McpHttpStatusError as error:
-                    if error.status != 400:
-                        raise
-                    self._modern = False
 
                 if self._modern:
                     self._negotiated_protocol = _mcp_discovered_version(discovery)
@@ -5155,7 +5188,12 @@ class McpHttpProvider:
                 self._supports_prompts = _mcp_declares_prompts(typed_response)
                 self._notification_filters = {}
                 raw_version = typed_response.get("protocolVersion")
-                if type(raw_version) is not str or raw_version != self.config.protocol_version:
+                allowed_versions = (
+                    frozenset(self.config.accepted_protocol_versions)
+                    if self.config.accepted_protocol_versions is not None
+                    else frozenset({self.config.protocol_version})
+                )
+                if type(raw_version) is not str or raw_version not in allowed_versions:
                     raise ExtensionError("MCP HTTP server selected an unsupported protocol version")
                 self._session_id = session_id
                 self._negotiated_protocol = raw_version
@@ -6343,12 +6381,16 @@ class ExtensionRegistry:
         *,
         skill_catalog: object | None = None,
         max_tools: int = _DEFAULT_EXTENSION_REGISTRY_MAX_TOOLS,
+        policy_gate: Callable[[ToolSpec, Mapping[str, Any]], Awaitable[None] | None] | None = None,
     ) -> None:
         if type(max_tools) is not int or not 1 <= max_tools <= 4_096:
             raise ExtensionError("extension registry max_tools is invalid")
         if skill_catalog is not None and type(skill_catalog) is not SkillCatalog:
             raise TypeError("skill_catalog must be a SkillCatalog")
+        if policy_gate is not None and not callable(policy_gate):
+            raise TypeError("policy_gate must be callable")
         self._max_tools = max_tools
+        self._policy_gate = policy_gate
         self._manifests: dict[str, ExtensionManifest] = {}
         self._tools: dict[str, _ToolRegistration] = {}
         self._lock = threading.RLock()
@@ -6887,6 +6929,10 @@ class ExtensionRegistry:
         typed_args = cast(Mapping[str, Any], args)
         detached_args = cast(Mapping[str, Any], _json_value(dict(typed_args), label="tool arguments"))
         registration.input_validator(detached_args)
+        if self._policy_gate is not None:
+            gate_outcome = self._policy_gate(registration.spec, detached_args)
+            if inspect.isawaitable(gate_outcome):
+                await gate_outcome
         effective_timeout = registration.spec.timeout_seconds if timeout_seconds is None else timeout_seconds
         if (
             type(effective_timeout) not in (int, float)
@@ -7476,7 +7522,26 @@ def _skill_frontmatter(raw: bytes) -> tuple[str, str, str, tuple[str, ...]] | No
 
 
 MAX_MCP_TOOL_SCHEMA_SERIALIZED_CHARS = 16_000
+COMPACT_MCP_TOOL_SCHEMA_SERIALIZED_BYTES = 13_312
 MAX_MCP_TOOL_SCHEMA_REFS = 32
+
+_CREDENTIAL_URL_SCRUB_RE = re.compile(r"[a-zA-Z][a-zA-Z0-9+.-]*://[^\s]+")
+
+
+def format_canonical_mcp_tool_id(server_id: str, tool_name: str) -> str:
+    """Format canonical `mcp__<server>__<tool>` identifier with credential/URL scrubbing."""
+
+    if type(server_id) is not str or type(tool_name) is not str:
+        raise ExtensionError("MCP server_id and tool_name must be strings")
+    scrubbed_server = _CREDENTIAL_URL_SCRUB_RE.sub("url", server_id.strip())
+    scrubbed_tool = _CREDENTIAL_URL_SCRUB_RE.sub("url", tool_name.strip())
+    norm_server = re.sub(r"[^a-z0-9_-]+", "_", scrubbed_server.casefold()).strip("_")
+    norm_tool = re.sub(r"[^a-z0-9_-]+", "_", scrubbed_tool.casefold()).strip("_")
+    if not norm_server or not norm_tool:
+        raise ExtensionError("canonical MCP tool id requires non-empty server and tool segments")
+    canonical = f"mcp__{norm_server[:48]}__{norm_tool[:64]}"
+    return canonical[:128]
+
 
 DEFAULT_UNTRUSTED_TARGET_PROVENANCE: dict[str, object] = {
     "untrusted_content": True,
@@ -7516,13 +7581,24 @@ def validate_mcp_tool_schema_budget(
     schema: Mapping[str, Any],
     *,
     max_serialized_chars: int = MAX_MCP_TOOL_SCHEMA_SERIALIZED_CHARS,
+    max_serialized_bytes: int | None = None,
     max_refs: int = MAX_MCP_TOOL_SCHEMA_REFS,
+    profile: Literal["default", "compact"] = "default",
 ) -> dict[str, int]:
-    """Validate that an MCP tool schema stays within serialized character and $ref budgets."""
+    """Validate that an MCP tool schema stays within serialized character/byte and $ref budgets."""
     if not isinstance(cast(object, schema), Mapping):
         raise ExtensionError("MCP tool schema must be a mapping")
     if type(max_serialized_chars) is not int or max_serialized_chars <= 0:
         raise ValueError("max_serialized_chars must be a positive integer")
+    if profile not in {"default", "compact"}:
+        raise ValueError("profile must be 'default' or 'compact'")
+    effective_max_bytes = (
+        COMPACT_MCP_TOOL_SCHEMA_SERIALIZED_BYTES
+        if (max_serialized_bytes is None and profile == "compact")
+        else max_serialized_bytes
+    )
+    if effective_max_bytes is not None and (type(effective_max_bytes) is not int or effective_max_bytes <= 0):
+        raise ValueError("max_serialized_bytes must be a positive integer")
     if type(max_refs) is not int or max_refs < 0:
         raise ValueError("max_refs must be a non-negative integer")
     try:
@@ -7530,15 +7606,21 @@ def validate_mcp_tool_schema_budget(
     except (TypeError, ValueError) as error:
         raise ExtensionError("MCP tool schema is not valid JSON") from error
     serialized_chars = len(serialized)
+    serialized_bytes = len(serialized.encode("utf-8"))
     ref_count = count_json_schema_refs(schema)
     if serialized_chars > max_serialized_chars:
         raise ExtensionError(
             f"MCP tool schema exceeds serialized character budget ({serialized_chars} > {max_serialized_chars})"
         )
+    if effective_max_bytes is not None and serialized_bytes > effective_max_bytes:
+        raise ExtensionError(
+            f"MCP tool schema exceeds serialized UTF-8 byte budget ({serialized_bytes} > {effective_max_bytes})"
+        )
     if ref_count > max_refs:
         raise ExtensionError(f"MCP tool schema exceeds $ref budget ({ref_count} > {max_refs})")
     return {
         "serialized_chars": serialized_chars,
+        "serialized_bytes": serialized_bytes,
         "ref_count": ref_count,
     }
 
@@ -7609,15 +7691,32 @@ def compact_mcp_tool_schema(
     schema: Mapping[str, Any],
     *,
     max_serialized_chars: int = MAX_MCP_TOOL_SCHEMA_SERIALIZED_CHARS,
+    max_serialized_bytes: int | None = None,
     max_refs: int = MAX_MCP_TOOL_SCHEMA_REFS,
+    profile: Literal["default", "compact"] = "default",
 ) -> dict[str, Any]:
-    """Compact an MCP tool input schema so it respects serialized char and $ref budgets."""
+    """Compact an MCP tool input schema so it respects serialized char/byte and $ref budgets."""
     if not isinstance(cast(object, schema), Mapping):
         raise ExtensionError("MCP tool schema must be a mapping")
     if type(max_serialized_chars) is not int or max_serialized_chars <= 0:
         raise ValueError("max_serialized_chars must be a positive integer")
+    if profile not in {"default", "compact"}:
+        raise ValueError("profile must be 'default' or 'compact'")
+    effective_max_bytes = (
+        COMPACT_MCP_TOOL_SCHEMA_SERIALIZED_BYTES
+        if (max_serialized_bytes is None and profile == "compact")
+        else max_serialized_bytes
+    )
+    if effective_max_bytes is not None and (type(effective_max_bytes) is not int or effective_max_bytes <= 0):
+        raise ValueError("max_serialized_bytes must be a positive integer")
     if type(max_refs) is not int or max_refs < 0:
         raise ValueError("max_refs must be a non-negative integer")
+
+    def _within_size(candidate_schema: Mapping[str, Any]) -> bool:
+        encoded = _serialize_schema_compact(candidate_schema)
+        if len(encoded) > max_serialized_chars:
+            return False
+        return not (effective_max_bytes is not None and len(encoded.encode("utf-8")) > effective_max_bytes)
 
     working: dict[str, Any] = json.loads(_serialize_schema_compact(schema))
     if count_json_schema_refs(working) > max_refs:
@@ -7629,7 +7728,7 @@ def compact_mcp_tool_schema(
             budget = [max_refs]
             working = cast(dict[str, Any], _strip_excess_schema_refs(working, budget))
 
-    if len(_serialize_schema_compact(working)) <= max_serialized_chars:
+    if _within_size(working):
         return working
 
     for max_desc, drop_defs in ((160, False), (64, True), (0, True)):
@@ -7640,7 +7739,7 @@ def compact_mcp_tool_schema(
         if count_json_schema_refs(candidate) > max_refs:
             budget = [max_refs]
             candidate = cast(dict[str, Any], _strip_excess_schema_refs(candidate, budget))
-        if len(_serialize_schema_compact(candidate)) <= max_serialized_chars:
+        if _within_size(candidate):
             return candidate
         working = candidate
 
@@ -7668,16 +7767,16 @@ def compact_mcp_tool_schema(
             minimal["properties"] = compact_props
             if kept_required:
                 minimal["required"] = [req for req in kept_required if req in compact_props]
-            if len(_serialize_schema_compact(minimal)) > max_serialized_chars:
+            if not _within_size(minimal):
                 compact_props.pop(prop_name, None)
                 if kept_required:
                     minimal["required"] = [req for req in kept_required if req in compact_props]
                 break
     if "additionalProperties" in working and type(working["additionalProperties"]) is bool:
         candidate_minimal = {**minimal, "additionalProperties": working["additionalProperties"]}
-        if len(_serialize_schema_compact(candidate_minimal)) <= max_serialized_chars:
+        if _within_size(candidate_minimal):
             minimal = candidate_minimal
-    if len(_serialize_schema_compact(minimal)) > max_serialized_chars:
+    if not _within_size(minimal):
         return {"type": "object"}
     return minimal
 
@@ -7861,6 +7960,27 @@ def load_cordis_yaml_preserving_js_tags(raw_yaml: str) -> dict[str, object]:
     return dict(cast(Mapping[str, object], loaded))
 
 
+def load_cordis_patch_preserving_js_tags(raw_yaml: str) -> list[dict[str, object]]:
+    """Parse sequence-root Cordis `cordis.patch.yml` safely while preserving !!js tags."""
+    if type(raw_yaml) is not str:
+        raise ExtensionError("Cordis patch YAML content must be a string")
+    if len(raw_yaml.encode("utf-8")) > _MAX_CORDIS_YAML_BYTES:
+        raise ExtensionError("Cordis patch YAML content exceeds the 512 KiB size limit")
+    try:
+        loaded: object = yaml.load(raw_yaml, Loader=_CordisPreservingSafeLoader)
+    except (yaml.YAMLError, RecursionError) as error:
+        raise ExtensionError("Cordis patch YAML configuration could not be parsed") from error
+    if loaded is None:
+        return []
+    if not isinstance(loaded, list):
+        raise ExtensionError("Cordis patch YAML root must be a sequence")
+    return [
+        dict(cast(Mapping[str, object], item))
+        for item in cast(list[object], loaded)
+        if isinstance(item, Mapping) and all(type(k) is str for k in cast(Mapping[object, object], item))
+    ]
+
+
 def dump_cordis_yaml_preserving_js_tags(document: Mapping[str, object]) -> str:
     """Serialize a Cordis YAML document back to text while preserving !!js tags."""
     if not isinstance(cast(object, document), Mapping):
@@ -7909,6 +8029,46 @@ class McpHarnessServerEntry:
         spec.validate()
         return spec
 
+    def to_stdio_config(
+        self,
+        *,
+        environment: Sequence[tuple[str, str]] = (),
+        cwd: str | None = None,
+    ) -> McpStdioConfig:
+        if self.transport != "stdio" or not self.command:
+            raise ExtensionError(f"harness server {self.server_id!r} is not a stdio server")
+        config = McpStdioConfig(
+            command=self.command,
+            cwd=cwd,
+            environment=tuple(environment),
+            handshake_mode="initialize-first",
+            accepted_protocol_versions=MCP_INTEROP_PROTOCOL_VERSIONS,
+        )
+        config.validate()
+        return config
+
+    def to_http_config(
+        self,
+        *,
+        headers: Sequence[tuple[str, str]] = (),
+        allow_local: bool | None = None,
+    ) -> McpHttpConfig:
+        if self.transport != "streamable-http" or not self.endpoint:
+            raise ExtensionError(f"harness server {self.server_id!r} is not a streamable-http server")
+        parsed = urlsplit(self.endpoint)
+        host = parsed.hostname or ""
+        inferred_local = parsed.scheme == "http" or host in {"127.0.0.1", "localhost", "::1"}
+        config = McpHttpConfig(
+            endpoint=self.endpoint,
+            allowed_hosts=(host,) if host else (),
+            headers=tuple(headers),
+            allow_local=inferred_local if allow_local is None else allow_local,
+            handshake_mode="initialize-first",
+            accepted_protocol_versions=MCP_INTEROP_PROTOCOL_VERSIONS,
+        )
+        config.validate()
+        return config
+
     def summary(self) -> dict[str, object]:
         result: dict[str, object] = {
             "harness": self.harness,
@@ -7951,14 +8111,24 @@ def resolve_mcp_harness_config_paths(
 
     if normalized == "antigravity":
         candidates.append(resolved_home / ".gemini" / "antigravity" / "mcp_config.json")
+        candidates.append(resolved_home / ".gemini" / "config" / "mcp_config.json")
         if workspace is not None:
             candidates.append(workspace / ".gemini" / "antigravity" / "mcp_config.json")
+            candidates.append(workspace / ".gemini" / "config" / "mcp_config.json")
     elif normalized == "codex":
+        codex_home = resolved_env.get("CODEX_HOME")
+        if codex_home:
+            candidates.append(Path(codex_home) / "config.toml")
         candidates.append(resolved_home / ".codex" / "config.toml")
         if workspace is not None:
             candidates.append(workspace / ".codex" / "config.toml")
     elif normalized == "claude_code":
+        claude_cfg_dir = resolved_env.get("CLAUDE_CONFIG_DIR")
+        if claude_cfg_dir:
+            candidates.append(Path(claude_cfg_dir) / ".claude.json")
+            candidates.append(Path(claude_cfg_dir) / "mcp.json")
         candidates.append(resolved_home / ".claude.json")
+        candidates.append(resolved_home / ".claude" / "mcp.json")
         if workspace is not None:
             candidates.append(workspace / ".mcp.json")
     elif normalized == "claude_desktop":
@@ -7995,9 +8165,15 @@ def resolve_mcp_harness_config_paths(
         if workspace is not None:
             candidates.append(workspace / ".cursor" / "mcp.json")
     elif normalized == "dsh":
+        dsh_home = resolved_env.get("DSH_HOME")
+        if dsh_home:
+            candidates.append(Path(dsh_home) / "dsh.yml")
+            candidates.append(Path(dsh_home) / "cordis.patch.yml")
         candidates.append(resolved_home / ".dsh" / "dsh.yml")
+        candidates.append(resolved_home / ".dsh" / "cordis.patch.yml")
         if workspace is not None:
             candidates.append(workspace / "dsh.yml")
+            candidates.append(workspace / "cordis.patch.yml")
     elif normalized == "pi":
         candidates.append(resolved_home / ".pi" / "agent" / "mcp.json")
         if workspace is not None:
@@ -8042,6 +8218,41 @@ def _is_valid_harness_http_endpoint(raw_url: str) -> bool:
     if parsed.scheme not in {"http", "https"} or not parsed.hostname:
         return False
     return not (parsed.username is not None or parsed.password is not None or parsed.fragment)
+
+
+def _extract_cordis_patch_servers(patch_ops: Sequence[Mapping[str, object]]) -> dict[str, object]:
+    """Extract MCP server definitions from Cordis `cordis.patch.yml` sequence operations."""
+
+    merged: dict[str, object] = {}
+
+    def _visit_plugin_item(item: Mapping[str, object]) -> None:
+        plugin_name = item.get("plugin", item.get("name", ""))
+        config_obj = item.get("config", item)
+        if not isinstance(config_obj, Mapping):
+            return
+        typed_cfg = cast(Mapping[str, object], config_obj)
+        extracted = _extract_harness_servers_mapping(typed_cfg, "dsh")
+        if extracted:
+            merged.update(extracted)
+            return
+        if type(plugin_name) is str and "mcp" in plugin_name.casefold():
+            merged.update(
+                {
+                    key: cast(Mapping[str, object], val)
+                    for key, val in typed_cfg.items()
+                    if type(key) is str and isinstance(val, Mapping)
+                }
+            )
+
+    for op in patch_ops:
+        _visit_plugin_item(op)
+        for op_key in ("insert", "update", "plugins"):
+            nested_list = op.get(op_key)
+            if isinstance(nested_list, list):
+                for elem in cast(list[object], nested_list):
+                    if isinstance(elem, Mapping) and all(type(k) is str for k in cast(Mapping[object, object], elem)):
+                        _visit_plugin_item(cast(Mapping[str, object], elem))
+    return merged
 
 
 def _extract_harness_servers_mapping(root: Mapping[str, object], harness: str) -> Mapping[str, object]:
@@ -8099,7 +8310,23 @@ def parse_mcp_harness_config(
         except tomllib.TOMLDecodeError as error:
             raise ExtensionError("codex config.toml could not be parsed") from error
     elif normalized_harness == "dsh":
-        root = load_cordis_yaml_preserving_js_tags(content)
+        try:
+            loaded_dsh: object = yaml.load(content, Loader=_CordisPreservingSafeLoader)
+        except (yaml.YAMLError, RecursionError) as error:
+            raise ExtensionError("Cordis YAML configuration could not be parsed") from error
+        if loaded_dsh is None:
+            root = {}
+        elif isinstance(loaded_dsh, Mapping) and all(type(k) is str for k in cast(Mapping[object, object], loaded_dsh)):
+            root = cast(Mapping[str, object], loaded_dsh)
+        elif isinstance(loaded_dsh, list):
+            patch_records = [
+                cast(Mapping[str, object], item)
+                for item in cast(list[object], loaded_dsh)
+                if isinstance(item, Mapping) and all(type(k) is str for k in cast(Mapping[object, object], item))
+            ]
+            root = {"mcpServers": _extract_cordis_patch_servers(patch_records)}
+        else:
+            raise ExtensionError("Cordis YAML root must be a string-keyed mapping or patch sequence")
     else:
         try:
             parsed_yaml: object = yaml.load(content, Loader=_BoundedYamlSafeLoader)
@@ -8230,11 +8457,13 @@ def discover_harness_mcp_servers(
 
 
 __all__ = [
+    "COMPACT_MCP_TOOL_SCHEMA_SERIALIZED_BYTES",
     "DEFAULT_UNTRUSTED_TARGET_PROVENANCE",
     "EXTENSION_MANIFEST_SCHEMA_V1",
     "MAX_MCP_TOOL_SCHEMA_REFS",
     "MAX_MCP_TOOL_SCHEMA_SERIALIZED_CHARS",
     "MAX_WASM_PLUGIN_BYTES",
+    "MCP_INTEROP_PROTOCOL_VERSIONS",
     "MCP_SERVER_SCHEMA_V1",
     "MCP_SKILLS_EXTENSION_ID",
     "SKILL_DESCRIPTOR_SCHEMA_V1",
@@ -8274,6 +8503,8 @@ __all__ = [
     "discover_mcp_server_specs",
     "discover_wasm_plugin_descriptors",
     "dump_cordis_yaml_preserving_js_tags",
+    "format_canonical_mcp_tool_id",
+    "load_cordis_patch_preserving_js_tags",
     "load_cordis_yaml_preserving_js_tags",
     "make_untrusted_mcp_error_response",
     "parse_mcp_environment_variables",

@@ -248,13 +248,28 @@ impl SidecarClient {
     }
 }
 
+fn bundled_service_path_for_executable(executable: &Path) -> Option<PathBuf> {
+    let exe_dir = executable.parent()?;
+    let mut candidates = vec![exe_dir.join("resources").join(BUNDLED_SERVICE_NAME)];
+    if exe_dir.file_name().and_then(|name| name.to_str()) == Some("MacOS") {
+        if let Some(contents_dir) = exe_dir.parent() {
+            if contents_dir.file_name().and_then(|name| name.to_str()) == Some("Contents") {
+                candidates.push(
+                    contents_dir
+                        .join("Resources")
+                        .join("resources")
+                        .join(BUNDLED_SERVICE_NAME),
+                );
+                candidates.push(contents_dir.join("Resources").join(BUNDLED_SERVICE_NAME));
+            }
+        }
+    }
+    candidates.into_iter().find(|candidate| candidate.is_file())
+}
+
 fn bundled_service_path() -> Option<PathBuf> {
-    let bundled = env::current_exe()
-        .ok()?
-        .parent()?
-        .join("resources")
-        .join(BUNDLED_SERVICE_NAME);
-    bundled.is_file().then_some(bundled)
+    let executable = env::current_exe().ok()?;
+    bundled_service_path_for_executable(&executable)
 }
 
 #[cfg(debug_assertions)]
@@ -569,9 +584,9 @@ fn main() {
 #[cfg(test)]
 mod tests {
     use super::{
-        authorize_workspace_request, read_bounded_json_line, validate_ipc_caller_window_label,
-        wait_for_service_exit, Value, WorkspaceAuthority, BUNDLED_SERVICE_NAME, MAX_FRAME_BYTES,
-        READY_SCHEMA, SERVICE_SHUTDOWN_GRACE,
+        authorize_workspace_request, bundled_service_path_for_executable, read_bounded_json_line,
+        validate_ipc_caller_window_label, wait_for_service_exit, Value, WorkspaceAuthority,
+        BUNDLED_SERVICE_NAME, MAX_FRAME_BYTES, READY_SCHEMA, SERVICE_SHUTDOWN_GRACE,
     };
     use std::collections::HashSet;
     use std::fs;
@@ -592,6 +607,91 @@ mod tests {
         assert_eq!(BUNDLED_SERVICE_NAME, "aegis-desktop-service.exe");
         #[cfg(not(target_os = "windows"))]
         assert_eq!(BUNDLED_SERVICE_NAME, "aegis-desktop-service");
+    }
+
+    #[test]
+    fn bundled_service_path_resolves_flat_and_macos_app_bundle_layouts() {
+        let unique = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("system clock must be after unix epoch")
+            .as_nanos();
+        let base = std::env::temp_dir().join(format!("aegis-bundled-service-{unique}"));
+        let _cleanup = TempDirectory(base.clone());
+
+        let flat_dir = base.join("flat");
+        let flat_exe = flat_dir.join("aegis-desktop");
+        let flat_service = flat_dir.join("resources").join(BUNDLED_SERVICE_NAME);
+        let untrusted_parent_service = base
+            .join("Resources")
+            .join("resources")
+            .join(BUNDLED_SERVICE_NAME);
+        let untrusted_parent_direct = base.join("Resources").join(BUNDLED_SERVICE_NAME);
+        fs::create_dir_all(flat_service.parent().unwrap()).unwrap();
+        fs::create_dir_all(untrusted_parent_service.parent().unwrap()).unwrap();
+        fs::write(&flat_exe, b"binary").unwrap();
+        fs::write(&untrusted_parent_service, b"untrusted").unwrap();
+        fs::write(&untrusted_parent_direct, b"untrusted").unwrap();
+        assert!(
+            bundled_service_path_for_executable(&flat_exe).is_none(),
+            "flat executable must not traverse into parent Resources directory"
+        );
+        fs::write(&flat_service, b"sidecar").unwrap();
+        assert_eq!(
+            bundled_service_path_for_executable(&flat_exe),
+            Some(flat_service)
+        );
+
+        let app_contents = base.join("AEGIS.app").join("Contents");
+        let macos_exe = app_contents.join("MacOS").join("aegis-desktop");
+        let macos_service = app_contents
+            .join("Resources")
+            .join("resources")
+            .join(BUNDLED_SERVICE_NAME);
+        fs::create_dir_all(macos_exe.parent().unwrap()).unwrap();
+        fs::create_dir_all(macos_service.parent().unwrap()).unwrap();
+        fs::write(&macos_exe, b"binary").unwrap();
+        assert!(bundled_service_path_for_executable(&macos_exe).is_none());
+        fs::write(&macos_service, b"sidecar").unwrap();
+        assert_eq!(
+            bundled_service_path_for_executable(&macos_exe),
+            Some(macos_service)
+        );
+
+        let translocated_contents = base
+            .join("AppTranslocation")
+            .join("12345678-ABCD-EF01-2345-6789ABCDEF01")
+            .join("d")
+            .join("AEGIS.app")
+            .join("Contents");
+        let translocated_exe = translocated_contents.join("MacOS").join("aegis-desktop");
+        let translocated_service = translocated_contents
+            .join("Resources")
+            .join("resources")
+            .join(BUNDLED_SERVICE_NAME);
+        fs::create_dir_all(translocated_exe.parent().unwrap()).unwrap();
+        fs::create_dir_all(translocated_service.parent().unwrap()).unwrap();
+        fs::write(&translocated_exe, b"binary").unwrap();
+        fs::write(&translocated_service, b"sidecar").unwrap();
+        assert_eq!(
+            bundled_service_path_for_executable(&translocated_exe),
+            Some(translocated_service)
+        );
+
+        let bundle_conf: Value = serde_json::from_str(include_str!("../tauri.bundle.conf.json"))
+            .expect("tauri.bundle.conf.json must be valid JSON");
+        assert_eq!(
+            bundle_conf
+                .pointer("/bundle/macOS/signingIdentity")
+                .and_then(Value::as_str),
+            Some("-"),
+            "tauri.bundle.conf.json must configure macOS bundle signing so AEGIS.app seals Contents/_CodeSignature/CodeResources and Info.plist"
+        );
+        assert_eq!(
+            bundle_conf
+                .pointer("/bundle/resources/resources~1aegis-desktop-service*")
+                .and_then(Value::as_str),
+            Some("resources/")
+        );
     }
 
     #[test]

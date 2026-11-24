@@ -21,7 +21,7 @@ import json
 import sys
 from collections.abc import Callable, Mapping
 from pathlib import Path
-from typing import Protocol, cast
+from typing import Literal, Protocol, cast
 
 from .config import (
     VALID_TRUST_LEVELS,
@@ -97,6 +97,8 @@ def main(argv: list[str] | None = None) -> int:
             print("AEGIS verification inspection (dry run): configuration valid")
             return 0
         return _cmd_verify(sub_args)
+    elif command in ("mcp-serve", "mcp"):
+        return _cmd_mcp_serve(sub_args)
     elif command in ("-h", "--help", "help"):
         _print_help()
     else:
@@ -120,6 +122,7 @@ def _print_help() -> None:
     aegis config set <key> <value>    Set a configuration value
     aegis verify inspect [path]       Inspect a project for AESE verification
     aegis verify start <task>         Create an AESE contract and agent packet
+    aegis mcp-serve [options]         Serve the bidirectional AEGIS MCP Hub
 
   Quick Start:
     pip install aegis-cognition
@@ -309,6 +312,113 @@ def _cmd_verify(args: list[str]) -> int:
         return 0
     print(f"Unknown verify operation: {operation}")
     return 2
+
+
+def _cmd_mcp_serve(args: list[str]) -> int:
+    """Serve the bidirectional AEGIS MCP Hub or print harness MCP client configs."""
+    import argparse
+    import time
+
+    parser = argparse.ArgumentParser(prog="aegis mcp-serve", add_help=False)
+    parser.add_argument("-h", "--help", action="store_true")
+    parser.add_argument("--transport", choices=("stdio", "http"), default="stdio")
+    parser.add_argument("--host", default="127.0.0.1")
+    parser.add_argument("--port", type=int, default=0)
+    parser.add_argument("--catalog", choices=("full", "hot-cold"), default="full")
+    parser.add_argument("--workspace", default=".")
+    parser.add_argument("--index-workspace", action="store_true")
+    parser.add_argument(
+        "--print-config",
+        choices=("claude_code", "codex", "antigravity", "dsh"),
+        default=None,
+    )
+    parser.add_argument("--dry-run", action="store_true")
+    try:
+        parsed = parser.parse_args(args)
+    except SystemExit:
+        print(
+            "Usage: aegis mcp-serve [--transport stdio|http] [--host 127.0.0.1] [--port 0] "
+            "[--catalog full|hot-cold] [--workspace PATH] [--index-workspace] "
+            "[--print-config claude_code|codex|antigravity|dsh] [--dry-run]",
+            file=sys.stderr,
+        )
+        return 2
+
+    if parsed.help:
+        print(
+            "Usage: aegis mcp-serve [--transport stdio|http] [--host 127.0.0.1] [--port 0] "
+            "[--catalog full|hot-cold] [--workspace PATH] [--index-workspace] "
+            "[--print-config claude_code|codex|antigravity|dsh] [--dry-run]"
+        )
+        return 0
+
+    from .hypergraph import HypergraphEngine, build_workspace_hypergraph
+    from .mcp_server import AegisMcpServer, render_harness_mcp_config_snippet
+
+    if parsed.print_config is not None:
+        print(render_harness_mcp_config_snippet(parsed.print_config), end="")
+        return 0
+
+    workspace_root = Path(parsed.workspace).expanduser().resolve()
+    try:
+        hg = build_workspace_hypergraph(workspace_root) if parsed.index_workspace else HypergraphEngine()
+        server = AegisMcpServer(
+            workspace_root=workspace_root,
+            hypergraph=hg,
+            catalog_mode=cast(Literal["full", "hot-cold"], parsed.catalog),
+        )
+    except Exception as error:
+        print(f"MCP server initialization error: {error}", file=sys.stderr)
+        return 1
+
+    if parsed.dry_run:
+        init_resp, _ = server.handle_jsonrpc_message(
+            {"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {"protocolVersion": "2025-11-25"}},
+            session_id="dry-run",
+        )
+        list_resp, _ = server.handle_jsonrpc_message(
+            {"jsonrpc": "2.0", "id": 2, "method": "tools/list", "params": {}},
+            session_id="dry-run",
+        )
+        init_result = (
+            cast(Mapping[str, object], init_resp["result"])
+            if isinstance(init_resp, Mapping) and isinstance(init_resp.get("result"), Mapping)
+            else None
+        )
+        raw_result = (
+            cast(Mapping[str, object], list_resp["result"])
+            if isinstance(list_resp, Mapping) and isinstance(list_resp.get("result"), Mapping)
+            else None
+        )
+        tools_raw = raw_result.get("tools") if raw_result is not None else None
+        tools: list[object] = list(cast(list[object], tools_raw)) if isinstance(tools_raw, list) else []
+        proto = str(init_result.get("protocolVersion", "unknown")) if init_result is not None else "unknown"
+        print(
+            json.dumps(
+                {
+                    "status": "MCP_SERVE_DRY_RUN_OK",
+                    "protocol_version": proto,
+                    "catalog_mode": parsed.catalog,
+                    "visible_tool_count": len(tools),
+                }
+            )
+        )
+        return 0
+
+    if parsed.transport == "stdio":
+        server.serve_stdio()
+        return 0
+
+    try:
+        with server.serve_loopback_http(host=parsed.host, port=parsed.port) as endpoint_url:
+            print(f"AEGIS MCP HTTP server listening on {endpoint_url}", flush=True)
+            while True:
+                time.sleep(0.5)
+    except KeyboardInterrupt:
+        return 0
+    except Exception as error:
+        print(f"MCP HTTP server error: {error}", file=sys.stderr)
+        return 1
 
 
 def _build_llm_from_config(config: dict[str, object]) -> object | None:

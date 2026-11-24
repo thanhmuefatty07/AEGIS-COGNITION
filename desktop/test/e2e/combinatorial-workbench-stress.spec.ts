@@ -249,6 +249,9 @@ test("automated Hallmark v2.0.0 and Impeccable v4.8.0 gates pass across all work
   for (const theme of ["dark", "light"] as const) {
     await page.evaluate((appearance) => {
       document.documentElement.dataset.theme = appearance;
+      for (const animation of document.getAnimations()) {
+        animation.finish();
+      }
     }, theme);
 
     // Home / Chat surface — verify sidebar brand is quiet (transparent) at rest and matches sidebar icon button primitive on hover
@@ -283,13 +286,13 @@ test("automated Hallmark v2.0.0 and Impeccable v4.8.0 gates pass across all work
     await assertHallmarkAndImpeccableGatesOnCurrentSurface(page, `chat-home-${theme}`);
 
     // Command Palette (Ctrl+Shift+P)
-    await page.keyboard.press("Control+Shift+P");
+    await page.keyboard.press("ControlOrMeta+Shift+P");
     await expect(page.getByRole("dialog", { name: "Command Palette" })).toBeVisible();
     await assertHallmarkAndImpeccableGatesOnCurrentSurface(page, `command-palette-${theme}`);
     await page.keyboard.press("Escape");
 
     // Search Modal (Ctrl+F)
-    await page.keyboard.press("Control+f");
+    await page.keyboard.press("ControlOrMeta+f");
     await expect(page.getByRole("dialog", { name: "Search" })).toBeVisible();
     const searchSettingsCheck = await page.evaluate(() => {
       const results = document.querySelector<HTMLElement>("#aegis-search-results");
@@ -414,7 +417,7 @@ test("Scenario 1: Search overlay (Ctrl+F) full keyboard lifecycle, session switc
 
   await composer.focus();
   await expect(composer).toBeFocused();
-  await page.keyboard.press("Control+f");
+  await page.keyboard.press("ControlOrMeta+f");
 
   const searchDialog = page.getByRole("dialog", { name: "Search" });
   await expect(searchDialog).toBeVisible();
@@ -449,7 +452,7 @@ test("Scenario 1: Search overlay (Ctrl+F) full keyboard lifecycle, session switc
 
   // Re-open Ctrl+F, type a zero-match query, and verify Enter does not start a new chat
   await composer.focus();
-  await page.keyboard.press("Control+f");
+  await page.keyboard.press("ControlOrMeta+f");
   await expect(searchDialog).toBeVisible();
   await searchInput.fill("zzzz-nonexistent-query-9999");
   await expect(searchDialog.getByText("No matching results")).toBeVisible();
@@ -468,7 +471,7 @@ test("Scenario 2: Command Palette (Ctrl+Shift+P) full keyboard lifecycle, comman
   const composer = page.getByRole("textbox", { name: "Message" });
   await composer.focus();
 
-  await page.keyboard.press("Control+Shift+P");
+  await page.keyboard.press("ControlOrMeta+Shift+P");
   const paletteDialog = page.getByRole("dialog", { name: "Command Palette" });
   await expect(paletteDialog).toBeVisible();
   const paletteInput = paletteDialog.getByRole("combobox", { name: "Search commands" });
@@ -491,7 +494,7 @@ test("Scenario 2: Command Palette (Ctrl+Shift+P) full keyboard lifecycle, comman
     "Preferences",
   ]) {
     if (!(await paletteDialog.isVisible())) {
-      await page.keyboard.press("Control+Shift+P");
+      await page.keyboard.press("ControlOrMeta+Shift+P");
       await expect(paletteDialog).toBeVisible();
     }
     await paletteInput.fill(query);
@@ -500,6 +503,23 @@ test("Scenario 2: Command Palette (Ctrl+Shift+P) full keyboard lifecycle, comman
     const activeTag = await page.evaluate(() => document.activeElement?.tagName ?? "BODY");
     expect(activeTag, `Active element after running "${query}" must not be BODY`).not.toBe("BODY");
   }
+
+  // Regression: when opened while document.activeElement is document.body, Escape and command execution must fall back to an interactive control
+  await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
+  expect(await page.evaluate(() => document.activeElement?.tagName ?? "BODY")).toBe("BODY");
+  await page.keyboard.press("ControlOrMeta+Shift+P");
+  await expect(paletteDialog).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(paletteDialog).toHaveCount(0);
+  expect(await page.evaluate(() => document.activeElement?.tagName ?? "BODY")).not.toBe("BODY");
+
+  await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
+  await page.keyboard.press("ControlOrMeta+Shift+P");
+  await expect(paletteDialog).toBeVisible();
+  await paletteInput.fill("Toggle Navigator");
+  await page.keyboard.press("Enter");
+  await expect(paletteDialog).toHaveCount(0);
+  expect(await page.evaluate(() => document.activeElement?.tagName ?? "BODY")).not.toBe("BODY");
 });
 
 test("Scenario 3: rapid double-trigger send deduplication (Enter + click race) creates at most one conversation and one run", async ({ page }) => {
@@ -920,6 +940,9 @@ test("Scenario 8: viewport x theme x reduced-motion matrix (640x480, 1280x800, 1
     for (const theme of ["dark", "light"] as const) {
       await page.evaluate((appearance) => {
         document.documentElement.dataset.theme = appearance;
+        for (const animation of document.getAnimations()) {
+          animation.finish();
+        }
       }, theme);
 
       for (const viewport of [
@@ -1104,13 +1127,13 @@ test("Scenario 8: viewport x theme x reduced-motion matrix (640x480, 1280x800, 1
         capturedCount += 1;
 
         // 2. search
-        await page.keyboard.press("Control+f");
+        await page.keyboard.press("ControlOrMeta+f");
         await expect(page.getByRole("dialog", { name: "Search" })).toBeVisible();
         await snap("search", theme, width, height);
         await page.keyboard.press("Escape");
 
         // 3. command-palette
-        await page.keyboard.press("Control+Shift+P");
+        await page.keyboard.press("ControlOrMeta+Shift+P");
         await expect(page.getByRole("dialog", { name: "Command Palette" })).toBeVisible();
         await snap("command-palette", theme, width, height);
         await page.keyboard.press("Escape");

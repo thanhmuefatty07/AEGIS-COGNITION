@@ -2,6 +2,9 @@
   "bundle": {
     "active": true,
     "targets": "all",
+    "macOS": {
+      "signingIdentity": "-"
+    },
     "resources": {
       "resources/aegis-desktop-service*": "resources/",
       "../THIRD_PARTY_NOTICES.md": "THIRD_PARTY_NOTICES.md",

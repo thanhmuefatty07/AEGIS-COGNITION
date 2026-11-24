@@ -142,7 +142,7 @@ test("provider setup shows only a sanitized destination host", async ({ page }) 
 test("command palette opens by shortcut, filters actions, and restores focus", async ({ page }) => {
   const composer = page.getByRole("textbox", { name: "Message" });
   await composer.focus();
-  await page.keyboard.press("Control+Shift+P");
+  await page.keyboard.press("ControlOrMeta+Shift+P");
 
   const palette = page.getByRole("dialog", { name: "Command Palette" });
   await expect(palette).toBeVisible();
@@ -157,12 +157,12 @@ test("command palette opens by shortcut, filters actions, and restores focus", a
   await expect(palette).toHaveCount(0);
   await expect(composer).toBeFocused();
 
-  await page.keyboard.press("Control+Shift+P");
+  await page.keyboard.press("ControlOrMeta+Shift+P");
   await searchBox.fill("Tracked Changes");
   await page.keyboard.press("Enter");
   await expect(page.getByRole("tab", { name: "Changes", selected: true })).toBeFocused();
 
-  await page.keyboard.press("Control+Shift+P");
+  await page.keyboard.press("ControlOrMeta+Shift+P");
   await searchBox.fill("Context Cockpit");
   await page.keyboard.press("Enter");
   await expect(page.getByRole("tab", { name: "Context", selected: true })).toBeFocused();
@@ -315,6 +315,9 @@ test("home has no serious or critical axe violations in light or dark appearance
   for (const theme of ["dark", "light"] as const) {
     await page.evaluate((appearance) => {
       document.documentElement.dataset.theme = appearance;
+      for (const animation of document.getAnimations()) {
+        animation.finish();
+      }
     }, theme);
     const results = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"]).analyze();
     const severe = results.violations.filter((violation) => violation.impact === "serious" || violation.impact === "critical");

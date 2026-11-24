@@ -186,6 +186,41 @@ PYTHON_MODULE_METADATA: dict[str, dict[str, Any]] = {
         "owning_tests": ["tests/test_resource_runtime.py"],
         "performance_budget": "Admission & lease token round-trip <= 1 ms",
     },
+    "aegis_cognition/hypergraph.py": {
+        "capability_id": "CAP-PY-HYPERGRAPH",
+        "domain": "Memory Hypergraph Facade, 10-Stage Entity Deduplication, Leiden Clustering & Hybrid PPR Retrieval",
+        "layer": "L1_ffi_bridge",
+        "adapter_or_facade_paths": [
+            "aegis_cognition/_public_exports.py",
+            "core/rust/src/memory/hypergraph.rs",
+            "core/rust/src/ffi/learning.rs",
+        ],
+        "consumers": ["aegis_cognition/mcp_server.py", "scripts/memory_context_benchmark.py"],
+        "owning_tests": ["tests/test_hypergraph_and_team_bus.py"],
+        "performance_budget": "1,000-node dedup + Leiden + hybrid query <= 250 ms; zero silent alias false merges",
+    },
+    "aegis_cognition/team_protocol.py": {
+        "capability_id": "CAP-PY-TEAM-PROTOCOL",
+        "domain": "AIP-v2 Compact Handle Envelopes, Shared Task Delta Board, GoalRound Anti-Drift & Blinded Adversarial Audit",
+        "layer": "L2_python_sdk",
+        "adapter_or_facade_paths": [
+            "aegis_cognition/_public_exports.py",
+            "core/rust/src/agent_coordination.rs",
+            "core/rust/src/sac.rs",
+        ],
+        "consumers": ["aegis_cognition/mcp_server.py", "scripts/memory_context_benchmark.py"],
+        "owning_tests": ["tests/test_hypergraph_and_team_bus.py"],
+        "performance_budget": "CompactHandleEnvelope encode/decode <= 250 us; floor(2N/3)+1 quorum & counterexample veto <= 1 ms",
+    },
+    "aegis_cognition/mcp_server.py": {
+        "capability_id": "CAP-PY-MCP-SERVER",
+        "domain": "Bidirectional AEGIS MCP Hub Server, Progressive Tool Catalog & Isolated Harness Delegation Adapters",
+        "layer": "L2_python_sdk",
+        "adapter_or_facade_paths": ["aegis_cognition/_public_exports.py", "aegis_cognition/cli.py"],
+        "consumers": ["aegis_cognition/cli.py", "tests/test_mcp_hub_and_harnesses.py"],
+        "owning_tests": ["tests/test_mcp_hub_and_harnesses.py"],
+        "performance_budget": "Compact schema validation <= 13 KiB per tool; loopback HTTP & stdio JSON-RPC dispatch <= 5 ms",
+    },
     "aegis_cognition/_public_exports.py": {
         "capability_id": "CAP-PY-PUBLIC-EXPORTS",
         "domain": "Package Version & Root Public Symbol Table",
@@ -245,7 +280,7 @@ RUST_MODULE_DOMAINS: dict[str, tuple[str, str, list[str]]] = {
     "task_ledger": ("Durable Task State Machine & Audit Trail", "L0_core_rust", ["core/rust/src/orchestrator.rs", "core/rust/src/replay.rs"]),
     "telemetry": ("Structured Runtime Telemetry & OpenTelemetry Span Export", "L0_core_rust", ["aegis_cognition/observability.py", "schemas/runtime-telemetry-v1.json"]),
     "tool_gateway": ("Capability-Gated Tool Invocation Gateway", "L0_core_rust", ["aegis_cognition/extensions.py", "core/rust/src/sandbox.rs"]),
-    "wasm_plugins": ("Wasmtime 48.0.4 Fuel- & Memory-Bounded Guest Plugin Host", "L0_core_rust", ["core/rust/src/tool_gateway.rs", "scripts/quickjs_cold_start_gate.py"]),
+    "wasm_plugins": ("Wasmtime 50.0.3 Fuel- & Memory-Bounded Guest Plugin Host", "L0_core_rust", ["core/rust/src/tool_gateway.rs", "scripts/quickjs_cold_start_gate.py"]),
 }
 
 
@@ -387,9 +422,9 @@ def build_ownership_payload() -> dict[str, Any]:
             "surface": "Python CLI (`aegis`)",
             "layer": "L3_surfaces",
             "canonical_owner": "aegis_cognition/cli.py",
-            "commands": ["init", "run", "examples", "version", "config", "verify"],
-            "consumers": ["pyproject.toml", "tests/test_public_route_boundary.py"],
-            "owning_tests": ["tests/test_public_route_boundary.py"],
+            "commands": ["init", "run", "examples", "version", "config", "verify", "mcp-serve"],
+            "consumers": ["pyproject.toml", "tests/test_public_route_boundary.py", "tests/test_mcp_hub_and_harnesses.py"],
+            "owning_tests": ["tests/test_public_route_boundary.py", "tests/test_mcp_hub_and_harnesses.py"],
             "performance_budget": "CLI `--help` / `version` / `--dry-run` <= 100 ms",
         },
         {

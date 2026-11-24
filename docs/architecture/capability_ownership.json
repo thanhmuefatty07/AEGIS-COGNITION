@@ -1,5 +1,5 @@
 {
-  "artifact_hash": "64e2cbb2f2d3aa758761bd0587b2415fba6516c933e90dfdc06fa7f2bd65fe83",
+  "artifact_hash": "2ded79818d02ef3bb7b29108ce0d372d25dd00c9f1264eec9e273406e9d348a9",
   "layer_hierarchy": [
     "L0_core_rust",
     "L1_ffi_bridge",
@@ -220,11 +220,13 @@
       ],
       "performance_budget": "Manifest discovery & schema validation <= 10 ms per extension directory",
       "public_symbols": [
+        "COMPACT_MCP_TOOL_SCHEMA_SERIALIZED_BYTES",
         "EXTENSION_MANIFEST_SCHEMA_V1",
         "ExtensionError",
         "ExtensionManifest",
         "ExtensionNotFound",
         "ExtensionRegistry",
+        "MCP_INTEROP_PROTOCOL_VERSIONS",
         "MCP_SERVER_SCHEMA_V1",
         "McpHttpConfig",
         "McpHttpProvider",
@@ -242,9 +244,15 @@
         "TOOL_DESCRIPTOR_SCHEMA_V1",
         "ToolExecutionError",
         "ToolSpec",
-        "discover_extension_manifests"
+        "compact_mcp_tool_schema",
+        "discover_extension_manifests",
+        "format_canonical_mcp_tool_id",
+        "load_cordis_patch_preserving_js_tags",
+        "parse_mcp_harness_config",
+        "resolve_mcp_harness_config_paths",
+        "validate_mcp_tool_schema_budget"
       ],
-      "symbol_count": 23
+      "symbol_count": 31
     },
     {
       "adapter_or_facade_paths": [
@@ -279,6 +287,37 @@
         "external_side_effect_key"
       ],
       "symbol_count": 14
+    },
+    {
+      "adapter_or_facade_paths": [
+        "aegis_cognition/_public_exports.py",
+        "core/rust/src/memory/hypergraph.rs",
+        "core/rust/src/ffi/learning.rs"
+      ],
+      "canonical_owner": "aegis_cognition/hypergraph.py",
+      "capability_id": "CAP-PY-HYPERGRAPH",
+      "consumers": [
+        "aegis_cognition/mcp_server.py",
+        "scripts/memory_context_benchmark.py"
+      ],
+      "domain": "Memory Hypergraph Facade, 10-Stage Entity Deduplication, Leiden Clustering & Hybrid PPR Retrieval",
+      "layer": "L1_ffi_bridge",
+      "owning_tests": [
+        "tests/test_hypergraph_and_team_bus.py"
+      ],
+      "performance_budget": "1,000-node dedup + Leiden + hybrid query <= 250 ms; zero silent alias false merges",
+      "public_symbols": [
+        "HYPERGRAPH_SCHEMA_V1",
+        "HypergraphEdgeSpec",
+        "HypergraphEngine",
+        "HypergraphNodeSpec",
+        "ReflectEvaluation",
+        "build_workspace_hypergraph",
+        "evaluate_experiential_reflect",
+        "normalize_entity_label",
+        "remap_communities_jaccard"
+      ],
+      "symbol_count": 9
     },
     {
       "adapter_or_facade_paths": [
@@ -336,6 +375,36 @@
         "calibrate_simulation"
       ],
       "symbol_count": 35
+    },
+    {
+      "adapter_or_facade_paths": [
+        "aegis_cognition/_public_exports.py",
+        "aegis_cognition/cli.py"
+      ],
+      "canonical_owner": "aegis_cognition/mcp_server.py",
+      "capability_id": "CAP-PY-MCP-SERVER",
+      "consumers": [
+        "aegis_cognition/cli.py",
+        "tests/test_mcp_hub_and_harnesses.py"
+      ],
+      "domain": "Bidirectional AEGIS MCP Hub Server, Progressive Tool Catalog & Isolated Harness Delegation Adapters",
+      "layer": "L2_python_sdk",
+      "owning_tests": [
+        "tests/test_mcp_hub_and_harnesses.py"
+      ],
+      "performance_budget": "Compact schema validation <= 13 KiB per tool; loopback HTTP & stdio JSON-RPC dispatch <= 5 ms",
+      "public_symbols": [
+        "AEGIS_MCP_SERVER_NAME",
+        "AEGIS_MCP_SERVER_VERSION",
+        "AegisMcpServer",
+        "HarnessDelegationAdapter",
+        "HarnessDelegationResult",
+        "HubToolDefinition",
+        "ProgressiveToolCatalog",
+        "SlimMcpResponse",
+        "render_harness_mcp_config_snippet"
+      ],
+      "symbol_count": 9
     },
     {
       "adapter_or_facade_paths": [
@@ -499,10 +568,59 @@
         "build_model_subagent_handler",
         "build_root_synthesizer",
         "parse_agent_plan",
+        "resource_keys_conflict",
         "validate_agent_graph",
         "validate_agent_graph_locally"
       ],
-      "symbol_count": 35
+      "symbol_count": 36
+    },
+    {
+      "adapter_or_facade_paths": [
+        "aegis_cognition/_public_exports.py",
+        "core/rust/src/agent_coordination.rs",
+        "core/rust/src/sac.rs"
+      ],
+      "canonical_owner": "aegis_cognition/team_protocol.py",
+      "capability_id": "CAP-PY-TEAM-PROTOCOL",
+      "consumers": [
+        "aegis_cognition/mcp_server.py",
+        "scripts/memory_context_benchmark.py"
+      ],
+      "domain": "AIP-v2 Compact Handle Envelopes, Shared Task Delta Board, GoalRound Anti-Drift & Blinded Adversarial Audit",
+      "layer": "L2_python_sdk",
+      "owning_tests": [
+        "tests/test_hypergraph_and_team_bus.py"
+      ],
+      "performance_budget": "CompactHandleEnvelope encode/decode <= 250 us; floor(2N/3)+1 quorum & counterexample veto <= 1 ms",
+      "public_symbols": [
+        "AIP_SCHEMA_V2",
+        "AUDIT_LEDGER_SCHEMA_V1",
+        "AdversarialAuditGate",
+        "AuditConsensusVerdict",
+        "AuditVote",
+        "BlindedAuditPacket",
+        "ChallengeFinding",
+        "CompactHandleEnvelope",
+        "GOAL_ROUND_SCHEMA_V1",
+        "GoalRoundAnchor",
+        "GoalRoundDriver",
+        "ObligationSpec",
+        "PrunedToolResult",
+        "ReconstructionObligationLedger",
+        "SharedTaskDeltaBoard",
+        "TeamBoardDelta",
+        "TeamTaskRecord",
+        "ToolResultPruner",
+        "byzantine_quorum_threshold",
+        "compact_conversation_history",
+        "estimate_wire_tokens",
+        "make_compact_handle",
+        "measure_protocol_token_compression",
+        "strip_persuasive_cot",
+        "validate_compact_handle",
+        "verify_tool_pairing_balanced"
+      ],
+      "symbol_count": 26
     },
     {
       "adapter_or_facade_paths": [
@@ -1316,7 +1434,7 @@
         "core/rust/src/tool_gateway.rs",
         "scripts/quickjs_cold_start_gate.py"
       ],
-      "domain": "Wasmtime 48.0.4 Fuel- & Memory-Bounded Guest Plugin Host",
+      "domain": "Wasmtime 50.0.3 Fuel- & Memory-Bounded Guest Plugin Host",
       "layer": "L0_core_rust",
       "module": "wasm_plugins",
       "owning_tests": [
@@ -1328,8 +1446,8 @@
   "schema": "aegis-capability-ownership-v1",
   "summary": {
     "duplicate_canonical_owner_count": 0,
-    "python_owner_module_count": 17,
-    "python_public_export_count": 215,
+    "python_owner_module_count": 20,
+    "python_public_export_count": 268,
     "rust_public_module_count": 48,
     "surface_capability_count": 4,
     "unmapped_export_count": 0,
@@ -1345,15 +1463,18 @@
         "examples",
         "version",
         "config",
-        "verify"
+        "verify",
+        "mcp-serve"
       ],
       "consumers": [
         "pyproject.toml",
-        "tests/test_public_route_boundary.py"
+        "tests/test_public_route_boundary.py",
+        "tests/test_mcp_hub_and_harnesses.py"
       ],
       "layer": "L3_surfaces",
       "owning_tests": [
-        "tests/test_public_route_boundary.py"
+        "tests/test_public_route_boundary.py",
+        "tests/test_mcp_hub_and_harnesses.py"
       ],
       "performance_budget": "CLI `--help` / `version` / `--dry-run` <= 100 ms",
       "surface": "Python CLI (`aegis`)"

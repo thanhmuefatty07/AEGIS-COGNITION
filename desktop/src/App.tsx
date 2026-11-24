@@ -1160,7 +1160,15 @@ export default function App() {
     }
     const opener = commandPaletteOpenerRef.current;
     commandPaletteOpenerRef.current = null;
-    if (opener?.isConnected && opener.getClientRects().length > 0 && !opener.closest("[inert]")) opener.focus();
+    if (opener) {
+      if (opener !== document.body && opener !== document.documentElement && opener.isConnected && opener.getClientRects().length > 0 && !opener.closest("[inert]")) {
+        opener.focus();
+      } else {
+        const fallback = document.querySelector<HTMLElement>(".composer-input")
+          ?? document.querySelector<HTMLElement>(".settings-nav button:not([disabled]), .app-frame button:not([disabled]), .app-frame input:not([disabled])");
+        fallback?.focus();
+      }
+    }
   }, [commandPaletteOpen]);
 
   useEffect(() => {
@@ -1170,7 +1178,15 @@ export default function App() {
     }
     const opener = searchOpenerRef.current;
     searchOpenerRef.current = null;
-    if (opener?.isConnected && opener.getClientRects().length > 0 && !opener.closest("[inert]")) opener.focus();
+    if (opener) {
+      if (opener !== document.body && opener !== document.documentElement && opener.isConnected && opener.getClientRects().length > 0 && !opener.closest("[inert]")) {
+        opener.focus();
+      } else {
+        const fallback = document.querySelector<HTMLElement>(".composer-input")
+          ?? document.querySelector<HTMLElement>(".settings-nav button:not([disabled]), .app-frame button:not([disabled]), .app-frame input:not([disabled])");
+        fallback?.focus();
+      }
+    }
   }, [searchOpen]);
 
   useEffect(() => {
@@ -2780,18 +2796,27 @@ export default function App() {
   function executeWorkbenchCommand(commandId: string) {
     const opener = commandPaletteOpenerRef.current;
     commandPaletteOpenerRef.current = null;
-    setCommandPaletteOpen(false);
-    const restoreOpenerFocus = () => {
-      window.requestAnimationFrame(() => {
-        if (opener?.isConnected && opener.getClientRects().length > 0 && !opener.closest("[inert]")) {
-          opener.focus();
-          return;
-        }
-        const fallback = document.querySelector<HTMLElement>(".composer-input")
-          ?? document.querySelector<HTMLElement>(".settings-nav button:not([disabled]), .app-frame button:not([disabled]), .app-frame input:not([disabled])");
-        fallback?.focus();
-      });
+    const focusFallbackOrOpener = () => {
+      if (
+        opener
+        && opener !== document.body
+        && opener !== document.documentElement
+        && opener.isConnected
+        && opener.getClientRects().length > 0
+        && !opener.closest("[inert]")
+      ) {
+        opener.focus();
+        return;
+      }
+      const fallback = document.querySelector<HTMLElement>(".composer-input")
+        ?? document.querySelector<HTMLElement>(".settings-nav button:not([disabled]), .app-frame button:not([disabled]), .app-frame input:not([disabled])");
+      fallback?.focus();
     };
+    const restoreOpenerFocus = () => {
+      focusFallbackOrOpener();
+      window.requestAnimationFrame(focusFallbackOrOpener);
+    };
+    setCommandPaletteOpen(false);
     switch (commandId) {
       case "command-palette":
         openCommandPalette();
@@ -2802,10 +2827,11 @@ export default function App() {
         break;
       case "new-task":
         startNewTask();
+        restoreOpenerFocus();
         window.requestAnimationFrame(() => {
           const composerEl = document.querySelector<HTMLElement>(".composer-input");
           if (composerEl) composerEl.focus();
-          else restoreOpenerFocus();
+          else focusFallbackOrOpener();
         });
         break;
       case "toggle-navigator":
@@ -2817,40 +2843,55 @@ export default function App() {
         openDestination("chat");
         setWorkTab("files");
         setWorkPanelOpen(true);
+        focusFallbackOrOpener();
         window.requestAnimationFrame(() => {
-          (searchRef.current ?? workPanelRef.current?.querySelector<HTMLButtonElement>("#inspector-tab-files"))?.focus();
+          const target = searchRef.current ?? workPanelRef.current?.querySelector<HTMLButtonElement>("#inspector-tab-files");
+          if (target) target.focus();
+          else focusFallbackOrOpener();
         });
         break;
       case "open-changes":
         openDestination("chat");
         setWorkTab("changes");
         setWorkPanelOpen(true);
+        focusFallbackOrOpener();
         window.requestAnimationFrame(() => {
-          workPanelRef.current?.querySelector<HTMLButtonElement>("#inspector-tab-changes")?.focus();
+          const target = workPanelRef.current?.querySelector<HTMLButtonElement>("#inspector-tab-changes");
+          if (target) target.focus();
+          else focusFallbackOrOpener();
         });
         break;
       case "open-map":
         openDestination("chat");
         setWorkTab("map");
         setWorkPanelOpen(true);
+        focusFallbackOrOpener();
         window.requestAnimationFrame(() => {
-          workPanelRef.current?.querySelector<HTMLButtonElement>("#inspector-tab-map")?.focus();
+          const target = workPanelRef.current?.querySelector<HTMLButtonElement>("#inspector-tab-map");
+          if (target) target.focus();
+          else focusFallbackOrOpener();
         });
         break;
       case "open-activity":
         openDestination("chat");
         setWorkTab("activity");
         setWorkPanelOpen(true);
+        focusFallbackOrOpener();
         window.requestAnimationFrame(() => {
-          workPanelRef.current?.querySelector<HTMLButtonElement>("#inspector-tab-activity")?.focus();
+          const target = workPanelRef.current?.querySelector<HTMLButtonElement>("#inspector-tab-activity");
+          if (target) target.focus();
+          else focusFallbackOrOpener();
         });
         break;
       case "open-context":
         openDestination("chat");
         setWorkTab("context");
         setWorkPanelOpen(true);
+        focusFallbackOrOpener();
         window.requestAnimationFrame(() => {
-          workPanelRef.current?.querySelector<HTMLButtonElement>("#inspector-tab-context")?.focus();
+          const target = workPanelRef.current?.querySelector<HTMLButtonElement>("#inspector-tab-context");
+          if (target) target.focus();
+          else focusFallbackOrOpener();
         });
         break;
       case "send":
@@ -2864,8 +2905,11 @@ export default function App() {
         break;
       case "preferences":
         openDestination("settings");
+        focusFallbackOrOpener();
         window.requestAnimationFrame(() => {
-          (document.querySelector<HTMLElement>(".settings-nav button.active, .settings-nav button:not([disabled])") ?? opener)?.focus();
+          const target = document.querySelector<HTMLElement>(".settings-nav button.active, .settings-nav button:not([disabled])");
+          if (target) target.focus();
+          else focusFallbackOrOpener();
         });
         break;
       case "focus-next-pane":
