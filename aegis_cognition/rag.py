@@ -22,7 +22,7 @@ class RAGManager:
         self,
         learning_manager: Any = None,
         data_sources: list[str] | None = None,
-        retrieval_method: str = "hybrid (lexical + vector)",
+        retrieval_method: str | None = None,
         retrieval_level: str = "global",
         top_k: int = 3,
         context_level: str = "2-hop",
@@ -40,7 +40,8 @@ class RAGManager:
     ) -> None:
         self.learning_manager = learning_manager or LearningManager()
         self.data_sources = data_sources or ["Past Session Transcripts", "Evidence Index", "AST Signatures"]
-        self.retrieval_method = retrieval_method
+        self._explicit_retrieval_method = retrieval_method
+        self.retrieval_method = retrieval_method or "lexical_bm25 (candidate-only)"
         self.retrieval_level = retrieval_level
         self.top_k = top_k
         self.context_level = context_level
@@ -163,11 +164,16 @@ class RAGManager:
             return ""
 
         # Formats the RAG Strategy and metadata blocks
+        if self._explicit_retrieval_method is not None:
+            effective_method = self._explicit_retrieval_method
+        else:
+            observed_tiers = sorted({str(getattr(c, "tier", "")).strip() for c in candidates if getattr(c, "tier", "")})
+            effective_method = ", ".join(observed_tiers) if observed_tiers else self.retrieval_method
         sources_str = ", ".join(self.data_sources)
         retrieval_strategy = (
             f"[RETRIEVAL STRATEGY]\n"
             f"- Nguồn dữ liệu: {sources_str}\n"
-            f"- Kỹ thuật truy xuất: {self.retrieval_method}\n"
+            f"- Kỹ thuật truy xuất: {effective_method}\n"
             f"- Cấp độ truy xuất: {self.retrieval_level}\n"
             f"- Kích thước kết quả: {self.top_k}"
         )
@@ -175,11 +181,13 @@ class RAGManager:
         # Candidate references intentionally contain no source text.
         context_payload = ""
         for i, candidate in enumerate(candidates):
+            raw_tier = getattr(candidate, "tier", None) or getattr(candidate, "origin_tier", None)
+            tier_text = str(raw_tier).strip() if raw_tier is not None and str(raw_tier).strip() else "unknown"
             context_payload += (
                 f"--- Candidate {i + 1} ---\n"
                 f"- Hash: {candidate.evidence_ref_hash}\n"
                 f"- Session Segment: {candidate.segment_id}\n"
-                f"- Match Tier: {candidate.tier}\n"
+                f"- Match Tier: {tier_text}\n"
                 f"- Score: {candidate.score:.4f}\n"
             )
 

@@ -20,6 +20,7 @@ pub enum ContextNodeKind {
     File,
     Symbol,
     Memory,
+    Session,
     Policy,
     Tool,
 }
@@ -283,6 +284,116 @@ impl ContextGovernor {
     ) -> Result<ContextPack, ContextGovernorError> {
         let activated = self.build_activated_graph(active_task_id, required_evidence_refs)?;
         self.build_context_pack_from_activated(&activated)
+    }
+
+    /// Deterministic fixed-point integer Personalized PageRank activation (`1_000_000` PPM scale)
+    /// over bounded neighborhood edges without floating-point drift.
+    pub fn build_ppr_activated_graph(
+        &self,
+        active_task_id: ContextNodeId,
+        required_evidence_refs: &[ContextNodeId],
+        damping_ppm: u32,
+        iterations: u8,
+    ) -> Result<ActivatedContextGraph, ContextGovernorError> {
+        const PPM_SCALE: u128 = 1_000_000;
+        if damping_ppm == 0 || (damping_ppm as u128) >= PPM_SCALE || iterations == 0 {
+            return Err(ContextGovernorError::InvalidConfig);
+        }
+        if !self.nodes.contains_key(&active_task_id) {
+            return Err(ContextGovernorError::MissingNode(active_task_id));
+        }
+        for evidence_ref in required_evidence_refs {
+            if !self.nodes.contains_key(evidence_ref) {
+                return Err(ContextGovernorError::MissingNode(*evidence_ref));
+            }
+        }
+
+        let seed_ids = canonical_ids_with_active(active_task_id, required_evidence_refs);
+        if seed_ids.len() > self.config.activation_node_cap {
+            return Err(ContextGovernorError::ActivationCapExceeded);
+        }
+
+        let ordered_ids: Vec<ContextNodeId> = self.nodes.keys().copied().collect();
+        let index_by_id: BTreeMap<ContextNodeId, usize> = ordered_ids
+            .iter()
+            .copied()
+            .enumerate()
+            .map(|(idx, id)| (id, idx))
+            .collect();
+        let n = ordered_ids.len();
+        let mut seed_mass = vec![0u128; n];
+        let per_seed = PPM_SCALE / (seed_ids.len() as u128);
+        let remainder = PPM_SCALE % (seed_ids.len() as u128);
+        for (offset, seed_id) in seed_ids.iter().enumerate() {
+            let idx = index_by_id[seed_id];
+            seed_mass[idx] = per_seed + u128::from(offset == 0) * remainder;
+        }
+
+        let alpha = damping_ppm as u128;
+        let one_minus_alpha = PPM_SCALE - alpha;
+        let mut rank = seed_mass.clone();
+        let mut next = vec![0u128; n];
+        let step_cap = iterations.min(24);
+        for _ in 0..step_cap {
+            let mut dangling_mass = 0u128;
+            for (u_idx, u_id) in ordered_ids.iter().enumerate() {
+                let deg = self.edges.get(u_id).map_or(0, BTreeSet::len);
+                if deg == 0 {
+                    dangling_mass = dangling_mass.saturating_add(rank[u_idx]);
+                }
+            }
+            for i in 0..n {
+                let teleport = (one_minus_alpha * seed_mass[i]) / PPM_SCALE;
+                let sink_share = (((alpha * dangling_mass) / PPM_SCALE) * seed_mass[i]) / PPM_SCALE;
+                next[i] = teleport.saturating_add(sink_share);
+            }
+            for (u_idx, u_id) in ordered_ids.iter().enumerate() {
+                if rank[u_idx] == 0 {
+                    continue;
+                }
+                let Some(nbrs) = self.edges.get(u_id) else {
+                    continue;
+                };
+                if nbrs.is_empty() {
+                    continue;
+                }
+                let out_total = (alpha * rank[u_idx]) / PPM_SCALE;
+                let share = out_total / (nbrs.len() as u128);
+                if share == 0 {
+                    continue;
+                }
+                for nbr_id in nbrs {
+                    if let Some(&v_idx) = index_by_id.get(nbr_id) {
+                        next[v_idx] = next[v_idx].saturating_add(share);
+                    }
+                }
+            }
+            std::mem::swap(&mut rank, &mut next);
+        }
+
+        let mut activated: BTreeSet<ContextNodeId> = seed_ids.iter().copied().collect();
+        let mut ranked_candidates: Vec<(u128, ContextNodeId)> = ordered_ids
+            .iter()
+            .copied()
+            .enumerate()
+            .filter(|(idx, id)| rank[*idx] > 0 && !activated.contains(id))
+            .map(|(idx, id)| (rank[idx], id))
+            .collect();
+        ranked_candidates.sort_by(|a, b| b.0.cmp(&a.0).then_with(|| a.1.cmp(&b.1)));
+        for (_, cand_id) in ranked_candidates {
+            if activated.len() >= self.config.activation_node_cap {
+                break;
+            }
+            activated.insert(cand_id);
+        }
+
+        let node_ids: Vec<ContextNodeId> = activated.into_iter().collect();
+        Ok(ActivatedContextGraph {
+            active_task_id,
+            required_evidence_refs: canonical_ids(required_evidence_refs),
+            activation_node_count: node_ids.len(),
+            node_ids,
+        })
     }
 
     /// Select already-hydrated nodes without inventing a task node. The

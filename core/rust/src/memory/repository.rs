@@ -117,6 +117,18 @@ pub struct MemoryCaptureOutcome {
     pub index_pending: bool,
 }
 
+#[derive(Clone, Debug, PartialEq)]
+pub struct MemoryReflectionView {
+    pub memory_id: u128,
+    pub owner_id: String,
+    pub scope_kind: String,
+    pub supporting_count: u32,
+    pub contradicting_count: u32,
+    pub last_reflected_at_ms: u64,
+    pub code_fingerprint_hex: Option<String>,
+    pub verdict: crate::memory::fidelity::ExperientialReflectVerdict,
+}
+
 pub struct MemoryRepository {
     connection: Connection,
 }
@@ -513,6 +525,16 @@ impl MemoryRepository {
                  );
              CREATE VIRTUAL TABLE IF NOT EXISTS memory_records_fts
                  USING fts5(memory_id UNINDEXED, owner_id UNINDEXED, scope_kind UNINDEXED, content);
+             CREATE TABLE IF NOT EXISTS memory_reflections (
+                 memory_id TEXT NOT NULL REFERENCES memory_records(memory_id) ON DELETE CASCADE,
+                 owner_id TEXT NOT NULL,
+                 scope_kind TEXT NOT NULL,
+                 supporting_count INTEGER NOT NULL DEFAULT 0 CHECK (supporting_count >= 0),
+                 contradicting_count INTEGER NOT NULL DEFAULT 0 CHECK (contradicting_count >= 0),
+                 last_reflected_at_ms INTEGER NOT NULL CHECK (last_reflected_at_ms > 0),
+                 code_fingerprint_hex TEXT,
+                 PRIMARY KEY(memory_id, owner_id, scope_kind)
+             );
              ",
         )?;
         ensure_column(&connection, "memory_records", "validation_basis TEXT")?;
@@ -2486,6 +2508,145 @@ impl MemoryRepository {
         Self::sync_index_in_transaction(&transaction, memory_id, Some(observed_at_ms))?;
         transaction.commit()?;
         Ok(true)
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    pub fn record_reflection_as(
+        &mut self,
+        memory_id: u128,
+        subject_id: &str,
+        owner_id: &str,
+        scope_kind: &str,
+        supporting: bool,
+        observed_at_ms: u64,
+        code_fingerprint_hex: Option<&str>,
+    ) -> Result<MemoryReflectionView, MemoryRepositoryError> {
+        self.require_access(subject_id, owner_id, scope_kind, true, observed_at_ms)?;
+        if memory_id == 0 || observed_at_ms == 0 {
+            return Err(MemoryRepositoryError::InvalidInput(
+                "memory_id and observed_at_ms must be non-zero",
+            ));
+        }
+        if let Some(fp) = code_fingerprint_hex {
+            if fp.len() > 128 || fp.chars().any(char::is_control) {
+                return Err(MemoryRepositoryError::InvalidInput(
+                    "invalid code_fingerprint_hex",
+                ));
+            }
+        }
+        let exists: Option<String> = self
+            .connection
+            .query_row(
+                "SELECT lifecycle FROM memory_records
+                 WHERE memory_id = ?1 AND owner_id = ?2 AND scope_kind = ?3",
+                params![memory_id.to_string(), owner_id, scope_kind],
+                |row| row.get(0),
+            )
+            .optional()?;
+        if exists.is_none() {
+            return Err(MemoryRepositoryError::Conflict("memory not found in scope"));
+        }
+
+        let sup_inc: i64 = if supporting { 1 } else { 0 };
+        let con_inc: i64 = if supporting { 0 } else { 1 };
+        let ts_i64 = i64::try_from(observed_at_ms)
+            .map_err(|_| MemoryRepositoryError::InvalidInput("timestamp out of range"))?;
+        self.connection.execute(
+            "INSERT INTO memory_reflections
+                (memory_id, owner_id, scope_kind, supporting_count, contradicting_count,
+                 last_reflected_at_ms, code_fingerprint_hex)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)
+             ON CONFLICT(memory_id, owner_id, scope_kind) DO UPDATE SET
+                supporting_count = supporting_count + excluded.supporting_count,
+                contradicting_count = contradicting_count + excluded.contradicting_count,
+                last_reflected_at_ms = MAX(last_reflected_at_ms, excluded.last_reflected_at_ms),
+                code_fingerprint_hex = COALESCE(excluded.code_fingerprint_hex, memory_reflections.code_fingerprint_hex)",
+            params![
+                memory_id.to_string(),
+                owner_id,
+                scope_kind,
+                sup_inc,
+                con_inc,
+                ts_i64,
+                code_fingerprint_hex,
+            ],
+        )?;
+        self.get_reflection_as(
+            memory_id,
+            subject_id,
+            owner_id,
+            scope_kind,
+            observed_at_ms,
+            code_fingerprint_hex,
+        )?
+        .ok_or(MemoryRepositoryError::Conflict(
+            "reflection persistence failed",
+        ))
+    }
+
+    pub fn get_reflection_as(
+        &self,
+        memory_id: u128,
+        subject_id: &str,
+        owner_id: &str,
+        scope_kind: &str,
+        now_ms: u64,
+        expected_code_fingerprint_hex: Option<&str>,
+    ) -> Result<Option<MemoryReflectionView>, MemoryRepositoryError> {
+        self.require_access(subject_id, owner_id, scope_kind, false, now_ms.max(1))?;
+        let row: Option<(i64, i64, i64, Option<String>, String)> = self
+            .connection
+            .query_row(
+                "SELECT r.supporting_count, r.contradicting_count, r.last_reflected_at_ms,
+                        r.code_fingerprint_hex, m.lifecycle
+                 FROM memory_reflections r
+                 JOIN memory_records m
+                   ON m.memory_id = r.memory_id
+                  AND m.owner_id = r.owner_id
+                  AND m.scope_kind = r.scope_kind
+                 WHERE r.memory_id = ?1 AND r.owner_id = ?2 AND r.scope_kind = ?3",
+                params![memory_id.to_string(), owner_id, scope_kind],
+                |row| {
+                    Ok((
+                        row.get(0)?,
+                        row.get(1)?,
+                        row.get(2)?,
+                        row.get(3)?,
+                        row.get(4)?,
+                    ))
+                },
+            )
+            .optional()?;
+        let Some((sup, con, last_ms, stored_fp, lifecycle)) = row else {
+            return Ok(None);
+        };
+        let supporting_count = u32::try_from(sup).unwrap_or(u32::MAX);
+        let contradicting_count = u32::try_from(con).unwrap_or(u32::MAX);
+        let last_reflected_at_ms = parse_u64(last_ms)?;
+        let base_fidelity = if lifecycle == "ACTIVE" { 0.80 } else { 0.55 };
+        let fp_current = match (expected_code_fingerprint_hex, stored_fp.as_deref()) {
+            (Some(exp), Some(stored)) => exp == stored,
+            _ => true,
+        };
+        let elapsed_days = (now_ms.saturating_sub(last_reflected_at_ms) as f64) / 86_400_000.0;
+        let verdict = crate::memory::fidelity::compute_experiential_reflect_score(
+            base_fidelity,
+            supporting_count,
+            contradicting_count,
+            elapsed_days,
+            crate::memory::fidelity::HALF_LIFE_DEFAULT_DAYS,
+            fp_current,
+        );
+        Ok(Some(MemoryReflectionView {
+            memory_id,
+            owner_id: owner_id.to_owned(),
+            scope_kind: scope_kind.to_owned(),
+            supporting_count,
+            contradicting_count,
+            last_reflected_at_ms,
+            code_fingerprint_hex: stored_fp,
+            verdict,
+        }))
     }
 }
 

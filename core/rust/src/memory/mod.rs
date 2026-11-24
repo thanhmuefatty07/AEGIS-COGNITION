@@ -1,6 +1,7 @@
 pub mod fidelity;
 pub mod fold;
 pub mod frame;
+pub mod hypergraph;
 pub mod nudge;
 pub mod pool;
 pub mod repository;

@@ -2672,6 +2672,24 @@ mod tests {
     }
 
     #[test]
+    fn memory_store_reinforces_latest_under_layout_budget() {
+        let budget = RuntimeLayoutBudget::new(2, 16, 64).unwrap();
+        let mut store = CogniFoldStore::new();
+        store.frames = GenerationalSlab::with_layout_budget(budget).unwrap();
+        store
+            .ingest(MemoryFrame {
+                frame_id: 10,
+                session_id: 20,
+                payload: vec![1, 2, 3, 4],
+                fidelity: 0.5,
+            })
+            .unwrap();
+        store.reinforce_latest(0.25).unwrap();
+        assert!(store.latest().unwrap().fidelity > 0.5);
+        assert_eq!(store.total_payload_bytes(), 4);
+    }
+
+    #[test]
     fn memory_store_reports_session_summary() {
         let mut store = CogniFoldStore::with_capacity(4);
         store
@@ -3801,6 +3819,29 @@ mod tests {
         let wasm = wat::parse_str(wat).unwrap();
         let result = sandbox.execute_wasm_binary(&wasm, 100000);
         assert!(result.is_err());
+    }
+
+    #[test]
+    fn wasmtime_sandbox_distinguishes_epoch_interrupt_from_fuel_exhaustion() {
+        use crate::physical::TrapReason;
+        use crate::sandbox::WasmtimeSandbox;
+
+        let wat = r#"(module (func (export "_start") (loop (br 0))))"#;
+        let wasm = wat::parse_str(wat).unwrap();
+
+        let mut fuel_sandbox = WasmtimeSandbox::new();
+        fuel_sandbox.timeout_ms = 5_000;
+        assert_eq!(
+            fuel_sandbox.execute_wasm_binary(&wasm, 5),
+            Err(TrapReason::FuelExhausted)
+        );
+
+        let mut timeout_sandbox = WasmtimeSandbox::new();
+        timeout_sandbox.timeout_ms = 30;
+        assert_eq!(
+            timeout_sandbox.execute_wasm_binary(&wasm, 50_000_000),
+            Err(TrapReason::ExecutionInterrupted)
+        );
     }
 
     #[test]

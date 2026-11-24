@@ -444,6 +444,22 @@ impl<T: HasPayloadLen> GenerationalSlab<T> {
         Ok(())
     }
 
+    pub(crate) fn update_fixed_payload<F>(
+        &mut self,
+        slot_id: SlotId,
+        update: F,
+    ) -> Result<(), &'static str>
+    where
+        F: FnOnce(&mut T),
+    {
+        let old_len = self.get(slot_id).ok_or("slot not found")?.payload_len();
+        let value = self.get_mut_untracked(slot_id).ok_or("slot not found")?;
+        update(value);
+        let new_len = value.payload_len();
+        debug_assert_eq!(new_len, old_len, "fixed-payload update changed payload_len");
+        Ok(())
+    }
+
     pub fn remove(&mut self, slot_id: SlotId) -> Option<T> {
         let (index, pool_class) = slot_id.unpack();
         let removed = match pool_class {
@@ -688,10 +704,18 @@ impl CogniFoldStore {
     }
 
     pub fn reinforce_latest(&mut self, signal_strength: f32) -> Result<(), &'static str> {
-        let slot = self.order.last().ok_or("no memory frames")?;
-        let latest = self.frames.get_mut(*slot).ok_or("no memory frames")?;
-        latest.fidelity = reinforce(latest.fidelity, signal_strength);
-        Ok(())
+        let slot = *self.order.last().ok_or("no memory frames")?;
+        self.frames
+            .update_fixed_payload(slot, |latest| {
+                latest.fidelity = reinforce(latest.fidelity, signal_strength);
+            })
+            .map_err(|err| {
+                if err == "slot not found" {
+                    "no memory frames"
+                } else {
+                    err
+                }
+            })
     }
 
     pub fn session_summary(&self) -> Option<(u128, usize, f32)> {
@@ -891,6 +915,7 @@ impl CognitiveFolding for CogniFoldEngine {
         graph
             .edges
             .retain(|edge| edge.weight >= self.config.pruning_threshold);
+        graph.rebuild_indices();
         Ok(())
     }
 }
@@ -931,6 +956,7 @@ fn deduplicate_edges(graph: &mut MemoryGraph) {
         }
     }
     graph.edges = compacted;
+    graph.rebuild_indices();
 }
 
 fn hex32(bytes: &[u8; 32]) -> String {

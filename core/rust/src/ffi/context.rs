@@ -112,11 +112,24 @@ fn context_governor_from_items(
             .and_then(|value| u32::try_from(value).ok())
             .unwrap_or(0);
         let retention_class = parse_retention_class(item.get("retention_class"))?;
+        let parsed_kind = match item.get("kind").and_then(serde_json::Value::as_str) {
+            None | Some("memory") => ContextNodeKind::Memory,
+            Some("session") => ContextNodeKind::Session,
+            Some("file") => ContextNodeKind::File,
+            Some("symbol") => ContextNodeKind::Symbol,
+            Some("evidence") => ContextNodeKind::Evidence,
+            Some("task") => ContextNodeKind::Task,
+            Some(_) => {
+                return Err(pyo3::exceptions::PyValueError::new_err(
+                    "context item kind must be session, memory, file, symbol, evidence, or task",
+                ));
+            }
+        };
         governor
             .insert_node(
                 ContextNode::new(
                     node_id,
-                    ContextNodeKind::Memory,
+                    parsed_kind,
                     token_cost,
                     utility_score,
                     dependency_coverage,

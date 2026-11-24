@@ -677,12 +677,24 @@ class ContextCompiler:
 
     @staticmethod
     def _sanitize_rendered_content(content: str) -> str:
-        return re.sub(
+        sanitized = re.sub(
             r"\[(\/?(?:ACTIVE MEMORY DATA|SOURCE|AUTHORIZED HYDRATED CONTEXT|CONFIRMED FILE RELATION)\b)",
             lambda m: f"[\u200b{m.group(1)}",
             content,
             flags=re.IGNORECASE,
         )
+        # Dynamic `max_backtick_run + 1` fence neutralization whenever content embeds code fences.
+        runs = [len(match.group(0)) for match in re.finditer(r"`{3,}", sanitized)]
+        if runs:
+            fence = "`" * (max(runs) + 1)
+            return f"{fence}text\n{sanitized}\n{fence}"
+        return sanitized
+
+    @staticmethod
+    def compute_dynamic_backtick_fence(content: str, *, min_ticks: int = 3) -> str:
+        runs = [len(match.group(0)) for match in re.finditer(r"`+", content)]
+        required = max([min_ticks, *(run + 1 for run in runs)])
+        return "`" * required
 
     @classmethod
     def _render_item(cls, item: HydratedContextItem) -> str:

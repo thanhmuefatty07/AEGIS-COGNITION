@@ -1701,13 +1701,33 @@ pub fn aegis_search_past_sessions_scoped(
             let scope_kind = memory_scope(Some(scope_kind))?;
             let candidates = index.search_sessions_scoped(&query, top_k, &scope_kind, &owner_id);
 
+            let tier_name = |tier: crate::evidence_index::EvidenceCandidateTier| -> &'static str {
+                match tier {
+                    crate::evidence_index::EvidenceCandidateTier::ActivatedContext => "ActivatedContext",
+                    crate::evidence_index::EvidenceCandidateTier::LexicalBaseline => "LexicalBaseline",
+                    crate::evidence_index::EvidenceCandidateTier::LexicalBm25 => "LexicalBm25",
+                    crate::evidence_index::EvidenceCandidateTier::FstExpansion => "FstExpansion",
+                    crate::evidence_index::EvidenceCandidateTier::BitmapFilter => "BitmapFilter",
+                    crate::evidence_index::EvidenceCandidateTier::ExactSimdRerank => "ExactSimdRerank",
+                    crate::evidence_index::EvidenceCandidateTier::ColdVectorExpansion => "ColdVectorExpansion",
+                    crate::evidence_index::EvidenceCandidateTier::AgenticProgramOutput => "AgenticProgramOutput",
+                    crate::evidence_index::EvidenceCandidateTier::BrowserPageSearch => "BrowserPageSearch",
+                    crate::evidence_index::EvidenceCandidateTier::AstSignatureMatch => "AstSignatureMatch",
+                }
+            };
+
+            let envelope_tier = candidates
+                .first()
+                .map(|c| tier_name(c.origin_tier))
+                .unwrap_or("LexicalBm25");
+
             let results: Vec<serde_json::Value> = candidates
                 .iter()
                 .map(|c| {
                     serde_json::json!({
                         "evidence_ref_hash": hex32(&c.evidence_ref_hash),
                         "segment_id": c.segment_id,
-                        "tier": "ColdVectorExpansion",
+                        "tier": tier_name(c.origin_tier),
                         "score": (c.score_quantized as f64) / (crate::evidence_index::CANDIDATE_SCORE_PPM_MAX as f64),
                         "epoch_hash": hex32(&c.index_epoch_hash),
                     })
@@ -1720,13 +1740,204 @@ pub fn aegis_search_past_sessions_scoped(
                 "top_k": top_k,
                 "count": results.len(),
                 "results": results,
-                "tier": "ColdVectorExpansion",
+                "tier": envelope_tier,
                 "gate": "CandidateOnly",
             });
 
             serde_json::to_string(&envelope).map_err(|e| {
                 pyo3::exceptions::PyRuntimeError::new_err(format!("Serialization failed: {}", e))
             })
+        })?
+    })
+}
+
+#[pyfunction]
+#[pyo3(signature = (memory_id, supporting, scope_kind="USER_PRIVATE".to_string(), owner_id=None, subject_id=None, observed_at_ms=None, code_fingerprint_hex=None))]
+pub fn aegis_record_memory_reflection(
+    py: Python<'_>,
+    memory_id: &Bound<'_, PyAny>,
+    supporting: bool,
+    scope_kind: String,
+    owner_id: Option<String>,
+    subject_id: Option<String>,
+    observed_at_ms: Option<u64>,
+    code_fingerprint_hex: Option<String>,
+) -> PyResult<String> {
+    let memory_id: u128 = if let Ok(raw_int) = memory_id.extract::<u128>() {
+        raw_int
+    } else if let Ok(raw_str) = memory_id.extract::<String>() {
+        let trimmed = raw_str.trim();
+        let parsed = if let Some(hex_body) = trimmed
+            .strip_prefix("0x")
+            .or_else(|| trimmed.strip_prefix("0X"))
+        {
+            u128::from_str_radix(hex_body, 16)
+        } else {
+            trimmed.parse::<u128>()
+        };
+        parsed.map_err(|_| {
+            pyo3::exceptions::PyValueError::new_err(
+                "memory_id must be a positive integer or 0x hex identifier",
+            )
+        })?
+    } else {
+        return Err(pyo3::exceptions::PyValueError::new_err(
+            "memory_id must be an int or string",
+        ));
+    };
+    if memory_id == 0 {
+        return Err(pyo3::exceptions::PyValueError::new_err(
+            "memory_id must be non-zero",
+        ));
+    }
+    py.detach(move || {
+        py_safe(move || {
+            let owner_id = memory_owner(owner_id)?;
+            let subject_id = memory_subject(subject_id, &owner_id)?;
+            let scope_kind = memory_scope(Some(scope_kind))?;
+            let now_ms = observed_at_ms.unwrap_or_else(|| {
+                std::time::SystemTime::now()
+                    .duration_since(std::time::UNIX_EPOCH)
+                    .map(|d| d.as_millis() as u64)
+                    .unwrap_or(1)
+            });
+            let repository =
+                get_memory_repository().map_err(pyo3::exceptions::PyRuntimeError::new_err)?;
+            let view = repository
+                .lock()
+                .record_reflection_as(
+                    memory_id,
+                    &subject_id,
+                    &owner_id,
+                    &scope_kind,
+                    supporting,
+                    now_ms,
+                    code_fingerprint_hex.as_deref(),
+                )
+                .map_err(|error| {
+                    pyo3::exceptions::PyValueError::new_err(format!(
+                        "Memory reflection update failed: {error:?}"
+                    ))
+                })?;
+            serde_json::to_string(&serde_json::json!({
+                "schema": "aegis-memory-reflection-v1",
+                "memory_id": format!("0x{:x}", view.memory_id),
+                "owner_id": view.owner_id,
+                "scope_kind": view.scope_kind,
+                "supporting_count": view.supporting_count,
+                "contradicting_count": view.contradicting_count,
+                "last_reflected_at_ms": view.last_reflected_at_ms,
+                "code_fingerprint_hex": view.code_fingerprint_hex,
+                "verdict": view.verdict,
+            }))
+            .map_err(|error| pyo3::exceptions::PyRuntimeError::new_err(error.to_string()))
+        })?
+    })
+}
+
+#[pyfunction]
+#[pyo3(signature = (payload_json))]
+pub fn aegis_hypergraph_analyze_json(py: Python<'_>, payload_json: String) -> PyResult<String> {
+    py.detach(move || {
+        py_safe(move || {
+            if payload_json.len() > 16 * 1024 * 1024 {
+                return Err(pyo3::exceptions::PyValueError::new_err(
+                    "hypergraph payload exceeds 16 MiB bound",
+                ));
+            }
+            #[derive(serde::Deserialize)]
+            struct HypergraphAnalyzeInput {
+                #[serde(default)]
+                nodes: Vec<crate::memory::hypergraph::HyperNode>,
+                #[serde(default)]
+                hyperedges: Vec<crate::memory::hypergraph::HyperEdge>,
+                #[serde(default)]
+                deduplicate: bool,
+                #[serde(default)]
+                dedup_guards: Option<crate::memory::hypergraph::DedupGuardConfig>,
+                #[serde(default)]
+                cluster_leiden: bool,
+                #[serde(default)]
+                max_community_size: Option<usize>,
+                #[serde(default)]
+                previous_communities: Option<std::collections::BTreeMap<u128, u32>>,
+                #[serde(default)]
+                changed_paths: Vec<String>,
+                #[serde(default)]
+                blast_max_hops: Option<u8>,
+                #[serde(default)]
+                query: Option<String>,
+                #[serde(default)]
+                top_k: Option<usize>,
+                #[serde(default)]
+                at_timestamp_ms: Option<u64>,
+                #[serde(default)]
+                retrieval_ablation: Option<crate::memory::hypergraph::RetrievalAblationConfig>,
+            }
+            let input: HypergraphAnalyzeInput =
+                serde_json::from_str(&payload_json).map_err(|error| {
+                    pyo3::exceptions::PyValueError::new_err(format!(
+                        "invalid hypergraph JSON: {error}"
+                    ))
+                })?;
+            let mut hg = crate::memory::hypergraph::MemoryHypergraph::new();
+            for node in input.nodes {
+                hg.upsert_node(node)
+                    .map_err(pyo3::exceptions::PyValueError::new_err)?;
+            }
+            for edge in input.hyperedges {
+                hg.upsert_hyperedge(edge)
+                    .map_err(pyo3::exceptions::PyValueError::new_err)?;
+            }
+            let dedup_report = if input.deduplicate {
+                Some(hg.deduplicate_entities(input.dedup_guards.unwrap_or_default()))
+            } else {
+                None
+            };
+            let communities = if input.cluster_leiden {
+                hg.detect_communities_leiden(
+                    input
+                        .max_community_size
+                        .unwrap_or(crate::memory::hypergraph::DEFAULT_MAX_COMMUNITY_SIZE),
+                    input.previous_communities.as_ref(),
+                )
+            } else {
+                Vec::new()
+            };
+            let k = input.top_k.unwrap_or(10).clamp(1, 200);
+            let god_nodes = hg.god_nodes(k);
+            let surprising_connections = hg.surprising_connections(k);
+            let affected_nodes = if input.changed_paths.is_empty() {
+                Vec::new()
+            } else {
+                hg.affected_nodes(
+                    &input.changed_paths,
+                    input.blast_max_hops.unwrap_or(3),
+                    input.at_timestamp_ms,
+                )
+            };
+            let retrieval_hits = if let Some(ref q) = input.query {
+                hg.hybrid_retrieve(
+                    q,
+                    k,
+                    input.at_timestamp_ms,
+                    input.retrieval_ablation.unwrap_or_default(),
+                )
+            } else {
+                Vec::new()
+            };
+            serde_json::to_string(&serde_json::json!({
+                "schema": "aegis-hypergraph-analysis-v1",
+                "node_count": hg.node_count(),
+                "hyperedge_count": hg.hyperedge_count(),
+                "dedup_report": dedup_report,
+                "communities": communities,
+                "god_nodes": god_nodes,
+                "surprising_connections": surprising_connections,
+                "affected_nodes": affected_nodes,
+                "retrieval_hits": retrieval_hits,
+            }))
+            .map_err(|error| pyo3::exceptions::PyRuntimeError::new_err(error.to_string()))
         })?
     })
 }

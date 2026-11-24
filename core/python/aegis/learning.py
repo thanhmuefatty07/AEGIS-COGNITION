@@ -128,7 +128,7 @@ class SessionSearchCandidate:
         return cls(
             evidence_ref_hash=str(data.get("evidence_ref_hash", "")),
             segment_id=int(data.get("segment_id", 0)),
-            tier=str(data.get("tier", "ColdVectorExpansion")),
+            tier=str(data.get("tier", "LexicalBm25")),
             score=float(data.get("score", 0.0)),
             epoch_hash=str(data.get("epoch_hash", "")),
         )
@@ -156,7 +156,7 @@ class SessionSearchResult:
             top_k=int(data.get("top_k", 0)),
             count=len(candidates),
             results=candidates,
-            tier=str(data.get("tier", "ColdVectorExpansion")),
+            tier=str(data.get("tier", "LexicalBm25")),
             gate=str(data.get("gate", "CandidateOnly")),
         )
 
@@ -459,6 +459,9 @@ class LearningManager:
                     raise ValueError("retention_class must be protected, condensable, or ephemeral")
                 if normalized_retention != "condensable":
                     payload[-1]["retention_class"] = normalized_retention
+            item_kind = item.get("kind")
+            if isinstance(item_kind, str) and item_kind in {"session", "memory", "file", "symbol", "evidence", "task"}:
+                payload[-1]["kind"] = item_kind
         payload_json = json.dumps(payload, sort_keys=True, separators=(",", ":"))
         mandatory_ids_json = json.dumps([f"0x{int(session_id):x}" for session_id in mandatory_session_ids])
         if (
@@ -1207,6 +1210,44 @@ class LearningManager:
             owner_id,
         )
         return json.loads(raw)
+
+    def record_memory_reflection(
+        self,
+        memory_id: int | str,
+        *,
+        supporting: bool,
+        scope_kind: str = "USER_PRIVATE",
+        owner_id: str | None = None,
+        subject_id: str | None = None,
+        observed_at_ms: int | None = None,
+        code_fingerprint_hex: str | None = None,
+    ) -> dict[str, Any]:
+        """Record an experiential supporting or contradicting outcome on a memory."""
+        if not isinstance(supporting, bool):
+            raise TypeError("supporting must be a boolean")
+        fn = getattr(self._native, "aegis_record_memory_reflection", None)
+        if not callable(fn):
+            raise RuntimeError("native memory reflection binding is unavailable")
+        raw = fn(
+            memory_id,
+            supporting,
+            scope_kind,
+            owner_id,
+            subject_id,
+            observed_at_ms,
+            code_fingerprint_hex,
+        )
+        return json.loads(raw)
+
+    def analyze_hypergraph(self, payload: dict[str, Any]) -> dict[str, Any]:
+        """Execute native Rust hypergraph dedup, Leiden clustering, blast-radius, and hybrid retrieval."""
+        if not isinstance(payload, dict):
+            raise TypeError("hypergraph payload must be a dict")
+        fn = getattr(self._native, "aegis_hypergraph_analyze_json", None)
+        if not callable(fn):
+            raise RuntimeError("native hypergraph binding is unavailable")
+        encoded = json.dumps(payload, ensure_ascii=False, separators=(",", ":"))
+        return json.loads(fn(encoded))
 
 
 __all__ = [
