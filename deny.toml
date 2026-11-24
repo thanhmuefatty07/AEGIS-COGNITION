@@ -1,38 +1,8 @@
 [advisories]
 version = 2
-ignore = [
-    "RUSTSEC-2026-0352",
-    "RUSTSEC-2026-0353",
-    "RUSTSEC-2026-0354",
-    "RUSTSEC-2026-0355",
-    "RUSTSEC-2026-0356",
-    "RUSTSEC-2026-0357",
-    "RUSTSEC-2026-0358",
-    "RUSTSEC-2026-0359",
-    "RUSTSEC-2026-0361",
-    "RUSTSEC-2026-0362",
-    "RUSTSEC-2026-0363",
-    "RUSTSEC-2026-0364",
-    "RUSTSEC-2026-0378",
-    "RUSTSEC-2026-0379",
-    "RUSTSEC-2026-0391",
-    "RUSTSEC-2026-0395",
-    "RUSTSEC-2026-0396",
-    "RUSTSEC-2026-0397",
-    "RUSTSEC-2026-0398",
-    "RUSTSEC-2026-0399",
-    "RUSTSEC-2026-0400",
-    "RUSTSEC-2026-0401",
-    "RUSTSEC-2026-0402",
-    "RUSTSEC-2026-0403",
-    "RUSTSEC-2026-0404",
-    "RUSTSEC-2026-0405",
-    "RUSTSEC-2026-0406",
-    "RUSTSEC-2026-0420",
-    "RUSTSEC-2026-0422",
-    "RUSTSEC-2026-0423",
-    "RUSTSEC-2026-0424",
-]
+# Transitive `arrow-array 60.x` hard-depends on unmaintained `chrono` (no upstream feature flag to disable).
+# Re-evaluate when Arrow drops `chrono` or Arrow IPC is replaced. Zero vulnerability CVEs may be ignored.
+ignore = ["RUSTSEC-2026-0543"]
 
 [bans]
 multiple-versions = "warn"
@@ -53,7 +23,6 @@ allow = [
     "CDLA-Permissive-2.0",
     "ISC",
     "MIT",
-    "MPL-2.0",
     "Unicode-3.0",
     "Zlib",
 ]
@@ -66,4 +35,4 @@ unknown-registry = "deny"
 unknown-git = "deny"
 required-git-spec = "rev"
 allow-registry = ["https://github.com/rust-lang/crates.io-index"]
-allow-git = ["https://github.com/extism/extism"]
+allow-git = []

@@ -11,12 +11,14 @@ ARTIFACTS_DIR = ROOT / "artifacts"
 REPORT_PATH = ARTIFACTS_DIR / "dependency_audit_gate_report.json"
 
 REQUIRED_DIRECT_DEPS: dict[str, str] = {
-    "arrow": "54",
-    "arrow-buffer": "54",
-    "blake3": "1.5.0",
+    "arrow": "60",
+    "arrow-buffer": "60",
+    "blake3": "1.8",
+    "flatbuffers": "25.12",
     "pyo3": "0.29.2",
     "rayon": "1.12",
-    "wasmtime": "48.0.4",
+    "rusqlite": "0.42",
+        "wasmtime": "50.0.3",
     "windows-sys": "0.61.2",
 }
 CRATES_IO_SOURCE = "registry+https://github.com/rust-lang/crates.io-index"
@@ -53,14 +55,22 @@ def evaluate_dependency_audit_gate(root: str | Path = ROOT) -> dict[str, Any]:
     checks = []
     for dep_name, manifest_version in REQUIRED_DIRECT_DEPS.items():
         manifest_value = dependencies.get(dep_name)
-        manifest_ok = _manifest_version(manifest_value) == manifest_version
+        declared_manifest_version = _manifest_version(manifest_value)
+        exact_manifest_pin = _is_exact_manifest_pin(manifest_value)
+        manifest_ok = bool(declared_manifest_version) and _version_at_least(
+            declared_manifest_version, manifest_version
+        )
         lock_package = lock_packages.get(dep_name)
-        lock_ok = lock_package is not None and _lock_version_compatible(manifest_version, lock_package.version)
+        lock_ok = lock_package is not None and (
+            lock_package.version == declared_manifest_version
+            if exact_manifest_pin
+            else _lock_version_compatible(declared_manifest_version, lock_package.version)
+        )
         source_ok = lock_package is not None and lock_package.source == CRATES_IO_SOURCE
         checksum_ok = lock_package is not None and len(lock_package.checksum) == 64
         record = {
             "name": dep_name,
-            "manifest_version": _manifest_version(manifest_value),
+            "manifest_version": declared_manifest_version,
             "required_manifest_version": manifest_version,
             "lock_version": "" if lock_package is None else lock_package.version,
             "source": "" if lock_package is None else lock_package.source,
@@ -133,6 +143,25 @@ def _manifest_version(value: Any) -> str:
     if isinstance(value, dict) and isinstance(value.get("version"), str):
         return value["version"].lstrip("=")
     return ""
+
+
+def _is_exact_manifest_pin(value: Any) -> bool:
+    if isinstance(value, str):
+        return value.startswith("=")
+    if isinstance(value, dict) and isinstance(value.get("version"), str):
+        return value["version"].startswith("=")
+    return False
+
+
+def _version_at_least(candidate: str, minimum: str) -> bool:
+    cand_parts = _version_parts(candidate)
+    min_parts = _version_parts(minimum)
+    if not cand_parts or not min_parts:
+        return False
+    width = max(len(cand_parts), len(min_parts))
+    padded_cand = cand_parts + (0,) * (width - len(cand_parts))
+    padded_min = min_parts + (0,) * (width - len(min_parts))
+    return padded_cand >= padded_min
 
 
 def _all_dependencies(manifest: dict[str, Any]) -> dict[str, Any]:

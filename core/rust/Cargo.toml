@@ -38,7 +38,7 @@ harness = false
 [features]
 default = []
 python-extension = ["pyo3/extension-module"]
-wasm-plugins = ["dep:extism", "dep:wasmparser"]
+wasm-plugins = ["dep:wasmparser"]
 network-h3 = []
 fast-json = []
 
@@ -49,10 +49,10 @@ notify = "8.2.0"
 parking_lot = "0.12"
 ed25519-dalek = { version = "2", features = ["rand_core"] }
 pyo3 = { version = "0.29.2", features = ["macros"] }
-arrow = "54"
-arrow-buffer = "54"
-flatbuffers = "24.12.23"
-syn = { version = "2.0", features = ["full", "parsing", "printing", "clone-impls", "visit-mut"] }
+arrow = "60"
+arrow-buffer = "60"
+flatbuffers = "25.12"
+syn = { version = "2.0", features = ["full", "parsing", "printing", "clone-impls", "visit", "visit-mut"] }
 proc-macro2 = "1.0"
 quote = "1.0"
 serde = { version = "1.0", features = ["derive"] }
@@ -60,16 +60,16 @@ serde_json = "1.0"
 regex = "1.10"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
-wasmtime = "=48.0.4"
-extism = { git = "https://github.com/extism/extism", rev = "d5da29759bba88645f886d9e12d3f4e4376df7b3", default-features = false, optional = true }
-wasmparser = { version = "=0.254.2", optional = true }
-wat = "1.251.0"
-blake3 = "1.5.0"
+wasmtime = { version = "=50.0.3", default-features = false, features = ["cranelift", "pooling-allocator", "parallel-compilation", "runtime", "std"] }
+wasmparser = { version = "=0.261.0", optional = true }
+wat = "=1.261.0"
+blake3 = "1.8"
 xxhash-rust = { version = "0.8.10", features = ["xxh3"] }
 aho-corasick = "1.1.2"
-tokio = { version = "1", features = ["rt", "sync", "fs", "io-util"] }
+unicode-normalization = "0.1"
+tokio = { version = "1", features = ["rt", "rt-multi-thread", "sync", "fs", "io-util", "time"] }
 rayon = "1.12"
-rusqlite = { version = "0.40.2", features = ["bundled", "backup"] }
+rusqlite = { version = "0.42", features = ["bundled", "backup"] }
 libc = "0.2"
 
 [target.'cfg(windows)'.dependencies]

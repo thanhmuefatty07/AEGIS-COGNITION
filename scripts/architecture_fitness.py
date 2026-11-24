@@ -202,8 +202,13 @@ def main() -> int:
         check(
             "native_boundary_versions",
             dependencies.get("pyo3", {}).get("version") == "0.29.2"
-            and dependencies.get("wasmtime") in {"48.0.4", "=48.0.4"},
-            "PyO3 0.29.2 and Wasmtime 48.0.4 are the approved native boundary versions",
+            and (
+                dependencies.get("wasmtime", {}).get("version")
+                if isinstance(dependencies.get("wasmtime"), dict)
+                else dependencies.get("wasmtime")
+            )
+            in {"50.0.3", "=50.0.3"},
+            "PyO3 0.29.2 and Wasmtime 50.0.3 are the approved native boundary versions",
         ),
         check(
             "resource_runtime_modules",

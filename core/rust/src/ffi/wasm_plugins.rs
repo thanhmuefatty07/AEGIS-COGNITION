@@ -66,7 +66,7 @@ impl PyWasmPlugin {
         )?;
         let runtime = Arc::clone(&self.runtime);
         let (output, fuel_consumed) = py
-            .detach(move || runtime.call(&function, &input))
+            .detach(move || runtime.call_owned(&function, input))
             .map_err(|error| pyo3::exceptions::PyRuntimeError::new_err(error.to_string()))?;
         Ok((PyBytes::new(py, &output), fuel_consumed))
     }

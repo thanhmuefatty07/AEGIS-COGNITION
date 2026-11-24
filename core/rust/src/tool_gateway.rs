@@ -1336,6 +1336,7 @@ fn trap_reason_tag(trap_reason: TrapReason) -> u8 {
         TrapReason::InvariantViolation => 3,
         TrapReason::PavBelowThreshold => 4,
         TrapReason::NoConsensus => 5,
+        TrapReason::ExecutionInterrupted => 6,
     }
 }
 

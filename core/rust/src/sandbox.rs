@@ -481,14 +481,7 @@ impl WasmtimeSandbox {
                     fuel_consumed,
                 })
             }
-            Err(e) => {
-                let err_str = e.to_string();
-                if err_str.contains("fuel") || err_str.contains("interrupt") {
-                    Err(TrapReason::FuelExhausted)
-                } else {
-                    Err(TrapReason::InvariantViolation)
-                }
-            }
+            Err(e) => Err(classify_wasm_execution_trap(&e)),
         }
     }
 
@@ -589,14 +582,7 @@ impl WasmtimeSandbox {
                     fuel_consumed,
                 })
             }
-            Err(e) => {
-                let err_str = e.to_string();
-                if err_str.contains("fuel") || err_str.contains("interrupt") {
-                    Err(TrapReason::FuelExhausted)
-                } else {
-                    Err(TrapReason::InvariantViolation)
-                }
-            }
+            Err(e) => Err(classify_wasm_execution_trap(&e)),
         }
     }
 
@@ -1013,6 +999,25 @@ impl WasmExecutionSandbox for WasmtimeSandbox {
 
     fn backend_config(&self) -> SandboxBackendConfig {
         self.config
+    }
+}
+
+fn classify_wasm_execution_trap(err: &wasmtime::Error) -> TrapReason {
+    if let Some(trap) = err.downcast_ref::<wasmtime::Trap>() {
+        match trap {
+            wasmtime::Trap::OutOfFuel => return TrapReason::FuelExhausted,
+            wasmtime::Trap::Interrupt => return TrapReason::ExecutionInterrupted,
+            _ => {}
+        }
+    }
+    let err_str = err.to_string().to_ascii_lowercase();
+    if err_str.contains("interrupt") || err_str.contains("deadline") || err_str.contains("timeout")
+    {
+        TrapReason::ExecutionInterrupted
+    } else if err_str.contains("fuel") {
+        TrapReason::FuelExhausted
+    } else {
+        TrapReason::InvariantViolation
     }
 }
 

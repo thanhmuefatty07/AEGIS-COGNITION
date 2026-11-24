@@ -8,11 +8,11 @@ ARTIFACTS_DIR = ROOT / "artifacts"
 REPORT_PATH = ARTIFACTS_DIR / "governance_gate_report.json"
 
 REQUIRED_DEPENDENCIES = {
-    "arrow": "54",
-    "arrow-buffer": "54",
-    "blake3": "1.5.0",
+    "arrow": "60",
+    "arrow-buffer": "60",
+    "blake3": "1.8",
     "pyo3": "0.29.2",
-    "wasmtime": "48.0.4",
+        "wasmtime": "50.0.3",
 }
 GOVERNANCE_DOMAINS = [
     "runtime",

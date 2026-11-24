@@ -840,12 +840,14 @@ def test_dependency_audit_gate_binds_required_rust_hotpath_dependencies():
         (rust / "Cargo.toml").write_text(
             """
 [dependencies]
-arrow = "54"
-arrow-buffer = "54"
-blake3 = "1.5.0"
+arrow = "60"
+arrow-buffer = "60"
+blake3 = "1.8"
+flatbuffers = "25.12"
 pyo3 = { version = "0.29.2", features = ["extension-module"] }
 rayon = "1.12"
-wasmtime = "48.0.4"
+rusqlite = { version = "0.42", features = ["bundled", "backup"] }
+wasmtime = { version = "=50.0.3", default-features = false, features = ["cranelift", "pooling-allocator", "parallel-compilation", "runtime", "std"] }
 
 [target.'cfg(windows)'.dependencies]
 windows-sys = "0.61.2"
@@ -862,12 +864,14 @@ checksum = "{idx:064x}"
 """
             for idx, (name, version) in enumerate(
                 (
-                    ("arrow", "54.3.1"),
-                    ("arrow-buffer", "54.3.1"),
-                    ("blake3", "1.5.0"),
+                    ("arrow", "60.1.0"),
+                    ("arrow-buffer", "60.1.0"),
+                    ("blake3", "1.8.2"),
+                    ("flatbuffers", "25.12.19"),
                     ("pyo3", "0.29.2"),
                     ("rayon", "1.12.0"),
-                    ("wasmtime", "48.0.4"),
+                    ("rusqlite", "0.42.0"),
+                    ("wasmtime", "50.0.3"),
                     ("windows-sys", "0.61.2"),
                 ),
                 start=1,
@@ -879,7 +883,7 @@ checksum = "{idx:064x}"
         report = evaluate_dependency_audit_gate(root)
         assert report["truth_claim"] is False
         assert report["overall_ok"] is True
-        assert report["passed"] == 8
+        assert report["passed"] == 10
         assert all(record["record_digest"] for record in report["records"])
 
         (root / "Cargo.lock").write_text("version = 4\n", encoding="utf-8")
