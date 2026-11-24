@@ -3124,6 +3124,10 @@ def test_hermes_rpc_baseline_gate_uses_aggregate_mmap_overhead():
                 "scripts.research.comparators.external.rpc_context_baseline_gate._measure_mmap_payload_view_ns",
                 return_value=1_000.0,
             ),
+            patch(
+                "scripts.research.comparators.external.rpc_context_baseline_gate._measure_equal_workload_mmap_frames_ns",
+                return_value=(1_000.0, "ab" * 32, gate.BASELINE_FRAME_COUNT),
+            ),
             patch("scripts.research.comparators.external.rpc_context_baseline_gate._git_commit", return_value="a" * 40),
         ):
             json_rpc_measure.return_value = (
@@ -3136,6 +3140,8 @@ def test_hermes_rpc_baseline_gate_uses_aggregate_mmap_overhead():
         payload = gate.report_to_dict(report)
         evidence = payload["physical_evidence"]
         assert report.overall_ok
+        assert evidence["equal_workload_digest_matches_json_rpc"] is True
+        assert evidence["aegis_raw_view_only_ns"] == 1_000.0
         assert evidence["aegis_aggregate_mmap_frame_count"] == 1
         assert evidence["aegis_aggregate_mmap_replaces_json_rpc_frames"] == gate.BASELINE_FRAME_COUNT
         assert evidence["aegis_mmap_overhead_percent"] == 0.1

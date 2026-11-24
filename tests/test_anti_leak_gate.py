@@ -64,3 +64,60 @@ jobs:
 
     assert code == 1
     assert any("forbidden_upload_artifact:artifacts/private/raw.json" in err for err in errors)
+
+
+def test_anti_leak_gate_handles_multiline_quoted_allowed_uploads_and_no_yaml_dep(tmp_path: Path) -> None:
+    repo = tmp_path / "repo"
+    (repo / ".github" / "workflows").mkdir(parents=True)
+    subprocess.run(["git", "init", "--initial-branch=main", str(repo)], check=True, capture_output=True)
+    wf = repo / ".github" / "workflows" / "complex.yml"
+    wf.write_text(
+        """name: Complex
+jobs:
+  ok-job:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Decoy shell script
+        run: |
+          echo "path: artifacts/private/decoy.json"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: ok-status
+          path: 'artifacts/suite-status/ok.json'
+  bad-job:
+    runs-on: ubuntu-latest
+    steps:
+      - with:
+          name: mixed-uploads
+          path: |
+            # allowlisted first
+            artifacts/suite-status/pass.json
+
+            "artifacts/benchmarks/raw-bench.json"
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: folded-tar
+          path: >-
+            artifacts/output.tar.gz # inline comment
+""",
+        encoding="utf-8",
+    )
+    subprocess.run(["git", "-C", str(repo), "add", ".github/workflows/complex.yml"], check=True, capture_output=True)
+
+    code, errors = anti_leak_gate.run_gate(repo)
+
+    assert code == 1
+    assert any(
+        e == "forbidden_upload_artifact:artifacts/benchmarks/raw-bench.json at .github/workflows/complex.yml:bad-job"
+        for e in errors
+    )
+    assert any(
+        e == "forbidden_upload_artifact:artifacts/output.tar.gz at .github/workflows/complex.yml:bad-job"
+        for e in errors
+    )
+    assert not any("decoy" in e or "suite-status" in e for e in errors)
+
+    src = Path(anti_leak_gate.__file__).read_text(encoding="utf-8")
+    assert "import yaml" not in src
+    assert "from yaml" not in src

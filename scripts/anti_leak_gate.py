@@ -6,8 +6,6 @@ import re
 import subprocess
 from pathlib import Path
 
-import yaml
-
 
 ROOT = Path(__file__).resolve().parents[1]
 MAX_TEXT_BYTES = 2 * 1024 * 1024
@@ -120,6 +118,181 @@ def _repository_paths(root: Path, extra_args: list[str]) -> list[str]:
     return [raw for raw in result.stdout.decode("utf-8", errors="replace").split("\0") if raw]
 
 
+_BLOCK_SCALAR_RE = re.compile(r"^[|>][+-]?\d*(?:\s+#.*)?$")
+
+
+def _strip_yaml_inline_comment(value: str) -> str:
+    in_single = False
+    in_double = False
+    escaped = False
+    for idx, ch in enumerate(value):
+        if in_double:
+            if escaped:
+                escaped = False
+            elif ch == "\\":
+                escaped = True
+            elif ch == '"':
+                in_double = False
+            continue
+        if in_single:
+            if ch == "'":
+                in_single = False
+            continue
+        if ch == "'":
+            in_single = True
+        elif ch == '"':
+            in_double = True
+        elif ch == "#" and (idx == 0 or value[idx - 1].isspace()):
+            return value[:idx].rstrip()
+    return value.rstrip()
+
+
+def _unquote_yaml_scalar(value: str) -> str:
+    stripped = _strip_yaml_inline_comment(value).strip()
+    if len(stripped) >= 2 and stripped[0] == "'" and stripped[-1] == "'":
+        return stripped[1:-1].replace("''", "'")
+    if len(stripped) >= 2 and stripped[0] == '"' and stripped[-1] == '"':
+        return stripped[1:-1].replace('\\"', '"').replace("\\\\", "\\")
+    return stripped
+
+
+def _extract_workflow_upload_paths(workflow_text: str) -> list[tuple[str, str]]:
+    """Extract `(job_id, path_entry)` pairs for `actions/upload-artifact@*` using stdlib only."""
+
+    results: list[tuple[str, str]] = []
+    jobs_indent: int | None = None
+    job_indent: int | None = None
+    current_job: str | None = None
+    steps_indent: int | None = None
+    step_indent: int | None = None
+    step_key_indent: int | None = None
+    step_uses = ""
+    step_paths: list[str] = []
+    with_indent: int | None = None
+    path_block_indent: int | None = None
+    skip_block_indent: int | None = None
+
+    def flush_step() -> None:
+        nonlocal step_uses, step_paths, with_indent, path_block_indent
+        if current_job is not None and step_uses.startswith("actions/upload-artifact@"):
+            results.extend((current_job, entry) for entry in step_paths)
+        step_uses = ""
+        step_paths = []
+        with_indent = None
+        path_block_indent = None
+
+    for raw_line in workflow_text.splitlines():
+        if not raw_line.strip():
+            continue
+        indent = len(raw_line) - len(raw_line.lstrip(" "))
+        stripped_raw = raw_line.lstrip(" ")
+        if stripped_raw.startswith("#"):
+            continue
+
+        if path_block_indent is not None:
+            if indent > path_block_indent:
+                entry_line = _unquote_yaml_scalar(stripped_raw)
+                if entry_line:
+                    results_candidate = entry_line[2:].strip() if entry_line.startswith("- ") else entry_line
+                    if results_candidate:
+                        step_paths.append(_unquote_yaml_scalar(results_candidate))
+                continue
+            path_block_indent = None
+
+        if skip_block_indent is not None:
+            if indent > skip_block_indent:
+                continue
+            skip_block_indent = None
+
+        content = _strip_yaml_inline_comment(stripped_raw).strip()
+        if not content:
+            continue
+
+        if jobs_indent is None:
+            if indent == 0 and content == "jobs:":
+                jobs_indent = indent
+            continue
+
+        if indent <= jobs_indent:
+            flush_step()
+            jobs_indent = None
+            job_indent = None
+            current_job = None
+            steps_indent = None
+            step_indent = None
+            step_key_indent = None
+            if indent == 0 and content == "jobs:":
+                jobs_indent = indent
+            continue
+
+        if job_indent is None:
+            job_indent = indent
+
+        if indent <= job_indent:
+            flush_step()
+            current_job = content[:-1].strip() if content.endswith(":") else None
+            steps_indent = None
+            step_indent = None
+            step_key_indent = None
+            continue
+
+        if steps_indent is not None and indent <= steps_indent and not content.startswith("-"):
+            flush_step()
+            steps_indent = None
+            step_indent = None
+            step_key_indent = None
+
+        if steps_indent is None:
+            if content == "steps:":
+                steps_indent = indent
+            continue
+
+        is_step_item = content == "-" or content.startswith("- ")
+        if is_step_item and (step_indent is None or indent <= step_indent):
+            flush_step()
+            step_indent = indent
+            item_rest = content[1:].lstrip(" ")
+            step_key_indent = indent + (len(content) - len(item_rest))
+            if not item_rest or ":" not in item_rest:
+                continue
+            key_raw, val_raw = item_rest.split(":", 1)
+            key = key_raw.strip()
+            val = val_raw.strip()
+            effective_indent = step_key_indent
+        else:
+            if step_indent is None or indent <= step_indent:
+                continue
+            if with_indent is not None and indent <= with_indent:
+                with_indent = None
+            if ":" not in content:
+                continue
+            key_raw, val_raw = content.split(":", 1)
+            key = key_raw.strip()
+            val = val_raw.strip()
+            effective_indent = indent
+
+        if step_key_indent is not None and effective_indent == step_key_indent:
+            with_indent = None
+            if key == "uses":
+                step_uses = _unquote_yaml_scalar(val)
+            elif key == "with" and not val:
+                with_indent = effective_indent
+            elif _BLOCK_SCALAR_RE.match(val):
+                skip_block_indent = effective_indent
+        elif with_indent is not None and effective_indent > with_indent and key == "path":
+            if _BLOCK_SCALAR_RE.match(val):
+                path_block_indent = effective_indent
+            elif val:
+                unquoted = _unquote_yaml_scalar(val)
+                if unquoted:
+                    step_paths.append(unquoted)
+        elif _BLOCK_SCALAR_RE.match(val):
+            skip_block_indent = effective_indent
+
+    flush_step()
+    return results
+
+
 def _scan_workflow_uploads(root: Path) -> list[tuple[str, str]]:
     violations: list[tuple[str, str]] = []
     workflows_dir = root / ".github" / "workflows"
@@ -130,29 +303,16 @@ def _scan_workflow_uploads(root: Path) -> list[tuple[str, str]]:
         key=lambda item: item.name,
     )
     for workflow_path in workflow_files:
-        doc = yaml.safe_load(workflow_path.read_text(encoding="utf-8"))
-        if not isinstance(doc, dict):
-            continue
-        for job_id, job in (doc.get("jobs") or {}).items():
-            if not isinstance(job, dict):
+        rel_wf = workflow_path.relative_to(root).as_posix()
+        text = workflow_path.read_text(encoding="utf-8")
+        for job_id, raw_entry in _extract_workflow_upload_paths(text):
+            normalized = raw_entry.strip().replace("\\", "/")
+            if not normalized:
                 continue
-            for step in job.get("steps") or []:
-                if not isinstance(step, dict):
-                    continue
-                uses = str(step.get("uses", ""))
-                if not uses.startswith("actions/upload-artifact@"):
-                    continue
-                raw_paths = str((step.get("with") or {}).get("path", ""))
-                for raw_entry in raw_paths.splitlines():
-                    normalized = raw_entry.strip().replace("\\", "/")
-                    if not normalized:
-                        continue
-                    rel_wf = workflow_path.relative_to(root).as_posix()
-                    if any(
-                        normalized == prefix or normalized.startswith(f"{prefix}/")
-                        for prefix in FORBIDDEN_ARTIFACT_PREFIXES
-                    ) or any(pattern.search(normalized) for pattern in FORBIDDEN_ARTIFACT_PATTERNS):
-                        violations.append((f"{rel_wf}:{job_id}", f"forbidden_upload_artifact:{normalized}"))
+            if any(
+                normalized == prefix or normalized.startswith(f"{prefix}/") for prefix in FORBIDDEN_ARTIFACT_PREFIXES
+            ) or any(pattern.search(normalized) for pattern in FORBIDDEN_ARTIFACT_PATTERNS):
+                violations.append((f"{rel_wf}:{job_id}", f"forbidden_upload_artifact:{normalized}"))
     return violations
 
 
