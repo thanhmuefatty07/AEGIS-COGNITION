@@ -61,8 +61,8 @@ jobs:
             platform-id: ubuntu-latest
           - os: windows-latest
             platform-id: windows-latest
-          - os: macos-14
-            platform-id: macos-14
+          - os: macos-15
+            platform-id: macos-15
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
@@ -149,4 +149,88 @@ jobs:
               }
               path.write_text(json.dumps(report, indent=2, sort_keys=True) + "\n", encoding="utf-8")
               print(json.dumps({"artifact": prefix, "platform": report["host"]["platform"], "status": report["status"]}, sort_keys=True))
+          PY
+      - name: Print sanitized failure summary
+        if: failure()
+        env:
+          PLATFORM_ID: ${{ matrix.platform-id }}
+        shell: bash
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          import re
+          from pathlib import Path
+
+          def sanitize_error(value: object) -> str:
+              text = str(value)
+              text = re.sub(r"[A-Za-z]:[\\/][^\s'\"]+", "[REDACTED_PATH]", text)
+              text = re.sub(r"/(?:Users|home|tmp|var|private)/[^\s'\"]+", "[REDACTED_PATH]", text)
+              return text[:200]
+
+          platform_id = os.environ["PLATFORM_ID"]
+          for prefix in ("mmap-stream-buffer", "mmap-stream-buffer-high-headroom", "hot-buffer-ffi"):
+              path = Path("artifacts") / f"{prefix}-{platform_id}.json"
+              if not path.is_file():
+                  print(json.dumps({"artifact": prefix, "status": "MISSING"}, sort_keys=True))
+                  continue
+              try:
+                  report = json.loads(path.read_text(encoding="utf-8"))
+              except (OSError, json.JSONDecodeError):
+                  print(json.dumps({"artifact": prefix, "status": "UNREADABLE"}, sort_keys=True))
+                  continue
+              failed_predicates: list[str] = []
+              row_errors: list[dict[str, object]] = []
+              if prefix == "hot-buffer-ffi":
+                  for summary in report.get("summaries", []):
+                      if not summary.get("valid"):
+                          failed_predicates.append(f"{summary.get('payload_bytes')}:valid")
+                  for row in report.get("rows", []):
+                      if row.get("error") is not None:
+                          row_errors.append(
+                              {
+                                  "payload_bytes": row.get("payload_bytes"),
+                                  "mode": row.get("mode"),
+                                  "repetition": row.get("repetition"),
+                                  "error": sanitize_error(row["error"]),
+                              }
+                          )
+              else:
+                  for measurement in report.get("measurements", []):
+                      payload_bytes = measurement.get("payload_bytes")
+                      comparison = measurement.get("comparison", {})
+                      for key, value in sorted(comparison.items()):
+                          if value is None:
+                              failed_predicates.append(f"{payload_bytes}:comparison.{key}")
+                      for result in measurement.get("results", []):
+                          mode = result.get("name")
+                          for predicate in (
+                              "all_completed",
+                              "all_files_have_expected_size",
+                              "all_frames_validated",
+                              "rss_observed_for_all_rows",
+                          ):
+                              if result.get(predicate) is not True:
+                                  failed_predicates.append(f"{payload_bytes}:{mode}:{predicate}")
+                          for row in result.get("rows", []):
+                              if row.get("error") is not None:
+                                  row_errors.append(
+                                      {
+                                          "payload_bytes": payload_bytes,
+                                          "mode": mode,
+                                          "repetition": row.get("repetition"),
+                                          "error": sanitize_error(row["error"]),
+                                      }
+                                  )
+              print(
+                  json.dumps(
+                      {
+                          "artifact": prefix,
+                          "status": report.get("status"),
+                          "failed_predicates": failed_predicates[:24],
+                          "row_errors": row_errors[:12],
+                      },
+                      sort_keys=True,
+                  )
+              )
           PY

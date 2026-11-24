@@ -108,6 +108,8 @@ jobs:
           python-version: '3.14.7'
       - name: Scan tracked and publishable worktree files
         run: python scripts/secret_scan.py
+      - name: Anti-leak path and workflow artifact gate
+        run: python scripts/anti_leak_gate.py
 
   documentation-contract:
     name: Documentation consistency
@@ -322,7 +324,7 @@ jobs:
         include:
           - os: ubuntu-latest
           - os: windows-latest
-          - os: macos-14
+          - os: macos-15
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
@@ -353,7 +355,7 @@ jobs:
       fail-fast: false
       max-parallel: 2
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-14]
+        os: [ubuntu-latest, windows-latest, macos-15]
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
@@ -442,8 +444,8 @@ jobs:
             platform-id: ubuntu-latest
           - os: windows-latest
             platform-id: windows-latest
-          - os: macos-14
-            platform-id: macos-14
+          - os: macos-15
+            platform-id: macos-15
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
@@ -534,7 +536,7 @@ jobs:
           --commit "${{ github.sha }}"
           --expected-platform ubuntu-latest
           --expected-platform windows-latest
-          --expected-platform macos-14
+          --expected-platform macos-15
           --command-fragment "uv run --locked --extra all --extra dev python -m pytest tests core/python/tests.py -v -W error::DeprecationWarning"
           --require-attestations
           --output artifacts/suite-status/cross-platform.json
@@ -562,7 +564,7 @@ jobs:
             python-version: '3.14.7'
           - os: windows-latest
             python-version: '3.14.7'
-          - os: macos-14
+          - os: macos-15
             python-version: '3.14.7'
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4

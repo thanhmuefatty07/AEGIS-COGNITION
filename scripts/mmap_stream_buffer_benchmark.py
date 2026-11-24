@@ -26,6 +26,11 @@ from typing import Any
 
 from aegis_cognition.agent_efficiency import managed_scratch_dir
 
+try:
+    import resource
+except ImportError:  # pragma: no cover - resource is unavailable on Windows.
+    resource = None
+
 
 ROOT = Path(__file__).resolve().parents[1]
 CHUNK_BYTES = 1024 * 1024
@@ -53,7 +58,7 @@ def native_module() -> Any:
     return aegis_nerve
 
 
-def _windows_rss_bytes(pid: int) -> int | None:
+def _windows_peak_rss_bytes(pid: int | None = None) -> int | None:
     import ctypes.wintypes as wintypes
 
     class MemoryCounters(ctypes.Structure):
@@ -70,6 +75,7 @@ def _windows_rss_bytes(pid: int) -> int | None:
             ("peak_pagefile_usage", ctypes.c_size_t),
         ]
 
+    target_pid = os.getpid() if pid is None else pid
     kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
     psapi = ctypes.WinDLL("psapi", use_last_error=True)
     kernel32.OpenProcess.argtypes = [wintypes.DWORD, wintypes.BOOL, wintypes.DWORD]
@@ -82,7 +88,7 @@ def _windows_rss_bytes(pid: int) -> int | None:
         wintypes.DWORD,
     ]
     psapi.GetProcessMemoryInfo.restype = wintypes.BOOL
-    process = kernel32.OpenProcess(0x1000, False, pid)  # PROCESS_QUERY_LIMITED_INFORMATION
+    process = kernel32.OpenProcess(0x1000, False, target_pid)  # PROCESS_QUERY_LIMITED_INFORMATION
     if not process:
         return None
     try:
@@ -90,39 +96,140 @@ def _windows_rss_bytes(pid: int) -> int | None:
         counters.cb = ctypes.sizeof(counters)
         if not psapi.GetProcessMemoryInfo(process, ctypes.byref(counters), counters.cb):
             return None
-        return int(counters.working_set_size)
+        return int(counters.peak_working_set_size)
     finally:
         kernel32.CloseHandle(process)
 
 
-def rss_bytes(pid: int) -> int | None:
-    """Return current RSS for a process using a platform-native observation."""
+def _windows_rss_bytes(pid: int) -> int | None:
+    return _windows_peak_rss_bytes(pid)
+
+
+def _parse_linux_vmhwm_bytes(status_text: str) -> int | None:
+    for line in status_text.splitlines():
+        if line.startswith("VmHWM:"):
+            parts = line.split()
+            if len(parts) < 2:
+                return None
+            try:
+                value = int(parts[1])
+            except ValueError:
+                return None
+            unit = parts[2].lower() if len(parts) >= 3 else "kb"
+            if unit == "kb":
+                return value * 1024
+            if unit == "b":
+                return value
+            return None
+    return None
+
+
+def _linux_peak_rss_bytes(pid: int | None = None) -> int | None:
+    status_path = Path("/proc/self/status") if pid is None else Path(f"/proc/{pid}/status")
+    try:
+        return _parse_linux_vmhwm_bytes(status_path.read_text(encoding="ascii"))
+    except OSError:
+        return None
+
+
+def _darwin_peak_rss_bytes() -> int | None:
+    import ctypes.util
+
+    # Mirrors macOS `struct task_vm_info` through rev3 (`TASK_VM_INFO_REV3_COUNT = 84`);
+    # all fields after the initial two int32 counts are 8-byte aligned without `_pack_`.
+    class TaskVmInfoRev3(ctypes.Structure):
+        _fields_ = [
+            ("virtual_size", ctypes.c_uint64),
+            ("region_count", ctypes.c_int32),
+            ("page_size", ctypes.c_int32),
+            ("resident_size", ctypes.c_uint64),
+            ("resident_size_peak", ctypes.c_uint64),
+            ("device", ctypes.c_uint64),
+            ("device_peak", ctypes.c_uint64),
+            ("internal", ctypes.c_uint64),
+            ("internal_peak", ctypes.c_uint64),
+            ("external", ctypes.c_uint64),
+            ("external_peak", ctypes.c_uint64),
+            ("reusable", ctypes.c_uint64),
+            ("reusable_peak", ctypes.c_uint64),
+            ("purgeable_volatile_pmap", ctypes.c_uint64),
+            ("purgeable_volatile_resident", ctypes.c_uint64),
+            ("purgeable_volatile_virtual", ctypes.c_uint64),
+            ("compressed", ctypes.c_uint64),
+            ("compressed_peak", ctypes.c_uint64),
+            ("compressed_lifetime", ctypes.c_uint64),
+            ("phys_footprint", ctypes.c_uint64),
+            ("min_address", ctypes.c_uint64),
+            ("max_address", ctypes.c_uint64),
+            ("ledger_phys_footprint_peak", ctypes.c_int64),
+            *[(f"_ledger_{index}", ctypes.c_int64) for index in range(20)],
+        ]
+
+    system_lib = ctypes.util.find_library("System")
+    if system_lib:
+        try:
+            libc = ctypes.CDLL(system_lib)
+            libc.mach_task_self.restype = ctypes.c_uint32
+            libc.task_info.argtypes = [
+                ctypes.c_uint32,
+                ctypes.c_int32,
+                ctypes.c_void_p,
+                ctypes.POINTER(ctypes.c_uint32),
+            ]
+            libc.task_info.restype = ctypes.c_int32
+            info = TaskVmInfoRev3()
+            count = ctypes.c_uint32(ctypes.sizeof(info) // 4)
+            task_vm_info_flavor = 22
+            if libc.task_info(libc.mach_task_self(), task_vm_info_flavor, ctypes.byref(info), ctypes.byref(count)) == 0:
+                if count.value >= 46 and info.ledger_phys_footprint_peak > 0:
+                    return int(info.ledger_phys_footprint_peak)
+                if count.value >= 40 and info.phys_footprint > 0:
+                    return int(info.phys_footprint)
+        except OSError, AttributeError, ctypes.ArgumentError:
+            pass
+
+    if resource is not None:
+        try:
+            value = int(resource.getrusage(resource.RUSAGE_SELF).ru_maxrss)
+            return value if value > 0 else None
+        except AttributeError, OSError, ValueError:
+            return None
+    return None
+
+
+def process_peak_rss_bytes() -> int | None:
+    """Return the current process high-water RSS in bytes using OS peak counters."""
 
     if os.name == "nt":
         try:
-            return _windows_rss_bytes(pid)
-        except OSError:
-            return None
-        except AttributeError:
-            return None
-        except ctypes.ArgumentError:
+            return _windows_peak_rss_bytes()
+        except OSError, AttributeError, ctypes.ArgumentError:
             return None
 
     if sys.platform.startswith("linux"):
-        try:
-            fields = Path(f"/proc/{pid}/statm").read_text(encoding="ascii").split()
-            if len(fields) < 2:
-                return None
-            return int(fields[1]) * int(os.sysconf("SC_PAGE_SIZE"))
-        except OSError:
-            return None
-        except ValueError:
-            return None
+        return _linux_peak_rss_bytes()
 
     if sys.platform == "darwin":
-        # ``ps`` is a system utility on supported macOS runners and reports
-        # RSS in KiB. It avoids treating ru_maxrss (a process high-water mark)
-        # as a current per-operation working-set measurement.
+        return _darwin_peak_rss_bytes()
+
+    return None
+
+
+def rss_bytes(pid: int) -> int | None:
+    """Return kernel high-water or platform RSS for a process in bytes."""
+
+    if os.name == "nt":
+        try:
+            return _windows_peak_rss_bytes(pid)
+        except OSError, AttributeError, ctypes.ArgumentError:
+            return None
+
+    if sys.platform.startswith("linux"):
+        return _linux_peak_rss_bytes(pid)
+
+    if sys.platform == "darwin":
+        if pid == os.getpid():
+            return _darwin_peak_rss_bytes()
         try:
             completed = subprocess.run(
                 ["ps", "-o", "rss=", "-p", str(pid)],
@@ -133,14 +240,78 @@ def rss_bytes(pid: int) -> int | None:
             )
             value = completed.stdout.strip()
             return int(value) * 1024 if completed.returncode == 0 and value else None
-        except OSError:
-            return None
-        except subprocess.SubprocessError:
-            return None
-        except ValueError:
+        except OSError, subprocess.SubprocessError, ValueError:
             return None
 
     return None
+
+
+def _retry_bounded_backoff[T](
+    action: Callable[[], T],
+    *,
+    retry_exceptions: tuple[type[BaseException], ...],
+    max_attempts: int = 14,
+    initial_delay_s: float = 0.005,
+    max_delay_s: float = 0.5,
+    sleep_fn: Callable[[float], None] = time.sleep,
+) -> T:
+    for attempt in range(max_attempts):
+        try:
+            return action()
+        except retry_exceptions:
+            if attempt >= max_attempts - 1:
+                raise
+            delay = min(max_delay_s, initial_delay_s * (2**attempt))
+            sleep_fn(delay)
+    raise RuntimeError("unreachable retry loop")
+
+
+def _read_done_json_with_retry(
+    done_path: Path,
+    *,
+    max_attempts: int = 14,
+    initial_delay_s: float = 0.005,
+    max_delay_s: float = 0.5,
+    sleep_fn: Callable[[float], None] = time.sleep,
+) -> dict[str, Any]:
+    def read_once() -> dict[str, Any]:
+        payload = json.loads(done_path.read_text(encoding="utf-8"))
+        if not isinstance(payload, dict):
+            raise json.JSONDecodeError("done marker must decode to JSON object", "", 0)
+        return payload
+
+    return _retry_bounded_backoff(
+        read_once,
+        retry_exceptions=(OSError, json.JSONDecodeError),
+        max_attempts=max_attempts,
+        initial_delay_s=initial_delay_s,
+        max_delay_s=max_delay_s,
+        sleep_fn=sleep_fn,
+    )
+
+
+def _unlink_with_retry(
+    target: Path,
+    *,
+    max_attempts: int = 14,
+    initial_delay_s: float = 0.005,
+    max_delay_s: float = 0.5,
+    sleep_fn: Callable[[float], None] = time.sleep,
+) -> None:
+    def unlink_once() -> None:
+        try:
+            target.unlink()
+        except FileNotFoundError:
+            return
+
+    _retry_bounded_backoff(
+        unlink_once,
+        retry_exceptions=(PermissionError, OSError),
+        max_attempts=max_attempts,
+        initial_delay_s=initial_delay_s,
+        max_delay_s=max_delay_s,
+        sleep_fn=sleep_fn,
+    )
 
 
 def _full_buffer(path: Path, payload_len: int, _file_chunk_bytes: int) -> None:
@@ -248,6 +419,7 @@ def worker_main(
     __import__("core.python.bridge_mmap", fromlist=["MmapBridgeWriter"])
     if mode in {"file_stream_python", "file_stream_native"}:
         _prepare_file_source(path.with_suffix(".source.bin"), payload_len)
+    baseline_peak_rss = process_peak_rss_bytes()
     print(f"{WORKER_READY} {os.getpid()}", flush=True)
     sys.stdin.readline()
     started = time.perf_counter_ns()
@@ -257,6 +429,7 @@ def worker_main(
     except Exception as exc:  # report the failure to the parent as evidence
         error = f"{type(exc).__name__}: {exc}"
     producer_elapsed_ms = (time.perf_counter_ns() - started) / 1_000_000.0
+    operation_peak_rss = process_peak_rss_bytes()
     # Publish the completion marker atomically.  The parent polls for the
     # marker while the worker is still alive; writing directly to the final
     # path would let it observe a partially written JSON document.
@@ -266,15 +439,19 @@ def worker_main(
             {
                 "elapsed_ms": producer_elapsed_ms,
                 "error": error,
+                "baseline_peak_rss_bytes": baseline_peak_rss,
+                "operation_peak_rss_bytes": operation_peak_rss,
             },
             sort_keys=True,
         ),
         encoding="utf-8",
     )
-    os.replace(done_tmp_path, done_path)
-    # Let the parent stop RSS sampling before validation maps and hashes the
-    # file. Validation remains mandatory, but it is a separate correctness
-    # phase rather than producer-memory evidence.
+    _retry_bounded_backoff(
+        lambda: os.replace(done_tmp_path, done_path),
+        retry_exceptions=(PermissionError, OSError),
+    )
+    # Wait for parent acknowledgement before validation maps and hashes the
+    # file so validation stays separated from producer-memory evidence.
     sys.stdin.readline()
     metadata: dict[str, object] | None = None
     if error is None:
@@ -315,6 +492,10 @@ def _terminate(process: subprocess.Popen[str]) -> None:
             process.kill()
     with suppress(subprocess.TimeoutExpired):
         process.wait(timeout=2)
+
+
+def _as_int(value: object) -> int | None:
+    return value if type(value) is int else None
 
 
 def measure_one(
@@ -373,9 +554,7 @@ def measure_one(
     ready_parts = ready[0].split()
     try:
         worker_pid = int(ready_parts[1]) if ready_parts[0] == WORKER_READY else 0
-    except IndexError:
-        worker_pid = 0
-    except ValueError:
+    except IndexError, ValueError:
         worker_pid = 0
     if worker_pid <= 0:
         _terminate(process)
@@ -391,19 +570,9 @@ def measure_one(
         }
 
     done_path = path.with_suffix(".done.json")
-    start_rss = rss_bytes(worker_pid)
-    samples: list[int] = []
-    stop = threading.Event()
-
-    def monitor() -> None:
-        while not stop.is_set():
-            value = rss_bytes(worker_pid)
-            if value is not None:
-                samples.append(value)
-            stop.wait(0.01)
-
-    monitor_thread = threading.Thread(target=monitor, name="aegis-mmap-rss", daemon=True)
-    monitor_thread.start()
+    source_path = path.with_suffix(".source.bin")
+    start_rss: int | None = None
+    peak_rss: int | None = None
     error: str | None = None
     stdout = ""
     stderr = ""
@@ -415,55 +584,29 @@ def measure_one(
         while not done_path.exists() and process.poll() is None and time.monotonic() < deadline:
             time.sleep(0.005)
         if not done_path.exists():
+            exit_code = process.poll()
+            if exit_code is not None:
+                raise RuntimeError(f"worker exited with code {exit_code} before completion marker")
             raise TimeoutError("worker did not finish producer phase within 180 seconds")
-        stop.set()
-        monitor_thread.join(timeout=2)
-        done = json.loads(done_path.read_text(encoding="utf-8"))
-        if isinstance(done, dict) and done.get("error") is not None:
+        done = _read_done_json_with_retry(done_path)
+        start_rss = _as_int(done.get("baseline_peak_rss_bytes"))
+        peak_rss = _as_int(done.get("operation_peak_rss_bytes"))
+        if done.get("error") is not None:
             error = str(done["error"])
         process.stdin.write("validate\n")
         process.stdin.flush()
         stdout, stderr = process.communicate(timeout=180)
-    except TimeoutError as exc:
+    except (TimeoutError, RuntimeError, OSError, subprocess.TimeoutExpired, json.JSONDecodeError) as exc:
         error = f"{type(exc).__name__}: {exc}"
         _terminate(process)
-        try:
+        with suppress(OSError, subprocess.TimeoutExpired):
             stdout, stderr = process.communicate(timeout=2)
-        except OSError:
-            stdout, stderr = "", ""
-        except subprocess.TimeoutExpired:
-            stdout, stderr = "", ""
-    except OSError as exc:
-        error = f"{type(exc).__name__}: {exc}"
-        _terminate(process)
-        try:
-            stdout, stderr = process.communicate(timeout=2)
-        except OSError:
-            stdout, stderr = "", ""
-        except subprocess.TimeoutExpired:
-            stdout, stderr = "", ""
-    except subprocess.TimeoutExpired as exc:
-        error = f"{type(exc).__name__}: {exc}"
-        _terminate(process)
-        try:
-            stdout, stderr = process.communicate(timeout=2)
-        except OSError:
-            stdout, stderr = "", ""
-        except subprocess.TimeoutExpired:
-            stdout, stderr = "", ""
-    except json.JSONDecodeError as exc:
-        error = f"{type(exc).__name__}: {exc}"
-        _terminate(process)
-        try:
-            stdout, stderr = process.communicate(timeout=2)
-        except OSError:
-            stdout, stderr = "", ""
-        except subprocess.TimeoutExpired:
-            stdout, stderr = "", ""
     finally:
-        if not stop.is_set():
-            stop.set()
-            monitor_thread.join(timeout=2)
+        if process.poll() is None:
+            _terminate(process)
+        for target in (path, source_path, done_path):
+            with suppress(OSError):
+                _unlink_with_retry(target)
 
     worker_result: dict[str, object] | None = None
     for line in reversed(stdout.splitlines()):
@@ -488,17 +631,11 @@ def measure_one(
     if process.returncode not in (0, None) and error is None:
         error = f"worker exited with code {process.returncode}: {stderr[-1000:]}"
 
-    observed = [value for value in (*samples, start_rss) if isinstance(value, int)]
-    peak_rss = max(observed) if observed else None
     if start_rss is None or peak_rss is None:
         error = error or "platform RSS observation unavailable"
-    if path.exists():
-        path.unlink()
-    source_path = path.with_suffix(".source.bin")
-    if source_path.exists():
-        source_path.unlink()
-    if done_path.exists():
-        done_path.unlink()
+        peak_rss_delta = None
+    else:
+        peak_rss_delta = max(0, peak_rss - start_rss)
     return {
         "repetition": repetition,
         "sequence_position": sequence_position,
@@ -506,7 +643,7 @@ def measure_one(
         "elapsed_ms": elapsed,
         "start_rss_bytes": start_rss,
         "peak_rss_bytes": peak_rss,
-        "peak_rss_delta_bytes": peak_rss - start_rss if start_rss is not None and peak_rss is not None else None,
+        "peak_rss_delta_bytes": peak_rss_delta,
         "metadata": metadata,
         "error": error,
     }
@@ -554,6 +691,22 @@ def measure_payload(payload_len: int, repetitions: int, file_chunk_bytes: int) -
     return [summarize(mode, payload_len, rows_by_mode[mode]) for mode in MODES]
 
 
+def _rss_reduction_percent(candidate_rss: int | None, baseline_rss: int | None) -> float | None:
+    if type(baseline_rss) is not int or type(candidate_rss) is not int or baseline_rss < 0 or candidate_rss < 0:
+        return None
+    if baseline_rss == 0:
+        return 0.0 if candidate_rss == 0 else None
+    return (1.0 - float(candidate_rss) / float(baseline_rss)) * 100.0
+
+
+def _relative_delta_percent(candidate_rss: int | None, reference_rss: int | None) -> float | None:
+    if type(reference_rss) is not int or type(candidate_rss) is not int or reference_rss < 0 or candidate_rss < 0:
+        return None
+    if reference_rss == 0:
+        return 0.0 if candidate_rss == 0 else None
+    return (float(candidate_rss) / float(reference_rss) - 1.0) * 100.0
+
+
 def add_comparison(results: list[dict[str, object]]) -> dict[str, object]:
     baseline = results[0]
     baseline_rss = baseline["peak_rss_delta_bytes_max"]
@@ -571,14 +724,17 @@ def add_comparison(results: list[dict[str, object]]) -> dict[str, object]:
     ):
         rss = item["peak_rss_delta_bytes_max"]
         elapsed = item["elapsed_ms_median"]
-        comparison[f"{label}_rss_reduction_percent"] = (
-            (1.0 - float(rss) / float(baseline_rss)) * 100.0
-            if isinstance(baseline_rss, int) and isinstance(rss, int) and baseline_rss > 0
-            else None
+        comparison[f"{label}_rss_reduction_percent"] = _rss_reduction_percent(
+            rss if type(rss) is int else None,
+            baseline_rss if type(baseline_rss) is int else None,
         )
         comparison[f"{label}_elapsed_delta_percent"] = (
             (float(elapsed) / float(baseline_elapsed) - 1.0) * 100.0
-            if isinstance(baseline_elapsed, (int, float)) and isinstance(elapsed, (int, float)) and baseline_elapsed > 0
+            if isinstance(baseline_elapsed, (int, float))
+            and not isinstance(baseline_elapsed, bool)
+            and isinstance(elapsed, (int, float))
+            and not isinstance(elapsed, bool)
+            and baseline_elapsed > 0
             else None
         )
     python_file = results[4]
@@ -590,16 +746,64 @@ def add_comparison(results: list[dict[str, object]]) -> dict[str, object]:
     comparison["file_stream_native_vs_python_elapsed_delta_percent"] = (
         (float(native_file_elapsed) / float(python_file_elapsed) - 1.0) * 100.0
         if isinstance(python_file_elapsed, (int, float))
+        and not isinstance(python_file_elapsed, bool)
         and isinstance(native_file_elapsed, (int, float))
+        and not isinstance(native_file_elapsed, bool)
         and python_file_elapsed > 0
         else None
     )
-    comparison["file_stream_native_vs_python_rss_delta_percent"] = (
-        (float(native_file_rss) / float(python_file_rss) - 1.0) * 100.0
-        if isinstance(python_file_rss, int) and isinstance(native_file_rss, int) and python_file_rss > 0
-        else None
+    comparison["file_stream_native_vs_python_rss_delta_percent"] = _relative_delta_percent(
+        native_file_rss if type(native_file_rss) is int else None,
+        python_file_rss if type(python_file_rss) is int else None,
     )
     return comparison
+
+
+def _measurement_is_valid(measurement: dict[str, Any]) -> bool:
+    results = measurement["results"]
+    baseline = results[0]
+    comparison = measurement["comparison"]
+    baseline_rss = baseline["peak_rss_delta_bytes_max"]
+    if type(baseline_rss) is not int or baseline_rss < 0:
+        return False
+    elapsed_keys = (
+        "direct_view_elapsed_delta_percent",
+        "chunked_bytes_elapsed_delta_percent",
+        "reusable_buffer_elapsed_delta_percent",
+        "file_stream_native_elapsed_delta_percent",
+        "file_stream_python_elapsed_delta_percent",
+        "file_stream_native_vs_python_elapsed_delta_percent",
+    )
+    if not all(
+        isinstance(comparison.get(key), (int, float)) and not isinstance(comparison.get(key), bool)
+        for key in elapsed_keys
+    ):
+        return False
+    for label, item in (
+        ("direct_view", results[1]),
+        ("chunked_bytes", results[2]),
+        ("reusable_buffer", results[3]),
+        ("file_stream_python", results[4]),
+        ("file_stream_native", results[5]),
+    ):
+        rss = item["peak_rss_delta_bytes_max"]
+        if type(rss) is not int or rss < 0:
+            return False
+        metric = comparison.get(f"{label}_rss_reduction_percent")
+        if baseline_rss > 0 and (not isinstance(metric, (int, float)) or isinstance(metric, bool)):
+            return False
+        if baseline_rss == 0 and rss == 0 and (not isinstance(metric, (int, float)) or isinstance(metric, bool)):
+            return False
+    python_file_rss = results[4]["peak_rss_delta_bytes_max"]
+    native_file_rss = results[5]["peak_rss_delta_bytes_max"]
+    file_delta = comparison.get("file_stream_native_vs_python_rss_delta_percent")
+    if python_file_rss > 0 and (not isinstance(file_delta, (int, float)) or isinstance(file_delta, bool)):
+        return False
+    return not (
+        python_file_rss == 0
+        and native_file_rss == 0
+        and (not isinstance(file_delta, (int, float)) or isinstance(file_delta, bool))
+    )
 
 
 def run_benchmark(payloads: tuple[int, ...], repetitions: int, file_chunk_bytes: int) -> dict[str, object]:
@@ -622,27 +826,7 @@ def run_benchmark(payloads: tuple[int, ...], repetitions: int, file_chunk_bytes:
         for result in measurement["results"]
     )
     for measurement in measurements:
-        baseline = measurement["results"][0]
-        comparison = measurement["comparison"]
-        valid = valid and isinstance(baseline["peak_rss_delta_bytes_max"], int)
-        valid = valid and baseline["peak_rss_delta_bytes_max"] > 0
-        valid = valid and all(
-            isinstance(comparison.get(key), (int, float))
-            for key in (
-                "direct_view_rss_reduction_percent",
-                "direct_view_elapsed_delta_percent",
-                "chunked_bytes_rss_reduction_percent",
-                "chunked_bytes_elapsed_delta_percent",
-                "reusable_buffer_rss_reduction_percent",
-                "reusable_buffer_elapsed_delta_percent",
-                "file_stream_native_rss_reduction_percent",
-                "file_stream_native_elapsed_delta_percent",
-                "file_stream_python_rss_reduction_percent",
-                "file_stream_python_elapsed_delta_percent",
-                "file_stream_native_vs_python_elapsed_delta_percent",
-                "file_stream_native_vs_python_rss_delta_percent",
-            )
-        )
+        valid = valid and _measurement_is_valid(measurement)
     return {
         "schema": "aegis-mmap-stream-buffer-benchmark-v3",
         "status": "MEASURED_HOST_ONLY" if valid else "FAILED",

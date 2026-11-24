@@ -5,8 +5,11 @@
 
 use aegis_nerve::bridge_mmap::{open_mmap_bridge_view, write_mmap_bridge_frame};
 use aegis_nerve::ffi::{aegis_hot_hash, aegis_status};
+use aegis_nerve::ipc::MpmcFrameRing;
+use aegis_nerve::memory::frame::{MemoryEdge, MemoryGraph, SemanticNode};
 use aegis_nerve::message::MessageFrame;
 use aegis_nerve::sandbox::WasmtimeSandbox;
+use aegis_nerve::shm::{create_region, read_seqlock_frame, write_seqlock_frame};
 use aegis_nerve::task_ledger::{TaskCard, TaskLedger};
 use criterion::{BatchSize, Criterion, black_box, criterion_group, criterion_main};
 use std::time::Duration;
@@ -92,6 +95,55 @@ fn benchmark_communication_payloads(c: &mut Criterion) {
             });
         });
     }
+
+    let ring = MpmcFrameRing::with_capacity(64).expect("mpmc ring");
+    c.bench_function("IPC-006_mpmc_ring_send_recv_1KiB", |bencher| {
+        bencher.iter(|| {
+            let frame = MessageFrame::with_identity(1, 1, vec![0x5A; 1024]);
+            ring.try_send(black_box(frame)).expect("ring send");
+            black_box(ring.try_recv().expect("ring recv"));
+        });
+    });
+
+    let shm_file = tempfile::NamedTempFile::new().expect("shm file");
+    let (_mmap, region) =
+        create_region(shm_file.path().to_str().expect("utf8 path"), 8192, 64).expect("region");
+    let seqlock_payload = vec![0x3C; 1024];
+    c.bench_function("IPC-007_shm_seqlock_roundtrip_1KiB", |bencher| {
+        bencher.iter(|| unsafe {
+            write_seqlock_frame(&region, black_box(&seqlock_payload)).expect("seqlock write");
+            black_box(read_seqlock_frame(&region, 16).expect("seqlock read"));
+        });
+    });
+
+    c.bench_function("MEM-001_memory_graph_1000_nodes_csr", |bencher| {
+        bencher.iter(|| {
+            let mut graph = MemoryGraph::new();
+            for i in 1..=1_000u64 {
+                graph
+                    .add_node(SemanticNode {
+                        node_id: i as u128,
+                        session_id: 1,
+                        artifact_hash: [(i & 0xFF) as u8; 32],
+                        ast_fingerprint: i,
+                        fidelity: 1.0,
+                    })
+                    .expect("node");
+                if i > 1 {
+                    graph
+                        .add_edge(MemoryEdge {
+                            edge_id: i as u128,
+                            from_node: (i - 1) as u128,
+                            to_node: i as u128,
+                            weight: 0.9,
+                            time_since_last_access: 0.0,
+                        })
+                        .expect("edge");
+                }
+            }
+            black_box(graph.build_csr_snapshot(None))
+        });
+    });
 }
 
 fn benchmark_cpu(c: &mut Criterion) {

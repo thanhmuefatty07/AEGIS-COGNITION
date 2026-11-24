@@ -14,6 +14,7 @@ import json
 import os
 import platform
 import subprocess
+import sys
 import time
 from collections import defaultdict
 from collections.abc import Iterable, Mapping
@@ -24,10 +25,12 @@ from typing import Any
 from urllib.error import HTTPError, URLError
 from urllib.request import HTTPRedirectHandler, Request, build_opener
 
-from core.python.aegis.context_compiler import ContextCompiler
-
 
 ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
+from core.python.aegis.context_compiler import ContextCompiler  # noqa: E402
 SCHEMA = "aegis-memory-context-live-eval-v1"
 MAX_RESPONSE_BYTES = 2 * 1024 * 1024
 MAX_REQUESTS_HARD = 96
@@ -103,8 +106,8 @@ def _sha256(value: bytes | str) -> str:
     return hashlib.sha256(raw).hexdigest()
 
 
-def _records() -> tuple[_Record, ...]:
-    return (
+def _records(distractor_count: int = 0) -> tuple[_Record, ...]:
+    base = (
         _Record(
             1,
             "live-record-1",
@@ -170,6 +173,32 @@ def _records() -> tuple[_Record, ...]:
             "This distractor discusses release notes and contains no answer to the task questions.",
         ),
     )
+    if distractor_count <= 0:
+        return base
+    distractors: list[_Record] = []
+    themes = (
+        "telemetry ring buffer flush cadence and span batching heuristics across worker pools",
+        "near-miss distractor mentioning archived preview cache limits of 8192 entries in legacy UI drafts",
+        "near-miss distractor describing deprecated HTTP retry jitter backoff windows of 15 seconds",
+        "sandbox filesystem mount isolation and read-only bind policy for untrusted tool execution",
+        "MVCC snapshot garbage collection watermarks and pinned reader epoch reclamation guarantees",
+        "Leiden community cohesion thresholds and Jaccard stable cluster identifier remapping notes",
+    )
+    for idx in range(1, distractor_count + 1):
+        sid = 8 + idx
+        owner = "foreign-owner" if idx % 9 == 0 else "benchmark-owner"
+        theme = themes[idx % len(themes)]
+        distractors.append(
+            _Record(
+                sid,
+                f"live-distractor-{idx:04d}",
+                1_700_000_000_008 + idx,
+                "USER_PRIVATE",
+                owner,
+                f"Synthetic distractor #{idx}: {theme} (module shard {idx % 32}).",
+            )
+        )
+    return (*base, *distractors)
 
 
 def _default_scores(*high: int) -> tuple[tuple[int, float], ...]:
@@ -224,15 +253,15 @@ def tasks() -> tuple[LiveTask, ...]:
     )
 
 
-def _compile(task: LiveTask, *, token_budget: int) -> str:
-    records = _records()
+def _compile(task: LiveTask, *, token_budget: int, distractor_count: int = 0) -> str:
+    records = _records(distractor_count)
     learning = _Learning(records)
     scores = dict(task.candidate_scores or _default_scores())
     candidates = [
         SimpleNamespace(
             segment_id=record.session_id,
             evidence_ref_hash=record.content_hash,
-            score=scores.get(record.session_id, 0.05),
+            score=scores.get(record.session_id, 0.05 + (0.12 if record.session_id % 13 == 0 else 0.0)),
         )
         for record in records
     ]
@@ -247,6 +276,44 @@ def _compile(task: LiveTask, *, token_budget: int) -> str:
         )
         .rendered
     )
+
+
+def evaluate_distractor_scale_oracle(scales: tuple[int, ...] = (0, 64, 256, 512)) -> dict[str, Any]:
+    """Deterministic multi-scale distractor stress check verifying evidence retention & scope isolation."""
+
+    scale_reports: list[dict[str, Any]] = []
+    for dist_count in scales:
+        all_retained = True
+        foreign_leaked = False
+        baseline_tokens_sum = 0
+        bounded_tokens_sum = 0
+        for task in tasks():
+            base_ctx = _compile(task, token_budget=BASELINE_TOKEN_BUDGET, distractor_count=dist_count)
+            bound_ctx = _compile(task, token_budget=BOUND_TOKEN_BUDGET, distractor_count=dist_count)
+            baseline_tokens_sum += ContextCompiler._estimate_tokens(base_ctx)
+            bounded_tokens_sum += ContextCompiler._estimate_tokens(bound_ctx)
+            if "foreign-owner" in bound_ctx or "foreign-owner" in base_ctx:
+                foreign_leaked = True
+            for eid in task.expected_evidence_ids:
+                if f"session=0x{eid:x}" not in bound_ctx:
+                    all_retained = False
+        reduction = round((1.0 - bounded_tokens_sum / max(1, baseline_tokens_sum)) * 100.0, 3)
+        scale_reports.append(
+            {
+                "distractor_count": dist_count,
+                "corpus_size": 8 + dist_count,
+                "expected_evidence_retained": all_retained,
+                "foreign_owner_leaked": foreign_leaked,
+                "baseline_tokens_est": baseline_tokens_sum,
+                "bounded_tokens_est": bounded_tokens_sum,
+                "prompt_reduction_percent": reduction,
+                "oracle_pass": all_retained and not foreign_leaked,
+            }
+        )
+    return {
+        "scales": scale_reports,
+        "overall_pass": all(r["oracle_pass"] for r in scale_reports),
+    }
 
 
 def _messages(task: LiveTask, context: str) -> list[dict[str, str]]:
@@ -474,15 +541,16 @@ def _selected_providers(requested: str, *, dry_run: bool) -> list[str]:
     return result
 
 
-def _planned_contexts(task: LiveTask) -> dict[str, str]:
+def _planned_contexts(task: LiveTask, *, distractor_count: int = 0) -> dict[str, str]:
     return {
-        "baseline": _compile(task, token_budget=BASELINE_TOKEN_BUDGET),
-        "bounded": _compile(task, token_budget=BOUND_TOKEN_BUDGET),
+        "baseline": _compile(task, token_budget=BASELINE_TOKEN_BUDGET, distractor_count=distractor_count),
+        "bounded": _compile(task, token_budget=BOUND_TOKEN_BUDGET, distractor_count=distractor_count),
     }
 
 
 def evaluate(args: argparse.Namespace) -> dict[str, Any]:
     dry_run = bool(args.dry_run)
+    distractor_count = int(getattr(args, "distractor_count", 0) or 0)
     providers = _selected_providers(args.provider, dry_run=dry_run)
     model_map = {
         "openrouter": _parse_models(args.openrouter_models, "openrouter"),
@@ -496,7 +564,7 @@ def evaluate(args: argparse.Namespace) -> dict[str, Any]:
             f"planned request count {request_count} exceeds limit {min(args.max_requests, MAX_REQUESTS_HARD)}; "
             "reduce models/repeats or raise --max-requests up to the hard cap"
         )
-    contexts = {task.task_id: _planned_contexts(task) for task in task_list}
+    contexts = {task.task_id: _planned_contexts(task, distractor_count=distractor_count) for task in task_list}
     records: list[dict[str, Any]] = []
     for provider, model in selected_models:
         api_key = os.environ.get(PROVIDER_KEY_ENV[provider], "")
@@ -654,9 +722,12 @@ def main() -> int:
     parser.add_argument("--timeout-seconds", type=float, default=DEFAULT_TIMEOUT_SECONDS)
     parser.add_argument("--max-completion-tokens", type=int, default=DEFAULT_MAX_COMPLETION_TOKENS)
     parser.add_argument("--delay-ms", type=int, default=DEFAULT_DELAY_MS)
+    parser.add_argument("--distractor-count", type=int, default=0, help="synthetic distractor corpus count (0..1024)")
     parser.add_argument("--dry-run", action="store_true")
     parser.add_argument("--output", type=Path)
     args = parser.parse_args()
+    if args.distractor_count < 0 or args.distractor_count > 1_024:
+        parser.error("--distractor-count must be between 0 and 1024")
     if args.repeats < 1 or args.repeats > 3:
         parser.error("--repeats must be between 1 and 3")
     if args.max_requests < 1 or args.max_requests > MAX_REQUESTS_HARD:

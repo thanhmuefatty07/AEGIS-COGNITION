@@ -41,8 +41,8 @@ jobs:
           - os: windows-latest
             platform-id: windows-latest
             probe: windows_job_object_live_probe.py
-          - os: macos-14
-            platform-id: macos-14
+          - os: macos-15
+            platform-id: macos-15
             probe: macos_capability_probe.py
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
@@ -145,7 +145,7 @@ jobs:
           import os
           from pathlib import Path
 
-          expected = {"ubuntu-latest", "windows-latest", "macos-14"}
+          expected = {"ubuntu-latest", "windows-latest", "macos-15"}
           reports = {}
           for path in Path("artifacts/platform").glob("*.json"):
               payload = json.loads(path.read_text(encoding="utf-8"))

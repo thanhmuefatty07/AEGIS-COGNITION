@@ -11,7 +11,10 @@ from __future__ import annotations
 import argparse
 import json
 import platform
+import random
+import statistics
 import subprocess
+import sys
 import time
 from dataclasses import dataclass
 from itertools import pairwise
@@ -21,6 +24,8 @@ from typing import Any
 
 
 ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
 SCHEMA = "aegis-memory-context-benchmark-v1"
 ACCOUNTING = "estimated-rendered-context-utf8-bytes-v2"
 
@@ -618,7 +623,435 @@ def _active_memory_hydration_case() -> dict[str, Any]:
     }
 
 
-def run() -> dict[str, Any]:
+def _bootstrap_95_ci(samples: list[float], *, resamples: int = 200, seed: int = 20261112) -> list[float]:
+    if not samples:
+        return [0.0, 0.0]
+    if len(samples) == 1:
+        val = round(samples[0], 4)
+        return [val, val]
+    rng = random.Random(seed)
+    n = len(samples)
+    means = sorted(sum(samples[rng.randrange(n)] for _ in range(n)) / n for _ in range(resamples))
+    lo = means[max(0, int(0.025 * resamples))]
+    hi = means[min(resamples - 1, int(0.975 * resamples))]
+    return [round(lo, 4), round(hi, 4)]
+
+
+def _percentile(samples: list[float], q: float) -> float:
+    if not samples:
+        return 0.0
+    ordered = sorted(samples)
+    idx = min(len(ordered) - 1, max(0, round((len(ordered) - 1) * q)))
+    return round(ordered[idx], 4)
+
+
+def _hypergraph_scale_case(node_count: int) -> dict[str, Any]:
+    """Empirical hypergraph ingestion, 10-stage dedup, Leiden clustering & hybrid retrieval benchmark."""
+
+    from aegis_cognition.hypergraph import HypergraphEdgeSpec, HypergraphEngine, HypergraphNodeSpec
+
+    engine = HypergraphEngine()
+    t0 = time.perf_counter()
+    domains = ("memory", "ipc", "mvcc", "consensus", "mcp", "wasm", "scheduler", "replay")
+    for nid in range(1, node_count + 1):
+        dom = domains[nid % len(domains)]
+        mod_idx = (nid // 8) % max(1, node_count // 32)
+        src_path = f"src/{dom}/module_{mod_idx:04d}.rs"
+        # Every 50th node introduces a casing/punctuation alias to exercise 10-stage deduplication
+        if nid > 50 and nid % 50 == 0:
+            base_id = nid - 50
+            base_dom = domains[base_id % len(domains)]
+            label = f"{base_dom.capitalize()}ServiceHandler{base_id}"
+            src_path = engine.nodes[base_id].source_file or src_path
+        elif nid % 37 == 0:
+            # Antonym variant pair that MUST NOT merge (`read` vs `write`)
+            label = f"{dom}_read_channel_{nid // 37}" if (nid // 37) % 2 == 0 else f"{dom}_write_channel_{(nid // 37) - 1}"
+        else:
+            label = f"{dom}_service_handler_{nid}"
+        engine.upsert_node(
+            HypergraphNodeSpec(
+                node_id=nid,
+                label=label,
+                kind="symbol",
+                summary=f"Deterministic {dom} state transition authority for component {mod_idx}",
+                source_file=src_path,
+                ast_fingerprint=0xAE615000 + nid,
+                lifecycle_rank=3 if nid % 5 == 0 else 2,
+                code_fingerprint=0xC0DE0000 + mod_idx,
+            )
+        )
+    eid = 1
+    for nid in range(1, node_count):
+        tgt = nid + 1 if nid % 16 != 0 else ((nid + 17) % node_count) + 1
+        if nid != tgt:
+            engine.upsert_edge(
+                HypergraphEdgeSpec(
+                    hyperedge_id=eid,
+                    relation="calls" if eid % 3 else "depends_on",
+                    sources=(nid,),
+                    targets=(tgt,),
+                    provenance="EXTRACTED" if eid % 4 else "INFERRED",
+                )
+            )
+            eid += 1
+    ingest_ms = round((time.perf_counter() - t0) * 1000.0, 3)
+
+    t1 = time.perf_counter()
+    structural = engine.analyze(
+        deduplicate=True,
+        cluster_leiden=(node_count <= 25_000),
+        changed_paths=("src/memory/module_0000.rs",),
+        blast_max_hops=2,
+    )
+    analyze_ms = round((time.perf_counter() - t1) * 1000.0, 3)
+
+    queries = (
+        "memory state transition authority",
+        "consensus service handler",
+        "mvcc deterministic component",
+        "mcp service handler",
+        "ipc read channel",
+    )
+    query_samples_ms: list[float] = []
+    hits_non_empty = True
+    for q in queries:
+        tq = time.perf_counter()
+        q_res = engine.analyze(
+            deduplicate=False,
+            cluster_leiden=False,
+            query=q,
+            top_k=8,
+        )
+        query_samples_ms.append((time.perf_counter() - tq) * 1000.0)
+        hits_non_empty = hits_non_empty and bool(q_res.get("retrieval_hits"))
+
+    dedup_rep = structural.get("dedup_report") or {}
+    return {
+        "node_scale_input": node_count,
+        "edge_scale_input": eid - 1,
+        "authority": structural.get("authority", "python_fallback"),
+        "active_nodes_post_dedup": structural["node_count"],
+        "merged_duplicates": dedup_rep.get("merged_node_count", node_count - structural["node_count"]),
+        "community_count": len(structural.get("communities", [])),
+        "blast_radius_affected_count": len(structural.get("affected_nodes", [])),
+        "ingest_ms": ingest_ms,
+        "analyze_dedup_leiden_ms": analyze_ms,
+        "query_median_ms": round(statistics.median(query_samples_ms), 4),
+        "query_p50_ms": _percentile(query_samples_ms, 0.50),
+        "query_p95_ms": _percentile(query_samples_ms, 0.95),
+        "query_p99_ms": _percentile(query_samples_ms, 0.99),
+        "query_mean_bootstrap_95_ci_ms": _bootstrap_95_ci(query_samples_ms),
+        "hits_non_empty": hits_non_empty,
+    }
+
+
+def _dedup_guard_ablation_case() -> dict[str, Any]:
+    """Component-wise ablation over the 10-stage Graphify entity deduplicator."""
+
+    from aegis_cognition.hypergraph import HypergraphEngine, HypergraphNodeSpec
+
+    def _build_adversarial_dedup_corpus() -> HypergraphEngine:
+        eng = HypergraphEngine()
+        specs = (
+            # True duplicate pair (1, 2): identical normalized identifier in same file -> MUST MERGE
+            HypergraphNodeSpec(1, "ContextCompilerEngine", kind="symbol", source_file="src/compiler.py"),
+            HypergraphNodeSpec(2, "context_compiler_engine", kind="symbol", source_file="src/compiler.py"),
+            # Antonym variant pair (3, 4): high Jaro-Winkler similarity -> MUST NOT MERGE
+            HypergraphNodeSpec(3, "bridge_frame_encoder_pipeline", kind="symbol", source_file="src/bridge.rs"),
+            HypergraphNodeSpec(4, "bridge_frame_decoder_pipeline", kind="symbol", source_file="src/bridge.rs"),
+            # Numeric version pair (5, 6): v1 vs v2 -> MUST NOT MERGE
+            HypergraphNodeSpec(5, "protocol_envelope_schema_v1", kind="symbol", source_file="src/proto.rs"),
+            HypergraphNodeSpec(6, "protocol_envelope_schema_v2", kind="symbol", source_file="src/proto.rs"),
+            # Cross-file distinct source anchors (7, 8): same helper name in two distinct files -> MUST NOT MERGE
+            HypergraphNodeSpec(7, "validate_header_checksum", kind="symbol", source_file="src/ipc.rs"),
+            HypergraphNodeSpec(8, "validate_header_checksum", kind="symbol", source_file="src/shm.rs"),
+            # Content-token swap pair (9, 10): client->server vs server->client -> MUST NOT MERGE
+            HypergraphNodeSpec(9, "stream_bridge_from_host_to_guest", kind="symbol", source_file="src/wasm.rs"),
+            HypergraphNodeSpec(10, "stream_bridge_from_guest_to_host", kind="symbol", source_file="src/wasm.rs"),
+        )
+        for s in specs:
+            eng.upsert_node(s)
+        return eng
+
+    full_res = _build_adversarial_dedup_corpus().analyze(deduplicate=True, cluster_leiden=False)
+    no_variant = _build_adversarial_dedup_corpus().analyze(
+        deduplicate=True, cluster_leiden=False, dedup_guards={"enable_variant_guard": False}
+    )
+    no_numeric = _build_adversarial_dedup_corpus().analyze(
+        deduplicate=True, cluster_leiden=False, dedup_guards={"enable_numeric_guard": False}
+    )
+    no_crossfile = _build_adversarial_dedup_corpus().analyze(
+        deduplicate=True, cluster_leiden=False, dedup_guards={"enable_crossfile_guard": False}
+    )
+    # 10 input nodes -> exactly 1 true duplicate merge => 9 active nodes when all guards hold
+    oracle_pass = (
+        full_res["node_count"] == 9
+        and no_variant["node_count"] < 9
+        and no_numeric["node_count"] < 9
+        and no_crossfile["node_count"] < 9
+    )
+    return {
+        "input_nodes": 10,
+        "expected_post_dedup_nodes": 9,
+        "full_10_stage_nodes": full_res["node_count"],
+        "ablated_variant_guard_nodes": no_variant["node_count"],
+        "ablated_numeric_guard_nodes": no_numeric["node_count"],
+        "ablated_crossfile_guard_nodes": no_crossfile["node_count"],
+        "false_merges_with_full_guards": max(0, 9 - full_res["node_count"]),
+        "oracle_pass": oracle_pass,
+    }
+
+
+def _retrieval_tier_ablation_case() -> dict[str, Any]:
+    """Component-wise ablation over Hybrid BM25 + Vector + Multi-Seed PPR + Reflect scoring."""
+
+    from aegis_cognition.hypergraph import HypergraphEdgeSpec, HypergraphEngine, HypergraphNodeSpec
+
+    eng = HypergraphEngine()
+    # Node 1 matches lexically; Node 2 has ZERO lexical overlap with query "quorum witness seal"
+    # but is directly called by Node 1 (testing PPR multi-hop); Node 3 matches lexically too
+    # but has a STALE_CODE_FINGERPRINT reflection (testing Reflect demotion).
+    eng.upsert_node(
+        HypergraphNodeSpec(
+            1,
+            "quorum_witness_sealer",
+            kind="symbol",
+            summary="Primary entry point for quorum witness seal",
+            code_fingerprint=111,
+        )
+    )
+    eng.upsert_node(
+        HypergraphNodeSpec(
+            2,
+            "ed25519_merkle_accumulator",
+            kind="symbol",
+            summary="Cryptographic digest tree",
+            code_fingerprint=222,
+        )
+    )
+    eng.upsert_node(
+        HypergraphNodeSpec(
+            3,
+            "legacy_quorum_witness_draft",
+            kind="memory",
+            summary="Superseded quorum witness seal note",
+            code_fingerprint=999,
+        )
+    )
+    eng.upsert_edge(HypergraphEdgeSpec(1, "calls", (1,), (2,), provenance="EXTRACTED", confidence=1.0, weight=1.0))
+    # Corroborate node 1 & 2; mark node 3 with stale fingerprint (recorded against old fp 333 != current 999)
+    eng.record_reflect(1, supporting=True, observed_at_ms=1_700_000_000_000, code_fingerprint=111)
+    eng.record_reflect(1, supporting=True, observed_at_ms=1_700_000_001_000, code_fingerprint=111)
+    eng.record_reflect(3, supporting=True, observed_at_ms=1_700_000_000_000, code_fingerprint=333)
+
+    # Force pure-Python or native consistently; note reflect state lives on HypergraphEngine
+    full = eng.analyze(deduplicate=False, cluster_leiden=False, query="quorum witness seal", top_k=3, prefer_native=False)
+    no_ppr = eng.analyze(
+        deduplicate=False,
+        cluster_leiden=False,
+        query="quorum witness seal",
+        top_k=3,
+        retrieval_ablation={"enable_ppr": False},
+        prefer_native=False,
+    )
+    no_reflect = eng.analyze(
+        deduplicate=False,
+        cluster_leiden=False,
+        query="quorum witness seal",
+        top_k=3,
+        retrieval_ablation={"enable_reflect": False},
+        prefer_native=False,
+    )
+    full_ids = [h["node_id"] for h in full["retrieval_hits"]]
+    no_ppr_ids = [h["node_id"] for h in no_ppr["retrieval_hits"]]
+    stale_full_score = next((h["fused_score"] for h in full["retrieval_hits"] if h["node_id"] == 3), 0.0)
+    stale_no_reflect_score = next((h["fused_score"] for h in no_reflect["retrieval_hits"] if h["node_id"] == 3), 0.0)
+    oracle_pass = (2 in full_ids) and (2 not in no_ppr_ids) and (stale_full_score < stale_no_reflect_score)
+    return {
+        "full_hybrid_hit_ids": full_ids,
+        "ablated_no_ppr_hit_ids": no_ppr_ids,
+        "stale_node_score_with_reflect": round(stale_full_score, 6),
+        "stale_node_score_without_reflect": round(stale_no_reflect_score, 6),
+        "ppr_recovers_multihop_neighbor": (2 in full_ids) and (2 not in no_ppr_ids),
+        "reflect_suppresses_stale_fingerprint": stale_full_score < stale_no_reflect_score,
+        "oracle_pass": oracle_pass,
+    }
+
+
+def _aip_v2_protocol_compression_case() -> dict[str, Any]:
+    """Measure multi-agent AIP-v2 CompactHandleEnvelope + delta sync vs prose broadcast."""
+
+    from aegis_cognition.team_protocol import (
+        CompactHandleEnvelope,
+        SharedTaskDeltaBoard,
+        make_compact_handle,
+        measure_protocol_token_compression,
+    )
+
+    board = SharedTaskDeltaBoard()
+    prose_messages: list[str] = []
+    compact_envelopes: list[CompactHandleEnvelope] = []
+    cursor_seq = 0
+    total_delta_bytes = 0
+    total_full_snapshot_bytes = 0
+
+    for step in range(1, 33):
+        agent_id = f"worker-{(step % 8) + 1}"
+        artifact_blob = (f"diff --git a/src/mod_{step}.rs b/src/mod_{step}.rs\n" + "+fn verified() {}\n" * 96).encode(
+            "utf-8"
+        )
+        handle = make_compact_handle("patch", artifact_blob)
+        board.upsert_task(
+            step,
+            status="completed",
+            owner_agent=agent_id,
+            exclusive_resources=[f"file:src/mod_{step}.rs"],
+            compact_handles=[handle],
+        )
+        delta = board.delta_since(cursor_seq)
+        cursor_seq = delta.latest_seq
+        delta_wire = json.dumps([t.as_dict() for t in delta.changed_tasks], separators=(",", ":"))
+        full_wire = json.dumps([t.as_dict() for t in board.delta_since(0).changed_tasks], separators=(",", ":"))
+        total_delta_bytes += len(delta_wire.encode("utf-8"))
+        total_full_snapshot_bytes += len(full_wire.encode("utf-8"))
+
+        prose_msg = (
+            f"Hello team, this is {agent_id}. I have completed task #{step} modifying file src/mod_{step}.rs. "
+            f"Here is the complete patch payload for everyone's context window:\n{artifact_blob.decode('utf-8')}"
+        )
+        env = CompactHandleEnvelope(
+            run_id="bench-run-01",
+            sender_agent=agent_id,
+            recipient_agent="supervisor",
+            kind="DELTA_PUBLISH",
+            task_id=step,
+            delta_seq=cursor_seq,
+            status="completed",
+            handles=(handle,),
+            touched_resources=(f"file:src/mod_{step}.rs",),
+            goal_revision=1,
+            goal_round=step,
+        )
+        prose_messages.append(prose_msg)
+        compact_envelopes.append(env)
+
+    per_step = [
+        measure_protocol_token_compression(p, c)
+        for p, c in zip(prose_messages, compact_envelopes, strict=True)
+    ]
+    prose_tokens_total = sum(int(x["prose_tokens_est"]) for x in per_step)
+    compact_tokens_total = sum(int(x["compact_tokens_est"]) for x in per_step)
+    token_reduction_pct = round((1.0 - compact_tokens_total / max(1, prose_tokens_total)) * 100.0, 3)
+    delta_savings_pct = round((1.0 - total_delta_bytes / max(1, total_full_snapshot_bytes)) * 100.0, 3)
+    return {
+        "step_count": len(per_step),
+        "prose_tokens_total": prose_tokens_total,
+        "compact_tokens_total": compact_tokens_total,
+        "token_reduction_percent": token_reduction_pct,
+        "delta_sync_wire_bytes": total_delta_bytes,
+        "full_snapshot_wire_bytes": total_full_snapshot_bytes,
+        "delta_sync_reduction_percent": delta_savings_pct,
+        "oracle_pass": token_reduction_pct >= 65.0 and delta_savings_pct >= 70.0,
+    }
+
+
+def _byzantine_fault_injection_case() -> dict[str, Any]:
+    """Verify floor(2N/3)+1 Byzantine quorum & single-counterexample veto under adversarial fault injection."""
+
+    from aegis_cognition.team_protocol import (
+        AdversarialAuditGate,
+        AuditVote,
+        ChallengeFinding,
+        ReconstructionObligationLedger,
+        byzantine_quorum_threshold,
+        make_compact_handle,
+    )
+
+    ev_handle = make_compact_handle("ev", b"pytest-bounds-output")
+    packet = AdversarialAuditGate.blind_submission(
+        spec_text="1. Enforce O(1) lookup.\n2. Preserve zero-copy slice bounds.",
+        diff_hunks=["@@ -1,3 +1,5 @@\n+assert!(offset <= len);"],
+        evidence_handles=[ev_handle],
+        raw_claims=[
+            "<thinking>persuasive chain of thought</thinking> confidence: 10/10! Implemented by agent-alpha."
+        ],
+        author_agent_id="agent-alpha",
+    )
+    ledger = ReconstructionObligationLedger()
+    ledger.register_obligation("Slice bounds verified by unit test", required_receipt_ids=("rcpt_bounds",))
+    ledger.record_verified_receipt("rcpt_bounds", output_digest="a" * 64)
+    receipt_ids = ("rcpt_bounds",)
+
+    # Case A: 7 auditors (f=2, required quorum = 5); only 4 approve (below Byzantine quorum) -> MUST REJECT
+    votes_insufficient = [
+        AuditVote(
+            f"auditor-{i}",
+            packet.submission_digest,
+            approved=(i < 4),
+            verified_receipt_ids=receipt_ids if i < 4 else (),
+        )
+        for i in range(7)
+    ]
+    verdict_insufficient = ledger.evaluate_consensus(packet=packet, votes=votes_insufficient, total_auditors=7)
+
+    # Case B: 7 auditors, 6 approve, 1 raises a concrete FATAL_COUNTEREXAMPLE -> MUST VETO
+    votes_veto = [
+        AuditVote(f"auditor-{i}", packet.submission_digest, approved=True, verified_receipt_ids=receipt_ids)
+        for i in range(6)
+    ] + [
+        AuditVote(
+            "auditor-6",
+            packet.submission_digest,
+            approved=False,
+            verified_receipt_ids=(),
+            findings=(
+                ChallengeFinding(
+                    severity="FATAL_COUNTEREXAMPLE",
+                    description="Integer overflow when offset == usize::MAX",
+                    reproducible_check="cargo test test_overflow_boundary",
+                ),
+            ),
+        )
+    ]
+    verdict_veto = ledger.evaluate_consensus(packet=packet, votes=votes_veto, total_auditors=7)
+
+    # Case C: 7 auditors, 5 approve with verified receipts for all obligations and 0 fatal counterexamples -> ADMITTED
+    votes_valid = [
+        AuditVote(
+            f"auditor-{i}",
+            packet.submission_digest,
+            approved=(i < 5),
+            verified_receipt_ids=receipt_ids if i < 5 else (),
+        )
+        for i in range(7)
+    ]
+    verdict_valid = ledger.evaluate_consensus(packet=packet, votes=votes_valid, total_auditors=7)
+
+    claims_blob = json.dumps(list(packet.sanitized_claims))
+    oracle_pass = (
+        byzantine_quorum_threshold(7) == 5
+        and not verdict_insufficient.admitted
+        and verdict_insufficient.status in {"QUORUM_REJECTED", "UNVERIFIED_OBLIGATIONS"}
+        and not verdict_veto.admitted
+        and verdict_veto.status == "VETOED_COUNTEREXAMPLE"
+        and verdict_valid.admitted
+        and verdict_valid.status == "QUORUM_ADMITTED"
+        and "agent-alpha" not in claims_blob
+        and "<thinking>" not in claims_blob
+    )
+    return {
+        "n_auditors": 7,
+        "required_byzantine_quorum": byzantine_quorum_threshold(7),
+        "quorum_shortfall_rejected": not verdict_insufficient.admitted,
+        "single_counterexample_vetoed": verdict_veto.status == "VETOED_COUNTEREXAMPLE",
+        "honest_quorum_admitted": verdict_valid.admitted,
+        "author_and_cot_blinded": "agent-alpha" not in claims_blob and "<thinking>" not in claims_blob,
+        "false_admission_rate": 0.0 if (not verdict_insufficient.admitted and not verdict_veto.admitted) else 1.0,
+        "oracle_pass": oracle_pass,
+    }
+
+
+def run(*, hypergraph_scales: tuple[int, ...] = (1_000,)) -> dict[str, Any]:
     message = "Explain the memory recall and workspace graph implementation"
     path_cases = [_path_case(count, message) for count in (16, 64, 128, 512)]
     context_cases = [_context_case(count, 4096) for count in (8, 32, 64)]
@@ -668,6 +1101,24 @@ def run() -> dict[str, Any]:
         raise RuntimeError("memory poisoning candidate-only boundary failed")
     if not active_memory_case["oracle_pass"]:
         raise RuntimeError("authorized ACTIVE memory hydration oracle failed")
+
+    hg_scale_results = [_hypergraph_scale_case(scale) for scale in hypergraph_scales]
+    dedup_ablation = _dedup_guard_ablation_case()
+    retrieval_ablation = _retrieval_tier_ablation_case()
+    protocol_compression = _aip_v2_protocol_compression_case()
+    byzantine_fault = _byzantine_fault_injection_case()
+
+    if not all(item["hits_non_empty"] for item in hg_scale_results):
+        raise RuntimeError("hypergraph scale benchmark returned empty retrieval hits")
+    if not dedup_ablation["oracle_pass"]:
+        raise RuntimeError("10-stage deduplicator guard ablation oracle failed")
+    if not retrieval_ablation["oracle_pass"]:
+        raise RuntimeError("hybrid BM25+Vector+PPR+Reflect ablation oracle failed")
+    if not protocol_compression["oracle_pass"]:
+        raise RuntimeError("AIP-v2 protocol token compression oracle failed")
+    if not byzantine_fault["oracle_pass"]:
+        raise RuntimeError("Byzantine quorum & counterexample veto oracle failed")
+
     quantitative_cases = [case for case in cases if "baseline_tokens" in case and "bounded_tokens" in case]
     total_baseline = sum(int(case["baseline_tokens"]) for case in quantitative_cases)
     total_bounded = sum(int(case["bounded_tokens"]) for case in quantitative_cases)
@@ -688,15 +1139,30 @@ def run() -> dict[str, Any]:
             "tokens_saved": total_baseline - total_bounded,
             "reduction_percent": round((total_baseline - total_bounded) * 100 / total_baseline, 3),
         },
+        "research_extensions": {
+            "hypergraph_scale_benchmarks": hg_scale_results,
+            "dedup_guard_ablation": dedup_ablation,
+            "retrieval_tier_ablation": retrieval_ablation,
+            "aip_v2_protocol_compression": protocol_compression,
+            "byzantine_quorum_fault_injection": byzantine_fault,
+        },
     }
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output", type=Path, help="write JSON evidence to this path")
+    parser.add_argument(
+        "--hypergraph-scales",
+        default="1000",
+        help="comma-separated hypergraph node scales (e.g. 1000,10000,50000,100000)",
+    )
     args = parser.parse_args()
+    scales = tuple(int(part.strip()) for part in str(args.hypergraph_scales).split(",") if part.strip())
+    if not scales or any(s < 16 or s > 250_000 for s in scales):
+        parser.error("--hypergraph-scales values must be within [16, 250000]")
     started = time.perf_counter()
-    result = run()
+    result = run(hypergraph_scales=scales)
     result["duration_ms"] = round((time.perf_counter() - started) * 1000, 3)
     rendered = json.dumps(result, indent=2, sort_keys=True)
     if args.output:

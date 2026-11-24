@@ -35,6 +35,9 @@ EXPECTED_FAMILY = {
     "ubuntu-latest": "linux",
     "windows-latest": "windows",
     "macos-14": "macos",
+    "macos-15": "macos",
+    "macos-26": "macos",
+    "macos-latest": "macos",
 }
 COUNT_FIELDS = ("discovered", "passed", "failed", "ignored", "filtered", "skipped")
 ATTESTATION_BASE_FIELDS = frozenset(

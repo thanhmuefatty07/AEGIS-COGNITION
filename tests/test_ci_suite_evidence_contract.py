@@ -574,7 +574,9 @@ def test_deep_workflow_advisory_audit_passes_deny_toml_ignore_flags_without_carg
     assert 'cargo audit "${IGNORE_FLAGS[@]}"' in advisory["run"]
     assert not (ROOT / ".cargo" / "audit.toml").exists()
     deny_ignores = tomllib.loads((ROOT / "deny.toml").read_text(encoding="utf-8"))["advisories"]["ignore"]
-    assert deny_ignores
+    assert isinstance(deny_ignores, list)
+    assert all(isinstance(item, str) and item.startswith("RUSTSEC-") for item in deny_ignores)
+    assert 'data.get("advisories", {}).get("ignore", [])' in advisory["run"]
 
 
 @pytest.mark.parametrize(
@@ -847,7 +849,7 @@ def test_cross_platform_full_suite_is_a_closed_three_runner_gate() -> None:
     assert "needs.change-scope.outputs.runtime == 'true'" in evidence_gate["if"]
     assert any(step.get("if") == "always()" for step in evidence_gate["steps"])
     assert '--platform-id "${{ matrix.platform-id }}"' in content
-    for runner in ("ubuntu-latest", "windows-latest", "macos-14"):
+    for runner in ("ubuntu-latest", "windows-latest", "macos-15"):
         assert f"platform-id: {runner}" in content
         assert f"--expected-platform {runner}" in content
     cross_platform_job = content.split("  cross-platform-full-suite:", 1)[1].split(
