@@ -21,16 +21,20 @@ import platform
 import subprocess
 import sys
 import tarfile
-import urllib.error
 import urllib.request
 import zipfile
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 ROOT = Path(__file__).resolve().parents[2]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
+
+from scripts.cloud_m8.provenance import (  # noqa: E402
+    PrivateArchiveUnavailableError,
+    resolve_private_archive,
+)
 
 
 def _get_git_head_sha(root: Path = ROOT) -> str:
@@ -95,6 +99,13 @@ class Track2Orchestrator:
         self.head_sha = _get_git_head_sha(root)
         self.repository = _get_git_remote_repo(root)
 
+    def _resolve_archive_optional(self) -> Path | None:
+        """Resolve external private archive strictly without ever creating fallback dirs."""
+        try:
+            return resolve_private_archive(self.root)
+        except PrivateArchiveUnavailableError:
+            return None
+
     # --------------------------------------------------------------------------
     # NV-010: Branch Protection Receipt
     # --------------------------------------------------------------------------
@@ -105,7 +116,7 @@ class Track2Orchestrator:
         github_token: str | None = None,
         dry_run: bool = False,
     ) -> dict[str, Any]:
-        """Generates authoritative branch protection receipt."""
+        """Generate authoritative branch protection receipt."""
         repo = repository or self.repository
         receipt_path = self.artifacts_dir / "branch_protection_receipt.json"
         now_utc = datetime.now(UTC).replace(microsecond=0).isoformat().replace("+00:00", "Z")
@@ -118,7 +129,7 @@ class Track2Orchestrator:
                 "contexts": [
                     "CI / full-workspace (ubuntu-latest)",
                     "CI / full-workspace (windows-latest)",
-                    "CI / full-workspace (macos-latest)",
+                    "CI / full-workspace (macos-15)",
                     "Deep evidence / sanitizer-miri",
                     "Release evidence / supply-chain-gate",
                     "Release evidence / e2e-packaging-smoke",
@@ -176,7 +187,7 @@ class Track2Orchestrator:
                 headers={
                     "Authorization": f"Bearer {token}",
                     "Accept": "application/vnd.github+json",
-                    "User-Agent": "AEGIS-Verification-Client/0.8.0",
+                    "User-Agent": "AEGIS-Verification-Client/0.9.0",
                 },
             )
             try:
@@ -223,13 +234,13 @@ class Track2Orchestrator:
         github_token: str | None = None,
         dry_run: bool = False,
     ) -> dict[str, Any]:
-        """Binds remote multi-platform hosted runner evidence to head SHA."""
+        """Bind remote multi-platform hosted runner evidence to head SHA."""
         repo = repository or self.repository
         receipt_path = self.artifacts_dir / "remote_ci_matrix_receipt.json"
         now_utc = datetime.now(UTC).replace(microsecond=0).isoformat().replace("+00:00", "Z")
 
         if dry_run:
-            receipt = {
+            receipt: dict[str, Any] = {
                 "schema": "aegis-remote-ci-matrix-receipt-v1",
                 "truth_claim": False,
                 "nv_id": "NV-015",
@@ -261,7 +272,7 @@ class Track2Orchestrator:
                 headers={
                     "Authorization": f"Bearer {token}",
                     "Accept": "application/vnd.github+json",
-                    "User-Agent": "AEGIS-Verification-Client/0.8.0",
+                    "User-Agent": "AEGIS-Verification-Client/0.9.0",
                 },
             )
             try:
@@ -281,8 +292,7 @@ class Track2Orchestrator:
                             for r in runs
                         )
                         if matrix_runs and all(
-                            r.get("status") == "completed" and r.get("conclusion") == "success"
-                            for r in matrix_runs
+                            r.get("status") == "completed" and r.get("conclusion") == "success" for r in matrix_runs
                         ):
                             status = "PROVEN"
                             verified = True
@@ -322,7 +332,7 @@ class Track2Orchestrator:
         probe_receipt: Path | str | None = None,
         dry_run: bool = False,
     ) -> dict[str, Any]:
-        """Runs or materializes macOS cooperative capability probe."""
+        """Run or validate macOS cooperative capability probe fail-closed."""
         receipt_path = self.artifacts_dir / "macos_capability_receipt.json"
         now_utc = datetime.now(UTC).replace(microsecond=0).isoformat().replace("+00:00", "Z")
 
@@ -335,7 +345,7 @@ class Track2Orchestrator:
                 "status": "SIMULATED / DRY RUN",
                 "verified": False,
                 "reason": "macOS capability probe simulated in dry-run mode; no probe executed.",
-                "platform": "Darwin x86_64 / arm64 macOS (simulated)",
+                "platform": "Darwin arm64 / x86_64 macOS (simulated)",
                 "implementation": "core/rust/src/resource_platform.rs::MacosCooperativeController",
                 "capability_level": {
                     "cpu": "MEASUREMENT_ONLY",
@@ -372,23 +382,30 @@ class Track2Orchestrator:
                 probe_file = explicit_probe_path
         elif platform.system() == "Darwin":
             from scripts.macos_capability_probe import probe
+
             probe_data = dict(probe(output=None))
         elif self.root.resolve() == ROOT.resolve():
-            pointer = ROOT / ".local" / "private-archive.path"
-            archive_base = Path(
-                os.environ.get("AEGIS_PRIVATE_ARCHIVE")
-                or (pointer.read_text(encoding="utf-8").strip() if pointer.is_file() else str(ROOT / ".local" / "private-archive"))
-            )
-            candidates = [
-                archive_base / "20261104-macos-verification/macos-14.json",
-                archive_base / "20261104-macos-verification/macos_capability_probe.json",
-                archive_base / "20261028-wave4-verification/tier2-gha/tier2-macos-14/macos_capability_probe.json",
-                archive_base / "20261028-wave4-verification/tier2-gha/macos_capability_probe.json",
-            ]
-            for cand in candidates:
-                if cand.is_file():
-                    probe_file = cand
-                    break
+            archive_base = self._resolve_archive_optional()
+            if archive_base is not None:
+                candidates: list[Path] = []
+                runs_dir = archive_base / "runs"
+                if runs_dir.is_dir():
+                    candidates.extend(
+                        run_dir / "macos_capability_probe.json"
+                        for run_dir in sorted(runs_dir.glob("*macos*"), reverse=True)
+                    )
+                candidates.extend(
+                    [
+                        archive_base / "20261104-macos-verification/macos-15.json",
+                        archive_base / "20261104-macos-verification/macos-14.json",
+                        archive_base / "20261104-macos-verification/macos_capability_probe.json",
+                        archive_base / "20261028-wave4-verification/tier2-gha/macos_capability_probe.json",
+                    ]
+                )
+                for cand in candidates:
+                    if cand.is_file():
+                        probe_file = cand
+                        break
 
         if explicit_probe_path is not None and probe_file is None:
             receipt = {
@@ -423,10 +440,10 @@ class Track2Orchestrator:
 
         if probe_file and probe_file.is_file():
             try:
-                loaded = json.loads(probe_file.read_text(encoding="utf-8"))
-                if not isinstance(loaded, dict):
+                raw_loaded: Any = json.loads(probe_file.read_text(encoding="utf-8"))
+                if not isinstance(raw_loaded, dict):
                     raise ValueError("Probe receipt JSON is not an object")
-                probe_data = loaded
+                probe_data = cast(dict[str, Any], raw_loaded)
             except Exception as exc:
                 print(f"[-] Failed reading external probe receipt {probe_file}: {exc}")
                 receipt = {
@@ -460,7 +477,7 @@ class Track2Orchestrator:
 
         if probe_data is not None:
             raw_checks = probe_data.get("checks")
-            checks_dict = raw_checks if isinstance(raw_checks, dict) else {}
+            checks_dict: dict[str, Any] = cast(dict[str, Any], raw_checks) if isinstance(raw_checks, dict) else {}
             status_val = str(probe_data.get("status", "NOT VERIFIED"))
             is_verified = (
                 status_val == "COOPERATIVE LIVE VERIFIED"
@@ -468,11 +485,7 @@ class Track2Orchestrator:
                 and checks_dict.get("cooperative_termination_observed") is True
                 and probe_data.get("kernel_enforcement_claim") is False
             )
-            effective_status = (
-                status_val
-                if is_verified
-                else "FAIL_CLOSED (INVALID PROBE CLAIMS)"
-            )
+            effective_status = status_val if is_verified else "FAIL_CLOSED (INVALID PROBE CLAIMS)"
             default_reason = (
                 "macOS lane verifies cooperative cancellation only; kernel-equivalent limits remain unclaimed"
                 if is_verified
@@ -486,29 +499,38 @@ class Track2Orchestrator:
                 "status": effective_status,
                 "verified": is_verified,
                 "reason": probe_data.get("reason", default_reason) if is_verified else default_reason,
-                "platform": probe_data.get("platform", "macOS-14.8.9-arm64-arm-64bit-Mach-O"),
+                "platform": probe_data.get("platform", "macOS-15-arm64-arm-64bit-Mach-O"),
                 "implementation": probe_data.get(
                     "implementation",
                     "core/rust/src/resource_platform.rs::MacosCooperativeController",
                 ),
-                "capability_level": probe_data.get("capability_level", {
-                    "cpu": "MEASUREMENT_ONLY",
-                    "memory": "MEASUREMENT_ONLY",
-                    "process_count": "MEASUREMENT_ONLY",
-                    "thread_count": "MEASUREMENT_ONLY",
-                    "io": "MEASUREMENT_ONLY",
-                    "termination": "COOPERATIVE_ONLY",
-                }),
+                "capability_level": probe_data.get(
+                    "capability_level",
+                    {
+                        "cpu": "MEASUREMENT_ONLY",
+                        "memory": "MEASUREMENT_ONLY",
+                        "process_count": "MEASUREMENT_ONLY",
+                        "thread_count": "MEASUREMENT_ONLY",
+                        "io": "MEASUREMENT_ONLY",
+                        "termination": "COOPERATIVE_ONLY",
+                    },
+                ),
                 "checks": {
-                    "cooperative_cancellation_observed": bool(checks_dict.get("cooperative_cancellation_observed") is True),
-                    "cooperative_termination_observed": bool(checks_dict.get("cooperative_termination_observed") is True),
+                    "cooperative_cancellation_observed": bool(
+                        checks_dict.get("cooperative_cancellation_observed") is True
+                    ),
+                    "cooperative_termination_observed": bool(
+                        checks_dict.get("cooperative_termination_observed") is True
+                    ),
                 },
                 "kernel_enforcement_claim": False,
                 "verified_at_utc": now_utc,
                 "dry_run": False,
             }
             receipt_path.write_text(json.dumps(receipt, indent=2, sort_keys=True) + "\n", encoding="utf-8")
-            print(f"[+] Written NV-003 macOS Capability Receipt to {receipt_path} (status={receipt['status']}, verified={is_verified})")
+            print(
+                f"[+] Written NV-003 macOS Capability Receipt to {receipt_path} (status={receipt['status']}, verified={is_verified})"
+            )
             return receipt
 
         receipt = {
@@ -518,7 +540,7 @@ class Track2Orchestrator:
             "title": "macOS resource enforcement",
             "status": "NOT VERIFIED (HOST IS NOT DARWIN)",
             "verified": False,
-            "reason": f"Probe requires Darwin host; current host is {platform.system()}",
+            "reason": f"Probe requires Darwin host or verified archive probe; current host is {platform.system()}",
             "platform": platform.platform(),
             "kernel_enforcement_claim": False,
             "verified_at_utc": now_utc,
@@ -536,7 +558,7 @@ class Track2Orchestrator:
         wheel_path: Path | str | None = None,
         dry_run: bool = False,
     ) -> dict[str, Any]:
-        """Materializes macOS wheel parity and cross-compilation capability."""
+        """Verify macOS wheel binary integrity fail-closed."""
         receipt_path = self.artifacts_dir / "wheel_parity_macos_receipt.json"
         now_utc = datetime.now(UTC).replace(microsecond=0).isoformat().replace("+00:00", "Z")
 
@@ -563,7 +585,6 @@ class Track2Orchestrator:
                 print(f"[+] Written NV-008-M macOS Wheel Receipt to {receipt_path} (status={receipt['status']})")
             return receipt
 
-        # Live mode: discover and verify real wheel binary on disk
         candidate_paths: list[Path] = []
         if wheel_path is not None:
             candidate_paths.append(Path(wheel_path))
@@ -576,15 +597,19 @@ class Track2Orchestrator:
                     candidate_paths.extend(sorted(search_dir.glob("*macos*.whl")))
                     candidate_paths.extend(sorted(search_dir.glob("*macosx*.whl")))
             if self.root.resolve() == ROOT.resolve():
-                pointer = ROOT / ".local" / "private-archive.path"
-                archive_base = Path(
-                    os.environ.get("AEGIS_PRIVATE_ARCHIVE")
-                    or (pointer.read_text(encoding="utf-8").strip() if pointer.is_file() else str(ROOT / ".local" / "private-archive"))
-                )
-                archive_dist = archive_base / "20261104-macos-verification" / "dist"
-                if archive_dist.is_dir():
-                    candidate_paths.extend(sorted(archive_dist.glob("*macosx*.whl")))
-                    candidate_paths.extend(sorted(archive_dist.glob("*macos*.whl")))
+                archive_base = self._resolve_archive_optional()
+                if archive_base is not None:
+                    search_dirs: list[Path] = []
+                    runs_dir = archive_base / "runs"
+                    if runs_dir.is_dir():
+                        for run_dir in sorted(runs_dir.glob("*macos*"), reverse=True):
+                            search_dirs.append(run_dir / "dist")
+                            search_dirs.append(run_dir)
+                    search_dirs.append(archive_base / "20261104-macos-verification" / "dist")
+                    for dist_dir in search_dirs:
+                        if dist_dir.is_dir():
+                            candidate_paths.extend(sorted(dist_dir.glob("*macosx*.whl")))
+                            candidate_paths.extend(sorted(dist_dir.glob("*macos*.whl")))
 
         verified_wheel: Path | None = None
         for p in candidate_paths:
@@ -675,7 +700,7 @@ class Track2Orchestrator:
         backup_archive: Path | str | None = None,
         dry_run: bool = False,
     ) -> dict[str, Any]:
-        """Materializes external persisted-fixture restore drill."""
+        """Execute external persisted-fixture restore drill fail-closed."""
         receipt_path = self.artifacts_dir / "restore_backup_drill_receipt.json"
         now_utc = datetime.now(UTC).replace(microsecond=0).isoformat().replace("+00:00", "Z")
 
@@ -711,19 +736,19 @@ class Track2Orchestrator:
         elif os.environ.get("AEGIS_BACKUP_ARCHIVE"):
             archive_path = Path(os.environ["AEGIS_BACKUP_ARCHIVE"])
         elif self.root.resolve() == ROOT.resolve():
-            pointer = ROOT / ".local" / "private-archive.path"
-            archive_base = Path(
-                os.environ.get("AEGIS_PRIVATE_ARCHIVE")
-                or (pointer.read_text(encoding="utf-8").strip() if pointer.is_file() else str(ROOT / ".local" / "private-archive"))
-            )
-            candidates = [
-                self.root / ".local" / "repo-m8-1793226160.tar.gz",
-                archive_base / "audits/m8-artifacts-20261029/workspace-artifacts/.local/repo-m8-1793226160.tar.gz",
-                archive_base / "repo-m8-1793226160.tar.gz",
-                archive_base / "bundles/evidence-spot-1793226160.tar.gz",
-                archive_base / "20261103-p5-verification/evidence-aegis-spot-h2-m8-1793656560.tar.gz",
-                archive_base / "20261104-macos-verification/macos_evidence_bundle.tar.gz",
-            ]
+            archive_base = self._resolve_archive_optional()
+            candidates: list[Path] = [self.root / ".local" / "repo-m8-1793226160.tar.gz"]
+            if archive_base is not None:
+                candidates.extend(
+                    [
+                        archive_base
+                        / "audits/m8-artifacts-20261029/workspace-artifacts/.local/repo-m8-1793226160.tar.gz",
+                        archive_base / "repo-m8-1793226160.tar.gz",
+                        archive_base / "bundles/evidence-spot-1793226160.tar.gz",
+                        archive_base / "20261103-p5-verification/evidence-aegis-spot-h2-m8-1793656560.tar.gz",
+                        archive_base / "20261104-macos-verification/macos_evidence_bundle.tar.gz",
+                    ]
+                )
             for cand in candidates:
                 if cand.is_file():
                     archive_path = cand
@@ -769,7 +794,9 @@ class Track2Orchestrator:
             archive_sha256 = None
             status = "NOT VERIFIED (NO EXTERNAL BACKUP ARCHIVE PROVIDED)"
             verified = False
-            reason = "Closure requires an isolated target with persisted fixture restore and replay-prefix verification."
+            reason = (
+                "Closure requires an isolated target with persisted fixture restore and replay-prefix verification."
+            )
 
         receipt = {
             "schema": "aegis-restore-backup-drill-receipt-v1",
@@ -797,7 +824,7 @@ class Track2Orchestrator:
         fixtures_dir: Path | str | None = None,
         dry_run: bool = False,
     ) -> dict[str, Any]:
-        """Materializes cross-version schema migration rehearsal."""
+        """Execute cross-version schema migration rehearsal fail-closed."""
         receipt_path = self.artifacts_dir / "schema_migration_rehearsal_receipt.json"
         now_utc = datetime.now(UTC).replace(microsecond=0).isoformat().replace("+00:00", "Z")
 
@@ -824,7 +851,9 @@ class Track2Orchestrator:
             canonical_artifacts = (self.root / "artifacts").resolve()
             if self.artifacts_dir.resolve() != canonical_artifacts:
                 receipt_path.write_text(json.dumps(receipt, indent=2, sort_keys=True) + "\n", encoding="utf-8")
-                print(f"[+] Written NV-012 Schema Migration Rehearsal Receipt to {receipt_path} (status={receipt['status']})")
+                print(
+                    f"[+] Written NV-012 Schema Migration Rehearsal Receipt to {receipt_path} (status={receipt['status']})"
+                )
             return receipt
 
         fix_path: Path | None = None
@@ -837,7 +866,7 @@ class Track2Orchestrator:
 
         if fix_path and fix_path.is_dir():
             try:
-                schema_files = sorted(list(fix_path.glob("*.json")))
+                schema_files = sorted(fix_path.glob("*.json"))
                 if not schema_files:
                     raise ValueError(f"No schema JSON files found in {fix_path}")
                 for sf in schema_files:
@@ -891,8 +920,8 @@ class Track2Orchestrator:
         return receipt
 
     def execute_all(self, dry_run: bool = False) -> dict[str, Any]:
-        """Runs all Track 2 receipt generators."""
-        receipts = {
+        """Run all Track 2 receipt generators."""
+        receipts: dict[str, Any] = {
             "nv010": self.generate_nv010_branch_protection(dry_run=dry_run),
             "nv015": self.generate_nv015_remote_ci_evidence(dry_run=dry_run),
             "nv003": self.generate_nv003_macos_capability(dry_run=dry_run),
@@ -901,7 +930,7 @@ class Track2Orchestrator:
             "nv012": self.generate_nv012_migration_rehearsal(dry_run=dry_run),
         }
         all_passed = all(
-            r.get("verified") is True for r in receipts.values() if isinstance(r, dict)
+            isinstance(r, dict) and cast(dict[str, Any], r).get("verified") is True for r in receipts.values()
         )
         receipts["status"] = "PASS" if (dry_run or all_passed) else "INCOMPLETE"
         return receipts
@@ -915,7 +944,12 @@ def main() -> int:
 
     orchestrator = Track2Orchestrator(artifacts_dir=args.artifacts_dir)
     results = orchestrator.execute_all(dry_run=args.dry_run)
-    print(json.dumps({k: v.get("status") for k, v in results.items() if isinstance(v, dict)}, indent=2))
+    print(
+        json.dumps(
+            {k: cast(dict[str, Any], v).get("status") for k, v in results.items() if isinstance(v, dict)},
+            indent=2,
+        )
+    )
     return 0
 
 

@@ -1,13 +1,25 @@
-"""AEGIS Milestone 8 (M8: True Cloud Verification) Orchestration Suite.
+"""AEGIS Milestone 8 / Cloud Research Infrastructure Orchestration Suite.
 
-Provides cloud-native packaging, Spot VM execution, TCP cluster orchestration,
-Cloud Run services, SLSA/Cosign attestation generation, Track 2 receipts,
-and master coordination for verifying the 18 Not-Verified gates.
+Provides fail-closed private-archive provenance helpers, Spot/On-Demand VM
+orchestration over Cloud NAT + IAP (`--no-address`), VPC-internal TCP cluster
+orchestration, IAM-authenticated Cloud Run verification services, SLSA/Cosign
+attestation rehearsal, Track 2 receipt collectors, and master coordination.
 """
 
 from __future__ import annotations
 
-__version__ = "0.8.0"
+from scripts.cloud_m8.provenance import (
+    DEFAULT_ARTIFACT_REGISTRY,
+    DEFAULT_RESEARCH_BUCKET,
+    PrivateArchiveUnavailableError,
+    resolve_private_archive,
+)
+
+__version__ = "0.9.0"
 __all__ = [
+    "DEFAULT_ARTIFACT_REGISTRY",
+    "DEFAULT_RESEARCH_BUCKET",
+    "PrivateArchiveUnavailableError",
     "__version__",
+    "resolve_private_archive",
 ]

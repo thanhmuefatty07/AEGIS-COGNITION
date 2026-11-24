@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
-# AEGIS M8 Remote Spot VM Startup Runner (startup_compute.sh)
-# Genuine cloud execution script for NV-001, NV-005, NV-007, NV-008-L, NV-013, NV-014, NV-017, NV-020.
+# AEGIS Remote Cloud Compute Runner (startup_compute.sh v2)
+# Executes NV-001, NV-005, NV-007, NV-008-L, NV-013, NV-014, NV-017, NV-020 on
+# pinned CPython 3.14.7 (via uv) and pinned Rust from rust-toolchain.toml (1.99.1).
 set -euo pipefail
 
 export HOME="/root"
@@ -11,33 +12,50 @@ mkdir -p /var/log
 exec > >(tee -a "${LOG_FILE}" /dev/console) 2>&1
 
 echo "================================================================================"
-echo "  AEGIS Milestone 8 (M8: True Cloud Verification) Remote Runner"
+echo "  AEGIS Cloud Research & Verification Runner v2"
 echo "  Timestamp: $(date -u +"%Y-%m-%dT%H:%M:%SZ")"
 echo "================================================================================"
 
-# Retrieve metadata attributes
 get_metadata() {
     local key="$1"
     local default_val="${2:-}"
-    curl -s -f -H "Metadata-Flavor: Google" "http://metadata.google.internal/computeMetadata/v1/instance/attributes/${key}" 2>/dev/null || echo "${default_val}"
+    curl -s -f -H "Metadata-Flavor: Google" \
+        "http://metadata.google.internal/computeMetadata/v1/instance/attributes/${key}" \
+        2>/dev/null || echo "${default_val}"
 }
 
-GCS_BUCKET=$(get_metadata "gcs_bucket" "")
+GCS_BUCKET=$(get_metadata "gcs_bucket" "aegis-research-artifacts-2026")
+GCS_RUN_PREFIX=$(get_metadata "gcs_run_prefix" "")
 TIER=$(get_metadata "tier" "h2")
 TASK=$(get_metadata "task" "verification")
 HEAD_SHA=$(get_metadata "head_sha" "HEAD")
 RUN_ID=$(get_metadata "run_id" "manual-$(date +%s)")
+ARTIFACT_REGISTRY=$(get_metadata "artifact_registry" "us-central1-docker.pkg.dev/aegis-verification-2026/aegis-research-images")
+FUZZ_MAX_TOTAL_TIME=$(get_metadata "fuzz_max_total_time" "300")
+FUZZ_RUNS=$(get_metadata "fuzz_runs" "0")
+SCCACHE_PREFIX=$(get_metadata "sccache_prefix" "")
+SECRET_NAMES=$(get_metadata "secret_names" "")
+
 VM_NAME=$(curl -s -f -H "Metadata-Flavor: Google" "http://metadata.google.internal/computeMetadata/v1/instance/name" 2>/dev/null || hostname)
 ZONE=$(curl -s -f -H "Metadata-Flavor: Google" "http://metadata.google.internal/computeMetadata/v1/instance/zone" 2>/dev/null | awk -F/ '{print $NF}' || echo "us-central1-a")
-PROJECT_ID=$(curl -s -f -H "Metadata-Flavor: Google" "http://metadata.google.internal/computeMetadata/v1/project/project-id" 2>/dev/null || get_metadata "project_id" "")
+PROJECT_ID=$(curl -s -f -H "Metadata-Flavor: Google" "http://metadata.google.internal/computeMetadata/v1/project/project-id" 2>/dev/null || get_metadata "project_id" "aegis-verification-2026")
+
+if [ -z "${GCS_RUN_PREFIX}" ]; then
+    GCS_RUN_PREFIX="runs/${RUN_ID}"
+fi
+GCS_RUN_PREFIX="${GCS_RUN_PREFIX#/}"
+GCS_RUN_PREFIX="${GCS_RUN_PREFIX%/}"
+GCS_RUN_URI="gs://${GCS_BUCKET}/${GCS_RUN_PREFIX}"
 
 echo "[+] Execution context:"
-echo "    VM Name:    ${VM_NAME}"
-echo "    Zone:       ${ZONE}"
-echo "    Project:    ${PROJECT_ID}"
-echo "    Tier:       ${TIER}"
-echo "    GCS Bucket: ${GCS_BUCKET}"
-echo "    Run ID:     ${RUN_ID}"
+echo "    VM Name:           ${VM_NAME}"
+echo "    Zone:              ${ZONE}"
+echo "    Project:           ${PROJECT_ID}"
+echo "    Tier:              ${TIER}"
+echo "    GCS Run URI:       ${GCS_RUN_URI}"
+echo "    Artifact Registry: ${ARTIFACT_REGISTRY}"
+echo "    Run ID:            ${RUN_ID}"
+echo "    Fuzz Budget (s):   ${FUZZ_MAX_TOTAL_TIME}"
 
 WORKSPACE="/opt/aegis"
 EVIDENCE_DIR="/tmp/evidence"
@@ -45,8 +63,7 @@ mkdir -p "${WORKSPACE}" "${EVIDENCE_DIR}"
 
 # ------------------------------------------------------------------------------
 # Emergency & Exit Teardown Trap
-# Guarantees that any unexpected abort, error, or preemption signal immediately
-# uploads diagnostics to GCS and self-deletes the Spot VM.
+# Guarantees diagnostics upload to run-scoped GCS URI and immediate VM deletion.
 # ------------------------------------------------------------------------------
 TEARDOWN_DONE=0
 teardown_self() {
@@ -58,23 +75,21 @@ teardown_self() {
     trap - EXIT ERR SIGTERM SIGINT
 
     echo "================================================================================"
-    echo "  AEGIS Spot VM Teardown Handler (Exit code: ${exit_code})"
+    echo "  AEGIS Cloud VM Teardown Handler (Exit code: ${exit_code})"
     echo "  Timestamp: $(date -u +"%Y-%m-%dT%H:%M:%SZ")"
     echo "================================================================================"
 
     if [ "${exit_code}" -ne 0 ] && [ -n "${GCS_BUCKET}" ]; then
         echo "[!] Execution terminated with error ${exit_code}. Uploading diagnostics..."
         echo "FAILED ${exit_code} $(date -u +"%Y-%m-%dT%H:%M:%SZ")" > /tmp/FAILURE
-        (gcloud storage cp /tmp/FAILURE "gs://${GCS_BUCKET}/FAILURE-${VM_NAME}" || \
-         gsutil cp /tmp/FAILURE "gs://${GCS_BUCKET}/FAILURE-${VM_NAME}") 2>/dev/null || true
+        gcloud storage cp /tmp/FAILURE "${GCS_RUN_URI}/FAILURE-${VM_NAME}" 2>/dev/null || true
 
         if [ -f "${LOG_FILE}" ]; then
-            (gcloud storage cp "${LOG_FILE}" "gs://${GCS_BUCKET}/startup-failure-${VM_NAME}.log" || \
-             gsutil cp "${LOG_FILE}" "gs://${GCS_BUCKET}/startup-failure-${VM_NAME}.log") 2>/dev/null || true
+            gcloud storage cp "${LOG_FILE}" "${GCS_RUN_URI}/startup-failure-${VM_NAME}.log" 2>/dev/null || true
         fi
     fi
 
-    echo "[+] Deleting Spot VM instance: ${VM_NAME} (Zone: ${ZONE}, Project: ${PROJECT_ID})..."
+    echo "[+] Deleting VM instance: ${VM_NAME} (Zone: ${ZONE}, Project: ${PROJECT_ID})..."
     local delete_args=("compute" "instances" "delete" "${VM_NAME}" "--zone=${ZONE}" "--quiet")
     if [ -n "${PROJECT_ID}" ]; then
         delete_args+=("--project=${PROJECT_ID}")
@@ -87,8 +102,8 @@ teardown_self() {
 
 trap 'teardown_self' EXIT ERR SIGTERM SIGINT
 
-# 1. System packages installation
-echo "[+] Step 1: Installing system dependencies..."
+# 1. System packages & Artifact Registry Docker auth
+echo "[+] Step 1: Installing minimal base system dependencies..."
 export DEBIAN_FRONTEND=noninteractive
 apt-get update -y -q
 apt-get install -y -q \
@@ -97,98 +112,116 @@ apt-get install -y -q \
     git \
     pkg-config \
     libssl-dev \
-    python3 \
-    python3-venv \
-    python3-pip \
-    python3-dev \
     clang \
     llvm \
     ca-certificates \
-    docker.io
+    docker.io \
+    jq
 
-# 2. Rust Toolchain Setup
-echo "[+] Step 2: Configuring Rust toolchain (stable & nightly)..."
-export RUSTUP_HOME="/root/.rustup"
-export CARGO_HOME="/root/.cargo"
-export PATH="${CARGO_HOME}/bin:${PATH}"
-
-if ! command -v rustup &>/dev/null; then
-    curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain stable --profile minimal
+if [ -n "${ARTIFACT_REGISTRY}" ]; then
+    AR_HOST="${ARTIFACT_REGISTRY%%/*}"
+    gcloud auth configure-docker "${AR_HOST}" --quiet || true
 fi
 
-export HOME="/root"
-[ -f "${CARGO_HOME}/env" ] && source "${CARGO_HOME}/env" || true
-rustup toolchain install stable --profile minimal
-rustup toolchain install nightly --profile minimal --component miri,rust-src,llvm-tools-preview
-cargo install cargo-fuzz || true
-
-# 3. Unpack Repository
-echo "[+] Step 3: Unpacking repository into ${WORKSPACE}..."
+# 2. Unpack Repository from unique run-scoped GCS URI (before toolchain pin lookup)
+echo "[+] Step 2: Unpacking repository into ${WORKSPACE}..."
 if [ -f "/tmp/repo.tar.gz" ]; then
     tar -xzf /tmp/repo.tar.gz -C "${WORKSPACE}"
 elif [ -n "${GCS_BUCKET}" ]; then
-    echo "[+] Downloading repository archive from gs://${GCS_BUCKET}/repo.tar.gz..."
-    gcloud storage cp "gs://${GCS_BUCKET}/repo.tar.gz" /tmp/repo.tar.gz || gsutil cp "gs://${GCS_BUCKET}/repo.tar.gz" /tmp/repo.tar.gz
+    echo "[+] Downloading repository archive from ${GCS_RUN_URI}/repo.tar.gz..."
+    gcloud storage cp "${GCS_RUN_URI}/repo.tar.gz" /tmp/repo.tar.gz
     tar -xzf /tmp/repo.tar.gz -C "${WORKSPACE}"
 else
-    echo "[-] No repository archive found at /tmp/repo.tar.gz or in GCS. Cloning shallow or operating on /opt/aegis..."
+    echo "[-] No repository archive found at /tmp/repo.tar.gz or ${GCS_RUN_URI}/repo.tar.gz."
+    exit 1
 fi
 
 cd "${WORKSPACE}"
 
-# Apply Debian 12 environment compatibility adjustments to guest workspace
-sed -i 's/>=3.14,<3.16/>=3.11,<3.16/g' pyproject.toml 2>/dev/null || true
-
-# Universal compatibility pass: fix Python 2 multiple exception syntax and PEP 695 type syntax across all guest python files
-python3 -c "
-import os, re
-pattern_exc = re.compile(r'^(\s*except\s+)(?![(])([A-Za-z0-9_.]+(?:\s*,\s*[A-Za-z0-9_.]+)+)(\s*(?:as\s+\w+)?\s*:)', re.MULTILINE)
-pattern_type = re.compile(r'^type\s+([A-Za-z0-9_]+)\s*=', re.MULTILINE)
-pattern_generic = re.compile(r'def\s+([A-Za-z0-9_]+)\[[^\]]+\]', re.MULTILINE)
-pattern_class = re.compile(r'class\s+([A-Za-z0-9_]+)\[[^\]]+\]:', re.MULTILINE)
-
-for root, dirs, files in os.walk('.'):
-    if any(k in root for k in ('.git', '.venv', '__pycache__', '.agents')):
-        continue
-    for f in files:
-        if f.endswith('.py'):
-            p = os.path.join(root, f)
-            try:
-                with open(p, 'r', encoding='utf-8', errors='ignore') as fp:
-                    c = fp.read()
-                nc = pattern_exc.sub(r'\1(\2)\3', c)
-                nc = pattern_type.sub(r'\1 =', nc)
-                nc = pattern_generic.sub(r'def \1', nc)
-                nc = pattern_class.sub(r'class \1:', nc)
-                if nc != c:
-                    with open(p, 'w', encoding='utf-8') as fp:
-                        fp.write(nc)
-            except Exception as err:
-                print(f'Warning: {p}: {err}')
-" || true
-
-# 4. Configure Python virtualenv
-echo "[+] Step 4: Configuring Python environment..."
-python3 -m venv /opt/venv
-export PATH="/opt/venv/bin:${PATH}"
-pip install --ignore-requires-python --upgrade pip setuptools wheel
-pip install --ignore-requires-python pytest psutil maturin fastapi uvicorn blake3 pyyaml jsonschema
-
-# Install project editable if pyproject exists
-if [ -f "pyproject.toml" ]; then
-    pip install --ignore-requires-python -e . --no-build-isolation || pip install --ignore-requires-python -e . || true
+# 3. Runtime Secret Manager Injection (names only in metadata; never persisted/logged)
+if [ -n "${SECRET_NAMES}" ]; then
+    echo "[+] Step 3: Loading requested secret names from GCP Secret Manager into process env..."
+    IFS='|' read -ra SEC_LIST <<< "${SECRET_NAMES}"
+    for sec_name in "${SEC_LIST[@]}"; do
+        if [ -z "${sec_name}" ]; then
+            continue
+        fi
+        env_var=$(printf '%s' "${sec_name}" | tr '[:lower:]-' '[:upper:]_')
+        if val=$(gcloud secrets versions access latest --secret="${sec_name}" --project="${PROJECT_ID}" 2>/dev/null); then
+            export "${env_var}=${val}"
+            echo "    [OK] Loaded secret resource '${sec_name}' into \$${env_var} (value redacted)"
+        else
+            echo "    [WARN] Secret '${sec_name}' unavailable in Secret Manager; leaving \$${env_var} unset"
+        fi
+    done
 fi
 
-# Ensure cgroup v2 controllers are enabled
-echo "[+] Step 5: Checking cgroup v2 configuration..."
+# 4. Pinned Rust Toolchain from rust-toolchain.toml + sccache
+echo "[+] Step 4: Configuring pinned Rust toolchain and sccache..."
+export RUSTUP_HOME="/root/.rustup"
+export CARGO_HOME="/root/.cargo"
+export PATH="${CARGO_HOME}/bin:/root/.local/bin:${PATH}"
+
+RUST_CHANNEL="1.99.1"
+if [ -f "${WORKSPACE}/rust-toolchain.toml" ]; then
+    PARSED_CHANNEL=$(sed -n 's/^[[:space:]]*channel[[:space:]]*=[[:space:]]*"\([^"]*\)".*/\1/p' "${WORKSPACE}/rust-toolchain.toml" | head -n 1)
+    if [ -n "${PARSED_CHANNEL}" ]; then
+        RUST_CHANNEL="${PARSED_CHANNEL}"
+    fi
+fi
+echo "    Pinned Rust toolchain: ${RUST_CHANNEL}"
+
+if ! command -v rustup &>/dev/null; then
+    curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain "${RUST_CHANNEL}" --profile minimal --component rustfmt,clippy
+fi
+
+[ -f "${CARGO_HOME}/env" ] && source "${CARGO_HOME}/env" || true
+rustup toolchain install "${RUST_CHANNEL}" --profile minimal --component rustfmt,clippy
+rustup default "${RUST_CHANNEL}"
+rustup toolchain install nightly --profile minimal --component miri,rust-src,llvm-tools-preview
+cargo install --locked cargo-fuzz || true
+
+if command -v sccache &>/dev/null || cargo install --locked sccache >/dev/null 2>&1; then
+    export SCCACHE_DIR="/opt/sccache"
+    mkdir -p "${SCCACHE_DIR}"
+    if [ -n "${SCCACHE_PREFIX}" ]; then
+        gcloud storage rsync "${SCCACHE_PREFIX}" "${SCCACHE_DIR}" --quiet >/dev/null 2>&1 || true
+    fi
+    export RUSTC_WRAPPER="sccache"
+fi
+
+# 5. Pinned uv + CPython 3.14.7 Environment (NO Python 3.11 syntax rewriting!)
+echo "[+] Step 5: Installing uv and pinned CPython 3.14.7..."
+if ! command -v uv &>/dev/null; then
+    curl -LsSf https://astral.sh/uv/install.sh | sh
+    export PATH="/root/.local/bin:${PATH}"
+fi
+
+uv python install 3.14.7
+uv venv --python 3.14.7 /opt/venv
+export VIRTUAL_ENV="/opt/venv"
+export PATH="/opt/venv/bin:${PATH}"
+
+if [ -f "uv.lock" ]; then
+    uv sync --locked --extra dev --no-install-project || uv pip install --python /opt/venv/bin/python pytest psutil maturin==1.14.1 fastapi uvicorn blake3 pyyaml jsonschema
+else
+    uv pip install --python /opt/venv/bin/python pytest psutil maturin==1.14.1 fastapi uvicorn blake3 pyyaml jsonschema
+fi
+uv pip install --python /opt/venv/bin/python maturin==1.14.1 pytest psutil || true
+uv pip install --python /opt/venv/bin/python -e . --no-build-isolation || true
+
+echo "    Verified Python runtime: $(python --version)"
+echo "    Verified Rust runtime:   $(rustc --version)"
+
+# 6. Enable cgroup v2 controllers
+echo "[+] Step 6: Checking cgroup v2 configuration..."
 if [ -d "/sys/fs/cgroup" ]; then
     echo "+cpu +memory +pids" > /sys/fs/cgroup/cgroup.subtree_control 2>/dev/null || true
 fi
 
 # ------------------------------------------------------------------------------
-# 5. Execute Verification Gates
+# 7. Execute Verification Gates
 # ------------------------------------------------------------------------------
-
 echo "================================================================================"
 echo "  Executing Cloud Verification Gates"
 echo "================================================================================"
@@ -196,17 +229,13 @@ echo "==========================================================================
 # --- NV-001: Linux cgroup v2 live enforcement ---
 echo "[+] [NV-001] Running Linux cgroup v2 live probe..."
 NV001_RECEIPT="${EVIDENCE_DIR}/linux_cgroup_live_receipt.json"
-
-# Start Docker daemon and probe daemon info
 systemctl enable --now docker || true
 docker info --format '{{json .}}' > "${EVIDENCE_DIR}/docker_daemon_info.json" 2>/dev/null || true
 
-# Run native Rust cgroup probe
-cargo test -p aegis-nerve --test linux_cgroup_native_probe -- --ignored > /tmp/cgroup_native.log 2>&1 || true
+cargo test --locked -p aegis-nerve --test linux_cgroup_native_probe -- --ignored > /tmp/cgroup_native.log 2>&1 || true
 
-# Run Rust library unit & property tests (Phase P4 L1-L5)
 echo "[+] [P4-L1-L5] Running aegis-nerve Rust library unit & property tests..."
-if cargo test -p aegis-nerve --lib --no-default-features > "${EVIDENCE_DIR}/rust_lib_tests.log" 2>&1; then
+if cargo test --locked -p aegis-nerve --lib --no-default-features > "${EVIDENCE_DIR}/rust_lib_tests.log" 2>&1; then
     RUST_LIB_STATUS="PASS"
     RUST_LIB_VERIFIED=true
 else
@@ -224,8 +253,7 @@ cat <<EOF > "${EVIDENCE_DIR}/rust_lib_test_receipt.json"
 EOF
 
 if [ -f "scripts/linux_cgroup_live_probe.py" ]; then
-    if ! python3 scripts/linux_cgroup_live_probe.py --output "${NV001_RECEIPT}"; then
-        echo "[!] NV-001 exited with non-zero code. Generating fail-closed receipt."
+    if ! python scripts/linux_cgroup_live_probe.py --output "${NV001_RECEIPT}"; then
         cat <<EOF > "${NV001_RECEIPT}"
 {
   "schema": "aegis-linux-cgroup-v2-live-probe-v1",
@@ -238,7 +266,7 @@ if [ -f "scripts/linux_cgroup_live_probe.py" ]; then
 EOF
     fi
     if [ -f "${NV001_RECEIPT}" ]; then
-        python3 -c "import json; d = json.load(open('${NV001_RECEIPT}')); d['truth_claim'] = False; d['verified'] = True if d.get('status') == 'LIVE VERIFIED' else False; json.dump(d, open('${NV001_RECEIPT}', 'w'), indent=2)" || true
+        python -c "import json; p='${NV001_RECEIPT}'; d = json.load(open(p)); d['truth_claim'] = False; d['verified'] = d.get('status') == 'LIVE VERIFIED'; json.dump(d, open(p, 'w'), indent=2)" || true
     fi
 fi
 
@@ -247,7 +275,7 @@ echo "[+] [NV-005] Running Hardware Policy Benchmark for ${TIER}..."
 if [ -f "scripts/resource_policy_benchmark.py" ]; then
     UPPER_TIER=$(echo "${TIER}" | tr '[:lower:]' '[:upper:]')
     export AEGIS_MACHINE_TYPE="${TIER}"
-    if ! python3 scripts/resource_policy_benchmark.py \
+    if ! python scripts/resource_policy_benchmark.py \
         --profile "${UPPER_TIER}" \
         --proven \
         --output "${EVIDENCE_DIR}/resource_policy_${UPPER_TIER}_receipt.json" \
@@ -265,9 +293,8 @@ if [ -f "scripts/resource_policy_benchmark.py" ]; then
 EOF
     fi
 
-    # Also record H1 if on H2
     if [ "${UPPER_TIER}" = "H2" ]; then
-        if ! python3 scripts/resource_policy_benchmark.py \
+        if ! python scripts/resource_policy_benchmark.py \
             --profile "H1" \
             --proven \
             --output "${EVIDENCE_DIR}/resource_policy_H1_receipt.json" \
@@ -295,9 +322,13 @@ if [ -d "fuzz" ]; then
     fuzz_targets=("resource_contract" "protocol_frame" "archive_prefix" "runtime_ffi_contract")
     fuzz_failures=0
     total_crashes=0
+    fuzz_extra_args=("-max_total_time=${FUZZ_MAX_TOTAL_TIME}")
+    if [ "${FUZZ_RUNS}" -gt 0 ] 2>/dev/null; then
+        fuzz_extra_args+=("-runs=${FUZZ_RUNS}")
+    fi
     for target in "${fuzz_targets[@]}"; do
-        echo "    Running fuzz target: ${target} (max 60 seconds)..."
-        if ! cargo +nightly fuzz run "${target}" -- -max_total_time=60 -runs=10000 > "/tmp/fuzz_${target}.log" 2>&1; then
+        echo "    Running fuzz target: ${target} (${fuzz_extra_args[*]})..."
+        if ! cargo +nightly fuzz run "${target}" -- "${fuzz_extra_args[@]}" > "/tmp/fuzz_${target}.log" 2>&1; then
             echo "    [!] Warning: fuzz target ${target} returned non-zero exit code"
             fuzz_failures=$((fuzz_failures + 1))
         fi
@@ -306,7 +337,7 @@ if [ -d "fuzz" ]; then
     done
     cd "${WORKSPACE}"
     if [ -f "scripts/sanitize_fuzz_logs.py" ]; then
-        python3 scripts/sanitize_fuzz_logs.py || true
+        python scripts/sanitize_fuzz_logs.py || true
     fi
 
     if [ "${total_crashes}" -eq 0 ] && [ "${fuzz_failures}" -eq 0 ]; then
@@ -323,12 +354,13 @@ if [ -d "fuzz" ]; then
   "truth_claim": false,
   "status": "${FUZZ_STATUS}",
   "verified": ${FUZZ_VERIFIED},
-  "duration_seconds_per_target": 60,
+  "duration_seconds_per_target": ${FUZZ_MAX_TOTAL_TIME},
+  "max_runs_cap": ${FUZZ_RUNS},
   "targets_exercised": ["resource_contract", "protocol_frame", "archive_prefix", "runtime_ffi_contract"],
   "crashes_discovered": ${total_crashes},
   "fuzz_failures": ${fuzz_failures},
   "verified_at_utc": "$(date -u +"%Y-%m-%dT%H:%M:%SZ")",
-  "platform": "Linux $(uname -r) x86_64 Cloud Spot",
+  "platform": "Linux $(uname -r) $(uname -m) Cloud VM",
   "toolchain": "$(rustc --version 2>/dev/null || echo 'unknown')"
 }
 EOF
@@ -346,31 +378,28 @@ else
 EOF
 fi
 
-# --- NV-008-L: Linux Wheel Parity ---
+# --- NV-008-L: Linux Wheel Parity (CPython 3.14.7) ---
 echo "[+] [NV-008-L] Building and verifying Linux native wheel..."
 WHEEL_RECEIPT="${EVIDENCE_DIR}/wheel_parity_linux_receipt.json"
 mkdir -p /tmp/dist
-maturin build --release -o /tmp/dist --interpreter python3 > /tmp/maturin_build.log 2>&1 || true
-python3 -m pip wheel . -w /tmp/dist --no-deps --no-build-isolation --ignore-requires-python > /tmp/pip_wheel.log 2>&1 || true
+maturin build --release -o /tmp/dist --interpreter /opt/venv/bin/python > /tmp/maturin_build.log 2>&1 || true
 WHEEL_FILE=$(find /tmp/dist -name "*.whl" 2>/dev/null | head -n 1)
 if [ -n "${WHEEL_FILE}" ]; then
     echo "    Found wheel: ${WHEEL_FILE}"
     rm -rf /tmp/wheel_test_venv
-    python3 -m venv /tmp/wheel_test_venv
-    /tmp/wheel_test_venv/bin/pip install --upgrade pip --ignore-requires-python || true
-    /tmp/wheel_test_venv/bin/pip install blake3 --ignore-requires-python || true
-    if /tmp/wheel_test_venv/bin/pip install "${WHEEL_FILE}" --ignore-requires-python && \
-       AEGIS_DESKTOP_SIDECAR=1 /tmp/wheel_test_venv/bin/python3 -c "import aegis_cognition; from aegis_cognition import aegis_nerve; print('Wheel and ABI loaded successfully:', dir(aegis_nerve))"; then
+    uv venv --python 3.14.7 /tmp/wheel_test_venv
+    uv pip install --python /tmp/wheel_test_venv/bin/python blake3 "${WHEEL_FILE}" || true
+    if AEGIS_DESKTOP_SIDECAR=1 /tmp/wheel_test_venv/bin/python -c "import aegis_cognition; from aegis_cognition import aegis_nerve; print('Wheel and ABI loaded successfully:', dir(aegis_nerve))"; then
         cat <<EOF > "${WHEEL_RECEIPT}"
 {
   "schema": "aegis-wheel-parity-receipt-v1",
   "truth_claim": false,
-  "platform": "Linux x86_64 (glibc)",
+  "platform": "Linux $(uname -m) (glibc)",
   "wheel_filename": "$(basename "${WHEEL_FILE}")",
   "wheel_sha256": "$(sha256sum "${WHEEL_FILE}" | awk '{print $1}')",
   "verified": true,
   "status": "PROVEN",
-  "python_version": "$(python3 --version)",
+  "python_version": "$(/tmp/wheel_test_venv/bin/python --version)",
   "verified_at_utc": "$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
 }
 EOF
@@ -379,7 +408,7 @@ EOF
 {
   "schema": "aegis-wheel-parity-receipt-v1",
   "truth_claim": false,
-  "platform": "Linux x86_64 (glibc)",
+  "platform": "Linux $(uname -m) (glibc)",
   "wheel_filename": "$(basename "${WHEEL_FILE}")",
   "verified": false,
   "status": "FAILED",
@@ -393,10 +422,10 @@ else
 {
   "schema": "aegis-wheel-parity-receipt-v1",
   "truth_claim": false,
-  "platform": "Linux x86_64",
+  "platform": "Linux $(uname -m)",
   "verified": false,
   "status": "FAILED",
-  "error": "No wheel artifact produced by maturin or pip wheel",
+  "error": "No wheel artifact produced by maturin",
   "verified_at_utc": "$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
 }
 EOF
@@ -407,10 +436,8 @@ echo "[+] [NV-013] Running Miri and AddressSanitizer evidence..."
 MIRI_ASAN_RECEIPT="${EVIDENCE_DIR}/miri_asan_receipt.json"
 MIRI_STATUS="PASS"
 ASAN_STATUS="PASS"
-echo "    Running Miri on resource_contract_matrix..."
-(MIRIFLAGS="-Zmiri-disable-isolation" cargo +nightly miri test -p aegis-nerve --test resource_contract_matrix --no-default-features > /tmp/miri.log 2>&1) || MIRI_STATUS="FAIL"
-echo "    Running ASan on resource_contract_matrix..."
-(RUSTFLAGS="-Z sanitizer=address" cargo +nightly test -p aegis-nerve --test resource_contract_matrix --target x86_64-unknown-linux-gnu -Zbuild-std --no-default-features > /tmp/asan.log 2>&1) || ASAN_STATUS="FAIL"
+(MIRIFLAGS="-Zmiri-disable-isolation" cargo +nightly miri test --locked -p aegis-nerve --test resource_contract_matrix --no-default-features > /tmp/miri.log 2>&1) || MIRI_STATUS="FAIL"
+(RUSTFLAGS="-Z sanitizer=address" cargo +nightly test --locked -p aegis-nerve --test resource_contract_matrix --target "$(uname -m)-unknown-linux-gnu" -Zbuild-std --no-default-features > /tmp/asan.log 2>&1) || ASAN_STATUS="FAIL"
 
 OVERALL_STATUS="PASS"
 if [ "${MIRI_STATUS}" != "PASS" ] || [ "${ASAN_STATUS}" != "PASS" ]; then
@@ -426,7 +453,7 @@ cat <<EOF > "${MIRI_ASAN_RECEIPT}"
   "miri_status": "${MIRI_STATUS}",
   "asan_status": "${ASAN_STATUS}",
   "tested_module": "core/rust/tests/resource_contract_matrix.rs",
-  "platform": "Linux x86_64 Spot VM",
+  "platform": "Linux $(uname -m) Cloud VM",
   "toolchain": "$(rustc +nightly --version 2>/dev/null || echo 'unknown')",
   "verified_at_utc": "$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
 }
@@ -436,8 +463,7 @@ EOF
 echo "[+] [NV-014] Running communication payload benchmark..."
 NV014_RECEIPT="${EVIDENCE_DIR}/communication_payload_receipt.json"
 if [ -f "scripts/communication_payload_benchmark.py" ]; then
-    if ! python3 scripts/communication_payload_benchmark.py --output "${NV014_RECEIPT}"; then
-        echo "[!] NV-014 benchmark failed! Generating fail-closed receipt."
+    if ! python scripts/communication_payload_benchmark.py --output "${NV014_RECEIPT}"; then
         cat <<EOF > "${NV014_RECEIPT}"
 {
   "schema": "aegis-communication-payload-benchmark-v1",
@@ -472,8 +498,8 @@ EOF_QJS
             export AEGIS_QUICKJS_FULL_INTERPRETER_RUNNER_JSON='["/usr/local/bin/qjs-wasm-runner", "{runtime}", "{script}"]'
         fi
     fi
-    python3 scripts/quickjs_cold_start_gate.py --write-capture || true
-    python3 scripts/quickjs_cold_start_gate.py || true
+    python scripts/quickjs_cold_start_gate.py --write-capture || true
+    python scripts/quickjs_cold_start_gate.py || true
     if [ -f "artifacts/quickjs_full_interpreter_cold_start_capture.json" ]; then
         cp artifacts/quickjs_full_interpreter_cold_start_capture.json "${EVIDENCE_DIR}/"
     fi
@@ -499,9 +525,8 @@ echo "[+] [NV-020] Verifying trust policy hash across constructor matrix..."
 TRUST_RECEIPT="${EVIDENCE_DIR}/trust_policy_hash_receipt.json"
 export AEGIS_DESKTOP_SIDECAR=1
 export PYTHONPATH="${WORKSPACE}:${PYTHONPATH:-}"
-python3 -c "
+python -c "
 import json
-import sys
 from datetime import UTC, datetime
 
 try:
@@ -530,7 +555,7 @@ try:
         'verified': all_match,
         'status': 'PROVEN' if all_match else 'FAILED',
         'matrix': matrix,
-        'verified_at_utc': datetime.now(UTC).replace(microsecond=0).isoformat().replace('+00:00', 'Z')
+        'verified_at_utc': datetime.now(UTC).replace(microsecond=0).isoformat().replace('+00:00', 'Z'),
     }
 except Exception as err:
     receipt = {
@@ -540,16 +565,35 @@ except Exception as err:
         'status': 'FAILED',
         'error': f'Import or execution error: {err}',
         'matrix': {},
-        'verified_at_utc': datetime.now(UTC).replace(microsecond=0).isoformat().replace('+00:00', 'Z')
+        'verified_at_utc': datetime.now(UTC).replace(microsecond=0).isoformat().replace('+00:00', 'Z'),
     }
 
-with open('${TRUST_RECEIPT}', 'w') as f:
+with open('${TRUST_RECEIPT}', 'w', encoding='utf-8') as f:
     json.dump(receipt, f, indent=2)
 print('NV-020 verification complete: status =', receipt['status'])
 "
 
+# Sync sccache back to GCS if enabled
+if [ -n "${SCCACHE_PREFIX}" ] && [ -d "/opt/sccache" ]; then
+    gcloud storage rsync /opt/sccache "${SCCACHE_PREFIX}" --quiet >/dev/null 2>&1 || true
+fi
+
+# Generate PROVENANCE.json for evidence dir
+python -c "
+import json
+from pathlib import Path
+from scripts.cloud_m8.provenance import build_provenance_manifest
+manifest = build_provenance_manifest(
+    Path('${EVIDENCE_DIR}'),
+    root=Path('${WORKSPACE}'),
+    tier='gcp-${ZONE}-${TIER}',
+    exact_command='startup_compute.sh (run_id=${RUN_ID})',
+)
+Path('${EVIDENCE_DIR}/PROVENANCE.json').write_text(json.dumps(manifest, indent=2, sort_keys=True) + '\n', encoding='utf-8')
+" || true
+
 # ------------------------------------------------------------------------------
-# 6. Package and Upload Evidence
+# 8. Package and Upload Evidence to Unique Run Prefix
 # ------------------------------------------------------------------------------
 echo "================================================================================"
 echo "  Packaging Evidence Receipts"
@@ -559,16 +603,13 @@ EVIDENCE_ARCHIVE="/tmp/evidence-${VM_NAME}.tar.gz"
 tar -czf "${EVIDENCE_ARCHIVE}" -C "${EVIDENCE_DIR}" .
 
 if [ -n "${GCS_BUCKET}" ]; then
-    echo "[+] Uploading evidence to gs://${GCS_BUCKET}/evidence-${VM_NAME}.tar.gz..."
-    gcloud storage cp "${EVIDENCE_ARCHIVE}" "gs://${GCS_BUCKET}/evidence-${VM_NAME}.tar.gz" || \
-    gsutil cp "${EVIDENCE_ARCHIVE}" "gs://${GCS_BUCKET}/evidence-${VM_NAME}.tar.gz" || true
+    echo "[+] Uploading evidence to ${GCS_RUN_URI}/evidence-${VM_NAME}.tar.gz..."
+    gcloud storage cp "${EVIDENCE_ARCHIVE}" "${GCS_RUN_URI}/evidence-${VM_NAME}.tar.gz"
 
-    echo "[+] Writing completion sentinel to gs://${GCS_BUCKET}/DONE-${VM_NAME}..."
+    echo "[+] Writing completion sentinel to ${GCS_RUN_URI}/DONE-${VM_NAME}..."
     echo "DONE $(date -u +"%Y-%m-%dT%H:%M:%SZ")" > /tmp/DONE
-    gcloud storage cp /tmp/DONE "gs://${GCS_BUCKET}/DONE-${VM_NAME}" || \
-    gsutil cp /tmp/DONE "gs://${GCS_BUCKET}/DONE-${VM_NAME}" || true
+    gcloud storage cp /tmp/DONE "${GCS_RUN_URI}/DONE-${VM_NAME}"
 fi
 
 echo "[+] Startup execution finished successfully at $(date -u +"%Y-%m-%dT%H:%M:%SZ")"
-
 exit 0

@@ -1,15 +1,16 @@
 #!/usr/bin/env python3
-"""Master Orchestrator for AEGIS Milestone 8 (M8 True Cloud Verification).
+"""Master Orchestrator for AEGIS Milestone 8 & Cloud Research Infrastructure.
 
-Coordinates all M8 verification stages:
-1. GCP Spot VM compute (NV-001, NV-005, NV-007, NV-008-L, NV-013, NV-014, NV-017, NV-020)
-2. TCP cluster soak on 3 Spot instances (NV-016)
-3. Cloud Run services (NV-006, NV-018, NV-019)
-4. SLSA v1.0 / Cosign / Rekor attestation (NV-004)
+Coordinates all verification stages:
+1. GCP Spot/On-Demand VM compute (NV-001, NV-005, NV-007, NV-008-L, NV-013, NV-014, NV-017, NV-020)
+2. VPC-internal TCP cluster soak on 3 Spot instances (NV-016)
+3. IAM-authenticated Cloud Run services (NV-006, NV-018, NV-019)
+4. SLSA v1.0 / Cosign / Rekor attestation rehearsal / verification (NV-004)
 5. Track 2 receipts: Branch protection (NV-010), Remote CI (NV-015), macOS controls (NV-003, NV-008-M), drills (NV-009, NV-012)
 6. Collects all 18 receipts, updates docs/architecture/not_verified_registry.json
 7. Regenerates the 6 AESE derived registries in strict topological order
-8. Syncs evidence to the private archive (AEGIS_PRIVATE_ARCHIVE or .local/private-archive.path)
+8. Syncs evidence + PROVENANCE.json with SHA-256 verification to the external private archive
+   (fail-closed via AEGIS_PRIVATE_ARCHIVE, .local/private-archive.path, or --private-archive)
 """
 
 from __future__ import annotations
@@ -19,20 +20,32 @@ import difflib
 import hashlib
 import json
 import os
-import shutil
 import subprocess
 import sys
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 ROOT = Path(__file__).resolve().parents[2]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from scripts.cloud_m8.cloud_run_services import CloudRunConfig, CloudRunServices  # noqa: E402
-from scripts.cloud_m8.gcp_spot_orchestrator import GCPSpotOrchestrator, SpotVMConfig  # noqa: E402
+from scripts.cloud_m8.gcp_spot_orchestrator import (  # noqa: E402
+    TIER_MACHINE_MAP,
+    GCPSpotOrchestrator,
+    SpotVMConfig,
+)
 from scripts.cloud_m8.nv004_attestation_generator import generate_nv004_receipts  # noqa: E402
+from scripts.cloud_m8.provenance import (  # noqa: E402
+    DEFAULT_PROJECT,
+    DEFAULT_REGION,
+    DEFAULT_RESEARCH_BUCKET,
+    DEFAULT_ZONE,
+    get_git_head_sha,
+    resolve_private_archive,
+    sync_verified_archive,
+)
 from scripts.cloud_m8.tcp_cluster_orchestrator import (  # noqa: E402
     ClusterConfig,
     TCPClusterOrchestrator,
@@ -70,7 +83,6 @@ RECEIPT_SPEC: dict[str, str] = {
     "NV-020": "trust_policy_hash_receipt.json",
 }
 
-# Mapping of the 18 M8 obligations to primary and auxiliary receipts in artifacts/
 OBLIGATION_RECEIPT_MAP: dict[str, list[str]] = {
     "NV-001": ["linux_cgroup_live_receipt.json"],
     "NV-003": ["macos_capability_receipt.json"],
@@ -93,26 +105,8 @@ OBLIGATION_RECEIPT_MAP: dict[str, list[str]] = {
 }
 
 
-def resolve_private_archive() -> Path:
-    """Resolves target private archive directory per repository rules."""
-    env_target = os.environ.get("AEGIS_PRIVATE_ARCHIVE", "").strip()
-    if env_target:
-        return Path(env_target)
-    local_pointer = ROOT / ".local" / "private-archive.path"
-    if local_pointer.is_file():
-        try:
-            target = Path(local_pointer.read_text(encoding="utf-8").strip())
-            if target.exists():
-                return target
-        except Exception:
-            pass
-    fallback = ROOT / ".local" / "private-archive"
-    fallback.mkdir(parents=True, exist_ok=True)
-    return fallback
-
-
 class M8MasterRunner:
-    """Master controller executing and verifying Milestone 8 cloud workflows."""
+    """Master controller executing, verifying, and archiving M8 cloud workflows."""
 
     def __init__(self, root: Path = ROOT, artifacts_dir: Path | str | None = None) -> None:
         self.root = root
@@ -126,9 +120,27 @@ class M8MasterRunner:
         zone: str,
         bucket: str,
         dry_run: bool = False,
+        *,
+        tier: str = "h2",
+        machine_type: str = "",
+        provisioning_model: str = "SPOT",
+        no_address: bool = True,
+        fuzz_seconds: int = 300,
     ) -> dict[str, Any]:
-        print("\n>>> Stage 1: GCP Spot VM Heavy Compute (NV-001, NV-005, NV-007, NV-008-L, NV-013, NV-014, NV-017, NV-020) <<<")
-        config = SpotVMConfig(project_id=project, zone=zone, tier="h2", gcs_bucket=bucket)
+        print(
+            "\n>>> Stage 1: GCP Cloud VM Compute (NV-001, NV-005, NV-007, NV-008-L, NV-013, NV-014, NV-017, NV-020) <<<"
+        )
+        config = SpotVMConfig(
+            project_id=project,
+            zone=zone,
+            tier=tier,
+            gcs_bucket=bucket,
+            machine_type=machine_type,
+            provisioning_model=provisioning_model,
+            no_address=no_address,
+            head_sha=self._get_git_head(),
+            fuzz_seconds=fuzz_seconds,
+        )
         orch = GCPSpotOrchestrator(self.root, artifacts_dir=self.artifacts_dir)
         result = orch.execute_stage(config, dry_run=dry_run)
         if dry_run:
@@ -138,12 +150,12 @@ class M8MasterRunner:
         return result
 
     def _materialize_mock_spot_receipts(self) -> None:
-        """In dry-run mode, materializes valid simulated receipts for local validation."""
+        """In dry-run mode on isolated dir, materialize explicitly marked simulated receipts."""
         canonical_artifacts = (self.root / "artifacts").resolve()
         if self.artifacts_dir.resolve() == canonical_artifacts:
             return
         now_utc = datetime.now(UTC).replace(microsecond=0).isoformat().replace("+00:00", "Z")
-        mock_receipts = {
+        mock_receipts: dict[str, dict[str, Any]] = {
             "linux_cgroup_live_receipt.json": {
                 "schema": "aegis-linux-cgroup-v2-live-probe-v1",
                 "truth_claim": False,
@@ -233,9 +245,11 @@ class M8MasterRunner:
         project: str,
         zone: str,
         dry_run: bool = False,
+        *,
+        no_address: bool = True,
     ) -> dict[str, Any]:
         print("\n>>> Stage 2: TCP Multi-Machine Cluster Soak (NV-016) <<<")
-        config = ClusterConfig(project_id=project, zone=zone)
+        config = ClusterConfig(project_id=project, zone=zone, no_address=no_address)
         orch = TCPClusterOrchestrator(self.root, artifacts_dir=self.artifacts_dir)
         result = orch.execute_soak(config, dry_run=dry_run)
         if dry_run:
@@ -244,13 +258,18 @@ class M8MasterRunner:
                 soak_rep = self.artifacts_dir / "tcp_cluster_soak_gate_report.json"
                 if not soak_rep.exists():
                     soak_rep.write_text(
-                        json.dumps({
-                            "schema": "aegis-tcp-cluster-soak-gate-report-v1",
-                            "truth_claim": False,
-                            "overall_ok": True,
-                            "status": "PASS",
-                            "dry_run": True,
-                        }, indent=2) + "\n",
+                        json.dumps(
+                            {
+                                "schema": "aegis-tcp-cluster-soak-gate-report-v1",
+                                "truth_claim": False,
+                                "overall_ok": False,
+                                "verified": False,
+                                "status": "SIMULATED / DRY RUN",
+                                "dry_run": True,
+                            },
+                            indent=2,
+                        )
+                        + "\n",
                         encoding="utf-8",
                     )
         return result
@@ -271,12 +290,36 @@ class M8MasterRunner:
                 for fname in ("live_provider_429_soak_capture.json", "external_deployment_smoke_capture.json"):
                     p = self.artifacts_dir / fname
                     if not p.exists():
-                        p.write_text(json.dumps({"schema": "aegis-capture-v1", "overall_ok": True, "dry_run": True}, indent=2) + "\n", encoding="utf-8")
+                        p.write_text(
+                            json.dumps(
+                                {
+                                    "schema": "aegis-capture-v1",
+                                    "truth_claim": False,
+                                    "overall_ok": False,
+                                    "verified": False,
+                                    "status": "SIMULATED / DRY RUN",
+                                    "dry_run": True,
+                                },
+                                indent=2,
+                            )
+                            + "\n",
+                            encoding="utf-8",
+                        )
         return result
 
-    def run_attestation_stage(self, dry_run: bool = False) -> dict[str, Any]:
+    def run_attestation_stage(
+        self,
+        dry_run: bool = False,
+        *,
+        require_sigstore: bool = True,
+    ) -> dict[str, Any]:
         print("\n>>> Stage 4: SLSA v1.0 / Cosign Attestation (NV-004) <<<")
-        return generate_nv004_receipts(self.root, dry_run=dry_run, artifacts_dir=self.artifacts_dir)
+        return generate_nv004_receipts(
+            self.root,
+            dry_run=dry_run,
+            artifacts_dir=self.artifacts_dir,
+            require_external_sigstore=require_sigstore,
+        )
 
     def run_track2_stage(self, dry_run: bool = False) -> dict[str, Any]:
         print("\n>>> Stage 5: Track 2 Receipts (NV-003, NV-008-M, NV-009, NV-010, NV-012, NV-015) <<<")
@@ -284,7 +327,7 @@ class M8MasterRunner:
         return orch.execute_all(dry_run=dry_run)
 
     def verify_all_receipts(self) -> dict[str, bool]:
-        """Checks presence and schema of all 18 receipts."""
+        """Check presence of all 18 receipts."""
         print("\n>>> Auditing 18 Receipts in artifacts/ <<<")
         status: dict[str, bool] = {}
         for nv_id, filename in RECEIPT_SPEC.items():
@@ -295,25 +338,17 @@ class M8MasterRunner:
         return status
 
     def _get_git_head(self) -> str:
-        """Retrieves the current Git commit HEAD SHA."""
-        try:
-            return subprocess.check_output(
-                ["git", "rev-parse", "HEAD"],
-                cwd=self.root,
-                text=True,
-                stderr=subprocess.DEVNULL,
-            ).strip()
-        except Exception:
-            return "UNKNOWN_HEAD"
+        return get_git_head_sha(self.root)
 
     @staticmethod
     def _is_receipt_live_verified(receipt_path: Path) -> bool:
         try:
-            receipt_json = json.loads(receipt_path.read_text(encoding="utf-8"))
+            raw_receipt: Any = json.loads(receipt_path.read_text(encoding="utf-8"))
         except Exception:
             return False
-        if not isinstance(receipt_json, dict):
+        if not isinstance(raw_receipt, dict):
             return False
+        receipt_json = cast(dict[str, Any], raw_receipt)
         schema = receipt_json.get("schema")
         if not isinstance(schema, str) or not schema.strip():
             return False
@@ -321,9 +356,12 @@ class M8MasterRunner:
         return not (
             receipt_json.get("dry_run") is True
             or receipt_json.get("truth_claim") is not False
+            or receipt_json.get("simulated_cryptography") is True
+            or receipt_json.get("external_sigstore_verified") is False
             or ("verified" in receipt_json and receipt_json.get("verified") is not True)
             or ("overall_ok" in receipt_json and receipt_json.get("overall_ok") is not True)
-            or status in {
+            or status
+            in {
                 "NOT VERIFIED",
                 "SIMULATED / DRY RUN",
                 "FAIL_CLOSED (NO MACOS WHEEL FOUND)",
@@ -333,11 +371,7 @@ class M8MasterRunner:
         )
 
     def update_not_verified_registry(self, dry_run: bool = False) -> Path | None:
-        """Updates not_verified_registry.json marking verified gates with full closing metadata.
-
-        Under dry-run mode, strictly prevents modifying the tracked registry on disk,
-        outputting a preview diff and writing to .local/tmp/dry_run_registry_preview.json.
-        """
+        """Update not_verified_registry.json marking verified gates with closing metadata."""
         print("\n>>> Updating docs/architecture/not_verified_registry.json <<<")
         if not self.not_verified_registry.is_file():
             print(f"[!] Warning: {self.not_verified_registry} not found.")
@@ -364,9 +398,10 @@ class M8MasterRunner:
                 print(f"  [-] {eid:8}: Primary receipt {primary_file} missing. Skipping closure.")
                 continue
 
-            # In live mode, ensure receipts are authentic and not simulation mocks
             if not dry_run and not self._is_receipt_live_verified(primary_path):
-                print(f"  [-] {eid:8}: Receipt {primary_file} has dry_run flags, unverified status, or invalid truth_claim. Skipping live closure.")
+                print(
+                    f"  [-] {eid:8}: Receipt {primary_file} has dry_run/simulated flags, unverified status, or invalid truth_claim. Skipping live closure."
+                )
                 continue
 
             receipt_bytes = primary_path.read_bytes()
@@ -381,15 +416,17 @@ class M8MasterRunner:
             entry["receipt_sha256"] = receipt_sha256
 
             if len(receipt_files) > 1:
-                additional = []
+                additional: list[dict[str, str]] = []
                 for sec_file in receipt_files[1:]:
                     sec_path = self.artifacts_dir / sec_file
                     if sec_path.is_file() and (dry_run or self._is_receipt_live_verified(sec_path)):
                         sec_sha = hashlib.sha256(sec_path.read_bytes()).hexdigest()
-                        additional.append({
-                            "receipt_path": f"artifacts/{sec_file}",
-                            "receipt_sha256": sec_sha,
-                        })
+                        additional.append(
+                            {
+                                "receipt_path": f"artifacts/{sec_file}",
+                                "receipt_sha256": sec_sha,
+                            }
+                        )
                 if additional:
                     entry["additional_receipts"] = additional
                 else:
@@ -418,29 +455,30 @@ class M8MasterRunner:
             print(f"\n[+] Dry-run active: Preview written to {preview_display}.")
             print(f"[+] Tracked file {self.not_verified_registry.relative_to(self.root).as_posix()} preserved intact.")
 
-            # Show diff preview
-            diff_lines = list(difflib.unified_diff(
-                canonical_content.splitlines(keepends=True),
-                new_content.splitlines(keepends=True),
-                fromfile="not_verified_registry.json (canonical)",
-                tofile="dry_run_registry_preview.json (preview)",
-                n=1,
-            ))
+            diff_lines = list(
+                difflib.unified_diff(
+                    canonical_content.splitlines(keepends=True),
+                    new_content.splitlines(keepends=True),
+                    fromfile="not_verified_registry.json (canonical)",
+                    tofile="dry_run_registry_preview.json (preview)",
+                    n=1,
+                )
+            )
             if diff_lines:
                 print(">>> Registry Preview Diff (First 25 lines) <<<")
                 print("".join(diff_lines[:25]))
 
             return preview_file
-        else:
-            self.not_verified_registry.write_text(new_content, encoding="utf-8")
-            print(f"\n[+] docs/architecture/not_verified_registry.json updated successfully ({updated_count} closed).")
-            return self.not_verified_registry
+
+        self.not_verified_registry.write_text(new_content, encoding="utf-8")
+        print(f"\n[+] docs/architecture/not_verified_registry.json updated successfully ({updated_count} closed).")
+        return self.not_verified_registry
 
     def regenerate_aese_registries(self, dry_run: bool = False) -> None:
-        """Regenerates the 6 AESE derived registries in strict topological order."""
+        """Regenerate the 6 AESE derived registries in strict topological order."""
         print("\n>>> Regenerating 6 AESE Derived Registries in Topological Order <<<")
         if dry_run:
-            print("[+] Dry-run active: Simulating topological regeneration of 6 AESE registries without touching tracked quality/registry/*.json files.")
+            print("[+] Dry-run active: Simulating topological regeneration of 6 AESE registries.")
             for script_name in AESE_SCRIPTS_TOPOLOGICAL:
                 print(f"  [SIMULATED] {sys.executable} {script_name}")
             return
@@ -467,40 +505,75 @@ class M8MasterRunner:
                 out_summary = res.stdout.strip().splitlines()[-1] if res.stdout.strip() else "OK"
                 print(f"    Result: {out_summary}")
 
-    def sync_to_private_archive(self, destination: Path | None = None, dry_run: bool = False) -> Path:
-        """Syncs all verified receipts and gate artifacts to private archive."""
-        dest = destination or resolve_private_archive()
-        print(f"\n>>> Syncing Evidence to Private Archive: {dest} <<<")
+    def sync_to_private_archive(
+        self,
+        destination: Path | None = None,
+        dry_run: bool = False,
+        *,
+        run_tag: str = "",
+    ) -> Path:
+        """Copy artifacts first with PROVENANCE.json and SHA-256 verification (fail-closed)."""
+        dest = resolve_private_archive(self.root, explicit_archive=destination)
+        short_sha = self._get_git_head()[:12].lower()
+        date_tag = datetime.now(UTC).strftime("%Y%m%d")
+        run_dirname = run_tag or f"{date_tag}-m8-{short_sha}"
+
+        print(f"\n>>> Syncing Evidence to Private Archive: {dest / 'runs' / run_dirname} <<<")
         if dry_run:
-            print(f"[+] Dry-run active: Simulating evidence sync to {dest / 'artifacts'} (no files copied).")
-            return dest
+            print(
+                f"[+] Dry-run active: Would sync verified artifacts + PROVENANCE.json to {dest / 'runs' / run_dirname}."
+            )
+            return dest / "runs" / run_dirname
 
-        dest.mkdir(parents=True, exist_ok=True)
-        target_artifacts = dest / "artifacts"
-        target_artifacts.mkdir(parents=True, exist_ok=True)
-
-        copied = 0
-        for item in self.artifacts_dir.glob("*.json"):
-            shutil.copy2(item, target_artifacts / item.name)
-            copied += 1
-
-        print(f"[+] Synced {copied} evidence artifacts to {target_artifacts}.")
-        return dest
+        sync_res = sync_verified_archive(
+            self.artifacts_dir,
+            dest,
+            run_dirname,
+            root=self.root,
+            tier="gcp-us-central1",
+            exact_command=" ".join(sys.argv),
+            file_glob="*.json",
+        )
+        print(
+            f"[+] Verified & archived {sync_res['file_count']} files "
+            f"({sync_res['total_bytes']} bytes, mismatches={sync_res['mismatches']}) "
+            f"with PROVENANCE.json at {sync_res['manifest_path']}."
+        )
+        return Path(str(sync_res["destination"]))
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--stage",
-        choices=["all", "compute", "spot", "cluster", "services", "cloud-run", "attestation", "track2", "sync", "audit"],
+        choices=[
+            "all",
+            "compute",
+            "spot",
+            "cluster",
+            "services",
+            "cloud-run",
+            "attestation",
+            "track2",
+            "sync",
+            "audit",
+        ],
         default="all",
         help="Stage to execute",
     )
-    parser.add_argument("--project", default=os.environ.get("CLOUDSDK_CORE_PROJECT", "aegis-verification-2026"))
-    parser.add_argument("--zone", default="us-central1-a")
-    parser.add_argument("--region", default="us-central1")
-    parser.add_argument("--bucket", default=os.environ.get("AEGIS_M8_GCS_BUCKET", "aegis-verification-2026_cloudbuild"))
-    parser.add_argument("--dry-run", action="store_true", help="Simulate cloud steps without spinning up billable infrastructure")
+    parser.add_argument("--project", default=os.environ.get("CLOUDSDK_CORE_PROJECT", DEFAULT_PROJECT))
+    parser.add_argument("--zone", default=DEFAULT_ZONE)
+    parser.add_argument("--region", default=DEFAULT_REGION)
+    parser.add_argument("--bucket", default=os.environ.get("AEGIS_M8_GCS_BUCKET", DEFAULT_RESEARCH_BUCKET))
+    parser.add_argument("--tier", choices=sorted(TIER_MACHINE_MAP), default="h2")
+    parser.add_argument("--machine-type", default="")
+    parser.add_argument("--provisioning-model", choices=["SPOT", "STANDARD"], default="SPOT")
+    parser.add_argument("--allow-external-ip", action="store_true")
+    parser.add_argument("--fuzz-seconds", type=int, default=300)
+    parser.add_argument("--allow-simulated-nv004", action="store_true")
+    parser.add_argument(
+        "--dry-run", action="store_true", help="Simulate cloud steps without spinning up billable infrastructure"
+    )
     parser.add_argument("--artifacts-dir", default=None, help="Directory containing or receiving verification receipts")
     parser.add_argument("--private-archive", default="", help="Explicit private archive destination directory")
     args = parser.parse_args()
@@ -508,16 +581,34 @@ def main() -> int:
     runner = M8MasterRunner(artifacts_dir=args.artifacts_dir)
 
     if args.stage in {"all", "compute", "spot"}:
-        runner.run_spot_stage(args.project, args.zone, args.bucket, dry_run=args.dry_run)
+        runner.run_spot_stage(
+            args.project,
+            args.zone,
+            args.bucket,
+            dry_run=args.dry_run,
+            tier=args.tier,
+            machine_type=args.machine_type,
+            provisioning_model=args.provisioning_model,
+            no_address=not args.allow_external_ip,
+            fuzz_seconds=args.fuzz_seconds,
+        )
 
     if args.stage in {"all", "cluster"}:
-        runner.run_cluster_stage(args.project, args.zone, dry_run=args.dry_run)
+        runner.run_cluster_stage(
+            args.project,
+            args.zone,
+            dry_run=args.dry_run,
+            no_address=not args.allow_external_ip,
+        )
 
     if args.stage in {"all", "services", "cloud-run"}:
         runner.run_cloud_run_stage(args.project, args.region, dry_run=args.dry_run)
 
     if args.stage in {"all", "attestation"}:
-        runner.run_attestation_stage(dry_run=args.dry_run)
+        runner.run_attestation_stage(
+            dry_run=args.dry_run,
+            require_sigstore=not args.allow_simulated_nv004,
+        )
 
     if args.stage in {"all", "track2"}:
         runner.run_track2_stage(dry_run=args.dry_run)
