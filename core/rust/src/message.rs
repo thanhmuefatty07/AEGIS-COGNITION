@@ -1,5 +1,6 @@
 use crate::schema::{BinarySchemaId, NERVE_SCHEMA};
 
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct MessageHeader {
     pub message_id: u128,
     pub session_id: u128,
@@ -9,6 +10,7 @@ pub struct MessageHeader {
     pub alignment: usize,
 }
 
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct MessageFrame {
     pub header: MessageHeader,
     pub payload: Vec<u8>,

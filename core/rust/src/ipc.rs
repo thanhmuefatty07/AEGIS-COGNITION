@@ -1,5 +1,7 @@
 use crate::message::{MessageFrame, MessageHeader};
 use crate::schema::{BinarySchemaId, NERVE_SCHEMA, SchemaRegistry};
+use std::cell::UnsafeCell;
+use std::sync::atomic::{AtomicUsize, Ordering};
 
 pub struct ZeroCopyFrame {
     pub schema_id: BinarySchemaId,
@@ -143,4 +145,148 @@ pub unsafe fn zero_copy_to_message(frame: &ZeroCopyFrame) -> Result<MessageFrame
 #[inline]
 pub fn zero_copy_is_default_schema(frame: &ZeroCopyFrame) -> bool {
     frame.schema_id == NERVE_SCHEMA.schema_id
+}
+
+#[repr(C, align(64))]
+struct CachePaddedAtomicUsize(AtomicUsize);
+
+#[repr(C, align(64))]
+struct MpmcSlot {
+    sequence: AtomicUsize,
+    frame: UnsafeCell<Option<MessageFrame>>,
+}
+
+/// Lock-free bounded multi-producer/multi-consumer (MPMC) frame ring buffer
+/// implementing Dmitry Vyukov's sequence-tagged circular queue with 64-byte
+/// cache-line isolation between head, tail, and per-slot sequence counters.
+pub struct MpmcFrameRing {
+    mask: usize,
+    slots: Box<[MpmcSlot]>,
+    enqueue_pos: CachePaddedAtomicUsize,
+    dequeue_pos: CachePaddedAtomicUsize,
+}
+
+// SAFETY: `MessageFrame` owns its `Vec<u8>` payload (`Send + Sync`), and all
+// concurrent access to each `UnsafeCell<Option<MessageFrame>>` is strictly
+// serialized by its slot's `Acquire`/`Release` `sequence` state transitions.
+unsafe impl Send for MpmcFrameRing {}
+// SAFETY: Multiple threads may concurrently invoke `try_send` and `try_recv`
+// because CAS on `enqueue_pos` / `dequeue_pos` grants exclusive access to one
+// slot until `sequence.store(..., Ordering::Release)` transfers ownership.
+unsafe impl Sync for MpmcFrameRing {}
+
+impl MpmcFrameRing {
+    /// Construct a bounded MPMC ring rounded up to the next power of two (`>= 2`).
+    pub fn with_capacity(min_capacity: usize) -> Result<Self, &'static str> {
+        let cap = min_capacity
+            .max(2)
+            .checked_next_power_of_two()
+            .ok_or("ring capacity overflow")?;
+        let mut slots = Vec::with_capacity(cap);
+        for idx in 0..cap {
+            slots.push(MpmcSlot {
+                sequence: AtomicUsize::new(idx),
+                frame: UnsafeCell::new(None),
+            });
+        }
+        Ok(Self {
+            mask: cap - 1,
+            slots: slots.into_boxed_slice(),
+            enqueue_pos: CachePaddedAtomicUsize(AtomicUsize::new(0)),
+            dequeue_pos: CachePaddedAtomicUsize(AtomicUsize::new(0)),
+        })
+    }
+
+    #[inline]
+    pub fn capacity(&self) -> usize {
+        self.slots.len()
+    }
+
+    #[inline]
+    pub fn len_approx(&self) -> usize {
+        let head = self.enqueue_pos.0.load(Ordering::Acquire);
+        let tail = self.dequeue_pos.0.load(Ordering::Acquire);
+        head.wrapping_sub(tail).min(self.slots.len())
+    }
+
+    #[inline]
+    pub fn is_empty(&self) -> bool {
+        self.len_approx() == 0
+    }
+
+    /// Attempt to enqueue a validated `MessageFrame` without blocking.
+    /// Returns `Err(frame)` if the frame is invalid or the ring is currently full.
+    pub fn try_send(&self, frame: MessageFrame) -> Result<(), MessageFrame> {
+        if !frame.is_valid() {
+            return Err(frame);
+        }
+        let mut pos = self.enqueue_pos.0.load(Ordering::Relaxed);
+        loop {
+            let slot = &self.slots[pos & self.mask];
+            let seq = slot.sequence.load(Ordering::Acquire);
+            let diff = (seq as isize).wrapping_sub(pos as isize);
+            if diff == 0 {
+                match self.enqueue_pos.0.compare_exchange_weak(
+                    pos,
+                    pos.wrapping_add(1),
+                    Ordering::Relaxed,
+                    Ordering::Relaxed,
+                ) {
+                    Ok(_) => {
+                        // SAFETY: Winning the CAS on `enqueue_pos` when `seq == pos`
+                        // guarantees exclusive write ownership of `slot.frame` until
+                        // `slot.sequence` is published as `pos + 1` with `Release`.
+                        unsafe {
+                            *slot.frame.get() = Some(frame);
+                        }
+                        slot.sequence.store(pos.wrapping_add(1), Ordering::Release);
+                        return Ok(());
+                    }
+                    Err(actual) => pos = actual,
+                }
+            } else if diff < 0 {
+                return Err(frame);
+            } else {
+                pos = self.enqueue_pos.0.load(Ordering::Relaxed);
+            }
+            std::hint::spin_loop();
+        }
+    }
+
+    /// Attempt to dequeue the oldest `MessageFrame` without blocking.
+    pub fn try_recv(&self) -> Option<MessageFrame> {
+        let mut pos = self.dequeue_pos.0.load(Ordering::Relaxed);
+        loop {
+            let slot = &self.slots[pos & self.mask];
+            let seq = slot.sequence.load(Ordering::Acquire);
+            let diff = (seq as isize).wrapping_sub(pos.wrapping_add(1) as isize);
+            if diff == 0 {
+                match self.dequeue_pos.0.compare_exchange_weak(
+                    pos,
+                    pos.wrapping_add(1),
+                    Ordering::Relaxed,
+                    Ordering::Relaxed,
+                ) {
+                    Ok(_) => {
+                        // SAFETY: Winning the CAS on `dequeue_pos` when `seq == pos + 1`
+                        // pairs with the producer's `Release` store via `Acquire` load,
+                        // granting exclusive ownership of `slot.frame` until `sequence`
+                        // is advanced to `pos + mask + 1` with `Release`.
+                        let item = unsafe { (*slot.frame.get()).take() };
+                        slot.sequence.store(
+                            pos.wrapping_add(self.mask).wrapping_add(1),
+                            Ordering::Release,
+                        );
+                        return item;
+                    }
+                    Err(actual) => pos = actual,
+                }
+            } else if diff < 0 {
+                return None;
+            } else {
+                pos = self.dequeue_pos.0.load(Ordering::Relaxed);
+            }
+            std::hint::spin_loop();
+        }
+    }
 }

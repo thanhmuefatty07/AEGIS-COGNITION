@@ -15,6 +15,8 @@ import shutil
 import subprocess
 import tempfile
 import threading
+import weakref
+from collections import OrderedDict
 from collections.abc import Callable, Generator, Mapping
 from dataclasses import dataclass
 from pathlib import Path
@@ -78,24 +80,49 @@ class ObservationPack:
         excerpt_bytes: int = 1_024,
         recall_max_bytes: int = 16 * 1024,
         recall_max_lines: int = 400,
+        max_cache_entries: int = 512,
+        max_cache_bytes: int = 32 * 1024 * 1024,
+        max_tracked_calls: int = 4_096,
     ) -> None:
         if threshold_bytes < 1 or full_sends < 0 or excerpt_bytes < 1:
             raise ValueError("observation pack bounds are invalid")
         if recall_max_bytes < excerpt_bytes or recall_max_lines < 1:
             raise ValueError("observation recall bounds are invalid")
+        if max_cache_entries < 1 or max_cache_bytes < 1 or max_tracked_calls < 1:
+            raise ValueError("observation cache bounds are invalid")
         self.threshold_bytes = threshold_bytes
         self.full_sends = full_sends
         self.excerpt_bytes = excerpt_bytes
         self.recall_max_bytes = recall_max_bytes
         self.recall_max_lines = recall_max_lines
+        self._max_cache_entries = max_cache_entries
+        self._max_cache_bytes = max_cache_bytes
+        self._max_tracked_calls = max_tracked_calls
         self._archive_root = archive_root.expanduser().resolve() if archive_root is not None else None
-        self._objects: dict[str, bytes] = {}
-        self._send_counts: dict[str, int] = {}
+        self._objects: OrderedDict[str, bytes] = OrderedDict()
+        self._cached_bytes = 0
+        self._send_counts: OrderedDict[str, int] = OrderedDict()
         self._lock = threading.RLock()
         if self._archive_root is not None:
             self._archive_root.mkdir(parents=True, exist_ok=True)
             if self._archive_root.is_symlink():
                 raise ValueError("observation archive root must not be a symlink")
+
+    def _evict_cache_locked(self) -> None:
+        while self._objects and (
+            len(self._objects) > self._max_cache_entries or self._cached_bytes > self._max_cache_bytes
+        ):
+            _, evicted = self._objects.popitem(last=False)
+            self._cached_bytes = max(0, self._cached_bytes - len(evicted))
+
+    def _store_cache_locked(self, content_hash: str, raw: bytes) -> None:
+        if content_hash in self._objects:
+            self._objects.move_to_end(content_hash)
+            return
+        if len(raw) <= self._max_cache_bytes:
+            self._objects[content_hash] = raw
+            self._cached_bytes += len(raw)
+            self._evict_cache_locked()
 
     def pack(self, tool_call_id: str, text: str, *, successful_text: bool = True) -> ObservationProjection:
         _require_text(tool_call_id, "tool_call_id", 256)
@@ -104,11 +131,15 @@ class ObservationPack:
         content_hash = _sha256_bytes(raw)
         line_count = text.count("\n") + 1
         with self._lock:
-            self._objects[content_hash] = raw
             self._persist(content_hash, raw)
+            self._store_cache_locked(content_hash, raw)
             count = self._send_counts.get(tool_call_id, 0)
             self._send_counts[tool_call_id] = count + 1
-            use_pack = successful_text and len(raw) > self.threshold_bytes and count >= self.full_sends
+            self._send_counts.move_to_end(tool_call_id)
+            while len(self._send_counts) > self._max_tracked_calls:
+                self._send_counts.popitem(last=False)
+            recallable = self._archive_root is not None or content_hash in self._objects
+            use_pack = successful_text and recallable and len(raw) > self.threshold_bytes and count >= self.full_sends
             inline = text if not use_pack else _bounded_utf8_excerpt(raw, self.excerpt_bytes)
             if use_pack:
                 inline = f"[OBSERVATION_PACK sha256={content_hash} bytes={len(raw)} lines={line_count}]\n{inline}"
@@ -131,11 +162,16 @@ class ObservationPack:
             raise ValueError("observation recall handle digest is invalid")
         with self._lock:
             raw = self._objects.get(content_hash)
-            if raw is None and self._archive_root is not None:
+            if raw is not None:
+                self._objects.move_to_end(content_hash)
+            elif self._archive_root is not None:
                 path = self._archive_root / content_hash
                 if path.is_symlink() or path.resolve().parent != self._archive_root:
                     raise ValueError("observation recall path escapes its archive root")
                 raw = path.read_bytes()
+                if _sha256_bytes(raw) != content_hash:
+                    raise KeyError("observation object is unavailable or tampered")
+                self._store_cache_locked(content_hash, raw)
             if raw is None or _sha256_bytes(raw) != content_hash:
                 raise KeyError("observation object is unavailable or tampered")
         bounded = raw[: self.recall_max_bytes].decode("utf-8", errors="replace")
@@ -269,12 +305,19 @@ class ActionFusionResult:
     mutation_hash: str
 
 
+class _PathLock:
+    __slots__ = ("__weakref__", "lock")
+
+    def __init__(self) -> None:
+        self.lock = threading.RLock()
+
+
 class ActionFusion:
     """Serialize a safe mutation→command pair for one file."""
 
     def __init__(self) -> None:
         self._guard = threading.RLock()
-        self._locks: dict[str, threading.RLock] = {}
+        self._locks: weakref.WeakValueDictionary[str, _PathLock] = weakref.WeakValueDictionary()
 
     def run(
         self,
@@ -283,21 +326,37 @@ class ActionFusion:
         command: Callable[[Path], object],
         *,
         requires_intermediate_inspection: bool = False,
+        expected_pre_mutation_hash: str | None = None,
     ) -> ActionFusionResult:
         if requires_intermediate_inspection:
             raise ValueError("action fusion is unsafe when the command needs intermediate inspection")
         if not callable(mutation) or not callable(command):
             raise TypeError("mutation and command must be callable")
-        resolved = path.expanduser().resolve()
+        expanded = path.expanduser()
+        if expanded.is_symlink() or getattr(expanded, "is_junction", lambda: False)():
+            raise ValueError("action fusion path must not be a symlink or junction")
+        resolved = expanded.resolve()
         key = str(resolved)
         with self._guard:
-            lock = self._locks.setdefault(key, threading.RLock())
-        with lock:
+            lock_holder = self._locks.get(key)
+            if lock_holder is None:
+                lock_holder = _PathLock()
+                self._locks[key] = lock_holder
+        with lock_holder.lock:
+            if resolved.is_symlink() or getattr(resolved, "is_junction", lambda: False)():
+                raise ValueError("action fusion path must be a regular non-symlink file")
+            pre_mutation_hash = _file_hash(resolved) if resolved.exists() else None
+            if expected_pre_mutation_hash is not None and pre_mutation_hash != expected_pre_mutation_hash:
+                raise RuntimeError("target file changed before fused mutation")
             mutation_output = mutation(resolved)
+            if expanded.is_symlink() or getattr(expanded, "is_junction", lambda: False)():
+                raise RuntimeError("action fusion target became a symlink during mutation")
             mutation_hash = _file_hash(resolved)
             if _file_hash(resolved) != mutation_hash:
                 raise RuntimeError("file changed between mutation and fused command")
             command_output = command(resolved)
+            if _file_hash(resolved) != mutation_hash:
+                raise RuntimeError("file changed during or after fused command")
         return ActionFusionResult(
             ACTION_FUSION_SCHEMA_V1, str(resolved), mutation_output, command_output, mutation_hash
         )

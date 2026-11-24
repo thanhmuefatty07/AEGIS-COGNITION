@@ -39,8 +39,9 @@ AGENT_RESULT_SCHEMA_V1 = "aegis-agent-result-v1"
 AGENT_MESSAGE_SCHEMA_V1 = "aegis-agent-message-v1"
 
 _AGENT_ID_MAX = (1 << 128) - 1
-_MAX_GRAPH_TASKS = 256
-_MAX_GRAPH_DEPENDENCIES = 4_096
+_MAX_GRAPH_TASKS = 1_024
+_MAX_GRAPH_DEPENDENCIES = 16_384
+_MAX_EXCLUSIVE_RESOURCES = 256
 _MAX_STRING_CHARS = 4_096
 _MAX_PROMPT_CHARS = 32_768
 _MAX_RESULT_SUMMARY_CHARS = 8_192
@@ -50,6 +51,7 @@ _MAX_ARTIFACTS = 64
 _MAX_MESSAGE_BYTES = 64 * 1024
 _MAX_PEER_QUESTION_BYTES = 2 * 1024
 _MAX_PEER_EXCHANGES_PER_TASK = 3
+_MAX_PEER_REPLIES_PER_TASK = 64
 _MIN_PEER_ACTION_TOKEN_BUDGET = 128
 _MAX_PEER_FOLLOWUP_TOKENS = 256
 _MAX_PARENT_DEPTH = 32
@@ -876,6 +878,38 @@ class AgentMailboxDelivery:
     lease_until_ms: int
 
 
+_MAILBOX_WAITERS: dict[str, set[tuple[asyncio.AbstractEventLoop, asyncio.Event]]] = {}
+_MAILBOX_WAITERS_GUARD = threading.Lock()
+
+
+def _notify_mailbox_waiters(mailbox_key: str) -> None:
+    with _MAILBOX_WAITERS_GUARD:
+        waiters = tuple(_MAILBOX_WAITERS.get(mailbox_key, ()))
+    for loop, event in waiters:
+        try:
+            loop.call_soon_threadsafe(event.set)
+        except RuntimeError:
+            continue
+
+
+@asynccontextmanager
+async def _subscribe_mailbox_wakeup(mailbox_key: str) -> AsyncGenerator[asyncio.Event]:
+    loop = asyncio.get_running_loop()
+    event = asyncio.Event()
+    entry = (loop, event)
+    with _MAILBOX_WAITERS_GUARD:
+        _MAILBOX_WAITERS.setdefault(mailbox_key, set()).add(entry)
+    try:
+        yield event
+    finally:
+        with _MAILBOX_WAITERS_GUARD:
+            bucket = _MAILBOX_WAITERS.get(mailbox_key)
+            if bucket is not None:
+                bucket.discard(entry)
+                if not bucket:
+                    _MAILBOX_WAITERS.pop(mailbox_key, None)
+
+
 class AgentMailbox:
     """Small durable at-least-once queue for local agent message delivery.
 
@@ -895,6 +929,8 @@ class AgentMailbox:
         delivery_id INTEGER PRIMARY KEY AUTOINCREMENT,
         idempotency_key TEXT NOT NULL UNIQUE,
         message_hash TEXT NOT NULL,
+        recipient_id TEXT,
+        run_id TEXT,
         payload BLOB NOT NULL,
         state TEXT NOT NULL CHECK (state IN ('READY', 'LEASED', 'ACKED', 'DEAD')),
         attempts INTEGER NOT NULL DEFAULT 0,
@@ -933,6 +969,7 @@ class AgentMailbox:
         if type(max_attempts) is not int or not 1 <= max_attempts <= 100:
             raise AgentCoordinationError("mailbox max_attempts must be within [1, 100]")
         self.path = mailbox_path
+        self._canonical_key = str(mailbox_path.resolve())
         self.max_messages = max_messages
         self.max_bytes = max_bytes
         self.max_attempts = max_attempts
@@ -954,9 +991,36 @@ class AgentMailbox:
                         "UPDATE agent_mailbox_messages SET terminal_at_ms = ? WHERE state = 'DEAD'",
                         (now,),
                     )
+                added_routing_columns = False
+                if "recipient_id" not in columns:
+                    connection.execute("ALTER TABLE agent_mailbox_messages ADD COLUMN recipient_id TEXT")
+                    added_routing_columns = True
+                if "run_id" not in columns:
+                    connection.execute("ALTER TABLE agent_mailbox_messages ADD COLUMN run_id TEXT")
+                    added_routing_columns = True
+                if added_routing_columns:
+                    rows = connection.execute(
+                        "SELECT delivery_id, payload FROM agent_mailbox_messages "
+                        "WHERE recipient_id IS NULL OR run_id IS NULL"
+                    ).fetchall()
+                    for row in rows:
+                        with suppress(Exception):
+                            decoded = AgentMessage.from_bytes(bytes(row["payload"]))
+                            connection.execute(
+                                "UPDATE agent_mailbox_messages SET recipient_id = ?, run_id = ? WHERE delivery_id = ?",
+                                (decoded.recipient_id, decoded.run_id, int(row["delivery_id"])),
+                            )
                 connection.execute(
                     "CREATE INDEX IF NOT EXISTS idx_agent_mailbox_terminal "
                     "ON agent_mailbox_messages (state, terminal_at_ms)"
+                )
+                connection.execute(
+                    "CREATE INDEX IF NOT EXISTS idx_agent_mailbox_recipient_ready "
+                    "ON agent_mailbox_messages (state, recipient_id, available_at_ms, delivery_id)"
+                )
+                connection.execute(
+                    "CREATE INDEX IF NOT EXISTS idx_agent_mailbox_run_ready "
+                    "ON agent_mailbox_messages (state, run_id, available_at_ms, delivery_id)"
                 )
                 self._prune_terminal(connection, now)
                 connection.execute("COMMIT")
@@ -1036,20 +1100,30 @@ class AgentMailbox:
                 raise AgentCoordinationError("mailbox capacity is exhausted")
             cursor = connection.execute(
                 "INSERT INTO agent_mailbox_messages "
-                "(idempotency_key, message_hash, payload, state, attempts, available_at_ms, created_at_ms) "
-                "VALUES (?, ?, ?, 'READY', 0, ?, ?)",
-                (message.idempotency_key, message_hash, payload, now, now),
+                "(idempotency_key, message_hash, recipient_id, run_id, payload, state, attempts, available_at_ms, created_at_ms) "
+                "VALUES (?, ?, ?, ?, ?, 'READY', 0, ?, ?)",
+                (
+                    message.idempotency_key,
+                    message_hash,
+                    message.recipient_id,
+                    message.run_id,
+                    payload,
+                    now,
+                    now,
+                ),
             )
             connection.execute("COMMIT")
             if cursor.lastrowid is None:
                 raise AgentCoordinationError("mailbox insert did not return a delivery id")
-            return int(cursor.lastrowid)
+            delivery_id = int(cursor.lastrowid)
         except Exception:
             if connection.in_transaction:
                 connection.execute("ROLLBACK")
             raise
         finally:
             connection.close()
+        _notify_mailbox_waiters(self._canonical_key)
+        return delivery_id
 
     def _recover_expired(self, connection: sqlite3.Connection, now_ms: int) -> None:
         connection.execute(
@@ -1071,22 +1145,34 @@ class AgentMailbox:
         *,
         lease_ms: int = 30_000,
         now_ms: int | None = None,
+        recipient_id: str | None = None,
+        run_id: str | None = None,
     ) -> AgentMailboxDelivery | None:
-        """Atomically claim the oldest ready message for one consumer."""
+        """Atomically claim the oldest ready message matching optional recipient/run filters."""
 
         consumer = self._consumer_id(consumer_id)
         duration = self._lease_ms(lease_ms)
         now = self._now_ms() if now_ms is None else _non_negative_int(now_ms, "mailbox now_ms")
+        target_recipient = None if recipient_id is None else _non_empty(recipient_id, "mailbox recipient_id", limit=128)
+        target_run = None if run_id is None else _non_empty(run_id, "mailbox run_id", limit=128)
+        where_clauses = ["state = 'READY'", "available_at_ms <= ?"]
+        params: list[object] = [now]
+        if target_recipient is not None:
+            where_clauses.append("recipient_id = ?")
+            params.append(target_recipient)
+        if target_run is not None:
+            where_clauses.append("run_id = ?")
+            params.append(target_run)
+        query = (
+            "SELECT delivery_id, payload, attempts FROM agent_mailbox_messages WHERE "
+            + " AND ".join(where_clauses)
+            + " ORDER BY delivery_id LIMIT 1"
+        )
         connection = self._connect()
         try:
             connection.execute("BEGIN IMMEDIATE")
             self._recover_expired(connection, now)
-            row = connection.execute(
-                "SELECT delivery_id, payload, attempts FROM agent_mailbox_messages "
-                "WHERE state = 'READY' AND available_at_ms <= ? "
-                "ORDER BY delivery_id LIMIT 1",
-                (now,),
-            ).fetchone()
+            row = connection.execute(query, tuple(params)).fetchone()
             if row is None:
                 connection.execute("COMMIT")
                 return None
@@ -1181,13 +1267,15 @@ class AgentMailbox:
                 (state, now + retry_after_ms, error, now if state == "DEAD" else None, delivery),
             )
             connection.execute("COMMIT")
-            return state
         except Exception:
             if connection.in_transaction:
                 connection.execute("ROLLBACK")
             raise
         finally:
             connection.close()
+        if state == "READY" and retry_after_ms == 0:
+            _notify_mailbox_waiters(self._canonical_key)
+        return state
 
     def recover_expired(self, *, now_ms: int | None = None) -> int:
         """Make expired leases available again and return rows changed."""
@@ -1204,13 +1292,15 @@ class AgentMailbox:
             )
             self._recover_expired(connection, now)
             connection.execute("COMMIT")
-            return before
         except Exception:
             if connection.in_transaction:
                 connection.execute("ROLLBACK")
             raise
         finally:
             connection.close()
+        if before > 0:
+            _notify_mailbox_waiters(self._canonical_key)
+        return before
 
     def counts(self) -> dict[str, int]:
         """Return bounded operational counts without exposing message bodies."""
@@ -1267,6 +1357,8 @@ class AgentMailboxWorker:
         lease_ms: int = 30_000,
         retry_after_ms: int = 250,
         idle_poll_ms: int = 250,
+        recipient_id: str | None = None,
+        run_id: str | None = None,
     ) -> None:
         if type(mailbox) is not AgentMailbox:
             raise AgentCoordinationError("mailbox worker requires an AgentMailbox")
@@ -1279,6 +1371,10 @@ class AgentMailboxWorker:
             raise AgentCoordinationError("mailbox worker retry_after_ms must be within [0, 86400000]")
         if type(idle_poll_ms) is not int or not 1 <= idle_poll_ms <= 60_000:
             raise AgentCoordinationError("mailbox worker idle_poll_ms must be within [1, 60000]")
+        self.recipient_id = (
+            None if recipient_id is None else _non_empty(recipient_id, "mailbox worker recipient_id", limit=128)
+        )
+        self.run_id = None if run_id is None else _non_empty(run_id, "mailbox worker run_id", limit=128)
         self.retry_after_ms = retry_after_ms
         self.idle_poll_ms = idle_poll_ms
         self._handler = handler
@@ -1290,6 +1386,8 @@ class AgentMailboxWorker:
             self.consumer_id,
             lease_ms=self.lease_ms,
             now_ms=now_ms,
+            recipient_id=self.recipient_id,
+            run_id=self.run_id,
         )
         if delivery is None:
             return None
@@ -1346,14 +1444,28 @@ class AgentMailboxWorker:
 
         if type(stop_event) is not asyncio.Event:
             raise AgentCoordinationError("mailbox worker stop_event must be an asyncio.Event")
-        while not stop_event.is_set():
-            result = await self.run_once()
-            if result is not None:
-                continue
-            try:
-                await asyncio.wait_for(stop_event.wait(), timeout=self.idle_poll_ms / 1000)
-            except TimeoutError:
-                continue
+        async with _subscribe_mailbox_wakeup(self.mailbox._canonical_key) as wake_event:
+            while not stop_event.is_set():
+                wake_event.clear()
+                result = await self.run_once()
+                if result is not None:
+                    continue
+                if wake_event.is_set() or stop_event.is_set():
+                    continue
+                stop_waiter = asyncio.create_task(stop_event.wait())
+                wake_waiter = asyncio.create_task(wake_event.wait())
+                try:
+                    await asyncio.wait(
+                        (stop_waiter, wake_waiter),
+                        timeout=self.idle_poll_ms / 1000,
+                        return_when=asyncio.FIRST_COMPLETED,
+                    )
+                finally:
+                    for waiter in (stop_waiter, wake_waiter):
+                        if not waiter.done():
+                            waiter.cancel()
+                            with suppress(asyncio.CancelledError):
+                                await waiter
 
 
 type AgentHandlerResult = AgentResultPacket | str
@@ -1399,7 +1511,11 @@ class AgentHandlerRegistration:
         if type(self.capabilities) is not tuple or type(self.exclusive_resources) is not tuple:
             raise AgentCoordinationError("registered handler policy sequences must be immutable tuples")
         _string_tuple(self.capabilities, "registered handler capabilities", limit=64)
-        _string_tuple(self.exclusive_resources, "registered handler exclusive resources", limit=64)
+        _string_tuple(
+            self.exclusive_resources,
+            "registered handler exclusive resources",
+            limit=_MAX_EXCLUSIVE_RESOURCES,
+        )
         _non_empty(self.side_effect_class, "registered handler side_effect_class", limit=128)
         _native_runtime_side_effect_class(self.side_effect_class)
 
@@ -1439,7 +1555,7 @@ class AgentTaskSpec:
         if len(set(self.dependencies)) != len(self.dependencies):
             raise AgentCoordinationError("dependencies must not contain duplicates")
         _string_tuple(self.capabilities, "capabilities", limit=64)
-        _string_tuple(self.exclusive_resources, "exclusive_resources", limit=64)
+        _string_tuple(self.exclusive_resources, "exclusive_resources", limit=_MAX_EXCLUSIVE_RESOURCES)
         if self.token_budget is not None:
             _positive_int(self.token_budget, "token_budget")
         _positive_finite(self.timeout_seconds, "timeout_seconds")
@@ -1536,7 +1652,7 @@ class AgentTaskBlueprint:
         if len(set(self.dependencies)) != len(self.dependencies):
             raise AgentCoordinationError("blueprint dependencies must not contain duplicates")
         _string_tuple(self.capabilities, "blueprint capabilities", limit=64)
-        _string_tuple(self.exclusive_resources, "blueprint exclusive_resources", limit=64)
+        _string_tuple(self.exclusive_resources, "blueprint exclusive_resources", limit=_MAX_EXCLUSIVE_RESOURCES)
         if self.token_budget is not None:
             _positive_int(self.token_budget, "blueprint token_budget")
         _positive_finite(self.timeout_seconds, "blueprint timeout_seconds")
@@ -1813,7 +1929,12 @@ class _PendingPeerQuestion:
 
 
 class _AgentPeerChannel:
-    """Run-scoped, quota-bounded request/reply channel; never persisted or broadcast."""
+    """Run-scoped, quota-bounded request/reply channel; never persisted or broadcast.
+
+    Multiple concurrent sibling tasks may enqueue questions into a shared
+    specialist's FIFO inbox without head-of-line rejection, while wait-for
+    graph cycle detection prevents circular deadlocks.
+    """
 
     def __init__(self, run_id: str) -> None:
         self._run_id = run_id
@@ -1822,12 +1943,23 @@ class _AgentPeerChannel:
         self._active: set[int] = set()
         self._finished: set[int] = set()
         self._exchange_counts: dict[int, int] = {}
-        self._in_exchange: set[int] = set()
+        self._reply_counts: dict[int, int] = {}
+        self._waiting_on: dict[int, int] = {}
         self._inboxes: dict[int, deque[AgentPeerQuestion]] = {}
         self._pending: dict[str, _PendingPeerQuestion] = {}
-        self._pending_by_recipient: dict[int, str] = {}
+        self._pending_by_recipient: dict[int, set[str]] = {}
         self._outgoing_by_sender: dict[int, str] = {}
         self._condition = asyncio.Condition()
+
+    def _would_deadlock(self, sender_id: int, recipient_id: int) -> bool:
+        visited: set[int] = set()
+        cursor: int | None = recipient_id
+        while cursor is not None and cursor not in visited:
+            if cursor == sender_id:
+                return True
+            visited.add(cursor)
+            cursor = self._waiting_on.get(cursor)
+        return False
 
     async def register(self, task_id: int, *, peer_enabled: bool) -> None:
         _positive_id(task_id, "peer task_id")
@@ -1853,7 +1985,7 @@ class _AgentPeerChannel:
             if (
                 task_id not in self._active
                 or task_id not in self._peer_enabled
-                or task_id in self._in_exchange
+                or task_id in self._outgoing_by_sender
                 or self._exchange_counts.get(task_id, 0) >= _MAX_PEER_EXCHANGES_PER_TASK
             ):
                 return ()
@@ -1862,8 +1994,8 @@ class _AgentPeerChannel:
                     peer_id
                     for peer_id in self._active & self._peer_enabled
                     if peer_id != task_id
-                    and peer_id not in self._in_exchange
-                    and self._exchange_counts.get(peer_id, 0) < _MAX_PEER_EXCHANGES_PER_TASK
+                    and self._reply_counts.get(peer_id, 0) < _MAX_PEER_REPLIES_PER_TASK
+                    and not self._would_deadlock(task_id, peer_id)
                 )
             )
 
@@ -1875,7 +2007,7 @@ class _AgentPeerChannel:
                 and any(
                     peer_id != task_id
                     and peer_id not in self._finished
-                    and self._exchange_counts.get(peer_id, 0) < _MAX_PEER_EXCHANGES_PER_TASK
+                    and self._reply_counts.get(peer_id, 0) < _MAX_PEER_REPLIES_PER_TASK
                     for peer_id in self._peer_enabled
                 )
             )
@@ -1894,10 +2026,12 @@ class _AgentPeerChannel:
                 raise AgentPeerMessageError("peer task reached its per-run exchange limit")
             if recipient_id not in self._active or recipient_id not in self._peer_enabled:
                 raise AgentPeerMessageError("receiving peer task is no longer active")
-            if self._exchange_counts.get(recipient_id, 0) >= _MAX_PEER_EXCHANGES_PER_TASK:
+            if self._reply_counts.get(recipient_id, 0) >= _MAX_PEER_REPLIES_PER_TASK:
                 raise AgentPeerMessageError("receiving peer task reached its per-run exchange limit")
-            if sender_id in self._in_exchange or recipient_id in self._in_exchange:
-                raise AgentPeerMessageError("a peer task is already handling another exchange")
+            if sender_id in self._outgoing_by_sender:
+                raise AgentPeerMessageError("sending peer task is already handling another exchange")
+            if self._would_deadlock(sender_id, recipient_id):
+                raise AgentPeerMessageError("peer exchange cycle detected")
             message_id = uuid.uuid4().hex
             question = AgentPeerQuestion(
                 message_id=message_id,
@@ -1909,10 +2043,10 @@ class _AgentPeerChannel:
             question.validate()
             response = asyncio.get_running_loop().create_future()
             self._exchange_counts[sender_id] = self._exchange_counts.get(sender_id, 0) + 1
-            self._exchange_counts[recipient_id] = self._exchange_counts.get(recipient_id, 0) + 1
-            self._in_exchange.update((sender_id, recipient_id))
+            self._reply_counts[recipient_id] = self._reply_counts.get(recipient_id, 0) + 1
+            self._waiting_on[sender_id] = recipient_id
             self._pending[message_id] = _PendingPeerQuestion(question=question, response=response)
-            self._pending_by_recipient[recipient_id] = message_id
+            self._pending_by_recipient.setdefault(recipient_id, set()).add(message_id)
             self._outgoing_by_sender[sender_id] = message_id
             self._inboxes.setdefault(recipient_id, deque()).append(question)
             self._condition.notify_all()
@@ -1926,11 +2060,14 @@ class _AgentPeerChannel:
                     self._remove_question(recipient_id, message_id)
                     if not pending.response.done():
                         pending.response.cancel()
-                if self._pending_by_recipient.get(recipient_id) == message_id:
-                    self._pending_by_recipient.pop(recipient_id, None)
+                recipient_set = self._pending_by_recipient.get(recipient_id)
+                if recipient_set is not None:
+                    recipient_set.discard(message_id)
+                    if not recipient_set:
+                        self._pending_by_recipient.pop(recipient_id, None)
                 if self._outgoing_by_sender.get(sender_id) == message_id:
                     self._outgoing_by_sender.pop(sender_id, None)
-                self._in_exchange.difference_update((sender_id, recipient_id))
+                    self._waiting_on.pop(sender_id, None)
                 self._condition.notify_all()
             raise
 
@@ -1975,9 +2112,14 @@ class _AgentPeerChannel:
                 raise AgentPeerMessageError("peer question is stale or addressed to another task")
             pending.response.set_result(answer)
             self._pending.pop(question.message_id, None)
-            self._pending_by_recipient.pop(recipient_id, None)
-            self._outgoing_by_sender.pop(question.sender_task_id, None)
-            self._in_exchange.difference_update((question.sender_task_id, recipient_id))
+            recipient_set = self._pending_by_recipient.get(recipient_id)
+            if recipient_set is not None:
+                recipient_set.discard(question.message_id)
+                if not recipient_set:
+                    self._pending_by_recipient.pop(recipient_id, None)
+            if self._outgoing_by_sender.get(question.sender_task_id) == question.message_id:
+                self._outgoing_by_sender.pop(question.sender_task_id, None)
+                self._waiting_on.pop(question.sender_task_id, None)
             self._condition.notify_all()
 
     async def finish(self, task_id: int) -> None:
@@ -1987,22 +2129,27 @@ class _AgentPeerChannel:
     def _close_locked(self, task_id: int) -> None:
         self._active.discard(task_id)
         self._finished.add(task_id)
-        pending_id = self._pending_by_recipient.pop(task_id, None)
-        if pending_id is not None:
+        pending_ids = tuple(self._pending_by_recipient.pop(task_id, ()))
+        for pending_id in pending_ids:
             pending = self._pending.pop(pending_id, None)
             if pending is not None:
                 self._remove_question(task_id, pending_id)
                 if not pending.response.done():
                     pending.response.set_exception(AgentPeerMessageError("peer task finished before replying"))
-                self._outgoing_by_sender.pop(pending.question.sender_task_id, None)
-                self._in_exchange.difference_update((pending.question.sender_task_id, task_id))
+                if self._outgoing_by_sender.get(pending.question.sender_task_id) == pending_id:
+                    self._outgoing_by_sender.pop(pending.question.sender_task_id, None)
+                    self._waiting_on.pop(pending.question.sender_task_id, None)
         outgoing_id = self._outgoing_by_sender.pop(task_id, None)
+        self._waiting_on.pop(task_id, None)
         if outgoing_id is not None:
             pending = self._pending.pop(outgoing_id, None)
             if pending is not None:
                 self._remove_question(pending.question.recipient_task_id, outgoing_id)
-                self._pending_by_recipient.pop(pending.question.recipient_task_id, None)
-                self._in_exchange.difference_update((task_id, pending.question.recipient_task_id))
+                recipient_set = self._pending_by_recipient.get(pending.question.recipient_task_id)
+                if recipient_set is not None:
+                    recipient_set.discard(outgoing_id)
+                    if not recipient_set:
+                        self._pending_by_recipient.pop(pending.question.recipient_task_id, None)
                 if not pending.response.done():
                     pending.response.set_exception(
                         AgentPeerMessageError("peer requester finished before receiving a reply")
@@ -2220,7 +2367,11 @@ def _local_graph_validation(payload: Mapping[str, object]) -> dict[str, object]:
             raise AgentCoordinationError("artifact namespaces must be disjoint")
         namespaces.add(namespace)
         raw_resources = task.get("exclusive_resource_keys", [])
-        resources = _string_tuple(raw_resources, "graph exclusive_resource_keys", limit=64)
+        resources = _string_tuple(
+            raw_resources,
+            "graph exclusive_resource_keys",
+            limit=_MAX_EXCLUSIVE_RESOURCES,
+        )
         task_map[task_id] = dependencies
         canonical_tasks.append(
             {
@@ -2752,8 +2903,7 @@ def build_model_subagent_handler(
             needs_followup = False
 
         if peer_exchange_enabled:
-            late_question = await context._finish_or_receive_peer_question()
-            if late_question is not None:
+            while (late_question := await context._finish_or_receive_peer_question()) is not None:
                 await reply_to(late_question, final_text or first_text)
 
         if not final_text:
@@ -2812,6 +2962,181 @@ def build_root_synthesizer(
         return _model_text(await _invoke_model(invoker, prompt))
 
     return synthesizer
+
+
+def _normalize_resource_path(raw: str) -> str:
+    cleaned = raw.strip().replace("\\", "/")
+    if not cleaned:
+        return ""
+    if "\x00" in cleaned:
+        raise AgentCoordinationError("resource path must not contain NUL")
+    if cleaned.startswith("/") or (len(cleaned) >= 2 and cleaned[1] == ":" and cleaned[0].isalpha()):
+        raise AgentCoordinationError("resource path must be repository-relative")
+    parts: list[str] = []
+    for part in cleaned.split("/"):
+        seg = part.strip()
+        if not seg or seg == ".":
+            continue
+        if seg == "..":
+            raise AgentCoordinationError("resource path must not contain '..' traversal segments")
+        parts.append(seg)
+    return "/".join(parts)
+
+
+def _parse_hierarchical_resource(key: str) -> tuple[str, str, str | None]:
+    trimmed = key.strip()
+    for prefix in ("path:", "file:"):
+        if trimmed.startswith(prefix):
+            rest = trimmed[len(prefix) :]
+            if "::" in rest:
+                file_part, sym = rest.split("::", 1)
+                norm_file = _normalize_resource_path(file_part)
+                norm_sym = sym.strip()
+                if norm_file and norm_sym:
+                    return ("symbol", norm_file, norm_sym)
+            return ("path", _normalize_resource_path(rest), None)
+    if trimmed.startswith("symbol:"):
+        rest = trimmed[len("symbol:") :]
+        if "::" in rest:
+            file_part, sym = rest.split("::", 1)
+            norm_file = _normalize_resource_path(file_part)
+            norm_sym = sym.strip()
+            if not norm_file or not norm_sym:
+                raise AgentCoordinationError("symbol resource must specify non-empty file::symbol")
+            return ("symbol", norm_file, norm_sym)
+        return ("path", _normalize_resource_path(rest), None)
+    return ("opaque", trimmed, None)
+
+
+def _paths_overlap(left: str, right: str) -> bool:
+    if not left or not right or left == right:
+        return True
+    return left.startswith(f"{right}/") or right.startswith(f"{left}/")
+
+
+def _symbols_overlap(left: str | None, right: str | None) -> bool:
+    if left is None or right is None:
+        return True
+    if left == right:
+        return True
+    return (
+        left.startswith(f"{right}::")
+        or left.startswith(f"{right}.")
+        or right.startswith(f"{left}::")
+        or right.startswith(f"{left}.")
+    )
+
+
+def resource_keys_conflict(left: str, right: str) -> bool:
+    """Return True when two resource keys overlap hierarchically (`path:`/`file:`/`symbol:`)."""
+
+    l_kind, l_path, l_sym = _parse_hierarchical_resource(left)
+    r_kind, r_path, r_sym = _parse_hierarchical_resource(right)
+    if l_kind == "opaque" or r_kind == "opaque":
+        return left.strip() == right.strip()
+    if l_kind == "path" and r_kind == "path":
+        return _paths_overlap(l_path, r_path)
+    if l_kind == "path" and r_kind == "symbol":
+        return _paths_overlap(l_path, r_path)
+    if l_kind == "symbol" and r_kind == "path":
+        return _paths_overlap(l_path, r_path)
+    return l_path == r_path and _symbols_overlap(l_sym, r_sym)
+
+
+class _HierarchicalLeaseRegistry:
+    """Process-wide, cross-event-loop hierarchical lease gate without starvation."""
+
+    def __init__(self) -> None:
+        self._guard = threading.Lock()
+        self._next_token = 1
+        self._held: dict[int, tuple[str, ...]] = {}
+        self._waiters: deque[tuple[tuple[str, ...], asyncio.AbstractEventLoop, asyncio.Future[int]]] = deque()
+
+    @staticmethod
+    def _sets_conflict(first: tuple[str, ...], second: tuple[str, ...]) -> bool:
+        return any(resource_keys_conflict(a, b) for a in first for b in second)
+
+    def _conflicts_with_held_locked(self, keys: tuple[str, ...]) -> bool:
+        return any(self._sets_conflict(keys, held_keys) for held_keys in self._held.values())
+
+    def _deliver_waiter(self, future: asyncio.Future[int], token: int) -> None:
+        if future.cancelled() or future.done():
+            self.release_all(token)
+            return
+        future.set_result(token)
+
+    def _drain_waiters_locked(self) -> None:
+        if not self._waiters:
+            return
+        remaining: deque[tuple[tuple[str, ...], asyncio.AbstractEventLoop, asyncio.Future[int]]] = deque()
+        earlier_queued: list[tuple[str, ...]] = []
+        while self._waiters:
+            keys, loop, future = self._waiters.popleft()
+            if future.cancelled() or future.done():
+                continue
+            blocked_by_earlier = any(self._sets_conflict(keys, prev) for prev in earlier_queued)
+            if not blocked_by_earlier and not self._conflicts_with_held_locked(keys):
+                token = self._next_token
+                self._next_token += 1
+                self._held[token] = keys
+                try:
+                    loop.call_soon_threadsafe(self._deliver_waiter, future, token)
+                except RuntimeError:
+                    self._held.pop(token, None)
+            else:
+                earlier_queued.append(keys)
+                remaining.append((keys, loop, future))
+        self._waiters = remaining
+
+    async def acquire_all(self, keys: tuple[str, ...]) -> int:
+        if not keys:
+            return 0
+        loop = asyncio.get_running_loop()
+        with self._guard:
+            blocked_by_waiter = any(self._sets_conflict(keys, queued[0]) for queued in self._waiters)
+            if not blocked_by_waiter and not self._conflicts_with_held_locked(keys):
+                token = self._next_token
+                self._next_token += 1
+                self._held[token] = keys
+                return token
+            future: asyncio.Future[int] = loop.create_future()
+            self._waiters.append((keys, loop, future))
+        try:
+            return await future
+        except BaseException:
+            to_release = 0
+            with self._guard:
+                self._waiters = deque(item for item in self._waiters if item[2] is not future)
+                if future.done() and not future.cancelled() and future.exception() is None:
+                    to_release = future.result()
+            if to_release:
+                self.release_all(to_release)
+            raise
+
+    def release_all(self, token: int) -> None:
+        if token == 0:
+            return
+        with self._guard:
+            self._held.pop(token, None)
+            self._drain_waiters_locked()
+
+
+_HIERARCHICAL_LEASE_REGISTRY = _HierarchicalLeaseRegistry()
+
+
+@asynccontextmanager
+async def _hold_hierarchical_resources(keys: Iterable[str]) -> AsyncGenerator[None]:
+    ordered = tuple(sorted(set(keys)))
+    if not ordered:
+        yield
+        return
+    exact_locks = tuple(_exclusive_lock(key) for key in ordered)
+    async with _hold_locks(exact_locks):
+        token = await _HIERARCHICAL_LEASE_REGISTRY.acquire_all(ordered)
+        try:
+            yield
+        finally:
+            _HIERARCHICAL_LEASE_REGISTRY.release_all(token)
 
 
 @asynccontextmanager
@@ -2880,9 +3205,9 @@ class AgentSupervisor[RootOutputT]:
         if dynamic_plan_binder is not None and not callable(dynamic_plan_binder):
             raise AgentCoordinationError("dynamic_plan_binder must be callable")
         if type(max_dynamic_tasks) is not int or not 1 <= max_dynamic_tasks <= _MAX_GRAPH_TASKS:
-            raise AgentCoordinationError("max_dynamic_tasks must be within [1, 256]")
+            raise AgentCoordinationError(f"max_dynamic_tasks must be within [1, {_MAX_GRAPH_TASKS}]")
         if type(max_total_tasks) is not int or not 1 <= max_total_tasks <= _MAX_GRAPH_TASKS:
-            raise AgentCoordinationError("max_total_tasks must be within [1, 256]")
+            raise AgentCoordinationError(f"max_total_tasks must be within [1, {_MAX_GRAPH_TASKS}]")
         self._message_journal = message_journal
         self._message_mailbox = message_mailbox
         self._cancel_event = cancel_event
@@ -3089,12 +3414,11 @@ class AgentSupervisor[RootOutputT]:
                 _spawn_plan_callback=expand_plan if self._dynamic_plan_binder is not None else None,
                 _peer_channel=peer_channel if peer_enabled_for(spec) else None,
             )
-            locks = tuple(_exclusive_lock(key) for key in sorted(spec.exclusive_resources))
             try:
                 async with asyncio.timeout(spec.timeout_seconds):
                     async with (
                         semaphore,
-                        _hold_locks(locks),
+                        _hold_hierarchical_resources(spec.exclusive_resources),
                         self._runtime_guard_factory(
                             task_id=self._runtime_task_id(spec.task_id),
                             dependency_ids=[
@@ -3255,6 +3579,8 @@ __all__ = [
     "AgentHandlerRegistration",
     "AgentMailbox",
     "AgentMailboxDelivery",
+    "AgentMailboxWorkResult",
+    "AgentMailboxWorker",
     "AgentMessage",
     "AgentMessageJournal",
     "AgentMessageJournalEntry",
@@ -3273,6 +3599,7 @@ __all__ = [
     "build_model_subagent_handler",
     "build_root_synthesizer",
     "parse_agent_plan",
+    "resource_keys_conflict",
     "validate_agent_graph",
     "validate_agent_graph_locally",
 ]

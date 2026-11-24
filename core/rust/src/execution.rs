@@ -55,7 +55,7 @@ const PROCESS_CLEANUP_GRACE: Duration = Duration::from_secs(5);
 pub struct ExecutionLanes {
     registry: Arc<Mutex<ExecutionLaneRegistry>>,
     cpu_pool: ThreadPool,
-    io_runtime: Mutex<tokio::runtime::Runtime>,
+    io_runtime: tokio::runtime::Runtime,
     healthy_accelerators: BTreeMap<String, AcceleratorProfile>,
 }
 
@@ -68,6 +68,12 @@ impl ExecutionLanes {
             .map(|limit| limit.max_in_flight)
             .unwrap_or(1)
             .max(1);
+        let io_threads = registry
+            .lanes
+            .get(&ExecutionLane::Io)
+            .map(|limit| limit.max_in_flight as usize)
+            .unwrap_or(4)
+            .clamp(2, 16);
         let cpu_pool = rayon::ThreadPoolBuilder::new()
             .num_threads(cpu_threads as usize)
             .thread_name(|index| format!("aegis-cpu-{index}"))
@@ -75,7 +81,9 @@ impl ExecutionLanes {
             .map_err(|error| {
                 ResourceError::InvalidRequest(format!("CPU lane build failed: {error}"))
             })?;
-        let io_runtime = tokio::runtime::Builder::new_current_thread()
+        let io_runtime = tokio::runtime::Builder::new_multi_thread()
+            .worker_threads(io_threads)
+            .thread_name("aegis-io")
             .enable_all()
             .build()
             .map_err(|error| {
@@ -92,7 +100,7 @@ impl ExecutionLanes {
         Ok(Self {
             registry: Arc::new(Mutex::new(registry)),
             cpu_pool,
-            io_runtime: Mutex::new(io_runtime),
+            io_runtime,
             healthy_accelerators,
         })
     }
@@ -291,11 +299,13 @@ impl ExecutionLanes {
     where
         F: Future<Output = R>,
     {
+        if tokio::runtime::Handle::try_current().is_ok() {
+            return Err(ResourceError::InvalidRequest(
+                "run_io cannot block inside an active async runtime".to_string(),
+            ));
+        }
         Ok(self.with_lane(ExecutionLane::Io, || {
-            let runtime = self.io_runtime.lock().map_err(|_| {
-                ResourceError::InvalidRequest("I/O runtime mutex poisoned".to_string())
-            })?;
-            catch_unwind(AssertUnwindSafe(|| runtime.block_on(future)))
+            catch_unwind(AssertUnwindSafe(|| self.io_runtime.block_on(future)))
                 .map_err(|_| ResourceError::InvalidRequest("I/O lane work panicked".to_string()))
         })?)
     }
@@ -1673,5 +1683,49 @@ mod tests {
         }
         assert_eq!(completed.load(std::sync::atomic::Ordering::SeqCst), 64);
         assert_eq!(lanes.snapshot().lanes[&ExecutionLane::Cpu].active, 0);
+    }
+
+    #[test]
+    fn io_lane_executes_concurrent_futures_without_global_mutex_serialization() {
+        use std::sync::atomic::{AtomicUsize, Ordering};
+
+        let profile = HardwareProfile::probe();
+        let lanes = Arc::new(ExecutionLanes::new(&profile).unwrap());
+        let active = Arc::new(AtomicUsize::new(0));
+        let peak_concurrent = Arc::new(AtomicUsize::new(0));
+
+        let mut handles = Vec::new();
+        for idx in 0..2 {
+            let lanes = Arc::clone(&lanes);
+            let active = Arc::clone(&active);
+            let peak_concurrent = Arc::clone(&peak_concurrent);
+            handles.push(std::thread::spawn(move || {
+                lanes
+                    .run_io(async move {
+                        let current = active.fetch_add(1, Ordering::SeqCst) + 1;
+                        peak_concurrent.fetch_max(current, Ordering::SeqCst);
+                        let deadline = tokio::time::Instant::now() + Duration::from_secs(2);
+                        while peak_concurrent.load(Ordering::SeqCst) < 2
+                            && tokio::time::Instant::now() < deadline
+                        {
+                            tokio::time::sleep(Duration::from_millis(5)).await;
+                        }
+                        let observed = peak_concurrent.load(Ordering::SeqCst);
+                        active.fetch_sub(1, Ordering::SeqCst);
+                        (idx, observed)
+                    })
+                    .unwrap()
+            }));
+        }
+
+        let mut observations = Vec::new();
+        for handle in handles {
+            observations.push(handle.join().unwrap());
+        }
+        assert!(
+            peak_concurrent.load(Ordering::SeqCst) >= 2,
+            "run_io serialized concurrent callers instead of sharing multi-thread io_runtime: {observations:?}"
+        );
+        assert_eq!(lanes.snapshot().lanes[&ExecutionLane::Io].active, 0);
     }
 }

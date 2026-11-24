@@ -231,6 +231,7 @@ pub enum TrapReason {
     InvariantViolation,
     PavBelowThreshold,
     NoConsensus,
+    ExecutionInterrupted,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -844,6 +845,66 @@ impl PhysicalWitnessVerification for PhysicalWitnessThreshold {
             None => {
                 CONSENSUS_FAILURES.fetch_add(1, Ordering::Relaxed);
                 error!("Physical witness divergence detected, failing threshold");
+                Err(TrapReason::NoConsensus)
+            }
+        }
+    }
+}
+
+/// Byzantine-resilient `2f + 1` (`floor(2N / 3) + 1`) physical witness verifier.
+pub struct ByzantineWitnessThreshold {
+    pub total_witnesses: usize,
+}
+
+impl ByzantineWitnessThreshold {
+    pub fn required_matches(&self) -> usize {
+        crate::sac::byzantine_witness_threshold(self.total_witnesses)
+    }
+}
+
+impl PhysicalWitnessVerification for ByzantineWitnessThreshold {
+    #[instrument(skip(self, artifacts))]
+    fn verify_physical_witnesses(
+        &self,
+        artifacts: &[PhysicalArtifact],
+    ) -> Result<ConsensusResult, TrapReason> {
+        if artifacts.is_empty()
+            || self.total_witnesses == 0
+            || artifacts.len() > self.total_witnesses
+        {
+            CONSENSUS_FAILURES.fetch_add(1, Ordering::Relaxed);
+            return Err(TrapReason::NoConsensus);
+        }
+
+        let mut groups: BTreeMap<([u8; 32], u64), Vec<&PhysicalArtifact>> = BTreeMap::new();
+        for artifact in artifacts {
+            if !artifact.is_physical_change() {
+                continue;
+            }
+            groups
+                .entry((artifact.artifact_hash, artifact.ast_fingerprint))
+                .or_default()
+                .push(artifact);
+        }
+
+        let required_matches = self.required_matches();
+        let result = groups
+            .into_iter()
+            .filter(|(_, group)| group.len() >= required_matches)
+            .max_by_key(|(_, group)| group.len())
+            .map(|((artifact_hash, _), group)| ConsensusResult {
+                artifact_hash,
+                quorum_size: group.len(),
+                fuel_consumed: group.iter().map(|a| a.fuel_consumed).max().unwrap_or(0),
+            });
+
+        match result {
+            Some(res) => {
+                CONSENSUS_COMMITS.fetch_add(1, Ordering::Relaxed);
+                Ok(res)
+            }
+            None => {
+                CONSENSUS_FAILURES.fetch_add(1, Ordering::Relaxed);
                 Err(TrapReason::NoConsensus)
             }
         }

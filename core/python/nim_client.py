@@ -183,9 +183,9 @@ class NIMClient:
         return NIMResponse(
             content=choice.message.content or "",
             model=raw.model,
-            usage_prompt_tokens=usage.prompt_tokens,
-            usage_completion_tokens=usage.completion_tokens,
-            usage_total_tokens=usage.total_tokens,
+            usage_prompt_tokens=usage.prompt_tokens if usage is not None else 0,
+            usage_completion_tokens=usage.completion_tokens if usage is not None else 0,
+            usage_total_tokens=usage.total_tokens if usage is not None else 0,
             finish_reason=choice.finish_reason or "unknown",
         )
 

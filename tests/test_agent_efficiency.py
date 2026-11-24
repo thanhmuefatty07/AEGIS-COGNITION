@@ -334,3 +334,98 @@ async def test_selective_evidence_board_feeds_root_without_transcript() -> None:
     root = build_root_synthesizer(invoker, evidence_board=board)
     assert await root((packet,)) == "root"
     assert "bounded evidence" in prompts[0]
+
+
+def test_observation_pack_enforces_lru_entry_and_byte_bounds(tmp_path: Path) -> None:
+    tracked_pack = ObservationPack(
+        archive_root=tmp_path / "tracked",
+        threshold_bytes=16,
+        excerpt_bytes=8,
+        max_cache_entries=4,
+        max_cache_bytes=1024,
+        max_tracked_calls=2,
+    )
+    assert not tracked_pack.pack("tool-a", "A" * 80).archived
+    assert not tracked_pack.pack("tool-b", "B" * 80).archived
+    assert not tracked_pack.pack("tool-c", "C" * 80).archived
+    assert len(tracked_pack._send_counts) == 2
+
+    pack = ObservationPack(
+        archive_root=tmp_path / "cache",
+        threshold_bytes=16,
+        excerpt_bytes=8,
+        max_cache_entries=2,
+        max_cache_bytes=180,
+        max_tracked_calls=16,
+    )
+
+    def archive_payload(tool: str, payload: str) -> str:
+        assert not pack.pack(tool, payload).archived
+        assert not pack.pack(tool, payload).archived
+        projection = pack.pack(tool, payload)
+        assert projection.archived and projection.recall_handle is not None
+        return projection.recall_handle
+
+    h1 = archive_payload("tool-a", "A" * 80)
+    h2 = archive_payload("tool-b", "B" * 80)
+    h3 = archive_payload("tool-c", "C" * 80)
+    k1, k2, k3 = (handle.removeprefix("observation:") for handle in (h1, h2, h3))
+    assert len(pack._objects) <= 2
+    assert pack._cached_bytes <= 180
+    assert k1 not in pack._objects
+    assert k2 in pack._objects
+    assert k3 in pack._objects
+    # Evicted entry h1 is still recallable from disk archive; h3 is served from hot LRU cache
+    assert pack.recall(h1) == "A" * 80
+    assert pack.recall(h3) == "C" * 80
+
+
+def test_action_fusion_weak_locks_symlink_guard_and_post_command_invariant(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import gc
+
+    fusion = ActionFusion()
+    target = tmp_path / "target.txt"
+    target.write_text("v1", encoding="utf-8")
+
+    result = fusion.run(
+        target,
+        lambda p: p.write_text("v2", encoding="utf-8"),
+        lambda p: p.read_text(encoding="utf-8"),
+        expected_pre_mutation_hash=ActionFusion().run(
+            tmp_path / "dummy.txt",
+            lambda p: p.write_text("v1", encoding="utf-8"),
+            lambda p: p.read_text(encoding="utf-8"),
+        ).mutation_hash,
+    )
+    assert result.command_output == "v2"
+    gc.collect()
+    assert len(fusion._locks) == 0
+
+    with pytest.raises(RuntimeError, match="before fused mutation"):
+        fusion.run(
+            target,
+            lambda p: p.write_text("v3", encoding="utf-8"),
+            lambda p: p.read_text(encoding="utf-8"),
+            expected_pre_mutation_hash="0" * 64,
+        )
+
+    def mutating_command(p: Path) -> str:
+        p.write_text("sneaky-post-command-change", encoding="utf-8")
+        return "tampered"
+
+    with pytest.raises(RuntimeError, match="during or after fused command"):
+        fusion.run(
+            target,
+            lambda p: p.write_text("v4", encoding="utf-8"),
+            mutating_command,
+        )
+
+    monkeypatch.setattr(Path, "is_symlink", lambda self: self == target)
+    with pytest.raises(ValueError, match="symlink"):
+        fusion.run(
+            target,
+            lambda p: p.write_text("x", encoding="utf-8"),
+            lambda p: p.read_text(encoding="utf-8"),
+        )

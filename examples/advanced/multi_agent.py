@@ -23,7 +23,7 @@ async def main():
 
     results = await asyncio.gather(*(research_topic(t) for t in topics))
 
-    for topic, summary in zip(topics, results):
+    for topic, summary in zip(topics, results, strict=True):
         print(f"\n{'='*60}")
         print(f"Topic: {topic}")
         print(f"{'-'*60}")

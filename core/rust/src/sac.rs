@@ -258,6 +258,112 @@ fn physical_witness_threshold(total_witnesses: usize) -> usize {
     f + 1
 }
 
+/// Canonical Byzantine supermajority threshold `floor(2N / 3) + 1`.
+///
+/// For any `N >= 1` and up to `f = floor((N - 1) / 3)` arbitrary faulty
+/// witnesses, any two quora of size `byzantine_witness_threshold(N)` intersect
+/// in at least `f + 1` witnesses (guaranteeing at least one honest witness in
+/// common and preventing split-brain commits).
+pub fn byzantine_witness_threshold(total_witnesses: usize) -> usize {
+    if total_witnesses == 0 {
+        return 0;
+    }
+    ((2 * total_witnesses) / 3) + 1
+}
+
+/// Verify physical witnesses under the strict `2f + 1` Byzantine supermajority
+/// threshold (`floor(2N / 3) + 1`), rejecting ballot stuffing (`votes.len() > total_witnesses`).
+pub fn verify_byzantine_physical_witness(
+    votes: &[PhysicalWitnessVote],
+    total_witnesses: usize,
+    last_witness_hash: u64,
+) -> Result<WitnessProof, &'static str> {
+    if votes.is_empty() || total_witnesses == 0 {
+        return Err("no physical votes");
+    }
+    if votes.len() > total_witnesses {
+        return Err("physical vote count exceeds witness set");
+    }
+
+    let required_matches = byzantine_witness_threshold(total_witnesses);
+    let mut groups: BTreeMap<WitnessGroupKey, Vec<&PhysicalWitnessVote>> = BTreeMap::new();
+    for vote in votes {
+        if vote.is_valid() && !vote.suspicious {
+            groups
+                .entry((vote.artifact_hash, vote.ast_fingerprint))
+                .or_default()
+                .push(vote);
+        }
+    }
+
+    let mut winner: Option<WitnessGroup<'_>> = None;
+    for (key, group) in groups {
+        if group.len() < required_matches {
+            continue;
+        }
+        if let Some((_, best_group)) = &winner {
+            if group.len() <= best_group.len() {
+                continue;
+            }
+        }
+        winner = Some((key, group));
+    }
+
+    let ((artifact_hash, ast_fingerprint), group) = winner.ok_or("physical witness rejected")?;
+    let fuel_consumed = group
+        .iter()
+        .map(|vote| vote.fuel_consumed)
+        .max()
+        .unwrap_or(0);
+    let anchor = physical_anchor(
+        artifact_hash,
+        ast_fingerprint,
+        fuel_consumed,
+        group.len(),
+        last_witness_hash,
+    );
+
+    Ok(WitnessProof {
+        anchor,
+        blake3_hash: artifact_hash,
+        ast_fingerprint,
+        witness_count: group.len(),
+        fuel_consumed,
+    })
+}
+
+/// Verify identified physical witnesses under `2f + 1` Byzantine quorum while
+/// rejecting duplicate `witness_id` ballots (Sybil / replay protection).
+pub fn verify_identified_byzantine_witnesses(
+    witnesses: &[SacPhysicalWitness],
+    total_witnesses: usize,
+    last_witness_hash: u64,
+) -> Result<WitnessProof, &'static str> {
+    if witnesses.is_empty() || total_witnesses == 0 {
+        return Err("no physical votes");
+    }
+    if witnesses.len() > total_witnesses {
+        return Err("physical vote count exceeds witness set");
+    }
+    let mut seen_ids = std::collections::BTreeSet::new();
+    let mut votes = Vec::with_capacity(witnesses.len());
+    for witness in witnesses {
+        if !witness.is_valid() {
+            continue;
+        }
+        if !seen_ids.insert(witness.witness_id) {
+            return Err("duplicate physical witness id");
+        }
+        votes.push(PhysicalWitnessVote {
+            artifact_hash: witness.artifact_hash,
+            ast_fingerprint: witness.ast_fingerprint,
+            fuel_consumed: witness.fuel_consumed,
+            suspicious: false,
+        });
+    }
+    verify_byzantine_physical_witness(&votes, total_witnesses, last_witness_hash)
+}
+
 fn physical_anchor(
     artifact_hash: [u8; 32],
     ast_fingerprint: u64,

@@ -11,9 +11,9 @@ use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
 pub const AGENT_GRAPH_SCHEMA_V1: &str = "aegis-agent-graph-v1";
-pub const MAX_AGENT_GRAPH_TASKS: usize = 256;
-pub const MAX_AGENT_GRAPH_DEPENDENCIES: usize = 4_096;
-pub const MAX_AGENT_GRAPH_RESOURCES: usize = 64;
+pub const MAX_AGENT_GRAPH_TASKS: usize = 1_024;
+pub const MAX_AGENT_GRAPH_DEPENDENCIES: usize = 16_384;
+pub const MAX_AGENT_GRAPH_RESOURCES: usize = 256;
 const MAX_AGENT_GRAPH_STRING_BYTES: usize = 4_096;
 
 #[derive(Clone, Debug, Deserialize)]
@@ -223,6 +223,359 @@ pub fn validate(request: AgentGraphRequest) -> Result<AgentGraphValidation, Agen
         topological_order,
         task_count: task_map.len(),
     })
+}
+
+/// Parsed hierarchical scope for a resource key (`path:...`, `file:...`, `symbol:...::...`, or opaque).
+#[derive(Clone, Debug, Eq, PartialEq)]
+enum ParsedResourceScope {
+    Path(String),
+    Symbol { file_path: String, symbol: String },
+    Opaque(String),
+}
+
+fn normalize_rel_path(raw: &str) -> String {
+    let replaced = raw.trim().replace('\\', "/");
+    let mut parts = Vec::new();
+    for seg in replaced.split('/') {
+        let trimmed = seg.trim();
+        if trimmed.is_empty() || trimmed == "." {
+            continue;
+        }
+        parts.push(trimmed);
+    }
+    parts.join("/")
+}
+
+fn parse_resource_scope(raw_key: &str) -> ParsedResourceScope {
+    let trimmed = raw_key.trim();
+    if let Some(rest) = trimmed.strip_prefix("symbol:") {
+        if let Some((path_part, sym_part)) = rest.split_once("::") {
+            let file_path = normalize_rel_path(path_part);
+            let symbol = sym_part.trim().to_string();
+            if !file_path.is_empty() && !symbol.is_empty() {
+                return ParsedResourceScope::Symbol { file_path, symbol };
+            }
+        }
+    }
+    if let Some(rest) = trimmed
+        .strip_prefix("path:")
+        .or_else(|| trimmed.strip_prefix("file:"))
+    {
+        if let Some((path_part, sym_part)) = rest.split_once("::") {
+            let file_path = normalize_rel_path(path_part);
+            let symbol = sym_part.trim().to_string();
+            if !file_path.is_empty() && !symbol.is_empty() {
+                return ParsedResourceScope::Symbol { file_path, symbol };
+            }
+        }
+        let norm = normalize_rel_path(rest);
+        if !norm.is_empty() {
+            return ParsedResourceScope::Path(norm);
+        }
+    }
+    if !trimmed.contains(':') {
+        if let Some((path_part, sym_part)) = trimmed.split_once("::") {
+            if path_part.contains('/') || path_part.contains('\\') || path_part.contains('.') {
+                let file_path = normalize_rel_path(path_part);
+                let symbol = sym_part.trim().to_string();
+                if !file_path.is_empty() && !symbol.is_empty() {
+                    return ParsedResourceScope::Symbol { file_path, symbol };
+                }
+            }
+        }
+    }
+    ParsedResourceScope::Opaque(trimmed.to_string())
+}
+
+fn path_overlaps(left: &str, right: &str) -> bool {
+    if left == right {
+        return true;
+    }
+    left.strip_prefix(right)
+        .is_some_and(|rest| rest.starts_with('/'))
+        || right
+            .strip_prefix(left)
+            .is_some_and(|rest| rest.starts_with('/'))
+}
+
+fn symbol_overlaps(left: &str, right: &str) -> bool {
+    if left == right {
+        return true;
+    }
+    left.strip_prefix(right)
+        .is_some_and(|rest| rest.starts_with("::") || rest.starts_with('.'))
+        || right
+            .strip_prefix(left)
+            .is_some_and(|rest| rest.starts_with("::") || rest.starts_with('.'))
+}
+
+/// Determine whether two resource lease keys conflict hierarchically:
+/// - `path:a/b` conflicts with `path:a/b/c.rs` and `symbol:a/b/c.rs::fn_x`
+/// - `path:a/b/c.rs` conflicts with `symbol:a/b/c.rs::fn_x`
+/// - `symbol:a/b/c.rs::Impl` conflicts with `symbol:a/b/c.rs::Impl::method`
+/// - `symbol:a/b/c.rs::fn_x` does NOT conflict with `symbol:a/b/c.rs::fn_y`
+pub fn resource_keys_conflict(left: &str, right: &str) -> bool {
+    if left.trim() == right.trim() {
+        return true;
+    }
+    match (parse_resource_scope(left), parse_resource_scope(right)) {
+        (ParsedResourceScope::Path(lp), ParsedResourceScope::Path(rp)) => path_overlaps(&lp, &rp),
+        (ParsedResourceScope::Path(lp), ParsedResourceScope::Symbol { file_path, .. })
+        | (ParsedResourceScope::Symbol { file_path, .. }, ParsedResourceScope::Path(lp)) => {
+            path_overlaps(&lp, &file_path)
+        }
+        (
+            ParsedResourceScope::Symbol {
+                file_path: lf,
+                symbol: ls,
+            },
+            ParsedResourceScope::Symbol {
+                file_path: rf,
+                symbol: rs,
+            },
+        ) => lf == rf && symbol_overlaps(&ls, &rs),
+        _ => false,
+    }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+pub struct AgentResourceConflict {
+    pub left_task_id: u128,
+    pub right_task_id: u128,
+    pub left_key: String,
+    pub right_key: String,
+}
+
+/// Identify pairs of tasks in a validated graph that are NOT ordered by
+/// transitive DAG dependencies yet claim hierarchically overlapping resources.
+pub fn detect_unserialized_resource_conflicts(
+    request: &AgentGraphRequest,
+) -> Result<Vec<AgentResourceConflict>, AgentGraphError> {
+    let _ = validate(request.clone())?;
+    let mut ancestors: BTreeMap<u128, BTreeSet<u128>> = BTreeMap::new();
+    let task_by_id: BTreeMap<u128, &AgentGraphTask> =
+        request.tasks.iter().map(|t| (t.task_id, t)).collect();
+
+    fn collect_ancestors(
+        task_id: u128,
+        task_by_id: &BTreeMap<u128, &AgentGraphTask>,
+        memo: &mut BTreeMap<u128, BTreeSet<u128>>,
+    ) -> BTreeSet<u128> {
+        if let Some(cached) = memo.get(&task_id) {
+            return cached.clone();
+        }
+        let mut acc = BTreeSet::new();
+        if let Some(task) = task_by_id.get(&task_id) {
+            for dep in &task.dependency_ids {
+                acc.insert(*dep);
+                acc.extend(collect_ancestors(*dep, task_by_id, memo));
+            }
+        }
+        memo.insert(task_id, acc.clone());
+        acc
+    }
+
+    for &task_id in task_by_id.keys() {
+        collect_ancestors(task_id, &task_by_id, &mut ancestors);
+    }
+
+    let ordered_tasks: Vec<&AgentGraphTask> = task_by_id.values().copied().collect();
+    let mut conflicts = Vec::new();
+    for i in 0..ordered_tasks.len() {
+        for j in (i + 1)..ordered_tasks.len() {
+            let a = ordered_tasks[i];
+            let b = ordered_tasks[j];
+            let ordered = ancestors
+                .get(&a.task_id)
+                .is_some_and(|set| set.contains(&b.task_id))
+                || ancestors
+                    .get(&b.task_id)
+                    .is_some_and(|set| set.contains(&a.task_id));
+            if ordered {
+                continue;
+            }
+            for lk in &a.exclusive_resource_keys {
+                for rk in &b.exclusive_resource_keys {
+                    if resource_keys_conflict(lk, rk) {
+                        conflicts.push(AgentResourceConflict {
+                            left_task_id: a.task_id,
+                            right_task_id: b.task_id,
+                            left_key: lk.clone(),
+                            right_key: rk.clone(),
+                        });
+                    }
+                }
+            }
+        }
+    }
+    Ok(conflicts)
+}
+
+/// Validate compact machine handle syntax (`@sym:<hex>`, `@ev:<hex>`, `@fold:<hex>`, `@obl:<hex>`).
+pub fn is_valid_compact_handle(handle: &str) -> bool {
+    let Some((prefix, digest)) = handle.split_once(':') else {
+        return false;
+    };
+    if !matches!(prefix, "@sym" | "@ev" | "@fold" | "@obl") {
+        return false;
+    }
+    (16..=64).contains(&digest.len())
+        && digest
+            .bytes()
+            .all(|b| b.is_ascii_hexdigit() && !b.is_ascii_uppercase())
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize)]
+pub enum TeamTaskStatus {
+    Pending,
+    Claimed,
+    Completed,
+    Failed,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+pub struct TeamTaskRecord {
+    pub task_id: u128,
+    pub blocked_by: Vec<u128>,
+    pub blocks: Vec<u128>,
+    pub lease_resources: Vec<String>,
+    pub status: TeamTaskStatus,
+    pub owner_agent_id: Option<String>,
+    pub result_handles: Vec<String>,
+    pub updated_seq: u64,
+}
+
+/// Monotonic delta-synchronized multi-agent task board (`AIP-v2`) enforcing
+/// DAG readiness, hierarchical file/symbol leases, and compact handle envelopes.
+#[derive(Clone, Debug, Default)]
+pub struct TeamTaskDeltaBoard {
+    seq: u64,
+    tasks: BTreeMap<u128, TeamTaskRecord>,
+}
+
+impl TeamTaskDeltaBoard {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    pub fn latest_seq(&self) -> u64 {
+        self.seq
+    }
+
+    pub fn upsert_task(
+        &mut self,
+        task_id: u128,
+        mut blocked_by: Vec<u128>,
+        mut lease_resources: Vec<String>,
+    ) -> Result<u64, &'static str> {
+        if task_id == 0 {
+            return Err("team task_id must be positive");
+        }
+        blocked_by.sort_unstable();
+        blocked_by.dedup();
+        if blocked_by.contains(&task_id) {
+            return Err("team task cannot block itself");
+        }
+        lease_resources.sort();
+        lease_resources.dedup();
+        self.seq = self.seq.saturating_add(1);
+        let seq = self.seq;
+        let existing_blocks = self
+            .tasks
+            .get(&task_id)
+            .map(|r| r.blocks.clone())
+            .unwrap_or_default();
+        self.tasks.insert(
+            task_id,
+            TeamTaskRecord {
+                task_id,
+                blocked_by: blocked_by.clone(),
+                blocks: existing_blocks,
+                lease_resources,
+                status: TeamTaskStatus::Pending,
+                owner_agent_id: None,
+                result_handles: Vec::new(),
+                updated_seq: seq,
+            },
+        );
+        for dep_id in blocked_by {
+            if let Some(dep_task) = self.tasks.get_mut(&dep_id) {
+                if !dep_task.blocks.contains(&task_id) {
+                    dep_task.blocks.push(task_id);
+                    dep_task.blocks.sort_unstable();
+                    dep_task.updated_seq = seq;
+                }
+            }
+        }
+        Ok(seq)
+    }
+
+    pub fn claim_task(&mut self, task_id: u128, agent_id: &str) -> Result<u64, &'static str> {
+        if agent_id.trim().is_empty() {
+            return Err("agent_id cannot be empty");
+        }
+        let target = self.tasks.get(&task_id).ok_or("unknown team task")?;
+        if target.status != TeamTaskStatus::Pending {
+            return Err("team task is not pending");
+        }
+        for dep_id in &target.blocked_by {
+            match self.tasks.get(dep_id) {
+                Some(dep) if dep.status == TeamTaskStatus::Completed => {}
+                _ => return Err("team task has incomplete dependencies"),
+            }
+        }
+        let needed_leases = target.lease_resources.clone();
+        for other in self.tasks.values() {
+            if other.task_id != task_id && other.status == TeamTaskStatus::Claimed {
+                for lk in &needed_leases {
+                    for rk in &other.lease_resources {
+                        if resource_keys_conflict(lk, rk) {
+                            return Err("hierarchical resource lease conflict with active agent");
+                        }
+                    }
+                }
+            }
+        }
+        self.seq = self.seq.saturating_add(1);
+        let seq = self.seq;
+        let record = self.tasks.get_mut(&task_id).expect("checked");
+        record.status = TeamTaskStatus::Claimed;
+        record.owner_agent_id = Some(agent_id.trim().to_string());
+        record.updated_seq = seq;
+        Ok(seq)
+    }
+
+    pub fn complete_task(
+        &mut self,
+        task_id: u128,
+        agent_id: &str,
+        handles: Vec<String>,
+    ) -> Result<u64, &'static str> {
+        for handle in &handles {
+            if !is_valid_compact_handle(handle) {
+                return Err("team result must use compact @sym/@ev/@fold/@obl handles");
+            }
+        }
+        let record = self.tasks.get_mut(&task_id).ok_or("unknown team task")?;
+        if record.status != TeamTaskStatus::Claimed
+            || record.owner_agent_id.as_deref() != Some(agent_id.trim())
+        {
+            return Err("team task is not claimed by this agent");
+        }
+        self.seq = self.seq.saturating_add(1);
+        record.status = TeamTaskStatus::Completed;
+        record.result_handles = handles;
+        record.updated_seq = self.seq;
+        Ok(self.seq)
+    }
+
+    pub fn delta_since(&self, since_seq: u64) -> Vec<TeamTaskRecord> {
+        self.tasks
+            .values()
+            .filter(|record| record.updated_seq > since_seq)
+            .cloned()
+            .collect()
+    }
 }
 
 #[cfg(test)]

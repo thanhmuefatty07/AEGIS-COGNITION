@@ -29,7 +29,9 @@ mod source_watcher;
 mod status;
 #[cfg(feature = "wasm-plugins")]
 mod wasm_plugins;
-pub use agent_coordination::aegis_agent_graph_validate;
+pub use agent_coordination::{
+    aegis_agent_graph_validate, aegis_detect_graph_resource_conflicts, aegis_resource_keys_conflict,
+};
 pub use compat::{
     aegis_harness_analyze_errors, aegis_harness_generate_skeleton, aegis_hot_hash,
     aegis_llm_bridge_key, aegis_llm_normalize, aegis_llm_reject, aegis_llm_request,
@@ -65,11 +67,12 @@ pub use lab::{
 };
 pub use learning::{
     aegis_backup_memory_store, aegis_capture_memory, aegis_correct_memory, aegis_forget_memory,
-    aegis_get_learning_stats, aegis_grant_memory_access, aegis_index_session,
-    aegis_index_session_scoped, aegis_inspect_memory, aegis_link_memory_file_relation,
-    aegis_list_current_memory_file_relations, aegis_list_memory_file_relations,
-    aegis_list_memory_file_relations_page, aegis_purge_memory, aegis_read_session_content,
-    aegis_read_session_content_scoped, aegis_read_session_record_scoped, aegis_restore_memory,
+    aegis_get_learning_stats, aegis_grant_memory_access, aegis_hypergraph_analyze_json,
+    aegis_index_session, aegis_index_session_scoped, aegis_inspect_memory,
+    aegis_link_memory_file_relation, aegis_list_current_memory_file_relations,
+    aegis_list_memory_file_relations, aegis_list_memory_file_relations_page, aegis_purge_memory,
+    aegis_read_session_content, aegis_read_session_content_scoped,
+    aegis_read_session_record_scoped, aegis_record_memory_reflection, aegis_restore_memory,
     aegis_revoke_memory_access, aegis_search_memories, aegis_search_past_sessions,
     aegis_search_past_sessions_scoped, aegis_trigger_memory_nudge,
     aegis_unlink_memory_file_relation, aegis_validate_memory,
@@ -330,6 +333,8 @@ fn py_safe<T>(f: impl FnOnce() -> T) -> PyResult<T> {
 #[pymodule]
 pub fn aegis_nerve(_py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(aegis_agent_graph_validate, m)?)?;
+    m.add_function(wrap_pyfunction!(aegis_resource_keys_conflict, m)?)?;
+    m.add_function(wrap_pyfunction!(aegis_detect_graph_resource_conflicts, m)?)?;
     m.add_function(wrap_pyfunction!(aegis_status, m)?)?;
     m.add_function(wrap_pyfunction!(aegis_validate_schema, m)?)?;
     m.add_function(wrap_pyfunction!(aegis_validate_layout, m)?)?;
@@ -458,6 +463,8 @@ pub fn aegis_nerve(_py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(aegis_read_session_content_scoped, m)?)?;
     m.add_function(wrap_pyfunction!(aegis_read_session_record_scoped, m)?)?;
     m.add_function(wrap_pyfunction!(aegis_search_past_sessions_scoped, m)?)?;
+    m.add_function(wrap_pyfunction!(aegis_record_memory_reflection, m)?)?;
+    m.add_function(wrap_pyfunction!(aegis_hypergraph_analyze_json, m)?)?;
     m.add_class::<PyLabController>()?;
     m.add_function(wrap_pyfunction!(aegis_lab_verify_event_chain, m)?)?;
     m.add_function(wrap_pyfunction!(aegis_lab_validate_transition, m)?)?;
