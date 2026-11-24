@@ -40,18 +40,8 @@
     {
       "id": "NV-005",
       "title": "Hardware policy freeze for H0-H2",
-      "status": "LIVE VERIFIED (GCP / REMOTE)",
-      "closing_evidence_id": "EV-NV-005-8BBD6EF31DA7AE55",
-      "closing_commit": "09b221ae66f6a160c3c3d39296c8522e98f71ec2",
-      "closing_date": "2026-11-04",
-      "receipt_path": "artifacts/resource_policy_H2_receipt.json",
-      "receipt_sha256": "8bbd6ef31da7ae554f90f3a7f12ba6354fc436eb217ef527b99218970b037a1c",
-      "additional_receipts": [
-        {
-          "receipt_path": "artifacts/resource_policy_H1_receipt.json",
-          "receipt_sha256": "5527f2c65a2323cf605a356cb9a7cc3bcede1ec869d3e196f2bdc637b10cf67e"
-        }
-      ]
+      "status": "NOT VERIFIED",
+      "reopened_reason": "Phase -1 audit established that prior closing evidence (scripts/resource_policy_benchmark.py) executed synthetic non-AEGIS XOR loops rather than AEGIS runtime boundaries; reopened pending real AEGIS verification in Phase 0B."
     },
     {
       "id": "NV-006",
@@ -132,12 +122,8 @@
     {
       "id": "NV-014",
       "title": "Communication exporter",
-      "status": "LIVE VERIFIED (GCP / REMOTE)",
-      "closing_evidence_id": "EV-NV-014-1E86B97C8B8C9C77",
-      "closing_commit": "09b221ae66f6a160c3c3d39296c8522e98f71ec2",
-      "closing_date": "2026-11-04",
-      "receipt_path": "artifacts/communication_payload_receipt.json",
-      "receipt_sha256": "1e86b97c8b8c9c771b408624ba00f696c999d297f4e15ae8e366b02d52515e5e"
+      "status": "NOT VERIFIED",
+      "reopened_reason": "Phase -1 audit established that prior closing evidence (scripts/communication_payload_benchmark.py) exercised non-AEGIS Python stdlib buffers/sockets with in-loop tracemalloc rather than real AEGIS IPC boundaries; reopened pending real AEGIS verification in Phase 0B."
     },
     {
       "id": "NV-015",

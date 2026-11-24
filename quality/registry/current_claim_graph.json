@@ -1138,8 +1138,8 @@
     "future_obligations": 20,
     "invariants": 46,
     "mapped_surfaces": 23,
-    "surfaces": 257,
-    "unmapped_surfaces": 234,
+    "surfaces": 264,
+    "unmapped_surfaces": 241,
     "unmapped_verifications": 35,
     "unresolved_code_references": 0,
     "verifications": 92
@@ -3989,7 +3989,7 @@
       "classification": "FUTURE_ANCHOR_OR_RELEASE_OBLIGATION",
       "id": "AESE-BLOCKER-NV-005",
       "source_id": "NV-005",
-      "status": "LIVE VERIFIED (GCP / REMOTE)",
+      "status": "NOT VERIFIED",
       "title": "Hardware policy freeze for H0-H2"
     },
     {
@@ -4052,7 +4052,7 @@
       "classification": "FUTURE_ANCHOR_OR_RELEASE_OBLIGATION",
       "id": "AESE-BLOCKER-NV-014",
       "source_id": "NV-014",
-      "status": "LIVE VERIFIED (GCP / REMOTE)",
+      "status": "NOT VERIFIED",
       "title": "Communication exporter"
     },
     {
@@ -4391,13 +4391,13 @@
     "all_surfaces_mapped": false,
     "critical_high_risk_mapped": false,
     "criticality_known": false,
-    "unmapped_surface_count": 234
+    "unmapped_surface_count": 241
   },
   "mode": "SHADOW",
   "phase": "PHASE_1_CLAIM_EVIDENCE_GRAPH",
   "schema": "aese-shadow-claim-evidence-graph-v1",
-  "source_head": "09b221ae66f6a160c3c3d39296c8522e98f71ec2",
-  "source_tree_sha256": "8db8b6902718dce4cb42c5b4d3084f87d6a3b4e75943233b745491726b33d381",
+  "source_head": "72857c5282cfbedf3bbf171510934c06bf965302",
+  "source_tree_sha256": "fe32e0137509120f341796fc1229d7f99cc08141510d39bbff65a1fec14bdac2",
   "status": "SHADOW_GRAPH_PARTIAL_MAPPING_SELECTION_DISABLED",
   "surfaces": [
     {
@@ -5041,6 +5041,19 @@
     },
     {
       "claim_refs": [],
+      "id": "AESE-PYTHON_TEST-066389F17B991934",
+      "kind": "PYTHON_TEST",
+      "mapping_status": "NOT_MAPPED",
+      "path": "tests/test_mcp_hub_and_harnesses.py",
+      "release_critical": "UNKNOWN",
+      "release_criticality": "UNKNOWN",
+      "risk": "UNKNOWN",
+      "security_criticality": "UNKNOWN",
+      "target": null,
+      "unknown_dependency_policy": "INVALIDATE_CONSERVATIVELY"
+    },
+    {
+      "claim_refs": [],
       "id": "AESE-PYTHON_TEST-08B1824BB3F3753E",
       "kind": "PYTHON_TEST",
       "mapping_status": "NOT_MAPPED",
@@ -5071,6 +5084,19 @@
       "kind": "PYTHON_TEST",
       "mapping_status": "NOT_MAPPED",
       "path": "tests/test_application_subagents.py",
+      "release_critical": "UNKNOWN",
+      "release_criticality": "UNKNOWN",
+      "risk": "UNKNOWN",
+      "security_criticality": "UNKNOWN",
+      "target": null,
+      "unknown_dependency_policy": "INVALIDATE_CONSERVATIVELY"
+    },
+    {
+      "claim_refs": [],
+      "id": "AESE-PYTHON_TEST-0F80544DB3B03444",
+      "kind": "PYTHON_TEST",
+      "mapping_status": "NOT_MAPPED",
+      "path": "tests/test_mmap_stream_buffer_benchmark.py",
       "release_critical": "UNKNOWN",
       "release_criticality": "UNKNOWN",
       "risk": "UNKNOWN",
@@ -5396,6 +5422,19 @@
       "kind": "PYTHON_TEST",
       "mapping_status": "NOT_MAPPED",
       "path": "tests/test_aese_statistical_calibration.py",
+      "release_critical": "UNKNOWN",
+      "release_criticality": "UNKNOWN",
+      "risk": "UNKNOWN",
+      "security_criticality": "UNKNOWN",
+      "target": null,
+      "unknown_dependency_policy": "INVALIDATE_CONSERVATIVELY"
+    },
+    {
+      "claim_refs": [],
+      "id": "AESE-PYTHON_TEST-51B94584AEE83CAF",
+      "kind": "PYTHON_TEST",
+      "mapping_status": "NOT_MAPPED",
+      "path": "tests/test_anti_leak_gate.py",
       "release_critical": "UNKNOWN",
       "release_criticality": "UNKNOWN",
       "risk": "UNKNOWN",
@@ -5970,6 +6009,19 @@
       "kind": "PYTHON_TEST",
       "mapping_status": "NOT_MAPPED",
       "path": "tests/test_aese_affected_closure.py",
+      "release_critical": "UNKNOWN",
+      "release_criticality": "UNKNOWN",
+      "risk": "UNKNOWN",
+      "security_criticality": "UNKNOWN",
+      "target": null,
+      "unknown_dependency_policy": "INVALIDATE_CONSERVATIVELY"
+    },
+    {
+      "claim_refs": [],
+      "id": "AESE-PYTHON_TEST-D6346E653E3A528B",
+      "kind": "PYTHON_TEST",
+      "mapping_status": "NOT_MAPPED",
+      "path": "tests/test_hypergraph_and_team_bus.py",
       "release_critical": "UNKNOWN",
       "release_criticality": "UNKNOWN",
       "risk": "UNKNOWN",
@@ -6831,6 +6883,19 @@
     },
     {
       "claim_refs": [],
+      "id": "AESE-RUST_UNIT_TEST-E9466862660FED61",
+      "kind": "RUST_UNIT_TEST",
+      "mapping_status": "NOT_MAPPED",
+      "path": "core/rust/src/memory/hypergraph.rs",
+      "release_critical": "UNKNOWN",
+      "release_criticality": "UNKNOWN",
+      "risk": "UNKNOWN",
+      "security_criticality": "UNKNOWN",
+      "target": null,
+      "unknown_dependency_policy": "INVALIDATE_CONSERVATIVELY"
+    },
+    {
+      "claim_refs": [],
       "id": "AESE-RUST_UNIT_TEST-EB50407EAE4868AB",
       "kind": "RUST_UNIT_TEST",
       "mapping_status": "NOT_MAPPED",
@@ -6952,6 +7017,19 @@
       "kind": "SCRIPT_OR_GATE",
       "mapping_status": "NOT_MAPPED",
       "path": "scripts/release_evidence.py",
+      "release_critical": "UNKNOWN",
+      "release_criticality": "UNKNOWN",
+      "risk": "UNKNOWN",
+      "security_criticality": "UNKNOWN",
+      "target": null,
+      "unknown_dependency_policy": "INVALIDATE_CONSERVATIVELY"
+    },
+    {
+      "claim_refs": [],
+      "id": "AESE-SCRIPT_OR_GATE-170634842816F064",
+      "kind": "SCRIPT_OR_GATE",
+      "mapping_status": "NOT_MAPPED",
+      "path": "scripts/cloud_m8/provenance.py",
       "release_critical": "UNKNOWN",
       "release_criticality": "UNKNOWN",
       "risk": "UNKNOWN",
@@ -7764,6 +7842,19 @@
       "kind": "SCRIPT_OR_GATE",
       "mapping_status": "NOT_MAPPED",
       "path": "scripts/production_closure.py",
+      "release_critical": "UNKNOWN",
+      "release_criticality": "UNKNOWN",
+      "risk": "UNKNOWN",
+      "security_criticality": "UNKNOWN",
+      "target": null,
+      "unknown_dependency_policy": "INVALIDATE_CONSERVATIVELY"
+    },
+    {
+      "claim_refs": [],
+      "id": "AESE-SCRIPT_OR_GATE-F7027B10CDD8F0A5",
+      "kind": "SCRIPT_OR_GATE",
+      "mapping_status": "NOT_MAPPED",
+      "path": "scripts/anti_leak_gate.py",
       "release_critical": "UNKNOWN",
       "release_criticality": "UNKNOWN",
       "risk": "UNKNOWN",
@@ -8702,6 +8793,6 @@
       "source_id": "AESE-011"
     }
   ],
-  "worktree_epoch": "8a0102012342bf7309dcdf6fb4e39845e89c57961c626b5d7e395af32520619c",
-  "worktree_status": "DIRTY"
+  "worktree_epoch": "ca2433dda2758c7a208ea6d32fb18872ed7c64f485548b10e083b47d1b41d012",
+  "worktree_status": "CLEAN"
 }

@@ -11,7 +11,7 @@ machine-readable registry remains authoritative.
 | NV-002 | Windows Job Object live process enforcement | IMPLEMENTED / PARTIALLY LIVE VERIFIED | NO | non_blocking_registry_ids |
 | NV-003 | macOS resource enforcement | LIVE VERIFIED (GCP / REMOTE) | NO | non_blocking_registry_ids |
 | NV-004 | External signed release attestation | LIVE VERIFIED (GCP / REMOTE) | YES | external_signed_attestation_missing |
-| NV-005 | Hardware policy freeze for H0-H2 | LIVE VERIFIED (GCP / REMOTE) | NO | non_blocking_registry_ids |
+| NV-005 | Hardware policy freeze for H0-H2 | NOT VERIFIED | NO | non_blocking_registry_ids |
 | NV-006 | OpenTelemetry exporter | LIVE VERIFIED (GCP / REMOTE) | NO | non_blocking_registry_ids |
 | NV-007 | Fuzz campaign evidence | LIVE VERIFIED (GCP / REMOTE) | NO | non_blocking_registry_ids |
 | NV-008 | Tier-1 wheel parity | LIVE VERIFIED (GCP / REMOTE) | NO | non_blocking_registry_ids |
@@ -20,7 +20,7 @@ machine-readable registry remains authoritative.
 | NV-011 | GT96 requirement closure | IN PROGRESS | NO | non_blocking_registry_ids |
 | NV-012 | Production migration rehearsal | LIVE VERIFIED (GCP / REMOTE) | NO | non_blocking_registry_ids |
 | NV-013 | Miri and AddressSanitizer evidence | LIVE VERIFIED (GCP / REMOTE) | NO | non_blocking_registry_ids |
-| NV-014 | Communication exporter | LIVE VERIFIED (GCP / REMOTE) | NO | non_blocking_registry_ids |
+| NV-014 | Communication exporter | NOT VERIFIED | NO | non_blocking_registry_ids |
 | NV-015 | GitHub hosted-runner evidence for current head | NOT VERIFIED | NO | non_blocking_registry_ids |
 | NV-016 | Real multi-machine TCP cluster soak | LIVE VERIFIED (GCP / REMOTE) | YES | real_multi_machine_cluster_soak_missing |
 | NV-017 | Full QuickJS interpreter cold-start | LIVE VERIFIED (GCP / REMOTE) | YES | full_quickjs_interpreter_cold_start_missing |
