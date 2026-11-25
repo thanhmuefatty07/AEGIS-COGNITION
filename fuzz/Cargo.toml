@@ -40,4 +40,53 @@ test = false
 doc = false
 bench = false
 
+[[bin]]
+name = "wasm_bridge_frame"
+path = "fuzz_targets/wasm_bridge_frame.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "datalog_policy_kernel"
+path = "fuzz_targets/datalog_policy_kernel.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "aip_v2_codec_frame"
+path = "fuzz_targets/aip_v2_codec_frame.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "hypergraph_csr_parser"
+path = "fuzz_targets/hypergraph_csr_parser.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "browser_witness_packet"
+path = "fuzz_targets/browser_witness_packet.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "replay_learning_decoder"
+path = "fuzz_targets/replay_learning_decoder.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "wasm_sandbox_guard"
+path = "fuzz_targets/wasm_sandbox_guard.rs"
+test = false
+doc = false
+bench = false
+
 [workspace]

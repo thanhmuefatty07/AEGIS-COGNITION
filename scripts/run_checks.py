@@ -235,11 +235,11 @@ BENCHMARK_COMMAND = [
     "nerve_bench",
     "--",
     "--sample-size",
-    "10",
+    "200",
     "--measurement-time",
-    "1",
+    "10",
     "--warm-up-time",
-    "1",
+    "3",
 ]
 REPLAY_CHAOS_SCORECARD_COMMAND = [
     "cargo",

@@ -11,12 +11,10 @@ from __future__ import annotations
 import argparse
 import json
 import platform
-import random
 import statistics
 import subprocess
 import sys
 import time
-from dataclasses import dataclass
 from itertools import pairwise
 from pathlib import Path
 from types import SimpleNamespace
@@ -26,7 +24,15 @@ from typing import Any
 ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
-SCHEMA = "aegis-memory-context-benchmark-v1"
+
+from aegis_cognition.benchmark import (  # noqa: E402
+    MIN_DEV_BOOTSTRAP_RESAMPLES,
+    bca_confidence_interval,
+    quantile_type7_sorted,
+)
+from core.python.aegis.learning import SessionSourceRecord  # noqa: E402
+
+SCHEMA = "aegis-memory-context-benchmark-v2"
 ACCOUNTING = "estimated-rendered-context-utf8-bytes-v2"
 
 
@@ -175,21 +181,16 @@ def _relevance_case() -> dict[str, Any]:
     }
 
 
-@dataclass(frozen=True)
-class _Record:
-    session_id: int
-    content_hash: str
-    timestamp: int
-    scope_kind: str
-    owner_id: str
-    content: str
+_Record = SessionSourceRecord
 
 
 class _Learning:
-    def __init__(self, records: list[_Record]) -> None:
+    def __init__(self, records: list[SessionSourceRecord]) -> None:
         self.records = {record.session_id: record for record in records}
 
-    def read_session_record_scoped(self, session_id: int, *, scope_kind: str, owner_id: str) -> _Record | None:
+    def read_session_record_scoped(
+        self, session_id: int, *, scope_kind: str, owner_id: str
+    ) -> SessionSourceRecord | None:
         record = self.records.get(session_id)
         if record is None or record.scope_kind != scope_kind or record.owner_id != owner_id:
             return None
@@ -623,26 +624,30 @@ def _active_memory_hydration_case() -> dict[str, Any]:
     }
 
 
-def _bootstrap_95_ci(samples: list[float], *, resamples: int = 200, seed: int = 20261112) -> list[float]:
+def _bootstrap_95_ci(
+    samples: list[float], *, resamples: int = MIN_DEV_BOOTSTRAP_RESAMPLES, seed: int = 20261112
+) -> list[float]:
     if not samples:
         return [0.0, 0.0]
-    if len(samples) == 1:
+    if len(samples) < 2:
         val = round(samples[0], 4)
         return [val, val]
-    rng = random.Random(seed)
-    n = len(samples)
-    means = sorted(sum(samples[rng.randrange(n)] for _ in range(n)) / n for _ in range(resamples))
-    lo = means[max(0, int(0.025 * resamples))]
-    hi = means[min(resamples - 1, int(0.975 * resamples))]
-    return [round(lo, 4), round(hi, 4)]
+    ci = bca_confidence_interval(
+        "query_latency_ms",
+        samples,
+        estimand="mean",
+        alpha=0.05,
+        resamples=max(MIN_DEV_BOOTSTRAP_RESAMPLES, resamples),
+        seed=seed,
+    )
+    return [round(ci.ci_low, 4), round(ci.ci_high, 4)]
 
 
 def _percentile(samples: list[float], q: float) -> float:
     if not samples:
         return 0.0
     ordered = sorted(samples)
-    idx = min(len(ordered) - 1, max(0, round((len(ordered) - 1) * q)))
-    return round(ordered[idx], 4)
+    return round(quantile_type7_sorted(ordered, q), 4)
 
 
 def _hypergraph_scale_case(node_count: int) -> dict[str, Any]:
@@ -665,7 +670,9 @@ def _hypergraph_scale_case(node_count: int) -> dict[str, Any]:
             src_path = engine.nodes[base_id].source_file or src_path
         elif nid % 37 == 0:
             # Antonym variant pair that MUST NOT merge (`read` vs `write`)
-            label = f"{dom}_read_channel_{nid // 37}" if (nid // 37) % 2 == 0 else f"{dom}_write_channel_{(nid // 37) - 1}"
+            label = (
+                f"{dom}_read_channel_{nid // 37}" if (nid // 37) % 2 == 0 else f"{dom}_write_channel_{(nid // 37) - 1}"
+            )
         else:
             label = f"{dom}_service_handler_{nid}"
         engine.upsert_node(
@@ -681,27 +688,52 @@ def _hypergraph_scale_case(node_count: int) -> dict[str, Any]:
             )
         )
     eid = 1
-    for nid in range(1, node_count):
-        tgt = nid + 1 if nid % 16 != 0 else ((nid + 17) % node_count) + 1
-        if nid != tgt:
+    for nid in range(2, node_count + 1):
+        # Connected tree/hub + ring + Zipfian cross-hub shortcuts across all N nodes.
+        hub = max(1, (nid - 1) // 8)
+        engine.upsert_edge(
+            HypergraphEdgeSpec(
+                hyperedge_id=eid,
+                relation="calls" if eid % 3 else "depends_on",
+                sources=(hub,),
+                targets=(nid,),
+                provenance="EXTRACTED" if eid % 4 else "INFERRED",
+            )
+        )
+        eid += 1
+        if nid < node_count:
             engine.upsert_edge(
                 HypergraphEdgeSpec(
                     hyperedge_id=eid,
-                    relation="calls" if eid % 3 else "depends_on",
+                    relation="calls",
                     sources=(nid,),
-                    targets=(tgt,),
-                    provenance="EXTRACTED" if eid % 4 else "INFERRED",
+                    targets=(nid + 1,),
+                    provenance="EXTRACTED",
                 )
             )
             eid += 1
+        if nid % 16 == 0:
+            skip_tgt = ((nid * 37) % node_count) + 1
+            if skip_tgt != nid:
+                engine.upsert_edge(
+                    HypergraphEdgeSpec(
+                        hyperedge_id=eid,
+                        relation="depends_on",
+                        sources=(nid,),
+                        targets=(skip_tgt,),
+                        provenance="INFERRED",
+                    )
+                )
+                eid += 1
     ingest_ms = round((time.perf_counter() - t0) * 1000.0, 3)
 
     t1 = time.perf_counter()
     structural = engine.analyze(
         deduplicate=True,
-        cluster_leiden=(node_count <= 25_000),
+        cluster_leiden=True,
         changed_paths=("src/memory/module_0000.rs",),
         blast_max_hops=2,
+        prefer_native=True,
     )
     analyze_ms = round((time.perf_counter() - t1) * 1000.0, 3)
 
@@ -711,6 +743,9 @@ def _hypergraph_scale_case(node_count: int) -> dict[str, Any]:
         "mvcc deterministic component",
         "mcp service handler",
         "ipc read channel",
+        "wasm sandbox seal",
+        "replay manifest proof",
+        "scheduler ready queue",
     )
     query_samples_ms: list[float] = []
     hits_non_empty = True
@@ -721,6 +756,7 @@ def _hypergraph_scale_case(node_count: int) -> dict[str, Any]:
             cluster_leiden=False,
             query=q,
             top_k=8,
+            prefer_native=True,
         )
         query_samples_ms.append((time.perf_counter() - tq) * 1000.0)
         hits_non_empty = hits_non_empty and bool(q_res.get("retrieval_hits"))
@@ -845,7 +881,9 @@ def _retrieval_tier_ablation_case() -> dict[str, Any]:
     eng.record_reflect(3, supporting=True, observed_at_ms=1_700_000_000_000, code_fingerprint=333)
 
     # Force pure-Python or native consistently; note reflect state lives on HypergraphEngine
-    full = eng.analyze(deduplicate=False, cluster_leiden=False, query="quorum witness seal", top_k=3, prefer_native=False)
+    full = eng.analyze(
+        deduplicate=False, cluster_leiden=False, query="quorum witness seal", top_k=3, prefer_native=False
+    )
     no_ppr = eng.analyze(
         deduplicate=False,
         cluster_leiden=False,
@@ -936,8 +974,7 @@ def _aip_v2_protocol_compression_case() -> dict[str, Any]:
         compact_envelopes.append(env)
 
     per_step = [
-        measure_protocol_token_compression(p, c)
-        for p, c in zip(prose_messages, compact_envelopes, strict=True)
+        measure_protocol_token_compression(p, c) for p, c in zip(prose_messages, compact_envelopes, strict=True)
     ]
     prose_tokens_total = sum(int(x["prose_tokens_est"]) for x in per_step)
     compact_tokens_total = sum(int(x["compact_tokens_est"]) for x in per_step)
@@ -972,9 +1009,7 @@ def _byzantine_fault_injection_case() -> dict[str, Any]:
         spec_text="1. Enforce O(1) lookup.\n2. Preserve zero-copy slice bounds.",
         diff_hunks=["@@ -1,3 +1,5 @@\n+assert!(offset <= len);"],
         evidence_handles=[ev_handle],
-        raw_claims=[
-            "<thinking>persuasive chain of thought</thinking> confidence: 10/10! Implemented by agent-alpha."
-        ],
+        raw_claims=["<thinking>persuasive chain of thought</thinking> confidence: 10/10! Implemented by agent-alpha."],
         author_agent_id="agent-alpha",
     )
     ledger = ReconstructionObligationLedger()
@@ -1122,6 +1157,7 @@ def run(*, hypergraph_scales: tuple[int, ...] = (1_000,)) -> dict[str, Any]:
     quantitative_cases = [case for case in cases if "baseline_tokens" in case and "bounded_tokens" in case]
     total_baseline = sum(int(case["baseline_tokens"]) for case in quantitative_cases)
     total_bounded = sum(int(case["bounded_tokens"]) for case in quantitative_cases)
+    usd_per_1m_input = 3.0  # reference frontier model rate ($3 / 1M input tokens)
     return {
         "schema": SCHEMA,
         "status": "PASS",
@@ -1129,7 +1165,7 @@ def run(*, hypergraph_scales: tuple[int, ...] = (1_000,)) -> dict[str, Any]:
         "platform": platform.platform(),
         "python": platform.python_version(),
         "accounting": ACCOUNTING,
-        "scope": "provider-neutral prompt/context accounting; no network calls",
+        "scope": "provider-neutral prompt/context accounting; native hypergraph & V3 BCa statistics",
         "quantitative_case_count": len(quantitative_cases),
         "oracle_case_count": len(cases) - len(quantitative_cases),
         "cases": cases,
@@ -1138,6 +1174,9 @@ def run(*, hypergraph_scales: tuple[int, ...] = (1_000,)) -> dict[str, Any]:
             "bounded_tokens": total_bounded,
             "tokens_saved": total_baseline - total_bounded,
             "reduction_percent": round((total_baseline - total_bounded) * 100 / total_baseline, 3),
+            "baseline_cost_usd_ref": round((total_baseline / 1_000_000.0) * usd_per_1m_input, 6),
+            "bounded_cost_usd_ref": round((total_bounded / 1_000_000.0) * usd_per_1m_input, 6),
+            "cost_saved_usd_ref": round(((total_baseline - total_bounded) / 1_000_000.0) * usd_per_1m_input, 6),
         },
         "research_extensions": {
             "hypergraph_scale_benchmarks": hg_scale_results,
@@ -1147,6 +1186,20 @@ def run(*, hypergraph_scales: tuple[int, ...] = (1_000,)) -> dict[str, Any]:
             "byzantine_quorum_fault_injection": byzantine_fault,
         },
     }
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description="AEGIS Memory & Context Benchmark")
+    parser.add_argument("--full", action="store_true", help="Run connected hypergraph scales up to 50k nodes")
+    args = parser.parse_args()
+    scales = (1_000, 10_000, 50_000) if args.full else (1_000,)
+    report = run(hypergraph_scales=scales)
+    print(json.dumps(report, indent=2, sort_keys=True))
+    return 0 if report["status"] == "PASS" else 1
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
 
 
 def main() -> int:

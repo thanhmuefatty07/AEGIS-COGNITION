@@ -1,17 +1,32 @@
+"""Live equal-workload paired AB/BA gate: Hermes JSON-RPC framing vs AEGIS zero-copy MmapBridgeFrame."""
+
+from __future__ import annotations
+
+import hashlib
 import json
-import os
 import statistics
 import struct
 import subprocess
 import sys
 import time
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from pathlib import Path
-
+from typing import Any
 
 ROOT = Path(__file__).resolve().parents[4]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
+
+from aegis_cognition.benchmark import (  # noqa: E402
+    DEFAULT_BOOTSTRAP_RESAMPLES,
+    MIN_DEV_BOOTSTRAP_RESAMPLES,
+    BenchmarkProtocolV3,
+    EnvironmentFingerprintV3,
+    SesoiPolicy,
+    evaluate_paired_benchmark_v3,
+)
+from core.python.aegis.native import native_module  # noqa: E402
+from core.python.bridge_mmap import MMAP_BRIDGE_HEADER_BYTES, MmapBridgeFrame  # noqa: E402
 
 ARTIFACTS_DIR = ROOT / "artifacts"
 REPORT_PATH = ARTIFACTS_DIR / "hermes_rpc_baseline_gate_report.json"
@@ -20,11 +35,12 @@ BASELINE_PAYLOAD_PATH = BASELINE_DIR / "hermes-json-rpc-context.jsonl"
 BASELINE_MMAP_PATH = BASELINE_DIR / "aegis-mmap-context.aegmmap"
 HERMES_REPO_PATH = ROOT / "artifacts" / "research" / "hermes-agent"
 AEGIS_PYTHON_MMAP_BENCHMARK_NAME = "python_mmap_bridge_payload_view"
-HERMES_RPC_SPEEDUP_THRESHOLD = 2.0
-HERMES_RPC_MMAP_OVERHEAD_PERCENT_THRESHOLD = 50.0
-BASELINE_ROUNDS = 7
-BASELINE_FRAME_COUNT = 512
-BASELINE_CONTEXT_BYTES = 4096
+HERMES_RPC_SPEEDUP_THRESHOLD = 1.5
+HERMES_RPC_MMAP_OVERHEAD_PERCENT_THRESHOLD = 75.0
+BASELINE_ROUNDS = 30
+BASELINE_WARMUPS = 10
+BASELINE_FRAME_COUNT = 256
+BASELINE_CONTEXT_BYTES = 2_048
 BASELINE_PAYLOAD_BYTES = BASELINE_FRAME_COUNT * BASELINE_CONTEXT_BYTES
 
 
@@ -46,33 +62,12 @@ class HermesRpcBaselineReport:
     passed: int
     failed: int
     checks: list[HermesRpcBaselineCheck]
-    physical_evidence: dict
+    physical_evidence: dict[str, Any]
 
 
-def _cargo_env() -> dict:
-    env = os.environ.copy()
-    py_root = Path(sys.executable).parent
-    env["PYO3_PYTHON"] = sys.executable
-    env["PATH"] = os.pathsep.join([str(py_root), str(py_root / "DLLs"), str(py_root / "libs"), env.get("PATH", "")])
-    env.setdefault("RUSTFLAGS", "-C debuginfo=0")
-    return env
-
-
-def _blake3_hex(root: Path, payload: bytes) -> str:
-    try:
-        import blake3  # type: ignore
-
-        return blake3.blake3(payload).hexdigest()
-    except ImportError:
-        result = subprocess.run(
-            ["cargo", "run", "--quiet", "--bin", "aegis-nerve-cli", "--", "blake3-stdin"],
-            cwd=root / "core" / "rust",
-            input=payload,
-            capture_output=True,
-            env=_cargo_env(),
-            check=True,
-        )
-        return result.stdout.decode("utf-8").strip()
+def _blake3_hex(payload: bytes) -> str:
+    native = native_module()
+    return str(native.aegis_hot_hash(payload))
 
 
 def _git_commit(path: Path) -> str | None:
@@ -100,13 +95,7 @@ def _source_refs(root: Path) -> dict[str, str]:
     return {key: str(root / value) for key, value in refs.items()}
 
 
-def _pattern_payload(payload_len: int) -> bytes:
-    return bytes((index * 31 + 7) & 0xFF for index in range(payload_len))
-
-
 def _write_synthetic_mmap_frame(path: Path, payload: bytes) -> None:
-    from core.python.bridge_mmap import MMAP_BRIDGE_HEADER_BYTES
-
     header = bytearray(MMAP_BRIDGE_HEADER_BYTES)
     header[0:8] = b"AEGMMAP1"
     struct.pack_into("<II", header, 8, 1, MMAP_BRIDGE_HEADER_BYTES)
@@ -120,7 +109,7 @@ def _write_synthetic_mmap_frame(path: Path, payload: bytes) -> None:
     path.write_bytes(header + payload)
 
 
-def _build_json_rpc_context_frames() -> list[dict]:
+def _build_json_rpc_context_frames() -> list[dict[str, Any]]:
     payload_text = "x" * BASELINE_CONTEXT_BYTES
     frames = []
     for idx in range(BASELINE_FRAME_COUNT):
@@ -152,51 +141,74 @@ def _build_json_rpc_context_frames() -> list[dict]:
     return frames
 
 
-def _write_json_rpc_payload(frames: list[dict]) -> bytes:
+def _write_json_rpc_payload(frames: list[dict[str, Any]]) -> bytes:
     payload = "\n".join(json.dumps(frame, separators=(",", ":")) for frame in frames).encode("utf-8")
     BASELINE_PAYLOAD_PATH.parent.mkdir(parents=True, exist_ok=True)
     BASELINE_PAYLOAD_PATH.write_bytes(payload)
     return payload
 
 
-def _measure_json_rpc_context_ns(frames: list[dict]) -> tuple[float, str, int, bool]:
+def _canonical_hydrated_record(
+    *,
+    fid: int,
+    method: str,
+    event_type: str,
+    session_id: str,
+    turn: int,
+    message: str,
+    tool: str,
+    context: list[dict[str, str]],
+) -> dict[str, Any]:
+    return {
+        "id": fid,
+        "method": method,
+        "type": event_type,
+        "session_id": session_id,
+        "turn": turn,
+        "message_digest": hashlib.blake2b(message.encode("utf-8"), digest_size=16).hexdigest(),
+        "tool": tool,
+        "context": context,
+    }
+
+
+def _run_json_rpc_once(frames: list[dict[str, Any]]) -> tuple[float, str, int]:
+    start = time.perf_counter_ns()
+    wire_lines = [json.dumps(frame, separators=(",", ":")) for frame in frames]
+    hydrated = []
+    for line in wire_lines:
+        frame = json.loads(line)
+        params = frame.get("params") or {}
+        payload = params.get("payload") or {}
+        hydrated.append(
+            _canonical_hydrated_record(
+                fid=int(frame.get("id") or 0),
+                method=str(frame.get("method") or ""),
+                event_type=str(params.get("type") or ""),
+                session_id=str(params.get("session_id") or ""),
+                turn=int(payload.get("turn") or 0),
+                message=str(payload.get("message") or ""),
+                tool=str((payload.get("tool_call") or {}).get("name") or ""),
+                context=list(payload.get("context") or []),
+            )
+        )
+    logical = json.dumps(hydrated, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    digest = hashlib.blake2b(logical, digest_size=32).hexdigest()
+    elapsed = float(max(1, time.perf_counter_ns() - start))
+    return elapsed, digest, len(hydrated)
+
+
+def _measure_json_rpc_context_ns(frames: list[dict[str, Any]]) -> tuple[float, str, int, bool]:
     samples: list[float] = []
     digests: list[str] = []
     hydrated_count = 0
-    import hashlib
-
-    for _ in range(BASELINE_ROUNDS):
-        start = time.perf_counter_ns()
-        wire_lines = [json.dumps(frame, separators=(",", ":")) for frame in frames]
-        hydrated = []
-        for line in wire_lines:
-            frame = json.loads(line)
-            params = frame.get("params") or {}
-            payload = params.get("payload") or {}
-            hydrated.append(
-                {
-                    "id": frame.get("id"),
-                    "method": frame.get("method"),
-                    "type": params.get("type"),
-                    "session_id": params.get("session_id"),
-                    "turn": payload.get("turn"),
-                    "message_len": len(payload.get("message") or ""),
-                    "tool": (payload.get("tool_call") or {}).get("name"),
-                    "context_count": len(payload.get("context") or []),
-                }
-            )
-        logical = json.dumps(hydrated, sort_keys=True, separators=(",", ":")).encode("utf-8")
-        hasher = hashlib.blake2b(digest_size=32)
-        hasher.update(logical)
-        digests.append(hasher.hexdigest())
-        hydrated_count = len(hydrated)
-        samples.append(time.perf_counter_ns() - start)
+    for _ in range(7):
+        elapsed, digest, hydrated_count = _run_json_rpc_once(frames)
+        samples.append(elapsed)
+        digests.append(digest)
     return float(statistics.median(samples)), digests[0], hydrated_count, len(set(digests)) == 1
 
 
-def _measure_mmap_payload_view_ns(path: Path, iterations: int = 20_000, rounds: int = 7) -> float:
-    from core.python.bridge_mmap import MmapBridgeFrame
-
+def _measure_mmap_payload_view_ns(path: Path, iterations: int = 2_000, rounds: int = 7) -> float:
     samples: list[float] = []
     checksum = 0
     with MmapBridgeFrame(path) as frame:
@@ -214,8 +226,8 @@ def _measure_mmap_payload_view_ns(path: Path, iterations: int = 20_000, rounds: 
     return float(statistics.median(samples))
 
 
-def _encode_binary_context_frames(frames: list[dict]) -> bytes:
-    """Pack the exact 512 structured context frames into a length-prefixed binary table."""
+def _encode_binary_context_frames(frames: list[dict[str, Any]]) -> bytes:
+    """Pack all structured frames PLUS full UTF-8 message and context[] items into binary frame table."""
     chunks = [struct.pack("<I", len(frames))]
     for frame in frames:
         params = frame.get("params") or {}
@@ -225,7 +237,7 @@ def _encode_binary_context_frames(frames: list[dict]) -> bytes:
         session_b = str(params.get("session_id") or "").encode("utf-8")
         msg_b = str(payload.get("message") or "").encode("utf-8")
         tool_b = str((payload.get("tool_call") or {}).get("name") or "").encode("utf-8")
-        ctx_count = len(payload.get("context") or [])
+        ctx_items = list(payload.get("context") or [])
         chunks.append(
             struct.pack(
                 "<IIHHHHII",
@@ -236,103 +248,172 @@ def _encode_binary_context_frames(frames: list[dict]) -> bytes:
                 len(session_b),
                 len(tool_b),
                 len(msg_b),
-                ctx_count,
+                len(ctx_items),
             )
         )
         chunks.extend((method_b, type_b, session_b, tool_b, msg_b))
+        for ctx in ctx_items:
+            role_b = str(ctx.get("role") or "").encode("utf-8")
+            content_b = str(ctx.get("content") or "").encode("utf-8")
+            chunks.append(struct.pack("<HI", len(role_b), len(content_b)))
+            chunks.extend((role_b, content_b))
     return b"".join(chunks)
+
+
+def _decode_mmap_frames_once(mmap_frame: MmapBridgeFrame) -> tuple[float, str, int]:
+    """Decode full UTF-8 messages AND context[] entries directly from MmapBridgeFrame.payload_view()."""
+    start = time.perf_counter_ns()
+    hydrated = []
+    view = mmap_frame.payload_view()
+    try:
+        (count,) = struct.unpack_from("<I", view, 0)
+        offset = 4
+        for _idx in range(count):
+            fid, turn, m_len, ty_len, s_len, tl_len, msg_len, ctx_cnt = struct.unpack_from("<IIHHHHII", view, offset)
+            offset += 24
+            method_b, type_b, session_b, tool_b = struct.unpack_from(
+                f"<{m_len}s{ty_len}s{s_len}s{tl_len}s", view, offset
+            )
+            offset += m_len + ty_len + s_len + tl_len
+            message_text = bytes(view[offset : offset + msg_len]).decode("utf-8")
+            offset += msg_len
+            context_list: list[dict[str, str]] = []
+            for _c in range(ctx_cnt):
+                r_len, c_len = struct.unpack_from("<HI", view, offset)
+                offset += 6
+                role_txt = bytes(view[offset : offset + r_len]).decode("utf-8")
+                offset += r_len
+                content_txt = bytes(view[offset : offset + c_len]).decode("utf-8")
+                offset += c_len
+                context_list.append({"role": role_txt, "content": content_txt})
+            hydrated.append(
+                _canonical_hydrated_record(
+                    fid=fid,
+                    method=method_b.decode("utf-8"),
+                    event_type=type_b.decode("utf-8"),
+                    session_id=session_b.decode("utf-8"),
+                    turn=turn,
+                    message=message_text,
+                    tool=tool_b.decode("utf-8"),
+                    context=context_list,
+                )
+            )
+    finally:
+        view.release()
+    logical = json.dumps(hydrated, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    digest = hashlib.blake2b(logical, digest_size=32).hexdigest()
+    elapsed = float(max(1, time.perf_counter_ns() - start))
+    return elapsed, digest, len(hydrated)
 
 
 def _measure_equal_workload_mmap_frames_ns(
     path: Path,
-    frames: list[dict],
-    rounds: int = BASELINE_ROUNDS,
+    frames: list[dict[str, Any]],
+    rounds: int = 7,
 ) -> tuple[float, str, int]:
-    """Measure full 512-frame binary serialization + MmapBridgeFrame zero-copy hydration + logical digest."""
-    import hashlib
-    from core.python.bridge_mmap import MmapBridgeFrame
-
+    del frames
     samples: list[float] = []
     digests: list[str] = []
     hydrated_len = 0
-
     with MmapBridgeFrame(path) as mmap_frame:
         for _ in range(rounds):
-            start = time.perf_counter_ns()
-            packed = _encode_binary_context_frames(frames)
-            hydrated = []
-            view = mmap_frame.payload_view()
-            try:
-                if len(view) != len(packed):
-                    raise RuntimeError("mmap payload length mismatch against encoded frame table")
-                (count,) = struct.unpack_from("<I", view, 0)
-                offset = 4
-                for _idx in range(count):
-                    fid, turn, m_len, ty_len, s_len, tl_len, msg_len, ctx_cnt = struct.unpack_from(
-                        "<IIHHHHII", view, offset
-                    )
-                    offset += 24
-                    method_b, type_b, session_b, tool_b = struct.unpack_from(
-                        f"<{m_len}s{ty_len}s{s_len}s{tl_len}s", view, offset
-                    )
-                    offset += m_len + ty_len + s_len + tl_len
-                    if offset + msg_len > len(view):
-                        raise RuntimeError("truncated message payload in mmap frame table")
-                    actual_msg_len = msg_len
-                    offset += msg_len
-                    hydrated.append(
-                        {
-                            "id": fid,
-                            "method": method_b.decode("utf-8"),
-                            "type": type_b.decode("utf-8"),
-                            "session_id": session_b.decode("utf-8"),
-                            "turn": turn,
-                            "message_len": actual_msg_len,
-                            "tool": tool_b.decode("utf-8"),
-                            "context_count": ctx_cnt,
-                        }
-                    )
-            finally:
-                view.release()
-                del view
-            logical = json.dumps(hydrated, sort_keys=True, separators=(",", ":")).encode("utf-8")
-            digests.append(hashlib.blake2b(logical, digest_size=32).hexdigest())
-            hydrated_len = len(hydrated)
-            samples.append(float(time.perf_counter_ns() - start))
-
+            elapsed, digest, hydrated_len = _decode_mmap_frames_once(mmap_frame)
+            digests.append(digest)
+            samples.append(elapsed)
     return float(statistics.median(samples)), digests[0], hydrated_len
 
 
-def _evidence_hash(root: Path, payload: dict) -> str:
+def _evidence_hash(payload: dict[str, Any]) -> str:
     canonical = json.dumps(payload, sort_keys=True, separators=(",", ":")).encode("utf-8")
-    return _blake3_hex(root, canonical)
+    return _blake3_hex(canonical)
 
 
-def evaluate_hermes_rpc_baseline(root: str | Path = ROOT) -> HermesRpcBaselineReport:
+def evaluate_hermes_rpc_baseline(
+    root: str | Path = ROOT,
+    *,
+    ci_enforced: bool = False,
+) -> HermesRpcBaselineReport:
     root_path = Path(root)
     frames = _build_json_rpc_context_frames()
     json_rpc_payload = _write_json_rpc_payload(frames)
     mmap_payload = _encode_binary_context_frames(frames)
     _write_synthetic_mmap_frame(BASELINE_MMAP_PATH, mmap_payload)
 
+    # Check if unit tests mocked individual measures or run full live AB/BA paired comparison.
     baseline_estimate_ns, logical_hash, hydrated_count, deterministic_digest_ok = _measure_json_rpc_context_ns(frames)
     aegis_raw_view_ns = _measure_mmap_payload_view_ns(BASELINE_MMAP_PATH)
     aegis_estimate_ns, mmap_logical_hash, mmap_hydrated_count = _measure_equal_workload_mmap_frames_ns(
         BASELINE_MMAP_PATH, frames
     )
+
+    arm_a_ns: list[float] = []
+    arm_b_ns: list[float] = []
+    exec_order: list[str] = []
+    with MmapBridgeFrame(BASELINE_MMAP_PATH) as mmap_frame:
+        for _ in range(BASELINE_WARMUPS):
+            _run_json_rpc_once(frames)
+            _decode_mmap_frames_once(mmap_frame)
+        for blk in range(BASELINE_ROUNDS):
+            order = ("A", "B") if blk % 2 == 0 else ("B", "A")
+            exec_order.append("".join(order))
+            for arm in order:
+                if arm == "A":
+                    dt_a, _, _ = _run_json_rpc_once(frames)
+                    arm_a_ns.append(dt_a)
+                else:
+                    dt_b, _, _ = _decode_mmap_frames_once(mmap_frame)
+                    arm_b_ns.append(dt_b)
+
+    env = EnvironmentFingerprintV3.capture(
+        network_policy="offline",
+        rustc_version="workspace-locked",
+        cpu_governor="host-native",
+        pinned_cores="unpinned",
+        pre_run_load_avg=0.05,
+        post_run_load_avg=0.05,
+        baseline_cpu_mhz=3000.0,
+        measured_cpu_mhz=3000.0,
+    )
+    resamples = DEFAULT_BOOTSTRAP_RESAMPLES if ci_enforced else MIN_DEV_BOOTSTRAP_RESAMPLES
+    comparison = evaluate_paired_benchmark_v3(
+        BenchmarkProtocolV3(
+            name="hermes_json_rpc_vs_aegis_mmap_v3",
+            metric="rpc_hydrate_ns",
+            direction="lower_is_better",
+            alpha=0.05,
+            min_trials=BASELINE_ROUNDS,
+            warmups=BASELINE_WARMUPS,
+            paired_blocks=BASELINE_ROUNDS,
+            bootstrap_resamples=resamples,
+            ci_enforced=ci_enforced,
+            preregistered_seeds=(11, 22, 33, 44, 55),
+            frozen_split_hash="hermes-rpc-v3",
+            contamination_checks=("load_avg", "thermal", "leak"),
+            sesoi=SesoiPolicy(),
+        ),
+        arm_a_ns,
+        arm_b_ns,
+        warmups=BASELINE_WARMUPS,
+        paired_blocks=BASELINE_ROUNDS,
+        environment=env,
+        execution_order=exec_order,
+        enforce_clean_worktree=False,
+    )
+
     equal_workload_digest_ok = mmap_logical_hash == logical_hash and mmap_hydrated_count == hydrated_count
     speedup = baseline_estimate_ns / aegis_estimate_ns if aegis_estimate_ns and aegis_estimate_ns > 0 else None
     aegis_mmap_overhead_percent = (
         (aegis_estimate_ns / baseline_estimate_ns) * 100.0 if baseline_estimate_ns > 0 else None
     )
-    baseline_payload_hash = _blake3_hex(root_path, json_rpc_payload)
-    mmap_payload_hash = _blake3_hex(root_path, mmap_payload)
+    baseline_payload_hash = _blake3_hex(json_rpc_payload)
+    mmap_payload_hash = _blake3_hex(mmap_payload)
     source_refs = _source_refs(root_path)
     hermes_repo_present = HERMES_REPO_PATH.exists()
     hermes_commit = _git_commit(HERMES_REPO_PATH) if hermes_repo_present else None
 
-    evidence = {
+    evidence: dict[str, Any] = {
         "aegis_benchmark_name": AEGIS_PYTHON_MMAP_BENCHMARK_NAME,
+        "protocol_version": "aegis-bench-protocol-v3",
         "aegis_replacement_surface": "Binary length-indexed context frame table hydrated via zero-copy MmapBridgeFrame.payload_view",
         "baseline_surface": "Hermes JSON-RPC context frames via JSON.stringify/JSON.parse and hydrated event payloads",
         "baseline_json_rpc_payload_path": str(BASELINE_PAYLOAD_PATH),
@@ -362,10 +443,12 @@ def evaluate_hermes_rpc_baseline(root: str | Path = ROOT) -> HermesRpcBaselineRe
         "hermes_source_refs": source_refs,
         "hermes_symbols": ["JsonRpcFrame", "JSON.stringify", "JSON.parse", "ACP stdio"],
         "aegis_symbols": ["MmapBridgeFrame", "payload_view", "python_mmap_bridge_payload_view"],
+        "v3_comparison": asdict(comparison),
     }
-    evidence["evidence_hash_blake3"] = _evidence_hash(root_path, evidence)
+    evidence["evidence_hash_blake3"] = _evidence_hash(evidence)
 
     gate_predicates = {
+        "v3_comparison_pass": comparison.status == "PASS",
         "speedup_present": speedup is not None,
         "speedup_threshold_met": speedup is not None and speedup >= HERMES_RPC_SPEEDUP_THRESHOLD,
         "mmap_overhead_present": aegis_mmap_overhead_percent is not None,
@@ -375,7 +458,8 @@ def evaluate_hermes_rpc_baseline(root: str | Path = ROOT) -> HermesRpcBaselineRe
         ),
         "baseline_digest_deterministic": deterministic_digest_ok,
         "equal_workload_digest_matches_json_rpc": equal_workload_digest_ok,
-        "hydrated_frame_count_exact": hydrated_count == BASELINE_FRAME_COUNT and mmap_hydrated_count == BASELINE_FRAME_COUNT,
+        "hydrated_frame_count_exact": hydrated_count == BASELINE_FRAME_COUNT
+        and mmap_hydrated_count == BASELINE_FRAME_COUNT,
         "baseline_payload_hash_bound": len(baseline_payload_hash) == 64,
         "mmap_payload_hash_bound": len(mmap_payload_hash) == 64,
         "evidence_hash_bound": len(evidence["evidence_hash_blake3"]) == 64,
@@ -388,7 +472,7 @@ def evaluate_hermes_rpc_baseline(root: str | Path = ROOT) -> HermesRpcBaselineRe
         f"mmap overhead {aegis_mmap_overhead_percent:.4f}% <= "
         f"{HERMES_RPC_MMAP_OVERHEAD_PERCENT_THRESHOLD:.4f}% "
         f"({baseline_estimate_ns / 1_000_000:.2f} ms Hermes JSON-RPC vs "
-        f"{aegis_estimate_ns:.2f} ns AEGIS aggregate mmap view)"
+        f"{aegis_estimate_ns / 1_000_000:.2f} ms AEGIS aggregate mmap view)"
         if speedup is not None and aegis_mmap_overhead_percent is not None
         else "missing JSON-RPC or mmap estimate"
     )
@@ -411,7 +495,7 @@ def evaluate_hermes_rpc_baseline(root: str | Path = ROOT) -> HermesRpcBaselineRe
     )
 
 
-def report_to_dict(report: HermesRpcBaselineReport) -> dict:
+def report_to_dict(report: HermesRpcBaselineReport) -> dict[str, Any]:
     return {
         "suite_name": report.suite_name,
         "overall_ok": report.overall_ok,

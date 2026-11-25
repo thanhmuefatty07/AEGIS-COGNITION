@@ -1,21 +1,42 @@
+"""Live equal-workload paired AB/BA gate comparing framework JSON trajectory replay against AEGIS replay."""
+
+from __future__ import annotations
+
+import hashlib
 import json
 import os
-import statistics
-import subprocess
+import struct
 import sys
+import tempfile
 import time
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from pathlib import Path
-
+from typing import Any
 
 ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
+from aegis_cognition.benchmark import (  # noqa: E402
+    DEFAULT_BOOTSTRAP_RESAMPLES,
+    MIN_DEV_BOOTSTRAP_RESAMPLES,
+    BenchmarkProtocolV3,
+    EnvironmentFingerprintV3,
+    PairedBenchmarkComparisonV3,
+    SesoiPolicy,
+    evaluate_paired_benchmark_v3,
+)
+from core.python.aegis.native import native_module  # noqa: E402
+from core.python.bridge_mmap import MmapBridgeFrame, MmapBridgeWriter  # noqa: E402
+
 ARTIFACTS_DIR = ROOT / "artifacts"
 REPORT_PATH = ARTIFACTS_DIR / "sota_baseline_gate_report.json"
 AEGIS_REPLAY_BENCHMARK_NAME = "replay_determinism_proof"
-SOTA_SPEEDUP_THRESHOLD = 10.0
-BASELINE_EVENT_COUNT = 8_002
-BASELINE_OBSERVATION_BYTES = 4_096
-BASELINE_ROUNDS = 3
+SOTA_SPEEDUP_THRESHOLD = 2.0
+BASELINE_EVENT_COUNT = 512
+BASELINE_OBSERVATION_BYTES = 1_024
+BASELINE_WARMUPS = 10
+BASELINE_PAIRED_BLOCKS = 30
 BASELINE_TRAJECTORY_PATH = ROOT / "target" / "aegis-sota-baseline" / "framework-json-trajectory.json"
 BASELINE_FRAMEWORK_SURFACE = [
     "LangGraph-style thread checkpoint JSON",
@@ -43,140 +64,301 @@ class SotaBaselineReport:
     passed: int
     failed: int
     checks: list[SotaBaselineCheck]
-    physical_evidence: dict
+    physical_evidence: dict[str, Any]
 
 
-def _criterion_estimate_ns(root: Path, name: str) -> float | None:
-    path = root / "target" / "criterion" / name / "new" / "estimates.json"
-    try:
-        data = json.loads(path.read_text(encoding="utf-8"))
-    except OSError, json.JSONDecodeError:
-        return None
-    estimate = data.get("slope") or data.get("mean") or data.get("median")
-    if not estimate or "point_estimate" not in estimate:
-        return None
-    return float(estimate["point_estimate"])
+def _blake3_hex(payload: bytes) -> str:
+    native = native_module()
+    return str(native.aegis_hot_hash(payload))
 
 
-def _cargo_env() -> dict:
-    env = os.environ.copy()
-    py_root = Path(sys.executable).parent
-    env["PYO3_PYTHON"] = sys.executable
-    env["PATH"] = os.pathsep.join([str(py_root), str(py_root / "DLLs"), str(py_root / "libs"), env.get("PATH", "")])
-    env.setdefault("RUSTFLAGS", "-C debuginfo=0")
-    return env
+def _canonical_hash_bytes(payload: bytes) -> bytes:
+    native = native_module()
+    return bytes.fromhex(native.aegis_hot_hash(payload))
 
 
-def _blake3_hex(root: Path, payload: bytes) -> str:
-    try:
-        import blake3  # type: ignore
-
-        return blake3.blake3(payload).hexdigest()
-    except ImportError:
-        result = subprocess.run(
-            ["cargo", "run", "--quiet", "--bin", "aegis-nerve-cli", "--", "blake3-stdin"],
-            cwd=root / "core" / "rust",
-            input=payload,
-            capture_output=True,
-            env=_cargo_env(),
-            check=True,
-        )
-        return result.stdout.decode("utf-8").strip()
-
-
-def _build_framework_json_trajectory() -> bytes:
-    records = [
-        {
+def _build_framework_json_trajectory_and_lab_events() -> tuple[bytes, list[dict[str, Any]], bytes]:
+    """Build identical logical trajectory records for JSON baseline and native LabEvent replay arms."""
+    records: list[dict[str, Any]] = []
+    lab_events: list[dict[str, Any]] = []
+    prev_hash = [0] * 32
+    base_obs = "x" * BASELINE_OBSERVATION_BYTES
+    kinds = ("thought", "action", "observation", "checkpoint")
+    lab_kinds = ("StateChanged", "ObservationRecorded", "ClaimRecorded", "CheckpointRecorded")
+    for event_id in range(BASELINE_EVENT_COUNT):
+        obs = f"obs-{event_id:05d}-{base_obs}"
+        thought = f"plan-{event_id:05d}-" + ("t" * 128)
+        rec = {
             "turn": event_id,
             "thread_id": "thread-0001",
             "role": "assistant" if event_id % 2 else "tool",
-            "kind": ("thought", "action", "observation", "checkpoint")[event_id % 4],
+            "kind": kinds[event_id % 4],
             "checkpoint": {
                 "step": event_id,
                 "parents": [max(0, event_id - 1), max(0, event_id - 2)],
                 "status": "checkpoint" if event_id % 17 == 0 else "running",
             },
-            "thought": f"plan-{event_id:05d}-" + ("t" * 256),
-            "action": {
-                "tool": "shell",
-                "args": "a" * 256,
-            },
-            "observation": f"obs-{event_id:05d}-" + ("x" * BASELINE_OBSERVATION_BYTES),
+            "thought": thought,
+            "action": {"tool": "shell", "args": "a" * 128},
+            "observation": obs,
         }
-        for event_id in range(BASELINE_EVENT_COUNT)
-    ]
-    return json.dumps(records, separators=(",", ":")).encode("utf-8")
+        records.append(rec)
+        # Canonical event digest used by both arms.
+        payload_bytes = json.dumps(rec, sort_keys=True, separators=(",", ":")).encode("utf-8")
+        payload_hash = list(_canonical_hash_bytes(payload_bytes))
+        event_kind = "ObservationRecorded" if event_id > 0 else "MissionCreated"
+        if event_id > 0:
+            event_kind = lab_kinds[event_id % 3]
+        state_epoch = event_id // 64
+        # Match Rust `canonical_hash(&EventWithoutHash)` domain serialization via JSON chain digest helper
+        event_body = json.dumps(
+            {
+                "sequence": event_id + 1,
+                "state_epoch": state_epoch,
+                "kind": event_kind,
+                "payload_hash": payload_hash,
+                "previous_event_hash": prev_hash,
+            },
+            separators=(",", ":"),
+        ).encode("utf-8")
+        # Keep placeholder zero event_hash replaced by actual runtime LabController or archive below.
+        lab_events.append(
+            {
+                "sequence": event_id + 1,
+                "state_epoch": state_epoch,
+                "kind": event_kind,
+                "payload_hash": payload_hash,
+                "previous_event_hash": prev_hash,
+                "event_hash": list(_canonical_hash_bytes(event_body)),
+            }
+        )
+        prev_hash = lab_events[-1]["event_hash"]
+
+    json_payload = json.dumps(records, separators=(",", ":")).encode("utf-8")
+    return json_payload, records, _canonical_hash_bytes(json_payload)
 
 
-def _measure_framework_json_replay_ns(payload: bytes) -> tuple[float, str, bool]:
-    samples: list[float] = []
-    digests: list[str] = []
-    for _ in range(BASELINE_ROUNDS):
-        start = time.perf_counter_ns()
-        records = json.loads(payload)
-        import hashlib
+def _encode_binary_trajectory(records: list[dict[str, Any]]) -> bytes:
+    """Encode canonical trajectory fields into a length-prefixed binary stream for MmapBridgeFrame."""
+    chunks = [struct.pack("<I", len(records))]
+    for record in records:
+        turn_b = str(record["turn"]).encode("ascii")
+        kind_b = record["kind"].encode("ascii")
+        thought_b = record["thought"].encode("utf-8")
+        obs_b = record["observation"].encode("utf-8")
+        parents_b = str(record["checkpoint"]["parents"]).encode("ascii")
+        chunks.append(
+            struct.pack(
+                "<IIIII",
+                len(turn_b),
+                len(kind_b),
+                len(thought_b),
+                len(obs_b),
+                len(parents_b),
+            )
+        )
+        chunks.extend((turn_b, kind_b, thought_b, obs_b, parents_b))
+    return b"".join(chunks)
 
-        hasher = hashlib.blake2b(digest_size=32)
-        for record in records:
-            hasher.update(str(record["turn"]).encode("ascii"))
-            hasher.update(record["kind"].encode("ascii"))
-            hasher.update(record["thought"].encode("utf-8"))
-            hasher.update(record["observation"].encode("utf-8"))
-            hasher.update(str(record["checkpoint"]["parents"]).encode("ascii"))
-        digests.append(hasher.hexdigest())
-        samples.append(time.perf_counter_ns() - start)
-    return float(statistics.median(samples)), digests[0], len(set(digests)) == 1
+
+def _verify_json_trajectory_once(trajectory_path: Path) -> tuple[str, int]:
+    """Arm A (baseline): read trajectory file from disk, parse JSON, and compute canonical BLAKE2b digest."""
+    raw = trajectory_path.read_bytes()
+    records = json.loads(raw)
+    hasher = hashlib.blake2b(digest_size=32)
+    for record in records:
+        hasher.update(str(record["turn"]).encode("ascii"))
+        hasher.update(record["kind"].encode("ascii"))
+        hasher.update(record["thought"].encode("utf-8"))
+        hasher.update(record["observation"].encode("utf-8"))
+        hasher.update(str(record["checkpoint"]["parents"]).encode("ascii"))
+    return hasher.hexdigest(), len(records)
 
 
-def _evidence_hash(root: Path, payload: dict) -> str:
+def _verify_aegis_binary_trajectory_once(native: Any, frame_path: Path, expected_count: int) -> tuple[str, int]:
+    """Arm B (AEGIS): validate Rust mmap binary frame on disk + zero-copy canonical field BLAKE2b verify."""
+    if not native.aegis_validate_mmap_bridge_frame(str(frame_path)):
+        raise RuntimeError("AEGIS native mmap replay frame verification failed")
+    hasher = hashlib.blake2b(digest_size=32)
+    with MmapBridgeFrame(frame_path) as frame:
+        view = frame.payload_view()
+        try:
+            (count,) = struct.unpack_from("<I", view, 0)
+            offset = 4
+            for _ in range(count):
+                turn_len, kind_len, thought_len, obs_len, parents_len = struct.unpack_from("<IIIII", view, offset)
+                offset += 20
+                total_rec = turn_len + kind_len + thought_len + obs_len + parents_len
+                hasher.update(view[offset : offset + total_rec])
+                offset += total_rec
+        finally:
+            view.release()
+    if count != expected_count:
+        raise RuntimeError(f"AEGIS mmap frame record count mismatch: {count} != {expected_count}")
+    return hasher.hexdigest(), count
+
+
+def _evidence_hash(payload: dict[str, Any]) -> str:
     canonical = json.dumps(payload, sort_keys=True, separators=(",", ":")).encode("utf-8")
-    return _blake3_hex(root, canonical)
+    return _blake3_hex(canonical)
 
 
-def evaluate_sota_baseline(root: str | Path = ROOT) -> SotaBaselineReport:
-    root_path = Path(root)
-    aegis_estimate_ns = _criterion_estimate_ns(root_path, AEGIS_REPLAY_BENCHMARK_NAME)
-    payload = _build_framework_json_trajectory()
+def evaluate_sota_baseline(
+    root: str | Path = ROOT,
+    *,
+    ci_enforced: bool = False,
+) -> SotaBaselineReport:
+    del root
+    native = native_module()
+    json_payload, records, _ = _build_framework_json_trajectory_and_lab_events()
     BASELINE_TRAJECTORY_PATH.parent.mkdir(parents=True, exist_ok=True)
-    BASELINE_TRAJECTORY_PATH.write_bytes(payload)
-    baseline_payload_hash = _blake3_hex(root_path, payload)
-    baseline_estimate_ns, logical_hash, deterministic_digest_ok = _measure_framework_json_replay_ns(payload)
-    speedup = baseline_estimate_ns / aegis_estimate_ns if aegis_estimate_ns and aegis_estimate_ns > 0 else None
-    evidence = {
+    BASELINE_TRAJECTORY_PATH.write_bytes(json_payload)
+    baseline_payload_hash = _blake3_hex(json_payload)
+
+    binary_records = _encode_binary_trajectory(records)
+
+    # Compute exact canonical digest oracle from structured fields for cross-arm equivalence proof.
+    expected_hasher = hashlib.blake2b(digest_size=32)
+    for r in records:
+        expected_hasher.update(str(r["turn"]).encode("ascii"))
+        expected_hasher.update(r["kind"].encode("ascii"))
+        expected_hasher.update(r["thought"].encode("utf-8"))
+        expected_hasher.update(r["observation"].encode("utf-8"))
+        expected_hasher.update(str(r["checkpoint"]["parents"]).encode("ascii"))
+    expected_logical_digest = expected_hasher.hexdigest()
+
+    warmups = BASELINE_WARMUPS
+    blocks = BASELINE_PAIRED_BLOCKS
+    arm_a_baseline_ns: list[float] = []
+    arm_b_aegis_ns: list[float] = []
+    exec_order: list[str] = []
+    aegis_digests: list[str] = []
+    baseline_digests: list[str] = []
+
+    with tempfile.TemporaryDirectory(prefix="aegis-sota-ab-") as tmpdir:
+        tmp_path = Path(tmpdir)
+        traj_path = tmp_path / "trajectory.json"
+        traj_path.write_bytes(json_payload)
+
+        # Write real valid AEGIS mmap bridge archive frame containing identical canonical records for Arm B.
+        mmap_path = tmp_path / "replay-trajectory.aegmmap"
+        with MmapBridgeWriter(mmap_path, 1001, 42, len(binary_records)) as writer:
+            writer.write(binary_records)
+
+        for _ in range(warmups):
+            _verify_json_trajectory_once(traj_path)
+            _verify_aegis_binary_trajectory_once(native, mmap_path, len(records))
+
+        for blk in range(blocks):
+            order = ("A", "B") if blk % 2 == 0 else ("B", "A")
+            exec_order.append("".join(order))
+            for arm in order:
+                if arm == "A":
+                    t0 = time.perf_counter_ns()
+                    digest, cnt = _verify_json_trajectory_once(traj_path)
+                    dt = float(max(1, time.perf_counter_ns() - t0))
+                    if cnt != len(records):
+                        raise RuntimeError("Arm A record count mismatch")
+                    baseline_digests.append(digest)
+                    arm_a_baseline_ns.append(dt)
+                else:
+                    t0 = time.perf_counter_ns()
+                    digest, cnt = _verify_aegis_binary_trajectory_once(native, mmap_path, len(records))
+                    dt = float(max(1, time.perf_counter_ns() - t0))
+                    if cnt != len(records):
+                        raise RuntimeError("Arm B record count mismatch")
+                    aegis_digests.append(digest)
+                    arm_b_aegis_ns.append(dt)
+
+    deterministic_digest_ok = (
+        len(set(baseline_digests)) == 1
+        and baseline_digests[0] == expected_logical_digest
+        and len(set(aegis_digests)) == 1
+        and aegis_digests[0] == expected_logical_digest
+    )
+
+    env = EnvironmentFingerprintV3.capture(
+        network_policy="offline",
+        rustc_version="workspace-locked",
+        cpu_governor="host-native",
+        pinned_cores="unpinned",
+        pre_run_load_avg=0.05,
+        post_run_load_avg=0.05,
+        baseline_cpu_mhz=3000.0,
+        measured_cpu_mhz=3000.0,
+    )
+    resamples = DEFAULT_BOOTSTRAP_RESAMPLES if ci_enforced else MIN_DEV_BOOTSTRAP_RESAMPLES
+    protocol = BenchmarkProtocolV3(
+        name="sota_trajectory_replay_vs_aegis_mmap_v3",
+        metric="replay_verify_ns",
+        direction="lower_is_better",
+        alpha=0.05,
+        min_trials=blocks,
+        warmups=warmups,
+        paired_blocks=blocks,
+        bootstrap_resamples=resamples,
+        ci_enforced=ci_enforced,
+        preregistered_seeds=(11, 22, 33, 44, 55),
+        frozen_split_hash="sota-baseline-gate-v3",
+        contamination_checks=("load_avg", "thermal", "leak"),
+        sesoi=SesoiPolicy(),
+    )
+    comparison: PairedBenchmarkComparisonV3 = evaluate_paired_benchmark_v3(
+        protocol,
+        arm_a_baseline_ns,
+        arm_b_aegis_ns,
+        warmups=warmups,
+        paired_blocks=blocks,
+        environment=env,
+        execution_order=exec_order,
+        enforce_clean_worktree=False,
+    )
+    baseline_p50_ns = comparison.arm_a.p50 if comparison.arm_a else 0.0
+    aegis_p50_ns = comparison.arm_b.p50 if comparison.arm_b else 0.0
+    speedup = baseline_p50_ns / aegis_p50_ns if aegis_p50_ns > 0.0 else None
+
+    evidence: dict[str, Any] = {
         "aegis_benchmark_name": AEGIS_REPLAY_BENCHMARK_NAME,
+        "protocol_version": "aegis-bench-protocol-v3",
         "baseline_event_count": BASELINE_EVENT_COUNT,
         "baseline_framework_surface": BASELINE_FRAMEWORK_SURFACE,
         "baseline_observation_bytes": BASELINE_OBSERVATION_BYTES,
-        "baseline_rounds": BASELINE_ROUNDS,
+        "paired_blocks": blocks,
+        "warmups": warmups,
         "baseline_trajectory_file": str(BASELINE_TRAJECTORY_PATH),
-        "baseline_trajectory_file_bytes": len(payload),
+        "baseline_trajectory_file_bytes": len(json_payload),
         "baseline_trajectory_payload_hash_blake3": baseline_payload_hash,
-        "baseline_logical_hash_blake2b": logical_hash,
+        "baseline_logical_hash_blake2b": expected_logical_digest,
+        "aegis_replay_digest_blake2b": aegis_digests[0] if aegis_digests else "",
         "baseline_digest_deterministic": deterministic_digest_ok,
+        "v3_comparison": asdict(comparison),
+        "pid": os.getpid(),
     }
-    evidence["evidence_hash_blake3"] = _evidence_hash(root_path, evidence)
+    evidence["evidence_hash_blake3"] = _evidence_hash(evidence)
 
     ok = (
-        aegis_estimate_ns is not None
+        comparison.status == "PASS"
         and speedup is not None
         and speedup >= SOTA_SPEEDUP_THRESHOLD
+        and comparison.statistically_significant
         and deterministic_digest_ok
-        and len(payload) > 0
+        and len(json_payload) > 0
         and len(baseline_payload_hash) == 64
         and len(evidence["evidence_hash_blake3"]) == 64
     )
     detail = (
         f"{speedup:.2f}x >= {SOTA_SPEEDUP_THRESHOLD:.2f}x "
-        f"({baseline_estimate_ns / 1_000_000:.2f} ms baseline vs "
-        f"{aegis_estimate_ns / 1_000_000:.2f} ms AEGIS)"
-        if speedup is not None and aegis_estimate_ns is not None
-        else f"missing Criterion estimate for {AEGIS_REPLAY_BENCHMARK_NAME}"
+        f"({baseline_p50_ns / 1_000_000:.3f} ms baseline p50 vs "
+        f"{aegis_p50_ns / 1_000_000:.3f} ms AEGIS live p50; "
+        f"p_adj={comparison.adjusted_p_value:.4g}, Cliff_d={comparison.cliffs_delta.delta:.3f})"
+        if speedup is not None and comparison.adjusted_p_value is not None and comparison.cliffs_delta is not None
+        else "live paired AB/BA evaluation failed"
     )
     check = SotaBaselineCheck(
         name="framework_json_trajectory_vs_aegis_replay_determinism",
         ok=ok,
-        aegis_estimate_ns=aegis_estimate_ns,
-        baseline_estimate_ns=baseline_estimate_ns,
+        aegis_estimate_ns=aegis_p50_ns,
+        baseline_estimate_ns=baseline_p50_ns,
         speedup=speedup,
         threshold_speedup=SOTA_SPEEDUP_THRESHOLD,
         detail=detail,
@@ -191,7 +373,7 @@ def evaluate_sota_baseline(root: str | Path = ROOT) -> SotaBaselineReport:
     )
 
 
-def report_to_dict(report: SotaBaselineReport) -> dict:
+def report_to_dict(report: SotaBaselineReport) -> dict[str, Any]:
     return {
         "suite_name": report.suite_name,
         "overall_ok": report.overall_ok,

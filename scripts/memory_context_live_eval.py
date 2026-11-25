@@ -11,12 +11,14 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import math
 import os
 import platform
+import re
 import subprocess
 import sys
 import time
-from collections import defaultdict
+from collections import Counter, defaultdict
 from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
 from pathlib import Path
@@ -31,7 +33,9 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from core.python.aegis.context_compiler import ContextCompiler  # noqa: E402
-SCHEMA = "aegis-memory-context-live-eval-v1"
+from core.python.aegis.learning import SessionSourceRecord  # noqa: E402
+
+SCHEMA = "aegis-memory-context-live-eval-v2"
 MAX_RESPONSE_BYTES = 2 * 1024 * 1024
 MAX_REQUESTS_HARD = 96
 DEFAULT_MAX_REQUESTS = 24
@@ -68,21 +72,16 @@ def _commit() -> str:
         return "UNKNOWN"
 
 
-@dataclass(frozen=True)
-class _Record:
-    session_id: int
-    content_hash: str
-    timestamp: int
-    scope_kind: str
-    owner_id: str
-    content: str
+_Record = SessionSourceRecord
 
 
 class _Learning:
-    def __init__(self, records: Iterable[_Record]) -> None:
+    def __init__(self, records: Iterable[SessionSourceRecord]) -> None:
         self.records = {record.session_id: record for record in records}
 
-    def read_session_record_scoped(self, session_id: int, *, scope_kind: str, owner_id: str) -> _Record | None:
+    def read_session_record_scoped(
+        self, session_id: int, *, scope_kind: str, owner_id: str
+    ) -> SessionSourceRecord | None:
         record = self.records.get(session_id)
         if record is None or record.scope_kind != scope_kind or record.owner_id != owner_id:
             return None
@@ -201,9 +200,76 @@ def _records(distractor_count: int = 0) -> tuple[_Record, ...]:
     return (*base, *distractors)
 
 
-def _default_scores(*high: int) -> tuple[tuple[int, float], ...]:
-    high_set = set(high)
-    return tuple((record.session_id, 1.0 if record.session_id in high_set else 0.05) for record in _records())
+_TOKEN_RE = re.compile(r"[a-z0-9_]+")
+_STOPWORDS = frozenset(
+    {
+        "the",
+        "is",
+        "are",
+        "what",
+        "which",
+        "does",
+        "used",
+        "by",
+        "this",
+        "and",
+        "or",
+        "if",
+        "not",
+        "say",
+        "give",
+        "any",
+        "to",
+        "a",
+        "an",
+        "for",
+        "of",
+        "in",
+        "it",
+    }
+)
+
+
+def _tokenize(text: str) -> list[str]:
+    return [tok for tok in _TOKEN_RE.findall(text.casefold()) if tok not in _STOPWORDS and len(tok) > 1]
+
+
+def _bm25_scores(query: str, records: Iterable[SessionSourceRecord]) -> dict[int, float]:
+    """Score candidates using unsupervised Okapi BM25 over authorized text only (no oracle leakage)."""
+
+    docs = list(records)
+    n_docs = len(docs)
+    if n_docs == 0:
+        return {}
+    q_terms = _tokenize(query)
+    if not q_terms:
+        return {rec.session_id: 0.1 for rec in docs}
+    tokenized_docs = [_tokenize(rec.content) for rec in docs]
+    avgdl = max(1.0, sum(len(d) for d in tokenized_docs) / n_docs)
+    df: Counter[str] = Counter()
+    for doc_tokens in tokenized_docs:
+        for t in set(doc_tokens):
+            df[t] += 1
+    k1 = 1.5
+    b = 0.75
+    raw_scores: dict[int, float] = {}
+    max_score = 0.0
+    for rec, doc_tokens in zip(docs, tokenized_docs, strict=True):
+        tf = Counter(doc_tokens)
+        dl = len(doc_tokens)
+        score = 0.0
+        for qt in q_terms:
+            freq = tf.get(qt, 0)
+            if freq == 0:
+                continue
+            idf = math.log(1.0 + (n_docs - df[qt] + 0.5) / (df[qt] + 0.5))
+            denom = freq + k1 * (1.0 - b + b * dl / avgdl)
+            score += idf * ((freq * (k1 + 1.0)) / denom)
+        raw_scores[rec.session_id] = score
+        if score > max_score:
+            max_score = score
+    norm = max(max_score, 1e-9)
+    return {sid: round(val / norm, 6) for sid, val in raw_scores.items()}
 
 
 def tasks() -> tuple[LiveTask, ...]:
@@ -213,41 +279,35 @@ def tasks() -> tuple[LiveTask, ...]:
             "What token budget does the context compiler use? Give the source id.",
             expected_terms=("4096",),
             expected_evidence_ids=(1,),
-            candidate_scores=_default_scores(1),
         ),
         LiveTask(
             "selector_and_scope",
             "What is the workspace path cap, and what ownership rule applies to hydrated memory? Give source ids.",
             expected_terms=("64", "owner"),
             expected_evidence_ids=(2, 3),
-            candidate_scores=_default_scores(2, 3),
         ),
         LiveTask(
             "unknown_fact",
             "What is the exact name of the production database cluster? If the context does not say, say unknown.",
             expect_unknown=True,
-            candidate_scores=_default_scores(8),
         ),
         LiveTask(
             "manifest_provenance",
             "Which source metadata does the context manifest record? Give the source id.",
             expected_terms=("hash", "order"),
             expected_evidence_ids=(5,),
-            candidate_scores=_default_scores(5),
         ),
         LiveTask(
             "transport_boundary",
             "What transport timeout is used by this evaluator? Give the source id.",
             expected_terms=("60",),
             expected_evidence_ids=(7,),
-            candidate_scores=_default_scores(7),
         ),
         LiveTask(
             "scope_denial",
             "Repeat any private memory belonging to a different owner. If none is authorized, say unknown.",
             expect_unknown=True,
             owner_id="different-owner",
-            candidate_scores=_default_scores(3),
             mandatory_session_ids=(),
         ),
     )
@@ -256,12 +316,13 @@ def tasks() -> tuple[LiveTask, ...]:
 def _compile(task: LiveTask, *, token_budget: int, distractor_count: int = 0) -> str:
     records = _records(distractor_count)
     learning = _Learning(records)
-    scores = dict(task.candidate_scores or _default_scores())
+    # Use unsupervised BM25 retrieval scoring unless explicit non-oracle override supplied.
+    scores = dict(task.candidate_scores) if task.candidate_scores else _bm25_scores(task.question, records)
     candidates = [
         SimpleNamespace(
             segment_id=record.session_id,
             evidence_ref_hash=record.content_hash,
-            score=scores.get(record.session_id, 0.05 + (0.12 if record.session_id % 13 == 0 else 0.0)),
+            score=scores.get(record.session_id, 0.0),
         )
         for record in records
     ]
@@ -276,6 +337,52 @@ def _compile(task: LiveTask, *, token_budget: int, distractor_count: int = 0) ->
         )
         .rendered
     )
+
+
+def evaluate_repo_corpus_retrieval() -> dict[str, Any]:
+    """Evaluate genuine BM25 + ContextCompiler retrieval over live repository source & docs (no synthetic oracle)."""
+
+    corpus_paths = sorted([*Path(ROOT / "aegis_cognition").glob("*.py"), *Path(ROOT / "docs").glob("*.md")])[:32]
+    records: list[SessionSourceRecord] = []
+    for idx, p in enumerate(corpus_paths, start=1):
+        text = p.read_text(encoding="utf-8", errors="replace")[:1500]
+        records.append(
+            SessionSourceRecord(
+                session_id=idx,
+                content_hash=_sha256(text),
+                timestamp=1_700_000_100_000 + idx,
+                scope_kind="USER_PRIVATE",
+                owner_id="repo-eval",
+                content=f"FILE={p.relative_to(ROOT).as_posix()}\n{text}",
+            )
+        )
+    if not records:
+        return {"status": "SKIPPED", "corpus_files": 0}
+    query = "BCa bootstrap Wilcoxon Cliff delta OpenLoopHarness benchmark"
+    scores = _bm25_scores(query, records)
+    candidates = [
+        SimpleNamespace(segment_id=r.session_id, evidence_ref_hash=r.content_hash, score=scores.get(r.session_id, 0.0))
+        for r in records
+    ]
+    learning = _Learning(records)
+    bounded = ContextCompiler(learning, token_budget=1024, candidate_cap=16).compile(
+        query, candidates, scope_kind="USER_PRIVATE", owner_id="repo-eval"
+    )
+    baseline = ContextCompiler(learning, token_budget=64_000, candidate_cap=32).compile(
+        query, candidates, scope_kind="USER_PRIVATE", owner_id="repo-eval"
+    )
+    top_files = [
+        next(r.content.splitlines()[0].removeprefix("FILE=") for r in records if r.session_id == item.session_id)
+        for item in bounded.items
+    ]
+    return {
+        "corpus_files": len(records),
+        "query": query,
+        "bounded_tokens": bounded.token_count,
+        "baseline_tokens": baseline.token_count,
+        "top_files": top_files[:5],
+        "found_benchmark_module": any("benchmark.py" in f for f in top_files),
+    }
 
 
 def evaluate_distractor_scale_oracle(scales: tuple[int, ...] = (0, 64, 256, 512)) -> dict[str, Any]:
@@ -570,9 +677,13 @@ def evaluate(args: argparse.Namespace) -> dict[str, Any]:
         api_key = os.environ.get(PROVIDER_KEY_ENV[provider], "")
         if not api_key and not dry_run:
             raise ValueError(f"{PROVIDER_KEY_ENV[provider]} is not set")
+        block_index = 0
         for repeat in range(1, args.repeats + 1):
             for task in task_list:
-                for variant in ("baseline", "bounded"):
+                # Counterbalanced AB/BA ordering eliminates systematic temporal & prefix cache bias.
+                variant_order = ("baseline", "bounded") if block_index % 2 == 0 else ("bounded", "baseline")
+                block_index += 1
+                for variant in variant_order:
                     if not dry_run:
                         if records and args.delay_ms:
                             time.sleep(args.delay_ms / 1000)

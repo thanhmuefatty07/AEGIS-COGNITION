@@ -1,120 +1,161 @@
-//! Shadow Sealer Throughput Benchmarks
+//! Shadow Sealer Throughput & Backpressure Benchmarks
 //!
-//! Phase 1C.1: Measure `AsyncShadowSealer::try_submit` admission cost across
-//! payload sizes and queue depths.
-//!
-//! Uses ONLY the public `AsyncShadowSealer::start` /
-//! `AsyncShadowSealer::start_with_queue_depth` API. The previous
-//! bench-only `start_paused_for_backpressure_test` helper is `#[cfg(test)]`
-//! and not callable from a bench crate (would need a feature-gated re-export
-//! to expose — that change is out of scope for Phase 1C). The public `start`
-//! API spawns a real background worker thread; we accept this and rely on
-//! `iter_with_setup` so the sealer is created exactly once per measurement,
-//! not per inner iteration, avoiding thread pileup.
-//!
-//! Smoke-test only: this file compiles and runs one short measurement per
-//! benchmark function. Full sample-sizes are deferred to when sealer
-//! shutdown overhead is profiled in CI under a stable thread pool.
+//! Measures `AsyncShadowSealer::try_submit` and full backpressure bursts using a
+//! shared long-lived sealer outside timed loops, calibrated batch Throughput,
+//! non-zero deterministic payloads, explicit Result inspection (zero `let _ =`),
+//! and RAII temp directory cleanup outside measured regions.
 
 use aegis_nerve::hot_engine::{
-    AsyncShadowSealer, EvidenceHandle, InMemoryEvidenceArena, TrustLevel,
+    AsyncShadowSealer, EvidenceHandle, InMemoryEvidenceArena, ShadowSealAdmission, TrustLevel,
 };
 use criterion::{Criterion, Throughput, black_box, criterion_group, criterion_main};
 use std::path::PathBuf;
+use std::sync::atomic::{AtomicU64, Ordering};
+use std::time::Duration;
 
 const ARENA_LIVE_BYTES: usize = 64 * 1024 * 1024;
 const ARENA_ARTIFACT_BYTES: usize = 1024 * 1024;
-const SAMPLES: usize = 10;
-const MEASURE_SECS: u64 = 2;
+const BATCH_ITEMS: usize = 64;
+const SAMPLE_SIZE: usize = 200;
+const WARMUP_SECS: u64 = 3;
+const MEASURE_SECS: u64 = 10;
 
-fn unique_seal_dir(tag: &str) -> PathBuf {
-    let mut p = std::env::temp_dir();
-    let nanos = std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .map(|d| d.as_nanos())
-        .unwrap_or(0);
-    let pid = std::process::id();
-    p.push(format!("aegis-bench-shadow-sealer-{tag}-{pid}-{nanos}"));
-    p
+static TEMP_SEQ: AtomicU64 = AtomicU64::new(1);
+
+struct BenchTempDir {
+    path: PathBuf,
+}
+
+impl BenchTempDir {
+    fn new(tag: &str) -> Self {
+        let seq = TEMP_SEQ.fetch_add(1, Ordering::Relaxed);
+        let pid = std::process::id();
+        let dir = std::env::temp_dir().join(format!("aegis-bench-shadow-sealer-{tag}-{pid}-{seq}"));
+        std::fs::create_dir_all(&dir).expect("create shadow sealer bench temp dir");
+        Self { path: dir }
+    }
+}
+
+impl Drop for BenchTempDir {
+    fn drop(&mut self) {
+        match std::fs::remove_dir_all(&self.path) {
+            Ok(()) => {}
+            Err(err) if err.kind() == std::io::ErrorKind::NotFound => {}
+            Err(err) => eprintln!(
+                "warning: failed to remove shadow sealer bench dir {}: {err}",
+                self.path.display()
+            ),
+        }
+    }
+}
+
+fn deterministic_payload(bytes: usize, salt: u8) -> Vec<u8> {
+    (0..bytes)
+        .map(|i| (((i.wrapping_mul(131)) ^ (i >> 5)) as u8).wrapping_add(salt))
+        .collect()
 }
 
 fn seed_arena_with_payload(bytes: usize) -> (InMemoryEvidenceArena, Vec<EvidenceHandle>) {
     let arena = InMemoryEvidenceArena::new(TrustLevel::Dev, ARENA_LIVE_BYTES, ARENA_ARTIFACT_BYTES);
-    let payload = vec![0u8; bytes];
     let mut handles = Vec::with_capacity(512);
-    for _ in 0..512 {
-        if let Ok(h) = arena.commit(&payload) {
-            handles.push(h);
-        }
+    for idx in 0..512u32 {
+        let payload = deterministic_payload(bytes, (idx & 0xFF) as u8);
+        let handle = arena.commit(&payload).expect("seed arena payload");
+        handles.push(handle);
     }
     (arena, handles)
 }
 
+fn phase0_criterion_config() -> Criterion {
+    Criterion::default()
+        .warm_up_time(Duration::from_secs(WARMUP_SECS))
+        .measurement_time(Duration::from_secs(MEASURE_SECS))
+        .sample_size(SAMPLE_SIZE)
+}
+
 fn bench_shadow_sealer_try_submit_payload_sweep(c: &mut Criterion) {
     let mut group = c.benchmark_group("shadow_sealer_try_submit");
-    group.sample_size(SAMPLES);
-    group.measurement_time(std::time::Duration::from_secs(MEASURE_SECS));
-    for size in [1024usize, 4096, 16384, 65536].iter() {
-        let (arena, handles) = seed_arena_with_payload(*size);
-        group.throughput(Throughput::Elements(1));
-        group.bench_function(format!("payload_{}b_qd4096", size), |b| {
-            let dir = unique_seal_dir("payload");
-            b.iter_custom(|iters| {
-                let mut total = std::time::Duration::ZERO;
-                for _ in 0..iters {
-                    let sealer = AsyncShadowSealer::start(&dir).expect("start sealer");
-                    let start = std::time::Instant::now();
-                    let mut idx = 0usize;
-                    for _ in 0..64 {
-                        let handle = handles[idx % handles.len()];
-                        idx = idx.wrapping_add(1);
-                        let _ = black_box(sealer.try_submit(black_box(&arena), black_box(handle)));
+    group.warm_up_time(Duration::from_secs(WARMUP_SECS));
+    group.measurement_time(Duration::from_secs(MEASURE_SECS));
+    group.sample_size(SAMPLE_SIZE);
+
+    for &size in &[1024usize, 4096, 16384, 65536] {
+        let (arena, handles) = seed_arena_with_payload(size);
+        let dir = BenchTempDir::new("payload");
+        let sealer = AsyncShadowSealer::start_with_queue_depth(&dir.path, 4096)
+            .expect("start shared payload sealer");
+        let mut cursor = 0usize;
+
+        group.throughput(Throughput::Bytes((size * BATCH_ITEMS) as u64));
+        group.bench_function(format!("payload_{size}b_qd4096"), |b| {
+            b.iter(|| {
+                let mut queued = 0usize;
+                let mut backpressured = 0usize;
+                for _ in 0..BATCH_ITEMS {
+                    let handle = handles[cursor % handles.len()];
+                    cursor = cursor.wrapping_add(1);
+                    match sealer.try_submit(black_box(&arena), black_box(handle)) {
+                        Ok(ShadowSealAdmission::Queued(_)) => queued += 1,
+                        Ok(ShadowSealAdmission::Backpressured(_)) => backpressured += 1,
+                        Err(err) => panic!("unexpected shadow sealer try_submit error: {err:?}"),
                     }
-                    total += start.elapsed();
-                    drop(sealer);
                 }
-                let _ = std::fs::remove_dir_all(&dir);
-                total
+                black_box((queued, backpressured))
             });
         });
+
+        sealer
+            .flush_blocking()
+            .expect("drain shadow sealer before cleanup");
+        drop(sealer);
     }
     group.finish();
 }
 
 fn bench_shadow_sealer_queue_depth_sweep(c: &mut Criterion) {
     let mut group = c.benchmark_group("shadow_sealer_queue_depth");
-    group.sample_size(SAMPLES);
-    group.measurement_time(std::time::Duration::from_secs(MEASURE_SECS));
+    group.warm_up_time(Duration::from_secs(WARMUP_SECS));
+    group.measurement_time(Duration::from_secs(MEASURE_SECS));
+    group.sample_size(SAMPLE_SIZE);
+
     let (arena, handles) = seed_arena_with_payload(4096);
-    for qd in [256usize, 1024, 2048, 4096].iter() {
-        group.bench_function(format!("qd_{}", qd), |b| {
-            let dir = unique_seal_dir("qd");
-            b.iter_custom(|iters| {
-                let mut total = std::time::Duration::ZERO;
-                for _ in 0..iters {
-                    let sealer =
-                        AsyncShadowSealer::start_with_queue_depth(&dir, *qd).expect("start sealer");
-                    let start = std::time::Instant::now();
-                    let mut idx = 0usize;
-                    for _ in 0..64 {
-                        let handle = handles[idx % handles.len()];
-                        idx = idx.wrapping_add(1);
-                        let _ = black_box(sealer.try_submit(black_box(&arena), black_box(handle)));
+    for &qd in &[32usize, 64, 256, 1024] {
+        // Submit burst exceeding qd so shallow depths genuinely trigger Backpressured.
+        let burst = (qd * 2).max(128);
+        let dir = BenchTempDir::new("qd");
+        let sealer = AsyncShadowSealer::start_with_queue_depth(&dir.path, qd)
+            .expect("start shared qd sealer");
+        let mut cursor = 0usize;
+
+        group.throughput(Throughput::Elements(burst as u64));
+        group.bench_function(format!("qd_{qd}_burst_{burst}"), |b| {
+            b.iter(|| {
+                let mut queued = 0usize;
+                let mut backpressured = 0usize;
+                for _ in 0..burst {
+                    let handle = handles[cursor % handles.len()];
+                    cursor = cursor.wrapping_add(1);
+                    match sealer.try_submit(black_box(&arena), black_box(handle)) {
+                        Ok(ShadowSealAdmission::Queued(_)) => queued += 1,
+                        Ok(ShadowSealAdmission::Backpressured(_)) => backpressured += 1,
+                        Err(err) => panic!("unexpected shadow sealer try_submit error: {err:?}"),
                     }
-                    total += start.elapsed();
-                    drop(sealer);
                 }
-                let _ = std::fs::remove_dir_all(&dir);
-                total
+                black_box((queued, backpressured))
             });
         });
+
+        sealer
+            .flush_blocking()
+            .expect("drain shadow sealer before cleanup");
+        drop(sealer);
     }
     group.finish();
 }
 
-criterion_group!(
-    benches,
-    bench_shadow_sealer_try_submit_payload_sweep,
-    bench_shadow_sealer_queue_depth_sweep,
-);
+criterion_group! {
+    name = benches;
+    config = phase0_criterion_config();
+    targets = bench_shadow_sealer_try_submit_payload_sweep, bench_shadow_sealer_queue_depth_sweep
+}
 criterion_main!(benches);

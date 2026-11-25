@@ -3036,8 +3036,8 @@ def test_hermes_session_recovery_baseline_gate_binds_physical_artifacts():
                 baseline_dir / "recovered.json",
             ),
             patch(
-                "scripts.research.comparators.external.session_recovery_baseline_gate._criterion_estimate_ns",
-                return_value=1.0,
+                "scripts.research.comparators.external.session_recovery_baseline_gate.BASELINE_MMAP_RECOVERY_PATH",
+                baseline_dir / "recovery.aegmmap",
             ),
             # The production gate binds this to the checked-out research repo;
             # the unit fixture supplies a deterministic commit binding.
@@ -3049,12 +3049,14 @@ def test_hermes_session_recovery_baseline_gate_binds_physical_artifacts():
             report = gate.evaluate_hermes_session_recovery_baseline(Path.cwd())
         payload = gate.report_to_dict(report)
         evidence = payload["physical_evidence"]
-        assert report.overall_ok
+        assert report.overall_ok, payload
         assert payload["checks"][0]["name"] == (
             "hermes_sqlite_json_session_recovery_vs_aegis_binary_mmap_prefix_recovery"
         )
         assert payload["checks"][0]["speedup"] >= payload["checks"][0]["threshold_speedup"]
+        assert evidence["v3_comparison"]["status"] == "PASS"
         assert evidence["baseline_recovered_message_count"] == evidence["baseline_recovery_messages"]
+        assert evidence["aegis_recovered_message_count"] == evidence["baseline_recovery_messages"]
         assert evidence["baseline_lineage_hops"] == 1
         assert len(evidence["baseline_db_hash_blake3"]) == 64
         assert len(evidence["baseline_recovery_payload_hash_blake3"]) == 64
@@ -3079,10 +3081,6 @@ def test_hermes_persistence_baseline_gate_binds_physical_artifacts():
                 baseline_dir / "transcript.json",
             ),
             patch(
-                "scripts.research.comparators.external.persistence_write_baseline_gate._criterion_estimate_ns",
-                return_value=1.0,
-            ),
-            patch(
                 "scripts.research.comparators.external.persistence_write_baseline_gate._git_commit",
                 return_value="a" * 40,
             ),
@@ -3090,9 +3088,10 @@ def test_hermes_persistence_baseline_gate_binds_physical_artifacts():
             report = gate.evaluate_hermes_persistence_baseline(Path.cwd())
         payload = gate.report_to_dict(report)
         evidence = payload["physical_evidence"]
-        assert report.overall_ok
+        assert report.overall_ok, payload
         assert payload["checks"][0]["name"] == ("hermes_full_transcript_rewrite_vs_aegis_segmented_arrow_append")
         assert payload["checks"][0]["speedup"] >= payload["checks"][0]["threshold_speedup"]
+        assert evidence["v3_comparison"]["status"] == "PASS"
         assert evidence["baseline_message_rows"] == evidence["baseline_history_messages"]
         assert evidence["baseline_fts_rows"] == evidence["baseline_history_messages"]
         assert len(evidence["baseline_db_hash_blake3"]) == 64

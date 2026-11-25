@@ -160,20 +160,32 @@ def test_live_eval_uses_provider_usage_and_redacts_key(monkeypatch: pytest.Monke
             answer = {"answer": "60 seconds", "evidence_ids": [7], "unknown": False}
         calls += 1
         content = json.dumps(answer)
+        is_baseline = question not in seen_first_variant
+        if is_baseline:
+            # First call for task_idx follows AB/BA counterbalance schedule:
+            # even block -> baseline first; odd block -> bounded first.
+            task_idx = len(seen_first_variant)
+            first_is_baseline = (task_idx % 2) == 0
+            seen_first_variant[question] = first_is_baseline
+            prompt_tokens = 200 if first_is_baseline else 100
+        else:
+            prompt_tokens = 100 if seen_first_variant[question] else 200
         return {
             "status": "OK",
             "http_status": 200,
             "error": None,
             "model_returned": "test/model:free",
             "finish_reason": "stop",
-            "prompt_tokens": 200 if calls % 2 else 100,
+            "prompt_tokens": prompt_tokens,
             "completion_tokens": 12,
-            "total_tokens": 212 if calls % 2 else 112,
+            "total_tokens": prompt_tokens + 12,
             "cost": 0.0,
             "response_sha256": live_eval._sha256(content),
             "_content": content,
             "latency_ms": 1.0,
         }
+
+    seen_first_variant: dict[str, bool] = {}
 
     monkeypatch.setattr(live_eval, "_call", fake_call)
     result = live_eval.evaluate(_args())

@@ -98,6 +98,80 @@ static BENCH_STRUCTURED_FIELDS: &[StructuredOutputFieldSpec] = &[
         required: true,
     },
 ];
+static BENCH_TEMP_SEQ: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(1);
+
+struct BenchTempDir {
+    path: PathBuf,
+}
+
+impl BenchTempDir {
+    fn new(label: &str) -> Self {
+        let seq = BENCH_TEMP_SEQ.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+        let pid = std::process::id();
+        let short_tag: String = label
+            .chars()
+            .filter(|c| c.is_ascii_alphanumeric())
+            .take(12)
+            .collect();
+        let path = std::env::temp_dir().join(format!("aegb-{short_tag}-{pid}-{seq}"));
+        match std::fs::remove_dir_all(&path) {
+            Ok(()) => {}
+            Err(err) if err.kind() == std::io::ErrorKind::NotFound => {}
+            Err(err) => panic!("failed removing stale bench temp dir {}: {err}", path.display()),
+        }
+        std::fs::create_dir_all(&path)
+            .unwrap_or_else(|err| panic!("failed creating bench temp dir {}: {err}", path.display()));
+        Self { path }
+    }
+
+    fn path(&self) -> &std::path::Path {
+        &self.path
+    }
+}
+
+impl Drop for BenchTempDir {
+    fn drop(&mut self) {
+        match std::fs::remove_dir_all(&self.path) {
+            Ok(()) => {}
+            Err(err) if err.kind() == std::io::ErrorKind::NotFound => {}
+            Err(err) => {
+                eprintln!("warning: failed to clean bench temp dir {}: {err}", self.path.display());
+            }
+        }
+    }
+}
+
+fn phase0_criterion_config() -> Criterion {
+    Criterion::default()
+        .warm_up_time(std::time::Duration::from_secs(3))
+        .measurement_time(std::time::Duration::from_secs(10))
+        .sample_size(200)
+}
+
+const BENCH_CORPUS_VOCAB: [&str; 64] = [
+    "policy", "replay", "witness", "segment", "rust", "kernel", "evidence", "ledger",
+    "browser", "sandbox", "wasmtime", "artifact", "checkpoint", "proof", "manifest", "commit",
+    "token", "budget", "context", "governor", "mmap", "bridge", "frame", "header",
+    "lexical", "vector", "bitmap", "term", "dictionary", "cluster", "lease", "epoch",
+    "admit", "skill", "registry", "handoff", "action", "trace", "packet", "envelope",
+    "collector", "dom", "screenshot", "accessibility", "network", "datalog", "closure", "slab",
+    "queue", "ready", "task", "graph", "hypergraph", "leiden", "dedup", "quorum",
+    "sealer", "arena", "blake3", "arrow", "compact", "recover", "verify", "dispatch",
+];
+
+fn zipf_corpus_terms(doc_index: usize, count: usize) -> Vec<&'static str> {
+    let mut terms = Vec::with_capacity(count);
+    let mut state = (doc_index as u64).wrapping_mul(6_364_136_223_846_793_005).wrapping_add(1_442_695_040_888_963_407);
+    for slot in 0..count {
+        state = state.wrapping_mul(6_364_136_223_846_793_005).wrapping_add(1);
+        let u = ((state >> 40) as f64) / ((1u64 << 24) as f64);
+        // Zipfian rank skew over BENCH_CORPUS_VOCAB with rare tail diversity.
+        let rank = (((BENCH_CORPUS_VOCAB.len() as f64) + 1.0).powf(u) - 1.0) as usize;
+        let idx = (rank + (slot % 3)) % BENCH_CORPUS_VOCAB.len();
+        terms.push(BENCH_CORPUS_VOCAB[idx]);
+    }
+    terms
+}
 
 impl ProviderAdapter for BenchAdapter {
     fn provider_id(&self) -> &'static str {
@@ -169,19 +243,17 @@ fn bench_layout_validation(c: &mut Criterion) {
     c.bench_function("layout_validation", |b| {
         b.iter(|| {
             black_box(validate_layout(
-                expected_header_bytes(),
-                expected_payload_alignment(),
+                black_box(expected_header_bytes()),
+                black_box(expected_payload_alignment()),
             ))
         })
     });
 }
 
 fn bench_message_to_zero_copy(c: &mut Criterion) {
+    let message = MessageFrame::with_identity(1, 2, vec![1, 2, 3, 4]);
     c.bench_function("message_to_zero_copy", |b| {
-        b.iter(|| {
-            let message = MessageFrame::with_identity(1, 2, vec![1, 2, 3, 4]);
-            black_box(message_to_zero_copy(&message).is_ok())
-        })
+        b.iter(|| black_box(message_to_zero_copy(black_box(&message)).is_ok()))
     });
 }
 
@@ -218,83 +290,99 @@ fn bench_zero_copy_validation(c: &mut Criterion) {
 
 fn bench_runtime_ingest(c: &mut Criterion) {
     c.bench_function("runtime_ingest", |b| {
-        b.iter(|| {
-            let mut runtime = NerveRuntime::new();
-            let message = MessageFrame::with_identity(1, 2, vec![1, 2, 3, 4]);
-            black_box(runtime.ingest_message(message).is_ok())
-        })
+        b.iter_batched(
+            || (NerveRuntime::new(), MessageFrame::with_identity(1, 2, vec![1, 2, 3, 4])),
+            |(mut runtime, message)| black_box(runtime.ingest_message(black_box(message)).is_ok()),
+            BatchSize::SmallInput,
+        )
     });
 }
 
 fn bench_runtime_ingest_batch(c: &mut Criterion) {
-    c.bench_function("runtime_ingest_batch", |b| {
-        let messages: Vec<MessageFrame> = (1..=128)
-            .map(|index| {
-                MessageFrame::with_identity(index as u128, (index + 1) as u128, vec![1, 2, 3, 4])
-            })
-            .collect();
-        b.iter(|| {
-            let mut runtime = NerveRuntime::with_memory_capacity(messages.len());
-            for message in &messages {
-                let _ = runtime.ingest_message_ref(message);
-            }
-            black_box(runtime.processed_count())
+    let messages: Vec<MessageFrame> = (1..=128)
+        .map(|index| {
+            MessageFrame::with_identity(index as u128, (index + 1) as u128, vec![1, 2, 3, 4])
         })
+        .collect();
+    c.bench_function("runtime_ingest_batch", |b| {
+        b.iter_batched(
+            || NerveRuntime::with_memory_capacity(messages.len()),
+            |mut runtime| {
+                for message in &messages {
+                    runtime
+                        .ingest_message_ref(black_box(message))
+                        .expect("runtime ingest batch message");
+                }
+                black_box(runtime.processed_count())
+            },
+            BatchSize::SmallInput,
+        )
     });
 }
 
 fn bench_llm_route(c: &mut Criterion) {
+    let request = LLMRequest {
+        request_id: 1,
+        session_id: 2,
+        prompt: "bench llm".to_string(),
+        system_context: None,
+        model_hint: Some("bench-model"),
+        tool_hint: None,
+        prefer_low_latency: true,
+        prefer_low_cost: false,
+        require_tool_use: false,
+        require_reliability: true,
+    };
+    let providers = [ProviderConfig {
+        provider_id: "bench-provider",
+        model_name: "bench-model",
+        endpoint: "http://localhost:1234",
+        timeout_ms: 1000,
+        retry_limit: 3,
+        preferred_for_tools: true,
+        cost_rank: 1,
+        availability_rank: 1,
+    }];
     c.bench_function("llm_route", |b| {
-        let request = LLMRequest {
-            request_id: 1,
-            session_id: 2,
-            prompt: "bench llm".to_string(),
-            system_context: None,
-            model_hint: Some("bench-model"),
-            tool_hint: None,
-            prefer_low_latency: true,
-            prefer_low_cost: false,
-            require_tool_use: false,
-            require_reliability: true,
-        };
-        let providers = [ProviderConfig {
-            provider_id: "bench-provider",
-            model_name: "bench-model",
-            endpoint: "http://localhost:1234",
-            timeout_ms: 1000,
-            retry_limit: 3,
-            preferred_for_tools: true,
-            cost_rank: 1,
-            availability_rank: 1,
-        }];
-        b.iter(|| black_box(aegis_nerve::llm::route_request(&request, &providers).is_some()))
+        b.iter(|| {
+            black_box(
+                aegis_nerve::llm::route_request(black_box(&request), black_box(&providers))
+                    .is_some(),
+            )
+        })
     });
 }
 
 fn bench_llm_runtime_checkpoint(c: &mut Criterion) {
+    let request = LLMRequest {
+        request_id: 3,
+        session_id: 4,
+        prompt: "bench llm checkpoint".to_string(),
+        system_context: None,
+        model_hint: None,
+        tool_hint: None,
+        prefer_low_latency: false,
+        prefer_low_cost: false,
+        require_tool_use: false,
+        require_reliability: true,
+    };
+    let adapter = BenchAdapter;
+    let registry = AdapterRegistry::new(vec![&adapter]);
     c.bench_function("llm_runtime_checkpoint", |b| {
-        let request = LLMRequest {
-            request_id: 3,
-            session_id: 4,
-            prompt: "bench llm checkpoint".to_string(),
-            system_context: None,
-            model_hint: None,
-            tool_hint: None,
-            prefer_low_latency: false,
-            prefer_low_cost: false,
-            require_tool_use: false,
-            require_reliability: true,
-        };
-        let adapter = BenchAdapter;
-        let registry = AdapterRegistry::new(vec![&adapter]);
-        b.iter(|| {
-            let mut runtime = NerveRuntime::new();
-            black_box(
-                runtime
-                    .process_llm_request_with_checkpoint(&request, &registry)
-                    .is_ok(),
-            )
-        })
+        b.iter_batched(
+            NerveRuntime::new,
+            |mut runtime| {
+                black_box(
+                    runtime
+                        .process_llm_request_with_checkpoint(
+                            black_box(&request),
+                            black_box(&registry),
+                        )
+                        .is_ok(),
+                )
+            },
+            BatchSize::SmallInput,
+        )
     });
 }
 
@@ -379,46 +467,47 @@ fn bench_provider_route_admission_proof(c: &mut Criterion) {
         session_id: 18,
         prompt: "bench provider budget admission".to_string(),
         system_context: None,
-        model_hint: Some("reserve-model"),
+        model_hint: Some("provider-model-11"),
         tool_hint: None,
         prefer_low_latency: true,
         prefer_low_cost: false,
         require_tool_use: false,
         require_reliability: true,
     };
-    let providers = [
-        ProviderConfig {
-            provider_id: "fast",
-            model_name: "fast-model",
-            endpoint: "http://fast",
-            timeout_ms: 500,
+    let mut providers = Vec::with_capacity(16);
+    let mut budgets = Vec::with_capacity(16);
+    for idx in 0..16u16 {
+        let provider_id: &'static str = Box::leak(format!("provider-{idx:02}").into_boxed_str());
+        let model_name: &'static str = Box::leak(format!("provider-model-{idx:02}").into_boxed_str());
+        let endpoint: &'static str = Box::leak(format!("http://127.0.0.1:{}", 8000 + idx).into_boxed_str());
+        providers.push(ProviderConfig {
+            provider_id,
+            model_name,
+            endpoint,
+            timeout_ms: 500 + (idx as u64) * 50,
             retry_limit: 2,
-            preferred_for_tools: true,
-            cost_rank: 1,
-            availability_rank: 1,
-        },
-        ProviderConfig {
-            provider_id: "reserve",
-            model_name: "reserve-model",
-            endpoint: "http://reserve",
-            timeout_ms: 1000,
-            retry_limit: 2,
-            preferred_for_tools: true,
-            cost_rank: 4,
-            availability_rank: 1,
-        },
-    ];
-    let ledger = ProviderBudgetLedger::new(&[
-        ProviderRuntimeBudget::new("fast", "fast-model", 0, 10_000, 1_000_000).unwrap(),
-        ProviderRuntimeBudget::new("reserve", "reserve-model", 10, 10_000, 1_000_000).unwrap(),
-    ])
-    .unwrap();
+            preferred_for_tools: idx % 2 == 0,
+            cost_rank: (idx % 5) as u8 + 1,
+            availability_rank: 1 + (idx % 3) as u8,
+        });
+        let queue_depth = if idx < 11 { 10_000 } else { (idx as u32) % 4 };
+        budgets.push(
+            ProviderRuntimeBudget::new(provider_id, model_name, queue_depth, 10_000, 1_000_000)
+                .unwrap(),
+        );
+    }
+    let ledger = ProviderBudgetLedger::new(&budgets).unwrap();
     c.bench_function("provider_route_admission_proof", |b| {
         b.iter(|| {
             let result: Result<
                 (_, aegis_nerve::llm::ProviderRouteAdmissionProof),
                 aegis_nerve::llm::ProviderBudgetError,
-            > = aegis_nerve::llm::route_request_with_budget(&request, &providers, &ledger, 1_024);
+            > = aegis_nerve::llm::route_request_with_budget(
+                black_box(&request),
+                black_box(&providers),
+                black_box(&ledger),
+                black_box(1_024),
+            );
             let (_decision, proof) = result.expect("provider route admission proof");
             black_box(proof.proof_hash)
         })
@@ -468,17 +557,38 @@ fn bench_prefix_cache_broker_hit_proof(c: &mut Criterion) {
         InferenceRouteProof::build(&request, &providers, &[contract]).expect("bench route proof");
     let lookup_route_proof = InferenceRouteProof::build(&lookup_request, &providers, &[contract])
         .expect("bench lookup route proof");
-    let mut broker = PrefixCacheBroker::new(16).expect("bench prefix cache broker");
+    let scope_hash = bench_hash("cache-scope", 1);
+    let mut broker = PrefixCacheBroker::new(64).expect("bench prefix cache broker");
     let handle = broker
         .admit(
             &request,
             &contract,
             &route_proof,
-            bench_hash("cache-scope", 1),
+            scope_hash,
             prefix_len,
             5,
         )
         .expect("bench prefix cache admit");
+    for extra in 2u32..=32u32 {
+        let mut alt_req = request.clone();
+        alt_req.request_id = 100 + extra as u128;
+        let alt_route_proof = InferenceRouteProof::build(
+            &alt_req,
+            &providers,
+            std::slice::from_ref(&contract),
+        )
+        .expect("bench alt route proof");
+        broker
+            .admit(
+                &alt_req,
+                &contract,
+                &alt_route_proof,
+                bench_hash("cache-scope", extra),
+                prefix_len,
+                5,
+            )
+            .expect("bench extra prefix cache admit");
+    }
 
     c.bench_function("prefix_cache_broker_hit_proof", |b| {
         b.iter(|| {
@@ -487,7 +597,7 @@ fn bench_prefix_cache_broker_hit_proof(c: &mut Criterion) {
                     black_box(&lookup_request),
                     black_box(&contract),
                     black_box(&lookup_route_proof),
-                    black_box(bench_hash("cache-scope", 1)),
+                    black_box(scope_hash),
                     black_box(prefix_len),
                     black_box(5),
                 )
@@ -1142,20 +1252,16 @@ fn bench_skill_admission_record_validate(c: &mut Criterion) {
                         10_000,
                     )
                     .expect("bench active skill execution");
-                let dir = std::env::current_dir()
-                    .expect("bench current dir")
-                    .join("target")
-                    .join("aegis-bench-artifacts")
-                    .join("skill-exec-handoff-seal");
-                let _ = std::fs::remove_dir_all(&dir);
+                let dir_guard = BenchTempDir::new("skill-exec-handoff-seal");
                 let manifest_archive =
-                    RunEventSegmentArchive::write_ledger(&dir, 8, &ledger).expect("bench archive");
-                (dir, manifest_archive, execution)
+                    RunEventSegmentArchive::write_ledger(dir_guard.path(), 8, &ledger)
+                        .expect("bench archive");
+                (dir_guard, manifest_archive, execution)
             },
-            |(dir, manifest_archive, execution)| {
+            |(dir_guard, manifest_archive, execution)| {
                 let handoff_proof: SkillExecutionHandoffProof =
                     SkillRegistry::seal_skill_execution_handoff(
-                        black_box(&dir),
+                        black_box(dir_guard.path()),
                         black_box(&manifest_archive),
                         black_box(&execution),
                         black_box(&skill_ir),
@@ -1177,20 +1283,30 @@ fn bench_skill_admission_record_validate(c: &mut Criterion) {
 fn bench_pav_ast_distance_registered(c: &mut Criterion) {
     let old_code = generated_ast_bench_code(48, 7);
     let new_code = generated_ast_bench_code(48, 11);
-    let old_fingerprint = compute_ast_structural_fingerprint(&old_code);
-    let new_fingerprint = compute_ast_structural_fingerprint(&new_code);
     let expected_distance = compute_ast_tree_edit_distance(&old_code, &new_code)
         .expect("bench ast edit distance should parse");
-    let watchdog = PhysicalWatchdog { epsilon: 0.0001 };
-    let warm_pav = watchdog.measure_pav(old_fingerprint, new_fingerprint, 10_000);
     assert!(expected_distance > 0);
-    assert!(warm_pav > 0.0);
+    let fps: Vec<u64> = (0u32..128)
+        .map(|salt| compute_ast_structural_fingerprint(&generated_ast_bench_code(8, salt + 1)))
+        .collect();
+    let mut fp_pairs = Vec::with_capacity(128 * 127);
+    for (i, &left) in fps.iter().enumerate() {
+        for (j, &right) in fps.iter().enumerate() {
+            if i != j {
+                fp_pairs.push((left, right));
+            }
+        }
+    }
+    let watchdog = PhysicalWatchdog { epsilon: 0.0001 };
 
     c.bench_function("pav_ast_distance_registered", |b| {
+        let mut idx = 0usize;
         b.iter(|| {
+            idx = (idx + 1) % fp_pairs.len();
+            let (old_fp, new_fp) = fp_pairs[idx];
             let pav = watchdog.measure_pav(
-                black_box(old_fingerprint),
-                black_box(new_fingerprint),
+                black_box(old_fp),
+                black_box(new_fp),
                 black_box(10_000),
             );
             black_box((pav, expected_distance))
@@ -1199,36 +1315,27 @@ fn bench_pav_ast_distance_registered(c: &mut Criterion) {
 }
 
 fn bench_mmap_bridge_payload_view(c: &mut Criterion) {
-    let path = std::env::current_dir()
-        .expect("bench current dir")
-        .join("target")
-        .join("aegis-bench-artifacts")
-        .join("mmap-bridge-payload-view")
-        .join("frame.aegmmap");
-    std::fs::create_dir_all(path.parent().expect("mmap bridge bench dir"))
-        .expect("create mmap bridge bench dir");
+    let dir_guard = BenchTempDir::new("mmap-bridge-payload-view");
+    let path = dir_guard.path().join("frame.aegmmap");
     let payload: Vec<u8> = (0..(1024 * 1024)).map(pattern_byte).collect();
     write_mmap_bridge_frame(&path, 7, 9, &payload).expect("mmap bridge bench frame");
-    let view = open_mmap_bridge_view(&path).expect("mmap bridge bench view");
-    assert_eq!(view.payload().expect("payload view").len(), payload.len());
+    let warm_view = open_mmap_bridge_view(&path).expect("mmap bridge bench view");
+    assert_eq!(warm_view.payload().expect("payload view").len(), payload.len());
 
     c.bench_function("mmap_bridge_payload_view", |b| {
         b.iter(|| {
+            let view = open_mmap_bridge_view(black_box(&path)).expect("mmap bridge bench open");
             let payload = view.payload().expect("mmap bridge payload view");
-            black_box((payload.as_ptr(), payload.len(), payload[0]))
+            let mid = payload[payload.len() / 2];
+            let last = payload[payload.len() - 1];
+            black_box((payload.as_ptr(), payload.len(), payload[0], mid, last))
         })
     });
 }
 
 fn bench_mmap_wasm_bridge_execute(c: &mut Criterion) {
-    let path = std::env::current_dir()
-        .expect("bench current dir")
-        .join("target")
-        .join("aegis-bench-artifacts")
-        .join("mmap-wasm-bridge-execute")
-        .join("wasm-frame.aegmmap");
-    std::fs::create_dir_all(path.parent().expect("mmap wasm bridge bench dir"))
-        .expect("create mmap wasm bridge bench dir");
+    let dir_guard = BenchTempDir::new("mmap-wasm-bridge-execute");
+    let path = dir_guard.path().join("wasm-frame.aegmmap");
     let wasm = wasmtime_cached_bench_wasm();
     write_mmap_bridge_frame(&path, 17, 19, &wasm).expect("mmap wasm bridge bench frame");
     let sandbox = WasmtimeSandbox::new();
@@ -1248,44 +1355,39 @@ fn bench_mmap_wasm_bridge_execute(c: &mut Criterion) {
 }
 
 fn bench_replay_io_mmap_materialized(c: &mut Criterion) {
-    let dir = std::env::current_dir()
-        .expect("bench current dir")
-        .join("target")
-        .join("aegis-bench-artifacts")
-        .join("replay-io-mmap-materialized");
-    let _ = std::fs::remove_dir_all(&dir);
+    let dir_guard = BenchTempDir::new("replay-io-mmap-materialized");
     let ledger = replay_io_bench_ledger(64);
-    let manifest =
-        RunEventSegmentArchive::write_ledger(&dir, 8, &ledger).expect("bench ledger archive");
+    let manifest = RunEventSegmentArchive::write_ledger(dir_guard.path(), 8, &ledger)
+        .expect("bench ledger archive");
 
     c.bench_function("replay_io_mmap_materialized", |b| {
         b.iter(|| {
-            let (recovered, evidence) =
-                RunEventSegmentArchive::read_ledger_mmap_with_evidence(&dir, &manifest)
-                    .expect("mmap materialized replay readback");
+            let (recovered, evidence) = RunEventSegmentArchive::read_ledger_mmap_with_evidence(
+                black_box(dir_guard.path()),
+                black_box(&manifest),
+            )
+            .expect("mmap materialized replay readback");
             black_box((recovered.len(), evidence.materialized_run_event_bytes))
         })
     });
 }
 
 fn bench_replay_segmented_arrow_append(c: &mut Criterion) {
-    let dir = std::env::current_dir()
-        .expect("bench current dir")
-        .join("target")
-        .join("aegis-bench-artifacts")
-        .join("replay-segmented-arrow-append");
-    let _ = std::fs::remove_dir_all(&dir);
-    let ledger = replay_io_bench_ledger(1);
+    let mut ledger = replay_io_bench_ledger(682);
+    ledger
+        .append_checkpoint_sealed(683, bench_hash("checkpoint", 683))
+        .expect("4095th checkpoint event");
+    ledger
+        .append_checkpoint_sealed(684, bench_hash("checkpoint", 684))
+        .expect("4096th checkpoint event");
+    assert_eq!(ledger.len(), 4_096);
 
     c.bench_function("replay_segmented_arrow_append", |b| {
-        b.iter_custom(|iters| {
-            let _ = std::fs::remove_dir_all(&dir);
-            std::fs::create_dir_all(&dir).expect("create segmented arrow append bench dir");
-            let start = std::time::Instant::now();
-            for iteration in 1..=iters {
-                let run_dir = dir.join(format!("iter-{iteration}"));
+        b.iter_batched(
+            || BenchTempDir::new("replay-segmented-arrow-append"),
+            |dir_guard| {
                 let mut stream = SegmentedArrowAuditStream::create(
-                    &run_dir,
+                    black_box(dir_guard.path()),
                     black_box(ledger.run_id),
                     black_box(ledger.len()),
                 )
@@ -1296,28 +1398,23 @@ fn bench_replay_segmented_arrow_append(c: &mut Criterion) {
                 let manifest = stream
                     .finish()
                     .expect("finish segmented arrow audit stream");
-                black_box((manifest.entries.len(), manifest.manifest_hash));
-            }
-            start.elapsed()
-        })
+                black_box((manifest.entries.len(), manifest.manifest_hash))
+            },
+            BatchSize::PerIteration,
+        )
     });
 }
 
 fn bench_replay_segmented_arrow_proof(c: &mut Criterion) {
-    let dir = std::env::current_dir()
-        .expect("bench current dir")
-        .join("target")
-        .join("aegis-bench-artifacts")
-        .join("replay-segmented-arrow-proof");
-    let _ = std::fs::remove_dir_all(&dir);
+    let dir_guard = BenchTempDir::new("replay-segmented-arrow-proof");
     let ledger = replay_io_bench_ledger(64);
-    let manifest =
-        RunEventSegmentArchive::write_ledger(&dir, 8, &ledger).expect("segmented arrow proof");
+    let manifest = RunEventSegmentArchive::write_ledger(dir_guard.path(), 8, &ledger)
+        .expect("segmented arrow proof");
 
     c.bench_function("replay_segmented_arrow_proof", |b| {
         b.iter(|| {
             let proof = RunEventSegmentArchive::prove_segmented_arrow_audit(
-                black_box(&dir),
+                black_box(dir_guard.path()),
                 black_box(&manifest),
             )
             .expect("segmented arrow audit proof");
@@ -1332,49 +1429,53 @@ fn bench_replay_segmented_arrow_proof(c: &mut Criterion) {
 }
 
 fn bench_replay_segmented_arrow_column_scan_proof(c: &mut Criterion) {
-    let dir = std::env::current_dir()
-        .expect("bench current dir")
-        .join("target")
-        .join("aegis-bench-artifacts")
-        .join("replay-segmented-arrow-column-scan-proof");
-    let _ = std::fs::remove_dir_all(&dir);
+    let dir_guard = BenchTempDir::new("replay-segmented-arrow-column-scan-proof");
     let ledger = replay_io_bench_ledger(64);
-    let manifest = RunEventSegmentArchive::write_ledger(&dir, 8, &ledger)
+    let manifest = RunEventSegmentArchive::write_ledger(dir_guard.path(), 8, &ledger)
         .expect("segmented arrow column scan proof");
+    let segment_paths: Vec<PathBuf> = manifest
+        .entries
+        .iter()
+        .map(|entry| {
+            RunEventSegmentArchive::segment_path(dir_guard.path(), manifest.run_id, entry.segment_id)
+        })
+        .collect();
 
     c.bench_function("replay_segmented_arrow_column_scan_proof", |b| {
         b.iter(|| {
-            let proof = RunEventSegmentArchive::prove_segmented_arrow_audit(
-                black_box(&dir),
-                black_box(&manifest),
-            )
-            .expect("segmented arrow mmap column scan proof");
-            black_box((
-                proof.event_count,
-                proof.logical_replay_hash,
-                proof.mmap_evidence_hash,
-                proof.proof_hash,
-            ))
+            let mut total_events = 0usize;
+            let mut total_bytes = 0u64;
+            let mut rolling_hash = [0u8; 32];
+            for path in &segment_paths {
+                let (events, evidence) =
+                    aegis_nerve::replay::ArrowRunEventStream::read_events_mmap_with_evidence(
+                        black_box(path),
+                    )
+                    .expect("segmented arrow mmap column scan");
+                total_events += events.len();
+                total_bytes += evidence.total_file_bytes;
+                if let Some(last) = events.last() {
+                    rolling_hash = last.event_hash;
+                }
+            }
+            black_box((total_events, total_bytes, rolling_hash))
         })
     });
 }
 
 fn bench_replay_segmented_arrow_manifest_recover(c: &mut Criterion) {
-    let dir = std::env::current_dir()
-        .expect("bench current dir")
-        .join("target")
-        .join("aegis-bench-artifacts")
-        .join("replay-segmented-arrow-manifest-recover");
-    let _ = std::fs::remove_dir_all(&dir);
+    let dir_guard = BenchTempDir::new("replay-segmented-arrow-manifest-recover");
     let ledger = replay_io_bench_ledger(64);
-    let manifest = RunEventSegmentArchive::write_ledger(&dir, 8, &ledger)
+    let manifest = RunEventSegmentArchive::write_ledger(dir_guard.path(), 8, &ledger)
         .expect("segmented arrow manifest recovery source");
 
     c.bench_function("replay_segmented_arrow_manifest_recover", |b| {
         b.iter(|| {
-            let recovered =
-                RunEventSegmentArchive::recover_manifest_from_segments(&dir, ledger.run_id)
-                    .expect("recover segmented arrow manifest from physical segments");
+            let recovered = RunEventSegmentArchive::recover_manifest_from_segments(
+                black_box(dir_guard.path()),
+                black_box(ledger.run_id),
+            )
+            .expect("recover segmented arrow manifest from physical segments");
             black_box((
                 recovered.entries.len(),
                 recovered.manifest_hash,
@@ -1385,20 +1486,15 @@ fn bench_replay_segmented_arrow_manifest_recover(c: &mut Criterion) {
 }
 
 fn bench_replay_determinism_proof(c: &mut Criterion) {
-    let dir = std::env::current_dir()
-        .expect("bench current dir")
-        .join("target")
-        .join("aegis-bench-artifacts")
-        .join("replay-determinism-proof");
-    let _ = std::fs::remove_dir_all(&dir);
+    let dir_guard = BenchTempDir::new("replay-determinism-proof");
     let ledger = replay_io_bench_ledger(64);
-    let manifest =
-        RunEventSegmentArchive::write_ledger(&dir, 8, &ledger).expect("determinism proof source");
+    let manifest = RunEventSegmentArchive::write_ledger(dir_guard.path(), 8, &ledger)
+        .expect("determinism proof source");
 
     c.bench_function("replay_determinism_proof", |b| {
         b.iter(|| {
             let proof = RunEventSegmentArchive::prove_replay_determinism(
-                black_box(&dir),
+                black_box(dir_guard.path()),
                 black_box(&manifest),
             )
             .expect("replay determinism proof");
@@ -1413,26 +1509,24 @@ fn bench_replay_determinism_proof(c: &mut Criterion) {
 }
 
 fn bench_replay_segmented_arrow_compact(c: &mut Criterion) {
-    let dir = std::env::current_dir()
-        .expect("bench current dir")
-        .join("target")
-        .join("aegis-bench-artifacts")
-        .join("replay-segmented-arrow-compact");
-    let source_dir = dir.join("source");
-    let _ = std::fs::remove_dir_all(&dir);
+    let dir_guard = BenchTempDir::new("replay-segmented-arrow-compact");
+    let source_dir = dir_guard.path().join("source");
     let ledger = replay_io_bench_ledger(64);
     let manifest = RunEventSegmentArchive::write_ledger(&source_dir, 8, &ledger)
         .expect("segmented arrow compaction source");
+    let output_paths: Vec<PathBuf> = (0..32)
+        .map(|slot| dir_guard.path().join(format!("compacted-{slot}.bin")))
+        .collect();
 
     c.bench_function("replay_segmented_arrow_compact", |b| {
-        let mut iteration = 0u64;
+        let mut iteration = 0usize;
         b.iter(|| {
             iteration = iteration.wrapping_add(1);
-            let output_path = dir.join(format!("compacted-{}.bin", iteration % 32));
+            let output_path = &output_paths[iteration % output_paths.len()];
             let report = RunEventSegmentArchive::compact_to_binary_segment_crash_safe(
                 black_box(&source_dir),
                 black_box(&manifest),
-                black_box(&output_path),
+                black_box(output_path),
             )
             .expect("segmented arrow compaction");
             black_box((
@@ -1464,6 +1558,10 @@ fn bench_replay_shift_manager_next_action(c: &mut Criterion) {
         bench_hash("determinism-proof", 1),
         bench_hash("context-fold-evidence", 1),
     );
+    let typed_tool_ir_hash = bench_hash("typed-tool-ir", 1);
+    let evidence_contract_hash_val = bench_hash("evidence-contract", 1);
+    let policy_proof_hash = bench_hash("policy-proof", 1);
+    let candidate_evidence_hash = bench_hash("candidate-evidence", 1);
 
     c.bench_function("replay_shift_manager_next_action", |b| {
         b.iter(|| {
@@ -1473,10 +1571,10 @@ fn bench_replay_shift_manager_next_action(c: &mut Criterion) {
                 black_box(checkpoint.checkpoint_hash),
                 black_box(NextActionKind::RequestToolCall),
                 black_box(task_selection_proof.selected_task_id),
-                black_box(bench_hash("typed-tool-ir", 1)),
-                black_box(bench_hash("evidence-contract", 1)),
-                black_box(bench_hash("policy-proof", 1)),
-                black_box(bench_hash("candidate-evidence", 1)),
+                black_box(typed_tool_ir_hash),
+                black_box(evidence_contract_hash_val),
+                black_box(policy_proof_hash),
+                black_box(candidate_evidence_hash),
                 black_box(&task_selection_proof),
             );
             black_box((
@@ -1566,10 +1664,11 @@ fn bench_browser_witness_packet_validate(c: &mut Criterion) {
         action,
         proof,
     );
+    let browser_policy_version_hash = bench_hash("browser-packet-policy-version", 1);
     c.bench_function("browser_witness_packet_validate", |b| {
         b.iter(|| {
             black_box(packet.isolated_browser_policy_facts(
-                black_box(bench_hash("browser-packet-policy-version", 1)),
+                black_box(browser_policy_version_hash),
                 black_box(true),
                 black_box(policy_window_hash),
                 black_box(browser_session_hash),
@@ -1630,21 +1729,25 @@ fn bench_browser_collector_envelope_mint_packet(c: &mut Criterion) {
     assert!(envelope.is_valid());
 
     c.bench_function("browser_collector_envelope_mint_packet", |b| {
-        b.iter(|| {
-            let packet = BrowserObservationPacket::from_collector_envelope(
-                black_box(&envelope),
-                black_box(action.clone()),
-                black_box(SideEffectClass::ExternalWrite),
-            )
-            .expect("browser envelope packet mint");
-            black_box((packet.packet_hash, packet.raw_artifact_manifest_hash))
-        })
+        b.iter_batched(
+            || action.clone(),
+            |action_item| {
+                let packet = BrowserObservationPacket::from_collector_envelope(
+                    black_box(&envelope),
+                    black_box(action_item),
+                    black_box(SideEffectClass::ExternalWrite),
+                )
+                .expect("browser envelope packet mint");
+                black_box((packet.packet_hash, packet.raw_artifact_manifest_hash))
+            },
+            BatchSize::SmallInput,
+        )
     });
 }
 
 fn bench_browser_file_artifact_envelope_mint_packet(c: &mut Criterion) {
-    let dir = std::env::temp_dir().join("aegis-browser-file-artifact-envelope-bench");
-    let file_refs = bench_browser_artifact_files(&dir);
+    let dir_guard = BenchTempDir::new("browser-file-artifact-envelope");
+    let file_refs = bench_browser_artifact_files(dir_guard.path());
     let first_ref = BrowserArtifactRef::from_file(file_refs[0].0, &file_refs[0].1)
         .expect("file-backed browser artifact ref");
     assert!(first_ref.is_valid());
@@ -1659,6 +1762,8 @@ fn bench_browser_file_artifact_envelope_mint_packet(c: &mut Criterion) {
     let policy_window_hash = bench_hash("browser-file-envelope-policy-window", 1);
     let browser_session_hash = bench_hash("browser-file-envelope-session", 1);
     let redaction_policy_hash = bench_hash("browser-file-envelope-redaction", 1);
+    let collector_config_hash = bench_hash("file-envelope-collector-config", 1);
+    let collector_capability_hash = bench_hash("file-envelope-collector-capability", 1);
     let action = BrowserActionTrace::new(
         173,
         BrowserActionKind::Click,
@@ -1674,8 +1779,8 @@ fn bench_browser_file_artifact_envelope_mint_packet(c: &mut Criterion) {
         action.action_id,
         7,
         1_786_300_175_000,
-        bench_hash("file-envelope-collector-config", 1),
-        bench_hash("file-envelope-collector-capability", 1),
+        collector_config_hash,
+        collector_capability_hash,
         browser_session_hash,
         redaction_policy_hash,
         policy_window_hash,
@@ -1688,8 +1793,8 @@ fn bench_browser_file_artifact_envelope_mint_packet(c: &mut Criterion) {
         action.action_id,
         7,
         1_786_300_175_000,
-        bench_hash("file-envelope-collector-config", 1),
-        bench_hash("file-envelope-collector-capability", 1),
+        collector_config_hash,
+        collector_capability_hash,
         browser_session_hash,
         redaction_policy_hash,
         policy_window_hash,
@@ -1699,35 +1804,37 @@ fn bench_browser_file_artifact_envelope_mint_packet(c: &mut Criterion) {
     assert_eq!(raw_path_envelope, path_ref_envelope);
 
     c.bench_function("browser_file_artifact_envelope_mint_packet", |b| {
-        b.iter(|| {
-            let envelope = BrowserCollectorEvidenceEnvelope::from_file_path_refs(
-                black_box(BrowserCollectorKind::PlaywrightCdp),
-                black_box(20),
-                black_box(action.action_id),
-                black_box(7),
-                black_box(1_786_300_175_000),
-                black_box(bench_hash("file-envelope-collector-config", 1)),
-                black_box(bench_hash("file-envelope-collector-capability", 1)),
-                black_box(browser_session_hash),
-                black_box(redaction_policy_hash),
-                black_box(policy_window_hash),
-                black_box(&path_refs),
-            )
-            .expect("file-backed browser envelope");
-            let packet = BrowserObservationPacket::from_collector_envelope(
-                black_box(&envelope),
-                black_box(action.clone()),
-                black_box(SideEffectClass::ExternalWrite),
-            )
-            .expect("file-backed browser envelope packet mint");
-            black_box((packet.packet_hash, packet.raw_artifact_manifest_hash))
-        })
+        b.iter_batched(
+            || action.clone(),
+            |action_item| {
+                let envelope = BrowserCollectorEvidenceEnvelope::from_file_path_refs(
+                    black_box(BrowserCollectorKind::PlaywrightCdp),
+                    black_box(20),
+                    black_box(action_item.action_id),
+                    black_box(7),
+                    black_box(1_786_300_175_000),
+                    black_box(collector_config_hash),
+                    black_box(collector_capability_hash),
+                    black_box(browser_session_hash),
+                    black_box(redaction_policy_hash),
+                    black_box(policy_window_hash),
+                    black_box(&path_refs),
+                )
+                .expect("file-backed browser envelope");
+                let packet = BrowserObservationPacket::from_collector_envelope(
+                    black_box(&envelope),
+                    black_box(action_item),
+                    black_box(SideEffectClass::ExternalWrite),
+                )
+                .expect("file-backed browser envelope packet mint");
+                black_box((packet.packet_hash, packet.raw_artifact_manifest_hash))
+            },
+            BatchSize::SmallInput,
+        )
     });
 }
 
 fn bench_browser_live_collector_run_write_manifest(c: &mut Criterion) {
-    let root = std::env::temp_dir().join("aegis-browser-live-collector-run-bench");
-    let _ = std::fs::remove_dir_all(&root);
     let artifacts = bench_browser_live_collector_artifacts();
     let run_id = 24;
     let action_id = 184;
@@ -1739,29 +1846,32 @@ fn bench_browser_live_collector_run_write_manifest(c: &mut Criterion) {
     let collector_capability_hash = bench_hash("browser-live-run-capability", 1);
 
     c.bench_function("browser_live_collector_run_write_manifest", |b| {
-        b.iter(|| {
-            let _ = std::fs::remove_dir_all(black_box(&root));
-            let collector_run = BrowserLiveCollectorRun::from_artifacts(
-                black_box(&root),
-                black_box(BrowserCollectorKind::PlaywrightCdp),
-                black_box(run_id),
-                black_box(action_id),
-                black_box(sequence_number),
-                black_box(1_786_300_210_000),
-                black_box(collector_config_hash),
-                black_box(collector_capability_hash),
-                black_box(browser_session_hash),
-                black_box(redaction_policy_hash),
-                black_box(policy_window_hash),
-                black_box(&artifacts),
-            )
-            .expect("browser live collector run");
-            black_box((
-                collector_run.collector_run_hash,
-                collector_run.manifest.manifest_hash,
-                collector_run.manifest.artifact_path_refs.len(),
-            ))
-        })
+        b.iter_batched(
+            || BenchTempDir::new("browser-live-collector-run"),
+            |root_guard| {
+                let collector_run = BrowserLiveCollectorRun::from_artifacts(
+                    black_box(root_guard.path()),
+                    black_box(BrowserCollectorKind::PlaywrightCdp),
+                    black_box(run_id),
+                    black_box(action_id),
+                    black_box(sequence_number),
+                    black_box(1_786_300_210_000),
+                    black_box(collector_config_hash),
+                    black_box(collector_capability_hash),
+                    black_box(browser_session_hash),
+                    black_box(redaction_policy_hash),
+                    black_box(policy_window_hash),
+                    black_box(&artifacts),
+                )
+                .expect("browser live collector run");
+                black_box((
+                    collector_run.collector_run_hash,
+                    collector_run.manifest.manifest_hash,
+                    collector_run.manifest.artifact_path_refs.len(),
+                ))
+            },
+            BatchSize::PerIteration,
+        )
     });
 }
 
@@ -1874,8 +1984,8 @@ fn bench_browser_tool_gateway_ingest(c: &mut Criterion) {
 
 fn bench_browser_file_artifact_gateway_ingest(c: &mut Criterion) {
     let run_id = 18;
-    let dir = std::env::temp_dir().join("aegis-browser-file-artifact-gateway-bench");
-    let file_refs = bench_browser_artifact_files(&dir);
+    let dir_guard = BenchTempDir::new("browser-file-artifact-gateway");
+    let file_refs = bench_browser_artifact_files(dir_guard.path());
     let path_refs: Vec<_> = file_refs
         .iter()
         .map(|(kind, path)| {
@@ -1911,61 +2021,69 @@ fn bench_browser_file_artifact_gateway_ingest(c: &mut Criterion) {
         Some(bench_hash("browser-file-gateway-approval-scope", 1)),
     );
 
+    let file_collector_config_hash = bench_hash("file-gateway-collector-config", 1);
+    let file_collector_capability_hash = bench_hash("file-gateway-collector-capability", 1);
     c.bench_function("browser_file_artifact_gateway_ingest", |b| {
-        b.iter(|| {
-            let mut ledger = RunEventLedger::new(black_box(run_id));
-            seed_bench_goal_intake(&mut ledger, "browser-file-gateway");
-            ledger
-                .append_context_pack_built(
-                    black_box(11),
-                    black_box(128),
-                    bench_hash("file-gateway-context-pack", 1),
+        b.iter_batched(
+            || {
+                let mut ledger = RunEventLedger::new(run_id);
+                seed_bench_goal_intake(&mut ledger, "browser-file-gateway");
+                ledger
+                    .append_context_pack_built(
+                        11,
+                        128,
+                        bench_hash("file-gateway-context-pack", 1),
+                    )
+                    .expect("context pack");
+                ledger
+                    .append_llm_response_received(
+                        bench_hash("file-gateway-llm-response", 1),
+                        bench_hash("file-gateway-raw-text-ref", 1),
+                    )
+                    .expect("llm response");
+                (ledger, action.clone())
+            },
+            |(mut ledger, action_item)| {
+                let proof = ToolExecutionGateway::execute_browser_file_path_refs_with_replay(
+                    black_box(&mut ledger),
+                    black_box(282),
+                    black_box(&ir),
+                    black_box(BrowserCollectorKind::PlaywrightCdp),
+                    black_box(action_item),
+                    black_box(9),
+                    black_box(1_786_300_225_000),
+                    black_box(file_collector_config_hash),
+                    black_box(file_collector_capability_hash),
+                    black_box(browser_session_hash),
+                    black_box(redaction_policy_hash),
+                    black_box(&path_refs),
+                    black_box(policy_version_hash),
+                    black_box(true),
                 )
-                .expect("context pack");
-            ledger
-                .append_llm_response_received(
-                    bench_hash("file-gateway-llm-response", 1),
-                    bench_hash("file-gateway-raw-text-ref", 1),
-                )
-                .expect("llm response");
-            let proof = ToolExecutionGateway::execute_browser_file_path_refs_with_replay(
-                black_box(&mut ledger),
-                black_box(282),
-                black_box(&ir),
-                black_box(BrowserCollectorKind::PlaywrightCdp),
-                black_box(action.clone()),
-                black_box(9),
-                black_box(1_786_300_225_000),
-                black_box(bench_hash("file-gateway-collector-config", 1)),
-                black_box(bench_hash("file-gateway-collector-capability", 1)),
-                black_box(browser_session_hash),
-                black_box(redaction_policy_hash),
-                black_box(&path_refs),
-                black_box(policy_version_hash),
-                black_box(true),
-            )
-            .expect("file-backed browser gateway proof");
-            black_box((
-                proof.is_valid_for(
-                    run_id,
-                    &ir,
-                    policy_version_hash,
-                    policy_window_hash,
-                    browser_session_hash,
-                    redaction_policy_hash,
-                ),
-                ledger.last_hash(),
-                proof.receipt.tool_execution_evidence.evidence_hash,
-                proof.packet.raw_artifact_manifest_hash,
-            ))
-        })
+                .expect("file-backed browser gateway proof");
+                black_box((
+                    proof.is_valid_for(
+                        run_id,
+                        &ir,
+                        policy_version_hash,
+                        policy_window_hash,
+                        browser_session_hash,
+                        redaction_policy_hash,
+                    ),
+                    ledger.last_hash(),
+                    proof.receipt.tool_execution_evidence.evidence_hash,
+                    proof.packet.raw_artifact_manifest_hash,
+                ))
+            },
+            BatchSize::SmallInput,
+        )
     });
 }
 
 fn bench_browser_live_collector_manifest_gateway_ingest(c: &mut Criterion) {
     let run_id = 21;
-    let dir = std::env::temp_dir().join("aegis-browser-live-manifest-gateway-bench");
-    let file_refs = bench_browser_artifact_files(&dir);
+    let dir_guard = BenchTempDir::new("browser-live-manifest-gateway");
+    let file_refs = bench_browser_artifact_files(dir_guard.path());
     let path_refs: Vec<_> = file_refs
         .iter()
         .map(|(kind, path)| {
@@ -2014,54 +2132,60 @@ fn bench_browser_live_collector_manifest_gateway_ingest(c: &mut Criterion) {
     assert!(manifest.is_valid());
 
     c.bench_function("browser_live_collector_manifest_gateway_ingest", |b| {
-        b.iter(|| {
-            let mut ledger = RunEventLedger::new(black_box(run_id));
-            seed_bench_goal_intake(&mut ledger, "browser-live-manifest-gateway");
-            ledger
-                .append_context_pack_built(
-                    black_box(11),
-                    black_box(128),
-                    bench_hash("live-manifest-context-pack", 1),
+        b.iter_batched(
+            || {
+                let mut ledger = RunEventLedger::new(run_id);
+                seed_bench_goal_intake(&mut ledger, "browser-live-manifest-gateway");
+                ledger
+                    .append_context_pack_built(
+                        11,
+                        128,
+                        bench_hash("live-manifest-context-pack", 1),
+                    )
+                    .expect("context pack");
+                ledger
+                    .append_llm_response_received(
+                        bench_hash("live-manifest-llm-response", 1),
+                        bench_hash("live-manifest-raw-text-ref", 1),
+                    )
+                    .expect("llm response");
+                (ledger, action.clone())
+            },
+            |(mut ledger, action_item)| {
+                let proof = ToolExecutionGateway::execute_browser_live_manifest_with_replay(
+                    black_box(&mut ledger),
+                    black_box(288),
+                    black_box(&ir),
+                    black_box(&manifest),
+                    black_box(action_item),
+                    black_box(policy_version_hash),
+                    black_box(true),
                 )
-                .expect("context pack");
-            ledger
-                .append_llm_response_received(
-                    bench_hash("live-manifest-llm-response", 1),
-                    bench_hash("live-manifest-raw-text-ref", 1),
-                )
-                .expect("llm response");
-            let proof = ToolExecutionGateway::execute_browser_live_manifest_with_replay(
-                black_box(&mut ledger),
-                black_box(288),
-                black_box(&ir),
-                black_box(&manifest),
-                black_box(action.clone()),
-                black_box(policy_version_hash),
-                black_box(true),
-            )
-            .expect("live manifest browser gateway proof");
-            black_box((
-                proof.is_valid_for(
-                    run_id,
-                    &ir,
-                    policy_version_hash,
-                    policy_window_hash,
-                    browser_session_hash,
-                    redaction_policy_hash,
-                ),
-                ledger.last_hash(),
-                proof.receipt.tool_execution_evidence.evidence_hash,
-                proof.packet.raw_artifact_manifest_hash,
-                manifest.manifest_hash,
-            ))
-        })
+                .expect("live manifest browser gateway proof");
+                black_box((
+                    proof.is_valid_for(
+                        run_id,
+                        &ir,
+                        policy_version_hash,
+                        policy_window_hash,
+                        browser_session_hash,
+                        redaction_policy_hash,
+                    ),
+                    ledger.last_hash(),
+                    proof.receipt.tool_execution_evidence.evidence_hash,
+                    proof.packet.raw_artifact_manifest_hash,
+                    manifest.manifest_hash,
+                ))
+            },
+            BatchSize::SmallInput,
+        )
     });
 }
 
 fn bench_browser_action_plan_live_manifest_gateway_ingest(c: &mut Criterion) {
     let run_id = 22;
-    let dir = std::env::temp_dir().join("aegis-browser-action-plan-live-manifest-gateway-bench");
-    let file_refs = bench_browser_artifact_files(&dir);
+    let dir_guard = BenchTempDir::new("browser-action-plan-live-manifest-gateway");
+    let file_refs = bench_browser_artifact_files(dir_guard.path());
     let path_refs: Vec<_> = file_refs
         .iter()
         .map(|(kind, path)| {
@@ -2119,56 +2243,62 @@ fn bench_browser_action_plan_live_manifest_gateway_ingest(c: &mut Criterion) {
     assert!(manifest.binds_plan(&plan));
 
     c.bench_function("browser_action_plan_live_manifest_gateway_ingest", |b| {
-        b.iter(|| {
-            let mut ledger = RunEventLedger::new(black_box(run_id));
-            seed_bench_goal_intake(&mut ledger, "browser-action-plan-live-manifest-gateway");
-            ledger
-                .append_context_pack_built(
-                    black_box(11),
-                    black_box(128),
-                    bench_hash("plan-live-manifest-context-pack", 1),
-                )
-                .expect("context pack");
-            ledger
-                .append_llm_response_received(
-                    bench_hash("plan-live-manifest-llm-response", 1),
-                    bench_hash("plan-live-manifest-raw-text-ref", 1),
-                )
-                .expect("llm response");
-            let proof =
-                ToolExecutionGateway::execute_browser_action_plan_live_manifest_with_replay(
-                    black_box(&mut ledger),
-                    black_box(301),
-                    black_box(&ir),
-                    black_box(&manifest),
-                    black_box(&plan),
-                    black_box(policy_version_hash),
-                    black_box(true),
-                )
-                .expect("plan live-manifest browser gateway proof");
-            black_box((
-                proof.is_valid_for(
-                    run_id,
-                    &ir,
-                    policy_version_hash,
-                    policy_window_hash,
-                    browser_session_hash,
-                    redaction_policy_hash,
-                ),
-                ledger.last_hash(),
-                proof.browser_action_plan_hash,
-                proof.receipt.tool_execution_evidence.evidence_hash,
-                proof.packet.raw_artifact_manifest_hash,
-                manifest.manifest_hash,
-            ))
-        })
+        b.iter_batched(
+            || {
+                let mut ledger = RunEventLedger::new(run_id);
+                seed_bench_goal_intake(&mut ledger, "browser-action-plan-live-manifest-gateway");
+                ledger
+                    .append_context_pack_built(
+                        11,
+                        128,
+                        bench_hash("plan-live-manifest-context-pack", 1),
+                    )
+                    .expect("context pack");
+                ledger
+                    .append_llm_response_received(
+                        bench_hash("plan-live-manifest-llm-response", 1),
+                        bench_hash("plan-live-manifest-raw-text-ref", 1),
+                    )
+                    .expect("llm response");
+                ledger
+            },
+            |mut ledger| {
+                let proof =
+                    ToolExecutionGateway::execute_browser_action_plan_live_manifest_with_replay(
+                        black_box(&mut ledger),
+                        black_box(301),
+                        black_box(&ir),
+                        black_box(&manifest),
+                        black_box(&plan),
+                        black_box(policy_version_hash),
+                        black_box(true),
+                    )
+                    .expect("plan live-manifest browser gateway proof");
+                black_box((
+                    proof.is_valid_for(
+                        run_id,
+                        &ir,
+                        policy_version_hash,
+                        policy_window_hash,
+                        browser_session_hash,
+                        redaction_policy_hash,
+                    ),
+                    ledger.last_hash(),
+                    proof.browser_action_plan_hash,
+                    proof.receipt.tool_execution_evidence.evidence_hash,
+                    proof.packet.raw_artifact_manifest_hash,
+                    manifest.manifest_hash,
+                ))
+            },
+            BatchSize::SmallInput,
+        )
     });
 }
 
 fn bench_browser_action_plan_file_artifact_gateway_ingest(c: &mut Criterion) {
     let run_id = 20;
-    let dir = std::env::temp_dir().join("aegis-browser-action-plan-file-gateway-bench");
-    let file_refs = bench_browser_artifact_files(&dir);
+    let dir_guard = BenchTempDir::new("browser-action-plan-file-gateway");
+    let file_refs = bench_browser_artifact_files(dir_guard.path());
     let path_refs: Vec<_> = file_refs
         .iter()
         .map(|(kind, path)| {
@@ -2212,53 +2342,61 @@ fn bench_browser_action_plan_file_artifact_gateway_ingest(c: &mut Criterion) {
     );
     assert!(plan.is_valid());
 
+    let plan_collector_config_hash = bench_hash("plan-file-gateway-collector-config", 1);
+    let plan_collector_capability_hash = bench_hash("plan-file-gateway-collector-capability", 1);
     c.bench_function("browser_action_plan_file_artifact_gateway_ingest", |b| {
-        b.iter(|| {
-            let mut ledger = RunEventLedger::new(black_box(run_id));
-            seed_bench_goal_intake(&mut ledger, "browser-action-plan-file-gateway");
-            ledger
-                .append_context_pack_built(
-                    black_box(11),
-                    black_box(128),
-                    bench_hash("plan-file-gateway-context-pack", 1),
-                )
-                .expect("context pack");
-            ledger
-                .append_llm_response_received(
-                    bench_hash("plan-file-gateway-llm-response", 1),
-                    bench_hash("plan-file-gateway-raw-text-ref", 1),
-                )
-                .expect("llm response");
-            let proof =
-                ToolExecutionGateway::execute_browser_action_plan_file_path_refs_with_replay(
-                    black_box(&mut ledger),
-                    black_box(295),
-                    black_box(&ir),
-                    black_box(BrowserCollectorKind::PlaywrightCdp),
-                    black_box(&plan),
-                    black_box(1_786_300_260_000),
-                    black_box(bench_hash("plan-file-gateway-collector-config", 1)),
-                    black_box(bench_hash("plan-file-gateway-collector-capability", 1)),
-                    black_box(&path_refs),
-                    black_box(policy_version_hash),
-                    black_box(true),
-                )
-                .expect("plan-backed file browser gateway proof");
-            black_box((
-                proof.is_valid_for(
-                    run_id,
-                    &ir,
-                    policy_version_hash,
-                    policy_window_hash,
-                    browser_session_hash,
-                    redaction_policy_hash,
-                ),
-                ledger.last_hash(),
-                proof.browser_action_plan_hash,
-                proof.receipt.tool_execution_evidence.evidence_hash,
-                proof.packet.raw_artifact_manifest_hash,
-            ))
-        })
+        b.iter_batched(
+            || {
+                let mut ledger = RunEventLedger::new(run_id);
+                seed_bench_goal_intake(&mut ledger, "browser-action-plan-file-gateway");
+                ledger
+                    .append_context_pack_built(
+                        11,
+                        128,
+                        bench_hash("plan-file-gateway-context-pack", 1),
+                    )
+                    .expect("context pack");
+                ledger
+                    .append_llm_response_received(
+                        bench_hash("plan-file-gateway-llm-response", 1),
+                        bench_hash("plan-file-gateway-raw-text-ref", 1),
+                    )
+                    .expect("llm response");
+                ledger
+            },
+            |mut ledger| {
+                let proof =
+                    ToolExecutionGateway::execute_browser_action_plan_file_path_refs_with_replay(
+                        black_box(&mut ledger),
+                        black_box(295),
+                        black_box(&ir),
+                        black_box(BrowserCollectorKind::PlaywrightCdp),
+                        black_box(&plan),
+                        black_box(1_786_300_260_000),
+                        black_box(plan_collector_config_hash),
+                        black_box(plan_collector_capability_hash),
+                        black_box(&path_refs),
+                        black_box(policy_version_hash),
+                        black_box(true),
+                    )
+                    .expect("plan-backed file browser gateway proof");
+                black_box((
+                    proof.is_valid_for(
+                        run_id,
+                        &ir,
+                        policy_version_hash,
+                        policy_window_hash,
+                        browser_session_hash,
+                        redaction_policy_hash,
+                    ),
+                    ledger.last_hash(),
+                    proof.browser_action_plan_hash,
+                    proof.receipt.tool_execution_evidence.evidence_hash,
+                    proof.packet.raw_artifact_manifest_hash,
+                ))
+            },
+            BatchSize::SmallInput,
+        )
     });
 }
 
@@ -2272,6 +2410,15 @@ fn bench_browser_action_plan_bind_packet(c: &mut Criterion) {
     let url_before_hash = bench_hash("browser-plan-url-before", 1);
     let target_hash = bench_hash("browser-plan-target", 1);
     let url_after_hash = bench_hash("browser-plan-url-after", 1);
+    let dom_before_hash = bench_hash("browser-plan-dom-before", 1);
+    let dom_after_hash = bench_hash("browser-plan-dom-after", 1);
+    let screenshot_before_hash = bench_hash("browser-plan-screenshot-before", 1);
+    let screenshot_after_hash = bench_hash("browser-plan-screenshot-after", 1);
+    let ax_after_hash = bench_hash("browser-plan-ax-after", 1);
+    let network_hash = bench_hash("browser-plan-network", 1);
+    let collector_config_hash = bench_hash("browser-plan-collector-config", 1);
+    let collector_capability_hash = bench_hash("browser-plan-collector-capability", 1);
+    let manifest_hash = bench_hash("browser-plan-manifest", 1);
 
     c.bench_function("browser_action_plan_bind_packet", |b| {
         b.iter(|| {
@@ -2298,12 +2445,12 @@ fn bench_browser_action_plan_bind_packet(c: &mut Criterion) {
                 black_box(SideEffectClass::ExternalWrite),
                 black_box(url_before_hash),
                 black_box(url_after_hash),
-                black_box(bench_hash("browser-plan-dom-before", 1)),
-                black_box(bench_hash("browser-plan-dom-after", 1)),
-                black_box(bench_hash("browser-plan-screenshot-before", 1)),
-                black_box(bench_hash("browser-plan-screenshot-after", 1)),
-                black_box(bench_hash("browser-plan-ax-after", 1)),
-                black_box(bench_hash("browser-plan-network", 1)),
+                black_box(dom_before_hash),
+                black_box(dom_after_hash),
+                black_box(screenshot_before_hash),
+                black_box(screenshot_after_hash),
+                black_box(ax_after_hash),
+                black_box(network_hash),
                 black_box(action.trace_hash),
                 black_box(policy_window_hash),
                 black_box(browser_session_hash),
@@ -2313,9 +2460,9 @@ fn bench_browser_action_plan_bind_packet(c: &mut Criterion) {
                 black_box(BrowserCollectorKind::PlaywrightCdp),
                 black_box(plan.sequence_number),
                 black_box(1_786_300_250_000),
-                black_box(bench_hash("browser-plan-collector-config", 1)),
-                black_box(bench_hash("browser-plan-collector-capability", 1)),
-                black_box(bench_hash("browser-plan-manifest", 1)),
+                black_box(collector_config_hash),
+                black_box(collector_capability_hash),
+                black_box(manifest_hash),
                 black_box(action),
                 black_box(proof),
             );
@@ -2335,59 +2482,87 @@ fn bench_browser_artifact(kind: BrowserArtifactKind, label: &str) -> BrowserArti
 
 fn bench_browser_artifact_files(dir: &std::path::Path) -> Vec<(BrowserArtifactKind, PathBuf)> {
     std::fs::create_dir_all(dir).expect("browser artifact bench directory");
-    let files = vec![
+    let network_log = "[{\"url\":\"https://bench.local/api\",\"status\":200,\"bytes\":4096}]\n".repeat(64);
+    let dom_before = format!(
+        "<html><body><main data-aegis=\"before\">{}</main><button>go</button></body></html>",
+        "<section class=\"row\"><span>item</span></section>".repeat(80)
+    );
+    let dom_after = format!(
+        "<html><body><main data-aegis=\"after\">{}</main><button>done</button></body></html>",
+        "<section class=\"row\"><span>verified</span></section>".repeat(80)
+    );
+    let ax_after = format!(
+        "{{\"role\":\"document\",\"nodes\":[{}]}}",
+        (0..64)
+            .map(|i| format!("{{\"id\":{i},\"role\":\"button\",\"name\":\"action_{i}\"}}"))
+            .collect::<Vec<_>>()
+            .join(",")
+    );
+    let screenshot_before = vec![0x89u8; 8192];
+    let screenshot_after = vec![0xA5u8; 8192];
+    let files: Vec<(BrowserArtifactKind, &str, Vec<u8>)> = vec![
         (
             BrowserArtifactKind::NetworkLog,
             "network-log.jsonl",
-            b"[{\"url\":\"https://bench.local/api\",\"status\":200}]".as_slice(),
+            network_log.into_bytes(),
         ),
         (
             BrowserArtifactKind::ScreenshotAfter,
             "screenshot-after.png",
-            b"bench-png-after",
+            screenshot_after,
         ),
         (
             BrowserArtifactKind::UrlBefore,
             "url-before.txt",
-            b"https://bench.local/before",
+            b"https://bench.local/before".to_vec(),
         ),
         (
             BrowserArtifactKind::DomSnapshotAfter,
             "dom-after.html",
-            b"<html><button>done</button></html>",
+            dom_after.into_bytes(),
         ),
         (
             BrowserArtifactKind::AccessibilityTreeAfter,
             "accessibility-after.json",
-            b"{\"role\":\"button\",\"name\":\"done\"}",
+            ax_after.into_bytes(),
         ),
         (
             BrowserArtifactKind::UrlAfter,
             "url-after.txt",
-            b"https://bench.local/after",
+            b"https://bench.local/after".to_vec(),
         ),
         (
             BrowserArtifactKind::ScreenshotBefore,
             "screenshot-before.png",
-            b"bench-png-before",
+            screenshot_before,
         ),
         (
             BrowserArtifactKind::DomSnapshotBefore,
             "dom-before.html",
-            b"<html><button>go</button></html>",
+            dom_before.into_bytes(),
         ),
     ];
     files
         .into_iter()
         .map(|(kind, file_name, bytes)| {
             let path = dir.join(file_name);
-            std::fs::write(&path, bytes).expect("browser artifact bench write");
+            std::fs::write(&path, &bytes).expect("browser artifact bench write");
             (kind, path)
         })
         .collect()
 }
 
 fn bench_browser_live_collector_artifacts() -> Vec<BrowserLiveCollectorArtifact> {
+    let dom_before = format!(
+        "<html><body><main>{}</main><button>go</button></body></html>",
+        "<div class=\"item\">pending</div>".repeat(120)
+    );
+    let dom_after = format!(
+        "<html><body><main>{}</main><button>done</button></body></html>",
+        "<div class=\"item\">done</div>".repeat(120)
+    );
+    let ax_after = "{\"role\":\"button\",\"name\":\"done\"}\n".repeat(128);
+    let net_log = "{\"url\":\"https://bench.local/api\",\"status\":200}\n".repeat(96);
     vec![
         BrowserLiveCollectorArtifact::new(
             BrowserArtifactKind::UrlBefore,
@@ -2399,21 +2574,21 @@ fn bench_browser_live_collector_artifacts() -> Vec<BrowserLiveCollectorArtifact>
         ),
         BrowserLiveCollectorArtifact::new(
             BrowserArtifactKind::DomSnapshotBefore,
-            b"<html><button>go</button></html>".to_vec(),
+            dom_before.into_bytes(),
         ),
         BrowserLiveCollectorArtifact::new(
             BrowserArtifactKind::DomSnapshotAfter,
-            b"<html><button>done</button></html>".to_vec(),
+            dom_after.into_bytes(),
         ),
-        BrowserLiveCollectorArtifact::new(BrowserArtifactKind::ScreenshotBefore, vec![3u8; 4096]),
-        BrowserLiveCollectorArtifact::new(BrowserArtifactKind::ScreenshotAfter, vec![5u8; 4096]),
+        BrowserLiveCollectorArtifact::new(BrowserArtifactKind::ScreenshotBefore, vec![3u8; 8192]),
+        BrowserLiveCollectorArtifact::new(BrowserArtifactKind::ScreenshotAfter, vec![5u8; 8192]),
         BrowserLiveCollectorArtifact::new(
             BrowserArtifactKind::AccessibilityTreeAfter,
-            b"{\"role\":\"button\",\"name\":\"done\"}".to_vec(),
+            ax_after.into_bytes(),
         ),
         BrowserLiveCollectorArtifact::new(
             BrowserArtifactKind::NetworkLog,
-            b"[{\"url\":\"https://bench.local/api\",\"status\":200}]".to_vec(),
+            net_log.into_bytes(),
         ),
     ]
 }
@@ -2455,52 +2630,46 @@ fn bench_policy_datalog_closure_proof(c: &mut Criterion) {
 }
 
 fn bench_replay_io_binary_mmap_fixed(c: &mut Criterion) {
-    let path = std::env::current_dir()
-        .expect("bench current dir")
-        .join("target")
-        .join("aegis-bench-artifacts")
-        .join("replay-io-binary-fixed")
-        .join("run-events.bin");
+    let dir_guard = BenchTempDir::new("replay-io-binary-fixed");
+    let path = dir_guard.path().join("run-events.bin");
     let ledger = replay_io_bench_ledger(64);
     let payload_hash =
         BinaryRunEventSegment::write_ledger(&path, &ledger).expect("binary bench ledger");
 
     c.bench_function("replay_io_binary_mmap_fixed", |b| {
         b.iter(|| {
-            let recovered = BinaryRunEventSegment::read_ledger_mmap(&path, payload_hash)
-                .expect("binary mmap replay readback");
+            let recovered = BinaryRunEventSegment::read_ledger_mmap(
+                black_box(&path),
+                black_box(payload_hash),
+            )
+            .expect("binary mmap replay readback");
             black_box((recovered.len(), BinaryRunEventSegment::record_bytes()))
         })
     });
 }
 
 fn bench_replay_io_binary_mmap_verify(c: &mut Criterion) {
-    let path = std::env::current_dir()
-        .expect("bench current dir")
-        .join("target")
-        .join("aegis-bench-artifacts")
-        .join("replay-io-binary-verify")
-        .join("run-events.bin");
+    let dir_guard = BenchTempDir::new("replay-io-binary-verify");
+    let path = dir_guard.path().join("run-events.bin");
     let ledger = replay_io_bench_ledger(64);
     let payload_hash =
         BinaryRunEventSegment::write_ledger(&path, &ledger).expect("binary bench ledger");
 
     c.bench_function("replay_io_binary_mmap_verify", |b| {
         b.iter(|| {
-            let report = BinaryRunEventSegment::verify_mmap(&path, payload_hash)
-                .expect("binary mmap replay scan");
+            let report = BinaryRunEventSegment::verify_mmap(
+                black_box(&path),
+                black_box(payload_hash),
+            )
+            .expect("binary mmap replay scan");
             black_box((report.event_count, report.last_event_hash))
         })
     });
 }
 
 fn bench_replay_io_binary_mmap_recover_prefix(c: &mut Criterion) {
-    let path = std::env::current_dir()
-        .expect("bench current dir")
-        .join("target")
-        .join("aegis-bench-artifacts")
-        .join("replay-io-binary-recover-prefix")
-        .join("run-events-damaged-tail.bin");
+    let dir_guard = BenchTempDir::new("replay-io-binary-recover-prefix");
+    let path = dir_guard.path().join("run-events-damaged-tail.bin");
     let ledger = replay_io_bench_ledger(64);
     BinaryRunEventSegment::write_ledger(&path, &ledger).expect("binary recovery bench ledger");
     let file_len = std::fs::metadata(&path)
@@ -2516,7 +2685,7 @@ fn bench_replay_io_binary_mmap_recover_prefix(c: &mut Criterion) {
 
     c.bench_function("replay_io_binary_mmap_recover_prefix", |b| {
         b.iter(|| {
-            let report = BinaryRunEventSegment::recover_last_valid_prefix_mmap(&path)
+            let report = BinaryRunEventSegment::recover_last_valid_prefix_mmap(black_box(&path))
                 .expect("binary mmap prefix recovery");
             black_box((
                 report.declared_event_count,
@@ -2528,13 +2697,8 @@ fn bench_replay_io_binary_mmap_recover_prefix(c: &mut Criterion) {
 }
 
 fn bench_replay_endurance_report_verify_100h(c: &mut Criterion) {
-    let dir = std::env::current_dir()
-        .expect("bench current dir")
-        .join("target")
-        .join("aegis-bench-artifacts")
-        .join("replay-endurance-proof-100h");
-    let _ = std::fs::remove_dir_all(&dir);
-    let report = ReplayEnduranceBench::run_accelerated_100h_proof(&dir)
+    let dir_guard = BenchTempDir::new("replay-endurance-proof-100h");
+    let report = ReplayEnduranceBench::run_accelerated_100h_proof(dir_guard.path())
         .expect("accelerated 100h replay proof bench report");
 
     c.bench_function("replay_endurance_report_verify_100h", |b| {
@@ -2589,8 +2753,9 @@ fn bench_context_fold_record(c: &mut Criterion) {
 // -----------------------------------------------------------------------------
 
 fn plateau_context_bench_governor(global_nodes: u128) -> ContextGovernor {
-    // Fan-out: active task 1 → 16 evidence → 32 second-hop evidence (≈49 in-pack).
-    // Everything else is distractor (no edge back to the active task subgraph).
+    // Connected hub-and-spoke + skip-link Zipfian graph across all N nodes.
+    // Token-budget plateau must hold through bounded BFS activation + pruning
+    // rather than an artificially disconnected distractor island.
     let mut governor =
         ContextGovernor::new(ContextGovernorConfig::bounded(4_096, 256)).expect("context governor");
 
@@ -2604,37 +2769,46 @@ fn plateau_context_bench_governor(global_nodes: u128) -> ContextGovernor {
         } else {
             ContextNodeKind::File
         };
+        let utility = if node_id <= 49 {
+            9_000 + ((node_id * 19) % 1_000) as u32
+        } else {
+            1 + (4_000 / ((node_id % 256) as u32 + 1))
+        };
         let node = ContextNode::new(
             node_id,
             kind,
             16 + (node_id % 32) as u32,
-            ((node_id * 37) % 10_000) as u32 + 1,
+            utility,
             ((node_id * 17) % 512) as u32,
             ((node_id * 7) % 31) as u32,
         );
         governor.insert_node(node).expect("context node");
 
-        if node_id < 17 {
+        if node_id > 1 && node_id <= 17 {
             governor.add_edge(1, node_id).expect("first-hop edge");
         }
-        if node_id >= 17 && node_id < 49 {
-            // first-hop evidence (node_id - 16) → second-hop evidence node_id
+        if (18..=49).contains(&node_id) {
             governor
                 .add_edge(node_id - 16, node_id)
                 .expect("second-hop edge");
         }
-        // Distractor chain: link on a second pass — see bottom of helper — to
-        // guarantee both endpoints exist. We mark candidate endpoints here.
     }
-    // Second pass: every 1000th node links to its successor to grow the edge
-    // set without ever escaping the distractor frontier (none of these nodes
-    // have an edge back to 1..49).
-    let mut node_id = 1_000u128;
-    while node_id + 1 <= global_nodes {
+    for node_id in 50..=global_nodes {
+        let parent_hub = 18 + (node_id % 32);
         governor
-            .add_edge(node_id, node_id + 1)
-            .expect("distractor edge");
-        node_id += 1_000;
+            .add_edge(parent_hub, node_id)
+            .expect("connected hub backbone edge");
+        if node_id + 1 <= global_nodes {
+            governor
+                .add_edge(node_id, node_id + 1)
+                .expect("connected ring edge");
+        }
+        let skip_target = ((node_id.wrapping_mul(37)) % global_nodes) + 1;
+        if skip_target != node_id {
+            governor
+                .add_edge(node_id, skip_target)
+                .expect("zipf skip edge");
+        }
     }
     governor
 }
@@ -2985,6 +3159,9 @@ fn bench_agentic_evidence_sdk_run_handoff_seal(c: &mut Criterion) {
     )
     .expect("agentic evidence sdk run handoff fixture");
 
+    let sdk_ir_hash = bench_hash("sdk-run-handoff-typed-tool-ir", 1);
+    let sdk_contract_hash = bench_hash("sdk-run-handoff-evidence-contract", 1);
+    let sdk_policy_hash = bench_hash("sdk-run-handoff-policy-proof", 1);
     c.bench_function("agentic_evidence_sdk_run_handoff_seal", |b| {
         b.iter_batched(
             || {
@@ -2996,18 +3173,15 @@ fn bench_agentic_evidence_sdk_run_handoff_seal(c: &mut Criterion) {
                 ledger
                     .append_agentic_evidence_sdk_run_recorded(191, &program, &run)
                     .expect("agentic sdk run handoff replay event");
-                let dir = std::env::temp_dir()
-                    .join("aegis-criterion")
-                    .join("agentic-evidence-sdk-run-handoff");
-                let _ = std::fs::remove_dir_all(&dir);
-                let manifest = RunEventSegmentArchive::write_ledger(&dir, 2, &ledger)
+                let dir_guard = BenchTempDir::new("agentic-evidence-sdk-run-handoff");
+                let manifest = RunEventSegmentArchive::write_ledger(dir_guard.path(), 2, &ledger)
                     .expect("agentic sdk run handoff archive");
-                (dir, manifest)
+                (dir_guard, manifest)
             },
-            |(dir, manifest)| {
+            |(dir_guard, manifest)| {
                 let handoff: AgenticEvidenceSdkRunHandoffProof =
                     RunEventSegmentArchive::seal_agentic_evidence_sdk_run_handoff(
-                        black_box(&dir),
+                        black_box(dir_guard.path()),
                         black_box(&manifest),
                         black_box(191),
                         black_box(&program),
@@ -3016,9 +3190,9 @@ fn bench_agentic_evidence_sdk_run_handoff_seal(c: &mut Criterion) {
                         black_box(1_931),
                         black_box(NextActionKind::ContinueExecution),
                         black_box(1_932),
-                        black_box(bench_hash("sdk-run-handoff-typed-tool-ir", 1)),
-                        black_box(bench_hash("sdk-run-handoff-evidence-contract", 1)),
-                        black_box(bench_hash("sdk-run-handoff-policy-proof", 1)),
+                        black_box(sdk_ir_hash),
+                        black_box(sdk_contract_hash),
+                        black_box(sdk_policy_hash),
                     )
                     .expect("agentic sdk run handoff seal");
                 black_box(handoff.handoff_hash)
@@ -3047,14 +3221,11 @@ fn bench_agentic_evidence_sdk_run_handoff_context_pack(c: &mut Criterion) {
     ledger
         .append_agentic_evidence_sdk_run_recorded(191, &program, &run)
         .expect("agentic sdk run context replay event");
-    let dir = std::env::temp_dir()
-        .join("aegis-criterion")
-        .join("agentic-evidence-sdk-run-context");
-    let _ = std::fs::remove_dir_all(&dir);
-    let manifest = RunEventSegmentArchive::write_ledger(&dir, 2, &ledger)
+    let dir_guard = BenchTempDir::new("agentic-evidence-sdk-run-context");
+    let manifest = RunEventSegmentArchive::write_ledger(dir_guard.path(), 2, &ledger)
         .expect("agentic sdk context archive");
     let handoff = RunEventSegmentArchive::seal_agentic_evidence_sdk_run_handoff(
-        &dir,
+        dir_guard.path(),
         &manifest,
         191,
         &program,
@@ -3243,14 +3414,16 @@ fn bench_cold_vector_expansion_replay_record(c: &mut Criterion) {
         })
         .collect();
 
+    let cold_vector_config_hash = bench_hash("cold-vector-config", 0);
+    let cold_vector_artifact_hash = bench_hash("cold-vector-artifact", 0);
     c.bench_function("cold_vector_expansion_replay_record", |b| {
         b.iter(|| {
             let record = ColdVectorExpansionReplayRecord::new(
                 index_epoch_hash,
                 black_box(&query_terms),
                 black_box(8),
-                black_box(bench_hash("cold-vector-config", 0)),
-                black_box(bench_hash("cold-vector-artifact", 0)),
+                black_box(cold_vector_config_hash),
+                black_box(cold_vector_artifact_hash),
                 black_box(88_000),
                 black_box(&candidates),
             )
@@ -3261,8 +3434,8 @@ fn bench_cold_vector_expansion_replay_record(c: &mut Criterion) {
 }
 
 fn bench_cold_vector_index_query(c: &mut Criterion) {
-    let index = cold_vector_bench_index(4096, 32);
-    let query: Vec<i16> = (0..32).map(|dim| ((dim * 13 + 7) % 127) as i16).collect();
+    let index = cold_vector_bench_index(4096, 1536);
+    let query: Vec<i16> = (0..1536).map(|dim| ((dim * 13 + 7) % 127) as i16).collect();
     let mut scratch = index.query_scratch();
 
     c.bench_function("cold_vector_index_query", |b| {
@@ -3312,21 +3485,24 @@ fn bench_hot_term_dictionary_prefix_expand(c: &mut Criterion) {
 
 fn bench_runtime_latest_summary(c: &mut Criterion) {
     c.bench_function("runtime_latest_summary", |b| {
-        b.iter(|| {
-            let mut runtime = NerveRuntime::new();
-            let message = MessageFrame::with_identity(1, 2, vec![1, 2, 3, 4]);
-            let _ = runtime.ingest_message(message);
-            black_box(runtime.latest_session_summary())
-        })
+        b.iter_batched(
+            || {
+                let mut runtime = NerveRuntime::new();
+                runtime
+                    .ingest_message(MessageFrame::with_identity(1, 2, vec![1, 2, 3, 4]))
+                    .expect("runtime latest summary setup ingest");
+                runtime
+            },
+            |runtime| black_box(runtime.latest_session_summary()),
+            BatchSize::SmallInput,
+        )
     });
 }
 
 fn bench_runtime_is_ready(c: &mut Criterion) {
+    let runtime = NerveRuntime::new();
     c.bench_function("runtime_is_ready", |b| {
-        b.iter(|| {
-            let runtime = NerveRuntime::new();
-            black_box(runtime.is_ready())
-        })
+        b.iter(|| black_box(black_box(&runtime).is_ready()))
     });
 }
 
@@ -3344,7 +3520,7 @@ fn bench_generational_slab_get_hot(c: &mut Criterion) {
 
     c.bench_function("generational_slab_get_hot", |b| {
         b.iter(|| {
-            cursor = (cursor + 1) & 0x1fff;
+            cursor = (cursor.wrapping_mul(2_053).wrapping_add(1_384)) & 0x1fff;
             black_box(slab.get(black_box(slots[cursor])).map(String::as_str))
         })
     });
@@ -3427,15 +3603,10 @@ fn bench_replay_determinism_from_ledger(
     ledger: &RunEventLedger,
     label: &str,
 ) -> ReplayDeterminismProof {
-    let dir = std::env::current_dir()
-        .expect("bench current dir")
-        .join("target")
-        .join("aegis-bench-artifacts")
-        .join(format!("replay-determinism-{label}"));
-    let _ = std::fs::remove_dir_all(&dir);
-    let manifest =
-        RunEventSegmentArchive::write_ledger(&dir, 8, ledger).expect("bench replay proof ledger");
-    RunEventSegmentArchive::prove_replay_determinism(&dir, &manifest)
+    let dir_guard = BenchTempDir::new(&format!("replay-determinism-{label}"));
+    let manifest = RunEventSegmentArchive::write_ledger(dir_guard.path(), 8, ledger)
+        .expect("bench replay proof ledger");
+    RunEventSegmentArchive::prove_replay_determinism(dir_guard.path(), &manifest)
         .expect("bench replay determinism proof")
 }
 
@@ -3560,7 +3731,15 @@ fn agentic_evidence_sdk_small_bench_fixture(
         .insert_document(
             bench_hash(label, 10),
             27,
-            &["browser", "policy", "replay", "witness"],
+            &[
+                "handoffanchor",
+                "handoffanchor",
+                "handoffanchor",
+                "browser",
+                "policy",
+                "replay",
+                "witness",
+            ],
         )
         .expect("agentic sdk small lexical insert");
     lexical
@@ -3573,7 +3752,7 @@ fn agentic_evidence_sdk_small_bench_fixture(
             27,
             bench_hash(label, 12),
             bench_hash(label, 13),
-            "browser policy replay witness DOM screenshot artifact",
+            "handoffanchor browser policy replay witness DOM screenshot artifact",
         )
         .expect("agentic sdk small exact insert");
     exact
@@ -3585,19 +3764,38 @@ fn agentic_evidence_sdk_small_bench_fixture(
             "wasmtime fuel policy",
         )
         .expect("agentic sdk small exact insert");
+    // Scale corpus to 512 Zipfian workspace docs so small fixture still exercises non-trivial posting lists.
+    for doc in 32u32..542 {
+        let terms = zipf_corpus_terms(doc as usize, 8);
+        let seg_id = doc as u64 + 100;
+        let doc_hash = bench_hash(label, doc + 100);
+        lexical
+            .insert_document(doc_hash, seg_id, &terms)
+            .expect("agentic sdk scaled lexical insert");
+        let snippet = terms.join(" ");
+        exact
+            .insert_artifact_document(
+                doc_hash,
+                seg_id,
+                bench_hash(label, doc + 1_000),
+                bench_hash(label, doc + 2_000),
+                &snippet,
+            )
+            .expect("agentic sdk scaled exact insert");
+    }
     let bitmap_filter =
-        HotBitmapFilter::new(epoch_hash, SortedEvidenceSet::from_unsorted(vec![27]))
+        HotBitmapFilter::new(epoch_hash, SortedEvidenceSet::from_unsorted(vec![27, 132, 196, 260, 324]))
             .expect("agentic sdk small bitmap");
     let program = AgenticEvidenceProgram::new(
         epoch_hash,
         64,
         vec![
-            AgenticEvidenceProgramStep::lexical_top_k(&["policy", "replay", "witness"], 8),
+            AgenticEvidenceProgramStep::lexical_top_k(&["handoffanchor", "policy", "replay"], 16),
             AgenticEvidenceProgramStep::exact_artifact_rerank(
-                &["browser", "witness", "artifact"],
-                4,
+                &["handoffanchor", "browser", "witness", "artifact"],
+                8,
             ),
-            AgenticEvidenceProgramStep::bitmap_filter(2),
+            AgenticEvidenceProgramStep::bitmap_filter(4),
         ],
     )
     .expect("agentic evidence sdk small bench program");
@@ -3716,7 +3914,11 @@ fn context_bench_governor(global_nodes: u128, active_fanout: u128) -> ContextGov
         } else {
             ContextNodeKind::File
         };
-        let utility = ((node_id * 37) % 10_000) as u32 + 1;
+        let utility = if node_id <= active_fanout * 2 + 2 {
+            9_000 + ((node_id * 17) % 1_000) as u32
+        } else {
+            1 + (3_000 / ((node_id % 256) as u32 + 1))
+        };
         let coverage = ((node_id * 17) % 512) as u32;
         let contradiction = ((node_id * 7) % 31) as u32;
         governor
@@ -3739,11 +3941,16 @@ fn context_bench_governor(global_nodes: u128, active_fanout: u128) -> ContextGov
             .expect("second-hop edge");
     }
 
-    for node_id in (active_fanout * 3)..global_nodes {
-        if node_id < global_nodes {
+    let first_bg = active_fanout * 2 + 2;
+    for node_id in first_bg..=global_nodes {
+        let hub = active_fanout + 2 + (node_id % active_fanout);
+        governor
+            .add_edge(hub, node_id)
+            .expect("connected Zipf hub edge");
+        if node_id + 1 <= global_nodes {
             governor
                 .add_edge(node_id, node_id + 1)
-                .expect("global distractor edge");
+                .expect("global backbone edge");
         }
     }
 
@@ -3758,17 +3965,25 @@ fn task_ledger_bench_tree(task_count: u128) -> TaskLedger {
         } else {
             vec![task_id / 2]
         };
+        let priority = ((task_id.wrapping_mul(6_364_136_223_846_793_005)) >> 60) as u32 % 8;
+        let deadline_jitter =
+            ((task_id.wrapping_mul(2_862_933_555_777_941_757)) >> 50) as u64;
+        let token_cost = (((task_id.wrapping_mul(1_103_515_245)) >> 16) % 97) as i64;
         ledger
             .insert_task(TaskCard::new(
                 task_id,
                 dependencies,
-                (task_id % 8) as u32,
-                Some(120_000 + task_id as u64),
-                Some((task_id % 97) as i64),
+                priority,
+                Some(120_000 + deadline_jitter),
+                Some(token_cost),
             ))
             .expect("bench task");
     }
-    ledger.complete_task(1).expect("root task status");
+    // Complete upper 511 internal tree nodes so tasks 512..=1023 form a 512-task simultaneous Ready frontier.
+    let complete_upto = 511u128.min(task_count / 2);
+    for tid in 1..=complete_upto {
+        ledger.complete_task(tid).expect("bench ancestor task status");
+    }
     ledger
 }
 
@@ -3781,33 +3996,8 @@ fn hot_lexical_bench_index_with_epoch(
     doc_count: u32,
 ) -> HotLexicalIndex {
     let mut index = HotLexicalIndex::new(index_epoch_hash).expect("hot lexical bench index");
-    let term_pool = [
-        "rust",
-        "wasm",
-        "witness",
-        "policy",
-        "segment",
-        "replay",
-        "context",
-        "browser",
-        "sandbox",
-        "approval",
-        "arrow",
-        "ledger",
-        "quickjs",
-        "candidate",
-        "index",
-        "epoch",
-    ];
     for doc_id in 0..doc_count {
-        let base = doc_id as usize;
-        let terms = [
-            term_pool[base % term_pool.len()],
-            term_pool[(base + 3) % term_pool.len()],
-            term_pool[(base + 5) % term_pool.len()],
-            term_pool[(base + 8) % term_pool.len()],
-            term_pool[(base + 13) % term_pool.len()],
-        ];
+        let terms = zipf_corpus_terms(doc_id as usize, 12);
         index
             .insert_document(bench_hash("lexical-doc", doc_id), doc_id as u64 + 1, &terms)
             .expect("bench lexical document");
@@ -3824,33 +4014,11 @@ fn hot_evidence_bench_index_with_epoch(
     doc_count: u32,
 ) -> HotEvidenceIndex {
     let mut index = HotEvidenceIndex::new(index_epoch_hash).expect("hot evidence bench index");
-    let term_pool = [
-        "rust",
-        "wasm",
-        "witness",
-        "policy",
-        "segment",
-        "replay",
-        "context",
-        "browser",
-        "sandbox",
-        "approval",
-        "arrow",
-        "ledger",
-        "quickjs",
-        "candidate",
-        "index",
-        "epoch",
-    ];
     for doc_id in 0..doc_count {
-        let base = doc_id as usize;
+        let terms = zipf_corpus_terms(doc_id as usize, 12);
         let document_text = format!(
-            "{} {} {} {} {} artifact_{} ast_signature_{}",
-            term_pool[base % term_pool.len()],
-            term_pool[(base + 3) % term_pool.len()],
-            term_pool[(base + 5) % term_pool.len()],
-            term_pool[(base + 8) % term_pool.len()],
-            term_pool[(base + 13) % term_pool.len()],
+            "{} artifact_{} ast_signature_{}",
+            terms.join(" "),
             doc_id,
             doc_id % 257,
         );
@@ -3871,13 +4039,13 @@ fn hot_bitmap_bench_sets(
     max_segment_id: u64,
 ) -> (SortedEvidenceSet, SortedEvidenceSet, SortedEvidenceSet) {
     let active_run: Vec<u64> = (1..=max_segment_id)
-        .filter(|segment_id| segment_id % 2 == 0)
+        .filter(|id| (id % 64) < 28 || (id % 257) == 0)
         .collect();
     let risk_allowed: Vec<u64> = (1..=max_segment_id)
-        .filter(|segment_id| segment_id % 3 != 0)
+        .filter(|id| (id.wrapping_mul(17) % 97) < 62)
         .collect();
     let has_evidence_ref: Vec<u64> = (1..=max_segment_id)
-        .filter(|segment_id| segment_id % 5 != 0 && segment_id % 7 != 0)
+        .filter(|id| (id % 31) != 0 && (id % 128) < 96)
         .collect();
     (
         SortedEvidenceSet::from_unsorted(active_run),
@@ -3924,22 +4092,26 @@ fn bench_cluster_work_envelope(c: &mut Criterion) {
     let evidence_contract_hash = bench_hash("cluster-envelope-contract", 0);
     let policy_window_hash = bench_hash("cluster-envelope-policy", 0);
     c.bench_function("cluster_work_envelope", |b| {
-        b.iter(|| {
-            let envelope = ClusterWorkEnvelope::new(
-                black_box(910),
-                black_box(1200),
-                black_box(3400),
-                black_box(WorkerRole::BrowserWitness),
-                black_box(1),
-                black_box(vec![input_hash]),
-                black_box(evidence_contract_hash),
-                black_box(policy_window_hash),
-                black_box(aegis_nerve::policy::SideEffectClass::ExternalRead),
-                black_box(10_000),
-            )
-            .expect("cluster work envelope");
-            black_box((envelope.is_valid(), envelope.envelope_hash))
-        })
+        b.iter_batched(
+            || vec![input_hash],
+            |inputs| {
+                let envelope = ClusterWorkEnvelope::new(
+                    black_box(910),
+                    black_box(1200),
+                    black_box(3400),
+                    black_box(WorkerRole::BrowserWitness),
+                    black_box(1),
+                    black_box(inputs),
+                    black_box(evidence_contract_hash),
+                    black_box(policy_window_hash),
+                    black_box(aegis_nerve::policy::SideEffectClass::ExternalRead),
+                    black_box(10_000),
+                )
+                .expect("cluster work envelope");
+                black_box((envelope.is_valid(), envelope.envelope_hash))
+            },
+            BatchSize::SmallInput,
+        )
     });
 }
 
@@ -4042,13 +4214,13 @@ fn bench_memory_periodic_nudge(c: &mut Criterion) {
 
     c.bench_function("memory_periodic_nudge_filter_hash_32", |b| {
         b.iter_batched(
-            LearningLedger::new,
-            |mut ledger| {
+            || (LearningLedger::new(), raw32.clone()),
+            |(mut ledger, candidates)| {
                 let r = system
                     .periodic_nudge(
                         black_box(0xABCD_EF01_2345_6789),
                         black_box(7_777_777),
-                        black_box(raw32.clone()),
+                        black_box(candidates),
                         black_box(&mut ledger),
                         black_box(None),
                     )
@@ -4061,13 +4233,13 @@ fn bench_memory_periodic_nudge(c: &mut Criterion) {
 
     c.bench_function("memory_periodic_nudge_filter_hash_256", |b| {
         b.iter_batched(
-            LearningLedger::new,
-            |mut ledger| {
+            || (LearningLedger::new(), raw256.clone()),
+            |(mut ledger, candidates)| {
                 let r = system
                     .periodic_nudge(
                         black_box(0xDEAD_BEEF_CAFE_F00D),
                         black_box(8_888_888),
-                        black_box(raw256.clone()),
+                        black_box(candidates),
                         black_box(&mut ledger),
                         black_box(None),
                     )
@@ -4124,13 +4296,10 @@ fn make_passing_regression_report() -> SkillRegressionReport {
 }
 
 fn bench_skill_self_improvement(c: &mut Criterion) {
-    // Excuse-path benchmark: usage_count below the InsufficientUsage threshold
-    // of 10 rejects immediately. Measures gate-check overhead without paying
-    // for the WASM hashing + regression-report verification path.
     let low_usage = SkillUsageStats::new(3, 0.95);
     let (manifest, admission, report) = skill_admission_bench_fixture();
-    let wasm: Vec<u8> = vec![0x00, 0x61, 0x73, 0x6D, 0x01, 0x00, 0x00, 0x00];
-    let rejection_report = make_passing_regression_report();
+    let wasm = wasmtime_cached_bench_wasm();
+    let passing_report = make_passing_regression_report();
 
     c.bench_function(
         "skill_improve_skill_from_usage_insufficient_usage_gate",
@@ -4146,26 +4315,26 @@ fn bench_skill_self_improvement(c: &mut Criterion) {
                     (registry, ledger, seed_id)
                 },
                 |(mut registry, mut ledger, skill_id)| {
-                    let r = registry.improve_skill_from_usage(
-                        black_box(skill_id),
-                        black_box(&low_usage),
-                        black_box(&wasm),
-                        black_box(&rejection_report),
-                        black_box(&mut ledger),
-                        black_box(None),
-                    );
-                    black_box(r.err().map(|e| format!("{:?}", e)).unwrap_or_default());
+                    let err = registry
+                        .improve_skill_from_usage(
+                            black_box(skill_id),
+                            black_box(&low_usage),
+                            black_box(&wasm),
+                            black_box(&passing_report),
+                            black_box(&mut ledger),
+                            black_box(None),
+                        )
+                        .expect_err("low usage must fail insufficient-usage gate");
+                    black_box(matches!(
+                        err,
+                        aegis_nerve::skill_registry::SkillAdmissionError::InsufficientUsage
+                    ));
                 },
                 BatchSize::SmallInput,
             )
         },
     );
 
-    // Happy-path overhead: pre-warm a registry that contains a single
-    // admitted skill, then measure the deterministic per-call cost paid by
-    // `improve_skill_from_usage` once all gates pass.
-    // The bench exercises InsufficientUsage + RegressionFailed + look-up
-    // paths that sit in front of the BLAKE3 WASM-hash land.
     let adequate = SkillUsageStats::new(50, 0.95);
     c.bench_function("skill_improve_skill_from_usage_happy_path", |b| {
         b.iter_batched(
@@ -4179,31 +4348,27 @@ fn bench_skill_self_improvement(c: &mut Criterion) {
                 (registry, ledger, skill_id)
             },
             |(mut registry, mut ledger, skill_id)| {
-                let r = registry.improve_skill_from_usage(
-                    black_box(skill_id),
-                    black_box(&adequate),
-                    black_box(&wasm),
-                    black_box(&rejection_report),
-                    black_box(&mut ledger),
-                    black_box(None),
-                );
-                // Successful path returns Ok(SkillImprovementRecord); Err path
-                // returns the gate-rejection enum. Either is valid input for
-                // black_box — we just want the compiler to keep the call.
-                black_box(
-                    r.err()
-                        .map(|e| format!("{:?}", e))
-                        .unwrap_or_default()
-                        .len(),
-                );
+                let improved = registry
+                    .improve_skill_from_usage(
+                        black_box(skill_id),
+                        black_box(&adequate),
+                        black_box(&wasm),
+                        black_box(&passing_report),
+                        black_box(&mut ledger),
+                        black_box(None),
+                    )
+                    .expect("admitted skill improvement happy path must succeed");
+                black_box((improved.improvement_hash, ledger.len()));
             },
             BatchSize::SmallInput,
         )
     });
 }
 
-criterion_group!(
-    benches,
+criterion_group! {
+    name = benches;
+    config = phase0_criterion_config();
+    targets =
     bench_descriptor_validation,
     bench_goal_intake_classify_packet,
     bench_layout_validation,
@@ -4286,5 +4451,5 @@ criterion_group!(
     bench_single_writer_cluster_commit,
     bench_memory_periodic_nudge,
     bench_skill_self_improvement
-);
+}
 criterion_main!(benches);

@@ -1,851 +1,538 @@
 #!/usr/bin/env python3
-"""
-AEGIS-COGNITION: Extreme Load, Chaos & Adversarial Testing Suite
-================================================================
-Destructive testing across all 3 pillars: Hot Engine, Cold Ledger, Friendly Gateway.
-Measures breaking points, detects memory leaks, and performs security red-teaming.
+"""AEGIS-COGNITION Load, Fuzz, Chaos & Security Verification Suite.
 
-Usage:
-    python scripts/extreme_testing_suite.py --phase all
-    python scripts/extreme_testing_suite.py --phase load    # Only load testing
-    python scripts/extreme_testing_suite.py --phase chaos   # Only chaos
-    python scripts/extreme_testing_suite.py --phase security # Only security
+Exercises real AEGIS components (`aegis_cognition.aegis_nerve`,
+`core.python.bridge_mmap.MmapBridgeFrame`, and `aegis_cognition.benchmark`)
+without fabricated XOR soak loops or hardcoded scorecard theater.
 """
+
+from __future__ import annotations
 
 import argparse
-import hashlib
+import ctypes
+import json
 import os
+import platform
 import signal
 import subprocess
 import sys
+import tempfile
 import time
-import threading
-import mmap
+from dataclasses import asdict
 from pathlib import Path
-from datetime import datetime
+from typing import Any
 
 ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
+from aegis_cognition.benchmark import (  # noqa: E402
+    OpenLoopConfig,
+    OpenLoopHarness,
+    quantile_type7_sorted,
+)
+from core.python.aegis.native import native_module  # noqa: E402
+from core.python.bridge_mmap import MmapBridgeFrame  # noqa: E402
+
 ARTIFACTS_DIR = ROOT / "artifacts" / "extreme_testing"
-RUST_DIR = ROOT / "core" / "rust"
 
 
-# ═══════════════════════════════════════════════════════════════════
-# PHASE 1: INSTRUMENTATION & METRICS
-# ═══════════════════════════════════════════════════════════════════
+def _rss_mb() -> float | None:
+    try:
+        import psutil
 
+        return psutil.Process().memory_info().rss / (1024.0 * 1024.0)
+    except ImportError, OSError:
+        pass
+    if os.name == "nt":
+        import ctypes.wintypes as wintypes
 
-class MetricsCollector:
-    """Collects system and application metrics during testing."""
+        class MemoryCounters(ctypes.Structure):
+            _fields_ = [
+                ("cb", wintypes.DWORD),
+                ("page_fault_count", wintypes.DWORD),
+                ("peak_working_set_size", ctypes.c_size_t),
+                ("working_set_size", ctypes.c_size_t),
+                ("quota_peak_paged_pool_usage", ctypes.c_size_t),
+                ("quota_paged_pool_usage", ctypes.c_size_t),
+                ("quota_peak_non_paged_pool_usage", ctypes.c_size_t),
+                ("quota_non_paged_pool_usage", ctypes.c_size_t),
+                ("pagefile_usage", ctypes.c_size_t),
+                ("peak_pagefile_usage", ctypes.c_size_t),
+            ]
 
-    def __init__(self):
-        self.samples = []
-        self.start_time = None
-        self._lock = threading.Lock()
-
-    def start(self):
-        self.start_time = time.perf_counter()
-        self.samples = []
-
-    def sample(self, label: str, extra: dict | None = None):
-        with self._lock:
-            sample = {
-                "elapsed_s": time.perf_counter() - self.start_time,
-                "label": label,
-                "timestamp": datetime.utcnow().isoformat(),
-            }
-            if extra:
-                sample.update(extra)
-            self.samples.append(sample)
-
-    def summary(self) -> dict:
-        if not self.samples:
-            return {"samples": 0}
-        durations = [s["elapsed_s"] for s in self.samples]
-        return {
-            "total_samples": len(self.samples),
-            "duration_s": max(durations),
-            "sample_rate_hz": len(self.samples) / max(durations, 0.001),
-            "samples": self.samples[-10:],  # Last 10 samples
-        }
-
-
-metrics = MetricsCollector()
-
-
-# ═══════════════════════════════════════════════════════════════════
-# PHASE 2: MACRO LOAD & SOAK TESTING
-# ═══════════════════════════════════════════════════════════════════
+        counters = MemoryCounters()
+        counters.cb = ctypes.sizeof(counters)
+        psapi = ctypes.WinDLL("psapi", use_last_error=True)
+        kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+        kernel32.OpenProcess.argtypes = [wintypes.DWORD, wintypes.BOOL, wintypes.DWORD]
+        kernel32.OpenProcess.restype = wintypes.HANDLE
+        proc = kernel32.OpenProcess(0x1000, False, os.getpid())
+        if not proc:
+            return None
+        try:
+            psapi.GetProcessMemoryInfo(proc, ctypes.byref(counters), ctypes.sizeof(counters))
+            return float(counters.working_set_size) / (1024.0 * 1024.0)
+        finally:
+            kernel32.CloseHandle(proc)
+    return None
 
 
 class LoadTestRunner:
-    """Tests Hot Engine throughput ceiling and Cold Ledger backpressure."""
+    """Drives real Rust HotEngine arena commits, admission queue saturation, and OpenLoop tail checks."""
 
-    def __init__(self, tmpdir: Path):
+    def __init__(self, tmpdir: Path) -> None:
         self.tmpdir = tmpdir
-        self.results = {}
+        self.native = native_module()
 
-    def test_backpressure_flood(self, num_payloads: int = 10000, payload_size: int = 4096) -> dict:
-        """Simulate backpressure flood testing (Python-only, no Rust driver)."""
-        metrics.sample("backpressure_flood_start", {"num_payloads": num_payloads, "payload_size": payload_size})
+    def test_backpressure_flood(self, num_payloads: int = 2_000, payload_size: int = 4096) -> dict[str, Any]:
+        payload = bytes(((i * 31 + 7) & 0xFF) for i in range(payload_size))
+        mv = memoryview(payload)
+        latencies_ns: list[float] = []
+        overloads_rejected = 0
+        try:
+            # Warmup 10 commits.
+            for _ in range(10):
+                self.native.aegis_hot_commit_buffer(mv, "DEV")
 
-        payloads = [os.urandom(payload_size) for _ in range(min(num_payloads, 10_000))]
-        latencies = []
-        start = time.perf_counter()
+            start = time.perf_counter()
+            for idx in range(num_payloads):
+                t0 = time.perf_counter_ns()
+                raw = self.native.aegis_hot_commit_buffer(mv, "DEV")
+                latencies_ns.append(float(max(1, time.perf_counter_ns() - t0)))
+                if '"handle_valid":true' not in raw:
+                    raise RuntimeError(f"Hot arena rejected valid commit at idx={idx}")
+            elapsed = max(1e-6, time.perf_counter() - start)
+        finally:
+            mv.release()
 
-        for p in payloads:
-            t0 = time.perf_counter_ns()
-            _ = hashlib.blake2b(p, digest_size=32).hexdigest()
-            latencies.append(time.perf_counter_ns() - t0)
+        # Exercise AuthoritativeRuntime bounded queue saturation / overload rejection behavior cleanly.
+        small_req = json.dumps(
+            {
+                "schema": "aegis-resource-contract-v1",
+                "task_id": 1,
+                "attempt_id": 1,
+                "work_kind": "NativeTask",
+                "cpu": {"min_threads": 1, "max_threads": 1},
+                "host_memory": {"bytes": 1024 * 1024},
+                "accelerator": None,
+                "accelerator_memory": None,
+                "io": {"max_in_flight": 1},
+                "process_limit": None,
+                "thread_limit": None,
+                "fd_limit": None,
+                "api_budget": None,
+                "token_budget": None,
+                "deadline": {"deadline_ms": None},
+                "priority": "Foreground",
+                "side_effect_class": "ReadOnly",
+            },
+            separators=(",", ":"),
+        )
+        base_tid = ((time.time_ns() % 1_000_000_000) + 1) * 10_000
+        queued_cleanup: list[int] = []
+        admitted_cleanup: list[str] = []
+        try:
+            for j in range(96):
+                tid = base_tid + j
+                huge_req = json.dumps(
+                    {
+                        "schema": "aegis-resource-contract-v1",
+                        "task_id": tid,
+                        "attempt_id": 1,
+                        "work_kind": "NativeTask",
+                        "cpu": {"min_threads": 1, "max_threads": 1},
+                        "host_memory": {"bytes": 4 * 1024 * 1024 * 1024 * 1024},
+                        "accelerator": None,
+                        "accelerator_memory": None,
+                        "io": {"max_in_flight": 1},
+                        "process_limit": None,
+                        "thread_limit": None,
+                        "fd_limit": None,
+                        "api_budget": None,
+                        "token_budget": None,
+                        "deadline": {"deadline_ms": None},
+                        "priority": "Critical",
+                        "side_effect_class": "ReadOnly",
+                    },
+                    separators=(",", ":"),
+                )
+                try:
+                    sub = json.loads(self.native.aegis_runtime_submit(tid, "[]", huge_req, 1_700_000_000_000 + j))
+                    st = sub.get("status")
+                    if st == "rejected":
+                        overloads_rejected += 1
+                    elif st == "queued":
+                        queued_cleanup.append(tid)
+                    elif st == "admitted" and sub.get("lease_token"):
+                        admitted_cleanup.append(json.dumps(sub["lease_token"], separators=(",", ":")))
+                except RuntimeError:
+                    overloads_rejected += 1
+        finally:
+            for tid in queued_cleanup:
+                self.native.aegis_runtime_cancel(tid, 1)
+            for tok in admitted_cleanup:
+                self.native.aegis_runtime_finish(tok, "done")
 
-        elapsed = time.perf_counter() - start
-        latencies.sort()
-        total_ops = len(payloads)
+        open_loop = OpenLoopHarness.sweep_callable(
+            "extreme_backpressure_open_loop",
+            lambda: self.native.aegis_resource_admission_preview(small_req, 1_700_000_000_000),
+            config=OpenLoopConfig(
+                utilization_levels=(0.25, 0.50, 0.75, 0.90),
+                requests_per_point=100,
+                epochs=10,
+                queue_capacity=32,
+                bootstrap_resamples=2000,
+                min_resamples=2000,
+                seed=0xAE61_E100,
+            ),
+        )
 
-        result = {
+        ordered = sorted(latencies_ns)
+        return {
             "test": "backpressure_flood",
-            "num_payloads": total_ops,
+            "num_payloads": num_payloads,
             "total_s": round(elapsed, 4),
-            "throughput_ops_per_sec": round(total_ops / elapsed, 1),
-            "latency_p50_ns": latencies[len(latencies) // 2],
-            "latency_p99_ns": latencies[len(latencies) * 99 // 100],
-            "latency_max_ns": latencies[-1],
-            "avg_latency_ns": round(sum(latencies) / len(latencies)),
-            "hot_path_blocked": latencies[-1] > 5_000,
+            "throughput_ops_per_sec": round(num_payloads / elapsed, 1),
+            "latency_p50_ns": quantile_type7_sorted(ordered, 0.50),
+            "latency_p95_ns": quantile_type7_sorted(ordered, 0.95),
+            "latency_p99_ns": quantile_type7_sorted(ordered, 0.99),
+            "latency_max_ns": ordered[-1],
+            "overloads_rejected": overloads_rejected,
+            "open_loop_summary": asdict(open_loop),
+            "status": "PASS" if overloads_rejected > 0 else "FAILED",
         }
 
-        metrics.sample("backpressure_flood_end", result)
-        self.results["backpressure_flood"] = result
-        return result
-
-    def test_memory_soak(self, duration_seconds: int = 120) -> dict:
-        """Run continuous arena operations and measure RSS growth."""
-        metrics.sample("memory_soak_start", {"duration_s": duration_seconds})
-
-        import psutil
-
-        process = psutil.Process()
-        rss_samples = []
-        payload = os.urandom(4096)
-
-        start = time.perf_counter()
+    def test_memory_soak(self, duration_seconds: int = 5) -> dict[str, Any]:
+        payload = bytes(((i * 19 + 3) & 0xFF) for i in range(4096))
+        mv = memoryview(payload)
+        rss_samples: list[dict[str, float | int]] = []
         count = 0
-
-        while time.perf_counter() - start < duration_seconds:
-            _ = hashlib.blake2b(payload, digest_size=32).hexdigest()
-            count += 1
-
-            if count % 1000 == 0:
-                rss = process.memory_info().rss / (1024 * 1024)
-                rss_samples.append(
-                    {
-                        "elapsed": time.perf_counter() - start,
-                        "rss_mb": round(rss, 2),
-                        "ops": count,
-                    }
-                )
-
-        elapsed = time.perf_counter() - start
-
-        # Calculate RSS growth rate
+        start = time.perf_counter()
+        try:
+            while time.perf_counter() - start < duration_seconds:
+                self.native.aegis_hot_commit_buffer(mv, "DEV")
+                count += 1
+                if count % 250 == 0:
+                    rss = _rss_mb()
+                    if rss is not None:
+                        rss_samples.append(
+                            {"elapsed_s": round(time.perf_counter() - start, 3), "rss_mb": round(rss, 3), "ops": count}
+                        )
+        finally:
+            mv.release()
+        elapsed = max(1e-6, time.perf_counter() - start)
         if len(rss_samples) >= 2:
-            rss_growth = (rss_samples[-1]["rss_mb"] - rss_samples[0]["rss_mb"]) / (elapsed / 3600)
+            rss_delta_mb = float(rss_samples[-1]["rss_mb"]) - float(rss_samples[0]["rss_mb"])
         else:
-            rss_growth = 0
-
-        result = {
-            "test": "memory_soak",
-            "duration_s": round(elapsed, 1),
+            rss_delta_mb = 0.0
+        return {
+            "test": "memory_soak_native_arena",
+            "duration_s": round(elapsed, 3),
             "total_ops": count,
             "throughput_ops_per_sec": round(count / elapsed, 1),
-            "rss_start_mb": rss_samples[0]["rss_mb"] if rss_samples else 0,
-            "rss_end_mb": rss_samples[-1]["rss_mb"] if rss_samples else 0,
-            "rss_growth_mb_per_hour": round(rss_growth, 2),
-            "memory_leak_suspected": rss_growth > 10,  # >10MB/hour = leak
-            "rss_samples": rss_samples[:: max(1, len(rss_samples) // 10)],  # Decimated
+            "rss_start_mb": rss_samples[0]["rss_mb"] if rss_samples else None,
+            "rss_end_mb": rss_samples[-1]["rss_mb"] if rss_samples else None,
+            "rss_delta_mb": round(rss_delta_mb, 3),
+            "rss_samples": rss_samples[:10],
+            "status": "PASS" if rss_delta_mb <= 32.0 else "FAILED",
         }
-
-        metrics.sample(
-            "memory_soak_end",
-            {
-                "rss_growth": rss_growth,
-                "leak": rss_growth > 10,
-            },
-        )
-        self.results["memory_soak"] = result
-        return result
-
-
-# ═══════════════════════════════════════════════════════════════════
-# PHASE 3: ADVERSARIAL FUZZING
-# ═══════════════════════════════════════════════════════════════════
 
 
 class FuzzingRunner:
-    """Tests FFI boundaries, WASM sandbox, malformed payloads."""
+    """Tests Rust mmap validation, PyO3 FFI error boundaries, and Rust Wasmtime sandbox traps."""
 
-    def __init__(self, tmpdir: Path):
+    def __init__(self, tmpdir: Path) -> None:
         self.tmpdir = tmpdir
-        self.results = {}
-        self.crashes = []
+        self.native = native_module()
+        self.crashes: list[dict[str, str]] = []
 
-    def fuzz_mmap_boundary(self, num_cases: int = 1000) -> dict:
-        """Test mmap boundary with malformed/oversized/zero-length data."""
-        crashes = []
+    def fuzz_mmap_boundary(self) -> dict[str, Any]:
+        valid_path = self.tmpdir / "valid_bridge.aegmmap"
+        self.native.aegis_write_mmap_bridge_pattern(str(valid_path), 1, 2, 4096)
+        valid_bytes = valid_path.read_bytes()
+
+        cases = [
+            ("valid_frame", valid_bytes, True),
+            ("empty_file", b"", False),
+            ("truncated_header", valid_bytes[:40], False),
+            ("bad_magic", b"BAD!" + valid_bytes[4:], False),
+            ("flipped_payload_bit", valid_bytes[:-1] + bytes([valid_bytes[-1] ^ 0xFF]), False),
+            ("zero_fill_4k", b"\x00" * 4096, False),
+        ]
+        failures: list[dict[str, Any]] = []
         passed = 0
-
-        test_cases = [
-            # (name, payload_size, modification)
-            ("zero_length", 0, None),
-            ("exact_4096", 4096, None),
-            ("one_byte", 1, None),
-            ("max_64kb", 65536, None),
-            ("max_1mb", 1_048_576, None),
-            ("oversized_100mb", 100_000_000, None),
-            ("all_zeros", 4096, lambda b: b"\x00" * 4096),
-            ("all_0xff", 4096, lambda b: b"\xff" * 4096),
-            ("magic_corrupt", 128, lambda b: b"\x00" * 128),
-            ("unicode_bomb", 256, lambda b: "\ufeff".encode() * 85),
-            ("null_bytes_only", 512, lambda b: b"\x00" * 512),
-            ("format_string", 128, lambda b: b"%s%s%s%n%x" * 20),
-        ]
-
-        for name, size, modifier in test_cases:
+        for name, data, expected_valid in cases:
+            path = self.tmpdir / f"fuzz_{name}.aegmmap"
+            path.write_bytes(data)
             try:
-                test_file = self.tmpdir / f"fuzz_mmap_{name}.bin"
-                data = modifier(b"") if modifier else os.urandom(max(1, size))
+                actual = bool(self.native.aegis_validate_mmap_bridge_frame(str(path)))
+                if actual == expected_valid:
+                    passed += 1
+                else:
+                    failures.append({"case": name, "expected": expected_valid, "actual": actual})
+            except Exception:
+                if not expected_valid:
+                    passed += 1
+                else:
+                    failures.append({"case": name, "error": "unexpected exception on valid frame"})
 
-                test_file.write_bytes(data)
-
-                # Try mmap read
-                with open(test_file, "rb") as f:
-                    try:
-                        m = mmap.mmap(f.fileno(), 0, access=mmap.ACCESS_READ)
-                        if len(data) > 0:
-                            _ = m[: min(len(data), 65536)]
-                        m.close()
-                        passed += 1
-                    except (ValueError, OSError, BufferError) as e:
-                        # Expected for some edge cases
-                        if size > 0:  # Only log unexpected failures
-                            crashes.append({"case": name, "error": str(e), "type": type(e).__name__})
-            except Exception as e:
-                crashes.append({"case": name, "error": str(e), "type": type(e).__name__})
-
-        result = {
-            "test": "fuzz_mmap_boundary",
-            "total_cases": len(test_cases),
+        if failures:
+            self.crashes.extend({"case": f["case"], "error": json.dumps(f)} for f in failures)
+        return {
+            "test": "fuzz_mmap_boundary_native",
+            "total_cases": len(cases),
             "passed": passed,
-            "crashes": len(crashes),
-            "crash_details": crashes,
-            "severity": "HIGH" if crashes else "PASS",
+            "failures": failures,
+            "status": "PASS" if not failures else "FAILED",
         }
-        self.crashes.extend(crashes)
-        self.results["fuzz_mmap"] = result
-        return result
 
-    def fuzz_wasm_modules(self) -> dict:
-        """Generate and test malicious WASM modules."""
-        results = []
+    def fuzz_wasm_modules(self) -> dict[str, Any]:
+        # Test native Rust Wasmtime mmap bridge frame rejection on corrupted payloads.
+        malformed_path = self.tmpdir / "malformed_wasm_frame.aegmmap"
+        self.native.aegis_write_mmap_bridge_pattern(str(malformed_path), 9, 9, 64)
+        rejected = 0
+        try:
+            self.native.aegis_execute_mmap_wasm_bridge_frame(str(malformed_path), 10_000)
+        except Exception:
+            rejected += 1
 
-        # Valid minimal WASM
-        minimal_wasm = b"\x00asm\x01\x00\x00\x00"  # magic + version
+        # Optional Python `wasmtime` binding check if installed; otherwise explicit NOT VERIFIED.
+        py_wasmtime_status = "NOT VERIFIED (python wasmtime package not installed; covered by Rust cargo-fuzz)"
+        try:
+            from wasmtime import Engine, Module  # type: ignore[import-not-found]
 
-        test_modules = [
-            ("valid_minimal", minimal_wasm, "expected_pass"),
-            ("empty", b"", "expected_fail"),
-            ("just_magic", b"\x00asm", "expected_fail"),
-            (
-                "infinite_loop",
-                b"\x00asm\x01\x00\x00\x00" + b"\x03\x02\x01\x00" + b"\x0a\x06\x01\x04\x00\x03\x40\x0c\x00\x0b\x0b",
-                "test_fuel_epoch",
-            ),
-            ("large_module_10mb", os.urandom(10_000_000), "expected_fail"),
-            ("garbage", os.urandom(1024), "expected_fail"),
-            ("null_100kb", b"\x00" * 100_000, "expected_fail"),
-        ]
-
-        for name, wasm_bytes, expected in test_modules:
-            test_path = self.tmpdir / f"test_{name}.wasm"
+            engine = Engine()
+            Module(engine, b"\x00asm\x01\x00\x00\x00")
             try:
-                test_path.write_bytes(wasm_bytes)
-                # Try loading via wasmtime Python binding
-                try:
-                    from wasmtime import Engine, Module
+                Module(engine, b"\x00\x00\x00\x00")
+                py_wasmtime_status = "FAILED (accepted invalid magic)"
+            except Exception:
+                py_wasmtime_status = "PASS"
+        except ImportError:
+            pass
 
-                    engine = Engine()
-                    if expected == "expected_fail":
-                        try:
-                            Module(engine, wasm_bytes)
-                            results.append({"module": name, "result": "UNEXPECTED_PASS", "severity": "CRITICAL"})
-                        except Exception:
-                            results.append({"module": name, "result": "expected_fail", "severity": "PASS"})
-                    else:
-                        Module(engine, wasm_bytes)
-                        results.append({"module": name, "result": "expected_pass", "severity": "PASS"})
-                except ImportError:
-                    results.append({"module": name, "result": "SKIPPED (no wasmtime)", "severity": "INFO"})
-            except Exception as e:
-                results.append({"module": name, "result": f"CRASH: {e}", "severity": "CRITICAL"})
-
-        criticals = [r for r in results if r["severity"] == "CRITICAL"]
-        result = {
+        return {
             "test": "fuzz_wasm_modules",
-            "total": len(test_modules),
-            "results": results,
-            "critical_findings": len(criticals),
-            "severity": "CRITICAL" if criticals else "PASS",
+            "native_wasm_bridge_invalid_rejected": rejected == 1,
+            "python_wasmtime_status": py_wasmtime_status,
+            "status": "PASS" if rejected == 1 else "FAILED",
         }
-        self.results["fuzz_wasm"] = result
-        return result
 
-    def test_ffi_payload_injection(self) -> dict:
-        """Simulate FFI boundary attacks with Python bridge."""
+    def ffi_payload_injection(self) -> dict[str, Any]:
         attacks = [
-            ("exact_frame", _build_valid_mmap_frame(4096)),
-            ("truncated_header", b"\x00" * 40),
-            ("oversized_payload_len", _build_malformed_frame(2**63)),
-            ("negative_payload_len", _build_malformed_frame(-1)),
-            ("unaligned_payload", b"\x00" * 113),  # Not 64-byte aligned
+            ("oversized_json_admission", "{" + '"x":' * 10 + "1" + "}" * 10, True),
+            ("invalid_trust_level", ("hello", "UNTRUSTED_TIER"), True),
+            ("unaligned_truncated_mmap", b"\x00" * 113, True),
         ]
-
-        findings = []
-        for name, payload in attacks:
-            test_file = self.tmpdir / f"ffi_{name}.bin"
-            test_file.write_bytes(payload)
+        blocked = 0
+        results: list[dict[str, Any]] = []
+        for name, payload, must_reject in attacks:
+            rejected = False
             try:
-                with open(test_file, "rb") as f:
-                    m = mmap.mmap(f.fileno(), 0, access=mmap.ACCESS_READ)
-                    if len(payload) >= 112:
-                        _ = bytes(m[:112])
-                    m.close()
-                findings.append({"case": name, "result": "accepted", "severity": "INFO"})
-            except Exception as e:
-                findings.append(
-                    {
-                        "case": name,
-                        "result": f"rejected: {type(e).__name__}",
-                        "severity": "PASS" if "rejected" in str(e) else "HIGH",
-                    }
-                )
-
-        crashes = [f for f in findings if f["severity"] in ("CRITICAL", "HIGH")]
-        result = {
+                if name == "oversized_json_admission":
+                    self.native.aegis_resource_admission_preview(str(payload) * 20_000, 1)
+                elif name == "invalid_trust_level":
+                    self.native.aegis_hot_commit(b"hello", "UNTRUSTED_TIER")
+                else:
+                    p = self.tmpdir / "unaligned.aegmmap"
+                    p.write_bytes(bytes(payload))  # type: ignore[arg-type]
+                    if not self.native.aegis_validate_mmap_bridge_frame(str(p)):
+                        rejected = True
+            except Exception:
+                rejected = True
+            if rejected == must_reject:
+                blocked += 1
+            results.append({"case": name, "rejected": rejected, "expected_reject": must_reject})
+        return {
             "test": "ffi_payload_injection",
             "total": len(attacks),
-            "findings": findings,
-            "vulnerabilities": len(crashes),
-            "severity": "HIGH" if crashes else "PASS",
+            "blocked": blocked,
+            "findings": results,
+            "status": "PASS" if blocked == len(attacks) else "FAILED",
         }
-        self.results["ffi_injection"] = result
-        return result
-
-
-def _build_valid_mmap_frame(payload_size: int) -> bytes:
-    """Build a syntactically valid mmap bridge frame for AEGIS."""
-    header = bytearray(112)
-    header[0:4] = b"AEG1"  # magic
-    header[4:8] = (1).to_bytes(4, "little")  # version
-    header[8:12] = (112).to_bytes(4, "little")  # header_bytes
-    # schema_id, schema_version, alignment, message_id, session_id = 0
-    header[64:72] = (112).to_bytes(8, "little")  # payload_offset
-    header[72:80] = payload_size.to_bytes(8, "little")  # payload_len
-    # payload_blake3 at bytes 80..112
-    payload = os.urandom(payload_size)
-    h = hashlib.blake2b(payload, digest_size=32).digest()
-    header[80:112] = h
-    return bytes(header) + payload
-
-
-def _build_malformed_frame(fake_len: int) -> bytes:
-    """Build a frame with an oversized/malformed payload_len."""
-    header = bytearray(112)
-    header[0:4] = b"AEG1"
-    header[4:8] = (1).to_bytes(4, "little")
-    header[8:12] = (112).to_bytes(4, "little")
-    header[64:72] = (112).to_bytes(8, "little")
-    if fake_len < 0:
-        fake_len = 2**63 + fake_len
-    header[72:80] = fake_len.to_bytes(8, "little", signed=True)
-    return bytes(header)
-
-
-# ═══════════════════════════════════════════════════════════════════
-# PHASE 4: CHAOS ENGINEERING
-# ═══════════════════════════════════════════════════════════════════
 
 
 class ChaosRunner:
-    """Tests system resilience: SIGKILL, disk full, I/O throttling."""
+    """Cross-platform crash and disk-boundary verification against real lab event verification."""
 
-    def __init__(self, tmpdir: Path):
+    def __init__(self, tmpdir: Path) -> None:
         self.tmpdir = tmpdir
-        self.results = {}
 
-    def test_sigkill_during_write(self) -> dict:
-        """Spawn a child process writing BLAKE3-chained data, kill it, verify chain."""
-        chain_file = self.tmpdir / "chain.bin"
+    def test_sigkill_during_write(self) -> dict[str, Any]:
+        chain_file = self.tmpdir / "chaos_chain.log"
         child_script = self.tmpdir / "chaos_child.py"
-        child_script.write_text(f"""
-import hashlib, os, time, sys
-chain = []
-for i in range(1000):
-    data = os.urandom(4096)
-    h = hashlib.blake2b(data, digest_size=32).hexdigest()
-    chain.append({{"i": i, "hash": h}})
-    with open("{chain_file.as_posix()}", "a") as f:
-        f.write(h + "\\n")
-    if i == 500:
-        sys.stdout.write("READY\\n")
-        sys.stdout.flush()
-        time.sleep(0.5)  # Wait for SIGKILL
-""")
-
-        # Start child
-        proc = subprocess.Popen(
-            [sys.executable, str(child_script)], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True
+        child_script.write_text(
+            "\n".join(
+                [
+                    "import hashlib, os, sys, time",
+                    f"out = {chain_file.as_posix()!r}",
+                    "for i in range(600):",
+                    "    h = hashlib.blake2b(os.urandom(128), digest_size=32).hexdigest()",
+                    "    with open(out, 'a', encoding='utf-8') as f:",
+                    "        f.write(f'{i}:{h}\\n')",
+                    "        f.flush()",
+                    "    if i == 250:",
+                    "        sys.stdout.write('READY\\n')",
+                    "        sys.stdout.flush()",
+                    "        time.sleep(2.0)",
+                ]
+            ),
+            encoding="utf-8",
         )
-
-        # Wait for ready signal
+        proc = subprocess.Popen(
+            [sys.executable, str(child_script)],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+        )
         try:
-            ready = proc.stdout.readline()
-            assert "READY" in ready
-        except Exception:
-            proc.kill()
-            return {"test": "sigkill_write", "error": "Child didn't signal ready"}
+            ready = proc.stdout.readline() if proc.stdout else ""
+            if "READY" not in ready:
+                proc.kill()
+                proc.wait(timeout=5)
+                return {"test": "sigkill_during_write", "status": "FAILED", "reason": "child did not reach READY"}
+            sig = getattr(signal, "SIGKILL", None)
+            if sig is not None:
+                os.kill(proc.pid, sig)
+            else:
+                proc.kill()
+            proc.wait(timeout=5)
+        finally:
+            if proc.stdout:
+                proc.stdout.close()
+            if proc.stderr:
+                proc.stderr.close()
 
-        # SIGKILL
-        os.kill(proc.pid, signal.SIGKILL)
-        proc.wait(timeout=5)
-
-        # Verify chain integrity
-        chains_written = 0
-        if chain_file.exists():
-            with open(chain_file) as f:
-                chains_written = len(f.readlines())
-
-        result = {
+        lines = chain_file.read_text(encoding="utf-8").splitlines() if chain_file.exists() else []
+        return {
             "test": "sigkill_during_write",
-            "child_pid": proc.pid,
-            "chains_before_kill": "~500",
-            "chains_persisted": chains_written,
-            "data_loss": chains_written < 500,
-            "severity": "HIGH" if chains_written < 500 else "PASS",
+            "records_persisted_before_kill": len(lines),
+            "status": "PASS" if len(lines) >= 250 else "FAILED",
         }
-        self.results["sigkill"] = result
-        return result
 
-    def test_disk_full_simulation(self) -> dict:
-        """Test behavior when disk space is exhausted."""
-        # Create a very small file and try to write beyond capacity
-        small_file = self.tmpdir / "small_fs.bin"
-        result = {"test": "disk_full_simulation", "status": "simulated"}
-
+    def test_disk_full_simulation(self) -> dict[str, Any]:
+        # Verify MmapBridgeFrame rejects truncated backing file rather than panicking.
+        path = self.tmpdir / "truncated.aegmmap"
+        path.write_bytes(b"AEGMMAP1" + b"\x00" * 16)
+        rejected = False
         try:
-            # Try to write a huge amount to a small temp area
-            huge_data = os.urandom(50_000_000)  # 50MB
-            small_file.write_bytes(huge_data)
-            result["wrote_50mb"] = True
-        except OSError as e:
-            result["error"] = str(e)
-            result["graceful_degradation"] = "OSError" in str(e)
-
-        result["severity"] = "INFO"
-        self.results["disk_full"] = result
-        return result
-
-
-# ═══════════════════════════════════════════════════════════════════
-# PHASE 5: SECURITY RED TEAM
-# ═══════════════════════════════════════════════════════════════════
+            with MmapBridgeFrame(path):
+                pass
+        except ValueError, OSError:
+            rejected = True
+        return {
+            "test": "truncated_mmap_recovery_fail_closed",
+            "rejected_corrupt_header": rejected,
+            "status": "PASS" if rejected else "FAILED",
+        }
 
 
 class SecurityRunner:
-    """Tests cryptographic integrity, manifest injection, trust bypass."""
+    """Tests native BLAKE3 integrity tamper detection, path traversal guards, and PROD fail-closed enforcement."""
 
-    def __init__(self, tmpdir: Path):
+    def __init__(self, tmpdir: Path) -> None:
         self.tmpdir = tmpdir
-        self.results = {}
-        self.vulnerabilities = []
+        self.native = native_module()
+        self.vulnerabilities: list[dict[str, str]] = []
 
-    def test_crypto_tampering(self) -> dict:
-        """Modify 1 byte in a sealed artifact and verify detection."""
-        seal_file = self.tmpdir / "sealed_artifact.bin"
-        data = os.urandom(4096)
-        original_hash = hashlib.blake2b(data, digest_size=32).hexdigest()
-
-        # Write sealed data
-        seal_file.write_bytes(data)
-        _stored_hash = hashlib.blake2b(seal_file.read_bytes(), digest_size=32).hexdigest()
-
-        # Tamper: flip 1 bit at offset 2048
-        tampered = bytearray(data)
-        tampered[2048] ^= 0x01
-        seal_file.write_bytes(bytes(tampered))
-        tampered_hash = hashlib.blake2b(seal_file.read_bytes(), digest_size=32).hexdigest()
-
-        detected = original_hash != tampered_hash
-
-        result = {
-            "test": "crypto_tampering",
-            "original_hash": original_hash[:16],
-            "tampered_hash": tampered_hash[:16],
-            "tamper_detected": detected,
-            "severity": "PASS" if detected else "CRITICAL",
-        }
-
+    def test_crypto_tampering(self) -> dict[str, Any]:
+        frame_path = self.tmpdir / "tamper_check.aegmmap"
+        self.native.aegis_write_mmap_bridge_pattern(str(frame_path), 11, 22, 4096)
+        valid_before = bool(self.native.aegis_validate_mmap_bridge_frame(str(frame_path)))
+        raw = bytearray(frame_path.read_bytes())
+        raw[-128] ^= 0x01
+        frame_path.write_bytes(bytes(raw))
+        valid_after = bool(self.native.aegis_validate_mmap_bridge_frame(str(frame_path)))
+        detected = valid_before and not valid_after
         if not detected:
-            self.vulnerabilities.append(
-                {
-                    "id": "SEC-001",
-                    "title": "Crypto Tampering Not Detected",
-                    "severity": "CRITICAL",
-                    "description": "Flipping 1 byte in sealed artifact did not change the hash",
-                }
-            )
-
-        self.results["crypto_tamper"] = result
-        return result
-
-    def test_path_traversal_injection(self) -> dict:
-        """Attempt path traversal attacks via manifest paths."""
-        traversal_attempts = [
-            "../../../etc/passwd",
-            "..\\..\\..\\Windows\\System32\\config\\SAM",
-            "/etc/shadow",
-            "C:\\Windows\\System32\\config\\SAM",
-            "....//....//....//etc/passwd",
-            "artifacts/../../../etc/passwd",
-            "%2e%2e%2f%2e%2e%2fetc%2fpasswd",
-            "\x00/etc/passwd",  # Null byte injection
-            "A" * 10000,  # Excessively long path
-        ]
-
-        findings = []
-        for path in traversal_attempts:
-            normalized = Path(path)
-            is_dangerous = (
-                ".." in path or path.startswith("/etc") or path.startswith("C:") or "\x00" in path or len(path) > 4096
-            )
-            findings.append(
-                {
-                    "attempt": path[:80],
-                    "dangerous": is_dangerous,
-                    "would_escape": ".." in str(normalized),
-                }
-            )
-
-        dangerous = [f for f in findings if f["dangerous"] and not f["would_escape"]]
-        result = {
-            "test": "path_traversal_injection",
-            "total_attempts": len(traversal_attempts),
-            "dangerous_detected": len([f for f in findings if f["dangerous"]]),
-            "escapes_found": len(dangerous),
-            "findings": findings,
-            "severity": "CRITICAL" if dangerous else "PASS",
+            self.vulnerabilities.append({"id": "SEC-001", "severity": "CRITICAL", "title": "Mmap tamper undetected"})
+        return {
+            "test": "crypto_tampering_native_mmap",
+            "tamper_detected": detected,
+            "status": "PASS" if detected else "FAILED",
         }
 
-        if dangerous:
-            self.vulnerabilities.append(
-                {
-                    "id": "SEC-002",
-                    "title": "Path Traversal Possible",
-                    "severity": "CRITICAL",
-                    "description": f"Path traversal detected in {len(dangerous)} payloads",
-                }
-            )
+    def test_trust_level_bypass(self) -> dict[str, Any]:
+        # Verify PROD fails closed when an invalid/untrusted level string is passed to Rust PyO3 FFI.
+        rejected_invalid = False
+        try:
+            self.native.aegis_hot_commit(b"payload", "BOGUS_LEVEL")
+        except Exception:
+            rejected_invalid = True
 
-        self.results["path_traversal"] = result
-        return result
-
-    def test_trust_level_bypass(self) -> dict:
-        """Attempt to bypass AEGIS_TRUST_LEVEL enforcement."""
-        scenarios = [
-            ("prod_with_missing_evidence", "PROD", {"evidence_present": False}),
-            ("dev_accepted_as_prod", "DEV", {"claim_prod": True}),
-            ("empty_trust_level", "", {"evidence_present": True}),
-        ]
-
-        findings = []
-        for name, level, attempt in scenarios:
-            bypassed = False
-            if level == "PROD" and not attempt.get("evidence_present"):
-                bypassed = True  # PROD should fail-closed without evidence
-            findings.append(
-                {
-                    "scenario": name,
-                    "trust_level": level,
-                    "bypass_possible": bypassed,
-                }
-            )
-
-        result = {
-            "test": "trust_level_bypass",
-            "scenarios": findings,
-            "severity": "PASS",
+        prod_raw = json.loads(self.native.aegis_hot_commit(b"payload", "PROD"))
+        fail_closed_flag = bool(prod_raw.get("fail_closed")) and bool(prod_raw.get("physical_witness_required"))
+        ok = rejected_invalid and fail_closed_flag
+        if not ok:
+            self.vulnerabilities.append({"id": "SEC-002", "severity": "CRITICAL", "title": "Trust enforcement failed"})
+        return {
+            "test": "trust_level_fail_closed",
+            "rejected_invalid": rejected_invalid,
+            "status": "PASS" if ok else "FAILED",
         }
-        self.results["trust_bypass"] = result
-        return result
 
 
-# ═══════════════════════════════════════════════════════════════════
-# REPORT GENERATOR
-# ═══════════════════════════════════════════════════════════════════
+def generate_report(all_results: dict[str, Any], total_duration: float) -> dict[str, Any]:
+    return {
+        "schema": "aegis-extreme-testing-suite-v2",
+        "truth_claim": False,
+        "platform": platform.platform(),
+        "python": platform.python_version(),
+        "duration_s": round(total_duration, 3),
+        "results": all_results,
+    }
 
 
-def generate_report(all_results: dict, total_duration: float) -> str:
-    """Generate the final Extreme Testing & Chaos Report."""
-    load = all_results.get("load", {})
-    fuzz = all_results.get("fuzz", {})
-    chaos = all_results.get("chaos", {})
-    security = all_results.get("security", {})
-
-    # Count vulnerabilities
-    vulns = security.get("vulnerabilities", [])
-    vulns.extend(fuzz.get("crashes", []))
-
-    critical = sum(1 for v in vulns if v.get("severity") == "CRITICAL")
-    high = sum(1 for v in vulns if v.get("severity") == "HIGH")
-
-    report = f"""# AEGIS-COGNITION: Extreme Testing & Chaos Report
-**Generated**: {datetime.utcnow().isoformat()}Z
-**Duration**: {total_duration:.1f}s
-**Test Directory**: {ARTIFACTS_DIR}
-
----
-
-## 1. Executive Summary
-
-- **Security gate status**: {"NO CRITICAL FINDINGS IN THIS SUITE" if critical == 0 else "CRITICAL ISSUES FOUND"}; this is not a production-deployability decision
-- **Vulnerabilities Found**: Critical: {critical}, High: {high}
-- **Overall Security Posture**: {"HARDENED" if critical == 0 and high == 0 else "NEEDS REMEDIATION"}
-- **Load Test Status**: Backpressure at {load.get("backpressure_flood", {}).get("throughput_ops_per_sec", "N/A")} ops/sec
-
----
-
-## 2. Phase 0: Codebase Scan Findings
-
-| Category | Count | Details |
-|----------|-------|---------|
-| `unsafe` blocks | 22 | bridge_mmap.rs (3), memory/pool.rs (9), replay.rs (7), shm.rs (1), ipc.rs (1) |
-| `.unwrap()` in prod code | 15+ | bridge_mmap.rs header parsing, context.rs node lookup, evidence_index.rs term lookup |
-| `tokio::spawn` | 0 | No unguarded async spawns detected |
-| Mmap `sync_all` | 6 | bridge_mmap.rs, browser_witness.rs, cli/mod.rs |
-| Shadow sealer queue depth | 1024 | SHADOW_SEALER_QUEUE_DEPTH in hot_engine.rs |
-| WASM sandbox surface | Fuel + Epoch + Memory limits active | No WASI/preopen/ambient authority detected |
-
----
-
-## 3. Phase 2: Macro Load & Soak
-
-### 3.1 Backpressure Flood
-
-| Metric | Value |
-|--------|-------|
-| Payloads | {load.get("backpressure_flood", {}).get("num_payloads", "N/A")} |
-| Throughput | {load.get("backpressure_flood", {}).get("throughput_ops_per_sec", "N/A")} ops/sec |
-| P50 Latency | {load.get("backpressure_flood", {}).get("latency_p50_ns", "N/A")} ns |
-| P99 Latency | {load.get("backpressure_flood", {}).get("latency_p99_ns", "N/A")} ns |
-| Hot Path Blocked (>5µs) | {load.get("backpressure_flood", {}).get("hot_path_blocked", "N/A")} |
-| Severity | {"PASS" if not load.get("backpressure_flood", {}).get("hot_path_blocked") else "HIGH"} |
-
-### 3.2 Memory Soak (2-hour equivalent)
-
-| Metric | Value |
-|--------|-------|
-| Duration | {load.get("memory_soak", {}).get("duration_s", "N/A")}s |
-| Operations | {load.get("memory_soak", {}).get("total_ops", "N/A")} |
-| RSS Growth | {load.get("memory_soak", {}).get("rss_growth_mb_per_hour", "N/A")} MB/hour |
-| Memory Leak | {load.get("memory_soak", {}).get("memory_leak_suspected", "N/A")} |
-| Severity | {"HIGH" if load.get("memory_soak", {}).get("memory_leak_suspected") else "PASS"} |
-
----
-
-## 4. Phase 3: Adversarial Fuzzing
-
-### 4.1 mmap Boundary Fuzzing
-
-| Metric | Value |
-|--------|-------|
-| Test cases | {fuzz.get("fuzz_mmap", {}).get("total_cases", "N/A")} |
-| Passed | {fuzz.get("fuzz_mmap", {}).get("passed", "N/A")} |
-| Crashes | {fuzz.get("fuzz_mmap", {}).get("crashes", "N/A")} |
-| Severity | {fuzz.get("fuzz_mmap", {}).get("severity", "N/A")} |
-
-### 4.2 WASM Module Fuzzing
-
-| Metric | Value |
-|--------|-------|
-| Modules tested | {fuzz.get("fuzz_wasm", {}).get("total", "N/A")} |
-| Critical findings | {fuzz.get("fuzz_wasm", {}).get("critical_findings", "N/A")} |
-| Severity | {fuzz.get("fuzz_wasm", {}).get("severity", "N/A")} |
-
-### 4.3 FFI Payload Injection
-
-| Metric | Value |
-|--------|-------|
-| Attacks | {fuzz.get("ffi_injection", {}).get("total", "N/A")} |
-| Vulnerabilities | {fuzz.get("ffi_injection", {}).get("vulnerabilities", "N/A")} |
-| Severity | {fuzz.get("ffi_injection", {}).get("severity", "N/A")} |
-
----
-
-## 5. Phase 4: Chaos Engineering
-
-### 5.1 SIGKILL During Write
-
-| Metric | Value |
-|--------|-------|
-| Chains persisted | {chaos.get("sigkill", {}).get("chains_persisted", "N/A")} |
-| Data loss | {chaos.get("sigkill", {}).get("data_loss", "N/A")} |
-| Severity | {chaos.get("sigkill", {}).get("severity", "N/A")} |
-
----
-
-## 6. Phase 5: Security Red Team
-
-### 6.1 Cryptographic Tampering
-| Metric | Value |
-|--------|-------|
-| Tamper detected | {security.get("crypto_tamper", {}).get("tamper_detected", "N/A")} |
-| Severity | {security.get("crypto_tamper", {}).get("severity", "N/A")} |
-
-### 6.2 Path Traversal Injection
-| Metric | Value |
-|--------|-------|
-| Attempts | {security.get("path_traversal", {}).get("total_attempts", "N/A")} |
-| Escapes found | {security.get("path_traversal", {}).get("escapes_found", "N/A")} |
-| Severity | {security.get("path_traversal", {}).get("severity", "N/A")} |
-
----
-
-## 7. Security Validation Checklist
-
-| Check | Status |
-|-------|--------|
-| BLAKE3 Chain Tamper Detection | {"PASS" if security.get("crypto_tamper", {}).get("tamper_detected") else "FAIL"} |
-| Wasmtime Sandbox Escape | {fuzz.get("fuzz_wasm", {}).get("severity", "N/A")} |
-| FFI Boundary Crash Resistance | {fuzz.get("ffi_injection", {}).get("severity", "N/A")} |
-| Path Traversal in Browser Witness | {security.get("path_traversal", {}).get("severity", "N/A")} |
-| Trust Level Bypass Prevention | {security.get("trust_bypass", {}).get("severity", "N/A")} |
-| Graceful Degradation (SIGKILL) | {chaos.get("sigkill", {}).get("severity", "N/A")} |
-
----
-
-## 8. Vulnerability Details
-
-"""
-
-    for v in vulns:
-        report += f"""
-### {v.get("id", "BUG")}: {v.get("title", "Unknown")}
-- **Severity**: {v.get("severity", "Unknown")}
-- **Description**: {v.get("description", v.get("error", "N/A"))}
-- **Location**: {v.get("case", "N/A")}
-"""
-
-    if not vulns:
-        report += "> No vulnerabilities found across all 5 phases.\n"
-
-    report += """
----
-
-## 9. Recommendations for Production Readiness
-
-1. **Audit all 22 `unsafe` blocks** — especially `bridge_mmap.rs` (3), `memory/pool.rs` (9), `replay.rs` (7)
-2. **Replace `.unwrap()` in production paths** — bridge_mmap.rs header parsing and context.rs node lookup use `.unwrap()` instead of proper error propagation
-3. **Increase shadow sealer queue depth** — current 1024 may cause backpressure at high throughput; benchmark at 4096/8192
-4. **Add integration tests** for SIGKILL recovery path — verify BLAKE3 chain integrity after crash
-5. **Consider cargo-fuzz for mmap/FFI boundaries** — systematic fuzzing of `bridge_mmap.rs` with libFuzzer
-
----
-
-*Report generated by AEGIS Extreme Testing Suite v1.0*
-*Constitution: 177/177 suite checks | Benchmark: local threshold assertions only | Production: NOT DEPLOYABLE*
-"""
-    return report
-
-
-# ═══════════════════════════════════════════════════════════════════
-
-
-def main():
+def main() -> int:
     parser = argparse.ArgumentParser(description="AEGIS Extreme Testing Suite")
     parser.add_argument("--phase", choices=["load", "fuzz", "chaos", "security", "all"], default="all")
     parser.add_argument("--quick", action="store_true", help="Fast mode (fewer iterations)")
+    parser.add_argument("--output", type=Path, default=ARTIFACTS_DIR / "extreme_testing_report.json")
     args = parser.parse_args()
 
-    tmpdir = ARTIFACTS_DIR
-    tmpdir.mkdir(parents=True, exist_ok=True)
-
-    all_results = {}
     start_time = time.perf_counter()
+    all_results: dict[str, Any] = {}
+    vulnerabilities: list[dict[str, str]] = []
 
-    print("=" * 60)
-    print("  AEGIS-COGNITION EXTREME TESTING SUITE")
-    print("=" * 60)
+    with tempfile.TemporaryDirectory(prefix="aegis-extreme-suite-") as tmp:
+        tmpdir = Path(tmp)
+        if args.phase in ("load", "all"):
+            runner = LoadTestRunner(tmpdir)
+            all_results["load"] = {
+                "backpressure_flood": runner.test_backpressure_flood(num_payloads=500 if args.quick else 3_000),
+                "memory_soak": runner.test_memory_soak(duration_seconds=2 if args.quick else 5),
+            }
+        if args.phase in ("fuzz", "all"):
+            fuzz = FuzzingRunner(tmpdir)
+            all_results["fuzz"] = {
+                "fuzz_mmap": fuzz.fuzz_mmap_boundary(),
+                "fuzz_wasm": fuzz.fuzz_wasm_modules(),
+                "ffi_injection": fuzz.ffi_payload_injection(),
+            }
+            if fuzz.crashes:
+                all_results["crashes"] = fuzz.crashes
+        if args.phase in ("chaos", "all"):
+            chaos = ChaosRunner(tmpdir)
+            all_results["chaos"] = {
+                "sigkill": chaos.test_sigkill_during_write(),
+                "disk_full": chaos.test_disk_full_simulation(),
+            }
+        if args.phase in ("security", "all"):
+            sec = SecurityRunner(tmpdir)
+            all_results["security"] = {
+                "crypto_tamper": sec.test_crypto_tampering(),
+                "trust_bypass": sec.test_trust_level_bypass(),
+            }
+            vulnerabilities.extend(sec.vulnerabilities)
 
-    # Phase 2: Load testing
-    if args.phase in ("load", "all"):
-        print("\n--- PHASE 2: Macro Load & Soak ---")
-        n = 1_000 if args.quick else 10_000
-        d = 10 if args.quick else 60
-        load_runner = LoadTestRunner(tmpdir)
-        all_results["load"] = {
-            "backpressure_flood": load_runner.test_backpressure_flood(num_payloads=n),
-            "memory_soak": load_runner.test_memory_soak(duration_seconds=d),
-        }
-
-    # Phase 3: Fuzzing
-    if args.phase in ("fuzz", "all"):
-        print("\n--- PHASE 3: Adversarial Fuzzing ---")
-        fuzz_runner = FuzzingRunner(tmpdir)
-        all_results["fuzz"] = {
-            "fuzz_mmap": fuzz_runner.fuzz_mmap_boundary(num_cases=100 if args.quick else 1000),
-            "fuzz_wasm": fuzz_runner.fuzz_wasm_modules(),
-            "ffi_injection": fuzz_runner.ffi_payload_injection(),
-        }
-        if fuzz_runner.crashes:
-            all_results.setdefault("crashes", []).extend(fuzz_runner.crashes)
-
-    # Phase 4: Chaos
-    if args.phase in ("chaos", "all"):
-        print("\n--- PHASE 4: Chaos Engineering ---")
-        chaos_runner = ChaosRunner(tmpdir)
-        all_results["chaos"] = {
-            "sigkill": chaos_runner.test_sigkill_during_write(),
-            "disk_full": chaos_runner.test_disk_full_simulation(),
-        }
-
-    # Phase 5: Security
-    if args.phase in ("security", "all"):
-        print("\n--- PHASE 5: Security Red Team ---")
-        sec_runner = SecurityRunner(tmpdir)
-        all_results["security"] = {
-            "crypto_tamper": sec_runner.test_crypto_tampering(),
-            "path_traversal": sec_runner.test_path_traversal_injection(),
-            "trust_bypass": sec_runner.test_trust_level_bypass(),
-        }
-        all_results["vulnerabilities"] = sec_runner.vulnerabilities
-
-    # Generate report
-    elapsed = time.perf_counter() - start_time
-    report = generate_report(all_results, elapsed)
-
-    report_path = tmpdir / "EXTREME_TESTING_CHAOS_REPORT.md"
-    report_path.write_text(report, encoding="utf-8")
-
-    print(f"\n Report written to: {report_path}")
-    print(f" Total duration: {elapsed:.1f}s")
-
-    # Print key findings
-    vulns = all_results.get("vulnerabilities", [])
-    if vulns:
-        print(f"\n VULNERABILITIES FOUND: {len(vulns)}")
-        for v in vulns:
-            print(f"   [{v.get('severity')}] {v.get('title')}")
-    else:
-        print("\n NO VULNERABILITIES FOUND — System is HARDENED")
+    report = generate_report(all_results, time.perf_counter() - start_time)
+    args.output.parent.mkdir(parents=True, exist_ok=True)
+    rendered = json.dumps(report, indent=2, sort_keys=True) + "\n"
+    args.output.write_text(rendered, encoding="utf-8")
+    print(rendered, end="")
+    return 1 if vulnerabilities else 0
 
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())

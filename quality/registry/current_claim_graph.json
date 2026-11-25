@@ -1138,8 +1138,8 @@
     "future_obligations": 20,
     "invariants": 46,
     "mapped_surfaces": 23,
-    "surfaces": 264,
-    "unmapped_surfaces": 241,
+    "surfaces": 275,
+    "unmapped_surfaces": 252,
     "unmapped_verifications": 35,
     "unresolved_code_references": 0,
     "verifications": 92
@@ -4391,13 +4391,13 @@
     "all_surfaces_mapped": false,
     "critical_high_risk_mapped": false,
     "criticality_known": false,
-    "unmapped_surface_count": 241
+    "unmapped_surface_count": 252
   },
   "mode": "SHADOW",
   "phase": "PHASE_1_CLAIM_EVIDENCE_GRAPH",
   "schema": "aese-shadow-claim-evidence-graph-v1",
-  "source_head": "49d38a6ef584ccfc55fa1a2227aaffa874635206",
-  "source_tree_sha256": "f409797f79d1ab3367ac81419fa103ced800d867f6536a1fb7e11bf8b54a07ea",
+  "source_head": "d97746d8afc8b123f07594d2fd2c213fae9a4e20",
+  "source_tree_sha256": "e25d55c0db840ec2b125bb8942de7c7c98c307347c896b687f2450073821fac5",
   "status": "SHADOW_GRAPH_PARTIAL_MAPPING_SELECTION_DISABLED",
   "surfaces": [
     {
@@ -4406,6 +4406,32 @@
       "kind": "FUZZ_TARGET",
       "mapping_status": "NOT_MAPPED",
       "path": "fuzz/fuzz_targets/archive_prefix.rs",
+      "release_critical": "UNKNOWN",
+      "release_criticality": "UNKNOWN",
+      "risk": "UNKNOWN",
+      "security_criticality": "UNKNOWN",
+      "target": null,
+      "unknown_dependency_policy": "INVALIDATE_CONSERVATIVELY"
+    },
+    {
+      "claim_refs": [],
+      "id": "AESE-FUZZ_TARGET-33BB6EB41D9150D4",
+      "kind": "FUZZ_TARGET",
+      "mapping_status": "NOT_MAPPED",
+      "path": "fuzz/fuzz_targets/wasm_bridge_frame.rs",
+      "release_critical": "UNKNOWN",
+      "release_criticality": "UNKNOWN",
+      "risk": "UNKNOWN",
+      "security_criticality": "UNKNOWN",
+      "target": null,
+      "unknown_dependency_policy": "INVALIDATE_CONSERVATIVELY"
+    },
+    {
+      "claim_refs": [],
+      "id": "AESE-FUZZ_TARGET-507CC201C623E914",
+      "kind": "FUZZ_TARGET",
+      "mapping_status": "NOT_MAPPED",
+      "path": "fuzz/fuzz_targets/browser_witness_packet.rs",
       "release_critical": "UNKNOWN",
       "release_criticality": "UNKNOWN",
       "risk": "UNKNOWN",
@@ -4441,10 +4467,75 @@
     },
     {
       "claim_refs": [],
+      "id": "AESE-FUZZ_TARGET-961EA555B4F5F31F",
+      "kind": "FUZZ_TARGET",
+      "mapping_status": "NOT_MAPPED",
+      "path": "fuzz/fuzz_targets/hypergraph_csr_parser.rs",
+      "release_critical": "UNKNOWN",
+      "release_criticality": "UNKNOWN",
+      "risk": "UNKNOWN",
+      "security_criticality": "UNKNOWN",
+      "target": null,
+      "unknown_dependency_policy": "INVALIDATE_CONSERVATIVELY"
+    },
+    {
+      "claim_refs": [],
       "id": "AESE-FUZZ_TARGET-A5DD33377FDD8B01",
       "kind": "FUZZ_TARGET",
       "mapping_status": "NOT_MAPPED",
       "path": "fuzz/fuzz_targets/runtime_ffi_contract.rs",
+      "release_critical": "UNKNOWN",
+      "release_criticality": "UNKNOWN",
+      "risk": "UNKNOWN",
+      "security_criticality": "UNKNOWN",
+      "target": null,
+      "unknown_dependency_policy": "INVALIDATE_CONSERVATIVELY"
+    },
+    {
+      "claim_refs": [],
+      "id": "AESE-FUZZ_TARGET-B102626194AE9ECC",
+      "kind": "FUZZ_TARGET",
+      "mapping_status": "NOT_MAPPED",
+      "path": "fuzz/fuzz_targets/replay_learning_decoder.rs",
+      "release_critical": "UNKNOWN",
+      "release_criticality": "UNKNOWN",
+      "risk": "UNKNOWN",
+      "security_criticality": "UNKNOWN",
+      "target": null,
+      "unknown_dependency_policy": "INVALIDATE_CONSERVATIVELY"
+    },
+    {
+      "claim_refs": [],
+      "id": "AESE-FUZZ_TARGET-BDD6865DA5B9F17B",
+      "kind": "FUZZ_TARGET",
+      "mapping_status": "NOT_MAPPED",
+      "path": "fuzz/fuzz_targets/wasm_sandbox_guard.rs",
+      "release_critical": "UNKNOWN",
+      "release_criticality": "UNKNOWN",
+      "risk": "UNKNOWN",
+      "security_criticality": "UNKNOWN",
+      "target": null,
+      "unknown_dependency_policy": "INVALIDATE_CONSERVATIVELY"
+    },
+    {
+      "claim_refs": [],
+      "id": "AESE-FUZZ_TARGET-CD7C675BD6BCD3EF",
+      "kind": "FUZZ_TARGET",
+      "mapping_status": "NOT_MAPPED",
+      "path": "fuzz/fuzz_targets/aip_v2_codec_frame.rs",
+      "release_critical": "UNKNOWN",
+      "release_criticality": "UNKNOWN",
+      "risk": "UNKNOWN",
+      "security_criticality": "UNKNOWN",
+      "target": null,
+      "unknown_dependency_policy": "INVALIDATE_CONSERVATIVELY"
+    },
+    {
+      "claim_refs": [],
+      "id": "AESE-FUZZ_TARGET-FFD5850A86B29AD1",
+      "kind": "FUZZ_TARGET",
+      "mapping_status": "NOT_MAPPED",
+      "path": "fuzz/fuzz_targets/datalog_policy_kernel.rs",
       "release_critical": "UNKNOWN",
       "release_criticality": "UNKNOWN",
       "risk": "UNKNOWN",
@@ -5136,6 +5227,19 @@
       "kind": "PYTHON_TEST",
       "mapping_status": "NOT_MAPPED",
       "path": "tests/test_placement_accelerator_metadata.py",
+      "release_critical": "UNKNOWN",
+      "release_criticality": "UNKNOWN",
+      "risk": "UNKNOWN",
+      "security_criticality": "UNKNOWN",
+      "target": null,
+      "unknown_dependency_policy": "INVALIDATE_CONSERVATIVELY"
+    },
+    {
+      "claim_refs": [],
+      "id": "AESE-PYTHON_TEST-1AA8075594FBE96E",
+      "kind": "PYTHON_TEST",
+      "mapping_status": "NOT_MAPPED",
+      "path": "tests/test_anti_toy_benchmark_lint.py",
       "release_critical": "UNKNOWN",
       "release_criticality": "UNKNOWN",
       "risk": "UNKNOWN",
@@ -5844,6 +5948,19 @@
       "security_criticality": "UNKNOWN",
       "target": null,
       "unknown_dependency_policy": null
+    },
+    {
+      "claim_refs": [],
+      "id": "AESE-PYTHON_TEST-A52CF7774B4AEA3C",
+      "kind": "PYTHON_TEST",
+      "mapping_status": "NOT_MAPPED",
+      "path": "tests/test_benchmark_protocol_v3.py",
+      "release_critical": "UNKNOWN",
+      "release_criticality": "UNKNOWN",
+      "risk": "UNKNOWN",
+      "security_criticality": "UNKNOWN",
+      "target": null,
+      "unknown_dependency_policy": "INVALIDATE_CONSERVATIVELY"
     },
     {
       "claim_refs": [],
@@ -7026,6 +7143,19 @@
     },
     {
       "claim_refs": [],
+      "id": "AESE-SCRIPT_OR_GATE-148F54EF5BB863B4",
+      "kind": "SCRIPT_OR_GATE",
+      "mapping_status": "NOT_MAPPED",
+      "path": "scripts/ffi_boundary_benchmark.py",
+      "release_critical": "UNKNOWN",
+      "release_criticality": "UNKNOWN",
+      "risk": "UNKNOWN",
+      "security_criticality": "UNKNOWN",
+      "target": null,
+      "unknown_dependency_policy": "INVALIDATE_CONSERVATIVELY"
+    },
+    {
+      "claim_refs": [],
       "id": "AESE-SCRIPT_OR_GATE-170634842816F064",
       "kind": "SCRIPT_OR_GATE",
       "mapping_status": "NOT_MAPPED",
@@ -7541,6 +7671,19 @@
       "kind": "SCRIPT_OR_GATE",
       "mapping_status": "NOT_MAPPED",
       "path": "scripts/governance_gate.py",
+      "release_critical": "UNKNOWN",
+      "release_criticality": "UNKNOWN",
+      "risk": "UNKNOWN",
+      "security_criticality": "UNKNOWN",
+      "target": null,
+      "unknown_dependency_policy": "INVALIDATE_CONSERVATIVELY"
+    },
+    {
+      "claim_refs": [],
+      "id": "AESE-SCRIPT_OR_GATE-9862E96EFBB8BAF3",
+      "kind": "SCRIPT_OR_GATE",
+      "mapping_status": "NOT_MAPPED",
+      "path": "scripts/anti_toy_benchmark_lint.py",
       "release_critical": "UNKNOWN",
       "release_criticality": "UNKNOWN",
       "risk": "UNKNOWN",
@@ -8793,6 +8936,6 @@
       "source_id": "AESE-011"
     }
   ],
-  "worktree_epoch": "a407241e48a54a490d807363a889a4c5d5cd818d43019c8ff7886f8a312c532f",
-  "worktree_status": "CLEAN"
+  "worktree_epoch": "6ae27f6c5c21c4aff142245450703ace30f0a1ba710e8b262880295247e49a38",
+  "worktree_status": "DIRTY"
 }

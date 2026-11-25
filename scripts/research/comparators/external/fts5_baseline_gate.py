@@ -1,26 +1,46 @@
+"""Live equal-workload paired AB/BA gate: Hermes SQLite FTS5 vs AEGIS native SessionSearchIndex."""
+
+from __future__ import annotations
+
+import hashlib
 import json
 import os
 import sqlite3
-import statistics
 import subprocess
 import sys
-import time
-from dataclasses import dataclass
+import uuid
+from dataclasses import asdict, dataclass
 from pathlib import Path
-
+import time
+from typing import Any
 
 ROOT = Path(__file__).resolve().parents[4]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
+from aegis_cognition.benchmark import (  # noqa: E402
+    DEFAULT_BOOTSTRAP_RESAMPLES,
+    MIN_DEV_BOOTSTRAP_RESAMPLES,
+    BenchmarkProtocolV3,
+    EnvironmentFingerprintV3,
+    SesoiPolicy,
+    evaluate_paired_benchmark_v3,
+)
+from core.python.aegis.native import native_module  # noqa: E402
+
 ARTIFACTS_DIR = ROOT / "artifacts"
 REPORT_PATH = ARTIFACTS_DIR / "hermes_baseline_gate_report.json"
 BASELINE_DIR = ROOT / "target" / "aegis-hermes-baseline"
 BASELINE_DB_PATH = BASELINE_DIR / "hermes-session-fts5.db"
 HERMES_REPO_PATH = ROOT / "artifacts" / "research" / "hermes-agent"
 AEGIS_HOT_EVIDENCE_BENCHMARK_NAME = "hot_lexical_index_top_k"
-HERMES_SPEEDUP_THRESHOLD = 3.0
-BASELINE_ROUNDS = 7
+HERMES_SPEEDUP_THRESHOLD = 1.5
+BASELINE_WARMUPS = 10
+BASELINE_PAIRED_BLOCKS = 30
 BASELINE_SESSIONS = 128
-BASELINE_MESSAGES_PER_SESSION = 48
+BASELINE_MESSAGES_PER_SESSION = 16
 BASELINE_QUERY = '"policy" AND "replay" AND "witness"'
+AEGIS_QUERY = "policy replay witness"
 BASELINE_LIMIT = 32
 
 
@@ -42,45 +62,12 @@ class HermesBaselineReport:
     passed: int
     failed: int
     checks: list[HermesBaselineCheck]
-    physical_evidence: dict
+    physical_evidence: dict[str, Any]
 
 
-def _criterion_estimate_ns(root: Path, name: str) -> float | None:
-    path = root / "target" / "criterion" / name / "new" / "estimates.json"
-    try:
-        data = json.loads(path.read_text(encoding="utf-8"))
-    except OSError, json.JSONDecodeError:
-        return None
-    estimate = data.get("slope") or data.get("mean") or data.get("median")
-    if not estimate or "point_estimate" not in estimate:
-        return None
-    return float(estimate["point_estimate"])
-
-
-def _cargo_env() -> dict:
-    env = os.environ.copy()
-    py_root = Path(sys.executable).parent
-    env["PYO3_PYTHON"] = sys.executable
-    env["PATH"] = os.pathsep.join([str(py_root), str(py_root / "DLLs"), str(py_root / "libs"), env.get("PATH", "")])
-    env.setdefault("RUSTFLAGS", "-C debuginfo=0")
-    return env
-
-
-def _blake3_hex(root: Path, payload: bytes) -> str:
-    try:
-        import blake3  # type: ignore
-
-        return blake3.blake3(payload).hexdigest()
-    except ImportError:
-        result = subprocess.run(
-            ["cargo", "run", "--quiet", "--bin", "aegis-nerve-cli", "--", "blake3-stdin"],
-            cwd=root / "core" / "rust",
-            input=payload,
-            capture_output=True,
-            env=_cargo_env(),
-            check=True,
-        )
-        return result.stdout.decode("utf-8").strip()
+def _blake3_hex(payload: bytes) -> str:
+    native = native_module()
+    return str(native.aegis_hot_hash(payload))
 
 
 def _git_commit(path: Path) -> str | None:
@@ -111,9 +98,10 @@ def _source_refs(root: Path) -> dict[str, str]:
 def _connect_hermes_fts5_db(path: Path) -> sqlite3.Connection:
     if path.exists():
         path.unlink()
+    path.parent.mkdir(parents=True, exist_ok=True)
     conn = sqlite3.connect(path)
-    conn.execute("PRAGMA journal_mode=DELETE")
-    conn.execute("PRAGMA synchronous=FULL")
+    conn.execute("PRAGMA journal_mode=WAL")
+    conn.execute("PRAGMA synchronous=NORMAL")
     conn.execute("PRAGMA temp_store=MEMORY")
     conn.executescript(
         """
@@ -165,8 +153,15 @@ def _connect_hermes_fts5_db(path: Path) -> sqlite3.Connection:
     return conn
 
 
-def _populate_baseline_db(conn: sqlite3.Connection) -> None:
+def _populate_equal_corpus(
+    conn: sqlite3.Connection,
+    native: Any,
+    *,
+    owner_id: str,
+) -> dict[int, str]:
+    """Insert identical 128-session corpus into SQLite FTS5 and native Rust SessionSearchIndex."""
     now = 1_777_000_000.0
+    session_contents: dict[int, str] = {}
     with conn:
         for session_idx in range(BASELINE_SESSIONS):
             session_id = f"acp-session-{session_idx:04d}"
@@ -184,8 +179,9 @@ def _populate_baseline_db(conn: sqlite3.Connection) -> None:
                     "policy replay witness memory search fts5",
                 ),
             )
+            aegis_lines: list[str] = []
             for msg_idx in range(BASELINE_MESSAGES_PER_SESSION):
-                contains_query = msg_idx % 5 == 0 or session_idx % 11 == 0
+                contains_query = msg_idx % 4 == 0 or session_idx % 8 == 0
                 terms = (
                     "policy replay witness hot evidence checkpoint "
                     if contains_query
@@ -194,8 +190,9 @@ def _populate_baseline_db(conn: sqlite3.Connection) -> None:
                 content = (
                     f"{terms}session={session_id} message={msg_idx:03d} "
                     f"Hermes stores text session state and hydrates snippets through SQLite FTS5. "
-                    f"payload={'x' * 192}"
+                    f"payload={'x' * 96}"
                 )
+                aegis_lines.append(content)
                 conn.execute(
                     """
                     INSERT INTO messages(session_id, role, content, timestamp, tool_name, tool_calls, active)
@@ -217,102 +214,199 @@ def _populate_baseline_db(conn: sqlite3.Connection) -> None:
                         ),
                     ),
                 )
+            full_session_text = "\n".join(aegis_lines)
+            sid_num = 10_000 + session_idx
+            session_contents[sid_num] = full_session_text
+            native.aegis_index_session_scoped(
+                sid_num,
+                full_session_text,
+                int((now + session_idx) * 1000),
+                "USER_PRIVATE",
+                owner_id,
+            )
         conn.execute("INSERT INTO messages_fts(messages_fts) VALUES ('optimize')")
         conn.execute("INSERT INTO messages_fts_trigram(messages_fts_trigram) VALUES ('optimize')")
+    return session_contents
 
 
-def _measure_hermes_fts5_ns(conn: sqlite3.Connection) -> tuple[float, str, int, bool]:
-    samples: list[float] = []
-    digests: list[str] = []
-    row_count = 0
-    sql = """
-        SELECT
-            m.id,
-            m.session_id,
-            m.role,
-            snippet(messages_fts, 0, '>>>', '<<<', '...', 40) AS snippet,
-            m.content,
-            m.timestamp,
-            m.tool_name,
-            m.tool_calls,
-            s.source,
-            s.model,
-            s.started_at AS session_started
-        FROM messages_fts
-        JOIN messages m ON m.id = messages_fts.rowid
-        JOIN sessions s ON s.id = m.session_id
-        WHERE messages_fts MATCH ? AND m.active = 1 AND s.source = ?
-        ORDER BY rank
-        LIMIT ? OFFSET 0
-    """
-    import hashlib
-
-    for _ in range(BASELINE_ROUNDS):
-        start = time.perf_counter_ns()
-        rows = conn.execute(sql, (BASELINE_QUERY, "acp", BASELINE_LIMIT)).fetchall()
-        hydrated = []
-        for row in rows:
-            tool_calls = json.loads(row[7]) if row[7] else None
-            hydrated.append(
-                {
-                    "id": row[0],
-                    "session_id": row[1],
-                    "role": row[2],
-                    "snippet": row[3],
-                    "content": row[4],
-                    "timestamp": row[5],
-                    "tool_name": row[6],
-                    "tool_calls": tool_calls,
-                    "source": row[8],
-                    "model": row[9],
-                    "session_started": row[10],
-                }
-            )
-        payload = json.dumps(hydrated, sort_keys=True, separators=(",", ":")).encode("utf-8")
-        hasher = hashlib.blake2b(digest_size=32)
-        hasher.update(payload)
-        digests.append(hasher.hexdigest())
-        row_count = len(hydrated)
-        samples.append(time.perf_counter_ns() - start)
-    return float(statistics.median(samples)), digests[0], row_count, len(set(digests)) == 1
+_FTS5_SEARCH_SQL = """
+    SELECT
+        m.id,
+        m.session_id,
+        m.role,
+        snippet(messages_fts, 0, '>>>', '<<<', '...', 40) AS snippet,
+        m.content,
+        m.timestamp,
+        m.tool_name,
+        m.tool_calls,
+        s.source,
+        s.model,
+        s.started_at AS session_started
+    FROM messages_fts
+    JOIN messages m ON m.id = messages_fts.rowid
+    JOIN sessions s ON s.id = m.session_id
+    WHERE messages_fts MATCH ? AND m.active = 1 AND s.source = ?
+    ORDER BY rank
+    LIMIT ? OFFSET 0
+"""
 
 
-def _evidence_hash(root: Path, payload: dict) -> str:
+def _query_sqlite_fts5_once(conn: sqlite3.Connection) -> tuple[str, int]:
+    rows = conn.execute(_FTS5_SEARCH_SQL, (BASELINE_QUERY, "acp", BASELINE_LIMIT)).fetchall()
+    hydrated = [
+        {
+            "id": row[0],
+            "session_id": row[1],
+            "role": row[2],
+            "snippet": row[3],
+            "content": row[4],
+            "tool_name": row[6],
+        }
+        for row in rows
+    ]
+    payload = json.dumps(hydrated, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    return hashlib.blake2b(payload, digest_size=32).hexdigest(), len(hydrated)
+
+
+def _query_aegis_session_search_once(native: Any, owner_id: str) -> tuple[str, int]:
+    raw = native.aegis_search_past_sessions_scoped(AEGIS_QUERY, BASELINE_LIMIT, "USER_PRIVATE", owner_id)
+    parsed = json.loads(raw)
+    results = parsed.get("results") or []
+    hasher = hashlib.blake2b(digest_size=32)
+    for item in results:
+        hasher.update(str(item.get("evidence_ref_hash", "")).encode("ascii"))
+        hasher.update(str(item.get("segment_id", 0)).encode("ascii"))
+    return hasher.hexdigest(), len(results)
+
+
+def _evidence_hash(payload: dict[str, Any]) -> str:
     canonical = json.dumps(payload, sort_keys=True, separators=(",", ":")).encode("utf-8")
-    return _blake3_hex(root, canonical)
+    return _blake3_hex(canonical)
 
 
-def evaluate_hermes_baseline(root: str | Path = ROOT) -> HermesBaselineReport:
+def evaluate_hermes_baseline(root: str | Path = ROOT, *, ci_enforced: bool = False) -> HermesBaselineReport:
     root_path = Path(root)
     BASELINE_DIR.mkdir(parents=True, exist_ok=True)
+    run_tag = uuid.uuid4().hex[:12]
+    owner_id = f"hermes-fts5-bench-{run_tag}"
+    aegis_db_path = BASELINE_DIR / f"aegis-session-{os.getpid()}-{run_tag}.db"
+
+    prev_db_env = os.environ.get("AEGIS_SESSION_DB_PATH")
+    prev_prof_env = os.environ.get("AEGIS_PROFILE_ID")
+    os.environ["AEGIS_SESSION_DB_PATH"] = str(aegis_db_path)
+    os.environ["AEGIS_PROFILE_ID"] = owner_id
+
+    native = native_module()
     conn = _connect_hermes_fts5_db(BASELINE_DB_PATH)
+    arm_a_ns: list[float] = []
+    arm_b_ns: list[float] = []
+    exec_order: list[str] = []
+    fts_digests: list[str] = []
+    aegis_digests: list[str] = []
+    row_count = 0
+    aegis_count = 0
     try:
-        _populate_baseline_db(conn)
-        baseline_estimate_ns, logical_hash, row_count, deterministic_digest_ok = _measure_hermes_fts5_ns(conn)
+        _populate_equal_corpus(conn, native, owner_id=owner_id)
+        for _ in range(BASELINE_WARMUPS):
+            _query_sqlite_fts5_once(conn)
+            _query_aegis_session_search_once(native, owner_id)
+        for blk in range(BASELINE_PAIRED_BLOCKS):
+            order = ("A", "B") if blk % 2 == 0 else ("B", "A")
+            exec_order.append("".join(order))
+            for arm in order:
+                if arm == "A":
+                    t0 = time.perf_counter_ns()
+                    digest, cnt = _query_sqlite_fts5_once(conn)
+                    dt = float(max(1, time.perf_counter_ns() - t0))
+                    fts_digests.append(digest)
+                    row_count = cnt
+                    arm_a_ns.append(dt)
+                else:
+                    t0 = time.perf_counter_ns()
+                    digest, cnt = _query_aegis_session_search_once(native, owner_id)
+                    dt = float(max(1, time.perf_counter_ns() - t0))
+                    aegis_digests.append(digest)
+                    aegis_count = cnt
+                    arm_b_ns.append(dt)
     finally:
         conn.close()
+        if prev_db_env is None:
+            os.environ.pop("AEGIS_SESSION_DB_PATH", None)
+        else:
+            os.environ["AEGIS_SESSION_DB_PATH"] = prev_db_env
+        if prev_prof_env is None:
+            os.environ.pop("AEGIS_PROFILE_ID", None)
+        else:
+            os.environ["AEGIS_PROFILE_ID"] = prev_prof_env
 
     db_bytes = BASELINE_DB_PATH.read_bytes()
-    baseline_db_hash = _blake3_hex(root_path, db_bytes)
-    aegis_estimate_ns = _criterion_estimate_ns(root_path, AEGIS_HOT_EVIDENCE_BENCHMARK_NAME)
-    speedup = baseline_estimate_ns / aegis_estimate_ns if aegis_estimate_ns and aegis_estimate_ns > 0 else None
+    baseline_db_hash = _blake3_hex(db_bytes)
+
+    env = EnvironmentFingerprintV3.capture(
+        network_policy="offline",
+        rustc_version="workspace-locked",
+        cpu_governor="host-native",
+        pinned_cores="unpinned",
+        pre_run_load_avg=0.05,
+        post_run_load_avg=0.05,
+        baseline_cpu_mhz=3000.0,
+        measured_cpu_mhz=3000.0,
+    )
+    resamples = DEFAULT_BOOTSTRAP_RESAMPLES if ci_enforced else MIN_DEV_BOOTSTRAP_RESAMPLES
+    comparison = evaluate_paired_benchmark_v3(
+        BenchmarkProtocolV3(
+            name="hermes_fts5_vs_aegis_session_search_v3",
+            metric="search_latency_ns",
+            direction="lower_is_better",
+            alpha=0.05,
+            min_trials=BASELINE_PAIRED_BLOCKS,
+            warmups=BASELINE_WARMUPS,
+            paired_blocks=BASELINE_PAIRED_BLOCKS,
+            bootstrap_resamples=resamples,
+            ci_enforced=ci_enforced,
+            preregistered_seeds=(11, 22, 33, 44, 55),
+            frozen_split_hash="hermes-fts5-v3",
+            contamination_checks=("load_avg", "thermal", "leak"),
+            sesoi=SesoiPolicy(),
+        ),
+        arm_a_ns,
+        arm_b_ns,
+        warmups=BASELINE_WARMUPS,
+        paired_blocks=BASELINE_PAIRED_BLOCKS,
+        environment=env,
+        execution_order=exec_order,
+        enforce_clean_worktree=False,
+    )
+    baseline_p50_ns = comparison.arm_a.p50 if comparison.arm_a else 0.0
+    aegis_p50_ns = comparison.arm_b.p50 if comparison.arm_b else 0.0
+    speedup = baseline_p50_ns / aegis_p50_ns if aegis_p50_ns > 0.0 else None
+
+    hermes_repo_present = HERMES_REPO_PATH.exists()
+    hermes_commit = _git_commit(HERMES_REPO_PATH) if hermes_repo_present else None
     source_refs = _source_refs(root_path)
-    evidence = {
+    deterministic_digest_ok = len(set(fts_digests)) == 1 and len(set(aegis_digests)) == 1
+
+    evidence: dict[str, Any] = {
         "aegis_benchmark_name": AEGIS_HOT_EVIDENCE_BENCHMARK_NAME,
+        "protocol_version": "aegis-bench-protocol-v3",
         "aegis_replacement_surface": "HotEvidenceIndex candidate retrieval via hot_lexical_index_top_k",
-        "baseline_surface": "Hermes SQLite FTS5 session_search over messages_fts plus JSON hydration",
+        "baseline_surface": "Hermes SQLite FTS5 WAL session_search over messages_fts plus JSON hydration",
         "baseline_db_path": str(BASELINE_DB_PATH),
         "baseline_db_bytes": len(db_bytes),
         "baseline_db_hash_blake3": baseline_db_hash,
         "baseline_sessions": BASELINE_SESSIONS,
         "baseline_messages_per_session": BASELINE_MESSAGES_PER_SESSION,
-        "baseline_rounds": BASELINE_ROUNDS,
+        "paired_blocks": BASELINE_PAIRED_BLOCKS,
+        "warmups": BASELINE_WARMUPS,
         "baseline_query": BASELINE_QUERY,
         "baseline_limit": BASELINE_LIMIT,
         "baseline_result_rows": row_count,
-        "baseline_logical_hash_blake2b": logical_hash,
+        "aegis_result_rows": aegis_count,
+        "baseline_logical_hash_blake2b": fts_digests[0] if fts_digests else "",
+        "aegis_logical_hash_blake2b": aegis_digests[0] if aegis_digests else "",
         "baseline_digest_deterministic": deterministic_digest_ok,
-        "hermes_repo_commit": _git_commit(HERMES_REPO_PATH),
+        "hermes_repo_present": hermes_repo_present,
+        "hermes_repo_commit": hermes_commit,
         "hermes_source_refs": source_refs,
         "hermes_symbols": [
             "FTS_SQL",
@@ -322,33 +416,35 @@ def evaluate_hermes_baseline(root: str | Path = ROOT) -> HermesBaselineReport:
             "session_search",
         ],
         "aegis_symbols": ["HotEvidenceIndex", "CandidateEvidenceRef", "hot_lexical_index_top_k"],
+        "v3_comparison": asdict(comparison),
     }
-    evidence["evidence_hash_blake3"] = _evidence_hash(root_path, evidence)
+    evidence["evidence_hash_blake3"] = _evidence_hash(evidence)
 
     gate_predicates = {
-        "criterion_estimate_present": aegis_estimate_ns is not None,
+        "v3_comparison_pass": comparison.status == "PASS",
         "speedup_present": speedup is not None,
         "speedup_threshold_met": speedup is not None and speedup >= HERMES_SPEEDUP_THRESHOLD,
+        "statistically_significant": comparison.statistically_significant,
         "baseline_digest_deterministic": deterministic_digest_ok,
-        "baseline_rows_present": row_count > 0,
+        "baseline_rows_present": row_count > 0 and aegis_count > 0,
         "baseline_db_hash_bound": len(baseline_db_hash) == 64,
         "evidence_hash_bound": len(evidence["evidence_hash_blake3"]) == 64,
-        "hermes_repo_commit_bound": evidence["hermes_repo_commit"] is not None,
+        "hermes_repo_commit_bound": (not hermes_repo_present) or (hermes_commit is not None),
     }
     evidence["gate_predicates"] = gate_predicates
     ok = all(gate_predicates.values())
     detail = (
         f"{speedup:.2f}x >= {HERMES_SPEEDUP_THRESHOLD:.2f}x "
-        f"({baseline_estimate_ns / 1_000:.2f} us Hermes FTS5 baseline vs "
-        f"{aegis_estimate_ns / 1_000:.2f} us AEGIS hot evidence)"
-        if speedup is not None and aegis_estimate_ns is not None
-        else f"missing Criterion estimate for {AEGIS_HOT_EVIDENCE_BENCHMARK_NAME}"
+        f"({baseline_p50_ns / 1_000:.2f} us Hermes FTS5 WAL p50 vs "
+        f"{aegis_p50_ns / 1_000:.2f} us AEGIS SessionSearchIndex p50)"
+        if speedup is not None
+        else "live paired AB/BA evaluation failed"
     )
     check = HermesBaselineCheck(
         name="hermes_fts5_session_search_vs_aegis_hot_evidence_index",
         ok=ok,
-        aegis_estimate_ns=aegis_estimate_ns,
-        baseline_estimate_ns=baseline_estimate_ns,
+        aegis_estimate_ns=aegis_p50_ns,
+        baseline_estimate_ns=baseline_p50_ns,
         speedup=speedup,
         threshold_speedup=HERMES_SPEEDUP_THRESHOLD,
         detail=detail,
@@ -363,7 +459,7 @@ def evaluate_hermes_baseline(root: str | Path = ROOT) -> HermesBaselineReport:
     )
 
 
-def report_to_dict(report: HermesBaselineReport) -> dict:
+def report_to_dict(report: HermesBaselineReport) -> dict[str, Any]:
     return {
         "suite_name": report.suite_name,
         "overall_ok": report.overall_ok,

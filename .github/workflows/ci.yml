@@ -162,6 +162,8 @@ jobs:
         run: python scripts/aese_inventory.py --check
       - name: AESE shadow graph drift
         run: python scripts/aese_claim_graph.py --check
+      - name: Anti-toy benchmark lint
+        run: python scripts/anti_toy_benchmark_lint.py
       - name: Current evidence consistency
         run: python scripts/evidence_consistency_gate.py --generate artifacts/evidence/current.json
       - name: Resolve pinned Rust toolchain
@@ -264,6 +266,8 @@ jobs:
         run: uv run --locked --extra all --extra dev ruff check aegis_cognition
       - name: Ruff format
         run: uv run --locked --extra all --extra dev ruff format --check aegis_cognition
+      - name: Anti-toy benchmark lint
+        run: uv run --locked --extra all --extra dev python scripts/anti_toy_benchmark_lint.py
       - name: Pyright strict type check
         run: uv run --locked --extra all --extra dev pyright
       - name: Python and cross-language tests

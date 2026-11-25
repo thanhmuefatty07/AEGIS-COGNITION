@@ -124,6 +124,23 @@ def _percentile(values: list[float], fraction: float) -> float:
     return ordered[min(len(ordered) - 1, int((len(ordered) - 1) * fraction))]
 
 
+def _measure_peak_alloc_bytes(mode: Mode, payload: bytes, directory: str | None) -> int:
+    """Measure isolated Python allocation peak in an untimed pass without distorting latency."""
+
+    tracemalloc.start()
+    try:
+        if mode == "ram":
+            _ram_path(payload)
+        else:
+            if directory is None:
+                raise ValueError("spill mode requires a temporary directory")
+            _spill_path(payload, directory)
+        _current, peak_allocated = tracemalloc.get_traced_memory()
+    finally:
+        tracemalloc.stop()
+    return peak_allocated
+
+
 def _measure_mode(mode: Mode, payload: bytes, iterations: int, directory: str | None) -> dict[str, Any]:
     samples_ms: list[float] = []
     digest: bytes | None = None
@@ -131,31 +148,28 @@ def _measure_mode(mode: Mode, payload: bytes, iterations: int, directory: str | 
     io_read = 0
     fsyncs = 0
     rss_before = _rss_bytes()
-    tracemalloc.start()
     wall_start = time.perf_counter_ns()
     cpu_start = time.process_time_ns()
-    try:
-        for _ in range(iterations):
-            started = time.perf_counter_ns()
-            if mode == "ram":
-                observed = _ram_path(payload)
-            else:
-                if directory is None:
-                    raise ValueError("spill mode requires a temporary directory")
-                observed, written, read, flushes = _spill_path(payload, directory)
-                io_written += written
-                io_read += read
-                fsyncs += flushes
-            if digest is None:
-                digest = observed
-            elif observed != digest:
-                raise AssertionError("cooperative path produced inconsistent digest")
-            samples_ms.append((time.perf_counter_ns() - started) / 1_000_000)
-    finally:
-        _current, peak_allocated = tracemalloc.get_traced_memory()
-        tracemalloc.stop()
+    for _ in range(iterations):
+        started = time.perf_counter_ns()
+        if mode == "ram":
+            observed = _ram_path(payload)
+        else:
+            if directory is None:
+                raise ValueError("spill mode requires a temporary directory")
+            observed, written, read, flushes = _spill_path(payload, directory)
+            io_written += written
+            io_read += read
+            fsyncs += flushes
+        if digest is None:
+            digest = observed
+        elif observed != digest:
+            raise AssertionError("cooperative path produced inconsistent digest")
+        samples_ms.append((time.perf_counter_ns() - started) / 1_000_000)
     wall_ns = time.perf_counter_ns() - wall_start
     cpu_ns = time.process_time_ns() - cpu_start
+    rss_after = _rss_bytes()
+    peak_allocated = _measure_peak_alloc_bytes(mode, payload, directory)
     return {
         "mode": mode,
         "iterations": iterations,
@@ -170,7 +184,7 @@ def _measure_mode(mode: Mode, payload: bytes, iterations: int, directory: str | 
             "wall_time_ns": wall_ns,
             "cpu_utilization_ratio": cpu_ns / wall_ns if wall_ns else None,
             "rss_before_bytes": rss_before,
-            "rss_after_bytes": _rss_bytes(),
+            "rss_after_bytes": rss_after,
             "peak_tracemalloc_bytes": peak_allocated,
         },
         "io": {

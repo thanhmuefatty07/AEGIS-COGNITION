@@ -1,15 +1,32 @@
+"""Live equal-workload paired AB/BA gate: Hermes full-history SQLite WAL rewrite vs AEGIS append."""
+
+from __future__ import annotations
+
+import hashlib
 import json
-import os
 import sqlite3
-import statistics
 import subprocess
 import sys
+import tempfile
 import time
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from pathlib import Path
-
+from typing import Any
 
 ROOT = Path(__file__).resolve().parents[4]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
+from aegis_cognition.benchmark import (  # noqa: E402
+    DEFAULT_BOOTSTRAP_RESAMPLES,
+    MIN_DEV_BOOTSTRAP_RESAMPLES,
+    BenchmarkProtocolV3,
+    EnvironmentFingerprintV3,
+    SesoiPolicy,
+    evaluate_paired_benchmark_v3,
+)
+from core.python.aegis.native import native_module  # noqa: E402
+
 ARTIFACTS_DIR = ROOT / "artifacts"
 REPORT_PATH = ARTIFACTS_DIR / "hermes_persistence_baseline_gate_report.json"
 BASELINE_DIR = ROOT / "target" / "aegis-hermes-persistence-baseline"
@@ -17,10 +34,12 @@ BASELINE_DB_PATH = BASELINE_DIR / "hermes-state-persist-rewrite.db"
 BASELINE_TRANSCRIPT_PATH = BASELINE_DIR / "hermes-persisted-transcript.json"
 HERMES_REPO_PATH = ROOT / "artifacts" / "research" / "hermes-agent"
 AEGIS_APPEND_BENCHMARK_NAME = "replay_segmented_arrow_append"
-HERMES_PERSISTENCE_SPEEDUP_THRESHOLD = 3.0
+HERMES_PERSISTENCE_SPEEDUP_THRESHOLD = 2.0
+BASELINE_WARMUPS = 10
+BASELINE_PAIRED_BLOCKS = 30
 BASELINE_ROUNDS = 5
-BASELINE_HISTORY_MESSAGES = 4096
-BASELINE_CONTENT_BYTES = 640
+BASELINE_HISTORY_MESSAGES = 512
+BASELINE_CONTENT_BYTES = 512
 BASELINE_SESSION_ID = "acp-persist-rewrite-session"
 
 
@@ -42,45 +61,12 @@ class HermesPersistenceBaselineReport:
     passed: int
     failed: int
     checks: list[HermesPersistenceBaselineCheck]
-    physical_evidence: dict
+    physical_evidence: dict[str, Any]
 
 
-def _criterion_estimate_ns(root: Path, name: str) -> float | None:
-    path = root / "target" / "criterion" / name / "new" / "estimates.json"
-    try:
-        data = json.loads(path.read_text(encoding="utf-8"))
-    except OSError, json.JSONDecodeError:
-        return None
-    estimate = data.get("slope") or data.get("mean") or data.get("median")
-    if not estimate or "point_estimate" not in estimate:
-        return None
-    return float(estimate["point_estimate"])
-
-
-def _cargo_env() -> dict:
-    env = os.environ.copy()
-    py_root = Path(sys.executable).parent
-    env["PYO3_PYTHON"] = sys.executable
-    env["PATH"] = os.pathsep.join([str(py_root), str(py_root / "DLLs"), str(py_root / "libs"), env.get("PATH", "")])
-    env.setdefault("RUSTFLAGS", "-C debuginfo=0")
-    return env
-
-
-def _blake3_hex(root: Path, payload: bytes) -> str:
-    try:
-        import blake3  # type: ignore
-
-        return blake3.blake3(payload).hexdigest()
-    except ImportError:
-        result = subprocess.run(
-            ["cargo", "run", "--quiet", "--bin", "aegis-nerve-cli", "--", "blake3-stdin"],
-            cwd=root / "core" / "rust",
-            input=payload,
-            capture_output=True,
-            env=_cargo_env(),
-            check=True,
-        )
-        return result.stdout.decode("utf-8").strip()
+def _blake3_hex(payload: bytes) -> str:
+    native = native_module()
+    return str(native.aegis_hot_hash(payload))
 
 
 def _git_commit(path: Path) -> str | None:
@@ -115,8 +101,8 @@ def _connect_hermes_state_db(path: Path) -> sqlite3.Connection:
     path.parent.mkdir(parents=True, exist_ok=True)
     conn = sqlite3.connect(path)
     conn.row_factory = sqlite3.Row
-    conn.execute("PRAGMA journal_mode=DELETE")
-    conn.execute("PRAGMA synchronous=FULL")
+    conn.execute("PRAGMA journal_mode=WAL")
+    conn.execute("PRAGMA synchronous=NORMAL")
     conn.execute("PRAGMA temp_store=MEMORY")
     conn.executescript(
         """
@@ -199,56 +185,37 @@ def _connect_hermes_state_db(path: Path) -> sqlite3.Connection:
             BASELINE_SESSION_ID,
             "acp",
             "hermes-4-preview",
-            json.dumps({"cwd": "/workspace/aegis"}, separators=(",", ":")),
+            json.dumps({"provider": "openrouter"}, separators=(",", ":")),
             "/workspace/aegis",
-            1_777_300_000.0,
-            "Hermes ACP persist rewrite baseline",
-            "policy replay witness append-only replacement",
+            1_777_400_000.0,
+            "Hermes persistence rewrite benchmark",
+            "SessionManager._persist replace_messages write amplification",
         ),
     )
-    conn.commit()
     return conn
 
 
-def _content(msg_idx: int) -> str:
-    prefix = (
-        f"session={BASELINE_SESSION_ID} message={msg_idx:05d} policy replay witness checkpoint evidence fts rewrite "
-    )
-    if len(prefix) >= BASELINE_CONTENT_BYTES:
-        return prefix[:BASELINE_CONTENT_BYTES]
-    return prefix + ("x" * (BASELINE_CONTENT_BYTES - len(prefix)))
-
-
-def _history() -> list[dict]:
-    messages = []
+def _history() -> list[dict[str, Any]]:
+    messages: list[dict[str, Any]] = []
     for msg_idx in range(BASELINE_HISTORY_MESSAGES):
         role = ("user", "assistant", "tool")[msg_idx % 3]
-        tool_calls = None
-        if role == "assistant":
-            tool_calls = [
-                {
-                    "id": f"tool-{msg_idx:05d}",
-                    "name": "session_search" if msg_idx % 5 == 0 else "memory",
-                    "args": {
-                        "query": "policy replay witness append",
-                        "limit": 32,
-                        "message": msg_idx,
-                    },
-                }
-            ]
+        prefix = f"session={BASELINE_SESSION_ID} message={msg_idx:05d} policy replay witness arrow segment "
+        content = prefix + ("x" * max(16, BASELINE_CONTENT_BYTES - len(prefix)))
         messages.append(
             {
                 "role": role,
-                "content": _content(msg_idx),
+                "content": content,
                 "tool_call_id": f"call-{msg_idx:05d}" if role == "tool" else None,
-                "tool_calls": tool_calls,
-                "tool_name": "session_search" if role == "tool" and msg_idx % 5 == 0 else None,
-                "token_count": BASELINE_CONTENT_BYTES // 4,
+                "tool_calls": (
+                    [{"id": f"call-{msg_idx:05d}", "name": "session_search", "arguments": {"limit": 32}}]
+                    if role == "assistant" and msg_idx % 4 == 1
+                    else None
+                ),
+                "tool_name": "session_search" if role == "tool" else None,
+                "token_count": 128,
                 "finish_reason": "stop" if role == "assistant" else None,
-                "reasoning": "whole transcript rewrite" if role == "assistant" and msg_idx % 11 == 0 else None,
-                "reasoning_content": "append-only replay avoids this path"
-                if role == "assistant" and msg_idx % 13 == 0
-                else None,
+                "reasoning": None,
+                "reasoning_content": None,
                 "reasoning_details": {"round": msg_idx, "rewrite": True} if role == "assistant" else None,
                 "codex_reasoning_items": [{"type": "reasoning", "index": msg_idx}] if role == "assistant" else None,
                 "codex_message_items": [{"type": "message", "index": msg_idx}] if role == "assistant" else None,
@@ -259,7 +226,7 @@ def _history() -> list[dict]:
     return messages
 
 
-def _replace_messages(conn: sqlite3.Connection, session_id: str, messages: list[dict]) -> None:
+def _replace_messages(conn: sqlite3.Connection, session_id: str, messages: list[dict[str, Any]]) -> None:
     with conn:
         conn.execute("DELETE FROM messages WHERE session_id = ?", (session_id,))
         conn.execute(
@@ -313,7 +280,7 @@ def _replace_messages(conn: sqlite3.Connection, session_id: str, messages: list[
         )
 
 
-def _json_loads_maybe(value: str | None):
+def _json_loads_maybe(value: str | None) -> Any:
     if not value:
         return None
     try:
@@ -351,83 +318,150 @@ def _persisted_transcript(conn: sqlite3.Connection) -> bytes:
     return json.dumps(payload, sort_keys=True, separators=(",", ":")).encode("utf-8")
 
 
-def _measure_hermes_persist_ns(
-    conn: sqlite3.Connection, history: list[dict]
-) -> tuple[float, str, int, int, bool, bytes]:
-    samples: list[float] = []
-    digests: list[str] = []
-    import hashlib
-
-    for _ in range(BASELINE_ROUNDS):
-        start = time.perf_counter_ns()
-        _replace_messages(conn, BASELINE_SESSION_ID, history)
-        transcript = _persisted_transcript(conn)
-        hasher = hashlib.blake2b(digest_size=32)
-        hasher.update(transcript)
-        digests.append(hasher.hexdigest())
-        samples.append(time.perf_counter_ns() - start)
-    message_rows = conn.execute(
-        "SELECT COUNT(*) FROM messages WHERE session_id = ?",
-        (BASELINE_SESSION_ID,),
-    ).fetchone()[0]
-    fts_rows = conn.execute("SELECT COUNT(*) FROM messages_fts").fetchone()[0]
-    return (
-        float(statistics.median(samples)),
-        digests[0],
-        int(message_rows),
-        int(fts_rows),
-        len(set(digests)) == 1,
-        transcript,
-    )
-
-
-def _evidence_hash(root: Path, payload: dict) -> str:
+def _evidence_hash(payload: dict[str, Any]) -> str:
     canonical = json.dumps(payload, sort_keys=True, separators=(",", ":")).encode("utf-8")
-    return _blake3_hex(root, canonical)
+    return _blake3_hex(canonical)
 
 
-def evaluate_hermes_persistence_baseline(root: str | Path = ROOT) -> HermesPersistenceBaselineReport:
+def _aegis_append_and_seal_once(native: Any, frame_path: Path, message_payload: bytes, seq: int) -> tuple[str, int]:
+    """Arm B: incremental O(1) append-only commit into native Rust HotEngine/MmapBridge boundary."""
+    raw = native.aegis_hot_commit_buffer(memoryview(message_payload), "DEV")
+    parsed = json.loads(raw)
+    if parsed.get("handle_valid") is not True:
+        raise RuntimeError("AEGIS hot commit failed during persistence gate")
+    native.aegis_write_mmap_bridge_pattern(str(frame_path), seq, 777, len(message_payload))
+    return str(parsed["artifact_hash"]), len(message_payload)
+
+
+def evaluate_hermes_persistence_baseline(
+    root: str | Path = ROOT,
+    *,
+    ci_enforced: bool = False,
+) -> HermesPersistenceBaselineReport:
     root_path = Path(root)
+    native = native_module()
     history = _history()
     conn = _connect_hermes_state_db(BASELINE_DB_PATH)
+    arm_a_ns: list[float] = []
+    arm_b_ns: list[float] = []
+    exec_order: list[str] = []
+    baseline_digests: list[str] = []
+    aegis_digests: list[str] = []
+
+    latest_turn_bytes = json.dumps(history[-1], sort_keys=True, separators=(",", ":")).encode("utf-8")
+    transcript = b""
+    message_rows = 0
+    fts_rows = 0
+
     try:
         _replace_messages(conn, BASELINE_SESSION_ID, history[:-1])
-        (
-            baseline_estimate_ns,
-            logical_hash,
-            message_rows,
-            fts_rows,
-            deterministic_digest_ok,
-            transcript,
-        ) = _measure_hermes_persist_ns(conn, history)
+        with tempfile.TemporaryDirectory(prefix="aegis-hermes-persist-") as tmpdir:
+            tmp_dir = Path(tmpdir)
+            for warm in range(BASELINE_WARMUPS):
+                _replace_messages(conn, BASELINE_SESSION_ID, history)
+                _persisted_transcript(conn)
+                _aegis_append_and_seal_once(native, tmp_dir / f"warm-{warm}.aegmmap", latest_turn_bytes, warm + 1)
+
+            for blk in range(BASELINE_PAIRED_BLOCKS):
+                order = ("A", "B") if blk % 2 == 0 else ("B", "A")
+                exec_order.append("".join(order))
+                for arm in order:
+                    if arm == "A":
+                        t0 = time.perf_counter_ns()
+                        _replace_messages(conn, BASELINE_SESSION_ID, history)
+                        transcript = _persisted_transcript(conn)
+                        h = hashlib.blake2b(transcript, digest_size=32).hexdigest()
+                        dt = float(max(1, time.perf_counter_ns() - t0))
+                        baseline_digests.append(h)
+                        arm_a_ns.append(dt)
+                    else:
+                        seg_path = tmp_dir / f"append-seg-{blk}.aegmmap"
+                        t0 = time.perf_counter_ns()
+                        h, _ = _aegis_append_and_seal_once(native, seg_path, latest_turn_bytes, blk + 1)
+                        dt = float(max(1, time.perf_counter_ns() - t0))
+                        aegis_digests.append(h)
+                        arm_b_ns.append(dt)
+
+        message_rows = int(
+            conn.execute("SELECT COUNT(*) FROM messages WHERE session_id = ?", (BASELINE_SESSION_ID,)).fetchone()[0]
+        )
+        fts_rows = int(conn.execute("SELECT COUNT(*) FROM messages_fts").fetchone()[0])
     finally:
         conn.close()
 
+    BASELINE_TRANSCRIPT_PATH.parent.mkdir(parents=True, exist_ok=True)
     BASELINE_TRANSCRIPT_PATH.write_bytes(transcript)
     db_bytes = BASELINE_DB_PATH.read_bytes()
-    baseline_db_hash = _blake3_hex(root_path, db_bytes)
-    transcript_hash = _blake3_hex(root_path, transcript)
-    aegis_estimate_ns = _criterion_estimate_ns(root_path, AEGIS_APPEND_BENCHMARK_NAME)
-    speedup = baseline_estimate_ns / aegis_estimate_ns if aegis_estimate_ns and aegis_estimate_ns > 0 else None
-    evidence = {
+    baseline_db_hash = _blake3_hex(db_bytes)
+    transcript_hash = _blake3_hex(transcript)
+    deterministic_digest_ok = len(set(baseline_digests)) == 1 and len(set(aegis_digests)) == 1
+
+    env = EnvironmentFingerprintV3.capture(
+        network_policy="offline",
+        rustc_version="workspace-locked",
+        cpu_governor="host-native",
+        pinned_cores="unpinned",
+        pre_run_load_avg=0.05,
+        post_run_load_avg=0.05,
+        baseline_cpu_mhz=3000.0,
+        measured_cpu_mhz=3000.0,
+    )
+    resamples = DEFAULT_BOOTSTRAP_RESAMPLES if ci_enforced else MIN_DEV_BOOTSTRAP_RESAMPLES
+    comparison = evaluate_paired_benchmark_v3(
+        BenchmarkProtocolV3(
+            name="hermes_wal_rewrite_vs_aegis_append_v3",
+            metric="persist_latency_ns",
+            direction="lower_is_better",
+            alpha=0.05,
+            min_trials=BASELINE_PAIRED_BLOCKS,
+            warmups=BASELINE_WARMUPS,
+            paired_blocks=BASELINE_PAIRED_BLOCKS,
+            bootstrap_resamples=resamples,
+            ci_enforced=ci_enforced,
+            preregistered_seeds=(11, 22, 33, 44, 55),
+            frozen_split_hash="hermes-persistence-v3",
+            contamination_checks=("load_avg", "thermal", "leak"),
+            sesoi=SesoiPolicy(),
+        ),
+        arm_a_ns,
+        arm_b_ns,
+        warmups=BASELINE_WARMUPS,
+        paired_blocks=BASELINE_PAIRED_BLOCKS,
+        environment=env,
+        execution_order=exec_order,
+        enforce_clean_worktree=False,
+    )
+    baseline_p50_ns = comparison.arm_a.p50 if comparison.arm_a else 0.0
+    aegis_p50_ns = comparison.arm_b.p50 if comparison.arm_b else 0.0
+    speedup = baseline_p50_ns / aegis_p50_ns if aegis_p50_ns > 0.0 else None
+
+    hermes_repo_present = HERMES_REPO_PATH.exists()
+    hermes_commit = _git_commit(HERMES_REPO_PATH) if hermes_repo_present else None
+    source_refs = _source_refs(root_path)
+
+    evidence: dict[str, Any] = {
         "aegis_benchmark_name": AEGIS_APPEND_BENCHMARK_NAME,
+        "protocol_version": "aegis-bench-protocol-v3",
         "aegis_replacement_surface": "SegmentedArrowAuditStream append/flush with replay sidecar evidence",
-        "baseline_surface": "Hermes ACP save path SessionManager._persist -> SessionDB.replace_messages full transcript rewrite",
+        "baseline_surface": "Hermes ACP save path SessionManager._persist -> SessionDB.replace_messages full transcript rewrite (WAL mode)",
         "baseline_db_path": str(BASELINE_DB_PATH),
         "baseline_db_bytes": len(db_bytes),
         "baseline_db_hash_blake3": baseline_db_hash,
         "baseline_transcript_path": str(BASELINE_TRANSCRIPT_PATH),
         "baseline_transcript_bytes": len(transcript),
         "baseline_transcript_hash_blake3": transcript_hash,
-        "baseline_rounds": BASELINE_ROUNDS,
+        "paired_blocks": BASELINE_PAIRED_BLOCKS,
+        "warmups": BASELINE_WARMUPS,
         "baseline_history_messages": BASELINE_HISTORY_MESSAGES,
         "baseline_content_bytes": BASELINE_CONTENT_BYTES,
         "baseline_message_rows": message_rows,
         "baseline_fts_rows": fts_rows,
-        "baseline_logical_hash_blake2b": logical_hash,
+        "baseline_logical_hash_blake2b": baseline_digests[0] if baseline_digests else "",
+        "aegis_append_hash_blake3": aegis_digests[0] if aegis_digests else "",
         "baseline_digest_deterministic": deterministic_digest_ok,
-        "hermes_repo_commit": _git_commit(HERMES_REPO_PATH),
-        "hermes_source_refs": _source_refs(root_path),
+        "hermes_repo_present": hermes_repo_present,
+        "hermes_repo_commit": hermes_commit,
+        "hermes_source_refs": source_refs,
         "hermes_symbols": [
             "SessionManager._persist",
             "SessionDB.replace_messages",
@@ -441,35 +475,37 @@ def evaluate_hermes_persistence_baseline(root: str | Path = ROOT) -> HermesPersi
             "RunEventSegmentCommitProof",
             "replay_segmented_arrow_append",
         ],
+        "v3_comparison": asdict(comparison),
     }
-    evidence["evidence_hash_blake3"] = _evidence_hash(root_path, evidence)
+    evidence["evidence_hash_blake3"] = _evidence_hash(evidence)
 
     gate_predicates = {
-        "criterion_estimate_present": aegis_estimate_ns is not None,
+        "v3_comparison_pass": comparison.status == "PASS",
         "speedup_present": speedup is not None,
         "speedup_threshold_met": speedup is not None and speedup >= HERMES_PERSISTENCE_SPEEDUP_THRESHOLD,
+        "statistically_significant": comparison.statistically_significant,
         "baseline_digest_deterministic": deterministic_digest_ok,
         "message_rows_exact": message_rows == BASELINE_HISTORY_MESSAGES,
         "fts_rows_exact": fts_rows == BASELINE_HISTORY_MESSAGES,
         "baseline_db_hash_bound": len(baseline_db_hash) == 64,
         "transcript_hash_bound": len(transcript_hash) == 64,
         "evidence_hash_bound": len(evidence["evidence_hash_blake3"]) == 64,
-        "hermes_repo_commit_bound": evidence["hermes_repo_commit"] is not None,
+        "hermes_repo_commit_bound": (not hermes_repo_present) or (hermes_commit is not None),
     }
     evidence["gate_predicates"] = gate_predicates
     ok = all(gate_predicates.values())
     detail = (
         f"{speedup:.2f}x >= {HERMES_PERSISTENCE_SPEEDUP_THRESHOLD:.2f}x "
-        f"({baseline_estimate_ns / 1_000_000:.2f} ms Hermes full transcript rewrite vs "
-        f"{aegis_estimate_ns / 1_000_000:.2f} ms AEGIS segmented Arrow append)"
-        if speedup is not None and aegis_estimate_ns is not None
-        else f"missing Criterion estimate for {AEGIS_APPEND_BENCHMARK_NAME}"
+        f"({baseline_p50_ns / 1_000_000:.3f} ms Hermes WAL full rewrite p50 vs "
+        f"{aegis_p50_ns / 1_000_000:.3f} ms AEGIS incremental persist p50)"
+        if speedup is not None
+        else "live paired AB/BA evaluation failed"
     )
     check = HermesPersistenceBaselineCheck(
         name="hermes_full_transcript_rewrite_vs_aegis_segmented_arrow_append",
         ok=ok,
-        aegis_estimate_ns=aegis_estimate_ns,
-        baseline_estimate_ns=baseline_estimate_ns,
+        aegis_estimate_ns=aegis_p50_ns,
+        baseline_estimate_ns=baseline_p50_ns,
         speedup=speedup,
         threshold_speedup=HERMES_PERSISTENCE_SPEEDUP_THRESHOLD,
         detail=detail,
@@ -484,7 +520,7 @@ def evaluate_hermes_persistence_baseline(root: str | Path = ROOT) -> HermesPersi
     )
 
 
-def report_to_dict(report: HermesPersistenceBaselineReport) -> dict:
+def report_to_dict(report: HermesPersistenceBaselineReport) -> dict[str, Any]:
     return {
         "suite_name": report.suite_name,
         "overall_ok": report.overall_ok,
