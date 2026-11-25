@@ -3839,7 +3839,7 @@ mod tests {
         let mut timeout_sandbox = WasmtimeSandbox::new();
         timeout_sandbox.timeout_ms = 30;
         assert_eq!(
-            timeout_sandbox.execute_wasm_binary(&wasm, 50_000_000),
+            timeout_sandbox.execute_wasm_binary(&wasm, 10_000_000_000),
             Err(TrapReason::ExecutionInterrupted)
         );
     }

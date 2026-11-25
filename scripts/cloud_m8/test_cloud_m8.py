@@ -884,6 +884,37 @@ class TestCloudM8Packaging(unittest.TestCase):
             hashlib.sha256(sample_file.read_bytes()).hexdigest(),
         )
 
+    def test_sync_verified_archive_preserves_existing_source_provenance_without_mismatch(self) -> None:
+        """Verify pre-existing PROVENANCE.json in source_dir is archived as PROVENANCE_SOURCE.json without digest collision."""
+        src_dir = self.tmp_path / "src_with_prov"
+        src_dir.mkdir(parents=True, exist_ok=True)
+        (src_dir / "metric.json").write_text('{"ok": true}\n', encoding="utf-8")
+        remote_prov = src_dir / "PROVENANCE.json"
+        remote_prov.write_text('{"origin": "remote-vm"}\n', encoding="utf-8")
+
+        archive_root = self.tmp_path / "ext_archive_prov"
+        archive_root.mkdir(parents=True, exist_ok=True)
+
+        res = sync_verified_archive(
+            src_dir,
+            archive_root,
+            "20261125-phase0-provtest",
+            root=ROOT,
+            tier="gcp-us-central1",
+            exact_command="pytest provenance collision",
+        )
+        self.assertTrue(res["verified"])
+        self.assertEqual(res["mismatches"], 0)
+        self.assertEqual(res["file_count"], 2)
+
+        run_dest = archive_root / "runs" / "20261125-phase0-provtest"
+        self.assertTrue((run_dest / "PROVENANCE.json").is_file())
+        self.assertTrue((run_dest / "PROVENANCE_SOURCE.json").is_file())
+        self.assertEqual(
+            (run_dest / "PROVENANCE_SOURCE.json").read_text(encoding="utf-8"),
+            '{"origin": "remote-vm"}\n',
+        )
+
     def test_spot_v2_profiles_no_address_unique_gcs_and_non_mutating_startup(self) -> None:
         """Verify unique GCS run URIs, --no-address, Day-1 machine profiles, and CRLF-safe startup staging."""
         self.assertEqual(DEFAULT_BUCKET, DEFAULT_RESEARCH_BUCKET)

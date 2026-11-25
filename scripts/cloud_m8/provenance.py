@@ -268,6 +268,10 @@ def sync_verified_archive(
     copied_entries: list[tuple[Path, Path, str, int]] = []
     for src in source_files:
         rel = src.relative_to(source_dir)
+        # Preserve an imported top-level PROVENANCE.json without overwriting or colliding
+        # with the destination run manifest generated below.
+        if rel.as_posix() == "PROVENANCE.json":
+            rel = Path("PROVENANCE_SOURCE.json")
         dst = run_dest / rel
         dst.parent.mkdir(parents=True, exist_ok=True)
         src_digest = sha256_file(src)

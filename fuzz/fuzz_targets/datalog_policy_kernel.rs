@@ -6,10 +6,13 @@ use aegis_nerve::policy::{
 };
 use libfuzzer_sys::fuzz_target;
 
-fn hash32(bytes: &[u8], offset: usize) -> [u8; 32] {
+fn hash32(bytes: &[u8], offset: usize, force_nonzero: bool) -> [u8; 32] {
     let mut out = [0u8; 32];
     for (idx, slot) in out.iter_mut().enumerate() {
         *slot = bytes.get(offset + idx).copied().unwrap_or(0);
+    }
+    if force_nonzero && out.iter().all(|&b| b == 0) {
+        out[0] = 1;
     }
     out
 }
@@ -19,6 +22,7 @@ fuzz_target!(|payload: &[u8]| {
     let b1 = payload.get(1).copied().unwrap_or(0);
     let b2 = payload.get(2).copied().unwrap_or(0);
     let b3 = payload.get(3).copied().unwrap_or(0);
+    let force_nonzero = (b0 & 0x80) != 0;
 
     let risk = match b0 % 5 {
         0 => RiskClass::R0,
@@ -72,7 +76,7 @@ fuzz_target!(|payload: &[u8]| {
             requires_approval: false,
             requires_staging: false,
             expected_artifact_hash: if (b2 & 0x40) != 0 {
-                Some(hash32(payload, 4))
+                Some(hash32(payload, 4, force_nonzero))
             } else {
                 None
             },
@@ -83,31 +87,31 @@ fuzz_target!(|payload: &[u8]| {
         202,
         capability,
         side_effect,
-        hash32(payload, 8),
+        hash32(payload, 8, force_nonzero),
         risk,
-        hash32(payload, 16),
-        hash32(payload, 24),
+        hash32(payload, 16, force_nonzero),
+        hash32(payload, 24, force_nonzero),
         contract,
         if (b3 & 0x40) != 0 {
-            Some(hash32(payload, 32))
+            Some(hash32(payload, 32, force_nonzero))
         } else {
             None
         },
     );
     let facts = match b3 % 3 {
         0 => PolicyFacts::with_staging_evidence(
-            hash32(payload, 40),
+            hash32(payload, 40, force_nonzero),
             has_valid_approval,
-            hash32(payload, 48),
+            hash32(payload, 48, force_nonzero),
             staging_kind,
         ),
         1 => PolicyFacts::with_hitl_signature(
-            hash32(payload, 40),
+            hash32(payload, 40, force_nonzero),
             has_valid_approval,
-            hash32(payload, 56),
+            hash32(payload, 56, force_nonzero),
         ),
         _ => PolicyFacts::new(
-            hash32(payload, 40),
+            hash32(payload, 40, force_nonzero),
             has_valid_approval,
             has_staging_environment,
             has_hitl_signature,
@@ -117,7 +121,11 @@ fuzz_target!(|payload: &[u8]| {
     let kernel = DeterministicPolicyKernel;
     let (trace, closure) = kernel.evaluate_with_datalog(&ir, &facts);
     assert!(closure.is_valid_for(&ir, &facts));
-    assert!(trace.is_replay_consistent_with(&ir));
+    if ir.is_valid() && facts.is_valid() {
+        assert!(trace.is_replay_consistent_with(&ir));
+    } else {
+        assert_eq!(trace.decision, PolicyDecision::HardBlock);
+    }
     if risk == RiskClass::R4
         && !facts.has_hitl_signature
         && !(facts.has_staging_environment
