@@ -21,10 +21,12 @@ from aegis_cognition.benchmark import (  # noqa: E402
     DEFAULT_BOOTSTRAP_RESAMPLES,
     MIN_DEV_BOOTSTRAP_RESAMPLES,
     BenchmarkProtocolV3,
+    BenchmarkHostSample,
     EnvironmentFingerprintV3,
     PairedBenchmarkComparisonV3,
     SesoiPolicy,
     evaluate_paired_benchmark_v3,
+    paired_ab_ba_schedule,
 )
 from core.python.aegis.native import native_module  # noqa: E402
 from core.python.bridge_mmap import MmapBridgeFrame, MmapBridgeWriter  # noqa: E402
@@ -245,13 +247,13 @@ def evaluate_sota_baseline(
         with MmapBridgeWriter(mmap_path, 1001, 42, len(binary_records)) as writer:
             writer.write(binary_records)
 
+        host_before = BenchmarkHostSample.capture()
         for _ in range(warmups):
             _verify_json_trajectory_once(traj_path)
             _verify_aegis_binary_trajectory_once(native, mmap_path, len(records))
 
-        for blk in range(blocks):
-            order = ("A", "B") if blk % 2 == 0 else ("B", "A")
-            exec_order.append("".join(order))
+        for order in paired_ab_ba_schedule(blocks):
+            exec_order.append(order)
             for arm in order:
                 if arm == "A":
                     t0 = time.perf_counter_ns()
@@ -269,6 +271,7 @@ def evaluate_sota_baseline(
                         raise RuntimeError("Arm B record count mismatch")
                     aegis_digests.append(digest)
                     arm_b_aegis_ns.append(dt)
+        host_after = BenchmarkHostSample.capture()
 
     deterministic_digest_ok = (
         len(set(baseline_digests)) == 1
@@ -277,15 +280,8 @@ def evaluate_sota_baseline(
         and aegis_digests[0] == expected_logical_digest
     )
 
-    env = EnvironmentFingerprintV3.capture(
-        network_policy="offline",
-        rustc_version="workspace-locked",
-        cpu_governor="host-native",
-        pinned_cores="unpinned",
-        pre_run_load_avg=0.05,
-        post_run_load_avg=0.05,
-        baseline_cpu_mhz=3000.0,
-        measured_cpu_mhz=3000.0,
+    env = EnvironmentFingerprintV3.capture_host(
+        host_before, after=host_after, network_policy="offline", workspace_root=ROOT
     )
     resamples = DEFAULT_BOOTSTRAP_RESAMPLES if ci_enforced else MIN_DEV_BOOTSTRAP_RESAMPLES
     protocol = BenchmarkProtocolV3(
@@ -299,7 +295,7 @@ def evaluate_sota_baseline(
         bootstrap_resamples=resamples,
         ci_enforced=ci_enforced,
         preregistered_seeds=(11, 22, 33, 44, 55),
-        frozen_split_hash="sota-baseline-gate-v3",
+        frozen_split_hash=baseline_payload_hash,
         contamination_checks=("load_avg", "thermal", "leak"),
         sesoi=SesoiPolicy(),
     )
@@ -311,7 +307,7 @@ def evaluate_sota_baseline(
         paired_blocks=blocks,
         environment=env,
         execution_order=exec_order,
-        enforce_clean_worktree=False,
+        enforce_clean_worktree=ci_enforced,
     )
     baseline_p50_ns = comparison.arm_a.p50 if comparison.arm_a else 0.0
     aegis_p50_ns = comparison.arm_b.p50 if comparison.arm_b else 0.0

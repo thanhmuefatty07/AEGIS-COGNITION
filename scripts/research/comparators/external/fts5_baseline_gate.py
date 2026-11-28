@@ -22,9 +22,11 @@ from aegis_cognition.benchmark import (  # noqa: E402
     DEFAULT_BOOTSTRAP_RESAMPLES,
     MIN_DEV_BOOTSTRAP_RESAMPLES,
     BenchmarkProtocolV3,
+    BenchmarkHostSample,
     EnvironmentFingerprintV3,
     SesoiPolicy,
     evaluate_paired_benchmark_v3,
+    paired_ab_ba_schedule,
 )
 from core.python.aegis.native import native_module  # noqa: E402
 
@@ -307,12 +309,12 @@ def evaluate_hermes_baseline(root: str | Path = ROOT, *, ci_enforced: bool = Fal
     aegis_count = 0
     try:
         _populate_equal_corpus(conn, native, owner_id=owner_id)
+        host_before = BenchmarkHostSample.capture()
         for _ in range(BASELINE_WARMUPS):
             _query_sqlite_fts5_once(conn)
             _query_aegis_session_search_once(native, owner_id)
-        for blk in range(BASELINE_PAIRED_BLOCKS):
-            order = ("A", "B") if blk % 2 == 0 else ("B", "A")
-            exec_order.append("".join(order))
+        for order in paired_ab_ba_schedule(BASELINE_PAIRED_BLOCKS):
+            exec_order.append(order)
             for arm in order:
                 if arm == "A":
                     t0 = time.perf_counter_ns()
@@ -328,6 +330,7 @@ def evaluate_hermes_baseline(root: str | Path = ROOT, *, ci_enforced: bool = Fal
                     aegis_digests.append(digest)
                     aegis_count = cnt
                     arm_b_ns.append(dt)
+        host_after = BenchmarkHostSample.capture()
     finally:
         conn.close()
         if prev_db_env is None:
@@ -342,15 +345,8 @@ def evaluate_hermes_baseline(root: str | Path = ROOT, *, ci_enforced: bool = Fal
     db_bytes = BASELINE_DB_PATH.read_bytes()
     baseline_db_hash = _blake3_hex(db_bytes)
 
-    env = EnvironmentFingerprintV3.capture(
-        network_policy="offline",
-        rustc_version="workspace-locked",
-        cpu_governor="host-native",
-        pinned_cores="unpinned",
-        pre_run_load_avg=0.05,
-        post_run_load_avg=0.05,
-        baseline_cpu_mhz=3000.0,
-        measured_cpu_mhz=3000.0,
+    env = EnvironmentFingerprintV3.capture_host(
+        host_before, after=host_after, network_policy="offline", workspace_root=ROOT
     )
     resamples = DEFAULT_BOOTSTRAP_RESAMPLES if ci_enforced else MIN_DEV_BOOTSTRAP_RESAMPLES
     comparison = evaluate_paired_benchmark_v3(
@@ -365,7 +361,7 @@ def evaluate_hermes_baseline(root: str | Path = ROOT, *, ci_enforced: bool = Fal
             bootstrap_resamples=resamples,
             ci_enforced=ci_enforced,
             preregistered_seeds=(11, 22, 33, 44, 55),
-            frozen_split_hash="hermes-fts5-v3",
+            frozen_split_hash=_blake3_hex(f"{baseline_db_hash}:{BASELINE_QUERY}:{BASELINE_LIMIT}".encode()),
             contamination_checks=("load_avg", "thermal", "leak"),
             sesoi=SesoiPolicy(),
         ),
@@ -375,7 +371,7 @@ def evaluate_hermes_baseline(root: str | Path = ROOT, *, ci_enforced: bool = Fal
         paired_blocks=BASELINE_PAIRED_BLOCKS,
         environment=env,
         execution_order=exec_order,
-        enforce_clean_worktree=False,
+        enforce_clean_worktree=ci_enforced,
     )
     baseline_p50_ns = comparison.arm_a.p50 if comparison.arm_a else 0.0
     aegis_p50_ns = comparison.arm_b.p50 if comparison.arm_b else 0.0

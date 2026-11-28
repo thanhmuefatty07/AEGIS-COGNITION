@@ -117,10 +117,14 @@ impl BenchTempDir {
         match std::fs::remove_dir_all(&path) {
             Ok(()) => {}
             Err(err) if err.kind() == std::io::ErrorKind::NotFound => {}
-            Err(err) => panic!("failed removing stale bench temp dir {}: {err}", path.display()),
+            Err(err) => panic!(
+                "failed removing stale bench temp dir {}: {err}",
+                path.display()
+            ),
         }
-        std::fs::create_dir_all(&path)
-            .unwrap_or_else(|err| panic!("failed creating bench temp dir {}: {err}", path.display()));
+        std::fs::create_dir_all(&path).unwrap_or_else(|err| {
+            panic!("failed creating bench temp dir {}: {err}", path.display())
+        });
         Self { path }
     }
 
@@ -135,7 +139,10 @@ impl Drop for BenchTempDir {
             Ok(()) => {}
             Err(err) if err.kind() == std::io::ErrorKind::NotFound => {}
             Err(err) => {
-                eprintln!("warning: failed to clean bench temp dir {}: {err}", self.path.display());
+                eprintln!(
+                    "warning: failed to clean bench temp dir {}: {err}",
+                    self.path.display()
+                );
             }
         }
     }
@@ -149,21 +156,81 @@ fn phase0_criterion_config() -> Criterion {
 }
 
 const BENCH_CORPUS_VOCAB: [&str; 64] = [
-    "policy", "replay", "witness", "segment", "rust", "kernel", "evidence", "ledger",
-    "browser", "sandbox", "wasmtime", "artifact", "checkpoint", "proof", "manifest", "commit",
-    "token", "budget", "context", "governor", "mmap", "bridge", "frame", "header",
-    "lexical", "vector", "bitmap", "term", "dictionary", "cluster", "lease", "epoch",
-    "admit", "skill", "registry", "handoff", "action", "trace", "packet", "envelope",
-    "collector", "dom", "screenshot", "accessibility", "network", "datalog", "closure", "slab",
-    "queue", "ready", "task", "graph", "hypergraph", "leiden", "dedup", "quorum",
-    "sealer", "arena", "blake3", "arrow", "compact", "recover", "verify", "dispatch",
+    "policy",
+    "replay",
+    "witness",
+    "segment",
+    "rust",
+    "kernel",
+    "evidence",
+    "ledger",
+    "browser",
+    "sandbox",
+    "wasmtime",
+    "artifact",
+    "checkpoint",
+    "proof",
+    "manifest",
+    "commit",
+    "token",
+    "budget",
+    "context",
+    "governor",
+    "mmap",
+    "bridge",
+    "frame",
+    "header",
+    "lexical",
+    "vector",
+    "bitmap",
+    "term",
+    "dictionary",
+    "cluster",
+    "lease",
+    "epoch",
+    "admit",
+    "skill",
+    "registry",
+    "handoff",
+    "action",
+    "trace",
+    "packet",
+    "envelope",
+    "collector",
+    "dom",
+    "screenshot",
+    "accessibility",
+    "network",
+    "datalog",
+    "closure",
+    "slab",
+    "queue",
+    "ready",
+    "task",
+    "graph",
+    "hypergraph",
+    "leiden",
+    "dedup",
+    "quorum",
+    "sealer",
+    "arena",
+    "blake3",
+    "arrow",
+    "compact",
+    "recover",
+    "verify",
+    "dispatch",
 ];
 
 fn zipf_corpus_terms(doc_index: usize, count: usize) -> Vec<&'static str> {
     let mut terms = Vec::with_capacity(count);
-    let mut state = (doc_index as u64).wrapping_mul(6_364_136_223_846_793_005).wrapping_add(1_442_695_040_888_963_407);
+    let mut state = (doc_index as u64)
+        .wrapping_mul(6_364_136_223_846_793_005)
+        .wrapping_add(1_442_695_040_888_963_407);
     for slot in 0..count {
-        state = state.wrapping_mul(6_364_136_223_846_793_005).wrapping_add(1);
+        state = state
+            .wrapping_mul(6_364_136_223_846_793_005)
+            .wrapping_add(1);
         let u = ((state >> 40) as f64) / ((1u64 << 24) as f64);
         // Zipfian rank skew over BENCH_CORPUS_VOCAB with rare tail diversity.
         let rank = (((BENCH_CORPUS_VOCAB.len() as f64) + 1.0).powf(u) - 1.0) as usize;
@@ -291,7 +358,12 @@ fn bench_zero_copy_validation(c: &mut Criterion) {
 fn bench_runtime_ingest(c: &mut Criterion) {
     c.bench_function("runtime_ingest", |b| {
         b.iter_batched(
-            || (NerveRuntime::new(), MessageFrame::with_identity(1, 2, vec![1, 2, 3, 4])),
+            || {
+                (
+                    NerveRuntime::new(),
+                    MessageFrame::with_identity(1, 2, vec![1, 2, 3, 4]),
+                )
+            },
             |(mut runtime, message)| black_box(runtime.ingest_message(black_box(message)).is_ok()),
             BatchSize::SmallInput,
         )
@@ -478,8 +550,10 @@ fn bench_provider_route_admission_proof(c: &mut Criterion) {
     let mut budgets = Vec::with_capacity(16);
     for idx in 0..16u16 {
         let provider_id: &'static str = Box::leak(format!("provider-{idx:02}").into_boxed_str());
-        let model_name: &'static str = Box::leak(format!("provider-model-{idx:02}").into_boxed_str());
-        let endpoint: &'static str = Box::leak(format!("http://127.0.0.1:{}", 8000 + idx).into_boxed_str());
+        let model_name: &'static str =
+            Box::leak(format!("provider-model-{idx:02}").into_boxed_str());
+        let endpoint: &'static str =
+            Box::leak(format!("http://127.0.0.1:{}", 8000 + idx).into_boxed_str());
         providers.push(ProviderConfig {
             provider_id,
             model_name,
@@ -560,24 +634,14 @@ fn bench_prefix_cache_broker_hit_proof(c: &mut Criterion) {
     let scope_hash = bench_hash("cache-scope", 1);
     let mut broker = PrefixCacheBroker::new(64).expect("bench prefix cache broker");
     let handle = broker
-        .admit(
-            &request,
-            &contract,
-            &route_proof,
-            scope_hash,
-            prefix_len,
-            5,
-        )
+        .admit(&request, &contract, &route_proof, scope_hash, prefix_len, 5)
         .expect("bench prefix cache admit");
     for extra in 2u32..=32u32 {
         let mut alt_req = request.clone();
         alt_req.request_id = 100 + extra as u128;
-        let alt_route_proof = InferenceRouteProof::build(
-            &alt_req,
-            &providers,
-            std::slice::from_ref(&contract),
-        )
-        .expect("bench alt route proof");
+        let alt_route_proof =
+            InferenceRouteProof::build(&alt_req, &providers, std::slice::from_ref(&contract))
+                .expect("bench alt route proof");
         broker
             .admit(
                 &alt_req,
@@ -1304,11 +1368,7 @@ fn bench_pav_ast_distance_registered(c: &mut Criterion) {
         b.iter(|| {
             idx = (idx + 1) % fp_pairs.len();
             let (old_fp, new_fp) = fp_pairs[idx];
-            let pav = watchdog.measure_pav(
-                black_box(old_fp),
-                black_box(new_fp),
-                black_box(10_000),
-            );
+            let pav = watchdog.measure_pav(black_box(old_fp), black_box(new_fp), black_box(10_000));
             black_box((pav, expected_distance))
         })
     });
@@ -1320,7 +1380,10 @@ fn bench_mmap_bridge_payload_view(c: &mut Criterion) {
     let payload: Vec<u8> = (0..(1024 * 1024)).map(pattern_byte).collect();
     write_mmap_bridge_frame(&path, 7, 9, &payload).expect("mmap bridge bench frame");
     let warm_view = open_mmap_bridge_view(&path).expect("mmap bridge bench view");
-    assert_eq!(warm_view.payload().expect("payload view").len(), payload.len());
+    assert_eq!(
+        warm_view.payload().expect("payload view").len(),
+        payload.len()
+    );
 
     c.bench_function("mmap_bridge_payload_view", |b| {
         b.iter(|| {
@@ -1437,7 +1500,11 @@ fn bench_replay_segmented_arrow_column_scan_proof(c: &mut Criterion) {
         .entries
         .iter()
         .map(|entry| {
-            RunEventSegmentArchive::segment_path(dir_guard.path(), manifest.run_id, entry.segment_id)
+            RunEventSegmentArchive::segment_path(
+                dir_guard.path(),
+                manifest.run_id,
+                entry.segment_id,
+            )
         })
         .collect();
 
@@ -2029,11 +2096,7 @@ fn bench_browser_file_artifact_gateway_ingest(c: &mut Criterion) {
                 let mut ledger = RunEventLedger::new(run_id);
                 seed_bench_goal_intake(&mut ledger, "browser-file-gateway");
                 ledger
-                    .append_context_pack_built(
-                        11,
-                        128,
-                        bench_hash("file-gateway-context-pack", 1),
-                    )
+                    .append_context_pack_built(11, 128, bench_hash("file-gateway-context-pack", 1))
                     .expect("context pack");
                 ledger
                     .append_llm_response_received(
@@ -2137,11 +2200,7 @@ fn bench_browser_live_collector_manifest_gateway_ingest(c: &mut Criterion) {
                 let mut ledger = RunEventLedger::new(run_id);
                 seed_bench_goal_intake(&mut ledger, "browser-live-manifest-gateway");
                 ledger
-                    .append_context_pack_built(
-                        11,
-                        128,
-                        bench_hash("live-manifest-context-pack", 1),
-                    )
+                    .append_context_pack_built(11, 128, bench_hash("live-manifest-context-pack", 1))
                     .expect("context pack");
                 ledger
                     .append_llm_response_received(
@@ -2482,7 +2541,8 @@ fn bench_browser_artifact(kind: BrowserArtifactKind, label: &str) -> BrowserArti
 
 fn bench_browser_artifact_files(dir: &std::path::Path) -> Vec<(BrowserArtifactKind, PathBuf)> {
     std::fs::create_dir_all(dir).expect("browser artifact bench directory");
-    let network_log = "[{\"url\":\"https://bench.local/api\",\"status\":200,\"bytes\":4096}]\n".repeat(64);
+    let network_log =
+        "[{\"url\":\"https://bench.local/api\",\"status\":200,\"bytes\":4096}]\n".repeat(64);
     let dom_before = format!(
         "<html><body><main data-aegis=\"before\">{}</main><button>go</button></body></html>",
         "<section class=\"row\"><span>item</span></section>".repeat(80)
@@ -2586,10 +2646,7 @@ fn bench_browser_live_collector_artifacts() -> Vec<BrowserLiveCollectorArtifact>
             BrowserArtifactKind::AccessibilityTreeAfter,
             ax_after.into_bytes(),
         ),
-        BrowserLiveCollectorArtifact::new(
-            BrowserArtifactKind::NetworkLog,
-            net_log.into_bytes(),
-        ),
+        BrowserLiveCollectorArtifact::new(BrowserArtifactKind::NetworkLog, net_log.into_bytes()),
     ]
 }
 
@@ -2638,11 +2695,9 @@ fn bench_replay_io_binary_mmap_fixed(c: &mut Criterion) {
 
     c.bench_function("replay_io_binary_mmap_fixed", |b| {
         b.iter(|| {
-            let recovered = BinaryRunEventSegment::read_ledger_mmap(
-                black_box(&path),
-                black_box(payload_hash),
-            )
-            .expect("binary mmap replay readback");
+            let recovered =
+                BinaryRunEventSegment::read_ledger_mmap(black_box(&path), black_box(payload_hash))
+                    .expect("binary mmap replay readback");
             black_box((recovered.len(), BinaryRunEventSegment::record_bytes()))
         })
     });
@@ -2657,11 +2712,9 @@ fn bench_replay_io_binary_mmap_verify(c: &mut Criterion) {
 
     c.bench_function("replay_io_binary_mmap_verify", |b| {
         b.iter(|| {
-            let report = BinaryRunEventSegment::verify_mmap(
-                black_box(&path),
-                black_box(payload_hash),
-            )
-            .expect("binary mmap replay scan");
+            let report =
+                BinaryRunEventSegment::verify_mmap(black_box(&path), black_box(payload_hash))
+                    .expect("binary mmap replay scan");
             black_box((report.event_count, report.last_event_hash))
         })
     });
@@ -3783,9 +3836,11 @@ fn agentic_evidence_sdk_small_bench_fixture(
             )
             .expect("agentic sdk scaled exact insert");
     }
-    let bitmap_filter =
-        HotBitmapFilter::new(epoch_hash, SortedEvidenceSet::from_unsorted(vec![27, 132, 196, 260, 324]))
-            .expect("agentic sdk small bitmap");
+    let bitmap_filter = HotBitmapFilter::new(
+        epoch_hash,
+        SortedEvidenceSet::from_unsorted(vec![27, 132, 196, 260, 324]),
+    )
+    .expect("agentic sdk small bitmap");
     let program = AgenticEvidenceProgram::new(
         epoch_hash,
         64,
@@ -3966,8 +4021,7 @@ fn task_ledger_bench_tree(task_count: u128) -> TaskLedger {
             vec![task_id / 2]
         };
         let priority = ((task_id.wrapping_mul(6_364_136_223_846_793_005)) >> 60) as u32 % 8;
-        let deadline_jitter =
-            ((task_id.wrapping_mul(2_862_933_555_777_941_757)) >> 50) as u64;
+        let deadline_jitter = ((task_id.wrapping_mul(2_862_933_555_777_941_757)) >> 50) as u64;
         let token_cost = (((task_id.wrapping_mul(1_103_515_245)) >> 16) % 97) as i64;
         ledger
             .insert_task(TaskCard::new(
@@ -3982,7 +4036,9 @@ fn task_ledger_bench_tree(task_count: u128) -> TaskLedger {
     // Complete upper 511 internal tree nodes so tasks 512..=1023 form a 512-task simultaneous Ready frontier.
     let complete_upto = 511u128.min(task_count / 2);
     for tid in 1..=complete_upto {
-        ledger.complete_task(tid).expect("bench ancestor task status");
+        ledger
+            .complete_task(tid)
+            .expect("bench ancestor task status");
     }
     ledger
 }

@@ -75,8 +75,7 @@ fn resource_runtime_benchmarks(c: &mut Criterion) {
         bencher.iter_batched(
             || {
                 let mut controller = AdmissionController::new(fixed_capacity, 64);
-                let warmup_decision =
-                    controller.admit(build_request(99, 1024, Vec::new()).1, 0);
+                let warmup_decision = controller.admit(build_request(99, 1024, Vec::new()).1, 0);
                 assert!(matches!(warmup_decision, AdmissionDecision::Admitted(_)));
                 (controller, admit_req.clone())
             },
@@ -96,14 +95,13 @@ fn resource_runtime_benchmarks(c: &mut Criterion) {
             || {
                 let mut controller = AdmissionController::new(fixed_capacity, 64);
                 for seed in 1..=8u128 {
-                    let decision = controller.admit(build_request(seed, 4096, Vec::new()).1, seed as u64);
+                    let decision =
+                        controller.admit(build_request(seed, 4096, Vec::new()).1, seed as u64);
                     assert!(matches!(decision, AdmissionDecision::Admitted(_)));
                 }
                 controller
             },
-            |mut controller| {
-                black_box(controller.capacity_feedback(black_box(&feedback_sample)))
-            },
+            |mut controller| black_box(controller.capacity_feedback(black_box(&feedback_sample))),
             criterion::BatchSize::SmallInput,
         );
     });
@@ -115,7 +113,9 @@ fn resource_runtime_benchmarks(c: &mut Criterion) {
                 for seed in 1..=32u128 {
                     let deps = if seed > 1 { vec![seed / 2] } else { Vec::new() };
                     let (card, req) = build_request(seed, 4096, deps);
-                    if let Ok(RuntimeAdmission::Admitted(tok)) = runtime.submit(card, req, seed as u64) {
+                    if let Ok(RuntimeAdmission::Admitted(tok)) =
+                        runtime.submit(card, req, seed as u64)
+                    {
                         let _res = runtime.finish(tok, RuntimeOutcome::Done);
                     }
                 }

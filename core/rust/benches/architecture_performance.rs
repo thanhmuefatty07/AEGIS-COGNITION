@@ -163,7 +163,9 @@ fn benchmark_scheduler(c: &mut Criterion) {
                     tick = tick.wrapping_add(1);
                     (base_ledger.clone(), tick)
                 },
-                |(mut ledger, now_ms)| black_box(ledger.ordered_ready_tasks(black_box(now_ms)).expect("DAG")),
+                |(mut ledger, now_ms)| {
+                    black_box(ledger.ordered_ready_tasks(black_box(now_ms)).expect("DAG"))
+                },
                 BatchSize::SmallInput,
             );
         });
@@ -178,7 +180,13 @@ fn benchmark_scheduler(c: &mut Criterion) {
                 tick = tick.wrapping_add(1);
                 (select_base.clone(), tick)
             },
-            |(mut ledger, now_ms)| black_box(ledger.select_next_task(black_box(now_ms)).expect("selection")),
+            |(mut ledger, now_ms)| {
+                black_box(
+                    ledger
+                        .select_next_task(black_box(now_ms))
+                        .expect("selection"),
+                )
+            },
             BatchSize::SmallInput,
         );
     });
@@ -362,25 +370,34 @@ fn benchmark_sandbox(c: &mut Criterion) {
     group.bench_function("SBX-001_wasmtime_cold_compile", |bencher| {
         bencher.iter_batched(
             WasmtimeSandbox::new,
-            |sandbox| black_box(sandbox.execute_wasm_binary(black_box(&compute_module), black_box(50_000))),
+            |sandbox| {
+                black_box(
+                    sandbox.execute_wasm_binary(black_box(&compute_module), black_box(50_000)),
+                )
+            },
             BatchSize::SmallInput,
         );
     });
 
     let sandbox = WasmtimeSandbox::new();
     group.bench_function("SBX-002_cached_module_execution", |bencher| {
-        bencher.iter(|| black_box(sandbox.execute_wasm_binary(black_box(&compute_module), black_box(50_000))));
+        bencher.iter(|| {
+            black_box(sandbox.execute_wasm_binary(black_box(&compute_module), black_box(50_000)))
+        });
     });
 
     group.bench_function("SBX-003_fuel_trap", |bencher| {
-        bencher.iter(|| black_box(sandbox.execute_wasm_binary(black_box(&looping_module), black_box(500))));
+        bencher.iter(|| {
+            black_box(sandbox.execute_wasm_binary(black_box(&looping_module), black_box(500)))
+        });
     });
 
     let mut epoch_sandbox = WasmtimeSandbox::new();
     epoch_sandbox.timeout_ms = 1;
     group.bench_function("SBX-004_epoch_interruption", |bencher| {
         bencher.iter(|| {
-            let result = epoch_sandbox.execute_wasm_binary(black_box(&looping_module), black_box(u64::MAX));
+            let result =
+                epoch_sandbox.execute_wasm_binary(black_box(&looping_module), black_box(u64::MAX));
             black_box(result.is_err())
         });
     });

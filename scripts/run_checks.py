@@ -372,6 +372,7 @@ def _cli_report_inputs(root: Path) -> list[Path]:
 
 def _baseline_gate_inputs(root: Path) -> list[Path]:
     inputs = [
+        root / "aegis_cognition" / "benchmark.py",
         root / "scripts" / "sota_baseline_gate.py",
         root / "scripts" / "research" / "comparators" / "external" / "fts5_baseline_gate.py",
         root / "scripts" / "research" / "comparators" / "external" / "rpc_context_baseline_gate.py",
@@ -523,16 +524,41 @@ def _production_readiness_summary(deployment: object, e2e_release_gate: dict) ->
 
 
 def _baseline_gate_payload_valid(payload: dict) -> bool:
+    from aegis_cognition.benchmark import PAIRED_BENCHMARK_ARTIFACT_HASH_SCHEMA, paired_benchmark_result_hash_v3
+
     checks = payload.get("checks")
     physical_evidence = payload.get("physical_evidence")
+    if not isinstance(physical_evidence, dict):
+        return False
+    comparison = physical_evidence.get("v3_comparison")
+    if not isinstance(comparison, dict):
+        return False
+    protocol_hash = comparison.get("protocol_hash")
+    environment_hash = comparison.get("environment_hash")
+    observations_hash = comparison.get("observations_hash")
+    raw_p = comparison.get("raw_p_value")
     return (
         payload.get("overall_ok") is True
         and payload.get("failed") == 0
         and isinstance(checks, list)
         and len(checks) > 0
         and all(isinstance(check, dict) and check.get("ok") is True for check in checks)
-        and isinstance(physical_evidence, dict)
-        and len(physical_evidence) > 0
+        and comparison.get("status") == "PASS"
+        and comparison.get("contamination_verdict") == "CLEAN"
+        and comparison.get("artifact_hash_schema") == PAIRED_BENCHMARK_ARTIFACT_HASH_SCHEMA
+        and type(raw_p) in (int, float)
+        and 0 <= raw_p <= 1
+        and all(
+            isinstance(digest, str) and len(digest) == 64 and all(digit in "0123456789abcdef" for digit in digest)
+            for digest in (protocol_hash, environment_hash, observations_hash)
+        )
+        and comparison.get("artifact_hash")
+        == paired_benchmark_result_hash_v3(
+            protocol_hash=protocol_hash,
+            environment_hash=environment_hash,
+            observations_hash=observations_hash,
+            raw_p_value=raw_p,
+        )
     )
 
 
@@ -621,7 +647,8 @@ def _cached_or_evaluate_baseline_gate(
 
     report = evaluator(root_path)
     payload = serializer(report)
-    if _baseline_gate_payload_valid(payload):
+    gate_ok = _baseline_gate_payload_valid(payload)
+    if gate_ok:
         _update_baseline_gate_cache(
             root_path,
             gate_name,
@@ -630,9 +657,11 @@ def _cached_or_evaluate_baseline_gate(
             benchmark_content_hash_value,
             benchmark_profile,
         )
+    elif payload.get("overall_ok") is True:
+        payload = {**payload, "overall_ok": False, "evidence_status": "NOT_VERIFIED"}
     return (
         _with_baseline_cache_fields(payload, gate_name, content_hash, False, False),
-        bool(getattr(report, "overall_ok", payload.get("overall_ok") is True)),
+        gate_ok,
     )
 
 

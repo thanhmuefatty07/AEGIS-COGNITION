@@ -3020,9 +3020,38 @@ def test_python_hotpath_gate_accepts_mmap_payload_view():
         assert payload["checks"][0]["estimate_ns"] <= payload["checks"][0]["threshold_ns"]
 
 
-def test_hermes_session_recovery_baseline_gate_binds_physical_artifacts():
+def test_baseline_cache_invalidates_on_changes_to_the_v3_evaluator(tmp_path):
+    from scripts.run_checks import baseline_gate_content_hash
+
+    evaluator = tmp_path / "aegis_cognition" / "benchmark.py"
+    evaluator.parent.mkdir()
+    evaluator.write_text("def score(): return 10\n", encoding="utf-8")
+    before = baseline_gate_content_hash(tmp_path, "release")
+
+    evaluator.write_text("def score(): return 20\n", encoding="utf-8")
+
+    assert baseline_gate_content_hash(tmp_path, "release") != before
+
+
+@pytest.fixture
+def _benchmark_telemetry(monkeypatch):
+    from aegis_cognition.benchmark import BenchmarkHostSample
+
+    def configure(*, available: bool = True) -> None:
+        sample = BenchmarkHostSample(
+            load_avg=0.0 if available else None,
+            hardware_frequency_khz=(("policy0", 3_000_000),) if available else (),
+            probe_duration_ns=100,
+        )
+        monkeypatch.setattr(BenchmarkHostSample, "capture", classmethod(lambda cls: sample))
+
+    return configure
+
+
+def test_hermes_session_recovery_baseline_gate_binds_physical_artifacts(_benchmark_telemetry):
     import scripts.research.comparators.external.session_recovery_baseline_gate as gate
 
+    _benchmark_telemetry()
     with TemporaryDirectory() as tmp:
         baseline_dir = Path(tmp) / "hermes-session-recovery"
         with (
@@ -3065,9 +3094,10 @@ def test_hermes_session_recovery_baseline_gate_binds_physical_artifacts():
         assert Path(evidence["baseline_recovery_payload_path"]).exists()
 
 
-def test_hermes_persistence_baseline_gate_binds_physical_artifacts():
+def test_hermes_persistence_baseline_gate_binds_physical_artifacts(_benchmark_telemetry):
     import scripts.research.comparators.external.persistence_write_baseline_gate as gate
 
+    _benchmark_telemetry()
     with TemporaryDirectory() as tmp:
         baseline_dir = Path(tmp) / "hermes-persistence"
         with (
@@ -3101,9 +3131,14 @@ def test_hermes_persistence_baseline_gate_binds_physical_artifacts():
         assert Path(evidence["baseline_transcript_path"]).exists()
 
 
-def test_hermes_rpc_baseline_gate_uses_aggregate_mmap_overhead():
-    import scripts.research.comparators.external.rpc_context_baseline_gate as gate
+@pytest.mark.parametrize("host_observed", (True, False), ids=("observed_host", "unavailable_host"))
+def test_hermes_rpc_baseline_gate_uses_aggregate_mmap_overhead(_benchmark_telemetry, host_observed):
+    from functools import partial
 
+    import scripts.research.comparators.external.rpc_context_baseline_gate as gate
+    import scripts.run_checks as checks
+
+    _benchmark_telemetry(available=host_observed)
     with TemporaryDirectory() as tmp:
         baseline_dir = Path(tmp) / "hermes-rpc"
         with (
@@ -3138,7 +3173,59 @@ def test_hermes_rpc_baseline_gate_uses_aggregate_mmap_overhead():
             report = gate.evaluate_hermes_rpc_baseline(Path.cwd())
         payload = gate.report_to_dict(report)
         evidence = payload["physical_evidence"]
-        assert report.overall_ok
+        assert report.overall_ok is host_observed, payload
+        assert evidence["v3_comparison"]["status"] == ("PASS" if host_observed else "EXPLORATORY")
+        assert checks._baseline_gate_payload_valid(payload) is host_observed
+        if host_observed:
+            comparison = evidence["v3_comparison"]
+            inconsistent_report = {
+                **payload,
+                "physical_evidence": {
+                    **evidence,
+                    "v3_comparison": {**comparison, "observations_hash": "0" * 64},
+                },
+            }
+            assert not checks._baseline_gate_payload_valid(inconsistent_report)
+
+            older_comparison = dict(evidence["v3_comparison"])
+            older_comparison.pop("artifact_hash_schema")
+            older_comparison.pop("observations_hash")
+            older_report = {**payload, "physical_evidence": {**evidence, "v3_comparison": older_comparison}}
+            gate_name = "hermes_rpc_baseline_gate"
+            cache_file = Path(tmp) / "baseline-cache.json"
+            fingerprints = ("content-hash", "benchmark-content-hash", "release")
+            evaluate = partial(
+                checks._cached_or_evaluate_baseline_gate,
+                baseline_dir,
+                gate_name,
+                serializer=lambda result: result,
+                content_hash=fingerprints[0],
+                benchmark_content_hash_value=fingerprints[1],
+                benchmark_profile=fingerprints[2],
+            )
+            with (
+                patch.object(
+                    checks, "_read_baseline_gate_cache", partial(checks._read_baseline_gate_cache, path=cache_file)
+                ),
+                patch.object(
+                    checks, "_write_baseline_gate_cache", partial(checks._write_baseline_gate_cache, path=cache_file)
+                ),
+            ):
+                fresh, accepted = evaluate(evaluator=lambda root: payload, force_fresh=True)
+                assert accepted and not fresh["baseline_cache_hit"]
+                cached, accepted = evaluate(
+                    evaluator=lambda root: pytest.fail("valid cache was bypassed"), force_fresh=False
+                )
+                assert accepted and cached["baseline_cache_hit"]
+
+                checks._update_baseline_gate_cache(baseline_dir, gate_name, older_report, *fingerprints)
+                original_cache_bytes = cache_file.read_bytes()
+                for force_fresh in (False, True):
+                    rejected, accepted = evaluate(evaluator=lambda root: older_report, force_fresh=force_fresh)
+                    assert not accepted
+                    assert rejected["overall_ok"] is False
+                    assert not rejected["baseline_cache_hit"]
+                    assert cache_file.read_bytes() == original_cache_bytes
         assert evidence["equal_workload_digest_matches_json_rpc"] is True
         assert evidence["aegis_raw_view_only_ns"] == 1_000.0
         assert evidence["aegis_aggregate_mmap_frame_count"] == 1

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import contextlib
+import hashlib
 import json
 import mmap
 import os
@@ -26,10 +27,12 @@ if str(ROOT) not in sys.path:
 from aegis_cognition.benchmark import (  # noqa: E402
     MIN_DEV_BOOTSTRAP_RESAMPLES,
     BenchmarkProtocolV3,
+    BenchmarkHostSample,
     EnvironmentFingerprintV3,
     SesoiPolicy,
     bca_confidence_interval,
     evaluate_paired_benchmark_v3,
+    paired_ab_ba_schedule,
     quantile_type7_sorted,
 )
 from core.python.aegis.native import native_module  # noqa: E402
@@ -227,13 +230,13 @@ def _paired_ab_ba_v3_comparison(payload: bytes) -> dict[str, Any]:
     arm_a: list[float] = []
     arm_b: list[float] = []
     exec_order: list[str] = []
+    host_before = BenchmarkHostSample.capture()
     try:
         for _ in range(warmups):
             native.aegis_hot_commit(payload, "DEV")
             native.aegis_hot_commit_buffer(mv, "DEV")
-        for blk in range(trials):
-            order = ("A", "B") if blk % 2 == 0 else ("B", "A")
-            exec_order.append("".join(order))
+        for order in paired_ab_ba_schedule(trials):
+            exec_order.append(order)
             for arm in order:
                 if arm == "A":
                     t0 = time.perf_counter_ns()
@@ -246,16 +249,7 @@ def _paired_ab_ba_v3_comparison(payload: bytes) -> dict[str, Any]:
     finally:
         mv.release()
 
-    env = EnvironmentFingerprintV3.capture(
-        network_policy="offline",
-        rustc_version="workspace-locked",
-        cpu_governor="host-native",
-        pinned_cores="unpinned",
-        pre_run_load_avg=0.05,
-        post_run_load_avg=0.05,
-        baseline_cpu_mhz=3000.0,
-        measured_cpu_mhz=3000.0,
-    )
+    env = EnvironmentFingerprintV3.capture_host(host_before, network_policy="offline", workspace_root=ROOT)
     protocol = BenchmarkProtocolV3(
         name="nv014_vec_copy_vs_pybuffer_64k",
         metric="latency_ns",
@@ -267,7 +261,7 @@ def _paired_ab_ba_v3_comparison(payload: bytes) -> dict[str, Any]:
         bootstrap_resamples=MIN_DEV_BOOTSTRAP_RESAMPLES,
         ci_enforced=False,
         preregistered_seeds=(1, 2, 3, 4, 5),
-        frozen_split_hash="nv014-pybuffer-64k",
+        frozen_split_hash=hashlib.sha256(payload).hexdigest(),
         contamination_checks=("load_avg", "thermal", "leak"),
         sesoi=SesoiPolicy(),
     )

@@ -41,7 +41,9 @@ fn clean_report() -> SkillRegressionReport {
         .expect("clean regression report must construct")
 }
 
-fn populated_registry(skill_count: usize) -> (SkillRegistry, Vec<u128>, SkillRegressionReport, Vec<u8>) {
+fn populated_registry(
+    skill_count: usize,
+) -> (SkillRegistry, Vec<u128>, SkillRegressionReport, Vec<u8>) {
     let wasm = bench_wasm_bytes(1);
     let improved_wasm = bench_wasm_bytes(9);
     let sandbox = WasmtimeSandbox::new();

@@ -136,7 +136,9 @@ impl HdrHistogramLog {
             return HDR_TOTAL_SLOTS - 1;
         }
         let sub = (clamped >> bucket) as usize;
-        HDR_SUB_BUCKET_COUNT + (bucket - 1) * HDR_SUB_BUCKET_HALF_COUNT + (sub - HDR_SUB_BUCKET_HALF_COUNT)
+        HDR_SUB_BUCKET_COUNT
+            + (bucket - 1) * HDR_SUB_BUCKET_HALF_COUNT
+            + (sub - HDR_SUB_BUCKET_HALF_COUNT)
     }
 
     #[inline]
@@ -330,7 +332,10 @@ struct QueuedRequest {
 pub struct OpenLoopHarness;
 
 impl OpenLoopHarness {
-    pub fn calibrate_capacity<F>(probe_requests: usize, mut op: F) -> Result<OpenLoopCalibration, BenchError>
+    pub fn calibrate_capacity<F>(
+        probe_requests: usize,
+        mut op: F,
+    ) -> Result<OpenLoopCalibration, BenchError>
     where
         F: FnMut(),
     {
@@ -383,10 +388,8 @@ impl OpenLoopHarness {
             ));
         }
         let mut cal_op = factory();
-        let calibration = Self::calibrate_capacity(
-            config.requests_per_point.clamp(64, 512),
-            &mut cal_op,
-        )?;
+        let calibration =
+            Self::calibrate_capacity(config.requests_per_point.clamp(64, 512), &mut cal_op)?;
         let total_workers = config.worker_threads.max(1);
         let capacity_total = calibration.mu_max_ops_per_sec * (total_workers as f64);
 
@@ -431,37 +434,39 @@ impl OpenLoopHarness {
                     let timeout_ns = config.request_timeout_ns;
                     let mut worker_op = factory();
 
-                    handles.push(scope.spawn(move || loop {
-                        let req = {
-                            let Ok(guard) = rx_clone.lock() else {
-                                break;
+                    handles.push(scope.spawn(move || {
+                        loop {
+                            let req = {
+                                let Ok(guard) = rx_clone.lock() else {
+                                    break;
+                                };
+                                match guard.recv() {
+                                    Ok(item) => item,
+                                    Err(_) => break,
+                                }
                             };
-                            match guard.recv() {
-                                Ok(item) => item,
-                                Err(_) => break,
+                            let start = Instant::now();
+                            worker_op();
+                            let end = Instant::now();
+                            let svc_ns = end.duration_since(start).as_nanos() as u64;
+                            let end_rel_ns = end.duration_since(run_start).as_nanos() as u64;
+                            let soj_ns = end_rel_ns.saturating_sub(req.scheduled_ns).max(svc_ns);
+                            if soj_ns > timeout_ns {
+                                if let Ok(mut guard) = to_cnt.lock() {
+                                    *guard += 1;
+                                }
+                                continue;
                             }
-                        };
-                        let start = Instant::now();
-                        worker_op();
-                        let end = Instant::now();
-                        let svc_ns = end.duration_since(start).as_nanos() as u64;
-                        let end_rel_ns = end.duration_since(run_start).as_nanos() as u64;
-                        let soj_ns = end_rel_ns.saturating_sub(req.scheduled_ns).max(svc_ns);
-                        if soj_ns > timeout_ns {
-                            if let Ok(mut guard) = to_cnt.lock() {
-                                *guard += 1;
+                            if let Ok(mut g) = svc_h.lock() {
+                                g.record_ns(svc_ns.max(1));
                             }
-                            continue;
-                        }
-                        if let Ok(mut g) = svc_h.lock() {
-                            g.record_ns(svc_ns.max(1));
-                        }
-                        if let Ok(mut g) = soj_h.lock() {
-                            g.record_ns(soj_ns.max(1));
-                        }
-                        if let Ok(mut g) = comp_v.lock() {
-                            let epoch_idx = g.len() / per_epoch;
-                            g.push((epoch_idx, svc_ns.max(1), soj_ns.max(1)));
+                            if let Ok(mut g) = soj_h.lock() {
+                                g.record_ns(soj_ns.max(1));
+                            }
+                            if let Ok(mut g) = comp_v.lock() {
+                                let epoch_idx = g.len() / per_epoch;
+                                g.push((epoch_idx, svc_ns.max(1), soj_ns.max(1)));
+                            }
                         }
                     }));
                 }
@@ -482,7 +487,9 @@ impl OpenLoopHarness {
                     if (run_start.elapsed().as_nanos() as u64) > sched_ns + 1_000 {
                         queued += 1;
                     }
-                    match tx.try_send(QueuedRequest { scheduled_ns: sched_ns }) {
+                    match tx.try_send(QueuedRequest {
+                        scheduled_ns: sched_ns,
+                    }) {
                         Ok(()) => admitted += 1,
                         Err(TrySendError::Full(_)) => rejected_queue_full += 1,
                         Err(TrySendError::Disconnected(_)) => disconnected += 1,

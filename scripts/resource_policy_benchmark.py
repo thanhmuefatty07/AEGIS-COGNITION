@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import argparse
 import ctypes
+import hashlib
 import json
 import os
 import platform
@@ -28,6 +29,7 @@ from aegis_cognition.benchmark import (  # noqa: E402
     DEFAULT_BOOTSTRAP_RESAMPLES,
     MIN_DEV_BOOTSTRAP_RESAMPLES,
     BenchmarkProtocolV3,
+    BenchmarkHostSample,
     EnvironmentFingerprintV3,
     OpenLoopConfig,
     OpenLoopHarness,
@@ -172,6 +174,7 @@ def run_benchmark(
     lane_progress = dict.fromkeys(LANE_LOWER, 0)
     inflight: list[tuple[str, str]] = []
 
+    host_before = BenchmarkHostSample.capture()
     wall_start = time.perf_counter_ns()
     cpu_start = time.process_time_ns()
     for idx in range(total_ops):
@@ -229,16 +232,7 @@ def run_benchmark(
     wall_elapsed_ns = time.perf_counter_ns() - wall_start
 
     measured_samples = raw_samples_ms[warmups:]
-    env = EnvironmentFingerprintV3.capture(
-        network_policy="offline",
-        rustc_version="workspace-locked",
-        cpu_governor="host-native",
-        pinned_cores="unpinned",
-        pre_run_load_avg=0.05,
-        post_run_load_avg=0.05,
-        baseline_cpu_mhz=3000.0,
-        measured_cpu_mhz=3000.0,
-    )
+    env = EnvironmentFingerprintV3.capture_host(host_before, network_policy="offline", workspace_root=ROOT)
     protocol = BenchmarkProtocolV3(
         name=f"resource_policy_{profile}",
         metric="admission_latency_ms",
@@ -250,7 +244,7 @@ def run_benchmark(
         bootstrap_resamples=DEFAULT_BOOTSTRAP_RESAMPLES if ci_enforced else MIN_DEV_BOOTSTRAP_RESAMPLES,
         ci_enforced=ci_enforced,
         preregistered_seeds=(11, 22, 33, 44, 55),
-        frozen_split_hash=f"resource-policy-{profile}",
+        frozen_split_hash=hashlib.sha256("\n".join(requests).encode()).hexdigest(),
         contamination_checks=("load_avg", "thermal", "leak"),
         sesoi=SesoiPolicy(),
     )
@@ -260,7 +254,7 @@ def run_benchmark(
         warmups=warmups,
         paired_blocks=len(measured_samples),
         environment=env,
-        enforce_clean_worktree=proven_requested,
+        enforce_clean_worktree=proven_requested or ci_enforced,
     )
     ol_req = requests[1]
     resamples_ol = DEFAULT_BOOTSTRAP_RESAMPLES if ci_enforced else MIN_DEV_BOOTSTRAP_RESAMPLES

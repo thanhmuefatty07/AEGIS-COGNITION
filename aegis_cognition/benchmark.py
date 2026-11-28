@@ -15,14 +15,16 @@ import sys
 import time
 from bisect import bisect_left, bisect_right
 from collections.abc import Callable, Sequence
-from dataclasses import asdict, dataclass, field, is_dataclass
+from dataclasses import asdict, dataclass, field, is_dataclass, replace
 from hashlib import blake2b
+from pathlib import Path
 from typing import Any, Literal, cast
 
 
 DEFAULT_BOOTSTRAP_RESAMPLES: int = 10_000
 MIN_DEV_BOOTSTRAP_RESAMPLES: int = 2_000
 JACKKNIFE_BLOCK_COUNT: int = 50
+PAIRED_BENCHMARK_ARTIFACT_HASH_SCHEMA = "aegis-paired-v3-observations-v1"
 HDR_MAX_VALUE_NS: int = 60_000_000_000
 _HDR_SUB_BUCKET_HALF_COUNT: int = 1024
 _HDR_SUB_BUCKET_COUNT: int = 2048
@@ -1062,16 +1064,18 @@ def _detect_ram_bytes() -> int:
     return 0
 
 
-def _best_effort_git_state() -> tuple[str, bool]:
+def _best_effort_git_state(workspace_root: Path | None = None) -> tuple[str, bool]:
     try:
         sha = subprocess.check_output(
             ["git", "rev-parse", "HEAD"],
+            cwd=workspace_root,
             stderr=subprocess.DEVNULL,
             text=True,
             timeout=2.0,
         ).strip()
         porcelain = subprocess.check_output(
             ["git", "status", "--porcelain"],
+            cwd=workspace_root,
             stderr=subprocess.DEVNULL,
             text=True,
             timeout=2.0,
@@ -1081,15 +1085,42 @@ def _best_effort_git_state() -> tuple[str, bool]:
         return "unknown", False
 
 
-def _best_effort_load_avg() -> float:
+def _best_effort_load_avg() -> float | None:
     try:
         getloadavg_fn: Any = getattr(os, "getloadavg", None)
         if callable(getloadavg_fn):
             load_vals = cast(tuple[float, float, float], getloadavg_fn())
             return float(load_vals[0])
     except OSError, TypeError, ValueError:
-        return 0.0
-    return 0.0
+        return None
+    return None
+
+
+def _hardware_frequency_khz() -> tuple[tuple[str, int], ...]:
+    if sys.platform != "linux":
+        return ()
+    try:
+        policies = sorted(Path("/sys/devices/system/cpu/cpufreq").glob("policy[0-9]*"))
+        readings = tuple(
+            (policy.name, int((policy / "cpuinfo_cur_freq").read_text(encoding="ascii").strip())) for policy in policies
+        )
+    except OSError, ValueError:
+        return ()
+    return readings if all(frequency > 0 for _, frequency in readings) else ()
+
+
+@dataclass(frozen=True)
+class BenchmarkHostSample:
+    load_avg: float | None
+    hardware_frequency_khz: tuple[tuple[str, int], ...]
+    probe_duration_ns: int
+
+    @classmethod
+    def capture(cls) -> BenchmarkHostSample:
+        start_ns = time.perf_counter_ns()
+        load_avg = _best_effort_load_avg()
+        frequency_khz = _hardware_frequency_khz()
+        return cls(load_avg, frequency_khz, time.perf_counter_ns() - start_ns)
 
 
 @dataclass(frozen=True)
@@ -1100,7 +1131,7 @@ class EnvironmentFingerprintV3:
     cpu_governor: str
     pinned_cores: str
     logical_cpus: int
-    physical_cpus: int
+    physical_cpus: int | None
     ram_bytes: int
     os_kernel: str
     rustc_version: str
@@ -1108,12 +1139,13 @@ class EnvironmentFingerprintV3:
     allocator: str
     locale_name: str
     network_policy: str
-    pre_run_load_avg: float = 0.0
-    post_run_load_avg: float = 0.0
-    baseline_cpu_mhz: float = 0.0
-    measured_cpu_mhz: float = 0.0
+    pre_run_load_avg: float | None = None
+    post_run_load_avg: float | None = None
+    baseline_cpu_mhz: float | None = None
+    measured_cpu_mhz: float | None = None
     fs_leak_detected: bool = False
     sandbox_leak_detected: bool = False
+    host_samples: tuple[BenchmarkHostSample, ...] = ()
 
     @classmethod
     def capture(
@@ -1124,25 +1156,23 @@ class EnvironmentFingerprintV3:
         cpu_governor: str = "unknown",
         pinned_cores: str = "unpinned",
         allocator: str = "pymalloc+system",
-        baseline_cpu_mhz: float = 0.0,
-        measured_cpu_mhz: float = 0.0,
+        baseline_cpu_mhz: float | None = None,
+        measured_cpu_mhz: float | None = None,
         pre_run_load_avg: float | None = None,
         post_run_load_avg: float | None = None,
         fs_leak_detected: bool = False,
         sandbox_leak_detected: bool = False,
+        workspace_root: Path | None = None,
     ) -> EnvironmentFingerprintV3:
-        git_sha, worktree_clean = _best_effort_git_state()
-        logical = os.cpu_count() or 1
-        physical = max(1, logical // 2)
-        load_now = _best_effort_load_avg()
+        git_sha, worktree_clean = _best_effort_git_state(workspace_root)
         return cls(
             git_sha=git_sha,
             worktree_clean=worktree_clean,
             cpu_model=platform.processor() or platform.machine() or "unknown",
             cpu_governor=cpu_governor,
             pinned_cores=pinned_cores,
-            logical_cpus=logical,
-            physical_cpus=physical,
+            logical_cpus=os.cpu_count() or 0,
+            physical_cpus=None,
             ram_bytes=_detect_ram_bytes(),
             os_kernel=f"{platform.system() or 'unknown'}-{platform.release() or 'unknown'}",
             rustc_version=rustc_version,
@@ -1150,19 +1180,50 @@ class EnvironmentFingerprintV3:
             allocator=allocator,
             locale_name=locale.getpreferredencoding(False) or "unknown",
             network_policy=network_policy,
-            pre_run_load_avg=load_now if pre_run_load_avg is None else pre_run_load_avg,
-            post_run_load_avg=load_now if post_run_load_avg is None else post_run_load_avg,
+            pre_run_load_avg=pre_run_load_avg,
+            post_run_load_avg=post_run_load_avg,
             baseline_cpu_mhz=baseline_cpu_mhz,
             measured_cpu_mhz=measured_cpu_mhz,
             fs_leak_detected=fs_leak_detected,
             sandbox_leak_detected=sandbox_leak_detected,
         )
 
-    def evaluate_contamination(self, *, enforce_clean_worktree: bool = False) -> tuple[str, tuple[str, ...]]:
+    @classmethod
+    def capture_host(
+        cls,
+        before: BenchmarkHostSample,
+        *,
+        network_policy: str,
+        workspace_root: Path | None = None,
+        after: BenchmarkHostSample | None = None,
+    ) -> EnvironmentFingerprintV3:
+        """Close a measurement interval and retain the observations from both ends."""
+        if after is None:
+            after = BenchmarkHostSample.capture()
+        prior_frequency = dict(before.hardware_frequency_khz)
+        final_frequency = dict(after.hardware_frequency_khz)
+        comparable = bool(prior_frequency) and prior_frequency.keys() == final_frequency.keys()
+        environment = cls.capture(
+            network_policy=network_policy,
+            pre_run_load_avg=before.load_avg,
+            post_run_load_avg=after.load_avg,
+            baseline_cpu_mhz=statistics.median(prior_frequency.values()) / 1_000 if comparable else None,
+            measured_cpu_mhz=statistics.median(final_frequency.values()) / 1_000 if comparable else None,
+            workspace_root=workspace_root,
+        )
+        return replace(environment, host_samples=(before, after))
+
+    def evaluate_contamination(
+        self,
+        *,
+        enforce_clean_worktree: bool = False,
+        required_checks: Sequence[str] = ("load_avg", "thermal"),
+    ) -> tuple[str, tuple[str, ...]]:
         reasons: list[str] = []
+        unavailable: list[str] = []
         if not _is_exact_int(self.logical_cpus) or self.logical_cpus < 1:
             reasons.append("logical_cpus_invalid")
-        if not _is_exact_int(self.physical_cpus) or self.physical_cpus < 1:
+        if self.physical_cpus is not None and (not _is_exact_int(self.physical_cpus) or self.physical_cpus < 1):
             reasons.append("physical_cpus_invalid")
         if not _is_exact_int(self.ram_bytes) or self.ram_bytes < 0:
             reasons.append("ram_bytes_invalid")
@@ -1171,30 +1232,24 @@ class EnvironmentFingerprintV3:
         if type(self.fs_leak_detected) is not bool or type(self.sandbox_leak_detected) is not bool:
             reasons.append("leak_flags_invalid")
 
-        load_limit = 0.25 * max(1, self.physical_cpus if _is_exact_int(self.physical_cpus) else 1)
-        if (
-            not _is_finite_real(self.pre_run_load_avg)
-            or self.pre_run_load_avg < 0.0
-            or self.pre_run_load_avg > load_limit
-        ):
-            reasons.append("pre_run_load_avg_exceeded")
-        if (
-            not _is_finite_real(self.post_run_load_avg)
-            or self.post_run_load_avg < 0.0
-            or self.post_run_load_avg > load_limit
-        ):
-            reasons.append("post_run_load_avg_exceeded")
+        load_limit = 0.25 * max(1, self.logical_cpus if _is_exact_int(self.logical_cpus) else 1)
+        for label, load in (("pre", self.pre_run_load_avg), ("post", self.post_run_load_avg)):
+            if load is None:
+                if "load_avg" in required_checks:
+                    unavailable.append("load_avg_unavailable")
+            elif not _is_finite_real(load) or load < 0:
+                reasons.append(f"{label}_run_load_avg_invalid")
+            elif load > load_limit:
+                reasons.append(f"{label}_run_load_avg_exceeded")
 
-        if (
-            _is_finite_real(self.baseline_cpu_mhz)
-            and _is_finite_real(self.measured_cpu_mhz)
-            and self.baseline_cpu_mhz > 0.0
-        ):
-            drop_ratio = max(0.0, (self.baseline_cpu_mhz - self.measured_cpu_mhz) / self.baseline_cpu_mhz)
-            if drop_ratio > 0.10:
-                reasons.append("cpu_thermal_throttling_gt_10pct")
-        elif not (_is_finite_real(self.baseline_cpu_mhz) and _is_finite_real(self.measured_cpu_mhz)):
+        baseline, measured = self.baseline_cpu_mhz, self.measured_cpu_mhz
+        if any(value is not None and (not _is_finite_real(value) or value < 0.0) for value in (baseline, measured)):
             reasons.append("cpu_mhz_invalid")
+        elif baseline in (None, 0.0) or measured in (None, 0.0):
+            if "thermal" in required_checks:
+                unavailable.append("cpu_frequency_unavailable")
+        elif (baseline - measured) / baseline > 0.10:
+            reasons.append("cpu_frequency_drop_gt_10pct")
 
         if self.fs_leak_detected is True:
             reasons.append("fs_leak_detected")
@@ -1218,7 +1273,8 @@ class EnvironmentFingerprintV3:
             if type(raw) is not str or not raw.strip():
                 reasons.append(f"missing_{key}")
 
-        return ("CONTAMINATED" if reasons else "CLEAN", tuple(dict.fromkeys(reasons)))
+        verdict = "CONTAMINATED" if reasons else ("UNKNOWN" if unavailable else "CLEAN")
+        return verdict, tuple(dict.fromkeys(reasons + unavailable))
 
     @property
     def environment_hash(self) -> str:
@@ -1323,6 +1379,7 @@ class BenchmarkResultV3:
     failure_reasons: tuple[str, ...]
     artifact_hash: str
     truth_claim: bool = False
+    host_samples: tuple[BenchmarkHostSample, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -1359,6 +1416,11 @@ class PairedBenchmarkComparisonV3:
     contamination_flags: tuple[str, ...]
     failure_reasons: tuple[str, ...]
     artifact_hash: str
+    artifact_hash_schema: str = "aegis-paired-v3"
+    contamination_verdict: str = "UNKNOWN"
+    host_samples: tuple[BenchmarkHostSample, ...] = ()
+    observed_block_order: tuple[str, ...] = ()
+    observations_hash: str = ""
 
 
 def evaluate_benchmark_v3(
@@ -1384,7 +1446,10 @@ def evaluate_benchmark_v3(
 
     if type(environment) is not EnvironmentFingerprintV3:
         raise TypeError("environment must be EnvironmentFingerprintV3")
-    contam_verdict, env_reasons = environment.evaluate_contamination(enforce_clean_worktree=enforce_clean_worktree)
+    contam_verdict, env_reasons = environment.evaluate_contamination(
+        enforce_clean_worktree=enforce_clean_worktree,
+        required_checks=() if failures else protocol.contamination_checks,
+    )
     env_hash = ""
     if contam_verdict == "CONTAMINATED":
         failures.extend(f"CONTAMINATED:{reason}" for reason in env_reasons)
@@ -1468,7 +1533,12 @@ def evaluate_benchmark_v3(
             ):
                 failures.append("confidence_interval_does_not_clear_baseline")
 
-    status = "CONTAMINATED" if contam_verdict == "CONTAMINATED" or norm_contam else ("REJECTED" if failures else "PASS")
+    if contam_verdict == "CONTAMINATED" or norm_contam:
+        status = "CONTAMINATED"
+    elif failures:
+        status = "REJECTED"
+    else:
+        status = "EXPLORATORY" if contam_verdict == "UNKNOWN" else "PASS"
     protocol_hash = _digest(asdict(protocol))
     artifact_hash = _digest(
         {
@@ -1494,6 +1564,30 @@ def evaluate_benchmark_v3(
         contamination_flags=norm_contam + env_reasons,
         failure_reasons=tuple(dict.fromkeys(failures)),
         artifact_hash=artifact_hash,
+        host_samples=environment.host_samples,
+    )
+
+
+def paired_ab_ba_schedule(blocks: int) -> tuple[str, ...]:
+    """Return the V3 registered order for the planned paired blocks."""
+    return tuple("AB" if index % 2 == 0 else "BA" for index in range(blocks))
+
+
+def paired_benchmark_result_hash_v3(
+    *,
+    protocol_hash: str,
+    environment_hash: str,
+    observations_hash: str,
+    raw_p_value: float,
+) -> str:
+    return _digest(
+        {
+            "schema": PAIRED_BENCHMARK_ARTIFACT_HASH_SCHEMA,
+            "protocol": protocol_hash,
+            "environment": environment_hash,
+            "observations": observations_hash,
+            "p": raw_p_value,
+        }
     )
 
 
@@ -1520,17 +1614,25 @@ def evaluate_paired_benchmark_v3(
 
     if type(environment) is not EnvironmentFingerprintV3:
         raise TypeError("environment must be EnvironmentFingerprintV3")
-    contam_verdict, env_reasons = environment.evaluate_contamination(enforce_clean_worktree=enforce_clean_worktree)
+    contam_verdict, env_reasons = environment.evaluate_contamination(
+        enforce_clean_worktree=enforce_clean_worktree,
+        required_checks=() if failures else protocol.contamination_checks,
+    )
     env_hash = ""
     if contam_verdict == "CONTAMINATED":
         failures.extend(f"CONTAMINATED:{reason}" for reason in env_reasons)
-    else:
+    try:
         env_hash = environment.environment_hash
+    except ValueError:
+        if contam_verdict != "CONTAMINATED":
+            raise
 
     if not _is_exact_int(warmups) or warmups < protocol.warmups:
         failures.append("insufficient_warmups")
     if not _is_exact_int(paired_blocks) or paired_blocks < protocol.paired_blocks:
         failures.append("insufficient_paired_blocks")
+    elif paired_blocks > protocol.paired_blocks:
+        failures.append("paired_blocks_exceed_preregistered_count")
 
     vals_a_buf: list[float] = []
     vals_b_buf: list[float] = []
@@ -1546,10 +1648,37 @@ def evaluate_paired_benchmark_v3(
 
     vals_a = tuple(vals_a_buf)
     vals_b = tuple(vals_b_buf)
-    if execution_order is not None:
-        normalized_order = [str(item).upper() for item in execution_order]
-        if len(normalized_order) != len(vals_a) or set(normalized_order) != {"AB", "BA"}:
+    if len(vals_a) == len(vals_b) and _is_exact_int(paired_blocks) and paired_blocks != len(vals_a):
+        failures.append("paired_block_observation_mismatch")
+
+    normalized_order: tuple[str, ...] = ()
+    if (
+        not isinstance(execution_order, Sequence)
+        or isinstance(execution_order, (str, bytes, bytearray))
+        or any(type(item) is not str for item in execution_order)
+    ):
+        failures.append("non_counterbalanced_ab_ba_order")
+    else:
+        normalized_order = tuple(item.upper() for item in execution_order)
+        ab_count = normalized_order.count("AB")
+        ba_count = normalized_order.count("BA")
+        if (
+            len(normalized_order) != len(vals_a)
+            or ab_count + ba_count != len(normalized_order)
+            or abs(ab_count - ba_count) > 1
+        ):
             failures.append("non_counterbalanced_ab_ba_order")
+        elif normalized_order != paired_ab_ba_schedule(len(vals_a)):
+            failures.append("execution_order_mismatch")
+    observation_hash = _digest(
+        {
+            "arm_a_samples": vals_a,
+            "arm_b_samples": vals_b,
+            "execution_order": normalized_order,
+            "warmups": warmups if _is_exact_int(warmups) else None,
+            "paired_blocks": paired_blocks if _is_exact_int(paired_blocks) else None,
+        }
+    )
 
     if failures or not vals_a or not vals_b:
         p_hash = _digest(asdict(protocol))
@@ -1574,7 +1703,20 @@ def evaluate_paired_benchmark_v3(
             environment_hash=env_hash,
             contamination_flags=env_reasons,
             failure_reasons=tuple(dict.fromkeys(failures)),
-            artifact_hash=_digest({"protocol": p_hash, "failures": failures}),
+            artifact_hash=_digest(
+                {
+                    "schema": PAIRED_BENCHMARK_ARTIFACT_HASH_SCHEMA,
+                    "protocol": p_hash,
+                    "environment": env_hash,
+                    "observations": observation_hash,
+                    "failures": failures,
+                }
+            ),
+            artifact_hash_schema=PAIRED_BENCHMARK_ARTIFACT_HASH_SCHEMA,
+            contamination_verdict=contam_verdict,
+            host_samples=environment.host_samples,
+            observed_block_order=normalized_order,
+            observations_hash=observation_hash,
         )
 
     seed = protocol.preregistered_seeds[0]
@@ -1724,12 +1866,13 @@ def evaluate_paired_benchmark_v3(
         or paired_estimands[0].delta_ci.ci_high < 0.0
     )
     statistically_significant = adj_p <= protocol.alpha and ci_excludes_zero
-    practical_proven = statistically_significant and sesoi_cleared
+    status = "EXPLORATORY" if contam_verdict == "UNKNOWN" else "PASS"
+    practical_proven = status == "PASS" and statistically_significant and sesoi_cleared
     p_hash = protocol.protocol_hash
     return PairedBenchmarkComparisonV3(
         protocol_hash=p_hash,
         metric_name=protocol.metric,
-        status="PASS",
+        status=status,
         alpha=protocol.alpha,
         resamples=resamples,
         paired_blocks=paired_blocks,
@@ -1747,7 +1890,17 @@ def evaluate_paired_benchmark_v3(
         environment_hash=env_hash,
         contamination_flags=env_reasons,
         failure_reasons=(),
-        artifact_hash=_digest({"schema": "aegis-paired-v3", "protocol": p_hash, "env": env_hash, "p": raw_p}),
+        artifact_hash=paired_benchmark_result_hash_v3(
+            protocol_hash=p_hash,
+            environment_hash=env_hash,
+            observations_hash=observation_hash,
+            raw_p_value=raw_p,
+        ),
+        artifact_hash_schema=PAIRED_BENCHMARK_ARTIFACT_HASH_SCHEMA,
+        contamination_verdict=contam_verdict,
+        host_samples=environment.host_samples,
+        observed_block_order=normalized_order,
+        observations_hash=observation_hash,
     )
 
 
@@ -1774,28 +1927,11 @@ def apply_holm_bonferroni_v3(
         )
         stat_sig = adj_p <= comp.alpha and ci_excludes_zero
         out.append(
-            PairedBenchmarkComparisonV3(
-                protocol_hash=comp.protocol_hash,
-                metric_name=comp.metric_name,
-                status=comp.status,
-                alpha=comp.alpha,
-                resamples=comp.resamples,
-                paired_blocks=comp.paired_blocks,
-                warmup_count=comp.warmup_count,
-                arm_a=comp.arm_a,
-                arm_b=comp.arm_b,
-                wilcoxon=comp.wilcoxon,
-                cliffs_delta=comp.cliffs_delta,
-                estimands=comp.estimands,
-                raw_p_value=comp.raw_p_value,
+            replace(
+                comp,
                 adjusted_p_value=adj_p,
-                sesoi_cleared=comp.sesoi_cleared,
                 statistically_significant=stat_sig,
-                practical_change_proven=stat_sig and comp.sesoi_cleared,
-                environment_hash=comp.environment_hash,
-                contamination_flags=comp.contamination_flags,
-                failure_reasons=comp.failure_reasons,
-                artifact_hash=comp.artifact_hash,
+                practical_change_proven=comp.status == "PASS" and stat_sig and comp.sesoi_cleared,
             )
         )
     return tuple(out)
@@ -2181,7 +2317,7 @@ def run_canary_sensitivity_self_test(
         ci_enforced=ci_enforced,
         preregistered_seeds=seeds,
         frozen_split_hash="canary-split-v3",
-        contamination_checks=("load_avg", "thermal", "leak"),
+        contamination_checks=("load_avg", "leak"),
     )
     env = EnvironmentFingerprintV3.capture(
         network_policy="offline",
@@ -2196,7 +2332,7 @@ def run_canary_sensitivity_self_test(
         warmups=10,
         paired_blocks=n,
         environment=env,
-        execution_order=["AB" if i % 2 == 0 else "BA" for i in range(n)],
+        execution_order=paired_ab_ba_schedule(n),
     )
     adjusted = apply_holm_bonferroni_v3([comp])[0]
     assert adjusted.adjusted_p_value is not None
@@ -2801,7 +2937,9 @@ __all__ = [
     "HDR_MAX_VALUE_NS",
     "JACKKNIFE_BLOCK_COUNT",
     "MIN_DEV_BOOTSTRAP_RESAMPLES",
+    "PAIRED_BENCHMARK_ARTIFACT_HASH_SCHEMA",
     "BcaConfidenceInterval",
+    "BenchmarkHostSample",
     "BenchmarkProtocolV2",
     "BenchmarkProtocolV3",
     "BenchmarkResultV2",
@@ -2841,6 +2979,7 @@ __all__ = [
     "newcombe_wilson_diff_ci",
     "normal_cdf",
     "normal_inv_cdf",
+    "paired_ab_ba_schedule",
     "pass_at_k_with_bca_ci",
     "quantile_type7_sorted",
     "run_canary_sensitivity_self_test",

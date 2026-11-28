@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import math
+from dataclasses import replace
 
 import pytest
 
@@ -13,6 +14,7 @@ from aegis_cognition.benchmark import (
     EnvironmentFingerprintV3,
     HdrHistogramLog,
     OpenLoopHarness,
+    PairedBenchmarkComparisonV3,
     SesoiPolicy,
     apply_holm_bonferroni_v3,
     bca_confidence_interval,
@@ -252,7 +254,27 @@ def test_v3_rejects_implicit_warmups_contamination_and_low_ci_resamples() -> Non
     )
     assert contam.status == "CONTAMINATED"
     assert contam.contamination_verdict == "CONTAMINATED"
-    assert any("cpu_thermal_throttling" in reason for reason in contam.failure_reasons)
+    assert "CONTAMINATED:cpu_frequency_drop_gt_10pct" in contam.failure_reasons
+
+
+def test_v3_rejects_invalid_contamination_checks_when_host_load_is_missing() -> None:
+    protocol = replace(_v3_protocol(), contamination_checks=None)
+    samples = [100.0 + index for index in range(30)]
+    environment = replace(_clean_env(), pre_run_load_avg=None)
+    single = evaluate_benchmark_v3(protocol, samples, warmups=10, paired_blocks=30, environment=environment)
+    paired = evaluate_paired_benchmark_v3(
+        protocol,
+        samples,
+        samples,
+        warmups=10,
+        paired_blocks=30,
+        environment=environment,
+        execution_order=["AB", "BA"] * 15,
+    )
+
+    for comparison in (single, paired):
+        assert comparison.status == "REJECTED"
+        assert "protocol_invalid:ValueError" in comparison.failure_reasons
 
 
 def test_paired_v3_preserves_correlation_and_checks_counterbalance_and_canary() -> None:
@@ -298,6 +320,166 @@ def test_paired_v3_preserves_correlation_and_checks_counterbalance_and_canary() 
     assert canary.quarantine_status == "SENSITIVE_OK"
     assert canary.adjusted_p_value <= 0.05
     assert abs(canary.cliffs_delta) >= 0.33
+
+
+@pytest.mark.parametrize(
+    "execution_order",
+    [None, ["AB"] * 29 + ["BA"]],
+    ids=("missing", "imbalanced"),
+)
+def test_paired_v3_rejects_missing_or_imbalanced_execution_order(execution_order: list[str] | None) -> None:
+    arm_a = [100.0 + float(index) for index in range(30)]
+    arm_b = [value + 25.0 for value in arm_a]
+
+    comparison = evaluate_paired_benchmark_v3(
+        _v3_protocol(),
+        arm_a,
+        arm_b,
+        warmups=10,
+        paired_blocks=30,
+        environment=_clean_env(),
+        execution_order=execution_order,
+    )
+
+    assert comparison.status == "REJECTED"
+    assert "non_counterbalanced_ab_ba_order" in comparison.failure_reasons
+
+
+def test_paired_v3_artifact_hash_binds_observed_samples() -> None:
+    arm_a = [100.0 + index for index in range(30)]
+    environment = _clean_env()
+
+    def evaluate(delta: float) -> PairedBenchmarkComparisonV3:
+        return evaluate_paired_benchmark_v3(
+            _v3_protocol(),
+            arm_a,
+            [value + delta for value in arm_a],
+            warmups=10,
+            paired_blocks=30,
+            environment=environment,
+            execution_order=["AB", "BA"] * 15,
+        )
+
+    lower_delta = evaluate(20.0)
+    higher_delta = evaluate(40.0)
+    assert lower_delta.status == higher_delta.status == "PASS"
+    assert lower_delta.estimands[0].delta_estimate == 20.0
+    assert higher_delta.estimands[0].delta_estimate == 40.0
+    assert lower_delta.raw_p_value == higher_delta.raw_p_value
+    assert lower_delta.artifact_hash != higher_delta.artifact_hash
+    assert lower_delta.artifact_hash == evaluate(20.0).artifact_hash
+
+
+def test_paired_v3_artifact_hash_binds_contaminated_host_measurements() -> None:
+    samples = [100.0 + index for index in range(30)]
+    environment = replace(_clean_env(), logical_cpus=4)
+
+    def evaluate(load_avg: float) -> PairedBenchmarkComparisonV3:
+        return evaluate_paired_benchmark_v3(
+            _v3_protocol(),
+            samples,
+            samples,
+            warmups=10,
+            paired_blocks=30,
+            environment=replace(environment, pre_run_load_avg=load_avg),
+            execution_order=["AB", "BA"] * 15,
+        )
+
+    overloaded = evaluate(2.0)
+    heavily_overloaded = evaluate(3.0)
+    assert overloaded.status == heavily_overloaded.status == "CONTAMINATED"
+    assert overloaded.contamination_flags == heavily_overloaded.contamination_flags == ("pre_run_load_avg_exceeded",)
+    assert overloaded.observations_hash == heavily_overloaded.observations_hash
+    assert overloaded.environment_hash != heavily_overloaded.environment_hash
+    assert overloaded.artifact_hash != heavily_overloaded.artifact_hash
+
+
+def test_paired_v3_rejects_declared_block_count_different_from_observations() -> None:
+    arm_a = [100.0 + float(index) for index in range(30)]
+    comparison = evaluate_paired_benchmark_v3(
+        _v3_protocol(),
+        arm_a,
+        [value + 25.0 for value in arm_a],
+        warmups=10,
+        paired_blocks=31,
+        environment=_clean_env(),
+        execution_order=["AB" if index % 2 == 0 else "BA" for index in range(30)],
+    )
+
+    assert comparison.status == "REJECTED"
+    assert "paired_block_observation_mismatch" in comparison.failure_reasons
+
+
+def test_paired_v3_rejects_additional_blocks_beyond_the_registered_count() -> None:
+    comparison = evaluate_paired_benchmark_v3(
+        _v3_protocol(),
+        [100.0] * 32,
+        [125.0] * 32,
+        warmups=10,
+        paired_blocks=32,
+        environment=_clean_env(),
+        execution_order=["AB", "BA"] * 16,
+    )
+
+    assert comparison.status == "REJECTED"
+    assert "paired_blocks_exceed_preregistered_count" in comparison.failure_reasons
+
+
+def test_paired_v3_rejects_balanced_order_that_differs_from_registered_schedule() -> None:
+    comparison = evaluate_paired_benchmark_v3(
+        _v3_protocol(),
+        [100.0] * 30,
+        [125.0] * 30,
+        warmups=10,
+        paired_blocks=30,
+        environment=_clean_env(),
+        execution_order=["AB"] * 15 + ["BA"] * 15,
+    )
+
+    assert comparison.status == "REJECTED"
+    assert "execution_order_mismatch" in comparison.failure_reasons
+
+
+def test_paired_v3_identical_arms_do_not_prove_an_effect() -> None:
+    arm = [100.0 + index for index in range(30)]
+    comparison = evaluate_paired_benchmark_v3(
+        _v3_protocol(),
+        arm,
+        list(arm),
+        warmups=10,
+        paired_blocks=30,
+        environment=_clean_env(),
+        execution_order=["AB", "BA"] * 15,
+    )
+
+    assert comparison.status == "PASS"
+    assert comparison.estimands[0].delta_ci.ci_low == comparison.estimands[0].delta_ci.ci_high == 0
+    assert not comparison.practical_change_proven
+
+
+def test_v3_missing_required_host_observations_stays_exploratory() -> None:
+    protocol = _v3_protocol()
+    env = replace(_clean_env(), measured_cpu_mhz=None, pre_run_load_avg=None)
+    arm_a = [100.0] * 30
+    arm_b = [150.0] * 30
+
+    single = evaluate_benchmark_v3(protocol, arm_a, warmups=10, paired_blocks=30, environment=env)
+    paired = evaluate_paired_benchmark_v3(
+        protocol,
+        arm_a,
+        arm_b,
+        warmups=10,
+        paired_blocks=30,
+        environment=env,
+        execution_order=["AB", "BA"] * 15,
+    )
+
+    assert single.status == paired.status == "EXPLORATORY"
+    assert single.contamination_verdict == paired.contamination_verdict == "UNKNOWN"
+    assert single.distribution is not None
+    assert paired.estimands[0].delta_estimate == 50.0
+    assert {"load_avg_unavailable", "cpu_frequency_unavailable"} <= set(paired.contamination_flags)
+    assert not apply_holm_bonferroni_v3([paired])[0].practical_change_proven
 
 
 def test_open_loop_hdrhistogram_and_coordinated_omission_detection() -> None:

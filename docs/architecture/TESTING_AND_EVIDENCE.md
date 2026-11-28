@@ -53,3 +53,34 @@ into proof.
 
 The blocked-but-productive dispatch and one-owner/one-gate rules are defined in
 [`AGENT_COORDINATION_PROTOCOL.md`](AGENT_COORDINATION_PROTOCOL.md).
+
+## V3 benchmark observations
+
+Paired collectors use the registered alternating AB/BA order and record the
+order dispatched for each measured block. Missing orders, imbalanced orders,
+orders that differ from the registered schedule, and counts that disagree
+with the observed pairs are rejected before computing a comparison.
+The `aegis-paired-v3-observations-v1` hash binds the ordered observations,
+warmups, block count, protocol and environment. The protocol binds the
+workload digest and the metric, including its unit. Paired records without
+`artifact_hash_schema` use the legacy hash, which did not bind the observations.
+Benchmark gate caches include the V3 evaluator in their input digest. Fresh
+and cached reports must bind the stored protocol, environment, observation
+digest and raw p-value to the comparison hash. A comparison from the legacy
+hash format remains historical evidence.
+
+Collectors sample the host before and after the timed workload. They retain
+the one-minute load average where the OS exposes it, the Linux CPUFreq hardware
+readings where the kernel provides them, and the time spent taking each
+sample. The load threshold uses the host's logical CPU count. The frequency
+check compares the median across matching policies before and after the run.
+A frequency drop does not establish its cause. Missing required observations
+produce `EXPLORATORY` results with an `UNKNOWN` contamination verdict. An
+exploratory result may retain estimates for diagnosis. It cannot qualify a
+gate or establish a practical improvement after multiple-comparison
+correction. These host observations do not attest filesystem or sandbox
+isolation.
+
+The Rust benchmark library's best-effort environment capture leaves the two
+load and frequency observations unset. Its clean-environment gate rejects
+unavailable observations. Legacy numeric observations are still readable.

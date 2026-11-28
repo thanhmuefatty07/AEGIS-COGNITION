@@ -986,12 +986,29 @@ def test_cargo_summary_reports_real_pass_and_failure_counts(tmp_path: Path) -> N
         encoding="utf-8",
     )
 
+    linker_environment: dict[str, str] = {}
+    if sys.platform == "win32":
+        target_libdir = Path(
+            subprocess.check_output(
+                [rustc, "--print", "target-libdir"],
+                cwd=tmp_path,
+                text=True,
+                timeout=10,
+            ).strip()
+        )
+        target = target_libdir.parent.name
+        if target.endswith("-pc-windows-msvc"):
+            linker = target_libdir.parent / "bin" / "rust-lld.exe"
+            assert linker.is_file(), "the pinned MSVC toolchain must provide rust-lld"
+            linker_environment[f"CARGO_TARGET_{target.upper().replace('-', '_')}_LINKER"] = str(linker)
+
     def cargo_command(command_id: str, *, force_failure: bool = False) -> LocalVerificationCommand:
         environment = {
             "CARGO_HOME": str(tmp_path / "cargo-home"),
             "CARGO_TARGET_DIR": str(tmp_path / "cargo-target"),
             "RUSTC": rustc,
             "RUSTDOC": rustdoc,
+            **linker_environment,
         }
         if force_failure:
             environment["AEGIS_WP12_FORCE_CARGO_FAILURE"] = "1"

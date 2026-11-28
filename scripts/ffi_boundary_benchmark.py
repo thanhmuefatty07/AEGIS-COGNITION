@@ -7,6 +7,7 @@ counterbalanced AB/BA paired trials and ``BenchmarkProtocolV3`` statistics.
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import os
 import platform
@@ -25,12 +26,14 @@ from aegis_cognition.benchmark import (  # noqa: E402
     DEFAULT_BOOTSTRAP_RESAMPLES,
     MIN_DEV_BOOTSTRAP_RESAMPLES,
     BenchmarkProtocolV3,
+    BenchmarkHostSample,
     EnvironmentFingerprintV3,
     OpenLoopConfig,
     OpenLoopHarness,
     SesoiPolicy,
     evaluate_benchmark_v3,
     evaluate_paired_benchmark_v3,
+    paired_ab_ba_schedule,
 )
 from core.python.aegis.native import native_module  # noqa: E402
 from core.python.bridge_mmap import MmapBridgeFrame  # noqa: E402
@@ -49,6 +52,7 @@ def _make_v3_protocol(
     ci_enforced: bool,
     min_trials: int,
     warmups: int,
+    workload_hash: str,
 ) -> BenchmarkProtocolV3:
     return BenchmarkProtocolV3(
         name=name,
@@ -61,24 +65,9 @@ def _make_v3_protocol(
         bootstrap_resamples=resamples,
         ci_enforced=ci_enforced,
         preregistered_seeds=(101, 202, 303, 404, 505),
-        frozen_split_hash="ffi-boundary-benchmark-v3",
+        frozen_split_hash=workload_hash,
         contamination_checks=("load_avg", "thermal", "leak"),
         sesoi=SesoiPolicy(),
-    )
-
-
-def _capture_env(env_fp: EnvironmentFingerprintV3 | None = None) -> EnvironmentFingerprintV3:
-    if env_fp is not None:
-        return env_fp
-    return EnvironmentFingerprintV3.capture(
-        network_policy="offline",
-        rustc_version="workspace-locked",
-        cpu_governor="host-native",
-        pinned_cores="unpinned",
-        pre_run_load_avg=0.05,
-        post_run_load_avg=0.05,
-        baseline_cpu_mhz=3000.0,
-        measured_cpu_mhz=3000.0,
     )
 
 
@@ -91,6 +80,7 @@ def _eval_single_surface(
     resamples: int,
     ci_enforced: bool,
     env: EnvironmentFingerprintV3,
+    workload_hash: str,
 ) -> dict[str, Any]:
     protocol = _make_v3_protocol(
         name=name,
@@ -99,6 +89,7 @@ def _eval_single_surface(
         ci_enforced=ci_enforced,
         min_trials=trials,
         warmups=warmups,
+        workload_hash=workload_hash,
     )
     measured = samples_ns[warmups:]
     result = evaluate_benchmark_v3(
@@ -107,7 +98,7 @@ def _eval_single_surface(
         warmups=warmups,
         paired_blocks=len(measured),
         environment=env,
-        enforce_clean_worktree=False,
+        enforce_clean_worktree=ci_enforced,
     )
     return asdict(result)
 
@@ -127,7 +118,7 @@ def run_ffi_benchmark(
         raise ValueError("warmups must be >= 10 for V3 evaluation")
 
     native = native_module()
-    env = _capture_env()
+    host_before = BenchmarkHostSample.capture()
     total_calls = warmups + trials
 
     # FFI-001: minimal PyO3 crossing overhead (`aegis_hot_hash` & `aegis_validate_layout`).
@@ -214,9 +205,8 @@ def run_ffi_benchmark(
         arm_a_vec_ns: list[float] = []
         arm_b_buf_ns: list[float] = []
         exec_order: list[str] = []
-        for blk in range(trials):
-            order = ("A", "B") if blk % 2 == 0 else ("B", "A")
-            exec_order.append("".join(order))
+        for order in paired_ab_ba_schedule(trials):
+            exec_order.append(order)
             for arm in order:
                 if arm == "A":
                     t0 = time.perf_counter_ns()
@@ -234,24 +224,6 @@ def run_ffi_benchmark(
                     arm_b_buf_ns.append(dt)
     finally:
         payload_mv.release()
-
-    paired_ffi003 = evaluate_paired_benchmark_v3(
-        _make_v3_protocol(
-            name="FFI-003_vec_copy_vs_pybuffer_64k",
-            metric="commit_latency_ns",
-            resamples=resamples,
-            ci_enforced=ci_enforced,
-            min_trials=trials,
-            warmups=warmups,
-        ),
-        arm_a_vec_ns,
-        arm_b_buf_ns,
-        warmups=warmups,
-        paired_blocks=trials,
-        environment=env,
-        execution_order=exec_order,
-        enforce_clean_worktree=False,
-    )
 
     # FFI-004: cross-language Rust mmap writer -> Python zero-copy MmapBridgeFrame -> Rust validator.
     ffi004_samples: list[float] = []
@@ -272,6 +244,26 @@ def run_ffi_benchmark(
             if not valid or len(header) != 5 or checksum < 0:
                 raise RuntimeError("FFI-004 mmap bridge roundtrip contract failed")
             ffi004_samples.append(elapsed_ns)
+
+    env = EnvironmentFingerprintV3.capture_host(host_before, network_policy="offline", workspace_root=ROOT)
+    paired_ffi003 = evaluate_paired_benchmark_v3(
+        _make_v3_protocol(
+            name="FFI-003_vec_copy_vs_pybuffer_64k",
+            metric="commit_latency_ns",
+            resamples=resamples,
+            ci_enforced=ci_enforced,
+            min_trials=trials,
+            warmups=warmups,
+            workload_hash=hashlib.sha256(payload_64k).hexdigest(),
+        ),
+        arm_a_vec_ns,
+        arm_b_buf_ns,
+        warmups=warmups,
+        paired_blocks=trials,
+        environment=env,
+        execution_order=exec_order,
+        enforce_clean_worktree=ci_enforced,
+    )
 
     # Open-loop tail latency harness over FFI-001 call path.
     open_loop_report = OpenLoopHarness.sweep_callable(
@@ -297,6 +289,7 @@ def run_ffi_benchmark(
             resamples=resamples,
             ci_enforced=ci_enforced,
             env=env,
+            workload_hash=hashlib.sha256(small_payload).hexdigest(),
         ),
         "FFI-002_json_context_and_admission": _eval_single_surface(
             "FFI-002_json_context_and_admission",
@@ -306,6 +299,9 @@ def run_ffi_benchmark(
             resamples=resamples,
             ci_enforced=ci_enforced,
             env=env,
+            workload_hash=hashlib.sha256(
+                json.dumps([items_json, relations_json, req_json, 512, 1_700_000_000_000]).encode()
+            ).hexdigest(),
         ),
         "FFI-003_vec_copy_vs_pybuffer_64k": asdict(paired_ffi003),
         "FFI-004_cross_language_mmap_roundtrip": _eval_single_surface(
@@ -316,21 +312,17 @@ def run_ffi_benchmark(
             resamples=resamples,
             ci_enforced=ci_enforced,
             env=env,
+            workload_hash=hashlib.sha256(json.dumps([77, 16_384, total_calls]).encode()).hexdigest(),
         ),
     }
-    all_pass = all(
-        results[k]["status"] == "PASS"
-        for k in (
-            "FFI-001_hot_hash_and_layout",
-            "FFI-002_json_context_and_admission",
-            "FFI-003_vec_copy_vs_pybuffer_64k",
-            "FFI-004_cross_language_mmap_roundtrip",
-        )
-    )
+    statuses = {result["status"] for result in results.values()}
+    all_pass = statuses == {"PASS"}
     return {
         "schema": SCHEMA,
         "truth_claim": False,
-        "status": "MEASURED_LOCAL_ONLY" if all_pass else "FAILED",
+        "status": "MEASURED_LOCAL_ONLY"
+        if all_pass
+        else ("EXPLORATORY" if statuses <= {"PASS", "EXPLORATORY"} else "FAILED"),
         "overall_ok": all_pass,
         "platform": platform.platform(),
         "python": platform.python_version(),

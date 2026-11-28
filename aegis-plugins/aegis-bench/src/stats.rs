@@ -696,9 +696,7 @@ impl DistributionV3 {
         } else {
             0.0
         };
-        let zero_var = samples_ns
-            .iter()
-            .all(|&v| (v - samples_ns[0]).abs() == 0.0);
+        let zero_var = samples_ns.iter().all(|&v| (v - samples_ns[0]).abs() == 0.0);
         let p50_ns = quantile_type7_sorted(&sorted, 0.50);
         let p90_ns = quantile_type7_sorted(&sorted, 0.90);
         let p95_ns = quantile_type7_sorted(&sorted, 0.95);
@@ -928,7 +926,10 @@ pub fn hodges_lehmann_pseudomedian(diffs: &[f64]) -> Result<f64, BenchError> {
     }
 }
 
-pub fn wilcoxon_signed_rank_test(arm_a: &[f64], arm_b: &[f64]) -> Result<WilcoxonResult, BenchError> {
+pub fn wilcoxon_signed_rank_test(
+    arm_a: &[f64],
+    arm_b: &[f64],
+) -> Result<WilcoxonResult, BenchError> {
     if arm_a.len() != arm_b.len() {
         return Err(BenchError::InvalidParameter(
             "paired Wilcoxon requires equal-length arms",
@@ -1193,7 +1194,9 @@ pub fn newcombe_wilson_diff_ci(
 ) -> Result<NewcombeWilsonDiffCi, BenchError> {
     let n = n11 + n10 + n01 + n00;
     if n == 0 {
-        return Err(BenchError::InvalidParameter("paired counts cannot be empty"));
+        return Err(BenchError::InvalidParameter(
+            "paired counts cannot be empty",
+        ));
     }
     let s1 = n11 + n10;
     let s2 = n11 + n01;
@@ -1224,11 +1227,9 @@ pub fn newcombe_wilson_diff_ci(
         }
     };
 
-    let d_lo_sq = (p_b - w2.ci_low).powi(2)
-        - 2.0 * phi * (p_b - w2.ci_low) * (w1.ci_high - p_a)
+    let d_lo_sq = (p_b - w2.ci_low).powi(2) - 2.0 * phi * (p_b - w2.ci_low) * (w1.ci_high - p_a)
         + (w1.ci_high - p_a).powi(2);
-    let d_hi_sq = (w2.ci_high - p_b).powi(2)
-        - 2.0 * phi * (w2.ci_high - p_b) * (p_a - w1.ci_low)
+    let d_hi_sq = (w2.ci_high - p_b).powi(2) - 2.0 * phi * (w2.ci_high - p_b) * (p_a - w1.ci_low)
         + (p_a - w1.ci_low).powi(2);
 
     Ok(NewcombeWilsonDiffCi {
@@ -1273,7 +1274,14 @@ pub fn pass_at_k_with_bca_ci(
         .iter()
         .map(|&(n, c)| unbiased_pass_at_k(n, c, k))
         .collect::<Result<Vec<_>, _>>()?;
-    bca_confidence_interval("pass@k", &scores, EstimandKind::Mean, alpha, resamples, seed)
+    bca_confidence_interval(
+        "pass@k",
+        &scores,
+        EstimandKind::Mean,
+        alpha,
+        resamples,
+        seed,
+    )
 }
 
 pub fn cliffs_delta(arm_a: &[f64], arm_b: &[f64]) -> Result<CliffsDeltaResult, BenchError> {
@@ -1384,10 +1392,10 @@ pub fn evaluate_paired_comparison_v3(
     ];
     let mut a_scratch = Vec::with_capacity(n);
     let mut b_scratch = Vec::with_capacity(n);
-    let a_ests: [f64; 5] = ESTIMANDS
-        .map(|k| eval_estimand_unsorted(arm_a_samples, k, &mut a_scratch));
-    let b_ests: [f64; 5] = ESTIMANDS
-        .map(|k| eval_estimand_unsorted(arm_b_samples, k, &mut b_scratch));
+    let a_ests: [f64; 5] =
+        ESTIMANDS.map(|k| eval_estimand_unsorted(arm_a_samples, k, &mut a_scratch));
+    let b_ests: [f64; 5] =
+        ESTIMANDS.map(|k| eval_estimand_unsorted(arm_b_samples, k, &mut b_scratch));
     let delta_ests: [f64; 5] = [
         b_ests[0] - a_ests[0],
         b_ests[1] - a_ests[1],
@@ -1396,11 +1404,31 @@ pub fn evaluate_paired_comparison_v3(
         b_ests[4] - a_ests[4],
     ];
     let ratio_ests: [Option<f64>; 5] = [
-        if a_ests[0] > 0.0 { Some(b_ests[0] / a_ests[0]) } else { None },
-        if a_ests[1] > 0.0 { Some(b_ests[1] / a_ests[1]) } else { None },
-        if a_ests[2] > 0.0 { Some(b_ests[2] / a_ests[2]) } else { None },
-        if a_ests[3] > 0.0 { Some(b_ests[3] / a_ests[3]) } else { None },
-        if a_ests[4] > 0.0 { Some(b_ests[4] / a_ests[4]) } else { None },
+        if a_ests[0] > 0.0 {
+            Some(b_ests[0] / a_ests[0])
+        } else {
+            None
+        },
+        if a_ests[1] > 0.0 {
+            Some(b_ests[1] / a_ests[1])
+        } else {
+            None
+        },
+        if a_ests[2] > 0.0 {
+            Some(b_ests[2] / a_ests[2])
+        } else {
+            None
+        },
+        if a_ests[3] > 0.0 {
+            Some(b_ests[3] / a_ests[3])
+        } else {
+            None
+        },
+        if a_ests[4] > 0.0 {
+            Some(b_ests[4] / a_ests[4])
+        } else {
+            None
+        },
     ];
 
     let zero_paired_diff = arm_a_samples

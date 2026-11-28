@@ -2,9 +2,7 @@ pub mod environment;
 pub mod open_loop;
 pub mod stats;
 
-pub use environment::{
-    ContaminationVerdict, EnvironmentCheckReport, EnvironmentFingerprintV3,
-};
+pub use environment::{ContaminationVerdict, EnvironmentCheckReport, EnvironmentFingerprintV3};
 pub use open_loop::{
     HDR_MAX_VALUE_NS, HdrHistogramLog, LatencyPercentiles, OpenLoopCalibration, OpenLoopConfig,
     OpenLoopHarness, OpenLoopQueueSimulation, OpenLoopReport, OpenLoopUtilizationPoint,
@@ -48,6 +46,8 @@ pub enum BenchError {
     InvalidParameter(&'static str),
     #[error("benchmark environment contaminated: {0}")]
     Contaminated(String),
+    #[error("benchmark environment observations unavailable: {0}")]
+    IncompleteEnvironment(String),
     #[error("benchmark sensitivity check failed: {0}")]
     SensitivityCheckFailed(String),
 }
@@ -242,11 +242,8 @@ impl PerformanceGates {
             let samples = raw_samples
                 .get(name)
                 .ok_or_else(|| BenchError::MissingMetric(name.clone()))?;
-            let dist = EmpiricalDistribution::from_samples(
-                name,
-                samples,
-                MIN_DEV_BOOTSTRAP_RESAMPLES,
-            )?;
+            let dist =
+                EmpiricalDistribution::from_samples(name, samples, MIN_DEV_BOOTSTRAP_RESAMPLES)?;
             let estimate_ns = if gate_on_ci_upper {
                 dist.bootstrap_p95_ci_high_ns
             } else {
@@ -473,19 +470,26 @@ mod tests {
     #[test]
     fn environment_contamination_gate_and_canary_self_test() {
         let mut env = EnvironmentFingerprintV3::capture_local_best_effort("offline");
-        env.baseline_cpu_mhz = 3_600.0;
-        env.measured_cpu_mhz = 3_500.0;
-        env.pre_run_load_avg = 0.05;
-        env.post_run_load_avg = 0.05;
+        let incomplete = env.evaluate_contamination(false);
+        assert_eq!(incomplete.verdict, ContaminationVerdict::Unknown);
+        assert!(incomplete.cpu_frequency_drop_ratio.is_none());
+        assert!(matches!(
+            env.require_clean(false),
+            Err(BenchError::IncompleteEnvironment(_))
+        ));
+        env.baseline_cpu_mhz = Some(3_600.0);
+        env.measured_cpu_mhz = Some(3_500.0);
+        env.pre_run_load_avg = Some(0.05);
+        env.post_run_load_avg = Some(0.05);
         assert!(env.require_clean(false).is_ok());
 
         let mut throttled = env.clone();
-        throttled.measured_cpu_mhz = 2_800.0;
+        throttled.measured_cpu_mhz = Some(2_800.0);
         let err = throttled.require_clean(false).unwrap_err();
         assert!(matches!(err, BenchError::Contaminated(_)));
 
         let mut overloaded = env.clone();
-        overloaded.post_run_load_avg = (env.physical_cpus as f64) * 0.5;
+        overloaded.post_run_load_avg = Some(env.logical_cpus as f64 * 0.5);
         assert!(matches!(
             overloaded.require_clean(false).unwrap_err(),
             BenchError::Contaminated(_)
